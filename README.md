@@ -6,7 +6,7 @@ Multi-node video RF race timer for drone racing.  This timing system uses the vi
 
 ### Receiver Parts List: (this is enough for one receiver node)
 * 1 x Arduino Nano
-* 1 x rx5808 with SPI mod (see the SPI mod here)
+* 1 x rx5808 with SPI mod - see the SPI mod here: https://github.com/scottgchin/delta5_race_timer/blob/master/rx5808_SPI/rx5808_SPI.md
 * 3 x 1k ohm resistor
 * 1 x 100k ohm resistor
 
