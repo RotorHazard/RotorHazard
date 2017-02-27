@@ -16,3 +16,13 @@ Multi-node video RF race timer for drone racing.  This timing system uses the vi
 ### Receiver Node Connection Diagram:
 ![alt text](img/Receivernode.png)
 
+### Receiver Node Arduino Code:
+1. Open the Delta 5 Race Timer in the Arduino IDE.
+2. Change the slave ID number and the frequency settings on each Receiver Node.
+  * Node 1 = slave address 8
+  * Node 2 = slave address 10
+  * Node 3 = slave address 12
+  * Node 4 = slave address 14
+3. Change the frequency to match the VTX frequency.  The below are the IMD 5 settings  
+  
+### Raspberry Pi setup coming soon!
