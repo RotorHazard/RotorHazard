@@ -31,8 +31,8 @@
 
 
 // *****UPDATE THE SETTINGS BELOW TO CHANGE THE SLAVE ADDRESS AND THE RECEIVER FREQUENCY
-#define slaveAddress 14 //i2c address to Raspberry Pi. 8-1, 10-2, 12-3, 14-4
-int count = 21; //channel 5685-17, 5760-25, 5800-27, 5860-30, 5905-21
+#define slaveAddress 8 //i2c address to Raspberry Pi. 8-1, 10-2, 12-3, 14-4
+int count = 17; //channel 5685-17, 5760-25, 5800-27, 5860-30, 5905-21
 // *****************************************************************************
 
 
