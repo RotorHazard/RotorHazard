@@ -30,7 +30,7 @@ Multi-node video RF race timer for drone racing.  This timing system uses the vi
   * F4 (5800) = 27  
   * F7 (5860) = 30  
   * E6 (5905) = 21
-  
+
 ### Raspberry Pi setup coming soon!
 
 
