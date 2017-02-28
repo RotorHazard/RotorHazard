@@ -22,11 +22,29 @@ Multi-node video RF race timer for drone racing.  This timing system uses the vi
   * Node 1 = slave address 8
   * Node 2 = slave address 10
   * Node 3 = slave address 12
-  * Node 4 = slave address 14
-3. Change the frequency to match the VTX frequency.  The below are the IMD 5 settings  
-  
+  * Node 4 = slave address 14
+3. Change the frequency to match the VTX frequency.  The below are the IMD 6 settings, but refer to the freqency list document if you want to use a different frequency. The numbers match the position in the channel array.
+  * E4 (5645) = 19  
+  * E2 (5685) = 17  
+  * F2 (5760) = 25  
+  * F4 (5800) = 27  
+  * F7 (5860) = 30  
+  * E6 (5905) = 21
+  
 ### Raspberry Pi setup coming soon!
 
 
 ### Raspberry Pi to Ardunio i2c Connection Diagram:
 ![alt text](img/D5-i2c.png)
+
+
+### To Do and Known issues 
+* Issue. Millisecond value may not be correct when reported by the Raspberry Pi (correct on Arduino). I2C only handles numbers up to 256.  Need to update function to handle transmission over i2c.
+* Add on screen countdown timer.
+* Add Pilot profiles (Name, handle, etc.).
+* Add Race Heats.
+* Add Save race results.
+* Add adjustable trigger threshold on GUI.
+* Add frequency selection on GUI.
+* Add indication that the first trigger has been read on GUI.
+* Update Start/Stop button to indicate if race state.
