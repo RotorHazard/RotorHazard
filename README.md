@@ -26,3 +26,7 @@ Multi-node video RF race timer for drone racing.  This timing system uses the vi
 3. Change the frequency to match the VTX frequency.  The below are the IMD 5 settings  
   
 ### Raspberry Pi setup coming soon!
+
+
+### Raspberry Pi to Ardunio i2c Connection Diagram:
+![alt text](img/D5-i2c.png)
