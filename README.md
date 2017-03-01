@@ -20,7 +20,7 @@ This is the description for the 4 Receiver Node version, but you can add as many
 
 ### Receiver Node Arduino Code:
 1. Open the Delta 5 Race Timer in the Arduino IDE.
-2. Change the slave ID number and the frequency settings on each Receiver Node.
+2. Change the slave address on each Receiver Node so that each one has a unique slave address.  Currently the RPi will recognize the following:
   * Node 1 = slave address 8
   * Node 2 = slave address 10
   * Node 3 = slave address 12
