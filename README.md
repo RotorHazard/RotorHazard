@@ -31,8 +31,12 @@ Multi-node video RF race timer for drone racing.  This timing system uses the vi
   * F7 (5860) = 30  
   * E6 (5905) = 21
 
-### Raspberry Pi setup coming soon!
+### Raspberry Pi LAMP Server Setup:
+1. Start by instaling Raspbian. Follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/
 
+'''
+sudo apt-get install apache2 -y
+'''
 
 ### Raspberry Pi to Ardunio i2c Connection Diagram:
 ![alt text](img/D5-i2c.png)
