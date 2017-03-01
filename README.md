@@ -33,13 +33,13 @@ Multi-node video RF race timer for drone racing.  This timing system uses the vi
 
 ### Raspberry Pi LAMP Server Setup:
 1. Start by instaling Raspbian. Follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/
-2. Install Apache:
+2. Install Apache
  ```
  sudo apt-get install apache2 -y
  ```
  Test to make sure Apache is running by going to ```http://localhost/``` in the RPi's browser.
 
-3. Install PHP:
+3. Install PHP
  ```
  sudo apt-get install php5 libapache2-mod-php5 -y
  ```
@@ -49,6 +49,11 @@ Multi-node video RF race timer for drone racing.  This timing system uses the vi
  sudo apt-get install mysql-server php5-mysql -y
  ```
 
+5. Restart Apache
+ ```
+ sudo service apache2 restart
+ ```
+ 
 ### Raspberry Pi to Ardunio i2c Connection Diagram:
 ![alt text](img/D5-i2c.png)
 
