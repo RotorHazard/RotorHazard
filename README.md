@@ -4,6 +4,8 @@
 
 Multi-node video RF race timer for drone racing.  This timing system uses the video signals being broadcast by FPV racing drones to trigger a lap timer; no additional equipment required on the drone. Each receiver node is tuned to the video frequency that a drone is broadcasting on.  One receiver node is required for each frequency being tracked.  All of the receiver nodes are connected to a raspberry pi, which aggregates the data and also provides a simple GUI for the race director.
 
+This is the description for the 4 Receiver Node version, but you can add as many Receiver Nodes as you like. In process of building a 6 node version and will update this repository accordingly.
+
 ### Base Station:
 * 1 x Raspberry Pi 3 (Other Raspberry Pi models should work, but this was tested on RPi3)
 
