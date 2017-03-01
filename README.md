@@ -64,6 +64,7 @@ More to follow...
 
 
 ### Raspberry Pi to Ardunio i2c Connection Diagram:
+I2C allows 50+ devices to be connected to the Raspberry Pi. Each Receiver Node that is connected needs a different slave address, and the code will need to be updated to handle each Receiver Node.  
 ![alt text](img/D5-i2c.png)
 
 
@@ -76,3 +77,4 @@ More to follow...
 * Add frequency selection on GUI.
 * Add indication that the first trigger has been read on GUI.
 * Update Start/Stop button to indicate if race state.
+* Setup i2c comms as a function.
