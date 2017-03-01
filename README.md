@@ -39,7 +39,6 @@ Multi-node video RF race timer for drone racing.  This timing system uses the vi
 
 
 ### To Do and Known issues 
-* Issue. Millisecond value may not be correct when reported by the Raspberry Pi (correct on Arduino). I2C only handles numbers up to 256.  Need to update function to handle transmission over i2c.
 * Add on screen countdown timer.
 * Add Pilot profiles (Name, handle, etc.).
 * Add Race Heats.
