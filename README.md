@@ -54,6 +54,12 @@ Multi-node video RF race timer for drone racing.  This timing system uses the vi
  sudo service apache2 restart
  ```
  
+6. Enable I2C on the Raspberry Pi
+ ```
+ sudo raspi-config
+ ```
+ Go to Advanced Options, and enable I2C
+ 
 ### Raspberry Pi to Ardunio i2c Connection Diagram:
 ![alt text](img/D5-i2c.png)
 
