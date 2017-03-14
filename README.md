@@ -28,6 +28,9 @@ https://youtu.be/UdelgqwngX4
   * Node 2 = slave address 10
   * Node 3 = slave address 12
   * Node 4 = slave address 14
+  * Node 5 = slave address 16
+  * Node 5 = slave address 18
+  
 3. Change the frequency to match the VTX frequency.  The below are the IMD 6 settings, but refer to the freqency list document if you want to use a different frequency. The numbers match the position in the channel array.
   * E4 (5645) = 19  
   * E2 (5685) = 17  
@@ -64,6 +67,34 @@ https://youtu.be/UdelgqwngX4
  sudo raspi-config
  ```
  Go to Advanced Options, and enable I2C
+
+7. Install PHPMyAdmin
+```
+sudo apt-get install phpmyadmin
+```
+Select Apache2 as the server installed, answer 'YES' to the 'Configure database for PHPMyAdmin with dbconfig-common?"
+It will then ask you for the password when you created the MySQL database in Step 4.  It will also ask to setup a password for PHPMyAdmin, just make it the same as MySQL
+
+8. Setup Apache to include our PHPMyAdmin installation
+```
+sudo nano /etc/apache2/apache2.conf
+```
+At the bottom of the file add the following line:
+```
+Include /etc/phpmyadmin/apache.conf
+```
+
+9. Restart Apache:
+```
+sudo service apache2 restart
+```
+
+10. Access PHPMyAdmin from the browser.
+From the browser on the pi enter the following to access PHPMyAdmin:
+```
+http://127.0.0.1/phpmyadmin
+```
+This will allow you to setup the MySQL database using the easy PHPMyAdmin GUI.
 
 More to follow...
 
