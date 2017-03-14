@@ -29,7 +29,7 @@ https://youtu.be/UdelgqwngX4
   * Node 3 = slave address 12
   * Node 4 = slave address 14
   * Node 5 = slave address 16
-  * Node 5 = slave address 18
+  * Node 6 = slave address 18
   
 3. Change the frequency to match the VTX frequency.  The below are the IMD 6 settings, but refer to the freqency list document if you want to use a different frequency. The numbers match the position in the channel array.
   * E4 (5645) = 19  
