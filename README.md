@@ -6,6 +6,9 @@ Multi-node video RF race timer for drone racing.  This timing system uses the vi
 
 This is the description for the 4 Receiver Node version, but you can add as many Receiver Nodes as you like. In process of building a 6 node version and will update this repository accordingly.
 
+### Video Demo:
+https://youtu.be/UdelgqwngX4
+
 ### Base Station:
 * 1 x Raspberry Pi 3 (Other Raspberry Pi models should work, but this was tested on RPi3)
 
