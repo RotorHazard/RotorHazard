@@ -96,7 +96,27 @@ http://127.0.0.1/phpmyadmin
 ```
 This will allow you to setup the MySQL database using the easy PHPMyAdmin GUI.
 
-More to follow...
+11. Install Python.
+```
+sudo apt-get install python-dev
+```
+and install the python drivers for the GPIO
+```
+sudo apt-get install python-rpi.gpio
+```
+12. Give permission to run scripts as sudo
+```
+sudo nano /etc/sudoers
+```
+At the bottom of the file add the following:
+```
+www-data ALL=(root) NOPASSWD:ALL
+```
+
+13. Update just to make sure everything is in order
+```
+sudo apt-get update && sudo apt-get upgrade
+```
 
 
 ### Raspberry Pi to Ardunio i2c Connection Diagram:
