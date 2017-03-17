@@ -1,4 +1,6 @@
-//Delta 5 Race Timer
+//Delta 5 Race Timer by Scott Chin
+//I2C functions Mike Ochtman
+
 
 //MIT License
 //
@@ -22,19 +24,18 @@
 //OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //SOFTWARE.
 
-
 #include <Wire.h>
 
 #define rxFault 0x80
 #define txFault 0x40
 #define txRequest 0x20
 
+// ************Set the slave address and the channel *************************
 
-// *****UPDATE THE SETTINGS BELOW TO CHANGE THE SLAVE ADDRESS AND THE RECEIVER FREQUENCY
-#define slaveAddress 8 //i2c address to Raspberry Pi. 8-1, 10-2, 12-3, 14-4
-int count = 17; //channel 5685-17, 5760-25, 5800-27, 5860-30, 5905-21
-// *****************************************************************************
+#define slaveAddress 12 //i2c address to Raspberry Pi. 8-1, 10-2, 12-3, 14-4
+int count = 27; //channel 5645-19, 5685-17, 5760-25, 5800-27, 5860-30, 5905-21
 
+// ***************************************************************************
 
 const int slaveSelectPin = 10;
 const int spiDataPin = 11;
@@ -47,12 +48,14 @@ int highValue=0;
 int highChannel=0;
 unsigned long start, finished, elapsed, lapcheck;
 int flag = 0;
-int lapTrigger = 0; //Initial RSSI. 0 is off.
+int lapTrigger = 0; //default RSSI threshold for good lap
 int minLap = 5000; // Minimum lap time in milliseconds
 
 uint16_t rssiArr[6];
-int thresholdReduction = 2;
-
+uint16_t rssiThreshold = 0;
+#define MAGIC_THRESHOLD_REDUCE_CONSTANT 2
+#define THRESHOLD_ARRAY_SIZE 100
+uint16_t rssiThresholdArray[THRESHOLD_ARRAY_SIZE];
 
 struct {
   byte volatile command;
@@ -67,6 +70,9 @@ struct {
 
 byte volatile txTable[32];   // prepare data for sending over I2C
 bool volatile dataReady = false; // flag to trigger a Serial printout after an I2C event
+// use volatile for variables that will be used in interrupt service routines.
+// "Volatile" instructs the compiler to get a fresh copy of the data rather than try to
+// optimise temporary registers before using, as interrupts can change the value.
 
 //PROGMEM prog_uint16_t channelTable[] = {
 uint16_t channelTable[] = {
@@ -220,11 +226,35 @@ void setChannelModule(uint8_t channel)
 
 void setThreshold() {
   if(lapTrigger == 0){
-    lapTrigger = RSSIread() - thresholdReduction;
+    uint16_t median;
+    for(uint8_t i=0; i < THRESHOLD_ARRAY_SIZE; i++){
+      rssiThresholdArray[i] = RSSIread();
+    }
+    sortArray(rssiThresholdArray, THRESHOLD_ARRAY_SIZE);
+    median = getMedian(rssiThresholdArray, THRESHOLD_ARRAY_SIZE);
+    if (median > MAGIC_THRESHOLD_REDUCE_CONSTANT){
+      lapTrigger = median - MAGIC_THRESHOLD_REDUCE_CONSTANT;
+    }
   }
   else {
     lapTrigger = 0;
   }
+}
+
+void sortArray(uint16_t a[], uint16_t size) {
+    for(uint16_t i=0; i<(size-1); i++) {
+        for(uint16_t j=0; j<(size-(i+1)); j++) {
+                if(a[j] > a[j+1]) {
+                    uint16_t t = a[j];
+                    a[j] = a[j+1];
+                    a[j+1] = t;
+                }
+        }
+    }
+}
+
+uint16_t getMedian(uint16_t a[], uint16_t size) {
+    return a[size/2];
 }
 
 // Read the RSSI value for the current channel
@@ -235,6 +265,9 @@ int RSSIread(){
     rssiA += analogRead(0); //Pin A0
   }
   rssiA = rssiA/50; //average of 50 RSSI readings
+//  rssiA = map(rssiA,90,220, 1, 100); //scale from 1..100%
+//  rssi = rssiA;
+//  rssi = constrain(rssi,1,100); //clip values to only be within this range
 
   rssiArr[0]=rssiA;
   for(uint8_t i=1; i<=5; i++) {
@@ -243,10 +276,10 @@ int RSSIread(){
 
   rssi = rssiArr[5];
 
-  Serial.print("Channel: ");
-  Serial.print(count);
-  Serial.print("  RSSI: ");
-  Serial.println(rssi);
+//  Serial.print("Channel: ");
+//  Serial.print(count);
+//  Serial.print("  RSSI: ");
+//  Serial.println(rssi);
 
   return rssi;
 }
@@ -264,7 +297,7 @@ void displayResult()
   m = int(over / 60000);
   over = over % 60000;
   s = int(over / 1000);
-  ms = over % 1000;
+  ms = int((over % 1000)/10);
 
   commsTable.lap = commsTable.lap + 1;
 
@@ -285,12 +318,13 @@ void displayResult()
   commsTable.seconds = s;
   commsTable.milliseconds = int(ms);
   
+//  timeString = String (m,0) +":"+ String(s,0) +":"+ String(ms,0);
+//  Serial.println(timeString);
 }
 
 void loop() 
 {
   rssi = RSSIread();
-  
   if (lapTrigger != 0){
     if(rssi>lapTrigger) {
         if(flag==0)
@@ -321,6 +355,16 @@ void loop()
       setThreshold();
       Serial.print("Lap trigger set at: ");
       Serial.println(lapTrigger);
+//    count++; 
+//    Serial.print("Channel:");
+//    Serial.println(count);
+//    Serial.println(channelTable[count]);
+//    setChannelModule(count);
+//              
+//    if (count >= 40) 
+//    {
+//      count = 0;
+//    }
 
   }
   downcount=0;  
@@ -344,8 +388,13 @@ void loop()
 }
 
 void i2cReceive(int byteCount) {
+  // if byteCount is zero, the master only checked for presence
+  // of the slave device, triggering this interrupt. No response necessary
   if (byteCount == 0) return;
 
+  // our Interface Specification says commands in range 0x000-0x7F are
+  // writes TO this slave, and expects nothing in return.
+  // commands in range 0x80-0xFF are reads, requesting data FROM this device
   byte command = Wire.read();
   commsTable.command = command;
   if (command < 0x80) {
@@ -356,12 +405,23 @@ void i2cReceive(int byteCount) {
   dataReady = true;
 }
 
-
+/*
+   i2cTransmit:
+   Parameters: none
+   Returns: none
+   Next function is called by twi interrupt service when twi detects
+   that the Master wants to get data back from the Slave.
+   Refer to Interface Specification for details of what data must be sent.
+   A transmit buffer (txTable) is populated with the data before sending.
+*/
 void i2cTransmit() {
   // byte *txIndex = (byte*)&txTable[0];
   byte numBytes = 0;
   int t = 0; // temporary variable used in switch occasionally below
 
+  // check whether this request has a pending command.
+  // if not, it was a read_byte() instruction so we should
+  // return only the slave address. That is command 0.
   if ((commsTable.control & txRequest) == 0) {
     // this request did not come with a command, it is read_byte()
     commsTable.command = 0; // clear previous command
@@ -377,17 +437,25 @@ void i2cTransmit() {
       numBytes = 1;
       break;
     case 0x81:  // send rssiTrig
+//      t = int(round(commsTable.temperature * 100));
+//      txTable[1] = (byte)(t >> 8);
+//      txTable[0] = (byte)(t & 0xFF);
+//      numBytes = 2;
       setThreshold();
       commsTable.rssiTrig = lapTrigger;
       txTable[0] = commsTable.rssiTrig;
       numBytes = 1;
       break;
-    case 0x82:  // send channel
-//      t = int(round(commsTable.light * 100));
-//      txTable[1] = (byte)(t >> 8);
-//      txTable[0] = (byte)(t & 0xFF);
-//      numBytes = 2;
-      txTable[0] = commsTable.channel;
+    case 0x82:  // increase lap trigger by 5
+      lapTrigger = lapTrigger + 5;
+      commsTable.rssiTrig = lapTrigger;
+      txTable[0] = commsTable.rssiTrig;
+      numBytes = 1;
+      break;
+    case 0x83:  // decrease lap trigger by 5
+      lapTrigger = lapTrigger - 5;
+      commsTable.rssiTrig = lapTrigger;
+      txTable[0] = commsTable.rssiTrig;
       numBytes = 1;
       break;
     case 0x90: // send minutes, seconds, and milliseconds as an array
@@ -419,7 +487,16 @@ void i2cTransmit() {
   }
 }
 
+/*
+   i2cHandleRx:
+   Parameters: byte, the first byte sent by the I2C master.
+   returns: byte, number of bytes read, or 0xFF if error
+   If the MSB of 'command' is 0, then master is sending only.
+   Handle the data reception in this function.
+*/
 byte i2cHandleRx(byte command) {
+  // If you are here, the I2C Master has sent data
+  // using one of the SMBus write commands.
   byte result = 0;
   // returns the number of bytes read, or FF if unrecognised
   // command or mismatch between data expected and received
@@ -473,7 +550,21 @@ byte i2cHandleRx(byte command) {
 
 }
 
+/*
+   i2cHandleTx:
+   Parameters: byte, the first byte sent by master
+   Returns: number of bytes received, or 0xFF if error
+   Used to handle SMBus process calls
+*/
 byte i2cHandleTx(byte command) {
+  // If you are here, the I2C Master has requested information
+
+  // If there is anything we need to do before the interrupt
+  // for the read takes place, this is where to do it.
+  // Examples are handling process calls. Process calls do not work
+  // correctly in SMBus implementation of python on linux,
+  // but it may work on better implementations.
+
   // signal to i2cTransmit() that a pending command is ready
   commsTable.control |= txRequest;
   return 0;
