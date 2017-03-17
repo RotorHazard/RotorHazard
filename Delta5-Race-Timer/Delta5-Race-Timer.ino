@@ -1,6 +1,6 @@
 //Delta 5 Race Timer by Scott Chin
 //I2C functions Mike Ochtman
-
+//Lap trigger function by Andrey Voroshkov
 
 //MIT License
 //
