@@ -93,14 +93,7 @@ Include /etc/phpmyadmin/apache.conf
 sudo service apache2 restart
 ```
 
-10. Access PHPMyAdmin from the browser.
-From the browser on the pi enter the following to access PHPMyAdmin:
-```
-http://127.0.0.1/phpmyadmin
-```
-This will allow you to setup the MySQL database using the easy PHPMyAdmin GUI.
-
-11. Install Python.
+10. Install Python.
 ```
 sudo apt-get install python-dev
 ```
@@ -108,7 +101,7 @@ and install the python drivers for the GPIO
 ```
 sudo apt-get install python-rpi.gpio
 ```
-12. Give permission to run scripts as sudo
+11. Give permission to run scripts as sudo
 ```
 sudo nano /etc/sudoers
 ```
@@ -117,12 +110,27 @@ At the bottom of the file add the following:
 www-data ALL=(root) NOPASSWD:ALL
 ```
 
-13. Update just to make sure everything is in order
+12. Update just to make sure everything is in order
 ```
 sudo apt-get update && sudo apt-get upgrade
 ```
 
-More to follow...
+### MySQL Database setup:
+1. Access PHPMyAdmin from the browser.
+From the browser on the pi enter the following to access PHPMyAdmin:
+```
+http://127.0.0.1/phpmyadmin
+```
+This will allow you to setup the MySQL database using the easy PHPMyAdmin GUI.
+
+2. Create a database called 'vtx'
+
+3. Create a table under 'vtx' called 'races' with the following columns: racegroup, race, pilot, lap, min, sec, millisec
+
+4. Create a table under 'vtx' called 'setup' with the following columns: ID, startstop, trig1, trig2, trig3, trig4, trig5, trig6
+
+5. Create an entry in the 'setup' table with an ID of 1.  All the other values can be set to zero.
+
 
 ### Raspberry Pi to Ardunio i2c Connection Diagram:
 I2C allows 50+ devices to be connected to the Raspberry Pi. Each Receiver Node that is connected needs a different slave address.  Currently the Raspberry Pi code is designed for 6 receiver nodes (the diagram only shows 4 Receiver Nodes connected).  Note: be sure all Receiver Nodes and the Raspberry pi are tied to a common ground; if not, the i2c messages can be corrupted, and cause other strange things to happen.
