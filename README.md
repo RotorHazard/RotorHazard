@@ -36,13 +36,13 @@ https://youtu.be/UdelgqwngX4
   * Node 6 = slave address 18
   
 3. Change the frequency to match the VTX frequency.  The below are the IMD 6 settings, but refer to the channels.pdf document if you want to use a different frequency. The numbers match the position in the channel array.
-  * E4 (5645) = 19  
   * E2 (5685) = 17  
   * F2 (5760) = 25  
   * F4 (5800) = 27  
   * F7 (5860) = 30  
   * E6 (5905) = 21
-
+  * E4 (5645) = 19  
+  
 ### Raspberry Pi LAMP Server Setup:
 1. Start by instaling Raspbian. Follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/
 2. Install Apache
