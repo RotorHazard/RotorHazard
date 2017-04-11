@@ -1,4 +1,4 @@
-//Delta 5 Race Timer by Scott Chin
+//Delta 5 Race Timer by Scott Chin Version 0.2
 //SPI driver based on fs_skyrf_58g-main.c Written by Simon Chambers
 //I2C functions by Mike Ochtman
 //Lap trigger function by Andrey Voroshkov
@@ -6,6 +6,8 @@
 //MIT License
 //
 //Copyright (c) 2017 Scott G Chin
+//
+//I2C functions Mike Ochtman
 //
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +35,8 @@
 
 // ************Set the slave address and the channel *************************
 
-#define slaveAddress 12 //i2c address to Raspberry Pi. 8-1, 10-2, 12-3, 14-4
-int count = 27; //channel 5645-19, 5685-17, 5760-25, 5800-27, 5860-30, 5905-21
+#define slaveAddress 18 //i2c address to Raspberry Pi. 8-1, 10-2, 12-3, 14-4, 16-5, 18-6
+int count = 19; //channel 5685-17, 5760-25, 5800-27, 5860-30, 5905-21,5645-19
 
 // ***************************************************************************
 
@@ -266,9 +268,8 @@ int RSSIread(){
     rssiA += analogRead(0); //Pin A0
   }
   rssiA = rssiA/50; //average of 50 RSSI readings
-//  rssiA = map(rssiA,90,220, 1, 100); //scale from 1..100%
-//  rssi = rssiA;
-//  rssi = constrain(rssi,1,100); //clip values to only be within this range
+  rssiA = map(rssiA, 1, 350, 1, 255); //Keep RSSI range from 1 to 255
+  rssiA = constrain(rssiA,1, 255); //clip values to only be within this range
 
   rssiArr[0]=rssiA;
   for(uint8_t i=1; i<=5; i++) {
@@ -524,9 +525,11 @@ byte i2cHandleRx(byte command) {
       }
       break;
 
-    case 0x0C:
+    case 0x0C: // read the byte and reset the lap trigger to the assigned value
       if (Wire.available() == 1) { // good write from Master
-        commsTable.seconds = Wire.read();
+        lapTrigger = Wire.read();
+        Serial.print("Command from RPi - Lap trigger set at: ");
+        Serial.println(lapTrigger);
         result = 1;
       } else {
         result = 0xFF;
