@@ -56,7 +56,7 @@ https://youtu.be/UdelgqwngX4
  sudo apt-get install php5 libapache2-mod-php5 -y
  ```
 
-4. Install MySQL
+4. Install MySQL (Note: the code in this repository uses user:root and password:delta5fpv to access the database.)
  ```
  sudo apt-get install mysql-server php5-mysql -y
  ```
