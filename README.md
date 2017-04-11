@@ -115,6 +115,11 @@ www-data ALL=(root) NOPASSWD:ALL
 sudo apt-get update && sudo apt-get upgrade
 ```
 
+13. Install the python bindings for MySQL
+```
+sudo apt-get install mysql-server python-mysqldb
+```
+
 ### MySQL Database setup:
 1. Access PHPMyAdmin from the browser.
 From the browser on the pi enter the following to access PHPMyAdmin:
