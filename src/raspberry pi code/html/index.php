@@ -1,23 +1,22 @@
 <html>
 <head>
 <meta charset="UTF-8" />
-<title>ADMIN - D5 VTX Timer</title>
+<title>D5 VTX Timer</title>
 <style>
 body{
 	background-color: black;
 }
-
-.datagrid { width: 100% }
-.datagrid table { border-collapse: collapse; text-align: left; width: 100%; } 
-.datagrid {font: normal 12px/150% Arial, Helvetica, sans-serif; background: #fff; overflow: hidden; border: 1px solid #006699; -webkit-border-radius: 10px; -moz-border-radius: 10px; border-radius: 10px; }
-.datagrid table td, 
-.datagrid table th { padding: 3px 10px; }
-.datagrid table thead th {background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #006699), color-stop(1, #00557F) );background:-moz-linear-gradient( center top, #006699 5%, #00557F 100% );filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#006699', endColorstr='#00557F');background-color:#006699; color:#FFFFFF; font-size: 15px; font-weight: bold; border-left: 1px solid #0070A8; } 
-.datagrid table thead th:first-child { border: none; }
-.datagrid table tbody td { color: #00496B; border-left: 1px solid #00557F;font-size: 12px;font-weight: normal; }
-.datagrid table tbody .alt td { background: #E1EEF4; color: #00496B; }
-.datagrid table tbody td:first-child { border-left: none; }
-.datagrid table tbody tr:last-child td { border-bottom: none; }
+.datagrid1 { width: 100% }
+.datagrid1 table { border-collapse: collapse; text-align: left; width: 100%; } 
+.datagrid1 {font: normal 12px/150% Arial, Helvetica, sans-serif; background: #fff; overflow: hidden; border: 1px solid #006699; -webkit-border-radius: 10px; -moz-border-radius: 10px; border-radius: 10px; }
+.datagrid1 table td, 
+.datagrid1 table th { padding: 3px 10px; }
+.datagrid1 table thead th {background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #006699), color-stop(1, #00557F) );background:-moz-linear-gradient( center top, #006699 5%, #00557F 100% );filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#006699', endColorstr='#00557F');background-color:#006699; color:#FFFFFF; font-size: 15px; font-weight: bold; border-left: 1px solid #0070A8; } 
+.datagrid1 table thead th:first-child { border: none; }
+.datagrid1 table tbody td { color: #00496B; border-left: 1px solid #00557F;font-size: 12px;font-weight: normal; }
+.datagrid1 table tbody .alt td { background: #E1EEF4; color: #00496B; }
+.datagrid1 table tbody td:first-child { border-left: none; }
+.datagrid1 table tbody tr:last-child td { border-bottom: none; }
 
 .datagrid2 { width: 100% }
 .datagrid2 table { border-collapse: collapse; text-align: left; width: 100%; } 
@@ -77,55 +76,22 @@ body{
 .datagrid6 table tbody td { color: #7D7D7D; border-left: 1px solid #DBDBDB;font-size: 12px;font-weight: normal; }
 .datagrid6 table tbody .alt td { background: #EBEBEB; color: #7D7D7D; }
 .datagrid6 table tbody td:first-child { border-left: none; }.datagrid table tbody tr:last-child td { border-bottom: none; }
-
-
 </style>
-
-<?php
-if (isset($_POST['START']))
-	{
-	exec("sudo python /home/pi/VTX/startstop.py");
-	}
-if (isset($_POST['STOP']))
-	{
-	exec("sudo python /home/pi/VTX/resetLap.py");
-	}
-if (isset($_POST['RESET']))
-	{
-	exec("sudo python /home/pi/VTX/clearDB.py");
-	}
-?>
 </head>
+
 <body>
 
 <img src="/images/delta5fpv.jpg"><p>
-<form method="post">
-<button name="START" style="height:50px; width:125px">Start/Stop</button>&nbsp;
-<!-- <button name="STOP" style="height:50px; width:125px">Stop Race</button>&nbsp;-->
-<button name="RESET" style="height:50px; width:125px">Clear Race</button><br>
-</form>
-<p>
-
-
-
-<div id="show"></div>
-
-
-
-
-<p>
-
+<div id="lapsdata"></div>
 
 <script type="text/javascript" src="/scripts/jquery-3.1.1.js"></script>
 <script type="text/javascript">
 $(document).ready(function() {
 	setInterval(function () {
-		$('#show').load('data.php')
-	}, 3000);
+		$('#lapsdata').load('lapsdata.php')
+	}, 1000);
 });
 </script>
-
-
 
 </body>
 </html>
