@@ -59,13 +59,13 @@ db.close() # disconnect from server
 
 # Configure and set clean race start on arduinos
 for x in range(0, numNodes):
-	i2c.write_byte_data(i2cAddr[x], 0x0A, [0,0,0]) # set arduino lap times to zero
+	i2c.write_i2c_block_data(i2cAddr[x], 0x0A, [0,0,0]) # set arduino lap times to zero
 	time.sleep(0.1)
 	i2c.write_byte_data(i2cAddr[x], 0x0B, 0) # set arduino lap counter to zero
 	time.sleep(0.1)
 	i2c.write_byte_data(i2cAddr[x], 0x0C, 0) # set arduino rssiTriggerThreshold to zero
 	time.sleep(0.1)
-	i2c.write_byte_data(i2cAddr[x], 0x0D, 5000) # set arduino minLapTime as configured
+	i2c.write_byte_data(i2cAddr[x], 0x0D, (5000/1000)) # set arduino minLapTime as configured, convert to s, then back to ms on receive
 	time.sleep(0.1)
 	i2c.write_byte_data(i2cAddr[x], 0x0E, 0) # set arduino race status to false
 	time.sleep(0.1)

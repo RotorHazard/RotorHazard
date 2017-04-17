@@ -1,6 +1,6 @@
 # Configure the race box hardware here
 
-numNodes = 1
+numNodes = 5
 
 i2cAddr=[8,10,12,14,16,18]
 

@@ -269,7 +269,7 @@ int rssiRead() {
 void lapCompleted() {
 	float h, m, s, ms;
 	unsigned long over;
-	
+		
 	h = int(calcLapTime / 3600000); // Convert millis() time to h, m, s, ms
 	over = calcLapTime % 3600000;
 	m = int(over / 60000);
@@ -278,7 +278,6 @@ void lapCompleted() {
 	over = over % 1000;
 	ms = int(over);
 	
-	// Copy all data to commsTable for transfer to rasp pi
 	commsTable.lap = commsTable.lap + 1;
 	commsTable.minutes = m;
 	commsTable.seconds = s;
@@ -299,6 +298,10 @@ void lapCompleted() {
 void loop() {
 
 	//raceStatus = true; // Uncomment for individual node testing
+	//delay(500); // Uncomment for individual node testing
+ 
+	delay(10); // Small delay for i2c comms, maybe not needed, still debugging currupt laps data
+	
 	rssi = rssiRead();
 	commsTable.rssi = rssi;
 	
@@ -315,15 +318,15 @@ void loop() {
 	//Serial.print(rssiTriggerThreshold);
 	//Serial.print(" crossing: ");
 	//Serial.println(crossing);
-
-	if (rssiTriggerThreshold != 0 && millis() > (lastLapTime + minLapTime && raceStatus) ){ // Wait for trigger value set, elapsed minLapTime, raceStatus True
-		if (rssi > (rssiTriggerThreshold + rssiTriggerBandwidth) && crossing == false) { // rssi above threshold + bandwidth and quad not already crossing
+	
+	if ((rssiTriggerThreshold != 0) && (millis() > (lastLapTime + minLapTime)) && (raceStatus)) { // Wait for trigger value set, elapsed minLapTime, raceStatus True
+		if ((rssi > (rssiTriggerThreshold + rssiTriggerBandwidth)) && (crossing == false)) { // rssi above threshold + bandwidth and quad not already crossing
 			rssiRisingTime = millis();
 			Serial.print("rssiRisingTime: ");
 			Serial.println(rssiRisingTime);
 			crossing = true;
 		}
-		else if (rssi < (rssiTriggerThreshold - rssiTriggerBandwidth) && crossing == true) { // rssi below threshold - bandwidth and quad is crossing the gate
+		else if ((rssi < (rssiTriggerThreshold - rssiTriggerBandwidth)) && (crossing == true)) { // rssi below threshold - bandwidth and quad is crossing the gate
 			rssiFallingTime = millis();
 			Serial.print("rssiFallingTime: ");
 			Serial.println(rssiFallingTime);
@@ -332,10 +335,10 @@ void loop() {
 			calcLapTime = rssiRisingTime + (rssiFallingTime - rssiRisingTime)/2 - lastLapTime;
 
 			if (lastLapTime == 0) {
-				lastLapTime = rssiRisingTime + (rssiFallingTime - rssiRisingTime)/2;
+				lastLapTime = rssiRisingTime + ((rssiFallingTime - rssiRisingTime)/2);
 			}
 			else {
-				lastLapTime = rssiRisingTime + (rssiFallingTime - rssiRisingTime)/2;
+				lastLapTime = rssiRisingTime + ((rssiFallingTime - rssiRisingTime)/2);
 				lapCompleted();
 			}
 		}
@@ -374,6 +377,104 @@ void i2cReceive(int byteCount) {
 		i2cHandleTx(command);
 	}
 	dataReady = true;
+}
+
+// i2cHandleRx:
+// Parameters: byte, the first byte sent by the I2C master.
+// returns: byte, number of bytes read, or 0xFF if error
+// If the MSB of 'command' is 0, then master is sending only.
+// Handle the data reception in this function.
+byte i2cHandleRx(byte command) {
+	// If you are here, the I2C Master has sent data
+	// using one of the SMBus write commands.
+	byte result = 0;
+	// returns the number of bytes read, or FF if unrecognised
+	// command or mismatch between data expected and received
+	
+	switch (command) {
+		case 0x0A:  // set commsTable minutes, seconds, and milliseconds from the rasp pi
+			if (Wire.available() == 3) { // good write from Master
+				commsTable.minutes = Wire.read();
+				commsTable.seconds = Wire.read();
+				commsTable.milliseconds = Wire.read();
+				result = 3;
+			}
+			else {
+				result = 0xFF;
+			}
+			break;
+		case 0x0B: // set commsTable lap from the rasp pi
+			if (Wire.available() == 1) { // good write from Master
+				commsTable.lap = Wire.read();
+				result = 1;
+			}
+			else {
+				result = 0xFF;
+			}
+			break;
+		case 0x0C: // set rssiTriggerThreshold from the rasp pi
+			if (Wire.available() == 1) { // good write from Master
+				rssiTriggerThreshold = Wire.read();
+				Serial.print("Command from RPi - rssiTriggerThreshold set at: ");
+				Serial.println(rssiTriggerThreshold);
+				result = 1;
+			}
+			else {
+				result = 0xFF;
+			}
+			break;
+		case 0x0D: // set minLapTime
+			if (Wire.available() == 1) { // good write from Master
+				minLapTime = Wire.read()*1000; // byte limit forces sending as whole seconds, convert back to ms
+				result = 1;
+			}
+			else {
+				result = 0xFF;
+			}
+			break;
+		case 0x0E: // set raceStatus from the rasp pi
+			if (Wire.available() == 1) { // good write from Master
+				raceStatus = Wire.read();
+				result = 1;
+			}
+			else {
+				result = 0xFF;
+			}
+			break;
+		case 0x0F: // set vtx frequency channel
+			if (Wire.available() == 1) { // good write from Master
+				vtxFreq = Wire.read();
+				result = 1;
+			}
+			else {
+				result = 0xFF;
+			}
+			break;
+		default:
+			result = 0xFF;
+	}
+	
+	if (result == 0xFF) commsTable.control |= rxFault;
+		return result;
+}
+
+
+// i2cHandleTx:
+// Parameters: byte, the first byte sent by master
+// Returns: number of bytes received, or 0xFF if error
+// Used to handle SMBus process calls
+byte i2cHandleTx(byte command) {
+	// If you are here, the I2C Master has requested information
+	
+	// If there is anything we need to do before the interrupt
+	// for the read takes place, this is where to do it.
+	// Examples are handling process calls. Process calls do not work
+	// correctly in SMBus implementation of python on linux,
+	// but it may work on better implementations.
+	
+	// signal to i2cTransmit() that a pending command is ready
+	commsTable.control |= txRequest;
+	return 0;
 }
 
 
@@ -458,124 +559,29 @@ void i2cTransmit() {
 	}
 }
 
-// i2cHandleRx:
-// Parameters: byte, the first byte sent by the I2C master.
-// returns: byte, number of bytes read, or 0xFF if error
-// If the MSB of 'command' is 0, then master is sending only.
-// Handle the data reception in this function.
 
-byte i2cHandleRx(byte command) {
-	// If you are here, the I2C Master has sent data
-	// using one of the SMBus write commands.
-	byte result = 0;
-	// returns the number of bytes read, or FF if unrecognised
-	// command or mismatch between data expected and received
-	
-	switch (command) {
-		case 0x0A:  // set commsTable minutes, seconds, and milliseconds from the rasp pi
-			if (Wire.available() == 3) { // good write from Master
-				commsTable.minutes = Wire.read();
-				commsTable.seconds = Wire.read();
-				commsTable.milliseconds = Wire.read();
-				result = 3;
-			}
-			else {
-				result = 0xFF;
-			}
-			break;
-		case 0x0B: // set commsTable lap from the rasp pi
-			if (Wire.available() == 1) { // good write from Master
-				commsTable.lap = Wire.read();
-				result = 1;
-			}
-			else {
-				result = 0xFF;
-			}
-			break;
-		case 0x0C: // set rssiTriggerThreshold from the rasp pi
-			if (Wire.available() == 1) { // good write from Master
-				rssiTriggerThreshold = Wire.read();
-				Serial.print("Command from RPi - rssiTriggerThreshold set at: ");
-				Serial.println(rssiTriggerThreshold);
-				result = 1;
-			}
-			else {
-				result = 0xFF;
-			}
-			break;
-		case 0x0D: // set minLapTime
-			if (Wire.available() == 1) { // good write from Master
-				minLapTime = Wire.read();
-				result = 1;
-			}
-			else {
-				result = 0xFF;
-			}
-			break;
-		case 0x0E: // set raceStatus from the rasp pi
-			if (Wire.available() == 1) { // good write from Master
-				raceStatus = Wire.read();
-				result = 1;
-			}
-			else {
-				result = 0xFF;
-			}
-			break;
-		case 0x0F: // set vtx frequency channel
-			if (Wire.available() == 1) { // good write from Master
-				vtxFreq = Wire.read();
-				result = 1;
-			}
-			else {
-				result = 0xFF;
-			}
-			break;
-		default:
-			result = 0xFF;
-	}
-	
-	if (result == 0xFF) commsTable.control |= rxFault;
-		return result;
-}
-
-
-// i2cHandleTx:
-// Parameters: byte, the first byte sent by master
-// Returns: number of bytes received, or 0xFF if error
-// Used to handle SMBus process calls
-
-byte i2cHandleTx(byte command) {
-	// If you are here, the I2C Master has requested information
-	
-	// If there is anything we need to do before the interrupt
-	// for the read takes place, this is where to do it.
-	// Examples are handling process calls. Process calls do not work
-	// correctly in SMBus implementation of python on linux,
-	// but it may work on better implementations.
-	
-	// signal to i2cTransmit() that a pending command is ready
-	commsTable.control |= txRequest;
-	return 0;
-}
-
+// Prints to arduino serial console for debugging
 void printCommsTable() {
 	String builder = "";
 	builder = "commsTable contents:";
 	Serial.println(builder);
-	builder = "  command: ";
+	builder = "  Command: ";
 	builder += String(commsTable.command, HEX);
 	Serial.println(builder);
-	builder = "  control: ";
+	builder = "  Control: ";
 	builder += String(commsTable.control, HEX);
-	Serial.println(builder);
-	builder = "  RSSI Triger: ";
-	builder += commsTable.rssiTrig;
-	//builder += (char)186;  // the "º" symbol
-	builder += " dB";
 	Serial.println(builder);
 	builder = "  Channel: ";
 	builder += commsTable.channel;
-	//builder += " lux";
+	Serial.println(builder);
+	builder = "  RSSI: ";
+	builder += commsTable.rssi;
+	Serial.println(builder);
+	builder = "  RSSI Triger: ";
+	builder += commsTable.rssiTrig;
+	Serial.println(builder);
+	builder = "  Lap: ";
+	builder += commsTable.lap;
 	Serial.println(builder);
 	builder = "  Minutes: ";
 	builder += commsTable.minutes;
@@ -589,6 +595,7 @@ void printCommsTable() {
 	Serial.println();
 }
 
+// Not currently called anywhere
 void printTxTable() {
 	Serial.println("Transmit Table");
 	for (byte i = 0; i < 32; i++) {

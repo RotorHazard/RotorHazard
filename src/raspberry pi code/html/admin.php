@@ -89,28 +89,44 @@ if (isset($_POST['clearLaps']))	{exec("sudo python /home/pi/VTX/clearLaps.py");	
 if (isset($_POST['node1rssiTriggerSet']))	{exec("sudo python /home/pi/VTX/rssiTrigger.py 1 8 set"); }
 if (isset($_POST['node1rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 1 8 dec"); }
 if (isset($_POST['node1rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 1 8 inc"); }
-if (isset($_POST['N2rssiTrigger']))	{exec("sudo python /home/pi/VTX/trigger2.py"); }
-if (isset($_POST['N2rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/trigdec2.py"); }
-if (isset($_POST['N2rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/triginc2.py"); }
-if (isset($_POST['N3rssiTrigger'])) {exec("sudo python /home/pi/VTX/trigger3.py"); }
-if (isset($_POST['N3rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/trigdec3.py"); }
-if (isset($_POST['N3rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/triginc3.py"); }
-if (isset($_POST['N4rssiTrigger']))	{exec("sudo python /home/pi/VTX/trigger4.py"); }
-if (isset($_POST['N4rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/trigdec4.py"); }
-if (isset($_POST['N4rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/triginc4.py"); }
-if (isset($_POST['N5rssiTrigger']))	{exec("sudo python /home/pi/VTX/trigger5.py"); }
-if (isset($_POST['N5rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/trigdec5.py"); }
-if (isset($_POST['N5rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/triginc5.py"); }
-if (isset($_POST['N6rssiTrigger']))	{exec("sudo python /home/pi/VTX/trigger6.py"); }
-if (isset($_POST['N6rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/trigdec6.py"); }
-if (isset($_POST['N6rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/triginc6.py"); }
+if (isset($_POST['node2rssiTriggerSet']))	{exec("sudo python /home/pi/VTX/rssiTrigger.py 2 10 set"); }
+if (isset($_POST['node2rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 2 10 dec"); }
+if (isset($_POST['node2rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 2 10 inc"); }
+if (isset($_POST['node3rssiTriggerSet']))	{exec("sudo python /home/pi/VTX/rssiTrigger.py 3 12 set"); }
+if (isset($_POST['node3rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 3 12 dec"); }
+if (isset($_POST['node3rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 3 12 inc"); }
+if (isset($_POST['node4rssiTriggerSet']))	{exec("sudo python /home/pi/VTX/rssiTrigger.py 4 14 set"); }
+if (isset($_POST['node4rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 4 14 dec"); }
+if (isset($_POST['node4rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 4 14 inc"); }
+if (isset($_POST['node5rssiTriggerSet']))	{exec("sudo python /home/pi/VTX/rssiTrigger.py 5 16 set"); }
+if (isset($_POST['node5rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 5 16 dec"); }
+if (isset($_POST['node5rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 5 16 inc"); }
+if (isset($_POST['node6rssiTriggerSet']))	{exec("sudo python /home/pi/VTX/rssiTrigger.py 6 18 set"); }
+if (isset($_POST['node6rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 6 18 dec"); }
+if (isset($_POST['node6rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 6 18 inc"); }
 ?>
 </head>
 
 <body>
 
 <img src="/images/delta5fpv.jpg">
-<p> Add race admin instructions up here.</p>
+<p><font color=white>
+<ul>
+<li>'Setup Data' Initializes the database (currently clears all data) and sends variables to each arduino node.</li>
+<li>'Start Comms' Is the main comms loop and start polling the arduino data.</li>
+<li>'Stop Comms' Also calls 'Stop Race', and ends the main comms loop.</li>
+<li>'Start Race' Sets the raceStatus to true in the database and on each arduino.</li>
+<li>'Stop Race' Sets the raceStatus to false in the database and on each arduino.</li>
+<li>'Clear Laps' Drops all current laps data from the database.</li>
+</ul>
+<ol>
+<li>'Start Data' then 'Start Comms'.</li>
+<li>Set and adjust rssiTriggers for each node.</li>
+<li>Place all racers back from the gate for a fly over start and then 'Start Race'.</li>
+<li>After all pilots land 'Stop Race'.</li>
+<li>Copy down laps data then 'Clear Laps'.</li>
+</ol>
+</font></p>
 
 <form method="post">
 <button name="setupData" style="height:40px; width:100px">Setup Data</button>&nbsp;
@@ -122,24 +138,24 @@ if (isset($_POST['N6rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/triginc6.
 <br>
 <br>
 <button name="node1rssiTriggerSet" style="height:40px; width:80px">Node 1 Trigger</button>&nbsp;
-<button name="N2rssiTrigger" style="height:40px; width:80px">Node 2 RSSI Trigger</button>&nbsp;
-<button name="N3rssiTrigger" style="height:40px; width:80px">Node 3 RSSI Trigger</button>&nbsp;
-<button name="N4rssiTrigger" style="height:40px; width:80px">Node 4 RSSI Trigger</button>&nbsp;
-<button name="N5rssiTrigger" style="height:40px; width:80px">Node 5 RSSI Trigger</button>&nbsp;
-<button name="N6rssiTrigger" style="height:40px; width:80px">Node 6 RSSI Trigger</button>&nbsp;
+<button name="node2rssiTriggerSet" style="height:40px; width:80px">Node 2 Trigger</button>&nbsp;
+<button name="node3rssiTriggerSet" style="height:40px; width:80px">Node 3 Trigger</button>&nbsp;
+<button name="node4rssiTriggerSet" style="height:40px; width:80px">Node 4 Trigger</button>&nbsp;
+<button name="node5rssiTriggerSet" style="height:40px; width:80px">Node 5 Trigger</button>&nbsp;
+<button name="node6rssiTriggerSet" style="height:40px; width:80px">Node 6 Trigger</button>&nbsp;
 <br>
 <button name="node1rssiTriggerDec" style="height:20px; width:38px">-5</button>
 <button name="node1rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
-<button name="N2rssiTriggerDec" style="height:20px; width:38px">-5</button>
-<button name="N2rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
-<button name="N3rssiTriggerDec" style="height:20px; width:38px">-5</button>
-<button name="N3rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
-<button name="N4rssiTriggerDec" style="height:20px; width:38px">-5</button>
-<button name="N4rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
-<button name="N5rssiTriggerDec" style="height:20px; width:38px">-5</button>
-<button name="N5rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
-<button name="N6rssiTriggerDec" style="height:20px; width:38px">-5</button>
-<button name="N6rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
+<button name="node2rssiTriggerDec" style="height:20px; width:38px">-5</button>
+<button name="node2rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
+<button name="node3rssiTriggerDec" style="height:20px; width:38px">-5</button>
+<button name="node3rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
+<button name="node4rssiTriggerDec" style="height:20px; width:38px">-5</button>
+<button name="node4rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
+<button name="node5rssiTriggerDec" style="height:20px; width:38px">-5</button>
+<button name="node5rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
+<button name="node6rssiTriggerDec" style="height:20px; width:38px">-5</button>
+<button name="node6rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
 </form>
 
 <div id="admindata"></div>

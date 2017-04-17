@@ -27,7 +27,7 @@ db.close() # disconnect from server
 
 # Set clean race start on arduinos, reset laps and raceStatus set true
 for x in range(0, numNodes): # loops for polling each node
-	i2c.write_byte_data(i2cAddr[x], 0x0A, [0,0,0]) # set arduino lap counter to zero
+	i2c.write_i2c_block_data(i2cAddr[x], 0x0A, [0,0,0]) # set arduino lap times to zero
 	time.sleep(0.1)
 	i2c.write_byte_data(i2cAddr[x], 0x0B, 0) # set arduino lap counter to zero
 	time.sleep(0.1)
