@@ -276,7 +276,7 @@ void lapCompleted() {
 	over = over % 60000;
 	s = int(over / 1000);
 	over = over % 1000;
-	ms = int(over);
+	ms = int(over/10); // Divide by 10 so that the ms never exceeds 255, i2c byte send limit
 	
 	commsTable.lap = commsTable.lap + 1;
 	commsTable.minutes = m;
@@ -441,7 +441,7 @@ byte i2cHandleRx(byte command) {
 				result = 0xFF;
 			}
 			break;
-		case 0x0F: // set vtx frequency channel
+		case 0x0F: // set vtx frequency channel, doesn't actually change the address yet
 			if (Wire.available() == 1) { // good write from Master
 				vtxFreq = Wire.read();
 				result = 1;

@@ -69,7 +69,7 @@ for x in range(0, numNodes):
 	time.sleep(0.1)
 	i2c.write_byte_data(i2cAddr[x], 0x0E, 0) # set arduino race status to false
 	time.sleep(0.1)
-	i2c.write_byte_data(i2cAddr[x], 0x0F, vtxFreq[0]) # set arduino vtx frequency channel as configured
+	i2c.write_byte_data(i2cAddr[x], 0x0F, vtxFreq[0]) # set arduino vtx frequency channel as configured, not implemented on arduino side yet
 	time.sleep(0.1)
 
 
