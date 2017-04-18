@@ -11,6 +11,7 @@
 
 ### Main Controller
 * 1 x Raspberry Pi2 or Pi3
+* 8 GB min Micro SD Card
 * 26 AWG and 30 AWG silicone wire (for wiring to each receiver node)
 
 ### The Rest
@@ -24,8 +25,14 @@
 ## Hardware Setup
 
 ### RX5808
-Enable SPI communications on each RX5808 module, the shield will need to be removed first, and should be soldered back in place after the mod.
+You will have to modify the rx5808 receiver so that it can use SPI.
+
+1. Remove the shield from the rx5808. The shield is normally held on by a few spots of solder around the edges.  Use some solder wick to remove the solder and free the shield from the receiver.  Careful not to pull the shield off as the shield is connected to ground pads on the receiver. There are usually small holes around the edge you can use to help push off the shield.
+
+2. Remove the following resistor:
 ![alt text](img/rx5808-new-top.jpg)
+
+3. The sheild should be soldered back in place after removing the resistor.
 
 ### Receiver Node(s)
 Complete wiring connections between each Arduino and RX5808.
