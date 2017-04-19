@@ -300,10 +300,10 @@ void loop() {
 	//raceStatus = true; // Uncomment for individual node testing
 	//delay(500); // Uncomment for individual node testing
  
-	delay(10); // Small delay for i2c comms, maybe not needed, still debugging currupt laps data
+	//delay(10); // Small delay for i2c comms, maybe not needed, still debugging currupt laps data
 	
 	rssi = rssiRead();
-	commsTable.rssi = rssi;
+	//commsTable.rssi = rssi; // too many commsTable writes, not needed
 	
 	//Serial.println(" ");
 	//Serial.println(" ");
@@ -526,29 +526,31 @@ void i2cTransmit() {
 			txTable[0] = commsTable.rssiTrig;
 			numBytes = 1;
 			break;
-		case 0x90: // send current lap number and lap time as an array
-			txTable[0] = commsTable.lap;
-			txTable[1] = commsTable.minutes;
-			txTable[2] = commsTable.seconds;
-			txTable[3] = commsTable.milliseconds;
-			numBytes = 4;
+		case 0x90: // main comms loop request, send rssi, lap number, and lap time as an array
+			commsTable.rssi = rssi;
+			txTable[0] = commsTable.rssi;
+			txTable[1] = commsTable.lap;
+			txTable[2] = commsTable.minutes;
+			txTable[3] = commsTable.seconds;
+			txTable[4] = commsTable.milliseconds;
+			numBytes = 5;
 			break;
-		case 0x91: // send minutes channel // when is this needed???
+		case 0x91: // send minutes channel // this is not needed, remove
 			txTable[0] = commsTable.minutes;
 			numBytes = 1;
 			break;
-		case 0x92: // send seconds channel // when is this needed???
+		case 0x92: // send seconds channel // this is not needed, remove
 			txTable[0] = commsTable.seconds;
 			numBytes = 1;
 			break;
-		case 0x93: // send milliseconds channel // when is this needed???
+		case 0x93: // send milliseconds channel // this is not needed, remove
 			txTable[0] = commsTable.milliseconds;
 			numBytes = 1;
 			break;
-		case 0xA0: // send rssi
-			txTable[0] = commsTable.rssi;
-			numBytes = 1;
-			break;		
+		//case 0xA0: // send rssi // no longer needed, moved to 0x90, remove
+		//	txTable[0] = commsTable.rssi;
+		//	numBytes = 1;
+		//	break;		
 		default:
 			// If an invalid command is sent, we write nothing back. Master must
 			// react to the sound of crickets.
