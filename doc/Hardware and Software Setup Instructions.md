@@ -123,10 +123,9 @@ sudo apt-get install mysql-server python-mysqldb
 ```
 
 ### MySQL Database setup:
-1. Access PHPMyAdmin from the browser.
-From the browser on the pi enter the following to access PHPMyAdmin:
+1. From the browser on the pi enter the following to access PHPMyAdmin:
 ```
-http://127.0.0.1/phpmyadmin
+http://localhost/phpmyadmin
 ```
 This will allow you to setup the MySQL database using the easy PHPMyAdmin GUI.
 
