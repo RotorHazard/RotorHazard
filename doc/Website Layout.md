@@ -1,7 +1,7 @@
 Main buttons along the top of the website:
-```
-Races | Pilots | Groups | Manage | Settings
-```
+
+| Races | Pilots | Groups | Manage | Settings |
+| --- | --- | --- | --- | --- |
 
 ### Races (Read Only)
 * Used to view all race data in the database
