@@ -11,7 +11,7 @@
 
 ### Main Controller
 * 1 x Raspberry Pi2 or Pi3
-* 8 GB min Micro SD Card
+* 8 GB (minimum) Micro SD Card
 * 26 AWG and 30 AWG silicone wire (for wiring to each receiver node)
 
 ### The Rest
@@ -131,19 +131,13 @@ This will allow you to setup the MySQL database using the easy PHPMyAdmin GUI.
 
 2. Create a database called 'vtx'
 
-3. Create a table under 'vtx' called 'races' with the following columns: racegroup, race, pilot, lap, min, sec, millisec
-
-4. Create a table under 'vtx' called 'setup' with the following columns: ID, commsStatus, raceStatus, minLapTime
-
-5. Create an entry in the 'setup' table with an ID of 1, all the other values can be set to zero.
-
-6. Create a table under 'vtx' called 'nodes' with the following columns: ID, channel, rssi, rssiTrig
+3. Create the tables and their columns as noted in [Database Structure.md](Database%20Structure.md)
 
 ### Raspberry Pi Delta5 Code
 
-1. Copy '/src/raspberry pi code/VTX' from this repo to '/home/pi/VTX/' on the Raspberry Pi
+1. Copy [/src/raspberry pi code/VTX](../src/raspberry%20pi%20code/VTX) from this repo to '/home/pi/VTX/' on the Raspberry Pi
 
-2. Copy '/src/raspberry pi code/html' from this repo to '/var/www/html/' on the Raspberry Pi
+2. Copy [/src/raspberry pi code/html](/src/raspberry%20pi%20code/html) from this repo to '/var/www/html/' on the Raspberry Pi
 
 If you don't have write permission use:
 ```
@@ -151,7 +145,7 @@ sudo pcmanfm
 ```
 
 ### Receiver Node Arduino Code:
-1. Open '/src/arduino code/delta5-race-timer-node/delta5-race-timer-node.ino' in the Arduino IDE.
+1. Open [/src/arduino code/delta5-race-timer-node/delta5-race-timer-node.ino](/src/arduino%20code/delta5-race-timer-node/delta5-race-timer-node.ino) in the Arduino IDE.
 
 2. Configure 'i2cSlaveAddress' and 'vtxFreq' in the setup section of the .ino.
 
