@@ -35,6 +35,7 @@ while commsStatus == 1:
 		for x in range(0, numNodes): # loops for polling each node
 			
 			i2cBlockData = i2c.read_i2c_block_data(i2cAddr[x], 0x90, 5) # Request: rssi, lap, min, sec, ms
+			time.sleep(0.25)
 			
 			# Update rssi data in database
 			sql = "UPDATE nodes SET rssi = '%d' WHERE ID = '%d'" % (i2cBlockData[0],x+1)
@@ -46,8 +47,8 @@ while commsStatus == 1:
 			
 			# lap data
 			if i2cBlockData[1] != lapcounter[x]: # Checks if the lap number is new
-				lapcounter[x] = i2cBlockData[1]
-				
+				lapcounter[x] = i2cBlockData[1] # set lapcounter to new lap
+				print "Adding lap to database."
 				# Insert the lap data into the database
 				sql = "INSERT INTO currentrace(pilot, lap, min, sec, millisec) \
 						VALUES ('%d', '%d', '%d', '%d', '%d' )" % \
@@ -61,7 +62,6 @@ while commsStatus == 1:
 			print "for loop 'x': %d, i2c address: %d" % (x, i2cAddr[x])
 			print i2cBlockData
 			
-			time.sleep(0.25)
 	except IOError as e:
 		print e
 		

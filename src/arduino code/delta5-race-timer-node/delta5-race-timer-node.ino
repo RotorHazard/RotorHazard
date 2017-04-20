@@ -76,7 +76,7 @@ struct {
 	byte volatile milliseconds;
 } commsTable;
 
-byte volatile txTable[32];   // prepare data for sending over I2C
+byte volatile txTable[32]; // prepare data for sending over I2C
 bool volatile dataReady = false; // flag to trigger a Serial printout after an I2C event
 // use volatile for variables that will be used in interrupt service routines.
 // "Volatile" instructs the compiler to get a fresh copy of the data rather than try to
@@ -94,12 +94,10 @@ uint16_t vtxFreqTable[] = {
 void SERIAL_SENDBIT1() {
 	digitalWrite(spiClockPin, LOW);
 	delayMicroseconds(300);
-	
 	digitalWrite(spiDataPin, HIGH);
 	delayMicroseconds(300);
 	digitalWrite(spiClockPin, HIGH);
 	delayMicroseconds(300);
-	
 	digitalWrite(spiClockPin, LOW);
 	delayMicroseconds(300);
 }
@@ -107,12 +105,10 @@ void SERIAL_SENDBIT1() {
 void SERIAL_SENDBIT0() {
 	digitalWrite(spiClockPin, LOW);
 	delayMicroseconds(300);
-	
 	digitalWrite(spiDataPin, LOW);
 	delayMicroseconds(300);
 	digitalWrite(spiClockPin, HIGH);
 	delayMicroseconds(300);
-	
 	digitalWrite(spiClockPin, LOW);
 	delayMicroseconds(300);
 }
@@ -132,7 +128,7 @@ void SERIAL_ENABLE_HIGH() {
 void setup() {
 	Serial.begin(9600); // For the serial monitor
 	
-	pinMode(buttonPin, INPUT); // Arduino physical button
+	pinMode(buttonPin, INPUT); // Define digital button for setting rssi trigger
 	digitalWrite(buttonPin, HIGH);
 	
 	pinMode (slaveSelectPin, OUTPUT); // RX5808 comms
@@ -147,9 +143,16 @@ void setup() {
 	Wire.onReceive(i2cReceive); // Register our handler function with the Wire library
 	Wire.onRequest(i2cTransmit); // Register data return handler
 	
-	commsTable.rssiTrig = 0; // Simulate rssiTrig by adding default value
-	commsTable.channel = 0; // Simulate channel by adding 0
+	// Initialize commsTable
+	commsTable.channel = vtxFreq;
+	commsTable.rssi = 0;
+	commsTable.rssiTrig = 0;
+	commsTable.lap = 0;
+	commsTable.minutes = 0;
+	commsTable.seconds = 0;
+	commsTable.milliseconds = 0;
 	printCommsTable();
+		
 	setChannelModule(vtxFreq); // Set to channel defined by node setup
 }
 
@@ -298,26 +301,9 @@ void lapCompleted() {
 void loop() {
 
 	//raceStatus = true; // Uncomment for individual node testing
-	//delay(500); // Uncomment for individual node testing
- 
-	//delay(10); // Small delay for i2c comms, maybe not needed, still debugging currupt laps data
-	
+	//delay(500);
+ 	
 	rssi = rssiRead();
-	//commsTable.rssi = rssi; // too many commsTable writes, not needed
-	
-	//Serial.println(" ");
-	//Serial.println(" ");
-	//Serial.print("Start main loop.");
-	//Serial.print(" lastLapTime: ");
-	//Serial.print(lastLapTime);
-	//Serial.print(" calcLapTime: ");
-	//Serial.print(calcLapTime);
-	//Serial.print(" rssi: ");
-	//Serial.print(rssi);
-	//Serial.print(" rssiTriggerThreshold: ");
-	//Serial.print(rssiTriggerThreshold);
-	//Serial.print(" crossing: ");
-	//Serial.println(crossing);
 	
 	if ((rssiTriggerThreshold != 0) && (millis() > (lastLapTime + minLapTime)) && (raceStatus)) { // Wait for trigger value set, elapsed minLapTime, raceStatus True
 		if ((rssi > (rssiTriggerThreshold + rssiTriggerBandwidth)) && (crossing == false)) { // rssi above threshold + bandwidth and quad not already crossing
@@ -332,19 +318,20 @@ void loop() {
 			Serial.println(rssiFallingTime);
 			crossing = false;
 			
-			calcLapTime = rssiRisingTime + (rssiFallingTime - rssiRisingTime)/2 - lastLapTime;
+			calcLapTime = rssiRisingTime + (rssiFallingTime - rssiRisingTime)/2 - lastLapTime; // Calculates the completed lap time
 
-			if (lastLapTime == 0) {
-				lastLapTime = rssiRisingTime + ((rssiFallingTime - rssiRisingTime)/2);
+			if (lastLapTime == 0) { // Race starting, this logs the first time through the gate
+				lastLapTime = rssiRisingTime + ((rssiFallingTime - rssiRisingTime)/2); // Sets the arduino clock time through the gate
+				Serial.print("Fly over start!");
 			}
-			else {
-				lastLapTime = rssiRisingTime + ((rssiFallingTime - rssiRisingTime)/2);
+			else { // Race is running, this is a lap completed
+				lastLapTime = rssiRisingTime + ((rssiFallingTime - rssiRisingTime)/2); // Sets the arduino clock time through the gate
 				lapCompleted();
 			}
 		}
 	}
 	
-	buttonState = digitalRead(buttonPin); // Detect button press, default digital pin D3
+	buttonState = digitalRead(buttonPin); // Detect button press to set rssi trigger
 	if (buttonState == LOW) {		
 		Serial.println(" ");
 		Serial.println("Button pressed.");
@@ -392,11 +379,13 @@ byte i2cHandleRx(byte command) {
 	// command or mismatch between data expected and received
 	
 	switch (command) {
-		case 0x0A:  // set commsTable minutes, seconds, and milliseconds from the rasp pi
+		case 0x0A:  // set commsTable minutes, seconds, and milliseconds from the rasp pi // this should be reused as the main race reset, set lap, min, sec, ms to zero, raceStatus to 0, lastLapTime to 0
 			if (Wire.available() == 3) { // good write from Master
 				commsTable.minutes = Wire.read();
 				commsTable.seconds = Wire.read();
 				commsTable.milliseconds = Wire.read();
+				lastLapTime = 0;
+				Serial.print("Command from RPi - commsTable.min/sec/ms reset.");
 				result = 3;
 			}
 			else {
@@ -406,6 +395,8 @@ byte i2cHandleRx(byte command) {
 		case 0x0B: // set commsTable lap from the rasp pi
 			if (Wire.available() == 1) { // good write from Master
 				commsTable.lap = Wire.read();
+				Serial.print("Command from RPi - commsTable.lap set at: ");
+				Serial.println(commsTable.lap);
 				result = 1;
 			}
 			else {
@@ -415,6 +406,7 @@ byte i2cHandleRx(byte command) {
 		case 0x0C: // set rssiTriggerThreshold from the rasp pi
 			if (Wire.available() == 1) { // good write from Master
 				rssiTriggerThreshold = Wire.read();
+				commsTable.rssiTrig = rssiTriggerThreshold;
 				Serial.print("Command from RPi - rssiTriggerThreshold set at: ");
 				Serial.println(rssiTriggerThreshold);
 				result = 1;
@@ -426,6 +418,8 @@ byte i2cHandleRx(byte command) {
 		case 0x0D: // set minLapTime
 			if (Wire.available() == 1) { // good write from Master
 				minLapTime = Wire.read()*1000; // byte limit forces sending as whole seconds, convert back to ms
+				Serial.print("Command from RPi - minLapTime set at: ");
+				Serial.println(minLapTime);
 				result = 1;
 			}
 			else {
@@ -435,6 +429,8 @@ byte i2cHandleRx(byte command) {
 		case 0x0E: // set raceStatus from the rasp pi
 			if (Wire.available() == 1) { // good write from Master
 				raceStatus = Wire.read();
+				Serial.print("Command from RPi - raceStatus set at: ");
+				Serial.println(raceStatus);
 				result = 1;
 			}
 			else {
@@ -444,6 +440,8 @@ byte i2cHandleRx(byte command) {
 		case 0x0F: // set vtx frequency channel, doesn't actually change the address yet
 			if (Wire.available() == 1) { // good write from Master
 				vtxFreq = Wire.read();
+				Serial.print("Command from RPi - vtxFreq set at: ");
+				Serial.println(vtxFreq);
 				result = 1;
 			}
 			else {
@@ -546,11 +544,7 @@ void i2cTransmit() {
 		case 0x93: // send milliseconds channel // this is not needed, remove
 			txTable[0] = commsTable.milliseconds;
 			numBytes = 1;
-			break;
-		//case 0xA0: // send rssi // no longer needed, moved to 0x90, remove
-		//	txTable[0] = commsTable.rssi;
-		//	numBytes = 1;
-		//	break;		
+			break;	
 		default:
 			// If an invalid command is sent, we write nothing back. Master must
 			// react to the sound of crickets.
