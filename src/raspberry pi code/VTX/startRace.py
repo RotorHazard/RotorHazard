@@ -19,11 +19,11 @@ cursor = db.cursor()
 
 sql = "UPDATE setup SET raceStatus = 1 WHERE ID = 1"
 try:
-	cursor.execute(sql) # Execute the SQL command
-	db.commit() # Commit your changes in the database
+	cursor.execute(sql)
+	db.commit()
 except:
-	db.rollback() # Rollback in case there is any error
-db.close() # disconnect from server
+	db.rollback()
+db.close()
 
 # Set clean race start on arduinos, reset laps and raceStatus set true
 for x in range(0, numNodes): # loops for polling each node

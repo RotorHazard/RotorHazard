@@ -24,10 +24,10 @@ cursor = db.cursor()
 # sets commsStatus true in the database
 sql = "UPDATE setup SET commsStatus = 1 WHERE ID = 1"
 try:
-	cursor.execute(sql) # Execute the SQL command
-	db.commit() # Commit your changes in the database
+	cursor.execute(sql)
+	db.commit()
 except:
-	db.rollback() # Rollback in case there is any error
+	db.rollback()
 
 while commsStatus == 1:
 
@@ -39,24 +39,24 @@ while commsStatus == 1:
 			# Update rssi data in database
 			sql = "UPDATE nodes SET rssi = '%d' WHERE ID = '%d'" % (i2cBlockData[0],x+1)
 			try:
-				cursor.execute(sql) # Execute the SQL command
-				db.commit() # Commit your changes in the database
+				cursor.execute(sql)
+				db.commit()
 			except:
-				db.rollback() # Rollback in case there is any error
+				db.rollback()
 			
 			# lap data
 			if i2cBlockData[1] != lapcounter[x]: # Checks if the lap number is new
 				lapcounter[x] = i2cBlockData[1]
 				
 				# Insert the lap data into the database
-				sql = "INSERT INTO races(racegroup, race, pilot, lap, min, sec, millisec) \
-						VALUES ('%d', '%d', '%d', '%d', '%d', '%d', '%d' )" % \
-						(1, 1, x+1, i2cBlockData[1], i2cBlockData[2], i2cBlockData[3], i2cBlockData[4])
+				sql = "INSERT INTO currentrace(pilot, lap, min, sec, millisec) \
+						VALUES ('%d', '%d', '%d', '%d', '%d' )" % \
+						(x+1, i2cBlockData[1], i2cBlockData[2], i2cBlockData[3], i2cBlockData[4])
 				try:
-					cursor.execute(sql) # Execute the SQL command
-					db.commit() # Commit your changes in the database
+					cursor.execute(sql)
+					db.commit()
 				except:
-					db.rollback() # Rollback in case there is any error
+					db.rollback()
 			
 			print "for loop 'x': %d, i2c address: %d" % (x, i2cAddr[x])
 			print i2cBlockData
@@ -68,7 +68,7 @@ while commsStatus == 1:
 	# read commsStatus and raceStatus
 	sql = "SELECT * FROM setup WHERE ID = 1"
 	try:
-		cursor.execute(sql) # Execute the SQL command
+		cursor.execute(sql)
 		results = cursor.fetchall() # Fetch all the rows in a list of lists.
 		for row in results:
 			commsStatus = row[1]
@@ -79,4 +79,4 @@ while commsStatus == 1:
 	
 	time.sleep(0.25) # main data loop delay
 	
-db.close() # disconnect from server
+db.close()

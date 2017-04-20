@@ -40,13 +40,13 @@ try:
 	# Insert rssiTriggerThreshold into the database
 	sql = "UPDATE nodes SET rssiTrig = '%d' WHERE ID = '%d'" % (i2cBlockData[0],args.node)
 	try:
-		cursor.execute(sql) # Execute the SQL command
-		db.commit() # Commit your changes in the database
+		cursor.execute(sql)
+		db.commit()
 	except:
-		db.rollback() # Rollback in case there is any error
+		db.rollback()
 	
 	time.sleep(0.1)
 except IOError as e:
 	print e
 
-db.close() # disconnect from server
+db.close()

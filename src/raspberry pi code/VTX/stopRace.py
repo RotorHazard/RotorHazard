@@ -19,18 +19,9 @@ cursor = db.cursor()
 
 sql = "UPDATE setup SET raceStatus = 0 WHERE ID = 1"
 try:
-	cursor.execute(sql) # Execute the SQL command
-	db.commit() # Commit your changes in the database
+	cursor.execute(sql)
+	db.commit()
 except:
-	db.rollback() # Rollback in case there is any error
+	db.rollback()
 
-db.close() # disconnect from server
-
-# Set clean race stop on arduino, reset laps and raceStatus set false
-for x in range(0, numNodes): # loops for polling each node
-	i2c.write_i2c_block_data(i2cAddr[x], 0x0A, [0,0,0]) # set arduino lap times to zero
-	time.sleep(0.1)
-	i2c.write_byte_data(i2cAddr[x], 0x0B, 0) # set arduino lap counter to zero
-	time.sleep(0.1)
-	i2c.write_byte_data(i2cAddr[x], 0x0E, 0) # set arduino race status to false
-	time.sleep(0.1)
+db.close()

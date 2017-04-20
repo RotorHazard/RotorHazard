@@ -14,13 +14,11 @@ execfile("/home/pi/VTX/stopRace.py")
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
-db = MySQLdb.connect("localhost","root","delta5fpv","vtx") # Open database connection
-cursor = db.cursor() # prepare a cursor object using cursor() method
 sql = "UPDATE setup SET commsStatus = 0 WHERE ID = 1"
 try:
-	cursor.execute(sql) # Execute the SQL command
-	db.commit() # Commit your changes in the database
+	cursor.execute(sql)
+	db.commit()
 except:
-	db.rollback() # Rollback in case there is any error
+	db.rollback()
 
-db.close() # disconnect from server
+db.close()

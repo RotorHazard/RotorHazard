@@ -10,9 +10,9 @@ if ($conn->connect_error) {
 $result = $conn->query("SELECT * FROM setup WHERE ID = '1'");
 if ($result->num_rows > 0) {
 	while ($row = $result->fetch_assoc()) {
-		echo '<tr><td>commsStatus</td><td>' . $row["commsStatus"]  . '</td></tr>';
-		echo '<tr><td>raceStatus</td><td>' . $row["raceStatus"]  . '</td></tr>';
-		echo '<tr><td>minLapTime</td><td>' . $row["minLapTime"]  . '</td></tr>';
+		echo '<tr><td>Node Comms</td><td>' . $row["commsStatus"]  . '</td></tr>';
+		echo '<tr><td>Racing</td><td>' . $row["raceStatus"]  . '</td></tr>';
+		echo '<tr><td>Min Lap Time</td><td>' . $row["minLapTime"]  . '</td></tr>';
 	}
 }
 echo "</table></div></td>";

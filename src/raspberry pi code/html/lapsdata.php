@@ -9,7 +9,7 @@ $conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 if ($conn->connect_error) {
 	die("Connection error: " . $conn->connect_error);
 }
-$result = $conn->query("SELECT * FROM races WHERE race = '1' AND pilot= '1'");
+$result = $conn->query("SELECT * FROM currentrace WHERE race = '1' AND pilot= '1'");
 if ($result->num_rows > 0) {
 	while ($row = $result->fetch_assoc()) {
 		echo '<tr><td>' . $row["lap"]  . '</td><td> '. $row["min"] . ':'. $row["sec"] . ':'. $row["millisec"] . '</td></tr>';
@@ -27,7 +27,7 @@ $conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 if ($conn->connect_error) {
 	die("Connection error: " . $conn->connect_error);
 }
-$result = $conn->query("SELECT * FROM races WHERE race = '1' AND pilot= '2'");
+$result = $conn->query("SELECT * FROM currentrace WHERE race = '1' AND pilot= '2'");
 if ($result->num_rows > 0) {
 	while ($row = $result->fetch_assoc()) {
 		echo '<tr><td>' . $row["lap"]  . '</td><td> '. $row["min"] . ':'. $row["sec"] . ':'. $row["millisec"] . '</td></tr>';
@@ -45,7 +45,7 @@ $conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 if ($conn->connect_error) {
 	die("Connection error: " . $conn->connect_error);
 }
-$result = $conn->query("SELECT * FROM races WHERE race = '1' AND pilot= '3'");
+$result = $conn->query("SELECT * FROM currentrace WHERE race = '1' AND pilot= '3'");
 if ($result->num_rows > 0) {
 	while ($row = $result->fetch_assoc()) {
 		echo '<tr><td>' . $row["lap"]  . '</td><td> '. $row["min"] . ':'. $row["sec"] . ':'. $row["millisec"] . '</td></tr>';
@@ -63,7 +63,7 @@ $conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 if ($conn->connect_error) {
 	die("Connection error: " . $conn->connect_error);
 }
-$result = $conn->query("SELECT * FROM races WHERE race = '1' AND pilot= '4'");
+$result = $conn->query("SELECT * FROM currentrace WHERE race = '1' AND pilot= '4'");
 if ($result->num_rows > 0) {
 	while ($row = $result->fetch_assoc()) {
 		echo '<tr><td>' . $row["lap"]  . '</td><td> '. $row["min"] . ':'. $row["sec"] . ':'. $row["millisec"] . '</td></tr>';
@@ -81,7 +81,7 @@ $conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 if ($conn->connect_error) {
 	die("Connection error: " . $conn->connect_error);
 }
-$result = $conn->query("SELECT * FROM races WHERE race = '1' AND pilot= '5'");
+$result = $conn->query("SELECT * FROM currentrace WHERE race = '1' AND pilot= '5'");
 if ($result->num_rows > 0) {
 	while ($row = $result->fetch_assoc()) {
 		echo '<tr><td>' . $row["lap"]  . '</td><td> '. $row["min"] . ':'. $row["sec"] . ':'. $row["millisec"] . '</td></tr>';
@@ -99,7 +99,7 @@ $conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 if ($conn->connect_error) {
 	die("Connection error: " . $conn->connect_error);
 }
-$result = $conn->query("SELECT * FROM races WHERE race = '1' AND pilot= '6'");
+$result = $conn->query("SELECT * FROM currentrace WHERE race = '1' AND pilot= '6'");
 if ($result->num_rows > 0) {
 	while ($row = $result->fetch_assoc()) {
 		echo '<tr><td>' . $row["lap"]  . '</td><td> '. $row["min"] . ':'. $row["sec"] . ':'. $row["millisec"] . '</td></tr>';

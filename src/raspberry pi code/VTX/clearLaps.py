@@ -10,7 +10,7 @@ import MySQLdb
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
-sql = "TRUNCATE TABLE races"
+sql = "TRUNCATE TABLE currentrace"
 try:
 	cursor.execute(sql) # Execute the SQL command
 	db.commit() # Commit your changes in the database
