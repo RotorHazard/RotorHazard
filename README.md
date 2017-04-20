@@ -14,7 +14,7 @@ https://www.facebook.com/groups/Delta5RaceTimer/
 https://youtu.be/UdelgqwngX4
 
 ### Hardware and Software Setup Instructions
-/doc/Hardware and Software Setup Instructions.md
+[/doc/Hardware and Software Setup Instructions.md](/doc/Hardware%20and%20Software%20Setup%20Instructions.md)
 
 ### To Do List
-/doc/To Do List.md
+[/doc/To Do List](/doc/To%20Do%20List.md)
