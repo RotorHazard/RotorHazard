@@ -1,7 +1,7 @@
 <html>
 <head>
 <meta charset="UTF-8" />
-<title>Admin - D5 VTX Timer</title>
+<title>Settings - Delta5 VTX Timer</title>
 <style>
 body{
 	background-color: black;
@@ -82,9 +82,6 @@ body{
 if (isset($_POST['setupData'])) {exec("sudo python /home/pi/VTX/setupData.py"); }
 if (isset($_POST['startComms'])) {exec("sudo python /home/pi/VTX/startComms.py"); }
 if (isset($_POST['stopComms'])) {exec("sudo python /home/pi/VTX/stopComms.py");	}
-if (isset($_POST['startRace'])) {exec("sudo python /home/pi/VTX/startRace.py");	}
-if (isset($_POST['stopRace'])) {exec("sudo python /home/pi/VTX/stopRace.py"); }
-if (isset($_POST['clearLaps']))	{exec("sudo python /home/pi/VTX/clearLaps.py");	}
 
 if (isset($_POST['node1rssiTriggerSet']))	{exec("sudo python /home/pi/VTX/rssiTrigger.py 1 8 set"); }
 if (isset($_POST['node1rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 1 8 dec"); }
@@ -109,32 +106,14 @@ if (isset($_POST['node6rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTr
 
 <body>
 
+<p><a href="index.php">Races</a> | <a href="pilots.php">Pilots</a> | <a href="groups.php">Groups</a> | <a href="manage.php">Manage</a> | <a href="settings.php">Settings</a></p>
+
 <img src="/images/delta5fpv.jpg">
-<p><font color=white>
-<ul>
-<li>'Setup Data' Initializes the database (currently clears all data) and sends variables to each arduino node.</li>
-<li>'Start Comms' Is the main comms loop and start polling the arduino data.</li>
-<li>'Stop Comms' Also calls 'Stop Race', and ends the main comms loop.</li>
-<li>'Start Race' Sets the raceStatus to true in the database and on each arduino.</li>
-<li>'Stop Race' Sets the raceStatus to false in the database and on each arduino.</li>
-<li>'Clear Laps' Drops all current laps data from the database.</li>
-</ul>
-<ol>
-<li>'Start Data' then 'Start Comms'.</li>
-<li>Set and adjust rssiTriggers for each node.</li>
-<li>Place all racers back from the gate for a fly over start and then 'Start Race'.</li>
-<li>After all pilots land 'Stop Race'.</li>
-<li>Copy down laps data then 'Clear Laps'.</li>
-</ol>
-</font></p>
 
 <form method="post">
 <button name="setupData" style="height:40px; width:100px">Setup Data</button>&nbsp;
 <button name="startComms" style="height:40px; width:100px">Start Comms</button>&nbsp;
 <button name="stopComms" style="height:40px; width:100px">Stop Comms</button>&nbsp;
-<button name="startRace" style="height:40px; width:100px">Start Race</button>&nbsp;
-<button name="stopRace" style="height:40px; width:100px">Stop Race</button>&nbsp;
-<button name="clearLaps" style="height:40px; width:100px">Clear Laps</button>
 <br>
 <br>
 <button name="node1rssiTriggerSet" style="height:40px; width:80px">Node 1 Trigger</button>&nbsp;
@@ -158,15 +137,13 @@ if (isset($_POST['node6rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTr
 <button name="node6rssiTriggerInc" style="height:20px; width:38px">+5</button>&nbsp;
 </form>
 
-<div id="admindata"></div>
-<div id="lapsdata"></div>
+<div id="managedata"></div>
 
 <script type="text/javascript" src="/scripts/jquery-3.1.1.js"></script>
 <script type="text/javascript">
 $(document).ready(function() {
 	setInterval(function () {
-		$('#admindata').load('admindata.php')
-		$('#lapsdata').load('lapsdata.php')
+		$('#managedata').load('managedata.php')
 	}, 1000);
 });
 </script>

@@ -1,7 +1,7 @@
 <html>
 <head>
 <meta charset="UTF-8" />
-<title>Races - Delta5 VTX Timer</title>
+<title>Pilots - Delta5 VTX Timer</title>
 <style>
 body{
 	background-color: black;
@@ -84,16 +84,6 @@ body{
 <p><a href="index.php">Races</a> | <a href="pilots.php">Pilots</a> | <a href="groups.php">Groups</a> | <a href="manage.php">Manage</a> | <a href="settings.php">Settings</a></p>
 
 <img src="/images/delta5fpv.jpg"><p>
-<div id="currentracedata"></div>
-
-<script type="text/javascript" src="/scripts/jquery-3.1.1.js"></script>
-<script type="text/javascript">
-$(document).ready(function() {
-	setInterval(function () {
-		$('#currentracedata').load('currentracedata.php')
-	}, 1000);
-});
-</script>
 
 </body>
 </html>

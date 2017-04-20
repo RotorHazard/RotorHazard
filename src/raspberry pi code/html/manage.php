@@ -1,7 +1,7 @@
 <html>
 <head>
 <meta charset="UTF-8" />
-<title>Races - Delta5 VTX Timer</title>
+<title>Manage - Delta5 VTX Timer</title>
 <style>
 body{
 	background-color: black;
@@ -77,19 +77,34 @@ body{
 .datagrid6 table tbody .alt td { background: #EBEBEB; color: #7D7D7D; }
 .datagrid6 table tbody td:first-child { border-left: none; }.datagrid table tbody tr:last-child td { border-bottom: none; }
 </style>
+
+<?php
+if (isset($_POST['startRace'])) {exec("sudo python /home/pi/VTX/startRace.py");	}
+if (isset($_POST['stopRace'])) {exec("sudo python /home/pi/VTX/stopRace.py"); }
+if (isset($_POST['clearLaps']))	{exec("sudo python /home/pi/VTX/clearLaps.py");	}
+?>
 </head>
 
 <body>
 
 <p><a href="index.php">Races</a> | <a href="pilots.php">Pilots</a> | <a href="groups.php">Groups</a> | <a href="manage.php">Manage</a> | <a href="settings.php">Settings</a></p>
 
-<img src="/images/delta5fpv.jpg"><p>
+<img src="/images/delta5fpv.jpg">
+
+<form method="post">
+<button name="startRace" style="height:40px; width:100px">Start Race</button>&nbsp;
+<button name="stopRace" style="height:40px; width:100px">Stop Race</button>&nbsp;
+<button name="clearLaps" style="height:40px; width:100px">Clear Laps</button>
+</form>
+
+<div id="managedata"></div>
 <div id="currentracedata"></div>
 
 <script type="text/javascript" src="/scripts/jquery-3.1.1.js"></script>
 <script type="text/javascript">
 $(document).ready(function() {
 	setInterval(function () {
+		$('#managedata').load('managedata.php')
 		$('#currentracedata').load('currentracedata.php')
 	}, 1000);
 });

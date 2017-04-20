@@ -23,7 +23,7 @@ try:
 except:
 	db.rollback()
 
-sql = "INSERT INTO `setup`(`ID`, `commsStatus`, `raceStatus`, `minLapTime`) VALUES (1,0,0,5000)"
+sql = "INSERT INTO `setup`(`ID`, `commsStatus`, `raceStatus`, `minLapTime`) VALUES (1,0,0,5)"
 try:
 	cursor.execute(sql)
 	db.commit()
@@ -47,7 +47,7 @@ for x in range(0, numNodes): # adds back nodes ID based on number of nodes
 		db.rollback()
 
 # 'races' table -- empty
-sql = "DELETE FROM `races` WHERE 1"
+sql = "DELETE FROM `currentrace` WHERE 1"
 try:
 	cursor.execute(sql)
 	db.commit()
@@ -65,7 +65,7 @@ for x in range(0, numNodes):
 	time.sleep(0.1)
 	i2c.write_byte_data(i2cAddr[x], 0x0C, 0) # set arduino rssiTriggerThreshold to zero
 	time.sleep(0.1)
-	i2c.write_byte_data(i2cAddr[x], 0x0D, (5000/1000)) # set arduino minLapTime as configured, convert to s, then back to ms on receive
+	i2c.write_byte_data(i2cAddr[x], 0x0D, 5) # set arduino minLapTime as configured, send in seconds, converts to ms on receive
 	time.sleep(0.1)
 	i2c.write_byte_data(i2cAddr[x], 0x0E, 0) # set arduino race status to false
 	time.sleep(0.1)
