@@ -25,3 +25,8 @@ except:
 	db.rollback()
 
 db.close()
+
+# raceStatus set false top stop logging laps
+for x in range(0, numNodes): # loops for polling each node
+	i2c.write_byte_data(i2cAddr[x], 0x0E, 0) # set arduino race status to false
+	time.sleep(0.25)
