@@ -1,3 +1,4 @@
+#
 # Configure the race box hardware here
 
 numNodes = 5

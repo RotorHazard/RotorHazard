@@ -1,0 +1,37 @@
+body {
+	background-color: #EEEEEE;
+	margin: 0;
+}
+
+.delta5-logo-image {
+	# height: 28px;
+	# width: 140px;
+}
+
+.delta5-header {
+	#background-color: #263238;
+}
+
+.delta5-navigation .mdl-navigation__link {
+	display: inline-block;
+	height: 60px;
+	line-height: 68px;
+	background-color: transparent !important;
+	border-bottom: 4px solid transparent;
+}
+
+.delta5-navigation .mdl-navigation__link:hover {
+	border-bottom: 4px solid #8bc34a;
+}
+
+.delta5-table tbody tr{height:36px}
+.delta5-table th{padding:3px 6px 3px 6px;line-height:24px;height:24px}
+.delta5-table td:first-of-type,.delta5-table th:first-of-type{padding-left:6px}
+.delta5-table td:last-of-type,.delta5-table th:last-of-type{padding-right:6px}
+.delta5-table td{padding:3px 6px 3px 6px;line-height:24px;height:36px}
+
+.delta5-footer {
+	background-color: #EEEEEE;
+	position: relative;
+}
+

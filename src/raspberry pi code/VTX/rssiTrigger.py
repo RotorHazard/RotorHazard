@@ -1,4 +1,4 @@
-# VTX Timer by Scott Chin
+# 
 # This file will set the trigger threshold on the arduino with command 0x81
 # It returns the data in an array with [rssiTrig]
 
@@ -38,9 +38,8 @@ try:
 		time.sleep(0.25)
 	
 	# Insert rssiTriggerThreshold into the database
-	sql = "UPDATE nodes SET rssiTrig = '%d' WHERE ID = '%d'" % (i2cBlockData[0],args.node)
 	try:
-		cursor.execute(sql)
+		cursor.execute("UPDATE nodes SET rssiTrigger = '%d' WHERE node = '%d'" % (i2cBlockData[0],args.node))
 		db.commit()
 	except:
 		db.rollback()

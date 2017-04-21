@@ -1,4 +1,3 @@
-# VTX Timer by Scott Chin
 #
 # Use after all the laps data has been recorded 
 #
@@ -10,11 +9,10 @@ import MySQLdb
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
-sql = "TRUNCATE TABLE currentrace"
 try:
-	cursor.execute(sql) # Execute the SQL command
-	db.commit() # Commit your changes in the database
+	cursor.execute("TRUNCATE TABLE currentLaps")
+	db.commit()
 except:
-	db.rollback() # Rollback in case there is any error
+	db.rollback()
 
-db.close() # disconnect from server
+db.close()

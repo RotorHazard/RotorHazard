@@ -1,4 +1,3 @@
-# VTX Timer by Scott Chin
 #
 # Use to enable communications with the arduinos
 #
@@ -8,26 +7,48 @@ import smbus
 import time
 import MySQLdb
 
-execfile("/home/pi/VTX/raceBoxConfig.py")
 
 # Start i2c bus
 i2c = smbus.SMBus(1)
 
-# Varibales
-commsStatus = 1 # initial define to get into main while loop
-lapcounter = [0,0,0,0,0,0] # sets a reference point for checking new laps read from arduino below, change this to dynamic sizing based on numNodes from config file
 
 # Open database connection
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
-# sets commsStatus true in the database
-sql = "UPDATE setup SET commsStatus = 1 WHERE ID = 1"
+
+# Get nodes info
+i2cAddr = []
+vtxFreq = []
 try:
-	cursor.execute(sql)
+	cursor.execute("SELECT * FROM nodes");
+	numNodes = int(cursor.rowcount)
+	print "numNodes: %d" % numNodes
+	for x in range(0, numNodes):
+		row = cursor.fetchone()
+		print row
+		i2cAddr.append(int(row[1]))
+		vtxFreq.append(int(row[2]))
+	print "i2cAddr: "
+	print i2cAddr
+	print "vtxFreq: "
+	print vtxFreq
+except:
+	print "Error: unable to fetch data"
+
+
+# Varibales
+lapcounter = [0,0,0,0,0,0] # sets a reference point for checking new laps read from arduino below, change this to dynamic sizing based on numNodes from config file
+
+
+# sets commsStatus true in the database
+commsStatus = 1 # variable that will be updated from database
+try:
+	cursor.execute("UPDATE setup SET commsStatus = 1")
 	db.commit()
 except:
 	db.rollback()
+
 
 while commsStatus == 1:
 
@@ -38,9 +59,8 @@ while commsStatus == 1:
 			time.sleep(0.25)
 			
 			# Update rssi data in database
-			sql = "UPDATE nodes SET rssi = '%d' WHERE ID = '%d'" % (i2cBlockData[0],x+1)
 			try:
-				cursor.execute(sql)
+				cursor.execute("UPDATE nodes SET rssi = '%d' WHERE node = '%d'" % (i2cBlockData[0],x+1))
 				db.commit()
 			except:
 				db.rollback()
@@ -50,7 +70,7 @@ while commsStatus == 1:
 				lapcounter[x] = i2cBlockData[1] # set lapcounter to new lap
 				print "Adding lap to database."
 				# Insert the lap data into the database
-				sql = "INSERT INTO currentrace(pilot, lap, min, sec, millisec) \
+				sql = "INSERT INTO currentLaps(pilot, lap, min, sec, milliSec) \
 						VALUES ('%d', '%d', '%d', '%d', '%d' )" % \
 						(x+1, i2cBlockData[1], i2cBlockData[2], i2cBlockData[3], i2cBlockData[4])
 				try:
@@ -66,16 +86,15 @@ while commsStatus == 1:
 		print e
 		
 	# read commsStatus and raceStatus
-	sql = "SELECT * FROM setup WHERE ID = 1"
 	try:
-		cursor.execute(sql)
+		cursor.execute("SELECT * FROM setup")
 		results = cursor.fetchall() # Fetch all the rows in a list of lists.
 		for row in results:
-			commsStatus = row[1]
-			raceStatus = row[2]
+			commsStatus = row[0]
+			raceStatus = row[1]
 		db.commit()
 	except:
-		print "Error: unable to fecth data"
+		print "Error: unable to fetch data"
 	
 	time.sleep(0.25) # main data loop delay
 	

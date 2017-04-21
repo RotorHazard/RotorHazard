@@ -7,7 +7,7 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="description" content="Delta5 VTX Timer.">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-	<title>Groups - Delta5 VTX Timer</title>
+	<title>Settings - Delta5 VTX Timer</title>
 
 	<!-- Page styles -->
 	<link rel="stylesheet" href="mdl/material.min.css">
@@ -16,6 +16,14 @@
 	<link rel="stylesheet" href="styles.css">
 	
 	<script type="text/javascript" src="/scripts/jquery-3.1.1.js"></script>
+		
+	<?php
+	if (isset($_GET['setupData'])) {
+		$numberOfNodes = htmlentities($_GET['numberOfNodes']);
+		exec("sudo python /home/pi/VTX/setupData.py ".$numberOfNodes);
+	}
+	if (isset($_POST['createDatabase'])) {exec("sudo python /home/pi/VTX/createDatabase.py"); }
+	?>
 </head>
 	
 <body>
@@ -27,7 +35,7 @@
 	<nav class="mdl-navigation">
 		<a class="delta5-navigation mdl-navigation__link" href="index.php"><button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Races</button></a>
 		<a class="delta5-navigation mdl-navigation__link" href="pilots.php"><button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Pilots</button></a>
-		<a class="delta5-navigation mdl-navigation__link" href="groups.php"><button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">Groups</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="groups.php"><button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Groups</button></a>
 		<a class="delta5-navigation mdl-navigation__link" href="manage.php"><button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Manage</button></a>
 		<a class="delta5-navigation mdl-navigation__link" href="settings.php"><button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Settings</button></a>
 	</nav>
@@ -42,16 +50,34 @@
 <main class="mdl-layout__content">
 <div class="page-content">
 
-
-<div class="mdl-grid">
-
-
-
-
-
-
-	
+<h5>Setup Data</h5>
+<div class="mdl-grid" id="currentsetupdata">
+	<script type="text/javascript">
+	$(document).ready(function() { setInterval(function() { $('#currentsetupdata').load('buildSetupTable.php') }, 1000); } );
+	</script>
 </div>
+
+
+<div class="mdl-grid"><h5>Setup Nodes</h5><div class="mdl-cell mdl-cell--12-col">
+<form method="get">
+
+<div class="mdl-textfield mdl-js-textfield">
+	<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" id="numberOfNodes" name="numberOfNodes">
+	<label class="mdl-textfield__label" for="numberOfNodes">Number of nodes...</label>
+	<span class="mdl-textfield__error">Input is not a number!</span>
+</div>
+<br>
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="setupData">Setup Data</button>
+
+</form>
+</div></div>
+
+
+<div class="mdl-grid"><h5>Create Database (Warning, destroys all data)</h5><div class="mdl-cell mdl-cell--12-col">
+<form method="post">
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="createDatabase">Create Database</button>
+</form>
+</div></div>
 
 
 <footer class="delta5-footer mdl-mini-footer">
@@ -64,3 +90,4 @@
 </body>
 
 </html>
+

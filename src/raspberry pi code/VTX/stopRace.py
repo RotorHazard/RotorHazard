@@ -1,4 +1,3 @@
-# VTX Timer by Scott Chin
 #
 # Use with the quads landed and to stop racing
 #
@@ -8,8 +7,6 @@ import smbus
 import time
 import MySQLdb
 
-execfile("/home/pi/VTX/raceBoxConfig.py")
-
 # Start i2c bus
 i2c = smbus.SMBus(1)
 
@@ -17,9 +14,29 @@ i2c = smbus.SMBus(1)
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
-sql = "UPDATE setup SET raceStatus = 0 WHERE ID = 1"
+
+# Get nodes info
+i2cAddr = []
+vtxFreq = []
 try:
-	cursor.execute(sql)
+	cursor.execute("SELECT * FROM nodes");
+	numNodes = int(cursor.rowcount)
+	print "numNodes: %d" % numNodes
+	for x in range(0, numNodes):
+		row = cursor.fetchone()
+		print row
+		i2cAddr.append(int(row[1]))
+		vtxFreq.append(int(row[2]))
+	print "i2cAddr: "
+	print i2cAddr
+	print "vtxFreq: "
+	print vtxFreq
+except:
+	print "Error: unable to fetch data"
+
+
+try:
+	cursor.execute("UPDATE setup SET raceStatus = 0")
 	db.commit()
 except:
 	db.rollback()
