@@ -27,6 +27,7 @@ cursor = db.cursor()
 
 
 try:
+	# Set arduino nodes	
 	if args.action == 'set':
 		i2cBlockData = i2c.read_i2c_block_data(args.address, 0x81, 1) # arduino setRssiThreshold() and return
 		time.sleep(0.25)
@@ -36,14 +37,14 @@ try:
 	elif  args.action == 'dec':
 		i2cBlockData = i2c.read_i2c_block_data(args.address, 0x83, 1) # arduino rssiTriggerThreshold minus 5 and return
 		time.sleep(0.25)
-	
+
 	# Insert rssiTriggerThreshold into the database
 	try:
 		cursor.execute("UPDATE nodes SET rssiTrigger = '%d' WHERE node = '%d'" % (i2cBlockData[0],args.node))
 		db.commit()
 	except:
 		db.rollback()
-	
+		
 except IOError as e:
 	print e
 

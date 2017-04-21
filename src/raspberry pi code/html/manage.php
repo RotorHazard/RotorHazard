@@ -59,14 +59,15 @@
 </div></div>
 
 
-<h5>Node Data</h5>
-<div class="mdl-grid" id="nodeData">
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Race</h5></div></div>
+<div class="mdl-grid" id="raceData">
 	<script type="text/javascript">
-	$(document).ready(function() { setInterval(function() { $('#nodeData').load('buildNodeTables.php') }, 1000); } );
+	$(document).ready(function() { setInterval(function() { $('#raceData').load('buildRaceTable.php') }, 1000); } );
 	</script>
 </div>
 
-<h5>Laps Data</h5>
+
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Laps</h5></div></div>
 <div class="mdl-grid" id="currentLaps">
 	<script type="text/javascript">
 	$(document).ready(function() { setInterval(function() { $('#currentLaps').load('buildLapTables.php') }, 1000); } );

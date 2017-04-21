@@ -66,14 +66,16 @@
 <main class="mdl-layout__content">
 <div class="page-content">
 
-<div class="mdl-grid"><h5>Nodes Communication</h5><div class="mdl-cell mdl-cell--12-col">
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Communication</h5></div></div>
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col">
 <form method="post">
 <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="startComms">Start Comms</button>&nbsp;
 <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="stopComms">Stop Comms</button>
 </form>
 </div></div>
 
-<h5>Setup Data</h5>
+
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Setup</h5></div></div>
 <div class="mdl-grid" id="setupData">
 	<script type="text/javascript">
 	$(document).ready(function() { setInterval(function() { $('#setupData').load('buildSetupTable.php') }, 1000); } );
@@ -81,54 +83,7 @@
 </div>
 
 
-<div class="mdl-grid">
-
-<div class="mdl-cell mdl-cell--2-col">
-<form method="post">
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node1rssiTriggerSet">Node 1 Trigger</button><br>
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node1rssiTriggerDec">-5</button>&nbsp;
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node1rssiTriggerInc">+5</button>
-</form>
-</div>
-<div class="mdl-cell mdl-cell--2-col">
-<form method="post">
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node2rssiTriggerSet">Node 2 Trigger</button><br>
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node2rssiTriggerDec">-5</button>&nbsp;
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node2rssiTriggerInc">+5</button>
-</form>
-</div>
-<div class="mdl-cell mdl-cell--2-col">
-<form method="post">
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node3rssiTriggerSet">Node 3 Trigger</button><br>
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node3rssiTriggerDec">-5</button>&nbsp;
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node3rssiTriggerInc">+5</button>
-</form>
-</div>
-<div class="mdl-cell mdl-cell--2-col">
-<form method="post">
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node4rssiTriggerSet">Node 4 Trigger</button><br>
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node4rssiTriggerDec">-5</button>&nbsp;
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node4rssiTriggerInc">+5</button>
-</form>
-</div>
-<div class="mdl-cell mdl-cell--2-col">
-<form method="post">
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node5rssiTriggerSet">Node 5 Trigger</button><br>
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node5rssiTriggerDec">-5</button>&nbsp;
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node5rssiTriggerInc">+5</button>
-</form>
-</div>
-<div class="mdl-cell mdl-cell--2-col">
-<form method="post">
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node6rssiTriggerSet">Node 6 Trigger</button><br>
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node6rssiTriggerDec">-5</button>&nbsp;
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="node6rssiTriggerInc">+5</button>
-</form>
-</div>
-
-</div>
-
-<h5>Node Data</h5>
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Nodes</h5></div></div>
 <div class="mdl-grid" id="nodeData">
 	<script type="text/javascript">
 	$(document).ready(function() { setInterval(function() { $('#nodeData').load('buildNodeTables.php') }, 1000); } );
@@ -136,12 +91,14 @@
 </div>
 
 
-<div class="mdl-grid"><h5>Setup Pilots</h5><div class="mdl-cell mdl-cell--12-col">
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Pilots</h5></div></div>
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col">
 
 </div></div>
 
 
-<div class="mdl-grid"><h5>Setup Groups</h5><div class="mdl-cell mdl-cell--12-col">
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Groups</h5></div></div>
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col">
 
 </div></div>
 

@@ -24,11 +24,11 @@ body {
 	border-bottom: 4px solid #8bc34a;
 }
 
-.delta5-table tbody tr{height:36px}
-.delta5-table th{padding:3px 6px 3px 6px;line-height:24px;height:24px}
-.delta5-table td:first-of-type,.delta5-table th:first-of-type{padding-left:6px}
-.delta5-table td:last-of-type,.delta5-table th:last-of-type{padding-right:6px}
-.delta5-table td{padding:3px 6px 3px 6px;line-height:24px;height:36px}
+.delta5-table tr{height:36px;}
+.delta5-table th{padding:3px 6px 3px 6px;line-height:24px;height:24px;}
+.delta5-table td:first-of-type,.delta5-table th:first-of-type{padding-left:6px;}
+.delta5-table td:last-of-type,.delta5-table th:last-of-type{padding-right:6px;}
+.delta5-table td{padding:3px 6px 3px 6px;line-height:24px;height:36px;}
 
 .delta5-footer {
 	background-color: #EEEEEE;

@@ -50,7 +50,8 @@
 <main class="mdl-layout__content">
 <div class="page-content">
 
-<h5>Setup Data</h5>
+
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Setup Data</h5></div></div>
 <div class="mdl-grid" id="currentsetupdata">
 	<script type="text/javascript">
 	$(document).ready(function() { setInterval(function() { $('#currentsetupdata').load('buildSetupTable.php') }, 1000); } );
@@ -58,7 +59,8 @@
 </div>
 
 
-<div class="mdl-grid"><h5>Setup Nodes</h5><div class="mdl-cell mdl-cell--12-col">
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Setup Nodes</h5></div></div>
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col">
 <form method="get">
 
 <div class="mdl-textfield mdl-js-textfield">
@@ -73,7 +75,8 @@
 </div></div>
 
 
-<div class="mdl-grid"><h5>Create Database (Warning, destroys all data)</h5><div class="mdl-cell mdl-cell--12-col">
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Create Database (Warning, destroys all data)</h5></div></div>
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col">
 <form method="post">
 <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="createDatabase">Create Database</button>
 </form>

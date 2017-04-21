@@ -42,7 +42,8 @@
 <main class="mdl-layout__content">
 <div class="page-content">
 
-<h5>Laps Data</h5>
+
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Laps</h5></div></div>
 <div class="mdl-grid" id="currentLaps">
 	<script type="text/javascript">
 	$(document).ready(function() { setInterval(function() { $('#currentLaps').load('buildLapTables.php') }, 1000); } );

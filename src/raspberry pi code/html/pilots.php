@@ -43,15 +43,12 @@
 <div class="page-content">
 
 
-<div class="mdl-grid">
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col"><h5>Pilots</h5></div></div>
+<div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col">
 
+<!-- Add content here -->
 
-
-
-
-
-	
-</div>
+</div></div>
 
 
 <footer class="delta5-footer mdl-mini-footer">
