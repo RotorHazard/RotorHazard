@@ -17,8 +17,7 @@ except:
 
 
 i2cAddr=[8,10,12,14,16,18]
-vtxFreq=[17,25,27,30,21,19] # switch this to human channel values, E2 or 5760MHZ, update on arduino side to match
-vtxFreqChan=["E4", "F2", "F4", "F7", "E6", "E2"]
+vtxNum=[17,25,27,30,21,19]
 
 
 # Start i2c bus
@@ -30,62 +29,119 @@ cursor = db.cursor()
 
 # 'setup' table -- empty then fill per config
 try:
-	cursor.execute("DELETE FROM setup WHERE 1")
+	cursor.execute("DELETE FROM `setup` WHERE 1")
 	db.commit()
 except:
 	db.rollback()
 
 try:
-	cursor.execute("INSERT INTO setup(commsStatus, raceStatus, minLapTime) VALUES (0,0,5)")
+	cursor.execute("INSERT INTO `setup` (`commsStatus`, `raceStatus`, `minLapTime`) VALUES (0,0,5)")
 	db.commit()
 except:
 	db.rollback()
 
 # 'nodes' table -- empty then fill per config
 try:
-	cursor.execute("DELETE FROM nodes WHERE 1")
+	cursor.execute("DELETE FROM `nodes` WHERE 1")
 	db.commit()
 except:
 	db.rollback()
 
 for x in range(0, args.numNodes): # adds back nodes ID based on number of nodes
 	try:
-		cursor.execute("INSERT INTO nodes(node, i2cAddr, vtxFreq, vtxFreqChan, rssi, rssiTrigger) VALUES ('%d','%d','%d','E2',0,0)" % (x+1,i2cAddr[x],vtxFreq[x]))
+		cursor.execute("INSERT INTO `nodes` (`node`, `i2cAddr`, `vtxNum`, `rssi`, `rssiTrigger`) VALUES (%s,%s,%s,0,0)",(x+1,i2cAddr[x],vtxNum[x]))
 		db.commit()
 	except:
 		db.rollback()
 
 # 'currentLaps' table -- empty
 try:
-	cursor.execute("DELETE FROM currentLaps WHERE 1")
+	cursor.execute("DELETE FROM `currentLaps` WHERE 1")
 	db.commit()
 except:
 	db.rollback()
 		
 # 'currentRace' table -- empty
 try:
-	cursor.execute("DELETE FROM currentRace WHERE 1")
+	cursor.execute("DELETE FROM `currentRace` WHERE 1")
 	db.commit()
 except:
 	db.rollback()
 
+# 'vtxReference' table -- empty
+try:
+	cursor.execute("DELETE FROM `vtxReference` WHERE 1")
+	db.commit()
+except:
+	db.rollback()
+
+try:
+	sql = "INSERT INTO `vtxReference` (`vtxNum`, `vtxChan`, `vtxFreq`) VALUES (%s,%s,%s)"
+	params = [
+		(19,'E4',5645),
+		(32,'C1',5658),
+		(18,'E3',5665),
+		(17,'E2',5685),
+		(33,'C2',5695),
+		(16,'E1',5705),
+		(7,'A8',5725),
+		(34,'C3',5732),
+		(8,'B1',5733),
+		(24,'F1',5740),
+		(6,'A7',5745),
+		(9,'B2',5752),
+		(25,'F2',5760),
+		(5,'A6',5765),
+		(35,'C4',5769),
+		(10,'B3',5771),
+		(26,'F3',5780),
+		(4,'A5',5785),
+		(11,'B4',5790),
+		(27,'F4',5800),
+		(3,'A4',5805),
+		(36,'C5',5806),
+		(12,'B5',5809),
+		(28,'F5',5820),
+		(2,'A3',5825),
+		(13,'B6',5828),
+		(29,'F6',5840),
+		(37,'C6',5843),
+		(1,'A2',5845),
+		(14,'B7',5847),
+		(30,'F7',5860),
+		(0,'A1',5865),
+		(15,'B8',5866),
+		(31,'F8',5880),
+		(38,'C7',5880),
+		(20,'E5',5885),
+		(21,'E6',5905),
+		(39,'C8',5917),
+		(22,'E7',5925),
+		(23,'E8',5945)
+	]
+	cursor.executemany(sql, params)
+	db.commit()
+except:
+	db.rollback()
+
+	
 db.close() # disconnect from server
 
 
 # Configure and set clean race start on arduinos
 for x in range(0, args.numNodes):
 	i2c.write_i2c_block_data(i2cAddr[x], 0x0A, [0,0,0]) # set arduino lap times to zero
-	time.sleep(0.25)
+	time.sleep(0.5)
 	i2c.write_byte_data(i2cAddr[x], 0x0B, 0) # set arduino lap counter to zero
-	time.sleep(0.25)
+	time.sleep(0.5)
 	i2c.write_byte_data(i2cAddr[x], 0x0C, 0) # set arduino rssiTriggerThreshold to zero
-	time.sleep(0.25)
+	time.sleep(0.5)
 	i2c.write_byte_data(i2cAddr[x], 0x0D, 5) # set arduino minLapTime as configured, send in seconds, converts to ms on receive
-	time.sleep(0.25)
+	time.sleep(0.5)
 	i2c.write_byte_data(i2cAddr[x], 0x0E, 0) # set arduino race status to false
-	time.sleep(0.25)
-	i2c.write_byte_data(i2cAddr[x], 0x0F, vtxFreq[0]) # set arduino vtx frequency channel as configured, not implemented on arduino side yet
-	time.sleep(0.25)
+	time.sleep(0.5)
+	i2c.write_byte_data(i2cAddr[x], 0x0F, vtxNum[0]) # set arduino vtx frequency channel as configured, not implemented on arduino side yet
+	time.sleep(0.5)
 
 
 

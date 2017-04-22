@@ -10,7 +10,7 @@ db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
 try:
-	cursor.execute("TRUNCATE TABLE currentLaps")
+	cursor.execute("TRUNCATE TABLE `currentLaps`")
 	db.commit()
 except:
 	db.rollback()

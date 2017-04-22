@@ -19,7 +19,7 @@ cursor = db.cursor()
 i2cAddr = []
 vtxFreq = []
 try:
-	cursor.execute("SELECT * FROM nodes");
+	cursor.execute("SELECT * FROM `nodes`");
 	numNodes = int(cursor.rowcount)
 	print "numNodes: %d" % numNodes
 	for x in range(0, numNodes):
@@ -36,7 +36,7 @@ except:
 
 
 try:
-	cursor.execute("UPDATE setup SET raceStatus = 1")
+	cursor.execute("UPDATE `setup` SET `raceStatus` = 1")
 	db.commit()
 except:
 	db.rollback()
@@ -46,8 +46,9 @@ db.close()
 # Set clean race start on arduinos, reset laps and raceStatus set true
 for x in range(0, numNodes): # loops for polling each node
 	i2c.write_i2c_block_data(i2cAddr[x], 0x0A, [0,0,0]) # set arduino lap times to zero
-	time.sleep(0.25)
+	time.sleep(0.5)
 	i2c.write_byte_data(i2cAddr[x], 0x0B, 0) # set arduino lap counter to zero
-	time.sleep(0.25)
+	time.sleep(0.5)
 	i2c.write_byte_data(i2cAddr[x], 0x0E, 1) # set arduino race status to true
-	time.sleep(0.25)
+	time.sleep(0.5)
+

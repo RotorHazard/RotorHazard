@@ -2,7 +2,7 @@
 $conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); }
 
-$result = $conn->query("SELECT pilot, MAX(lap) FROM currentLaps GROUP BY pilot ORDER BY MAX(lap) DESC");
+$result = $conn->query("SELECT `pilot`, MAX(lap) FROM `currentLaps` GROUP BY `pilot` ORDER BY MAX(lap) DESC");
 ?>
 
 

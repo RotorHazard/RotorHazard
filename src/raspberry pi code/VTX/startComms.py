@@ -21,7 +21,7 @@ cursor = db.cursor()
 i2cAddr = []
 vtxFreq = []
 try:
-	cursor.execute("SELECT * FROM nodes");
+	cursor.execute("SELECT * FROM `nodes`");
 	numNodes = int(cursor.rowcount)
 	print "numNodes: %d" % numNodes
 	for x in range(0, numNodes):
@@ -44,7 +44,7 @@ lapcounter = [0,0,0,0,0,0] # sets a reference point for checking new laps read f
 # sets commsStatus true in the database
 commsStatus = 1 # variable that will be updated from database
 try:
-	cursor.execute("UPDATE setup SET commsStatus = 1")
+	cursor.execute("UPDATE `setup` SET `commsStatus` = 1")
 	db.commit()
 except:
 	db.rollback()
@@ -56,11 +56,11 @@ while commsStatus == 1:
 		for x in range(0, numNodes): # loops for polling each node
 			
 			i2cBlockData = i2c.read_i2c_block_data(i2cAddr[x], 0x90, 5) # Request: rssi, lap, min, sec, ms
-			time.sleep(0.25)
+			time.sleep(0.5)
 			
 			# Update rssi data in database
 			try:
-				cursor.execute("UPDATE nodes SET rssi = '%d' WHERE node = '%d'" % (i2cBlockData[0],x+1))
+				cursor.execute("UPDATE `nodes` SET `rssi` = %s WHERE `node` = %s",(i2cBlockData[0],x+1))
 				db.commit()
 			except:
 				db.rollback()
@@ -70,11 +70,8 @@ while commsStatus == 1:
 				lapcounter[x] = i2cBlockData[1] # set lapcounter to new lap
 				print "Adding lap to database."
 				# Insert the lap data into the database
-				sql = "INSERT INTO currentLaps(pilot, lap, min, sec, milliSec) \
-						VALUES ('%d', '%d', '%d', '%d', '%d' )" % \
-						(x+1, i2cBlockData[1], i2cBlockData[2], i2cBlockData[3], i2cBlockData[4])
 				try:
-					cursor.execute(sql)
+					cursor.execute("INSERT INTO `currentLaps` (`pilot`, `lap`, `min`, `sec`, `milliSec`) VALUES (%s, %s, %s, %s, %s)",(x+1, i2cBlockData[1], i2cBlockData[2], i2cBlockData[3], i2cBlockData[4]))
 					db.commit()
 				except:
 					db.rollback()
@@ -87,7 +84,7 @@ while commsStatus == 1:
 		
 	# read commsStatus and raceStatus
 	try:
-		cursor.execute("SELECT * FROM setup")
+		cursor.execute("SELECT * FROM `setup`")
 		results = cursor.fetchall() # Fetch all the rows in a list of lists.
 		for row in results:
 			commsStatus = row[0]
@@ -96,6 +93,6 @@ while commsStatus == 1:
 	except:
 		print "Error: unable to fetch data"
 	
-	time.sleep(0.25) # main data loop delay
+	time.sleep(0.5) # main data loop delay
 	
 db.close()

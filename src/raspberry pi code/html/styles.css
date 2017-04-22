@@ -3,32 +3,30 @@ body {
 	margin: 0;
 }
 
-.delta5-logo-image {
-	# height: 28px;
-	# width: 140px;
-}
-
 .delta5-header {
-	#background-color: #263238;
+	/*background-color: #263238;*/
 }
 
-.delta5-navigation .mdl-navigation__link {
-	display: inline-block;
-	height: 60px;
-	line-height: 68px;
-	background-color: transparent !important;
-	border-bottom: 4px solid transparent;
+div.delta5-navigation {
+	padding: 0 16px 0 16px;
+}
+a.delta5-navigation {
+	padding: 0 8px !important;
+}
+button.delta5-navigation {
+	height: 48px;
+	padding: 0 8px;
 }
 
-.delta5-navigation .mdl-navigation__link:hover {
-	border-bottom: 4px solid #8bc34a;
+h5 {
+    margin: 16px 0px 4px 16px;
 }
 
-.delta5-table tr{height:36px;}
-.delta5-table th{padding:3px 6px 3px 6px;line-height:24px;height:24px;}
-.delta5-table td:first-of-type,.delta5-table th:first-of-type{padding-left:6px;}
-.delta5-table td:last-of-type,.delta5-table th:last-of-type{padding-right:6px;}
-.delta5-table td{padding:3px 6px 3px 6px;line-height:24px;height:36px;}
+table.delta5-table {width: 140px;}
+.delta5-table thead tr{height: 36px;}
+.delta5-table th{height: 36px;padding: 3px 6px 3px 6px !important;font-size: 15px;}
+.delta5-table tbody tr{height: 30px;}
+.delta5-table td{height: 30px;padding: 3px 6px 3px 6px !important;}
 
 .delta5-footer {
 	background-color: #EEEEEE;

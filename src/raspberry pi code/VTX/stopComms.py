@@ -10,7 +10,7 @@ db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
 try:
-	cursor.execute("UPDATE setup SET commsStatus = 0")
+	cursor.execute("UPDATE `setup` SET `commsStatus` = 0")
 	db.commit()
 except:
 	db.rollback()
