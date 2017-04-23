@@ -1,12 +1,12 @@
 # 
-# This file will set the trigger threshold on the arduino with command 0x0C
-
+# Takes an i2c address and trigger value then writes to the node and 'nodes' table
 
 import smbus
 import time
 import MySQLdb
 import argparse
 import sys
+
 
 try:
 	parser = argparse.ArgumentParser()

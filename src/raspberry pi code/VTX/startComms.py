@@ -1,7 +1,5 @@
 #
-# Use to enable communications with the arduinos
-#
-# Starts the main comms loop
+# Starts the main comms loop with the nodes, reads rssi and lap info from nodes, writes lap info to DB on new lap
 
 import smbus
 import time
@@ -19,7 +17,6 @@ cursor = db.cursor()
 
 # Get nodes info
 i2cAddr = []
-vtxFreq = []
 try:
 	cursor.execute("SELECT * FROM `nodes`");
 	numNodes = int(cursor.rowcount)
@@ -28,11 +25,8 @@ try:
 		row = cursor.fetchone()
 		print row
 		i2cAddr.append(int(row[1]))
-		vtxFreq.append(int(row[2]))
 	print "i2cAddr: "
 	print i2cAddr
-	print "vtxFreq: "
-	print vtxFreq
 except:
 	print "Error: unable to fetch data"
 

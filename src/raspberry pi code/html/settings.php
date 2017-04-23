@@ -21,6 +21,11 @@
 	if (isset($_POST['startComms'])) {exec("sudo python /home/pi/VTX/startComms.py"); }
 	if (isset($_POST['stopComms'])) {exec("sudo python /home/pi/VTX/stopComms.py");	}
 	
+	if (isset($_GET['setMinLapTime'])) {
+		$minLapTime = htmlentities($_GET['minLapTime']);
+		exec("sudo python /home/pi/VTX/setMinLapTime.py ".$minLapTime);
+	}
+	
 	if (isset($_POST['rssiTrigger']) && isset($_POST['nodeid'])) {
 		$conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 		if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); }
@@ -78,10 +83,23 @@
 
 
 <div><h5>Setup</h5></div>
-<div class="mdl-grid" id="setupData">
+<div class="mdl-grid">
+<div class="mdl-cell mdl-cell--2-col" id="setupData">
 	<script type="text/javascript">
 	$(document).ready(function() { setInterval(function() { $('#setupData').load('buildSetupTable.php') }, 1000); } );
 	</script>
+</div>
+<div class="mdl-cell mdl-cell--2-col">
+<form method="get">
+<div class="mdl-textfield mdl-js-textfield">
+	<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" id="minLapTime" name="minLapTime">
+	<label class="mdl-textfield__label" for="minLapTime">Set minLapTime...</label>
+	<span class="mdl-textfield__error">Input is not a number!</span>
+</div>
+<br>
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="setMinLapTime">Set</button>
+</form>
+</div>
 </div>
 
 

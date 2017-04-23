@@ -1,11 +1,10 @@
 #
-# Use with the quads landed and to stop racing
-#
-# Sets raceStatus to false in the DB and on arduino so that they stop counting laps
+# Sets race status to false on each node so they stop registering new laps
 
 import smbus
 import time
 import MySQLdb
+
 
 # Start i2c bus
 i2c = smbus.SMBus(1)
@@ -17,7 +16,6 @@ cursor = db.cursor()
 
 # Get nodes info
 i2cAddr = []
-vtxFreq = []
 try:
 	cursor.execute("SELECT * FROM `nodes`");
 	numNodes = int(cursor.rowcount)
@@ -26,11 +24,8 @@ try:
 		row = cursor.fetchone()
 		print row
 		i2cAddr.append(int(row[1]))
-		vtxFreq.append(int(row[2]))
 	print "i2cAddr: "
 	print i2cAddr
-	print "vtxFreq: "
-	print vtxFreq
 except:
 	print "Error: unable to fetch data"
 

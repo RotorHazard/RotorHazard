@@ -1,11 +1,12 @@
 #
-# Use to clear and setup database then configure arduinos
+# Populates the 'vtx' database with starting values, configures number of nodes from passed argument value
 
 import smbus
 import time
 import MySQLdb
 import argparse
 import sys
+
 
 try:
 	parser = argparse.ArgumentParser()
@@ -16,8 +17,8 @@ except:
 	print e
 
 
-i2cAddr=[8,10,12,14,16,18]
-vtxNum=[17,25,27,30,21,19]
+i2cAddr=[8,10,12,14,16,18] # move this to a reference table in the database
+vtxNum=[17,25,27,30,21,19] # should use the existing vtx reference table in the database
 
 
 # Start i2c bus

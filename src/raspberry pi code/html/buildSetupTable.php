@@ -7,7 +7,7 @@ $setups = $conn->query("SELECT * FROM `setup`");
 while ($setup = $setups->fetch_assoc()) :
 ?>
 
-<div class="mdl-cell mdl-cell--2-col">
+
 <table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp">
 <thead>
 	<tr>
@@ -30,6 +30,6 @@ while ($setup = $setups->fetch_assoc()) :
 </tr>
 </tbody>
 </table>
-</div>
+
 
 <?php endwhile ?>

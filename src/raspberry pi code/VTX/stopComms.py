@@ -1,9 +1,8 @@
 #
-# Use to stop communications loop with the arduinos
-#
-# Maybe this isn't needed at all
+# Sets comms status to false to stop the main comms loop
 
 import MySQLdb
+
 
 # Open database connection
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )

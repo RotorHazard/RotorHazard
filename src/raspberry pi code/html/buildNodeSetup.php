@@ -23,13 +23,13 @@ while ($node = $nodes->fetch_assoc()) :
 <tr>
 	<td>
 	<form method="post">
-		<button <?php echo 'id="node'.$node['node'].'channelSet"'; ?> class="mdl-chip"><span class="mdl-chip__text">Channel</span></button>
-		<ul class="mdl-menu mdl-js-menu mdl-js-ripple-effect" <?php echo 'for="node'.$node['node'].'channelSet"'; ?> >
-			<li class="mdl-menu__item">E2 - 5860</li>
-			<li class="mdl-menu__item">E2 - 5860</li>
-			<li class="mdl-menu__item">E2 - 5860</li>
-			<li class="mdl-menu__item">E2 - 5860</li>
-		</ul>
+		<select <?php echo 'id="node'.$node['node'].'channel"'; ?>>
+			<option value="E2">Not</option>
+			<option value="E2">Working</option>
+			<option value="E2">E2 - 5860</option>
+			<option value="E2">E2 - 5860</option>
+		</select>
+		<button <?php echo 'id="node'.$node['node'].'channelSet"'; ?> class="mdl-chip"><span class="mdl-chip__text">Set</span></button>
 	</form>
 	</td>
 </tr>

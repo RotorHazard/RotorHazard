@@ -1,5 +1,5 @@
 #
-# Use to clear the entire database and create new
+# Clears the entire 'vtx' database and creates tables and columns new
 
 import MySQLdb
 
