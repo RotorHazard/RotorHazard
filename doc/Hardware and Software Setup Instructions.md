@@ -131,7 +131,7 @@ This will allow you to setup the MySQL database using the easy PHPMyAdmin GUI.
 
 2. Create a database called 'vtx'
 
-3. Create the tables and their columns as noted in [Database Structure.md](Database%20Structure.md)
+3. Tables and columns will be created through the web interface.
 
 ### Raspberry Pi Delta5 Code
 
