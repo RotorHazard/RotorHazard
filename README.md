@@ -16,5 +16,8 @@ https://youtu.be/UdelgqwngX4
 ### Hardware and Software Setup Instructions
 [/doc/Hardware and Software Setup Instructions.md](/doc/Hardware%20and%20Software%20Setup%20Instructions.md)
 
+### User Guide
+[/doc/User Guide.md](/doc/User%20Guide.md)
+
 ### To Do List
 [/doc/To Do List](/doc/To%20Do%20List.md)
