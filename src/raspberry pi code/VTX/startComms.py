@@ -71,7 +71,7 @@ while commsStatus == 1:
 				print "Adding lap to database."
 				# Insert the lap data into the database
 				try:
-					cursor.execute("INSERT INTO `currentLaps` (`pilot`, `lap`, `min`, `sec`, `milliSec`) VALUES (%s, %s, %s, %s, %s)",(x+1, i2cBlockData[1], i2cBlockData[2], i2cBlockData[3], i2cBlockData[4]))
+					cursor.execute("INSERT INTO `currentLaps` (`pilot`, `lap`, `min`, `sec`, `milliSec`) VALUES (%s, %s, %s, %s, %s)",(x+1, i2cBlockData[1], i2cBlockData[2], i2cBlockData[3], i2cBlockData[4]*10)) # ms was divided by 10 before sending
 					db.commit()
 				except:
 					db.rollback()

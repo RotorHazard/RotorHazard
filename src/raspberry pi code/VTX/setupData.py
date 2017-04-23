@@ -130,18 +130,7 @@ db.close() # disconnect from server
 
 # Configure and set clean race start on arduinos
 for x in range(0, args.numNodes):
-	i2c.write_i2c_block_data(i2cAddr[x], 0x0A, [0,0,0]) # set arduino lap times to zero
+	i2c.write_i2c_block_data(i2cAddr[x], 0x0A, [5,vtxNum[0]]) # Zeros all arduino values then sets minLapTime and vtx frequency
 	time.sleep(0.5)
-	i2c.write_byte_data(i2cAddr[x], 0x0B, 0) # set arduino lap counter to zero
-	time.sleep(0.5)
-	i2c.write_byte_data(i2cAddr[x], 0x0C, 0) # set arduino rssiTriggerThreshold to zero
-	time.sleep(0.5)
-	i2c.write_byte_data(i2cAddr[x], 0x0D, 5) # set arduino minLapTime as configured, send in seconds, converts to ms on receive
-	time.sleep(0.5)
-	i2c.write_byte_data(i2cAddr[x], 0x0E, 0) # set arduino race status to false
-	time.sleep(0.5)
-	i2c.write_byte_data(i2cAddr[x], 0x0F, vtxNum[0]) # set arduino vtx frequency channel as configured, not implemented on arduino side yet
-	time.sleep(0.5)
-
 
 

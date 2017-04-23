@@ -40,7 +40,7 @@
 #define i2cSlaveAddress 8
 // Node 1 set 17 (5685Mhz IMD5-1), Node 2 set 25 (5760Mhz IMD5-2), Node 3 set 27 (5800Mhz IMD5-3), 
 // Node 4 set 30 (5860Mhz IMD5-4), Node 5 set 21 (5905Mhz IMD5-5), Node 6 set 19 (5645Mhz IMD6-1) 
-int vtxFreq = 17;
+int vtxFreq = 17; // This should be set from the pi config
 
 
 const int slaveSelectPin = 10; // Setup data pins for rx5808 comms
@@ -64,6 +64,7 @@ bool raceStatus = false; // True when the race has been started from the raspber
 bool crossing = false; // True when the quad is going through the gate
 
 // Define data package for raspberry pi comms
+// Should all duplicate variables be just used in the comms table?
 struct {
 	byte volatile command;
 	byte volatile control; // rxFault:txFault:0:0:0:0:0:0
@@ -229,6 +230,7 @@ void setChannelModule(uint8_t channel) {
 }
 
 // In the future the 50pt (up to 200pt) averaging from rssiRead() should be moved here when moving averaging is in the main loop
+// This function should only exist for thriggering from a button on the arduino, the pi should send the trigger value normally
 void setRssiThreshold() {
 	Serial.println(" ");
 	Serial.println("Setting rssiTreshold.");
@@ -379,24 +381,37 @@ byte i2cHandleRx(byte command) {
 	// command or mismatch between data expected and received
 	
 	switch (command) {
-		case 0x0A:  // set commsTable minutes, seconds, and milliseconds from the rasp pi // this should be reused as the main race reset, set lap, min, sec, ms to zero, raceStatus to 0, lastLapTime to 0
-			if (Wire.available() == 3) { // good write from Master
-				commsTable.minutes = Wire.read();
-				commsTable.seconds = Wire.read();
-				commsTable.milliseconds = Wire.read();
+		case 0x0A: // main reset, set lap, min, sec, ms to zero, lastLapTime to 0, raceStatus to 0
+			if (Wire.available() == 2) { // good write from Master
+				commsTable.lap = 0;
 				lastLapTime = 0;
-				Serial.print("Command from RPi - commsTable.min/sec/ms reset.");
-				result = 3;
+				commsTable.minutes = 0;
+				commsTable.seconds = 0;
+				commsTable.milliseconds = 0;
+				commsTable.rssiTrig = 0;
+				minLapTime = Wire.read()*1000; // byte limit forces sending as whole seconds, convert back to ms
+				raceStatus = 0;
+				vtxFreq = Wire.read();
+				commsTable.channel = vtxFreq;
+				Serial.print("Command from RPi - Main reset.");
+				Serial.println(minLapTime);
+				Serial.println(vtxFreq);
+				result = 2;
 			}
 			else {
 				result = 0xFF;
 			}
 			break;
-		case 0x0B: // set commsTable lap from the rasp pi
+		case 0x0B: // race starting reset, set lap, min, sec, ms, lastLapTime to 0, raceStatus to 1
 			if (Wire.available() == 1) { // good write from Master
-				commsTable.lap = Wire.read();
-				Serial.print("Command from RPi - commsTable.lap set at: ");
-				Serial.println(commsTable.lap);
+				commsTable.lap = Wire.read(); // Reads one byte, rework function to not need to read anything
+				commsTable.lap = 0;
+				lastLapTime = 0; // Reset to zero to catch first gate fly through again
+				commsTable.minutes = 0;
+				commsTable.seconds = 0;
+				commsTable.milliseconds = 0;
+				raceStatus = 1;
+				Serial.print("Command from RPi - Race reset.");
 				result = 1;
 			}
 			else {
@@ -437,9 +452,11 @@ byte i2cHandleRx(byte command) {
 				result = 0xFF;
 			}
 			break;
-		case 0x0F: // set vtx frequency channel, doesn't actually change the address yet
+		case 0x0F: // set vtx frequency channel
 			if (Wire.available() == 1) { // good write from Master
 				vtxFreq = Wire.read();
+				commsTable.channel = vtxFreq;
+				setChannelModule(vtxFreq);
 				Serial.print("Command from RPi - vtxFreq set at: ");
 				Serial.println(vtxFreq);
 				result = 1;
@@ -506,7 +523,7 @@ void i2cTransmit() {
 			txTable[0] = i2cSlaveAddress;
 			numBytes = 1;
 			break;
-		case 0x81: // set and then send rssiTrig
+		case 0x81: // set and then send rssiTrig // the pi should just tell the arduino what the trigger is based on the current known rssi
 			setRssiThreshold();
 			commsTable.rssiTrig = rssiTriggerThreshold;
 			txTable[0] = commsTable.rssiTrig;

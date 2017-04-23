@@ -51,15 +51,6 @@ while ($node = $nodes->fetch_assoc()) :
 	<td>Trigger:</td>
 	<td><?php echo $node['rssiTrigger']; ?></td>
 </tr>
-<tr>
-	<td colspan="2">
-	<form method="post">
-	<button class="mdl-chip" <?php echo 'name="node'.$node['node'].'rssiTriggerDec"'; ?> ><span class="mdl-chip__text">-5</span></button>
-	<button class="mdl-chip" <?php echo 'name="node'.$node['node'].'rssiTriggerSet"'; ?> ><span class="mdl-chip__text">Set</span></button>
-	<button class="mdl-chip" <?php echo 'name="node'.$node['node'].'rssiTriggerInc"'; ?> ><span class="mdl-chip__text">+5</span></button>
-	</form>
-	</td>
-</tr>
 </tbody>
 </table>
 </div>

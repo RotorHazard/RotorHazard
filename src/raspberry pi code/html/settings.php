@@ -21,24 +21,20 @@
 	if (isset($_POST['startComms'])) {exec("sudo python /home/pi/VTX/startComms.py"); }
 	if (isset($_POST['stopComms'])) {exec("sudo python /home/pi/VTX/stopComms.py");	}
 	
-	if (isset($_POST['node1rssiTriggerSet'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 1 8 set"); }
-	if (isset($_POST['node1rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 1 8 dec"); }
-	if (isset($_POST['node1rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 1 8 inc"); }
-	if (isset($_POST['node2rssiTriggerSet'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 2 10 set"); }
-	if (isset($_POST['node2rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 2 10 dec"); }
-	if (isset($_POST['node2rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 2 10 inc"); }
-	if (isset($_POST['node3rssiTriggerSet'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 3 12 set"); }
-	if (isset($_POST['node3rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 3 12 dec"); }
-	if (isset($_POST['node3rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 3 12 inc"); }
-	if (isset($_POST['node4rssiTriggerSet'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 4 14 set"); }
-	if (isset($_POST['node4rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 4 14 dec"); }
-	if (isset($_POST['node4rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 4 14 inc"); }
-	if (isset($_POST['node5rssiTriggerSet'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 5 16 set"); }
-	if (isset($_POST['node5rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 5 16 dec"); }
-	if (isset($_POST['node5rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 5 16 inc"); }
-	if (isset($_POST['node6rssiTriggerSet'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 6 18 set"); }
-	if (isset($_POST['node6rssiTriggerDec'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 6 18 dec"); }
-	if (isset($_POST['node6rssiTriggerInc'])) {exec("sudo python /home/pi/VTX/rssiTrigger.py 6 18 inc"); }
+	if (isset($_POST['rssiTrigger']) && isset($_POST['nodeid'])) {
+		$conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
+		if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); }
+		$result = $conn->query("SELECT `i2cAddr`, `rssi`, `rssiTrigger` FROM `nodes` WHERE `node` = ".$_POST['nodeid']);
+		
+		while($node = $result->fetch_assoc()) {			
+			if ($_POST['rssiTrigger'] == 'Set') { $newrssi = $node['rssi']; }
+			if ($_POST['rssiTrigger'] == 'Zero') { $newrssi = 0; }
+			if ($_POST['rssiTrigger'] == 'Inc') { $newrssi = $node['rssiTrigger'] + 5; }
+			if ($_POST['rssiTrigger'] == 'Dec') { $newrssi = $node['rssiTrigger'] - 5; }
+			exec("sudo python /home/pi/VTX/rssiTrigger.py ".$node['i2cAddr']." ".$newrssi);
+		}
+		$conn->close();
+	}
 	?>
 </head>
 	
@@ -93,6 +89,11 @@
 <div class="mdl-grid" id="nodeData">
 	<script type="text/javascript">
 	$(document).ready(function() { setInterval(function() { $('#nodeData').load('buildNodeTables.php') }, 1000); } );
+	</script>
+</div>
+<div class="mdl-grid" id="nodeSetup">
+	<script type="text/javascript">
+	$(document).ready(function() { $('#nodeSetup').load('buildNodeSetup.php') } );
 	</script>
 </div>
 

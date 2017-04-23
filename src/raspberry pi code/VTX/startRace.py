@@ -35,6 +35,9 @@ except:
 	print "Error: unable to fetch data"
 
 
+# Should clear laps from current race here
+
+
 try:
 	cursor.execute("UPDATE `setup` SET `raceStatus` = 1")
 	db.commit()
@@ -45,10 +48,7 @@ db.close()
 
 # Set clean race start on arduinos, reset laps and raceStatus set true
 for x in range(0, numNodes): # loops for polling each node
-	i2c.write_i2c_block_data(i2cAddr[x], 0x0A, [0,0,0]) # set arduino lap times to zero
+	i2c.write_byte_data(i2cAddr[x], 0x0B, 0) # race reset, set lap, min, sec, ms, lastLapTime to 0, raceStatus to 1
 	time.sleep(0.5)
-	i2c.write_byte_data(i2cAddr[x], 0x0B, 0) # set arduino lap counter to zero
-	time.sleep(0.5)
-	i2c.write_byte_data(i2cAddr[x], 0x0E, 1) # set arduino race status to true
-	time.sleep(0.5)
+
 

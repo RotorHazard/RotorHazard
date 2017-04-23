@@ -68,7 +68,6 @@
 <div><h5>Setup Nodes</h5></div>
 <div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col">
 <form method="get">
-
 <div class="mdl-textfield mdl-js-textfield">
 	<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" id="numberOfNodes" name="numberOfNodes">
 	<label class="mdl-textfield__label" for="numberOfNodes">Number of nodes...</label>
@@ -76,7 +75,6 @@
 </div>
 <br>
 <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="setupData">Setup Data</button>
-
 </form>
 </div></div>
 

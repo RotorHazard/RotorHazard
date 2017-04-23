@@ -1,6 +1,6 @@
 # 
-# This file will set the trigger threshold on the arduino with command 0x81
-# It returns the data in an array with [rssiTrig]
+# This file will set the trigger threshold on the arduino with command 0x0C
+
 
 import smbus
 import time
@@ -10,9 +10,8 @@ import sys
 
 try:
 	parser = argparse.ArgumentParser()
-	parser.add_argument("node", help="Node number.", type=int)
 	parser.add_argument("address", help="i2c address.", type=int)
-	parser.add_argument("action", help="rssiTrigger action.", type=str) # set, inc, dec
+	parser.add_argument("rssiTrigger", help="rssi trigger value.", type=int) # rssi trigger value
 	args = parser.parse_args()
 except:
 	e = sys.exc_info()[0]
@@ -27,20 +26,13 @@ cursor = db.cursor()
 
 
 try:
-	# Set arduino nodes	
-	if args.action == 'set':
-		i2cBlockData = i2c.read_i2c_block_data(args.address, 0x81, 1) # arduino setRssiThreshold() and return
-		time.sleep(0.5)
-	elif  args.action == 'inc':
-		i2cBlockData = i2c.read_i2c_block_data(args.address, 0x82, 1) # arduino rssiTriggerThreshold plus 5 and return
-		time.sleep(0.5)
-	elif  args.action == 'dec':
-		i2cBlockData = i2c.read_i2c_block_data(args.address, 0x83, 1) # arduino rssiTriggerThreshold minus 5 and return
-		time.sleep(0.5)
-
+	# Set arduino nodes
+	i2c.write_byte_data(args.address, 0x0C, args.rssiTrigger) # arduino sets rssi threshold
+	time.sleep(0.5)
+	
 	# Insert rssiTriggerThreshold into the database
 	try:
-		cursor.execute("UPDATE `nodes` SET `rssiTrigger` = %s WHERE `node` = %s",(i2cBlockData[0],args.node))
+		cursor.execute("UPDATE `nodes` SET `rssiTrigger` = %s WHERE `i2cAddr` = %s",(args.rssiTrigger,args.address))
 		db.commit()
 	except:
 		db.rollback()
