@@ -2,20 +2,40 @@
 
 ### Table 'setup'
 
-| ID | commsStatus | raceStatus | minLapTime |
-| --- | --- | --- | --- |
+| commsStatus | raceStatus | minLapTime |
+| --- | --- | --- |
 
 ### Table 'nodes'
 
-| ID | channel | rssi | rssiTrig |
-| --- | --- | --- | --- |
-
-### Table 'currentrace'
-
-| pilot | lap | min | sec | millisec |
+| node | i2cAddr | vtxNum | rssi | rssiTrig |
 | --- | --- | --- | --- | --- |
+
+### Table 'currentLaps'
+
+| pilot | lap | min | sec | milliSec |
+| --- | --- | --- | --- | --- |
+
+### Table 'currentRace'
+
+| pilot | place |
+| --- | --- |
+
+### Table 'pilots'
+
+| pilot | callSign | firstName | lastName | rssiTrigger |
+| --- | --- | --- | --- | --- |
+
+### Table 'groups'
+
+| group | pilot |
+| --- | --- |
 
 ### Table 'savedraces'
 
-| group | race | pilot | lap | min | sec | millisec |
+| round | group | pilot | lap | min | sec | milliSec |
 | --- | --- | --- | --- | --- | --- | --- |
+
+### Table 'vtxReference'
+
+| vtxNum | vtxChan | vtxFreq |
+| --- | --- | --- |
