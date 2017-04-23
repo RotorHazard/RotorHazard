@@ -1,10 +1,10 @@
 ### Known Issues
-
+* Occasionally lap data returns 255:255:255, i2c comms curruption?
+* Occasionally a node will start returning lower rssi values than normal, over heating?
 
 ### To Do - Short Term
-* Website user interface improvements, clean up layout and buttons
 * Add on screen countdown timer.
-* Add Pilot profiles (Name, handle, etc.).
+* Add Pilot profiles (Name, handle, triggers, etc.).
 * Add Race Heats.
 * Add Save race results.
 * Add frequency selection on GUI.
