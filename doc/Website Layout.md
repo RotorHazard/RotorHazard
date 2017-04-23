@@ -1,7 +1,7 @@
 Main buttons along the top of the website:
 
-| Races | Pilots | Groups | Manage | Settings |
-| --- | --- | --- | --- | --- |
+| Races | Pilots | Groups | Manage | Settings | Database |
+| --- | --- | --- | --- | --- | --- |
 
 ### Races (Read Only)
 * Used to view all race data in the database
@@ -19,8 +19,12 @@ Main buttons along the top of the website:
 * Button to save current lap/timing data to the database
 
 ### Settings (Admin Password Needed)
-* Buton the full clear and setup the database new
 * Button to start and stop the main communications loop with the arduino nodes
+* Set and adjusted rssi triggers
+* Set and adjusted vtx channels
 * Pilot add/delete/edit
 * Groups/heats add/delete/edit
-* Set and adjusted rssi triggers
+
+### Database (Admin Password Needed)
+* Buton to setup the database configured to user set number of nodes
+* Buton to full clear and setup the database new
