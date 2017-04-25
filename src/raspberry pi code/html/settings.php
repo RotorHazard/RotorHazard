@@ -19,7 +19,10 @@
 		
 	<?php
 	if (isset($_POST['startComms'])) {exec("sudo python /home/pi/VTX/startComms.py"); }
-	if (isset($_POST['stopComms'])) {exec("sudo python /home/pi/VTX/stopComms.py");	}
+	if (isset($_POST['stopComms'])) {
+		exec("sudo python /home/pi/VTX/stopRace.py"); # Also be sure to stop the race if stopping comms
+		exec("sudo python /home/pi/VTX/stopComms.py");
+	}
 	
 	if (isset($_GET['setMinLapTime'])) {
 		$minLapTime = htmlentities($_GET['minLapTime']);
@@ -29,7 +32,7 @@
 	if (isset($_POST['rssiTrigger']) && isset($_POST['nodeid'])) {
 		$conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 		if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); }
-		$result = $conn->query("SELECT `i2cAddr`, `rssi`, `rssiTrigger` FROM `nodes` WHERE `node` = ".$_POST['nodeid']);
+		$result = $conn->query("SELECT `i2cAddr`, `rssi`, `rssiTrigger` FROM `nodes` WHERE `node` = ".$_POST['nodeid']) or die($conn->error());
 		
 		while($node = $result->fetch_assoc()) {			
 			if ($_POST['rssiTrigger'] == 'Set') { $newrssi = $node['rssi']; }

@@ -20,6 +20,10 @@
 	<?php
 	if (isset($_POST['startRace'])) {exec("sudo python /home/pi/VTX/startRace.py");	}
 	if (isset($_POST['stopRace'])) {exec("sudo python /home/pi/VTX/stopRace.py"); }
+	if (isset($_POST['saveLaps'])) {
+		exec("sudo python /home/pi/VTX/saveLaps.py");
+		exec("sudo python /home/pi/VTX/clearLaps.py"); # after saving the laps then clear currentLaps
+	}
 	if (isset($_POST['clearLaps']))	{exec("sudo python /home/pi/VTX/clearLaps.py");	}
 	?>
 </head>
@@ -59,16 +63,23 @@
 <form method="post">
 <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="startRace">Start Race</button>&nbsp;
 <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="stopRace">Stop Race</button>&nbsp;
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="saveLaps" disabled>Save Laps</button>&nbsp;
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="saveLaps">Save Laps</button>&nbsp;
 <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="clearLaps">Clear Laps</button>
 </form>
 </div></div>
 
 
-<div><h5>Race</h5></div>
-<div class="mdl-grid" id="raceData">
+<div id="raceStatus">
+<script type="text/javascript">
+$(document).ready(function() { setInterval(function() { $('#raceStatus').load('buildRaceStatus.php') }, 1000); } );
+</script>
+</div>
+
+
+<div><h5>Leaderboard</h5></div>
+<div class="mdl-grid" id="leaderboard">
 	<script type="text/javascript">
-	$(document).ready(function() { setInterval(function() { $('#raceData').load('buildRaceTable.php') }, 1000); } );
+	$(document).ready(function() { setInterval(function() { $('#leaderboard').load('buildLeaderboardTable.php') }, 2000); } );
 	</script>
 </div>
 

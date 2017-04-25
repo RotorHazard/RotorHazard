@@ -2,7 +2,7 @@
 $conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); }
 
-$setups = $conn->query("SELECT * FROM `setup`");
+$setups = $conn->query("SELECT * FROM `setup`") or die($conn->error());
 
 while ($setup = $setups->fetch_assoc()) :
 ?>

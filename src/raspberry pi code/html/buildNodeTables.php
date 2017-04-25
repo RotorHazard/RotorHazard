@@ -3,16 +3,16 @@ $conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); }
 
 
-$results = $conn->query("SELECT * FROM `vtxReference` WHERE 1");
+$results = $conn->query("SELECT * FROM `vtxReference` WHERE 1") or die($conn->error());
 $vtxReference = array();
 $index = 0;
 while ($row = $results->fetch_assoc()) {
 	$vtxReference[] = $row;
-	echo $row[$index]['vtxNum'];
+	echo $row[$index]['vtxNum']; # index might not be working, just call column names
 	$index++;
 }
 
-$nodes = $conn->query("SELECT * FROM `nodes` WHERE 1");
+$nodes = $conn->query("SELECT * FROM `nodes` WHERE 1") or die($conn->error());
 
 while ($node = $nodes->fetch_assoc()) :
 ?>

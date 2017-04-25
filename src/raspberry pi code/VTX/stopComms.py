@@ -11,7 +11,10 @@ cursor = db.cursor()
 try:
 	cursor.execute("UPDATE `setup` SET `commsStatus` = 0")
 	db.commit()
-except:
+except MySQLdb.Error as e:
+	print e
 	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 
 db.close()

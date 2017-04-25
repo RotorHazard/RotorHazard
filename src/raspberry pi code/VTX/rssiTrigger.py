@@ -34,8 +34,11 @@ try:
 	try:
 		cursor.execute("UPDATE `nodes` SET `rssiTrigger` = %s WHERE `i2cAddr` = %s",(args.rssiTrigger,args.address))
 		db.commit()
-	except:
+	except MySQLdb.Error as e:
+		print e
 		db.rollback()
+	except MySQLdb.Warning as e:
+		print e
 		
 except IOError as e:
 	print e

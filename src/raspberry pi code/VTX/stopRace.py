@@ -26,19 +26,24 @@ try:
 		i2cAddr.append(int(row[1]))
 	print "i2cAddr: "
 	print i2cAddr
-except:
-	print "Error: unable to fetch data"
+except MySQLdb.Error as e:
+	print e
+except MySQLdb.Warning as e:
+	print e
 
 
 try:
 	cursor.execute("UPDATE `setup` SET `raceStatus` = 0")
 	db.commit()
-except:
+except MySQLdb.Error as e:
+	print e
 	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 
 db.close()
 
-# raceStatus set false top stop logging laps
+# raceStatus set false to stop logging laps
 for x in range(0, numNodes): # loops for polling each node
 	i2c.write_byte_data(i2cAddr[x], 0x0E, 0) # set arduino race status to false
 	time.sleep(0.5)

@@ -49,10 +49,10 @@
 <div class="page-content">
 
 
-<div><h5>Laps</h5></div>
-<div class="mdl-grid" id="currentLaps">
+<div><h5>Races</h5></div>
+<div id="savedRaces">
 	<script type="text/javascript">
-	$(document).ready(function() { setInterval(function() { $('#currentLaps').load('buildLapTables.php') }, 1000); } );
+	$(document).ready(function() { $('#savedRaces').load('buildRacesTables.php') } );
 	</script>
 </div>
 

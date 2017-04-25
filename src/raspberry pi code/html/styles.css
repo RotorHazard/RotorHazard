@@ -22,6 +22,10 @@ h5 {
     margin: 16px 0px 4px 16px;
 }
 
+h6 {
+    margin: 16px 0px 4px 16px;
+}
+
 table.delta5-table {width: 140px;}
 .delta5-table thead tr{height: 36px;}
 .delta5-table th{height: 36px;padding: 3px 6px 3px 6px !important;font-size: 15px;}

@@ -32,49 +32,70 @@ cursor = db.cursor()
 try:
 	cursor.execute("DELETE FROM `setup` WHERE 1")
 	db.commit()
-except:
+except MySQLdb.Error as e:
+	print e
 	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 
 try:
 	cursor.execute("INSERT INTO `setup` (`commsStatus`, `raceStatus`, `minLapTime`) VALUES (0,0,5)")
 	db.commit()
-except:
+except MySQLdb.Error as e:
+	print e
 	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 
 # 'nodes' table -- empty then fill per config
 try:
 	cursor.execute("DELETE FROM `nodes` WHERE 1")
 	db.commit()
-except:
+except MySQLdb.Error as e:
+	print e
 	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 
 for x in range(0, args.numNodes): # adds back nodes ID based on number of nodes
 	try:
-		cursor.execute("INSERT INTO `nodes` (`node`, `i2cAddr`, `vtxNum`, `rssi`, `rssiTrigger`) VALUES (%s,%s,%s,0,0)",(x+1,i2cAddr[x],vtxNum[x]))
+		cursor.execute("INSERT INTO `nodes` (`node`, `i2cAddr`, `vtxNum`, `rssi`, `rssiTrigger`, `lapCount`) VALUES (%s,%s,%s,0,0,0)",(x+1,i2cAddr[x],vtxNum[x]))
 		db.commit()
-	except:
+	except MySQLdb.Error as e:
+		print e
 		db.rollback()
+	except MySQLdb.Warning as e:
+		print e
 
 # 'currentLaps' table -- empty
 try:
 	cursor.execute("DELETE FROM `currentLaps` WHERE 1")
 	db.commit()
-except:
+except MySQLdb.Error as e:
+	print e
 	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 		
 # 'currentRace' table -- empty
 try:
 	cursor.execute("DELETE FROM `currentRace` WHERE 1")
 	db.commit()
-except:
+except MySQLdb.Error as e:
+	print e
 	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 
 # 'vtxReference' table -- empty
 try:
 	cursor.execute("DELETE FROM `vtxReference` WHERE 1")
 	db.commit()
-except:
+except MySQLdb.Error as e:
+	print e
 	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 
 try:
 	sql = "INSERT INTO `vtxReference` (`vtxNum`, `vtxChan`, `vtxFreq`) VALUES (%s,%s,%s)"
@@ -122,8 +143,11 @@ try:
 	]
 	cursor.executemany(sql, params)
 	db.commit()
-except:
+except MySQLdb.Error as e:
+	print e
 	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 
 	
 db.close() # disconnect from server

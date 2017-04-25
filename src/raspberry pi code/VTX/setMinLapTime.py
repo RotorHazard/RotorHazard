@@ -36,8 +36,10 @@ try:
 		i2cAddr.append(int(row[1]))
 	print "i2cAddr: "
 	print i2cAddr
-except:
-	print "Error: unable to fetch data"
+except MySQLdb.Error as e:
+	print e
+except MySQLdb.Warning as e:
+	print e
 
 
 try:
@@ -50,8 +52,11 @@ try:
 	try:
 		cursor.execute("UPDATE `setup` SET `minLapTime` = %s",(args.minLapTime))
 		db.commit()
-	except:
+	except MySQLdb.Error as e:
+		print e
 		db.rollback()
+	except MySQLdb.Warning as e:
+		print e
 		
 except IOError as e:
 	print e

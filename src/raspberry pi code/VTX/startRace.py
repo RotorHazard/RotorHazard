@@ -26,18 +26,30 @@ try:
 		i2cAddr.append(int(row[1]))
 	print "i2cAddr: "
 	print i2cAddr
-except:
-	print "Error: unable to fetch data"
+except MySQLdb.Error as e:
+	print e
+except MySQLdb.Warning as e:
+	print e
 
+# Reset all lapCount to 0
+try:
+	cursor.execute("UPDATE `nodes` SET `lapCount` = 0")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 
-# Should clear laps from current race here
-
-
+# Set raceStatus to true for web display
 try:
 	cursor.execute("UPDATE `setup` SET `raceStatus` = 1")
 	db.commit()
-except:
+except MySQLdb.Error as e:
+	print e
 	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 
 db.close()
 
