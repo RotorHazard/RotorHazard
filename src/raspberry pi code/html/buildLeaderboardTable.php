@@ -39,7 +39,7 @@ while ($row = $results->fetch_assoc()) {
 } 
 
 # get the fastest lap time for each pilot
-$results = $conn->query("SELECT `pilot`, MAX(`min`*60000 + `sec`*1000 + `milliSec`) AS `fastLap` FROM `currentLaps` GROUP BY `pilot` ORDER BY `pilot` ASC") or die($conn->error());
+$results = $conn->query("SELECT `pilot`, MIN(`min`*60000 + `sec`*1000 + `milliSec`) AS `fastLap` FROM `currentLaps` GROUP BY `pilot` ORDER BY `pilot` ASC") or die($conn->error());
 $fastLap = array();
 $index = 0;
 while ($row = $results->fetch_assoc()) {
