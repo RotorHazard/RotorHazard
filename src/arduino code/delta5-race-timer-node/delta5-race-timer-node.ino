@@ -7,8 +7,6 @@
 //
 // Copyright (c) 2017 Scott G Chin
 //
-// I2C functions Mike Ochtman
-//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -40,7 +38,7 @@
 #define i2cSlaveAddress 8
 // Node 1 set 17 (5685Mhz IMD5-1), Node 2 set 25 (5760Mhz IMD5-2), Node 3 set 27 (5800Mhz IMD5-3), 
 // Node 4 set 30 (5860Mhz IMD5-4), Node 5 set 21 (5905Mhz IMD5-5), Node 6 set 19 (5645Mhz IMD6-1) 
-int vtxFreq = 17; // This should be set from the pi config
+int vtxFreq = 17; // This should be set from the pi config // rename vtxNum to match webinterface, move to commsTable?
 
 
 const int slaveSelectPin = 10; // Setup data pins for rx5808 comms
@@ -56,8 +54,8 @@ unsigned long calcLapTime = 0; // Calculated time for the last lap
 unsigned long rssiRisingTime = 0; // The time the rssi value is registered going above the threshold
 unsigned long rssiFallingTime = 0; // The time the rssi value is registered going below the threshold
 
-int rssi = 0; // Current read rssi value
-int rssiTriggerThreshold = 0; // rssi threshold for detecting a quad passing the gate
+int rssi = 0; // Current read rssi value // move to commsTable?
+int rssiTriggerThreshold = 0; // rssi threshold for detecting a quad passing the gate // move to commsTable?
 int rssiTriggerBandwidth = 10; // Hysteresis for rssiTriggerThreshold
 
 bool raceStatus = false; // True when the race has been started from the raspberry pi
@@ -68,7 +66,7 @@ bool crossing = false; // True when the quad is going through the gate
 struct {
 	byte volatile command;
 	byte volatile control; // rxFault:txFault:0:0:0:0:0:0
-	byte volatile channel;
+	byte volatile channel; // rename vtxNum to match web interface
 	byte volatile rssi;
 	byte volatile rssiTrig;
 	byte volatile lap;
@@ -79,6 +77,7 @@ struct {
 
 byte volatile txTable[32]; // prepare data for sending over I2C
 bool volatile dataReady = false; // flag to trigger a Serial printout after an I2C event
+
 // use volatile for variables that will be used in interrupt service routines.
 // "Volatile" instructs the compiler to get a fresh copy of the data rather than try to
 // optimise temporary registers before using, as interrupts can change the value.
@@ -127,7 +126,7 @@ void SERIAL_ENABLE_HIGH() {
 }
 
 void setup() {
-	Serial.begin(9600); // For the serial monitor
+	Serial.begin(115200); // start serial for output
 	
 	pinMode(buttonPin, INPUT); // Define digital button for setting rssi trigger
 	digitalWrite(buttonPin, HIGH);
@@ -141,8 +140,8 @@ void setup() {
 	Serial.println("Ready");
 	
 	Wire.begin(i2cSlaveAddress); // I2C slave address setup
-	Wire.onReceive(i2cReceive); // Register our handler function with the Wire library
-	Wire.onRequest(i2cTransmit); // Register data return handler
+	Wire.onReceive(i2cReceive); // Trigger 'i2cReceive' function on incoming data
+	Wire.onRequest(i2cTransmit); // Trigger 'i2cTransmit' function for outgoing data
 	
 	// Initialize commsTable
 	commsTable.channel = vtxFreq;
@@ -152,7 +151,8 @@ void setup() {
 	commsTable.minutes = 0;
 	commsTable.seconds = 0;
 	commsTable.milliseconds = 0;
-	printCommsTable();
+	
+	printCommsTable(); // this isnt needed
 		
 	setChannelModule(vtxFreq); // Set to channel defined by node setup
 }
@@ -340,70 +340,73 @@ void loop() {
 		setRssiThreshold();
 	}
 	
-	if (dataReady) { // dataReady set True in i2cReceive
+	printCommsTable(); // Testing only
+	printTxTable();	// Testing only
+	
+	if (dataReady) { // Set True in i2cReceive, check to print current commsTable
 		printCommsTable();
+		//printTxTable(); // Testing only
 		dataReady = false;
 	}
-
+	
+	
 	if (commsTable.control > 0) { // 
+		printTxTable();
 		commsTable.control = 0;
 	}
 }
 
 
-// This function is triggered on incoming i2c data
-void i2cReceive(int byteCount) {
-	// if byteCount is zero, the master only checked for presence
-	// of the slave device, triggering this interrupt. No response necessary
+// Function called by twi interrupt service when master sends information to the slave
+// or when master sets up a specific read request
+void i2cReceive(int byteCount) { // Number of bytes in rx buffer
+	// If byteCount is zero, the master only checked for presence of the slave device
+	// triggering this interrupt, no response necessary
 	if (byteCount == 0) return;
 	
-	byte command = Wire.read();
+	byte command = Wire.read(); // The first byte sent is a command byte
 	commsTable.command = command;
-	if (command < 0x80) { // commands in range 0x000-0x7F are writes TO this slave
+	
+	if (command < 0x80) { // Commands in range 0x00-0x7F are writes TO this device
 		i2cHandleRx(command);
 	} 
-	else { // commands in range 0x80-0xFF are reads, requesting data FROM this device
+	else { // Commands in range 0x80-0xFF are requests FROM this device
 		i2cHandleTx(command);
 	}
-	dataReady = true;
+	dataReady = true; // Flag to the main loop to print the commsTable
 }
 
-// i2cHandleRx:
-// Parameters: byte, the first byte sent by the I2C master.
-// returns: byte, number of bytes read, or 0xFF if error
-// If the MSB of 'command' is 0, then master is sending only.
-// Handle the data reception in this function.
-byte i2cHandleRx(byte command) {
-	// If you are here, the I2C Master has sent data
-	// using one of the SMBus write commands.
-	byte result = 0;
-	// returns the number of bytes read, or FF if unrecognised
-	// command or mismatch between data expected and received
+// Function called by i2cReceive for writes TO this device, the I2C Master has sent data
+// using one of the SMBus write commands, if the MSB of 'command' is 0, master is sending only
+// Returns the number of bytes read, or FF if unrecognised command or mismatch between
+// data expected and received
+byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the command
+	byte result = 0; // Initialize result variable
 	
 	switch (command) {
-		case 0x0A: // main reset, set lap, min, sec, ms to zero, lastLapTime to 0, raceStatus to 0
-			if (Wire.available() == 2) { // good write from Master
+		case 0x0A: // Main reset, set lap, min, sec, ms to zero, lastLapTime to 0, raceStatus to 0, receive minLapTime and vtx frequency
+			if (Wire.available() == 2) { // Confirm expected number of bytes
 				commsTable.lap = 0;
 				lastLapTime = 0;
 				commsTable.minutes = 0;
 				commsTable.seconds = 0;
 				commsTable.milliseconds = 0;
 				commsTable.rssiTrig = 0;
-				minLapTime = Wire.read()*1000; // byte limit forces sending as whole seconds, convert back to ms
+				minLapTime = Wire.read()*1000; // Byte limit forces sending as whole seconds, convert back to ms
 				raceStatus = 0;
 				vtxFreq = Wire.read();
 				commsTable.channel = vtxFreq;
-				Serial.print("Command from RPi - Main reset.");
-				Serial.println(minLapTime);
-				Serial.println(vtxFreq);
+				//Serial.print("Command from RPi - Main reset."); // No serial prints in Interrupt Service Routine
+				//Serial.println(minLapTime);
+				//Serial.println(vtxFreq);
 				result = 2;
 			}
 			else {
 				result = 0xFF;
 			}
 			break;
-		case 0x0B: // race starting reset, set lap, min, sec, ms, lastLapTime to 0, raceStatus to 1
-			if (Wire.available() == 1) { // good write from Master
+		case 0x0B: // Race starting reset, set lap, min, sec, ms, lastLapTime to 0, raceStatus to 1, receives lap number (0)
+			if (Wire.available() == 1) { // Confirm expected number of bytes
 				commsTable.lap = Wire.read(); // Reads one byte, rework function to not need to read anything
 				commsTable.lap = 0;
 				lastLapTime = 0; // Reset to zero to catch first gate fly through again
@@ -411,19 +414,19 @@ byte i2cHandleRx(byte command) {
 				commsTable.seconds = 0;
 				commsTable.milliseconds = 0;
 				raceStatus = 1;
-				Serial.print("Command from RPi - Race reset.");
+				//Serial.print("Command from RPi - Race reset.");  // No serial prints in Interrupt Service Routine
 				result = 1;
 			}
 			else {
 				result = 0xFF;
 			}
 			break;
-		case 0x0C: // set rssiTriggerThreshold from the rasp pi
-			if (Wire.available() == 1) { // good write from Master
+		case 0x0C: // Set rssiTriggerThreshold from the rasp pi
+			if (Wire.available() == 1) { // Confirm expected number of bytes
 				rssiTriggerThreshold = Wire.read();
 				commsTable.rssiTrig = rssiTriggerThreshold;
-				Serial.print("Command from RPi - rssiTriggerThreshold set at: ");
-				Serial.println(rssiTriggerThreshold);
+				//Serial.print("Command from RPi - rssiTriggerThreshold set at: "); // No serial prints in Interrupt Service Routine
+				//Serial.println(rssiTriggerThreshold);
 				result = 1;
 			}
 			else {
@@ -431,117 +434,108 @@ byte i2cHandleRx(byte command) {
 			}
 			break;
 		case 0x0D: // set minLapTime
-			if (Wire.available() == 1) { // good write from Master
-				minLapTime = Wire.read()*1000; // byte limit forces sending as whole seconds, convert back to ms
-				Serial.print("Command from RPi - minLapTime set at: ");
-				Serial.println(minLapTime);
+			if (Wire.available() == 1) { // Confirm expected number of bytes
+				minLapTime = Wire.read()*1000; // Byte limit forces sending as whole seconds, convert back to ms
+				//Serial.print("Command from RPi - minLapTime set at: "); // No serial prints in Interrupt Service Routine
+				//Serial.println(minLapTime);
 				result = 1;
 			}
 			else {
 				result = 0xFF;
 			}
 			break;
-		case 0x0E: // set raceStatus from the rasp pi
-			if (Wire.available() == 1) { // good write from Master
+		case 0x0E: // Set raceStatus from the rasp pi
+			if (Wire.available() == 1) { // Confirm expected number of bytes
 				raceStatus = Wire.read();
-				Serial.print("Command from RPi - raceStatus set at: ");
-				Serial.println(raceStatus);
+				//Serial.print("Command from RPi - raceStatus set at: "); // No serial prints in Interrupt Service Routine
+				//Serial.println(raceStatus);
 				result = 1;
 			}
 			else {
 				result = 0xFF;
 			}
 			break;
-		case 0x0F: // set vtx frequency channel
-			if (Wire.available() == 1) { // good write from Master
+		case 0x0F: // Set vtx frequency channel
+			if (Wire.available() == 1) { // Confirm expected number of bytes
 				vtxFreq = Wire.read();
 				commsTable.channel = vtxFreq;
-				setChannelModule(vtxFreq);
-				Serial.print("Command from RPi - vtxFreq set at: ");
-				Serial.println(vtxFreq);
+				setChannelModule(vtxFreq); // Shouldn't do this in Interrupt Service Routine
+				//Serial.print("Command from RPi - vtxFreq set at: "); // No serial prints in Interrupt Service Routine
+				//Serial.println(vtxFreq);
 				result = 1;
 			}
 			else {
 				result = 0xFF;
 			}
 			break;
-		default:
+		default: // If no case matches return FF for fault
 			result = 0xFF;
 	}
 	
-	if (result == 0xFF) commsTable.control |= rxFault;
-		return result;
+	if (result == 0xFF) {
+		commsTable.control |= rxFault; // Set control to rxFault if FF result
+		
+		// Fix option for i2c failure, try restarting wire
+		//Wire.begin(i2cSlaveAddress); // Restart i2c
+		//Wire.onReceive(i2cReceive); // Trigger 'i2cReceive' function on incoming data
+		//Wire.onRequest(i2cTransmit); // Trigger 'i2cTransmit' function for outgoing data
+		
+		// Fix option for i2c failure, try reading extra bytes
+		int garbage = 1;
+		while(Wire.available()) garbage = Wire.read();
+	}
+	return result;
 }
 
-
-// i2cHandleTx:
-// Parameters: byte, the first byte sent by master
-// Returns: number of bytes received, or 0xFF if error
+// Function called by i2cReceive for reads FROM this device, the I2C Master requests data
+// Returns the number of bytes received, or 0xFF if error
 // Used to handle SMBus process calls
-byte i2cHandleTx(byte command) {
-	// If you are here, the I2C Master has requested information
-	
-	// If there is anything we need to do before the interrupt
-	// for the read takes place, this is where to do it.
-	// Examples are handling process calls. Process calls do not work
-	// correctly in SMBus implementation of python on linux,
-	// but it may work on better implementations.
-	
-	// signal to i2cTransmit() that a pending command is ready
+byte i2cHandleTx(byte command) { // The first byte sent by the I2C master is the command
+	// signal to i2cTransmit function that a pending command is ready
 	commsTable.control |= txRequest;
 	return 0;
 }
 
-
-// i2cTransmit:
-// Parameters: none
-// Returns: none
-// Next function is called by twi interrupt service when twi detects
-// that the Master wants to get data back from the Slave.
-// Refer to Interface Specification for details of what data must be sent.
+// Function called by twi interrupt service when the Master wants to get data from the Slave
+// No parameters and no returns
 // A transmit buffer (txTable) is populated with the data before sending.
-
-// This function is triggered on when there is outgoing data pending
 void i2cTransmit() {
-	byte numBytes = 0;
-	int t = 0; // temporary variable used in switch occasionally below
+	byte numBytes = 0; // Initialize numBytes variable
+	int t = 0; // Temporary variable used in switch occasionally below
 	
-	// check whether this request has a pending command.
-	// if not, it was a read_byte() instruction so we should
-	// return only the slave address. That is command 0.
+	// Check whether this request has a pending command, if not, it was a read_byte()
+	// instruction so we should return only the slave address, that is command 0
 	if ((commsTable.control & txRequest) == 0) {
-		// this request did not come with a command, it is read_byte()
-		commsTable.command = 0; // clear previous command
+		// This request did not come with a command, it is read_byte()
+		commsTable.command = 0; // Clear previous command
 	}
-	// clear the rxRequest bit; reset it for the next request
+	// Clear the rxRequest bit, resetting it for the next request
 	commsTable.control &= ~txRequest;
 	
-	// If an invalid command is sent, we write nothing back. Master must
-	// react to the crickets.
 	switch (commsTable.command) {
-		case 0x00: // send i2cSlaveAddress.
+		case 0x00: // Send i2cSlaveAddress.
 			txTable[0] = i2cSlaveAddress;
 			numBytes = 1;
 			break;
-		case 0x81: // set and then send rssiTrig // the pi should just tell the arduino what the trigger is based on the current known rssi
-			setRssiThreshold();
+		case 0x81: // Set and then send rssiTrig // the pi should just tell the arduino what the trigger is based on the current known rssi
+			setRssiThreshold(); // shouldn't do this in Interrupt Service Routine
 			commsTable.rssiTrig = rssiTriggerThreshold;
 			txTable[0] = commsTable.rssiTrig;
 			numBytes = 1;
 			break;
-		case 0x82:  // increase rssiTriggerThreshold by 5 and send
+		case 0x82:  // Increase rssiTriggerThreshold by 5 and send
 			rssiTriggerThreshold = rssiTriggerThreshold + 5;
 			commsTable.rssiTrig = rssiTriggerThreshold;
 			txTable[0] = commsTable.rssiTrig;
 			numBytes = 1;
 			break;
-		case 0x83:  // decrease rssiTriggerThreshold by 5 and send
+		case 0x83:  // Decrease rssiTriggerThreshold by 5 and send
 			rssiTriggerThreshold = rssiTriggerThreshold - 5;
 			commsTable.rssiTrig = rssiTriggerThreshold;
 			txTable[0] = commsTable.rssiTrig;
 			numBytes = 1;
 			break;
-		case 0x90: // main comms loop request, send rssi, lap number, and lap time as an array
+		case 0x90: // Main comms loop request, send rssi, lap number, and lap time as an array
 			commsTable.rssi = rssi;
 			txTable[0] = commsTable.rssi;
 			txTable[1] = commsTable.lap;
@@ -550,30 +544,30 @@ void i2cTransmit() {
 			txTable[4] = commsTable.milliseconds;
 			numBytes = 5;
 			break;
-		case 0x91: // send minutes channel // this is not needed, remove
+		case 0x91: // Send minutes channel // This is not needed, remove
 			txTable[0] = commsTable.minutes;
 			numBytes = 1;
 			break;
-		case 0x92: // send seconds channel // this is not needed, remove
+		case 0x92: // Send seconds channel // This is not needed, remove
 			txTable[0] = commsTable.seconds;
 			numBytes = 1;
 			break;
-		case 0x93: // send milliseconds channel // this is not needed, remove
+		case 0x93: // Send milliseconds channel // This is not needed, remove
 			txTable[0] = commsTable.milliseconds;
 			numBytes = 1;
 			break;	
 		default:
-			// If an invalid command is sent, we write nothing back. Master must
-			// react to the sound of crickets.
+			// If an invalid command is sent, write nothing back, master must react to
+			// the sound of crickets
 			commsTable.control |= txFault;
 	}
-	if (numBytes > 0) {
+	if (numBytes > 0) { // If there is pending data, send it
 		Wire.write((byte *)&txTable, numBytes);
 	}
 }
 
-
-// Prints to arduino serial console for debugging
+// Prints to commsTable to arduino serial console
+// Are all these builder lines needed?
 void printCommsTable() {
 	String builder = "";
 	builder = "commsTable contents:";
@@ -608,14 +602,14 @@ void printCommsTable() {
 	Serial.println();
 }
 
-// Not currently called anywhere
+// Prints to transmit buffer to arduino serial console
 void printTxTable() {
-	Serial.println("Transmit Table");
+	Serial.println("Transmit Table:");
 	for (byte i = 0; i < 32; i++) {
-		Serial.print("  ");
-		Serial.print(i);
-		Serial.print(": ");
-		Serial.println(txTable[i]);
+		Serial.print(" ");
+		//Serial.print(i); // Minimize by only showing data
+		//Serial.print(":");
+		Serial.print(txTable[i]);
 	}
 	Serial.println();
 }
