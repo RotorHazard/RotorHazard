@@ -1,32 +1,34 @@
 #
-# Starts the main comms loop with the nodes, reads rssi and lap info from nodes, writes lap info to DB on new lap
+# Starts the main comms loop with the nodes, reads rssi and lap info from nodes, writes lap
+# info to DB on new lap
 
 import smbus
 import time
 import MySQLdb
 
-
 # Start i2c bus
 i2c = smbus.SMBus(1)
-
 
 # Open database connection
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
-
-# Get nodes info
-i2cAddr = []
-lapCount = []
+# Get nodes info from database
+i2cAddr = [] # I2C slave address
+vtxFreq = [] # VTX frequency in mhz ## might not be needed
+rssi = [] # Current rssi value
+rssiTrigger = [] # Current rssi threshold trigger value ## might not be needed
+lapCount = [] # Current lap count
 try:
-	cursor.execute("SELECT * FROM `nodes`");
+	cursor.execute("SELECT * FROM `nodes`")
 	numNodes = int(cursor.rowcount)
 	print "numNodes: %d" % numNodes
 	for x in range(0, numNodes):
 		row = cursor.fetchone()
 		print row
 		i2cAddr.append(int(row[1]))
-		lapCount.append(int(row[5]))
+		rssi.append(int(row[3]))
+		lapCount.append(int(row[5])) # Why is this getting laps instead of resetting to zero?
 	print "i2cAddr: "
 	print i2cAddr
 except MySQLdb.Error as e:
@@ -34,9 +36,8 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-
-# sets commsStatus true in the database
-commsStatus = 1 # variable that will be updated from database
+# Sets commsStatus true in the database
+commsStatus = 1 # Initialize at 1 to start while loop
 try:
 	cursor.execute("UPDATE `setup` SET `commsStatus` = 1")
 	db.commit()
@@ -48,8 +49,10 @@ except MySQLdb.Warning as e:
 
 
 while commsStatus == 1:
+	print " "
+	print "Starting while loop."
 
-	# read commsStatus and raceStatus
+	# read commsStatus and raceStatus from database
 	try:
 		cursor.execute("SELECT * FROM `setup`")
 		results = cursor.fetchall() # Fetch all the rows in a list of lists.
@@ -62,45 +65,59 @@ while commsStatus == 1:
 	except MySQLdb.Warning as e:
 		print e
 	
-	# read lapCounts
+	# Read lap counts
 	try:
-		cursor.execute("SELECT `lapCount` FROM `nodes`");
+		cursor.execute("SELECT `lapCount` FROM `nodes`")
 		numNodes = int(cursor.rowcount)
 		for x in range(0, numNodes):
 			row = cursor.fetchone()
-			print row
 			lapCount[x] = int(row[0])
 	except MySQLdb.Error as e:
 		print e
 	except MySQLdb.Warning as e:
 		print e
 	
-	
-	try:
-		for x in range(0, numNodes): # loops for polling each node
-			
-			i2cBlockData = i2c.read_i2c_block_data(i2cAddr[x], 0x90, 5) # Request: rssi, lap, min, sec, ms
-			time.sleep(0.5)
+	# Loop for polling each node
+	for x in range(0, numNodes):
+		print "i2c address: %d" % (i2cAddr[x])
 
-			print "for loop 'x': %d, i2c address: %d" % (x, i2cAddr[x])
-			print i2cBlockData
-			
-			# Update rssi data in database
+		# Request: rssi
+		try:
+			i2cData = i2c.read_byte_data(i2cAddr[x], 0x90)
+			time.sleep(0.050) # Small i2c data read delay
+			rssi[x] = i2cData
+			print "  rssi: %d" % (rssi[x])
+		except IOError as e:
+			print e
+			time.sleep(0.050) # Delay for arduino to recover from error
+		
+		raceStatus = 1 # debugging
+
+		if raceStatus == 1:
+			# Request: get lap count and time in ms
 			try:
-				cursor.execute("UPDATE `nodes` SET `rssi` = %s WHERE `node` = %s",(i2cBlockData[0],x+1))
-				db.commit()
-			except MySQLdb.Error as e:
-				print e
-				db.rollback()
-			except MySQLdb.Warning as e:
-				print e
-			
-			if raceStatus == 1:
-				# lap data
-				if i2cBlockData[1] != lapCount[x]: # Checks if the lap number is new
-					# set lapCount to new lap
+				i2cData = i2c.read_i2c_block_data(i2cAddr[x], 0x91, 5)
+				time.sleep(0.050) # Small i2c data read delay
+				#lapCount[x] = i2cData[0]
+				print "  lapCount: %d" % (i2cData[0])
+
+				milliSeconds = 0 # Rebuild ms from four bytes
+				partA = i2cData[1]
+				partB = i2cData[2]
+				partC = i2cData[3]
+				partD = i2cData[4]
+				milliSeconds = partA
+				milliSeconds = (milliSeconds << 8) | partB
+				milliSeconds = (milliSeconds << 8) | partC
+				milliSeconds = (milliSeconds << 8) | partD
+				print "  milliSeconds: %d" % (milliSeconds)
+
+				if i2cData[0] != lapCount[x]: # Checks if the lap number is new
+					# Set lapCount to new lap number and update nodes table
+					lapCount[x] = i2cData[0]
+					print "Updating node lapCount in database."
 					try:
-						cursor.execute("UPDATE `nodes` SET `lapCount` = %s WHERE `node` = %s",(i2cBlockData[1],x+1))
+						cursor.execute("UPDATE `nodes` SET `lapCount` = %s WHERE `node` = %s",(i2cData[1],x+1))
 						db.commit()
 					except MySQLdb.Error as e:
 						print e
@@ -108,22 +125,38 @@ while commsStatus == 1:
 					except MySQLdb.Warning as e:
 						print e					
 					
-					print "Adding lap to database."
-					
-					# Insert the lap data into the database
+					# Calculate lap min/sec/ms and insert into the database
+					m = int(milliSeconds / 60000)
+					over = milliSeconds % 60000
+					print "  minutes: %d" % (m)
+					s = int(over / 1000)
+					over = over % 1000
+					print "  seconds: %d" % (s)
+					ms = int(over)
+					print "  milliseconds: %d" % (ms)
+
+					print "Adding lap to currentLaps in database."
 					try:
-						cursor.execute("INSERT INTO `currentLaps` (`pilot`, `lap`, `min`, `sec`, `milliSec`) VALUES (%s, %s, %s, %s, %s)",(x+1, i2cBlockData[1], i2cBlockData[2], i2cBlockData[3], i2cBlockData[4]*10)) # ms was divided by 10 before sending
+						cursor.execute("INSERT INTO `currentLaps` (`pilot`, `lap`, `min`, `sec`, `milliSec`) VALUES (%s, %s, %s, %s, %s)",(x+1, lapCount[x], m, s, ms))
 						db.commit()
 					except MySQLdb.Error as e:
 						print e
 						db.rollback()
 					except MySQLdb.Warning as e:
 						print e
-			
-	except IOError as e:
-		print e
-		
-
-	time.sleep(0.5) # main data loop delay
+			except IOError as e:
+				print e
+				time.sleep(0.050) #Delay for arduino to recover from error
+	# Update rssi data in database from rssi[x] array
+	#try:
+	#	cursor.execute("UPDATE `nodes` SET `rssi` = %s WHERE `node` = %s",(i2cBlockData[0],x+1))
+	#	db.commit()
+	#except MySQLdb.Error as e:
+	#	print e
+	#	db.rollback()
+	#except MySQLdb.Warning as e:
+	#	print e
 	
+	time.sleep(0.250) # main while loop delay
+
 db.close()

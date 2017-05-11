@@ -256,10 +256,8 @@ void lapCompleted() {
 	float h, m, s, ms;
 	unsigned long over;
 		
-	h = int(calcLapTime / 3600000); // Convert millis() time to h, m, s, ms
-	over = calcLapTime % 3600000;
-	m = int(over / 60000);
-	over = over % 60000;
+	m = int(calcLapTime / 60000); // Convert millis() time to m, s, ms
+	over = calcLapTime % 60000;
 	s = int(over / 1000);
 	over = over % 1000;
 	ms = int(over/10); // Divide by 10 so that the ms never exceeds 255, i2c byte send limit
