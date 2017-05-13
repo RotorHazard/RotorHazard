@@ -9,24 +9,36 @@ while ($setup = $setups->fetch_assoc()) :
 
 
 <table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp">
-<thead>
-	<tr>
-		<th>Setup</th>
-		<th>Data</th>
-	</tr>
-</thead>
 <tbody>
 <tr>
-	<td>Node Comms:</td>
-	<td><?php echo $setup['commsStatus']; ?></td>
+	<td>System:</td>
+	<td>
+		<?php
+		if ($setup['systemStatus'] == 0) {
+			echo "Stopped";
+		} else {
+			echo "Started";
+		}
+		?>
+	</td>
 </tr>
 <tr>
-	<td>Racing:</td>
-	<td><?php echo $setup['raceStatus']; ?></td>
+	<td>Race:</td>
+	<td>
+		<?php
+		if ($setup['raceStatus'] == 0) {
+			echo "Stopped";
+		} else {
+			echo "Started";
+		}
+		?>
+	</td>
 </tr>
 <tr>
 	<td>Min Lap Time:</td>
-	<td><?php echo $setup['minLapTime']; ?></td>
+	<td>
+		<?php echo $setup['minLapTime']; ?>
+	</td>
 </tr>
 </tbody>
 </table>

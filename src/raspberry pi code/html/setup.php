@@ -18,9 +18,9 @@
 	<script type="text/javascript" src="/scripts/jquery-3.1.1.js"></script>
 		
 	<?php
-	if (isset($_GET['setupData'])) {
+	if (isset($_GET['initializeSystem'])) {
 		$numberOfNodes = htmlentities($_GET['numberOfNodes']);
-		exec("sudo python /home/pi/VTX/setupData.py ".$numberOfNodes);
+		exec("sudo python /home/pi/VTX/initializeSystem.py ".$numberOfNodes);
 	}
 	if (isset($_POST['createDatabase'])) {exec("sudo python /home/pi/VTX/createDatabase.py"); }
 	?>
@@ -43,7 +43,7 @@
 	<div class="mdl-layout-spacer"></div>
 	
 	<nav class="mdl-navigation">
-		<a class="delta5-navigation mdl-navigation__link" href="database.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">Database</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="setup.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">Setup</button></a>
 	</nav>
 	
 	<span class="mdl-layout-title">
@@ -57,15 +57,7 @@
 <div class="page-content">
 
 
-<div><h5>Setup Data</h5></div>
-<div class="mdl-grid" id="currentsetupdata">
-	<script type="text/javascript">
-	$(document).ready(function() { setInterval(function() { $('#currentsetupdata').load('buildSetupTable.php') }, 1000); } );
-	</script>
-</div>
-
-
-<div><h5>Setup Nodes</h5></div>
+<div><h5>Initialize System</h5></div>
 <div class="mdl-grid">
 <div class="mdl-cell mdl-cell--2-col">
 <form method="get">
@@ -75,7 +67,7 @@
 	<span class="mdl-textfield__error">Input is not a number!</span>
 </div>
 <br>
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="setupData">Setup Data</button>
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="initializeSystem">Initialize System</button>
 </form>
 </div>
 </div>
@@ -99,4 +91,3 @@
 </body>
 
 </html>
-

@@ -23,7 +23,7 @@ except MySQLdb.Warning as e:
 	print e
 
 try:
-	cursor.execute("""CREATE TABLE IF NOT EXISTS `setup` (`commsStatus` INT, `raceStatus` INT, `minLapTime` INT)""")
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `setup` (`systemStatus` INT, `raceStatus` INT, `minLapTime` INT)""")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -42,7 +42,7 @@ except MySQLdb.Warning as e:
 	print e
 
 try:
-	cursor.execute("""CREATE TABLE IF NOT EXISTS `nodes` (`node` INT, `i2cAddr` INT, `vtxNum` INT, `rssi` INT, `rssiTrigger` INT, `lapCount` INT)""")
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `nodes` (`node` INT, `i2cAddr` INT, `vtxFreq` INT, `rssi` INT, `rssiTrigger` INT, `lapCount` INT)""")
 	db.commit()
 except:
 	db.rollback()
@@ -153,7 +153,7 @@ except MySQLdb.Warning as e:
 	print e
 
 try:
-	cursor.execute("""CREATE TABLE IF NOT EXISTS `vtxReference` (`vtxNum` INT, `vtxChan` VARCHAR(255), `vtxFreq` INT)""")
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `vtxReference` (`vtxChan` VARCHAR(255), `vtxFreq` INT)""")
 	db.commit()
 except MySQLdb.Error as e:
 	print e

@@ -17,7 +17,7 @@ cursor = db.cursor()
 # Get nodes info
 i2cAddr = []
 try:
-	cursor.execute("SELECT * FROM `nodes`");
+	cursor.execute("SELECT * FROM `nodes`")
 	numNodes = int(cursor.rowcount)
 	print "numNodes: %d" % numNodes
 	for x in range(0, numNodes):
@@ -45,6 +45,6 @@ db.close()
 
 # raceStatus set false to stop logging laps
 for x in range(0, numNodes): # loops for polling each node
-	i2c.write_byte_data(i2cAddr[x], 0x0E, 0) # set arduino race status to false
-	time.sleep(0.5)
+	i2c.write_byte_data(i2cAddr[x], 0x55, 0) # Arduino set race status to false
+	time.sleep(0.250)
 

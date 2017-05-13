@@ -342,11 +342,18 @@ void i2cReceive(int byteCount) { // Number of bytes in rx buffer
 	
 	commsTable.command = Wire.read(); // The first byte sent is a command byte
 
-	if (Wire.available()) { // If there is extra data on the line this is a write TO this device
+	if (commsTable.command > 0x50) { // Commands > 0x50 are writes TO this slave
 		i2cHandleRx(commsTable.command);
 	} 
 	else { // Otherwise this is a request FROM this device
-		i2cHandleTx(commsTable.command);
+		if (Wire.available()) { // There shouldn't be any data present on the line for a read request
+			int garbage = 0; // Read to garbage any extra data to clear the i2cbus
+			while(Wire.available()) garbage=Wire.read();
+		}
+		else {
+			i2cHandleTx(commsTable.command);
+		}
+		
 	}
 	dataReady = true; // Flag to the main loop to print the commsTable
 }
@@ -359,7 +366,24 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 	byte result = 0; // Initialize result variable
 	
 	switch (command) {
-		case 0x0A: // Race reset, set lap, milliSeconds, lastLapTime to 0, raceStatus to 1
+		case 0x51: // Full reset, initialize arduinos
+			if (Wire.available() == 2) { // Confirm expected number of bytes
+				byte partA = Wire.read();
+				byte partB = Wire.read();
+				commsTable.vtxFreq = partA;
+				commsTable.vtxFreq = (commsTable.vtxFreq << 8) | partB;
+				setRxModule(commsTable.vtxFreq); // Shouldn't do this in Interrupt Service Routine
+				commsTable.rssiTrigger = 0;
+				commsTable.lap = 0;
+				commsTable.milliSeconds = 0;
+				lastLapTime = 0;
+				commsTable.minLapTimeSec = 5;
+				commsTable.raceStatus = 0;
+				result = 2;
+			}
+			else { result = 0xFF; }
+			break;
+		case 0x52: // Race reset, start a new race
 			if (Wire.available() == 0) { // Confirm expected number of bytes
 				commsTable.lap = 0;
 				commsTable.milliSeconds = 0;
@@ -369,28 +393,28 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 			}
 			else { result = 0xFF; }
 			break;
-		case 0x0B: // Set rssiTrigger
+		case 0x53: // Set rssiTrigger
 			if (Wire.available() == 1) { // Confirm expected number of bytes
 				commsTable.rssiTrigger = Wire.read();
 				result = 1;
 			}
 			else { result = 0xFF; }
 			break;
-		case 0x0C: // Set minLapTime
+		case 0x54: // Set minLapTime
 			if (Wire.available() == 1) { // Confirm expected number of bytes
 				commsTable.minLapTimeSec = Wire.read();
 				result = 1;
 			}
 			else { result = 0xFF; }
 			break;
-		case 0x0D: // Set raceStatus
+		case 0x55: // Set raceStatus
 			if (Wire.available() == 1) { // Confirm expected number of bytes
 				commsTable.raceStatus = Wire.read();
 				result = 1;
 			}
 			else { result = 0xFF; }
 			break;
-		case 0x0E: // Set vtx frequency
+		case 0x56: // Set vtx frequency
 			if (Wire.available() == 2) { // Confirm expected number of bytes
 				byte partA = Wire.read();
 				byte partB = Wire.read();
@@ -407,10 +431,11 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 	
 	if (result == 0xFF) { // Set control to rxFault if 0xFF result
 		commsTable.control |= rxFault;
+
 		//Serial.print("rxFault set: ");
 		//Serial.println(commsTable.control, HEX);
-		// Read to garbage any extra data to clear the i2cbus
-		int garbage = 0;
+
+		int garbage = 0; // Read to garbage any extra data to clear the i2cbus
 		while(Wire.available()) garbage=Wire.read();
 	}
 	return result;
@@ -450,11 +475,11 @@ void i2cTransmit() {
 			txTable[0] = i2cSlaveAddress;
 			numBytes = 1;
 			break;
-		case 0x90: // Send rssi
+		case 0x01: // Send rssi
 			txTable[0] = rssi;
 			numBytes = 1;
 			break;
-		case 0x91: // Send lap number and calculated lap time in milliseconds
+		case 0x02: // Send lap number and calculated lap time in milliseconds
 			txTable[0] = commsTable.lap;
 			//ms = commsTable.milliSeconds;
 			ms = millis(); // testing for sending large numbers, get current uptime

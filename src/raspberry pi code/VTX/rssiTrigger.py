@@ -27,8 +27,8 @@ cursor = db.cursor()
 
 try:
 	# Set arduino nodes
-	i2c.write_byte_data(args.address, 0x0C, args.rssiTrigger) # arduino sets rssi threshold
-	time.sleep(0.5)
+	i2c.write_byte_data(args.address, 0x53, args.rssiTrigger) # arduino set rssi threshold
+	time.sleep(0.250)
 	
 	# Insert rssiTriggerThreshold into the database
 	try:

@@ -35,7 +35,7 @@
 	<div class="mdl-layout-spacer"></div>
 	
 	<nav class="mdl-navigation">
-		<a class="delta5-navigation mdl-navigation__link" href="database.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Database</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="setup.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Setup</button></a>
 	</nav>
 	
 	<span class="mdl-layout-title">

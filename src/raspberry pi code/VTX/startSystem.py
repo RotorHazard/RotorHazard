@@ -36,10 +36,10 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-# Sets commsStatus true in the database
-commsStatus = 1 # Initialize at 1 to start while loop
+# Sets systemStatus true in the database
+systemStatus = 1 # Initialize at 1 to start while loop
 try:
-	cursor.execute("UPDATE `setup` SET `commsStatus` = 1")
+	cursor.execute("UPDATE `setup` SET `systemStatus` = 1")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -47,17 +47,17 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-
-while commsStatus == 1:
+# Main while loop
+while systemStatus == 1:
 	print " "
 	print "Starting while loop."
 
-	# read commsStatus and raceStatus from database
+	# read systemStatus and raceStatus from database
 	try:
 		cursor.execute("SELECT * FROM `setup`")
 		results = cursor.fetchall() # Fetch all the rows in a list of lists.
 		for row in results:
-			commsStatus = row[0]
+			systemStatus = row[0]
 			raceStatus = row[1]
 		db.commit()
 	except MySQLdb.Error as e:
@@ -83,21 +83,30 @@ while commsStatus == 1:
 
 		# Request: rssi
 		try:
-			i2cData = i2c.read_byte_data(i2cAddr[x], 0x90)
-			time.sleep(0.050) # Small i2c data read delay
+			i2cData = i2c.read_byte_data(i2cAddr[x], 0x01) # Arduino get rssi
+			time.sleep(0.100) # Small i2c data read delay
 			rssi[x] = i2cData
 			print "  rssi: %d" % (rssi[x])
 		except IOError as e:
 			print e
-			time.sleep(0.050) # Delay for arduino to recover from error
-		
-		raceStatus = 1 # debugging
+			time.sleep(0.100) # Delay for arduino to recover from error
 
+		# Update rssi data in database
+		try:
+			cursor.execute("UPDATE `nodes` SET `rssi` = %s",(rssi[x]))
+			db.commit()
+		except MySQLdb.Error as e:
+			print e
+			db.rollback()
+		except MySQLdb.Warning as e:
+			print e
+
+		# Only check lap data if race started
 		if raceStatus == 1:
 			# Request: get lap count and time in ms
 			try:
-				i2cData = i2c.read_i2c_block_data(i2cAddr[x], 0x91, 5)
-				time.sleep(0.050) # Small i2c data read delay
+				i2cData = i2c.read_i2c_block_data(i2cAddr[x], 0x02, 5) # Arduino get lap count and lap time in ms
+				time.sleep(0.100) # Small i2c data read delay
 				#lapCount[x] = i2cData[0]
 				print "  lapCount: %d" % (i2cData[0])
 
@@ -146,17 +155,8 @@ while commsStatus == 1:
 						print e
 			except IOError as e:
 				print e
-				time.sleep(0.050) #Delay for arduino to recover from error
-	# Update rssi data in database from rssi[x] array
-	#try:
-	#	cursor.execute("UPDATE `nodes` SET `rssi` = %s WHERE `node` = %s",(i2cBlockData[0],x+1))
-	#	db.commit()
-	#except MySQLdb.Error as e:
-	#	print e
-	#	db.rollback()
-	#except MySQLdb.Warning as e:
-	#	print e
+				time.sleep(0.100) #Delay for arduino to recover from error
 	
 	time.sleep(0.250) # main while loop delay
-
+	
 db.close()

@@ -18,10 +18,10 @@
 	<script type="text/javascript" src="/scripts/jquery-3.1.1.js"></script>
 		
 	<?php
-	if (isset($_POST['startComms'])) {exec("sudo python /home/pi/VTX/startComms.py"); }
-	if (isset($_POST['stopComms'])) {
-		exec("sudo python /home/pi/VTX/stopRace.py"); # Also be sure to stop the race if stopping comms
-		exec("sudo python /home/pi/VTX/stopComms.py");
+	if (isset($_POST['startSystem'])) {exec("sudo python /home/pi/VTX/startSystem.py"); }
+	if (isset($_POST['stopSystem'])) {
+		exec("sudo python /home/pi/VTX/stopRace.py"); # Also 'stopRace' if stopping comms
+		exec("sudo python /home/pi/VTX/stopSystem.py");
 	}
 	
 	if (isset($_GET['setMinLapTime'])) {
@@ -63,7 +63,7 @@
 	<div class="mdl-layout-spacer"></div>
 	
 	<nav class="mdl-navigation">
-		<a class="delta5-navigation mdl-navigation__link" href="database.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Database</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="setup.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Setup</button></a>
 	</nav>
 	
 	<span class="mdl-layout-title">
@@ -76,20 +76,19 @@
 <main class="mdl-layout__content">
 <div class="page-content">
 
-<div><h5>Communication</h5></div>
 <div class="mdl-grid"><div class="mdl-cell mdl-cell--12-col">
 <form method="post">
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="startComms">Start Comms</button>&nbsp;
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="stopComms">Stop Comms</button>
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="startSystem">Start System</button>&nbsp;
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="stopSystem">Stop System</button>
 </form>
 </div></div>
 
 
-<div><h5>Setup</h5></div>
+<div><h5>System Status</h5></div>
 <div class="mdl-grid">
 <div class="mdl-cell mdl-cell--2-col" id="setupData">
 	<script type="text/javascript">
-	$(document).ready(function() { setInterval(function() { $('#setupData').load('buildSetupTable.php') }, 1000); } );
+	$(document).ready(function() { setInterval(function() { $('#setupData').load('buildSystemStatusTable.php') }, 1000); } );
 	</script>
 </div>
 <div class="mdl-cell mdl-cell--2-col">
