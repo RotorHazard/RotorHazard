@@ -48,7 +48,6 @@ unsigned long rssiRisingTime = 0; // The time the rssi value is registered going
 unsigned long rssiFallingTime = 0; // The time the rssi value is registered going below the threshold
 bool crossing = false; // True when the quad is going through the gate
 
-int rssi = 0; // Current rssi
 int rssiTriggerBandwidth = 10; // Added and subtracted from rssiTrigger, tries to account for noise in rssi
 
 // Use volatile for variables that will be used in interrupt service routines.
@@ -60,6 +59,7 @@ struct {
 	byte volatile command; // I2C code to identify messages
 	byte volatile control; // rxFault:txFault:0:0:0:0:0:0
 	int volatile vtxFreq; // Freq in mhz, 2 bytes
+	byte volatile rssi; // Current rssi
 	byte volatile rssiTrigger; // Set rssi trigger
 	byte volatile lap; // Current lap number
 	unsigned long volatile milliSeconds; // Calculated lap time, milliseconds, 4 bytes
@@ -116,6 +116,7 @@ void setup() {
 		case 18: commsTable.vtxFreq = 5645; break; // E4
 		default: commsTable.vtxFreq = 5800; // F4
 	}
+	commsTable.rssi = 0;
 	commsTable.rssiTrigger = 0;
 	commsTable.lap = 0;
 	commsTable.milliSeconds = 0;
@@ -279,19 +280,19 @@ void loop() {
 	//commsTable.raceStatus = 1; // Uncomment for individual node testing
 	//delay(250);
  	
-	rssi = rssiRead(); // Read the current rssi value from the rx5808 module
-	
+	commsTable.rssi = rssiRead(); // Read the current rssi value from the rx5808 module
+
 	// Wait for non-zero trigger value, elapsed time > minLapTimeSec, raceStatus True
 	if ((commsTable.rssiTrigger != 0) && (millis() > (lastLapTime + commsTable.minLapTimeSec*1000)) && (commsTable.raceStatus == 1)) {
 		// Rssi above threshold + bandwidth and quad not already crossing the gate
-		if ((rssi > (commsTable.rssiTrigger + rssiTriggerBandwidth)) && (crossing == false)) {
+		if ((commsTable.rssi > (commsTable.rssiTrigger + rssiTriggerBandwidth)) && (crossing == false)) {
 			rssiRisingTime = millis();
 			Serial.print("rssiRisingTime: ");
 			Serial.println(rssiRisingTime);
 			crossing = true;
 		}
 		// Rssi below threshold - bandwidth and quad is crossing the gate
-		else if ((rssi < (commsTable.rssiTrigger - rssiTriggerBandwidth)) && (crossing == true)) {
+		else if ((commsTable.rssi < (commsTable.rssiTrigger - rssiTriggerBandwidth)) && (crossing == true)) {
 			rssiFallingTime = millis();
 			Serial.print("rssiFallingTime: ");
 			Serial.println(rssiFallingTime);
@@ -341,19 +342,21 @@ void i2cReceive(int byteCount) { // Number of bytes in rx buffer
 	if (byteCount == 0) return;
 	
 	commsTable.command = Wire.read(); // The first byte sent is a command byte
+	// Serial.print("Received command: ");
+	// Serial.println(commsTable.command);
 
 	if (commsTable.command > 0x50) { // Commands > 0x50 are writes TO this slave
 		i2cHandleRx(commsTable.command);
 	} 
 	else { // Otherwise this is a request FROM this device
 		if (Wire.available()) { // There shouldn't be any data present on the line for a read request
+			// Serial.println("Error: Wire.available() on a read request.");
 			int garbage = 0; // Read to garbage any extra data to clear the i2cbus
 			while(Wire.available()) garbage=Wire.read();
 		}
 		else {
 			i2cHandleTx(commsTable.command);
 		}
-		
 	}
 	dataReady = true; // Flag to the main loop to print the commsTable
 }
@@ -432,8 +435,8 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 	if (result == 0xFF) { // Set control to rxFault if 0xFF result
 		commsTable.control |= rxFault;
 
-		//Serial.print("rxFault set: ");
-		//Serial.println(commsTable.control, HEX);
+		// Serial.print("rxFault set: ");
+		// Serial.println(commsTable.control, HEX);
 
 		int garbage = 0; // Read to garbage any extra data to clear the i2cbus
 		while(Wire.available()) garbage=Wire.read();
@@ -447,8 +450,8 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 byte i2cHandleTx(byte command) { // The first byte sent by the I2C master is the command
 	// signal to i2cTransmit function that a pending command is ready
 	commsTable.control |= txRequest;
-	//Serial.print("txRequest set: ");
-	//Serial.println(commsTable.control, HEX);
+	// Serial.print("txRequest set: ");
+	// Serial.println(commsTable.control, HEX);
 	return 0;
 }
 
@@ -463,7 +466,7 @@ void i2cTransmit() {
 	// instruction so we should return only the slave address, that is command 0
 	if ((commsTable.control & txRequest) == 0) {
 		// This request did not come with a command, txRequest was not set in i2cHandleTx, it is read_byte()
-		//Serial.println("No command set, defaulting to zero.");
+		// Serial.println("No command set, defaulting to zero.");
 		commsTable.command = 0; // Clear previous command
 	}
 
@@ -476,14 +479,12 @@ void i2cTransmit() {
 			numBytes = 1;
 			break;
 		case 0x01: // Send rssi
-			txTable[0] = rssi;
-			numBytes = 1;
+			txTable[0] = commsTable.rssi;
+			numBytes = 2; // When only sending one byte the pi only receives values up to 128???
 			break;
 		case 0x02: // Send lap number and calculated lap time in milliseconds
 			txTable[0] = commsTable.lap;
-			//ms = commsTable.milliSeconds;
-			ms = millis(); // testing for sending large numbers, get current uptime
-			// Serial.println(ms);
+			ms = commsTable.milliSeconds;
 			txTable[1] = (byte)(ms >> 24);
 			txTable[2] = (byte)(ms >> 16);
 			txTable[3] = (byte)(ms >> 8);
@@ -512,6 +513,9 @@ void printCommsTable() {
 	Serial.println(builder);
 	builder = "  VTX Freq: ";
 	builder += commsTable.vtxFreq;
+	Serial.println(builder);
+	builder = "  RSSI: ";
+	builder += commsTable.rssi;
 	Serial.println(builder);
 	builder = "  RSSI Triger: ";
 	builder += commsTable.rssiTrigger;

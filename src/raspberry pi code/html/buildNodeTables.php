@@ -2,16 +2,16 @@
 $conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); }
 
-
+# Get vtx reference lookup
 $results = $conn->query("SELECT * FROM `vtxReference` WHERE 1") or die($conn->error());
 $vtxReference = array();
 $index = 0;
 while ($row = $results->fetch_assoc()) {
 	$vtxReference[] = $row;
-	echo $row[$index]['vtxNum']; # index might not be working, just call column names
 	$index++;
 }
 
+# Get node info
 $nodes = $conn->query("SELECT * FROM `nodes` WHERE 1") or die($conn->error());
 
 while ($node = $nodes->fetch_assoc()) :
@@ -27,17 +27,9 @@ while ($node = $nodes->fetch_assoc()) :
 </thead>
 <tbody>
 <tr>
-	<td>i2cAddr:</td>
-	<td><?php echo $node['i2cAddr']; ?></td>
-</tr>
-<tr>
-	<td>vtxNum:</td>
-	<td><?php echo $node['vtxNum']; ?></td>
-</tr>
-<tr>
 	<td>Channel:</td>
 	<td><?php
-			$key = array_search($node['vtxNum'], array_column($vtxReference, 'vtxNum'));
+			$key = array_search($node['vtxFreq'], array_column($vtxReference, 'vtxFreq'));
 			echo $vtxReference[$key]['vtxChan'];
 			echo " ";
 			echo $vtxReference[$key]['vtxFreq'];
