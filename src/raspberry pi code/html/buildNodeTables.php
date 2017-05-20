@@ -10,8 +10,10 @@ while ($row = $results->fetch_assoc()) {
 }
 
 # Get node info
+$results = $conn->query("SELECT * FROM `nodes` WHERE 1") or die($conn->error());
 
 $index = 0;
+while ($node = $results->fetch_assoc()) :
 ?>
 
 <div class="mdl-cell mdl-cell--2-col">
