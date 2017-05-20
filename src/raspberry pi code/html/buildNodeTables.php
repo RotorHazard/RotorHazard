@@ -2,19 +2,16 @@
 $conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); }
 
-# Get vtx reference lookup
-$results = $conn->query("SELECT * FROM `vtxReference` WHERE 1") or die($conn->error());
-$vtxReference = array();
-$index = 0;
+# Get rssi values
+$results = $conn->query("SELECT `rssi` FROM `nodesMem`") or die($conn->error());
+$rssi = array();
 while ($row = $results->fetch_assoc()) {
-	$vtxReference[] = $row;
-	$index++;
+	$rssi[] = $row['rssi'];
 }
 
 # Get node info
-$nodes = $conn->query("SELECT * FROM `nodes` WHERE 1") or die($conn->error());
 
-while ($node = $nodes->fetch_assoc()) :
+$index = 0;
 ?>
 
 <div class="mdl-cell mdl-cell--2-col">
@@ -29,15 +26,14 @@ while ($node = $nodes->fetch_assoc()) :
 <tr>
 	<td>Channel:</td>
 	<td><?php
-			$key = array_search($node['vtxFreq'], array_column($vtxReference, 'vtxFreq'));
-			echo $vtxReference[$key]['vtxChan'];
+			echo $node['vtxChan'];
 			echo " ";
-			echo $vtxReference[$key]['vtxFreq'];
+			echo $node['vtxFreq'];
 		?></td>
 </tr>
 <tr>
 	<td>RSSI:</td>
-	<td><?php echo $node['rssi']; ?></td>
+	<td><?php echo $rssi[$index]; ?></td>
 </tr>
 <tr>
 	<td>Trigger:</td>
@@ -47,4 +43,7 @@ while ($node = $nodes->fetch_assoc()) :
 </table>
 </div>
 
-<?php endwhile ?>
+<?php
+$index++;
+endwhile
+?>

@@ -18,7 +18,7 @@ i2cAddr = [] # I2C slave address
 rssi = [] # Current rssi value
 lapCount = [] # Current lap count
 try:
-	cursor.execute("SELECT * FROM `nodes`")
+	cursor.execute("SELECT * FROM `nodes`") # Update to remove * and just get i2cAddr
 	numNodes = int(cursor.rowcount)
 	print "numNodes: %d" % numNodes
 	for x in range(0, numNodes):
@@ -34,19 +34,9 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-# Reset node rssi
+# Reset node lapCount, this is also set to zero in 'startRace.py'
 try:
-	cursor.execute("UPDATE `nodes` SET `rssi` = 0")
-	db.commit()
-except MySQLdb.Error as e:
-	print e
-	db.rollback()
-except MySQLdb.Warning as e:
-	print e
-
-# Reset node lapCount
-try:
-	cursor.execute("UPDATE `nodes` SET `lapCount` = 0")
+	cursor.execute("UPDATE `nodesMem` SET `lapCount` = 0")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -57,7 +47,7 @@ except MySQLdb.Warning as e:
 # Initialize systemStatus at 1 to start while loop
 systemStatus = 1
 try:
-	cursor.execute("UPDATE `setup` SET `systemStatus` = 1")
+	cursor.execute("UPDATE `status` SET `systemStatus` = 1")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -68,7 +58,7 @@ except MySQLdb.Warning as e:
 # Initialize raceStatus at 0 to wait for 'start race' button
 raceStatus = 0 
 try:
-	cursor.execute("UPDATE `setup` SET `raceStatus` = 0")
+	cursor.execute("UPDATE `status` SET `raceStatus` = 0")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -80,12 +70,14 @@ except MySQLdb.Warning as e:
 
 # Main while loop
 while systemStatus == 1:
+	startTime = time.time()
 	print " "
 	print "Starting while loop."
 
-	# read systemStatus and raceStatus from database
+	# Read systemStatus to know when to exit the loop
+	# Read raceStatus from database to know when to check nodes for laps
 	try:
-		cursor.execute("SELECT * FROM `setup`")
+		cursor.execute("SELECT * FROM `status`") # Update to remove * and just get the two variables
 		results = cursor.fetchall() # Fetch all the rows in a list of lists.
 		for row in results:
 			systemStatus = row[0]
@@ -95,21 +87,20 @@ while systemStatus == 1:
 		print e
 	except MySQLdb.Warning as e:
 		print e
-	
-	# Read lap counts
-	# try:
-	# 	cursor.execute("SELECT `lapCount` FROM `nodes`")
-	# 	numNodes = int(cursor.rowcount)
-	# 	for x in range(0, numNodes):
-	# 		row = cursor.fetchone()
-	# 		lapCount[x] = int(row[0])
-	# except MySQLdb.Error as e:
-	# 	print e
-	# except MySQLdb.Warning as e:
-	# 	print e
-	# print "Current laps"
-	# print lapCount
-	
+
+	# Read lapCounts because website buttons can reset them to zero
+	try:
+		cursor.execute("SELECT `lapCount` FROM `nodesMem`")
+		numNodes = int(cursor.rowcount)
+		for x in range(0, numNodes):
+			row = cursor.fetchone()
+			print row
+			lapCount[x] = int(row[0])
+	except MySQLdb.Error as e:
+		print e
+	except MySQLdb.Warning as e:
+		print e
+
 	# Loop for polling each node
 	for x in range(0, numNodes):
 		print "i2c address: %d" % (i2cAddr[x])
@@ -122,16 +113,6 @@ while systemStatus == 1:
 		except IOError as e:
 			print e
 		time.sleep(0.100) # i2c data read delay
-
-		# Update rssi data in database
-		try:
-			cursor.execute("UPDATE `nodes` SET `rssi` = %s WHERE `node` = %s",(rssi[x],x+1))
-			db.commit()
-		except MySQLdb.Error as e:
-			print e
-			db.rollback()
-		except MySQLdb.Warning as e:
-			print e
 
 		# Only check lap data if race started
 		if raceStatus == 1:
@@ -156,7 +137,7 @@ while systemStatus == 1:
 					lapCount[x] = i2cData[0]
 					print "Updating node lapCount in database."
 					try:
-						cursor.execute("UPDATE `nodes` SET `lapCount` = %s WHERE `node` = %s",(lapCount[x],x+1))
+						cursor.execute("UPDATE `nodesMem` SET `lapCount` = %s WHERE `node` = %s",(lapCount[x],x+1))
 						db.commit()
 					except MySQLdb.Error as e:
 						print e
@@ -187,6 +168,23 @@ while systemStatus == 1:
 				print e
 			time.sleep(0.100) # i2c data read delay
 	
-	time.sleep(1.000) # main while loop delay
+	# Update all rssi values at once to lessen database load
+	try:
+		sql = "UPDATE `nodesMem` SET `rssi` = %s WHERE `node` = %s"
+		params = []
+		for x in range(0, numNodes):
+			params.append((rssi[x],x+1))
+		cursor.executemany(sql, params)
+		db.commit()
+	except MySQLdb.Error as e:
+		print e
+		db.rollback()
+	except MySQLdb.Warning as e:
+		print e
+
+	time.sleep(0.500) # main while loop delay
 	
+	endTime = time.time()
+	print("Loop time: ", endTime - startTime)
+
 db.close()

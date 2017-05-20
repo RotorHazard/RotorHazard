@@ -17,11 +17,13 @@ except:
 	print e
 
 
-# this should be read from the i2c bus and the number detected should be compared to the input argument
+# This should be read from the i2c bus and the number detected should be compared to the input argument
 i2cAddr=[8,10,12,14,16,18]
 
-# should pass in frequencies or imd5 / imd6 defaults from website?
+# Should pass in frequencies or imd5 / imd6 defaults from website?
+# This needs to be updated to handle more than 6 nodes
 vtxFreq=[5685,5760,5800,5860,5905,5645]
+vtxChan=['E2','F2','F4','F7','E6','E4']
 
 
 # Start i2c bus
@@ -31,9 +33,9 @@ i2c = smbus.SMBus(1)
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
-# Empty 'setup' table
+# Empty 'config' table
 try:
-	cursor.execute("DELETE FROM `setup` WHERE 1")
+	cursor.execute("DELETE FROM `config` WHERE 1")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -41,9 +43,29 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-# Initialize 'setup' table
+# Initialize 'config' table
 try:
-	cursor.execute("INSERT INTO `setup` (`systemStatus`, `raceStatus`, `minLapTime`) VALUES (0,0,5)")
+	cursor.execute("INSERT INTO `config` (`minLapTime`) VALUES (5)")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+
+# Empty 'status' table
+try:
+	cursor.execute("DELETE FROM `status` WHERE 1")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+
+# Initialize 'status' table
+try:
+	cursor.execute("INSERT INTO `status` (`systemStatus`, `raceStatus`) VALUES (0,0)")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -61,10 +83,32 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
+
 # Initialize 'nodes' table based on number of nodes
-for x in range(0, args.numNodes): # adds back nodes ID based on number of nodes
+for x in range(0, args.numNodes):
 	try:
-		cursor.execute("INSERT INTO `nodes` (`node`, `i2cAddr`, `vtxFreq`, `rssi`, `rssiTrigger`, `lapCount`) VALUES (%s,%s,%s,0,0,0)",(x+1,i2cAddr[x],vtxFreq[x]))
+		cursor.execute("INSERT INTO `nodes` (`node`, `i2cAddr`, `vtxFreq`, `vtxChan`, `rssiTrigger`) VALUES (%s,%s,%s,%s,0)",(x+1,i2cAddr[x],vtxFreq[x],vtxChan[x]))
+		db.commit()
+	except MySQLdb.Error as e:
+		print e
+		db.rollback()
+	except MySQLdb.Warning as e:
+		print e
+
+# Empty 'nodesMem' table
+try:
+	cursor.execute("DELETE FROM `nodesMem` WHERE 1")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+
+# Initialize 'nodesMem' table based on number of nodes
+for x in range(0, args.numNodes):
+	try:
+		cursor.execute("INSERT INTO `nodesMem` (`node`, `rssi`, `lapCount`) VALUES (%s,0,0)",(x+1))
 		db.commit()
 	except MySQLdb.Error as e:
 		print e
@@ -81,16 +125,7 @@ except MySQLdb.Error as e:
 	db.rollback()
 except MySQLdb.Warning as e:
 	print e
-		
-# Empty 'currentRace' table
-try:
-	cursor.execute("DELETE FROM `currentRace` WHERE 1")
-	db.commit()
-except MySQLdb.Error as e:
-	print e
-	db.rollback()
-except MySQLdb.Warning as e:
-	print e
+
 
 # Empty 'vtxReference' table
 try:
@@ -161,7 +196,7 @@ db.close() # disconnect from database
 
 # Initialize arduinos
 for x in range(0, args.numNodes):
-	partA = (vtxFreq[x] >> 8)
+	partA = (vtxFreq[x] >> 8) # Split vtxFreq into two bytes to send
 	partB = (vtxFreq[x] & 0xFF)
 	i2c.write_i2c_block_data(i2cAddr[x], 0x51, [partA, partB]) # Initialize arduino defaults and set vtx frequency
 	time.sleep(0.250)

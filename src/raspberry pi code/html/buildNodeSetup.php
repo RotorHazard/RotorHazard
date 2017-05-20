@@ -5,10 +5,8 @@ if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); }
 # Get vtx reference lookup
 $results = $conn->query("SELECT * FROM `vtxReference` ORDER BY `vtxChan` ASC") or die($conn->error());
 $vtxReference = array();
-$index = 0;
 while ($row = $results->fetch_assoc()) {
 	$vtxReference[] = $row;
-	$index++;
 }
 
 # Get node info

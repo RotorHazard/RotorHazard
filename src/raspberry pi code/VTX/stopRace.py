@@ -14,10 +14,10 @@ db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
 
-# Get nodes info
+# Get node i2cAddr info
 i2cAddr = []
 try:
-	cursor.execute("SELECT * FROM `nodes`")
+	cursor.execute("SELECT * FROM `nodes`") # Update to remove * and just get i2cAddr
 	numNodes = int(cursor.rowcount)
 	print "numNodes: %d" % numNodes
 	for x in range(0, numNodes):
@@ -33,7 +33,7 @@ except MySQLdb.Warning as e:
 
 
 try:
-	cursor.execute("UPDATE `setup` SET `raceStatus` = 0")
+	cursor.execute("UPDATE `status` SET `raceStatus` = 0")
 	db.commit()
 except MySQLdb.Error as e:
 	print e

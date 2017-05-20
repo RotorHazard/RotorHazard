@@ -48,15 +48,17 @@
 	if (isset($_POST['rssiTrigger']) && isset($_POST['nodeid'])) {
 		$conn = new mysqli('localhost', 'root', 'delta5fpv', 'vtx');
 		if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); }
-		$result = $conn->query("SELECT `i2cAddr`, `rssi`, `rssiTrigger` FROM `nodes` WHERE `node` = ".$_POST['nodeid']) or die($conn->error());
-		
-		while($node = $result->fetch_assoc()) {			
-			if ($_POST['rssiTrigger'] == 'Set') { $newrssi = $node['rssi']; }
-			if ($_POST['rssiTrigger'] == 'Zero') { $newrssi = 0; }
-			if ($_POST['rssiTrigger'] == 'Inc') { $newrssi = $node['rssiTrigger'] + 5; }
-			if ($_POST['rssiTrigger'] == 'Dec') { $newrssi = $node['rssiTrigger'] - 5; }
-			exec("sudo python /home/pi/VTX/setRssiTrigger.py ".$node['i2cAddr']." ".$newrssi);
-		}
+		$results = $conn->query("SELECT `rssi` FROM `nodesMem` WHERE `node` = ".$_POST['nodeid']) or die($conn->error());
+		$rssi = $results->fetch_assoc();
+		$results = $conn->query("SELECT `i2cAddr`, `rssiTrigger` FROM `nodes` WHERE `node` = ".$_POST['nodeid']) or die($conn->error());
+		$node = $results->fetch_assoc();
+
+		if ($_POST['rssiTrigger'] == 'Set') { $newrssi = $rssi['rssi']; }
+		if ($_POST['rssiTrigger'] == 'Zero') { $newrssi = 0; }
+		if ($_POST['rssiTrigger'] == 'Inc') { $newrssi = $node['rssiTrigger'] + 5; }
+		if ($_POST['rssiTrigger'] == 'Dec') { $newrssi = $node['rssiTrigger'] - 5; }
+		exec("sudo python /home/pi/VTX/setRssiTrigger.py ".$node['i2cAddr']." ".$newrssi);
+
 		$conn->close();
 	}
 	?>

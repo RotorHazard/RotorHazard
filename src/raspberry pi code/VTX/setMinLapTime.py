@@ -24,10 +24,10 @@ db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
 
-# Get nodes info
+# Get node i2cAddr info
 i2cAddr = []
 try:
-	cursor.execute("SELECT * FROM `nodes`")
+	cursor.execute("SELECT * FROM `nodes`") # Update to remove * and just get i2cAddr
 	numNodes = int(cursor.rowcount)
 	print "numNodes: %d" % numNodes
 	for x in range(0, numNodes):
@@ -50,7 +50,7 @@ try:
 	
 	# Insert min lap time into the database
 	try:
-		cursor.execute("UPDATE `setup` SET `minLapTime` = %s",(args.minLapTime))
+		cursor.execute("UPDATE `config` SET `minLapTime` = %s",(args.minLapTime))
 		db.commit()
 	except MySQLdb.Error as e:
 		print e
