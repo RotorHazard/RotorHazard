@@ -4,19 +4,19 @@
 1. Follow the instructions here if not done already: [/doc/Hardware and Software Setup Instructions.md](Hardware%20and%20Software%20Setup%20Instructions.md)
 
 ### Database Setup and Configure
-1. Open a browser and type in the ipaddress of the timing system on your network.
+1. Open a browser and type in the ip address of the timing system on your network.
 
 2. Go to the 'Database' page.
 
-3. Click the 'Create Database' button at the bottom.
+3. Click the 'Create Database' button at the bottom, this adds all the tables in the 'vtx' database.
 
-4. Enter the number of nodes insteall in the system and then click 'Setup Data'.
+4. Enter the number of nodes installed in the system and then click 'Initialize System'.
 
 ### Set Triggers
 
 1. Go to the 'Settings' page.
 
-2. Click 'Start Comms' to start polling data from the nodes.
+2. Click 'Start System' to start polling data from the nodes.
 
 3. Power a drone and place it 10 feet from the timer.
 
@@ -34,7 +34,7 @@
 
 ### Running Races
 
-1. With 'Start Comms' set true on the settings page, go to the 'Manage' page.
+1. With 'System Status' as 'Running' on the settings page, go to the 'Manage' page.
 
 2. Move all drones 10 plus feet away from the timing system, the rssi values must be 10 points less than the trigger value.
 
@@ -46,6 +46,6 @@
 
 6. When the race is completed click 'Stop Race'
 
-7. Save the laps data to an external file (saving races yet to be implemented)
+7. Click 'Save Laps' to store the results of a good race.
 
-8. Click 'clear laps' and then go back to step 2 to run another race.
+8. Click 'Clear Laps' and then go back to step 2 to run another race.
