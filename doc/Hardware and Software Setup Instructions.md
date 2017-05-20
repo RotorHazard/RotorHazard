@@ -127,11 +127,8 @@ sudo apt-get install mysql-server python-mysqldb
 ```
 http://localhost/phpmyadmin
 ```
-This will allow you to setup the MySQL database using the easy PHPMyAdmin GUI.
 
-2. Create a database called 'vtx'
-
-3. Tables and columns will be created through the web interface.
+2. Sign in, click databases on the top menu, and create a database called 'vtx'
 
 ### Raspberry Pi Delta5 Code
 
@@ -147,6 +144,6 @@ sudo pcmanfm
 ### Receiver Node Arduino Code:
 1. Open [/src/arduino code/delta5-race-timer-node/delta5-race-timer-node.ino](/src/arduino%20code/delta5-race-timer-node/delta5-race-timer-node.ino) in the Arduino IDE.
 
-2. Configure 'i2cSlaveAddress' and 'vtxFreq' in the setup section of the .ino.
+2. Configure 'i2cSlaveAddress' in the setup section of the .ino.
 
-3. Upload to each Arduino receiver node changing 'i2cSlaveAddress' and 'vtxFreq' each time.
+3. Upload to each Arduino receiver node changing 'i2cSlaveAddress' each time.
