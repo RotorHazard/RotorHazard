@@ -1,34 +1,34 @@
 ## Database 'vtx'
 
-### Table 'setup'
+### Table 'config'
 
 | commsStatus | raceStatus | minLapTime |
 | --- | --- | --- |
 
+### Table 'status' (MEMORY)
+
+| commsStatus | raceStatus |
+| --- | --- |
+
 ### Table 'nodes'
 
-| node | i2cAddr | vtxNum | rssi | rssiTrig |
+| node | i2cAddr | vtxFreq | vtxChan | rssiTrig |
 | --- | --- | --- | --- | --- |
+
+### Table 'nodesMem' (MEMORY)
+
+| node | rssi | lapCount |
+| --- | --- | --- |
 
 ### Table 'currentLaps'
 
 | pilot | lap | min | sec | milliSec |
 | --- | --- | --- | --- | --- |
 
-### Table 'currentRace'
-
-| pilot | place |
-| --- | --- |
-
 ### Table 'pilots'
 
-| pilot | callSign | firstName | lastName | rssiTrigger |
-| --- | --- | --- | --- | --- |
-
-### Table 'groups'
-
-| group | pilot |
-| --- | --- |
+| pilot | callSign | firstName | lastName | rssiTrigger | group |
+| --- | --- | --- | --- | --- | --- |
 
 ### Table 'savedraces'
 
@@ -37,5 +37,5 @@
 
 ### Table 'vtxReference'
 
-| vtxNum | vtxChan | vtxFreq |
-| --- | --- | --- |
+| vtxChan | vtxFreq |
+| --- | --- |
