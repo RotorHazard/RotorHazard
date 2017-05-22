@@ -23,7 +23,7 @@ except MySQLdb.Warning as e:
 	print e
 
 try:
-	cursor.execute("""CREATE TABLE IF NOT EXISTS `config` (`minLapTime` INT)""")
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `config` (`group` INT, `minLapTime` INT)""")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -61,7 +61,7 @@ except MySQLdb.Warning as e:
 	print e
 
 try:
-	cursor.execute("""CREATE TABLE IF NOT EXISTS `nodes` (`node` INT, `i2cAddr` INT, `vtxFreq` INT, `vtxChan` VARCHAR(5), `rssiTrigger` INT)""")
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `nodes` (`node` INT, `i2cAddr` INT)""")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -107,7 +107,7 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 	
-# 'pilots' table - Stores all of the pilot info including which group they are in
+# 'pilots' table
 try:
 	cursor.execute("DROP TABLE IF EXISTS `pilots`")
 	db.commit()
@@ -118,7 +118,26 @@ except MySQLdb.Warning as e:
 	print e
 
 try:
-	cursor.execute("""CREATE TABLE IF NOT EXISTS `pilots` (`pilot` INT, `callSign` VARCHAR(255), `firstName` VARCHAR(255), `lastName` VARCHAR(255), `rssiTrigger` INT, `group` INT)""")
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `pilots` (`pilot` INT, `callSign` VARCHAR(255), `name` VARCHAR(255))""")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+
+# 'groups' table
+try:
+	cursor.execute("DROP TABLE IF EXISTS `groups`")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+
+try:
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `groups` (`group` INT, `node` INT, `pilot` INT, `vtxChan` VARCHAR(10), `rssiTrigger` INT)""")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -137,7 +156,7 @@ except MySQLdb.Warning as e:
 	print e
 
 try:
-	cursor.execute("""CREATE TABLE IF NOT EXISTS `savedRaces` (`round` INT, `group` INT, `pilot` INT, `lap` INT, `min` INT, `sec` INT, `milliSec` INT)""")
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `savedRaces` (`race` INT, `group` INT, `pilot` INT, `lap` INT, `min` INT, `sec` INT, `milliSec` INT)""")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -156,7 +175,7 @@ except MySQLdb.Warning as e:
 	print e
 
 try:
-	cursor.execute("""CREATE TABLE IF NOT EXISTS `vtxReference` (`vtxChan` VARCHAR(255), `vtxFreq` INT)""")
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `vtxReference` (`vtxChan` VARCHAR(10))""")
 	db.commit()
 except MySQLdb.Error as e:
 	print e

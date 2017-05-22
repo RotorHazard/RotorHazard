@@ -19,21 +19,19 @@ button.delta5-navigation {
 }
 
 h5 {
-    margin: 16px 0px 4px 16px;
+    margin: 24px 4px 4px 16px;
 }
 
 h6 {
-    margin: 16px 0px 4px 16px;
+    margin: 16px 4px 4px 16px;
 }
+
+div.delta5-margin {margin: 8px;}
+
+div.delta5-float {float: left;}
 
 table.delta5-table {width: 140px;}
 .delta5-table thead tr{height: 36px;}
 .delta5-table th{height: 36px;padding: 3px 6px 3px 6px !important;font-size: 15px;}
 .delta5-table tbody tr{height: 30px;}
 .delta5-table td{height: 30px;padding: 3px 6px 3px 6px !important;}
-
-.delta5-footer {
-	background-color: #EEEEEE;
-	position: relative;
-}
-

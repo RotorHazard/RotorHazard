@@ -1,5 +1,5 @@
 # 
-# Takes an group number, node number, and trigger value then writes to the database and node if needed
+# Takes an group number, node number, and vtx channel then writes to the database and node if needed
 
 import smbus
 import time
@@ -12,7 +12,7 @@ try:
 	parser = argparse.ArgumentParser()
 	parser.add_argument("group", help="group number", type=int)
 	parser.add_argument("node", help="node number", type=int)
-	parser.add_argument("rssiTrigger", help="rssi trigger", type=int)
+	parser.add_argument("vtxChan", help="vtx channel", type=str) # vtx channel and frequency as a string
 	args = parser.parse_args()
 except:
 	e = sys.exc_info()[0]
@@ -48,17 +48,19 @@ if args.group == currentGroup:
 		print e
 	except MySQLdb.Warning as e:
 		print e
-	
-	# Update node rssi trigger value
+	# Update node channel
 	try:
-		i2c.write_byte_data(i2cAddr, 0x53, args.rssiTrigger) # arduino set rssi threshold
+		vtxFrequency = int(args.vtxChan.split()[1]) # Splits on spaces and gets the mhz number
+		partA = (vtxFrequency >> 8)
+		partB = (vtxFrequency & 0xFF)
+		i2c.write_i2c_block_data(i2cAddr, 0x56, [partA, partB]) # Set vtx frequency
 		time.sleep(0.250)
 	except IOError as e:
 		print e
-
-# Update database rssi trigger value
+	
+# Update database channel
 try:
-	cursor.execute("UPDATE `groups` SET `rssiTrigger` = %s WHERE `group` = %s AND `node` = %s",(args.rssiTrigger,args.group,args.node))
+	cursor.execute("UPDATE `groups` SET `vtxChan` = %s WHERE `group` = %s AND `node` = %s",(args.vtxChan,args.group,args.node))
 	db.commit()
 except MySQLdb.Error as e:
 	print e

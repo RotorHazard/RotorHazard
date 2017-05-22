@@ -18,13 +18,12 @@ i2cAddr = [] # I2C slave address
 rssi = [] # Current rssi value
 lapCount = [] # Current lap count
 try:
-	cursor.execute("SELECT * FROM `nodes`") # Update to remove * and just get i2cAddr
-	numNodes = int(cursor.rowcount)
+	cursor.execute("SELECT `i2cAddr` FROM `nodes`")
+	numNodes = int(cursor.rowcount) # Get the number of nodes in the system from the size of nodes table
 	print "numNodes: %d" % numNodes
-	for x in range(0, numNodes):
-		row = cursor.fetchone()
-		print row
-		i2cAddr.append(int(row[1]))
+	results = cursor.fetchall() # Fetch all the rows in a list of lists
+	for row in results:
+		i2cAddr.append(int(row[0]))
 		rssi.append(0) # Create array size to match number of nodes
 		lapCount.append(0) # Create array size to match number of nodes
 	print "i2cAddr: "
@@ -34,39 +33,45 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-# Reset node lapCount, this is also set to zero in 'startRace.py'
+# Set node lapCount and rssi to zero on system start to fill MEMORY only tables
 try:
-	cursor.execute("UPDATE `nodesMem` SET `lapCount` = 0")
+	cursor.execute("DELETE FROM `nodesMem` WHERE 1")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
 	db.rollback()
 except MySQLdb.Warning as e:
 	print e
+for x in range(0, numNodes):
+	try:
+		cursor.execute("INSERT INTO `nodesMem` (`node`, `rssi`, `lapCount`) VALUES (%s,0,0)",(x+1))
+		db.commit()
+	except MySQLdb.Error as e:
+		print e
+		db.rollback()
+	except MySQLdb.Warning as e:
+		print e
 
 # Initialize systemStatus at 1 to start while loop
 systemStatus = 1
-try:
-	cursor.execute("UPDATE `status` SET `systemStatus` = 1")
-	db.commit()
-except MySQLdb.Error as e:
-	print e
-	db.rollback()
-except MySQLdb.Warning as e:
-	print e
-
 # Initialize raceStatus at 0 to wait for 'start race' button
 raceStatus = 0 
 try:
-	cursor.execute("UPDATE `status` SET `raceStatus` = 0")
+	cursor.execute("DELETE FROM `status` WHERE 1")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
 	db.rollback()
 except MySQLdb.Warning as e:
 	print e
-
-
+try:
+	cursor.execute("INSERT INTO `status` (`systemStatus`, `raceStatus`) VALUES (1,0)")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 
 # Main while loop
 while systemStatus == 1:
@@ -77,8 +82,8 @@ while systemStatus == 1:
 	# Read systemStatus to know when to exit the loop
 	# Read raceStatus from database to know when to check nodes for laps
 	try:
-		cursor.execute("SELECT * FROM `status`") # Update to remove * and just get the two variables
-		results = cursor.fetchall() # Fetch all the rows in a list of lists.
+		cursor.execute("SELECT `systemStatus`, `raceStatus` FROM `status`")
+		results = cursor.fetchall() # Fetch all the rows in a list of lists
 		for row in results:
 			systemStatus = row[0]
 			raceStatus = row[1]
@@ -91,15 +96,15 @@ while systemStatus == 1:
 	# Read lapCounts because website buttons can reset them to zero
 	try:
 		cursor.execute("SELECT `lapCount` FROM `nodesMem`")
-		numNodes = int(cursor.rowcount)
 		for x in range(0, numNodes):
 			row = cursor.fetchone()
-			print row
 			lapCount[x] = int(row[0])
 	except MySQLdb.Error as e:
 		print e
 	except MySQLdb.Warning as e:
 		print e
+	print "  lapCount:"
+	print lapCount
 
 	# Loop for polling each node
 	for x in range(0, numNodes):
