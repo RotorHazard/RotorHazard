@@ -8,9 +8,9 @@ $status = $results->fetch_assoc();
 $results = $conn->query("SELECT `minLapTime` FROM `config`") or die($conn->error());
 $config = $results->fetch_assoc(); ?>
 
-<!--Build the system status table-->
+<!--Build system status table-->
 <div class="delta5-margin">
-<table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp">
+<table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp" style="width: 120px;">
 <tbody>
 <tr>
 	<td>System:</td>

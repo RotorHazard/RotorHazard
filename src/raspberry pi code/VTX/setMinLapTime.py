@@ -1,4 +1,3 @@
-# 
 # Takes a min lap time number in seconds and writes to all nodes and the 'setup' table
 
 import smbus
@@ -6,7 +5,6 @@ import time
 import MySQLdb
 import argparse
 import sys
-
 
 try:
 	parser = argparse.ArgumentParser()
@@ -22,7 +20,6 @@ i2c = smbus.SMBus(1)
 # Open database connection
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
-
 
 # Get node i2cAddr info
 i2cAddr = []
@@ -40,7 +37,6 @@ except MySQLdb.Error as e:
 	print e
 except MySQLdb.Warning as e:
 	print e
-
 
 try:
 	# Set arduino nodes
@@ -61,4 +57,4 @@ try:
 except IOError as e:
 	print e
 
-db.close()
+db.close() # disconnect from database

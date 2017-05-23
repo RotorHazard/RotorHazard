@@ -1,7 +1,5 @@
 <!doctype html>
-
 <html lang="en">
-
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -43,7 +41,7 @@
 	</nav>
 	<div class="mdl-layout-spacer"></div>
 	<nav class="mdl-navigation">
-		<a class="delta5-navigation mdl-navigation__link" href="setup.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">Setup</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="database.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">Database</button></a>
 	</nav>
 	<span class="mdl-layout-title">
 		<img src="images/delta5fpv.jpg">

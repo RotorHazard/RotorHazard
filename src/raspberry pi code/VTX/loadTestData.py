@@ -1,4 +1,3 @@
-#
 # Populates the 'vtx' database with test data
 
 import MySQLdb
@@ -32,7 +31,6 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-
 # Edit 'pilots' table with actual names
 try:
 	cursor.execute("UPDATE `pilots` SET `callSign` = %s, `name` = %s WHERE `pilot` = %s",('howflyquad','Alex',1))
@@ -61,6 +59,5 @@ except MySQLdb.Error as e:
 	db.rollback()
 except MySQLdb.Warning as e:
 	print e
-
 
 db.close() # disconnect from database

@@ -1,8 +1,6 @@
-#
 # Saves the currentLaps table to the savedRaces table, needs updates when groups are added
 
 import MySQLdb
-
 
 # Open database connection
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
@@ -47,5 +45,4 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-
-db.close()
+db.close() # disconnect from database

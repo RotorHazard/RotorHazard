@@ -8,22 +8,39 @@ while ($group = $groups->fetch_assoc()) : ?>
 
 <h6>Group <?php echo $group['group']; ?></h6>
 
-<!--Get the number of nodes to loop through-->
-<?php $nodes = $conn->query("SELECT `node` FROM `nodes` WHERE 1") or die($conn->error());
-while ($node = $nodes->fetch_assoc()) : ?>
-
-
+<!--Build the legend table first-->
 <div class="delta5-margin delta5-float">
-<table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp">
+<table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp" style="width: 80px;">
 <thead>
-	<tr>
-		<th>Node</th>
-		<th><?php echo $node['node']; ?></th>
-	</tr>
+<tr>
+	<th>Node</th>
+</tr>
 </thead>
 <tbody>
 <tr>
 	<td>Pilot</td>
+</tr>
+<tr>
+	<td>Channel</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<!--Get the number of nodes to loop through-->
+<?php $nodes = $conn->query("SELECT `node` FROM `nodes` WHERE 1") or die($conn->error());
+while ($node = $nodes->fetch_assoc()) : ?>
+
+<!--Build each pilot table-->
+<div class="delta5-margin delta5-float">
+<table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp" style="width: 100px;">
+<thead>
+<tr>
+	<th><?php echo $node['node']; ?></th>
+</tr>
+</thead>
+<tbody>
+<tr>
 	<td><?php
 	$results = $conn->query("SELECT * FROM `groups` WHERE `group` = ".$group['group']." AND `node` = ".$node['node']) or die($conn->error());
 	$pilot = $results->fetch_assoc();
@@ -33,12 +50,7 @@ while ($node = $nodes->fetch_assoc()) : ?>
 	?></td>
 </tr>
 <tr>
-	<td>Channel</td>
 	<td><?php echo $pilot['vtxChan']; ?></td>
-</tr>
-<tr>
-	<td>Trigger</td>
-	<td><?php echo $pilot['rssiTrigger']; ?></td>
 </tr>
 </tbody>
 </table>

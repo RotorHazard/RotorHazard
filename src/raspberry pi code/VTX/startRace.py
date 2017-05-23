@@ -1,10 +1,8 @@
-#
 # Resets variables on each node then sets race status to true
 
 import smbus
 import time
 import MySQLdb
-
 
 # Start i2c bus
 i2c = smbus.SMBus(1)
@@ -12,7 +10,6 @@ i2c = smbus.SMBus(1)
 # Open database connection
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
-
 
 # Get node i2cAddr info
 i2cAddr = []
@@ -51,11 +48,9 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-db.close()
+db.close() # disconnect from database
 
 # Set clean race start on arduinos, reset laps and raceStatus set true
 for x in range(0, numNodes): # loops for polling each node
 	i2c.write_byte(i2cAddr[x], 0x52) # race reset, raceStatus to 1
 	time.sleep(0.250)
-
-

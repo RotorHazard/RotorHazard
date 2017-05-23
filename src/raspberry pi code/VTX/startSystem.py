@@ -1,4 +1,3 @@
-#
 # Starts the main comms loop with the nodes, reads rssi and lap info from nodes, writes lap
 # info to DB on new lap
 
@@ -192,4 +191,4 @@ while systemStatus == 1:
 	endTime = time.time()
 	print("Loop time: ", endTime - startTime)
 
-db.close()
+db.close() # disconnect from database

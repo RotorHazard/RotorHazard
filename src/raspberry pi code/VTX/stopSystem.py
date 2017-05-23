@@ -1,8 +1,6 @@
-#
 # Sets comms status to false to stop the main comms loop
 
 import MySQLdb
-
 
 # Open database connection
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
@@ -17,4 +15,4 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-db.close()
+db.close() # disconnect from database

@@ -16,15 +16,32 @@ while ($row = $results->fetch_assoc()) { $pilots[] = $row; } ?>
 <?php $results = $conn->query("SELECT `group` FROM `config`") or die($conn->error());
 $group = $results->fetch_assoc() ?>
 
+<!--Build the legend table first-->
+<div class="delta5-margin delta5-float">
+<table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp" style="width: 80px;">
+<tbody>
+<tr>
+	<td>Pilot</td>
+</tr>
+<tr>
+	<td>Channel</td>
+</tr>
+<tr>
+	<td>Trigger</td>
+</tr>
+</tbody>
+</table>
+</div>
+
 <!--Get number of nodes to loop through-->
 <?php $nodes = $conn->query("SELECT `node` FROM `nodes` WHERE 1") or die($conn->error());
 while ($node = $nodes->fetch_assoc()) : ?>
 
+<!--Build table-->
 <div class="delta5-margin delta5-float">
-<table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp">
+<table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp" style="width: 120px;">
 <tbody>
 <tr>
-	<td>Pilot</td>
 	<td>
 	<form method="post">
 		<select name="setPilot" onchange="this.form.submit()">
@@ -46,7 +63,6 @@ while ($node = $nodes->fetch_assoc()) : ?>
 	</td>
 </tr>
 <tr>
-	<td>Channel</td>
 	<td>
 	<form method="post">
 		<select name="setVtxChannel" onchange="this.form.submit()">
@@ -66,7 +82,6 @@ while ($node = $nodes->fetch_assoc()) : ?>
 	</td>
 </tr>
 <tr>
-	<td>Trigger</td>
 	<td>
 	<form method="post">
 		<!--Display the current trigger-->

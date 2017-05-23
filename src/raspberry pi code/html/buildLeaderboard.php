@@ -6,37 +6,27 @@ if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); }
 // get the max laps for each pilot
 $results = $conn->query("SELECT `pilot`, MAX(`lap`) AS `maxLap` FROM `currentLaps` GROUP BY `pilot` ORDER BY `pilot` ASC") or die($conn->error());
 $maxLaps = array();
-while ($row = $results->fetch_assoc()) {
-	$maxLaps[] = $row;
-}
+while ($row = $results->fetch_assoc()) { $maxLaps[] = $row; }
 
 // get the total race time for each pilot
 $results = $conn->query("SELECT `pilot`, SUM(`min`)*60000 + SUM(`sec`)*1000 + SUM(`milliSec`) AS `totalTime` FROM `currentLaps` GROUP BY `pilot` ORDER BY `pilot` ASC") or die($conn->error());
 $totalTime = array();
-while ($row = $results->fetch_assoc()) {
-	$totalTime[] = $row;
-} 
+while ($row = $results->fetch_assoc()) { $totalTime[] = $row; } 
 
 // get the last lap for each pilot
 $results = $conn->query("SELECT m1.* FROM `currentLaps` m1 LEFT JOIN `currentLaps` m2 ON (m1.pilot = m2.pilot AND m1.lap < m2.lap) WHERE m2.lap IS NULL ORDER BY `pilot` ASC") or die($conn->error());
 $lastLap = array();
-while ($row = $results->fetch_assoc()) {
-	$lastLap[] = $row;
-}
+while ($row = $results->fetch_assoc()) { $lastLap[] = $row; }
 
 // get the average lap time for each pilot in milliseconds
 $results = $conn->query("SELECT `pilot`, AVG(`min`)*60000 + AVG(`sec`)*1000 + AVG(`milliSec`) AS `avgLap` FROM `currentLaps` GROUP BY `pilot` ORDER BY `pilot` ASC") or die($conn->error());
 $avgLap = array();
-while ($row = $results->fetch_assoc()) {
-	$avgLap[] = $row;
-}
+while ($row = $results->fetch_assoc()) { $avgLap[] = $row; }
 
 // get the fastest lap time for each pilot
 $results = $conn->query("SELECT `pilot`, MIN(`min`*60000 + `sec`*1000 + `milliSec`) AS `fastLap` FROM `currentLaps` GROUP BY `pilot` ORDER BY `pilot` ASC") or die($conn->error());
 $fastLap = array();
-while ($row = $results->fetch_assoc()) {
-	$fastLap[] = $row;
-}
+while ($row = $results->fetch_assoc()) { $fastLap[] = $row; }
 
 // add all columns to the leaderboard
 $leaderboard = array();
@@ -52,7 +42,7 @@ foreach ($leaderboard as $key => $row) {
 array_multisort($maxLap, SORT_DESC, $totalTime, SORT_ASC, $leaderboard);
 ?>
 
-<!--Start leaderboard table-->
+<!--Build leaderboard table-->
 <div class="delta5-margin">
 <table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp">
 <thead>

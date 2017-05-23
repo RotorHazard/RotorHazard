@@ -1,4 +1,3 @@
-#
 # Populates the 'vtx' database with starting values, configures number of nodes from passed argument value
 
 import smbus
@@ -15,7 +14,6 @@ try:
 except:
 	e = sys.exc_info()[0]
 	print e
-
 
 # This should be read from the i2c bus and the number detected should be compared to the input argument
 i2cAddr=[8,10,12,14,16,18]
@@ -235,9 +233,7 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-	
 db.close() # disconnect from database
-
 
 # Initialize arduinos
 for x in range(0, args.numNodes):

@@ -1,4 +1,3 @@
-# 
 # Takes an group number, node number, and vtx channel then writes to the database and node if needed
 
 import MySQLdb
@@ -30,4 +29,4 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-db.close()
+db.close() # disconnect from database

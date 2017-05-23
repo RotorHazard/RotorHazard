@@ -18,22 +18,25 @@ while ($race = $races->fetch_assoc()) : ?>
 <?php $nodes = $conn->query("SELECT `node` FROM `nodes` WHERE 1") or die($conn->error());
 while ($node = $nodes->fetch_assoc()) : ?>
 
+<!--Build races table-->
 <div class="delta5-margin delta5-float">
-<table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp">
+<table class="delta5-table mdl-data-table mdl-js-data-table mdl-shadow--2dp" style="width: 120px;">
 <thead>
-	<tr>
-		<th>Pilot</th>
-		<th><?php echo $node['node']; ?></th>
-	</tr>
+<tr>
+	<!--Display the current pilot and completed laps-->
+	<?php $results = $conn->query("SELECT `pilot` FROM `groups` WHERE `group` = ".$group['group']." AND `node` = ".$node['node']) or die($conn->error());
+	$pilot = $results->fetch_assoc();
+	$results = $conn->query("SELECT `callSign` FROM `pilots` WHERE `pilot` =".$pilot['pilot']) or die($conn->error());
+	$pilotCallSign = $results->fetch_assoc(); ?>
+	<th><?php echo $pilotCallSign['callSign']; ?></th>
+</tr>
 </thead>
-<tbody>
 
+<tbody>
 <!--Get the laps to loop through-->
 <?php $laps = $conn->query("SELECT `lap`, `min`, `sec`, `milliSec` FROM `savedRaces` WHERE `group` = ".$group['group']." AND `race` = ".$race['race']." AND `pilot` = ".$node['node']) or die($conn->error());
 while ($lap = $laps->fetch_assoc()) : ?>
-
 <tr>
-	<td><?php echo $lap['lap']; ?></td>
 	<td><?php echo $lap['min'].':'.$lap['sec'].':'.sprintf('%03d',$lap['milliSec']); ?></td>
 </tr>
 
@@ -50,3 +53,5 @@ while ($lap = $laps->fetch_assoc()) : ?>
 <?php endwhile ?> <!--Race end-->
 
 <?php endwhile ?> <!--Group end-->
+
+<!--Add a group summary table of all the groups races showing pilot laps completed and lap stats similar to leaderboard table-->

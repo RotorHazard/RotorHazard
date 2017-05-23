@@ -1,7 +1,5 @@
 <!doctype html>
-
 <html lang="en">
-
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -74,7 +72,7 @@
 	</nav>
 	<div class="mdl-layout-spacer"></div>
 	<nav class="mdl-navigation">
-		<a class="delta5-navigation mdl-navigation__link" href="setup.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Setup</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="database.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Database</button></a>
 	</nav>
 	<span class="mdl-layout-title">
 		<img src="images/delta5fpv.jpg">
@@ -144,7 +142,7 @@ $group = $results->fetch_assoc(); ?>
 </h5>
 
 <!--Display the node data-->
-<div class="mdl-grid" id="nodeData">
+<div id="nodeData">
 	<script type="text/javascript">
 	$(document).ready(function() { setInterval(function() { $('#nodeData').load('buildNodes.php') }, 1000); } );
 	</script>
@@ -158,19 +156,33 @@ $group = $results->fetch_assoc(); ?>
 </div>
 
 <!--Show all of the groups with editable tables-->
-<div><h5>Groups</h5></div>
+<h5>Groups</h5>
 <div id="groups">
 	<script type="text/javascript">
 	$(document).ready(function() { $('#groups').load('buildGroupsEdit.php') } );
 	</script>
 </div>
 
+<!--Add group button-->
+<div class="delta5-margin">
+<form method="post">
+	<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="addGroup">Add Group</button>
+</form>
+</div>
+
 <!--Show all of the pilots with editable tables-->
-<div><h5>Pilots</h5></div>
-<div class="mdl-grid" id="pilots">
+<h5>Pilots</h5>
+<div id="pilots">
 	<script type="text/javascript">
 	$(document).ready(function() { $('#pilots').load('buildPilots.php') } );
 	</script>
+</div>
+
+<!--Add pilot button-->
+<div class="delta5-margin">
+<form method="post">
+	<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="addPilot">Add Pilot</button>
+</form>
 </div>
 
 </div>

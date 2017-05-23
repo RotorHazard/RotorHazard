@@ -30,7 +30,7 @@ div.delta5-margin {margin: 8px;}
 
 div.delta5-float {float: left;}
 
-table.delta5-table {width: 140px;}
+table.delta5-table {}
 .delta5-table thead tr{height: 36px;}
 .delta5-table th{height: 36px;padding: 3px 6px 3px 6px !important;font-size: 15px;}
 .delta5-table tbody tr{height: 30px;}
