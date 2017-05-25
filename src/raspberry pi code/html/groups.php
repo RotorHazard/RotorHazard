@@ -23,10 +23,10 @@
 <header class="delta5-header mdl-layout__header">
 <div class="delta5-navigation mdl-layout__header-row">
 	<nav class="mdl-navigation">
-		<a class="delta5-navigation mdl-navigation__link" href="index.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Races</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="index.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Laps</button></a>
 		<a class="delta5-navigation mdl-navigation__link" href="groups.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">Groups</button></a>
 		<a class="delta5-navigation mdl-navigation__link" href="race.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Race</button></a>
-		<a class="delta5-navigation mdl-navigation__link" href="system.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">System</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="settings.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Settings</button></a>
 	</nav>
 	<div class="mdl-layout-spacer"></div>
 	<nav class="mdl-navigation">
@@ -43,7 +43,6 @@
 <div class="page-content">
 
 <!--Display all of the groups-->
-<h5>Groups</h5>
 <div id="groups">
 	<script type="text/javascript">
 	$(document).ready(function() { $('#groups').load('buildGroups.php') } );
@@ -51,7 +50,7 @@
 </div>
 
 <!--Display all of the pilots-->
-<h5>Pilots</h5>
+<h6>Pilots</h6>
 <div id="pilots">
 	<script type="text/javascript">
 	$(document).ready(function() { $('#pilots').load('buildPilots.php') } );

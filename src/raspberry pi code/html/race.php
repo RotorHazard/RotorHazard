@@ -17,18 +17,29 @@
 	
 	<!--Form posting functions	-->
 	<?php
+	// Start and stop the nodes race status
 	if (isset($_POST['startRace'])) 
 		{exec("sudo python /home/pi/VTX/startRace.py");
 	}
 	if (isset($_POST['stopRace'])) {
 		exec("sudo python /home/pi/VTX/stopRace.py");
 	}
+
+	// Save laps to database and then clear current laps for next race
 	if (isset($_POST['saveLaps'])) {
 		exec("sudo python /home/pi/VTX/saveLaps.py");
 		exec("sudo python /home/pi/VTX/clearLaps.py"); // after saving the laps then clear currentLaps
 	}
+
+	// Clear laps for false starts and practice
 	if (isset($_POST['clearLaps']))	{
 		exec("sudo python /home/pi/VTX/clearLaps.py");
+	}
+
+	// Set group
+	if (isset($_POST['setGroup'])) {
+		$newGroup = htmlentities($_POST['setGroup']);
+		exec("sudo python /home/pi/VTX/setGroup.py ".$newGroup);
 	}
 	?>
 </head>
@@ -40,10 +51,10 @@
 <header class="delta5-header mdl-layout__header">
 <div class="delta5-navigation mdl-layout__header-row">
 	<nav class="mdl-navigation">
-		<a class="delta5-navigation mdl-navigation__link" href="index.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Races</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="index.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Laps</button></a>
 		<a class="delta5-navigation mdl-navigation__link" href="groups.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Groups</button></a>
 		<a class="delta5-navigation mdl-navigation__link" href="race.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">Race</button></a>
-		<a class="delta5-navigation mdl-navigation__link" href="system.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">System</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="settings.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Settings</button></a>
 	</nav>
 	<div class="mdl-layout-spacer"></div>
 	<nav class="mdl-navigation">
@@ -73,18 +84,22 @@ if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); } 
 </form>
 </div>
 
-<!--Display the status of the race variable in a heading-->
-<div>
-<?php $results = $conn->query("SELECT `raceStatus` FROM `status`") or die($conn->error());
-$status = $results->fetch_assoc(); ?>
-<h5>Race Status: 
-<?php if ($status['raceStatus'] == 0) { echo "Stopped"; }
-else { echo "Racing!"; } ?>
-</h5>
+<!--Race status table-->
+<div id="raceStatus" class="delta5-float">
+	<script type="text/javascript">
+	$(document).ready(function() { setInterval(function() { $('#raceStatus').load('buildRaceStatus.php') }, 1000); } );
+	</script>
 </div>
+<!--Config current group-->
+<div id="configGroup" class="delta5-float">
+	<script type="text/javascript">
+	$(document).ready(function() { $('#configGroup').load('buildConfigGroup.php') } );
+	</script>
+</div>
+<div style="clear: both;"></div>
 
 <!--Display the race leaderboard-->
-<h5>Leaderboard</h5>
+<h6>Leaderboard</h6>
 <div id="leaderboard">
 	<script type="text/javascript">
 	$(document).ready(function() { setInterval(function() { $('#leaderboard').load('buildLeaderboard.php') }, 2000); } );
@@ -92,7 +107,7 @@ else { echo "Racing!"; } ?>
 </div>
 
 <!--Display the current races laps-->
-<h5>Laps</h5>
+<h6>Laps</h6>
 <div id="currentLaps">
 	<script type="text/javascript">
 	$(document).ready(function() { setInterval(function() { $('#currentLaps').load('buildLapsCurrent.php') }, 1000); } );

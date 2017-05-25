@@ -5,7 +5,7 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="description" content="Delta5 VTX Timer.">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-	<title>System - Delta5 VTX Timer</title>
+	<title>Settings - Delta5 VTX Timer</title>
 
 	<!-- Page styles -->
 	<link rel="stylesheet" href="styles/mdl/material.min.css">
@@ -28,7 +28,7 @@
 
 	// Set min lap time
 	if (isset($_POST['setMinLapTime'])) {
-		$minLapTime = htmlentities($_POST['minLapTime']);
+		$minLapTime = htmlentities($_POST['setMinLapTime']);
 		exec("sudo python /home/pi/VTX/setMinLapTime.py ".$minLapTime);
 	}
 
@@ -55,6 +55,36 @@
 		$node = htmlentities($_POST['nodeid']);
 		exec("sudo python /home/pi/VTX/setRssiTrigger.py ".$group." ".$node." ".$rssiTrigger);
 	}
+
+	// Set pilot call sign
+	if (isset($_POST['setCallSign'])) {
+		$setCallSign = htmlentities($_POST['setCallSign']);
+		$pilot = htmlentities($_POST['pilotid']);
+		exec("sudo python /home/pi/VTX/setPilotCallSign.py ".$pilot." '".$setCallSign."'");
+	}
+
+	// Set set pilot name
+	if (isset($_POST['setPilotName'])) {
+		$setPilotName = htmlentities($_POST['setPilotName']);
+		$pilot = htmlentities($_POST['pilotid']);
+		exec("sudo python /home/pi/VTX/setPilotName.py ".$pilot." '".$setPilotName."'");
+	}
+
+	// Add new pilot
+	if (isset($_POST['addPilot'])) {
+		exec("sudo python /home/pi/VTX/addPilot.py");
+	}
+
+	// Add new group
+	if (isset($_POST['addGroup'])) {
+		exec("sudo python /home/pi/VTX/addGroup.py");
+	}
+
+	// Set group
+	if (isset($_POST['setGroup'])) {
+		$newGroup = htmlentities($_POST['setGroup']);
+		exec("sudo python /home/pi/VTX/setGroup.py ".$newGroup);
+	}
 	?>
 </head>
 	
@@ -65,10 +95,10 @@
 <header class="delta5-header mdl-layout__header">
 <div class="delta5-navigation mdl-layout__header-row">
 	<nav class="mdl-navigation">
-		<a class="delta5-navigation mdl-navigation__link" href="index.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Races</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="index.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Laps</button></a>
 		<a class="delta5-navigation mdl-navigation__link" href="groups.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Groups</button></a>
 		<a class="delta5-navigation mdl-navigation__link" href="race.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Race</button></a>
-		<a class="delta5-navigation mdl-navigation__link" href="system.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">System</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="settings.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">Settings</button></a>
 	</nav>
 	<div class="mdl-layout-spacer"></div>
 	<nav class="mdl-navigation">
@@ -97,49 +127,33 @@ if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); } 
 </div>
 
 <!--System status table-->
-<h5>System Status</h5>
-<div id="setupData">
+<div id="systemStatus" class="delta5-float">
 	<script type="text/javascript">
-	$(document).ready(function() { setInterval(function() { $('#setupData').load('buildSystemStatus.php') }, 1000); } );
+	$(document).ready(function() { setInterval(function() { $('#systemStatus').load('buildSystemStatus.php') }, 1000); } );
 	</script>
 </div>
-<!--Set minimum lap time-->
-<div class="delta5-margin">
-<form method="post">
-	<div class="mdl-textfield mdl-js-textfield" style="width:150px;">
-		<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" id="minLapTime" name="minLapTime">
-		<label class="mdl-textfield__label" for="minLapTime">Set minLapTime...</label>
-		<span class="mdl-textfield__error">Input is not a number!</span>
-	</div>
-	<br>
-	<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="setMinLapTime">Set</button>
-</form>
+<!--Race status table-->
+<div id="raceStatus" class="delta5-float">
+	<script type="text/javascript">
+	$(document).ready(function() { setInterval(function() { $('#raceStatus').load('buildRaceStatus.php') }, 1000); } );
+	</script>
 </div>
+<!--Config min lap time-->
+<div id="configMinLap" class="delta5-float">
+	<script type="text/javascript">
+	$(document).ready(function() { $('#configMinLap').load('buildConfigMinLap.php') } );
+	</script>
+</div>
+<!--Config current group-->
+<div id="configGroup" class="delta5-float">
+	<script type="text/javascript">
+	$(document).ready(function() { $('#configGroup').load('buildConfigGroup.php') } );
+	</script>
+</div>
+<div style="clear: both;"></div>
 
-<!--Display the current loaded group in the heading-->
-<?php $results = $conn->query("SELECT `group` FROM `config`") or die($conn->error());
-$group = $results->fetch_assoc(); ?>
-<h5>Current Group: <?php echo $group['group']; ?>
-<!--Build the drop down selection to change the group-->
-<form method="post">
-	<select name="setGroup" onchange="this.form.submit()">
-		<!--Get groups list-->
-		<?php $results = $conn->query("SELECT DISTINCT `group` FROM `groups` ORDER BY `group` ASC") or die($conn->error());
-		$groups = array();
-		while ($row = $results->fetch_assoc()) {
-			$groups[] = $row;
-		} ?>
-		<!--Display the current group first-->
-		<option value="<?php echo $group['group']; ?>"><?php echo $group['group']; ?></option>
-		<!--Build the list of groups-->
-		<?php for ($i = 0; $i < count($groups); $i++) : ?>
-		<option value="<?php echo $groups[$i]['group']; ?>">
-			<?php echo $groups[$i]['group']; ?>
-		</option>
-		<?php endfor ?>
-	</select>
-</form>
-</h5>
+<!--Current group-->
+<h6>Current Group</h6>
 
 <!--Display the node data-->
 <div id="nodeData">
@@ -156,7 +170,6 @@ $group = $results->fetch_assoc(); ?>
 </div>
 
 <!--Show all of the groups with editable tables-->
-<h5>Groups</h5>
 <div id="groups">
 	<script type="text/javascript">
 	$(document).ready(function() { $('#groups').load('buildGroupsEdit.php') } );
@@ -171,10 +184,10 @@ $group = $results->fetch_assoc(); ?>
 </div>
 
 <!--Show all of the pilots with editable tables-->
-<h5>Pilots</h5>
+<h6>Pilots</h6>
 <div id="pilots">
 	<script type="text/javascript">
-	$(document).ready(function() { $('#pilots').load('buildPilots.php') } );
+	$(document).ready(function() { $('#pilots').load('buildPilotsEdit.php') } );
 	</script>
 </div>
 

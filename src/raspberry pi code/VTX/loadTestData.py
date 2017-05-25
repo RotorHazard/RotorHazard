@@ -32,32 +32,32 @@ except MySQLdb.Warning as e:
 	print e
 
 # Edit 'pilots' table with actual names
-try:
-	cursor.execute("UPDATE `pilots` SET `callSign` = %s, `name` = %s WHERE `pilot` = %s",('howflyquad','Alex',1))
-	db.commit()
-except MySQLdb.Error as e:
-	print e
-	db.rollback()
-except MySQLdb.Warning as e:
-	print e
+# try:
+# 	cursor.execute("UPDATE `pilots` SET `callSign` = %s, `name` = %s WHERE `pilot` = %s",('howflyquad','Alex',1))
+# 	db.commit()
+# except MySQLdb.Error as e:
+# 	print e
+# 	db.rollback()
+# except MySQLdb.Warning as e:
+# 	print e
 
 # Add group 2 pilots
-try:
-	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (6,'group2-1','Group2 One')")
-	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (7,'group2-2','Group2 Two')")
-	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (8,'group2-3','Group2 Three')")
-	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (9,'group2-4','Group2 Four')")
-	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (10,'group2-5','Group2 Five')")
-	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (2,1,6,'E2 5685',0)")
-	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (2,2,7,'F2 5760',0)")
-	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (2,3,8,'F4 5800',0)")
-	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (2,4,9,'F7 5860',0)")
-	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (2,5,10,'E6 5905',0)")
-	db.commit()
-except MySQLdb.Error as e:
-	print e
-	db.rollback()
-except MySQLdb.Warning as e:
-	print e
+# try:
+# 	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (6,'group2-1','Group2 One')")
+# 	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (7,'group2-2','Group2 Two')")
+# 	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (8,'group2-3','Group2 Three')")
+# 	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (9,'group2-4','Group2 Four')")
+# 	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (10,'group2-5','Group2 Five')")
+# 	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (2,1,6,'E2 5685',0)")
+# 	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (2,2,7,'F2 5760',0)")
+# 	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (2,3,8,'F4 5800',0)")
+# 	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (2,4,9,'F7 5860',0)")
+# 	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (2,5,10,'E6 5905',0)")
+# 	db.commit()
+# except MySQLdb.Error as e:
+# 	print e
+# 	db.rollback()
+# except MySQLdb.Warning as e:
+# 	print e
 
 db.close() # disconnect from database

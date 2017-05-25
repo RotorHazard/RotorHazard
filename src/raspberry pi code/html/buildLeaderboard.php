@@ -59,12 +59,15 @@ array_multisort($maxLap, SORT_DESC, $totalTime, SORT_ASC, $leaderboard);
 <tbody>
 
 <!--Loop through each position in the race-->
-<?php for ($i = 0; $i < count($leaderboard); $i++) : ?>
+<?php for ($i = 0; $i < count($leaderboard); $i++): ?>
 <tr>
 	<td><?php echo $i+1 ?></td>
-	<td><?php echo $leaderboard[$i]['pilot']; ?></td>
+	<!--Get pilot call sign from pilot number-->
+	<?php $results = $conn->query("SELECT `callSign` FROM `pilots` WHERE `pilot` =".$leaderboard[$i]['pilot']) or die($conn->error());
+	$pilotCallSign = $results->fetch_assoc(); ?>
+	<td><?php echo $pilotCallSign['callSign']; ?></td>
 	<td><?php echo $leaderboard[$i]['maxLap']; ?></td>
-	<td><?php echo $leaderboard[$i]['lastMin'].':'.$leaderboard[$i]['lastSec'].':'.sprintf('%03d',$leaderboard[$i]['lastMilliSec']); ?></td>
+	<td><?php echo $leaderboard[$i]['lastMin'].':'.sprintf('%02d',$leaderboard[$i]['lastSec']).':'.sprintf('%03d',$leaderboard[$i]['lastMilliSec']); ?></td>
 	<td><?php
 	$behind = $leaderboard[0]['maxLap']-$leaderboard[$i]['maxLap'];
 	if ($behind == 0) {
@@ -76,7 +79,7 @@ array_multisort($maxLap, SORT_DESC, $totalTime, SORT_ASC, $leaderboard);
 	<td><?php
 	$avgMin = (int)($leaderboard[$i]['avgLap'] / 60000);
 	$over = (int)($leaderboard[$i]['avgLap'] % 60000);
-	$avgSec = (int)($over / 1000);
+	$avgSec = sprintf('%02d',(int)($over / 1000));
 	$over = (int)($over % 1000);
 	$avgMilliSec = sprintf('%03d', $over); // 3 digit padding for milliseconds
 	echo $avgMin.':'.$avgSec.':'.$avgMilliSec;
@@ -84,13 +87,13 @@ array_multisort($maxLap, SORT_DESC, $totalTime, SORT_ASC, $leaderboard);
 	<td><?php
 	$fastMin = (int)($leaderboard[$i]['fastLap'] / 60000);
 	$over = (int)($leaderboard[$i]['fastLap'] % 60000);
-	$fastSec = (int)($over / 1000);
+	$fastSec = sprintf('%02d',(int)($over / 1000));
 	$over = (int)($over % 1000);
 	$fastMilliSec = sprintf('%03d', $over); // 3 digit padding for milliseconds
 	echo $fastMin.':'.$fastSec.':'.$fastMilliSec;
 	?></td>
 </tr>
-<?php endfor ?>
+<?php endfor; ?>
 
 </tbody>
 </table>

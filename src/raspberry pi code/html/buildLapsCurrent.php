@@ -8,7 +8,7 @@ $group = $results->fetch_assoc() ?>
 
 <!--Get the number of nodes to loop through-->
 <?php $nodes = $conn->query("SELECT `node` FROM `nodes` WHERE 1") or die($conn->error());
-while ($node = $nodes->fetch_assoc()) : ?>
+while ($node = $nodes->fetch_assoc()): ?>
 
 <!--Build laps table-->
 <div class="delta5-margin delta5-float">
@@ -27,16 +27,16 @@ while ($node = $nodes->fetch_assoc()) : ?>
 <tbody>
 <!--Get the number of laps to loop through-->
 <?php $laps = $conn->query("SELECT * FROM `currentLaps` WHERE `pilot` = ".$node['node']) or die($conn->error());
-while ($row = $laps->fetch_assoc()) : ?>
+while ($row = $laps->fetch_assoc()): ?>
 <tr>
-	<td><?php echo $row['min'].':'.$row['sec'].':'.sprintf('%03d',$row['milliSec']); ?></td>
+	<td><?php echo $row['min'].':'.sprintf('%02d',$row['sec']).':'.sprintf('%03d',$row['milliSec']); ?></td>
 </tr>
-<?php endwhile ?>
+<?php endwhile; ?>
 
 </tbody>
 </table>
 </div>
 
-<?php endwhile ?>
+<?php endwhile; ?>
 
 <div style="clear: both;"></div>

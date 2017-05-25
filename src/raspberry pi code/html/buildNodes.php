@@ -26,7 +26,7 @@ while ($row = $results->fetch_assoc()) { $rssi[] = $row['rssi']; } ?>
 <!--Get node info-->
 <?php $results = $conn->query("SELECT * FROM `nodes` WHERE 1") or die($conn->error());
 $index = 0; // For referencing rssi array
-while ($node = $results->fetch_assoc()) :
+while ($node = $results->fetch_assoc()):
 ?>
 
 <!--Build node table-->
@@ -47,7 +47,7 @@ while ($node = $results->fetch_assoc()) :
 
 <?php
 $index++;
-endwhile
+endwhile;
 ?>
 
 <div style="clear: both;"></div>

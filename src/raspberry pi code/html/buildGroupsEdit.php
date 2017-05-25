@@ -14,7 +14,7 @@ while ($row = $results->fetch_assoc()) { $pilots[] = $row; } ?>
 
 <!--Get the distinct number of groups to loop through-->
 <?php $groups = $conn->query("SELECT DISTINCT `group` FROM `groups`") or die($conn->error());
-while ($group = $groups->fetch_assoc()) : ?>
+while ($group = $groups->fetch_assoc()): ?>
 
 <h6>Group <?php echo $group['group']; ?></h6>
 
@@ -42,7 +42,7 @@ while ($group = $groups->fetch_assoc()) : ?>
 
 <!--Get number of nodes to loop through-->
 <?php $nodes = $conn->query("SELECT `node` FROM `nodes` WHERE 1") or die($conn->error());
-while ($node = $nodes->fetch_assoc()) : ?>
+while ($node = $nodes->fetch_assoc()): ?>
 
 <!--Build table-->
 <div class="delta5-margin delta5-float">
@@ -56,7 +56,7 @@ while ($node = $nodes->fetch_assoc()) : ?>
 <tr>
 	<td>
 	<form method="post">
-		<select name="setPilot" onchange="this.form.submit()">
+		<select name="setPilot" onchange="this.form.submit()" style="width:105px">
 			<!--Display the current pilot-->
 			<?php $results = $conn->query("SELECT * FROM `groups` WHERE `group` = ".$group['group']." AND `node` = ".$node['node']) or die($conn->error());
 			$pilot = $results->fetch_assoc();
@@ -64,9 +64,9 @@ while ($node = $nodes->fetch_assoc()) : ?>
 			$pilotCallSign = $results->fetch_assoc(); ?>
 			<option value="<?php echo $pilot['pilot']; ?>"><?php echo $pilotCallSign['callSign']; ?></option>
 			<!--Build the list of pilots-->
-			<?php for ($i = 0; $i < count($pilots); $i++) : ?>
+			<?php for ($i = 0; $i < count($pilots); $i++): ?>
 			<option value="<?php echo $pilots[$i]['pilot']; ?>"><?php echo $pilots[$i]['callSign']; ?></option>
-			<?php endfor ?>
+			<?php endfor; ?>
 		</select>
 		<!--Node and group variables to know which channel to change-->
 		<input name="nodeid" value="<?php echo $node['node']; ?>" type="hidden"/>
@@ -77,15 +77,15 @@ while ($node = $nodes->fetch_assoc()) : ?>
 <tr>
 	<td>
 	<form method="post">
-		<select name="setVtxChannel" onchange="this.form.submit()">
+		<select name="setVtxChannel" onchange="this.form.submit()" style="width:105px">
 			<!--Display the current vtx channel-->
 			<?php $results = $conn->query("SELECT `vtxChan` FROM `groups` WHERE `group` = ".$group['group']." AND `node` = ".$node['node']) or die($conn->error());
 			$vtxChan = $results->fetch_assoc(); ?>
 			<option value="<?php echo $vtxChan['vtxChan']; ?>"><?php echo $vtxChan['vtxChan']; ?></option>
 			<!--Build the list of vtx channels-->
-			<?php for ($i = 0; $i < count($vtxReference); $i++) : ?>
+			<?php for ($i = 0; $i < count($vtxReference); $i++): ?>
 			<option value="<?php echo $vtxReference[$i]['vtxChan']; ?>"><?php echo $vtxReference[$i]['vtxChan']; ?></option>
-			<?php endfor ?>
+			<?php endfor; ?>
 		</select>
 		<!--Node and group variables to know which channel to change-->
 		<input name="nodeid" value="<?php echo $node['node']; ?>" type="hidden"/>
@@ -99,7 +99,7 @@ while ($node = $nodes->fetch_assoc()) : ?>
 		<!--Display the current trigger-->
 		<?php $results = $conn->query("SELECT `rssiTrigger` FROM `groups` WHERE `group` = ".$group['group']." AND `node` = ".$node['node']) or die($conn->error());
 		$rssiTrigger = $results->fetch_assoc(); ?>
-		<input name="setRssiTrigger" onchange="this.form.submit()" value="<?php echo $rssiTrigger['rssiTrigger']; ?>" size="2">
+		<input name="setRssiTrigger" onchange="this.form.submit()" value="<?php echo $rssiTrigger['rssiTrigger']; ?>" style="width:100px">
 		<!--Node and group variables to know which channel to change-->
 		<input name="nodeid" value="<?php echo $node['node']; ?>" type="hidden"/>
 		<input name="groupid" value="<?php echo $group['group']; ?>" type="hidden"/>
@@ -110,8 +110,8 @@ while ($node = $nodes->fetch_assoc()) : ?>
 </table>
 </div>
 
-<?php endwhile ?>
+<?php endwhile; ?>
 
 <div style="clear: both;"></div>
 
-<?php endwhile ?>
+<?php endwhile; ?>

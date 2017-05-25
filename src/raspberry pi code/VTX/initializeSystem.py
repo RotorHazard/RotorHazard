@@ -9,7 +9,7 @@ import sys
 # Read in number of nodes from passed argument
 try:
 	parser = argparse.ArgumentParser()
-	parser.add_argument("numNodes", help="Number of nodes.", type=int)
+	parser.add_argument("numNodes", help="Number of nodes", type=int)
 	args = parser.parse_args()
 except:
 	e = sys.exc_info()[0]
@@ -29,17 +29,25 @@ i2c = smbus.SMBus(1)
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
-# Empty 'config' table
+# 'vtx' database, add code to create database 'vtx' if it doesn't exist and completely clear it and then remove all of the drop tables below
+
+# Initialize 'config' table - Stores system configuration variables
 try:
-	cursor.execute("DELETE FROM `config` WHERE 1")
+	cursor.execute("DROP TABLE IF EXISTS `config`")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
 	db.rollback()
 except MySQLdb.Warning as e:
 	print e
-
-# Initialize 'config' table
+try:
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `config` (`group` INT, `minLapTime` INT)""")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 try:
 	cursor.execute("INSERT INTO `config` (`group`,`minLapTime`) VALUES (1,5)")
 	db.commit()
@@ -49,17 +57,23 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-# Empty 'status' table
+# Initialize 'status' table - Volitile MEMORY table for frequently changing system variables
 try:
-	cursor.execute("DELETE FROM `status` WHERE 1")
+	cursor.execute("DROP TABLE IF EXISTS `status`")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
 	db.rollback()
 except MySQLdb.Warning as e:
 	print e
-
-# Initialize 'status' table
+try:
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `status` (`systemStatus` INT, `raceStatus` INT) ENGINE = MEMORY""")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 try:
 	cursor.execute("INSERT INTO `status` (`systemStatus`, `raceStatus`) VALUES (0,0)")
 	db.commit()
@@ -69,17 +83,23 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-# Empty 'nodes' table
+# Initialize 'nodes' table based on number of nodes - Stores node configuration
 try:
-	cursor.execute("DELETE FROM `nodes` WHERE 1")
+	cursor.execute("DROP TABLE IF EXISTS `nodes`")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
 	db.rollback()
 except MySQLdb.Warning as e:
 	print e
-
-# Initialize 'nodes' table based on number of nodes
+try:
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `nodes` (`node` INT, `i2cAddr` INT)""")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 for x in range(0, args.numNodes):
 	try:
 		cursor.execute("INSERT INTO `nodes` (`node`, `i2cAddr`) VALUES (%s,%s)",(x+1,i2cAddr[x]))
@@ -90,17 +110,23 @@ for x in range(0, args.numNodes):
 	except MySQLdb.Warning as e:
 		print e
 
-# Empty 'nodesMem' table
+# Initialize 'nodesMem' table based on number of nodes - Volitile MEMORY table for frequently changing node data
 try:
-	cursor.execute("DELETE FROM `nodesMem` WHERE 1")
+	cursor.execute("DROP TABLE IF EXISTS `nodesMem`")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
 	db.rollback()
 except MySQLdb.Warning as e:
 	print e
-
-# Initialize 'nodesMem' table based on number of nodes
+try:
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `nodesMem` (`node` INT, `rssi` INT, `lapCount` INT) ENGINE = MEMORY""")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
 for x in range(0, args.numNodes):
 	try:
 		cursor.execute("INSERT INTO `nodesMem` (`node`, `rssi`, `lapCount`) VALUES (%s,0,0)",(x+1))
@@ -111,9 +137,17 @@ for x in range(0, args.numNodes):
 	except MySQLdb.Warning as e:
 		print e
 
-# Empty 'currentLaps' table
+# Initialize 'currentLaps' table - Stores completed lap data for the current race to be moved to savedRaces later or cleared
 try:
-	cursor.execute("DELETE FROM `currentLaps` WHERE 1")
+	cursor.execute("DROP TABLE IF EXISTS `currentLaps`")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+try:
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `currentLaps` (`pilot` INT, `lap` INT, `min` INT, `sec` INT, `milliSec` INT)""")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -121,9 +155,79 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-# Empty 'pilots' table
+# Initialize 'pilots' table
 try:
-	cursor.execute("DELETE FROM `pilots` WHERE 1")
+	cursor.execute("DROP TABLE IF EXISTS `pilots`")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+try:
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `pilots` (`pilot` INT, `callSign` VARCHAR(255), `name` VARCHAR(255))""")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+try:
+	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (0,'','')") # blank pilot zero
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+for x in range(0, args.numNodes):
+	try:
+		cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (%s,%s,'Pilot Name')",(x+1,'pilot'+str(x+1)))
+		db.commit()
+	except MySQLdb.Error as e:
+		print e
+		db.rollback()
+	except MySQLdb.Warning as e:
+		print e
+
+# Initialize 'groups' table -- This should be generated from the number of nodes passed in!!!
+try:
+	cursor.execute("DROP TABLE IF EXISTS `groups`")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+try:
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `groups` (`group` INT, `node` INT, `pilot` INT, `vtxChan` VARCHAR(10), `rssiTrigger` INT)""")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+for x in range(0, args.numNodes):
+	try:
+		cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (1,%s,%s,%s,0)",(x+1,x+1,vtxChan[x]))
+		db.commit()
+	except MySQLdb.Error as e:
+		print e
+		db.rollback()
+	except MySQLdb.Warning as e:
+		print e
+
+# Initialize 'savedRaces' table - Stores all the races and laps data for the current session
+try:
+	cursor.execute("DROP TABLE IF EXISTS `savedRaces`")
+	db.commit()
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+try:
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `savedRaces` (`race` INT, `group` INT, `pilot` INT, `lap` INT, `min` INT, `sec` INT, `milliSec` INT)""")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -131,56 +235,23 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-# Load pilots for group 1 -- This should be generated from the number of nodes passed in!!!
+# Initialize 'vtxReference' table - Lookup table for getting band/channel from MHz
 try:
-	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (0,'','')")
-	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (1,'pilot1','Pilot One')")
-	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (2,'pilot2','Pilot Two')")
-	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (3,'pilot3','Pilot Three')")
-	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (4,'pilot4','Pilot Four')")
-	cursor.execute("INSERT INTO `pilots` (`pilot`, `callSign`, `name`) VALUES (5,'pilot5','Pilot Five')")
+	cursor.execute("DROP TABLE IF EXISTS `vtxReference`")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
 	db.rollback()
 except MySQLdb.Warning as e:
 	print e
-
-# Empty 'groups' table
 try:
-	cursor.execute("DELETE FROM `groups` WHERE 1")
+	cursor.execute("""CREATE TABLE IF NOT EXISTS `vtxReference` (`vtxChan` VARCHAR(10))""")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
 	db.rollback()
 except MySQLdb.Warning as e:
 	print e
-
-# Load pilots for group 1 -- This should be generated from the number of nodes passed in!!!
-try:
-	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (1,1,1,'E2 5685',0)")
-	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (1,2,2,'F2 5760',0)")
-	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (1,3,3,'F4 5800',0)")
-	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (1,4,4,'F7 5860',0)")
-	cursor.execute("INSERT INTO `groups` (`group`, `node`, `pilot`, `vtxChan`, `rssiTrigger`) VALUES (1,5,5,'E6 5905',0)")
-	db.commit()
-except MySQLdb.Error as e:
-	print e
-	db.rollback()
-except MySQLdb.Warning as e:
-	print e
-
-# Empty 'vtxReference' table
-try:
-	cursor.execute("DELETE FROM `vtxReference` WHERE 1")
-	db.commit()
-except MySQLdb.Error as e:
-	print e
-	db.rollback()
-except MySQLdb.Warning as e:
-	print e
-
-# Initialize 'vtxReference' table
 try:
 	sql = "INSERT INTO `vtxReference` (`vtxChan`) VALUES (%s)"
 	params = [

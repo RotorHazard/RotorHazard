@@ -5,7 +5,7 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="description" content="Delta5 VTX Timer.">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-	<title>Setup - Delta5 VTX Timer</title>
+	<title>Database - Delta5 VTX Timer</title>
 
 	<!-- Page styles -->
 	<link rel="stylesheet" href="styles/mdl/material.min.css">
@@ -17,12 +17,23 @@
 	
 	<!--Form posting functions	-->
 	<?php
-	if (isset($_GET['initializeSystem'])) {
-		$numberOfNodes = htmlentities($_GET['numberOfNodes']);
+	if (isset($_POST['initializeSystem'])) {
+		$numberOfNodes = htmlentities($_POST['numberOfNodes']);
 		exec("sudo python /home/pi/VTX/initializeSystem.py ".$numberOfNodes);
 	}
-	if (isset($_POST['createDatabase'])) {
-		exec("sudo python /home/pi/VTX/createDatabase.py");
+
+	if (isset($_POST['clearSavedRaces'])) {
+		exec("sudo python /home/pi/VTX/clearSavedRaces.py");
+		exec("sudo python /home/pi/VTX/clearLaps.py"); // Also clear current laps
+	}
+
+	if (isset($_POST['resetGroups'])) {
+		exec("sudo python /home/pi/VTX/resetGroups.py");
+		exec("sudo python /home/pi/VTX/setGroup.py 1"); // Then set group 1 to reset nodes
+	}
+
+	if (isset($_POST['resetPilots'])) {
+		exec("sudo python /home/pi/VTX/resetPilots.py");
 	}
 	?>
 </head>
@@ -34,10 +45,10 @@
 <header class="delta5-header mdl-layout__header">
 <div class="delta5-navigation mdl-layout__header-row">
 	<nav class="mdl-navigation">
-		<a class="delta5-navigation mdl-navigation__link" href="index.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Races</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="index.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Laps</button></a>
 		<a class="delta5-navigation mdl-navigation__link" href="groups.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Groups</button></a>
 		<a class="delta5-navigation mdl-navigation__link" href="race.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Race</button></a>
-		<a class="delta5-navigation mdl-navigation__link" href="system.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">System</button></a>
+		<a class="delta5-navigation mdl-navigation__link" href="settings.php"><button class="delta5-navigation mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">Settings</button></a>
 	</nav>
 	<div class="mdl-layout-spacer"></div>
 	<nav class="mdl-navigation">
@@ -53,25 +64,27 @@
 <main class="mdl-layout__content">
 <div class="page-content">
 
-<!--Get the number of nodes in the system and initialize the database-->
-<h5>Initialize System</h5>
+<!--Clear saved laps, reset groups, reset pilots-->
 <div class="delta5-margin">
-<form method="get">
-<div class="mdl-textfield mdl-js-textfield" style="width:150px;">
-	<input name="numberOfNodes" id="numberOfNodes" class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?">
-	<label for="numberOfNodes" class="mdl-textfield__label">Number of nodes...</label>
-	<span class="mdl-textfield__error">Input is not a number!</span>
-</div>
-<br>
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="initializeSystem">Initialize System</button>
+<form method="post">
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="clearSavedRaces">Clear Races</button>&nbsp;
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="resetGroups">Reset Groups</button>&nbsp;
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="resetPilots">Reset Pilots</button>
 </form>
 </div>
 
-<!--Empty and create the database new-->
-<h5>Create Database (Warning, destroys all data)</h5>
+<!--Get the number of nodes in the system and initialize the database-->
+<h6>Initialize System (Warning, destroys all data)</h6>
 <div class="delta5-margin">
 <form method="post">
-<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="createDatabase">Create Database</button>
+	<select name="numberOfNodes">
+		<?php for ($i = 1; $i <= 6; $i++): ?>
+		<option value="<?php echo $i ?>">
+			<?php echo $i ?>
+		</option>
+		<?php endfor; ?>
+	</select>
+	<button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect" name="initializeSystem">Initialize System</button>
 </form>
 </div>
 
