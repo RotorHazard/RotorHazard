@@ -19,7 +19,7 @@
 	<?php
 	// Start and stop the nodes race status
 	if (isset($_POST['startRace'])) 
-		{exec("sudo python /home/pi/VTX/startRace.py");
+		{exec("sudo python /home/pi/VTX/startRace.py > /dev/null 2>/dev/null &"); // Doesn't wait for the exec to finish
 	}
 	if (isset($_POST['stopRace'])) {
 		exec("sudo python /home/pi/VTX/stopRace.py");
@@ -30,7 +30,7 @@
 		$newGroup = htmlentities($_POST['setGroup']);
 		exec("sudo python /home/pi/VTX/stopSystem.py");
 		exec("sudo python /home/pi/VTX/setGroup.py ".$newGroup);
-		exec("sudo python /home/pi/VTX/startSystem.py"); // Clean start up again main system loop
+		exec("sudo python /home/pi/VTX/startSystem.py > /dev/null 2>/dev/null &"); // Clean start up again main system loop
 	}
 
 	// Save laps to database and then clear current laps for next race

@@ -19,7 +19,7 @@
 	<?php
 	// Start / Stop system commands
 	if (isset($_POST['startSystem'])) {
-		exec("sudo python /home/pi/VTX/startSystem.py");
+		exec("sudo python /home/pi/VTX/startSystem.py > /dev/null 2>/dev/null &"); // Doesn't wait for the exec to finish
 	}
 	if (isset($_POST['stopSystem'])) {
 		exec("sudo python /home/pi/VTX/stopSystem.py");
@@ -31,7 +31,7 @@
 		$newGroup = htmlentities($_POST['setGroup']);
 		exec("sudo python /home/pi/VTX/stopSystem.py");
 		exec("sudo python /home/pi/VTX/setGroup.py ".$newGroup);
-		exec("sudo python /home/pi/VTX/startSystem.py"); // Clean start up main system loop
+		exec("sudo python /home/pi/VTX/startSystem.py > /dev/null 2>/dev/null &"); // Clean start up main system loop
 	}
 
 	// Set min lap time
@@ -39,7 +39,7 @@
 		$minLapTime = htmlentities($_POST['setMinLapTime']);
 		exec("sudo python /home/pi/VTX/stopSystem.py");
 		exec("sudo python /home/pi/VTX/setMinLapTime.py ".$minLapTime);
-		exec("sudo python /home/pi/VTX/startSystem.py"); // Clean start up main system loop
+		exec("sudo python /home/pi/VTX/startSystem.py > /dev/null 2>/dev/null &"); // Clean start up main system loop
 	}
 
 	// Set pilot position in groups and nodes
