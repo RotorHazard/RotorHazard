@@ -19,14 +19,19 @@ lapCount = [] # Current lap count
 try:
 	cursor.execute("SELECT `i2cAddr` FROM `nodes`")
 	numNodes = int(cursor.rowcount) # Get the number of nodes in the system from the size of nodes table
-	print "numNodes: %d" % numNodes
+	print "numNodes:"
+	print numNodes
 	results = cursor.fetchall() # Fetch all the rows in a list of lists
 	for row in results:
 		i2cAddr.append(int(row[0]))
 		rssi.append(0) # Create array size to match number of nodes
 		lapCount.append(0) # Create array size to match number of nodes
-	print "i2cAddr: "
+	print "i2cAddr:"
 	print i2cAddr
+	print "rssi:"
+	print rssi
+	print "lapCount:"
+	print lapCount
 except MySQLdb.Error as e:
 	print e
 except MySQLdb.Warning as e:
@@ -50,6 +55,57 @@ for x in range(0, numNodes):
 		db.rollback()
 	except MySQLdb.Warning as e:
 		print e
+
+# Get the current config: group, min lap time
+try:
+	cursor.execute("SELECT `group`, `minLapTime` FROM `config`")
+	result = cursor.fetchone()
+	group = int(result[0])
+	minLapTime = int(result[1])
+	print "group:"
+	print group
+	print "minLapTime:"
+	print minLapTime
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+
+# Get the current group info: pilot, channel, trigger
+pilot = []
+vtxChan = []
+rssiTrig = []
+try:
+	cursor.execute("SELECT `pilot`, `vtxChan`, `rssiTrigger` FROM `groups` WHERE `group` = %s",(group))
+	results = cursor.fetchall() # Fetch all the rows in a list of lists
+	for row in results:
+		pilot.append(int(row[0]))
+		vtxChan.append(str(row[1]))
+		rssiTrig.append(int(row[2]))
+	print "pilot:"
+	print pilot
+	print "vtxChan:"
+	print vtxChan
+	print "rssiTrig:"
+	print rssiTrig
+except MySQLdb.Error as e:
+	print e
+	db.rollback()
+except MySQLdb.Warning as e:
+	print e
+
+# Re-initialize arduinos with current group and config
+for x in range(0, numNodes):
+	vtxFreq = int(vtxChan[x].split()[1])
+	partA = (vtxFreq >> 8) # Split vtxFreq into two bytes to send
+	partB = (vtxFreq & 0xFF)
+	i2c.write_i2c_block_data(i2cAddr[x], 0x51, [partA, partB]) # Initialize arduino defaults and set vtx frequency
+	time.sleep(0.100)
+	i2c.write_byte_data(i2cAddr[x], 0x53, rssiTrig[x]) # Arduino set rssi threshold
+	time.sleep(0.100)
+	i2c.write_byte_data(i2cAddr[x], 0x54, minLapTime) # Set min lap time in seconds
+	time.sleep(0.100)
 
 # Initialize systemStatus at 1 to start while loop
 systemStatus = 1
@@ -159,31 +215,10 @@ while systemStatus == 1:
 					ms = int(over)
 					print "  milliseconds: %d" % (ms)
 
-					# Get the current group
-					try:
-						cursor.execute("SELECT `group` FROM `config`")
-						result = cursor.fetchone()
-						currentGroup = result[0]
-					except MySQLdb.Error as e:
-						print e
-						db.rollback()
-					except MySQLdb.Warning as e:
-						print e
-					# Get the pilot number from the current group
-					try:
-						cursor.execute("SELECT `pilot` FROM `groups` WHERE `group` = %s AND `node` = %s",(currentGroup,x+1))
-						result = cursor.fetchone()
-						pilotNumber = result[0]
-					except MySQLdb.Error as e:
-						print e
-						db.rollback()
-					except MySQLdb.Warning as e:
-						print e
-					
 					# Add new lap to the database
 					print "Adding lap to currentLaps in database."
 					try:
-						cursor.execute("INSERT INTO `currentLaps` (`pilot`, `lap`, `min`, `sec`, `milliSec`) VALUES (%s, %s, %s, %s, %s)",(pilotNumber, lapCount[x], m, s, ms))
+						cursor.execute("INSERT INTO `currentLaps` (`pilot`, `lap`, `min`, `sec`, `milliSec`) VALUES (%s, %s, %s, %s, %s)",(pilot[x], lapCount[x], m, s, ms))
 						db.commit()
 					except MySQLdb.Error as e:
 						print e
@@ -208,9 +243,9 @@ while systemStatus == 1:
 	except MySQLdb.Warning as e:
 		print e
 
-	time.sleep(0.500) # main while loop delay
+	time.sleep(0.500) # Main while loop delay
 	
 	endTime = time.time()
 	print("Loop time: ", endTime - startTime)
 
-db.close() # disconnect from database
+db.close() # Disconnect from database

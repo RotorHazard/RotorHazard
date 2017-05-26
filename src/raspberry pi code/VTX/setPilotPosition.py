@@ -1,4 +1,4 @@
-# Takes an group number, node number, and vtx channel then writes to the database and node if needed
+# Updates the pilot in a group
 
 import MySQLdb
 import argparse

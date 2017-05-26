@@ -28,14 +28,16 @@
 	// Set group
 	if (isset($_POST['setGroup'])) {
 		$newGroup = htmlentities($_POST['setGroup']);
-		exec("sudo python /home/pi/VTX/stopRace.py"); // Ensure race is stopped first
+		exec("sudo python /home/pi/VTX/stopSystem.py");
 		exec("sudo python /home/pi/VTX/setGroup.py ".$newGroup);
+		exec("sudo python /home/pi/VTX/startSystem.py"); // Clean start up again main system loop
 	}
 
 	// Save laps to database and then clear current laps for next race
 	if (isset($_POST['saveLaps'])) {
+		exec("sudo python /home/pi/VTX/stopRace.py"); // If saving laps then race is over
 		exec("sudo python /home/pi/VTX/saveLaps.py");
-		exec("sudo python /home/pi/VTX/clearLaps.py"); // after saving the laps then clear currentLaps
+		exec("sudo python /home/pi/VTX/clearLaps.py"); // After saving the laps then clear currentLaps
 	}
 
 	// Clear laps for false starts and practice

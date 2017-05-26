@@ -22,21 +22,24 @@
 		exec("sudo python /home/pi/VTX/startSystem.py");
 	}
 	if (isset($_POST['stopSystem'])) {
-		exec("sudo python /home/pi/VTX/stopRace.py"); // Also 'stopRace' if stopping comms
 		exec("sudo python /home/pi/VTX/stopSystem.py");
+		exec("sudo python /home/pi/VTX/stopRace.py"); // Also stop race
 	}
 
 	// Set group
 	if (isset($_POST['setGroup'])) {
 		$newGroup = htmlentities($_POST['setGroup']);
-		exec("sudo python /home/pi/VTX/stopRace.py"); // Ensure race is stopped first
+		exec("sudo python /home/pi/VTX/stopSystem.py");
 		exec("sudo python /home/pi/VTX/setGroup.py ".$newGroup);
+		exec("sudo python /home/pi/VTX/startSystem.py"); // Clean start up main system loop
 	}
 
 	// Set min lap time
 	if (isset($_POST['setMinLapTime'])) {
 		$minLapTime = htmlentities($_POST['setMinLapTime']);
+		exec("sudo python /home/pi/VTX/stopSystem.py");
 		exec("sudo python /home/pi/VTX/setMinLapTime.py ".$minLapTime);
+		exec("sudo python /home/pi/VTX/startSystem.py"); // Clean start up main system loop
 	}
 
 	// Set pilot position in groups and nodes

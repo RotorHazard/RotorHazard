@@ -15,4 +15,6 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
+time.sleep(1.000) # Time for main system loop to read new value
+
 db.close() # disconnect from database

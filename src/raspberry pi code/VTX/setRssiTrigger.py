@@ -50,7 +50,7 @@ if args.group == currentGroup:
 	
 	# Update node rssi trigger value
 	try:
-		i2c.write_byte_data(i2cAddr, 0x53, args.rssiTrigger) # arduino set rssi threshold
+		i2c.write_byte_data(i2cAddr, 0x53, args.rssiTrigger) # Arduino set rssi threshold
 		time.sleep(0.250)
 	except IOError as e:
 		print e
@@ -65,4 +65,4 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-db.close() # disconnect from database
+db.close() # Disconnect from database
