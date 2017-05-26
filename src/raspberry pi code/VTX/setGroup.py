@@ -1,4 +1,4 @@
-# Populates the 'vtx' database with starting values, configures number of nodes from passed argument value
+# Changes the current group from passed argument
 
 import smbus
 import time

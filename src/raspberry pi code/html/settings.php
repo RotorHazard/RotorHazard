@@ -22,8 +22,15 @@
 		exec("sudo python /home/pi/VTX/startSystem.py");
 	}
 	if (isset($_POST['stopSystem'])) {
-		exec("sudo python /home/pi/VTX/stopRace.py"); # Also 'stopRace' if stopping comms
+		exec("sudo python /home/pi/VTX/stopRace.py"); // Also 'stopRace' if stopping comms
 		exec("sudo python /home/pi/VTX/stopSystem.py");
+	}
+
+	// Set group
+	if (isset($_POST['setGroup'])) {
+		$newGroup = htmlentities($_POST['setGroup']);
+		exec("sudo python /home/pi/VTX/stopRace.py"); // Ensure race is stopped first
+		exec("sudo python /home/pi/VTX/setGroup.py ".$newGroup);
 	}
 
 	// Set min lap time
@@ -78,12 +85,6 @@
 	// Add new group
 	if (isset($_POST['addGroup'])) {
 		exec("sudo python /home/pi/VTX/addGroup.py");
-	}
-
-	// Set group
-	if (isset($_POST['setGroup'])) {
-		$newGroup = htmlentities($_POST['setGroup']);
-		exec("sudo python /home/pi/VTX/setGroup.py ".$newGroup);
 	}
 	?>
 </head>

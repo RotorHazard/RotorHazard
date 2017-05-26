@@ -149,7 +149,7 @@ while systemStatus == 1:
 					except MySQLdb.Warning as e:
 						print e					
 					
-					# Calculate lap min/sec/ms and insert into the database
+					# Calculate lap min/sec/ms
 					m = int(milliSeconds / 60000)
 					over = milliSeconds % 60000
 					print "  minutes: %d" % (m)
@@ -159,9 +159,31 @@ while systemStatus == 1:
 					ms = int(over)
 					print "  milliseconds: %d" % (ms)
 
+					# Get the current group
+					try:
+						cursor.execute("SELECT `group` FROM `config`")
+						result = cursor.fetchone()
+						currentGroup = result[0]
+					except MySQLdb.Error as e:
+						print e
+						db.rollback()
+					except MySQLdb.Warning as e:
+						print e
+					# Get the pilot number from the current group
+					try:
+						cursor.execute("SELECT `pilot` FROM `groups` WHERE `group` = %s AND `node` = %s",(currentGroup,x+1))
+						result = cursor.fetchone()
+						pilotNumber = result[0]
+					except MySQLdb.Error as e:
+						print e
+						db.rollback()
+					except MySQLdb.Warning as e:
+						print e
+					
+					# Add new lap to the database
 					print "Adding lap to currentLaps in database."
 					try:
-						cursor.execute("INSERT INTO `currentLaps` (`pilot`, `lap`, `min`, `sec`, `milliSec`) VALUES (%s, %s, %s, %s, %s)",(x+1, lapCount[x], m, s, ms))
+						cursor.execute("INSERT INTO `currentLaps` (`pilot`, `lap`, `min`, `sec`, `milliSec`) VALUES (%s, %s, %s, %s, %s)",(pilotNumber, lapCount[x], m, s, ms))
 						db.commit()
 					except MySQLdb.Error as e:
 						print e
