@@ -167,8 +167,12 @@ while systemStatus == 1:
 
 		# Node request: rssi
 		try:
-			i2cData = i2c.read_i2c_block_data(i2cAddr[x], 0x01, 1) # Arduino get rssi
-			rssi[x] = i2cData[0]
+			i2cData = i2c.read_i2c_block_data(i2cAddr[x], 0x01, 2) # Arduino get rssi
+			rssi[x] = 0 # Rebuild rssi from two bytes
+			partA = i2cData[0]
+			partB = i2cData[1]
+			rssi[x] = partA
+			rssi[x] = (rssi[x] << 8) | partB
 			print "  rssi: %d" % (rssi[x])
 		except IOError as e:
 			print e

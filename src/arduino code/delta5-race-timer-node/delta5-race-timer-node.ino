@@ -59,7 +59,7 @@ struct {
 	byte volatile command; // I2C code to identify messages
 	byte volatile control; // rxFault:txFault:0:0:0:0:0:0
 	int volatile vtxFreq; // Freq in mhz, 2 bytes
-	byte volatile rssi; // Current rssi
+	int volatile rssi; // Current rssi, 2 bytes
 	byte volatile rssiTrigger; // Set rssi trigger
 	byte volatile lap; // Current lap number
 	unsigned long volatile milliSeconds; // Calculated lap time, milliseconds, 4 bytes
@@ -247,8 +247,9 @@ int rssiRead() {
 		rssiAvg += analogRead(0); // Pin A0
 	}
 	rssiAvg = rssiAvg/50; // Average of 50 rssi readings
-	rssiAvg = map(rssiAvg, 1, 350, 1, 255); // Scale rssi readings from 1-350 to 1-255
-	rssiAvg = constrain(rssiAvg, 1, 255); // Removes values below 1 and higher than 255
+	//rssiAvg = map(rssiAvg, 1, 350, 1, 255); // Scale rssi readings from 1-350 to 1-255
+	//rssiAvg = constrain(rssiAvg, 1, 255); // Removes values below 1 and higher than 255
+	rssiAvg = constrain(rssiAvg, 1, 32000); // Positive 2 byte limit
 	return rssiAvg;
 }
 
@@ -460,6 +461,7 @@ byte i2cHandleTx(byte command) { // The first byte sent by the I2C master is the
 // A transmit buffer (txTable) is populated with the data before sending.
 void i2cTransmit() {
 	byte numBytes = 0; // Initialize numBytes variable
+	int rssi = 0; // Used for sending rssi as two bytes
 	unsigned long ms = 0; // Used for breaking up and sending large milliSeconds number
 
 	// Check whether this request has a pending command, if not, it was a read_byte()
@@ -479,8 +481,10 @@ void i2cTransmit() {
 			numBytes = 1;
 			break;
 		case 0x01: // Send rssi
-			txTable[0] = commsTable.rssi;
-			numBytes = 2; // When only sending one byte the pi only receives values up to 128???
+			rssi = commsTable.rssi;
+			txTable[0] = (byte)(rssi >> 8);
+			txTable[1] = (byte)(rssi & 0xFF);
+			numBytes = 2;
 			break;
 		case 0x02: // Send lap number and calculated lap time in milliseconds
 			txTable[0] = commsTable.lap;
