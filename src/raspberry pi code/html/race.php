@@ -101,6 +101,13 @@ if ($conn->connect_error) {	die("Connection error: " . $conn->connect_error); } 
 </div>
 <div style="clear: both;"></div>
 
+<!--Display the timing clock-->
+<div id="timer">
+	<script type="text/javascript">
+	$(document).ready(function() { $('#timer').load('buildTimer.php') } );
+	</script>
+</div>
+
 <!--Display the race leaderboard-->
 <h6>Leaderboard</h6>
 <div id="leaderboard">
