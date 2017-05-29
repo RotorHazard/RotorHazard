@@ -34,7 +34,7 @@
 
 ### Running Races
 
-1. With 'System Status' as 'Running' on the settings page, go to the 'Manage' page.
+1. With 'System Status' as 'Running' on the settings page, go to the 'Race' page.
 
 2. Move all drones 10 plus feet away from the timing system, the rssi values must be 10 points less than the trigger value.
 
