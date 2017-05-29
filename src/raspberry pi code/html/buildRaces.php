@@ -35,7 +35,7 @@ while ($node = $nodeResults->fetch_assoc()): ?>
 <?php $lapResults = $conn->query("SELECT `lap`, `min`, `sec`, `milliSec` FROM `savedRaces` WHERE `group` = ".$group['group']." AND `race` = ".$race['race']." AND `pilot` = ".$node['pilot']) or die($conn->error());
 while ($lap = $lapResults->fetch_assoc()): ?>
 <tr>
-	<td><?php echo $lap['min'].':'.sprintf('%02d',$lap['sec']).':'.sprintf('%03d',$lap['milliSec']); ?></td>
+	<td><?php echo sprintf('%02d',$lap['min']).':'.sprintf('%02d',$lap['sec']).'.'.sprintf('%03d',$lap['milliSec']); ?></td>
 </tr>
 
 <?php endwhile; ?>

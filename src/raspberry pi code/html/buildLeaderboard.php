@@ -67,7 +67,7 @@ array_multisort($maxLap, SORT_DESC, $totalTime, SORT_ASC, $leaderboard);
 	$pilotCallSign = $results->fetch_assoc(); ?>
 	<td><?php echo $pilotCallSign['callSign']; ?></td>
 	<td><?php echo $leaderboard[$i]['maxLap']; ?></td>
-	<td><?php echo $leaderboard[$i]['lastMin'].':'.sprintf('%02d',$leaderboard[$i]['lastSec']).':'.sprintf('%03d',$leaderboard[$i]['lastMilliSec']); ?></td>
+	<td><?php echo sprintf('%02d',$leaderboard[$i]['lastMin']).':'.sprintf('%02d',$leaderboard[$i]['lastSec']).'.'.sprintf('%03d',$leaderboard[$i]['lastMilliSec']); ?></td>
 	<td><?php
 	$behind = $leaderboard[0]['maxLap']-$leaderboard[$i]['maxLap'];
 	if ($behind == 0) {
@@ -77,20 +77,20 @@ array_multisort($maxLap, SORT_DESC, $totalTime, SORT_ASC, $leaderboard);
 	}
 	?></td>
 	<td><?php
-	$avgMin = (int)($leaderboard[$i]['avgLap'] / 60000);
+	$avgMin = sprintf('%02d',(int)($leaderboard[$i]['avgLap'] / 60000));
 	$over = (int)($leaderboard[$i]['avgLap'] % 60000);
 	$avgSec = sprintf('%02d',(int)($over / 1000));
 	$over = (int)($over % 1000);
 	$avgMilliSec = sprintf('%03d', $over); // 3 digit padding for milliseconds
-	echo $avgMin.':'.$avgSec.':'.$avgMilliSec;
+	echo $avgMin.':'.$avgSec.'.'.$avgMilliSec;
 	?></td>
 	<td><?php
-	$fastMin = (int)($leaderboard[$i]['fastLap'] / 60000);
+	$fastMin =  sprintf('%02d',(int)($leaderboard[$i]['fastLap'] / 60000));
 	$over = (int)($leaderboard[$i]['fastLap'] % 60000);
 	$fastSec = sprintf('%02d',(int)($over / 1000));
 	$over = (int)($over % 1000);
 	$fastMilliSec = sprintf('%03d', $over); // 3 digit padding for milliseconds
-	echo $fastMin.':'.$fastSec.':'.$fastMilliSec;
+	echo $fastMin.':'.$fastSec.'.'.$fastMilliSec;
 	?></td>
 </tr>
 <?php endfor; ?>
