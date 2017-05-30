@@ -1,10 +1,8 @@
-#
 # Sets race status to false on each node so they stop registering new laps
 
 import smbus
 import time
 import MySQLdb
-
 
 # Start i2c bus
 i2c = smbus.SMBus(1)
@@ -13,11 +11,10 @@ i2c = smbus.SMBus(1)
 db = MySQLdb.connect("localhost","root","delta5fpv","vtx" )
 cursor = db.cursor()
 
-
-# Get nodes info
+# Get node i2cAddr info
 i2cAddr = []
 try:
-	cursor.execute("SELECT * FROM `nodes`");
+	cursor.execute("SELECT * FROM `nodes`") # Update to remove * and just get i2cAddr
 	numNodes = int(cursor.rowcount)
 	print "numNodes: %d" % numNodes
 	for x in range(0, numNodes):
@@ -31,9 +28,8 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-
 try:
-	cursor.execute("UPDATE `setup` SET `raceStatus` = 0")
+	cursor.execute("UPDATE `status` SET `raceStatus` = 0")
 	db.commit()
 except MySQLdb.Error as e:
 	print e
@@ -41,10 +37,11 @@ except MySQLdb.Error as e:
 except MySQLdb.Warning as e:
 	print e
 
-db.close()
+time.sleep(1.000) # Time for main system loop to read new value
+
+db.close() # disconnect from database
 
 # raceStatus set false to stop logging laps
 for x in range(0, numNodes): # loops for polling each node
-	i2c.write_byte_data(i2cAddr[x], 0x0E, 0) # set arduino race status to false
-	time.sleep(0.5)
-
+	i2c.write_byte_data(i2cAddr[x], 0x55, 0) # Arduino set race status to false
+	time.sleep(0.250)
