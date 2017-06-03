@@ -1,0 +1,164 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Flask-SocketIO Test</title>
+
+    <audio id="buzzer" src="./static/audio/beep.mp3" type="audio/mp3"></audio>
+
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function() {
+            var buzzer = $('#buzzer')[0];
+
+            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+            function append_to_log(text) {
+                $('#log').prepend('<br>' + $('<div/>').text(text).html());
+            }
+
+            socket.on('connect', function() {
+                append_to_log('connected!');
+            });
+
+            socket.on('heartbeat', function(msg) {
+                // append_to_log('on heartbeat ' + JSON.stringify(msg));
+                for (i=0; i<msg.current_rssi.length; i++) {
+                    $('#current_rssi_' + i).html(msg.current_rssi[i]);
+                }
+            });
+
+            socket.on('hardware_log', function(msg) {
+                append_to_log('hardware log: ' + msg);
+            });
+
+            $('form#get_version').submit(function(event) {
+                socket.emit('get_version', function(msg) {
+                    append_to_log('get_version returned ' + JSON.stringify(msg));
+                });
+                return false;
+            });
+
+            $('form#get_timestamp').submit(function(event) {
+                socket.emit('get_timestamp', function(msg) {
+                    append_to_log('get_timestamp returned ' + JSON.stringify(msg));
+                });
+                return false;
+            });
+
+            $('form#get_settings').submit(function(event) {
+                socket.emit('get_settings', function(msg) {
+                    append_to_log('get_settings returned ' + JSON.stringify(msg));
+                });
+                return false;
+            });
+
+            function set_frequency(index) {
+                return function(event) {
+                    var data = {
+                        node: index,
+                        frequency: parseInt($('#frequency_val_' +index).val())
+                    };
+                    socket.emit('set_frequency', data);
+                    return false;
+                }
+            }
+
+            function set_trigger_rssi(index) {
+                return function(event) {
+                    var data = {
+                        node: index,
+                        trigger_rssi: parseInt($('#trigger_val_' +index).val())
+                    };
+                    socket.emit('set_trigger_rssi', data);
+                    return false;
+                }
+            }
+
+            function capture_trigger_rssi(index) {
+                return function(event) {
+                    var data = {
+                        node: index
+                    };
+                    socket.emit('capture_trigger_rssi', data);
+                    return false;
+                }
+            }
+
+            function simulate_pass(index) {
+                return function(event) {
+                    var data = {
+                        node: index
+                    };
+                    socket.emit('simulate_pass', data);
+                    return false;
+                }
+            }
+
+            socket.emit('get_settings', function(msg) {
+                const Node = ({frequency, current_rssi, trigger_rssi}, index) => `
+                    <h3>Node ${index}</h3>
+                    Frequency: <span id='frequency_${index}'>${frequency}</span>
+                    <form id="set_frequency_${index}" method="POST" action='#'>
+                        <input type="text" name="frequency_val_${index}" id="frequency_val_${index}" value='${frequency}'>
+                        <input type="submit" value="Set">
+                    </form>
+                    Trigger: <span id='trigger_${index}'>${trigger_rssi}</span>
+                    <form id="set_trigger_${index}" method="POST" action='#'>
+                        <input type="text" name="trigger_val_${index}" id="trigger_val_${index}" value='${trigger_rssi}'>
+                        <input type="submit" value="Set">
+                    </form>
+                    Current RSSI: <span id='current_rssi_${index}'>${current_rssi}</span>
+                    <form id="capture_trigger_rssi_${index}" method="POST" action="#">
+                        <input type="submit" value="Capture Trigger">
+                    </form>
+                    <form id="simulate_pass_${index}" method="POST" action="#">
+                        <input type="submit" value="Simulate Pass">
+                    </form>
+                `;
+
+                $('#nodes').html(msg.nodes.map(Node).join(''));
+
+                for (i=0; i<msg.nodes.length; i++) {
+                    $('form#set_frequency_' + i).submit(set_frequency(i));
+                    $('form#set_trigger_' + i).submit(set_trigger_rssi(i));
+                    $('form#capture_trigger_rssi_' + i).submit(capture_trigger_rssi(i));
+                    $('form#simulate_pass_' + i).submit(simulate_pass(i));
+                }
+
+                append_to_log('get_settings returned ' + JSON.stringify(msg));
+            });
+
+            socket.on('frequency_set', function(msg) {
+                $('#frequency_' + msg.node).html(msg.frequency);
+                append_to_log('on frequency_set ' + JSON.stringify(msg));
+            });
+
+            socket.on('trigger_rssi_set', function(msg) {
+                $('#trigger_' + msg.node).html(msg.trigger_rssi);
+                append_to_log('on trigger_rssi_set ' + JSON.stringify(msg));
+            });
+
+            socket.on('pass_record', function(msg) {
+                buzzer.play();
+                append_to_log('on pass_record ' + JSON.stringify(msg));
+            });
+        });
+    </script>
+</head>
+<body>
+    <div id="nodes"></div>
+    <h3>Global:</h3>
+    <form id="get_version" method="POST" action="#">
+        <input type="submit" value="Get Version">
+    </form>
+    <form id="get_timestamp" method="POST" action="#">
+        <input type="submit" value="Get Timestamp">
+    </form>
+    <form id="get_settings" method="POST" action="#">
+        <input type="submit" value="Get Settings">
+    </form>
+    <h3>Receive:</h3>
+    <div id="log"></div>
+</body>
+</html>

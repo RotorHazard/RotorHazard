@@ -57,17 +57,20 @@ int rssiTriggerBandwidth = 10; // Added and subtracted from rssiTrigger, tries t
 // Define data package for i2c comms, variables that can be changed by i2c
 struct {
 	byte volatile command; // I2C code to identify messages
-	byte volatile control; // rxFault:txFault:0:0:0:0:0:0
 	int volatile vtxFreq; // Freq in mhz, 2 bytes
 	int volatile rssi; // Current rssi, 2 bytes
-	byte volatile rssiTrigger; // Set rssi trigger
+	int volatile rssiTrigger; // Set rssi trigger
 	byte volatile lap; // Current lap number
 	unsigned long volatile milliSeconds; // Calculated lap time, milliseconds, 4 bytes
+	unsigned long volatile lapTimeStamp; // Time stamp in milliseconds of the last recorded lap, 4 bytes
 	byte volatile minLapTimeSec; // Minimum elapsed time before registering a new lap, seconds
 	byte volatile raceStatus; // True (1) when the race has been started from the raspberry pi, False (0)
+	bool volatile timingServerMode; // Will send all the laps, ignoring lastLapTime and raceStatus, used by the timing server
 } commsTable;
 
-byte volatile txTable[32]; // Data array for sending over i2c, up to 32 bytes per message
+byte volatile ioBuffer[32]; // Data array for sending over i2c, up to 32 bytes per message
+int volatile ioBufferSize = 0;
+int volatile ioBufferIndex = 0;
 bool volatile dataReady = false; // Flag to trigger a Serial printout after an i2c event
 
 // Define vtx frequencies in mhz and their hex code for setting the rx5808 module
@@ -90,22 +93,23 @@ uint16_t vtxHexTable[] = {
 // Initialize program
 void setup() {
 	Serial.begin(115200); // Start serial for output/debugging
-	
+
 	pinMode(buttonPin, INPUT); // Define digital button for setting rssi trigger
 	digitalWrite(buttonPin, HIGH);
-	
+
 	pinMode (slaveSelectPin, OUTPUT); // RX5808 comms
 	pinMode (spiDataPin, OUTPUT);
 	pinMode (spiClockPin, OUTPUT);
 	digitalWrite(slaveSelectPin, HIGH);
-    
+
 	while (!Serial) {}; // Wait for the Serial port to initialise
-	Serial.println("Ready");
-	
+	Serial.print("Ready: ");
+	Serial.println(i2cSlaveAddress);
+
 	Wire.begin(i2cSlaveAddress); // I2C slave address setup
 	Wire.onReceive(i2cReceive); // Trigger 'i2cReceive' function on incoming data
 	Wire.onRequest(i2cTransmit); // Trigger 'i2cTransmit' function for outgoing data, on master request
-	
+
 	// Initialize commsTable
 	switch (i2cSlaveAddress) { // Set IMD-5 (IMD-6 for addr 18) channels based on i2c address
 		case 8: commsTable.vtxFreq = 5685; break;  // E2
@@ -120,9 +124,11 @@ void setup() {
 	commsTable.rssiTrigger = 0;
 	commsTable.lap = 0;
 	commsTable.milliSeconds = 0;
+	commsTable.lapTimeStamp = 0;
 	commsTable.minLapTimeSec = 5; // Minimum elapsed time before registering a new lap, in milliseconds
 	commsTable.raceStatus = 0; // True when the race has been started from the raspberry pi
-		
+	commsTable.timingServerMode = false;
+
 	setRxModule(commsTable.vtxFreq); // Setup rx module to default frequency
 }
 
@@ -149,12 +155,12 @@ void SERIAL_SENDBIT0() {
 }
 void SERIAL_ENABLE_LOW() {
 	delayMicroseconds(100);
-	digitalWrite(slaveSelectPin,LOW); 
+	digitalWrite(slaveSelectPin,LOW);
 	delayMicroseconds(100);
 }
 void SERIAL_ENABLE_HIGH() {
-	delayMicroseconds(100); 
-	digitalWrite(slaveSelectPin,HIGH); 
+	delayMicroseconds(100);
+	digitalWrite(slaveSelectPin,HIGH);
 	delayMicroseconds(100);
 }
 
@@ -182,25 +188,25 @@ void setRxModule(int frequency) {
 	SERIAL_SENDBIT0();
 	SERIAL_SENDBIT1();
 	SERIAL_SENDBIT0();
-	
+
 	for (i = 20; i > 0; i--) SERIAL_SENDBIT0(); // Remaining zeros
-	
+
 	SERIAL_ENABLE_HIGH(); // Clock the data in
 	delay(2);
 	SERIAL_ENABLE_LOW();
-	
+
 	// Second is the channel data from the lookup table, 20 bytes of register data are sent, but the
 	// MSB 4 bits are zeros register address = 0x1, write, data0-15=vtxHex data15-19=0x0
 	SERIAL_ENABLE_HIGH();
 	SERIAL_ENABLE_LOW();
-	
+
 	SERIAL_SENDBIT1(); // Register 0x1
 	SERIAL_SENDBIT0();
 	SERIAL_SENDBIT0();
 	SERIAL_SENDBIT0();
-	
+
 	SERIAL_SENDBIT1(); // Write to register
-	
+
 	// D0-D15, note: loop runs backwards as more efficent on AVR
 	for (i = 16; i > 0; i--) {
 		if (vtxHex & 0x1) { // Is bit high or low?
@@ -211,14 +217,14 @@ void setRxModule(int frequency) {
 		}
 		vtxHex >>= 1; // Shift bits along to check the next one
 	}
-	
+
 	for (i = 4; i > 0; i--) // Remaining D16-D19
 		SERIAL_SENDBIT0();
-	
+
 	SERIAL_ENABLE_HIGH(); // Finished clocking data in
 	delay(2);
-	
-	digitalWrite(slaveSelectPin,LOW); 
+
+	digitalWrite(slaveSelectPin,LOW);
 	digitalWrite(spiClockPin, LOW);
 	digitalWrite(spiDataPin, LOW);
 }
@@ -227,7 +233,7 @@ void setRxModule(int frequency) {
 void setRssiThreshold() {
 	Serial.println(" ");
 	Serial.println("Setting rssiTreshold.");
-	
+
 	int thresholdAvg = rssiRead(); // Calculate rssiThreshold average
 	thresholdAvg += rssiRead();
 	thresholdAvg += rssiRead();
@@ -257,13 +263,13 @@ int rssiRead() {
 void lapCompleted() {
 	float h, m, s, ms;
 	unsigned long over;
-		
+
 	m = int(calcLapTime / 60000); // Convert millis() time to m, s, ms
 	over = calcLapTime % 60000;
 	s = int(over / 1000);
 	over = over % 1000;
 	ms = int(over/10); // Divide by 10 so that the ms never exceeds 255, i2c byte send limit
-	
+
 	Serial.println(" ");
 	Serial.print("Lap: ");
 	Serial.print(commsTable.lap);
@@ -280,11 +286,12 @@ void lapCompleted() {
 void loop() {
 	//commsTable.raceStatus = 1; // Uncomment for individual node testing
 	//delay(250);
- 	
+
 	commsTable.rssi = rssiRead(); // Read the current rssi value from the rx5808 module
 
 	// Wait for non-zero trigger value, elapsed time > minLapTimeSec, raceStatus True
-	if ((commsTable.rssiTrigger != 0) && (millis() > (lastLapTime + commsTable.minLapTimeSec*1000)) && (commsTable.raceStatus == 1)) {
+	bool shouldCheckLap = ((millis() > (lastLapTime + commsTable.minLapTimeSec*1000)) && (commsTable.raceStatus == 1)) || commsTable.timingServerMode;
+	if ((commsTable.rssiTrigger != 0) && shouldCheckLap) {
 		// Rssi above threshold + bandwidth and quad not already crossing the gate
 		if ((commsTable.rssi > (commsTable.rssiTrigger + rssiTriggerBandwidth)) && (crossing == false)) {
 			rssiRisingTime = millis();
@@ -298,7 +305,10 @@ void loop() {
 			Serial.print("rssiFallingTime: ");
 			Serial.println(rssiFallingTime);
 			crossing = false;
-			
+
+			// Calculates median lap time
+			int medianTime = (rssiFallingTime - rssiRisingTime) / 2;
+
 			// Calculates the completed lap time
 			calcLapTime = rssiRisingTime + (rssiFallingTime - rssiRisingTime)/2 - lastLapTime;
 
@@ -313,25 +323,22 @@ void loop() {
 				lastLapTime = rssiRisingTime + ((rssiFallingTime - rssiRisingTime)/2);
 				commsTable.lap = commsTable.lap + 1;
 				commsTable.milliSeconds = calcLapTime;
+				commsTable.lapTimeStamp = rssiFallingTime - medianTime;
 				lapCompleted(); // Serial prints lap times
 			}
 		}
 	}
-	
+
 	buttonState = digitalRead(buttonPin); // Detect button press to set rssi trigger
-	if (buttonState == LOW) {		
+	if (buttonState == LOW) {
 		Serial.println("Button pressed.");
 		setRssiThreshold();
 	}
-	
-	if (dataReady) { // Set True in i2cReceive, print current commsTable and TxTable
-		printCommsTable();
-		printTxTable();
+
+	if (dataReady) { // Set True in i2cReceive, print current commsTable and ioBuffer
+		// printCommsTable();
+		// printIoBuffer();
 		dataReady = false;
-	}
-	
-	if (commsTable.control > 0) { // Reset the control flag
-		commsTable.control = 0;
 	}
 }
 
@@ -340,26 +347,100 @@ void loop() {
 // or when master sets up a specific read request
 void i2cReceive(int byteCount) { // Number of bytes in rx buffer
 	// If byteCount is zero, the master only checked for presence of the slave device, no response necessary
-	if (byteCount == 0) return;
-	
+	if (byteCount == 0) {
+		Serial.println("Error: no bytes for a receive?");
+		return;
+	}
+
+	if (byteCount != Wire.available()) {
+		Serial.println("Error: rx byte count and wire available don't agree");
+	}
+
 	commsTable.command = Wire.read(); // The first byte sent is a command byte
-	// Serial.print("Received command: ");
-	// Serial.println(commsTable.command);
 
 	if (commsTable.command > 0x50) { // Commands > 0x50 are writes TO this slave
 		i2cHandleRx(commsTable.command);
-	} 
+	}
 	else { // Otherwise this is a request FROM this device
 		if (Wire.available()) { // There shouldn't be any data present on the line for a read request
-			// Serial.println("Error: Wire.available() on a read request.");
-			int garbage = 0; // Read to garbage any extra data to clear the i2cbus
-			while(Wire.available()) garbage=Wire.read();
-		}
-		else {
-			i2cHandleTx(commsTable.command);
+			Serial.println("Error: Wire.available() on a read request.");
+			while(Wire.available()) {
+				Wire.read();
+			}
 		}
 	}
 	dataReady = true; // Flag to the main loop to print the commsTable
+}
+
+bool readAndValidateIoBuffer(int expectedSize) {
+	uint8_t checksum = 0;
+	ioBufferSize = 0;
+	ioBufferIndex = 0;
+
+	if (expectedSize == 0) {
+		Serial.println("No Expected Size");
+		return true;
+	}
+
+	if (!Wire.available()) {
+		Serial.println("Nothing Avialable");
+		return false;
+	}
+
+	while(Wire.available()) {
+		ioBuffer[ioBufferSize++] = Wire.read();
+		if (expectedSize < ioBufferSize) {
+			checksum += ioBuffer[ioBufferSize-1];
+		}
+	}
+
+	if (checksum != ioBuffer[ioBufferSize-1] ||
+		ioBufferSize-1 != expectedSize) {
+		Serial.println("invalid checksum");
+		Serial.println(checksum);
+		Serial.println(ioBuffer[ioBufferSize-1]);
+		Serial.println(ioBufferSize-1);
+		Serial.println(expectedSize);
+		return false;
+	}
+
+	return true;
+}
+
+uint8_t ioBufferRead8() {
+	return ioBuffer[ioBufferIndex++];
+}
+
+uint16_t ioBufferRead16() {
+	uint16_t result;
+	result = ioBuffer[ioBufferIndex++];
+	result = (result << 8) | ioBuffer[ioBufferIndex++];
+	return result;
+}
+
+void ioBufferWrite8(uint8_t data) {
+	ioBuffer[ioBufferSize++] = data;
+}
+
+void ioBufferWrite16(uint16_t data) {
+	ioBuffer[ioBufferSize++] = (uint16_t)(data >> 8);
+	ioBuffer[ioBufferSize++] = (uint16_t)(data & 0xFF);
+}
+
+void ioBufferWrite32(uint32_t data) {
+	ioBuffer[ioBufferSize++] = (uint16_t)(data >> 24);
+	ioBuffer[ioBufferSize++] = (uint16_t)(data >> 16);
+	ioBuffer[ioBufferSize++] = (uint16_t)(data >> 8);
+	ioBuffer[ioBufferSize++] = (uint16_t)(data & 0xFF);
+}
+
+void ioBufferWriteChecksum() {
+	uint8_t checksum = 0;
+	for (int i = 0; i < ioBufferSize ; i++) {
+		checksum += ioBuffer[i];
+	}
+
+	ioBufferWrite8(checksum);
 }
 
 // Function called by i2cReceive for writes TO this device, the I2C Master has sent data
@@ -367,15 +448,12 @@ void i2cReceive(int byteCount) { // Number of bytes in rx buffer
 // Returns the number of bytes read, or FF if unrecognised command or mismatch between
 // data expected and received
 byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the command
-	byte result = 0; // Initialize result variable
-	
+	bool success = false;
+
 	switch (command) {
 		case 0x51: // Full reset, initialize arduinos
-			if (Wire.available() == 2) { // Confirm expected number of bytes
-				byte partA = Wire.read();
-				byte partB = Wire.read();
-				commsTable.vtxFreq = partA;
-				commsTable.vtxFreq = (commsTable.vtxFreq << 8) | partB;
+			if (readAndValidateIoBuffer(2)) { // Confirm expected number of bytes
+				commsTable.vtxFreq = ioBufferRead16();
 				setRxModule(commsTable.vtxFreq); // Shouldn't do this in Interrupt Service Routine
 				commsTable.rssiTrigger = 0;
 				commsTable.lap = 0;
@@ -383,123 +461,100 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 				lastLapTime = 0;
 				commsTable.minLapTimeSec = 5;
 				commsTable.raceStatus = 0;
-				result = 2;
+				success = true;
 			}
-			else { result = 0xFF; }
 			break;
 		case 0x52: // Race reset, start a new race
-			if (Wire.available() == 0) { // Confirm expected number of bytes
+			if (readAndValidateIoBuffer(0)) { // Confirm expected number of bytes
 				commsTable.lap = 0;
 				commsTable.milliSeconds = 0;
 				lastLapTime = 0; // Reset to zero to catch first gate fly through again
 				commsTable.raceStatus = 1;
-				result = 1;
+				success = true;
 			}
-			else { result = 0xFF; }
 			break;
 		case 0x53: // Set rssiTrigger
-			if (Wire.available() == 1) { // Confirm expected number of bytes
-				commsTable.rssiTrigger = Wire.read();
-				result = 1;
+			if (readAndValidateIoBuffer(2)) { // Confirm expected number of bytes
+				commsTable.rssiTrigger = ioBufferRead16();
+				success = true;
 			}
-			else { result = 0xFF; }
 			break;
 		case 0x54: // Set minLapTime
-			if (Wire.available() == 1) { // Confirm expected number of bytes
-				commsTable.minLapTimeSec = Wire.read();
-				result = 1;
+			if (readAndValidateIoBuffer(1)) { // Confirm expected number of bytes
+				commsTable.minLapTimeSec = ioBufferRead8();
+				success = true;
 			}
-			else { result = 0xFF; }
 			break;
 		case 0x55: // Set raceStatus
-			if (Wire.available() == 1) { // Confirm expected number of bytes
-				commsTable.raceStatus = Wire.read();
-				result = 1;
+			if (readAndValidateIoBuffer(1)) { // Confirm expected number of bytes
+				commsTable.raceStatus = ioBufferRead8();
+				success = true;
 			}
-			else { result = 0xFF; }
 			break;
 		case 0x56: // Set vtx frequency
-			if (Wire.available() == 2) { // Confirm expected number of bytes
-				byte partA = Wire.read();
-				byte partB = Wire.read();
-				commsTable.vtxFreq = partA;
-				commsTable.vtxFreq = (commsTable.vtxFreq << 8) | partB;
+			if (readAndValidateIoBuffer(2)) { // Confirm expected number of bytes
+				commsTable.vtxFreq = ioBufferRead16();
 				setRxModule(commsTable.vtxFreq); // Shouldn't do this in Interrupt Service Routine
-				result = 2;
+				success = true;
 			}
-			else { result = 0xFF; }
+		case 0x57: // Set timingServerMode status
+			if (readAndValidateIoBuffer(1)) {
+				commsTable.timingServerMode = ioBufferRead8();
+				success = true;
+			}
 			break;
-		default: // If no case matches return 0xFF for fault
-			result = 0xFF;
 	}
-	
-	if (result == 0xFF) { // Set control to rxFault if 0xFF result
-		commsTable.control |= rxFault;
 
-		// Serial.print("rxFault set: ");
-		// Serial.println(commsTable.control, HEX);
+	commsTable.command = 0; // Clear previous command
 
-		int garbage = 0; // Read to garbage any extra data to clear the i2cbus
-		while(Wire.available()) garbage=Wire.read();
+	if (!success) { // Set control to rxFault if 0xFF result
+		 Serial.print("RX Fault command: ");
+		 Serial.println(command, HEX);
 	}
-	return result;
-}
-
-// Function called by i2cReceive for reads FROM this device, the I2C Master requests data
-// Returns the number of bytes received, or 0xFF if error
-// Used to handle SMBus process calls
-byte i2cHandleTx(byte command) { // The first byte sent by the I2C master is the command
-	// signal to i2cTransmit function that a pending command is ready
-	commsTable.control |= txRequest;
-	// Serial.print("txRequest set: ");
-	// Serial.println(commsTable.control, HEX);
-	return 0;
+	return success;
 }
 
 // Function called by twi interrupt service when the Master wants to get data from the Slave
 // No parameters and no returns
-// A transmit buffer (txTable) is populated with the data before sending.
+// A transmit buffer (ioBuffer) is populated with the data before sending.
 void i2cTransmit() {
-	byte numBytes = 0; // Initialize numBytes variable
-	int rssi = 0; // Used for sending rssi as two bytes
-	unsigned long ms = 0; // Used for breaking up and sending large milliSeconds number
+	ioBufferSize = 0;
 
-	// Check whether this request has a pending command, if not, it was a read_byte()
-	// instruction so we should return only the slave address, that is command 0
-	if ((commsTable.control & txRequest) == 0) {
-		// This request did not come with a command, txRequest was not set in i2cHandleTx, it is read_byte()
-		// Serial.println("No command set, defaulting to zero.");
-		commsTable.command = 0; // Clear previous command
-	}
-
-	// Clear the txRequest bit, resetting it for the next request
-	commsTable.control &= ~txRequest;
-	
 	switch (commsTable.command) {
 		case 0x00: // Send i2cSlaveAddress
-			txTable[0] = i2cSlaveAddress;
-			numBytes = 1;
+			ioBufferWrite8(i2cSlaveAddress);
 			break;
 		case 0x01: // Send rssi
-			rssi = commsTable.rssi;
-			txTable[0] = (byte)(rssi >> 8);
-			txTable[1] = (byte)(rssi & 0xFF);
-			numBytes = 2;
+			ioBufferWrite16(commsTable.rssi);
 			break;
 		case 0x02: // Send lap number and calculated lap time in milliseconds
-			txTable[0] = commsTable.lap;
-			ms = commsTable.milliSeconds;
-			txTable[1] = (byte)(ms >> 24);
-			txTable[2] = (byte)(ms >> 16);
-			txTable[3] = (byte)(ms >> 8);
-			txTable[4] = (byte)(ms & 0xFF);
-			numBytes = 5;
-			break;	
+			ioBufferWrite8(commsTable.lap);
+			ioBufferWrite32(commsTable.milliSeconds);
+			break;
+		case 0x03: // Send frequency
+			ioBufferWrite16(commsTable.vtxFreq);
+			break;
+		case 0x04: // Send Trigger RSSI
+			ioBufferWrite16(commsTable.rssiTrigger);
+			break;
+		case 0x05: // Send lap number, time since last lap, and current rssi
+			ioBufferWrite8(commsTable.lap);
+			ioBufferWrite32(millis() - commsTable.lapTimeStamp);
+			ioBufferWrite16(commsTable.rssi);
+			break;
+		case 0x06: // Send timingServerMode status
+			ioBufferWrite8(commsTable.timingServerMode);
+			break;
 		default: // If an invalid command is sent, write nothing back, master must react
-			commsTable.control |= txFault;
+			Serial.print("TX Fault command: ");
+			Serial.println(commsTable.command, HEX);
 	}
-	if (numBytes > 0) { // If there is pending data, send it
-		Wire.write((byte *)&txTable, numBytes);
+
+	commsTable.command = 0; // Clear previous command
+
+	if (ioBufferSize > 0) { // If there is pending data, send it
+		ioBufferWriteChecksum();
+		Wire.write((byte *)&ioBuffer, ioBufferSize);
 	}
 }
 
@@ -511,9 +566,6 @@ void printCommsTable() {
 	Serial.println(builder);
 	builder = "  Command: ";
 	builder += String(commsTable.command, HEX);
-	Serial.println(builder);
-	builder = "  Control: ";
-	builder += String(commsTable.control, HEX);
 	Serial.println(builder);
 	builder = "  VTX Freq: ";
 	builder += commsTable.vtxFreq;
@@ -540,11 +592,11 @@ void printCommsTable() {
 }
 
 // Prints the transmit buffer to arduino serial console
-void printTxTable() {
+void printIoBuffer() {
 	Serial.println("Transmit Table:");
 	for (byte i = 0; i < 32; i++) {
 		Serial.print(" ");
-		Serial.print(txTable[i]);
+		Serial.print(ioBuffer[i]);
 	}
 	Serial.println(); // ends print line
 }
