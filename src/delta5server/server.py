@@ -725,12 +725,13 @@ gevent.sleep(0.500)
 # Set default frequencies based on number of nodes
 default_frequencies()
 
+# Create database if it doesn't exist
+if not os.path.exists('database.db'):
+    db_init()
+
 # Clear any current laps from the database on each program start
 DB.session.query(CurrentLap).delete()
 DB.session.commit() # DB session commit here needed to prevent 'application context' errors
-
-# Run database initialization function, run once then comment out
-# db_init()
 
 # Test data - Current laps
 # DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=5000, lap_time=5000, lap_time_formatted=time_format(5000)))
@@ -744,4 +745,4 @@ DB.session.commit() # DB session commit here needed to prevent 'application cont
 
 
 if __name__ == '__main__':
-    SOCKET_IO.run(APP, host='0.0.0.0', debug=True)
+    SOCKET_IO.run(APP, host='0.0.0.0', port=5000, debug=True)
