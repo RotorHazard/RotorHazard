@@ -16,6 +16,3 @@ https://youtu.be/UdelgqwngX4
 
 ### User Guide
 [/doc/User Guide.md](/doc/User%20Guide.md)
-
-### To Do List
-[/doc/To Do List](/doc/To%20Do%20List.md)
