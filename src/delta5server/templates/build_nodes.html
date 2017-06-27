@@ -1,0 +1,46 @@
+<div class="row">
+	{% for node in range(num_nodes) %}
+	<div class='col-xs-6 col-md-3'>
+		<div class='panel panel-default'>
+			<div class="panel-heading">
+				<h4 class="panel-title">{{ node + 1 }}</h4>
+			</div>
+			<table class="table">
+				<tr>
+					<td>Freq.</td>
+					<td>
+						<!--Need to have two drop downs, band and frequency, one is too big-->
+						<div class="btn-group">
+							<button class="btn btn-default dropdown-toggle channel_{{ node }}" type="button" data-toggle="dropdown" aria-haspopup="true"
+							 aria-expanded="true"></button>
+							<ul class="dropdown-menu set_frequency">
+								{% for frequency in frequencies.query.all() %}
+								<li><a role="button" data-node="{{ node }}" data-frequency="{{ frequency.frequency }}">{{ frequency.channel }} {{ frequency.frequency }}</a></li>
+								{% endfor %}
+							</ul>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td>RSSI</td>
+					<td>
+						<div class="current_rssi_{{ node }}"></div>
+					</td>
+				</tr>
+				<tr>
+					<td>Trigger</td>
+					<td>
+						<div class="trigger_rssi_{{ node }}"></div>
+					</td>
+				</tr>
+				<tr>
+					<td>Peak</td>
+					<td>
+						<div class="peak_rssi_{{ node }}"></div>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	{% endfor %}
+</div>

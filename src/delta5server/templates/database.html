@@ -1,0 +1,128 @@
+{% extends "layout.html" %} {% block title %}Database{% endblock %} {% block content %}
+<h3>Pilots</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Pilot ID</th>
+            <th>Call Sign</th>
+            <th>Name</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for pilot in pilots.query.all() %}
+        <tr>
+            <td>{{ pilot.id }}</td>
+            <td>{{ pilot.pilot_id }}</td>
+            <td>{{ pilot.callsign }}</td>
+            <td>{{ pilot.name }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>Heats</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Heat ID</th>
+            <th>Node Index</th>
+            <th>Pilot ID</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for heat in heats.query.all() %}
+        <tr>
+            <td>{{ heat.id }}</td>
+            <td>{{ heat.heat_id }}</td>
+            <td>{{ heat.node_index }}</td>
+            <td>{{ heat.pilot_id }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>Current Laps</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Node Index</th>
+            <th>Pilot ID</th>
+            <th>Lap ID</th>
+            <th>Lap Time Stamp</th>
+            <th>Lap Time</th>
+            <th>Lap Time Formatted</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for currentlap in currentlaps.query.all() %}
+        <tr>
+            <td>{{ currentlap.id }}</td>
+            <td>{{ currentlap.node_index }}</td>
+            <td>{{ currentlap.pilot_id }}</td>
+            <td>{{ currentlap.lap_id }}</td>
+            <td>{{ currentlap.lap_time_stamp }}</td>
+            <td>{{ currentlap.lap_time }}</td>
+            <td>{{ currentlap.lap_time_formatted }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>Saved Races</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Round ID</th>
+            <th>Heat ID</th>
+            <th>Node Index</th>
+            <th>Pilot ID</th>
+            <th>Lap ID</th>
+            <th>Lap Time Stamp</th>
+            <th>Lap Time</th>
+            <th>Lap Time Formatted</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for savedrace in savedraces.query.all() %}
+        <tr>
+            <td>{{ savedrace.id }}</td>
+            <td>{{ savedrace.round_id }}</td>
+            <td>{{ savedrace.heat_id }}</td>
+            <td>{{ savedrace.node_index }}</td>
+            <td>{{ savedrace.pilot_id }}</td>
+            <td>{{ savedrace.lap_id }}</td>
+            <td>{{ savedrace.lap_time_stamp }}</td>
+            <td>{{ savedrace.lap_time }}</td>
+            <td>{{ savedrace.lap_time_formatted }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>Frequencies</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Band</th>
+            <th>Channel</th>
+            <th>Frequency</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for frequency in frequencies.query.all() %}
+        <tr>
+            <td>{{ frequency.id }}</td>
+            <td>{{ frequency.band }}</td>
+            <td>{{ frequency.channel }}</td>
+            <td>{{ frequency.frequency }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

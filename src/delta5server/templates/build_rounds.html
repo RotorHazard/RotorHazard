@@ -1,0 +1,33 @@
+ {% for heat in rounds.query.with_entities(rounds.heat_id).distinct() %}
+<h4>Heat {{ heat.heat_id }}</h4>
+{% for round in rounds.query.with_entities(rounds.round_id).distinct().filter_by(heat_id=heat.heat_id) %}
+<h5>Round {{ round.round_id }}</h5>
+<div class="row">
+    {% for node in range(num_nodes) %}
+    <div class="col-xs-6 col-md-2">
+        <div class='panel panel-default'>
+            <div class="panel-heading">
+                <h4 class="panel-title ">
+                    {{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign
+                    }}
+                </h4>
+            </div>
+            <table class="table">
+                <tbody>
+                    {% for lap in rounds.query.filter_by(heat_id=heat.heat_id, round_id=round.round_id, node_index=node).all() %}
+                    <tr>
+                        <td>
+                            {{ lap.lap_id }}
+                        </td>
+                        <td>
+                            {{ lap.lap_time_formatted }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endfor %} {% endfor %}
