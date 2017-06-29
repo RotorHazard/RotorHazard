@@ -3,8 +3,9 @@
 import os
 import sys
 from datetime import datetime
+from functools import wraps
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, Response
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
 
@@ -93,6 +94,30 @@ class Frequency(DB.Model):
         return '<Frequency %r>' % self.frequency
 
 #
+# Authentication
+#
+
+def check_auth(username, password):
+    '''Check if a username password combination is valid.'''
+    return username == 'admin' and password == 'delta5'
+
+def authenticate():
+    '''Sends a 401 response that enables basic auth.'''
+    return Response(
+        'Could not verify your access level for that URL.\n'
+        'You have to login with proper credentials', 401,
+        {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
+#
 # Routes
 #
 
@@ -111,12 +136,14 @@ def heats():
             for node in INTERFACE.nodes])
 
 @APP.route('/race')
+@requires_auth
 def race():
     '''Route to race management page.'''
     return render_template('race.html', num_nodes=RACE.num_nodes, current_heat=RACE.current_heat, \
         heats=Heat, pilots=Pilot)
 
 @APP.route('/settings')
+@requires_auth
 def settings():
     '''Route to settings page.'''
     return render_template('settings.html', num_nodes=RACE.num_nodes, pilots=Pilot, \
@@ -125,11 +152,13 @@ def settings():
 # Debug Routes
 
 @APP.route('/hardwarelog')
+@requires_auth
 def hardwarelog():
     '''Route to hardware log page.'''
     return render_template('hardwarelog.html')
 
 @APP.route('/database')
+@requires_auth
 def database():
     '''Route to database page.'''
     return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
