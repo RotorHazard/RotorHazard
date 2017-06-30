@@ -1,5 +1,5 @@
 <div class="row">
-	{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
+	{% for heat in heats.query.with_entities(heats.heat_id).distinct().order_by(heats.heat_id) %}
 	<div class='col-xs-6 col-md-3'>
 		<div class='panel panel-default'>
 			<div class="panel-heading">
@@ -12,8 +12,7 @@
 						{{ channels[node] }} {{ frequencies[node] }}
 					</td>
 					<td>
-						{{ pilots.query.filter_by(pilot_id= heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign
-						}}
+						{{ pilots.query.filter_by(pilot_id= heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign }}
 					</td>
 				</tr>
 				{% endfor %}

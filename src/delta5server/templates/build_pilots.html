@@ -4,7 +4,6 @@
 			<table class="table">
 				<thead>
 					<tr>
-						<th>Pilot ID</th>
 						<th>Call Sign</th>
 						<th>Name</th>
 					</tr>
@@ -12,7 +11,6 @@
 				<tbody>
 					{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
 					<tr>
-						<td>{{ pilot.pilot_id }}</td>
 						<td>{{ pilot.callsign }}</td>
 						<td>{{ pilot.name }}</td>
 					</tr>
