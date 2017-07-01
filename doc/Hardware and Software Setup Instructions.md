@@ -82,10 +82,11 @@ sudo pip install -r requirements.txt
 
 3. Upload to each Arduino receiver node changing 'i2cSlaveAddress' each time
 
-### Start the Hosted Race Management Webapp
+### Start the Server
 
-This section is for starting the pi hosted race management webapp.
-If you wish to start the timing server for connecting with external timing software such as LiveTime, see the "Start the Timing Server" section below.
+There are two types of servers that the pi can run to collect timing data.  The following instructions are for a hosted webapp that can be used to do everything needed to run a race and collect times.  
+
+The other alternative is a slimmed down timing server intended to be used to communicate with external timing software.  If you wish to use the timing server, replace "delta5server" with "timingserver" in the paths provided in the following instructions.
 
 #### Manual Start
 1. Open a terminal in '/delta5_race_timer/src/delta5server' and run
@@ -107,48 +108,6 @@ After=multi-user.target
 [Service]
 Type=idle
 ExecStart=/usr/bin/python /home/pi/delta5_race_timer/src/delta5server/server.py
-
-[Install]
-WantedBy=multi-user.target
-```
-save and exit, [CTRL-X], [Y], [ENTER]
-
-2. Update permissions
-```
-sudo chmod 644 /lib/systemd/system/delta5.service
-```
-
-3. Start on boot
-```
-sudo systemctl daemon-reload
-sudo systemctl enable delta5.service
-sudo reboot
-```
-
-### Start the Timing Server
-
-The timing server is used for communicating with external timing software such as LiveTime.  Once running, connect to the timing server on port 5000.
-
-#### Manual Start
-1. Open a terminal in '/delta5_race_timer/src/timingserver' and run
-```
-python server.py
-```
-
-#### Start on Boot
-1. Create a service
-```
-sudo nano /lib/systemd/system/delta5.service
-```
-with the following contents
-```
-[Unit]
-Description=Delta5 Server
-After=multi-user.target
-
-[Service]
-Type=idle
-ExecStart=/usr/bin/python /home/pi/delta5_race_timer/src/timingserver/server.py
 
 [Install]
 WantedBy=multi-user.target
