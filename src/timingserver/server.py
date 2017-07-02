@@ -60,10 +60,12 @@ def on_get_version():
 
 @socketio.on('get_timestamp')
 def on_get_timestamp():
+    print('get_timestamp')
     return {'timestamp': hardwareInterface.milliseconds()}
 
 @socketio.on('get_settings')
 def on_get_settings():
+    print('get_settings')
     return hardwareInterface.get_settings_json()
 
 @socketio.on('set_frequency')

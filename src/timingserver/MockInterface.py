@@ -9,6 +9,7 @@ from BaseHardwareInterface import BaseHardwareInterface
 
 class MockInterface(BaseHardwareInterface):
     def __init__(self):
+        BaseHardwareInterface.__init__(self)
         self.update_thread = None
         self.nodes = []
         self.calibration_threshold = 20
@@ -39,12 +40,14 @@ class MockInterface(BaseHardwareInterface):
         node = self.nodes[node_index]
         node.frequency = frequency
 
-    def set_calibration_threshold(self, node_index, threshold):
-        node = self.nodes[node_index]
-        node.calibration_threshold = threshold
-
     def set_calibration_threshold_global(self, calibration_threshold):
         self.calibration_threshold = calibration_threshold
+
+    def set_calibration_offset_global(self, calibration_offset):
+        self.calibration_offset = calibration_offset
+
+    def set_trigger_threshold_global(self, trigger_threshold):
+        self.trigger_threshold = trigger_threshold
 
     def enable_calibration_mode(self):
         pass

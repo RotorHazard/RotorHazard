@@ -44,7 +44,7 @@ Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common groun
 ![alt text](img/D5-i2c.png)
 
 ## Software Setup
-  
+
 ### Raspberry Pi
 1. Start by instaling Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN JESSIE WITH PIXEL'
 
@@ -83,6 +83,10 @@ sudo pip install -r requirements.txt
 3. Upload to each Arduino receiver node changing 'i2cSlaveAddress' each time
 
 ### Start the Server
+
+There are two types of servers that the pi can run to collect timing data.  The following instructions are for a hosted webapp that can be used to do everything needed to run a race and collect times.  
+
+The other alternative is a slimmed down timing server intended to be used to communicate with external timing software.  If you wish to use the timing server, replace "delta5server" with "timingserver" in the paths provided in the following instructions.
 
 #### Manual Start
 1. Open a terminal in '/delta5_race_timer/src/delta5server' and run

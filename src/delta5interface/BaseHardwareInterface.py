@@ -1,5 +1,6 @@
 from datetime import datetime
 from datetime import timedelta
+import time
 
 class BaseHardwareInterface(object):
     def __init__(self):
@@ -11,7 +12,7 @@ class BaseHardwareInterface(object):
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
        dt = datetime.now() - self.start_time
-       ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
+       ms = round((dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0)
        return ms
 
     #
