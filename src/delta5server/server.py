@@ -321,8 +321,18 @@ def on_set_trigger_threshold(data):
 @SOCKET_IO.on('reset_database')
 def on_reset_database():
     '''Reset database.'''
-    db_init()
-    server_log('Database reset')
+    db_reset()
+
+@SOCKET_IO.on('reset_database_keep_pilots')
+def on_reset_database_keep_pilots():
+    '''Reset database but keep pilots list.'''
+    db_reset_keep_pilots()
+
+@SOCKET_IO.on('shutdown_pi')
+def on_shutdown_pi():
+    '''Shutdown the raspberry pi.'''
+    server_log('Shutdown pi')
+    os.system("sudo shutdown now")
 
 # @SOCKET_IO.on('clear_rounds')
 # def on_reset_heats():
@@ -696,26 +706,54 @@ def default_frequencies():
             INTERFACE.set_frequency(index, frequencies_raceband[index])
     server_log('Default frequencies set')
 
-# How to move this to a seperate file?
+
 def db_init():
     '''Initialize database.'''
-
-    print 'Start database initialization'
     DB.create_all() # Creates tables from database classes/models
+    db_reset_pilots()
+    db_reset_heats()
+    db_reset_frequencies()
+    db_reset_current_laps()
+    db_reset_saved_races()
+    server_log('Database initialized')
 
-    # Create default pilots list
+def db_reset():
+    '''Resets database.'''
+    db_reset_pilots()
+    db_reset_heats()
+    db_reset_frequencies()
+    db_reset_current_laps()
+    db_reset_saved_races()
+    server_log('Database reset')
+
+def db_reset_keep_pilots():
+    '''Resets database, keeps pilots.'''
+    db_reset_heats()
+    db_reset_frequencies()
+    db_reset_current_laps()
+    db_reset_saved_races()
+    server_log('Database reset, pilots kept')
+
+def db_reset_pilots():
+    '''Resets database pilots to default.'''
     DB.session.query(Pilot).delete()
     DB.session.add(Pilot(pilot_id='0', callsign='-', name='-'))
     for node in range(RACE.num_nodes):
         DB.session.add(Pilot(pilot_id=node+1, callsign='callsign{0}'.format(node+1), \
             name='Pilot Name'))
+    DB.session.commit()
+    server_log('Database pilots reset')
 
-    # Create default heat 1
+def db_reset_heats():
+    '''Resets database heats to default.'''
     DB.session.query(Heat).delete()
     for node in range(RACE.num_nodes):
         DB.session.add(Heat(heat_id=1, node_index=node, pilot_id=node+1))
+    DB.session.commit()
+    server_log('Database heats reset')
 
-    # Add frequencies
+def db_reset_frequencies():
+    '''Resets database frequencies to default.'''
     DB.session.query(Frequency).delete()
     # IMD Channels
     DB.session.add(Frequency(band='IMD', channel='E2', frequency='5685'))
@@ -769,15 +807,20 @@ def db_init():
     DB.session.add(Frequency(band='A', channel='A6', frequency='5765'))
     DB.session.add(Frequency(band='A', channel='A7', frequency='5745'))
     DB.session.add(Frequency(band='A', channel='A8', frequency='5725'))
-
-    # Delete any current laps
-    DB.session.query(CurrentLap).delete()
-    # Delete any saved races
-    DB.session.query(SavedRace).delete()
-    # Commit all updates
     DB.session.commit()
+    server_log('Database frequencies reset')
 
-    print 'Database initialized'
+def db_reset_current_laps():
+    '''Resets database current laps to default.'''
+    DB.session.query(CurrentLap).delete()
+    DB.session.commit()
+    server_log('Database current laps reset')
+    
+def db_reset_saved_races():
+    '''Resets database saved races to default.'''
+    DB.session.query(SavedRace).delete()
+    DB.session.commit()
+    server_log('Database saved races reset')
 
 #
 # Program Initialize
@@ -797,8 +840,8 @@ if not os.path.exists('database.db'):
     db_init()
 
 # Clear any current laps from the database on each program start
-DB.session.query(CurrentLap).delete()
-DB.session.commit() # DB session commit here needed to prevent 'application context' errors
+# DB session commit needed to prevent 'application context' errors
+db_reset_current_laps()
 
 
 # Test data - Current laps

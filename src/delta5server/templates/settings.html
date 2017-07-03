@@ -115,6 +115,17 @@
 			window.location.href = "/settings"; // Update to not need page reload
 			return false;
 		});
+
+		$('button#reset_database_keep_pilots').click(function (event) {
+			socket.emit('reset_database_keep_pilots');
+			window.location.href = "/settings"; // Update to not need page reload
+			return false;
+		});
+
+		$('button#shutdown_pi').click(function (event) {
+			socket.emit('shutdown_pi');
+			return false;
+		});
 	});
 
 </script>
@@ -148,7 +159,15 @@
 <h4>Database (Copy out any saved races first!)</h4>
 <div>
 	<button type="button" class="btn btn-danger" id="reset_database" onclick="this.blur();">Reset Database</button>
+	<button type="button" class="btn btn-warning" id="reset_database_keep_pilots" onclick="this.blur();">Reset Keep Pilots</button>
 </div>
-</br>
+
+<!--Reset database-->
+<h4>System (Safely shutdown raspberry pi)</h4>
+<div>
+	<button type="button" class="btn btn-default" id="shutdown_pi" onclick="this.blur();">Shutdown</button>
+</div>
+
+</br> <!--Bottom whitespace-->
 
 {% endblock %}
