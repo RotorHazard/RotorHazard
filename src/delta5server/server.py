@@ -124,39 +124,50 @@ def requires_auth(f):
 @APP.route('/')
 def index():
     '''Route to round summary page.'''
+    # A more generic and flexible way of viewing saved race data is needed
+    # - Individual round/race summaries
+    # - Heat summaries
+    # - Pilot summaries
+    # Make a new dynamic route for each? /pilotname /heatnumber /
+    # Three different summary pages?
+    # - One for all rounds, grouped by heats
+    # - One for all pilots, sorted by fastest lap and shows average and other stats
+    # - One for individual heats
+    #
     # Calculate heat summaries
-    heat_max_laps = []
-    heat_fast_laps = []
-    for heat in SavedRace.query.with_entities(SavedRace.heat_id).distinct() \
-        .order_by(SavedRace.heat_id):
-        max_laps = []
-        fast_laps = []
-        for node in range(RACE.num_nodes):
-            node_max_laps = 0
-            node_fast_lap = 0
-            for race_round in SavedRace.query.with_entities(SavedRace.round_id).distinct() \
-                .filter_by(heat_id=heat.heat_id).order_by(SavedRace.round_id):
-                round_max_lap = DB.session.query(DB.func.max(SavedRace.lap_id)) \
-                    .filter_by(heat_id=heat.heat_id, round_id=race_round.round_id, \
-                    node_index=node).scalar()
-                if round_max_lap is None:
-                    round_max_lap = 0
-                else:
-                    round_fast_lap = DB.session.query(DB.func.min(SavedRace.lap_time)) \
-                    .filter(SavedRace.node_index == node, SavedRace.lap_id != 0).scalar()
-                    if node_fast_lap == 0:
-                        node_fast_lap = round_fast_lap
-                    if node_fast_lap != 0 and round_fast_lap < node_fast_lap:
-                        node_fast_lap = round_fast_lap
-                node_max_laps = node_max_laps + round_max_lap
-            max_laps.append(node_max_laps)
-            fast_laps.append(time_format(node_fast_lap))
-        heat_max_laps.append(max_laps)
-        heat_fast_laps.append(fast_laps)
+    # heat_max_laps = []
+    # heat_fast_laps = []
+    # for heat in SavedRace.query.with_entities(SavedRace.heat_id).distinct() \
+    #     .order_by(SavedRace.heat_id):
+    #     max_laps = []
+    #     fast_laps = []
+    #     for node in range(RACE.num_nodes):
+    #         node_max_laps = 0
+    #         node_fast_lap = 0
+    #         for race_round in SavedRace.query.with_entities(SavedRace.round_id).distinct() \
+    #             .filter_by(heat_id=heat.heat_id).order_by(SavedRace.round_id):
+    #             round_max_lap = DB.session.query(DB.func.max(SavedRace.lap_id)) \
+    #                 .filter_by(heat_id=heat.heat_id, round_id=race_round.round_id, \
+    #                 node_index=node).scalar()
+    #             if round_max_lap is None:
+    #                 round_max_lap = 0
+    #             else:
+    #                 round_fast_lap = DB.session.query(DB.func.min(SavedRace.lap_time)) \
+    #                 .filter(SavedRace.node_index == node, SavedRace.lap_id != 0).scalar()
+    #                 if node_fast_lap == 0:
+    #                     node_fast_lap = round_fast_lap
+    #                 if node_fast_lap != 0 and round_fast_lap < node_fast_lap:
+    #                     node_fast_lap = round_fast_lap
+    #             node_max_laps = node_max_laps + round_max_lap
+    #         max_laps.append(node_max_laps)
+    #         fast_laps.append(time_format(node_fast_lap))
+    #     heat_max_laps.append(max_laps)
+    #     heat_fast_laps.append(fast_laps)
     # print heat_max_laps
     # print heat_fast_laps
     return render_template('rounds.html', num_nodes=RACE.num_nodes, rounds=SavedRace, \
-        pilots=Pilot, heats=Heat, heat_max_laps=heat_max_laps, heat_fast_laps=heat_fast_laps)
+        pilots=Pilot, heats=Heat)
+        #, heat_max_laps=heat_max_laps, heat_fast_laps=heat_fast_laps
 
 @APP.route('/heats')
 def heats():
@@ -518,10 +529,8 @@ def emit_leaderboard():
         if max_laps[node] is 0:
             average_lap.append(0) # Add zero if no laps completed
         else:
-            # avg_lap = DB.session.query(DB.func.avg(CurrentLap.lap_time)) \
-            # .filter_by(node_index=node).scalar()
             avg_lap = DB.session.query(DB.func.avg(CurrentLap.lap_time)) \
-            .filter(CurrentLap.node_index == node, CurrentLap.lap_id != 0).scalar()
+                .filter(CurrentLap.node_index == node, CurrentLap.lap_id != 0).scalar()
             average_lap.append(avg_lap)
     # Get the fastest lap time for each pilot
     fastest_lap = []
@@ -529,10 +538,8 @@ def emit_leaderboard():
         if max_laps[node] is 0:
             fastest_lap.append(0) # Add zero if no laps completed
         else:
-            # fast_lap = DB.session.query(DB.func.min(CurrentLap.lap_time)) \
-            # .filter_by(node_index=node).scalar()
             fast_lap = DB.session.query(DB.func.min(CurrentLap.lap_time)) \
-            .filter(CurrentLap.node_index == node, CurrentLap.lap_id != 0).scalar()
+                .filter(CurrentLap.node_index == node, CurrentLap.lap_id != 0).scalar()
             fastest_lap.append(fast_lap)
     # Get the pilot callsigns to add to sort
     callsigns = []
@@ -542,8 +549,8 @@ def emit_leaderboard():
         callsigns.append(Pilot.query.filter_by(pilot_id=pilot_id).first().callsign)
     # Combine for sorting
     leaderboard = zip(callsigns, max_laps, total_time, last_lap, average_lap, fastest_lap)
-    leaderboard_sorted = sorted(sorted(leaderboard, key=lambda x: x[0]), reverse=True, \
-        key=lambda x: x[1])
+    # Reverse sort max_laps x[1], then sort on total time x[2]
+    leaderboard_sorted = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
 
     SOCKET_IO.emit('leaderboard', {
         'position': [i+1 for i in range(RACE.num_nodes)],
@@ -795,13 +802,16 @@ DB.session.commit() # DB session commit here needed to prevent 'application cont
 
 
 # Test data - Current laps
-# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=5000, lap_time=5000, lap_time_formatted=time_format(5000)))
-# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=1, lap_time_stamp=15000, lap_time=10000, lap_time_formatted=time_format(10000)))
-# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=2, lap_time_stamp=30000, lap_time=15000, lap_time_formatted=time_format(15000)))
-# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=0, lap_time_stamp=6000, lap_time=6000, lap_time_formatted=time_format(6000)))
-# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=1, lap_time_stamp=15000, lap_time=9000, lap_time_formatted=time_format(9000)))
-# DB.session.add(CurrentLap(node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=5000, lap_time=5000, lap_time_formatted=time_format(5000)))
-# DB.session.add(CurrentLap(node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=14000, lap_time=9000, lap_time_formatted=time_format(9000)))
+# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
+# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=1, lap_time_stamp=11000, lap_time=10000, lap_time_formatted=time_format(10000)))
+# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=2, lap_time_stamp=21000, lap_time=10000, lap_time_formatted=time_format(10000)))
+# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
+# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=1, lap_time_stamp=12000, lap_time=11000, lap_time_formatted=time_format(11000)))
+# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=2, lap_time_stamp=24000, lap_time=12000, lap_time_formatted=time_format(12000)))
+# DB.session.add(CurrentLap(node_index=4, pilot_id=4, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
+# DB.session.add(CurrentLap(node_index=4, pilot_id=4, lap_id=1, lap_time_stamp=12000, lap_time=11000, lap_time_formatted=time_format(11000)))
+# DB.session.add(CurrentLap(node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
+# DB.session.add(CurrentLap(node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=13000, lap_time=12000, lap_time_formatted=time_format(12000)))
 # DB.session.commit()
 
 # Test data - SavedRace
