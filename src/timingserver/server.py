@@ -9,8 +9,14 @@ from flask_socketio import SocketIO, emit, join_room, leave_room, \
 
 import sys
 
+import argparse
+
+parser = argparse.ArgumentParser(description='Timing Server')
+parser.add_argument('--mock', dest='mock', action='store_true', default=False, help="use mock data for testing")
+args = parser.parse_args()
+
 sys.path.append('../delta5interface')
-if sys.platform.lower().startswith('win'):
+if args.mock or sys.platform.lower().startswith('win'):
     from MockInterface import get_hardware_interface
 elif sys.platform.lower().startswith('linux'):
     from Delta5Interface import get_hardware_interface
