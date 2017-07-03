@@ -32,7 +32,8 @@
 </div>
 {% endfor %}
 
-<h5>Heat {{ heat.heat_id }} Summary</h5>
+<!--More generic data summary needed, see server.py notes-->
+<!--<h5>Heat {# heat.heat_id #} Summary</h5>
 <div class="row">
 	<div class='col-xs-12 col-md-6'>
 		<div class='panel panel-default'>
@@ -45,23 +46,23 @@
 					</tr>
 				</thead>
 				<tbody>
-                {% for node in range(num_nodes) %}
+                {# for node in range(num_nodes) #}
 					<tr>
 						<td>
-                            {{ pilots.query.filter_by(pilot_id=heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign }}
+                            {# pilots.query.filter_by(pilot_id=heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign #}
                         </td>
 						<td>
-                            {{ heat_max_laps[heat.heat_id-1][node] }}
+                            {# heat_max_laps[heat.heat_id-1][node] #}
                         </td>
 						<td>
-                            {{ heat_fast_laps[heat.heat_id-1][node] }}
+                            {# heat_fast_laps[heat.heat_id-1][node] #}
                         </td>
 					</tr>                    
-                {% endfor %}
+                {# endfor #}
 				</tbody>
 			</table>
 		</div>
 	</div>
-</div>
+</div>-->
 
 {% endfor %}
