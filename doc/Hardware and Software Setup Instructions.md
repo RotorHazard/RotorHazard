@@ -106,13 +106,13 @@ Description=Delta5 Server
 After=multi-user.target
 
 [Service]
-Type=idle
-ExecStart=/usr/bin/python /home/pi/delta5_race_timer/src/delta5server/server.py
+WorkingDirectory=/home/pi/delta5_race_timer/src/delta5server
+ExecStart=/usr/bin/python server.py
 
 [Install]
 WantedBy=multi-user.target
 ```
-save and exit, [CTRL-X], [Y], [ENTER]
+save and exit (CTRL-X, Y, ENTER)
 
 2. Update permissions
 ```
