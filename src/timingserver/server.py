@@ -114,6 +114,14 @@ def on_set_trigger_threshold(data):
     hardwareInterface.set_trigger_threshold_global(trigger_threshold)
     emit('trigger_threshold_set', hardwareInterface.get_trigger_threshold_json(), broadcast=True)
 
+@socketio.on('set_filter_ratio')
+def on_set_filter_ratio(data):
+    data = parse_json(data)
+    print(data)
+    filter_ratio = data['filter_ratio']
+    hardwareInterface.set_filter_ratio_global(filter_ratio)
+    emit('filter_ratio_set', hardwareInterface.get_filter_ratio_json(), broadcast=True)
+
 # Keep this around for a bit.. old version of the api
 # @socketio.on('reset_auto_calibration')
 # def on_reset_auto_calibration():

@@ -14,16 +14,18 @@ READ_CALIBRATION_THRESHOLD = 0x15
 READ_CALIBRATION_MODE = 0x16
 READ_CALIBRATION_OFFSET = 0x17
 READ_TRIGGER_THRESHOLD = 0x18
+READ_FILTER_RATIO = 0x19
 
 WRITE_FREQUENCY = 0x51 # Sets frequency (2 byte)
 WRITE_CALIBRATION_THRESHOLD = 0x65
 WRITE_CALIBRATION_MODE = 0x66
 WRITE_CALIBRATION_OFFSET = 0x67
 WRITE_TRIGGER_THRESHOLD = 0x68
+WRITE_FILTER_RATIO = 0x69
 
-UPDATE_SLEEP = 0.01 # Main update loop delay
+UPDATE_SLEEP = 0.1 # Main update loop delay
 
-I2C_CHILL_TIME = 0.075 # Delay after i2c read/write
+I2C_CHILL_TIME = 0.05 # Delay after i2c read/write
 I2C_RETRY_COUNT = 5 # Limit of i2c retries
 
 def unpack_8(data):
@@ -96,10 +98,13 @@ class Delta5Interface(BaseHardwareInterface):
                     READ_CALIBRATION_OFFSET)
                 self.trigger_threshold = self.get_value_16(node,
                     READ_TRIGGER_THRESHOLD)
+                self.filter_ratio = self.get_value_8(node,
+                    READ_FILTER_RATIO)
             else:
                 self.set_calibration_threshold(node.index, self.calibration_threshold)
                 self.set_calibration_offset(node.index, self.calibration_offset)
                 self.set_trigger_threshold(node.index, self.trigger_threshold)
+
 
     #
     # Class Functions
@@ -310,6 +315,19 @@ class Delta5Interface(BaseHardwareInterface):
         for node in self.nodes:
             self.set_trigger_threshold(node.index, threshold)
         return self.trigger_threshold
+
+    def set_filter_ratio(self, node_index, filter_ration):
+        node = self.nodes[node_index]
+        node.filter_ration = self.set_and_validate_value_8(node,
+            WRITE_FILTER_RATIO,
+            READ_FILTER_RATIO,
+            filter_ration)
+
+    def set_filter_ratio_global(self, filter_ratio):
+        self.filter_ratio = filter_ratio
+        for node in self.nodes:
+            self.set_filter_ratio(node.index, filter_ratio)
+        return self.filter_ratio
 
 def get_hardware_interface():
     '''Returns the delta 5 interface object.'''
