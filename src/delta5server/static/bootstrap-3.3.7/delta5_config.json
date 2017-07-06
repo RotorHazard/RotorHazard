@@ -1,0 +1,12 @@
+{
+  "vars": {
+    "@line-height-base": "1.2",
+    "@padding-base-vertical": "4px",
+    "@padding-base-horizontal": "4px",
+    "@table-cell-padding": "4px",
+    "@grid-columns": "16",
+    "@grid-gutter-width": "4px",
+    "@panel-body-padding": "4px",
+    "@panel-heading-padding": "4px"
+  }
+}
