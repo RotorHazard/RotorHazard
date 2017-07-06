@@ -2,8 +2,54 @@
 
 <!--Display the heats-->
 <h4>Heats</h4>
-{% include "build_heats.html" %}
+<div class="row">
+	{% for heat in heats.query.with_entities(heats.heat_id).distinct().order_by(heats.heat_id) %}
+	<div class='col-xs-8 col-md-4'>
+		<div class='panel panel-default'>
+			<div class="panel-heading">
+				<h4 class="panel-title">{{ heat.heat_id }} (Heat note)</h4>
+			</div>
+			<table class="table">
+				{% for node in range(num_nodes) %}
+				<tr>
+					<td>
+						{{ channels[node] }} {{ frequencies[node] }}
+					</td>
+					<td>
+						{{ pilots.query.filter_by(pilot_id= heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign
+						}}
+					</td>
+				</tr>
+				{% endfor %}
+			</table>
+		</div>
+	</div>
+	{% endfor %}
+</div>
 
 <!--Display the pilots-->
 <h4>Pilots</h4>
-{% include "build_pilots.html" %} {% endblock %}
+<div class="row">
+	<div class='col-xs-16 col-md-6'>
+		<div class='panel panel-default'>
+			<table class="table">
+				<thead>
+					<tr>
+						<th>Call Sign</th>
+						<th>Name</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
+					<tr>
+						<td>{{ pilot.callsign }}</td>
+						<td>{{ pilot.name }}</td>
+					</tr>
+					{% endif %} {% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
