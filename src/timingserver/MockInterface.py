@@ -49,6 +49,9 @@ class MockInterface(BaseHardwareInterface):
     def set_trigger_threshold_global(self, trigger_threshold):
         self.trigger_threshold = trigger_threshold
 
+    def set_calibration_mode(self, node_index, calibration_mode):
+        pass
+
     def enable_calibration_mode(self):
         pass
 

@@ -86,7 +86,7 @@
                     $('#trigger_rssi_' + i).html(0);
                     $('#trigger_rssi_bar_' + i).css("width", normalize_rssi(0)+'%');
                 }
-                socket.emit('enable_calibration_mode');
+                socket.emit('reset_auto_calibration', {node: -1});
                 get_timestamp();
             };
 
