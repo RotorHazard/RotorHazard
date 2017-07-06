@@ -1,0 +1,29 @@
+<div class="row">
+	<div class='col-xs-12 col-md-8'>
+		<div class='panel panel-default'>
+			<table class="table">
+				<thead>
+					<tr>
+						<th>Pilot ID</th>
+						<th>Call Sign</th>
+						<th>Name</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
+					<tr>
+						<td>{{ pilot.pilot_id }}</td>
+						<td>
+							<input type="text" class="form-control set_pilot_callsign callsign_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
+							 value="{{ pilot.callsign }}">
+						</td>
+						<td>
+							<input type="text" class="form-control set_pilot_name name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}">
+						</td>
+					</tr>
+					{% endif %} {% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>

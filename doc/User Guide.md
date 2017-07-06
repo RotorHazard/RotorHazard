@@ -3,49 +3,44 @@
 ### Hardware and Software Setup
 1. Follow the instructions here if not done already: [/doc/Hardware and Software Setup Instructions.md](Hardware%20and%20Software%20Setup%20Instructions.md)
 
-### Database Setup and Configure
-1. Open a browser and type in the ip address of the timing system on your network.
+### Connect to the server
+1. Open a browser and type in the ip address of the timing system on your network using port 5000
+```
+XXX.XXX.XXX.XXX:5000/
+```
 
-2. Go to the 'Database' page.
+### Settings
 
-3. Click the 'Create Database' button at the bottom, this adds all the tables in the 'vtx' database.
+1. Go to the 'Settings' page
 
-4. Enter the number of nodes installed in the system and then click 'Initialize System'.
+2. Start by resetting the database by clicking 'Reset Database' at the bottom of the page
 
-### Set Triggers
+3. Frequencies are defined under the Nodes heading, defaults are IMD for up to 6 nodes or raceband when 7 or 8 nodes are detected
 
-1. Go to the 'Settings' page.
+4. Click 'Add Pilot' until you have an entry for each pilot racing
 
-2. Click 'Start System' to start polling data from the nodes.
+5. Edit the pilot callsigns and names
 
-3. Power a drone and place it 10 feet from the timer.
+6. Click 'Add Heat' until you have enough for all the pilots
 
-4. Note that the rssi value for the node on that frequency has increased.
-
-5. Click the 'Set' button for that node to save the current 'rssi' reading as the trigger value.
-
-6. Move the drone to within 5 feet of the timer.
-
-7. Ensure that the current 'rssi' reading from the node is at least 15 points more than the tigger value.
-
-8. The trigger function works by looking for a value 10 points more than the trigger value and then counts a lap when the rssi falls below 10 points less than the trigger value.
-
-9. Repeat this process for each channel/drone.
+7. Assign each pilot to a heat using the drop down buttons
 
 ### Running Races
 
-1. With 'System Status' as 'Running' on the settings page, go to the 'Race' page.
+1. Go to the 'Race' page
 
-2. Move all drones 10 plus feet away from the timing system, the rssi values must be 10 points less than the trigger value.
+2. Select the 'Heat' button to select which heat will be racing
 
-3. Click 'Start Race'
+3. Click 'Start Race' for a count up timer and 'Start Race 2min' for a count down timer
 
-4. Give the nodes 5 seconds to initialize and then tell the pilots to start racing.
+6. When the race is complete, click 'Stop Race'
 
-5. The first pass through the gate won't show anything but when a pilot comes through the gate a second time it will register that as the first lap.
+7. Click 'Save Laps' to store the results of a good race or 'Clear Laps' for a false start or as needed
 
-6. When the race is completed click 'Stop Race'
+### Saved Races
 
-7. Click 'Save Laps' to store the results of a good race.
+1. Saved races can be seen on the 'Rounds' page
 
-8. Click 'Clear Laps' and then go back to step 2 to run another race.
+### Pilots and Heats
+
+1. A summary of pilots and their heats is on the 'Heats' page

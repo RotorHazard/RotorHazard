@@ -1,0 +1,154 @@
+ {% extends "layout.html" %} {% block title %}Settings{% endblock %} {% block head %}
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function () {
+		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+		socket.on('heartbeat', function (msg) {
+			for (i = 0; i < msg.current_rssi.length; i++) {
+				$('.current_rssi_' + i).html(msg.current_rssi[i]);
+			}
+		});
+
+		socket.on('node_data', function (msg) {
+			for (i = 0; i < msg.frequency.length; i++) {
+				$('.channel_' + i).html(msg.channel[i] + ' ' + msg.frequency[i]);
+				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
+				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
+			}
+		});
+
+		socket.on('node_tuning', function (msg) {
+			$('.set_calibration_threshold').attr('value', msg.calibration_threshold);
+			$('.set_calibration_offset').attr('value', msg.calibration_offset);
+			$('.set_trigger_threshold').attr('value', msg.trigger_threshold);
+		});
+
+		socket.on('heat_data', function (msg) {
+			$.each(msg.heat_id, function (i, heat_id) {
+				$.each(heat_id.callsign, function (j, callsign) {
+					$('.heat_' + (i + 1) + '_node_' + j).html(callsign);
+				});
+			});
+		});
+
+		socket.on('pilot_data', function (msg) {
+			for (i = 0; i < msg.callsign.length; i++) {
+				$('.callsign_' + i).attr('value', msg.callsign[i]);
+				$('.name_' + i).attr('value', msg.name[i]);
+			}
+		});
+
+		$('.set_frequency li a').click(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				frequency: parseInt($(this).data('frequency'))
+			};
+			socket.emit('set_frequency', data);
+		})
+
+		$('.set_pilot_position li a').click(function (event) {
+			var data = {
+				heat: parseInt($(this).data('heat')),
+				node: parseInt($(this).data('node')),
+				pilot: parseInt($(this).data('pilot'))
+			};
+			socket.emit('set_pilot_position', data);
+		})
+
+		$('.set_pilot_callsign').change(function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				callsign: $(this).val()
+			};
+			socket.emit('set_pilot_callsign', data);
+		})
+
+		$('.set_pilot_name').change(function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				name: $(this).val()
+			};
+			socket.emit('set_pilot_name', data);
+		})
+
+		$('.set_calibration_threshold').change(function (event) {
+			var data = {
+				calibration_threshold: parseInt($(this).val())
+			};
+			socket.emit('set_calibration_threshold', data);
+		})
+
+		$('.set_calibration_offset').change(function (event) {
+			var data = {
+				calibration_offset: parseInt($(this).val())
+			};
+			socket.emit('set_calibration_offset', data);
+		})
+
+		$('.set_trigger_threshold').change(function (event) {
+			var data = {
+				trigger_threshold: parseInt($(this).val())
+			};
+			socket.emit('set_trigger_threshold', data);
+		})
+
+		$('button#add_heat').click(function (event) {
+			socket.emit('add_heat');
+			window.location.href = "/settings"; // Update to not need page reload
+			// This isn't getting an updated database I think
+			// $( "#heats" ).empty();
+			// document.getElementById("heats").innerHTML = // jinja template include
+			return false;
+		});
+
+		$('button#add_pilot').click(function (event) {
+			socket.emit('add_pilot');
+			window.location.href = "/settings"; // Update to not need page reload
+			// This isn't getting an updated database I think
+			// $( "#heats" ).empty();
+			// document.getElementById("heats").innerHTML = // jinja template include
+			return false;
+		});
+
+		$('button#reset_database').click(function (event) {
+			socket.emit('reset_database');
+			window.location.href = "/settings"; // Update to not need page reload
+			return false;
+		});
+	});
+
+</script>
+{% endblock %} {% block content %}
+
+<!--Display node data-->
+<h4>Node Data</h4>
+{% include "build_nodes.html" %}
+
+<!--Heats list for editing-->
+<h4>Heats
+	<button type="button" class="btn btn-default" id="add_heat" onclick="this.blur();">Add Heat</button>
+</h4>
+<p>Don't change a heat after it has a saved race.</p>
+<div id="heats">
+	{% include "build_heats_edit.html" %}
+</div>
+
+<!--Pilots list for editing-->
+<h4>Pilots
+	<button type="button" class="btn btn-default" id="add_pilot" onclick="this.blur();">Add Pilot</button>
+</h4>
+<p>Spelling corrections only after saving races.</p>
+{% include "build_pilots_edit.html" %}
+
+<!--Edit system tuning values-->
+<h4>Sensor Tuning</h4>
+{% include "build_node_tuning.html" %}
+
+<!--Reset database-->
+<h4>Database (Copy out your saved races first)</h4>
+<!--Look into the consequences of clearing the heat or pilots with many race rounds saved that reference deleted pilots-->
+<div>
+	<button type="button" class="btn btn-danger" id="reset_database" onclick="this.blur();">Reset Database</button>
+</div>
+
+{% endblock %}

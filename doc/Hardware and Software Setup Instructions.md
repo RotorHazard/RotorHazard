@@ -40,62 +40,21 @@ Complete wiring connections between each Arduino and RX5808.
 
 ### Main Controller
 Complete wiring connections between each Arduino and the Raspberry Pi.
-Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common ground; if not, the i2c messages can be corrupted, and cause other strange things to happen.
+Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common ground; if not, the i2c messages can be corrupted.
 ![alt text](img/D5-i2c.png)
 
 ## Software Setup
-  
+
 ### Raspberry Pi
 1. Start by instaling Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN JESSIE WITH PIXEL'
-2. Install Apache
- ```
- sudo apt-get install apache2 -y
- ```
- Test to make sure Apache is running by going to ```http://localhost/``` in the RPi's browser.
 
-3. Install PHP
- ```
- sudo apt-get install php5 libapache2-mod-php5 -y
- ```
+2. Enable I2C on the Raspberry Pi
+```
+sudo raspi-config
+```
+Go to Advanced Options, and enable I2C
 
-4. Install MySQL (Note: the code in this repository uses user:root and password:delta5fpv to access the database.)
- ```
- sudo apt-get install mysql-server php5-mysql -y
- ```
-
-5. Restart Apache
- ```
- sudo service apache2 restart
- ```
- 
-6. Enable I2C on the Raspberry Pi
- ```
- sudo raspi-config
- ```
- Go to Advanced Options, and enable I2C
-
-7. Install PHPMyAdmin
-```
-sudo apt-get install phpmyadmin
-```
-Select Apache2 as the server installed, answer 'YES' to the 'Configure database for PHPMyAdmin with dbconfig-common?"
-It will then ask you for the password when you created the MySQL database in Step 4.  It will also ask to setup a password for PHPMyAdmin, just make it the same as MySQL
-
-8. Setup Apache to include our PHPMyAdmin installation
-```
-sudo nano /etc/apache2/apache2.conf
-```
-At the bottom of the file add the following line:
-```
-Include /etc/phpmyadmin/apache.conf
-```
-
-9. Restart Apache:
-```
-sudo service apache2 restart
-```
-
-10. Install Python.
+3. Install Python
 ```
 sudo apt-get install python-dev
 ```
@@ -103,47 +62,66 @@ and install the python drivers for the GPIO
 ```
 sudo apt-get install python-rpi.gpio
 ```
-11. Give permission to run scripts as sudo (be very very careful editing this file)
-```
-sudo nano /etc/sudoers
-```
-At the bottom of the file add the following:
-```
-www-data ALL=(root) NOPASSWD:ALL
-```
 
-12. Update just to make sure everything is in order
+4. Final Update and upgrade
 ```
 sudo apt-get update && sudo apt-get upgrade
 ```
 
-13. Install the python bindings for MySQL
+5. Clone or download this repo to '/home/pi/' on the Raspberry Pi
+
+6. Open a terminal in '/delta5_race_timer/src/delta5server' and run
 ```
-sudo apt-get install mysql-server python-mysqldb
-```
-
-### MySQL Database setup:
-1. From the browser on the pi enter the following to access PHPMyAdmin:
-```
-http://localhost/phpmyadmin
-```
-
-2. Sign in, click databases on the top menu, and create a database called 'vtx'
-
-### Raspberry Pi Delta5 Code
-
-1. Copy [/src/raspberry pi code/VTX](../src/raspberry%20pi%20code/VTX) from this repo to '/home/pi/VTX/' on the Raspberry Pi
-
-2. Copy [/src/raspberry pi code/html](/src/raspberry%20pi%20code/html) from this repo to '/var/www/html/' on the Raspberry Pi
-
-If you don't have write permission use:
-```
-sudo pcmanfm
+sudo pip install -r requirements.txt
 ```
 
 ### Receiver Node Arduino Code:
-1. Open [/src/arduino code/delta5-race-timer-node/delta5-race-timer-node.ino](/src/arduino%20code/delta5-race-timer-node/delta5-race-timer-node.ino) in the Arduino IDE.
+1. Open '/delta5_race_timer/src/delta5node/delta5node.ino' in the Arduino IDE
 
-2. Configure 'i2cSlaveAddress' in the setup section of the .ino.
+2. Configure 'i2cSlaveAddress' in the setup section of the .ino
 
-3. Upload to each Arduino receiver node changing 'i2cSlaveAddress' each time.
+3. Upload to each Arduino receiver node changing 'i2cSlaveAddress' each time
+
+### Start the Server
+
+There are two types of servers that the pi can run to collect timing data.  The following instructions are for a hosted webapp that can be used to do everything needed to run a race and collect times.  
+
+The other alternative is a slimmed down timing server intended to be used to communicate with external timing software.  If you wish to use the timing server, replace "delta5server" with "timingserver" in the paths provided in the following instructions.
+
+#### Manual Start
+1. Open a terminal in '/delta5_race_timer/src/delta5server' and run
+```
+python server.py
+```
+
+#### Start on Boot
+1. Create a service
+```
+sudo nano /lib/systemd/system/delta5.service
+```
+with the following contents
+```
+[Unit]
+Description=Delta5 Server
+After=multi-user.target
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/python /home/pi/delta5_race_timer/src/delta5server/server.py
+
+[Install]
+WantedBy=multi-user.target
+```
+save and exit, [CTRL-X], [Y], [ENTER]
+
+2. Update permissions
+```
+sudo chmod 644 /lib/systemd/system/delta5.service
+```
+
+3. Start on boot
+```
+sudo systemctl daemon-reload
+sudo systemctl enable delta5.service
+sudo reboot
+```

@@ -1,0 +1,152 @@
+
+<!doctype html>
+<html>
+
+<head>
+    <title>Line Chart</title>
+    <script src="./static/chartjs/Chart.bundle.js"></script>
+    <script type="text/javascript" src="./static/jquery/jquery-3.1.1.min.js"></script>
+    <script type="text/javascript" src="./static/socket.io/1.3.5/socket.io.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+            colors = [
+            	'rgb(255, 99, 132)',
+            	'rgb(255, 159, 64)',
+            	'rgb(255, 205, 86)',
+            	'rgb(75, 192, 192)',
+            	'rgb(54, 162, 235)',
+            	'rgb(153, 102, 255)',
+            	'rgb(201, 203, 207)'
+            ];
+
+            var rssi_time_config = {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    scales: {
+                        xAxes: [{
+                            display: false,
+                        }],
+                        yAxes: [{
+                            display: true,
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Value'
+                            },
+                            ticks: {
+                                min: 0,
+                                max: 300
+                            }
+                        }]
+                    }
+                }
+            };
+
+            var rssi_current_config = {
+                type: 'bar',
+                options: {
+                    responsive: true,
+                    legend: {
+                        position: 'top',
+                    },
+                    scales: {
+                        xAxes: [{
+                            display: false,
+                        }],
+                        yAxes: [{
+                            display: true,
+                            ticks: {
+                                min: 0,
+                                max: 300
+                            }
+                        }]
+                    }
+                }
+            };
+
+            rssi_time_data = new Array();
+            rssi_time_config.data = rssi_time_data;
+            rssi_time_data.labels = new Array();
+            rssi_time_data.datasets = new Array();
+
+            for (i=0; i<100; i++) {
+                rssi_time_data.labels.push(i);
+            }
+
+            rssi_current_data = new Array();
+            rssi_current_config.data = rssi_current_data;
+            rssi_current_data.labels = [];
+            rssi_current_data.datasets = new Array();
+
+            socket.on('heartbeat', function(msg) {
+                for (node_index=0; node_index<msg.current_rssi.length && node_index < rssi_time_data.datasets.length ; node_index++) {
+                    rssi_time_data.datasets[node_index].data.shift();
+                    rssi_time_data.datasets[node_index].data.push(msg.current_rssi[node_index]);
+                    rssi_current_data.datasets[0].data[node_index] = msg.current_rssi[node_index];
+                    window.rssi_time.update();
+                    window.rssi_current.update();
+                }
+            });
+
+            socket.emit('get_settings', function(msg) {
+
+                var rssi_current_dataset = {
+                    label: [],
+                    backgroundColor: colors,
+                    borderColor: colors,
+                    data: [],
+                }
+
+                rssi_current_data.datasets.push(rssi_current_dataset);
+
+                for (node_index=0; node_index<msg.nodes.length; node_index++) {
+                    node = msg.nodes[node_index];
+
+                    var rssi_time_dataset = {
+                        label: "(" + (node_index + 1) + ") " + node.frequency,
+                        backgroundColor: colors[node_index],
+                        borderColor: colors[node_index],
+                        fill: false,
+                        data: [],
+                    };
+
+                    rssi_current_dataset.data.push(0);
+                    rssi_current_data.labels.push(node_index);
+
+                    for (i=0; i<100; i++) {
+                        rssi_time_dataset.data.push(0);
+                    }
+                    rssi_time_data.datasets.push(rssi_time_dataset);
+                }
+                window.rssi_time.update();
+                window.rssi_current.update();
+            });
+
+            var rsst_time_context = document.getElementById("rssi_time_context").getContext("2d");
+            window.rssi_time = new Chart(rsst_time_context, rssi_time_config);
+
+            var rsst_current_context = document.getElementById("rssi_current_context").getContext("2d");
+            window.rssi_current = new Chart(rsst_current_context, rssi_current_config);
+        });
+    </script>
+    <style>
+    canvas{
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+    }
+    </style>
+</head>
+
+<body>
+    <div style="width:50%;">
+        <canvas id="rssi_time_context"></canvas>
+    </div>
+    <div style="width:50%;">
+        <canvas id="rssi_current_context"></canvas>
+    </div>
+</body>
+
+</html>

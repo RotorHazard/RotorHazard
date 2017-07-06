@@ -1,0 +1,20 @@
+<div class="row">
+	{% for node in range(num_nodes) %}
+	<div class="col-xs-6 col-md-2">
+		<!--<div style="width: 160px; float: left;">-->
+		<div class='panel panel-default node_width'>
+			<div class="panel-heading">
+				<h4 class="panel-title callsign_{{ node }}">
+					<!--Add class to update on heat changes-->
+					{{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
+					}}
+				</h4>
+			</div>
+			<table class="table" id="current_laps_{{ node }}">
+				<tbody>
+				</tbody>
+			</table>
+		</div>
+	</div>
+	{% endfor %}
+</div>

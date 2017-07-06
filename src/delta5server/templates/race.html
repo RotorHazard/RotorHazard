@@ -1,0 +1,185 @@
+{% extends "layout.html" %} {% block title %}Race{% endblock %}{% block head %}
+
+<audio id="buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
+
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function () {
+		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+		var buzzer = $('#buzzer')[0];
+
+		socket.on('race_status', function (msg) {
+			switch (msg.race_status) {
+				case 1: // Race running
+					$('button#current_heat').attr('disabled', 'disabled');
+					$('button#start_race').attr('disabled', 'disabled');
+					$('button#start_race_2min').attr('disabled', 'disabled');
+					$('button#stop_race').removeAttr('disabled');
+					$('button#save_laps').attr('disabled', 'disabled');
+					$('button#clear_laps').attr('disabled', 'disabled');
+					break;
+				case 2: // Race stopped, clear or save laps
+					$('button#current_heat').attr('disabled', 'disabled');
+					$('button#start_race').attr('disabled', 'disabled');
+					$('button#start_race_2min').attr('disabled', 'disabled');
+					$('button#stop_race').attr('disabled', 'disabled');
+					$('button#save_laps').removeAttr('disabled');
+					$('button#clear_laps').removeAttr('disabled');
+					break;
+				default: // Waiting to start new race
+					$('button#current_heat').removeAttr('disabled');
+					$('button#start_race').removeAttr('disabled');
+					$('button#start_race_2min').removeAttr('disabled');
+					$('button#stop_race').attr('disabled', 'disabled');
+					$('button#save_laps').attr('disabled', 'disabled');
+					$('button#clear_laps').attr('disabled', 'disabled');
+			}
+		});
+
+		socket.on('node_data', function (msg) {
+			for (i = 0; i < msg.frequency.length; i++) {
+				$('.channel_' + i).html(msg.channel[i] + ' ' + msg.frequency[i]);
+				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
+				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
+			}
+		});
+
+		socket.on('current_laps', function (msg) {
+			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json array
+				$('#current_laps_' + i + ' tbody > tr').remove();
+				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
+					// No lap deletion for first or last lap
+					if (node_index.lap_id[j] == 0) {
+						var $tr = $('<tr>').append(
+							$('<td>').text(node_index.lap_id[j]),
+							$('<td>').text(node_index.lap_time[j])
+						).appendTo('#current_laps_' + i);
+					}
+					else {
+						var $tr = $('<tr>').append(
+							$('<td>').text(node_index.lap_id[j]),
+							$('<td>').text(node_index.lap_time[j] + ' ').append(
+								$('<button type="button" class="btn btn-default btn-xs delete_lap" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '" onclick="this.blur();">').text('X')
+							)
+						).appendTo('#current_laps_' + i);
+					}
+
+				});
+			});
+			// buzzer.play(); // Play buzzer on new lap but not on page load?
+		});
+
+		socket.on('leaderboard', function (msg) {
+			$('#leaderboard tbody > tr').remove();
+			for (i = 0; i < msg.position.length; i++) {
+				var $tr = $('<tr>').append(
+					$('<td>').text(msg.position[i]),
+					$('<td>').text(msg.callsign[i]),
+					$('<td>').text(msg.laps[i]),
+					$('<td>').text(msg.last_lap[i]),
+					$('<td>').text(msg.behind[i]),
+					$('<td>').text(msg.average_lap[i]),
+					$('<td>').text(msg.fastest_lap[i]),
+					$('<td>').text(msg.total_time[i]),
+				).appendTo('#leaderboard');
+			}
+		});
+
+		socket.on('current_heat', function (msg) {
+			$('.current_heat').html('Heat ' + msg.current_heat);
+			for (i = 0; i < msg.callsign.length; i++) {
+				$('.callsign_' + i).html(msg.callsign[i]);
+			}
+		});
+
+		socket.on('start_timer', function (msg) {
+			timer.reset(-1); // Stop and reset with -1 seconds to catch buzzer
+			timer.mode(1); // Count up mode
+			timer.start(); // Start clock
+		});
+
+		socket.on('start_timer_2min', function (msg) {
+			timer.reset(121); // Stop and reset with 121 seconds to catch buzzer
+			timer.mode(0); // Count down mode
+			timer.start(); // Start clock
+		});
+
+		socket.on('stop_timer', function (msg) {
+			timer.stop();
+		});
+
+		$('button#start_race').click(function (event) {
+			socket.emit('start_race');
+			return false;
+		});
+
+		$('button#start_race_2min').click(function (event) {
+			socket.emit('start_race_2min');
+			return false;
+		});
+
+		$('button#stop_race').click(function (event) {
+			socket.emit('stop_race');
+			return false;
+		});
+
+		$('button#save_laps').click(function (event) {
+			socket.emit('save_laps');
+			return false;
+		});
+
+		$('button#clear_laps').click(function (event) {
+			socket.emit('clear_laps');
+			return false;
+		});
+
+		$(document).on("click", ".delete_lap", function (event) { // Needed for buttons added after document load
+			var data = {
+				node: parseInt($(this).data('node')),
+				lapid: parseInt($(this).data('lapid')),
+			};
+			socket.emit('delete_lap', data);
+			return false;
+		});
+
+		$('.set_current_heat li a').click(function (event) {
+			var data = {
+				heat: parseInt($(this).data('heat')),
+			};
+			socket.emit('set_current_heat', data);
+		});
+	});
+
+</script>
+{% endblock %} {% block content %}
+
+<!--Buttons for controlling the race-->
+<div class="row">
+	<div class='col-xs-12'>
+		<div class="btn-group">
+			<button class="btn btn-default dropdown-toggle current_heat" id="current_heat" type="button" data-toggle="dropdown" aria-haspopup="true"
+			 aria-expanded="true">
+		 Heat {{ current_heat }}
+		 </button>
+			<ul class="dropdown-menu set_current_heat">
+				{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
+				<li><a role="button" data-heat="{{ heat.heat_id }}">Heat {{ heat.heat_id }}</a></li>
+				{% endfor %}
+			</ul>
+		</div>
+		<button type="button" class="btn btn-default" id="start_race" onclick="this.blur();">Start Race</button>
+		<button type="button" class="btn btn-default" id="start_race_2min" onclick="this.blur();">Start Race 2min</button> {% include
+		"build_timer.html" %}
+		<button type="button" class="btn btn-default" id="stop_race" disabled="disabled" onclick="this.blur();">Stop Race</button>
+		<button type="button" class="btn btn-default" id="save_laps" disabled="disabled" onclick="this.blur();">Save Laps</button>
+		<button type="button" class="btn btn-default" id="clear_laps" disabled="disabled" onclick="this.blur();">Clear Laps</button>
+	</div>
+</div>
+
+<!--Display the race leaderboard-->
+<h4>Leaderboard</h4>
+{% include "build_leaderboard.html" %}
+
+<!--Display the current laps-->
+<h4>Laps</h4>
+{% include "build_current_laps.html" %} {% endblock %}
