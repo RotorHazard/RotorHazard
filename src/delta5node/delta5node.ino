@@ -30,7 +30,7 @@
 // Node Setup -- Set the i2c address here
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
-#define i2cSlaveAddress 16
+#define i2cSlaveAddress 8
 
 const int slaveSelectPin = 10; // Setup data pins for rx5808 comms
 const int spiDataPin = 11;
