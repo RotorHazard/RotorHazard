@@ -60,7 +60,7 @@ struct {
 	uint16_t volatile calibrationThreshold = 95;
 	// Rssi must fall below trigger - settings.triggerThreshold to end a normal pass
 	uint16_t volatile triggerThreshold = 40;
-	uint8_t volatile filterRatio = 50;
+	uint8_t volatile filterRatio = 10;
 	float volatile filterRatioFloat = 0.0f;
 } settings;
 
