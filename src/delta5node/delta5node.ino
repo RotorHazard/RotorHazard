@@ -1,7 +1,6 @@
 // Delta 5 Race Timer by Scott Chin
 // SPI driver based on fs_skyrf_58g-main.c Written by Simon Chambers
 // I2C functions by Mike Ochtman
-// Lap trigger function by Alex Huisman
 //
 // MIT License
 //

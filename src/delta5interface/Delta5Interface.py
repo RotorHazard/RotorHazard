@@ -25,7 +25,7 @@ WRITE_FILTER_RATIO = 0x69
 
 UPDATE_SLEEP = 0.1 # Main update loop delay
 
-I2C_CHILL_TIME = 0.05 # Delay after i2c read/write
+I2C_CHILL_TIME = 0.075 # Delay after i2c read/write
 I2C_RETRY_COUNT = 5 # Limit of i2c retries
 
 def unpack_8(data):
