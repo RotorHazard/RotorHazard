@@ -1,46 +1,48 @@
 # Delta 5 Race Timer User Guide
 
 ### Hardware and Software Setup
-1. Follow the instructions here if not done already: [/doc/Hardware and Software Setup Instructions.md](Hardware%20and%20Software%20Setup%20Instructions.md)
+Follow the instructions here if not done already: [/doc/Hardware and Software Setup Instructions.md](Hardware%20and%20Software%20Setup%20Instructions.md)
 
-### Connect to the server
-1. Open a browser and type in the ip address of the timing system on your network using port 5000
+### Connect to the Server
+Find the ip address of the raspberry pi by opening the 'Clients' list on your routers admin page.
+
+Open a browser and type in the ip address of the timing system on your network using port 5000 or as configured in 'server.py'.
 ```
 XXX.XXX.XXX.XXX:5000/
 ```
 
-### Settings
+Pages reserved for the race director are password protected with default user: admin pass:delta5.
 
-1. Go to the 'Settings' page
+### System Settings and Configuration ('Settings' page)
 
-2. Start by resetting the database by clicking 'Reset Database' at the bottom of the page
+Start by resetting the database at the start of each race event. You have the option of a complete reset 'Reset Database' or if mostly the same pilots are racing 'Reset Keep Pilots'.
 
-3. Frequencies are defined under the Nodes heading, defaults are IMD for up to 6 nodes or raceband when 7 or 8 nodes are detected
+Frequencies are configured under the Nodes heading. Defaults are IMD for up to 6 nodes or Raceband when 7 or 8 nodes are detected. Use the dropdowns to change frequencies as needed.
 
-4. Click 'Add Pilot' until you have an entry for each pilot racing
+Click 'Add Pilot' until you have an entry for each pilot racing and then update the pilot callsigns and names.
 
-5. Edit the pilot callsigns and names
+Click 'Add Heat' until there are enough for all the pilots racing. Assign each pilot to a heat using the drop down buttons. The '-' pilot can be used for blank positions.
 
-6. Click 'Add Heat' until you have enough for all the pilots
+If you are noticing any missed or multiple laps when passing the gate, the sensor tuning values can be adjusted from defaults with a detailed description found here [/doc/Tuning Parameters.md](Tuning%20Parameters.md)
 
-7. Assign each pilot to a heat using the drop down buttons
+### Running Races ('Race' page)
 
-### Running Races
+The race director will spend most of their time on this page running races.
 
-1. Go to the 'Race' page
+Start by selecting the 'Heat' button to set which heat will be racing.
 
-2. Select the 'Heat' button to select which heat will be racing
+Click 'Start Race' for a count up timer starting from zero with no defined end. This is used for heads up racing, first to finish X laps. The race director clicks the 'Stop Race' button after all pilots have completed their laps.
 
-3. Click 'Start Race' for a count up timer and 'Start Race 2min' for a count down timer
+Alternatively click the 'Start Race 2min' for a count down timer from two minutes. This is used for most laps racing, each pilot has two minutes to complete as many laps as possible. After the last buzzer and all pilots have completed their last lap, click the 'Stop Race' button.
 
-6. When the race is complete, click 'Stop Race'
+During a race there will be a 'X' button next to each lap. This will discard that lap and move it's time into the next lap if it's not the last lap. It's generally perferable to tune the system to pick up more laps instead of missing laps and this is how the extras are deleted. At the end of the race you may have pilots flying by the start gate when they go to land, this is also how you remove those laps which might get picked up.
 
-7. Click 'Save Laps' to store the results of a good race or 'Clear Laps' for a false start or as needed
+After each race, click 'Save Laps' to store the results of a good race to the database, or 'Clear Laps' for a false start or as needed to discard the current laps.
 
-### Saved Races
+### Saved Races ('Rounds' page)
 
-1. Saved races can be seen on the 'Rounds' page
+This is a public page, previous race results are displayed on this page sorted by heats and rounds.
 
-### Pilots and Heats
+### Pilots and Heats ('Heats' page)
 
-1. A summary of pilots and their heats is on the 'Heats' page
+A summary of pilots and their heats is shown.
