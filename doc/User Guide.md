@@ -11,7 +11,7 @@ Open a browser and type in the ip address of the timing system on your network u
 XXX.XXX.XXX.XXX:5000/
 ```
 
-Pages reserved for the race director are password protected with default user: admin pass:delta5.
+Pages reserved for the race director are password protected with the default user 'admin' and password 'delta5'.
 
 ### System Settings and Configuration ('Settings' page)
 
