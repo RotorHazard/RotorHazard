@@ -27,12 +27,12 @@
 ### RX5808 Video Receivers
 Modify the rx5808 receivers to use SPI.
 
-1. Remove the shield from the rx5808. The shield is normally held on by a few spots of solder around the edges. Use some solder wick to remove the solder and free the shield from the receiver. Careful not to pull the shield off as the shield is connected to ground pads on the receiver. There are usually small holes around the edge you can use to help push off the shield.
+Remove the shield from the rx5808, the shield is normally held on by a few spots of solder around the edges. Use some solder wick to remove the solder and free the shield from the receiver. Be careful not to damage any ground pads on the receiver. There are usually small holes around the edge you can use to help push off the shield.
 
-2. Remove the following resistor:
+Remove the following resistor:
 ![rx5808 spi mod](img/rx5808-new-top.jpg)
 
-3. The sheild should be soldered back in place after removing the resistor.
+The sheild should be soldered back in place after removing the resistor.
 
 ### Receiver Nodes
 Complete wiring connections between each Arduino and RX5808.
@@ -40,6 +40,7 @@ Complete wiring connections between each Arduino and RX5808.
 
 ### System Assembly
 Complete wiring connections between each Arduino and the Raspberry Pi.
+
 Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common ground; if not, the i2c messages can be corrupted.
 ![system wiring](img/D5-i2c.png)
 
@@ -48,9 +49,9 @@ Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common groun
 ### Receiver Nodes (Arduinos)
 Note: The latest Arduino IDE (1.8+) is required from https://www.arduino.cc/en/Main/Software
 
-1. Open '/delta5_race_timer/src/delta5node/delta5node.ino' in the Arduino IDE
+Open '/delta5_race_timer/src/delta5node/delta5node.ino' in the Arduino IDE.
 
-2. Configure the '#define i2cSlaveAddress' line of the .ino for each node before uploading.
+Configure the '#define i2cSlaveAddress' line of the .ino for each node before uploading.
 ```
 // Node Setup -- Set the i2c address here
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
@@ -59,30 +60,27 @@ Note: The latest Arduino IDE (1.8+) is required from https://www.arduino.cc/en/M
 ```
 
 ### System (Raspberry Pi)
-1. Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN JESSIE WITH PIXEL'
+Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN JESSIE WITH PIXEL'
 
-2. Enable I2C on the Raspberry Pi, go to 'Advanced Options' and enable I2C
+Enable I2C on the Raspberry Pi, go to 'Advanced Options' and enable I2C.
 ```
 sudo raspi-config
 ```
 
-3. Install Python
+Install python and the python drivers for the GPIO.
 ```
 sudo apt-get install python-dev
-```
-and install the python drivers for the GPIO
-```
 sudo apt-get install python-rpi.gpio
 ```
 
-4. Final Update and Upgrade
+Final system update and upgrade.
 ```
 sudo apt-get update && sudo apt-get upgrade
 ```
 
-5. Clone or download this repo to '/home/pi/' on the Raspberry Pi
+Clone or download this repo to '/home/pi/' on the Raspberry Pi.
 
-6. Install web server packages, open a terminal in '/home/pi/delta5_race_timer/src/delta5server' and run
+Install web server packages, open a terminal in '/home/pi/delta5_race_timer/src/delta5server' and run
 ```
 sudo pip install -r requirements.txt
 ```
@@ -94,13 +92,13 @@ The following instructions will start the Delta5 Race Timer web server on the ra
 Alternatively, to use your Delta5 Race Timer hardware with 3rd party timing software, replace each reference of 'delta5server' with 'timingserver' in the following instructions.
 
 #### Manual Start
-1. Open a terminal in '/delta5_race_timer/src/delta5server' and run
+Open a terminal in '/delta5_race_timer/src/delta5server' and run
 ```
 python server.py
 ```
 
 #### Start on Boot
-1. Create a service
+Create a service
 ```
 sudo nano /lib/systemd/system/delta5.service
 ```
@@ -117,14 +115,14 @@ ExecStart=/usr/bin/python server.py
 [Install]
 WantedBy=multi-user.target
 ```
-save and exit (CTRL-X, Y, ENTER)
+save and exit (CTRL-X, Y, ENTER).
 
-2. Update permissions
+Update permissions.
 ```
 sudo chmod 644 /lib/systemd/system/delta5.service
 ```
 
-3. Start on boot
+Start on boot commands.
 ```
 sudo systemctl daemon-reload
 sudo systemctl enable delta5.service
