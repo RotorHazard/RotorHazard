@@ -47,4 +47,4 @@ This is a public page, previous race results are displayed on this page sorted b
 
 ### Pilots and Heats ('Heats' page)
 
-A summary of pilots and their heats is shown.
+Also a public page, shows a summary of pilots and their heats with channel assignment.
