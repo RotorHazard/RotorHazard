@@ -35,6 +35,8 @@ Click 'Start Race' for a count up timer starting from zero with no defined end. 
 
 Alternatively click the 'Start Race 2min' for a count down timer from two minutes. This is used for most laps racing, each pilot has two minutes to complete as many laps as possible. After the last buzzer and all pilots have completed their last lap, click the 'Stop Race' button.
 
+For each node in a row under the pilot callsigns will be the RSSI values, Current RSSI / Trigger / Peak. This gives the race director immediate sensor feedback for any adjustments that might need to be made.
+
 During a race there will be a 'X' button next to each lap. This will discard that lap and move it's time into the next lap if it's not the last lap. It's generally perferable to tune the system to pick up more laps instead of missing laps and this is how the extras are deleted. At the end of the race you may have pilots flying by the start gate when they go to land, this is also how you remove those laps which might get picked up.
 
 After each race, click 'Save Laps' to store the results of a good race to the database, or 'Clear Laps' for a false start or as needed to discard the current laps.
