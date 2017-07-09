@@ -61,11 +61,10 @@ Note: The latest Arduino IDE (1.8+) is required from https://www.arduino.cc/en/M
 ### System (Raspberry Pi)
 1. Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN JESSIE WITH PIXEL'
 
-2. Enable I2C on the Raspberry Pi
+2. Enable I2C on the Raspberry Pi, go to 'Advanced Options' and enable I2C
 ```
 sudo raspi-config
 ```
-go to 'Advanced Options' and enable I2C
 
 3. Install Python
 ```
@@ -83,9 +82,7 @@ sudo apt-get update && sudo apt-get upgrade
 
 5. Clone or download this repo to '/home/pi/' on the Raspberry Pi
 
-6. Additional Python Packages
-
-Open a terminal in '/home/pi/delta5_race_timer/src/delta5server' and run
+6. Install web server packages, open a terminal in '/home/pi/delta5_race_timer/src/delta5server' and run
 ```
 sudo pip install -r requirements.txt
 ```
