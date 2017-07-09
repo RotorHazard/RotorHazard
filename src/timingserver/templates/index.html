@@ -22,6 +22,7 @@
             var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
             var num_nodes = 0;
+            var start_timestamp = [];
             var last_lap_timestamp = [];
 
             function map_range(in_min, in_max, out_min, out_max, value) {
@@ -64,8 +65,10 @@
                     append_to_log('get_timestamp returned ' + JSON.stringify(msg));
 
                     last_lap_timestamp = [];
+                    start_timestamp = [];
                     for (i=0; i<num_nodes; i++) {
                         last_lap_timestamp.push(msg.timestamp);
+                        start_timestamp.push(msg.timestamp);
                     }
                 });
                 return false;
@@ -86,7 +89,7 @@
                     $('#trigger_rssi_' + i).html(0);
                     $('#trigger_rssi_bar_' + i).css("width", normalize_rssi(0)+'%');
                 }
-                socket.emit('enable_calibration_mode');
+                socket.emit('reset_auto_calibration', {node: -1});
                 get_timestamp();
             };
 
@@ -132,6 +135,14 @@
                     trigger_threshold: parseInt($('#trigger_threshold_value').val())
                 }
                 socket.emit('set_trigger_threshold', data);
+                return false;
+            });
+
+            $('form#set_filter_ratio').submit(function() {
+                var data = {
+                    filter_ratio: parseInt($('#filter_ratio_value').val())
+                }
+                socket.emit('set_filter_ratio', data);
                 return false;
             });
 
@@ -193,6 +204,7 @@
                 $('#calibration_threshold_value').val(msg.calibration_threshold);
                 $('#calibration_offset_value').val(msg.calibration_offset);
                 $('#trigger_threshold_value').val(msg.trigger_threshold);
+                $('#filter_ratio_value').val(msg.filter_ratio);
 
                 append_to_log('get_settings returned ' + JSON.stringify(msg));
 
@@ -224,6 +236,11 @@
                 append_to_log('on trigger_threshold_set ' + JSON.stringify(msg));
             });
 
+            socket.on('filter_ratio_set', function(msg) {
+                $('#filter_ratio_value').val(msg.filter_ratio);
+                append_to_log('on filter_ratio_set ' + JSON.stringify(msg));
+            });
+
             function ms_to_time(s) {
               // Pad to 2 or 3 digits, default is 2
               function pad(n, z) {
@@ -243,17 +260,19 @@
             socket.on('pass_record', function(msg) {
                 buzzer.play();
                 var lap_table = $('#lap_table_' + msg.node);
-                const Lap = (index, rssi, time) => `
+                const Lap = (index, rssi, time_lap, time_total) => `
                     <tr>
                         <td>${index}</td>
-                        <td>${rssi}</td>
-                        <td><p class="text-right">${time}</p></td>
+                        <!--td>${rssi}</td-->
+                        <td><p class="text-right">${time_lap}</p></td>
+                        <td><p class="text-right">${time_total}</p></td>
                     </tr>
                 `;
 
-                var lap_time = msg.timestamp - last_lap_timestamp[msg.node];
+                var time_lap = msg.timestamp - last_lap_timestamp[msg.node];
+                var time_total = msg.timestamp - start_timestamp[msg.node];
                 last_lap_timestamp[msg.node] = msg.timestamp;
-                lap_table.append(Lap(lap_table[0].children.length, msg.peak_rssi, ms_to_time(lap_time)));
+                lap_table.append(Lap(lap_table[0].children.length, msg.peak_rssi, ms_to_time(time_lap), ms_to_time(time_total)));
                 append_to_log('on pass_record ' + JSON.stringify(msg));
 
                 $('#peak_rssi_' + msg.node).html(msg.peak_rssi);
@@ -303,6 +322,18 @@
                                 Trigger Threshold
                                 <div class="input-group input-group-sm">
                                     <input class="form-control" type="text" name="trigger_threshold_value" id="trigger_threshold_value" value='0'>
+                                    <span class="input-group-btn">
+                                        <input class="btn btn-default" type="submit" value="Set">
+                                    </span>
+                                </div>
+                            </div>
+                        </form>
+
+                        <form id="set_filter_ratio" method="POST" action='#'>
+                            <div class="form-group">
+                                Filter Ratio
+                                <div class="input-group input-group-sm">
+                                    <input class="form-control" type="text" name="filter_ratio_value" id="filter_ratio_value" value='0'>
                                     <span class="input-group-btn">
                                         <input class="btn btn-default" type="submit" value="Set">
                                     </span>

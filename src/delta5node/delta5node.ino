@@ -1,7 +1,6 @@
 // Delta 5 Race Timer by Scott Chin
 // SPI driver based on fs_skyrf_58g-main.c Written by Simon Chambers
 // I2C functions by Mike Ochtman
-// Lap trigger function by Alex Huisman
 //
 // MIT License
 //
@@ -43,21 +42,25 @@ const int spiClockPin = 13;
 #define READ_CALIBRATION_MODE 0x16
 #define READ_CALIBRATION_OFFSET 0x17
 #define READ_TRIGGER_THRESHOLD 0x18
+#define READ_FILTER_RATIO 0x19
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_CALIBRATION_THRESHOLD 0x65
 #define WRITE_CALIBRATION_MODE 0x66
 #define WRITE_CALIBRATION_OFFSET 0x67
 #define WRITE_TRIGGER_THRESHOLD 0x68
+#define WRITE_FILTER_RATIO 0x69
 
 struct {
 	uint16_t volatile vtxFreq = 5800;
 	// Subtracted from the peak rssi during a calibration pass to determine the trigger value
-	uint16_t volatile calibrationOffset = 5;
+	uint16_t volatile calibrationOffset = 8;
 	// Rssi must fall below trigger - settings.calibrationThreshold to end a calibration pass
-	uint16_t volatile calibrationThreshold = 60;
+	uint16_t volatile calibrationThreshold = 95;
 	// Rssi must fall below trigger - settings.triggerThreshold to end a normal pass
-	uint16_t volatile triggerThreshold = 30;
+	uint16_t volatile triggerThreshold = 40;
+	uint8_t volatile filterRatio = 10;
+	float volatile filterRatioFloat = 0.0f;
 } settings;
 
 struct {
@@ -140,6 +143,7 @@ void setup() {
     cbi(ADCSRA,ADPS0);
 
 	// Initialize lastPass defaults
+	settings.filterRatioFloat = settings.filterRatio / 1000.0f;
 	state.rssi = 0;
 	state.rssiTrigger = 0;
 	lastPass.rssiPeakRaw = 0;
@@ -247,17 +251,10 @@ void setRxModule(int frequency) {
 	digitalWrite(spiDataPin, LOW);
 }
 
-#define RSSI_READ_AVERAGE_COUNT 10
 
 // Read the RSSI value for the current channel
 int rssiRead() {
-	long rssiAvg = 0; // Calculate rssi average
-	for (uint8_t i = 0; i < RSSI_READ_AVERAGE_COUNT; i++){
-		rssiAvg += analogRead(0); // Pin A0
-	}
-	rssiAvg = (int) (rssiAvg / RSSI_READ_AVERAGE_COUNT); // Average of 50 rssi readings
-	rssiAvg = constrain(rssiAvg, 1, 32000); // Positive 2 byte limit, not really needed
-	return rssiAvg;
+	return analogRead(0);
 }
 
 // Main loop
@@ -265,14 +262,12 @@ void loop() {
 	//delay(250);
 
 	// Calculate the time it takes to run the main loop
-	int lastLoopTimeStamp = state.lastLoopTimeStamp;
+	uint32_t lastLoopTimeStamp = state.lastLoopTimeStamp;
 	state.lastLoopTimeStamp = micros();
 	state.loopTime = state.lastLoopTimeStamp - lastLoopTimeStamp;
 
-	const float filterRatio =  0.01f;
-
 	state.rssiRaw = rssiRead();
-	state.rssiSmoothed = (filterRatio * (float)state.rssiRaw) + ((1.0f-filterRatio) * state.rssiSmoothed);
+	state.rssiSmoothed = (settings.filterRatioFloat * (float)state.rssiRaw) + ((1.0f-settings.filterRatioFloat) * state.rssiSmoothed);
 	state.rssi = (int)state.rssiSmoothed;
 
 	if (state.rssiTrigger > 0) {
@@ -300,8 +295,10 @@ void loop() {
 
 			state.rssiPeak = max(state.rssiPeak, state.rssi);
 
+			// Make sure the threshold does not put the trigger below 0 RSSI
 			// See if we have left the gate
-			if (state.rssi < (state.rssiTrigger - triggerThreshold)) {
+			if ((state.rssiTrigger > triggerThreshold) &&
+				(state.rssi < (state.rssiTrigger - triggerThreshold))) {
 				Serial.println("Crossing = False");
 				lastPass.rssiPeakRaw = state.rssiPeakRaw;
 				lastPass.rssiPeak = state.rssiPeak;
@@ -466,6 +463,13 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 				success = true;
 			}
 			break;
+		case WRITE_FILTER_RATIO:
+			if (readAndValidateIoBuffer(WRITE_FILTER_RATIO, 1)) {
+				settings.filterRatio = ioBufferRead8();
+				settings.filterRatioFloat =  settings.filterRatio / 1000.0f;
+				success = true;
+			}
+			break;
 	}
 
 	ioCommand = 0; // Clear previous command
@@ -510,6 +514,9 @@ void i2cTransmit() {
 			break;
 		case READ_TRIGGER_THRESHOLD:
 			ioBufferWrite16(settings.triggerThreshold);
+			break;
+		case READ_FILTER_RATIO:
+			ioBufferWrite8(settings.filterRatio);
 			break;
 		default: // If an invalid command is sent, write nothing back, master must react
 			Serial.print("TX Fault command: ");

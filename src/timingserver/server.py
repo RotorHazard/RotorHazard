@@ -3,14 +3,22 @@ import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
 
+import json
+
 from flask import Flask, render_template, session, request
 from flask_socketio import SocketIO, emit, join_room, leave_room, \
     close_room, rooms, disconnect
 
 import sys
 
+import argparse
+
+parser = argparse.ArgumentParser(description='Timing Server')
+parser.add_argument('--mock', dest='mock', action='store_true', default=False, help="use mock data for testing")
+args = parser.parse_args()
+
 sys.path.append('../delta5interface')
-if sys.platform.lower().startswith('win'):
+if args.mock or sys.platform.lower().startswith('win'):
     from MockInterface import get_hardware_interface
 elif sys.platform.lower().startswith('linux'):
     from Delta5Interface import get_hardware_interface
@@ -28,6 +36,11 @@ socketio = SocketIO(app, async_mode=async_mode)
 heartbeat_thread = None
 
 firmware_version = {'major': 0, 'minor': 1}
+
+def parse_json(data):
+    if isinstance(data, basestring):
+        return json.loads(data)
+    return data
 
 @app.route('/')
 def index():
@@ -70,6 +83,7 @@ def on_get_settings():
 
 @socketio.on('set_frequency')
 def on_set_frequency(data):
+    data = parse_json(data)
     print(data)
     index = data['node']
     frequency = data['frequency']
@@ -78,6 +92,7 @@ def on_set_frequency(data):
 
 @socketio.on('set_calibration_threshold')
 def on_set_calibration_threshold(data):
+    data = parse_json(data)
     print(data)
     calibration_threshold = data['calibration_threshold']
     hardwareInterface.set_calibration_threshold_global(calibration_threshold)
@@ -85,6 +100,7 @@ def on_set_calibration_threshold(data):
 
 @socketio.on('set_calibration_offset')
 def on_set_calibration_offset(data):
+    data = parse_json(data)
     print(data)
     calibration_offset = data['calibration_offset']
     hardwareInterface.set_calibration_offset_global(calibration_offset)
@@ -92,17 +108,41 @@ def on_set_calibration_offset(data):
 
 @socketio.on('set_trigger_threshold')
 def on_set_trigger_threshold(data):
+    data = parse_json(data)
     print(data)
     trigger_threshold = data['trigger_threshold']
     hardwareInterface.set_trigger_threshold_global(trigger_threshold)
     emit('trigger_threshold_set', hardwareInterface.get_trigger_threshold_json(), broadcast=True)
 
-@socketio.on('enable_calibration_mode')
-def on_enable_calibration_mode():
-    hardwareInterface.enable_calibration_mode();
+@socketio.on('set_filter_ratio')
+def on_set_filter_ratio(data):
+    data = parse_json(data)
+    print(data)
+    filter_ratio = data['filter_ratio']
+    hardwareInterface.set_filter_ratio_global(filter_ratio)
+    emit('filter_ratio_set', hardwareInterface.get_filter_ratio_json(), broadcast=True)
+
+# Keep this around for a bit.. old version of the api
+# @socketio.on('reset_auto_calibration')
+# def on_reset_auto_calibration():
+#     print('reset_auto_calibration all')
+#     hardwareInterface.enable_calibration_mode();
+
+@socketio.on('reset_auto_calibration')
+def on_reset_auto_calibration(data):
+    data = parse_json(data)
+    print(data)
+    index = data['node']
+    if index == -1:
+        print('reset_auto_calibration all')
+        hardwareInterface.enable_calibration_mode()
+    else:
+        print('reset_auto_calibration {0}'.format(index))
+        hardwareInterface.set_calibration_mode(index, True)
 
 @socketio.on('simulate_pass')
 def on_simulate_pass(data):
+    data = parse_json(data)
     index = data['node']
     # todo: how should frequency be sent?
     emit('pass_record', {'node': index, 'frequency': hardwareInterface.nodes[index].frequency, 'timestamp': hardwareInterface.milliseconds()}, broadcast=True)

@@ -36,9 +36,14 @@
 			}
 		});
 
+		socket.on('heartbeat', function (msg) {
+			for (i = 0; i < msg.current_rssi.length; i++) {
+				$('.current_rssi_' + i).html(msg.current_rssi[i]);
+			}
+		});
+
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
-				$('.channel_' + i).html(msg.channel[i] + ' ' + msg.frequency[i]);
 				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
 			}
@@ -48,18 +53,18 @@
 			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json array
 				$('#current_laps_' + i + ' tbody > tr').remove();
 				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
-					// No lap deletion for first or last lap
+					// No lap deletion for first lap
 					if (node_index.lap_id[j] == 0) {
 						var $tr = $('<tr>').append(
 							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j])
+							$('<td style="padding-right: 0px">').text(node_index.lap_time[j])
 						).appendTo('#current_laps_' + i);
 					}
 					else {
 						var $tr = $('<tr>').append(
 							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j] + ' ').append(
-								$('<button type="button" class="btn btn-default btn-xs delete_lap" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '" onclick="this.blur();">').text('X')
+							$('<td style="padding-right: 0px">').text(node_index.lap_time[j] + ' ').append(
+								$('<button type="button" class="btn btn-default glyphicon glyphicon-remove delete_lap" style="padding: 0px" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '" onclick="this.blur();">')
 							)
 						).appendTo('#current_laps_' + i);
 					}
@@ -176,10 +181,60 @@
 	</div>
 </div>
 
+<!--Space between button row and leaderboard-->
+<p> </p>
+
 <!--Display the race leaderboard-->
-<h4>Leaderboard</h4>
-{% include "build_leaderboard.html" %}
+<div class="row">
+	<div class='col-xs-16 col-md-12'>
+		<div class='panel panel-default'>
+			<table class="table" id="leaderboard">
+				<thead>
+					<tr>
+						<th>Pos.</th>
+						<th>Pilot</th>
+						<th>Laps</th>
+						<th>Last Lap</th>
+						<th>Behind</th>
+						<th>Average</th>
+						<th>Fastest</th>
+						<th>Total</th>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
 
 <!--Display the current laps-->
-<h4>Laps</h4>
-{% include "build_current_laps.html" %} {% endblock %}
+<div class="row">
+	{% for node in range(num_nodes) %}
+	<div class="col-xs-4 col-md-2">
+		<div class='panel panel-default'>
+			<div class="panel-heading">
+				<h4 class="panel-title callsign_{{ node }}">
+					{{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
+					}}
+				</h4>
+			</div>
+			<table class="table" id="current_laps_{{ node }}">
+				<thead>
+					<tr>
+						<td colspan="2">
+							<span class="current_rssi_{{ node }}"></span> /
+							<span class="trigger_rssi_{{ node }}"></span> /
+							<span class="peak_rssi_{{ node }}"></span>
+						</td>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+		</div>
+	</div>
+	{% endfor %}
+</div>
+
+{% endblock %}

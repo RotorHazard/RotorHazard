@@ -1,4 +1,4 @@
- {% extends "layout.html" %} {% block title %}Settings{% endblock %} {% block head %}
+{% extends "layout.html" %} {% block title %}Settings{% endblock %} {% block head %}
 <script type="text/javascript" charset="utf-8">
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
@@ -115,14 +115,70 @@
 			window.location.href = "/settings"; // Update to not need page reload
 			return false;
 		});
+
+		$('button#reset_database_keep_pilots').click(function (event) {
+			socket.emit('reset_database_keep_pilots');
+			window.location.href = "/settings"; // Update to not need page reload
+			return false;
+		});
+
+		$('button#shutdown_pi').click(function (event) {
+			socket.emit('shutdown_pi');
+			return false;
+		});
 	});
 
 </script>
 {% endblock %} {% block content %}
 
 <!--Display node data-->
-<h4>Node Data</h4>
-{% include "build_nodes.html" %}
+<h4>Nodes</h4>
+<div class="row">
+	{% for node in range(num_nodes) %}
+	<div class='col-xs-8 col-sm-4 col-md-2'>
+		<div class='panel panel-default'>
+			<div class="panel-heading">
+				<h4 class="panel-title">{{ node + 1 }}</h4>
+			</div>
+			<table class="table">
+				<tr>
+					<td colspan="2">
+						Freq.
+						<!--Need to have two drop downs, band and frequency, one drop is long of a list-->
+						<div class="btn-group">
+							<button class="btn btn-default dropdown-toggle channel_{{ node }}" type="button" data-toggle="dropdown" aria-haspopup="true"
+							 aria-expanded="true"></button>
+							<ul class="dropdown-menu set_frequency">
+								{% for frequency in frequencies.query.all() %}
+								<li><a role="button" data-node="{{ node }}" data-frequency="{{ frequency.frequency }}">{{ frequency.channel }} {{ frequency.frequency }}</a></li>
+								{% endfor %}
+							</ul>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td>RSSI</td>
+					<td>
+						<span class="current_rssi_{{ node }}"></span>
+					</td>
+				</tr>
+				<tr>
+					<td>Trigger</td>
+					<td>
+						<span class="trigger_rssi_{{ node }}"></span>
+					</td>
+				</tr>
+				<tr>
+					<td>Peak</td>
+					<td>
+						<span class="peak_rssi_{{ node }}"></span>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	{% endfor %}
+</div>
 
 <!--Heats list for editing-->
 <h4>Heats
@@ -130,7 +186,41 @@
 </h4>
 <p>Don't change a heat after it has a saved race.</p>
 <div id="heats">
-	{% include "build_heats_edit.html" %}
+	<div class="row">
+		{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
+		<div class='col-xs-8 col-md-4'>
+			<div class='panel panel-default'>
+				<div class="panel-heading">
+					<h4 class="panel-title">{{ heat.heat_id }} (Heat note)</h4>
+				</div>
+				<table class="table">
+					{% for node in range(num_nodes) %}
+					<tr>
+						<td>
+							<div class="channel_{{ node }}"></div>
+						</td>
+						<td>
+							<div class="btn-group">
+								<button class="btn btn-default dropdown-toggle heat_{{ heat.heat_id }}_node_{{ node }}" type="button" data-toggle="dropdown"
+								 aria-haspopup="true" aria-expanded="true">
+								{{ pilots.query.filter_by(pilot_id=
+									heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id
+									).first().callsign }}
+								</button>
+								<ul class="dropdown-menu set_pilot_position">
+									{% for pilot in pilots.query.all() %}
+									<li><a role="button" data-heat="{{ heat.heat_id }}" data-node="{{ node }}" data-pilot="{{ pilot.pilot_id }}">{{ pilot.callsign }}</a></li>
+									{% endfor %}
+								</ul>
+							</div>
+						</td>
+					</tr>
+					{% endfor %}
+				</table>
+			</div>
+		</div>
+		{% endfor %}
+	</div>
 </div>
 
 <!--Pilots list for editing-->
@@ -138,17 +228,79 @@
 	<button type="button" class="btn btn-default" id="add_pilot" onclick="this.blur();">Add Pilot</button>
 </h4>
 <p>Spelling corrections only after saving races.</p>
-{% include "build_pilots_edit.html" %}
+<div class="row">
+	<div class='col-xs-16 col-md-8'>
+		<div class='panel panel-default'>
+			<table class="table">
+				<thead>
+					<tr>
+						<th>Pilot ID</th>
+						<th>Call Sign</th>
+						<th>Name</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
+					<tr>
+						<td>{{ pilot.pilot_id }}</td>
+						<td>
+							<input type="text" class="form-control set_pilot_callsign callsign_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
+							 value="{{ pilot.callsign }}">
+						</td>
+						<td>
+							<input type="text" class="form-control set_pilot_name name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}">
+						</td>
+					</tr>
+					{% endif %} {% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
 
 <!--Edit system tuning values-->
 <h4>Sensor Tuning</h4>
-{% include "build_node_tuning.html" %}
+<div class="row">
+	<div class='col-xs-16 col-md-8'>
+		<div class='panel panel-default'>
+			<table class="table">
+				<tr>
+					<td><b>Calibration Offset (Default 8)</b><br>Trigger is Peak Rssi minus Calibration Offset</td>
+					<td>
+						<input type="text" class="form-control set_calibration_offset">
+					</td>
+				</tr>
+				<tr>
+					<td><b>Calibration Threshold (Default 95)</b><br>Trigger minus Calibration Threshold ends calibration pass</td>
+					<td>
+						<input type="text" class="form-control set_calibration_threshold">
+					</td>
+				</tr>
+				<tr>
+					<td><b>Trigger Threshold (Default 40)</b><br>Trigger minus Trigger Threshold ends normal pass</td>
+					<td>
+						<input type="text" class="form-control set_trigger_threshold">
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+</div>
 
 <!--Reset database-->
-<h4>Database (Copy out your saved races first)</h4>
-<!--Look into the consequences of clearing the heat or pilots with many race rounds saved that reference deleted pilots-->
+<h4>Database (Copy out any saved races first!)</h4>
 <div>
 	<button type="button" class="btn btn-danger" id="reset_database" onclick="this.blur();">Reset Database</button>
+	<button type="button" class="btn btn-warning" id="reset_database_keep_pilots" onclick="this.blur();">Reset Keep Pilots</button>
 </div>
+
+<!--Reset database-->
+<h4>System (Safely shutdown raspberry pi)</h4>
+<div>
+	<button type="button" class="btn btn-default" id="shutdown_pi" onclick="this.blur();">Shutdown</button>
+</div>
+
+</br>
+<!--Bottom whitespace-->
 
 {% endblock %}

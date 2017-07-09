@@ -3,8 +3,9 @@
 import os
 import sys
 from datetime import datetime
+from functools import wraps
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, Response
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
 
@@ -93,14 +94,80 @@ class Frequency(DB.Model):
         return '<Frequency %r>' % self.frequency
 
 #
+# Authentication
+#
+
+def check_auth(username, password):
+    '''Check if a username password combination is valid.'''
+    return username == 'admin' and password == 'delta5'
+
+def authenticate():
+    '''Sends a 401 response that enables basic auth.'''
+    return Response(
+        'Could not verify your access level for that URL.\n'
+        'You have to login with proper credentials', 401,
+        {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
+#
 # Routes
 #
 
 @APP.route('/')
 def index():
     '''Route to round summary page.'''
+    # A more generic and flexible way of viewing saved race data is needed
+    # - Individual round/race summaries
+    # - Heat summaries
+    # - Pilot summaries
+    # Make a new dynamic route for each? /pilotname /heatnumber /
+    # Three different summary pages?
+    # - One for all rounds, grouped by heats
+    # - One for all pilots, sorted by fastest lap and shows average and other stats
+    # - One for individual heats
+    #
+    # Calculate heat summaries
+    # heat_max_laps = []
+    # heat_fast_laps = []
+    # for heat in SavedRace.query.with_entities(SavedRace.heat_id).distinct() \
+    #     .order_by(SavedRace.heat_id):
+    #     max_laps = []
+    #     fast_laps = []
+    #     for node in range(RACE.num_nodes):
+    #         node_max_laps = 0
+    #         node_fast_lap = 0
+    #         for race_round in SavedRace.query.with_entities(SavedRace.round_id).distinct() \
+    #             .filter_by(heat_id=heat.heat_id).order_by(SavedRace.round_id):
+    #             round_max_lap = DB.session.query(DB.func.max(SavedRace.lap_id)) \
+    #                 .filter_by(heat_id=heat.heat_id, round_id=race_round.round_id, \
+    #                 node_index=node).scalar()
+    #             if round_max_lap is None:
+    #                 round_max_lap = 0
+    #             else:
+    #                 round_fast_lap = DB.session.query(DB.func.min(SavedRace.lap_time)) \
+    #                 .filter(SavedRace.node_index == node, SavedRace.lap_id != 0).scalar()
+    #                 if node_fast_lap == 0:
+    #                     node_fast_lap = round_fast_lap
+    #                 if node_fast_lap != 0 and round_fast_lap < node_fast_lap:
+    #                     node_fast_lap = round_fast_lap
+    #             node_max_laps = node_max_laps + round_max_lap
+    #         max_laps.append(node_max_laps)
+    #         fast_laps.append(time_format(node_fast_lap))
+    #     heat_max_laps.append(max_laps)
+    #     heat_fast_laps.append(fast_laps)
+    # print heat_max_laps
+    # print heat_fast_laps
     return render_template('rounds.html', num_nodes=RACE.num_nodes, rounds=SavedRace, \
         pilots=Pilot, heats=Heat)
+        #, heat_max_laps=heat_max_laps, heat_fast_laps=heat_fast_laps
 
 @APP.route('/heats')
 def heats():
@@ -111,12 +178,14 @@ def heats():
             for node in INTERFACE.nodes])
 
 @APP.route('/race')
+@requires_auth
 def race():
     '''Route to race management page.'''
     return render_template('race.html', num_nodes=RACE.num_nodes, current_heat=RACE.current_heat, \
         heats=Heat, pilots=Pilot)
 
 @APP.route('/settings')
+@requires_auth
 def settings():
     '''Route to settings page.'''
     return render_template('settings.html', num_nodes=RACE.num_nodes, pilots=Pilot, \
@@ -125,11 +194,13 @@ def settings():
 # Debug Routes
 
 @APP.route('/hardwarelog')
+@requires_auth
 def hardwarelog():
     '''Route to hardware log page.'''
     return render_template('hardwarelog.html')
 
 @APP.route('/database')
+@requires_auth
 def database():
     '''Route to database page.'''
     return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
@@ -177,7 +248,7 @@ def on_add_heat():
     for node in range(RACE.num_nodes): # Add next heat with pilots 1 thru 5
         DB.session.add(Heat(heat_id=max_heat_id+1, node_index=node, pilot_id=node+1))
     DB.session.commit()
-    server_log('Heat added: Heat {0}'.format(max_head_id+1))
+    server_log('Heat added: Heat {0}'.format(max_heat_id+1))
 
 @SOCKET_IO.on('set_pilot_position')
 def on_set_pilot_position(data):
@@ -192,7 +263,7 @@ def on_set_pilot_position(data):
     emit_heat_data() # Settings page, new pilot position in heats
 
 @SOCKET_IO.on('add_pilot')
-def on_add_heat():
+def on_add_pilot():
     '''Adds the next available pilot id number in the database.'''
     max_pilot_id = DB.session.query(DB.func.max(Pilot.pilot_id)).scalar()
     DB.session.add(Pilot(pilot_id=max_pilot_id+1, callsign='callsign{0}'.format(max_pilot_id+1), \
@@ -250,8 +321,18 @@ def on_set_trigger_threshold(data):
 @SOCKET_IO.on('reset_database')
 def on_reset_database():
     '''Reset database.'''
-    db_init()
-    server_log('Database reset')
+    db_reset()
+
+@SOCKET_IO.on('reset_database_keep_pilots')
+def on_reset_database_keep_pilots():
+    '''Reset database but keep pilots list.'''
+    db_reset_keep_pilots()
+
+@SOCKET_IO.on('shutdown_pi')
+def on_shutdown_pi():
+    '''Shutdown the raspberry pi.'''
+    server_log('Shutdown pi')
+    os.system("sudo shutdown now")
 
 # @SOCKET_IO.on('clear_rounds')
 # def on_reset_heats():
@@ -458,10 +539,8 @@ def emit_leaderboard():
         if max_laps[node] is 0:
             average_lap.append(0) # Add zero if no laps completed
         else:
-            # avg_lap = DB.session.query(DB.func.avg(CurrentLap.lap_time)) \
-            # .filter_by(node_index=node).scalar()
             avg_lap = DB.session.query(DB.func.avg(CurrentLap.lap_time)) \
-            .filter(CurrentLap.node_index == node, CurrentLap.lap_id != 0).scalar()
+                .filter(CurrentLap.node_index == node, CurrentLap.lap_id != 0).scalar()
             average_lap.append(avg_lap)
     # Get the fastest lap time for each pilot
     fastest_lap = []
@@ -469,10 +548,8 @@ def emit_leaderboard():
         if max_laps[node] is 0:
             fastest_lap.append(0) # Add zero if no laps completed
         else:
-            # fast_lap = DB.session.query(DB.func.min(CurrentLap.lap_time)) \
-            # .filter_by(node_index=node).scalar()
             fast_lap = DB.session.query(DB.func.min(CurrentLap.lap_time)) \
-            .filter(CurrentLap.node_index == node, CurrentLap.lap_id != 0).scalar()
+                .filter(CurrentLap.node_index == node, CurrentLap.lap_id != 0).scalar()
             fastest_lap.append(fast_lap)
     # Get the pilot callsigns to add to sort
     callsigns = []
@@ -482,8 +559,8 @@ def emit_leaderboard():
         callsigns.append(Pilot.query.filter_by(pilot_id=pilot_id).first().callsign)
     # Combine for sorting
     leaderboard = zip(callsigns, max_laps, total_time, last_lap, average_lap, fastest_lap)
-    leaderboard_sorted = sorted(sorted(leaderboard, key=lambda x: x[0]), reverse=True, \
-        key=lambda x: x[1])
+    # Reverse sort max_laps x[1], then sort on total time x[2]
+    leaderboard_sorted = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
 
     SOCKET_IO.emit('leaderboard', {
         'position': [i+1 for i in range(RACE.num_nodes)],
@@ -629,26 +706,54 @@ def default_frequencies():
             INTERFACE.set_frequency(index, frequencies_raceband[index])
     server_log('Default frequencies set')
 
-# How to move this to a seperate file?
+
 def db_init():
     '''Initialize database.'''
-
-    print 'Start database initialization'
     DB.create_all() # Creates tables from database classes/models
+    db_reset_pilots()
+    db_reset_heats()
+    db_reset_frequencies()
+    db_reset_current_laps()
+    db_reset_saved_races()
+    server_log('Database initialized')
 
-    # Create default pilots list
+def db_reset():
+    '''Resets database.'''
+    db_reset_pilots()
+    db_reset_heats()
+    db_reset_frequencies()
+    db_reset_current_laps()
+    db_reset_saved_races()
+    server_log('Database reset')
+
+def db_reset_keep_pilots():
+    '''Resets database, keeps pilots.'''
+    db_reset_heats()
+    db_reset_frequencies()
+    db_reset_current_laps()
+    db_reset_saved_races()
+    server_log('Database reset, pilots kept')
+
+def db_reset_pilots():
+    '''Resets database pilots to default.'''
     DB.session.query(Pilot).delete()
     DB.session.add(Pilot(pilot_id='0', callsign='-', name='-'))
     for node in range(RACE.num_nodes):
         DB.session.add(Pilot(pilot_id=node+1, callsign='callsign{0}'.format(node+1), \
             name='Pilot Name'))
+    DB.session.commit()
+    server_log('Database pilots reset')
 
-    # Create default heat 1
+def db_reset_heats():
+    '''Resets database heats to default.'''
     DB.session.query(Heat).delete()
     for node in range(RACE.num_nodes):
         DB.session.add(Heat(heat_id=1, node_index=node, pilot_id=node+1))
+    DB.session.commit()
+    server_log('Database heats reset')
 
-    # Add frequencies
+def db_reset_frequencies():
+    '''Resets database frequencies to default.'''
     DB.session.query(Frequency).delete()
     # IMD Channels
     DB.session.add(Frequency(band='IMD', channel='E2', frequency='5685'))
@@ -702,15 +807,20 @@ def db_init():
     DB.session.add(Frequency(band='A', channel='A6', frequency='5765'))
     DB.session.add(Frequency(band='A', channel='A7', frequency='5745'))
     DB.session.add(Frequency(band='A', channel='A8', frequency='5725'))
-
-    # Delete any current laps
-    DB.session.query(CurrentLap).delete()
-    # Delete any saved races
-    DB.session.query(SavedRace).delete()
-    # Commit all updates
     DB.session.commit()
+    server_log('Database frequencies reset')
 
-    print 'Database initialized'
+def db_reset_current_laps():
+    '''Resets database current laps to default.'''
+    DB.session.query(CurrentLap).delete()
+    DB.session.commit()
+    server_log('Database current laps reset')
+    
+def db_reset_saved_races():
+    '''Resets database saved races to default.'''
+    DB.session.query(SavedRace).delete()
+    DB.session.commit()
+    server_log('Database saved races reset')
 
 #
 # Program Initialize
@@ -730,17 +840,49 @@ if not os.path.exists('database.db'):
     db_init()
 
 # Clear any current laps from the database on each program start
-DB.session.query(CurrentLap).delete()
-DB.session.commit() # DB session commit here needed to prevent 'application context' errors
+# DB session commit needed to prevent 'application context' errors
+db_reset_current_laps()
+
 
 # Test data - Current laps
-# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=5000, lap_time=5000, lap_time_formatted=time_format(5000)))
-# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=1, lap_time_stamp=15000, lap_time=10000, lap_time_formatted=time_format(10000)))
-# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=2, lap_time_stamp=30000, lap_time=15000, lap_time_formatted=time_format(15000)))
-# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=0, lap_time_stamp=6000, lap_time=6000, lap_time_formatted=time_format(6000)))
-# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=1, lap_time_stamp=15000, lap_time=9000, lap_time_formatted=time_format(9000)))
-# DB.session.add(CurrentLap(node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=5000, lap_time=5000, lap_time_formatted=time_format(5000)))
-# DB.session.add(CurrentLap(node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=14000, lap_time=9000, lap_time_formatted=time_format(9000)))
+# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
+# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=1, lap_time_stamp=11000, lap_time=10000, lap_time_formatted=time_format(10000)))
+# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=2, lap_time_stamp=21000, lap_time=10000, lap_time_formatted=time_format(10000)))
+# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
+# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=1, lap_time_stamp=12000, lap_time=11000, lap_time_formatted=time_format(11000)))
+# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=2, lap_time_stamp=24000, lap_time=12000, lap_time_formatted=time_format(12000)))
+# DB.session.add(CurrentLap(node_index=4, pilot_id=4, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
+# DB.session.add(CurrentLap(node_index=4, pilot_id=4, lap_id=1, lap_time_stamp=12000, lap_time=11000, lap_time_formatted=time_format(11000)))
+# DB.session.add(CurrentLap(node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
+# DB.session.add(CurrentLap(node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=13000, lap_time=12000, lap_time_formatted=time_format(12000)))
+# DB.session.commit()
+
+# Test data - SavedRace
+# db_init()
+# on_add_heat()
+# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
+# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=2, pilot_id=2, lap_id=1, lap_time_stamp=15000, lap_time=14000, lap_time_formatted=time_format(14000)))
+# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=2, pilot_id=2, lap_id=2, lap_time_stamp=30000, lap_time=15000, lap_time_formatted=time_format(15000)))
+# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=3, pilot_id=3, lap_id=0, lap_time_stamp=1500, lap_time=1500, lap_time_formatted=time_format(1500)))
+# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=3, pilot_id=3, lap_id=1, lap_time_stamp=15000, lap_time=13500, lap_time_formatted=time_format(13500)))
+# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=750, lap_time=750, lap_time_formatted=time_format(750)))
+# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=10750, lap_time=10000, lap_time_formatted=time_format(10000)))
+# DB.session.commit()
+# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
+# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=2, pilot_id=2, lap_id=1, lap_time_stamp=15000, lap_time=14000, lap_time_formatted=time_format(14000)))
+# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=2, pilot_id=2, lap_id=2, lap_time_stamp=30000, lap_time=15000, lap_time_formatted=time_format(15000)))
+# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=3, pilot_id=3, lap_id=0, lap_time_stamp=1500, lap_time=1500, lap_time_formatted=time_format(1500)))
+# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=3, pilot_id=3, lap_id=1, lap_time_stamp=15000, lap_time=13500, lap_time_formatted=time_format(13500)))
+# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=750, lap_time=750, lap_time_formatted=time_format(750)))
+# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=10750, lap_time=10000, lap_time_formatted=time_format(10000)))
+# DB.session.commit()
+# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
+# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=2, pilot_id=2, lap_id=1, lap_time_stamp=16000, lap_time=15000, lap_time_formatted=time_format(15000)))
+# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=2, pilot_id=2, lap_id=2, lap_time_stamp=31000, lap_time=16000, lap_time_formatted=time_format(16000)))
+# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=3, pilot_id=3, lap_id=0, lap_time_stamp=1500, lap_time=1500, lap_time_formatted=time_format(1500)))
+# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=3, pilot_id=3, lap_id=1, lap_time_stamp=16000, lap_time=14500, lap_time_formatted=time_format(14500)))
+# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=750, lap_time=750, lap_time_formatted=time_format(750)))
+# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=11750, lap_time=11000, lap_time_formatted=time_format(11000)))
 # DB.session.commit()
 
 
