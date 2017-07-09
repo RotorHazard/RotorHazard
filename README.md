@@ -18,6 +18,6 @@ To build the system, follow the instructions here: [/doc/Hardware and Software S
 ### User Guide
 For initial setup and running races, follow these instructions: [/doc/User Guide.md](/doc/User%20Guide.md)
 
-### Support:
+### Support
 Have questions? Comments? Join us at the Delta 5 Race Timer Facebook Group page and we'll try to help troubleshoot.
 https://www.facebook.com/groups/Delta5RaceTimer/
