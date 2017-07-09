@@ -15,7 +15,7 @@ Now the system is waiting to detect when the quad has left the starting gate to 
 
 ### Future Passes
 
-The system is now waiting for the RSSI to rise above the Trigger value of 292 again. Once this happens it will consider the the next gate pass to be happening. It will keep track of the Peak RSSI value seen and the time it happened, and continue to do so until the RSSI value falls below Trigger (292) minus Trigger Threshold (40) which is 252. Once the RSSI has dropped below 252, that gate pass is complete and the lap information is sent to the Raspberry Pi.
+The system is now waiting for the RSSI to rise above the Trigger value of 292 again. Once this happens it will consider the next gate pass to be happening. It will keep track of the Peak RSSI value seen and the time it happened, and continue to do so until the RSSI value falls below Trigger (292) minus Trigger Threshold (40) which is 252. Once the RSSI has dropped below 252, that gate pass is complete and the lap information is sent to the Raspberry Pi.
 
 Note that the passing time is taken when the RSSI has reached it peak (when the quad should be closest to the sensor). Even if larger threshold values cause there to be a delay in the lap being reported, the timing information will sill be correct.
 
