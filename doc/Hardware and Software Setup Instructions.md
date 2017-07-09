@@ -2,21 +2,21 @@
 
 ## Parts List
 
-### Receiver Node(s) (this is enough for one receiver node, build as many as needed)
+### Receiver Node(s) (this list makes one node, build up to eight)
 * 1 x Arduino Nano
 * 1 x rx5808 with SPI mod
 * 3 x 1k ohm resistor
 * 1 x 100k ohm resistor
 * 26 AWG and 30 AWG silicone wire
 
-### Main Controller
+### System Components
 * 1 x Raspberry Pi2 or Pi3
 * 8 GB (minimum) Micro SD Card
 * 26 AWG and 30 AWG silicone wire (for wiring to each receiver node)
+* 3D printed case for housing the electronics
+* 5V power supply, 3 amp minimum
 
-### The Rest
-* 3D printed case for the electronics
-* 3 amp minimum 5V power supply
+### Additional Components
 * Ethernet cable, 50ft plus
 * Outdoor power cable, 50ft plus
 * Network router
@@ -24,78 +24,81 @@
 
 ## Hardware Setup
 
-### RX5808
-You will have to modify the rx5808 receiver so that it can use SPI.
+### RX5808 Video Receivers
+Modify the rx5808 receivers to use SPI.
 
-1. Remove the shield from the rx5808. The shield is normally held on by a few spots of solder around the edges.  Use some solder wick to remove the solder and free the shield from the receiver.  Careful not to pull the shield off as the shield is connected to ground pads on the receiver. There are usually small holes around the edge you can use to help push off the shield.
+Remove the shield from the rx5808, the shield is normally held on by a few spots of solder around the edges. Use some solder wick to remove the solder and free the shield from the receiver. Be careful not to damage any ground pads on the receiver. There are usually small holes around the edge you can use to help push off the shield.
 
-2. Remove the following resistor:
-![alt text](img/rx5808-new-top.jpg)
+Remove the following resistor:
+![rx5808 spi mod](img/rx5808-new-top.jpg)
 
-3. The sheild should be soldered back in place after removing the resistor.
+The sheild should be soldered back in place after removing the resistor.
 
-### Receiver Node(s)
+### Receiver Nodes
 Complete wiring connections between each Arduino and RX5808.
-![alt text](img/Receivernode.png)
+![receiver node wiring](img/Receivernode.png)
 
-### Main Controller
+### System Assembly
 Complete wiring connections between each Arduino and the Raspberry Pi.
+
 Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common ground; if not, the i2c messages can be corrupted.
-![alt text](img/D5-i2c.png)
+![system wiring](img/D5-i2c.png)
 
 ## Software Setup
 
-### Raspberry Pi
-1. Start by instaling Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN JESSIE WITH PIXEL'
+### Receiver Nodes (Arduinos)
+Note: The latest Arduino IDE (1.8+) is required from https://www.arduino.cc/en/Main/Software
 
-2. Enable I2C on the Raspberry Pi
+Open '/delta5_race_timer/src/delta5node/delta5node.ino' in the Arduino IDE.
+
+Configure the '#define i2cSlaveAddress' line of the .ino for each node before uploading.
+```
+// Node Setup -- Set the i2c address here
+// Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
+// Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
+#define i2cSlaveAddress 8
+```
+
+### System (Raspberry Pi)
+Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN JESSIE WITH PIXEL'
+
+Enable I2C on the Raspberry Pi, go to 'Advanced Options' and enable I2C.
 ```
 sudo raspi-config
 ```
-Go to Advanced Options, and enable I2C
 
-3. Install Python
+Install python and the python drivers for the GPIO.
 ```
 sudo apt-get install python-dev
-```
-and install the python drivers for the GPIO
-```
 sudo apt-get install python-rpi.gpio
 ```
 
-4. Final Update and upgrade
+Final system update and upgrade.
 ```
 sudo apt-get update && sudo apt-get upgrade
 ```
 
-5. Clone or download this repo to '/home/pi/' on the Raspberry Pi
+Clone or download this repo to '/home/pi/' on the Raspberry Pi.
 
-6. Open a terminal in '/delta5_race_timer/src/delta5server' and run
+Install web server packages, open a terminal in '/home/pi/delta5_race_timer/src/delta5server' and run
 ```
 sudo pip install -r requirements.txt
 ```
 
-### Receiver Node Arduino Code:
-1. Open '/delta5_race_timer/src/delta5node/delta5node.ino' in the Arduino IDE
+## Starting the System
 
-2. Configure 'i2cSlaveAddress' in the setup section of the .ino
+The following instructions will start the Delta5 Race Timer web server on the raspberry pi allowing full control and configuration of the system to run races and save lap times.  
 
-3. Upload to each Arduino receiver node changing 'i2cSlaveAddress' each time
-
-### Start the Server
-
-There are two types of servers that the pi can run to collect timing data.  The following instructions are for a hosted webapp that can be used to do everything needed to run a race and collect times.  
-
-The other alternative is a slimmed down timing server intended to be used to communicate with external timing software.  If you wish to use the timing server, replace "delta5server" with "timingserver" in the paths provided in the following instructions.
+Alternatively, to use your Delta5 Race Timer hardware with 3rd party timing software, replace each reference of 'delta5server' with 'timingserver' in the following instructions.
 
 #### Manual Start
-1. Open a terminal in '/delta5_race_timer/src/delta5server' and run
+Open a terminal in '/delta5_race_timer/src/delta5server' and run
 ```
 python server.py
 ```
 
 #### Start on Boot
-1. Create a service
+Create a service
 ```
 sudo nano /lib/systemd/system/delta5.service
 ```
@@ -112,14 +115,14 @@ ExecStart=/usr/bin/python server.py
 [Install]
 WantedBy=multi-user.target
 ```
-save and exit (CTRL-X, Y, ENTER)
+save and exit (CTRL-X, Y, ENTER).
 
-2. Update permissions
+Update permissions.
 ```
 sudo chmod 644 /lib/systemd/system/delta5.service
 ```
 
-3. Start on boot
+Start on boot commands.
 ```
 sudo systemctl daemon-reload
 sudo systemctl enable delta5.service

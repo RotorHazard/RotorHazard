@@ -1,21 +1,23 @@
 # Delta 5 Race Timer
 
-### Description:
+<img src="doc/img/delta5racetimer.jpg" align="right" alt="Delta5 Race Timer"/>
 
-Multi-node radio frequency race timer for drone racing. This timing system uses the 5.8Ghz video signals being broadcast by FPV racing drones to trigger a lap timer; no additional equipment required on the drone. Each receiver node is tuned to the video frequency that a drone is broadcasting on. Each of the receiver nodes are connected to a raspberry pi, which aggregates the data and also provides a simple user interface for the race director. Up to eight video frequencies can be tracked in a race.
+Multi-node radio frequency race timing system for FPV drone racing. Uses the 5.8Ghz video signals already being broadcast by each drones to trigger a lap timer; no additional equipment is required on the drone.
 
-### Facebook Group page:
-Have questions? Comments? Join us at the Delta 5 Race Timer Facebook Group page and we'll try to help troubleshoot.
-https://www.facebook.com/groups/Delta5RaceTimer/
+Each receiver node is tuned to the video frequency that a drone is broadcasting on and then connected to a raspberry pi. By default, up to eight racing drones can be tracked in a race.
 
-### Video Demo (Note: video shows the shows 4 Receiver Node version):
-https://youtu.be/UdelgqwngX4
+### Major Features
+* The system hosts its own web server which is used to control the system, no additional software is needed, any device with a web browser can connect
+* Automatic calibration; the system sets triggers at the start of each race
+* Manage pilot names, assign them to heats, and after each race save the results to a local database
+* Supports the standard 40 FPV video channels
 
-### Hardware and Software Setup Instructions
-[/doc/Hardware and Software Setup Instructions.md](/doc/Hardware%20and%20Software%20Setup%20Instructions.md)
-
-### Tuning Parameter Explanation
-[/doc/Tuning Parameters.md](/doc/Tuning%20Parameters.md)
+### Hardware and Software Setup
+To build the system, follow the instructions here: [/doc/Hardware and Software Setup Instructions.md](/doc/Hardware%20and%20Software%20Setup%20Instructions.md)
 
 ### User Guide
-[/doc/User Guide.md](/doc/User%20Guide.md)
+For initial setup and running races, follow these instructions: [/doc/User Guide.md](/doc/User%20Guide.md)
+
+### Support
+Have questions? Comments? Join us at the Delta 5 Race Timer Facebook Group page and we'll try to help troubleshoot.
+https://www.facebook.com/groups/Delta5RaceTimer/
