@@ -10,7 +10,7 @@
 * 26 AWG and 30 AWG silicone wire
 
 ### System Components
-* 1 x Raspberry Pi2 or Pi3
+* 1 x Raspberry Pi3 (Pi2 users have reported issues with multiple nodes connected)
 * 8 GB (minimum) Micro SD Card
 * 26 AWG and 30 AWG silicone wire (for wiring to each receiver node)
 * 3D printed case for housing the electronics
