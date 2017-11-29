@@ -4,10 +4,10 @@
 	}
 </style>
 
-<audio id="countdown_tenseconds" src="./static/audio/countdown_tenseconds.mp3" type="audio/mp3"></audio>
+<!-- <audio id="countdown_tenseconds" src="./static/audio/countdown_tenseconds.mp3" type="audio/mp3"></audio>
 <audio id="callout_thirtyseconds" src="./static/audio/callout_thirtyseconds.mp3" type="audio/mp3"></audio>
 <audio id="callout_oneminute" src="./static/audio/callout_oneminute.mp3" type="audio/mp3"></audio>
-<audio id="callout_twominutes" src="./static/audio/callout_twominutes.mp3" type="audio/mp3"></audio>
+<audio id="callout_twominutes" src="./static/audio/callout_twominutes.mp3" type="audio/mp3"></audio> -->
 
 <script>
 	function _timer(callback) {
@@ -92,15 +92,64 @@
 		function (time) {
 			if (timer.getMode() == 0) { // Count down clock
 				if (time == 0) { buzzer.play(); timer.stop(); } // End up race buzzer
-				if (time == 10) { countdown_tenseconds.play(); } // 10 second countdown
+
+				if (time == 10) {
+					ratefast();
+					speak('<div class="timer">10</div> div.timer');
+				} // 10 second countdown
+
+				if (time == 9) {
+					ratefast();
+					speak('<div class="timer">9</div> div.timer');
+				} // 10 second countdown
+
+				if (time == 8) {
+					speak('<div class="timer">8</div> div.timer');
+				} // 10 second countdown
+
+				if (time == 7) {
+					speak('<div class="timer">7</div> div.timer');
+				} // 10 second countdown
+
+				if (time == 6) {
+					speak('<div class="timer">6</div> div.timer');
+				} // 10 second countdown
+
+				if (time == 5) {
+					speak('<div class="timer">5</div> div.timer');
+				} // 10 second countdown
+
+				if (time == 4) {
+					speak('<div class="timer">4</div> div.timer');
+				} // 10 second countdown
+
+				if (time == 3) {
+					speak('<div class="timer">3</div> div.timer');
+				} // 10 second countdown
+
+				if (time == 2) {
+					speak('<div class="timer">2</div> div.timer');
+				} // 10 second countdown
+
+				if (time == 1) {
+					speak('<div class="timer">1</div> div.timer');
+					ratenormal();
+				} // 10 second countdown
+				
 				if (time == 120) { buzzer.play(); } // Start buzzer
 			}
 			if (timer.getMode() == 1) { // Count up clock
 				if (time == 0) { buzzer.play(); } // Start buzzer
 				if (time == 120) { callout_twominutes.play(); } // 2 min call out
 			}
-			if (time == 30) { callout_thirtyseconds.play(); } // 30 second call out
-			if (time == 60) { callout_oneminute.play(); } // 1 min call out
+			if (time == 30) { 
+					ratenormal();
+					speak('<div class="timer">30 seconds</div> div.timer');				
+			} // 30 second call out
+			if (time == 60) {
+					ratenormal();
+					speak('<div class="timer">1 minute</div> div.timer');				
+			} // 1 min call out
 		}
 	);
 

@@ -63,6 +63,14 @@
 			socket.emit('set_pilot_callsign', data);
 		})
 
+		$('.set_pilot_phonetic').change(function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				phonetic: $(this).val()
+			};
+			socket.emit('set_pilot_phonetic', data);
+		})		
+		
 		$('.set_pilot_name').change(function (event) {
 			var data = {
 				pilot_id: parseInt($(this).data('pilot_id')),
@@ -236,8 +244,9 @@
 					<tr>
 						<th>Pilot ID</th>
 						<th>Call Sign</th>
+						<th>Phonetic</th>
 						<th>Name</th>
-					</tr>
+						</tr>
 				</thead>
 				<tbody>
 					{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
@@ -246,6 +255,10 @@
 						<td>
 							<input type="text" class="form-control set_pilot_callsign callsign_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
 							 value="{{ pilot.callsign }}">
+						</td>
+						<td>
+							<input type="text" class="form-control set_pilot_phonetic phonetic_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
+							 value="{{ pilot.phonetic }}">
 						</td>
 						<td>
 							<input type="text" class="form-control set_pilot_name name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}">

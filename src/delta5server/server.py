@@ -44,8 +44,9 @@ class Pilot(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     pilot_id = DB.Column(DB.Integer, unique=True, nullable=False)
     callsign = DB.Column(DB.String(80), unique=True, nullable=False)
+    phonetic = DB.Column(DB.String(80), unique=True, nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
-
+	
     def __repr__(self):
         return '<Pilot %r>' % self.pilot_id
 
@@ -282,6 +283,18 @@ def on_set_pilot_callsign(data):
     server_log('Pilot callsign set: Pilot {0} Callsign {1}'.format(pilot_id, callsign))
     emit_pilot_data() # Settings page, new pilot callsign
     emit_heat_data() # Settings page, new pilot callsign in heats
+
+@SOCKET_IO.on('set_pilot_phonetic')
+def on_set_pilot_phonetic(data):
+    '''Gets pilot phonetic to update database.'''
+    pilot_id = data['pilot_id']
+    phonetic = data['phonetic']
+    db_update = Pilot.query.filter_by(pilot_id=pilot_id).first()
+    db_update.phonetic = phonetic
+    DB.session.commit()
+    server_log('Pilot phonetic set: Pilot {0} Phonetic {1}'.format(pilot_id, phonetic))
+    emit_pilot_data() # Settings page, new pilot phonetic
+    emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
 @SOCKET_IO.on('set_pilot_name')
 def on_set_pilot_name(data):
@@ -557,8 +570,22 @@ def emit_leaderboard():
         pilot_id = Heat.query.filter_by( \
             heat_id=RACE.current_heat, node_index=node).first().pilot_id
         callsigns.append(Pilot.query.filter_by(pilot_id=pilot_id).first().callsign)
-    # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, last_lap, average_lap, fastest_lap)
+    # Get the pilot phonetics to add to sort
+    phonetics = []
+    for node in range(RACE.num_nodes):
+        pilot_id = Heat.query.filter_by( \
+            heat_id=RACE.current_heat, node_index=node).first().pilot_id
+        phonetics.append(Pilot.query.filter_by(pilot_id=pilot_id).first().phonetic)
+    # Get the last lap for each pilot
+    phoneticlast_lap = []
+    for node in range(RACE.num_nodes):
+        if max_laps[node] is 0:
+            phoneticlast_lap.append(0) # Add zero if no laps completed
+        else:
+            phoneticlast_lap.append(CurrentLap.query.filter_by(node_index=node, \
+                lap_id=max_laps[node]).first().lap_time)
+	# Combine for sorting
+    leaderboard = zip(callsigns, max_laps, total_time, last_lap, average_lap, fastest_lap, phonetics, phoneticlast_lap)
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_sorted = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
 
@@ -571,8 +598,10 @@ def emit_leaderboard():
         'behind': [(leaderboard_sorted[0][1] - leaderboard_sorted[i][1]) \
             for i in range(RACE.num_nodes)],
         'average_lap': [time_format(leaderboard_sorted[i][4]) for i in range(RACE.num_nodes)],
-        'fastest_lap': [time_format(leaderboard_sorted[i][5]) for i in range(RACE.num_nodes)]
-    })
+        'fastest_lap': [time_format(leaderboard_sorted[i][5]) for i in range(RACE.num_nodes)],
+        'phonetic': [leaderboard_sorted[i][6] for i in range(RACE.num_nodes)],
+        'phoneticlast_lap': [phonetictime_format(leaderboard_sorted[i][7]) for i in range(RACE.num_nodes)]
+		})
 
 def emit_heat_data():
     '''Emits heat data.'''
@@ -640,6 +669,16 @@ def time_format(millis):
     milliseconds = over
     return '{0:02d}:{1:02d}.{2:03d}'.format(minutes, seconds, milliseconds)
 
+def phonetictime_format(millis):
+    '''Convert milliseconds to 00:00.000'''
+    millis = int(millis)
+    minutes = millis / 60000
+    over = millis % 60000
+    seconds = over / 1000
+    over = over % 1000
+    milliseconds = over/10
+    return '{0:01d}.{1:02d}'.format(seconds, milliseconds)	
+	
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''
     server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index, ms_since_lap))
@@ -737,10 +776,10 @@ def db_reset_keep_pilots():
 def db_reset_pilots():
     '''Resets database pilots to default.'''
     DB.session.query(Pilot).delete()
-    DB.session.add(Pilot(pilot_id='0', callsign='-', name='-'))
+    DB.session.add(Pilot(pilot_id='0', callsign='-', name='-', phonetic="-"))
     for node in range(RACE.num_nodes):
         DB.session.add(Pilot(pilot_id=node+1, callsign='callsign{0}'.format(node+1), \
-            name='Pilot Name'))
+            name='Pilot Name', phonetic='callsign{0}'.format(node+1)))
     DB.session.commit()
     server_log('Database pilots reset')
 

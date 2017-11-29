@@ -87,6 +87,10 @@
 					$('<td>').text(msg.fastest_lap[i]),
 					$('<td>').text(msg.total_time[i]),
 				).appendTo('#leaderboard');
+				if (msg.laps[i] != 0){ 
+					var $ttstest = msg.phonetic[i] + " " + msg.phoneticlast_lap[i];
+					speak('<div class="speech">' + $ttstest + '</div> div.speech');	
+				}	
 			}
 		});
 
@@ -155,6 +159,17 @@
 		});
 	});
 
+</script>
+<script>
+function speak(obj) {
+	$(obj).articulate('speak');
+};
+function ratenormal(obj) {
+	$(obj).articulate('rate', 1.2);
+};
+function ratefast(obj) {
+	$(obj).articulate('rate', 3.0);
+};
 </script>
 {% endblock %} {% block content %}
 
