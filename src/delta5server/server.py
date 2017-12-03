@@ -268,7 +268,7 @@ def on_add_pilot():
     '''Adds the next available pilot id number in the database.'''
     max_pilot_id = DB.session.query(DB.func.max(Pilot.pilot_id)).scalar()
     DB.session.add(Pilot(pilot_id=max_pilot_id+1, callsign='callsign{0}'.format(max_pilot_id+1), \
-        name='Pilot Name'))
+        phonetic='callsign{0}'.format(max_pilot_id+1), name='Pilot Name'))
     DB.session.commit()
     server_log('Pilot added: Pilot {0}'.format(max_pilot_id+1))
 
