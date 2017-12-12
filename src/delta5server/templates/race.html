@@ -87,13 +87,14 @@
 					$('<td>').text(msg.fastest_lap[i]),
 					$('<td>').text(msg.total_time[i]),
 				).appendTo('#leaderboard');
-				if (msg.laps[i] != 0){ 
-					var $ttstest = msg.phonetic[i] + " " + msg.phoneticlast_lap[i];
-					speak('<div class="speech">' + $ttstest + '</div> div.speech');	
-				}	
 			}
 		});
 
+		socket.on('phonetic_data', function (msg) {
+			var $ttstest = msg.pilot + " " + msg.phonetic;
+			speak('<div class="speech">' + $ttstest + '</div> div.speech');				
+		})
+		
 		socket.on('current_heat', function (msg) {
 			$('.current_heat').html('Heat ' + msg.current_heat);
 			for (i = 0; i < msg.callsign.length; i++) {

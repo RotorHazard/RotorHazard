@@ -570,22 +570,8 @@ def emit_leaderboard():
         pilot_id = Heat.query.filter_by( \
             heat_id=RACE.current_heat, node_index=node).first().pilot_id
         callsigns.append(Pilot.query.filter_by(pilot_id=pilot_id).first().callsign)
-    # Get the pilot phonetics to add to sort
-    phonetics = []
-    for node in range(RACE.num_nodes):
-        pilot_id = Heat.query.filter_by( \
-            heat_id=RACE.current_heat, node_index=node).first().pilot_id
-        phonetics.append(Pilot.query.filter_by(pilot_id=pilot_id).first().phonetic)
-    # Get the last lap for each pilot
-    phoneticlast_lap = []
-    for node in range(RACE.num_nodes):
-        if max_laps[node] is 0:
-            phoneticlast_lap.append(0) # Add zero if no laps completed
-        else:
-            phoneticlast_lap.append(CurrentLap.query.filter_by(node_index=node, \
-                lap_id=max_laps[node]).first().lap_time)
-	# Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, last_lap, average_lap, fastest_lap, phonetics, phoneticlast_lap)
+    # Combine for sorting
+    leaderboard = zip(callsigns, max_laps, total_time, last_lap, average_lap, fastest_lap)
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_sorted = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
 
@@ -598,11 +584,9 @@ def emit_leaderboard():
         'behind': [(leaderboard_sorted[0][1] - leaderboard_sorted[i][1]) \
             for i in range(RACE.num_nodes)],
         'average_lap': [time_format(leaderboard_sorted[i][4]) for i in range(RACE.num_nodes)],
-        'fastest_lap': [time_format(leaderboard_sorted[i][5]) for i in range(RACE.num_nodes)],
-        'phonetic': [leaderboard_sorted[i][6] for i in range(RACE.num_nodes)],
-        'phoneticlast_lap': [phonetictime_format(leaderboard_sorted[i][7]) for i in range(RACE.num_nodes)]
-		})
-
+        'fastest_lap': [time_format(leaderboard_sorted[i][5]) for i in range(RACE.num_nodes)]
+    })
+	
 def emit_heat_data():
     '''Emits heat data.'''
     current_heats = []
@@ -634,6 +618,12 @@ def emit_current_heat():
         'current_heat': RACE.current_heat,
         'callsign': callsigns
     })
+
+def emit_phonetic_data(pilot_id, lap_time):
+    '''Emits phonetic data.'''
+    phonetic_time = phonetictime_format(lap_time)
+    phonetic_name = Pilot.query.filter_by(pilot_id=pilot_id).first().phonetic
+    SOCKET_IO.emit('phonetic_data', {'pilot': phonetic_name, 'phonetic': phonetic_time})
 
 #
 # Program Functions
@@ -718,6 +708,8 @@ def pass_record_callback(node, ms_since_lap):
             .format(node.index, lap_id, time_format(lap_time)))
         emit_current_laps() # Updates all laps on the race page
         emit_leaderboard() # Updates leaderboard
+        if lap_id > 0: 
+            emit_phonetic_data(pilot_id, lap_time) # Sends phonetic data to be spoken
 
 INTERFACE.pass_record_callback = pass_record_callback
 
