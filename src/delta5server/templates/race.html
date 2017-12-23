@@ -163,10 +163,10 @@
 </script>
 <script>
 function speak(obj) {
-	$(obj).articulate('speak');
+	$(obj).articulate('setVoice','name','Google français').articulate('speak');
 };
 function ratenormal(obj) {
-	$(obj).articulate('rate', 1.2);
+	$(obj).articulate('rate', 1.0);
 };
 function ratefast(obj) {
 	$(obj).articulate('rate', 3.0);
