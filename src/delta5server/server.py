@@ -14,7 +14,7 @@ import gevent.monkey
 gevent.monkey.patch_all()
 
 sys.path.append('../delta5interface')
-sys.path.append('/home/pi/delta5_race_timer/src/delta5interface') # Needed to run on startup
+sys.path.append('/home/pi/delta5_race_timer/src/delta5interface')  # Needed to run on startup
 from Delta5Interface import get_hardware_interface
 
 from Delta5Race import get_race_state
@@ -92,6 +92,17 @@ class Frequency(DB.Model):
 
     def __repr__(self):
         return '<Frequency %r>' % self.frequency
+
+class TuneParams(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    vtxpower = DB.Column(DB.Integer, nullable=False)
+    c_offset = DB.Column(DB.Integer, nullable=True)
+    c_treshold = DB.Column(DB.Integer, nullable=True)
+    t_treshold = DB.Column(DB.Integer, nullable=True)
+
+class LastTuneParams(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    id_TuneParams = DB.Column(DB.Integer, nullable=True)
 
 #
 # Authentication
@@ -354,7 +365,7 @@ def on_shutdown_pi():
 # @SOCKET_IO.on('reset_pilots')
 # def on_reset_heats():
 #     '''Resets default pilots for nodes detected.'''
-    
+
 #     DB.session.query(Pilot).delete() # Remove all pilots
 #     DB.session.commit()
 #     DB.session.add(Pilot(pilot_id='0', callsign='-', name='-'))
@@ -715,6 +726,8 @@ def db_init():
     db_reset_frequencies()
     db_reset_current_laps()
     db_reset_saved_races()
+    db_reset_tuneparams()
+    db_reset_default_tuneparams()
     server_log('Database initialized')
 
 def db_reset():
@@ -724,6 +737,8 @@ def db_reset():
     db_reset_frequencies()
     db_reset_current_laps()
     db_reset_saved_races()
+    db_reset_tuneparams()
+    db_reset_default_tuneparams()
     server_log('Database reset')
 
 def db_reset_keep_pilots():
@@ -732,6 +747,8 @@ def db_reset_keep_pilots():
     db_reset_frequencies()
     db_reset_current_laps()
     db_reset_saved_races()
+    db_reset_tuneparams()
+    db_reset_default_tuneparams()
     server_log('Database reset, pilots kept')
 
 def db_reset_pilots():
@@ -743,7 +760,6 @@ def db_reset_pilots():
             name='Pilot Name'))
     DB.session.commit()
     server_log('Database pilots reset')
-
 def db_reset_heats():
     '''Resets database heats to default.'''
     DB.session.query(Heat).delete()
@@ -751,7 +767,6 @@ def db_reset_heats():
         DB.session.add(Heat(heat_id=1, node_index=node, pilot_id=node+1))
     DB.session.commit()
     server_log('Database heats reset')
-
 def db_reset_frequencies():
     '''Resets database frequencies to default.'''
     DB.session.query(Frequency).delete()
@@ -815,13 +830,30 @@ def db_reset_current_laps():
     DB.session.query(CurrentLap).delete()
     DB.session.commit()
     server_log('Database current laps reset')
-    
+
 def db_reset_saved_races():
     '''Resets database saved races to default.'''
     DB.session.query(SavedRace).delete()
     DB.session.commit()
     server_log('Database saved races reset')
 
+def db_reset_tuneparams():
+    '''Reset TuneParams database to Default'''
+    DB.session.query(TuneParams).deleted()
+    DB.session.add(TuneParams(vtxpower=25, c_offset=8, c_treshold=65,
+                   t_treshold=40))
+    DB.session.add(TuneParams(vtxpower=200, c_offset=8, c_treshold=90,
+                   t_treshold=40))
+    DB.session.add(TuneParams(vtxpower=600, c_offset=8, c_treshold=100,
+                   t_treshold=40))
+    DB.session.commit()
+    server_log("Database set tune params for vtx power 25mW,200mW,600mW")
+
+def db_reset_default_tuneparams():
+    DB.session.query(LastTuneParams).deleted()
+    DB.session.add(LastTuneParams(id_TuneParams=0))
+    DB.session.commit()
+    server_log("Database select default power tune params to 25mW")
 #
 # Program Initialize
 #
