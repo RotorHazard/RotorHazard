@@ -199,8 +199,11 @@ def race():
 @requires_auth
 def settings():
     '''Route to settings page.'''
-    return render_template('settings.html', num_nodes=RACE.num_nodes, pilots=Pilot, \
-        frequencies=Frequency, heats=Heat)
+    return render_template('settings.html', num_nodes=RACE.num_nodes,
+                           pilots=Pilot,
+                           frequencies=Frequency,
+                           heats=Heat, tuneparams=TuneParams,
+                           default_tuneparams=LastTuneParams)
 
 # Debug Routes
 
@@ -839,7 +842,7 @@ def db_reset_saved_races():
 
 def db_reset_tuneparams():
     '''Reset TuneParams database to Default'''
-    DB.session.query(TuneParams).deleted()
+    DB.session.query(TuneParams).delete()
     DB.session.add(TuneParams(vtxpower=25, c_offset=8, c_treshold=65,
                    t_treshold=40))
     DB.session.add(TuneParams(vtxpower=200, c_offset=8, c_treshold=90,
@@ -850,7 +853,7 @@ def db_reset_tuneparams():
     server_log("Database set tune params for vtx power 25mW,200mW,600mW")
 
 def db_reset_default_tuneparams():
-    DB.session.query(LastTuneParams).deleted()
+    DB.session.query(LastTuneParams).delete()
     DB.session.add(LastTuneParams(id_TuneParams=0))
     DB.session.commit()
     server_log("Database select default power tune params to 25mW")
