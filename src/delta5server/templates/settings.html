@@ -126,6 +126,12 @@
 			socket.emit('shutdown_pi');
 			return false;
 		});
+		$('.set_vtxpower li a').click(function (event) {
+			var data = {
+				vtxpower: parseInt($(this).data('vtxpower'))
+			};
+			socket.emit('set_vtxpower', data);
+		})
 	});
 
 </script>
@@ -260,6 +266,18 @@
 
 <!--Edit system tuning values-->
 <h4>Sensor Tuning</h4>
+<div class="dropdown">
+	<b> VTX Power : </b>
+  <button class="btn btn-default dropdown-toggle" type="button" id="set_vtxpower" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+    25mW
+    <span class="caret"></span>
+  </button>
+  <ul class="dropdown-menu set_vtxpower">
+		{% for TuneParam in tuneparams.query.all() %}
+		 <li><a role="button" data-tuneparams="{{TuneParam.vtxpower}}">{{TuneParam.vtxpower}}mW</a></li>
+		{% endfor %}
+  </ul>
+</div>
 <div class="row">
 	<div class='col-xs-16 col-md-8'>
 		<div class='panel panel-default'>
