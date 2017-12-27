@@ -18,9 +18,9 @@
 		});
 
 		socket.on('node_tuning', function (msg) {
-			$('.set_calibration_threshold').attr('value', msg.calibration_threshold);
-			$('.set_calibration_offset').attr('value', msg.calibration_offset);
-			$('.set_trigger_threshold').attr('value', msg.trigger_threshold);
+			$('.set_calibration_threshold').val( msg.calibration_threshold);
+			$('.set_calibration_offset').val( msg.calibration_offset);
+			$('.set_trigger_threshold').val( msg.trigger_threshold);
 		});
 
 		socket.on('heat_data', function (msg) {
@@ -130,6 +130,7 @@
 			var data = {
 				vtxpower: parseInt($(this).data('vtxpower'))
 			};
+			$('button#set_vtxpower').html($(this).data('vtxpower')+'mW');
 			socket.emit('set_vtxpower', data);
 		})
 	});
@@ -269,12 +270,12 @@
 <div class="dropdown">
 	<b> VTX Power : </b>
   <button class="btn btn-default dropdown-toggle" type="button" id="set_vtxpower" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-    25mW
+    {{tuneparams.query.get(default_tuneparams.query.get(1).id_TuneParams).vtxpower}}mW
     <span class="caret"></span>
   </button>
   <ul class="dropdown-menu set_vtxpower">
 		{% for TuneParam in tuneparams.query.all() %}
-		 <li><a role="button" data-tuneparams="{{TuneParam.vtxpower}}">{{TuneParam.vtxpower}}mW</a></li>
+		 <li><a role="button" data-vtxpower="{{TuneParam.vtxpower}}">{{TuneParam.vtxpower}}mW</a></li>
 		{% endfor %}
   </ul>
 </div>

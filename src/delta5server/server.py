@@ -97,8 +97,8 @@ class TuneParams(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     vtxpower = DB.Column(DB.Integer, nullable=False)
     c_offset = DB.Column(DB.Integer, nullable=True)
-    c_treshold = DB.Column(DB.Integer, nullable=True)
-    t_treshold = DB.Column(DB.Integer, nullable=True)
+    c_threshold = DB.Column(DB.Integer, nullable=True)
+    t_threshold = DB.Column(DB.Integer, nullable=True)
 
 class LastTuneParams(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
@@ -313,6 +313,11 @@ def on_set_calibration_threshold(data):
     '''Set Calibration Threshold.'''
     calibration_threshold = data['calibration_threshold']
     INTERFACE.set_calibration_threshold_global(calibration_threshold)
+    last_tuneparam = LastTuneParams.query.get(1)
+    DB.session.commit()
+    tuneparam = TuneParams.query.filter_by(id=last_tuneparam.id_TuneParams).first()
+    tuneparam.c_threshold = calibration_threshold
+    DB.session.commit()
     server_log('Calibration threshold set: {0}'.format(calibration_threshold))
     emit_node_tuning()
 
@@ -321,6 +326,10 @@ def on_set_calibration_offset(data):
     '''Set Calibration Offset.'''
     calibration_offset = data['calibration_offset']
     INTERFACE.set_calibration_offset_global(calibration_offset)
+    last_tuneparam = LastTuneParams.query.get(1)
+    tuneparam = TuneParams.query.filter_by(id=last_tuneparam.id_TuneParams).first()
+    tuneparam.c_offset = calibration_offset
+    DB.session.commit()
     server_log('Calibration offset set: {0}'.format(calibration_offset))
     emit_node_tuning()
 
@@ -329,6 +338,10 @@ def on_set_trigger_threshold(data):
     '''Set Trigger Threshold.'''
     trigger_threshold = data['trigger_threshold']
     INTERFACE.set_trigger_threshold_global(trigger_threshold)
+    last_tuneparam = LastTuneParams.query.get(1)
+    tuneparam = TuneParams.query.filter_by(id=last_tuneparam.id_TuneParams).first()
+    tuneparam.t_threshold = trigger_threshold
+    DB.session.commit()
     server_log('Trigger threshold set: {0}'.format(trigger_threshold))
     emit_node_tuning()
 
@@ -347,7 +360,20 @@ def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
     server_log('Shutdown pi')
     os.system("sudo shutdown now")
-
+@SOCKET_IO.on("set_vtxpower")
+def on_set_vtxpower(data):
+    ''' set current vtx power '''
+    vtxpower_val = data['vtxpower']
+    tuneparam = TuneParams.query.filter_by(vtxpower=vtxpower_val).first()
+    DB.session.flush()
+    last_tuneparam = LastTuneParams.query.get(1)
+    last_tuneparam.id_TuneParams = tuneparam.id
+    DB.session.commit()
+    INTERFACE.set_calibration_threshold_global(tuneparam.c_threshold)
+    INTERFACE.set_calibration_offset_global(tuneparam.c_offset)
+    INTERFACE.set_trigger_threshold_global(tuneparam.t_threshold)
+    emit_node_tuning()
+    server_log("set tune paramas for vtx power %imW" % vtxpower_val)
 # @SOCKET_IO.on('clear_rounds')
 # def on_reset_heats():
 #     '''Clear all saved races.'''
@@ -476,7 +502,7 @@ def on_delete_lap(data):
         # Delete the false lap
         CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id).delete()
     DB.session.commit()
-    server_log('Lap deleted: Node {0} Lap {1}'.format(node_index, lap_id))
+    server_log('Lap : Node {0} Lap {1}'.format(node_index, lap_id))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
 
@@ -498,13 +524,15 @@ def emit_node_data():
 
 def emit_node_tuning():
     '''Emits node tuning values.'''
+    last_tuneparam = LastTuneParams.query.get(1)
+    tune_val = TuneParams.query.get(last_tuneparam.id_TuneParams)
     SOCKET_IO.emit('node_tuning', {
         'calibration_threshold': \
-            INTERFACE.get_calibration_threshold_json()['calibration_threshold'],
+            tune_val.c_threshold,
         'calibration_offset': \
-            INTERFACE.get_calibration_offset_json()['calibration_offset'],
+            tune_val.c_offset,
         'trigger_threshold': \
-            INTERFACE.get_trigger_threshold_json()['trigger_threshold']
+            tune_val.t_threshold
     })
 
 def emit_current_laps():
@@ -843,12 +871,12 @@ def db_reset_saved_races():
 def db_reset_tuneparams():
     '''Reset TuneParams database to Default'''
     DB.session.query(TuneParams).delete()
-    DB.session.add(TuneParams(vtxpower=25, c_offset=8, c_treshold=65,
-                   t_treshold=40))
-    DB.session.add(TuneParams(vtxpower=200, c_offset=8, c_treshold=90,
-                   t_treshold=40))
-    DB.session.add(TuneParams(vtxpower=600, c_offset=8, c_treshold=100,
-                   t_treshold=40))
+    DB.session.add(TuneParams(vtxpower=25, c_offset=8, c_threshold=65,
+                   t_threshold=40))
+    DB.session.add(TuneParams(vtxpower=200, c_offset=8, c_threshold=90,
+                   t_threshold=40))
+    DB.session.add(TuneParams(vtxpower=600, c_offset=8, c_threshold=100,
+                   t_threshold=40))
     DB.session.commit()
     server_log("Database set tune params for vtx power 25mW,200mW,600mW")
 
