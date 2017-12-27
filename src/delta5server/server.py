@@ -502,7 +502,7 @@ def on_delete_lap(data):
         # Delete the false lap
         CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id).delete()
     DB.session.commit()
-    server_log('Lap : Node {0} Lap {1}'.format(node_index, lap_id))
+    server_log('Lap deleted: Node {0} Lap {1}'.format(node_index, lap_id))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
 
