@@ -93,7 +93,7 @@
 			if (timer.getMode() == 0) { // Count down clock
 				if (time == 0) { buzzer.play(); timer.stop(); } // End up race buzzer
 				if (time == 10) { countdown_tenseconds.play(); } // 10 second countdown
-				if (time == 120) { buzzer.play(); } // Start buzzer
+				if (time == {{fix_race_time}}) { buzzer.play(); } // Start buzzer
 			}
 			if (timer.getMode() == 1) { // Count up clock
 				if (time == 0) { buzzer.play(); } // Start buzzer
@@ -104,7 +104,7 @@
 		}
 	);
 
-	timer.reset(120); // Set initial time, 2 min
+	timer.reset({{fix_race_time}});
 	timer.mode(0); // Set initial mode
 
 </script>

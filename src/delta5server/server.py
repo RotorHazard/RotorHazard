@@ -104,6 +104,10 @@ class LastTuneParams(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     id_TuneParams = DB.Column(DB.Integer, nullable=True)
 
+class FixTimeRace(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    race_time_sec = DB.Column(DB.Integer, nullable=False)
+
 #
 # Authentication
 #
@@ -192,8 +196,10 @@ def heats():
 @requires_auth
 def race():
     '''Route to race management page.'''
-    return render_template('race.html', num_nodes=RACE.num_nodes, current_heat=RACE.current_heat, \
-        heats=Heat, pilots=Pilot)
+    return render_template('race.html', num_nodes=RACE.num_nodes,
+                           current_heat=RACE.current_heat,
+                           heats=Heat, pilots=Pilot,
+                           fix_race_time=FixTimeRace.query.get(1).race_time_sec)
 
 @APP.route('/settings')
 @requires_auth
@@ -203,7 +209,8 @@ def settings():
                            pilots=Pilot,
                            frequencies=Frequency,
                            heats=Heat, tuneparams=TuneParams,
-                           default_tuneparams=LastTuneParams)
+                           default_tuneparams=LastTuneParams,
+                           current_fix_race_time=FixTimeRace.query.get(1).race_time_sec)
 
 # Debug Routes
 
@@ -360,6 +367,7 @@ def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
     server_log('Shutdown pi')
     os.system("sudo shutdown now")
+
 @SOCKET_IO.on("set_vtxpower")
 def on_set_vtxpower(data):
     ''' set current vtx power '''
@@ -374,7 +382,16 @@ def on_set_vtxpower(data):
     INTERFACE.set_trigger_threshold_global(tuneparam.t_threshold)
     emit_node_tuning()
     server_log("set tune paramas for vtx power %imW" % vtxpower_val)
-# @SOCKET_IO.on('clear_rounds')
+
+@SOCKET_IO.on("set_fix_race_time")
+def on_set_fix_race_time(data):
+    race_time = data['race_time']
+    fix_race_time = FixTimeRace.query.get(1)
+    fix_race_time.race_time_sec = race_time
+    DB.session.commit()
+    server_log("set fixed time race to %s seconds" % race_time)
+
+    # @SOCKET_IO.on('clear_rounds')
 # def on_reset_heats():
 #     '''Clear all saved races.'''
 #     DB.session.query(SavedRace).delete() # Remove all races
@@ -648,6 +665,10 @@ def emit_current_heat():
         'callsign': callsigns
     })
 
+def emit_current_fix_race_time():
+    ''' Emit current fixed time race time '''
+    race_time_sec = FixTimeRace.query.get(1).race_time_sec
+    SOCKET_IO.emit('set_fix_race_time',{ fix_race_time: race_time_sec})
 #
 # Program Functions
 #
@@ -759,6 +780,7 @@ def db_init():
     db_reset_saved_races()
     db_reset_tuneparams()
     db_reset_default_tuneparams()
+    db_reset_fix_race_time()
     server_log('Database initialized')
 
 def db_reset():
@@ -770,6 +792,7 @@ def db_reset():
     db_reset_saved_races()
     db_reset_tuneparams()
     db_reset_default_tuneparams()
+    db_reset_fix_race_time()
     server_log('Database reset')
 
 def db_reset_keep_pilots():
@@ -780,6 +803,7 @@ def db_reset_keep_pilots():
     db_reset_saved_races()
     db_reset_tuneparams()
     db_reset_default_tuneparams()
+    db_reset_fix_race_time()
     server_log('Database reset, pilots kept')
 
 def db_reset_pilots():
@@ -882,9 +906,15 @@ def db_reset_tuneparams():
 
 def db_reset_default_tuneparams():
     DB.session.query(LastTuneParams).delete()
-    DB.session.add(LastTuneParams(id_TuneParams=0))
+    DB.session.add(LastTuneParams(id_TuneParams=1))
     DB.session.commit()
     server_log("Database select default power tune params to 25mW")
+
+def db_reset_fix_race_time():
+    DB.session.query(FixTimeRace).delete()
+    DB.session.add(FixTimeRace(race_time_sec=120))
+    DB.session.commit()
+    server_log("Database set fixed time race to 120 sec (2 minutes)")
 #
 # Program Initialize
 #

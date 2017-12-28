@@ -23,6 +23,10 @@
 			$('.set_trigger_threshold').val( msg.trigger_threshold);
 		});
 
+		socket.on('set_fix_race_time', function (msg) {
+			$('.set_fix_race_time').val( msg.fix_race_time);
+		});
+
 		socket.on('heat_data', function (msg) {
 			$.each(msg.heat_id, function (i, heat_id) {
 				$.each(heat_id.callsign, function (j, callsign) {
@@ -126,6 +130,7 @@
 			socket.emit('shutdown_pi');
 			return false;
 		});
+
 		$('.set_vtxpower li a').click(function (event) {
 			var data = {
 				vtxpower: parseInt($(this).data('vtxpower'))
@@ -133,6 +138,14 @@
 			$('button#set_vtxpower').html($(this).data('vtxpower')+'mW');
 			socket.emit('set_vtxpower', data);
 		})
+
+		$('.set_fix_race_time').change(function (event) {
+			var data = {
+				race_time: parseInt($(this).val())
+			};
+			socket.emit('set_fix_race_time', data);
+		})
+
 	});
 
 </script>
@@ -302,6 +315,21 @@
 					</td>
 				</tr>
 			</table>
+		</div>
+	</div>
+</div>
+<h4> Fixed Race Time</h4>
+<div class="row">
+	<div class='col-xs-16 col-md-8'>
+		<div class='panel panel-default'>
+			<table class="table">
+				<tr>
+					<td><b>Time</b><br> maximum race time in seconds</td>
+					<td>
+						<input type="text" class="form-control set_fix_race_time" value="{{current_fix_race_time}}">
+					</td>
+				</tr>
+		 </table>
 		</div>
 	</div>
 </div>
