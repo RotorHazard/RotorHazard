@@ -334,7 +334,7 @@ def on_add_profile():
 @SOCKET_IO.on('delete_profile')
 def on_delete_profile():
     '''Delete profile'''
-    if (DB.session.query(Profiles).count > 1): # keep one profile
+    if (DB.session.query(Profiles).count() > 1): # keep one profile
      last_profile = LastProfile.query.get(1).profile_id
      profile = Profiles.query.get(last_profile)
      DB.session.delete(profile)
