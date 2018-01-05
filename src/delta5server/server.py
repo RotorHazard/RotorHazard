@@ -183,14 +183,14 @@ def heats():
 def race():
     '''Route to race management page.'''
     return render_template('race.html', num_nodes=RACE.num_nodes, current_heat=RACE.current_heat, \
-        heats=Heat, pilots=Pilot)
+        heats=Heat, pilots=Pilot, lang_id=RACE.lang_id)
 
 @APP.route('/settings')
 @requires_auth
 def settings():
     '''Route to settings page.'''
     return render_template('settings.html', num_nodes=RACE.num_nodes, pilots=Pilot, \
-        frequencies=Frequency, heats=Heat)
+        frequencies=Frequency, heats=Heat, lang_id=RACE.lang_id)
 
 # Debug Routes
 
@@ -241,6 +241,13 @@ def on_set_frequency(data):
     INTERFACE.set_frequency(node_index, frequency)
     server_log('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
     emit_node_data() # Settings page, new node channel
+
+@SOCKET_IO.on('set_language')
+def on_set_language(data):
+    '''Set language.'''
+    RACE.lang_id = data['language']
+    emit_language_data()
+
 
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
@@ -624,6 +631,10 @@ def emit_phonetic_data(pilot_id, lap_time):
     phonetic_time = phonetictime_format(lap_time)
     phonetic_name = Pilot.query.filter_by(pilot_id=pilot_id).first().phonetic
     SOCKET_IO.emit('phonetic_data', {'pilot': phonetic_name, 'phonetic': phonetic_time})
+
+def emit_language_data():
+    '''Emits language.'''
+    SOCKET_IO.emit('language_data', {'language': RACE.lang_id})
 
 #
 # Program Functions
