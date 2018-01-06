@@ -17,10 +17,12 @@
 		var timer_id; // Used by setInterval function
 
 		var buzzer = $('buzzer')[0]; // Buzzer audio tag is loaded on race page already
-		var countdown_tenseconds = $('countdown_tenseconds')[0];
-		var callout_thirtyseconds = $('callout_thirtyseconds')[0];
-		var callout_oneminute = $('callout_oneminute')[0];
-		var callout_twominutes = $('callout_twominutes')[0];
+
+//		Not needed with new voice options
+//		var countdown_tenseconds = $('countdown_tenseconds')[0];
+//		var callout_thirtyseconds = $('callout_thirtyseconds')[0];
+//		var callout_oneminute = $('callout_oneminute')[0];
+//		var callout_twominutes = $('callout_twominutes')[0];
 
 		// Start the timer
 		this.start = function () {
@@ -135,12 +137,15 @@
 					speak('<div class="timer">1</div> div.timer');
 					ratenormal();
 				} // 10 second countdown
-				
-				if (time == 120) { buzzer.play(); } // Start buzzer
+
+				if (time == {{fix_race_time}}) { buzzer.play(); } // Start buzzer
 			}
+
 			if (timer.getMode() == 1) { // Count up clock
 				if (time == 0) { buzzer.play(); } // Start buzzer
-				if (time == 120) { callout_twominutes.play(); } // 2 min call out
+				if (time == 120) {
+					speak('<div class="timer">2 minutes</div> div.timer');
+				} //2 min call out
 			}
 			if (time == 30) { 
 					ratenormal();
@@ -153,7 +158,7 @@
 		}
 	);
 
-	timer.reset(120); // Set initial time, 2 min
+	timer.reset({{fix_race_time}});
 	timer.mode(0); // Set initial mode
 
 </script>
