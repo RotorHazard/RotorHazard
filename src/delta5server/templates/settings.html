@@ -18,9 +18,16 @@
 		});
 
 		socket.on('node_tuning', function (msg) {
-			$('.set_calibration_threshold').attr('value', msg.calibration_threshold);
-			$('.set_calibration_offset').attr('value', msg.calibration_offset);
-			$('.set_trigger_threshold').attr('value', msg.trigger_threshold);
+			$('.set_calibration_threshold').val( msg.calibration_threshold);
+			$('.set_calibration_offset').val( msg.calibration_offset);
+			$('.set_trigger_threshold').val( msg.trigger_threshold);
+			$('.set_profile_name').val( msg.profile_name);
+			$('.set_profile_description').val( msg.profile_description);
+
+		});
+
+		socket.on('set_fix_race_time', function (msg) {
+			$('.set_fix_race_time').val( msg.fix_race_time);
 		});
 
 		socket.on('heat_data', function (msg) {
@@ -91,7 +98,21 @@
 			};
 			socket.emit('set_trigger_threshold', data);
 		})
+		$('.set_profile_name').change(function (event) {
+			var data = {
+				profile_name: $(this).val()
+			};
+			socket.emit('set_profile_name', data);
+			window.location.href = "/settings";
+		})
 
+		$('.set_profile_description').change(function (event) {
+			var data = {
+				profile_desciption: $(this).val()
+			};
+			socket.emit('set_profile_desciption', data);
+
+		})
 		$('button#add_heat').click(function (event) {
 			socket.emit('add_heat');
 			window.location.href = "/settings"; // Update to not need page reload
@@ -109,7 +130,16 @@
 			// document.getElementById("heats").innerHTML = // jinja template include
 			return false;
 		});
-
+		$('button#add_profile').click(function (event) {
+			socket.emit('add_profile');
+			window.location.href = "/settings"; // Update to not need page reload
+			return false;
+		});
+		$('button#delete_profile').click(function (event) {
+			socket.emit('delete_profile');
+			window.location.href = "/settings"; // Update to not need page reload
+			return false;
+		});
 		$('button#reset_database').click(function (event) {
 			socket.emit('reset_database');
 			window.location.href = "/settings"; // Update to not need page reload
@@ -126,6 +156,23 @@
 			socket.emit('shutdown_pi');
 			return false;
 		});
+
+
+		$('.set_profile li a').click(function (event) {
+			var data = {
+				profile: $(this).data('profile')
+			};
+			$('button#set_profile').html($(this).data('profile'));
+			socket.emit('set_profile', data);
+		})
+
+		$('.set_fix_race_time').change(function (event) {
+			var data = {
+				race_time: parseInt($(this).val())
+			};
+			socket.emit('set_fix_race_time', data);
+		})
+
 	});
 
 </script>
@@ -260,10 +307,32 @@
 
 <!--Edit system tuning values-->
 <h4>Sensor Tuning</h4>
+<div class="dropdown">
+	<b> Profile : </b>
+  <button class="btn btn-default dropdown-toggle" type="button" id="set_profile" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+    {{profiles.query.get(last_profile.query.get(1).profile_id).name}}
+    <span class="caret"></span>
+  </button>
+	<button type="button" class="btn btn-default" id="add_profile" onclick="this.blur();">+</button>
+	<button type="button" class="btn btn-default" id="delete_profile" onclick="this.blur();">x</button>
+  <ul class="dropdown-menu set_profile">
+		{% for profile in profiles.query.all() %}
+		 <li><a role="button" data-profile="{{profile.name}}">{{profile.name}}</a></li>
+		{% endfor %}
+  </ul>
+</div>
 <div class="row">
 	<div class='col-xs-16 col-md-8'>
 		<div class='panel panel-default'>
 			<table class="table">
+				<tr>
+					<td><b> Name </b></td>
+					<td><input type="text" class="form-control set_profile_name"></td>
+				</tr>
+				<tr>
+					<td><b> Description </b></td>
+					<td><input type="textarea" class="form-control set_profile_description" rows="4"></td>
+				</tr>
 				<tr>
 					<td><b>Calibration Offset (Default 8)</b><br>Trigger is Peak Rssi minus Calibration Offset</td>
 					<td>
@@ -283,6 +352,21 @@
 					</td>
 				</tr>
 			</table>
+		</div>
+	</div>
+</div>
+<h4> Fixed Race Time</h4>
+<div class="row">
+	<div class='col-xs-16 col-md-8'>
+		<div class='panel panel-default'>
+			<table class="table">
+				<tr>
+					<td><b>Time</b><br> maximum race time in seconds</td>
+					<td>
+						<input type="text" class="form-control set_fix_race_time" value="{{current_fix_race_time}}">
+					</td>
+				</tr>
+		 </table>
 		</div>
 	</div>
 </div>

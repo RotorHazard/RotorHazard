@@ -14,7 +14,7 @@ import gevent.monkey
 gevent.monkey.patch_all()
 
 sys.path.append('../delta5interface')
-sys.path.append('/home/pi/delta5_race_timer/src/delta5interface') # Needed to run on startup
+sys.path.append('/home/pi/delta5_race_timer/src/delta5interface')  # Needed to run on startup
 from Delta5Interface import get_hardware_interface
 
 from Delta5Race import get_race_state
@@ -92,6 +92,24 @@ class Frequency(DB.Model):
 
     def __repr__(self):
         return '<Frequency %r>' % self.frequency
+
+
+class Profiles(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    name = DB.Column(DB.String(80), unique=True, nullable=False)
+    description = DB.Column(DB.String(256), nullable=True)
+    c_offset = DB.Column(DB.Integer, nullable=True)
+    c_threshold = DB.Column(DB.Integer, nullable=True)
+    t_threshold = DB.Column(DB.Integer, nullable=True)
+
+class LastProfile(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    profile_id = DB.Column(DB.Integer, nullable=False)
+
+
+class FixTimeRace(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    race_time_sec = DB.Column(DB.Integer, nullable=False)
 
 #
 # Authentication
@@ -181,15 +199,22 @@ def heats():
 @requires_auth
 def race():
     '''Route to race management page.'''
-    return render_template('race.html', num_nodes=RACE.num_nodes, current_heat=RACE.current_heat, \
-        heats=Heat, pilots=Pilot)
+    return render_template('race.html', num_nodes=RACE.num_nodes,
+                           current_heat=RACE.current_heat,
+                           heats=Heat, pilots=Pilot,
+                           fix_race_time=FixTimeRace.query.get(1).race_time_sec)
 
 @APP.route('/settings')
 @requires_auth
 def settings():
     '''Route to settings page.'''
-    return render_template('settings.html', num_nodes=RACE.num_nodes, pilots=Pilot, \
-        frequencies=Frequency, heats=Heat)
+    return render_template('settings.html', num_nodes=RACE.num_nodes,
+                           pilots=Pilot,
+                           frequencies=Frequency,
+                           heats=Heat,
+                           last_profile =  LastProfile,
+                           profiles = Profiles,
+                           current_fix_race_time=FixTimeRace.query.get(1).race_time_sec)
 
 # Debug Routes
 
@@ -294,27 +319,94 @@ def on_set_pilot_name(data):
     server_log('Pilot name set: Pilot {0} Name {1}'.format(pilot_id, name))
     emit_pilot_data() # Settings page, new pilot name
 
+@SOCKET_IO.on('add_profile')
+def on_add_profile():
+    '''Adds new profile in the database.'''
+    max_profile_id = DB.session.query(Profiles).count()+1
+    DB.session.add(Profiles(name='New Profile %s' % max_profile_id,
+                           description = 'New Profile %s' % max_profile_id,
+                           c_offset=8,
+                           c_threshold=90,
+                           t_threshold=40))
+    DB.session.commit()
+    on_set_profile(data={ 'profile': 'New Profile %s' % max_profile_id})
+
+@SOCKET_IO.on('delete_profile')
+def on_delete_profile():
+    '''Delete profile'''
+    if (DB.session.query(Profiles).count() > 1): # keep one profile
+     last_profile = LastProfile.query.get(1).profile_id
+     profile = Profiles.query.get(last_profile)
+     DB.session.delete(profile)
+     DB.session.commit()
+     last_profile =  LastProfile.query.get(1)
+     first_profile_id = Profiles.query.first().id
+     last_profile.profile_id = first_profile_id
+     DB.session.commit()
+     profile =Profiles.query.get(first_profile_id)
+     INTERFACE.set_calibration_threshold_global(profile.c_threshold)
+     INTERFACE.set_calibration_offset_global(profile.c_offset)
+     INTERFACE.set_trigger_threshold_global(profile.t_threshold)
+     emit_node_tuning()
+
+@SOCKET_IO.on('set_profile_name')
+def on_set_profile_name(data):
+    ''' update profile name '''
+    profile_name = data['profile_name']
+    last_profile = LastProfile.query.get(1)
+    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    profile.name = profile_name
+    DB.session.commit()
+    server_log('set profile name %s' % (profile_name))
+    emit_node_tuning()
+
+@SOCKET_IO.on('set_profile_description')
+def on_set_profile_description(data):
+    ''' update profile description '''
+    profile_description = data['profile_description']
+    last_profile = LastProfile.query.get(1)
+    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    profile.description = profile_description
+    DB.session.commit()
+    server_log('set profile description %s for profile %s' %
+               (profile_name, profile.name))
+    emit_node_tuning()
+
 @SOCKET_IO.on('set_calibration_threshold')
 def on_set_calibration_threshold(data):
     '''Set Calibration Threshold.'''
     calibration_threshold = data['calibration_threshold']
     INTERFACE.set_calibration_threshold_global(calibration_threshold)
+    last_profile = LastProfile.query.get(1)
+    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    profile.c_threshold = calibration_threshold
+    DB.session.commit()
     server_log('Calibration threshold set: {0}'.format(calibration_threshold))
     emit_node_tuning()
+
 
 @SOCKET_IO.on('set_calibration_offset')
 def on_set_calibration_offset(data):
     '''Set Calibration Offset.'''
     calibration_offset = data['calibration_offset']
     INTERFACE.set_calibration_offset_global(calibration_offset)
+    last_profile = LastProfile.query.get(1)
+    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    profile.c_offset = calibration_offset
+    DB.session.commit()
     server_log('Calibration offset set: {0}'.format(calibration_offset))
     emit_node_tuning()
+
 
 @SOCKET_IO.on('set_trigger_threshold')
 def on_set_trigger_threshold(data):
     '''Set Trigger Threshold.'''
     trigger_threshold = data['trigger_threshold']
     INTERFACE.set_trigger_threshold_global(trigger_threshold)
+    last_profile = LastProfile.query.get(1)
+    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    profile.t_threshold = trigger_threshold
+    DB.session.commit()
     server_log('Trigger threshold set: {0}'.format(trigger_threshold))
     emit_node_tuning()
 
@@ -334,7 +426,31 @@ def on_shutdown_pi():
     server_log('Shutdown pi')
     os.system("sudo shutdown now")
 
-# @SOCKET_IO.on('clear_rounds')
+
+@SOCKET_IO.on("set_profile")
+def on_set_profile(data):
+    ''' set current profile '''
+    profile_val = data['profile']
+    profile =Profiles.query.filter_by(name=profile_val).first()
+    DB.session.flush()
+    last_profile = LastProfile.query.get(1)
+    last_profile.profile_id = profile.id
+    DB.session.commit()
+    INTERFACE.set_calibration_threshold_global(profile.c_threshold)
+    INTERFACE.set_calibration_offset_global(profile.c_offset)
+    INTERFACE.set_trigger_threshold_global(profile.t_threshold)
+    emit_node_tuning()
+    server_log("set tune paramas for profile '%s'" % profile_val)
+
+@SOCKET_IO.on("set_fix_race_time")
+def on_set_fix_race_time(data):
+    race_time = data['race_time']
+    fix_race_time = FixTimeRace.query.get(1)
+    fix_race_time.race_time_sec = race_time
+    DB.session.commit()
+    server_log("set fixed time race to %s seconds" % race_time)
+
+    # @SOCKET_IO.on('clear_rounds')
 # def on_reset_heats():
 #     '''Clear all saved races.'''
 #     DB.session.query(SavedRace).delete() # Remove all races
@@ -354,7 +470,7 @@ def on_shutdown_pi():
 # @SOCKET_IO.on('reset_pilots')
 # def on_reset_heats():
 #     '''Resets default pilots for nodes detected.'''
-    
+
 #     DB.session.query(Pilot).delete() # Remove all pilots
 #     DB.session.commit()
 #     DB.session.add(Pilot(pilot_id='0', callsign='-', name='-'))
@@ -481,17 +597,23 @@ def emit_node_data():
         'trigger_rssi': [node.trigger_rssi for node in INTERFACE.nodes],
         'peak_rssi': [node.peak_rssi for node in INTERFACE.nodes]
     })
-
 def emit_node_tuning():
     '''Emits node tuning values.'''
+    last_profile = LastProfile.query.get(1)
+    tune_val = Profiles.query.get(last_profile.profile_id)
     SOCKET_IO.emit('node_tuning', {
         'calibration_threshold': \
-            INTERFACE.get_calibration_threshold_json()['calibration_threshold'],
+            tune_val.c_threshold,
         'calibration_offset': \
-            INTERFACE.get_calibration_offset_json()['calibration_offset'],
+            tune_val.c_offset,
         'trigger_threshold': \
-            INTERFACE.get_trigger_threshold_json()['trigger_threshold']
+            tune_val.t_threshold,
+        'profile_name':
+            tune_val.name,
+        'profile_description':
+            tune_val.description
     })
+
 
 def emit_current_laps():
     '''Emits current laps.'''
@@ -606,6 +728,10 @@ def emit_current_heat():
         'callsign': callsigns
     })
 
+def emit_current_fix_race_time():
+    ''' Emit current fixed time race time '''
+    race_time_sec = FixTimeRace.query.get(1).race_time_sec
+    SOCKET_IO.emit('set_fix_race_time',{ fix_race_time: race_time_sec})
 #
 # Program Functions
 #
@@ -715,6 +841,9 @@ def db_init():
     db_reset_frequencies()
     db_reset_current_laps()
     db_reset_saved_races()
+    db_reset_profile()
+    db_reset_default_profile()
+    db_reset_fix_race_time()
     server_log('Database initialized')
 
 def db_reset():
@@ -724,6 +853,9 @@ def db_reset():
     db_reset_frequencies()
     db_reset_current_laps()
     db_reset_saved_races()
+    db_reset_profile()
+    db_reset_default_profile()
+    db_reset_fix_race_time()
     server_log('Database reset')
 
 def db_reset_keep_pilots():
@@ -732,6 +864,7 @@ def db_reset_keep_pilots():
     db_reset_frequencies()
     db_reset_current_laps()
     db_reset_saved_races()
+    db_reset_fix_race_time()
     server_log('Database reset, pilots kept')
 
 def db_reset_pilots():
@@ -743,7 +876,6 @@ def db_reset_pilots():
             name='Pilot Name'))
     DB.session.commit()
     server_log('Database pilots reset')
-
 def db_reset_heats():
     '''Resets database heats to default.'''
     DB.session.query(Heat).delete()
@@ -751,7 +883,6 @@ def db_reset_heats():
         DB.session.add(Heat(heat_id=1, node_index=node, pilot_id=node+1))
     DB.session.commit()
     server_log('Database heats reset')
-
 def db_reset_frequencies():
     '''Resets database frequencies to default.'''
     DB.session.query(Frequency).delete()
@@ -815,13 +946,46 @@ def db_reset_current_laps():
     DB.session.query(CurrentLap).delete()
     DB.session.commit()
     server_log('Database current laps reset')
-    
+
 def db_reset_saved_races():
     '''Resets database saved races to default.'''
     DB.session.query(SavedRace).delete()
     DB.session.commit()
     server_log('Database saved races reset')
 
+def db_reset_profile():
+    '''Set default profile'''
+    DB.session.query(Profiles).delete()
+    DB.session.add(Profiles(name="default 25mW",
+                             description ="default tune params for 25mW race",
+                             c_offset=8,
+                             c_threshold=65,
+                             t_threshold=40))
+    DB.session.add(Profiles(name="default 200mW",
+                             description ="default tune params for 200mW race",
+                             c_offset=8,
+                             c_threshold=90,
+                             t_threshold=40))
+    DB.session.add(Profiles(name="default 600mW",
+                             description ="default tune params for 600mW race",
+                             c_offset=8,
+                             c_threshold=100,
+                             t_threshold=40))
+    DB.session.commit()
+    server_log("Database set default profiles for 25,200,600 mW races")
+
+def db_reset_default_profile():
+    DB.session.query(LastProfile).delete()
+    DB.session.add(LastProfile(profile_id=1))
+    DB.session.commit()
+    server_log("Database set default profile on default 25mW race")
+
+
+def db_reset_fix_race_time():
+    DB.session.query(FixTimeRace).delete()
+    DB.session.add(FixTimeRace(race_time_sec=120))
+    DB.session.commit()
+    server_log("Database set fixed time race to 120 sec (2 minutes)")
 #
 # Program Initialize
 #

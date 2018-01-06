@@ -104,7 +104,7 @@
 		});
 
 		socket.on('start_timer_2min', function (msg) {
-			timer.reset(121); // Stop and reset with 121 seconds to catch buzzer
+			timer.reset({{fix_race_time+1}});
 			timer.mode(0); // Count down mode
 			timer.start(); // Start clock
 		});
@@ -173,7 +173,7 @@
 			</ul>
 		</div>
 		<button type="button" class="btn btn-default" id="start_race" onclick="this.blur();">Start Race</button>
-		<button type="button" class="btn btn-default" id="start_race_2min" onclick="this.blur();">Start Race 2min</button> {% include
+		<button type="button" class="btn btn-default" id="start_race_2min" onclick="this.blur();">Start Fixed Time Race</button> {% include
 		"build_timer.html" %}
 		<button type="button" class="btn btn-default" id="stop_race" disabled="disabled" onclick="this.blur();">Stop Race</button>
 		<button type="button" class="btn btn-default" id="save_laps" disabled="disabled" onclick="this.blur();">Save Laps</button>
