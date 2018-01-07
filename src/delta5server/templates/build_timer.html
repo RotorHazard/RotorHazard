@@ -96,47 +96,12 @@
 				if (time == 0) { buzzer.play(); timer.stop(); } // End up race buzzer
 
 				if (time == 10) {
-					ratefast();
-					speak('<div class="timer">10</div> div.timer');
-				} // 10 second countdown
-
-				if (time == 9) {
-					ratefast();
-					speak('<div class="timer">9</div> div.timer');
-				} // 10 second countdown
-
-				if (time == 8) {
-					speak('<div class="timer">8</div> div.timer');
-				} // 10 second countdown
-
-				if (time == 7) {
-					speak('<div class="timer">7</div> div.timer');
-				} // 10 second countdown
-
-				if (time == 6) {
-					speak('<div class="timer">6</div> div.timer');
-				} // 10 second countdown
+					speak('<div class="timer">10 seconds</div>');
+				}
 
 				if (time == 5) {
-					speak('<div class="timer">5</div> div.timer');
-				} // 10 second countdown
-
-				if (time == 4) {
-					speak('<div class="timer">4</div> div.timer');
-				} // 10 second countdown
-
-				if (time == 3) {
-					speak('<div class="timer">3</div> div.timer');
-				} // 10 second countdown
-
-				if (time == 2) {
-					speak('<div class="timer">2</div> div.timer');
-				} // 10 second countdown
-
-				if (time == 1) {
-					speak('<div class="timer">1</div> div.timer');
-					ratenormal();
-				} // 10 second countdown
+					speak('<div class="timer">5 seconds</div>');
+				}
 
 				if (time == {{fix_race_time}}) { buzzer.play(); } // Start buzzer
 			}
@@ -144,16 +109,16 @@
 			if (timer.getMode() == 1) { // Count up clock
 				if (time == 0) { buzzer.play(); } // Start buzzer
 				if (time == 120) {
-					speak('<div class="timer">2 minutes</div> div.timer');
+					speak('<div class="timer">2 minutes</div>');
 				} //2 min call out
 			}
 			if (time == 30) { 
 					ratenormal();
-					speak('<div class="timer">30 seconds</div> div.timer');				
+					speak('<div class="timer">30 seconds</div>');				
 			} // 30 second call out
 			if (time == 60) {
 					ratenormal();
-					speak('<div class="timer">1 minute</div> div.timer');				
+					speak('<div class="timer">1 minute</div>');				
 			} // 1 min call out
 		}
 	);
