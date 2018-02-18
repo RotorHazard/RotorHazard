@@ -1,8 +1,75 @@
 {% extends "layout.html" %} {% block title %}Settings{% endblock %} {% block head %}
 <script type="text/javascript" charset="utf-8">
+	function voice_label(idlang) {
+		switch (idlang) {
+		case 1:
+			$('.sel_lang').html("David - English (United States) en-US");
+			break;
+		case 2:
+			$('.sel_lang').html("Zira - English (United States) en-US");
+			break;
+		case 3:
+			$('.sel_lang').html("US English en-US");
+			break;		
+		case 4:
+			$('.sel_lang').html("UK English Female en-GB");
+			break;		
+		case 5:
+			$('.sel_lang').html("UK English Male en-GB");
+			break;		
+		case 6:
+			$('.sel_lang').html("Deutsch de-DE");
+			break;		
+		case 7:
+			$('.sel_lang').html("español es-ES");
+			break;		
+		case 8:
+			$('.sel_lang').html("español de Estados Unidos es-US");
+			break;		
+		case 9:
+			$('.sel_lang').html("français fr-FR");
+			break;		
+		case 10:
+			$('.sel_lang').html("हिन्दी hi-IN");
+			break;		
+		case 11:
+			$('.sel_lang').html("Bahasa Indonesia id-ID");
+			break;		
+		case 12:
+			$('.sel_lang').html("italiano it-IT");
+			break;		
+		case 13:
+			$('.sel_lang').html("日本語 ja-JP");
+			break;		
+		case 14:
+			$('.sel_lang').html("한국의 ko-KR");
+			break;		
+		case 15:
+			$('.sel_lang').html("Nederlands nl-NL");
+			break;		
+		case 16:
+			$('.sel_lang').html("polski pl-PL");
+			break;		
+		case 17:
+			$('.sel_lang').html("português do Brasil pt-BR");
+			break;		
+		case 18:
+			$('.sel_lang').html("русский ru-RU");
+			break;		
+		case 19:
+			$('.sel_lang').html("國語（臺灣） zh-TW");
+			break;		
+		default:
+			$('.sel_lang').html("None");
+			break;
+		}		
+	}
+	
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
+		voice_label( {{ lang_id }} );
+		
 		socket.on('heartbeat', function (msg) {
 			for (i = 0; i < msg.current_rssi.length; i++) {
 				$('.current_rssi_' + i).html(msg.current_rssi[i]);
@@ -44,7 +111,12 @@
 				$('.name_' + i).attr('value', msg.name[i]);
 			}
 		});
-
+		
+		socket.on('language_data', function (msg) {
+			var $langid = msg.language;
+			voice_label($langid);
+		});
+		
 		$('.set_frequency li a').click(function (event) {
 			var data = {
 				node: parseInt($(this).data('node')),
@@ -53,6 +125,13 @@
 			socket.emit('set_frequency', data);
 		})
 
+		$('.set_language li a').click(function (event) {
+			var data = {
+				language: parseInt($(this).data('language'))
+			};
+			socket.emit('set_language', data);
+		})		
+		
 		$('.set_pilot_position li a').click(function (event) {
 			var data = {
 				heat: parseInt($(this).data('heat')),
@@ -70,6 +149,14 @@
 			socket.emit('set_pilot_callsign', data);
 		})
 
+		$('.set_pilot_phonetic').change(function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				phonetic: $(this).val()
+			};
+			socket.emit('set_pilot_phonetic', data);
+		})		
+		
 		$('.set_pilot_name').change(function (event) {
 			var data = {
 				pilot_id: parseInt($(this).data('pilot_id')),
@@ -283,8 +370,9 @@
 					<tr>
 						<th>Pilot ID</th>
 						<th>Call Sign</th>
+						<th>Phonetic</th>
 						<th>Name</th>
-					</tr>
+						</tr>
 				</thead>
 				<tbody>
 					{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
@@ -295,6 +383,10 @@
 							 value="{{ pilot.callsign }}">
 						</td>
 						<td>
+							<input type="text" class="form-control set_pilot_phonetic phonetic_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
+							 value="{{ pilot.phonetic }}">
+						</td>
+						<td>
 							<input type="text" class="form-control set_pilot_name name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}">
 						</td>
 					</tr>
@@ -302,6 +394,39 @@
 				</tbody>
 			</table>
 		</div>
+	</div>
+</div>
+
+<!--Display Voice-->
+<h4>Voice Selection</h4>
+<div class="row">
+	<div class='col-xs-8 col-sm-4 col-md-2'>
+						<div class="btn-group">
+							<button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true"
+							 aria-expanded="true"><span class="sel_lang"></span></button>
+							<ul class="dropdown-menu set_language">
+								<li><a role="button" data-language="0">None</a></li>
+								<li><a role="button" data-language="1">David - English (United States en-US</a></li>
+								<li><a role="button" data-language="2">Zira - English (United States) en-US</a></li>
+								<li><a role="button" data-language="3">US English en-US</a></li>
+								<li><a role="button" data-language="4">UK English Female en-GB</a></li>
+								<li><a role="button" data-language="5">UK English Male en-GB</a></li>
+								<li><a role="button" data-language="6">Deutsch de-DE</a></li>
+								<li><a role="button" data-language="7">español es-ES</a></li>
+								<li><a role="button" data-language="8">español de Estados Unidos es-US</a></li>
+								<li><a role="button" data-language="9">français fr-FR</a></li>
+								<li><a role="button" data-language="10">हिन्दी hi-IN</a></li>
+								<li><a role="button" data-language="11">Bahasa Indonesia id-ID</a></li>
+								<li><a role="button" data-language="12">italiano it-IT</a></li>
+								<li><a role="button" data-language="13">日本語 ja-JP</a></li>
+								<li><a role="button" data-language="14">한국의 ko-KR</a></li>
+								<li><a role="button" data-language="15">Nederlands nl-NL</a></li>
+								<li><a role="button" data-language="16">polski pl-PL</a></li>
+								<li><a role="button" data-language="17">português do Brasil pt-BR</a></li>
+								<li><a role="button" data-language="18">русский ru-RU</a></li>
+								<li><a role="button" data-language="19">國語（臺灣） zh-TW</a></li>
+							</ul>
+						</div>
 	</div>
 </div>
 

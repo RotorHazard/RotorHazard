@@ -4,7 +4,7 @@
 
 ### Receiver Node(s) (this list makes one node, build up to eight)
 * 1 x Arduino Nano
-* 1 x rx5808 with SPI mod
+* 1 x rx5808 with SPI mod (Receivers with date code 20120322 are known to work).
 * 3 x 1k ohm resistor
 * 1 x 100k ohm resistor
 * 26 AWG and 30 AWG silicone wire

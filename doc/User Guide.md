@@ -25,6 +25,29 @@ Click 'Add Heat' until there are enough for all the pilots racing. Assign each p
 
 If you are noticing any missed or multiple laps when passing the gate, the sensor tuning values can be adjusted from defaults with a detailed description found here [/doc/Tuning Parameters.md](Tuning%20Parameters.md)
 
+The following voices are available for selection for lap time call outs (these are broswer dependent, but has been tested in Chrome):
+```
+David - English (United States) en-US
+Zira - English (United States) en-US
+US English en-US
+UK English Female en-GB
+UK English Male en-GB
+Deutsch de-DE
+español es-ES
+español de Estados Unidos es-US
+français fr-FR
+हिन्दी hi-IN
+Bahasa Indonesia id-ID
+italiano it-IT
+日本語 ja-JP
+한국의 ko-KR
+Nederlands nl-NL
+polski pl-PL
+português do Brasil pt-BR
+русский ru-RU
+國語（臺灣） zh-TW
+```
+
 ### Running Races ('Race' page)
 
 The race director will spend most of their time on this page running races.

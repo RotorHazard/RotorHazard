@@ -44,8 +44,9 @@ class Pilot(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     pilot_id = DB.Column(DB.Integer, unique=True, nullable=False)
     callsign = DB.Column(DB.String(80), unique=True, nullable=False)
+    phonetic = DB.Column(DB.String(80), unique=True, nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
-
+	
     def __repr__(self):
         return '<Pilot %r>' % self.pilot_id
 
@@ -202,19 +203,22 @@ def race():
     return render_template('race.html', num_nodes=RACE.num_nodes,
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
-                           fix_race_time=FixTimeRace.query.get(1).race_time_sec)
+                           fix_race_time=FixTimeRace.query.get(1).race_time_sec,
+						   lang_id=RACE.lang_id)
 
 @APP.route('/settings')
 @requires_auth
 def settings():
     '''Route to settings page.'''
+
     return render_template('settings.html', num_nodes=RACE.num_nodes,
                            pilots=Pilot,
                            frequencies=Frequency,
                            heats=Heat,
                            last_profile =  LastProfile,
                            profiles = Profiles,
-                           current_fix_race_time=FixTimeRace.query.get(1).race_time_sec)
+                           current_fix_race_time=FixTimeRace.query.get(1).race_time_sec,
+						   lang_id=RACE.lang_id)
 
 # Debug Routes
 
@@ -266,6 +270,13 @@ def on_set_frequency(data):
     server_log('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
     emit_node_data() # Settings page, new node channel
 
+@SOCKET_IO.on('set_language')
+def on_set_language(data):
+    '''Set language.'''
+    RACE.lang_id = data['language']
+    emit_language_data()
+
+
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
     '''Adds the next available heat number to the database.'''
@@ -292,7 +303,7 @@ def on_add_pilot():
     '''Adds the next available pilot id number in the database.'''
     max_pilot_id = DB.session.query(DB.func.max(Pilot.pilot_id)).scalar()
     DB.session.add(Pilot(pilot_id=max_pilot_id+1, callsign='callsign{0}'.format(max_pilot_id+1), \
-        name='Pilot Name'))
+        phonetic='callsign{0}'.format(max_pilot_id+1), name='Pilot Name'))
     DB.session.commit()
     server_log('Pilot added: Pilot {0}'.format(max_pilot_id+1))
 
@@ -307,6 +318,18 @@ def on_set_pilot_callsign(data):
     server_log('Pilot callsign set: Pilot {0} Callsign {1}'.format(pilot_id, callsign))
     emit_pilot_data() # Settings page, new pilot callsign
     emit_heat_data() # Settings page, new pilot callsign in heats
+
+@SOCKET_IO.on('set_pilot_phonetic')
+def on_set_pilot_phonetic(data):
+    '''Gets pilot phonetic to update database.'''
+    pilot_id = data['pilot_id']
+    phonetic = data['phonetic']
+    db_update = Pilot.query.filter_by(pilot_id=pilot_id).first()
+    db_update.phonetic = phonetic
+    DB.session.commit()
+    server_log('Pilot phonetic set: Pilot {0} Phonetic {1}'.format(pilot_id, phonetic))
+    emit_pilot_data() # Settings page, new pilot phonetic
+    emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
 @SOCKET_IO.on('set_pilot_name')
 def on_set_pilot_name(data):
@@ -695,7 +718,7 @@ def emit_leaderboard():
         'average_lap': [time_format(leaderboard_sorted[i][4]) for i in range(RACE.num_nodes)],
         'fastest_lap': [time_format(leaderboard_sorted[i][5]) for i in range(RACE.num_nodes)]
     })
-
+	
 def emit_heat_data():
     '''Emits heat data.'''
     current_heats = []
@@ -728,10 +751,21 @@ def emit_current_heat():
         'callsign': callsigns
     })
 
+def emit_phonetic_data(pilot_id, lap_time):
+    '''Emits phonetic data.'''
+    phonetic_time = phonetictime_format(lap_time)
+    phonetic_name = Pilot.query.filter_by(pilot_id=pilot_id).first().phonetic
+    SOCKET_IO.emit('phonetic_data', {'pilot': phonetic_name, 'phonetic': phonetic_time})
+
+def emit_language_data():
+    '''Emits language.'''
+    SOCKET_IO.emit('language_data', {'language': RACE.lang_id})
+
 def emit_current_fix_race_time():
     ''' Emit current fixed time race time '''
     race_time_sec = FixTimeRace.query.get(1).race_time_sec
     SOCKET_IO.emit('set_fix_race_time',{ fix_race_time: race_time_sec})
+
 #
 # Program Functions
 #
@@ -766,6 +800,16 @@ def time_format(millis):
     milliseconds = over
     return '{0:02d}:{1:02d}.{2:03d}'.format(minutes, seconds, milliseconds)
 
+def phonetictime_format(millis):
+    '''Convert milliseconds to 00:00.000'''
+    millis = int(millis)
+    minutes = millis / 60000
+    over = millis % 60000
+    seconds = over / 1000
+    over = over % 1000
+    milliseconds = over/10
+    return '{0:01d}.{1:02d}'.format(seconds, milliseconds)	
+	
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''
     server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index, ms_since_lap))
@@ -805,6 +849,8 @@ def pass_record_callback(node, ms_since_lap):
             .format(node.index, lap_id, time_format(lap_time)))
         emit_current_laps() # Updates all laps on the race page
         emit_leaderboard() # Updates leaderboard
+        if lap_id > 0: 
+            emit_phonetic_data(pilot_id, lap_time) # Sends phonetic data to be spoken
 
 INTERFACE.pass_record_callback = pass_record_callback
 
@@ -870,10 +916,10 @@ def db_reset_keep_pilots():
 def db_reset_pilots():
     '''Resets database pilots to default.'''
     DB.session.query(Pilot).delete()
-    DB.session.add(Pilot(pilot_id='0', callsign='-', name='-'))
+    DB.session.add(Pilot(pilot_id='0', callsign='-', name='-', phonetic="-"))
     for node in range(RACE.num_nodes):
         DB.session.add(Pilot(pilot_id=node+1, callsign='callsign{0}'.format(node+1), \
-            name='Pilot Name'))
+            name='Pilot Name', phonetic='callsign{0}'.format(node+1)))
     DB.session.commit()
     server_log('Database pilots reset')
 def db_reset_heats():
