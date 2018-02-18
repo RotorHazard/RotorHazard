@@ -114,8 +114,14 @@
 		
 		socket.on('language_data', function (msg) {
 			var $langid = msg.language;
+			sellang = $langid;
 			voice_label($langid);
 		});
+
+		socket.on('speak_phonetic_text', function (msg) {
+			var $ttstext = msg.text;
+			speak('<div class="speech">' + $ttstext + '</div> div.speech');				
+		})
 		
 		$('.set_frequency li a').click(function (event) {
 			var data = {
@@ -217,6 +223,14 @@
 			// document.getElementById("heats").innerHTML = // jinja template include
 			return false;
 		});
+		$('button#speak_pilot').click(function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				phonetic: $(this).val()
+			};
+			socket.emit('speak_pilot', data);
+			return false;
+		});
 		$('button#add_profile').click(function (event) {
 			socket.emit('add_profile');
 			window.location.href = "/settings"; // Update to not need page reload
@@ -261,6 +275,77 @@
 		})
 
 	});
+
+	var sellang = {{ lang_id }};
+
+	function speak(obj) {
+		switch (sellang) {
+			case 1:
+				$(obj).articulate('setVoice','name','Microsoft David Desktop - English (United States)').articulate('speak');
+				break;
+			case 2:
+				$(obj).articulate('setVoice','name','Microsoft Zira Desktop - English (United States)').articulate('speak');
+				break;
+			case 3:
+				$(obj).articulate('setVoice','name','Google US English').articulate('speak');
+				break;
+			case 4:
+				$(obj).articulate('setVoice','name','Google UK English Female').articulate('speak');
+				break;
+			case 5:
+				$(obj).articulate('setVoice','name','Google UK English Male').articulate('speak');
+				break;
+			case 6:
+				$(obj).articulate('setVoice','name','Google Deutsch').articulate('speak');
+				break;			
+			case 7:
+				$(obj).articulate('setVoice','name','Google español').articulate('speak');
+				break;
+			case 8:
+				$(obj).articulate('setVoice','name','Google español de Estados Unidos').articulate('speak');
+				break;
+			case 9:
+				$(obj).articulate('setVoice','name','Google français').articulate('speak');
+				break;
+			case 10:
+				$(obj).articulate('setVoice','name','Google हिन्दी').articulate('speak');
+				break;
+			case 11:
+				$(obj).articulate('setVoice','name','Google Bahasa Indonesia').articulate('speak');
+				break;
+			case 12:
+				$(obj).articulate('setVoice','name','Google italiano').articulate('speak');
+				break;
+			case 13:
+				$(obj).articulate('setVoice','name','Google 日本語').articulate('speak');
+				break;
+			case 14:
+				$(obj).articulate('setVoice','name','Google 한국의').articulate('speak');
+				break;
+			case 15:
+				$(obj).articulate('setVoice','name','Google Nederlands').articulate('speak');
+				break;
+			case 16:
+				$(obj).articulate('setVoice','name','Google polski').articulate('speak');
+				break;
+			case 17:
+				$(obj).articulate('setVoice','name','Google português do Brasil').articulate('speak');
+				break;
+			case 18:
+				$(obj).articulate('setVoice','name','Google русский').articulate('speak');
+				break;
+			case 19:
+				$(obj).articulate('setVoice','name','Google 國語（臺灣）').articulate('speak');
+				break;
+		}
+	};
+
+	function ratenormal(obj) {
+		$(obj).articulate('rate', 1.0);
+	};
+	function ratefast(obj) {
+		$(obj).articulate('rate', 3.0);
+	};
 
 </script>
 {% endblock %} {% block content %}
@@ -371,6 +456,7 @@
 						<th>Pilot ID</th>
 						<th>Call Sign</th>
 						<th>Phonetic</th>
+						<th></th>
 						<th>Name</th>
 						</tr>
 				</thead>
@@ -385,6 +471,9 @@
 						<td>
 							<input type="text" class="form-control set_pilot_phonetic phonetic_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
 							 value="{{ pilot.phonetic }}">
+						</td>
+						<td>
+							<button type="button" class="btn btn-default" id="speak_pilot" onclick="this.blur();" data-pilot_id="{{ pilot.pilot_id }}">&#9658;</button>
 						</td>
 						<td>
 							<input type="text" class="form-control set_pilot_name name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}">
