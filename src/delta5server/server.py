@@ -204,7 +204,10 @@ def race():
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            fix_race_time=FixTimeRace.query.get(1).race_time_sec,
-						   lang_id=RACE.lang_id)
+						   lang_id=RACE.lang_id,
+        frequencies=[node.frequency for node in INTERFACE.nodes],
+        channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
+            for node in INTERFACE.nodes])
 
 @APP.route('/settings')
 @requires_auth
@@ -604,6 +607,13 @@ def on_delete_lap(data):
     server_log('Lap deleted: Node {0} Lap {1}'.format(node_index, lap_id))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
+
+@SOCKET_IO.on('simulate_lap')
+def on_simulate_lap(data):
+    '''Simulates a lap (for debug testing).'''
+    node_index = data['node']
+    server_log('Simulated lap: Node {0}'.format(node_index))
+    INTERFACE.intf_simulate_lap(node_index)
 
 # Socket io emit functions
 
