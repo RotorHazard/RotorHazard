@@ -91,7 +91,7 @@
 		});
 
 		socket.on('phonetic_data', function (msg) {
-			var $ttstest = msg.pilot + " " + msg.phonetic;
+			var $ttstest = msg.pilot + " lap " + msg.lap + " " + msg.phonetic;
 			speak('<div class="speech">' + $ttstest + '</div> div.speech');				
 		})
 
