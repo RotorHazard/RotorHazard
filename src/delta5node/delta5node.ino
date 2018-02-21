@@ -99,22 +99,6 @@ uint8_t volatile ioBuffer[32]; // Data array for sending over i2c, up to 32 byte
 int ioBufferSize = 0;
 int ioBufferIndex = 0;
 
-// Define vtx frequencies in mhz and their hex code for setting the rx5808 module
-int vtxFreqTable[] = {
-  5865, 5845, 5825, 5805, 5785, 5765, 5745, 5725, // Band A
-  5733, 5752, 5771, 5790, 5809, 5828, 5847, 5866, // Band B
-  5705, 5685, 5665, 5645, 5885, 5905, 5925, 5945, // Band E
-  5740, 5760, 5780, 5800, 5820, 5840, 5860, 5880, // Band F
-  5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917  // Band C / Raceband
-};
-uint16_t vtxHexTable[] = {
-  0x2A05, 0x299B, 0x2991, 0x2987, 0x291D, 0x2913, 0x2909, 0x289F, // Band A
-  0x2903, 0x290C, 0x2916, 0x291F, 0x2989, 0x2992, 0x299C, 0x2A05, // Band B
-  0x2895, 0x288B, 0x2881, 0x2817, 0x2A0F, 0x2A19, 0x2A83, 0x2A8D, // Band E
-  0x2906, 0x2910, 0x291A, 0x2984, 0x298E, 0x2998, 0x2A02, 0x2A0C, // Band F
-  0x281D, 0x288F, 0x2902, 0x2914, 0x2987, 0x2999, 0x2A0C, 0x2A1E  // Band C / Raceband
-};
-
 // Defines for fast ADC reads
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
@@ -186,20 +170,21 @@ void SERIAL_ENABLE_HIGH() {
 	delayMicroseconds(100);
 }
 
+// Calculate rx5808 register hex value for given frequency in MHz
+uint16_t freqMhzToRegVal(uint16_t freqInMhz) {
+  uint16_t tf, N, A;
+  tf = (freqInMhz - 479) / 2;
+  N = tf / 32;
+  A = tf % 32;
+  return (N<<7) + A;
+}
+
 // Set the frequency given on the rx5808 module
 void setRxModule(int frequency) {
 	uint8_t i; // Used in the for loops
 
-	uint8_t index; // Find the index in the frequency lookup table
-	for (i = 0; i < sizeof(vtxFreqTable); i++) {
-		if (frequency == vtxFreqTable[i]) {
-			index = i;
-			break;
-		}
-	}
-
-	uint16_t vtxHex; // Get the hex value to send to the rx module
-	vtxHex = vtxHexTable[index];
+	// Get the hex value to send to the rx module
+	uint16_t vtxHex = freqMhzToRegVal(frequency);
 
 	// bit bash out 25 bits of data / Order: A0-3, !R/W, D0-D19 / A0=0, A1=0, A2=0, A3=1, RW=0, D0-19=0
 	SERIAL_ENABLE_HIGH();
