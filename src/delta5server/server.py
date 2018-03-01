@@ -1062,6 +1062,13 @@ if not os.path.exists('database.db'):
 # DB session commit needed to prevent 'application context' errors
 db_reset_current_laps()
 
+# Send initial profile values to nodes
+last_profile = LastProfile.query.get(1)
+tune_val = Profiles.query.get(last_profile.profile_id)
+INTERFACE.set_calibration_threshold_global(tune_val.c_threshold)
+INTERFACE.set_calibration_offset_global(tune_val.c_offset)
+INTERFACE.set_trigger_threshold_global(tune_val.t_threshold)
+
 
 # Test data - Current laps
 # DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
