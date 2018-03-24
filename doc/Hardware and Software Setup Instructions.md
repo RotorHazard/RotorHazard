@@ -143,12 +143,13 @@ sudo git clone https://github.com/jgarff/rpi_ws281x.git
 
 Modify the config.txt file
 ```
-sudo nano config.txt
+sudo nano /boot/config.txt
 ```
 add the following to the config.txt file
 ```
 hdmi_force_hotplug=1
 hdmi_force_edid_audio=1
+core_freq=250
 ```
 Configure the Raspberry Pi to enable SPI
 ```
