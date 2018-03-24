@@ -160,3 +160,8 @@ Select 5 Interfacing Options
 Select P4 SPI
 
 and enable SPI
+
+Reboot the Raspberry Pi
+```
+sudo reboot
+```
