@@ -148,6 +148,14 @@
 			return false;
 		});
 
+		$('button#simulate_lap').click(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+			};
+			socket.emit('simulate_lap', data);
+			return false;
+		});
+
 		$(document).on("click", ".delete_lap", function (event) { // Needed for buttons added after document load
 			var data = {
 				node: parseInt($(this).data('node')),
@@ -298,6 +306,15 @@
 					{{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 					}}
 				</h4>
+			</div>
+			<div class="panel-heading">
+				<p class="panel-title">
+					<small>{{ channels[node] }} {{ frequencies[node] }}</small>
+				</p>
+				<!-- Comment-out <p></p> above and enable 'button' below to get simulate-lap buttons for debug testing -->
+				<!--
+				<button type="button" class="btn btn-default" id="simulate_lap" data-node="{{ node }}" onclick="this.blur();"><small>{{ channels[node] }} {{ frequencies[node] }}</small></button>
+				-->
 			</div>
 			<table class="table" id="current_laps_{{ node }}">
 				<thead>
