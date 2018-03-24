@@ -44,6 +44,10 @@ Complete wiring connections between each Arduino and the Raspberry Pi.
 Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common ground; if not, the i2c messages can be corrupted.
 ![system wiring](img/D5-i2c.png)
 
+### WS2812b LED Support (Optional)
+The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under Software Setup.
+![led wiring](img/GPIO.jpg)
+
 ## Software Setup
 
 ### Receiver Nodes (Arduinos)
@@ -128,3 +132,28 @@ sudo systemctl daemon-reload
 sudo systemctl enable delta5.service
 sudo reboot
 ```
+### WS2812b LED Support (Optional)
+The ws2812b controls are provided by the following project:
+https://github.com/jgarff/rpi_ws281x
+
+Clone the repository onto the Pi
+```
+sudo git clone https://github.com/jgarff/rpi_ws281x.git
+```
+
+Modify the config.txt file
+```
+sudo nano config.txt
+```
+add the following to the config.txt file
+```
+hdmi_force_hotplug=1
+hdmi_force_edid_audio=1
+```
+Configure the Raspberry Pi to enable SPI
+```
+sudo raspi-config
+```
+Select 5 Interfacing Options
+Select P4 SPI
+and enable SPI
