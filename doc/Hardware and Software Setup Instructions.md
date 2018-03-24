@@ -155,5 +155,7 @@ Configure the Raspberry Pi to enable SPI
 sudo raspi-config
 ```
 Select 5 Interfacing Options
+
 Select P4 SPI
+
 and enable SPI
