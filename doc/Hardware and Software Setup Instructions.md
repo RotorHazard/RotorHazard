@@ -132,13 +132,27 @@ sudo systemctl daemon-reload
 sudo systemctl enable delta5.service
 sudo reboot
 ```
-### WS2812b LED Support (Optional)
+### WS2812b LED Support (Optional) *** NOTE still working on making this optional
 The ws2812b controls are provided by the following project:
 https://github.com/jgarff/rpi_ws281x
 
-Clone the repository onto the Pi
+Perform an update and install the dependencies:
+```
+sudo apt-get update
+sudo apt-get install build-essential python-dev git scons swig
+```
+
+Clone the repository onto the Pi and initiate Scons:
 ```
 sudo git clone https://github.com/jgarff/rpi_ws281x.git
+cd rpi_ws281x
+scons
+```
+
+Install the Python library:
+```
+cd python
+sudo python setup.py install
 ```
 
 Modify the config.txt file
@@ -147,8 +161,6 @@ sudo nano /boot/config.txt
 ```
 add the following to the config.txt file
 ```
-hdmi_force_hotplug=1
-hdmi_force_edid_audio=1
 core_freq=250
 ```
 Configure the Raspberry Pi to enable SPI
