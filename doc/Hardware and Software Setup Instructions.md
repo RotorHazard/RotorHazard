@@ -146,7 +146,7 @@ Clone the repository onto the Pi and initiate Scons:
 ```
 sudo git clone https://github.com/jgarff/rpi_ws281x.git
 cd rpi_ws281x
-scons
+sudo scons
 ```
 
 Install the Python library:
