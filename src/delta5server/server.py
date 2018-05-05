@@ -564,6 +564,7 @@ def on_start_race():
     '''Starts the race and the timer counting up, no defined finish.'''
     start_race()
     SOCKET_IO.emit('start_timer') # Loop back to race page to start the timer counting up
+    time.sleep(1)
     onoff(strip, Color(0,255,0)) #GREEN ON
 
 @SOCKET_IO.on('start_race_2min')
@@ -571,6 +572,7 @@ def on_start_race_2min():
     '''Starts the race with a two minute countdown clock.'''
     start_race()
     SOCKET_IO.emit('start_timer_2min') # Loop back to race page to start a 2 min countdown
+    time.sleep(1)
     onoff(strip, Color(0,255,0)) #GREEN ON
 
 def start_race():
@@ -918,21 +920,21 @@ def pass_record_callback(node, ms_since_lap):
         if lap_id > 0: 
             emit_phonetic_data(pilot_id, lap_id, lap_time) # Sends phonetic data to be spoken
         if node.index==0:
-            theaterChase(strip, Color(255,0,0)) #RED theater chase
-        elif node.index==1:
-            theaterChase(strip, Color(0,255,0)) #GREEN theater chase
-        elif node.index==2:
             theaterChase(strip, Color(0,0,255))  #BLUE theater chase
-        elif node.index==3:
-            theaterChase(strip, Color(255,0,60)) #PINK theater chase
-        elif node.index==4:
-            theaterChase(strip, Color(255,255,0)) #YELLOW theater chase
-        elif node.index==5:
+        elif node.index==1:
             theaterChase(strip, Color(255,50,0)) #ORANGE theater chase
-        elif node.index==6:
-            theaterChase(strip, Color(255,0,150)) #PURPLE theater chase
-        elif node.index==7:
+        elif node.index==2:
+            theaterChase(strip, Color(255,0,60)) #PINK theater chase
+        elif node.index==3:
+            theaterChase(strip, Color(150,0,255)) #PURPLE theater chase
+        elif node.index==4:
+            theaterChase(strip, Color(250,210,0)) #YELLOW theater chase
+        elif node.index==5:
             theaterChase(strip, Color(0,255,255)) #CYAN theater chase
+        elif node.index==6:
+            theaterChase(strip, Color(0,255,0)) #GREEN theater chase
+        elif node.index==7:
+            theaterChase(strip, Color(255,0,0)) #RED theater chase
 
 INTERFACE.pass_record_callback = pass_record_callback
 
