@@ -21,6 +21,7 @@
 * Outdoor power cable, 50ft plus
 * Network router
 * Laptop/tablet
+* ws2812b LEDs
 
 ## Hardware Setup
 
@@ -44,7 +45,7 @@ Complete wiring connections between each Arduino and the Raspberry Pi.
 Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common ground; if not, the i2c messages can be corrupted.
 ![system wiring](img/D5-i2c.png)
 
-### WS2812b LED Support (Optional)
+### WS2812b LED Support
 The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under Software Setup.
 ![led wiring](img/GPIO.jpg)
 
@@ -132,7 +133,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable delta5.service
 sudo reboot
 ```
-### WS2812b LED Support (Optional) *** NOTE still working on making this optional
+### WS2812b LED Support
 The ws2812b controls are provided by the following project:
 https://github.com/jgarff/rpi_ws281x
 
