@@ -1,0 +1,143 @@
+{% extends "layout.html" %} {% block title %}Race{% endblock %}{% block head %}
+
+<audio id="buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
+
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function () {
+		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+		var buzzer = false;
+
+		socket.on('race_status', function (msg) {
+			switch (msg.race_status) {
+				case 1: // Race running
+					$('body').addClass('race-running');
+					$('body').removeClass('race-stopped');
+					$('body').removeClass('race-new');
+					break;
+				case 2: // Race stopped, clear or save laps
+					$('body').addClass('race-stopped');
+					$('body').removeClass('race-running');
+					$('body').removeClass('race-new');
+					break;
+				default: // Waiting to start new race
+					$('body').addClass('race-new');
+					$('body').removeClass('race-running');
+					$('body').removeClass('race-stopped');
+			}
+		});
+
+		socket.on('current_laps', function (msg) {
+			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json array
+				$('#current_laps_' + i + ' tbody > tr').remove();
+				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
+					// No lap deletion for first lap
+					if (node_index.lap_id[j] == 0) {
+						var $tr = $('<tr>').append(
+							$('<td>').text(node_index.lap_id[j]),
+							$('<td style="padding-right: 0px">').text(node_index.lap_time[j])
+						).appendTo('#current_laps_' + i);
+					}
+					else {
+						var $tr = $('<tr>').append(
+							$('<td>').text(node_index.lap_id[j]),
+							$('<td style="padding-right: 0px">').text(node_index.lap_time[j])
+						).appendTo('#current_laps_' + i);
+					}
+
+				});
+			});
+		});
+
+		socket.on('leaderboard', function (msg) {
+			$('#leaderboard tbody > tr').remove();
+			for (i = 0; i < msg.position.length; i++) {
+				var $tr = $('<tr>').append(
+					$('<td>').text(msg.position[i]),
+					$('<td>').text(msg.callsign[i]),
+					$('<td>').text(msg.laps[i]),
+					$('<td>').text(msg.last_lap[i]),
+					$('<td>').text(msg.behind[i]),
+					$('<td>').text(msg.average_lap[i]),
+					$('<td>').text(msg.fastest_lap[i]),
+					$('<td>').text(msg.total_time[i]),
+				).appendTo('#leaderboard');
+			}
+		});
+
+		socket.on('current_heat', function (msg) {
+			$('.current_heat').html('Heat ' + msg.current_heat);
+			for (i = 0; i < msg.callsign.length; i++) {
+				$('.callsign_' + i).html(msg.callsign[i]);
+			}
+		});
+
+		socket.on('start_timer', function (msg) {
+			timer.reset(-1); // Stop and reset with -1 seconds to catch buzzer
+			timer.mode(1); // Count up mode
+			timer.start(); // Start clock
+		});
+
+		socket.on('start_timer_2min', function (msg) {
+			timer.reset({{fix_race_time+1}});
+			timer.mode(0); // Count down mode
+			timer.start(); // Start clock
+		});
+
+		socket.on('stop_timer', function (msg) {
+			timer.stop();
+		});
+	});
+
+	var sellang = {{ lang_id }};
+
+	function speak(obj) {
+		return false;
+	};
+
+</script>
+{% endblock %} {% block content %}
+
+<!--Buttons for controlling the race-->
+<p>{% include "build_timer.html" %}</p>
+
+<h2 class="current_heat">Heat {{ current_heat }}</h2>
+
+<!--Display the race leaderboard-->
+<table class="table" id="leaderboard">
+	<thead>
+		<tr>
+			<th>Pos.</th>
+			<th>Pilot</th>
+			<th>Laps</th>
+			<th>Last Lap</th>
+			<th>Behind</th>
+			<th>Average</th>
+			<th>Fastest</th>
+			<th>Total</th>
+		</tr>
+	</thead>
+	<tbody>
+	</tbody>
+</table>
+
+<!--Display the current laps-->
+<div class="race-results">
+	{% for node in range(num_nodes) %}
+	<div class="node">
+		<h4 class="panel-title callsign_{{ node }}">
+			{{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
+			}}
+		</h4>
+		<div class="panel-heading">
+			<small>{{ channels[node] }} {{ frequencies[node] }}</small>
+		</div>
+		<table class="laps" id="current_laps_{{ node }}">
+			<tbody>
+			</tbody>
+		</table>
+	</div>
+	{% endfor %}
+</div>
+
+{% endblock %}

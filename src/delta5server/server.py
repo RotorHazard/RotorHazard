@@ -204,6 +204,18 @@ def race():
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            fix_race_time=FixTimeRace.query.get(1).race_time_sec,
+                           lang_id=RACE.lang_id,
+        frequencies=[node.frequency for node in INTERFACE.nodes],
+        channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
+            for node in INTERFACE.nodes])
+
+@APP.route('/racepublic')
+def racepublic():
+    '''Route to race management page.'''
+    return render_template('racepublic.html', num_nodes=RACE.num_nodes,
+                           current_heat=RACE.current_heat,
+                           heats=Heat, pilots=Pilot,
+                           fix_race_time=FixTimeRace.query.get(1).race_time_sec,
 						   lang_id=RACE.lang_id,
         frequencies=[node.frequency for node in INTERFACE.nodes],
         channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
@@ -890,10 +902,11 @@ def default_frequencies():
     '''Set node frequencies, IMD for 6 or less and race band for 7 or 8.'''
     frequencies_imd_5_6 = [5685, 5760, 5800, 5860, 5905, 5645]
     frequencies_raceband = [5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917]
+    frequencies_rb4 = [5658, 5732, 5843, 5880]
     for index, node in enumerate(INTERFACE.nodes):
         gevent.sleep(0.100)
         if RACE.num_nodes < 7:
-            INTERFACE.set_frequency(index, frequencies_imd_5_6[index])
+            INTERFACE.set_frequency(index, frequencies_rb4[index])
         else:
             INTERFACE.set_frequency(index, frequencies_raceband[index])
     server_log('Default frequencies set')
@@ -1133,4 +1146,4 @@ INTERFACE.set_trigger_threshold_global(tune_val.t_threshold)
 
 
 if __name__ == '__main__':
-    SOCKET_IO.run(APP, host='0.0.0.0', port=5000, debug=True)
+    SOCKET_IO.run(APP, host='0.0.0.0', port=80, debug=True)

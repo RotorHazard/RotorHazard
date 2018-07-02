@@ -1,0 +1,169 @@
+html {
+	background: #fff;
+	color: #000;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-size: 1.2em;
+	font-family: sans-serif;
+	margin: 0;
+	padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6, p, ul, ol, li {
+	margin: 0;
+}
+
+table {
+	border-collapse: collapse;
+	min-width: 100%;
+}
+
+th, td {
+	border: solid 1px;
+	padding: 0.25em;
+}
+
+th {
+	text-align: left;
+}
+
+input {
+	font: inherit;
+}
+
+*+* {
+	margin-top: 0.5rem;
+}
+
+button, select {
+	border: solid 0.125em #376FB7;
+	background: #eee;
+	border-radius: 0.25rem;
+	padding: 0.25em 0.5em;
+	color: #376FB7;
+	font-size: inherit;
+	cursor: pointer;
+}
+
+button:disabled, select:disabled {
+	border: solid 0.125em #ccc;
+	color: #ccc;
+}
+
+body>header {
+	background: #000;
+	color: #fff;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	padding: 0.5em;
+}
+
+#logo {
+
+}
+
+nav {
+	margin-top: 0;
+}
+
+nav ul {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-start;
+	align-items: center;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+nav li {
+	margin: 0 1em;
+	padding: 0;
+}
+
+nav a {
+	color: #fff;
+	text-decoration: none;
+}
+
+main {
+	padding: 0.5em;
+}
+
+.timing-clock {
+	font-size: 3rem;
+	background: #000;
+	color: #fff;
+	border-radius: 0.5rem;
+	padding: 0.25em;
+	display: inline-block;
+	font-family: monospace;
+	font-weight: bold;
+}
+
+.race-running .timing-clock {
+	background: #060;
+}
+
+.race-stopped .timing-clock {
+	background: #600;
+}
+
+.round {
+	border-top: solid 1px #ccc;
+}
+
+.race-results {
+	display: flex;
+	flex-wrap: wrap;
+	margin: 0 -0.5rem;
+}
+
+.node {
+	width: 8em;
+	margin: 0.5rem;
+}
+
+.race-results h4 {
+	overflow: hidden;
+}
+
+.heats {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.heat {
+	width: 8em;
+	margin: 0.5em;
+}
+
+#heatsetup .heat {
+	width: 18em;
+}
+
+.heat table {
+	font-size: 1rem;
+}
+
+.pilots table {
+	min-width: 0;
+}
+
+.node-list {
+	display: flex;
+	flex-wrap: wrap;
+	margin: 0 -0.5rem;	
+}
+
+.btn-danger {
+	background: #900;
+}
+
+.btn-warning {
+	background: #c60;
+}

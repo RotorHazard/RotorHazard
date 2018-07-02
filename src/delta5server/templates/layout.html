@@ -14,41 +14,34 @@
 	<script type="text/javascript" src="./static/socket.io-1.3.5/socket.io.min.js"></script>
 
 	<!-- Bootstrap -->
-	<link rel="stylesheet" href="./static/bootstrap-3.3.7/css/bootstrap.min.css"></link>
+	<!-- <link rel="stylesheet" href="./static/bootstrap-3.3.7/css/bootstrap.min.css"></link> -->
 	<script type="text/javascript" src="./static/bootstrap-3.3.7/js/bootstrap.min.js"></script>
+
+	<!-- D5RT -->
+	<link rel="stylesheet" href="./static/d5rt.css"></link>
 
 	<!-- Child template head content -->
 	{% block head %}{% endblock %}
 </head>
 
 <body>
-	<!--Navigation-->
-	<nav class="navbar navbar-inverse navbar-static-top">
-		<div class="container">
-			<div class="navbar-header">
-				<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false"
-				 aria-controls="navbar">
-					<span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span>
-				</button>
-				<span class="navbar-brand" href="#">Delta 5 Race Timer</span>
-			</div>
-			<div id="navbar" class="navbar-collapse collapse">
-				<ul class="nav navbar-nav">
-					<li><a href="/">Rounds</a></li>
-					<li><a href="/heats">Heats</a></li>
-					<li><a href="/race">Race</a></li>
-					<li><a href="/settings">Settings</a></li>
-				</ul>
-			</div>
-		</div>
-	</nav>
+	<header>
+		<div id="logo" href="#">Delta 5 Race Timer</div>
+		<nav>
+			<ul>
+				<li><a href="/">Rounds</a></li>
+				<li><a href="/heats">Heats</a></li>
+				<li><a href="/racepublic">Race</a></li>
+				<li><a class="admin" href="/race">Run</a></li>
+				<li><a class="admin" href="/settings">Settings</a></li>
+			</ul>
+		</nav>
+	</header>
 
-	<!--Main content-->
-	<div class="container">
+	<main>
 		<!--Child template content-->
 		{% block content %}{% endblock %}
-	</div>
-
+	</main>
 </body>
 
 </html>
