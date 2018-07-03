@@ -832,7 +832,7 @@ def time_format(millis):
     seconds = over / 1000
     over = over % 1000
     milliseconds = over
-    return '{0:02d}:{1:02d}.{2:03d}'.format(minutes, seconds, milliseconds)
+    return '{0:01d}:{1:02d}.{2:03d}'.format(minutes, seconds, milliseconds)
 
 def phonetictime_format(millis):
     '''Convert milliseconds to phonetic'''

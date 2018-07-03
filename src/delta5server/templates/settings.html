@@ -290,17 +290,17 @@
 
 </script>
 {% endblock %} {% block content %}
+<main class="page-settings">
 
 <!--Display node data-->
 <h2>Nodes</h2>
 <div class="node-list">
 	{% for node in range(num_nodes) %}
 	<div class="node">
-		<h3 class="panel-title">Node {{ node + 1 }}</h3>
+		<h3>Node {{ node + 1 }}</h3>
 		<table class="table">
 			<tr>
 				<td colspan="2">
-					Freq.
 					<select class="set_frequency s_channel_{{ node }}" data-node="{{ node }}">
 						{% for frequency in frequencies.query.all() %}
 						<option value="{{ frequency.frequency }}">
@@ -341,7 +341,7 @@
 <div id="heatsetup" class="heats">
 	{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
 	<div class="heat">
-		<h3 class="panel-title">Heat {{ heat.heat_id }}</h3>
+		<h3>Heat {{ heat.heat_id }}</h3>
 		<table class="table">
 			{% for node in range(num_nodes) %}
 			<tr>
@@ -371,9 +371,8 @@
 </div>
 
 <!--Pilots list for editing-->
-<h2>Pilots
-	<button type="button" class="btn btn-default" id="add_pilot" onclick="this.blur();">Add Pilot</button>
-</h2>
+<h2>Pilots</h2>
+<button type="button" id="add_pilot" onclick="this.blur();">Add Pilot</button>
 <p>Spelling corrections only after saving races.</p>
 <div class="row">
 	<div class='col-xs-16 col-md-8'>
@@ -384,7 +383,7 @@
 						<th>Pilot ID</th>
 						<th>Call Sign</th>
 						<th>Phonetic</th>
-						<th></th>
+						<th class="speak"></th>
 						<th>Name</th>
 						</tr>
 				</thead>
@@ -393,18 +392,18 @@
 					<tr>
 						<td>{{ pilot.pilot_id }}</td>
 						<td>
-							<input type="text" class="form-control set_pilot_callsign callsign_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
+							<input type="text" class="set_pilot_callsign callsign_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
 							 value="{{ pilot.callsign }}">
 						</td>
 						<td>
-							<input type="text" class="form-control set_pilot_phonetic phonetic_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
+							<input type="text" class="set_pilot_phonetic phonetic_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
 							 value="{{ pilot.phonetic }}">
 						</td>
-						<td>
-							<button type="button" class="btn btn-default" id="speak_pilot" onclick="this.blur();" data-pilot_id="{{ pilot.pilot_id }}">&#9658;</button>
+						<td class="speak">
+							<button type="button" id="speak_pilot" onclick="this.blur();" data-pilot_id="{{ pilot.pilot_id }}">&#9658;</button>
 						</td>
 						<td>
-							<input type="text" class="form-control set_pilot_name name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}">
+							<input type="text" class="set_pilot_name name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}">
 						</td>
 					</tr>
 					{% endif %} {% endfor %}
@@ -414,13 +413,23 @@
 	</div>
 </div>
 
+<h2>Fixed Race Time</h2>
+<table class="table">
+	<tr>
+		<td><b>Time</b><br> maximum race time in seconds</td>
+		<td>
+			<input type="text" class="form-control set_fix_race_time" value="{{current_fix_race_time}}">
+		</td>
+	</tr>
+ </table>
+
 <!--Display Voice-->
 <h2 id="voice_select">Voice Selection</h2>
 
 <!--Edit system tuning values-->
 <h2>Sensor Tuning</h2>
 
-<b>Profile:</b>
+<h3>Profile</h3>
 <select class="set_profile">
 	{% for profile in profiles.query.all() %}
 	<option value="{{profile.name}}" {% if profile.name == profiles.query.get(last_profile.query.get(1).profile_id).name %}
@@ -436,42 +445,32 @@
 
 <table class="table">
 	<tr>
-		<td><b> Name </b></td>
-		<td><input type="text" class="form-control set_profile_name"></td>
+		<td><b>Name</b></td>
+		<td><input type="text" class="set_profile_name"></td>
 	</tr>
 	<tr>
-		<td><b> Description </b></td>
-		<td><input type="textarea" class="form-control set_profile_description" rows="4"></td>
+		<td><b>Description</b></td>
+		<td><textarea class="set_profile_description"></textarea>
 	</tr>
 	<tr>
 		<td><b>Calibration Offset (Default 8)</b><br>Trigger is Peak Rssi minus Calibration Offset</td>
 		<td>
-			<input type="text" class="form-control set_calibration_offset">
+			<input type="text" class="set_calibration_offset">
 		</td>
 	</tr>
 	<tr>
 		<td><b>Calibration Threshold (Default 95)</b><br>Trigger minus Calibration Threshold ends calibration pass</td>
 		<td>
-			<input type="text" class="form-control set_calibration_threshold">
+			<input type="text" class="set_calibration_threshold">
 		</td>
 	</tr>
 	<tr>
 		<td><b>Trigger Threshold (Default 40)</b><br>Trigger minus Trigger Threshold ends normal pass</td>
 		<td>
-			<input type="text" class="form-control set_trigger_threshold">
+			<input type="text" class="set_trigger_threshold">
 		</td>
 	</tr>
 </table>
-
-<h4> Fixed Race Time</h4>
-<table class="table">
-	<tr>
-		<td><b>Time</b><br> maximum race time in seconds</td>
-		<td>
-			<input type="text" class="form-control set_fix_race_time" value="{{current_fix_race_time}}">
-		</td>
-	</tr>
- </table>
 
 <!--Reset database-->
 <h2>Database (Copy out any saved races first!)</h2>
@@ -483,7 +482,8 @@
 <!-- Shut down -->
 <h2>System (Safely shutdown raspberry pi)</h2>
 <div>
-	<button type="button" class="btn btn-default" id="shutdown_pi" onclick="this.blur();">Shutdown</button>
+	<button type="button" class="btn-danger" id="shutdown_pi" onclick="this.blur();">Shutdown</button>
 </div>
 
+</main>
 {% endblock %}

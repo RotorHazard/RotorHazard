@@ -6,7 +6,7 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="description" content="Delta5 VTX Timer">
-	<title>{% block title %}{% endblock %} - Delta5 Race Timer</title>
+	<title>{% block title %}{% endblock %}: Delta5 Race Timer</title>
 
 	<!-- Script libraries -->
 	<script type="text/javascript" src="./static/jquery-3.2.1/jquery.min.js"></script>
@@ -38,10 +38,17 @@
 		</nav>
 	</header>
 
-	<main>
-		<!--Child template content-->
-		{% block content %}{% endblock %}
-	</main>
+	<!--Child template content-->
+	{% block content %}{% endblock %}
+
+	<footer>
+		<nav>
+			<ul>
+				<li><a href="/hardwarelog">Log</a></li>
+				<li><a href="/database">Database</a></li>
+			</ul>
+		</nav>
+	</footer>
 </body>
 
 </html>

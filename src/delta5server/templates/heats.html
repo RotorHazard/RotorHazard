@@ -1,6 +1,8 @@
 {% extends "layout.html" %} {% block title %}Heats{% endblock %} {% block head %} {% endblock %} {% block content %}
+<main class="page-heats">
 
 <!--Display the heats-->
+
 <h2>Heats</h2>
 <div class="heats">
 	{% for heat in heats.query.with_entities(heats.heat_id).distinct().order_by(heats.heat_id) %}
@@ -10,7 +12,7 @@
 			{% for node in range(num_nodes) %}
 			<tr>
 				<td>
-					{{ channels[node] }} {{ frequencies[node] }}
+					<div class="channel-block"><span class="ch">{{ channels[node] }}</span> <span class="fr">{{ frequencies[node] }}</span></div>
 				</td>
 				<td>
 					{{ pilots.query.filter_by(pilot_id= heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign
@@ -44,4 +46,5 @@
 	</table>
 </div>
 
+</main>
 {% endblock %}

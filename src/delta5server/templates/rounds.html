@@ -1,8 +1,9 @@
 {% extends "layout.html" %} {% block title %}Rounds{% endblock %} {% block head %} {% endblock %} {% block content %}
 
+<main class="page-rounds">
+
 <!--Display the rounds-->
 {% for heat in rounds.query.with_entities(rounds.heat_id).distinct().order_by(rounds.heat_id) %}
-<div class="round_heat">
     <h2>Heat {{ heat.heat_id }}</h2>
     {% for round in rounds.query.with_entities(rounds.round_id).distinct().filter_by(heat_id=heat.heat_id).order_by(rounds.round_id)
     %}
@@ -67,5 +68,7 @@
             </div>
         </div>
     </div>-->
-</div>
-{% endfor %} {% endblock %}
+{% endfor %}
+
+</main>
+{% endblock %}

@@ -1,7 +1,4 @@
 {% extends "layout.html" %} {% block title %}Race{% endblock %}{% block head %}
-
-<audio id="buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
-
 <script type="text/javascript" charset="utf-8">
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
@@ -32,19 +29,10 @@
 				$('#current_laps_' + i + ' tbody > tr').remove();
 				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
 					// No lap deletion for first lap
-					if (node_index.lap_id[j] == 0) {
-						var $tr = $('<tr>').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td style="padding-right: 0px">').text(node_index.lap_time[j])
-						).appendTo('#current_laps_' + i);
-					}
-					else {
-						var $tr = $('<tr>').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td style="padding-right: 0px">').text(node_index.lap_time[j])
-						).appendTo('#current_laps_' + i);
-					}
-
+					var $tr = $('<tr>').append(
+						$('<td>').text(node_index.lap_id[j]),
+						$('<td>').text(node_index.lap_time[j])
+					).appendTo('#current_laps_' + i);
 				});
 			});
 		});
@@ -97,6 +85,7 @@
 
 </script>
 {% endblock %} {% block content %}
+<main class="page-racepublic">
 
 <!--Buttons for controlling the race-->
 <p>{% include "build_timer.html" %}</p>
@@ -129,9 +118,7 @@
 			{{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 			}}
 		</h4>
-		<div class="panel-heading">
-			<small>{{ channels[node] }} {{ frequencies[node] }}</small>
-		</div>
+		<div class="channel-block"><span class="ch">{{ channels[node] }}</span> <span class="fr">{{ frequencies[node] }}</span></div>
 		<table class="laps" id="current_laps_{{ node }}">
 			<tbody>
 			</tbody>
@@ -140,4 +127,5 @@
 	{% endfor %}
 </div>
 
+</main>
 {% endblock %}

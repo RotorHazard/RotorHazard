@@ -1,5 +1,4 @@
-{% extends "layout.html" %} {% block title %}Race{% endblock %}{% block head %}
-
+{% extends "layout.html" %} {% block title %}Run{% endblock %}{% block head %}
 <audio id="buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
 
 <script type="text/javascript" charset="utf-8">
@@ -69,13 +68,13 @@
 					if (node_index.lap_id[j] == 0) {
 						var $tr = $('<tr>').append(
 							$('<td>').text(node_index.lap_id[j]),
-							$('<td style="padding-right: 0px">').text(node_index.lap_time[j])
+							$('<td>').text(node_index.lap_time[j])
 						).appendTo('#current_laps_' + i);
 					}
 					else {
 						var $tr = $('<tr>').append(
 							$('<td>').text(node_index.lap_id[j]),
-							$('<td style="padding-right: 0px">').text(node_index.lap_time[j] + ' ').append(
+							$('<td>').text(node_index.lap_time[j] + ' ').append(
 								$('<button type="button" class="delete_lap" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '" onclick="this.blur();">&#215;</button>')
 							)
 						).appendTo('#current_laps_' + i);
@@ -258,6 +257,7 @@
 	};
 </script>
 {% endblock %} {% block content %}
+<main class="page-race">
 
 <!--Buttons for controlling the race-->
 <select class="set_current_heat">
@@ -301,14 +301,12 @@
 <div class="race-results">
 	{% for node in range(num_nodes) %}
 	<div class="node">
-		<h4 class="panel-title callsign_{{ node }}">
+		<h4 class="callsign_{{ node }}">
 			{{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 			}}
 		</h4>
-		<div class="panel-heading">
-			<small>{{ channels[node] }} {{ frequencies[node] }}</small>
-			<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">Manual</button>
-		</div>
+		<div class="channel-block"><span class="ch">{{ channels[node] }}</span> <span class="fr">{{ frequencies[node] }}</span></div>
+		<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">Manual</button>
 		<table class="laps" id="current_laps_{{ node }}">
 			<thead>
 				<tr>
@@ -326,4 +324,5 @@
 	{% endfor %}
 </div>
 
+</main>
 {% endblock %}

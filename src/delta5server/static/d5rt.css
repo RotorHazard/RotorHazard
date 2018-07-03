@@ -16,22 +16,44 @@ h1, h2, h3, h4, h5, h6, p, ul, ol, li {
 	margin: 0;
 }
 
+*+h2 {
+	margin-top: 4rem;
+}
+
+h3 {
+	padding: 0.25rem;
+	background: hsl(213.8, 53.8%, 46.7%);
+	color: #fff;
+}
+
 table {
 	border-collapse: collapse;
 	min-width: 100%;
 }
 
 th, td {
-	border: solid 1px;
 	padding: 0.25em;
+	text-align: right;
 }
 
-th {
-	text-align: left;
-}
-
-input {
+input, select, textarea {
 	font: inherit;
+	box-sizing: border-box;
+}
+
+input[type="text"], textarea {
+	width: 100%;
+	border: none;
+	background: hsl(200, 3.4%, 82.5%);
+	padding: 0.25rem;
+}
+
+textarea {
+	height: 4em;
+}
+
+select {
+	width: 100%;
 }
 
 *+* {
@@ -39,18 +61,18 @@ input {
 }
 
 button, select {
-	border: solid 0.125em #376FB7;
-	background: #eee;
+	border: solid 0.125em hsl(213.8, 53.8%, 46.7%);
+	background: hsl(212.7, 67.8%, 29.2%);
 	border-radius: 0.25rem;
 	padding: 0.25em 0.5em;
-	color: #376FB7;
+	color: #fff;
 	font-size: inherit;
 	cursor: pointer;
 }
 
 button:disabled, select:disabled {
-	border: solid 0.125em #ccc;
-	color: #ccc;
+	border: solid 0.125em hsl(225, 1.8%, 43.5%);
+	color: hsl(225, 1.8%, 43.5%);
 }
 
 body>header {
@@ -92,6 +114,8 @@ nav a {
 
 main {
 	padding: 0.5em;
+	max-width: 59em;
+	margin: 0 auto;
 }
 
 .timing-clock {
@@ -106,26 +130,56 @@ main {
 }
 
 .race-running .timing-clock {
-	background: #060;
+	background: hsl(92.7, 67.8%, 29.2%);
 }
 
 .race-stopped .timing-clock {
-	background: #600;
+	background: hsl(13.1, 64.6%, 37.6%);
 }
 
 .round {
-	border-top: solid 1px #ccc;
+	margin-bottom: 2rem;
 }
 
 .race-results {
 	display: flex;
 	flex-wrap: wrap;
-	margin: 0 -0.5rem;
+	margin: 0 -0.25rem;
 }
 
 .node {
-	width: 8em;
-	margin: 0.5rem;
+	box-sizing: border-box;
+	min-width: 7em;
+	flex: 1 0 25%;
+	margin: 0.5rem 0;
+	padding: 0 0.25rem;
+}
+
+@media (max-width: 38em) {
+	.node {
+		flex: 1 0 50%;
+	}
+}
+
+.node h4 {
+	padding: 0.25rem;
+	background: hsl(212.7, 67.8%, 29.2%);
+	color: #fff;
+	white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 1rem;
+}
+
+.page-rounds .node table {
+	margin-top: 0;
+}
+
+.page-racepublic td,
+.page-race td,
+.page-rounds td,
+.page-settings td {
+	border: solid 1px hsl(200, 3.4%, 82.5%);
 }
 
 .race-results h4 {
@@ -138,32 +192,109 @@ main {
 }
 
 .heat {
-	width: 8em;
-	margin: 0.5em;
+	min-width: 12em;
+	margin: 0 0.25em 2em;
 }
 
 #heatsetup .heat {
-	width: 18em;
+	min-width: 18em;
 }
 
 .heat table {
 	font-size: 1rem;
 }
 
+.heat td:first-child {
+	width: 2.5em;
+}
+
+.heat td:last-child {
+	text-align: left;
+}
+
 .pilots table {
 	min-width: 0;
+}
+
+.pilots th,
+.pilots td {
+	padding: 0.5rem;
+	text-align: left;
+}
+
+.pilots td {
+	border-top: solid 0.0625em hsl(213.8, 53.8%, 46.7%);
+}
+
+.pilots th:first-child,
+.pilots td:first-child {
+	padding-right: 1rem;
 }
 
 .node-list {
 	display: flex;
 	flex-wrap: wrap;
-	margin: 0 -0.5rem;	
+	margin: 0 -0.25rem;	
+}
+
+.simulate_lap {
+	font-size: 1rem;
 }
 
 .btn-danger {
-	background: #900;
+	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
+	background: hsl(8.2, 86.5%, 53.7%);
 }
 
 .btn-warning {
-	background: #c60;
+	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
+	background: hsl(41.1, 86.2%, 54.5%);
+	color: #000;
+}
+
+.delete_lap {
+	width: 100%;
+	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
+	background: hsl(8.2, 86.5%, 53.7%);	
+}
+
+.channel-block {
+	background: hsl(200, 3.4%, 82.5%);
+	color: hsl(240, 0.8%, 23.3%);
+	border-radius: 0.5rem;
+	border: solid 0.125em hsl(225, 1.8%, 43.5%);
+	display: inline-block;
+	line-height: 1;
+	padding: 0.25rem;
+	vertical-align: top;
+	text-align: center;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-around;
+	align-items: center;
+}
+
+.channel-block .ch {
+	font-size: 1.2em;
+	font-weight: bold;
+}
+
+.channel-block .fr {
+	font-size: 0.75em;
+	margin-top: 0;
+}
+
+.page-race .channel-block {
+	width: 2.5rem;
+	display: inline-flex;
+}
+
+.set_current_heat,
+.set_profile {
+	width: auto;
+}
+
+th.speak,
+td.speak {
+	width: 2.2em;
 }
