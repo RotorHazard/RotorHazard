@@ -27,7 +27,7 @@
 		idlang = typeof idlang !== 'undefined' ? idlang : 0;
 		$('.sel_lang').html(languages[idlang]);
 	}
-	
+
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
@@ -38,7 +38,7 @@
 			$('.set_language').append('<option value="'+ i + '">'+ languages[i] + '</option>');
 		}
 		$('.set_language').val({{ lang_id }}).attr('selected', 'selected');
-		
+
 		socket.on('heartbeat', function (msg) {
 			for (i = 0; i < msg.current_rssi.length; i++) {
 				$('.current_rssi_' + i).html(msg.current_rssi[i]);
@@ -81,7 +81,7 @@
 				$('.name_' + i).attr('value', msg.name[i]);
 			}
 		});
-		
+
 		socket.on('language_data', function (msg) {
 			var $langid = msg.language;
 			sellang = $langid;
@@ -90,9 +90,9 @@
 
 		socket.on('speak_phonetic_text', function (msg) {
 			var $ttstext = msg.text;
-			speak('<div class="speech">' + $ttstext + '</div> div.speech');				
+			speak('<div class="speech">' + $ttstext + '</div> div.speech');
 		})
-		
+
 		$('.set_frequency').change(function (event) {
 			var data = {
 				node: parseInt($(this).data('node')),
@@ -101,32 +101,12 @@
 			socket.emit('set_frequency', data);
 		});
 
-		/*
-		$('.set_language li a').click(function (event) {
-			var data = {
-				language: parseInt($(this).data('language'))
-			};
-			socket.emit('set_language', data);
-		})
-		*/
-
 		$('.set_language').change(function (event) {
 			var data = {
 				language: parseInt($(this).val())
 			};
 			socket.emit('set_language', data);
-		});		
-
-		/*
-		$('.set_pilot_position li a').click(function (event) {
-			var data = {
-				heat: parseInt($(this).data('heat')),
-				node: parseInt($(this).data('node')),
-				pilot: parseInt($(this).data('pilot'))
-			};
-			socket.emit('set_pilot_position', data);
-		})
-		*/
+		});
 
 		$('.set_pilot_position').change(function (event) {
 			var data = {
@@ -136,7 +116,6 @@
 			};
 			socket.emit('set_pilot_position', data);
 		});
-
 
 		$('.set_pilot_callsign').change(function (event) {
 			var data = {
@@ -152,8 +131,8 @@
 				phonetic: $(this).val()
 			};
 			socket.emit('set_pilot_phonetic', data);
-		})		
-		
+		})
+
 		$('.set_pilot_name').change(function (event) {
 			var data = {
 				pilot_id: parseInt($(this).data('pilot_id')),
@@ -195,8 +174,8 @@
 				profile_desciption: $(this).val()
 			};
 			socket.emit('set_profile_desciption', data);
-
 		})
+
 		$('button#add_heat').click(function (event) {
 			socket.emit('add_heat');
 			window.location.href = "/settings"; // Update to not need page reload
@@ -248,16 +227,6 @@
 			socket.emit('shutdown_pi');
 			return false;
 		});
-
-		/*
-		$('.set_profile li a').click(function (event) {
-			var data = {
-				profile: $(this).data('profile')
-			};
-			$('button#set_profile').html($(this).data('profile'));
-			socket.emit('set_profile', data);
-		})
-		*/
 
 		$('.set_profile').change(function (event) {
 			var data = {
@@ -354,7 +323,7 @@
 							heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id
 							).first().pilot_id %}
 						{% for pilot in pilots.query.all() %}
-						<option value="{{ pilot.pilot_id }}" 
+						<option value="{{ pilot.pilot_id }}"
 							{% if pilot.pilot_id|int() == heatpilotid|int() %}
 								selected="selected"
 							{% endif %}>
@@ -484,6 +453,12 @@
 <div>
 	<button type="button" class="btn-danger" id="shutdown_pi" onclick="this.blur();">Shutdown</button>
 </div>
+
+<h2>Debug</h2>
+<ul>
+	<li><a href="/hardwarelog">Log</a></li>
+	<li><a href="/database">Database</a></li>
+</ul>
 
 </main>
 {% endblock %}

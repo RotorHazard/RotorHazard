@@ -89,28 +89,28 @@
 			$('#leaderboard tbody > tr').remove();
 			for (i = 0; i < msg.position.length; i++) {
 				var $tr = $('<tr>').append(
-					$('<td>').text(msg.position[i]),
-					$('<td>').text(msg.callsign[i]),
-					$('<td>').text(msg.laps[i]),
-					$('<td>').text(msg.last_lap[i]),
-					$('<td>').text(msg.behind[i]),
-					$('<td>').text(msg.average_lap[i]),
-					$('<td>').text(msg.fastest_lap[i]),
-					$('<td>').text(msg.total_time[i]),
+					$('<td class="pos">').text(msg.position[i]),
+					$('<td class="pilot">').text(msg.callsign[i]),
+					$('<td class="laps">').text(msg.laps[i]),
+					$('<td class="last">').text(msg.last_lap[i]),
+					$('<td class="behind">').text(msg.behind[i]),
+					$('<td class="avg">').text(msg.average_lap[i]),
+					$('<td class="fast">').text(msg.fastest_lap[i]),
+					$('<td class="total">').text(msg.total_time[i]),
 				).appendTo('#leaderboard');
 			}
 		});
 
 		socket.on('phonetic_data', function (msg) {
 			var $ttstest = msg.pilot + " lap " + msg.lap + " " + msg.phonetic;
-			speak('<div class="speech">' + $ttstest + '</div> div.speech');				
+			speak('<div class="speech">' + $ttstest + '</div> div.speech');
 		})
 
 		socket.on('language_data', function (msg) {
 			var $testlang = msg.language;
 			sellang = $testlang;
 		})
-		
+
 		socket.on('current_heat', function (msg) {
 			$('.current_heat').html('Heat ' + msg.current_heat);
 			for (i = 0; i < msg.callsign.length; i++) {
@@ -206,7 +206,7 @@
 				break;
 			case 6:
 				$(obj).articulate('setVoice','name','Google Deutsch').articulate('speak');
-				break;			
+				break;
 			case 7:
 				$(obj).articulate('setVoice','name','Google español').articulate('speak');
 				break;
@@ -262,7 +262,7 @@
 <!--Buttons for controlling the race-->
 <select class="set_current_heat">
 	{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
-	<option value="{{ heat.heat_id }}" {% if heat.heat_id|int() == current_heat|int() %} 
+	<option value="{{ heat.heat_id }}" {% if heat.heat_id|int() == current_heat|int() %}
 			selected="selected"
 		{% endif %}>
 		Heat {{ heat.heat_id }}
@@ -283,14 +283,14 @@
 <table id="leaderboard">
 	<thead>
 		<tr>
-			<th>Pos.</th>
-			<th>Pilot</th>
-			<th>Laps</th>
-			<th>Last Lap</th>
-			<th>Behind</th>
-			<th>Average</th>
-			<th>Fastest</th>
-			<th>Total</th>
+			<th class="pos">Pos.</th>
+			<th class="pilot">Pilot</th>
+			<th class="laps">Laps</th>
+			<th class="last">Last Lap</th>
+			<th class="behind">Behind</th>
+			<th class="avg">Average</th>
+			<th class="fast">Fastest</th>
+			<th class="total">Total</th>
 		</tr>
 	</thead>
 	<tbody>

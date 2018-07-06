@@ -75,17 +75,34 @@ button:disabled, select:disabled {
 	color: hsl(225, 1.8%, 43.5%);
 }
 
+.table-wrap {
+	overflow-x: auto;
+}
+
 body>header {
 	background: #000;
 	color: #fff;
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: space-between;
-	padding: 0.5em;
+	align-items: center;
+	padding: 0.5rem;
+	position: relative;
+	line-height: 1;
 }
 
 #logo {
+	width: 12rem;
+}
 
+.hamburger {
+	display: none;
+	padding: 0 2em 0 0;
+	background: url(image/hamburger.svg) right center no-repeat;
+	width: calc(100% - 13rem);
+	text-align: right;
+	border: none;
+	margin-top: 0;
 }
 
 nav {
@@ -110,6 +127,46 @@ nav li {
 nav a {
 	color: #fff;
 	text-decoration: none;
+	display: block;
+}
+
+@media (max-width: 44em){
+	.hamburger {
+		display: block;
+	}
+
+	.nav-over .hamburger {
+		background: url(image/close.svg) right center no-repeat;
+	}
+
+	#nav-main {
+		display: none;
+		position: absolute;
+		left: 0;
+		right: 0;
+		background: #000;
+		top: 2.5rem;
+		border-top: solid 1px #fff;
+	}
+
+	#nav-main li {
+		width: 100%;
+		margin: 0.5em;
+	}
+
+	.nav-over #nav-main {
+		display: block;
+	}
+}
+
+@media (max-width: 20em){
+	#logo {
+		display: none;
+	}
+
+	.hamburger {
+		width: 100%;
+	}
 }
 
 main {
@@ -150,14 +207,93 @@ main {
 .node {
 	box-sizing: border-box;
 	min-width: 7em;
-	flex: 1 0 25%;
 	margin: 0.5rem 0;
 	padding: 0 0.25rem;
+	flex: 1 0 7em;
 }
 
-@media (max-width: 38em) {
-	.node {
-		flex: 1 0 50%;
+@media (max-width: 69em) {
+	.node:first-child:nth-last-child(1) {
+		flex: 0 auto;
+		width: 100%;
+	}
+
+	.node:first-child:nth-last-child(2),
+	.node:first-child:nth-last-child(2) ~ .node {
+		flex: 0 auto;
+		width: 50%;
+	}
+
+	.node:first-child:nth-last-child(4),
+	.node:first-child:nth-last-child(4) ~ .node,
+	.node:first-child:nth-last-child(7),
+	.node:first-child:nth-last-child(7) ~ .node,
+	.node:first-child:nth-last-child(8),
+	.node:first-child:nth-last-child(8) ~ .node {
+		flex: 0 auto;
+		width: 25%;
+	}
+}
+
+@media (max-width: 53em) {
+	.node:first-child:nth-last-child(3),
+	.node:first-child:nth-last-child(3) ~ .node,
+	.node:first-child:nth-last-child(5),
+	.node:first-child:nth-last-child(5) ~ .node,
+	.node:first-child:nth-last-child(6),
+	.node:first-child:nth-last-child(6) ~ .node {
+		flex: 0 auto;
+		width: 33.3333%;
+	}
+}
+
+@media (max-width: 36em) {
+	.node:first-child:nth-last-child(7),
+	.node:first-child:nth-last-child(7) ~ .node,
+	.node:first-child:nth-last-child(8),
+	.node:first-child:nth-last-child(8) ~ .node {
+		  width: 33.3333%;
+	}
+
+	.node:first-child:nth-last-child(4),
+	.node:first-child:nth-last-child(4) ~ .node{
+		width: 50%;
+	}
+}
+
+@media (max-width: 27em) {
+	.node:first-child:nth-last-child(3),
+	.node:first-child:nth-last-child(3) ~ .node,
+	.node:first-child:nth-last-child(5),
+	.node:first-child:nth-last-child(5) ~ .node,
+	.node:first-child:nth-last-child(6),
+	.node:first-child:nth-last-child(6) ~ .node,
+	.node:first-child:nth-last-child(7),
+	.node:first-child:nth-last-child(7) ~ .node,
+	.node:first-child:nth-last-child(8),
+	.node:first-child:nth-last-child(8) ~ .node {
+		width: 50%;
+	}
+}
+
+@media (max-width: 19em) {
+	.node:first-child:nth-last-child(1),
+	.node:first-child:nth-last-child(1) ~ .node,
+	.node:first-child:nth-last-child(2),
+	.node:first-child:nth-last-child(2) ~ .node,
+	.node:first-child:nth-last-child(3),
+	.node:first-child:nth-last-child(3) ~ .node,
+	.node:first-child:nth-last-child(4),
+	.node:first-child:nth-last-child(4) ~ .node,
+	.node:first-child:nth-last-child(5),
+	.node:first-child:nth-last-child(5) ~ .node,
+	.node:first-child:nth-last-child(6),
+	.node:first-child:nth-last-child(6) ~ .node,
+	.node:first-child:nth-last-child(7),
+	.node:first-child:nth-last-child(7) ~ .node,
+	.node:first-child:nth-last-child(8),
+	.node:first-child:nth-last-child(8) ~ .node {
+		width: 100%;
 	}
 }
 
@@ -166,9 +302,9 @@ main {
 	background: hsl(212.7, 67.8%, 29.2%);
 	color: #fff;
 	white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 1rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: 1rem;
 }
 
 .page-rounds .node table {
@@ -231,10 +367,30 @@ main {
 	padding-right: 1rem;
 }
 
+@media (max-width: 45em) {
+	#leaderboard th {
+		font-size: 0.75em;
+	}
+}
+
+@media (max-width: 38em) {
+	#leaderboard {
+		font-size: 1rem;
+		overflow: auto;
+	}
+	#leaderboard th {
+		font-size: 0.75em;
+		text-overflow: ellipsis;
+	}
+	#leaderboard .behind {
+		display: none;
+	}
+}
+
 .node-list {
 	display: flex;
 	flex-wrap: wrap;
-	margin: 0 -0.25rem;	
+	margin: 0 -0.25rem;
 }
 
 .simulate_lap {
@@ -255,7 +411,7 @@ main {
 .delete_lap {
 	width: 100%;
 	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
-	background: hsl(8.2, 86.5%, 53.7%);	
+	background: hsl(8.2, 86.5%, 53.7%);
 }
 
 .channel-block {
