@@ -1,43 +1,16 @@
 {% extends "layout.html" %} {% block title %}Settings{% endblock %} {% block head %}
 <script type="text/javascript" charset="utf-8">
-	var languages = [
-		"None",
-		"David - English (United States) en-US",
-		"Zira - English (United States) en-US",
-		"US English en-US",
-		"UK English Female en-GB",
-		"UK English Male en-GB",
-		"Deutsch de-DE",
-		"español es-ES",
-		"español de Estados Unidos es-US",
-		"français fr-FR",
-		"हिन्दी hi-IN",
-		"Bahasa Indonesia id-ID",
-		"italiano it-IT",
-		"日本語 ja-JP",
-		"한국의 ko-KR",
-		"Nederlands nl-NL",
-		"polski pl-PL",
-		"português do Brasil pt-BR",
-		"русский ru-RU",
-		"國語（臺灣） zh-TW"
-	]
-
-	function voice_label(idlang) {
-		idlang = typeof idlang !== 'undefined' ? idlang : 0;
-		$('.sel_lang').html(languages[idlang]);
-	}
-
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
-		voice_label( {{ lang_id }} );
-
+		// construct language selection
 		$('#voice_select').after('<select class="set_language">');
-		for (var i in languages) {
-			$('.set_language').append('<option value="'+ i + '">'+ languages[i] + '</option>');
+		var voices = $().articulate('getVoices');
+
+		for (var i in voices) {
+			$('.set_language').append('<option>'+ voices[i].name + '</option>');
 		}
-		$('.set_language').val({{ lang_id }}).attr('selected', 'selected');
+		$('.set_language').val(d5rt.language).attr('selected', 'selected');
 
 		socket.on('heartbeat', function (msg) {
 			for (i = 0; i < msg.current_rssi.length; i++) {
@@ -82,12 +55,6 @@
 			}
 		});
 
-		socket.on('language_data', function (msg) {
-			var $langid = msg.language;
-			sellang = $langid;
-			voice_label($langid);
-		});
-
 		socket.on('speak_phonetic_text', function (msg) {
 			var $ttstext = msg.text;
 			speak('<div class="speech">' + $ttstext + '</div> div.speech');
@@ -102,10 +69,8 @@
 		});
 
 		$('.set_language').change(function (event) {
-			var data = {
-				language: parseInt($(this).val())
-			};
-			socket.emit('set_language', data);
+			d5rt.language = $(this).val();
+			d5rt.saveData();
 		});
 
 		$('.set_pilot_position').change(function (event) {
@@ -244,17 +209,8 @@
 
 	});
 
-	var sellang = {{ lang_id }};
-
 	function speak(obj) {
-		$(obj).articulate('setVoice','name', languages[sellang]).articulate('speak');
-	};
-
-	function ratenormal(obj) {
-		$(obj).articulate('rate', 1.0);
-	};
-	function ratefast(obj) {
-		$(obj).articulate('rate', 3.0);
+		$(obj).articulate('setVoice','name', d5rt.language).articulate('speak');
 	};
 
 </script>

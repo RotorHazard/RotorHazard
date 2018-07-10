@@ -46,7 +46,7 @@ class Pilot(DB.Model):
     callsign = DB.Column(DB.String(80), unique=True, nullable=False)
     phonetic = DB.Column(DB.String(80), unique=True, nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
-	
+
     def __repr__(self):
         return '<Pilot %r>' % self.pilot_id
 
@@ -284,13 +284,6 @@ def on_set_frequency(data):
     INTERFACE.set_frequency(node_index, frequency)
     server_log('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
     emit_node_data() # Settings page, new node channel
-
-@SOCKET_IO.on('set_language')
-def on_set_language(data):
-    '''Set language.'''
-    RACE.lang_id = data['language']
-    emit_language_data()
-
 
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
@@ -748,7 +741,7 @@ def emit_leaderboard():
         'average_lap': [time_format(leaderboard_sorted[i][4]) for i in range(RACE.num_nodes)],
         'fastest_lap': [time_format(leaderboard_sorted[i][5]) for i in range(RACE.num_nodes)]
     })
-	
+
 def emit_heat_data():
     '''Emits heat data.'''
     current_heats = []
@@ -756,7 +749,7 @@ def emit_heat_data():
         pilots = []
         for node in range(RACE.num_nodes):
             pilot_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=node).first().pilot_id
-            pilots.append(Pilot.query.filter_by(pilot_id=pilot_id).first().callsign)
+            pilots.append(Pilot.query.filter_by(pilot_id=pilot_id).first().pilot_id)
         current_heats.append({'callsign': pilots})
     current_heats = {'heat_id': current_heats}
     SOCKET_IO.emit('heat_data', current_heats)
@@ -786,10 +779,6 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time):
     phonetic_time = phonetictime_format(lap_time)
     phonetic_name = Pilot.query.filter_by(pilot_id=pilot_id).first().phonetic
     SOCKET_IO.emit('phonetic_data', {'pilot': phonetic_name, 'lap': lap_id, 'phonetic': phonetic_time})
-
-def emit_language_data():
-    '''Emits language.'''
-    SOCKET_IO.emit('language_data', {'language': RACE.lang_id})
 
 def emit_current_fix_race_time():
     ''' Emit current fixed time race time '''
@@ -841,7 +830,7 @@ def phonetictime_format(millis):
     over = (millis % 60000) % 1000
     tenths = over / 100
     return '{0:01d}.{1:01d}'.format(seconds, tenths)
-	
+
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''
     server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index, ms_since_lap))
@@ -881,7 +870,7 @@ def pass_record_callback(node, ms_since_lap):
             .format(node.index, lap_id, time_format(lap_time)))
         emit_current_laps() # Updates all laps on the race page
         emit_leaderboard() # Updates leaderboard
-        if lap_id > 0: 
+        if lap_id > 0:
             emit_phonetic_data(pilot_id, lap_id, lap_time) # Sends phonetic data to be spoken
 
 INTERFACE.pass_record_callback = pass_record_callback

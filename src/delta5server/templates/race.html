@@ -106,11 +106,6 @@
 			speak('<div class="speech">' + $ttstest + '</div> div.speech');
 		})
 
-		socket.on('language_data', function (msg) {
-			var $testlang = msg.language;
-			sellang = $testlang;
-		})
-
 		socket.on('current_heat', function (msg) {
 			$('.current_heat').html('Heat ' + msg.current_heat);
 			for (i = 0; i < msg.callsign.length; i++) {
@@ -185,76 +180,10 @@
 
 	});
 
-	var sellang = {{ lang_id }};
-
 	function speak(obj) {
-		switch (sellang) {
-			case 1:
-				$(obj).articulate('setVoice','name','Microsoft David Desktop - English (United States)').articulate('speak');
-				break;
-			case 2:
-				$(obj).articulate('setVoice','name','Microsoft Zira Desktop - English (United States)').articulate('speak');
-				break;
-			case 3:
-				$(obj).articulate('setVoice','name','Google US English').articulate('speak');
-				break;
-			case 4:
-				$(obj).articulate('setVoice','name','Google UK English Female').articulate('speak');
-				break;
-			case 5:
-				$(obj).articulate('setVoice','name','Google UK English Male').articulate('speak');
-				break;
-			case 6:
-				$(obj).articulate('setVoice','name','Google Deutsch').articulate('speak');
-				break;
-			case 7:
-				$(obj).articulate('setVoice','name','Google español').articulate('speak');
-				break;
-			case 8:
-				$(obj).articulate('setVoice','name','Google español de Estados Unidos').articulate('speak');
-				break;
-			case 9:
-				$(obj).articulate('setVoice','name','Google français').articulate('speak');
-				break;
-			case 10:
-				$(obj).articulate('setVoice','name','Google हिन्दी').articulate('speak');
-				break;
-			case 11:
-				$(obj).articulate('setVoice','name','Google Bahasa Indonesia').articulate('speak');
-				break;
-			case 12:
-				$(obj).articulate('setVoice','name','Google italiano').articulate('speak');
-				break;
-			case 13:
-				$(obj).articulate('setVoice','name','Google 日本語').articulate('speak');
-				break;
-			case 14:
-				$(obj).articulate('setVoice','name','Google 한국의').articulate('speak');
-				break;
-			case 15:
-				$(obj).articulate('setVoice','name','Google Nederlands').articulate('speak');
-				break;
-			case 16:
-				$(obj).articulate('setVoice','name','Google polski').articulate('speak');
-				break;
-			case 17:
-				$(obj).articulate('setVoice','name','Google português do Brasil').articulate('speak');
-				break;
-			case 18:
-				$(obj).articulate('setVoice','name','Google русский').articulate('speak');
-				break;
-			case 19:
-				$(obj).articulate('setVoice','name','Google 國語（臺灣）').articulate('speak');
-				break;
-		}
+		$(obj).articulate('setVoice','name', d5rt.language).articulate('speak');
 	};
 
-	function ratenormal(obj) {
-		$(obj).articulate('rate', 1.0);
-	};
-	function ratefast(obj) {
-		$(obj).articulate('rate', 3.0);
-	};
 </script>
 {% endblock %} {% block content %}
 <main class="page-race">
