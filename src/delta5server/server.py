@@ -73,6 +73,44 @@ def theaterChase(strip, color, wait_ms=50, iterations=5):
             for i in range(0, strip.numPixels(), 3):
                 strip.setPixelColor(i+q, 0)
 
+def wheel(pos):
+    """Generate rainbow colors across 0-255 positions."""
+    if pos < 85:
+        return Color(pos * 3, 255 - pos * 3, 0)
+    elif pos < 170:
+        pos -= 85
+        return Color(255 - pos * 3, 0, pos * 3)
+    else:
+        pos -= 170
+        return Color(0, pos * 3, 255 - pos * 3)
+		
+def rainbow(strip, wait_ms=2, iterations=1):
+    """Draw rainbow that fades across all pixels at once."""
+    for j in range(256*iterations):
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, wheel((i+j) & 255))
+        strip.show()
+        time.sleep(wait_ms/1000.0)
+
+def rainbowCycle(strip, wait_ms=2, iterations=1):
+    """Draw rainbow that uniformly distributes itself across all pixels."""
+    for j in range(256*iterations):
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
+        strip.show()
+        time.sleep(wait_ms/1000.0)
+
+def theaterChaseRainbow(strip, wait_ms=25):
+    """Rainbow movie theater light style chaser animation."""
+    for j in range(256):
+        for q in range(3):
+            for i in range(0, strip.numPixels(), 3):
+                strip.setPixelColor(i+q, wheel((i+j) % 255))
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+            for i in range(0, strip.numPixels(), 3):
+                strip.setPixelColor(i+q, 0)
+
 # Create NeoPixel object with appropriate configuration.
 strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
 # Intialize the library (must be called once before other functions).
@@ -670,6 +708,34 @@ def on_simulate_lap(data):
     node_index = data['node']
     server_log('Simulated lap: Node {0}'.format(node_index))
     INTERFACE.intf_simulate_lap(node_index)
+
+@SOCKET_IO.on('LED_solid')
+def on_LED_solid(data):
+    '''LED Solid Color'''
+    led_red = data['red']
+    led_green = data['green']
+    led_blue = data['blue']
+    onoff(strip, Color(led_red,led_green,led_blue))
+
+@SOCKET_IO.on('LED_chase')
+def on_LED_chase(data):
+    '''LED Solid Color'''
+    led_red = data['red']
+    led_green = data['green']
+    led_blue = data['blue']
+    theaterChase(strip, Color(led_red,led_green,led_blue))
+
+@SOCKET_IO.on('LED_RB')
+def on_LED_RB():
+    rainbow(strip) #Rainbow
+
+@SOCKET_IO.on('LED_RBCYCLE')
+def on_LED_RBCYCLE():
+    rainbowCycle(strip) #Rainbow Cycle
+
+@SOCKET_IO.on('LED_RBCHASE')
+def on_LED_RBCHASE():
+    theaterChaseRainbow(strip) #Rainbow Chase
 
 # Socket io emit functions
 
