@@ -5,7 +5,10 @@
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
-		var buzzer = $('#buzzer')[0];
+		// set admin flag
+		d5rt.admin = true;
+		d5rt.saveData();
+		$('nav li').removeClass('admin-hide');
 
 		socket.on('race_status', function (msg) {
 			switch (msg.race_status) {
@@ -66,16 +69,16 @@
 				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
 					// No lap deletion for first lap
 					if (node_index.lap_id[j] == 0) {
-						var $tr = $('<tr>').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j])
+						var $tr = $('<tr class="lap_0">').append(
+							// $('<td>').text(node_index.lap_id[j]),
+							$('<td colspan="2">').text(node_index.lap_time[j])
 						).appendTo('#current_laps_' + i);
 					}
 					else {
 						var $tr = $('<tr>').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j] + ' ').append(
-								$('<button type="button" class="delete_lap" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '" onclick="this.blur();">&#215;</button>')
+							// $('<td>').text(node_index.lap_id[j]),
+							$('<td colspan="2">').text(node_index.lap_time[j] + ' ').append(
+								$('<button type="button" class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '" onclick="this.blur();">&#215;</button>')
 							)
 						).appendTo('#current_laps_' + i);
 					}
@@ -188,24 +191,26 @@
 {% endblock %} {% block content %}
 <main class="page-race">
 
-<!--Buttons for controlling the race-->
-<select class="set_current_heat">
-	{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
-	<option value="{{ heat.heat_id }}" {% if heat.heat_id|int() == current_heat|int() %}
-			selected="selected"
-		{% endif %}>
-		Heat {{ heat.heat_id }}
-	</option>
-	{% endfor %}
-</select>
-<button type="button" class="btn btn-default" id="start_race" onclick="this.blur();">Start Race</button>
-<button type="button" class="btn btn-default" id="start_race_2min" onclick="this.blur();">Start Fixed Time Race</button>
-<button type="button" class="btn btn-default" id="stop_race" disabled="disabled" onclick="this.blur();">Stop Race</button>
-<button type="button" class="btn btn-default" id="save_laps" disabled="disabled" onclick="this.blur();">Save Laps</button>
-<button type="button" class="btn btn-default" id="clear_laps" disabled="disabled" onclick="this.blur();">Clear Laps</button>
-
 <div class="timer">
 	{% include "build_timer.html" %}
+</div>
+
+<!--Buttons for controlling the race-->
+<div class="control-set">
+	<select class="set_current_heat">
+		{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
+		<option value="{{ heat.heat_id }}" {% if heat.heat_id|int() == current_heat|int() %}
+				selected="selected"
+			{% endif %}>
+			Heat {{ heat.heat_id }}
+		</option>
+		{% endfor %}
+	</select>
+	<button type="button" id="start_race" onclick="this.blur();">Start Race</button>
+	<button type="button" id="start_race_2min" onclick="this.blur();">Start Fixed Time Race</button>
+	<button type="button" id="stop_race" disabled="disabled" onclick="this.blur();">Stop Race</button>
+	<button type="button" id="save_laps" disabled="disabled" onclick="this.blur();">Save Laps</button>
+	<button type="button" id="clear_laps" disabled="disabled" onclick="this.blur();">Clear Laps</button>
 </div>
 
 <!--Display the race leaderboard-->
@@ -234,12 +239,14 @@
 			{{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 			}}
 		</h4>
-		<div class="channel-block"><span class="ch">{{ channels[node] }}</span> <span class="fr">{{ frequencies[node] }}</span></div>
-		<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">Manual</button>
+		<div class="race-header">
+			<div class="channel-block"><span class="ch">{{ channels[node] }}</span> <span class="fr">{{ frequencies[node] }}</span></div>
+			<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">Manual</button>
+		</div>
 		<table class="laps" id="current_laps_{{ node }}">
 			<thead>
 				<tr>
-					<td colspan="2">
+					<td class="rssi" colspan="2">
 						<span class="current_rssi_{{ node }}"></span> /
 						<span class="trigger_rssi_{{ node }}"></span> /
 						<span class="peak_rssi_{{ node }}"></span>

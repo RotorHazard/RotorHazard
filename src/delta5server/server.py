@@ -140,7 +140,7 @@ def requires_auth(f):
 # Routes
 #
 
-@APP.route('/')
+@APP.route('/results')
 def index():
     '''Route to round summary page.'''
     # A more generic and flexible way of viewing saved race data is needed
@@ -188,7 +188,7 @@ def index():
         pilots=Pilot, heats=Heat)
         #, heat_max_laps=heat_max_laps, heat_fast_laps=heat_fast_laps
 
-@APP.route('/heats')
+@APP.route('/')
 def heats():
     '''Route to heat summary page.'''
     return render_template('heats.html', num_nodes=RACE.num_nodes, heats=Heat, pilots=Pilot, \
@@ -209,7 +209,7 @@ def race():
         channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
             for node in INTERFACE.nodes])
 
-@APP.route('/racepublic')
+@APP.route('/current')
 def racepublic():
     '''Route to race management page.'''
     return render_template('racepublic.html', num_nodes=RACE.num_nodes,
@@ -797,7 +797,7 @@ def heartbeat_thread_function():
     '''Emits current rssi data.'''
     while True:
         SOCKET_IO.emit('heartbeat', INTERFACE.get_heartbeat_json())
-        gevent.sleep(0.500)
+        gevent.sleep(0.250)
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''

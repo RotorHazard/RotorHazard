@@ -19,7 +19,7 @@
                 <table class="laps">
                     <tbody>
                         {% for lap in rounds.query.filter_by(heat_id=heat.heat_id, round_id=round.round_id, node_index=node).all() %}
-                        <tr>
+                        <tr class="lap_{{ lap.lap_id }}">
                             <td>
                                 {{ lap.lap_id }}
                             </td>
@@ -61,7 +61,7 @@
                             <td>
                                 {# heat_fast_laps[heat.heat_id-1][node] #}
                             </td>
-                        </tr>                    
+                        </tr>
                     {# endfor #}
                     </tbody>
                 </table>

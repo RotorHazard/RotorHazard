@@ -10,17 +10,24 @@ function supportsLocalStorage() {
 /* d5rt object for local settings/storage */
 var d5rt = {
 	language: '',
+	admin: false,
 
 	saveData: function() {
 		if (!supportsLocalStorage()) {
 			return false;
 		}
 		localStorage['d5rt.language'] = JSON.stringify(this.language);
+		localStorage['d5rt.admin'] = JSON.stringify(this.admin);
 		return true;
 	},
 	restoreData: function(dataType) {
-		if (supportsLocalStorage() && localStorage['d5rt.language']) {
-			this.language = JSON.parse(localStorage['d5rt.language']);
+		if (supportsLocalStorage()) {
+			if (localStorage['d5rt.language']) {
+				this.language = JSON.parse(localStorage['d5rt.language']);
+			}
+			if (localStorage['d5rt.admin']) {
+				this.admin = JSON.parse(localStorage['d5rt.admin']);
+			}
 			return true;
 		}
 		return false;
@@ -34,6 +41,10 @@ jQuery(document).ready(function($){
 	// restore local settings
 	d5rt.language = $().articulate('getVoices')[0].name; // set default voice
 	d5rt.restoreData();
+
+	if (d5rt.admin) {
+		$('nav li').removeClass('admin-hide');
+	}
 
 	// header collapsing (hamburger)
 	$('#logo').after('<button class="hamburger">Menu</button>');

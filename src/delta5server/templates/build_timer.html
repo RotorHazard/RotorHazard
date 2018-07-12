@@ -1,8 +1,3 @@
-<!-- <audio id="countdown_tenseconds" src="./static/audio/countdown_tenseconds.mp3" type="audio/mp3"></audio>
-<audio id="callout_thirtyseconds" src="./static/audio/callout_thirtyseconds.mp3" type="audio/mp3"></audio>
-<audio id="callout_oneminute" src="./static/audio/callout_oneminute.mp3" type="audio/mp3"></audio>
-<audio id="callout_twominutes" src="./static/audio/callout_twominutes.mp3" type="audio/mp3"></audio> -->
-
 <script>
 	function _timer(callback) {
 		var time = 0; // The default time in seconds
@@ -11,12 +6,6 @@
 		var timer_id; // Used by setInterval function
 
 		var buzzer = $('buzzer')[0]; // Buzzer audio tag is loaded on race page already
-
-//		Not needed with new voice options
-//		var countdown_tenseconds = $('countdown_tenseconds')[0];
-//		var callout_thirtyseconds = $('callout_thirtyseconds')[0];
-//		var callout_oneminute = $('callout_oneminute')[0];
-//		var callout_twominutes = $('callout_twominutes')[0];
 
 		// Start the timer
 		this.start = function () {
@@ -79,7 +68,7 @@
 
 			if (time < 0) {
 				second = '--';
-				minute = '--';				
+				minute = '--';
 			}
 
 			$('.timer_sec').html(second);
@@ -92,7 +81,10 @@
 	timer = new _timer(
 		function (time) {
 			if (timer.getMode() == 0) { // Count down clock
-				if (time == 0) { buzzer.play(); timer.stop(); } // End up race buzzer
+				if (time == 0) {
+					buzzer.play();
+					timer.stop();
+				} // End up race buzzer
 
 				if (time == 10) {
 					speak('<div class="timer">10 seconds</div>');
@@ -106,18 +98,20 @@
 			}
 
 			if (timer.getMode() == 1) { // Count up clock
-				if (time == 0) { buzzer.play(); } // Start buzzer
+				if (time == 0) {
+					buzzer.play();
+				} // Start buzzer
 				if (time == 120) {
 					speak('<div class="timer">2 minutes</div>');
-				} //2 min call out
+				} // 2 min call out
 			}
-			if (time == 30) { 
-					ratenormal();
-					speak('<div class="timer">30 seconds</div>');				
+
+			if (time == 30) {
+				speak('<div class="timer">30 seconds</div>');
 			} // 30 second call out
+
 			if (time == 60) {
-					ratenormal();
-					speak('<div class="timer">1 minute</div>');				
+				speak('<div class="timer">1 minute</div>');
 			} // 1 min call out
 		}
 	);

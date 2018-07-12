@@ -26,18 +26,17 @@
 		<div id="logo">Delta 5 Race Timer</div>
 		<nav id="nav-main">
 			<ul>
-				<li><a href="/">Rounds</a></li>
-				<li><a href="/heats">Heats</a></li>
-				<li><a href="/racepublic">Race</a></li>
-				<li><a class="admin" href="/race">Run</a></li>
-				<li><a class="admin" href="/settings">Settings</a></li>
+				<li><a href="/">Heats</a></li>
+				<li><a href="/results">Results</a></li>
+				<li><a href="/current">Current</a></li>
+				<li class="admin-hide"><a href="/race">Run</a></li>
+				<li class="admin-hide"><a href="/settings">Settings</a></li>
 			</ul>
 		</nav>
 	</header>
 
 	<!--Child template content-->
 	{% block content %}{% endblock %}
-
 </body>
 
 </html>

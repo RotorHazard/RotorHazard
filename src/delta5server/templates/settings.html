@@ -3,6 +3,11 @@
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
+		// set admin flag
+		d5rt.admin = true;
+		d5rt.saveData();
+		$('nav li').removeClass('admin-hide');
+
 		// construct language selection
 		$('#voice_select').after('<select class="set_language">');
 		var voices = $().articulate('getVoices');
@@ -20,19 +25,19 @@
 
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
-				$('.channel_' + i).html(msg.channel[i] + ' ' + msg.frequency[i]);
-				$('.s_channel_' + i).val(msg.frequency[i]);
+				$('.channel_' + i).html('<div class="channel-block"><span class="ch">' + msg.channel[i] + '</span> <span class="fr">' + msg.frequency[i] + '</span></div>');
+				$('#s_channel_' + i).val(msg.frequency[i]);
 				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
 			}
 		});
 
 		socket.on('node_tuning', function (msg) {
-			$('.set_calibration_threshold').val( msg.calibration_threshold);
-			$('.set_calibration_offset').val( msg.calibration_offset);
-			$('.set_trigger_threshold').val( msg.trigger_threshold);
-			$('.set_profile_name').val( msg.profile_name);
-			$('.set_profile_description').val( msg.profile_description);
+			$('#set_calibration_threshold').val( msg.calibration_threshold);
+			$('#set_calibration_offset').val( msg.calibration_offset);
+			$('#set_trigger_threshold').val( msg.trigger_threshold);
+			$('#set_profile_name').val( msg.profile_name);
+			$('#set_profile_description').val( msg.profile_description);
 
 		});
 
@@ -43,21 +48,25 @@
 		socket.on('heat_data', function (msg) {
 			$.each(msg.heat_id, function (i, heat_id) {
 				$.each(heat_id.callsign, function (j, callsign) {
-					$('.heat_' + (i + 1) + '_node_' + j).val(callsign);
+					var selectbox = $('#heat_' + (i + 1) + '_node_' + j);
+					// update <option> values with new id/callsign/name (requires updating query in server.py)
+					// selectbox.empty();
+					// selectobx.append('<option value="'+ pilot_id + '">' + callsign + ' (' + name + ')</option>')
+					selectbox.val(callsign);
 				});
 			});
 		});
 
 		socket.on('pilot_data', function (msg) {
 			for (i = 0; i < msg.callsign.length; i++) {
-				$('.callsign_' + i).attr('value', msg.callsign[i]);
-				$('.name_' + i).attr('value', msg.name[i]);
+				$('#callsign_' + i).attr('value', msg.callsign[i]);
+				$('#name_' + i).attr('value', msg.name[i]);
 			}
 		});
 
 		socket.on('speak_phonetic_text', function (msg) {
 			var $ttstext = msg.text;
-			speak('<div class="speech">' + $ttstext + '</div> div.speech');
+			speak('<div class="speech">' + $ttstext + '</div>');
 		})
 
 		$('.set_frequency').change(function (event) {
@@ -106,27 +115,27 @@
 			socket.emit('set_pilot_name', data);
 		})
 
-		$('.set_calibration_threshold').change(function (event) {
+		$('#set_calibration_threshold').change(function (event) {
 			var data = {
 				calibration_threshold: parseInt($(this).val())
 			};
 			socket.emit('set_calibration_threshold', data);
 		})
 
-		$('.set_calibration_offset').change(function (event) {
+		$('#set_calibration_offset').change(function (event) {
 			var data = {
 				calibration_offset: parseInt($(this).val())
 			};
 			socket.emit('set_calibration_offset', data);
 		})
 
-		$('.set_trigger_threshold').change(function (event) {
+		$('#set_trigger_threshold').change(function (event) {
 			var data = {
 				trigger_threshold: parseInt($(this).val())
 			};
 			socket.emit('set_trigger_threshold', data);
 		})
-		$('.set_profile_name').change(function (event) {
+		$('#set_profile_name').change(function (event) {
 			var data = {
 				profile_name: $(this).val()
 			};
@@ -134,7 +143,7 @@
 			window.location.href = "/settings";
 		})
 
-		$('.set_profile_description').change(function (event) {
+		$('#set_profile_description').change(function (event) {
 			var data = {
 				profile_desciption: $(this).val()
 			};
@@ -158,7 +167,7 @@
 			// document.getElementById("heats").innerHTML = // jinja template include
 			return false;
 		});
-		$('button#speak_pilot').click(function (event) {
+		$('button.speak_pilot').click(function (event) {
 			var data = {
 				pilot_id: parseInt($(this).data('pilot_id')),
 				phonetic: $(this).val()
@@ -223,10 +232,10 @@
 	{% for node in range(num_nodes) %}
 	<div class="node">
 		<h3>Node {{ node + 1 }}</h3>
-		<table class="table">
+		<table>
 			<tr>
 				<td colspan="2">
-					<select class="set_frequency s_channel_{{ node }}" data-node="{{ node }}">
+					<select class="set_frequency" id="s_channel_{{ node }}" data-node="{{ node }}">
 						{% for frequency in frequencies.query.all() %}
 						<option value="{{ frequency.frequency }}">
 							{{ frequency.channel }} {{ frequency.frequency }}
@@ -260,153 +269,183 @@
 
 <!--Heats list for editing-->
 <h2>Heats</h2>
-<button type="button" class="btn btn-default" id="add_heat" onclick="this.blur();">Add Heat</button>
-
 <p>Don't change a heat after it has a saved race.</p>
-<div id="heatsetup" class="heats">
+<ol id="heatsetup" class="heats">
 	{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
-	<div class="heat">
+	<li>
 		<h3>Heat {{ heat.heat_id }}</h3>
-		<table class="table">
+		<ol>
 			{% for node in range(num_nodes) %}
-			<tr>
-				<td>
+				<li>
 					<div class="channel_{{ node }}"></div>
-				</td>
-				<td>
-					<select class="set_pilot_position heat_{{ heat.heat_id }}_node_{{ node }}" data-heat="{{ heat.heat_id }}" data-node="{{ node }}">
-						{% set heatpilotid = pilots.query.filter_by(pilot_id=
-							heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id
-							).first().pilot_id %}
-						{% for pilot in pilots.query.all() %}
-						<option value="{{ pilot.pilot_id }}"
-							{% if pilot.pilot_id|int() == heatpilotid|int() %}
-								selected="selected"
-							{% endif %}>
-							{{ pilot.callsign }} ({{ pilot.name }})
-						</option>
-						{% endfor %}
-					</select>
-				</td>
-			</tr>
+					<div class="pilot-name">
+						<select class="set_pilot_position" id="heat_{{ heat.heat_id }}_node_{{ node }}" data-heat="{{ heat.heat_id }}" data-node="{{ node }}">
+							{% set heatpilotid = pilots.query.filter_by(pilot_id=
+								heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id
+								).first().pilot_id %}
+							{% for pilot in pilots.query.order_by(pilots.name).all() %}
+							<option value="{{ pilot.pilot_id }}"
+								{% if pilot.pilot_id|int() == heatpilotid|int() %}
+									selected="selected"
+								{% endif %}>
+								{{ pilot.callsign }} ({{ pilot.name }})
+							</option>
+							{% endfor %}
+						</select>
+					</div>
+				</li>
 			{% endfor %}
-		</table>
-	</div>
+		</ol>
+	</li>
 	{% endfor %}
+</ol>
+<div class="control-set">
+	<button type="button" class="btn btn-default" id="add_heat" onclick="this.blur();">+ Add Heat</button>
 </div>
 
 <!--Pilots list for editing-->
 <h2>Pilots</h2>
-<button type="button" id="add_pilot" onclick="this.blur();">Add Pilot</button>
-<p>Spelling corrections only after saving races.</p>
-<div class="row">
-	<div class='col-xs-16 col-md-8'>
-		<div class='panel panel-default'>
-			<table class="table">
-				<thead>
-					<tr>
-						<th>Pilot ID</th>
-						<th>Call Sign</th>
-						<th>Phonetic</th>
-						<th class="speak"></th>
-						<th>Name</th>
-						</tr>
-				</thead>
-				<tbody>
-					{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
-					<tr>
-						<td>{{ pilot.pilot_id }}</td>
-						<td>
-							<input type="text" class="set_pilot_callsign callsign_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
-							 value="{{ pilot.callsign }}">
-						</td>
-						<td>
-							<input type="text" class="set_pilot_phonetic phonetic_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
-							 value="{{ pilot.phonetic }}">
-						</td>
-						<td class="speak">
-							<button type="button" id="speak_pilot" onclick="this.blur();" data-pilot_id="{{ pilot.pilot_id }}">&#9658;</button>
-						</td>
-						<td>
-							<input type="text" class="set_pilot_name name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}">
-						</td>
-					</tr>
-					{% endif %} {% endfor %}
-				</tbody>
-			</table>
-		</div>
-	</div>
-</div>
+<p>Make spelling corrections only after saving races.</p>
 
-<h2>Fixed Race Time</h2>
-<table class="table">
-	<tr>
-		<td><b>Time</b><br> maximum race time in seconds</td>
-		<td>
-			<input type="text" class="form-control set_fix_race_time" value="{{current_fix_race_time}}">
-		</td>
-	</tr>
- </table>
+<ul class="pilots">
+	{% for pilot in pilots.query.order_by(pilots.name).all() %} {% if pilot.pilot_id != 0 %}
+		<li>
+			<label for="name_{{ pilot.pilot_id }}" class="screen-reader-text">Name</label>
+			<input type="text" class="set_pilot_name" id="name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}" placeholder="Name">
+
+			<label for="callsign_{{ pilot.pilot_id }}" class="screen-reader-text">Call Sign</label>
+			<input type="text" class="set_pilot_callsign" id="callsign_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
+			 value="{{ pilot.callsign }}" placeholder="Call Sign">
+
+			<label for="" class="screen-reader-text">Phonetic</label>
+			<div class="phonetic">
+				<input type="text" class="set_pilot_phonetic" id="phonetic_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.phonetic }}" placeholder="Phonetic">
+				<button type="button" class="speak_pilot" onclick="this.blur();" data-pilot_id="{{ pilot.pilot_id }}">&#9658; <span class="screen-reader-text">Play</span></button>
+			</div>
+		</li>
+	{% endif %} {% endfor %}
+</ul>
+
+<div class="control-set">
+	<button type="button" id="add_pilot" onclick="this.blur();">+ Add Pilot</button>
+</div>
 
 <!--Display Voice-->
 <h2 id="voice_select">Voice Selection</h2>
 
+
+<!--Race Format-->
+<h2>Race Format</h2>
+<ol class="form">
+	<li>
+		<div class="label-block">
+			<label for="">Maximum race time in seconds</label>
+			<p class="desc">Used for fixed-time races</p>
+		</div>
+		<input type="text" class="form-control set_fix_race_time" value="{{current_fix_race_time}}">
+	</li>
+</ol>
+
+
 <!--Edit system tuning values-->
 <h2>Sensor Tuning</h2>
+<div class="control-set">
+	Profile:
+	<select class="set_profile">
+		{% for profile in profiles.query.all() %}
+		<option value="{{profile.name}}" {% if profile.name == profiles.query.get(last_profile.query.get(1).profile_id).name %}
+				selected="selected"
+			{% endif %}>
+			{{profile.name}}
+		</option>
+		{% endfor %}
+	</select>
+	<button type="button" class="" id="add_profile" onclick="this.blur();">+ Add Profile</button>
+	<button type="button" class="btn-danger" id="delete_profile" onclick="this.blur();">&#215; Remove</button>
+</div>
 
-<h3>Profile</h3>
-<select class="set_profile">
-	{% for profile in profiles.query.all() %}
-	<option value="{{profile.name}}" {% if profile.name == profiles.query.get(last_profile.query.get(1).profile_id).name %}
-			selected="selected"
-		{% endif %}>
-		{{profile.name}}
-	</option>
-	{% endfor %}
-</select>
+<ol class="form">
+	<li>
+		<div class="label-block">
+			<label for="set_profile_name">Name</label>
+		</div>
+		<input type="text" id="set_profile_name">
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_profile_description">Description</label>
+		</div>
+		<textarea id="set_profile_description"></textarea>
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_calibration_offset">Calibration Offset</label>
+			<p class="desc">Trigger is Peak Rssi minus Calibration Offset (Default 8)</p>
+		</div>
+		<input type="text" id="set_calibration_offset">
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_calibration_threshold">Calibration Threshold</label>
+			<p class="desc">Trigger minus Calibration Threshold ends calibration pass (Default 95)</p>
+		</div>
+		<input type="text" id="set_calibration_threshold">
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_trigger_threshold">Trigger Threshold</label>
+			<p class="desc">Trigger minus Trigger Threshold ends normal pass (Default 40)</p>
+		</div>
+		<input type="text" id="set_trigger_threshold">
+	</li>
+</ol>
 
-<button type="button" class="btn btn-default" id="add_profile" onclick="this.blur();">+</button>
-<button type="button" class="btn btn-default" id="delete_profile" onclick="this.blur();">&#215;</button>
-
-<table class="table">
-	<tr>
-		<td><b>Name</b></td>
-		<td><input type="text" class="set_profile_name"></td>
-	</tr>
-	<tr>
-		<td><b>Description</b></td>
-		<td><textarea class="set_profile_description"></textarea>
-	</tr>
-	<tr>
-		<td><b>Calibration Offset (Default 8)</b><br>Trigger is Peak Rssi minus Calibration Offset</td>
-		<td>
-			<input type="text" class="set_calibration_offset">
-		</td>
-	</tr>
-	<tr>
-		<td><b>Calibration Threshold (Default 95)</b><br>Trigger minus Calibration Threshold ends calibration pass</td>
-		<td>
-			<input type="text" class="set_calibration_threshold">
-		</td>
-	</tr>
-	<tr>
-		<td><b>Trigger Threshold (Default 40)</b><br>Trigger minus Trigger Threshold ends normal pass</td>
-		<td>
-			<input type="text" class="set_trigger_threshold">
-		</td>
-	</tr>
-</table>
+<div class="calibration-guide">
+	<h3>Calibration Guide</h3>
+	<table>
+		<tr>
+			<th>Issue</th>
+			<th>Resolution</th>
+		</tr>
+		<tr>
+			<td>Missing passes</td>
+			<td>Increase Calibration Offset</td>
+		</tr>
+		<tr>
+			<td>Pass registers on other parts of course</td>
+			<td>Decrease Calibration Offset</td>
+		</tr>
+		<tr>
+			<td>First pass triggers before crossing the gate</td>
+			<td>Increase Calibration Threshold</td>
+		</tr>
+		<tr>
+			<td>Not getting a pass record for the first pass</td>
+			<td>Decrease Calibration Threshold</td>
+		</tr>
+		<tr>
+			<td>Several pass records while passing the start gate</td>
+			<td>Increase Trigger Threshold</td>
+		</tr>
+		<tr>
+			<td>Pass registering is significantly delayed</td>
+			<td>Decrease Trigger Threshold</td>
+		</tr>
+	</table>
+</div>
 
 <!--Reset database-->
-<h2>Database (Copy out any saved races first!)</h2>
-<div>
+<h2>Database</h2>
+<p>Copy out any saved races first!</p>
+<div class="control-set">
 	<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">Reset Database</button>
 	<button type="button" class="btn-warning" id="reset_database_keep_pilots" onclick="this.blur();">Reset Keep Pilots</button>
 </div>
 
 <!-- Shut down -->
-<h2>System (Safely shutdown raspberry pi)</h2>
-<div>
+<h2>System</h2>
+<p>(Safely shutdown raspberry pi)</p>
+<div class="control-set">
 	<button type="button" class="btn-danger" id="shutdown_pi" onclick="this.blur();">Shutdown</button>
 </div>
 

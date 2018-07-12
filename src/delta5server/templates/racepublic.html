@@ -28,11 +28,18 @@
 			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json array
 				$('#current_laps_' + i + ' tbody > tr').remove();
 				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
-					// No lap deletion for first lap
-					var $tr = $('<tr>').append(
-						$('<td>').text(node_index.lap_id[j]),
-						$('<td>').text(node_index.lap_time[j])
-					).appendTo('#current_laps_' + i);
+					if (node_index.lap_id[j] == 0) {
+						var $tr = $('<tr class="lap_0">').append(
+							$('<td>').text(node_index.lap_id[j]),
+							$('<td>').text(node_index.lap_time[j])
+						).appendTo('#current_laps_' + i);
+					}
+					else {
+						var $tr = $('<tr>').append(
+							$('<td>').text(node_index.lap_id[j]),
+							$('<td>').text(node_index.lap_time[j])
+						).appendTo('#current_laps_' + i);
+					}
 				});
 			});
 		});
@@ -114,7 +121,7 @@
 <div class="race-results">
 	{% for node in range(num_nodes) %}
 	<div class="node">
-		<h4 class="panel-title callsign_{{ node }}">
+		<h4 class="callsign_{{ node }}">
 			{{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 			}}
 		</h4>
