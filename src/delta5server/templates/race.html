@@ -67,13 +67,13 @@
 					// No lap deletion for first lap
 					if (node_index.lap_id[j] == 0) {
 						var $tr = $('<tr class="lap_0">').append(
-							// $('<td>').text(node_index.lap_id[j]),
+							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
 							$('<td colspan="2">').text(node_index.lap_time[j])
 						).appendTo('#current_laps_' + i);
 					}
 					else {
 						var $tr = $('<tr>').append(
-							// $('<td>').text(node_index.lap_id[j]),
+							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
 							$('<td colspan="2">').text(node_index.lap_time[j] + ' ').append(
 								$('<button type="button" class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '" onclick="this.blur();">&#215;</button>')
 							)
@@ -102,8 +102,8 @@
 		});
 
 		socket.on('phonetic_data', function (msg) {
-			var $ttstest = msg.pilot + " lap " + msg.lap + " " + msg.phonetic;
-			speak('<div class="speech">' + $ttstest + '</div> div.speech');
+			var $ttstest = msg.pilot + " lap " + msg.lap + ": " + msg.phonetic;
+			speak('<div class="speech">' + $ttstest + '</div>');
 		})
 
 		socket.on('current_heat', function (msg) {

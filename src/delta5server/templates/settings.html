@@ -312,8 +312,6 @@
 
 <!--Pilots list for editing-->
 <h2>Pilots</h2>
-<p>Make spelling corrections only after saving races.</p>
-
 <ul class="pilots">
 	{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
 		<li>
