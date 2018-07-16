@@ -938,7 +938,7 @@ def db_reset_keep_pilots():
 def db_reset_pilots():
     '''Resets database pilots to default.'''
     DB.session.query(Pilot).delete()
-    DB.session.add(Pilot(pilot_id='0', callsign='-', name='-', phonetic="-"))
+    DB.session.add(Pilot(pilot_id='0', callsign='-', name='None', phonetic=""))
     for node in range(RACE.num_nodes):
         DB.session.add(Pilot(pilot_id=node+1, callsign='callsign{0}'.format(node+1), \
             name='Pilot Name', phonetic='callsign{0}'.format(node+1)))

@@ -308,7 +308,7 @@
 <p>Make spelling corrections only after saving races.</p>
 
 <ul class="pilots">
-	{% for pilot in pilots.query.order_by(pilots.name).all() %} {% if pilot.pilot_id != 0 %}
+	{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
 		<li>
 			<label for="name_{{ pilot.pilot_id }}" class="screen-reader-text">Name</label>
 			<input type="text" class="set_pilot_name" id="name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}" placeholder="Name">
