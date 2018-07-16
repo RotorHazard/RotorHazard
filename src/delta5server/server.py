@@ -204,7 +204,6 @@ def race():
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            fix_race_time=FixTimeRace.query.get(1).race_time_sec,
-                           lang_id=RACE.lang_id,
         frequencies=[node.frequency for node in INTERFACE.nodes],
         channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
             for node in INTERFACE.nodes])
@@ -216,7 +215,6 @@ def racepublic():
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            fix_race_time=FixTimeRace.query.get(1).race_time_sec,
-						   lang_id=RACE.lang_id,
         frequencies=[node.frequency for node in INTERFACE.nodes],
         channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
             for node in INTERFACE.nodes])
@@ -232,8 +230,7 @@ def settings():
                            heats=Heat,
                            last_profile =  LastProfile,
                            profiles = Profiles,
-                           current_fix_race_time=FixTimeRace.query.get(1).race_time_sec,
-						   lang_id=RACE.lang_id)
+                           current_fix_race_time=FixTimeRace.query.get(1).race_time_sec)
 
 # Debug Routes
 
