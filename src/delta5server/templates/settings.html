@@ -202,14 +202,21 @@
 			return false;
 		});
 
-		$('.set_profile').change(function (event) {
+		$('#set_profile').change(function (event) {
 			var data = {
 				profile: $(this).val()
 			};
 			socket.emit('set_profile', data);
 		});
 
-		$('.set_fix_race_time').change(function (event) {
+		$('#set_race_mode').change(function (event) {
+			var data = {
+				race_mode: parseInt($(this).val())
+			};
+			socket.emit('set_race_mode', data);
+		})
+
+		$('#set_fix_race_time').change(function (event) {
 			var data = {
 				race_time: parseInt($(this).val())
 			};
@@ -339,10 +346,19 @@
 <ol class="form">
 	<li>
 		<div class="label-block">
-			<label for="">Maximum race time in seconds</label>
+			<label for="set_race_mode">Race Mode</label>
+		</div>
+		<select id="set_race_mode">
+			<option value="0" {% if race_format.race_mode == 0 %}selected="selected" {% endif %}>Fixed time</option>
+			<option value="1" {% if race_format.race_mode == 1 %}selected="selected" {% endif %}>Count-up timer</option>
+		</select>
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="fixed-time">Maximum race time in seconds</label>
 			<p class="desc">Used for fixed-time races</p>
 		</div>
-		<input type="text" class="form-control set_fix_race_time" value="{{current_fix_race_time}}">
+		<input type="text" id="set_fix_race_time" value="{{race_format.race_time_sec}}">
 	</li>
 </ol>
 
@@ -350,8 +366,8 @@
 <!--Edit system tuning values-->
 <h2>Sensor Tuning</h2>
 <div class="control-set">
-	Profile:
-	<select class="set_profile">
+	<label for="set_profile">Profile:</label>
+	<select id="set_profile">
 		{% for profile in profiles.query.all() %}
 		<option value="{{profile.name}}" {% if profile.name == profiles.query.get(last_profile.query.get(1).profile_id).name %}
 				selected="selected"

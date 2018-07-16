@@ -94,7 +94,7 @@
 					speak('<div class="timer">5 seconds</div>');
 				}
 
-				if (time == {{fix_race_time}}) { buzzer.play(); } // Start buzzer
+				if (time == {{race_format.race_time_sec}}) { buzzer.play(); } // Start buzzer
 			}
 
 			if (timer.getMode() == 1) { // Count up clock
@@ -116,7 +116,7 @@
 		}
 	);
 
-	timer.reset({{fix_race_time}});
+	timer.reset({{race_format.race_time_sec}});
 	timer.mode(0); // Set initial mode
 
 </script>

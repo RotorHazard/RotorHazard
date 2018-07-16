@@ -107,9 +107,9 @@ class LastProfile(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     profile_id = DB.Column(DB.Integer, nullable=False)
 
-
-class FixTimeRace(DB.Model):
+class RaceFormat(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
+    race_mode = DB.Column(DB.Integer, nullable=False)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
 
 #
@@ -203,7 +203,7 @@ def race():
     return render_template('race.html', num_nodes=RACE.num_nodes,
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
-                           fix_race_time=FixTimeRace.query.get(1).race_time_sec,
+                           race_format=RaceFormat.query.get(1),
         frequencies=[node.frequency for node in INTERFACE.nodes],
         channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
             for node in INTERFACE.nodes])
@@ -214,7 +214,6 @@ def racepublic():
     return render_template('racepublic.html', num_nodes=RACE.num_nodes,
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
-                           fix_race_time=FixTimeRace.query.get(1).race_time_sec,
         frequencies=[node.frequency for node in INTERFACE.nodes],
         channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
             for node in INTERFACE.nodes])
@@ -230,7 +229,7 @@ def settings():
                            heats=Heat,
                            last_profile =  LastProfile,
                            profiles = Profiles,
-                           current_fix_race_time=FixTimeRace.query.get(1).race_time_sec)
+                           race_format=RaceFormat.query.get(1))
 
 # Debug Routes
 
@@ -245,7 +244,7 @@ def hardwarelog():
 def database():
     '''Route to database page.'''
     return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
-        savedraces=SavedRace, frequencies=Frequency, )
+        savedraces=SavedRace, frequencies=Frequency, race_format=RaceFormat.query.get(1), )
 
 #
 # Socket IO Events
@@ -478,10 +477,18 @@ def on_set_profile(data):
     emit_node_tuning()
     server_log("set tune paramas for profile '%s'" % profile_val)
 
+@SOCKET_IO.on("set_race_mode")
+def on_set_race_mode(data):
+    race_mode = data['race_mode']
+    race_format = RaceFormat.query.get(1)
+    race_format.race_mode = race_mode
+    DB.session.commit()
+    server_log("set race mode to %s" % race_mode)
+
 @SOCKET_IO.on("set_fix_race_time")
 def on_set_fix_race_time(data):
     race_time = data['race_time']
-    fix_race_time = FixTimeRace.query.get(1)
+    fix_race_time = RaceFormat.query.get(1)
     fix_race_time.race_time_sec = race_time
     DB.session.commit()
     server_log("set fixed time race to %s seconds" % race_time)
@@ -523,12 +530,6 @@ def on_start_race():
     '''Starts the race and the timer counting up, no defined finish.'''
     start_race()
     SOCKET_IO.emit('start_timer') # Loop back to race page to start the timer counting up
-
-@SOCKET_IO.on('start_race_2min')
-def on_start_race_2min():
-    '''Starts the race with a two minute countdown clock.'''
-    start_race()
-    SOCKET_IO.emit('start_timer_2min') # Loop back to race page to start a 2 min countdown
 
 def start_race():
     '''Common race start events.'''
@@ -779,7 +780,7 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time):
 
 def emit_current_fix_race_time():
     ''' Emit current fixed time race time '''
-    race_time_sec = FixTimeRace.query.get(1).race_time_sec
+    race_time_sec = RaceFormat.query.get(1).race_time_sec
     SOCKET_IO.emit('set_fix_race_time',{ fix_race_time: race_time_sec})
 
 def emit_phonetic_text(phtext):
@@ -1054,10 +1055,10 @@ def db_reset_default_profile():
     DB.session.commit()
     server_log("Database set default profile on default 25mW race")
 
-
 def db_reset_fix_race_time():
-    DB.session.query(FixTimeRace).delete()
-    DB.session.add(FixTimeRace(race_time_sec=120))
+    DB.session.query(RaceFormat).delete()
+    DB.session.add(RaceFormat(race_mode=0,
+                             race_time_sec=120))
     DB.session.commit()
     server_log("Database set fixed time race to 120 sec (2 minutes)")
 #

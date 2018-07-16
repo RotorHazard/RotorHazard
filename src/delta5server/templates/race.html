@@ -15,7 +15,6 @@
 				case 1: // Race running
 					$('button#current_heat').attr('disabled', 'disabled');
 					$('button#start_race').attr('disabled', 'disabled');
-					$('button#start_race_2min').attr('disabled', 'disabled');
 					$('button#stop_race').removeAttr('disabled');
 					$('button#save_laps').attr('disabled', 'disabled');
 					$('button#clear_laps').attr('disabled', 'disabled');
@@ -27,7 +26,6 @@
 				case 2: // Race stopped, clear or save laps
 					$('button#current_heat').attr('disabled', 'disabled');
 					$('button#start_race').attr('disabled', 'disabled');
-					$('button#start_race_2min').attr('disabled', 'disabled');
 					$('button#stop_race').attr('disabled', 'disabled');
 					$('button#save_laps').removeAttr('disabled');
 					$('button#clear_laps').removeAttr('disabled');
@@ -39,7 +37,6 @@
 				default: // Waiting to start new race
 					$('button#current_heat').removeAttr('disabled');
 					$('button#start_race').removeAttr('disabled');
-					$('button#start_race_2min').removeAttr('disabled');
 					$('button#stop_race').attr('disabled', 'disabled');
 					$('button#save_laps').attr('disabled', 'disabled');
 					$('button#clear_laps').attr('disabled', 'disabled');
@@ -117,14 +114,14 @@
 		});
 
 		socket.on('start_timer', function (msg) {
-			timer.reset(-1); // Stop and reset with -1 seconds to catch buzzer
-			timer.mode(1); // Count up mode
-			timer.start(); // Start clock
-		});
-
-		socket.on('start_timer_2min', function (msg) {
-			timer.reset({{fix_race_time+1}});
-			timer.mode(0); // Count down mode
+			if ({{race_format.race_mode}}) {
+				// Count up mode
+				timer.reset(-1); // Stop and reset with -1 seconds to catch buzzer
+			} else {
+				timer.reset({{race_format.race_time_sec+1}});
+				// 0 = Count down mode
+			}
+			timer.mode({{race_format.race_mode}});
 			timer.start(); // Start clock
 		});
 
@@ -134,11 +131,6 @@
 
 		$('button#start_race').click(function (event) {
 			socket.emit('start_race');
-			return false;
-		});
-
-		$('button#start_race_2min').click(function (event) {
-			socket.emit('start_race_2min');
 			return false;
 		});
 
@@ -207,7 +199,6 @@
 		{% endfor %}
 	</select>
 	<button type="button" id="start_race" onclick="this.blur();">Start Race</button>
-	<button type="button" id="start_race_2min" onclick="this.blur();">Start Fixed Time Race</button>
 	<button type="button" id="stop_race" disabled="disabled" onclick="this.blur();">Stop Race</button>
 	<button type="button" id="save_laps" disabled="disabled" onclick="this.blur();">Save Laps</button>
 	<button type="button" id="clear_laps" disabled="disabled" onclick="this.blur();">Clear Laps</button>

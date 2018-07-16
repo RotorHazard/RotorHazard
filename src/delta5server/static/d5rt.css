@@ -152,7 +152,8 @@ ol.form .desc {
 	}
 
 	ol.form input,
-	ol.form textarea {
+	ol.form textarea,
+	ol.form select {
 		width: 20em;
 	}
 }
