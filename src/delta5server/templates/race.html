@@ -166,7 +166,7 @@
 			return false;
 		});
 
-		$('.set_current_heat').change(function (event) {
+		$('#set_current_heat').change(function (event) {
 			var data = {
 				heat: parseInt($(this).val()),
 			};
@@ -189,7 +189,8 @@
 
 <!--Buttons for controlling the race-->
 <div class="control-set">
-	<select class="set_current_heat">
+	<label for="set_current_heat" class="screen-reader-text">Current Heat</label>
+	<select id="set_current_heat">
 		{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
 		<option value="{{ heat.heat_id }}" {% if heat.heat_id|int() == current_heat|int() %}
 				selected="selected"

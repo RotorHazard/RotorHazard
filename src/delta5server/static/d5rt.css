@@ -615,7 +615,6 @@ main {
 .btn-danger {
 	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
 	background: hsl(8.2, 86.5%, 53.7%);
-
 	background: -moz-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%, hsl(13.1, 64.6%, 37.6%) 100%);
 	background: -webkit-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
 	background: linear-gradient(to bottom, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
@@ -624,8 +623,6 @@ main {
 .btn-warning {
 	border: solid 0.125em hsl(23.1, 64.6%, 37.6%);
 	background: hsl(41.1, 86.2%, 54.5%);
-	color: #000;
-
 	background: -moz-linear-gradient(top, hsl(41.1, 86.2%, 54.5%) 0%, hsl(23.1, 64.6%, 37.6%) 100%);
 	background: -webkit-linear-gradient(top, hsl(41.1, 86.2%, 54.5%) 0%,hsl(23.1, 64.6%, 37.6%) 100%);
 	background: linear-gradient(to bottom, hsl(41.1, 86.2%, 54.5%) 0%,hsl(23.1, 64.6%, 37.6%) 100%);
@@ -675,8 +672,8 @@ main {
 	margin-top: 0;
 }
 
-.set_current_heat,
-.set_profile {
+#set_current_heat,
+#set_profile {
 	width: auto;
 }
 
