@@ -456,6 +456,11 @@ def on_reset_database_keep_pilots():
     '''Reset database but keep pilots list.'''
     db_reset_keep_pilots()
 
+@SOCKET_IO.on('reset_database_laps')
+def on_reset_database_laps():
+    '''Reset database laps only.'''
+    db_reset_laps()
+
 @SOCKET_IO.on('shutdown_pi')
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
@@ -933,6 +938,12 @@ def db_reset_keep_pilots():
     db_reset_saved_races()
     db_reset_fix_race_time()
     server_log('Database reset, pilots kept')
+
+def db_reset_laps():
+    '''Resets database laps only. '''
+    db_reset_current_laps()
+    db_reset_saved_races()
+    server_log('Database reset, laps only')
 
 def db_reset_pilots():
     '''Resets database pilots to default.'''

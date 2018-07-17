@@ -185,6 +185,7 @@
 			window.location.href = "/settings"; // Update to not need page reload
 			return false;
 		});
+
 		$('button#reset_database').click(function (event) {
 			socket.emit('reset_database');
 			window.location.href = "/settings"; // Update to not need page reload
@@ -193,6 +194,12 @@
 
 		$('button#reset_database_keep_pilots').click(function (event) {
 			socket.emit('reset_database_keep_pilots');
+			window.location.href = "/settings"; // Update to not need page reload
+			return false;
+		});
+
+		$('button#reset_database_laps').click(function (event) {
+			socket.emit('reset_database_laps');
 			window.location.href = "/settings"; // Update to not need page reload
 			return false;
 		});
@@ -452,8 +459,10 @@
 <h2>Database</h2>
 <p>Copy out any saved races first!</p>
 <div class="control-set">
-	<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">Reset Database</button>
-	<button type="button" class="btn-warning" id="reset_database_keep_pilots" onclick="this.blur();">Reset Keep Pilots</button>
+	<button type="button" class="btn-warning" id="reset_database_laps" onclick="this.blur();">Clear Laps</button>
+	<button type="button" class="btn-warning" id="reset_database_keep_pilots" onclick="this.blur();">Clear Laps & Heats</button>
+	<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">Reset All</button>
+
 </div>
 
 <!-- Shut down -->
