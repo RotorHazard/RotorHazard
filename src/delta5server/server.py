@@ -214,6 +214,7 @@ def racepublic():
     return render_template('racepublic.html', num_nodes=RACE.num_nodes,
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
+                           race_format=RaceFormat.query.get(1),
         frequencies=[node.frequency for node in INTERFACE.nodes],
         channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
             for node in INTERFACE.nodes])

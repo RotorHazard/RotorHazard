@@ -68,14 +68,14 @@
 		});
 
 		socket.on('start_timer', function (msg) {
-			timer.reset(-1); // Stop and reset with -1 seconds to catch buzzer
-			timer.mode(1); // Count up mode
-			timer.start(); // Start clock
-		});
-
-		socket.on('start_timer_2min', function (msg) {
-			timer.reset({{fix_race_time+1}});
-			timer.mode(0); // Count down mode
+			if ({{race_format.race_mode}}) {
+				// Count up mode
+				timer.reset(-1); // Stop and reset with -1 seconds to catch buzzer
+			} else {
+				timer.reset({{race_format.race_time_sec+1}});
+				// 0 = Count down mode
+			}
+			timer.mode({{race_format.race_mode}});
 			timer.start(); // Start clock
 		});
 
