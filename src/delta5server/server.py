@@ -831,10 +831,16 @@ def time_format(millis):
 def phonetictime_format(millis):
     '''Convert milliseconds to phonetic'''
     millis = int(millis + 50)  # round to nearest tenth of a second
-    seconds = millis / 1000
-    over = (millis % 60000) % 1000
+    minutes = millis / 60000
+    over = millis % 60000
+    seconds = over / 1000
+    over = over % 1000
     tenths = over / 100
-    return '{0:01d}.{1:01d}'.format(seconds, tenths)
+
+    if minutes > 0:
+        return '{0:01d} {1:01d}.{2:01d}'.format(minutes, seconds, tenths)
+    else:
+        return '{0:01d}.{1:01d}'.format(seconds, tenths)
 
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''
