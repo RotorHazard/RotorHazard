@@ -5,6 +5,8 @@
 
 		var buzzer = false;
 
+		$('#voice-calls').val(parseInt(d5rt.primaryPilot));
+
 		socket.on('race_status', function (msg) {
 			switch (msg.race_status) {
 				case 1: // Race running
@@ -60,6 +62,13 @@
 			}
 		});
 
+		socket.on('phonetic_data', function (msg) {
+			if (d5rt.primaryPilot == 0 || d5rt.primaryPilot == msg.pilot_id) {
+				var $ttstest = msg.pilot + " lap " + msg.lap + ": " + msg.phonetic;
+				speak('<div class="speech">' + $ttstest + '</div>');
+			}
+		})
+
 		socket.on('current_heat', function (msg) {
 			$('.current_heat').html('Heat ' + msg.current_heat);
 			for (i = 0; i < msg.callsign.length; i++) {
@@ -82,10 +91,15 @@
 		socket.on('stop_timer', function (msg) {
 			timer.stop();
 		});
+
+		$('#voice-calls').change(function(){
+			d5rt.primaryPilot = parseInt($(this).val());
+			d5rt.saveData();
+		});
 	});
 
 	function speak(obj) {
-		return false;
+		$(obj).articulate('setVoice','name', d5rt.language).articulate('speak');
 	};
 
 </script>
@@ -132,5 +146,22 @@
 	{% endfor %}
 </div>
 
+<!--Voice Settings (page-local)-->
+<div class="voice-settings">
+	<ol class="form">
+		<li>
+			<div class="label-block">
+				<label for="voice-calls">Voice Calls</label>
+			</div>
+			<select id="voice-calls">
+				<option value="-1">None</option>
+				<option value="0">All</option>
+				{% for pilot in pilots.query.order_by(pilots.name).all() %} {% if pilot.pilot_id != 0 %}
+					<option value="{{ pilot.pilot_id }}">{{ pilot.callsign }} ({{ pilot.name }})</option>
+				{% endif %} {% endfor %}
+			</select>
+		</li>
+	</ol>
+</div>
 </main>
 {% endblock %}

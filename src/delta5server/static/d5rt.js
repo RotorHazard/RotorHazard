@@ -11,6 +11,7 @@ function supportsLocalStorage() {
 var d5rt = {
 	language: '',
 	admin: false,
+	primaryPilot: -1,
 
 	saveData: function() {
 		if (!supportsLocalStorage()) {
@@ -18,6 +19,7 @@ var d5rt = {
 		}
 		localStorage['d5rt.language'] = JSON.stringify(this.language);
 		localStorage['d5rt.admin'] = JSON.stringify(this.admin);
+		localStorage['d5rt.primaryPilot'] = JSON.stringify(this.primaryPilot);
 		return true;
 	},
 	restoreData: function(dataType) {
@@ -27,6 +29,9 @@ var d5rt = {
 			}
 			if (localStorage['d5rt.admin']) {
 				this.admin = JSON.parse(localStorage['d5rt.admin']);
+			}
+			if (localStorage['d5rt.primaryPilot']) {
+				this.primaryPilot = JSON.parse(localStorage['d5rt.primaryPilot']);
 			}
 			return true;
 		}

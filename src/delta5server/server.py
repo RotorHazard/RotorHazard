@@ -782,7 +782,8 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time):
     '''Emits phonetic data.'''
     phonetic_time = phonetictime_format(lap_time)
     phonetic_name = Pilot.query.filter_by(pilot_id=pilot_id).first().phonetic
-    SOCKET_IO.emit('phonetic_data', {'pilot': phonetic_name, 'lap': lap_id, 'phonetic': phonetic_time})
+    pilot_id = Pilot.query.filter_by(pilot_id=pilot_id).first().pilot_id
+    SOCKET_IO.emit('phonetic_data', {'pilot': phonetic_name, 'pilot_id': pilot_id, 'lap': lap_id, 'phonetic': phonetic_time})
 
 def emit_current_fix_race_time():
     ''' Emit current fixed time race time '''
