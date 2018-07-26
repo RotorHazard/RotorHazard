@@ -628,6 +628,12 @@ main {
 	background: linear-gradient(to bottom, hsl(41.1, 86.2%, 54.5%) 0%,hsl(23.1, 64.6%, 37.6%) 100%);
 }
 
+.rssi-graph canvas {
+	width: 100%;
+	height: 3rem;
+	display: block;
+}
+
 .page-race tr.lap td:first-child {
 	display: none;
 }

@@ -17,9 +17,32 @@
 		}
 		$('.set_language').val(d5rt.language).attr('selected', 'selected');
 
+		// set up RSSI graphing
+		$('.node table tr:first-child').each(function(){
+			var node = $(this);
+			var node_id = parseInt(node.find('td>select').attr('data-node'));
+			node.after('<tr><td colspan="2" class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></td></tr>');
+
+			d5rt.nodes[node_id] = new rssiGraph();
+			d5rt.nodes[node_id].setup(document.getElementById('rssi-graph-' + node_id));
+		});
+
 		socket.on('heartbeat', function (msg) {
 			for (i = 0; i < msg.current_rssi.length; i++) {
 				$('.current_rssi_' + i).html(msg.current_rssi[i]);
+
+				if (d5rt.nodes[i].graph.options.minValue == 0) {
+					d5rt.nodes[i].graph.options.minValue = msg.current_rssi[i] - 5;
+					d5rt.nodes[i].graph.options.maxValue = msg.current_rssi[i] + 15;
+				}
+				if (d5rt.nodes[i].graph.options.minValue > msg.current_rssi[i]) {
+					d5rt.nodes[i].graph.options.minValue = msg.current_rssi[i];
+				}
+				if (d5rt.nodes[i].graph.options.maxValue < msg.current_rssi[i]) {
+					d5rt.nodes[i].graph.options.maxValue = msg.current_rssi[i];
+				}
+
+				d5rt.nodes[i].series.append(new Date().getTime(), msg.current_rssi[i]);
 			}
 		});
 
@@ -29,6 +52,10 @@
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
+
+				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
+				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
+				d5rt.nodes[i].updateRSSI();
 			}
 		});
 

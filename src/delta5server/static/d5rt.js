@@ -9,9 +9,10 @@ function supportsLocalStorage() {
 
 /* d5rt object for local settings/storage */
 var d5rt = {
-	language: '',
-	admin: false,
-	primaryPilot: -1,
+	language: '', // local language for voice callout
+	admin: false, // whether to show admin options in nav
+	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
+	nodes: [], // node array for rssi graphing
 
 	saveData: function() {
 		if (!supportsLocalStorage()) {
@@ -37,6 +38,47 @@ var d5rt = {
 		}
 		return false;
 	},
+}
+
+/* Data model for RSSI graphing */
+function rssiGraph() {
+	this.trigger_rssi = 0;
+	this.peak_rssi = 0;
+	this.graph = new SmoothieChart({
+				responsive: true,
+				millisPerPixel:50,
+				grid:{
+					strokeStyle:'rgba(255,255,255,0.25)',
+					sharpLines:true,
+					verticalSections:0,
+					borderVisible:false
+				},
+				labels:{
+					precision:0
+				},
+				maxValue: 1,
+				minValue: 0,
+				horizontalLines:[
+					{color:'#880000',lineWidth:1,value: this.trigger_rssi},
+					{color:'#880000',lineWidth:2,value: this.peak_rssi},
+				]
+			});
+	this.series = new TimeSeries();
+}
+rssiGraph.prototype = {
+	setup: function(element){
+		this.graph.addTimeSeries(this.series, {lineWidth:1.7,
+			strokeStyle:'#386fb6',
+			fillStyle:'rgba(56, 111, 182, 0.4)'
+		});
+		this.graph.streamTo(element, 250); // match delay value to heartbeat in server.py
+	},
+	updateRSSI: function(){
+		this.graph.options.horizontalLines = [
+			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.trigger_rssi},
+			{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.peak_rssi},
+		];
+	}
 }
 
 /* global page behaviors */
