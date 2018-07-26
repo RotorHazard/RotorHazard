@@ -67,8 +67,8 @@ function rssiGraph() {
 rssiGraph.prototype = {
 	setup: function(element){
 		this.graph.addTimeSeries(this.series, {lineWidth:1.7,
-			strokeStyle:'#386fb6',
-			fillStyle:'rgba(56, 111, 182, 0.4)'
+			strokeStyle:'hsl(214, 53%, 60%)',
+			fillStyle:'hsla(214, 53%, 60%, 0.4)'
 		});
 		this.graph.streamTo(element, 250); // match delay value to heartbeat in server.py
 	},
