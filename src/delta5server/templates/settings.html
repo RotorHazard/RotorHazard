@@ -32,8 +32,8 @@
 				$('.current_rssi_' + i).html(msg.current_rssi[i]);
 
 				if (d5rt.nodes[i].graph.options.minValue == 0) {
-					d5rt.nodes[i].graph.options.minValue = msg.current_rssi[i] - 5;
-					d5rt.nodes[i].graph.options.maxValue = msg.current_rssi[i] + 15;
+					d5rt.nodes[i].graph.options.minValue = msg.current_rssi[i] - 10;
+					d5rt.nodes[i].graph.options.maxValue = msg.current_rssi[i] + 100;
 				}
 				if (d5rt.nodes[i].graph.options.minValue > msg.current_rssi[i]) {
 					d5rt.nodes[i].graph.options.minValue = msg.current_rssi[i];
@@ -55,6 +55,9 @@
 
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
 				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
+				d5rt.nodes[i].calibration_threshold = msg.trigger_rssi[i] - parseInt($('#set_calibration_threshold').val());
+				d5rt.nodes[i].trigger_threshold = msg.trigger_rssi[i] - parseInt($('#set_trigger_threshold').val());
+
 				d5rt.nodes[i].updateRSSI();
 			}
 		});
@@ -307,6 +310,13 @@
 	</div>
 	{% endfor %}
 </div>
+<ul class="graph-key">
+	<li><span style="background-color: #386fb6"></span> RSSI</li>
+	<li><span style="background-color: hsl(25, 85%, 55%)"></span> Peak</li>
+	<li><span style="background-color: hsl(8.2, 86.5%, 53.7%)"></span> Trigger</li>
+	<li><span style="background-color: #999"></span> Trigger Threshold</li>
+	<li><span style="background-color: #666"></span> Calibration Threshold</li>
+</ul>
 
 <!--Heats list for editing-->
 <h2>Heats</h2>
