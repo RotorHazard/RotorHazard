@@ -110,6 +110,7 @@ class RaceFormat(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     race_mode = DB.Column(DB.Integer, nullable=False)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
+    min_lap_sec = DB.Column(DB.Integer, nullable=False)
 
 class NodeData(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
@@ -452,7 +453,6 @@ def on_set_calibration_threshold(data):
     server_log('Calibration threshold set: {0}'.format(calibration_threshold))
     emit_node_tuning()
 
-
 @SOCKET_IO.on('set_calibration_offset')
 def on_set_calibration_offset(data):
     '''Set Calibration Offset.'''
@@ -464,7 +464,6 @@ def on_set_calibration_offset(data):
     DB.session.commit()
     server_log('Calibration offset set: {0}'.format(calibration_offset))
     emit_node_tuning()
-
 
 @SOCKET_IO.on('set_trigger_threshold')
 def on_set_trigger_threshold(data):
@@ -530,6 +529,14 @@ def on_set_fix_race_time(data):
     fix_race_time.race_time_sec = race_time
     DB.session.commit()
     server_log("set fixed time race to %s seconds" % race_time)
+
+@SOCKET_IO.on("set_min_lap")
+def on_set_min_lap(data):
+    min_lap = data['min_lap']
+    race_format = RaceFormat.query.get(1)
+    race_format.min_lap_sec = min_lap
+    DB.session.commit()
+    server_log("set min lap time to %s seconds" % min_lap)
 
     # @SOCKET_IO.on('clear_rounds')
 # def on_reset_heats():
@@ -699,7 +706,6 @@ def emit_node_tuning():
             tune_val.description
     })
 
-
 def emit_current_laps():
     '''Emits current laps.'''
     current_laps = []
@@ -825,6 +831,11 @@ def emit_current_fix_race_time():
     race_time_sec = RaceFormat.query.get(1).race_time_sec
     SOCKET_IO.emit('set_fix_race_time',{ fix_race_time: race_time_sec})
 
+def emit_min_lap():
+    ''' Emit minimum lap time '''
+    min_lap_sec = RaceFormat.query.get(1).min_lap_sec
+    SOCKET_IO.emit('set_min_lap',{ min_lap: min_lap_sec})
+
 def emit_phonetic_text(phtext):
     '''Emits given phonetic text.'''
     SOCKET_IO.emit('speak_phonetic_text', {'text': phtext})
@@ -906,18 +917,24 @@ def pass_record_callback(node, ms_since_lap):
             lap_time = lap_time_stamp - last_lap_time_stamp
             lap_id = last_lap_id + 1
 
-        # Add the new lap to the database
-        DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
-            lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
-            lap_time_formatted=time_format(lap_time)))
-        DB.session.commit()
+        race_format = RaceFormat.query.get(1)
+        min_lap = race_format.min_lap_sec
+        if lap_time > (min_lap * 1000) or lap_id == 0:
+            # Add the new lap to the database
+            DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
+                lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
+                lap_time_formatted=time_format(lap_time)))
+            DB.session.commit()
 
-        server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
-            .format(node.index, lap_id, time_format(lap_time)))
-        emit_current_laps() # Updates all laps on the race page
-        emit_leaderboard() # Updates leaderboard
-        if lap_id > 0:
-            emit_phonetic_data(pilot_id, lap_id, lap_time) # Sends phonetic data to be spoken
+            server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
+                .format(node.index, lap_id, time_format(lap_time)))
+            emit_current_laps() # Updates all laps on the race page
+            emit_leaderboard() # Updates leaderboard
+            if lap_id > 0:
+                emit_phonetic_data(pilot_id, lap_id, lap_time) # Sends phonetic data to be spoken
+        else:
+            server_log('Pass record dismissed: Node: {0}, Lap: {1}, Lap time: {2}' \
+                .format(node.index, lap_id, time_format(lap_time)))
 
 INTERFACE.pass_record_callback = pass_record_callback
 
@@ -1129,7 +1146,8 @@ def db_reset_default_profile():
 def db_reset_fix_race_time():
     DB.session.query(RaceFormat).delete()
     DB.session.add(RaceFormat(race_mode=0,
-                             race_time_sec=120))
+                             race_time_sec=120,
+                             min_lap_sec=0))
     DB.session.commit()
     server_log("Database set fixed time race to 120 sec (2 minutes)")
 

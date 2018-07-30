@@ -40,7 +40,7 @@
 				if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
 					d5rt.nodes[i].graph.options.minValue = rssiValue;
 				} */
-				if (d5rt.nodes[i].graph.options.maxValue < rssiValue || 
+				if (d5rt.nodes[i].graph.options.maxValue < rssiValue ||
 					d5rt.rssiMax < rssiValue) {
 					d5rt.nodes[i].graph.options.maxValue = rssiValue;
 					for (var j in d5rt.nodes) {
@@ -81,7 +81,11 @@
 		});
 
 		socket.on('set_fix_race_time', function (msg) {
-			$('.set_fix_race_time').val( msg.fix_race_time);
+			$('#set_fix_race_time').val( msg.fix_race_time);
+		});
+
+		socket.on('set_min_lap', function (msg) {
+			$('#set_min_lap').val( msg.min_lap);
 		});
 
 		socket.on('heat_data', function (msg) {
@@ -286,6 +290,12 @@
 			socket.emit('set_fix_race_time', data);
 		})
 
+		$('#set_min_lap').change(function (event) {
+			var data = {
+				min_lap: parseInt($(this).val())
+			};
+			socket.emit('set_min_lap', data);
+		})
 	});
 
 	function speak(obj) {
@@ -315,14 +325,14 @@
 							</select>
 
 							<div class="label-block">
-								<label for="set_node_offset_{{ node }}">Offset</label>
-							</div>
-							<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65536">
-
-							<div class="label-block">
 								<label for="set_node_scale_{{ node }}">Scale</label>
 							</div>
 							<input type="number" id="set_node_scale_{{ node }}" class="set_node_scale" data-node="{{ node }}" step="0.01" min="0" max="65.53">
+
+							<div class="label-block">
+								<label for="set_node_offset_{{ node }}">Offset</label>
+							</div>
+							<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65536">
 
 				</td>
 			</tr>
@@ -439,6 +449,13 @@
 			<p class="desc">Used for fixed-time races</p>
 		</div>
 		<input type="text" id="set_fix_race_time" value="{{race_format.race_time_sec}}">
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="fixed-time">Minimum lap time in seconds</label>
+			<p class="desc">Prevents phantom passes</p>
+		</div>
+		<input type="text" id="set_min_lap" value="{{race_format.min_lap_sec}}">
 	</li>
 </ol>
 
