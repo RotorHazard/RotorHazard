@@ -140,5 +140,27 @@
     </tbody>
 </table>
 
+<h2>Node Data</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Frequency</th>
+            <th>Offset</th>
+            <th>Scale</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for node in node_data.query.all() %}
+        <tr>
+            <td>{{ node.id }}</td>
+            <td>{{ node.frequency }}</td>
+            <td>{{ node.offset }}</td>
+            <td>{{ node.scale }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
 </main>
 {% endblock %}

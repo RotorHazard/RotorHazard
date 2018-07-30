@@ -13,6 +13,7 @@ var d5rt = {
 	admin: false, // whether to show admin options in nav
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array for rssi graphing
+	rssiMax: 100,
 
 	saveData: function() {
 		if (!supportsLocalStorage()) {
@@ -46,6 +47,7 @@ function rssiGraph() {
 	this.peak_rssi = false;
 	this.calibration_threshold = false;
 	this.trigger_threshold = false;
+	this.offset = 0;
 
 	this.graph = new SmoothieChart({
 				responsive: true,
@@ -59,7 +61,7 @@ function rssiGraph() {
 				labels:{
 					precision:0
 				},
-				maxValue: 1,
+				maxValue: 100,
 				minValue: 0,
 			});
 	this.series = new TimeSeries();
@@ -72,7 +74,7 @@ rssiGraph.prototype = {
 		});
 		this.graph.streamTo(element, 250); // match delay value to heartbeat in server.py
 	},
-	updateRSSI: function(){
+	updateThresholds: function(){
 		if (this.trigger_threshold) {
 			this.graph.options.horizontalLines = [
 				{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.trigger_rssi},

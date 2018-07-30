@@ -15,6 +15,7 @@ READ_CALIBRATION_MODE = 0x16
 READ_CALIBRATION_OFFSET = 0x17
 READ_TRIGGER_THRESHOLD = 0x18
 READ_FILTER_RATIO = 0x19
+READ_NODE_SCALE = 0x20
 
 WRITE_FREQUENCY = 0x51 # Sets frequency (2 byte)
 WRITE_CALIBRATION_THRESHOLD = 0x65
@@ -22,6 +23,7 @@ WRITE_CALIBRATION_MODE = 0x66
 WRITE_CALIBRATION_OFFSET = 0x67
 WRITE_TRIGGER_THRESHOLD = 0x68
 WRITE_FILTER_RATIO = 0x69
+WRITE_NODE_SCALE = 0x70
 
 UPDATE_SLEEP = 0.1 # Main update loop delay
 
@@ -100,10 +102,13 @@ class Delta5Interface(BaseHardwareInterface):
                     READ_TRIGGER_THRESHOLD)
                 self.filter_ratio = self.get_value_8(node,
                     READ_FILTER_RATIO)
+#                self.node_scale = self.get_value_16(node,
+#                    READ_NODE_SCALE)
             else:
                 self.set_calibration_threshold(node.index, self.calibration_threshold)
                 self.set_calibration_offset(node.index, self.calibration_offset)
                 self.set_trigger_threshold(node.index, self.trigger_threshold)
+#                self.set_node_scale(node.index, self.node_scale)
 
 
     #
@@ -232,7 +237,7 @@ class Delta5Interface(BaseHardwareInterface):
                 success = True
             else:
                 retry_count = retry_count + 1
-                self.log('Value Not Set ({0})'.format(retry_count))
+                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node))
 
         if out_value == None:
             out_value = in_value
@@ -249,7 +254,7 @@ class Delta5Interface(BaseHardwareInterface):
                 success = True
             else:
                 retry_count = retry_count + 1
-                self.log('Value Not Set ({0})'.format(retry_count))
+                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node))
 
         if out_value == None:
             out_value = in_value
@@ -316,18 +321,25 @@ class Delta5Interface(BaseHardwareInterface):
             self.set_trigger_threshold(node.index, threshold)
         return self.trigger_threshold
 
-    def set_filter_ratio(self, node_index, filter_ration):
+    def set_filter_ratio(self, node_index, filter_ratio):
         node = self.nodes[node_index]
-        node.filter_ration = self.set_and_validate_value_8(node,
+        node.filter_ratio = self.set_and_validate_value_8(node,
             WRITE_FILTER_RATIO,
             READ_FILTER_RATIO,
-            filter_ration)
+            filter_ratio)
 
     def set_filter_ratio_global(self, filter_ratio):
         self.filter_ratio = filter_ratio
         for node in self.nodes:
             self.set_filter_ratio(node.index, filter_ratio)
         return self.filter_ratio
+
+    def set_node_scale(self, node_index, node_scale):
+        node = self.nodes[node_index]
+        node.node_scale = self.set_and_validate_value_16(node,
+            WRITE_NODE_SCALE,
+            READ_NODE_SCALE,
+            node_scale)
 
     def intf_simulate_lap(self, node_index):
         node = self.nodes[node_index]

@@ -72,11 +72,13 @@ th, td {
 input, select, textarea {
 	font: inherit;
 	box-sizing: border-box;
+	max-width: 100%;
 }
 
-input[type="text"], textarea {
+input[type="text"],
+input[type="number"],
+textarea {
 	width: 100%;
-	min-width: 8em;
 	border: solid 0.125em hsl(212.7, 67.8%, 29.2%);
 	border-radius: 0.25rem;
 	background: #fff;

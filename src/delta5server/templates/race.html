@@ -59,20 +59,26 @@
 
 		socket.on('heartbeat', function (msg) {
 			for (i = 0; i < msg.current_rssi.length; i++) {
-				$('.current_rssi_' + i).html(msg.current_rssi[i]);
+				var rssiValue = msg.current_rssi[i] - d5rt.nodes[i].offset;
 
-				if (d5rt.nodes[i].graph.options.minValue == 0) {
-					d5rt.nodes[i].graph.options.minValue = msg.current_rssi[i] - 10;
-					d5rt.nodes[i].graph.options.maxValue = msg.current_rssi[i] + 100;
+				$('.current_rssi_' + i).html(rssiValue);
+
+/*				if (d5rt.nodes[i].graph.options.minValue == -1) {
+					d5rt.nodes[i].graph.options.minValue = rssiValue - 10;
+					d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
 				}
-				if (d5rt.nodes[i].graph.options.minValue > msg.current_rssi[i]) {
-					d5rt.nodes[i].graph.options.minValue = msg.current_rssi[i];
-				}
-				if (d5rt.nodes[i].graph.options.maxValue < msg.current_rssi[i]) {
-					d5rt.nodes[i].graph.options.maxValue = msg.current_rssi[i];
+				if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
+					d5rt.nodes[i].graph.options.minValue = rssiValue;
+				} */
+				if (d5rt.nodes[i].graph.options.maxValue < rssiValue || 
+					d5rt.rssiMax < rssiValue) {
+					d5rt.nodes[i].graph.options.maxValue = rssiValue;
+					for (var j in d5rt.nodes) {
+						d5rt.nodes[j].graph.options.maxValue = d5rt.rssiMax = rssiValue;
+					}
 				}
 
-				d5rt.nodes[i].series.append(new Date().getTime(), msg.current_rssi[i]);
+				d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
 			}
 		});
 
@@ -84,7 +90,9 @@
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
 				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
 				// import calibration/trigger threshold lines?
-				d5rt.nodes[i].updateRSSI();
+				d5rt.nodes[i].offset = msg.node_offset[i];
+
+				d5rt.nodes[i].updateThresholds();
 			}
 		});
 

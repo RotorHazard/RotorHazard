@@ -94,7 +94,6 @@ class Frequency(DB.Model):
     def __repr__(self):
         return '<Frequency %r>' % self.frequency
 
-
 class Profiles(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), unique=True, nullable=False)
@@ -111,6 +110,12 @@ class RaceFormat(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     race_mode = DB.Column(DB.Integer, nullable=False)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
+
+class NodeData(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    frequency = DB.Column(DB.Integer, nullable=False)
+    offset = DB.Column(DB.Integer, nullable=False)
+    scale = DB.Column(DB.Integer, nullable=False)
 
 #
 # Authentication
@@ -245,7 +250,8 @@ def hardwarelog():
 def database():
     '''Route to database page.'''
     return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
-        savedraces=SavedRace, frequencies=Frequency, race_format=RaceFormat.query.get(1), )
+        savedraces=SavedRace, frequencies=Frequency, race_format=RaceFormat.query.get(1), \
+        node_data=Nodedata, )
 
 #
 # Socket IO Events
@@ -279,7 +285,33 @@ def on_set_frequency(data):
     node_index = data['node']
     frequency = data['frequency']
     INTERFACE.set_frequency(node_index, frequency)
+    node_data = NodeData.query.filter_by(id=node_index).first()
+    node_data.frequency = frequency
+    DB.session.commit()
     server_log('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
+    emit_node_data() # Settings page, new node channel
+
+@SOCKET_IO.on('set_node_offset')
+def on_set_node_offset(data):
+    '''Set node offset.'''
+    node_index = data['node']
+    node_offset = data['node_offset']
+    node_data = NodeData.query.filter_by(id=node_index).first()
+    node_data.offset = node_offset
+    DB.session.commit()
+    server_log('Node offset set: Node {0} Offset {1}'.format(node_index+1, node_offset))
+#    emit_node_data() # Settings page, new node channel
+
+@SOCKET_IO.on('set_node_scale')
+def on_set_node_scale(data):
+    '''Set node scale.'''
+    node_index = data['node']
+    node_scale = data['node_scale']
+    INTERFACE.set_node_scale(node_index, node_scale)
+    node_data = NodeData.query.filter_by(id=node_index).first()
+    node_data.scale = node_scale
+    DB.session.commit()
+    server_log('Node scale set: Node {0} Scale {1}'.format(node_index+1, node_scale))
     emit_node_data() # Settings page, new node channel
 
 @SOCKET_IO.on('add_heat')
@@ -645,8 +677,11 @@ def emit_node_data():
         'channel': [Frequency.query.filter_by(frequency=node.frequency).first().channel \
             for node in INTERFACE.nodes],
         'trigger_rssi': [node.trigger_rssi for node in INTERFACE.nodes],
-        'peak_rssi': [node.peak_rssi for node in INTERFACE.nodes]
+        'peak_rssi': [node.peak_rssi for node in INTERFACE.nodes],
+        'node_offset': [node.offset for node in NodeData.query.all()],
+        'node_scale': [node.node_scale for node in INTERFACE.nodes]
     })
+
 def emit_node_tuning():
     '''Emits node tuning values.'''
     last_profile = LastProfile.query.get(1)
@@ -899,18 +934,31 @@ def hardware_log_callback(message):
 INTERFACE.hardware_log_callback = hardware_log_callback
 
 def default_frequencies():
-    '''Set node frequencies, IMD for 6 or less and race band for 7 or 8.'''
+    '''Set node frequencies, R1367 for 4, IMD for 5 or 6, Raceband for 7 or 8.'''
     frequencies_imd_5_6 = [5685, 5760, 5800, 5860, 5905, 5645]
     frequencies_raceband = [5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917]
     frequencies_rb4 = [5658, 5732, 5843, 5880]
     for index, node in enumerate(INTERFACE.nodes):
         gevent.sleep(0.100)
-        if RACE.num_nodes < 7:
-            INTERFACE.set_frequency(index, frequencies_rb4[index])
+        node_data = NodeData.query.filter_by(id=index).first()
+        if RACE.num_nodes < 5:
+            node_data.frequency = frequencies_rb4[index]
+        elif RACE.num_nodes < 7:
+            node_data.frequency = frequencies_imd_5_6[index]
         else:
-            INTERFACE.set_frequency(index, frequencies_raceband[index])
+            node_data.frequency = frequencies_raceband[index]
+
     server_log('Default frequencies set')
 
+def assign_frequencies():
+    '''Assign set frequencies to nodes'''
+    for node in NodeData.query.all():
+        gevent.sleep(0.100)
+        INTERFACE.set_frequency(node.id, node.frequency)
+        gevent.sleep(0.100)
+        INTERFACE.set_node_scale(node.id, node.scale)
+
+    server_log('Frequencies asigned to nodes')
 
 def db_init():
     '''Initialize database.'''
@@ -923,6 +971,8 @@ def db_init():
     db_reset_profile()
     db_reset_default_profile()
     db_reset_fix_race_time()
+    db_reset_node_values()
+    assign_frequencies()
     server_log('Database initialized')
 
 def db_reset():
@@ -935,6 +985,8 @@ def db_reset():
     db_reset_profile()
     db_reset_default_profile()
     db_reset_fix_race_time()
+    db_reset_node_values()
+    assign_frequencies()
     server_log('Database reset')
 
 def db_reset_keep_pilots():
@@ -1080,6 +1132,18 @@ def db_reset_fix_race_time():
                              race_time_sec=120))
     DB.session.commit()
     server_log("Database set fixed time race to 120 sec (2 minutes)")
+
+def db_reset_node_values():
+    DB.session.query(NodeData).delete()
+    for node in range(RACE.num_nodes):
+        DB.session.add(NodeData(id=node,
+                                frequency=0,
+                                offset=0,
+                                scale=1000))
+    DB.session.commit()
+    default_frequencies()
+    server_log("Database cleared node correction")
+
 #
 # Program Initialize
 #
@@ -1090,12 +1154,13 @@ print 'Number of nodes found: {0}'.format(RACE.num_nodes)
 
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
-# Set default frequencies based on number of nodes
-default_frequencies()
 
 # Create database if it doesn't exist
 if not os.path.exists('database.db'):
     db_init()
+else:
+	# Set frequencies and load node correction data
+	assign_frequencies()
 
 # Clear any current laps from the database on each program start
 # DB session commit needed to prevent 'application context' errors
@@ -1107,7 +1172,6 @@ tune_val = Profiles.query.get(last_profile.profile_id)
 INTERFACE.set_calibration_threshold_global(tune_val.c_threshold)
 INTERFACE.set_calibration_offset_global(tune_val.c_offset)
 INTERFACE.set_trigger_threshold_global(tune_val.t_threshold)
-
 
 # Test data - Current laps
 # DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))

@@ -20,8 +20,8 @@
 		// set up RSSI graphing
 		$('.node table tr:first-child').each(function(){
 			var node = $(this);
-			var node_id = parseInt(node.find('td>select').attr('data-node'));
-			node.after('<tr><td colspan="2" class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></td></tr>');
+			var node_id = parseInt(node.find('td select').attr('data-node'));
+			node.before('<tr><td colspan="2" class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></td></tr>');
 
 			d5rt.nodes[node_id] = new rssiGraph();
 			d5rt.nodes[node_id].setup(document.getElementById('rssi-graph-' + node_id));
@@ -29,20 +29,26 @@
 
 		socket.on('heartbeat', function (msg) {
 			for (i = 0; i < msg.current_rssi.length; i++) {
-				$('.current_rssi_' + i).html(msg.current_rssi[i]);
+				var rssiValue = msg.current_rssi[i] - d5rt.nodes[i].offset;
 
-				if (d5rt.nodes[i].graph.options.minValue == 0) {
-					d5rt.nodes[i].graph.options.minValue = msg.current_rssi[i] - 10;
-					d5rt.nodes[i].graph.options.maxValue = msg.current_rssi[i] + 100;
+				$('.current_rssi_' + i).html(rssiValue);
+
+/*				if (d5rt.nodes[i].graph.options.minValue == -1) {
+					d5rt.nodes[i].graph.options.minValue = rssiValue - 10;
+					d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
 				}
-				if (d5rt.nodes[i].graph.options.minValue > msg.current_rssi[i]) {
-					d5rt.nodes[i].graph.options.minValue = msg.current_rssi[i];
-				}
-				if (d5rt.nodes[i].graph.options.maxValue < msg.current_rssi[i]) {
-					d5rt.nodes[i].graph.options.maxValue = msg.current_rssi[i];
+				if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
+					d5rt.nodes[i].graph.options.minValue = rssiValue;
+				} */
+				if (d5rt.nodes[i].graph.options.maxValue < rssiValue || 
+					d5rt.rssiMax < rssiValue) {
+					d5rt.nodes[i].graph.options.maxValue = rssiValue;
+					for (var j in d5rt.nodes) {
+						d5rt.nodes[j].graph.options.maxValue = d5rt.rssiMax = rssiValue;
+					}
 				}
 
-				d5rt.nodes[i].series.append(new Date().getTime(), msg.current_rssi[i]);
+				d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
 			}
 		});
 
@@ -50,15 +56,18 @@
 			for (i = 0; i < msg.frequency.length; i++) {
 				$('.channel_' + i).html('<div class="channel-block"><span class="ch">' + msg.channel[i] + '</span> <span class="fr">' + msg.frequency[i] + '</span></div>');
 				$('#s_channel_' + i).val(msg.frequency[i]);
-				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
-				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
+				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i] - d5rt.nodes[i].offset);
+				$('.peak_rssi_' + i).html(msg.peak_rssi[i] - d5rt.nodes[i].offset);
+				$('#set_node_offset_' + i).val(msg.node_offset[i]);
+				$('#set_node_scale_' + i).val(msg.node_scale[i] / 1000);
 
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
 				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
 				d5rt.nodes[i].calibration_threshold = msg.trigger_rssi[i] - parseInt($('#set_calibration_threshold').val());
 				d5rt.nodes[i].trigger_threshold = msg.trigger_rssi[i] - parseInt($('#set_trigger_threshold').val());
+				d5rt.nodes[i].offset = msg.node_offset[i];
 
-				d5rt.nodes[i].updateRSSI();
+				d5rt.nodes[i].updateThresholds();
 			}
 		});
 
@@ -105,6 +114,23 @@
 				frequency: parseInt($(this).val()),
 			};
 			socket.emit('set_frequency', data);
+		});
+
+		$('.set_node_offset').change(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				node_offset: parseInt($(this).val()),
+			};
+			socket.emit('set_node_offset', data);
+			d5rt.nodes[data.node].offset = data.node_offset;
+		});
+
+		$('.set_node_scale').change(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				node_scale: parseInt($(this).val() * 1000),
+			};
+			socket.emit('set_node_scale', data);
 		});
 
 		$('.set_language').change(function (event) {
@@ -279,13 +305,25 @@
 		<table>
 			<tr>
 				<td colspan="2">
-					<select class="set_frequency" id="s_channel_{{ node }}" data-node="{{ node }}">
-						{% for frequency in frequencies.query.all() %}
-						<option value="{{ frequency.frequency }}">
-							{{ frequency.channel }} {{ frequency.frequency }}
-						</option>
-						{% endfor %}
-					</select>
+
+							<select class="set_frequency" id="s_channel_{{ node }}" data-node="{{ node }}">
+								{% for frequency in frequencies.query.all() %}
+								<option value="{{ frequency.frequency }}">
+									{{ frequency.channel }} {{ frequency.frequency }}
+								</option>
+								{% endfor %}
+							</select>
+
+							<div class="label-block">
+								<label for="set_node_offset_{{ node }}">Offset</label>
+							</div>
+							<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65536">
+
+							<div class="label-block">
+								<label for="set_node_scale_{{ node }}">Scale</label>
+							</div>
+							<input type="number" id="set_node_scale_{{ node }}" class="set_node_scale" data-node="{{ node }}" step="0.01" min="0" max="65.53">
+
 				</td>
 			</tr>
 			<tr>
@@ -440,21 +478,21 @@
 			<label for="set_calibration_offset">Calibration Offset</label>
 			<p class="desc">Trigger is Peak Rssi minus Calibration Offset (Default 8)</p>
 		</div>
-		<input type="text" id="set_calibration_offset">
+		<input type="number" id="set_calibration_offset">
 	</li>
 	<li>
 		<div class="label-block">
 			<label for="set_calibration_threshold">Calibration Threshold</label>
 			<p class="desc">Trigger minus Calibration Threshold ends calibration pass (Default 95)</p>
 		</div>
-		<input type="text" id="set_calibration_threshold">
+		<input type="number" id="set_calibration_threshold">
 	</li>
 	<li>
 		<div class="label-block">
 			<label for="set_trigger_threshold">Trigger Threshold</label>
 			<p class="desc">Trigger minus Trigger Threshold ends normal pass (Default 40)</p>
 		</div>
-		<input type="text" id="set_trigger_threshold">
+		<input type="number" id="set_trigger_threshold">
 	</li>
 </ol>
 

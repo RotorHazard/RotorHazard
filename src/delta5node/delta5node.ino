@@ -43,6 +43,7 @@ const int spiClockPin = 13;
 #define READ_CALIBRATION_OFFSET 0x17
 #define READ_TRIGGER_THRESHOLD 0x18
 #define READ_FILTER_RATIO 0x19
+#define READ_NODE_SCALE 0x20
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_CALIBRATION_THRESHOLD 0x65
@@ -50,6 +51,7 @@ const int spiClockPin = 13;
 #define WRITE_CALIBRATION_OFFSET 0x67
 #define WRITE_TRIGGER_THRESHOLD 0x68
 #define WRITE_FILTER_RATIO 0x69
+#define WRITE_NODE_SCALE 0x70
 
 struct {
 	uint16_t volatile vtxFreq = 5800;
@@ -61,6 +63,9 @@ struct {
 	uint16_t volatile triggerThreshold = 40;
 	uint8_t volatile filterRatio = 10;
 	float volatile filterRatioFloat = 0.0f;
+
+	// node correction
+	uint16_t rssiScale = 1000; // scale is *1000
 } settings;
 
 struct {
@@ -253,7 +258,7 @@ void loop() {
 
 	state.rssiRaw = rssiRead();
 	state.rssiSmoothed = (settings.filterRatioFloat * (float)state.rssiRaw) + ((1.0f-settings.filterRatioFloat) * state.rssiSmoothed);
-	state.rssi = (int)state.rssiSmoothed;
+  state.rssi = (int)((state.rssiSmoothed * settings.rssiScale) / 1000);
 
 	if (state.rssiTrigger > 0) {
 		if (!state.crossing && state.rssi > state.rssiTrigger) {
@@ -455,6 +460,12 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 				success = true;
 			}
 			break;
+		case WRITE_NODE_SCALE:
+			if (readAndValidateIoBuffer(WRITE_NODE_SCALE, 2)) {
+				settings.rssiScale = ioBufferRead16();
+				success = true;
+			}
+			break;
 	}
 
 	ioCommand = 0; // Clear previous command
@@ -502,6 +513,9 @@ void i2cTransmit() {
 			break;
 		case READ_FILTER_RATIO:
 			ioBufferWrite8(settings.filterRatio);
+			break;
+		case READ_NODE_SCALE:
+			ioBufferWrite16(settings.rssiScale);
 			break;
 		default: // If an invalid command is sent, write nothing back, master must react
 			Serial.print("TX Fault command: ");
