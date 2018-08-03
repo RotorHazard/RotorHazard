@@ -195,6 +195,14 @@
 			};
 			socket.emit('set_trigger_threshold', data);
 		})
+
+		$('#set_filter_ratio').change(function (event) {
+		    var data = {
+		    	filter_ratio: parseInt($(this).val()),
+		    }
+		    socket.emit('set_filter_ratio', data);
+		});
+
 		$('#set_profile_name').change(function (event) {
 			var data = {
 				profile_name: $(this).val()
@@ -511,6 +519,13 @@
 		</div>
 		<input type="number" id="set_trigger_threshold">
 	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_filter_ratio">Filter Ratio</label>
+			<p class="desc">RSSI Smoothing: 10000 = Unfiltered (Default 100)</p>
+		</div>
+		<input type="number" id="set_filter_ratio">
+	</li>
 </ol>
 
 <div class="calibration-guide">
@@ -543,6 +558,10 @@
 		<tr>
 			<td>Pass registering is significantly delayed</td>
 			<td>Decrease Trigger Threshold</td>
+		</tr>
+		<tr>
+			<td>Noisy environment</td>
+			<td>Decrease Filter Ratio</td>
 		</tr>
 	</table>
 </div>

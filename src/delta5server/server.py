@@ -101,6 +101,7 @@ class Profiles(DB.Model):
     c_offset = DB.Column(DB.Integer, nullable=True)
     c_threshold = DB.Column(DB.Integer, nullable=True)
     t_threshold = DB.Column(DB.Integer, nullable=True)
+    f_ratio = DB.Column(DB.Integer, nullable=True)
 
 class LastProfile(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
@@ -416,6 +417,7 @@ def on_delete_profile():
      INTERFACE.set_calibration_threshold_global(profile.c_threshold)
      INTERFACE.set_calibration_offset_global(profile.c_offset)
      INTERFACE.set_trigger_threshold_global(profile.t_threshold)
+     INTERFACE.set_filter_ratio_global(profile.f_ratio)
      emit_node_tuning()
 
 @SOCKET_IO.on('set_profile_name')
@@ -475,6 +477,18 @@ def on_set_trigger_threshold(data):
     profile.t_threshold = trigger_threshold
     DB.session.commit()
     server_log('Trigger threshold set: {0}'.format(trigger_threshold))
+    emit_node_tuning()
+
+@SOCKET_IO.on('set_filter_ratio')
+def on_set_filter_ratio(data):
+    '''Set Trigger Threshold.'''
+    filter_ratio = data['filter_ratio']
+    INTERFACE.set_filter_ratio_global(filter_ratio)
+    last_profile = LastProfile.query.get(1)
+    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    profile.f_ratio = filter_ratio
+    DB.session.commit()
+    server_log('Filter ratio set: {0}'.format(filter_ratio))
     emit_node_tuning()
 
 @SOCKET_IO.on('reset_database')
@@ -700,6 +714,8 @@ def emit_node_tuning():
             tune_val.c_offset,
         'trigger_threshold': \
             tune_val.t_threshold,
+        'filter_ratio': \
+            tune_val.f_ratio,
         'profile_name':
             tune_val.name,
         'profile_description':
@@ -1123,17 +1139,20 @@ def db_reset_profile():
                              description ="default tune params for 25mW race",
                              c_offset=8,
                              c_threshold=65,
-                             t_threshold=40))
+                             t_threshold=40,
+                             f_ratio=100))
     DB.session.add(Profiles(name="default 200mW",
                              description ="default tune params for 200mW race",
                              c_offset=8,
                              c_threshold=90,
-                             t_threshold=40))
+                             t_threshold=40,
+                             f_ratio=100))
     DB.session.add(Profiles(name="default 600mW",
                              description ="default tune params for 600mW race",
                              c_offset=8,
                              c_threshold=100,
-                             t_threshold=40))
+                             t_threshold=40,
+                             f_ratio=100))
     DB.session.commit()
     server_log("Database set default profiles for 25,200,600 mW races")
 
@@ -1190,6 +1209,7 @@ tune_val = Profiles.query.get(last_profile.profile_id)
 INTERFACE.set_calibration_threshold_global(tune_val.c_threshold)
 INTERFACE.set_calibration_offset_global(tune_val.c_offset)
 INTERFACE.set_trigger_threshold_global(tune_val.t_threshold)
+INTERFACE.set_filter_ratio_global(tune_val.f_ratio)
 
 # Test data - Current laps
 # DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
