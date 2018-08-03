@@ -1052,7 +1052,7 @@ def db_reset_laps():
 def db_reset_pilots():
     '''Resets database pilots to default.'''
     DB.session.query(Pilot).delete()
-    DB.session.add(Pilot(pilot_id='0', callsign='-', name='None', phonetic=""))
+    DB.session.add(Pilot(pilot_id='0', callsign='-', name='-None-', phonetic=""))
     for node in range(RACE.num_nodes):
         DB.session.add(Pilot(pilot_id=node+1, callsign='callsign{0}'.format(node+1), \
             name='Pilot Name', phonetic='callsign{0}'.format(node+1)))
@@ -1147,20 +1147,26 @@ def db_reset_saved_races():
 def db_reset_profile():
     '''Set default profile'''
     DB.session.query(Profiles).delete()
-    DB.session.add(Profiles(name="default 25mW",
-                             description ="default tune params for 25mW race",
+    DB.session.add(Profiles(name="Outdoor 25mW",
+                             description ="High speed, 25mW, open area",
                              c_offset=8,
                              c_threshold=65,
                              t_threshold=40,
                              f_ratio=100))
-    DB.session.add(Profiles(name="default 200mW",
-                             description ="default tune params for 200mW race",
+    DB.session.add(Profiles(name="Indoor 25mW",
+                             description ="Low speed, 25mW, enclosed area",
+                             c_offset=8,
+                             c_threshold=65,
+                             t_threshold=40,
+                             f_ratio=10))
+    DB.session.add(Profiles(name="Outdoor 200mW",
+                             description ="High speed, 200mW, open area",
                              c_offset=8,
                              c_threshold=90,
                              t_threshold=40,
                              f_ratio=100))
     DB.session.add(Profiles(name="default 600mW",
-                             description ="default tune params for 600mW race",
+                             description ="High speed, 600mW, open area",
                              c_offset=8,
                              c_threshold=100,
                              t_threshold=40,
