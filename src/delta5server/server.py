@@ -239,6 +239,16 @@ def settings():
                            profiles = Profiles,
                            race_format=RaceFormat.query.get(1))
 
+@APP.route('/correction')
+@requires_auth
+def correction():
+    '''Route to node correction page.'''
+
+    return render_template('correction.html', num_nodes=RACE.num_nodes,
+                           frequencies=Frequency,
+                           last_profile =  LastProfile,
+                           profiles = Profiles)
+
 # Debug Routes
 
 @APP.route('/hardwarelog')

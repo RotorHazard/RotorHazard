@@ -7,12 +7,24 @@ function supportsLocalStorage() {
 	}
 }
 
+function median(values){
+	values.sort(function(a,b){
+		return a-b;
+	});
+	if(values.length ===0) return 0;
+	var half = Math.floor(values.length / 2);
+	if (values.length % 2) return values[half];
+	return (values[half - 1] + values[half]) / 2.0;
+}
+
 /* d5rt object for local settings/storage */
 var d5rt = {
 	language: '', // local language for voice callout
 	admin: false, // whether to show admin options in nav
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array for rssi graphing
+	collecting: false,
+	collection_amount: 25, // number of rssi data points to capture
 	rssiMax: 100,
 
 	saveData: function() {
@@ -48,6 +60,51 @@ function nodeModel() {
 	this.calibration_threshold = false;
 	this.trigger_threshold = false;
 	this.offset = 0;
+	this.corrections = {
+		noise: {
+			rawData: [],
+			min: false,
+			median: false,
+			max: false
+		},
+		floor: {
+			rawData: [],
+			min: false,
+			median: false,
+			max: false
+		},
+		nearest: {
+			rawData: [],
+			min: false,
+			median: false,
+			max: false
+		},
+		gate: {
+			rawData: [],
+			min: false,
+			median: false,
+			max: false
+		},
+
+		median_separation: false,
+		suggestedScale: 1,
+
+		calOffset: {
+			min: 0,
+			best: 0,
+			max: Infinity
+		},
+		calThrs: {
+			min: 0,
+			best: 0,
+			max: Infinity
+		},
+		trigThrs: {
+			min: 0,
+			best: 0,
+			max: Infinity
+		}
+	};
 
 	this.graph = new SmoothieChart({
 				responsive: true,
@@ -88,6 +145,17 @@ nodeModel.prototype = {
 				{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.peak_rssi},
 			];
 		}
+	},
+	calcStats: function(dataType, selfIndex) {
+		dataSet = this.corrections[dataType];
+		dataSet.max = Math.max(...dataSet.rawData);
+		dataSet.min = Math.min(...dataSet.rawData);
+		dataSet.median = median(dataSet.rawData);
+		// dataSet.range = dataSet.max - dataSet.min;
+
+		$('#max_' + dataType + '_' + selfIndex).html(dataSet.max);
+		$('#median_' + dataType + '_' + selfIndex).html(dataSet.median);
+		$('#min_' + dataType + '_' + selfIndex).html(dataSet.min);
 	}
 }
 

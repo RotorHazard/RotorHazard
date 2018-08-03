@@ -1,0 +1,673 @@
+{% extends "layout.html" %} {% block title %}Settings{% endblock %} {% block head %}
+<script type="text/javascript" charset="utf-8">
+	function calc_corrections() {
+		for (var i = 0; i < d5rt.nodes.length; i++) {
+			var c = d5rt.nodes[i].corrections;
+
+			c.median_separation = c.gate.median - c.nearest.median;
+		}
+
+		// find highest median separation
+		var highest_median_separation_node = 0;
+		var highest_median_separation_value = d5rt.nodes[0].corrections.median_separation;
+
+		for (var i = 1; i < d5rt.nodes.length; i++) {
+			var c = d5rt.nodes[i].corrections;
+
+			if (c.median_separation > highest_median_separation_value) {
+				highest_median_separation_value = c.median_separation;
+				highest_median_separation_node = i;
+			}
+		}
+
+		// suggest scale based on all other median separations
+		for (var i = 0; i < d5rt.nodes.length; i++) {
+			var c = d5rt.nodes[i].corrections;
+
+			if (c.median_separation >= 0) {
+				c.suggestedScale = Math.round(highest_median_separation_value / c.median_separation * 1000) / 1000;
+				$('#scale_' + i).html(c.suggestedScale);
+			} else {
+				c.suggestedScale = 1;
+				$('#scale_' + i).html('node error');
+			}
+		}
+
+		// suggest offset based on suggested scale
+		for (var i = 0; i < d5rt.nodes.length; i++) {
+			var c = d5rt.nodes[i].corrections;
+
+			$('#offset_' + i).html( Math.round(c.noise.min * c.suggestedScale));
+		}
+
+		// suggest calibration offset
+		for (var i = 0; i < d5rt.nodes.length; i++) {
+			var c = d5rt.nodes[i].corrections;
+
+			// ideal: smallest that won't miss any passes (gate.max-gate.min)
+
+			c.calOffset.min = Math.max(
+				c.gate.max - c.gate.median, // larger of upper half
+				c.gate.median - c.gate.min, // ...or lower half
+			);
+
+			c.calOffset.max = Math.max(
+				c.gate.min - c.nearest.max, // prevent passes at nearest (best)
+				c.gate.median - c.nearest.median, // larger than this will be unusable
+				Math.round((c.gate.max - c.gate.min) * 0.2), // 20% more than spread
+			);
+
+			c.calOffset.best = c.gate.max - c.gate.min;
+		}
+
+		// suggest calibration threshold
+		for (var i = 0; i < d5rt.nodes.length; i++) {
+			var c = d5rt.nodes[i].corrections;
+
+			/*
+			if (c.gate.min > c.floor.max) {
+				// distance between gate and floor
+				suggestedCalibrationThreshold = c.gate.min - c.floor.max;
+
+				if (suggestedCalibrationThreshold < (c.gate.max - c.gate.min)) {
+					// but no smaller than gate spread, to avoid early calibration
+					suggestedCalibrationThreshold = c.gate.max - c.gate.min;
+				}
+			} else {
+				// if difference is poor, use distance between medians as a last resort
+				suggestedCalibrationThreshold = c.gate.median - c.floor.median;
+			}
+			*/
+
+			// ideal: largest that won't miss passes (gate.min-floor.max)
+
+			c.calThrs.min = Math.max(
+				c.gate.max - c.gate.min, // no smaller than gate spread, to avoid early calibration
+			);
+
+			c.calThrs.max = Math.max(
+				c.gate.median - c.floor.median, // fallback if ideal can't be met
+			);
+
+			c.calThrs.best = Math.max(
+				c.gate.min - c.floor.max, // ideal if large
+				c.calThrs.min
+			);
+
+		}
+
+		// suggest trigger threshold
+		for (var i = 0; i < d5rt.nodes.length; i++) {
+			var c = d5rt.nodes[i].corrections;
+
+/*
+			var stt_temp = c.gate.max - c.gate.min * c.suggestedScale;
+			if (stt_temp < suggestedTriggerThreshold) {
+				suggestedTriggerThreshold = stt_temp;
+			}
+*/
+
+			// ideal: smallest that won't trigger falsely (gate.max-gate.min * 2)
+			// acceptable: too large; extra passes
+			// avoid: too small; missing passes
+
+			c.trigThrs.min = Math.max(
+				c.gate.max - c.gate.min, // ideal value
+				c.calOffset.min, // can't be smaller than calibration offset
+			);
+
+			c.trigThrs.max = Math.max(
+				c.gate.min - c.floor.max, // larger than this may result in missed passes
+				c.gate.median - c.floor.median, // fallback for problem data
+			);
+
+			c.trigThrs.best = Math.min (
+				(c.gate.max - c.gate.min) * 2, // double the gate spread
+				c.trigThrs.max
+			);
+		}
+
+		// output calculated results
+		var highest_min_sco = 0;
+		var lowest_max_sco = Infinity;
+		var highest_min_sct = 0;
+		var lowest_max_sct = Infinity;
+		var highest_min_stt = 0;
+		var lowest_max_stt = Infinity;
+
+		for (var i = 0; i < d5rt.nodes.length; i++) {
+			var c = d5rt.nodes[i].corrections;
+
+			c.calOffset.min *= c.suggestedScale;
+			c.calOffset.max *= c.suggestedScale;
+			c.calOffset.best *= c.suggestedScale;
+
+			$('#sco_' + i).html(Math.round(c.calOffset.best) + ' (' + Math.round(c.calOffset.min) + '&#8210;' + Math.round(c.calOffset.max) + ')');
+
+			if (c.calOffset.min > highest_min_sco) highest_min_sco = c.calOffset.min;
+			if (c.calOffset.max < lowest_max_sco) lowest_max_sco = c.calOffset.max;
+
+			c.calThrs.min *= c.suggestedScale;
+			c.calThrs.max *= c.suggestedScale;
+			c.calThrs.best *= c.suggestedScale;
+
+			$('#sct_' + i).html(Math.round(c.calThrs.best) + ' (' + Math.round(c.calThrs.min) + '&#8210;' + Math.round(c.calThrs.max) + ')');
+
+			if (c.calThrs.min > highest_min_sct) highest_min_sct = c.calThrs.min;
+			if (c.calThrs.max < lowest_max_sct) lowest_max_sct = c.calThrs.max;
+
+			c.trigThrs.min *= c.suggestedScale;
+			c.trigThrs.max *= c.suggestedScale;
+			c.trigThrs.best *= c.suggestedScale;
+
+			$('#stt_' + i).html(Math.round(c.trigThrs.best) + ' (' + Math.round(c.trigThrs.min) + '&#8210;' + Math.round(c.trigThrs.max) + ')');
+
+			if (c.trigThrs.min > highest_min_stt) highest_min_stt = c.trigThrs.min;
+			if (c.trigThrs.max < lowest_max_stt) lowest_max_stt = c.trigThrs.max;
+		}
+
+		$('#suggested_calibration_offset').html(Math.round(highest_min_sco) + ' (' + Math.round(highest_min_sco) + '&#8210;' + Math.round(lowest_max_sco) + ')');
+		$('#suggested_calibration_threshold').html(Math.round(lowest_max_sct) + ' (' + Math.round(highest_min_sct) + '&#8210;' + Math.round(lowest_max_sct) + ')');
+		$('#suggested_trigger_threshold').html(Math.round(highest_min_stt) + ' (' + Math.round(highest_min_stt) + '&#8210;' + Math.round(lowest_max_stt) + ')');
+
+
+	}
+
+	$(document).ready(function () {
+		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+		// set admin flag
+		d5rt.admin = true;
+		d5rt.saveData();
+		$('nav li').removeClass('admin-hide');
+
+		// set up RSSI graphing
+		$('.current .node table tr:first-child').each(function(){
+			var node = $(this);
+			var node_id = parseInt(node.find('td select').attr('data-node'));
+			node.before('<tr><td colspan="2" class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></td></tr>');
+
+			d5rt.nodes[node_id] = new nodeModel();
+			d5rt.nodes[node_id].setup(document.getElementById('rssi-graph-' + node_id));
+		});
+
+		/* test data */
+		d5rt.nodes[0].corrections.noise.min = 90;
+		d5rt.nodes[0].corrections.noise.median = 90;
+		d5rt.nodes[0].corrections.noise.max = 91;
+		d5rt.nodes[0].corrections.floor.min = 132;
+		d5rt.nodes[0].corrections.floor.median = 146;
+		d5rt.nodes[0].corrections.floor.max = 181;
+		d5rt.nodes[0].corrections.nearest.min = 132;
+		d5rt.nodes[0].corrections.nearest.median = 146;
+		d5rt.nodes[0].corrections.nearest.max = 181;
+		d5rt.nodes[0].corrections.gate.min = 237;
+		d5rt.nodes[0].corrections.gate.median = 237;
+		d5rt.nodes[0].corrections.gate.max = 238;
+
+		d5rt.nodes[1].corrections.noise.min = 100;
+		d5rt.nodes[1].corrections.noise.median = 104;
+		d5rt.nodes[1].corrections.noise.max = 106;
+		d5rt.nodes[1].corrections.floor.min = 132;
+		d5rt.nodes[1].corrections.floor.median = 146;
+		d5rt.nodes[1].corrections.floor.max = 181;
+		d5rt.nodes[1].corrections.nearest.min = 142;
+		d5rt.nodes[1].corrections.nearest.median = 156;
+		d5rt.nodes[1].corrections.nearest.max = 191;
+		d5rt.nodes[1].corrections.gate.min = 237;
+		d5rt.nodes[1].corrections.gate.median = 237;
+		d5rt.nodes[1].corrections.gate.max = 242;
+
+		d5rt.nodes[2].corrections.noise.min = 90;
+		d5rt.nodes[2].corrections.noise.median = 90;
+		d5rt.nodes[2].corrections.noise.max = 91;
+		d5rt.nodes[2].corrections.floor.min = 132;
+		d5rt.nodes[2].corrections.floor.median = 146;
+		d5rt.nodes[2].corrections.floor.max = 181;
+		d5rt.nodes[2].corrections.nearest.min = 132;
+		d5rt.nodes[2].corrections.nearest.median = 146;
+		d5rt.nodes[2].corrections.nearest.max = 181;
+		d5rt.nodes[2].corrections.gate.min = 237;
+		d5rt.nodes[2].corrections.gate.median = 237;
+		d5rt.nodes[2].corrections.gate.max = 247;
+
+		d5rt.nodes[3].corrections.noise.min = 90;
+		d5rt.nodes[3].corrections.noise.median = 90;
+		d5rt.nodes[3].corrections.noise.max = 91;
+		d5rt.nodes[3].corrections.floor.min = 112;
+		d5rt.nodes[3].corrections.floor.median = 126;
+		d5rt.nodes[3].corrections.floor.max = 141;
+		d5rt.nodes[3].corrections.nearest.min = 112;
+		d5rt.nodes[3].corrections.nearest.median = 126;
+		d5rt.nodes[3].corrections.nearest.max = 141;
+		d5rt.nodes[3].corrections.gate.min = 150;
+		d5rt.nodes[3].corrections.gate.median = 170;
+		d5rt.nodes[3].corrections.gate.max = 180;
+
+		socket.on('heartbeat', function (msg) {
+			// data collection
+			if (d5rt.collecting) {
+				for (i = 0; i < msg.current_rssi.length; i++) {
+					var dataStore = d5rt.nodes[i].corrections[d5rt.collecting]
+					dataStore.rawData.push(msg.current_rssi[i]);
+				}
+
+				$('#' + d5rt.collecting + '_length').html(dataStore.rawData.length);
+				if (dataStore.rawData.length >= d5rt.collection_amount) {
+					for (var i = 0; i < d5rt.nodes.length; i++) {
+						d5rt.nodes[i].calcStats(d5rt.collecting, i);
+					}
+					d5rt.collecting = false;
+				}
+			}
+
+			for (i = 0; i < msg.current_rssi.length; i++) {
+				var rssiValue = msg.current_rssi[i] - d5rt.nodes[i].offset;
+
+				$('.current_rssi_' + i).html(rssiValue);
+
+				if (d5rt.nodes[i].graph.options.maxValue < rssiValue ||
+					d5rt.rssiMax < rssiValue) {
+					d5rt.nodes[i].graph.options.maxValue = rssiValue;
+					for (var j in d5rt.nodes) {
+						d5rt.nodes[j].graph.options.maxValue = d5rt.rssiMax = rssiValue;
+					}
+				}
+
+				d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+			}
+		});
+
+		socket.on('node_data', function (msg) {
+			for (i = 0; i < msg.frequency.length; i++) {
+				$('.channel_' + i).html('<div class="channel-block"><span class="ch">' + msg.channel[i] + '</span> <span class="fr">' + msg.frequency[i] + '</span></div>');
+				$('#s_channel_' + i).val(msg.frequency[i]);
+				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i] - d5rt.nodes[i].offset);
+				$('.peak_rssi_' + i).html(msg.peak_rssi[i] - d5rt.nodes[i].offset);
+				$('#set_node_offset_' + i).val(msg.node_offset[i]);
+				$('#set_node_scale_' + i).val(msg.node_scale[i] / 1000);
+
+				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
+				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
+				d5rt.nodes[i].calibration_threshold = msg.trigger_rssi[i] - parseInt($('#set_calibration_threshold').val());
+				d5rt.nodes[i].trigger_threshold = msg.trigger_rssi[i] - parseInt($('#set_trigger_threshold').val());
+				d5rt.nodes[i].offset = msg.node_offset[i];
+
+				d5rt.nodes[i].updateThresholds();
+			}
+		});
+
+		socket.on('node_tuning', function (msg) {
+			$('#set_calibration_threshold').val( msg.calibration_threshold);
+			$('#set_calibration_offset').val( msg.calibration_offset);
+			$('#set_trigger_threshold').val( msg.trigger_threshold);
+			$('#set_profile_name').val( msg.profile_name);
+			$('#set_profile_description').val( msg.profile_description);
+		});
+
+		$('.set_frequency').change(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				frequency: parseInt($(this).val()),
+			};
+			socket.emit('set_frequency', data);
+		});
+
+		$('.set_node_offset').change(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				node_offset: parseInt($(this).val()),
+			};
+			socket.emit('set_node_offset', data);
+			d5rt.nodes[data.node].offset = data.node_offset;
+		});
+
+		$('.set_node_scale').change(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				node_scale: parseInt($(this).val() * 1000),
+			};
+			socket.emit('set_node_scale', data);
+		});
+
+		$('.collect_profile').click(function (event) {
+			d5rt.collecting = $(this).data('collection-type');
+			for (var i in d5rt.nodes) {
+				d5rt.nodes[i].corrections[d5rt.collecting].rawData = [];
+			}
+			return false;
+		});
+
+		$('#calc_corrections').click(function (event) {
+			calc_corrections();
+			return false;
+		});
+
+		$('#set_calibration_threshold').change(function (event) {
+			var data = {
+				calibration_threshold: parseInt($(this).val())
+			};
+			socket.emit('set_calibration_threshold', data);
+		})
+
+		$('#set_calibration_offset').change(function (event) {
+			var data = {
+				calibration_offset: parseInt($(this).val())
+			};
+			socket.emit('set_calibration_offset', data);
+		})
+
+		$('#set_trigger_threshold').change(function (event) {
+			var data = {
+				trigger_threshold: parseInt($(this).val())
+			};
+			socket.emit('set_trigger_threshold', data);
+		})
+
+		$('#set_filter_ratio').change(function (event) {
+		    var data = {
+		    	filter_ratio: parseInt($(this).val()),
+		    }
+		    socket.emit('set_filter_ratio', data);
+		});
+
+		$('#set_profile_name').change(function (event) {
+			var data = {
+				profile_name: $(this).val()
+			};
+			socket.emit('set_profile_name', data);
+			window.location.href = "/settings";
+		})
+
+		$('#set_profile_description').change(function (event) {
+			var data = {
+				profile_desciption: $(this).val()
+			};
+			socket.emit('set_profile_desciption', data);
+		})
+	});
+
+	function speak(obj) {
+		$(obj).articulate('setVoice','name', d5rt.language).articulate('speak');
+	};
+
+</script>
+{% endblock %} {% block content %}
+<main class="page-settings">
+
+<!--Display node data-->
+<h2>Nodes</h2>
+<div class="node-list current">
+	{% for node in range(num_nodes) %}
+	<div class="node">
+		<h3>Node {{ node + 1 }}</h3>
+		<table>
+			<tr>
+				<td colspan="2">
+					<select class="set_frequency" id="s_channel_{{ node }}" data-node="{{ node }}">
+						{% for frequency in frequencies.query.all() %}
+						<option value="{{ frequency.frequency }}">
+							{{ frequency.channel }} {{ frequency.frequency }}
+						</option>
+						{% endfor %}
+					</select>
+
+					<div class="label-block">
+						<label for="set_node_scale_{{ node }}">Scale</label>
+					</div>
+					<input type="number" id="set_node_scale_{{ node }}" class="set_node_scale" data-node="{{ node }}" step="0.01" min="0" max="65.53">
+
+					<div class="label-block">
+						<label for="set_node_offset_{{ node }}">Offset</label>
+					</div>
+					<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65536">
+				</td>
+			</tr>
+			<tr>
+				<td>RSSI</td>
+				<td>
+					<span class="current_rssi_{{ node }}"></span>
+				</td>
+			</tr>
+			<tr>
+				<td>Trigger</td>
+				<td>
+					<span class="trigger_rssi_{{ node }}"></span>
+				</td>
+			</tr>
+			<tr>
+				<td>Peak</td>
+				<td>
+					<span class="peak_rssi_{{ node }}"></span>
+				</td>
+			</tr>
+		</table>
+	</div>
+	{% endfor %}
+</div>
+<ul class="graph-key">
+	<li><span style="background-color: hsl(214, 53%, 60%)"></span> RSSI</li>
+	<li><span style="background-color: hsl(8.2, 86.5%, 53.7%)"></span> Peak</li>
+	<li><span style="background-color: hsl(25, 85%, 55%)"></span> Trigger</li>
+	<li><span style="background-color: #999"></span> Trigger Threshold</li>
+	<li><span style="background-color: #666"></span> Calibration Threshold</li>
+</ul>
+
+<h2>Node Corrections</h2>
+<ol class="form">
+	<li>
+		<div class="label-block">
+			<label for=""></label>
+			<p class="desc">Power on a VTx at the gate. Move it from the nearest to furthest parts of the gate during collection.</p>
+			<p>Collected: <span id="gate_length">0</span></p>
+		</div>
+		<button type="button" class="collect_profile" data-collection-type="gate" id="collect_gate_profile" onclick="this.blur();">Profile Gate</button>
+	</li>
+	<li>
+		<div class="label-block">
+			<label for=""></label>
+			<p class="desc">Power on a VTx at the nearest point on the course that is NOT part of a gate pass.</p>
+			<p>Collected: <span id="nearest_length">0</span></p>
+		</div>
+		<button type="button" class="collect_profile" data-collection-type="nearest" id="collect_nearest_profile" onclick="this.blur();">Profile Next Nearest</button>
+	</li>
+	<li>
+		<div class="label-block">
+			<label for=""></label>
+			<p class="desc">Power on a VTx at the next point on the course past this gate where it stops getting further away.</p>
+			<p>Collected: <span id="floor_length">0</span></p>
+		</div>
+		<button type="button" class="collect_profile" data-collection-type="floor" id="collect_floor_profile" onclick="this.blur();">Profile Race Floor</button>
+	</li>
+	<li>
+		<div class="label-block">
+			<label for=""></label>
+			<p class="desc">Ensure no VTx is powered on.</p>
+			<p>Collected: <span id="noise_length">0</span></p>
+		</div>
+		<button type="button" class="collect_profile" data-collection-type="noise" id="collect_noise_profile" onclick="this.blur();">Profile Noise</button>
+	</li>
+	<li>
+		<div class="label-block">
+			<label for=""></label>
+			<p class="desc">Run calculations after gathering data profiles.</p>
+		</div>
+		<button type="button" class="" id="calc_corrections" onclick="this.blur();">Calculate Corrections</button>
+	</li>
+</ol>
+
+
+<div class="node-list">
+	{% for node in range(num_nodes) %}
+	<div class="node">
+		<h3>Node {{ node + 1 }}</h3>
+		<table>
+			<tr>
+				<td>Gate</td>
+				<td>
+					<span id="min_gate_{{ node }}">-</span> / <span id="median_gate_{{ node }}">-</span> / <span id="max_gate_{{ node }}">-</span>
+				</td>
+			</tr>
+			<tr>
+				<td>Nearest</td>
+				<td>
+					<span id="min_nearest_{{ node }}">-</span> / <span id="median_nearest_{{ node }}">-</span> / <span id="max_nearest_{{ node }}">-</span>
+				</td>
+			</tr>
+			<tr>
+				<td>Floor</td>
+				<td>
+					<span id="min_floor_{{ node }}">-</span> / <span id="median_floor_{{ node }}">-</span> / <span id="max_floor_{{ node }}">-</span>
+				</td>
+			</tr>
+			<tr>
+				<td>Noise</td>
+				<td>
+					<span id="min_noise_{{ node }}">-</span> / <span id="median_noise_{{ node }}">-</span> / <span id="max_noise_{{ node }}">-</span>
+				</td>
+			</tr>
+			<tr>
+				<td>Suggested Node Scale</td>
+				<td>
+					<span id="scale_{{ node }}"></span>
+				</td>
+			</tr>
+			<tr>
+				<td>Suggested Node Offset</td>
+				<td>
+					<span id="offset_{{ node }}"></span>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					<p>SCO: <span id="sco_{{ node }}"></span></p>
+					<p>SCT: <span id="sct_{{ node }}"></span></p>
+					<p>STT: <span id="stt_{{ node }}"></span></p>
+				</td>
+			</tr>
+		</table>
+	</div>
+	{% endfor %}
+</div>
+
+<table>
+	<tr>
+		<td>Suggested Calibration Offset</td>
+		<td>
+			<span id="suggested_calibration_offset"></span>
+		</td>
+	</tr>
+	<tr>
+		<td>Suggested Calibration Threshold</td>
+		<td>
+			<span id="suggested_calibration_threshold"></span>
+		</td>
+	</tr>
+	<tr>
+		<td>Suggested Trigger Threshold</td>
+		<td>
+			<span id="suggested_trigger_threshold"></span>
+		</td>
+	</tr>
+</table>
+
+<!--Edit system tuning values-->
+<h2>Sensor Tuning</h2>
+<div class="control-set">
+	<label for="set_profile">Profile:</label>
+	<select id="set_profile">
+		{% for profile in profiles.query.all() %}
+		<option value="{{profile.name}}" {% if profile.name == profiles.query.get(last_profile.query.get(1).profile_id).name %}
+				selected="selected"
+			{% endif %}>
+			{{profile.name}}
+		</option>
+		{% endfor %}
+	</select>
+	<button type="button" class="" id="add_profile" onclick="this.blur();">+ Add Profile</button>
+	<button type="button" class="btn-danger" id="delete_profile" onclick="this.blur();">&#215; Remove</button>
+</div>
+
+<ol class="form">
+	<li>
+		<div class="label-block">
+			<label for="set_profile_name">Name</label>
+		</div>
+		<input type="text" id="set_profile_name">
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_profile_description">Description</label>
+		</div>
+		<textarea id="set_profile_description"></textarea>
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_calibration_offset">Calibration Offset</label>
+			<p class="desc">Trigger is Peak Rssi minus Calibration Offset (Default 8)</p>
+		</div>
+		<input type="number" id="set_calibration_offset">
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_calibration_threshold">Calibration Threshold</label>
+			<p class="desc">Trigger minus Calibration Threshold ends calibration pass (Default 95)</p>
+		</div>
+		<input type="number" id="set_calibration_threshold">
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_trigger_threshold">Trigger Threshold</label>
+			<p class="desc">Trigger minus Trigger Threshold ends normal pass (Default 40)</p>
+		</div>
+		<input type="number" id="set_trigger_threshold">
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_filter_ratio">Filter Ratio</label>
+			<p class="desc">RSSI Smoothing (Default 10)</p>
+		</div>
+		<input type="number" id="set_filter_ratio">
+	</li>
+</ol>
+
+<div class="calibration-guide">
+	<h3>Calibration Guide</h3>
+	<table>
+		<tr>
+			<th>Issue</th>
+			<th>Resolution</th>
+		</tr>
+		<tr>
+			<td>Missing passes</td>
+			<td>Increase Calibration Offset</td>
+		</tr>
+		<tr>
+			<td>Pass registers on other parts of course</td>
+			<td>Decrease Calibration Offset</td>
+		</tr>
+		<tr>
+			<td>First pass triggers before crossing the gate</td>
+			<td>Increase Calibration Threshold</td>
+		</tr>
+		<tr>
+			<td>Not getting a pass record for the first pass</td>
+			<td>Decrease Calibration Threshold</td>
+		</tr>
+		<tr>
+			<td>Several pass records while passing the start gate</td>
+			<td>Increase Trigger Threshold</td>
+		</tr>
+		<tr>
+			<td>Pass registering is significantly delayed</td>
+			<td>Decrease Trigger Threshold</td>
+		</tr>
+		<tr>
+			<td>Noisy environment</td>
+			<td>Decrease Filter Ratio</td>
+		</tr>
+	</table>
+</div>
+
+</main>
+{% endblock %}
