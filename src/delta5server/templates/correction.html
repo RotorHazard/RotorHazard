@@ -299,6 +299,7 @@
 			$('#set_calibration_threshold').val( msg.calibration_threshold);
 			$('#set_calibration_offset').val( msg.calibration_offset);
 			$('#set_trigger_threshold').val( msg.trigger_threshold);
+			$('#set_filter_ratio').val( msg.filter_ratio / 10000);
 			$('#set_profile_name').val( msg.profile_name);
 			$('#set_profile_description').val( msg.profile_description);
 		});
@@ -364,7 +365,7 @@
 
 		$('#set_filter_ratio').change(function (event) {
 		    var data = {
-		    	filter_ratio: parseInt($(this).val()),
+		    	filter_ratio: parseInt($(this).val() * 10000),
 		    }
 		    socket.emit('set_filter_ratio', data);
 		});
@@ -623,9 +624,9 @@
 	<li>
 		<div class="label-block">
 			<label for="set_filter_ratio">Filter Ratio</label>
-			<p class="desc">RSSI Smoothing (Default 10)</p>
+			<p class="desc">RSSI Smoothing: .0001 smoothest, 1.0000 unfiltered. (Default 0.01)</p>
 		</div>
-		<input type="number" id="set_filter_ratio">
+		<input type="number" id="set_filter_ratio" min=".0001" max="6.5535" step="0.0001">
 	</li>
 </ol>
 

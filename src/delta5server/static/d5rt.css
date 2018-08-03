@@ -146,6 +146,7 @@ ol.form .desc {
 	ol.form li {
 		display: flex;
 		justify-content: space-between;
+		align-items: flex-start;
 	}
 
 	ol.form .label-block {

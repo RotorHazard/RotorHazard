@@ -68,7 +68,7 @@
 			$('#set_calibration_threshold').val( msg.calibration_threshold);
 			$('#set_calibration_offset').val( msg.calibration_offset);
 			$('#set_trigger_threshold').val( msg.trigger_threshold);
-			$('#set_filter_ratio').val( msg.filter_ratio);
+			$('#set_filter_ratio').val( msg.filter_ratio / 10000);
 			$('#set_profile_name').val( msg.profile_name);
 			$('#set_profile_description').val( msg.profile_description);
 		});
@@ -85,9 +85,6 @@
 			$.each(msg.heat_id, function (i, heat_id) {
 				$.each(heat_id.callsign, function (j, callsign) {
 					var selectbox = $('#heat_' + (i + 1) + '_node_' + j);
-					// update <option> values with new id/callsign/name (requires updating query in server.py)
-					// selectbox.empty();
-					// selectobx.append('<option value="'+ pilot_id + '">' + callsign + ' (' + name + ')</option>')
 					selectbox.val(callsign);
 				});
 			});
@@ -191,7 +188,7 @@
 
 		$('#set_filter_ratio').change(function (event) {
 		    var data = {
-		    	filter_ratio: parseInt($(this).val()),
+		    	filter_ratio: parseInt($(this).val() * 10000),
 		    }
 		    socket.emit('set_filter_ratio', data);
 		});
@@ -332,7 +329,7 @@
 					<div class="label-block">
 						<label for="set_node_offset_{{ node }}">Offset</label>
 					</div>
-					<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65536">
+					<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65535">
 				</td>
 			</tr>
 			<tr>
@@ -495,28 +492,28 @@
 			<label for="set_calibration_offset">Calibration Offset</label>
 			<p class="desc">Trigger is Peak Rssi minus Calibration Offset (Default 8)</p>
 		</div>
-		<input type="number" id="set_calibration_offset">
+		<input type="number" id="set_calibration_offset" min="1" max="65535">
 	</li>
 	<li>
 		<div class="label-block">
 			<label for="set_calibration_threshold">Calibration Threshold</label>
 			<p class="desc">Trigger minus Calibration Threshold ends calibration pass (Default 95)</p>
 		</div>
-		<input type="number" id="set_calibration_threshold">
+		<input type="number" id="set_calibration_threshold" min="1" max="65535">
 	</li>
 	<li>
 		<div class="label-block">
 			<label for="set_trigger_threshold">Trigger Threshold</label>
 			<p class="desc">Trigger minus Trigger Threshold ends normal pass (Default 40)</p>
 		</div>
-		<input type="number" id="set_trigger_threshold">
+		<input type="number" id="set_trigger_threshold" min="1" max="65535">
 	</li>
 	<li>
 		<div class="label-block">
 			<label for="set_filter_ratio">Filter Ratio</label>
-			<p class="desc">RSSI Smoothing: 10000 = Unfiltered (Default 100)</p>
+			<p class="desc">RSSI Smoothing: .0001 smoothest, 1.0000 unfiltered. (Default 0.01)</p>
 		</div>
-		<input type="number" id="set_filter_ratio">
+		<input type="number" id="set_filter_ratio" min=".0001" max="6.5535" step="0.0001">
 	</li>
 </ol>
 
@@ -552,8 +549,12 @@
 			<td>Decrease Trigger Threshold</td>
 		</tr>
 		<tr>
-			<td>Noisy environment</td>
+			<td>RSSI too noisy</td>
 			<td>Decrease Filter Ratio</td>
+		</tr>
+		<tr>
+			<td>RSSI reacts slowly to changes</td>
+			<td>Increase Filter Ratio</td>
 		</tr>
 	</table>
 </div>
