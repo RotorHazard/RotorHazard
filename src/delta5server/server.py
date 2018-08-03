@@ -820,7 +820,7 @@ def emit_heat_data():
         pilots = []
         for node in range(RACE.num_nodes):
             pilot_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=node).first().pilot_id
-            pilots.append(Pilot.query.filter_by(pilot_id=pilot_id).first().pilot_id)
+            pilots.append(pilot_id)
         current_heats.append({'callsign': pilots})
     current_heats = {'heat_id': current_heats}
     SOCKET_IO.emit('heat_data', current_heats)
@@ -828,9 +828,11 @@ def emit_heat_data():
 def emit_pilot_data():
     '''Emits pilot data.'''
     SOCKET_IO.emit('pilot_data', {
+        'pilot_id': [pilot.pilot_id for pilot in Pilot.query.all()],
         'callsign': [pilot.callsign for pilot in Pilot.query.all()],
         'name': [pilot.name for pilot in Pilot.query.all()]
     })
+    emit_heat_data()
 
 def emit_current_heat():
     '''Emits the current heat.'''

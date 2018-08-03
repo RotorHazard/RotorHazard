@@ -95,6 +95,30 @@
 				$('#callsign_' + i).attr('value', msg.callsign[i]);
 				$('#name_' + i).attr('value', msg.name[i]);
 			}
+
+			$('.set_pilot_position').each(function(){
+				$(this).empty();
+				var pilots = []
+				for (i = 0; i < msg.callsign.length; i++) {
+					pilots.push({
+						id: msg.pilot_id[i],
+						name: msg.name[i],
+						callsign: msg.callsign[i]
+					})
+				}
+
+				pilots.sort(function(a, b){
+					if (a.name < b.name)
+						return -1;
+					if (a.name > b.name)
+						return 1;
+					return 0;
+				});
+
+				for (var i in pilots) {
+					$(this).append('<option value="'+ pilots[i].id + '">' + pilots[i].callsign + ' (' + pilots[i].name + ')</option>');
+				}
+			});
 		});
 
 		socket.on('speak_phonetic_text', function (msg) {
