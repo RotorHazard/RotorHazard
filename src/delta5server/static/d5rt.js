@@ -41,8 +41,8 @@ var d5rt = {
 	},
 }
 
-/* Data model for RSSI graphing */
-function rssiGraph() {
+/* Data model for nodes */
+function nodeModel() {
 	this.trigger_rssi = false;
 	this.peak_rssi = false;
 	this.calibration_threshold = false;
@@ -61,12 +61,12 @@ function rssiGraph() {
 				labels:{
 					precision:0
 				},
-				maxValue: 100,
+				maxValue: 150,
 				minValue: 0,
 			});
 	this.series = new TimeSeries();
 }
-rssiGraph.prototype = {
+nodeModel.prototype = {
 	setup: function(element){
 		this.graph.addTimeSeries(this.series, {lineWidth:1.7,
 			strokeStyle:'hsl(214, 53%, 60%)',

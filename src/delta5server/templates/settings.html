@@ -23,7 +23,7 @@
 			var node_id = parseInt(node.find('td select').attr('data-node'));
 			node.before('<tr><td colspan="2" class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></td></tr>');
 
-			d5rt.nodes[node_id] = new rssiGraph();
+			d5rt.nodes[node_id] = new nodeModel();
 			d5rt.nodes[node_id].setup(document.getElementById('rssi-graph-' + node_id));
 		});
 
@@ -33,13 +33,6 @@
 
 				$('.current_rssi_' + i).html(rssiValue);
 
-/*				if (d5rt.nodes[i].graph.options.minValue == -1) {
-					d5rt.nodes[i].graph.options.minValue = rssiValue - 10;
-					d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
-				}
-				if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
-					d5rt.nodes[i].graph.options.minValue = rssiValue;
-				} */
 				if (d5rt.nodes[i].graph.options.maxValue < rssiValue ||
 					d5rt.rssiMax < rssiValue) {
 					d5rt.nodes[i].graph.options.maxValue = rssiValue;
@@ -75,9 +68,9 @@
 			$('#set_calibration_threshold').val( msg.calibration_threshold);
 			$('#set_calibration_offset').val( msg.calibration_offset);
 			$('#set_trigger_threshold').val( msg.trigger_threshold);
+			$('#set_filter_ratio').val( msg.filter_ratio);
 			$('#set_profile_name').val( msg.profile_name);
 			$('#set_profile_description').val( msg.profile_description);
-
 		});
 
 		socket.on('set_fix_race_time', function (msg) {
@@ -323,25 +316,23 @@
 		<table>
 			<tr>
 				<td colspan="2">
+					<select class="set_frequency" id="s_channel_{{ node }}" data-node="{{ node }}">
+						{% for frequency in frequencies.query.all() %}
+						<option value="{{ frequency.frequency }}">
+							{{ frequency.channel }} {{ frequency.frequency }}
+						</option>
+						{% endfor %}
+					</select>
 
-							<select class="set_frequency" id="s_channel_{{ node }}" data-node="{{ node }}">
-								{% for frequency in frequencies.query.all() %}
-								<option value="{{ frequency.frequency }}">
-									{{ frequency.channel }} {{ frequency.frequency }}
-								</option>
-								{% endfor %}
-							</select>
+					<div class="label-block">
+						<label for="set_node_scale_{{ node }}">Scale</label>
+					</div>
+					<input type="number" id="set_node_scale_{{ node }}" class="set_node_scale" data-node="{{ node }}" step="0.01" min="0" max="65.53">
 
-							<div class="label-block">
-								<label for="set_node_scale_{{ node }}">Scale</label>
-							</div>
-							<input type="number" id="set_node_scale_{{ node }}" class="set_node_scale" data-node="{{ node }}" step="0.01" min="0" max="65.53">
-
-							<div class="label-block">
-								<label for="set_node_offset_{{ node }}">Offset</label>
-							</div>
-							<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65536">
-
+					<div class="label-block">
+						<label for="set_node_offset_{{ node }}">Offset</label>
+					</div>
+					<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65536">
 				</td>
 			</tr>
 			<tr>

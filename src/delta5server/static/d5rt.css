@@ -640,6 +640,12 @@ main {
 	height: 6rem;
 }
 
+@media (max-width: 42em) {
+	.page-settings .node-list label {
+		display: none;
+	}
+}
+
 .graph-key {
 	background: #000;
 	color: #fff;

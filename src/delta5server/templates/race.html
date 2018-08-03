@@ -16,7 +16,7 @@
 			var node_id = parseInt(node.find('button').attr('data-node'));
 			node.before('<div class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></div>');
 
-			d5rt.nodes[node_id] = new rssiGraph();
+			d5rt.nodes[node_id] = new nodeModel();
 			d5rt.nodes[node_id].setup(document.getElementById('rssi-graph-' + node_id));
 		});
 
@@ -63,14 +63,7 @@
 
 				$('.current_rssi_' + i).html(rssiValue);
 
-/*				if (d5rt.nodes[i].graph.options.minValue == -1) {
-					d5rt.nodes[i].graph.options.minValue = rssiValue - 10;
-					d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
-				}
-				if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
-					d5rt.nodes[i].graph.options.minValue = rssiValue;
-				} */
-				if (d5rt.nodes[i].graph.options.maxValue < rssiValue || 
+				if (d5rt.nodes[i].graph.options.maxValue < rssiValue ||
 					d5rt.rssiMax < rssiValue) {
 					d5rt.nodes[i].graph.options.maxValue = rssiValue;
 					for (var j in d5rt.nodes) {
