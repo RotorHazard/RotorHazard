@@ -636,11 +636,13 @@ main {
 	display: block;
 }
 
-.page-settings .rssi-graph canvas {
+.page-settings .rssi-graph canvas,
+.page-correction .rssi-graph canvas {
 	height: 6rem;
 }
 
 @media (max-width: 42em) {
+	.page-correction .node-list label,
 	.page-settings .node-list label {
 		display: none;
 	}

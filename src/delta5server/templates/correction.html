@@ -169,8 +169,6 @@
 		$('#suggested_calibration_offset').html(Math.round(highest_min_sco) + ' (' + Math.round(highest_min_sco) + '&#8210;' + Math.round(lowest_max_sco) + ')');
 		$('#suggested_calibration_threshold').html(Math.round(lowest_max_sct) + ' (' + Math.round(highest_min_sct) + '&#8210;' + Math.round(lowest_max_sct) + ')');
 		$('#suggested_trigger_threshold').html(Math.round(highest_min_stt) + ' (' + Math.round(highest_min_stt) + '&#8210;' + Math.round(lowest_max_stt) + ')');
-
-
 	}
 
 	$(document).ready(function () {
@@ -393,7 +391,7 @@
 
 </script>
 {% endblock %} {% block content %}
-<main class="page-settings">
+<main class="page-correction">
 
 <!--Display node data-->
 <h2>Nodes</h2>
