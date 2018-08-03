@@ -61,7 +61,7 @@ struct {
 	uint16_t volatile calibrationThreshold = 95;
 	// Rssi must fall below trigger - settings.triggerThreshold to end a normal pass
 	uint16_t volatile triggerThreshold = 40;
-	uint8_t volatile filterRatio = 10;
+	uint8_t volatile filterRatio = 100; // ratio is *10000
 	float volatile filterRatioFloat = 0.0f;
 
 	// node correction
@@ -132,7 +132,7 @@ void setup() {
     cbi(ADCSRA,ADPS0);
 
 	// Initialize lastPass defaults
-	settings.filterRatioFloat = settings.filterRatio / 1000.0f;
+	settings.filterRatioFloat = settings.filterRatio / 10000.0f;
 	state.rssi = 0;
 	state.rssiTrigger = 0;
 	lastPass.rssiPeakRaw = 0;
@@ -456,7 +456,7 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 		case WRITE_FILTER_RATIO:
 			if (readAndValidateIoBuffer(WRITE_FILTER_RATIO, 1)) {
 				settings.filterRatio = ioBufferRead8();
-				settings.filterRatioFloat =  settings.filterRatio / 1000.0f;
+				settings.filterRatioFloat =  settings.filterRatio / 10000.0f;
 				success = true;
 			}
 			break;
