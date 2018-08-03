@@ -206,9 +206,9 @@
 
 		$('#set_profile_description').change(function (event) {
 			var data = {
-				profile_desciption: $(this).val()
+				profile_description: $(this).val()
 			};
-			socket.emit('set_profile_desciption', data);
+			socket.emit('set_profile_description', data);
 		})
 
 		$('button#add_heat').click(function (event) {
