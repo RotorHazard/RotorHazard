@@ -46,38 +46,19 @@
 
 			// ideal: smallest that won't miss any passes (gate.max-gate.min)
 
-			c.calOffset.min = Math.max(
+			c.calOffset.min = Math.min(
 				c.gate.max - c.gate.median, // larger of upper half
-				c.gate.median - c.gate.min, // ...or lower half
+				c.gate.median - c.gate.min // ...or lower half
 			);
 
-			c.calOffset.max = Math.max(
-				c.gate.min - c.nearest.max, // prevent passes at nearest (best)
-				c.gate.median - c.nearest.median, // larger than this will be unusable
-				Math.round((c.gate.max - c.gate.min) * 0.2), // 20% more than spread
-			);
+			c.calOffset.max = c.gate.median - c.nearest.median; // larger than this will be unusable
 
-			c.calOffset.best = c.gate.max - c.gate.min;
+			c.calOffset.best = c.calOffset.min;
 		}
 
 		// suggest calibration threshold
 		for (var i = 0; i < d5rt.nodes.length; i++) {
 			var c = d5rt.nodes[i].corrections;
-
-			/*
-			if (c.gate.min > c.floor.max) {
-				// distance between gate and floor
-				suggestedCalibrationThreshold = c.gate.min - c.floor.max;
-
-				if (suggestedCalibrationThreshold < (c.gate.max - c.gate.min)) {
-					// but no smaller than gate spread, to avoid early calibration
-					suggestedCalibrationThreshold = c.gate.max - c.gate.min;
-				}
-			} else {
-				// if difference is poor, use distance between medians as a last resort
-				suggestedCalibrationThreshold = c.gate.median - c.floor.median;
-			}
-			*/
 
 			// ideal: largest that won't miss passes (gate.min-floor.max)
 
@@ -85,13 +66,11 @@
 				c.gate.max - c.gate.min, // no smaller than gate spread, to avoid early calibration
 			);
 
-			c.calThrs.max = Math.max(
-				c.gate.median - c.floor.median, // fallback if ideal can't be met
-			);
+			c.calThrs.max = c.gate.median - c.floor.median;
 
 			c.calThrs.best = Math.max(
-				c.gate.min - c.floor.max, // ideal if large
-				c.calThrs.min
+				c.gate.min - c.floor.max, // ideal if enough spread exists
+				c.calThrs.min // fallback
 			);
 
 		}
@@ -100,40 +79,30 @@
 		for (var i = 0; i < d5rt.nodes.length; i++) {
 			var c = d5rt.nodes[i].corrections;
 
-/*
-			var stt_temp = c.gate.max - c.gate.min * c.suggestedScale;
-			if (stt_temp < suggestedTriggerThreshold) {
-				suggestedTriggerThreshold = stt_temp;
-			}
-*/
-
 			// ideal: smallest that won't trigger falsely (gate.max-gate.min * 2)
-			// acceptable: too large; extra passes
-			// avoid: too small; missing passes
 
-			c.trigThrs.min = Math.max(
-				c.gate.max - c.gate.min, // ideal value
-				c.calOffset.min, // can't be smaller than calibration offset
-			);
+			c.trigThrs.min = c.calOffset.min; // can't be smaller than calibration offset
+			//c.gate.max - c.gate.min, // ideal value?
 
-			c.trigThrs.max = Math.max(
-				c.gate.min - c.floor.max, // larger than this may result in missed passes
-				c.gate.median - c.floor.median, // fallback for problem data
-			);
+			c.trigThrs.max = c.gate.median - c.floor.max;
 
 			c.trigThrs.best = Math.min (
-				(c.gate.max - c.gate.min) * 2, // double the gate spread
-				c.trigThrs.max
+				(c.gate.median - c.gate.min) * 2, // double the gate spread
+				c.trigThrs.max,
 			);
 		}
 
 		// output calculated results
 		var highest_min_sco = 0;
 		var lowest_max_sco = Infinity;
+
 		var highest_min_sct = 0;
 		var lowest_max_sct = Infinity;
+		var lowest_best_sct = 0;
+
 		var highest_min_stt = 0;
 		var lowest_max_stt = Infinity;
+		var highest_best_stt = 0;
 
 		for (var i = 0; i < d5rt.nodes.length; i++) {
 			var c = d5rt.nodes[i].corrections;
@@ -155,6 +124,7 @@
 
 			if (c.calThrs.min > highest_min_sct) highest_min_sct = c.calThrs.min;
 			if (c.calThrs.max < lowest_max_sct) lowest_max_sct = c.calThrs.max;
+			if (c.calThrs.best < lowest_best_sct) lowest_best_sct = c.calThrs.best;
 
 			c.trigThrs.min *= c.suggestedScale;
 			c.trigThrs.max *= c.suggestedScale;
@@ -164,11 +134,12 @@
 
 			if (c.trigThrs.min > highest_min_stt) highest_min_stt = c.trigThrs.min;
 			if (c.trigThrs.max < lowest_max_stt) lowest_max_stt = c.trigThrs.max;
+			if (c.trigThrs.best > highest_best_stt) highest_best_stt = c.trigThrs.best;
 		}
 
 		$('#suggested_calibration_offset').html(Math.round(highest_min_sco) + ' (' + Math.round(highest_min_sco) + '&#8210;' + Math.round(lowest_max_sco) + ')');
-		$('#suggested_calibration_threshold').html(Math.round(lowest_max_sct) + ' (' + Math.round(highest_min_sct) + '&#8210;' + Math.round(lowest_max_sct) + ')');
-		$('#suggested_trigger_threshold').html(Math.round(highest_min_stt) + ' (' + Math.round(highest_min_stt) + '&#8210;' + Math.round(lowest_max_stt) + ')');
+		$('#suggested_calibration_threshold').html(Math.round(Math.max(highest_min_sct, lowest_best_sct)) + ' (' + Math.round(highest_min_sct) + '&#8210;' + Math.round(lowest_max_sct) + ')');
+		$('#suggested_trigger_threshold').html(Math.round(Math.min(lowest_max_stt, highest_best_stt)) + ' (' + Math.round(highest_min_stt) + '&#8210;' + Math.round(lowest_max_stt) + ')');
 	}
 
 	$(document).ready(function () {
@@ -190,6 +161,7 @@
 		});
 
 		/* test data */
+		/*
 		d5rt.nodes[0].corrections.noise.min = 90;
 		d5rt.nodes[0].corrections.noise.median = 90;
 		d5rt.nodes[0].corrections.noise.max = 91;
@@ -241,6 +213,7 @@
 		d5rt.nodes[3].corrections.gate.min = 150;
 		d5rt.nodes[3].corrections.gate.median = 170;
 		d5rt.nodes[3].corrections.gate.max = 180;
+		*/
 
 		socket.on('heartbeat', function (msg) {
 			// data collection
@@ -624,7 +597,7 @@
 	<li>
 		<div class="label-block">
 			<label for="set_filter_ratio">Filter Ratio</label>
-			<p class="desc">RSSI Smoothing: .0001 smoothest, 1.0000 unfiltered. (Default 0.01)</p>
+			<p class="desc">RSSI Smoothing: .0001 smoothest, 1.0 unfiltered. (Default 0.01)</p>
 		</div>
 		<input type="number" id="set_filter_ratio" min=".0001" max="6.5535" step="0.0001">
 	</li>

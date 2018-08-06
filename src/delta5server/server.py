@@ -263,7 +263,7 @@ def database():
     '''Route to database page.'''
     return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
         savedraces=SavedRace, frequencies=Frequency, race_format=RaceFormat.query.get(1), \
-        node_data=Nodedata, )
+        node_data=NodeData, )
 
 #
 # Socket IO Events
@@ -407,7 +407,8 @@ def on_add_profile():
                            description = 'New Profile %s' % max_profile_id,
                            c_offset=8,
                            c_threshold=90,
-                           t_threshold=40))
+                           t_threshold=40,
+                           f_ratio=100))
     DB.session.commit()
     on_set_profile(data={ 'profile': 'New Profile %s' % max_profile_id})
 
