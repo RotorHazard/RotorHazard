@@ -426,6 +426,19 @@
 </ul>
 
 <h2>Node Corrections</h2>
+
+<h3>Instructions:</h3>
+<ol>
+	<li>Set all node scales to 1</li>
+	<li>Recommended: set all node offsets to 0</li>
+	<li>Set all nodes to a single channel. (Better: use a different VTx for each channel that you will be using)</li>
+	<li>Collect profile data using VTx at different points on the course</li>
+	<li>Run calculator</li>
+	<li>Set node scales and profile tuning values to match calculated values</li>
+	<li>Test course and use calibration guide for further adjustment</li>
+	<li>If the numbers don't make sense, (such as max values being higher than min values,) consider adjusting your course layout or lower the filter ratio and try again</li>
+</ol>
+
 <ol class="form">
 	<li>
 		<div class="label-block">
@@ -467,7 +480,6 @@
 		<button type="button" class="" id="calc_corrections" onclick="this.blur();">Calculate Corrections</button>
 	</li>
 </ol>
-
 
 <div class="node-list">
 	{% for node in range(num_nodes) %}
