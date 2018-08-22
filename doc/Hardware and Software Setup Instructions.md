@@ -90,6 +90,17 @@ Install web server packages, open a terminal in '/home/pi/delta5_race_timer/src/
 sudo pip install -r requirements.txt
 ```
 
+Update i2c baud rate
+```
+sudo nano /boot/config.txt
+```
+add the following line:
+```
+dtparam=i2c_baudrate=75000
+```
+Save and exit the file with Ctrl-x
+
+
 ## Starting the System
 
 The following instructions will start the Delta5 Race Timer web server on the raspberry pi allowing full control and configuration of the system to run races and save lap times.  
