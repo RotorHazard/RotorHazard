@@ -37,6 +37,89 @@ heartbeat_thread = None
 
 firmware_version = {'major': 0, 'minor': 1}
 
+
+# LED Code
+import time
+from neopixel import *
+
+import signal
+def signal_handler(signal, frame):
+        colorWipe(strip, Color(0,0,0))
+        sys.exit(0)
+
+# LED strip configuration:
+LED_COUNT      = 150      # Number of LED pixels.
+#LED_PIN        = 18      # GPIO pin connected to the pixels (18 uses PWM!).
+LED_PIN        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
+LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
+LED_DMA        = 10      # DMA channel to use for generating signal (try 10)
+LED_BRIGHTNESS = 255     # Set to 0 for darkest and 255 for brightest
+LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
+LED_CHANNEL    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
+LED_STRIP      = ws.WS2811_STRIP_GRB   # Strip type and colour ordering
+
+# LED one color ON/OFF
+def onoff(strip, color):
+	for i in range(strip.numPixels()):
+		strip.setPixelColor(i, color)
+	strip.show()
+
+def theaterChase(strip, color, wait_ms=50, iterations=5):
+    """Movie theater light style chaser animation."""
+    for j in range(iterations):
+        for q in range(3):
+            for i in range(0, strip.numPixels(), 3):
+                strip.setPixelColor(i+q, color)
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+            for i in range(0, strip.numPixels(), 3):
+                strip.setPixelColor(i+q, 0)
+
+def wheel(pos):
+    """Generate rainbow colors across 0-255 positions."""
+    if pos < 85:
+        return Color(pos * 3, 255 - pos * 3, 0)
+    elif pos < 170:
+        pos -= 85
+        return Color(255 - pos * 3, 0, pos * 3)
+    else:
+        pos -= 170
+        return Color(0, pos * 3, 255 - pos * 3)
+		
+def rainbow(strip, wait_ms=2, iterations=1):
+    """Draw rainbow that fades across all pixels at once."""
+    for j in range(256*iterations):
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, wheel((i+j) & 255))
+        strip.show()
+        time.sleep(wait_ms/1000.0)
+
+def rainbowCycle(strip, wait_ms=2, iterations=1):
+    """Draw rainbow that uniformly distributes itself across all pixels."""
+    for j in range(256*iterations):
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
+        strip.show()
+        time.sleep(wait_ms/1000.0)
+
+def theaterChaseRainbow(strip, wait_ms=25):
+    """Rainbow movie theater light style chaser animation."""
+    for j in range(256):
+        for q in range(3):
+            for i in range(0, strip.numPixels(), 3):
+                strip.setPixelColor(i+q, wheel((i+j) % 255))
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+            for i in range(0, strip.numPixels(), 3):
+                strip.setPixelColor(i+q, 0)
+
+# Create NeoPixel object with appropriate configuration.
+strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
+# Intialize the library (must be called once before other functions).
+strip.begin()
+
+
+
 def parse_json(data):
     if isinstance(data, basestring):
         return json.loads(data)
@@ -130,6 +213,17 @@ def on_set_filter_ratio(data):
 
 @socketio.on('reset_auto_calibration')
 def on_reset_auto_calibration(data):
+    onoff(strip, Color(255,0,0)) #RED ON
+    time.sleep(0.5)
+    onoff(strip, Color(0,0,0)) #OFF
+    time.sleep(0.5)
+    onoff(strip, Color(255,0,0)) #RED ON
+    time.sleep(0.5)
+    onoff(strip, Color(0,0,0)) #OFF
+    time.sleep(0.5)
+    onoff(strip, Color(255,0,0)) #RED ON
+    time.sleep(0.5)
+    onoff(strip, Color(0,0,0)) #OFF
     data = parse_json(data)
     print(data)
     index = data['node']
@@ -139,6 +233,7 @@ def on_reset_auto_calibration(data):
     else:
         print('reset_auto_calibration {0}'.format(index))
         hardwareInterface.set_calibration_mode(index, True)
+    onoff(strip, Color(0,255,0)) #GREEN ON
 
 @socketio.on('simulate_pass')
 def on_simulate_pass(data):
@@ -146,6 +241,34 @@ def on_simulate_pass(data):
     index = data['node']
     # todo: how should frequency be sent?
     emit('pass_record', {'node': index, 'frequency': hardwareInterface.nodes[index].frequency, 'timestamp': hardwareInterface.milliseconds()}, broadcast=True)
+
+@socketio.on('LED_solid')
+def on_LED_solid(data):
+    '''LED Solid Color'''
+    led_red = data['red']
+    led_green = data['green']
+    led_blue = data['blue']
+    onoff(strip, Color(led_red,led_green,led_blue))
+
+@socketio.on('LED_chase')
+def on_LED_chase(data):
+    '''LED Solid Color'''
+    led_red = data['red']
+    led_green = data['green']
+    led_blue = data['blue']
+    theaterChase(strip, Color(led_red,led_green,led_blue))
+
+@socketio.on('LED_RB')
+def on_LED_RB():
+    rainbow(strip) #Rainbow
+
+@socketio.on('LED_RBCYCLE')
+def on_LED_RBCYCLE():
+    rainbowCycle(strip) #Rainbow Cycle
+
+@socketio.on('LED_RBCHASE')
+def on_LED_RBCHASE():
+    theaterChaseRainbow(strip) #Rainbow Chase
 
 def pass_record_callback(node, ms_since_lap):
     print('Pass record from {0}{1}: {2}, {3}'.format(node.index, node.frequency, ms_since_lap, hardwareInterface.milliseconds() - ms_since_lap))
@@ -157,6 +280,22 @@ def pass_record_callback(node, ms_since_lap):
         'trigger_rssi': node.trigger_rssi,
         'peak_rssi_raw': node.peak_rssi_raw,
         'peak_rssi': node.peak_rssi})
+    if node.index==0:
+        theaterChase(strip, Color(0,0,255))  #BLUE theater chase
+    elif node.index==1:
+        theaterChase(strip, Color(255,50,0)) #ORANGE theater chase
+    elif node.index==2:
+        theaterChase(strip, Color(255,0,60)) #PINK theater chase
+    elif node.index==3:
+        theaterChase(strip, Color(255,0,150)) #PURPLE theater chase
+    elif node.index==4:
+        theaterChase(strip, Color(255,255,0)) #YELLOW theater chase
+    elif node.index==5:
+        theaterChase(strip, Color(0,255,255)) #CYAN theater chase
+    elif node.index==6:
+        theaterChase(strip, Color(0,255,0)) #GREEN theater chase
+    elif node.index==7:
+        theaterChase(strip, Color(255,0,0)) #RED theater chase
 
 hardwareInterface.pass_record_callback = pass_record_callback
 
