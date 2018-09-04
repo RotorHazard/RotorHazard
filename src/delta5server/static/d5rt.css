@@ -339,6 +339,32 @@ main {
 	flex: 1 0 7em;
 }
 
+.compact-field {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	margin: 0.25em 0;
+	flex-wrap: wrap;
+	font-size: 1rem;
+}
+
+.compact-field label {
+	text-align: left;
+}
+
+.compact-field input {
+	width: 4em;
+}
+
+@media (max-width: 42em) {
+	.compact-field label {
+		display: none;
+	}
+	.compact-field input {
+		width: 100%;
+	}
+}
+
 @media (max-width: 69em) {
 	.node:first-child:nth-last-child(1) {
 		flex: 0 auto;
@@ -434,6 +460,10 @@ main {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	font-size: 1rem;
+}
+
+.datalabel {
+	text-align: left;
 }
 
 .page-rounds .node table {
@@ -640,13 +670,6 @@ main {
 .page-settings .rssi-graph canvas,
 .page-correction .rssi-graph canvas {
 	height: 6rem;
-}
-
-@media (max-width: 42em) {
-	.page-correction .node-list label,
-	.page-settings .node-list label {
-		display: none;
-	}
 }
 
 .graph-key {

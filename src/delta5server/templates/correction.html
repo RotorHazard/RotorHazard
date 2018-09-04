@@ -384,31 +384,31 @@
 						{% endfor %}
 					</select>
 
-					<div class="label-block">
+					<div class="compact-field">
 						<label for="set_node_scale_{{ node }}">Scale</label>
+						<input type="number" id="set_node_scale_{{ node }}" class="set_node_scale" data-node="{{ node }}" step="0.01" min="0" max="65.53">
 					</div>
-					<input type="number" id="set_node_scale_{{ node }}" class="set_node_scale" data-node="{{ node }}" step="0.01" min="0" max="65.53">
 
-					<div class="label-block">
+					<div class="compact-field">
 						<label for="set_node_offset_{{ node }}">Offset</label>
+						<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65536">
 					</div>
-					<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65536">
 				</td>
 			</tr>
 			<tr>
-				<td>RSSI</td>
+				<td class="datalabel">RSSI</td>
 				<td>
 					<span class="current_rssi_{{ node }}"></span>
 				</td>
 			</tr>
 			<tr>
-				<td>Trigger</td>
+				<td class="datalabel">Trigger</td>
 				<td>
 					<span class="trigger_rssi_{{ node }}"></span>
 				</td>
 			</tr>
 			<tr>
-				<td>Peak</td>
+				<td class="datalabel">Peak</td>
 				<td>
 					<span class="peak_rssi_{{ node }}"></span>
 				</td>
