@@ -74,8 +74,10 @@ sudo raspi-config
 
 Install python and the python drivers for the GPIO.
 ```
-sudo apt-get install python-dev
-sudo apt-get install python-rpi.gpio
+sudo apt-get update 
+sudo apt-get upgrade
+sudo apt-get install python-dev python-rpi.gpio libffi-dev python-smbus build-essential python-pip git scons swig
+sudo pip install cffi
 ```
 
 Final system update and upgrade.
