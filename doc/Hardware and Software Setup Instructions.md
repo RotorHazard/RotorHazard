@@ -65,12 +65,15 @@ Configure the '#define i2cSlaveAddress' line of the .ino for each node before up
 ```
 
 ### System (Raspberry Pi)
-Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN JESSIE WITH PIXEL'
+Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN STRETCH WITH DESKTOP'
 
-Enable I2C on the Raspberry Pi, go to 'Advanced Options' and enable I2C.
+Configure the interface options on the Raspberry Pi.
+Open a Terminal window and enter the following command:
 ```
 sudo raspi-config
 ```
+Select Interfacing Options and enable: SSH, SPI, and I2C.
+
 
 Install python and the python drivers for the GPIO.
 ```
@@ -80,28 +83,64 @@ sudo apt-get install python-dev python-rpi.gpio libffi-dev python-smbus build-es
 sudo pip install cffi
 ```
 
-Final system update and upgrade.
-```
-sudo apt-get update && sudo apt-get upgrade
-```
-
-Clone or download this repo to '/home/pi/' on the Raspberry Pi.
-
-Install web server packages, open a terminal in '/home/pi/delta5_race_timer/src/delta5server' and run
-```
-sudo pip install -r requirements.txt
-```
-
 Update i2c baud rate
 ```
 sudo nano /boot/config.txt
 ```
-add the following line:
+add the following lines to the end of the file:
 ```
 dtparam=i2c_baudrate=75000
+core_freq=250
 ```
 Save and exit the file with Ctrl-x
 
+
+### WS2812b LED Support
+The ws2812b controls are provided by the following project:
+https://github.com/jgarff/rpi_ws281x
+
+
+Clone the repository onto the Pi and initiate Scons:
+```
+cd ~
+sudo git clone https://github.com/jgarff/rpi_ws281x.git
+cd rpi_ws281x
+sudo scons
+```
+Install the Python library:
+```
+cd python
+sudo python setup.py install
+```
+
+Clone or download this repo to '/home/pi/' on the Raspberry Pi.
+```
+cd ~
+git clone https://github.com/scottgchin/delta5_race_timer.git
+```
+
+System update and upgrade.
+```
+sudo apt-get update && sudo apt-get upgrade
+```
+
+Install web server packages
+```
+cd /home/pi/delta5_race_timer/src/delta5server
+sudo pip install -r requirements.txt
+```
+
+Update permissions in working folder
+```
+cd ~
+cd /home/pi/delta5_race_timer/src
+ 
+```
+
+## Reboot System
+```
+sudo reboot
+```
 
 ## Starting the System
 
@@ -144,50 +183,5 @@ Start on boot commands.
 ```
 sudo systemctl daemon-reload
 sudo systemctl enable delta5.service
-sudo reboot
-```
-### WS2812b LED Support
-The ws2812b controls are provided by the following project:
-https://github.com/jgarff/rpi_ws281x
-
-Perform an update and install the dependencies:
-```
-sudo apt-get update
-sudo apt-get install build-essential python-dev git scons swig
-```
-
-Clone the repository onto the Pi and initiate Scons:
-```
-sudo git clone https://github.com/jgarff/rpi_ws281x.git
-cd rpi_ws281x
-sudo scons
-```
-
-Install the Python library:
-```
-cd python
-sudo python setup.py install
-```
-
-Modify the config.txt file
-```
-sudo nano /boot/config.txt
-```
-add the following to the config.txt file
-```
-core_freq=250
-```
-Configure the Raspberry Pi to enable SPI
-```
-sudo raspi-config
-```
-Select 5 Interfacing Options
-
-Select P4 SPI
-
-and enable SPI
-
-Reboot the Raspberry Pi
-```
 sudo reboot
 ```
