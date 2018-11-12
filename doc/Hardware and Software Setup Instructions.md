@@ -134,7 +134,7 @@ Update permissions in working folder
 ```
 cd ~
 cd /home/pi/delta5_race_timer/src
- 
+sudo chmod 777 delta5server 
 ```
 
 ## Reboot System
