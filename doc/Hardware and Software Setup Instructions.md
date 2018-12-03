@@ -21,6 +21,7 @@
 * Outdoor power cable, 50ft plus
 * Network router
 * Laptop/tablet
+* ws2812b LEDs
 
 ## Hardware Setup
 
@@ -44,6 +45,10 @@ Complete wiring connections between each Arduino and the Raspberry Pi.
 Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common ground; if not, the i2c messages can be corrupted.
 ![system wiring](img/D5-i2c.png)
 
+### WS2812b LED Support
+The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under Software Setup.
+![led wiring](img/GPIO.jpg)
+
 ## Software Setup
 
 ### Receiver Nodes (Arduinos)
@@ -60,29 +65,81 @@ Configure the '#define i2cSlaveAddress' line of the .ino for each node before up
 ```
 
 ### System (Raspberry Pi)
-Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN JESSIE WITH PIXEL'
+Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN STRETCH WITH DESKTOP'
 
-Enable I2C on the Raspberry Pi, go to 'Advanced Options' and enable I2C.
+Configure the interface options on the Raspberry Pi.
+Open a Terminal window and enter the following command:
 ```
 sudo raspi-config
 ```
+Select Interfacing Options and enable: SSH, SPI, and I2C.
+
 
 Install python and the python drivers for the GPIO.
 ```
-sudo apt-get install python-dev
-sudo apt-get install python-rpi.gpio
+sudo apt-get update 
+sudo apt-get upgrade
+sudo apt-get install python-dev python-rpi.gpio libffi-dev python-smbus build-essential python-pip git scons swig
+sudo pip install cffi
 ```
 
-Final system update and upgrade.
+Update i2c baud rate
+```
+sudo nano /boot/config.txt
+```
+add the following lines to the end of the file:
+```
+dtparam=i2c_baudrate=75000
+core_freq=250
+```
+Save and exit the file with Ctrl-x
+
+
+### WS2812b LED Support
+The ws2812b controls are provided by the following project:
+https://github.com/jgarff/rpi_ws281x
+
+
+Clone the repository onto the Pi and initiate Scons:
+```
+cd ~
+sudo git clone https://github.com/jgarff/rpi_ws281x.git
+cd rpi_ws281x
+sudo scons
+```
+Install the Python library:
+```
+cd python
+sudo python setup.py install
+```
+
+Clone or download this repo to '/home/pi/' on the Raspberry Pi.
+```
+cd ~
+git clone https://github.com/scottgchin/delta5_race_timer.git
+```
+
+System update and upgrade.
 ```
 sudo apt-get update && sudo apt-get upgrade
 ```
 
-Clone or download this repo to '/home/pi/' on the Raspberry Pi.
-
-Install web server packages, open a terminal in '/home/pi/delta5_race_timer/src/delta5server' and run
+Install web server packages
 ```
+cd /home/pi/delta5_race_timer/src/delta5server
 sudo pip install -r requirements.txt
+```
+
+Update permissions in working folder
+```
+cd ~
+cd /home/pi/delta5_race_timer/src
+sudo chmod 777 delta5server 
+```
+
+## Reboot System
+```
+sudo reboot
 ```
 
 ## Starting the System
