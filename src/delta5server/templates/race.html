@@ -1,7 +1,17 @@
 {% extends "layout.html" %} {% block title %}Run{% endblock %}{% block head %}
 <audio id="buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
 
+<script type="text/javascript" src="./static/Blob.js"></script>
+<script type="text/javascript" src="./static/FileSaver.min.js"></script>
+
 <script type="text/javascript" charset="utf-8">
+	var racedump = {
+		timestamp: new Date(),
+		scales: [],
+		offsets: [],
+		timedata: [],
+	};
+
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
@@ -58,6 +68,18 @@
 		});
 
 		socket.on('heartbeat', function (msg) {
+			if (d5rt.collecting) {
+				var timedump = {
+					timestamp: new Date(),
+					nodes: [],
+				};
+
+				for (i = 0; i < msg.current_rssi.length; i++) {
+					timedump.nodes.push(msg.current_rssi[i]);
+				}
+				racedump.timedata.push(timedump)
+			}
+
 			for (i = 0; i < msg.current_rssi.length; i++) {
 				var rssiValue = msg.current_rssi[i] - d5rt.nodes[i].offset;
 
@@ -79,13 +101,17 @@
 			for (i = 0; i < msg.frequency.length; i++) {
 				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
-
+				
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
 				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
 				// import calibration/trigger threshold lines?
 				d5rt.nodes[i].offset = msg.node_offset[i];
+				d5rt.nodes[i].scale = msg.node_scale[i] / 1000;
 
 				d5rt.nodes[i].updateThresholds();
+
+				racedump.offsets[i] = msg.node_offset[i];
+				racedump.scales[i] = msg.node_scale[i] / 1000;
 			}
 		});
 
@@ -152,6 +178,10 @@
 			}
 			timer.mode({{race_format.race_mode}});
 			timer.start(); // Start clock
+
+			d5rt.collecting = 'race';
+			racedump.timestamp = new Date();
+			racedump.timedata = [];
 		});
 
 		socket.on('stop_timer', function (msg) {
@@ -202,6 +232,60 @@
 			socket.emit('set_current_heat', data);
 		});
 
+		$('button#racedump').click(function (event) {
+			function formatdate(dateObj) {
+				var year = dateObj.getFullYear();
+				var month = dateObj.getMonth();
+				month = month < 10 ? '0'+month : month;
+				var day = dateObj.getDate();
+				day = day < 10 ? '0'+day : day;
+				return year + '-' + month + '-' + day;
+			}
+			function formattime(dateObj) {
+				var hours = dateObj.getHours();
+				var minutes = dateObj.getMinutes();
+				minutes = minutes < 10 ? '0'+minutes : minutes;
+				var seconds = dateObj.getSeconds();
+				seconds = seconds < 10 ? '0'+seconds : seconds;
+				var millis = dateObj.getMilliseconds();
+				millis = ('00' + millis).slice(-3);
+				return hours + ':' + minutes + ':' + seconds + '.' + millis;
+			}
+			var text = '';
+
+			text = text + 'Scale';
+			for (var i in racedump.scales) {
+				text = text + ',' + racedump.scales[i];
+			}
+			text = text + '\r\n';
+
+			text = text + 'Time';
+			for(var j in d5rt.nodes) {
+				text = text + ',' + $('.callsign_' + j).html().trim();
+			}
+			text = text + '\r\n';
+
+			/*
+			text = text + 'Offset';
+			for (var i in racedump.offsets) {
+				text = text + ',' + racedump.offsets[i];
+			}
+			text = text + '\r\n';
+			*/
+
+			for (var i in racedump.timedata) {
+				text = text + formattime(racedump.timedata[i].timestamp);
+				for(var j in racedump.timedata[i].nodes) {
+					text = text + ',' + racedump.timedata[i].nodes[j];
+				}
+				text = text + '\r\n';
+			}
+
+			var formatted = formatdate(racedump.timestamp) + '.' + formattime(racedump.timestamp);
+			var filename = 'd5rt-race-' + formatted;
+			var blob = new Blob([text], {type: "text/plain;charset=utf-8"});
+			saveAs(blob, filename+".csv");
+		});
 	});
 
 	function speak(obj) {
@@ -281,5 +365,8 @@
 	{% endfor %}
 </div>
 
+<div>
+	<button id="racedump">Export race to file</button>
+</div>
 </main>
 {% endblock %}
