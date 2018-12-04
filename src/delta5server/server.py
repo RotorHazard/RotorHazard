@@ -1401,4 +1401,4 @@ INTERFACE.set_filter_ratio_global(tune_val.f_ratio)
 
 
 if __name__ == '__main__':
-    SOCKET_IO.run(APP, host='0.0.0.0', port=80, debug=True)
+    SOCKET_IO.run(APP, host='0.0.0.0', port=80, debug=True, use_reloader=False)
