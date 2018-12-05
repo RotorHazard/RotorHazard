@@ -101,7 +101,7 @@
 			for (i = 0; i < msg.frequency.length; i++) {
 				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
-				
+
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
 				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
 				// import calibration/trigger threshold lines?
@@ -217,191 +217,191 @@
 		});
 
 		$('button#LED_OFF').click(function (event) { //OFF
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(0),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_solid', data);
-                return false;
+				var data = {
+								red: parseInt(0),
+								green: parseInt(0),
+								blue: parseInt(0),
+				};
+				socket.emit('LED_solid', data);
+				return false;
 		});
-		
+
 		$('button#LED_1S').click(function (event) { //Node 1 Solid Blue
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(0),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_solid', data);
-                return false;
+				var data = {
+								red: parseInt(0),
+								green: parseInt(0),
+								blue: parseInt(255),
+				};
+				socket.emit('LED_solid', data);
+				return false;
 		});
-		
+
 		$('button#LED_2S').click(function (event) { //Node 2 Solid Orange
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(50),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_solid', data);
-                return false;
+				var data = {
+								red: parseInt(255),
+								green: parseInt(50),
+								blue: parseInt(0),
+				};
+				socket.emit('LED_solid', data);
+				return false;
 		});
-		
+
 		$('button#LED_3S').click(function (event) { //Node 3 Solid Pink
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(0),
-                                blue: parseInt(60),
-                };
-                socket.emit('LED_solid', data);
-                return false;
+				var data = {
+								red: parseInt(255),
+								green: parseInt(0),
+								blue: parseInt(60),
+				};
+				socket.emit('LED_solid', data);
+				return false;
 		});
-		
+
 		$('button#LED_4S').click(function (event) { //Node 4 Solid Purple
-                var data = {
-                                red: parseInt(150),
-                                green: parseInt(0),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_solid', data);
-                return false;
+				var data = {
+								red: parseInt(150),
+								green: parseInt(0),
+								blue: parseInt(255),
+				};
+				socket.emit('LED_solid', data);
+				return false;
 		});
 
 		$('button#LED_5S').click(function (event) { //Node 5 Solid Yellow
-                var data = {
-                                red: parseInt(250),
-                                green: parseInt(210),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_solid', data);
-                return false;
+				var data = {
+								red: parseInt(250),
+								green: parseInt(210),
+								blue: parseInt(0),
+				};
+				socket.emit('LED_solid', data);
+				return false;
 		});
 
 		$('button#LED_6S').click(function (event) { //Node 6 Solid Cyan
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(255),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_solid', data);
-                return false;
+				var data = {
+								red: parseInt(0),
+								green: parseInt(255),
+								blue: parseInt(255),
+				};
+				socket.emit('LED_solid', data);
+				return false;
 		});
 
 		$('button#LED_7S').click(function (event) { //Node 7 Solid Green
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(255),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_solid', data);
-                return false;
+				var data = {
+								red: parseInt(0),
+								green: parseInt(255),
+								blue: parseInt(0),
+				};
+				socket.emit('LED_solid', data);
+				return false;
 		});
 
 		$('button#LED_8S').click(function (event) { //Node 8 Solid Red
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(0),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_solid', data);
-                return false;
+				var data = {
+								red: parseInt(255),
+								green: parseInt(0),
+								blue: parseInt(0),
+				};
+				socket.emit('LED_solid', data);
+				return false;
 		});
 
 		$('button#LED_1C').click(function (event) { //Node 1 Chase Blue
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(0),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_chase', data);
-                return false;
+				var data = {
+								red: parseInt(0),
+								green: parseInt(0),
+								blue: parseInt(255),
+				};
+				socket.emit('LED_chase', data);
+				return false;
 		});
-		
+
 		$('button#LED_2C').click(function (event) { //Node 2 Chase Orange
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(50),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_chase', data);
-                return false;
+				var data = {
+								red: parseInt(255),
+								green: parseInt(50),
+								blue: parseInt(0),
+				};
+				socket.emit('LED_chase', data);
+				return false;
 		});
-		
+
 		$('button#LED_3C').click(function (event) { //Node 3 Chase Pink
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(0),
-                                blue: parseInt(60),
-                };
-                socket.emit('LED_chase', data);
-                return false;
+				var data = {
+								red: parseInt(255),
+								green: parseInt(0),
+								blue: parseInt(60),
+				};
+				socket.emit('LED_chase', data);
+				return false;
 		});
-		
+
 		$('button#LED_4C').click(function (event) { //Node 4 Chase Purple
-                var data = {
-                                red: parseInt(150),
-                                green: parseInt(0),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_chase', data);
-                return false;
+				var data = {
+								red: parseInt(150),
+								green: parseInt(0),
+								blue: parseInt(255),
+				};
+				socket.emit('LED_chase', data);
+				return false;
 		});
 
 		$('button#LED_5C').click(function (event) { //Node 5 Chase Yellow
-                var data = {
-                                red: parseInt(250),
-                                green: parseInt(210),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_chase', data);
-                return false;
+				var data = {
+								red: parseInt(250),
+								green: parseInt(210),
+								blue: parseInt(0),
+				};
+				socket.emit('LED_chase', data);
+				return false;
 		});
 
 		$('button#LED_6C').click(function (event) { //Node 6 Chase Cyan
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(255),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_chase', data);
-                return false;
+				var data = {
+								red: parseInt(0),
+								green: parseInt(255),
+								blue: parseInt(255),
+				};
+				socket.emit('LED_chase', data);
+				return false;
 		});
 
 		$('button#LED_7C').click(function (event) { //Node 7 Chase Green
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(255),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_chase', data);
-                return false;
+				var data = {
+								red: parseInt(0),
+								green: parseInt(255),
+								blue: parseInt(0),
+				};
+				socket.emit('LED_chase', data);
+				return false;
 		});
 
 		$('button#LED_8C').click(function (event) { //Node 8 Chase Red
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(0),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_chase', data);
-                return false;
+				var data = {
+								red: parseInt(255),
+								green: parseInt(0),
+								blue: parseInt(0),
+				};
+				socket.emit('LED_chase', data);
+				return false;
 		});
 
-		
+
 		$('button#LED_RB').click(function (event) {
 			socket.emit('LED_RB');
 			return false;
 		});
-		
+
 		$('button#LED_RBCYCLE').click(function (event) {
 			socket.emit('LED_RBCYCLE');
 			return false;
 		});
-		
+
 		$('button#LED_RBCHASE').click(function (event) {
 			socket.emit('LED_RBCHASE');
 			return false;
 		});
-		
+
 		$(document).on("click", ".delete_lap", function (event) { // Needed for buttons added after document load
 			var data = {
 				node: parseInt($(this).data('node')),
@@ -421,7 +421,7 @@
 		$('button#racedump').click(function (event) {
 			function formatdate(dateObj) {
 				var year = dateObj.getFullYear();
-				var month = dateObj.getMonth();
+				var month = dateObj.getMonth() + 1;
 				month = month < 10 ? '0'+month : month;
 				var day = dateObj.getDate();
 				day = day < 10 ? '0'+day : day;
@@ -571,7 +571,7 @@
 	<button id="LED_5C"><img src="..\static\image\LED-chase-yellow.png"></button>
 	<button id="LED_6C"><img src="..\static\image\LED-chase-cyan.png"></button>
 	<button id="LED_7C"><img src="..\static\image\LED-chase-green.png"></button>
-	<button id="LED_8C"><img src="..\static\image\LED-chase-red.png"></button>	
+	<button id="LED_8C"><img src="..\static\image\LED-chase-red.png"></button>
 </div>
 
 <div>
