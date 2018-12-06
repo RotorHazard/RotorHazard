@@ -348,6 +348,194 @@
 			};
 			socket.emit('set_start_delay_max', data);
 		})
+
+		/* LED Controls */
+		$('button#LED_OFF').click(function (event) { //OFF
+				var data = {
+					red: parseInt(0),
+					green: parseInt(0),
+					blue: parseInt(0),
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button#LED_1S').click(function (event) { //Node 1 Solid Blue
+				var data = {
+					red: parseInt(0),
+					green: parseInt(0),
+					blue: parseInt(255),
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button#LED_2S').click(function (event) { //Node 2 Solid Orange
+				var data = {
+					red: parseInt(255),
+					green: parseInt(50),
+					blue: parseInt(0),
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button#LED_3S').click(function (event) { //Node 3 Solid Pink
+				var data = {
+					red: parseInt(255),
+					green: parseInt(0),
+					blue: parseInt(60),
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button#LED_4S').click(function (event) { //Node 4 Solid Purple
+				var data = {
+					red: parseInt(150),
+					green: parseInt(0),
+					blue: parseInt(255),
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button#LED_5S').click(function (event) { //Node 5 Solid Yellow
+				var data = {
+					red: parseInt(250),
+					green: parseInt(210),
+					blue: parseInt(0),
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button#LED_6S').click(function (event) { //Node 6 Solid Cyan
+				var data = {
+					red: parseInt(0),
+					green: parseInt(255),
+					blue: parseInt(255),
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button#LED_7S').click(function (event) { //Node 7 Solid Green
+				var data = {
+					red: parseInt(0),
+					green: parseInt(255),
+					blue: parseInt(0),
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button#LED_8S').click(function (event) { //Node 8 Solid Red
+				var data = {
+					red: parseInt(255),
+					green: parseInt(0),
+					blue: parseInt(0),
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button#LED_1C').click(function (event) { //Node 1 Chase Blue
+				var data = {
+					red: parseInt(0),
+					green: parseInt(0),
+					blue: parseInt(255),
+				};
+				socket.emit('LED_chase', data);
+				return false;
+		});
+
+		$('button#LED_2C').click(function (event) { //Node 2 Chase Orange
+				var data = {
+					red: parseInt(255),
+					green: parseInt(50),
+					blue: parseInt(0),
+				};
+				socket.emit('LED_chase', data);
+				return false;
+		});
+
+		$('button#LED_3C').click(function (event) { //Node 3 Chase Pink
+				var data = {
+					red: parseInt(255),
+					green: parseInt(0),
+					blue: parseInt(60),
+				};
+				socket.emit('LED_chase', data);
+				return false;
+		});
+
+		$('button#LED_4C').click(function (event) { //Node 4 Chase Purple
+				var data = {
+					red: parseInt(150),
+					green: parseInt(0),
+					blue: parseInt(255),
+				};
+				socket.emit('LED_chase', data);
+				return false;
+		});
+
+		$('button#LED_5C').click(function (event) { //Node 5 Chase Yellow
+				var data = {
+					red: parseInt(250),
+					green: parseInt(210),
+					blue: parseInt(0),
+				};
+				socket.emit('LED_chase', data);
+				return false;
+		});
+
+		$('button#LED_6C').click(function (event) { //Node 6 Chase Cyan
+				var data = {
+					red: parseInt(0),
+					green: parseInt(255),
+					blue: parseInt(255),
+				};
+				socket.emit('LED_chase', data);
+				return false;
+		});
+
+		$('button#LED_7C').click(function (event) { //Node 7 Chase Green
+				var data = {
+					red: parseInt(0),
+					green: parseInt(255),
+					blue: parseInt(0),
+				};
+				socket.emit('LED_chase', data);
+				return false;
+		});
+
+		$('button#LED_8C').click(function (event) { //Node 8 Chase Red
+				var data = {
+					red: parseInt(255),
+					green: parseInt(0),
+					blue: parseInt(0),
+				};
+				socket.emit('LED_chase', data);
+				return false;
+		});
+
+
+		$('button#LED_RB').click(function (event) {
+			socket.emit('LED_RB');
+			return false;
+		});
+
+		$('button#LED_RBCYCLE').click(function (event) {
+			socket.emit('LED_RBCYCLE');
+			return false;
+		});
+
+		$('button#LED_RBCHASE').click(function (event) {
+			socket.emit('LED_RBCHASE');
+			return false;
+		});
+
 	});
 
 	function speak(obj) {
@@ -634,6 +822,31 @@
 			<td>Increase Filter Ratio</td>
 		</tr>
 	</table>
+</div>
+
+<!--Reset database-->
+<h2>LED Testing/Override</h2>
+<div class="control-set">
+	<button id="LED_OFF"><img src="..\static\image\LED-off.png"></button>
+	<button id="LED_RBCYCLE"><img src="..\static\image\LED-rainbow.png"></button>
+	<br />
+	<button id="LED_1S"><img src="..\static\image\LED-blue.png"></button>
+	<button id="LED_2S"><img src="..\static\image\LED-orange.png"></button>
+	<button id="LED_3S"><img src="..\static\image\LED-pink.png"></button>
+	<button id="LED_4S"><img src="..\static\image\LED-purple.png"></button>
+	<button id="LED_5S"><img src="..\static\image\LED-yellow.png"></button>
+	<button id="LED_6S"><img src="..\static\image\LED-cyan.png"></button>
+	<button id="LED_7S"><img src="..\static\image\LED-green.png"></button>
+	<button id="LED_8S"><img src="..\static\image\LED-red.png"></button>
+	<br />
+	<button id="LED_1C"><img src="..\static\image\LED-chase-blue.png"></button>
+	<button id="LED_2C"><img src="..\static\image\LED-chase-orange.png"></button>
+	<button id="LED_3C"><img src="..\static\image\LED-chase-pink.png"></button>
+	<button id="LED_4C"><img src="..\static\image\LED-chase-purple.png"></button>
+	<button id="LED_5C"><img src="..\static\image\LED-chase-yellow.png"></button>
+	<button id="LED_6C"><img src="..\static\image\LED-chase-cyan.png"></button>
+	<button id="LED_7C"><img src="..\static\image\LED-chase-green.png"></button>
+	<button id="LED_8C"><img src="..\static\image\LED-chase-red.png"></button>
 </div>
 
 <!--Reset database-->
