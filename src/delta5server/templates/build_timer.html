@@ -1,33 +1,63 @@
+<!--Timer html-->
+<div class="timing-clock">--:--</div>
+
 <script>
 	function _timer(callback) {
 		var time = 0; // The default time in seconds
 		var mode = 1; // Count down is 0, count up is 1
-		var status = 0; // Stopped is 0, running is 1
+		var status = 0; // Stopped is 0, running is 1, pre-race staging is 2
 		var timer_id; // Used by setInterval function
+		var pre_race = false; // pre-race countdown
+		var pre_delay = 0; // pre-race countdown duration
+		var hide_countdown = 0; // hide pre-race display (for random delay)
 
-		var buzzer = $('buzzer')[0]; // Buzzer audio tag is loaded on race page already
+		this.buzzer = $('buzzer')[0]; // Buzzer audio tag is loaded on race page already
+		this.stagebuzzer = $('stagebuzzer')[0]; // Buzzer audio tag is loaded on race page already
 
 		// Start the timer
 		this.start = function () {
-			status = 1; // Set status to running
-			timer_id = setInterval(function () {
-				switch (mode) {
-					default: // Default mode 0 for a countdown timer
-						time--;
-						break;
-					case 1: // Mode 1 for a count up timer
-						time++;
-						break;
-				}
+			var timer_control = this;
+			if (pre_race) {
+				$('.timing-clock').addClass('staging');
+				status = 2; // Set status to staging
 				generateTime(); // Updates html timer text
-				if (typeof (callback) === 'function') callback(time);
-			}, 1000); // 1000 ms update rate
+				stagebuzzer.play(); // Pre-race buzzer
+				timer_id = setInterval(function () {
+					pre_delay--;
+					if (pre_delay <= 0) {
+						clearInterval(timer_id);
+						pre_race = false;
+						timer_control.start();
+					} else {
+						stagebuzzer.play(); // Pre-race buzzer
+						generateTime(); // Updates html timer text
+					}
+				}, 1000); // 1000 ms update rate
+			} else {
+				$('.timing-clock').removeClass('staging');
+				buzzer.play();
+				status = 1; // Set status to running
+				generateTime(); // Updates html timer text
+				timer_id = setInterval(function () {
+					switch (mode) {
+						default: // Default mode 0 for a countdown timer
+							time--;
+							break;
+						case 1: // Mode 1 for a count up timer
+							time++;
+							break;
+					}
+					generateTime(); // Updates html timer text
+					if (typeof (callback) === 'function') callback(time);
+				}, 1000); // 1000 ms update rate
+			}
 		}
 
 		// Stop timer and clear update interval
 		this.stop = function () {
 			status = 0;
 			clearInterval(timer_id);
+			$('.timing-clock').removeClass('staging');
 		}
 
 		// Stop the timer, set the time equal to the passed value, update html clock
@@ -35,7 +65,20 @@
 			this.stop(); // On a reset also stop the clock
 			reset_time = (typeof (reset_time) !== 'undefined') ? reset_time : 0;
 			time = reset_time;
-			generateTime(time);
+			generateTime(); // Updates html timer text
+		}
+
+		// Set pre-race conditions
+		this.pre_race = function (delay, hide) {
+			this.stop(); // On a reset also stop the clock
+			delay = (typeof (delay) !== 'undefined') ? delay : 0;
+			hide = (typeof (hide) !== 'undefined') ? hide : 0;
+
+			if (delay) {
+				pre_race = true;
+				pre_delay = delay;
+				hide_countdown = hide;
+			}
 		}
 
 		// Change the mode
@@ -53,6 +96,11 @@
 			return mode;
 		}
 
+		// Return the current pre-race status
+		this.getPreAnnounce = function () {
+			return (pre_race && !hide_countdown);
+		}
+
 		// Return the current status
 		this.getStatus = function () {
 			return status;
@@ -60,19 +108,25 @@
 
 		// This methode will render the time variable to minute:second format
 		function generateTime() {
-			var second = time % 60;
-			var minute = Math.floor(time / 60);
+			if (pre_race && hide_countdown) {
+				$('.timing-clock').html('Ready');
+			} else {
+				var display_time = time;
+				if (pre_race) display_time = pre_delay;
 
-			second = (second < 10) ? '0' + second : second; // Pad zero if under 10
-			minute = (minute < 10) ? '0' + minute : minute;
+				var second = display_time % 60;
+				var minute = Math.floor(display_time / 60);
 
-			if (time < 0) {
-				second = '--';
-				minute = '--';
+				second = (second < 10) ? '0' + second : second; // Pad zero if under 10
+				minute = (minute < 10) ? '0' + minute : minute;
+
+				if (display_time < 0) {
+					second = '--';
+					minute = '--';
+				}
+
+				$('.timing-clock').html(minute + ':' + second);
 			}
-
-			$('.timer_sec').html(second);
-			$('.timer_min').html(minute);
 		}
 	}
 
@@ -80,48 +134,52 @@
 	var timer;
 	timer = new _timer(
 		function (time) {
-			if (timer.getMode() == 0) { // Count down clock
-				if (time == 0) {
-					buzzer.play();
-					timer.stop();
-				} // End up race buzzer
+			if (timer.getStatus() == 1) {
+				if (timer.getMode() == 0) { // Count down clock
+					if (time == 0) {
+						buzzer.play(); // End race buzzer
+						timer.stop();
+					}
 
-				if (time == 10) {
-					speak('<div class="timer">10 seconds</div>');
+					/* Implement if https://github.com/acoti/articulate.js/issues/7 is resolved
+					if (time == 1) {
+						speakForced('<div class="timer">1</div>');
+					}
+
+					if (time == 2) {
+						speakForced('<div class="timer">2</div>');
+					}
+
+					if (time == 3) {
+						speakForced('<div class="timer">3</div>');
+					} */
+
+					if (time == 5) {
+						speak('<div class="timer">5 seconds</div>');
+					}
+
+					if (time == 10) {
+						speak('<div class="timer">10 seconds</div>');
+					}
 				}
 
-				if (time == 5) {
-					speak('<div class="timer">5 seconds</div>');
+				if (time == 30) { // 30 second call out
+					speak('<div class="timer">30 seconds</div>');
 				}
 
-				if (time == {{race_format.race_time_sec}}) { buzzer.play(); } // Start buzzer
-			}
+				if (time == 60) { // 1 min call out
+					speak('<div class="timer">1 minute</div>');
+				}
 
-			if (timer.getMode() == 1) { // Count up clock
-				if (time == 0) {
-					buzzer.play();
-				} // Start buzzer
-				if (time == 120) {
+				/*
+				if (time == 120) { // 2 min call out
 					speak('<div class="timer">2 minutes</div>');
-				} // 2 min call out
+				}
+				*/
 			}
-
-			if (time == 30) {
-				speak('<div class="timer">30 seconds</div>');
-			} // 30 second call out
-
-			if (time == 60) {
-				speak('<div class="timer">1 minute</div>');
-			} // 1 min call out
 		}
 	);
 
 	timer.reset({{race_format.race_time_sec}});
-	timer.mode(0); // Set initial mode
-
+	timer.mode(1); // Set initial mode
 </script>
-
-<!--Timer html-->
-<div class="timing-clock">
-	<span class="timer_min">00</span>:<span class="timer_sec">00</span>
-</div>

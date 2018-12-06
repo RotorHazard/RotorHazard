@@ -81,6 +81,14 @@
 			$('#set_min_lap').val( msg.min_lap);
 		});
 
+		socket.on('set_hide_stage_timer', function (msg) {
+			$('#set_hide_stage_timer').val( msg.hide_stage_timer);
+		});
+
+		socket.on('set_start_delay', function (msg) {
+			$('#set_start_delay').val( msg.start_delay);
+		});
+
 		socket.on('heat_data', function (msg) {
 			$.each(msg.heat_id, function (i, heat_id) {
 				$.each(heat_id.callsign, function (j, callsign) {
@@ -319,6 +327,27 @@
 			};
 			socket.emit('set_min_lap', data);
 		})
+
+		$('#set_hide_stage_timer').change(function (event) {
+			var data = {
+				hide_stage_timer: parseInt($(this).val())
+			};
+			socket.emit('set_hide_stage_timer', data);
+		})
+
+		$('#set_start_delay_min').change(function (event) {
+			var data = {
+				start_delay_min: parseInt($(this).val())
+			};
+			socket.emit('set_start_delay_min', data);
+		})
+
+		$('#set_start_delay_max').change(function (event) {
+			var data = {
+				start_delay_max: parseInt($(this).val())
+			};
+			socket.emit('set_start_delay_max', data);
+		})
 	});
 
 	function speak(obj) {
@@ -467,17 +496,40 @@
 	</li>
 	<li>
 		<div class="label-block">
-			<label for="fixed-time">Maximum race time in seconds</label>
+			<label for="set_fix_race_time">Maximum race time in seconds</label>
 			<p class="desc">Used for fixed-time races</p>
 		</div>
 		<input type="text" id="set_fix_race_time" value="{{race_format.race_time_sec}}">
 	</li>
 	<li>
 		<div class="label-block">
-			<label for="fixed-time">Minimum lap time in seconds</label>
+			<label for="set_min_lap">Minimum lap time in seconds</label>
 			<p class="desc">Prevents phantom passes</p>
 		</div>
 		<input type="text" id="set_min_lap" value="{{race_format.min_lap_sec}}">
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_hide_stage_timer">Hide Staging Timer</label>
+		</div>
+		<select id="set_hide_stage_timer">
+			<option value="0" {% if race_format.hide_stage_timer == 0 %}selected="selected" {% endif %}>Show Countdown</option>
+			<option value="1" {% if race_format.hide_stage_timer == 1 %}selected="selected" {% endif %}>Hide Countdown</option>
+		</select>
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_start_delay_min">Minimum Start Delay</label>
+			<p class="desc">Minimum time before race begins</p>
+		</div>
+		<input type="text" id="set_start_delay_min" value="{{race_format.start_delay_min}}">
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_start_delay_max">Maximum Start Delay</label>
+			<p class="desc">Maximum time before race begins</p>
+		</div>
+		<input type="text" id="set_start_delay_max" value="{{race_format.start_delay_max}}">
 	</li>
 </ol>
 

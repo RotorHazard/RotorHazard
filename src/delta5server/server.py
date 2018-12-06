@@ -13,6 +13,8 @@ import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
 
+import random
+
 sys.path.append('../delta5interface')
 sys.path.append('/home/pi/delta5_race_timer/src/delta5interface')  # Needed to run on startup
 from Delta5Interface import get_hardware_interface
@@ -83,7 +85,7 @@ def wheel(pos):
     else:
         pos -= 170
         return Color(0, pos * 3, 255 - pos * 3)
-		
+
 def rainbow(strip, wait_ms=2, iterations=1):
     """Draw rainbow that fades across all pixels at once."""
     for j in range(256*iterations):
@@ -193,6 +195,9 @@ class RaceFormat(DB.Model):
     race_mode = DB.Column(DB.Integer, nullable=False)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
     min_lap_sec = DB.Column(DB.Integer, nullable=False)
+    hide_stage_timer = DB.Column(DB.Integer, nullable=False)
+    start_delay_min = DB.Column(DB.Integer, nullable=False)
+    start_delay_max = DB.Column(DB.Integer, nullable=False)
 
 class NodeData(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
@@ -644,59 +649,67 @@ def on_set_min_lap(data):
     DB.session.commit()
     server_log("set min lap time to %s seconds" % min_lap)
 
-    # @SOCKET_IO.on('clear_rounds')
-# def on_reset_heats():
-#     '''Clear all saved races.'''
-#     DB.session.query(SavedRace).delete() # Remove all races
-#     DB.session.commit()
-#     server_log('Saved rounds cleared')
+@SOCKET_IO.on("set_hide_stage_timer")
+def on_set_hide_stage_timer(data):
+    hide_stage_timer = data['hide_stage_timer']
+    race_format = RaceFormat.query.get(1)
+    race_format.hide_stage_timer = hide_stage_timer
+    DB.session.commit()
+    server_log("set start type to %s" % hide_stage_timer)
 
-# @SOCKET_IO.on('reset_heats')
-# def on_reset_heats():
-#     '''Resets to one heat with default pilots.'''
-#     DB.session.query(Heat).delete() # Remove all heats
-#     DB.session.commit()
-#     for node in range(RACE.num_nodes): # Add back heat 1 with pilots 1 thru 5
-#         DB.session.add(Heat(heat_id=1, node_index=node, pilot_id=node+1))
-#     DB.session.commit()
-#     server_log('Heats reset to default')
+@SOCKET_IO.on("set_start_delay_min")
+def on_set_start_delay(data):
+    start_delay_min = data['start_delay_min']
+    race_format = RaceFormat.query.get(1)
+    race_format.start_delay_min = start_delay_min
+    DB.session.commit()
+    server_log("set start delay to %s" % start_delay_min)
 
-# @SOCKET_IO.on('reset_pilots')
-# def on_reset_heats():
-#     '''Resets default pilots for nodes detected.'''
-
-#     DB.session.query(Pilot).delete() # Remove all pilots
-#     DB.session.commit()
-#     DB.session.add(Pilot(pilot_id='0', callsign='-', name='-'))
-#     for node in range(RACE.num_nodes): # Add back heat 1 with pilots 1 thru 5
-#         DB.session.add(Pilot(pilot_id=node+1, callsign='callsign{0}'.format(node+1), \
-#             name='Pilot Name'))
-#     DB.session.commit()
-#     server_log('Pilots reset to default')
+@SOCKET_IO.on("set_start_delay_max")
+def on_set_start_delay(data):
+    start_delay_max = data['start_delay_max']
+    race_format = RaceFormat.query.get(1)
+    race_format.start_delay_max = start_delay_max
+    DB.session.commit()
+    server_log("set start delay to %s" % start_delay_max)
 
 # Race management socket io events
 
-@SOCKET_IO.on('start_race')
-def on_start_race():
-    '''Starts the race and the timer counting up, no defined finish.'''
-    start_race()
-    SOCKET_IO.emit('start_timer') # Loop back to race page to start the timer counting up
-    time.sleep(1)
-    onoff(strip, Color(0,255,0)) #GREEN ON
-
-def start_race():
-    '''Common race start events.'''
-    on_clear_laps() # Ensure laps are cleared before race start, shouldn't be needed
+@SOCKET_IO.on('prestage_race')
+def on_prestage_race():
+    '''Common race start events (do early to prevent processing delay when start is called)'''
+    onoff(strip, Color(255,128,0)) #ORANGE for STAGING
+    clear_laps() # Ensure laps are cleared before race start, shouldn't be needed
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
-    gevent.sleep(0.500) # Make this random 2 to 5 seconds
+    race_format = RaceFormat.query.get(1)
+    DELAY = random.randint(race_format.start_delay_min, race_format.start_delay_max)
+
+    SOCKET_IO.emit('prestage_ready', {
+        'hide_stage_timer': race_format.hide_stage_timer,
+        'start_delay': DELAY,
+        'race_mode': race_format.race_mode,
+        'race_time_sec': race_format.race_time_sec
+    }) # Loop back to race page with chosen delay
+
+
+@SOCKET_IO.on('stage_race')
+def on_stage_race(data):
+    '''Bounce a response back to client for determining response time'''
+    SOCKET_IO.emit('stage_ready', data)
+
+@SOCKET_IO.on('start_race')
+def on_start_race(data):
+    '''Starts the D5 race'''
+    time.sleep(data['delay']) # TODO: Make this a non-blocking delay so race can be cancelled inside staging ***
     RACE.race_status = 1 # To enable registering passed laps
     global RACE_START # To redefine main program variable
     RACE_START = datetime.now() # Update the race start time stamp
-    server_log('Race started at {0}'.format(RACE_START))
-    emit_node_data() # Settings page, node channel and triggers on the launch pads
+    onoff(strip, Color(0,255,0)) #GREEN for GO
     emit_race_status() # Race page, to set race button states
+    emit_node_data() # Settings page, node channel and triggers on the launch pads
+    server_log('Race started at {0}'.format(RACE_START))
 
 @SOCKET_IO.on('stop_race')
 def on_race_status():
@@ -729,13 +742,17 @@ def on_save_laps():
 @SOCKET_IO.on('clear_laps')
 def on_clear_laps():
     '''Clear the current laps due to false start or practice.'''
+    clear_laps()
+    emit_current_laps() # Race page, blank laps to the web client
+    emit_leaderboard() # Race page, blank leaderboard to the web client
+    emit_race_status() # Race page, to set race button states
+
+def clear_laps():
+    '''Clear the current laps due to false start or practice.'''
     RACE.race_status = 0 # Laps cleared, ready to start next race
     DB.session.query(CurrentLap).delete() # Clear out the current laps table
     DB.session.commit()
     server_log('Current laps cleared')
-    emit_current_laps() # Race page, blank laps to the web client
-    emit_leaderboard() # Race page, blank leaderboard to the web client
-    emit_race_status() # Race page, to set race button states
 
 @SOCKET_IO.on('set_current_heat')
 def on_set_current_heat(data):
@@ -1313,7 +1330,10 @@ def db_reset_fix_race_time():
     DB.session.query(RaceFormat).delete()
     DB.session.add(RaceFormat(race_mode=0,
                              race_time_sec=120,
-                             min_lap_sec=0))
+                             min_lap_sec=0,
+                             hide_stage_timer=1,
+                             start_delay_min=2,
+                             start_delay_max=5))
     DB.session.commit()
     server_log("Database set fixed time race to 120 sec (2 minutes)")
 
@@ -1399,6 +1419,7 @@ INTERFACE.set_filter_ratio_global(tune_val.f_ratio)
 # DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=11750, lap_time=11000, lap_time_formatted=time_format(11000)))
 # DB.session.commit()
 
+print 'Server ready'
 
 if __name__ == '__main__':
     SOCKET_IO.run(APP, host='0.0.0.0', port=80, debug=True, use_reloader=False)

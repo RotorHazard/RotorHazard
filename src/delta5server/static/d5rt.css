@@ -321,6 +321,11 @@ main {
 	background: #9e3d22;
 }
 
+.timing-clock.staging {
+	background: hsl(25, 85%, 55%);
+	color: #000;
+}
+
 .round {
 	margin-bottom: 2rem;
 }
