@@ -52,7 +52,6 @@
 				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i] - d5rt.nodes[i].offset);
 				$('.peak_rssi_' + i).html(msg.peak_rssi[i] - d5rt.nodes[i].offset);
 				$('#set_node_offset_' + i).val(msg.node_offset[i]);
-				$('#set_node_scale_' + i).val(msg.node_scale[i] / 1000);
 
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
 				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
@@ -150,14 +149,6 @@
 			};
 			socket.emit('set_node_offset', data);
 			d5rt.nodes[data.node].offset = data.node_offset;
-		});
-
-		$('.set_node_scale').change(function (event) {
-			var data = {
-				node: parseInt($(this).data('node')),
-				node_scale: parseInt($(this).val() * 1000),
-			};
-			socket.emit('set_node_scale', data);
 		});
 
 		$('.set_language').change(function (event) {
@@ -562,11 +553,6 @@
 						</option>
 						{% endfor %}
 					</select>
-
-					<div class="compact-field">
-						<label for="set_node_scale_{{ node }}">Scale</label>
-						<input type="number" id="set_node_scale_{{ node }}" class="set_node_scale" data-node="{{ node }}" step="0.01" min="0" max="65.53">
-					</div>
 
 					<div class="compact-field">
 						<label for="set_node_offset_{{ node }}">Offset</label>

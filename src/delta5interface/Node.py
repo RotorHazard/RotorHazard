@@ -9,14 +9,12 @@ class Node:
         self.peak_rssi = 0
         self.last_lap_id = -1
         self.loop_time = 10
-        self.node_scale = 1000
 
     def get_settings_json(self):
         return {
             'frequency': self.frequency,
             'current_rssi': self.current_rssi,
-            'trigger_rssi': self.trigger_rssi,
-            'node_scale': self.node_scale,
+            'trigger_rssi': self.trigger_rssi
         }
 
     def get_heartbeat_json(self):

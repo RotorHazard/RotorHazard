@@ -15,7 +15,6 @@ READ_CALIBRATION_MODE = 0x16
 READ_CALIBRATION_OFFSET = 0x17
 READ_TRIGGER_THRESHOLD = 0x18
 READ_FILTER_RATIO = 0x19
-READ_NODE_SCALE = 0x20
 
 WRITE_FREQUENCY = 0x51 # Sets frequency (2 byte)
 WRITE_CALIBRATION_THRESHOLD = 0x65
@@ -23,14 +22,11 @@ WRITE_CALIBRATION_MODE = 0x66
 WRITE_CALIBRATION_OFFSET = 0x67
 WRITE_TRIGGER_THRESHOLD = 0x68
 WRITE_FILTER_RATIO = 0x69
-WRITE_NODE_SCALE = 0x70
 
 UPDATE_SLEEP = 0.1 # Main update loop delay
 
 I2C_CHILL_TIME = 0.075 # Delay after i2c read/write
 I2C_RETRY_COUNT = 5 # Limit of i2c retries
-
-node_scale_fns_flag = True  # set True if 'node_scale' fns are available
 
 def unpack_8(data):
     return data[0]
@@ -104,24 +100,10 @@ class Delta5Interface(BaseHardwareInterface):
                     READ_TRIGGER_THRESHOLD)
                 self.filter_ratio = self.get_value_8(node,
                     READ_FILTER_RATIO)
-#                self.node_scale = self.get_value_16(node,
-#                    READ_NODE_SCALE)
-
-                # set flag True if 'node_scale' fns are available
-                #  (return value is 255 if not implemented)
-                global node_scale_fns_flag
-                res = self.get_value_16(node, READ_NODE_SCALE)
-                if res != None and res != 255:
-                    node_scale_fns_flag = True
-                else:
-                    node_scale_fns_flag = False
-                    print "Detected 'node_scale' fns not available"
-
             else:
                 self.set_calibration_threshold(node.index, self.calibration_threshold)
                 self.set_calibration_offset(node.index, self.calibration_offset)
                 self.set_trigger_threshold(node.index, self.trigger_threshold)
-#                self.set_node_scale(node.index, self.node_scale)
 
 
     #
@@ -346,14 +328,6 @@ class Delta5Interface(BaseHardwareInterface):
         for node in self.nodes:
             self.set_filter_ratio(node.index, filter_ratio)
         return self.filter_ratio
-
-    def set_node_scale(self, node_index, node_scale):
-        if node_scale_fns_flag:  # only invoke if 'node_scale' fns available
-            node = self.nodes[node_index]
-            node.node_scale = self.set_and_validate_value_16(node,
-                WRITE_NODE_SCALE,
-                READ_NODE_SCALE,
-                node_scale)
 
     def intf_simulate_lap(self, node_index):
         node = self.nodes[node_index]

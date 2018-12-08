@@ -61,10 +61,3 @@ class BaseHardwareInterface(object):
             'node': node.index,
             'frequency': node.frequency
         }
-
-    def get_node_scale_json(self, node_index):
-        node = self.nodes[node_index]
-        return {
-            'node': node.index,
-            'node_scale': node.node_scale
-        }

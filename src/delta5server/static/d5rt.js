@@ -60,7 +60,6 @@ function nodeModel() {
 	this.calibration_threshold = false;
 	this.trigger_threshold = false;
 	this.offset = 0;
-	this.scale = 1;
 	this.corrections = {
 		noise: {
 			rawData: [],

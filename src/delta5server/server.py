@@ -203,7 +203,6 @@ class NodeData(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     frequency = DB.Column(DB.Integer, nullable=False)
     offset = DB.Column(DB.Integer, nullable=False)
-    scale = DB.Column(DB.Integer, nullable=False)
 
 #
 # Authentication
@@ -399,18 +398,6 @@ def on_set_node_offset(data):
     DB.session.commit()
     server_log('Node offset set: Node {0} Offset {1}'.format(node_index+1, node_offset))
 #    emit_node_data() # Settings page, new node channel
-
-@SOCKET_IO.on('set_node_scale')
-def on_set_node_scale(data):
-    '''Set node scale.'''
-    node_index = data['node']
-    node_scale = data['node_scale']
-    INTERFACE.set_node_scale(node_index, node_scale)
-    node_data = NodeData.query.filter_by(id=node_index).first()
-    node_data.scale = node_scale
-    DB.session.commit()
-    server_log('Node scale set: Node {0} Scale {1}'.format(node_index+1, node_scale))
-    emit_node_data() # Settings page, new node channel
 
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
@@ -839,8 +826,7 @@ def emit_node_data():
             for node in INTERFACE.nodes],
         'trigger_rssi': [node.trigger_rssi for node in INTERFACE.nodes],
         'peak_rssi': [node.peak_rssi for node in INTERFACE.nodes],
-        'node_offset': [node.offset for node in NodeData.query.all()],
-        'node_scale': [node.node_scale for node in INTERFACE.nodes]
+        'node_offset': [node.offset for node in NodeData.query.all()]
     })
 
 def emit_node_tuning():
@@ -1147,7 +1133,6 @@ def assign_frequencies():
         gevent.sleep(0.100)
         INTERFACE.set_frequency(node.id, node.frequency)
         gevent.sleep(0.100)
-        INTERFACE.set_node_scale(node.id, node.scale)
 
     server_log('Frequencies asigned to nodes')
 
@@ -1342,8 +1327,7 @@ def db_reset_node_values():
     for node in range(RACE.num_nodes):
         DB.session.add(NodeData(id=node,
                                 frequency=0,
-                                offset=0,
-                                scale=1000))
+                                offset=0))
     DB.session.commit()
     default_frequencies()
     server_log("Database cleared node correction")
