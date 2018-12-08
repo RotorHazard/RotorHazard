@@ -29,7 +29,7 @@
 
 		socket.on('heartbeat', function (msg) {
 			for (i = 0; i < msg.current_rssi.length; i++) {
-				var rssiValue = msg.current_rssi[i] - d5rt.nodes[i].offset;
+				var rssiValue = msg.current_rssi[i];
 
 				$('.current_rssi_' + i).html(rssiValue);
 
@@ -49,8 +49,8 @@
 			for (i = 0; i < msg.frequency.length; i++) {
 				$('.channel_' + i).html('<div class="channel-block"><span class="ch">' + msg.channel[i] + '</span> <span class="fr">' + msg.frequency[i] + '</span></div>');
 				$('#s_channel_' + i).val(msg.frequency[i]);
-				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i] - d5rt.nodes[i].offset);
-				$('.peak_rssi_' + i).html(msg.peak_rssi[i] - d5rt.nodes[i].offset);
+				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
+				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
 				$('#set_node_offset_' + i).val(msg.node_offset[i]);
 
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
@@ -556,7 +556,7 @@
 
 					<div class="compact-field">
 						<label for="set_node_offset_{{ node }}">Offset</label>
-						<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65535">
+						<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="-999" max="999">
 					</div>
 				</td>
 			</tr>

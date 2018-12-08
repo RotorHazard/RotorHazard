@@ -7,6 +7,7 @@ class Node:
         self.current_rssi = 0
         self.trigger_rssi = 0
         self.peak_rssi = 0
+        self.node_offs_adj = 0
         self.last_lap_id = -1
         self.loop_time = 10
 

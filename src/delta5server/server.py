@@ -390,9 +390,10 @@ def on_set_frequency(data):
 
 @SOCKET_IO.on('set_node_offset')
 def on_set_node_offset(data):
-    '''Set node offset.'''
+    '''Set node calibration-offset-adjustment value.'''
     node_index = data['node']
     node_offset = data['node_offset']
+    INTERFACE.chg_node_offs_adj(node_index, node_offset)
     node_data = NodeData.query.filter_by(id=node_index).first()
     node_data.offset = node_offset
     DB.session.commit()
@@ -826,7 +827,7 @@ def emit_node_data():
             for node in INTERFACE.nodes],
         'trigger_rssi': [node.trigger_rssi for node in INTERFACE.nodes],
         'peak_rssi': [node.peak_rssi for node in INTERFACE.nodes],
-        'node_offset': [node.offset for node in NodeData.query.all()]
+        'node_offset': [node.node_offs_adj for node in INTERFACE.nodes]
     })
 
 def emit_node_tuning():

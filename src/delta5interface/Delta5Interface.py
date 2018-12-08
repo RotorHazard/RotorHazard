@@ -91,6 +91,7 @@ class Delta5Interface(BaseHardwareInterface):
 
         for node in self.nodes:
             node.frequency = self.get_value_16(node, READ_FREQUENCY)
+            node.node_offs_adj = 0
             if node.index == 0:
                 self.calibration_threshold = self.get_value_16(node,
                     READ_CALIBRATION_THRESHOLD)
@@ -261,10 +262,21 @@ class Delta5Interface(BaseHardwareInterface):
 
     def set_frequency(self, node_index, frequency):
         node = self.nodes[node_index]
+        upd_flg = False
+        if node.node_offs_adj != 0:
+            upd_flg = True
         node.frequency = self.set_and_validate_value_16(node,
             WRITE_FREQUENCY,
             READ_FREQUENCY,
             frequency)
+        if upd_flg:
+            self.set_calibration_offset(node.index, self.calibration_offset)
+
+    def chg_node_offs_adj(self, node_index, node_offs_adj):
+        node = self.nodes[node_index]
+        if node_offs_adj != node.node_offs_adj:
+            node.node_offs_adj = node_offs_adj
+            self.set_calibration_offset(node.index, self.calibration_offset)
 
     def set_calibration_threshold(self, node_index, threshold):
         node = self.nodes[node_index]
@@ -292,6 +304,8 @@ class Delta5Interface(BaseHardwareInterface):
 
     def set_calibration_offset(self, node_index, offset):
         node = self.nodes[node_index]
+        if node.node_offs_adj != 0:
+            offset = offset + node.node_offs_adj
         node.calibration_offset = self.set_and_validate_value_16(node,
             WRITE_CALIBRATION_OFFSET,
             READ_CALIBRATION_OFFSET,

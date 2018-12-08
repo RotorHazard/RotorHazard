@@ -81,7 +81,7 @@
 			}
 
 			for (i = 0; i < msg.current_rssi.length; i++) {
-				var rssiValue = msg.current_rssi[i] - d5rt.nodes[i].offset;
+				var rssiValue = msg.current_rssi[i];
 
 				$('.current_rssi_' + i).html(rssiValue);
 

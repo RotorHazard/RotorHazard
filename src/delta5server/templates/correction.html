@@ -233,7 +233,7 @@
 			}
 
 			for (i = 0; i < msg.current_rssi.length; i++) {
-				var rssiValue = msg.current_rssi[i] - d5rt.nodes[i].offset;
+				var rssiValue = msg.current_rssi[i];
 
 				$('.current_rssi_' + i).html(rssiValue);
 
@@ -253,8 +253,8 @@
 			for (i = 0; i < msg.frequency.length; i++) {
 				$('.channel_' + i).html('<div class="channel-block"><span class="ch">' + msg.channel[i] + '</span> <span class="fr">' + msg.frequency[i] + '</span></div>');
 				$('#s_channel_' + i).val(msg.frequency[i]);
-				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i] - d5rt.nodes[i].offset);
-				$('.peak_rssi_' + i).html(msg.peak_rssi[i] - d5rt.nodes[i].offset);
+				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
+				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
 				$('#set_node_offset_' + i).val(msg.node_offset[i]);
 
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
