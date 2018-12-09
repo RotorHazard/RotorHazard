@@ -246,7 +246,8 @@ class Delta5Interface(BaseHardwareInterface):
         while success is False and retry_count < I2C_RETRY_COUNT:
             self.write_block(node.i2c_addr, write_command, pack_16(in_value))
             out_value = self.get_value_16(node, read_command)
-            if out_value == in_value:
+                   # confirm same value (also handle negative value)
+            if out_value == in_value or out_value == in_value + (1 << 16):
                 success = True
             else:
                 retry_count = retry_count + 1
@@ -260,17 +261,20 @@ class Delta5Interface(BaseHardwareInterface):
     # External functions for setting data
     #
 
-    def set_frequency(self, node_index, frequency):
+    def set_freq_and_offs(self, node_index, frequency, node_offs_adj):
         node = self.nodes[node_index]
-        upd_flg = False
-        if node.node_offs_adj != 0:
-            upd_flg = True
+        node.node_offs_adj = node_offs_adj
         node.frequency = self.set_and_validate_value_16(node,
             WRITE_FREQUENCY,
             READ_FREQUENCY,
             frequency)
-        if upd_flg:
-            self.set_calibration_offset(node.index, self.calibration_offset)
+
+    def set_frequency(self, node_index, frequency):
+        node = self.nodes[node_index]
+        node.frequency = self.set_and_validate_value_16(node,
+            WRITE_FREQUENCY,
+            READ_FREQUENCY,
+            frequency)
 
     def chg_node_offs_adj(self, node_index, node_offs_adj):
         node = self.nodes[node_index]

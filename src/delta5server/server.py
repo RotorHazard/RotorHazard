@@ -774,7 +774,7 @@ def on_delete_lap(data):
         # Delete the false lap
         CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id).delete()
     DB.session.commit()
-    server_log('Lap deleted: Node {0} Lap {1}'.format(node_index, lap_id))
+    server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_id))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
 
@@ -782,7 +782,7 @@ def on_delete_lap(data):
 def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
-    server_log('Simulated lap: Node {0}'.format(node_index))
+    server_log('Simulated lap: Node {0}'.format(node_index+1))
     INTERFACE.intf_simulate_lap(node_index)
 
 @SOCKET_IO.on('LED_solid')
@@ -1035,7 +1035,7 @@ def phonetictime_format(millis):
 
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''
-    server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index, ms_since_lap))
+    server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, ms_since_lap))
     emit_node_data() # For updated triggers and peaks
 
     if RACE.race_status is 1:
@@ -1072,7 +1072,7 @@ def pass_record_callback(node, ms_since_lap):
             DB.session.commit()
 
             server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
-                .format(node.index, lap_id, time_format(lap_time)))
+                .format(node.index+1, lap_id, time_format(lap_time)))
             emit_current_laps() # Updates all laps on the race page
             emit_leaderboard() # Updates leaderboard
             if lap_id > 0:
@@ -1095,7 +1095,7 @@ def pass_record_callback(node, ms_since_lap):
                 theaterChase(strip, Color(255,0,0)) #RED theater chase
         else:
             server_log('Pass record dismissed: Node: {0}, Lap: {1}, Lap time: {2}' \
-                .format(node.index, lap_id, time_format(lap_time)))
+                .format(node.index+1, lap_id, time_format(lap_time)))
 
 INTERFACE.pass_record_callback = pass_record_callback
 
@@ -1132,10 +1132,10 @@ def assign_frequencies():
     '''Assign set frequencies to nodes'''
     for node in NodeData.query.all():
         gevent.sleep(0.100)
-        INTERFACE.set_frequency(node.id, node.frequency)
+        INTERFACE.set_freq_and_offs(node.id, node.frequency, node.offset)
         gevent.sleep(0.100)
 
-    server_log('Frequencies asigned to nodes')
+    server_log('Frequencies assigned to nodes')
 
 def db_init():
     '''Initialize database.'''
