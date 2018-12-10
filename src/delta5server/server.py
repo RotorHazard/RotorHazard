@@ -1112,9 +1112,9 @@ def hardware_log_callback(message):
 INTERFACE.hardware_log_callback = hardware_log_callback
 
 def default_frequencies():
-    '''Set node frequencies, R1367 for 4, IMD for 5 or 6, Raceband for 7 or 8.'''
+    '''Set node frequencies, R1367 for 4, IMD for 5 or 6, IMD6C+ for 7 or 8.'''
     frequencies_imd_5_6 = [5685, 5760, 5800, 5860, 5905, 5645]
-    frequencies_raceband = [5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917]
+    frequencies_eight = [5658, 5695, 5760, 5800, 5880, 5917, 5362, 5300]
     frequencies_rb4 = [5658, 5732, 5843, 5880]
     for index, node in enumerate(INTERFACE.nodes):
         gevent.sleep(0.100)
@@ -1124,7 +1124,7 @@ def default_frequencies():
         elif RACE.num_nodes < 7:
             node_data.frequency = frequencies_imd_5_6[index]
         else:
-            node_data.frequency = frequencies_raceband[index]
+            node_data.frequency = frequencies_eight[index]
 
     server_log('Default frequencies set')
 
@@ -1261,6 +1261,16 @@ def db_reset_frequencies():
     DB.session.add(Frequency(band='L', channel='L6', frequency='5547'))
     DB.session.add(Frequency(band='L', channel='L7', frequency='5584'))
     DB.session.add(Frequency(band='L', channel='L8', frequency='5621'))
+    # Band U - Lowband2
+    DB.session.add(Frequency(band='U', channel='U0', frequency='5300'))
+    DB.session.add(Frequency(band='U', channel='U1', frequency='5325'))
+    DB.session.add(Frequency(band='U', channel='U2', frequency='5348'))
+    DB.session.add(Frequency(band='U', channel='U3', frequency='5366'))
+    DB.session.add(Frequency(band='U', channel='U4', frequency='5384'))
+    DB.session.add(Frequency(band='U', channel='U5', frequency='5402'))
+    DB.session.add(Frequency(band='U', channel='U6', frequency='5420'))
+    DB.session.add(Frequency(band='U', channel='U7', frequency='5438'))
+    DB.session.add(Frequency(band='U', channel='U8', frequency='5456'))
     DB.session.commit()
     server_log('Database frequencies reset')
 
