@@ -1061,21 +1061,21 @@ def pass_record_callback(node, ms_since_lap):
             if lap_id > 0:
                 emit_phonetic_data(pilot_id, lap_id, lap_time) # Sends phonetic data to be spoken
             if node.index==0:
-                theaterChase(strip, Color(0,0,255))  #BLUE theater chase
+                onoff(strip, Color(0,0,255))  #BLUE
             elif node.index==1:
-                theaterChase(strip, Color(255,50,0)) #ORANGE theater chase
+                onoff(strip, Color(255,50,0)) #ORANGE
             elif node.index==2:
-                theaterChase(strip, Color(255,0,60)) #PINK theater chase
+                onoff(strip, Color(255,0,60)) #PINK
             elif node.index==3:
-                theaterChase(strip, Color(150,0,255)) #PURPLE theater chase
+                onoff(strip, Color(150,0,255)) #PURPLE
             elif node.index==4:
-                theaterChase(strip, Color(250,210,0)) #YELLOW theater chase
+                onoff(strip, Color(250,210,0)) #YELLOW
             elif node.index==5:
-                theaterChase(strip, Color(0,255,255)) #CYAN theater chase
+                onoff(strip, Color(0,255,255)) #CYAN
             elif node.index==6:
-                theaterChase(strip, Color(0,255,0)) #GREEN theater chase
+                onoff(strip, Color(0,255,0)) #GREEN
             elif node.index==7:
-                theaterChase(strip, Color(255,0,0)) #RED theater chase
+                onoff(strip, Color(255,0,0)) #RED
         else:
             server_log('Pass record dismissed: Node: {0}, Lap: {1}, Lap time: {2}' \
                 .format(node.index+1, lap_id, time_format(lap_time)))
