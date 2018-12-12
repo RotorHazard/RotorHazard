@@ -195,6 +195,11 @@ class NodeData(DB.Model):
     frequency = DB.Column(DB.Integer, nullable=False)
     offset = DB.Column(DB.Integer, nullable=False)
 
+class GlobalSettings(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    option_name = DB.Column(DB.String(256), nullable=False)
+    option_value = DB.Column(DB.String(256), nullable=False)
+
 #
 # Authentication
 #
@@ -1252,6 +1257,16 @@ def db_reset_node_values():
     default_frequencies()
     server_log("Database cleared node correction")
 
+def db_reset_options_defaults():
+    DB.session.query(GlobalSettings).delete()
+    DB.session.add(GlobalSettings(id=node,
+                                option_name="timerName",
+                                option_value="Delta5 Race Timer"))
+    DB.session.add(GlobalSettings(id=node,
+                                option_name="lastProfile",
+                                option_value="1"))
+    DB.session.commit()
+    server_log("Reset global settings")
 #
 # Program Initialize
 #
