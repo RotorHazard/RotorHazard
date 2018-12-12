@@ -25,7 +25,6 @@ var d5rt = {
 	nodes: [], // node array for rssi graphing
 	collecting: false,
 	collection_amount: 25, // number of rssi data points to capture
-	rssiMax: 100,
 
 	saveData: function() {
 		if (!supportsLocalStorage()) {
@@ -58,6 +57,7 @@ function nodeModel() {
 	this.trigger_rssi = false;
 	this.frequency = 0;
 	this.peak_rssi = false;
+	this.graphing = false;
 	this.calibration_threshold = false;
 	this.trigger_threshold = false;
 	this.offset = 0;
@@ -119,7 +119,7 @@ function nodeModel() {
 				labels:{
 					precision:0
 				},
-				maxValue: 150,
+				maxValue: 0,
 				minValue: 0,
 			});
 	this.series = new TimeSeries();

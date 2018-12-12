@@ -36,17 +36,28 @@
 			for (i = 0; i < msg.current_rssi.length; i++) {
 				var rssiValue = msg.current_rssi[i];
 
-				$('.current_rssi_' + i).html(rssiValue);
-
-				if (d5rt.nodes[i].graph.options.maxValue < rssiValue ||
-					d5rt.rssiMax < rssiValue) {
-					d5rt.nodes[i].graph.options.maxValue = rssiValue;
-					for (var j in d5rt.nodes) {
-						d5rt.nodes[j].graph.options.maxValue = d5rt.rssiMax = rssiValue;
-					}
+				if (d5rt.nodes[i].frequency == 0) {
+					rssiValue = 0;
 				}
 
-				d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+				$('.current_rssi_' + i).html(rssiValue);
+
+				if (d5rt.nodes[i].graph.options.maxValue < rssiValue) {
+					d5rt.nodes[i].graph.options.maxValue = rssiValue;
+				}
+
+				if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
+					d5rt.nodes[i].graph.options.minValue = rssiValue;
+				}
+
+				if (d5rt.nodes[i].graphing) {
+					d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+				} else {
+					d5rt.nodes[i].graphing = true;
+					d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
+					d5rt.nodes[i].graph.options.minValue = rssiValue - 10;
+					d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+				}
 			}
 		});
 
