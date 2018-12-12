@@ -293,14 +293,12 @@ var freqTable = {
 		var output = '';
 		var keyNames = Object.keys(this.frequencies);
 		for (var i in keyNames) {
-			if (typeof(this.frequencies[keyNames[i]]) !== 'function') {
-				if (this.frequencies[keyNames[i]] == 0) {
-					output += '<option value="0">Disabled</option>';
-				} else if (this.frequencies[keyNames[i]] == 'n/a') {
-					output += '<option value="n/a">N/A</option>';
-				} else {
-					output += '<option value="' + this.frequencies[keyNames[i]] + '">' + keyNames[i] + ' ' + this.frequencies[keyNames[i]] + '</option>';
-				}
+			if (this.frequencies[keyNames[i]] == 0) {
+				output += '<option value="0">Disabled</option>';
+			} else if (this.frequencies[keyNames[i]] == 'n/a') {
+				output += '<option value="n/a">N/A</option>';
+			} else {
+				output += '<option value="' + this.frequencies[keyNames[i]] + '">' + keyNames[i] + ' ' + this.frequencies[keyNames[i]] + '</option>';
 			}
 		}
 		return output;
