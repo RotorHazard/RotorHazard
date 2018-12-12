@@ -280,7 +280,7 @@ def index():
 def heats():
     '''Route to heat summary page.'''
     return render_template('heats.html', num_nodes=RACE.num_nodes, heats=Heat, pilots=Pilot, \
-        frequencies=[node.frequency for node in INTERFACE.nodes])
+        frequencies=[node.frequency for node in INTERFACE.nodes], settings=GlobalSettings)
 
 @APP.route('/race')
 @requires_auth
@@ -290,6 +290,7 @@ def race():
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            race_format=RaceFormat.query.get(1),
+                           settings=GlobalSettings,
         frequencies=[node.frequency for node in INTERFACE.nodes])
 
 @APP.route('/current')
@@ -299,6 +300,7 @@ def racepublic():
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            race_format=RaceFormat.query.get(1),
+                           settings=GlobalSettings,
         frequencies=[node.frequency for node in INTERFACE.nodes])
 
 @APP.route('/settings')
@@ -311,7 +313,8 @@ def settings():
                            heats=Heat,
                            last_profile =  LastProfile,
                            profiles = Profiles,
-                           race_format=RaceFormat.query.get(1))
+                           race_format=RaceFormat.query.get(1),
+                           settings=GlobalSettings)
 
 @APP.route('/correction')
 @requires_auth
@@ -320,7 +323,8 @@ def correction():
 
     return render_template('correction.html', num_nodes=RACE.num_nodes,
                            last_profile =  LastProfile,
-                           profiles = Profiles)
+                           profiles = Profiles,
+                           settings=GlobalSettings)
 
 # Debug Routes
 
@@ -336,7 +340,7 @@ def database():
     '''Route to database page.'''
     return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
         savedraces=SavedRace, race_format=RaceFormat.query.get(1), \
-        node_data=NodeData, )
+        node_data=NodeData, settings=GlobalSettings)
 
 #
 # Socket IO Events
@@ -1141,6 +1145,7 @@ def db_init():
     db_reset_default_profile()
     db_reset_fix_race_time()
     db_reset_node_values()
+    db_reset_options_defaults()
     assign_frequencies()
     server_log('Database initialized')
 
@@ -1259,11 +1264,9 @@ def db_reset_node_values():
 
 def db_reset_options_defaults():
     DB.session.query(GlobalSettings).delete()
-    DB.session.add(GlobalSettings(id=node,
-                                option_name="timerName",
+    DB.session.add(GlobalSettings(option_name="timerName",
                                 option_value="Delta5 Race Timer"))
-    DB.session.add(GlobalSettings(id=node,
-                                option_name="lastProfile",
+    DB.session.add(GlobalSettings(option_name="lastProfile",
                                 option_value="1"))
     DB.session.commit()
     server_log("Reset global settings")
@@ -1282,8 +1285,8 @@ gevent.sleep(0.500)
 if not os.path.exists('database.db'):
     db_init()
 else:
-	# Set frequencies and load node correction data
-	assign_frequencies()
+    # Set frequencies and load node correction data
+    assign_frequencies()
 
 # Clear any current laps from the database on each program start
 # DB session commit needed to prevent 'application context' errors
