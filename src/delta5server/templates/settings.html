@@ -8,6 +8,11 @@
 		d5rt.saveData();
 		$('nav li').removeClass('admin-hide');
 
+		// populate frequency selects
+		$('.frequency_table').each(function(){
+			$(this).html(freqTable.buildSelect());
+		});
+
 		// construct language selection
 		$('#voice_select').after('<select class="set_language">');
 		var voices = $().articulate('getVoices');
@@ -47,16 +52,28 @@
 
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
+				/*
 				$('.channel_' + i).html('<div class="channel-block"><span class="ch">' + msg.channel[i] + '</span> <span class="fr">' + msg.frequency[i] + '</span></div>');
+				*/
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
 				$('#set_node_offset_' + i).val(msg.node_offset[i]);
 
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
+				var freqExists = $('#f_table_' + i + ' option[value=' + msg.frequency[i] + ']').length;
+				if (freqExists) {
+					$('#f_table_' + i).val(msg.frequency[i]);
+				} else {
+					$('#f_table_' + i).val('n/a');
+				}
+
+				d5rt.nodes[i].frequency = msg.frequency[i];
 				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
+				/*
 				d5rt.nodes[i].calibration_threshold = msg.trigger_rssi[i] - parseInt($('#set_calibration_threshold').val());
 				d5rt.nodes[i].trigger_threshold = msg.trigger_rssi[i] - parseInt($('#set_trigger_threshold').val());
+				*/
 				d5rt.nodes[i].offset = msg.node_offset[i];
 
 				d5rt.nodes[i].updateThresholds();
@@ -134,12 +151,27 @@
 			speak('<div class="speech">' + $ttstext + '</div>');
 		})
 
+		$('.frequency_table').change(function (event) {
+			if ($(this).val() != "n/a") {
+				var node = $(this).data('node');
+				var frequency = parseInt($(this).val());
+				$('#s_channel_' + node).val(frequency).trigger('change');
+			}
+		});
+
 		$('.set_frequency').change(function (event) {
 			var data = {
 				node: parseInt($(this).data('node')),
 				frequency: parseInt($(this).val()),
 			};
 			socket.emit('set_frequency', data);
+
+			var freqExists = $('#f_table_' + $(this).data('node') + ' option[value=' + $(this).val() + ']').length;
+			if (freqExists) {
+				$('#f_table_' + $(this).data('node')).val($(this).val());
+			} else {
+				$('#f_table_' + $(this).data('node')).val('n/a');
+			}
 		});
 
 		$('.set_node_offset').change(function (event) {
@@ -546,13 +578,12 @@
 		<table>
 			<tr>
 				<td colspan="2">
-					<select class="set_frequency" id="s_channel_{{ node }}" data-node="{{ node }}">
-						{% for frequency in frequencies.query.all() %}
-						<option value="{{ frequency.frequency }}">
-							{{ frequency.channel }} {{ frequency.frequency }}
-						</option>
-						{% endfor %}
-					</select>
+					<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
+
+					<div class="compact-field">
+						<label for="s_channel_{{ node }}">Frequency</label>
+						<input type="number" id="s_channel_{{ node }}" class="set_frequency" data-node="{{ node }}" min="5300" max="6001">
+					</div>
 
 					<div class="compact-field">
 						<label for="set_node_offset_{{ node }}">Offset</label>

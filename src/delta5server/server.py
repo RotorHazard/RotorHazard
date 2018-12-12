@@ -168,15 +168,6 @@ class SavedRace(DB.Model):
     def __repr__(self):
         return '<SavedRace %r>' % self.round_id
 
-class Frequency(DB.Model):
-    id = DB.Column(DB.Integer, primary_key=True)
-    band = DB.Column(DB.Integer, nullable=False)
-    channel = DB.Column(DB.Integer, nullable=False)
-    frequency = DB.Column(DB.Integer, nullable=False)
-
-    def __repr__(self):
-        return '<Frequency %r>' % self.frequency
-
 class Profiles(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), unique=True, nullable=False)
@@ -284,9 +275,7 @@ def index():
 def heats():
     '''Route to heat summary page.'''
     return render_template('heats.html', num_nodes=RACE.num_nodes, heats=Heat, pilots=Pilot, \
-        frequencies=[node.frequency for node in INTERFACE.nodes], \
-        channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel \
-            for node in INTERFACE.nodes])
+        frequencies=[node.frequency for node in INTERFACE.nodes])
 
 @APP.route('/race')
 @requires_auth
@@ -296,9 +285,7 @@ def race():
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            race_format=RaceFormat.query.get(1),
-        frequencies=[node.frequency for node in INTERFACE.nodes],
-        channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
-            for node in INTERFACE.nodes])
+        frequencies=[node.frequency for node in INTERFACE.nodes])
 
 @APP.route('/current')
 def racepublic():
@@ -307,9 +294,7 @@ def racepublic():
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            race_format=RaceFormat.query.get(1),
-        frequencies=[node.frequency for node in INTERFACE.nodes],
-        channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
-            for node in INTERFACE.nodes])
+        frequencies=[node.frequency for node in INTERFACE.nodes])
 
 @APP.route('/settings')
 @requires_auth
@@ -318,7 +303,6 @@ def settings():
 
     return render_template('settings.html', num_nodes=RACE.num_nodes,
                            pilots=Pilot,
-                           frequencies=Frequency,
                            heats=Heat,
                            last_profile =  LastProfile,
                            profiles = Profiles,
@@ -330,7 +314,6 @@ def correction():
     '''Route to node correction page.'''
 
     return render_template('correction.html', num_nodes=RACE.num_nodes,
-                           frequencies=Frequency,
                            last_profile =  LastProfile,
                            profiles = Profiles)
 
@@ -347,7 +330,7 @@ def hardwarelog():
 def database():
     '''Route to database page.'''
     return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
-        savedraces=SavedRace, frequencies=Frequency, race_format=RaceFormat.query.get(1), \
+        savedraces=SavedRace, race_format=RaceFormat.query.get(1), \
         node_data=NodeData, )
 
 #
@@ -823,8 +806,6 @@ def emit_node_data():
     '''Emits node data.'''
     SOCKET_IO.emit('node_data', {
         'frequency': [node.frequency for node in INTERFACE.nodes],
-        'channel': [Frequency.query.filter_by(frequency=node.frequency).first().channel \
-            for node in INTERFACE.nodes],
         'trigger_rssi': [node.trigger_rssi for node in INTERFACE.nodes],
         'peak_rssi': [node.peak_rssi for node in INTERFACE.nodes],
         'node_offset': [node.node_offs_adj for node in INTERFACE.nodes]
@@ -1131,9 +1112,10 @@ def default_frequencies():
 def assign_frequencies():
     '''Assign set frequencies to nodes'''
     for node in NodeData.query.all():
-        gevent.sleep(0.100)
-        INTERFACE.set_freq_and_offs(node.id, node.frequency, node.offset)
-        gevent.sleep(0.100)
+        if node.frequency:
+            gevent.sleep(0.100)
+            INTERFACE.set_freq_and_offs(node.id, node.frequency, node.offset)
+            gevent.sleep(0.100)
 
     server_log('Frequencies assigned to nodes')
 
@@ -1142,7 +1124,6 @@ def db_init():
     DB.create_all() # Creates tables from database classes/models
     db_reset_pilots()
     db_reset_heats()
-    db_reset_frequencies()
     db_reset_current_laps()
     db_reset_saved_races()
     db_reset_profile()
@@ -1156,7 +1137,6 @@ def db_reset():
     '''Resets database.'''
     db_reset_pilots()
     db_reset_heats()
-    db_reset_frequencies()
     db_reset_current_laps()
     db_reset_saved_races()
     db_reset_profile()
@@ -1169,7 +1149,6 @@ def db_reset():
 def db_reset_keep_pilots():
     '''Resets database, keeps pilots.'''
     db_reset_heats()
-    db_reset_frequencies()
     db_reset_current_laps()
     db_reset_saved_races()
     db_reset_fix_race_time()
@@ -1197,82 +1176,6 @@ def db_reset_heats():
         DB.session.add(Heat(heat_id=1, node_index=node, pilot_id=node+1))
     DB.session.commit()
     server_log('Database heats reset')
-def db_reset_frequencies():
-    '''Resets database frequencies to default.'''
-    DB.session.query(Frequency).delete()
-    # IMD Channels
-    DB.session.add(Frequency(band='IMD', channel='E2', frequency='5685'))
-    DB.session.add(Frequency(band='IMD', channel='F2', frequency='5760'))
-    DB.session.add(Frequency(band='IMD', channel='F4', frequency='5800'))
-    DB.session.add(Frequency(band='IMD', channel='F7', frequency='5860'))
-    DB.session.add(Frequency(band='IMD', channel='E6', frequency='5905'))
-    DB.session.add(Frequency(band='IMD', channel='E4', frequency='5645'))
-    # Band R - Raceband
-    DB.session.add(Frequency(band='R', channel='R1', frequency='5658'))
-    DB.session.add(Frequency(band='R', channel='R2', frequency='5695'))
-    DB.session.add(Frequency(band='R', channel='R3', frequency='5732'))
-    DB.session.add(Frequency(band='R', channel='R4', frequency='5769'))
-    DB.session.add(Frequency(band='R', channel='R5', frequency='5806'))
-    DB.session.add(Frequency(band='R', channel='R6', frequency='5843'))
-    DB.session.add(Frequency(band='R', channel='R7', frequency='5880'))
-    DB.session.add(Frequency(band='R', channel='R8', frequency='5917'))
-    # Band F - ImmersionRC, Iftron
-    DB.session.add(Frequency(band='F', channel='F1', frequency='5740'))
-    DB.session.add(Frequency(band='F', channel='F2', frequency='5760'))
-    DB.session.add(Frequency(band='F', channel='F3', frequency='5780'))
-    DB.session.add(Frequency(band='F', channel='F4', frequency='5800'))
-    DB.session.add(Frequency(band='F', channel='F5', frequency='5820'))
-    DB.session.add(Frequency(band='F', channel='F6', frequency='5840'))
-    DB.session.add(Frequency(band='F', channel='F7', frequency='5860'))
-    DB.session.add(Frequency(band='F', channel='F8', frequency='5880'))
-    # Band E - HobbyKing, Foxtech
-    DB.session.add(Frequency(band='E', channel='E1', frequency='5705'))
-    DB.session.add(Frequency(band='E', channel='E2', frequency='5685'))
-    DB.session.add(Frequency(band='E', channel='E3', frequency='5665'))
-    DB.session.add(Frequency(band='E', channel='E4', frequency='5645'))
-    DB.session.add(Frequency(band='E', channel='E5', frequency='5885'))
-    DB.session.add(Frequency(band='E', channel='E6', frequency='5905'))
-    DB.session.add(Frequency(band='E', channel='E7', frequency='5925'))
-    DB.session.add(Frequency(band='E', channel='E8', frequency='5945'))
-    # Band B - FlyCamOne Europe
-    DB.session.add(Frequency(band='B', channel='B1', frequency='5733'))
-    DB.session.add(Frequency(band='B', channel='B2', frequency='5752'))
-    DB.session.add(Frequency(band='B', channel='B3', frequency='5771'))
-    DB.session.add(Frequency(band='B', channel='B4', frequency='5790'))
-    DB.session.add(Frequency(band='B', channel='B5', frequency='5809'))
-    DB.session.add(Frequency(band='B', channel='B6', frequency='5828'))
-    DB.session.add(Frequency(band='B', channel='B7', frequency='5847'))
-    DB.session.add(Frequency(band='B', channel='B8', frequency='5866'))
-    # Band A - Team BlackSheep, RangeVideo, SpyHawk, FlyCamOne USA
-    DB.session.add(Frequency(band='A', channel='A1', frequency='5865'))
-    DB.session.add(Frequency(band='A', channel='A2', frequency='5845'))
-    DB.session.add(Frequency(band='A', channel='A3', frequency='5825'))
-    DB.session.add(Frequency(band='A', channel='A4', frequency='5805'))
-    DB.session.add(Frequency(band='A', channel='A5', frequency='5785'))
-    DB.session.add(Frequency(band='A', channel='A6', frequency='5765'))
-    DB.session.add(Frequency(band='A', channel='A7', frequency='5745'))
-    DB.session.add(Frequency(band='A', channel='A8', frequency='5725'))
-    # Band L - Lowband
-    DB.session.add(Frequency(band='L', channel='L1', frequency='5362'))
-    DB.session.add(Frequency(band='L', channel='L2', frequency='5399'))
-    DB.session.add(Frequency(band='L', channel='L3', frequency='5436'))
-    DB.session.add(Frequency(band='L', channel='L4', frequency='5473'))
-    DB.session.add(Frequency(band='L', channel='L5', frequency='5510'))
-    DB.session.add(Frequency(band='L', channel='L6', frequency='5547'))
-    DB.session.add(Frequency(band='L', channel='L7', frequency='5584'))
-    DB.session.add(Frequency(band='L', channel='L8', frequency='5621'))
-    # Band U - Lowband2
-    DB.session.add(Frequency(band='U', channel='U0', frequency='5300'))
-    DB.session.add(Frequency(band='U', channel='U1', frequency='5325'))
-    DB.session.add(Frequency(band='U', channel='U2', frequency='5348'))
-    DB.session.add(Frequency(band='U', channel='U3', frequency='5366'))
-    DB.session.add(Frequency(band='U', channel='U4', frequency='5384'))
-    DB.session.add(Frequency(band='U', channel='U5', frequency='5402'))
-    DB.session.add(Frequency(band='U', channel='U6', frequency='5420'))
-    DB.session.add(Frequency(band='U', channel='U7', frequency='5438'))
-    DB.session.add(Frequency(band='U', channel='U8', frequency='5456'))
-    DB.session.commit()
-    server_log('Database frequencies reset')
 
 def db_reset_current_laps():
     '''Resets database current laps to default.'''
