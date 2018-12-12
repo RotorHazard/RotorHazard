@@ -1093,19 +1093,16 @@ def hardware_log_callback(message):
 INTERFACE.hardware_log_callback = hardware_log_callback
 
 def default_frequencies():
-    '''Set node frequencies, R1367 for 4, IMD for 5 or 6, IMD6C+ for 7 or 8.'''
-    frequencies_imd_5_6 = [5685, 5760, 5800, 5860, 5905, 5645]
-    frequencies_eight = [5658, 5695, 5760, 5800, 5880, 5917, 5362, 5300]
+    '''Set node frequencies, R1367 for 4, IMD6C+ for 5+.'''
+    frequencies_imd = [5658, 5695, 5760, 5800, 5880, 5917, 0, 0]
     frequencies_rb4 = [5658, 5732, 5843, 5880]
     for index, node in enumerate(INTERFACE.nodes):
         gevent.sleep(0.100)
         node_data = NodeData.query.filter_by(id=index).first()
         if RACE.num_nodes < 5:
             node_data.frequency = frequencies_rb4[index]
-        elif RACE.num_nodes < 7:
-            node_data.frequency = frequencies_imd_5_6[index]
         else:
-            node_data.frequency = frequencies_eight[index]
+            node_data.frequency = frequencies_imd[index]
 
     server_log('Default frequencies set')
 
