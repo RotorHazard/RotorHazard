@@ -702,12 +702,10 @@ def on_save_laps():
     # Loop through laps to copy to saved races
     for node in range(RACE.num_nodes):
         for lap in CurrentLap.query.filter_by(node_index=node).all():
-            node_data = NodeData.query.filter_by(id=node).first()
-            if node_data.frequency:
-                DB.session.add(SavedRace(round_id=max_round+1, heat_id=RACE.current_heat, \
-                    node_index=node, pilot_id=lap.pilot_id, lap_id=lap.lap_id, \
-                    lap_time_stamp=lap.lap_time_stamp, lap_time=lap.lap_time, \
-                    lap_time_formatted=lap.lap_time_formatted))
+            DB.session.add(SavedRace(round_id=max_round+1, heat_id=RACE.current_heat, \
+                node_index=node, pilot_id=lap.pilot_id, lap_id=lap.lap_id, \
+                lap_time_stamp=lap.lap_time_stamp, lap_time=lap.lap_time, \
+                lap_time_formatted=lap.lap_time_formatted))
     DB.session.commit()
     server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
     on_clear_laps() # Also clear the current laps
@@ -1021,64 +1019,73 @@ def pass_record_callback(node, ms_since_lap):
     server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, ms_since_lap))
     emit_node_data() # For updated triggers and peaks
 
-    if RACE.race_status is 1:
-        # Get the current pilot id on the node
-        pilot_id = Heat.query.filter_by( \
-            heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
+    node_data = NodeData.query.filter_by(id=node.index).first()
+    if node_data.frequency:
+        if RACE.race_status is 1:
+            # Get the current pilot id on the node
+            pilot_id = Heat.query.filter_by( \
+                heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
 
-        # Calculate the lap time stamp, milliseconds since start of race
-        lap_time_stamp = ms_from_race_start() - ms_since_lap
+            if pilot_id != 0:
+                # Calculate the lap time stamp, milliseconds since start of race
+                lap_time_stamp = ms_from_race_start() - ms_since_lap
 
-        # Get the last completed lap from the database
-        last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
-            .filter_by(node_index=node.index).scalar()
+                # Get the last completed lap from the database
+                last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
+                    .filter_by(node_index=node.index).scalar()
 
-        if last_lap_id is None: # No previous laps, this is the first pass
-            # Lap zero represents the time from the launch pad to flying through the gate
-            lap_time = lap_time_stamp
-            lap_id = 0
-        else: # This is a normal completed lap
-            # Find the time stamp of the last lap completed
-            last_lap_time_stamp = CurrentLap.query.filter_by( \
-                node_index=node.index, lap_id=last_lap_id).first().lap_time_stamp
-            # New lap time is the difference between the current time stamp and the last
-            lap_time = lap_time_stamp - last_lap_time_stamp
-            lap_id = last_lap_id + 1
+                if last_lap_id is None: # No previous laps, this is the first pass
+                    # Lap zero represents the time from the launch pad to flying through the gate
+                    lap_time = lap_time_stamp
+                    lap_id = 0
+                else: # This is a normal completed lap
+                    # Find the time stamp of the last lap completed
+                    last_lap_time_stamp = CurrentLap.query.filter_by( \
+                        node_index=node.index, lap_id=last_lap_id).first().lap_time_stamp
+                    # New lap time is the difference between the current time stamp and the last
+                    lap_time = lap_time_stamp - last_lap_time_stamp
+                    lap_id = last_lap_id + 1
 
-        race_format = RaceFormat.query.get(1)
-        min_lap = race_format.min_lap_sec
-        if lap_time > (min_lap * 1000) or lap_id == 0:
-            # Add the new lap to the database
-            DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
-                lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
-                lap_time_formatted=time_format(lap_time)))
-            DB.session.commit()
+                race_format = RaceFormat.query.get(1)
+                min_lap = race_format.min_lap_sec
+                if lap_time > (min_lap * 1000) or lap_id == 0:
+                    # Add the new lap to the database
+                    DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
+                        lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
+                        lap_time_formatted=time_format(lap_time)))
+                    DB.session.commit()
 
-            server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
-                .format(node.index+1, lap_id, time_format(lap_time)))
-            emit_current_laps() # Updates all laps on the race page
-            emit_leaderboard() # Updates leaderboard
-            if lap_id > 0:
-                emit_phonetic_data(pilot_id, lap_id, lap_time) # Sends phonetic data to be spoken
-            if node.index==0:
-                onoff(strip, Color(0,0,255))  #BLUE
-            elif node.index==1:
-                onoff(strip, Color(255,50,0)) #ORANGE
-            elif node.index==2:
-                onoff(strip, Color(255,0,60)) #PINK
-            elif node.index==3:
-                onoff(strip, Color(150,0,255)) #PURPLE
-            elif node.index==4:
-                onoff(strip, Color(250,210,0)) #YELLOW
-            elif node.index==5:
-                onoff(strip, Color(0,255,255)) #CYAN
-            elif node.index==6:
-                onoff(strip, Color(0,255,0)) #GREEN
-            elif node.index==7:
-                onoff(strip, Color(255,0,0)) #RED
-        else:
-            server_log('Pass record dismissed: Node: {0}, Lap: {1}, Lap time: {2}' \
-                .format(node.index+1, lap_id, time_format(lap_time)))
+                    server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
+                        .format(node.index+1, lap_id, time_format(lap_time)))
+                    emit_current_laps() # Updates all laps on the race page
+                    emit_leaderboard() # Updates leaderboard
+                    if lap_id > 0:
+                        emit_phonetic_data(pilot_id, lap_id, lap_time) # Sends phonetic data to be spoken
+                    if node.index==0:
+                        onoff(strip, Color(0,0,255))  #BLUE
+                    elif node.index==1:
+                        onoff(strip, Color(255,50,0)) #ORANGE
+                    elif node.index==2:
+                        onoff(strip, Color(255,0,60)) #PINK
+                    elif node.index==3:
+                        onoff(strip, Color(150,0,255)) #PURPLE
+                    elif node.index==4:
+                        onoff(strip, Color(250,210,0)) #YELLOW
+                    elif node.index==5:
+                        onoff(strip, Color(0,255,255)) #CYAN
+                    elif node.index==6:
+                        onoff(strip, Color(0,255,0)) #GREEN
+                    elif node.index==7:
+                        onoff(strip, Color(255,0,0)) #RED
+                else:
+                    server_log('Pass record under lap minimum: Node: {0}, Lap: {1}, Lap time: {2}' \
+                        .format(node.index+1, lap_id, time_format(lap_time)))
+            else:
+                server_log('Pass record dismissed: Node: {0}, Pilot not defined' \
+                    .format(node.index+1))
+    else:
+        server_log('Pass record dismissed: Node: {0}, Frequency not defined' \
+            .format(node.index+1))
 
 INTERFACE.pass_record_callback = pass_record_callback
 
@@ -1228,7 +1235,7 @@ def db_reset_fix_race_time():
     DB.session.query(RaceFormat).delete()
     DB.session.add(RaceFormat(race_mode=0,
                              race_time_sec=120,
-                             min_lap_sec=0,
+                             min_lap_sec=5,
                              hide_stage_timer=1,
                              start_delay_min=2,
                              start_delay_max=5))
