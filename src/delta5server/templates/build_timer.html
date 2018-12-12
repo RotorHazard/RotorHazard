@@ -114,8 +114,10 @@
 				var display_time = time;
 				if (pre_race) display_time = pre_delay;
 
-				var second = display_time % 60;
+				var hour = Math.floor(display_time / 3600);
+				display_time = display_time - (hour * 3600);
 				var minute = Math.floor(display_time / 60);
+				var second = display_time % 60;
 
 				second = (second < 10) ? '0' + second : second; // Pad zero if under 10
 				minute = (minute < 10) ? '0' + minute : minute;
@@ -125,7 +127,11 @@
 					minute = '--';
 				}
 
-				$('.timing-clock').html(minute + ':' + second);
+				if (hour) {
+					$('.timing-clock').html(hour + ':' + minute + ':' + second);
+				} else {
+					$('.timing-clock').html(minute + ':' + second);
+				}
 			}
 		}
 	}
@@ -139,27 +145,31 @@
 					if (time == 0) {
 						buzzer.play(); // End race buzzer
 						timer.stop();
-					}
-
-					if (time == 5) {
+					} else if (time < 5) {
+						stagebuzzer.play();
+						// speak('<div class="timer">' + time + '</div>');
+					} else if (time == 5) {
+						stagebuzzer.play();
 						speak('<div class="timer">5 seconds</div>');
-					}
-
-					if (time == 10) {
+					} else if (time == 10) {
 						speak('<div class="timer">10 seconds</div>');
 					}
 				}
 
-				if (time == 30) { // 30 second call out
-					speak('<div class="timer">30 seconds</div>');
-				}
-
-				if (time == 60) { // 1 min call out
+				if (time > 3600 && !(time % 3600)) { // 2+ hour callout (endurance)
+					var hours = time / 3600;
+					speak('<div class="timer">' + hours + ' hours</div>');
+				} else if (time == 3600) {
+					speak('<div class="timer">1 hour</div>');
+				} else if (time == 1800) {
+					speak('<div class="timer">30 minutes</div>');
+				} else if (time > 60 && time <= 300 && !(time % 60)) { // 2–5 min callout
+					var minutes = time / 60;
+					speak('<div class="timer">' + minutes + ' minutes</div>');
+				} else if (time == 60) {
 					speak('<div class="timer">1 minute</div>');
-				}
-
-				if (time == 120) { // 2 min call out
-					speak('<div class="timer">2 minutes</div>');
+				} else if (time == 30) {
+					speak('<div class="timer">30 seconds</div>');
 				}
 			}
 		}
