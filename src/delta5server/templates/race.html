@@ -121,6 +121,13 @@
 
 				d5rt.nodes[i].updateThresholds();
 
+				// populate channel blocks
+				var channelBlock = $('.channel-block[data-node="' + i + '"]');
+				channelBlock.children('.ch').html(freqTable.findByFreq(d5rt.nodes[i].frequency));
+				if (d5rt.nodes[i].frequency == 0) {
+					channelBlock.children('.fr').html('');
+				}
+
 				racedump.offsets[i] = msg.node_offset[i];
 			}
 		});
@@ -368,7 +375,7 @@
 			}}
 		</h4>
 		<div class="race-header">
-			<div class="channel-block"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
+			<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
 			<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">Manual</button>
 		</div>
 		<table class="laps" id="current_laps_{{ node }}">

@@ -1,4 +1,16 @@
 {% extends "layout.html" %} {% block title %}Heats{% endblock %} {% block head %} {% endblock %} {% block content %}
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function () {
+		$('.channel-block').each(function(){
+			var frequency = parseInt($(this).children('.fr').html());
+			$(this).children('.ch').html(freqTable.findByFreq(frequency));
+			if (frequency == 0) {
+				$(this).children('.fr').html('');
+			}
+		});
+	});
+</script>
+
 <main class="page-heats">
 
 <!--Display the heats-->
@@ -11,7 +23,7 @@
 		<ol>
 			{% for node in range(num_nodes) %}
 			<li>
-				<div class="channel-block"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
+				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
 
 				<div class="pilot-name">{{ pilots.query.filter_by(pilot_id= heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign
 					}}</div>
