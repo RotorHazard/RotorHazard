@@ -702,10 +702,12 @@ def on_save_laps():
     # Loop through laps to copy to saved races
     for node in range(RACE.num_nodes):
         for lap in CurrentLap.query.filter_by(node_index=node).all():
-            DB.session.add(SavedRace(round_id=max_round+1, heat_id=RACE.current_heat, \
-                node_index=node, pilot_id=lap.pilot_id, lap_id=lap.lap_id, \
-                lap_time_stamp=lap.lap_time_stamp, lap_time=lap.lap_time, \
-                lap_time_formatted=lap.lap_time_formatted))
+            node_data = NodeData.query.filter_by(id=node).first()
+            if node_data.frequency:
+                DB.session.add(SavedRace(round_id=max_round+1, heat_id=RACE.current_heat, \
+                    node_index=node, pilot_id=lap.pilot_id, lap_id=lap.lap_id, \
+                    lap_time_stamp=lap.lap_time_stamp, lap_time=lap.lap_time, \
+                    lap_time_formatted=lap.lap_time_formatted))
     DB.session.commit()
     server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
     on_clear_laps() # Also clear the current laps
