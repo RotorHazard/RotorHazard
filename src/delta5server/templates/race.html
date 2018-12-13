@@ -11,7 +11,6 @@
 
 	var racedump = {
 		timestamp: new Date(),
-		offsets: [],
 		timedata: [],
 	};
 
@@ -117,7 +116,6 @@
 				d5rt.nodes[i].frequency = msg.frequency[i];
 				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
 				// import calibration/trigger threshold lines?
-				d5rt.nodes[i].offset = msg.node_offset[i];
 
 				d5rt.nodes[i].updateThresholds();
 
@@ -127,8 +125,6 @@
 				if (d5rt.nodes[i].frequency == 0) {
 					channelBlock.children('.fr').html('');
 				}
-
-				racedump.offsets[i] = msg.node_offset[i];
 			}
 		});
 

@@ -368,12 +368,14 @@ def database():
 def connect_handler():
     '''Starts the delta 5 interface and a heartbeat thread for rssi.'''
     server_log('Client connected')
+    heartbeat_thread_function.iter_tracker = 0  # declare/init variable for HB function
     INTERFACE.start()
     global HEARTBEAT_THREAD
     if HEARTBEAT_THREAD is None:
         HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
         server_log('Heartbeat thread started')
     emit_node_data() # Settings page, node channel and triggers
+    emit_node_offsets() # Settings page, node offsets
     emit_node_tuning() # Settings page, node tuning values
     emit_race_format() # Settings page, race format values
     emit_current_heat() # Race page, heat selector
@@ -912,8 +914,13 @@ def emit_node_data():
     SOCKET_IO.emit('node_data', {
         'frequency': [node.frequency for node in INTERFACE.nodes],
         'trigger_rssi': [node.trigger_rssi for node in INTERFACE.nodes],
-        'peak_rssi': [node.peak_rssi for node in INTERFACE.nodes],
-        'node_offset': [node.node_offs_adj for node in INTERFACE.nodes]
+        'peak_rssi': [node.peak_rssi for node in INTERFACE.nodes]
+    })
+
+def emit_node_offsets():
+    '''Emits node offset values for nodes.'''
+    SOCKET_IO.emit('node_offsets', {
+        'node_offsets': [node.node_offs_adj for node in INTERFACE.nodes]
     })
 
 def emit_node_tuning():
@@ -1093,6 +1100,11 @@ def heartbeat_thread_function():
     '''Emits current rssi data.'''
     while True:
         SOCKET_IO.emit('heartbeat', INTERFACE.get_heartbeat_json())
+              # emit rest of node data, but less often:
+        heartbeat_thread_function.iter_tracker += 1
+        if heartbeat_thread_function.iter_tracker >= 4:
+            heartbeat_thread_function.iter_tracker = 0
+            emit_node_data()
         gevent.sleep(0.250)
 
 def ms_from_race_start():

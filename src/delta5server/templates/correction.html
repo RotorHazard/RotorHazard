@@ -259,7 +259,6 @@
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
-				$('#set_node_offset_' + i).val(msg.node_offset[i]);
 
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
 				var freqExists = $('#f_table_' + i + ' option[value=' + msg.frequency[i] + ']').length;
@@ -272,9 +271,15 @@
 				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
 				d5rt.nodes[i].calibration_threshold = msg.trigger_rssi[i] - parseInt($('#set_calibration_threshold').val());
 				d5rt.nodes[i].trigger_threshold = msg.trigger_rssi[i] - parseInt($('#set_trigger_threshold').val());
-				d5rt.nodes[i].offset = msg.node_offset[i];
 
 				d5rt.nodes[i].updateThresholds();
+			}
+		});
+
+		socket.on('node_offsets', function (msg) {
+			for (i = 0; i < msg.node_offsets.length; i++) {
+				$('#set_node_offset_' + i).val(msg.node_offsets[i]);
+				d5rt.nodes[i].offset = msg.node_offsets[i];
 			}
 		});
 
