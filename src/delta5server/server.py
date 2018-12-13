@@ -587,19 +587,21 @@ def on_set_filter_ratio(data):
     emit_node_tuning()
 
 @SOCKET_IO.on('reset_database')
-def on_reset_database():
+def on_reset_database(data):
     '''Reset database.'''
-    db_reset()
-
-@SOCKET_IO.on('reset_database_keep_pilots')
-def on_reset_database_keep_pilots():
-    '''Reset database but keep pilots list.'''
-    db_reset_keep_pilots()
-
-@SOCKET_IO.on('reset_database_laps')
-def on_reset_database_laps():
-    '''Reset database laps only.'''
-    db_reset_laps()
+    reset_type = data['reset_type']
+    if reset_type == 'races':
+        db_reset_saved_races()
+        db_reset_current_laps()
+    elif reset_type == 'heats':
+        db_reset_heats()
+        db_reset_saved_races()
+        db_reset_current_laps()
+    elif reset_type == 'pilots':
+        db_reset_pilots()
+        db_reset_heats()
+        db_reset_saved_races()
+        db_reset_current_laps()
 
 @SOCKET_IO.on('shutdown_pi')
 def on_shutdown_pi():
@@ -1159,8 +1161,7 @@ def db_init():
     db_reset_current_laps()
     db_reset_saved_races()
     db_reset_profile()
-    db_reset_default_profile()
-    db_reset_fix_race_time()
+    db_reset_race_formats()
     db_reset_node_values()
     db_reset_options_defaults()
     assign_frequencies()
@@ -1173,25 +1174,10 @@ def db_reset():
     db_reset_current_laps()
     db_reset_saved_races()
     db_reset_profile()
-    db_reset_default_profile()
-    db_reset_fix_race_time()
+    db_reset_race_formats()
     db_reset_node_values()
     assign_frequencies()
     server_log('Database reset')
-
-def db_reset_keep_pilots():
-    '''Resets database, keeps pilots.'''
-    db_reset_heats()
-    db_reset_current_laps()
-    db_reset_saved_races()
-    db_reset_fix_race_time()
-    server_log('Database reset, pilots kept')
-
-def db_reset_laps():
-    '''Resets database laps only. '''
-    db_reset_current_laps()
-    db_reset_saved_races()
-    server_log('Database reset, laps only')
 
 def db_reset_pilots():
     '''Resets database pilots to default.'''

@@ -881,10 +881,12 @@
 <h2>Database</h2>
 <p>Copy out any saved races first!</p>
 <div class="control-set">
-	<button type="button" class="btn-warning" id="reset_database_laps" onclick="this.blur();">Clear Laps</button>
-	<button type="button" class="btn-warning" id="reset_database_keep_pilots" onclick="this.blur();">Clear Laps & Heats</button>
-	<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">Reset All</button>
-
+	<select id="reset_type">
+		<option value="races">Clear Races</option>
+		<option value="heats">Clear Races and Heats</option>
+		<option value="pilots">Clear Races, Heats, and Pilots</option>
+	</select>
+	<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">Reset</button>
 </div>
 
 <!-- Shut down -->
