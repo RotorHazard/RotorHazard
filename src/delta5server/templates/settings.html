@@ -92,6 +92,11 @@
 		});
 
 		socket.on('node_tuning', function (msg) {
+			$('#set_profile').empty();
+			for (i = 0; i < msg.profile_ids.length; i++) {
+				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
+			}
+			$('#set_profile').val(msg.last_profile);
 			$('#set_calibration_threshold').val( msg.calibration_threshold);
 			$('#set_calibration_offset').val( msg.calibration_offset);
 			$('#set_trigger_threshold').val( msg.trigger_threshold);
@@ -769,13 +774,7 @@
 <div class="control-set">
 	<label for="set_profile">Profile:</label>
 	<select id="set_profile">
-		{% for profile in profiles.query.all() %}
-		<option value="{{profile.name}}" {% if profile.name == profiles.query.get(getOption("lastProfile")).name %}
-				selected="selected"
-			{% endif %}>
-			{{profile.name}}
-		</option>
-		{% endfor %}
+		<option>Loading...</option>
 	</select>
 	<button type="button" class="" id="add_profile" onclick="this.blur();">+ Add Profile</button>
 	<button type="button" class="btn-danger" id="delete_profile" onclick="this.blur();">&#215; Remove</button>

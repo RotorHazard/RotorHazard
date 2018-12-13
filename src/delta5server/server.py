@@ -490,15 +490,18 @@ def on_speak_pilot(data):
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
     '''Adds new profile in the database.'''
-    max_profile_id = DB.session.query(Profiles).count()+1
-    DB.session.add(Profiles(name='New Profile %s' % max_profile_id,
-                           description = 'New Profile %s' % max_profile_id,
+    new_profile = Profiles(name='New Profile',
+                           description = 'New Profile',
                            c_offset=8,
                            c_threshold=90,
                            t_threshold=40,
-                           f_ratio=100))
+                           f_ratio=100)
+    DB.session.add(new_profile)
+    DB.session.flush()
+    DB.session.refresh(new_profile)
+    new_profile.name = 'Profile %s' % new_profile.id
     DB.session.commit()
-    on_set_profile(data={ 'profile': 'New Profile %s' % max_profile_id})
+    on_set_profile(data={ 'profile': new_profile.id })
 
 @SOCKET_IO.on('delete_profile')
 def on_delete_profile():
@@ -616,15 +619,15 @@ def on_shutdown_pi():
 def on_set_profile(data):
     ''' set current profile '''
     profile_val = data['profile']
-    profile =Profiles.query.filter_by(name=profile_val).first()
+    profile =Profiles.query.filter_by(id=profile_val).first()
     DB.session.flush()
     setOption("lastProfile", profile.id)
     DB.session.commit()
+    emit_node_tuning()
+    server_log("set tune profile to '%s'" % profile_val)
     INTERFACE.set_calibration_threshold_global(profile.c_threshold)
     INTERFACE.set_calibration_offset_global(profile.c_offset)
     INTERFACE.set_trigger_threshold_global(profile.t_threshold)
-    emit_node_tuning()
-    server_log("set tune paramas for profile '%s'" % profile_val)
 
 @SOCKET_IO.on("set_race_format")
 def on_set_race_format(data):
@@ -904,18 +907,16 @@ def emit_node_tuning():
     last_profile = int(getOption("lastProfile"))
     tune_val = Profiles.query.get(last_profile)
     SOCKET_IO.emit('node_tuning', {
-        'calibration_threshold': \
-            tune_val.c_threshold,
-        'calibration_offset': \
-            tune_val.c_offset,
-        'trigger_threshold': \
-            tune_val.t_threshold,
-        'filter_ratio': \
-            tune_val.f_ratio,
-        'profile_name':
-            tune_val.name,
-        'profile_description':
-            tune_val.description
+        'profile_ids': [profile.id for profile in Profiles.query.all()],
+        'profile_names': [profile.name for profile in Profiles.query.all()],
+        'last_profile': last_profile,
+        'calibration_threshold': tune_val.c_threshold,
+        'calibration_offset': tune_val.c_offset,
+        'trigger_threshold': tune_val.t_threshold,
+        'filter_ratio': tune_val.f_ratio,
+        'profile_name': tune_val.name,
+        'profile_description': tune_val.description
+    })
 
 def emit_race_format():
     '''Emits node tuning values.'''
