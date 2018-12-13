@@ -311,7 +311,6 @@ def race():
     return render_template('race.html', num_nodes=RACE.num_nodes,
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
-                           race_format=RaceFormat.query.get(1),
                            getOption=getOption,
         frequencies=[node.frequency for node in INTERFACE.nodes])
 
@@ -321,7 +320,6 @@ def racepublic():
     return render_template('racepublic.html', num_nodes=RACE.num_nodes,
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
-                           race_format=RaceFormat.query.get(1),
                            getOption=getOption,
         frequencies=[node.frequency for node in INTERFACE.nodes])
 
@@ -360,7 +358,7 @@ def hardwarelog():
 def database():
     '''Route to database page.'''
     return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
-        savedraces=SavedRace, race_format=RaceFormat.query.get(1), \
+        savedraces=SavedRace, race_format=RaceFormat, \
         node_data=NodeData, getOption=getOption)
 
 #
@@ -745,8 +743,11 @@ def on_prestage_race():
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
-    race_format = RaceFormat.query.get(1)
-    DELAY = random.randint(race_format.start_delay_min, race_format.start_delay_max)
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
+    MAX = max(race_format.start_delay_min, race_format.start_delay_max)
+    DELAY = random.randint(MIN, MAX)
 
     SOCKET_IO.emit('prestage_ready', {
         'hide_stage_timer': race_format.hide_stage_timer,
@@ -1142,7 +1143,8 @@ def pass_record_callback(node, ms_since_lap):
                     lap_time = lap_time_stamp - last_lap_time_stamp
                     lap_id = last_lap_id + 1
 
-                race_format = RaceFormat.query.get(1)
+                last_raceFormat = int(getOption("lastFormat"))
+                race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
                 min_lap = race_format.min_lap_sec
                 if lap_time > (min_lap * 1000) or lap_id == 0:
                     # Add the new lap to the database

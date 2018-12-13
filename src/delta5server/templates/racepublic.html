@@ -1,9 +1,18 @@
 {% extends "layout.html" %} {% block title %}Race{% endblock %}{% block head %}
 <script type="text/javascript" charset="utf-8">
+	var request_time;
+	var race_time_sec; // store locally to reset visible timer
+
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
 		var buzzer = false;
+
+		// set up nodes
+		$('.node').each(function(){
+			var node_id = parseInt($(this).data('id'));
+			d5rt.nodes[node_id] = new nodeModel();
+		});
 
 		$('#voice-calls').val(parseInt(d5rt.primaryPilot));
 
@@ -23,6 +32,19 @@
 					$('body').addClass('race-new');
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-stopped');
+			}
+		});
+
+		socket.on('node_data', function (msg) {
+			for (i = 0; i < msg.frequency.length; i++) {
+				d5rt.nodes[i].frequency = msg.frequency[i];
+
+				// populate channel blocks
+				var channelBlock = $('.channel-block[data-node="' + i + '"]');
+				channelBlock.children('.ch').html(freqTable.findByFreq(d5rt.nodes[i].frequency));
+				if (d5rt.nodes[i].frequency == 0) {
+					channelBlock.children('.fr').html('');
+				}
 			}
 		});
 
@@ -76,16 +98,35 @@
 			}
 		});
 
-		socket.on('start_timer', function (msg) {
-			if ({{race_format.race_mode}}) {
-				// Count up mode
-				timer.reset(-1); // Stop and reset with -1 seconds to catch buzzer
-			} else {
-				timer.reset({{race_format.race_time_sec+1}});
-				// 0 = Count down mode
+		socket.on('prestage_ready', function (msg) {
+			request_time = new Date();
+		});
+
+		socket.on('stage_ready', function (msg) {
+			var response_time = new Date();
+			var server_delay = ((response_time - request_time) / 2);
+
+			var data = { // supply delay to stage 2
+				delay: msg.start_delay
 			}
-			timer.mode({{race_format.race_mode}});
-			timer.start(); // Start clock
+			setTimeout(function(){
+				timer.mode(msg.race_mode);
+				if (msg.race_mode) {
+					// Count up mode
+					timer.reset(0);
+				} else {
+					// 0 = Count down mode
+					timer.reset(msg.race_time_sec);
+				}
+				timer.pre_race(msg.start_delay, msg.hide_stage_timer);
+				timer.start(); // Start clock
+
+				$('button#stop_race').removeAttr('disabled', 'disabled');
+				race_mode = msg.race_time_sec;
+				d5rt.collecting = 'race';
+				racedump.timestamp = new Date();
+				racedump.timedata = [];
+			}, server_delay);
 		});
 
 		socket.on('stop_timer', function (msg) {
@@ -132,12 +173,12 @@
 <!--Display the current laps-->
 <div class="race-results">
 	{% for node in range(num_nodes) %}
-	<div class="node">
+	<div class="node" data-id="{{ node }}">
 		<h4 class="callsign_{{ node }}">
 			{{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 			}}
 		</h4>
-		<div class="channel-block"><span class="ch">{{ channels[node] }}</span> <span class="fr">{{ frequencies[node] }}</span></div>
+		<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
 		<table class="laps" id="current_laps_{{ node }}">
 			<tbody>
 			</tbody>

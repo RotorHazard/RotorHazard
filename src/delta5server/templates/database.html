@@ -104,55 +104,33 @@
     </tbody>
 </table>
 
-<h2>Frequencies</h2>
+<h2>Race Format</h2>
 <table class="table">
     <thead>
         <tr>
             <th>ID</th>
-            <th>Band</th>
-            <th>Channel</th>
-            <th>Frequency</th>
+            <th>Name</th>
+            <th>Mode</th>
+            <th>Time</th>
+            <th>Minimum Lap</th>
+            <th>Hide Staging Timer</th>
+            <th>Min Start Delay</th>
+            <th>Max Start Delay</th>
         </tr>
     </thead>
     <tbody>
-        {% for frequency in frequencies.query.all() %}
+        {% for raceformat in race_format.query.all() %}
         <tr>
-            <td>{{ frequency.id }}</td>
-            <td>{{ frequency.band }}</td>
-            <td>{{ frequency.channel }}</td>
-            <td>{{ frequency.frequency }}</td>
+            <td>{{ raceformat.id }}</td>
+            <td>{{ raceformat.name }}</td>
+            <td>{{ raceformat.race_mode }}</td>
+            <td>{{ raceformat.race_time_sec }}</td>
+            <td>{{ raceformat.min_lap_sec }}</td>
+            <td>{{ raceformat.hide_stage_timer }}</td>
+            <td>{{ raceformat.start_delay_min }}</td>
+            <td>{{ raceformat.start_delay_max }}</td>
         </tr>
         {% endfor %}
-    </tbody>
-</table>
-
-<h2>Race Format</h2>
-<table class="table">
-    <tbody>
-        <tr>
-            <th>Mode</th>
-            <td>{{ race_format.race_mode }}</td>
-        </tr>
-        <tr>
-            <th>Fixed Time</th>
-            <td>{{ race_format.race_time_sec }}</td>
-        </tr>
-        <tr>
-            <th>Minimum Lap</th>
-            <td>{{ race_format.min_lap_sec }}</td>
-        </tr>
-        <tr>
-            <th>Hide Staging Timer</th>
-            <td>{{ race_format.hide_stage_timer }}</td>
-        </tr>
-        <tr>
-            <th>Min Start Delay</th>
-            <td>{{ race_format.start_delay_min }}</td>
-        </tr>
-        <tr>
-            <th>Max Start Delay</th>
-            <td>{{ race_format.start_delay_max }}</td>
-        </tr>
     </tbody>
 </table>
 
