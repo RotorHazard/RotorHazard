@@ -56,12 +56,10 @@ Note: The latest Arduino IDE (1.8+) is required from https://www.arduino.cc/en/M
 
 Open '/delta5_race_timer/src/delta5node/delta5node.ino' in the Arduino IDE.
 
-Configure the '#define i2cSlaveAddress' line of the .ino for each node before uploading.
+Configure the '#define NODE_NUMBER' line of the .ino for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
 ```
-// Node Setup -- Set the i2c address here
-// Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
-// Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
-#define i2cSlaveAddress 8
+// Node Setup -- Set node number here (1 - 8)
+#define NODE_NUMBER 1
 ```
 
 ### System (Raspberry Pi)

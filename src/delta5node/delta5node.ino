@@ -25,11 +25,18 @@
 // SOFTWARE.
 
 #include <Wire.h>
+#include <EEPROM.h>
 
-// Node Setup -- Set the i2c address here
+// Node Setup -- Set node number here (1 - 8)
+#define NODE_NUMBER 1
+
+// i2c address for node
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
-#define i2cSlaveAddress 8
+#define i2cSlaveAddress (6 + (NODE_NUMBER * 2))
+
+// API level for read/write commands; increment when commands are modified
+#define NODE_API_LEVEL 5
 
 const int slaveSelectPin = 10; // Setup data pins for rx5808 comms
 const int spiDataPin = 11;
@@ -43,7 +50,8 @@ const int spiClockPin = 13;
 #define READ_CALIBRATION_OFFSET 0x17
 #define READ_TRIGGER_THRESHOLD 0x18
 #define READ_FILTER_RATIO 0x19
-#define READ_NODE_SCALE 0x20
+#define READ_REVISION_CODE 0x22   // read NODE_API_LEVEL and verification value
+#define READ_NODE_RSSI_PEAK 0x23  // read 'state.nodeRssiPeak' value
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_CALIBRATION_THRESHOLD 0x65
@@ -51,7 +59,13 @@ const int spiClockPin = 13;
 #define WRITE_CALIBRATION_OFFSET 0x67
 #define WRITE_TRIGGER_THRESHOLD 0x68
 #define WRITE_FILTER_RATIO 0x69
-#define WRITE_NODE_SCALE 0x70
+
+#define FILTER_RATIO_DIVIDER 10000.0f
+
+#define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
+#define EEPROM_ADRW_RSSIPEAK 2     //address for stored 'nodeRssiPeak' value
+#define EEPROM_ADRW_CHECKWORD 4    //address for integrity-check value
+#define EEPROM_CHECK_VALUE 0x2645  //EEPROM integrity-check value
 
 struct {
 	uint16_t volatile vtxFreq = 5800;
@@ -61,11 +75,8 @@ struct {
 	uint16_t volatile calibrationThreshold = 95;
 	// Rssi must fall below trigger - settings.triggerThreshold to end a normal pass
 	uint16_t volatile triggerThreshold = 40;
-	uint8_t volatile filterRatio = 100; // ratio is *10000
+	uint8_t volatile filterRatio = 10;
 	float volatile filterRatioFloat = 0.0f;
-
-	// node correction
-	uint16_t rssiScale = 1000; // scale is *1000
 } settings;
 
 struct {
@@ -86,6 +97,10 @@ struct {
 	uint16_t volatile rssiPeak = 0;
 	// The time of the peak raw rssi for the current pass
 	uint32_t volatile rssiPeakRawTimeStamp = 0;
+	// The peak smoothed rssi seen since the node frequency was set
+	uint16_t volatile nodeRssiPeak = 0;
+    // Set true after initial WRITE_FREQUENCY command received
+	bool volatile rxFreqSetFlag = false;
 
 	// variables to track the loop time
 	uint32_t volatile loopTime = 0;
@@ -131,14 +146,25 @@ void setup() {
     cbi(ADCSRA,ADPS1);
     cbi(ADCSRA,ADPS0);
 
-	// Initialize lastPass defaults
-	settings.filterRatioFloat = settings.filterRatio / 10000.0f;
+	// Initialize defaults
+	settings.filterRatioFloat = settings.filterRatio / FILTER_RATIO_DIVIDER;
 	state.rssi = 0;
 	state.rssiTrigger = 0;
 	lastPass.rssiPeakRaw = 0;
 	lastPass.rssiPeak = 0;
 	lastPass.lap = 0;
 	lastPass.timeStamp = 0;
+
+    // if EEPROM-check value matches then read stored values
+    if (readWordFromEeprom(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE) {
+        settings.vtxFreq = readWordFromEeprom(EEPROM_ADRW_RXFREQ);
+        state.nodeRssiPeak = readWordFromEeprom(EEPROM_ADRW_RSSIPEAK);
+    }
+    else {    // if no match then initialize EEPROM values
+        writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
+        writeWordToEeprom(EEPROM_ADRW_RSSIPEAK, 0);
+        writeWordToEeprom(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
+    }
 
 	setRxModule(settings.vtxFreq); // Setup rx module to default frequency
 }
@@ -258,7 +284,17 @@ void loop() {
 
 	state.rssiRaw = rssiRead();
 	state.rssiSmoothed = (settings.filterRatioFloat * (float)state.rssiRaw) + ((1.0f-settings.filterRatioFloat) * state.rssiSmoothed);
-  state.rssi = (int)((state.rssiSmoothed * settings.rssiScale) / 1000);
+	state.rssi = (int)state.rssiSmoothed;
+
+	// Keep track of peak (smoothed) rssi; set trigger as offset of peak
+    //  (don't start tracking until after a WRITE_FREQUENCY command received)
+	if (state.rssi > state.nodeRssiPeak && state.rxFreqSetFlag) {
+		state.nodeRssiPeak = state.rssi;
+		state.rssiTrigger = state.nodeRssiPeak - settings.calibrationOffset;
+        writeWordToEeprom(EEPROM_ADRW_RSSIPEAK, state.nodeRssiPeak);  // persist value
+		Serial.print("New nodeRssiPeak = ");
+		Serial.println(state.nodeRssiPeak);
+	}
 
 	if (state.rssiTrigger > 0) {
 		if (!state.crossing && state.rssi > state.rssiTrigger) {
@@ -274,21 +310,13 @@ void loop() {
 		}
 
 		if (state.crossing) {
-			int triggerThreshold = settings.triggerThreshold;
-
-			// If in calibration mode, keep raising the trigger value
-			if (state.calibrationMode) {
-				state.rssiTrigger = max(state.rssiTrigger, state.rssi - settings.calibrationOffset);
-				// when calibrating, use a larger threshold
-				triggerThreshold = settings.calibrationThreshold;
-			}
 
 			state.rssiPeak = max(state.rssiPeak, state.rssi);
 
 			// Make sure the threshold does not put the trigger below 0 RSSI
 			// See if we have left the gate
-			if ((state.rssiTrigger > triggerThreshold) &&
-				(state.rssi < (state.rssiTrigger - triggerThreshold))) {
+			if ((state.rssiTrigger > settings.triggerThreshold) &&
+				(state.rssi < (state.rssiTrigger - settings.triggerThreshold))) {
 				Serial.println("Crossing = False");
 				lastPass.rssiPeakRaw = state.rssiPeakRaw;
 				lastPass.rssiPeak = state.rssiPeak;
@@ -415,25 +443,38 @@ void ioBufferWriteChecksum() {
 // data expected and received
 byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the command
 	bool success = false;
+    uint16_t oldVtxFreq;
 
 	switch (command) {
 		case WRITE_FREQUENCY:
 			if (readAndValidateIoBuffer(0x51, 2)) {
+                oldVtxFreq = settings.vtxFreq;
 				settings.vtxFreq = ioBufferRead16();
 				setRxModule(settings.vtxFreq); // Shouldn't do this in Interrupt Service Routine
 				success = true;
+                state.rxFreqSetFlag = true;
+				Serial.print("Set RX freq = ");
+				Serial.println(settings.vtxFreq);
+                if (settings.vtxFreq != oldVtxFreq) {  // if RX frequency changed
+			        writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
+					state.nodeRssiPeak = 0;  // restart rssi peak tracking for node
+	                writeWordToEeprom(EEPROM_ADRW_RSSIPEAK, 0);  // persist value
+					Serial.println("Set nodeRssiPeak = 0");
+                }
 			}
 			break;
 		case WRITE_CALIBRATION_THRESHOLD:
+                        // no longer using this; but keep cmd for backward compatibility
 			if (readAndValidateIoBuffer(WRITE_CALIBRATION_THRESHOLD, 2)) {
 				settings.calibrationThreshold = ioBufferRead16();
 				success = true;
 			}
 			break;
 		case WRITE_CALIBRATION_MODE:
+                   // no longer using this; but keep cmd for backward compatibility
 			if (readAndValidateIoBuffer(WRITE_CALIBRATION_MODE, 1)) {
 				state.calibrationMode = ioBufferRead8();
-				state.rssiTrigger = state.rssi - settings.calibrationOffset;
+				state.rssiTrigger = state.nodeRssiPeak - settings.calibrationOffset;
 				lastPass.rssiPeakRaw = 0;
 				lastPass.rssiPeak = 0;
 				state.rssiPeakRaw = 0;
@@ -445,6 +486,8 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 			if (readAndValidateIoBuffer(WRITE_CALIBRATION_OFFSET, 2)) {
 				settings.calibrationOffset = ioBufferRead16();
 				success = true;
+                        // keep the trigger value updated:
+                state.rssiTrigger = state.nodeRssiPeak - settings.calibrationOffset;
 			}
 			break;
 		case WRITE_TRIGGER_THRESHOLD:
@@ -456,13 +499,7 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 		case WRITE_FILTER_RATIO:
 			if (readAndValidateIoBuffer(WRITE_FILTER_RATIO, 1)) {
 				settings.filterRatio = ioBufferRead8();
-				settings.filterRatioFloat =  settings.filterRatio / 10000.0f;
-				success = true;
-			}
-			break;
-		case WRITE_NODE_SCALE:
-			if (readAndValidateIoBuffer(WRITE_NODE_SCALE, 2)) {
-				settings.rssiScale = ioBufferRead16();
+				settings.filterRatioFloat =  settings.filterRatio / FILTER_RATIO_DIVIDER;
 				success = true;
 			}
 			break;
@@ -495,14 +532,17 @@ void i2cTransmit() {
 			ioBufferWrite32(millis() - lastPass.timeStamp);
 			ioBufferWrite16(state.rssi);
 			ioBufferWrite16(state.rssiTrigger);
-			ioBufferWrite16(lastPass.rssiPeakRaw);
+			// ioBufferWrite16(lastPass.rssiPeakRaw);
+			ioBufferWrite16(state.nodeRssiPeak);  // as of API 5 return 'nodeRssiPeak' here
 			ioBufferWrite16(lastPass.rssiPeak);
 			ioBufferWrite32(state.loopTime);
 			break;
 		case READ_CALIBRATION_THRESHOLD:
+                   // no longer using this; but keep cmd for backward compatibility
 			ioBufferWrite16(settings.calibrationThreshold);
 			break;
 		case READ_CALIBRATION_MODE:
+                   // no longer using this; but keep cmd for backward compatibility
 			ioBufferWrite8(state.calibrationMode);
 			break;
 		case READ_CALIBRATION_OFFSET:
@@ -514,8 +554,11 @@ void i2cTransmit() {
 		case READ_FILTER_RATIO:
 			ioBufferWrite8(settings.filterRatio);
 			break;
-		case READ_NODE_SCALE:
-			ioBufferWrite16(settings.rssiScale);
+		case READ_REVISION_CODE:  // reply with NODE_API_LEVEL and verification value
+			ioBufferWrite16((0x25 << 8) + NODE_API_LEVEL);
+			break;
+		case READ_NODE_RSSI_PEAK:
+			ioBufferWrite16(state.nodeRssiPeak);
 			break;
 		default: // If an invalid command is sent, write nothing back, master must react
 			Serial.print("TX Fault command: ");
@@ -528,4 +571,19 @@ void i2cTransmit() {
 		ioBufferWriteChecksum();
 		Wire.write((byte *)&ioBuffer, ioBufferSize);
 	}
+}
+
+//Writes 2-byte word to EEPROM at address.
+void writeWordToEeprom(int addr, uint16_t val)
+{
+  EEPROM.write(addr,lowByte(val));
+  EEPROM.write(addr+1,highByte(val));
+}
+
+//Reads 2-byte word at address from EEPROM.
+uint16_t readWordFromEeprom(int addr)
+{
+  const uint8_t lb = EEPROM.read(addr);
+  const uint8_t hb = EEPROM.read(addr+1);
+  return (((uint16_t)hb) << 8) + lb;
 }
