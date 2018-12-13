@@ -15,6 +15,11 @@ gevent.monkey.patch_all()
 
 import random
 
+# LED imports
+import time
+from neopixel import *
+import signal
+
 sys.path.append('../delta5interface')
 sys.path.append('/home/pi/delta5_race_timer/src/delta5interface')  # Needed to run on startup
 from Delta5Interface import get_hardware_interface
@@ -55,10 +60,6 @@ PROGRAM_START = datetime.now()
 RACE_START = datetime.now() # Updated on race start commands
 
 # LED Code
-import time
-from neopixel import *
-
-import signal
 def signal_handler(signal, frame):
         colorWipe(strip, Color(0,0,0))
         sys.exit(0)
