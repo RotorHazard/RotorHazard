@@ -100,20 +100,19 @@
 			$('#set_profile_description').val( msg.profile_description);
 		});
 
-		socket.on('set_fix_race_time', function (msg) {
-			$('#set_fix_race_time').val( msg.fix_race_time);
-		});
-
-		socket.on('set_min_lap', function (msg) {
-			$('#set_min_lap').val( msg.min_lap);
-		});
-
-		socket.on('set_hide_stage_timer', function (msg) {
-			$('#set_hide_stage_timer').val( msg.hide_stage_timer);
-		});
-
-		socket.on('set_start_delay', function (msg) {
-			$('#set_start_delay').val( msg.start_delay);
+		socket.on('race_format', function (msg) {
+			$('#set_race_format').empty();
+			for (i = 0; i < msg.format_ids.length; i++) {
+				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
+			}
+			$('#set_race_format').val(msg.last_format);
+			$('#set_format_name').val(msg.format_name);
+			$('#set_race_mode').val(msg.race_mode);
+			$('#set_fix_race_time').val(msg.race_time_sec);
+			$('#set_min_lap').val(msg.min_lap);
+			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
+			$('#set_start_delay_min').val(msg.start_delay_min);
+			$('#set_start_delay_max').val(msg.start_delay_max);
 		});
 
 		socket.on('heat_data', function (msg) {
@@ -700,37 +699,52 @@
 
 <!--Race Format-->
 <h2>Race Format</h2>
+<div class="control-set">
+	<label for="set_race_format">Format:</label>
+	<select id="set_race_format">
+		<option>Loading...</option>
+	</select>
+	<button type="button" class="" id="add_race_format" onclick="this.blur();">+ Add Format</button>
+	<button type="button" class="btn-danger" id="delete_race_format" onclick="this.blur();">&#215; Remove</button>
+</div>
+
 <ol class="form">
 	<li>
 		<div class="label-block">
-			<label for="set_race_mode">Race Mode</label>
+			<label for="set_format_name">Name</label>
+		</div>
+		<input type="text" id="set_format_name">
+	</li>
+	<li>
+		<div class="label-block">
+			<label for="set_race_mode">Race Timer Mode</label>
 		</div>
 		<select id="set_race_mode">
-			<option value="0" {% if race_format.race_mode == 0 %}selected="selected" {% endif %}>Fixed time</option>
-			<option value="1" {% if race_format.race_mode == 1 %}selected="selected" {% endif %}>Count-up timer</option>
+			<option value="0">Count Down</option>
+			<option value="1">Count Up</option>
 		</select>
 	</li>
 	<li>
 		<div class="label-block">
-			<label for="set_fix_race_time">Maximum race time in seconds</label>
-			<p class="desc">Used for fixed-time races</p>
+			<label for="set_fix_race_time">Timer Duration (seconds)</label>
+			<p class="desc">Count-down timed races</p>
 		</div>
-		<input type="text" id="set_fix_race_time" value="{{race_format.race_time_sec}}">
+		<input type="text" id="set_fix_race_time">
 	</li>
 	<li>
 		<div class="label-block">
-			<label for="set_min_lap">Minimum lap time in seconds</label>
-			<p class="desc">Prevents phantom passes</p>
+			<label for="set_min_lap">Minimum lap time (seconds)</label>
+			<p class="desc">Prevents repeated triggering</p>
 		</div>
-		<input type="text" id="set_min_lap" value="{{race_format.min_lap_sec}}">
+		<input type="text" id="set_min_lap">
 	</li>
 	<li>
 		<div class="label-block">
-			<label for="set_hide_stage_timer">Hide Staging Timer</label>
+			<label for="set_hide_stage_timer">Staging Timer Mode</label>
 		</div>
 		<select id="set_hide_stage_timer">
-			<option value="0" {% if race_format.hide_stage_timer == 0 %}selected="selected" {% endif %}>Show Countdown</option>
-			<option value="1" {% if race_format.hide_stage_timer == 1 %}selected="selected" {% endif %}>Hide Countdown</option>
+			<option value="0">Show Countdown</option>
+			<option value="1">Hide Countdown</option>
 		</select>
 	</li>
 	<li>
@@ -738,14 +752,14 @@
 			<label for="set_start_delay_min">Minimum Start Delay</label>
 			<p class="desc">Minimum time before race begins</p>
 		</div>
-		<input type="text" id="set_start_delay_min" value="{{race_format.start_delay_min}}">
+		<input type="text" id="set_start_delay_min">
 	</li>
 	<li>
 		<div class="label-block">
 			<label for="set_start_delay_max">Maximum Start Delay</label>
 			<p class="desc">Maximum time before race begins</p>
 		</div>
-		<input type="text" id="set_start_delay_max" value="{{race_format.start_delay_max}}">
+		<input type="text" id="set_start_delay_max">
 	</li>
 </ol>
 

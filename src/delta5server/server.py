@@ -185,6 +185,7 @@ class Profiles(DB.Model):
 
 class RaceFormat(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
+    name = DB.Column(DB.String(80), unique=True, nullable=False)
     race_mode = DB.Column(DB.Integer, nullable=False)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
     min_lap_sec = DB.Column(DB.Integer, nullable=False)
@@ -333,7 +334,7 @@ def settings():
                            pilots=Pilot,
                            heats=Heat,
                            profiles = Profiles,
-                           race_format=RaceFormat.query.get(1),
+                           race_format=RaceFormat,
                            getOption=getOption)
 
 @APP.route('/correction')
@@ -377,6 +378,7 @@ def connect_handler():
         server_log('Heartbeat thread started')
     emit_node_data() # Settings page, node channel and triggers
     emit_node_tuning() # Settings page, node tuning values
+    emit_race_format() # Settings page, race format values
     emit_race_status() # Race page, to set race button states
     emit_current_laps() # Race page, load and current laps
     emit_leaderboard() # Race page, load leaderboard for current laps
@@ -624,10 +626,63 @@ def on_set_profile(data):
     emit_node_tuning()
     server_log("set tune paramas for profile '%s'" % profile_val)
 
+@SOCKET_IO.on("set_race_format")
+def on_set_race_format(data):
+    ''' set current race_format '''
+    race_format_val = data['race_format']
+    race_format = RaceFormat.query.filter_by(id=race_format_val).first()
+    DB.session.flush()
+    setOption("lastFormat", race_format_val)
+    DB.session.commit()
+    emit_race_format()
+    server_log("set race format to '%s'" % race_format_val)
+
+@SOCKET_IO.on('add_race_format')
+def on_add_race_format():
+    '''Adds new format in the database.'''
+    new_format = RaceFormat(name='New Format',
+                             race_mode=1,
+                             race_time_sec=0,
+                             min_lap_sec=5,
+                             hide_stage_timer=0,
+                             start_delay_min=3,
+                             start_delay_max=3)
+    DB.session.add(new_format)
+    DB.session.flush()
+    DB.session.refresh(new_format)
+    new_format.name = 'Format %s' % new_format.id
+    DB.session.commit()
+    on_set_race_format(data={ 'race_format': new_format.id })
+
+@SOCKET_IO.on('delete_race_format')
+def on_delete_race_format():
+    '''Delete profile'''
+    if (DB.session.query(RaceFormat).count() > 1): # keep one profile
+        last_raceFormat = int(getOption("lastFormat"))
+        raceformat = RaceFormat.query.get(last_raceFormat)
+        DB.session.delete(raceformat)
+        DB.session.commit()
+        first_raceFormat_id = RaceFormat.query.first().id
+        setOption("lastFormat", first_raceFormat_id)
+        raceformat = RaceFormat.query.get(first_raceFormat_id)
+        emit_race_format()
+
+@SOCKET_IO.on('set_race_format_name')
+def on_set_race_format_name(data):
+    ''' update profile name '''
+    format_name = data['format_name']
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    race_format.name = format_name
+    DB.session.commit()
+    server_log('set format name %s' % (format_name))
+    emit_race_format()
+
 @SOCKET_IO.on("set_race_mode")
 def on_set_race_mode(data):
     race_mode = data['race_mode']
-    race_format = RaceFormat.query.get(1)
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
     race_format.race_mode = race_mode
     DB.session.commit()
     server_log("set race mode to %s" % race_mode)
@@ -635,15 +690,17 @@ def on_set_race_mode(data):
 @SOCKET_IO.on("set_fix_race_time")
 def on_set_fix_race_time(data):
     race_time = data['race_time']
-    fix_race_time = RaceFormat.query.get(1)
-    fix_race_time.race_time_sec = race_time
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    race_format.race_time_sec = race_time
     DB.session.commit()
     server_log("set fixed time race to %s seconds" % race_time)
 
 @SOCKET_IO.on("set_min_lap")
 def on_set_min_lap(data):
     min_lap = data['min_lap']
-    race_format = RaceFormat.query.get(1)
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
     race_format.min_lap_sec = min_lap
     DB.session.commit()
     server_log("set min lap time to %s seconds" % min_lap)
@@ -651,7 +708,8 @@ def on_set_min_lap(data):
 @SOCKET_IO.on("set_hide_stage_timer")
 def on_set_hide_stage_timer(data):
     hide_stage_timer = data['hide_stage_timer']
-    race_format = RaceFormat.query.get(1)
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
     race_format.hide_stage_timer = hide_stage_timer
     DB.session.commit()
     server_log("set start type to %s" % hide_stage_timer)
@@ -659,7 +717,8 @@ def on_set_hide_stage_timer(data):
 @SOCKET_IO.on("set_start_delay_min")
 def on_set_start_delay(data):
     start_delay_min = data['start_delay_min']
-    race_format = RaceFormat.query.get(1)
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
     race_format.start_delay_min = start_delay_min
     DB.session.commit()
     server_log("set start delay to %s" % start_delay_min)
@@ -667,7 +726,8 @@ def on_set_start_delay(data):
 @SOCKET_IO.on("set_start_delay_max")
 def on_set_start_delay(data):
     start_delay_max = data['start_delay_max']
-    race_format = RaceFormat.query.get(1)
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
     race_format.start_delay_max = start_delay_max
     DB.session.commit()
     server_log("set start delay to %s" % start_delay_max)
@@ -856,6 +916,22 @@ def emit_node_tuning():
             tune_val.name,
         'profile_description':
             tune_val.description
+
+def emit_race_format():
+    '''Emits node tuning values.'''
+    last_format = int(getOption("lastFormat"))
+    format_val = RaceFormat.query.get(last_format)
+    SOCKET_IO.emit('race_format', {
+        'format_ids': [raceformat.id for raceformat in RaceFormat.query.all()],
+        'format_names': [raceformat.name for raceformat in RaceFormat.query.all()],
+        'last_format': last_format,
+        'format_name': format_val.name,
+        'race_mode': format_val.race_mode,
+        'race_time_sec': format_val.race_time_sec,
+        'min_lap': format_val.min_lap_sec,
+        'hide_stage_timer': format_val.hide_stage_timer,
+        'start_delay_min': format_val.start_delay_min,
+        'start_delay_max': format_val.start_delay_max
     })
 
 def emit_current_laps():
@@ -980,16 +1056,6 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time):
     phonetic_name = Pilot.query.filter_by(pilot_id=pilot_id).first().phonetic
     pilot_id = Pilot.query.filter_by(pilot_id=pilot_id).first().pilot_id
     SOCKET_IO.emit('phonetic_data', {'pilot': phonetic_name, 'pilot_id': pilot_id, 'lap': lap_id, 'phonetic': phonetic_time})
-
-def emit_current_fix_race_time():
-    ''' Emit current fixed time race time '''
-    race_time_sec = RaceFormat.query.get(1).race_time_sec
-    SOCKET_IO.emit('set_fix_race_time',{ fix_race_time: race_time_sec})
-
-def emit_min_lap():
-    ''' Emit minimum lap time '''
-    min_lap_sec = RaceFormat.query.get(1).min_lap_sec
-    SOCKET_IO.emit('set_min_lap',{ min_lap: min_lap_sec})
 
 def emit_phonetic_text(phtext):
     '''Emits given phonetic text.'''
@@ -1241,16 +1307,39 @@ def db_reset_profile():
     setOption("lastProfile", 1)
     server_log("Database set default profiles")
 
-def db_reset_fix_race_time():
+def db_reset_race_formats():
     DB.session.query(RaceFormat).delete()
-    DB.session.add(RaceFormat(race_mode=0,
+    DB.session.add(RaceFormat(name="MultiGP Qualifier",
+                             race_mode=0,
                              race_time_sec=120,
                              min_lap_sec=5,
                              hide_stage_timer=1,
                              start_delay_min=2,
                              start_delay_max=5))
+    DB.session.add(RaceFormat(name="Whoop Sprint",
+                             race_mode=0,
+                             race_time_sec=90,
+                             min_lap_sec=5,
+                             hide_stage_timer=1,
+                             start_delay_min=2,
+                             start_delay_max=5))
+    DB.session.add(RaceFormat(name="Limited Class",
+                             race_mode=0,
+                             race_time_sec=210,
+                             min_lap_sec=5,
+                             hide_stage_timer=1,
+                             start_delay_min=2,
+                             start_delay_max=5))
+    DB.session.add(RaceFormat(name="First to X Laps",
+                             race_mode=1,
+                             race_time_sec=0,
+                             min_lap_sec=5,
+                             hide_stage_timer=0,
+                             start_delay_min=3,
+                             start_delay_max=3))
     DB.session.commit()
-    server_log("Database set fixed time race to 120 sec (2 minutes)")
+    setOption("lastFormat", 1)
+    server_log("Database reset race formats")
 
 def db_reset_node_values():
     DB.session.query(NodeData).delete()
@@ -1266,6 +1355,7 @@ def db_reset_options_defaults():
     DB.session.query(GlobalSettings).delete()
     setOption("timerName", "Delta5 Race Timer")
     setOption("lastProfile", "1")
+    setOption("lastFormat", "1")
     server_log("Reset global settings")
 
 #
