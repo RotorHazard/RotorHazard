@@ -395,12 +395,12 @@ def on_set_frequency(data):
     '''Set node frequency.'''
     node_index = data['node']
     frequency = data['frequency']
-    INTERFACE.set_frequency(node_index, frequency)
     node_data = NodeData.query.filter_by(id=node_index).first()
     node_data.frequency = frequency
     DB.session.commit()
     server_log('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
     emit_node_data() # Settings page, new node channel
+    INTERFACE.set_frequency(node_index, frequency)
 
 @SOCKET_IO.on('set_node_offset')
 def on_set_node_offset(data):
@@ -514,11 +514,11 @@ def on_delete_profile():
         first_profile_id = Profiles.query.first().id
         setOption("lastProfile", first_profile_id)
         profile =Profiles.query.get(first_profile_id)
+        emit_node_tuning()
         INTERFACE.set_calibration_threshold_global(profile.c_threshold)
         INTERFACE.set_calibration_offset_global(profile.c_offset)
         INTERFACE.set_trigger_threshold_global(profile.t_threshold)
         INTERFACE.set_filter_ratio_global(profile.f_ratio)
-        emit_node_tuning()
 
 @SOCKET_IO.on('set_profile_name')
 def on_set_profile_name(data):
@@ -547,49 +547,49 @@ def on_set_profile_description(data):
 def on_set_calibration_threshold(data):
     '''Set Calibration Threshold.'''
     calibration_threshold = data['calibration_threshold']
-    INTERFACE.set_calibration_threshold_global(calibration_threshold)
     last_profile = int(getOption("lastProfile"))
     profile = Profiles.query.filter_by(id=last_profile).first()
     profile.c_threshold = calibration_threshold
     DB.session.commit()
     server_log('Calibration threshold set: {0}'.format(calibration_threshold))
     emit_node_tuning()
+    INTERFACE.set_calibration_threshold_global(calibration_threshold)
 
 @SOCKET_IO.on('set_calibration_offset')
 def on_set_calibration_offset(data):
     '''Set Calibration Offset.'''
     calibration_offset = data['calibration_offset']
-    INTERFACE.set_calibration_offset_global(calibration_offset)
     last_profile = int(getOption("lastProfile"))
     profile = Profiles.query.filter_by(id=last_profile).first()
     profile.c_offset = calibration_offset
     DB.session.commit()
     server_log('Calibration offset set: {0}'.format(calibration_offset))
     emit_node_tuning()
+    INTERFACE.set_calibration_offset_global(calibration_offset)
 
 @SOCKET_IO.on('set_trigger_threshold')
 def on_set_trigger_threshold(data):
     '''Set Trigger Threshold.'''
     trigger_threshold = data['trigger_threshold']
-    INTERFACE.set_trigger_threshold_global(trigger_threshold)
     last_profile = int(getOption("lastProfile"))
     profile = Profiles.query.filter_by(id=last_profile).first()
     profile.t_threshold = trigger_threshold
     DB.session.commit()
     server_log('Trigger threshold set: {0}'.format(trigger_threshold))
     emit_node_tuning()
+    INTERFACE.set_trigger_threshold_global(trigger_threshold)
 
 @SOCKET_IO.on('set_filter_ratio')
 def on_set_filter_ratio(data):
     '''Set Trigger Threshold.'''
     filter_ratio = data['filter_ratio']
-    INTERFACE.set_filter_ratio_global(filter_ratio)
     last_profile = int(getOption("lastProfile"))
     profile = Profiles.query.filter_by(id=last_profile).first()
     profile.f_ratio = filter_ratio
     DB.session.commit()
     server_log('Filter ratio set: {0}'.format(filter_ratio))
     emit_node_tuning()
+    INTERFACE.set_filter_ratio_global(filter_ratio)
 
 @SOCKET_IO.on('reset_database')
 def on_reset_database(data):
