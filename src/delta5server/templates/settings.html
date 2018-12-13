@@ -756,7 +756,7 @@
 	<label for="set_profile">Profile:</label>
 	<select id="set_profile">
 		{% for profile in profiles.query.all() %}
-		<option value="{{profile.name}}" {% if profile.name == profiles.query.get(last_profile.query.get(1).profile_id).name %}
+		<option value="{{profile.name}}" {% if profile.name == profiles.query.get(getOption("lastProfile")).name %}
 				selected="selected"
 			{% endif %}>
 			{{profile.name}}

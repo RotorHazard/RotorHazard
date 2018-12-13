@@ -7,7 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="description" content="Delta5 VTX Timer">
 	<meta name="google" content="notranslate">
-	<title>{% block title %}{% endblock %}: {{ settings.query.filter_by(option_name="timerName").first().option_value }}</title>
+	<title>{% block title %}{% endblock %}: {{ getOption("timerName") }}</title>
 
 	<!-- Script libraries -->
 	<script type="text/javascript" src="./static/jquery-3.2.1/jquery.min.js"></script>
@@ -25,7 +25,7 @@
 
 <body>
 	<header>
-		<div id="logo">{{ settings.query.filter_by(option_name="timerName").first().option_value }}</div>
+		<div id="logo">{{ getOption("timerName") }}</div>
 		<nav id="nav-main">
 			<ul>
 				<li><a href="/">Heats</a></li>

@@ -177,10 +177,6 @@ class Profiles(DB.Model):
     t_threshold = DB.Column(DB.Integer, nullable=True)
     f_ratio = DB.Column(DB.Integer, nullable=True)
 
-class LastProfile(DB.Model):
-    id = DB.Column(DB.Integer, primary_key=True)
-    profile_id = DB.Column(DB.Integer, nullable=False)
-
 class RaceFormat(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     race_mode = DB.Column(DB.Integer, nullable=False)
@@ -199,6 +195,25 @@ class GlobalSettings(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     option_name = DB.Column(DB.String(256), nullable=False)
     option_value = DB.Column(DB.String(256), nullable=False)
+
+#
+# Option helpers
+#
+
+def getOption(option):
+    settings = GlobalSettings.query.filter_by(option_name=option).first()
+    if settings:
+        return settings.option_value
+    else:
+        return False
+
+def setOption(option, value):
+    settings = GlobalSettings.query.filter_by(option_name=option).first()
+    if settings:
+        settings.option_value = value
+    else:
+        DB.session.add(GlobalSettings(option_name=option, option_value=value))
+    DB.session.commit()
 
 #
 # Authentication
@@ -280,7 +295,7 @@ def index():
 def heats():
     '''Route to heat summary page.'''
     return render_template('heats.html', num_nodes=RACE.num_nodes, heats=Heat, pilots=Pilot, \
-        frequencies=[node.frequency for node in INTERFACE.nodes], settings=GlobalSettings)
+        frequencies=[node.frequency for node in INTERFACE.nodes], getOption=getOption)
 
 @APP.route('/race')
 @requires_auth
@@ -290,7 +305,7 @@ def race():
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            race_format=RaceFormat.query.get(1),
-                           settings=GlobalSettings,
+                           getOption=getOption,
         frequencies=[node.frequency for node in INTERFACE.nodes])
 
 @APP.route('/current')
@@ -300,7 +315,7 @@ def racepublic():
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            race_format=RaceFormat.query.get(1),
-                           settings=GlobalSettings,
+                           getOption=getOption,
         frequencies=[node.frequency for node in INTERFACE.nodes])
 
 @APP.route('/settings')
@@ -311,10 +326,9 @@ def settings():
     return render_template('settings.html', num_nodes=RACE.num_nodes,
                            pilots=Pilot,
                            heats=Heat,
-                           last_profile =  LastProfile,
                            profiles = Profiles,
                            race_format=RaceFormat.query.get(1),
-                           settings=GlobalSettings)
+                           getOption=getOption)
 
 @APP.route('/correction')
 @requires_auth
@@ -322,9 +336,9 @@ def correction():
     '''Route to node correction page.'''
 
     return render_template('correction.html', num_nodes=RACE.num_nodes,
-                           last_profile =  LastProfile,
+                           last_profile = getOption("lastProfile"),
                            profiles = Profiles,
-                           settings=GlobalSettings)
+                           getOption=getOption)
 
 # Debug Routes
 
@@ -340,7 +354,7 @@ def database():
     '''Route to database page.'''
     return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
         savedraces=SavedRace, race_format=RaceFormat.query.get(1), \
-        node_data=NodeData, settings=GlobalSettings)
+        node_data=NodeData, getOption=getOption)
 
 #
 # Socket IO Events
@@ -482,26 +496,24 @@ def on_add_profile():
 def on_delete_profile():
     '''Delete profile'''
     if (DB.session.query(Profiles).count() > 1): # keep one profile
-     last_profile = LastProfile.query.get(1).profile_id
-     profile = Profiles.query.get(last_profile)
-     DB.session.delete(profile)
-     DB.session.commit()
-     last_profile =  LastProfile.query.get(1)
-     first_profile_id = Profiles.query.first().id
-     last_profile.profile_id = first_profile_id
-     DB.session.commit()
-     profile =Profiles.query.get(first_profile_id)
-     INTERFACE.set_calibration_threshold_global(profile.c_threshold)
-     INTERFACE.set_calibration_offset_global(profile.c_offset)
-     INTERFACE.set_trigger_threshold_global(profile.t_threshold)
-     INTERFACE.set_filter_ratio_global(profile.f_ratio)
-     emit_node_tuning()
+        last_profile = int(getOption("lastProfile"))
+        profile = Profiles.query.get(last_profile)
+        DB.session.delete(profile)
+        DB.session.commit()
+        first_profile_id = Profiles.query.first().id
+        setOption("lastProfile", first_profile_id)
+        profile =Profiles.query.get(first_profile_id)
+        INTERFACE.set_calibration_threshold_global(profile.c_threshold)
+        INTERFACE.set_calibration_offset_global(profile.c_offset)
+        INTERFACE.set_trigger_threshold_global(profile.t_threshold)
+        INTERFACE.set_filter_ratio_global(profile.f_ratio)
+        emit_node_tuning()
 
 @SOCKET_IO.on('set_profile_name')
 def on_set_profile_name(data):
     ''' update profile name '''
     profile_name = data['profile_name']
-    last_profile = LastProfile.query.get(1)
+    last_profile = int(getOption("lastProfile"))
     profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
     profile.name = profile_name
     DB.session.commit()
@@ -512,8 +524,8 @@ def on_set_profile_name(data):
 def on_set_profile_description(data):
     ''' update profile description '''
     profile_description = data['profile_description']
-    last_profile = LastProfile.query.get(1)
-    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    last_profile = int(getOption("lastProfile"))
+    profile = Profiles.query.filter_by(id=last_profile).first()
     profile.description = profile_description
     DB.session.commit()
     server_log('set profile description %s for profile %s' %
@@ -525,8 +537,8 @@ def on_set_calibration_threshold(data):
     '''Set Calibration Threshold.'''
     calibration_threshold = data['calibration_threshold']
     INTERFACE.set_calibration_threshold_global(calibration_threshold)
-    last_profile = LastProfile.query.get(1)
-    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    last_profile = int(getOption("lastProfile"))
+    profile = Profiles.query.filter_by(id=last_profile).first()
     profile.c_threshold = calibration_threshold
     DB.session.commit()
     server_log('Calibration threshold set: {0}'.format(calibration_threshold))
@@ -537,8 +549,8 @@ def on_set_calibration_offset(data):
     '''Set Calibration Offset.'''
     calibration_offset = data['calibration_offset']
     INTERFACE.set_calibration_offset_global(calibration_offset)
-    last_profile = LastProfile.query.get(1)
-    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    last_profile = int(getOption("lastProfile"))
+    profile = Profiles.query.filter_by(id=last_profile).first()
     profile.c_offset = calibration_offset
     DB.session.commit()
     server_log('Calibration offset set: {0}'.format(calibration_offset))
@@ -549,8 +561,8 @@ def on_set_trigger_threshold(data):
     '''Set Trigger Threshold.'''
     trigger_threshold = data['trigger_threshold']
     INTERFACE.set_trigger_threshold_global(trigger_threshold)
-    last_profile = LastProfile.query.get(1)
-    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    last_profile = int(getOption("lastProfile"))
+    profile = Profiles.query.filter_by(id=last_profile).first()
     profile.t_threshold = trigger_threshold
     DB.session.commit()
     server_log('Trigger threshold set: {0}'.format(trigger_threshold))
@@ -561,8 +573,8 @@ def on_set_filter_ratio(data):
     '''Set Trigger Threshold.'''
     filter_ratio = data['filter_ratio']
     INTERFACE.set_filter_ratio_global(filter_ratio)
-    last_profile = LastProfile.query.get(1)
-    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    last_profile = int(getOption("lastProfile"))
+    profile = Profiles.query.filter_by(id=last_profile).first()
     profile.f_ratio = filter_ratio
     DB.session.commit()
     server_log('Filter ratio set: {0}'.format(filter_ratio))
@@ -596,8 +608,7 @@ def on_set_profile(data):
     profile_val = data['profile']
     profile =Profiles.query.filter_by(name=profile_val).first()
     DB.session.flush()
-    last_profile = LastProfile.query.get(1)
-    last_profile.profile_id = profile.id
+    setOption("lastProfile", profile.id)
     DB.session.commit()
     INTERFACE.set_calibration_threshold_global(profile.c_threshold)
     INTERFACE.set_calibration_offset_global(profile.c_offset)
@@ -822,8 +833,8 @@ def emit_node_data():
 
 def emit_node_tuning():
     '''Emits node tuning values.'''
-    last_profile = LastProfile.query.get(1)
-    tune_val = Profiles.query.get(last_profile.profile_id)
+    last_profile = int(getOption("lastProfile"))
+    tune_val = Profiles.query.get(last_profile)
     SOCKET_IO.emit('node_tuning', {
         'calibration_threshold': \
             tune_val.c_threshold,
@@ -1236,10 +1247,8 @@ def db_reset_profile():
     server_log("Database set default profiles for 25,200,600 mW races")
 
 def db_reset_default_profile():
-    DB.session.query(LastProfile).delete()
-    DB.session.add(LastProfile(profile_id=1))
-    DB.session.commit()
-    server_log("Database set default profile on default 25mW race")
+    setOption("lastProfile", 1)
+    server_log("Database set default profile to first in list")
 
 def db_reset_fix_race_time():
     DB.session.query(RaceFormat).delete()
@@ -1264,12 +1273,10 @@ def db_reset_node_values():
 
 def db_reset_options_defaults():
     DB.session.query(GlobalSettings).delete()
-    DB.session.add(GlobalSettings(option_name="timerName",
-                                option_value="Delta5 Race Timer"))
-    DB.session.add(GlobalSettings(option_name="lastProfile",
-                                option_value="1"))
-    DB.session.commit()
+    setOption("timerName", "Delta5 Race Timer")
+    setOption("lastProfile", "1")
     server_log("Reset global settings")
+
 #
 # Program Initialize
 #
@@ -1293,8 +1300,8 @@ else:
 db_reset_current_laps()
 
 # Send initial profile values to nodes
-last_profile = LastProfile.query.get(1)
-tune_val = Profiles.query.get(last_profile.profile_id)
+last_profile = int(getOption("lastProfile"))
+tune_val = Profiles.query.get(last_profile)
 INTERFACE.set_calibration_threshold_global(tune_val.c_threshold)
 INTERFACE.set_calibration_offset_global(tune_val.c_offset)
 INTERFACE.set_trigger_threshold_global(tune_val.t_threshold)
