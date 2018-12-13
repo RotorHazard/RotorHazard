@@ -425,6 +425,14 @@
 			return false;
 		});
 
+		$('#set_timer_name').change(function (event) {
+				var data = {
+					timer_name: $(this).val()
+				};
+				socket.emit('set_timer_name', data);
+				return false;
+		});
+
 		/* LED Controls */
 		$('button#LED_OFF').click(function (event) { //OFF
 				var data = {
@@ -771,14 +779,14 @@
 			<label for="set_fix_race_time">Timer Duration (seconds)</label>
 			<p class="desc">Count-down timed races</p>
 		</div>
-		<input type="text" id="set_fix_race_time">
+		<input type="number" id="set_fix_race_time" min="0" max="99999">
 	</li>
 	<li>
 		<div class="label-block">
 			<label for="set_min_lap">Minimum lap time (seconds)</label>
 			<p class="desc">Prevents repeated triggering</p>
 		</div>
-		<input type="text" id="set_min_lap">
+		<input type="number" id="set_min_lap" min="0" max="999">
 	</li>
 	<li>
 		<div class="label-block">
@@ -794,14 +802,14 @@
 			<label for="set_start_delay_min">Minimum Start Delay</label>
 			<p class="desc">Minimum time before race begins</p>
 		</div>
-		<input type="text" id="set_start_delay_min">
+		<input type="number" id="set_start_delay_min" min="0" max="999">
 	</li>
 	<li>
 		<div class="label-block">
 			<label for="set_start_delay_max">Maximum Start Delay</label>
 			<p class="desc">Maximum time before race begins</p>
 		</div>
-		<input type="text" id="set_start_delay_max">
+		<input type="number" id="set_start_delay_max" min="0" max="999">
 	</li>
 </ol>
 
@@ -941,6 +949,12 @@
 
 <!-- Shut down -->
 <h2>System</h2>
+
+<div class="label-block">
+	<label for="set_timer_name">Timer Name</label>
+</div>
+<input type="text" id="set_timer_name" value="{{ getOption('timerName') }}">
+
 <p>(Safely shutdown raspberry pi)</p>
 <div class="control-set">
 	<button type="button" class="btn-danger" id="shutdown_pi" onclick="this.blur();">Shutdown</button>

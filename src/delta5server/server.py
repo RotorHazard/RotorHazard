@@ -888,6 +888,10 @@ def on_LED_RBCYCLE():
 def on_LED_RBCHASE():
     theaterChaseRainbow(strip) #Rainbow Chase
 
+@SOCKET_IO.on('set_timer_name')
+def on_set_timer_name(data):
+    setOption('timerName', data['timer_name'])
+
 # Socket io emit functions
 
 def emit_race_status():
@@ -1290,7 +1294,7 @@ def db_reset_profile():
                              f_ratio=100))
     DB.session.add(Profiles(name="Indoor 25mW",
                              description ="Low speed, 25mW, enclosed area",
-                             c_offset=8,
+                             c_offset=20,
                              c_threshold=65,
                              t_threshold=40,
                              f_ratio=10))
