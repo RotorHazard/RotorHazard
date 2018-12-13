@@ -294,7 +294,7 @@ def index():
     # print heat_max_laps
     # print heat_fast_laps
     return render_template('rounds.html', num_nodes=RACE.num_nodes, rounds=SavedRace, \
-        pilots=Pilot, heats=Heat)
+        pilots=Pilot, heats=Heat, getOption=getOption)
         #, heat_max_laps=heat_max_laps, heat_fast_laps=heat_fast_laps
 
 @APP.route('/')
@@ -956,6 +956,7 @@ def emit_pilot_data():
     SOCKET_IO.emit('pilot_data', {
         'pilot_id': [pilot.pilot_id for pilot in Pilot.query.all()],
         'callsign': [pilot.callsign for pilot in Pilot.query.all()],
+        'phonetic': [pilot.phonetic for pilot in Pilot.query.all()],
         'name': [pilot.name for pilot in Pilot.query.all()]
     })
     emit_heat_data()
@@ -1188,6 +1189,7 @@ def db_reset_pilots():
             name='Pilot Name', phonetic='callsign{0}'.format(node+1)))
     DB.session.commit()
     server_log('Database pilots reset')
+
 def db_reset_heats():
     '''Resets database heats to default.'''
     DB.session.query(Heat).delete()
@@ -1236,11 +1238,8 @@ def db_reset_profile():
                              t_threshold=40,
                              f_ratio=100))
     DB.session.commit()
-    server_log("Database set default profiles for 25,200,600 mW races")
-
-def db_reset_default_profile():
     setOption("lastProfile", 1)
-    server_log("Database set default profile to first in list")
+    server_log("Database set default profiles")
 
 def db_reset_fix_race_time():
     DB.session.query(RaceFormat).delete()
