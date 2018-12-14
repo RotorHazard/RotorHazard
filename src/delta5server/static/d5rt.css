@@ -121,6 +121,16 @@ button:disabled, select:disabled {
 	background: linear-gradient(to bottom, hsl(225, 1.8%, 80%) 0%,hsl(225, 1.8%, 40%) 100%);
 }
 
+button.no-style {
+	border: none;
+	padding: 0;
+	color: inherit;
+	font-size: inherit;
+	min-height: 0;
+	display: block;
+	background: transparent;
+}
+
 ol.form {
 	padding: 0;
 	list-style: none;
@@ -159,6 +169,27 @@ ol.form .desc {
 	ol.form select {
 		width: 20em;
 	}
+}
+
+.panel {
+	margin: 0;
+	padding: 0;
+}
+
+.panel-header {
+	padding: 0 0 1rem;
+}
+
+.active .panel-header {
+	cursor: pointer;
+}
+
+.panel-header h2 {
+	margin-bottom: 0;
+}
+
+.panel-content {
+	padding: 0 0 1em;
 }
 
 .control-set {
@@ -746,7 +777,9 @@ main {
 }
 
 #set_current_heat,
-#set_profile {
+#set_race_format,
+#set_profile,
+#reset_type {
 	width: auto;
 }
 

@@ -26,7 +26,7 @@ function convertColor(color) {
 	rgbColor.g = parseInt(color.substring(2,4),16);
 	rgbColor.b = parseInt(color.substring(4),16);
 	return rgbColor;
- }
+}
 
 /* d5rt object for local settings/storage */
 var d5rt = {
@@ -220,10 +220,37 @@ jQuery(document).ready(function($){
 		}
 	});
 
-
 	// responsive tables
 	$('table').wrap('<div class="table-wrap">');
 
+	// Panel collapsing
+	if ($('.collapsing').length) {
+		$('.collapsing').each(function(){
+			var el = $(this)
+			$(el).addClass('active');
+
+			el.find('.panel-content').hide();
+			el.find('.panel-header>*').wrapInner('<button class="no-style">');
+			el.find('.panel-header').click(function(){
+				var thisitem = $(this).parent();
+				if (thisitem.hasClass('open')) {
+					thisitem.removeClass('open');
+					thisitem.find('.panel-content').slideUp();
+				} else {
+					thisitem.addClass('open');
+					thisitem.find('.panel-content').slideDown();
+				}
+			});
+		});
+
+		if(window.location.hash) {
+			var panel = $(window.location.hash);
+			if (panel.length() && panel.children().hasClass('panel-header')) {
+				panel.addClass('open').find('.panel-content').show();
+				location.hash = window.location.hash;
+			}
+		}
+	}
 });
 }
 
