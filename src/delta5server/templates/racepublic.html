@@ -2,12 +2,11 @@
 <script type="text/javascript" charset="utf-8">
 	var request_time;
 	var race_time_sec; // store locally to reset visible timer
+	var buzzer = false;
+	var stagebuzzer = false;
 
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-
-		var buzzer = false;
-		var stagebuzzer = false;
 
 		// set up nodes
 		$('.node').each(function(){
@@ -140,7 +139,7 @@
 
 		/* Voice */
 		// construct language selection
-		$('#voice_select').after('<select class="set_language">');
+		$('#voice_select').after('<select id="set_language" class="set_language">');
 		var voices = $().articulate('getVoices');
 
 		for (var i in voices) {
@@ -196,10 +195,7 @@
 		<div class="race-results">
 			{% for node in range(num_nodes) %}
 			<div class="node" data-id="{{ node }}">
-				<h4 class="callsign_{{ node }}">
-					{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
-					}}
-				</h4>
+				<h4 class="callsign_{{ node }}">Laoding...</h4>
 				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
 				<table class="laps" id="current_laps_{{ node }}">
 					<tbody>
@@ -218,8 +214,13 @@
 		<h2>Audio Control</h2>
 	</div>
 	<div class="panel-content">
-		<div id="voice_select"></div>
+		
 		<ol class="form">
+			<li>
+				<div class="label-block" id="voice_select">
+					<label for="set_language">Voice Select</label>
+				</div>		
+			</li>
 			<li>
 				<div class="label-block">
 					<label for="voice-calls">Voice Calls</label>

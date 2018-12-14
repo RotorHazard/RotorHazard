@@ -10,15 +10,9 @@
 		var pre_race = false; // pre-race countdown
 		var pre_delay = 0; // pre-race countdown duration
 		var hide_countdown = 0; // hide pre-race display (for random delay)
-		var buzzer = false;
-		var stagebuzzer = false;
 
-		if ($('buzzer').length) {
-			this.buzzer = $('buzzer')[0]; // Buzzer audio tag is loaded on race page already
-		}
-		if ($('satgebuzzer').length) {
-			this.stagebuzzer = $('stagebuzzer')[0]; // Buzzer audio tag is loaded on race page already
-		}
+		this.buzzer = $('#buzzer')[0]; // Buzzer audio tag is loaded on race page already
+		this.stagebuzzer = $('#stagebuzzer')[0]; // Buzzer audio tag is loaded on race page already
 
 		// Start the timer
 		this.start = function () {
