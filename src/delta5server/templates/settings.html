@@ -547,12 +547,12 @@
 					<div class="channel_{{ node }}"></div>
 					<div class="pilot-name">
 						<select class="set_pilot_position" id="heat_{{ heat.heat_id }}_node_{{ node }}" data-heat="{{ heat.heat_id }}" data-node="{{ node }}">
-							{% set heatpilotid = pilots.query.filter_by(pilot_id=
+							{% set heatpilotid = pilots.query.filter_by(id=
 								heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id
-								).first().pilot_id %}
+								).first().id %}
 							{% for pilot in pilots.query.order_by(pilots.name).all() %}
-							<option value="{{ pilot.pilot_id }}"
-								{% if pilot.pilot_id|int() == heatpilotid|int() %}
+							<option value="{{ pilot.id }}"
+								{% if pilot.id|int() == heatpilotid|int() %}
 									selected="selected"
 								{% endif %}>
 								{{ pilot.callsign }} ({{ pilot.name }})
@@ -573,19 +573,19 @@
 <!--Pilots list for editing-->
 <h2>Pilots</h2>
 <ul class="pilots">
-	{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
-		<li>
-			<label for="name_{{ pilot.pilot_id }}" class="screen-reader-text">Name</label>
-			<input type="text" class="set_pilot_name" id="name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}" placeholder="Name">
+	{% for pilot in pilots.query.all() %} {% if pilot.id != 1 %}
+		<li data-id="{{ pilot.id }}">
+			<label for="name_{{ pilot.id }}" class="screen-reader-text">Name</label>
+			<input type="text" class="set_pilot_name" id="name_{{ pilot.id }}" data-pilot_id="{{ pilot.id }}" value="{{ pilot.name }}" placeholder="Name">
 
-			<label for="callsign_{{ pilot.pilot_id }}" class="screen-reader-text">Call Sign</label>
-			<input type="text" class="set_pilot_callsign" id="callsign_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
+			<label for="callsign_{{ pilot.id }}" class="screen-reader-text">Call Sign</label>
+			<input type="text" class="set_pilot_callsign" id="callsign_{{ pilot.id }}" data-pilot_id="{{ pilot.id }}"
 			 value="{{ pilot.callsign }}" placeholder="Call Sign">
 
 			<label for="" class="screen-reader-text">Phonetic</label>
 			<div class="phonetic">
-				<input type="text" class="set_pilot_phonetic" id="phonetic_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.phonetic }}" placeholder="Phonetic">
-				<button type="button" class="speak_pilot" onclick="this.blur();" data-pilot_id="{{ pilot.pilot_id }}">&#9658; <span class="screen-reader-text">Play</span></button>
+				<input type="text" class="set_pilot_phonetic" id="phonetic_{{ pilot.id }}" data-pilot_id="{{ pilot.id }}" value="{{ pilot.phonetic }}" placeholder="Phonetic">
+				<button type="button" class="speak_pilot" onclick="this.blur();" data-pilot_id="{{ pilot.id }}">&#9658; <span class="screen-reader-text">Play</span></button>
 			</div>
 		</li>
 	{% endif %} {% endfor %}

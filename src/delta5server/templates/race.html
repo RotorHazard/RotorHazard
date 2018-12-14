@@ -371,7 +371,7 @@
 	{% for node in range(num_nodes) %}
 	<div class="node">
 		<h4 class="callsign_{{ node }}">
-			{{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
+			{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 			}}
 		</h4>
 		<div class="race-header">
