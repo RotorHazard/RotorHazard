@@ -63,9 +63,6 @@
 
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
-				/*
-				$('.channel_' + i).html('<div class="channel-block"><span class="ch">' + msg.channel[i] + '</span> <span class="fr">' + msg.frequency[i] + '</span></div>');
-				*/
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
@@ -131,9 +128,9 @@
 
 		socket.on('pilot_data', function (msg) {
 			for (i = 0; i < msg.callsign.length; i++) {
-				$('#callsign_' + i).attr('value', msg.callsign[i]);
-				$('#name_' + i).attr('value', msg.name[i]);
-				$('#phonetic_' + i).attr('value', msg.phonetic[i]);
+				$('#callsign_' + msg.pilot_id[i]).attr('value', msg.callsign[i]);
+				$('#name_' + msg.pilot_id[i]).attr('value', msg.name[i]);
+				$('#phonetic_' + msg.pilot_id[i]).attr('value', msg.phonetic[i]);
 			}
 
 			$('.set_pilot_position').each(function(){
@@ -535,7 +532,7 @@
 
 <!--Heats list for editing-->
 <h2>Heats</h2>
-<p>Don't change a heat after it has a saved race.</p>
+<p>Changes to heats will affect saved races.</p>
 <ol id="heatsetup" class="heats">
 	{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
 	<li>

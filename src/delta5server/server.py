@@ -199,7 +199,7 @@ class NodeData(DB.Model):
 
 class GlobalSettings(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
-    option_name = DB.Column(DB.String(256), nullable=False)
+    option_name = DB.Column(DB.String(40), nullable=False)
     option_value = DB.Column(DB.String(256), nullable=False)
 
 #
@@ -655,7 +655,7 @@ def on_add_race_format():
 @SOCKET_IO.on('delete_race_format')
 def on_delete_race_format():
     '''Delete profile'''
-    if (DB.session.query(RaceFormat).count() > 1): # keep one profile
+    if (DB.session.query(RaceFormat).count() > 1): # keep one format
         last_raceFormat = int(getOption("lastFormat"))
         raceformat = RaceFormat.query.get(last_raceFormat)
         DB.session.delete(raceformat)
