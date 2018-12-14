@@ -132,7 +132,7 @@ strip.begin()
 class Pilot(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     callsign = DB.Column(DB.String(80), unique=True, nullable=False)
-    phonetic = DB.Column(DB.String(80), unique=True, nullable=False)
+    phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
 
     def __repr__(self):
@@ -481,14 +481,6 @@ def on_set_pilot_name(data):
     DB.session.commit()
     server_log('Pilot name set: Pilot {0} Name {1}'.format(pilot_id, name))
     emit_pilot_data() # Settings page, new pilot name
-
-@SOCKET_IO.on('speak_pilot')
-def on_speak_pilot(data):
-    '''Speaks the phonetic name of the pilot.'''
-    pilot_id = data['pilot_id']
-    phtext = Pilot.query.filter_by(pilot_id=pilot_id).first().phonetic
-    emit_phonetic_text(phtext)
-    server_log('Speak pilot: {0}'.format(phtext))
 
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
@@ -1064,13 +1056,15 @@ def emit_current_heat():
 def emit_phonetic_data(pilot_id, lap_id, lap_time):
     '''Emits phonetic data.'''
     phonetic_time = phonetictime_format(lap_time)
-    phonetic_name = Pilot.query.filter_by(pilot_id=pilot_id).first().phonetic
-    pilot_id = Pilot.query.filter_by(pilot_id=pilot_id).first().pilot_id
-    SOCKET_IO.emit('phonetic_data', {'pilot': phonetic_name, 'pilot_id': pilot_id, 'lap': lap_id, 'phonetic': phonetic_time})
-
-def emit_phonetic_text(phtext):
-    '''Emits given phonetic text.'''
-    SOCKET_IO.emit('speak_phonetic_text', {'text': phtext})
+    phonetic_name = Pilot.query.filter_by(id=pilot_id).first().phonetic
+    callsign = Pilot.query.filter_by(id=pilot_id).first().callsign
+    pilot_id = Pilot.query.filter_by(id=pilot_id).first().id
+    SOCKET_IO.emit('phonetic_data', {
+        'pilot': phonetic_name,
+        'callsign': callsign,
+        'pilot_id': pilot_id,
+        'lap': lap_id,
+        'phonetic': phonetic_time})
 
 #
 # Program Functions

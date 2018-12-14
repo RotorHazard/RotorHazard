@@ -161,11 +161,6 @@
 			});
 		});
 
-		socket.on('speak_phonetic_text', function (msg) {
-			var $ttstext = msg.text;
-			speak('<div class="speech">' + $ttstext + '</div>');
-		})
-
 		/* Nodes */
 		$('.frequency_table').change(function (event) {
 			if ($(this).val() != "n/a") {
@@ -256,11 +251,15 @@
 		})
 
 		$('button.speak_pilot').click(function (event) {
-			var data = {
-				pilot_id: parseInt($(this).data('pilot_id')),
-				phonetic: $(this).val()
-			};
-			socket.emit('speak_pilot', data);
+			var el = $(this).closest('li');
+			var callsign = el.find('.set_pilot_callsign').val()
+			var phonetic = el.find('.set_pilot_phonetic').val()
+			
+			var ttstext = callsign;
+			if (phonetic)
+				ttstext = phonetic;
+
+			speak('<div class="speech">' + ttstext + '</div>');
 			return false;
 		});
 
