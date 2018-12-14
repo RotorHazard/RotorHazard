@@ -338,11 +338,15 @@
 <div class="control-set">
 	<label for="set_current_heat" class="screen-reader-text">Current Heat</label>
 	<select id="set_current_heat">
-		{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
+		{% for heat in heats.query.filter_by(node_index=0).all() %}
 		<option value="{{ heat.heat_id }}" {% if heat.heat_id|int() == current_heat|int() %}
 				selected="selected"
 			{% endif %}>
-			Heat {{ heat.heat_id }}
+			{% if heat.note %}
+				{{ heat.note }}
+			{% else %}
+				Heat {{ heat.heat_id }}
+			{% endif %}
 		</option>
 		{% endfor %}
 	</select>

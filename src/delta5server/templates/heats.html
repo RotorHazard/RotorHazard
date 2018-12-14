@@ -17,15 +17,19 @@
 
 <h2>Heats</h2>
 <ol class="heats">
-	{% for heat in heats.query.with_entities(heats.heat_id).distinct().order_by(heats.heat_id) %}
+	{% for heat in heats.query.filter_by(node_index=0).order_by(heats.heat_id).all() %}
 	<li class="heat">
-		<h3>Heat {{ heat.heat_id }}</h3>
+		<h3>{% if heat.note %}
+				{{ heat.note }}
+			{% else %}
+				Heat {{ heat.heat_id }}
+			{% endif %}</h3>
 		<ol>
 			{% for node in range(num_nodes) %}
 			<li>
 				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
 
-				<div class="pilot-name">{{ pilots.query.filter_by(pilot_id= heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign
+				<div class="pilot-name">{{ pilots.query.filter_by(id= heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign
 					}}</div>
 			</li>
 			{% endfor %}
@@ -37,7 +41,7 @@
 <!--Display the pilots-->
 <h2>Pilots</h2>
 <ul class="pilots">
-	{% for pilot in pilots.query.order_by(pilots.callsign).all() %} {% if pilot.pilot_id != 0 %}
+	{% for pilot in pilots.query.order_by(pilots.callsign).all() %} {% if pilot.id != 1 %}
 	<li>
 		<div class="callsign">{{ pilot.callsign }}</div>
 		<div class="name">{{ pilot.name }}</div>

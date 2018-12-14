@@ -92,7 +92,11 @@
 		})
 
 		socket.on('current_heat', function (msg) {
-			$('.current_heat').html('Heat ' + msg.current_heat);
+			var heatname = 'Heat ' + msg.current_heat;
+			if (msg.heat_note)
+				heatname = msg.heat_note;
+
+			$('.current_heat').html(heatname);
 			for (i = 0; i < msg.callsign.length; i++) {
 				$('.callsign_' + i).html(msg.callsign[i]);
 			}
@@ -150,7 +154,7 @@
 <!--Buttons for controlling the race-->
 <p>{% include "build_timer.html" %}</p>
 
-<h2 class="current_heat">Heat {{ current_heat }}</h2>
+<h2 class="current_heat">Loading...</h2>
 
 <!--Display the race leaderboard-->
 <table class="table" id="leaderboard">

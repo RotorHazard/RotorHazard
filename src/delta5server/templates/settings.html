@@ -119,6 +119,7 @@
 
 		socket.on('heat_data', function (msg) {
 			$.each(msg.heat_id, function (i, heat_id) {
+				$('#heat-note-' + heat_id.heat_id).val(heat_id.note);
 				$.each(heat_id.callsign, function (j, callsign) {
 					var selectbox = $('#heat_' + (i + 1) + '_node_' + j);
 					selectbox.val(callsign);
@@ -192,6 +193,14 @@
 		});
 
 		/* Heats */
+		$('.set_heat_note').change(function (event) {
+			var data = {
+				heat: parseInt($(this).data('heat')),
+				note: $(this).val(),
+			};
+			socket.emit('set_heat_note', data);
+		});
+
 		$('.set_pilot_position').change(function (event) {
 			var data = {
 				heat: parseInt($(this).data('heat')),
@@ -537,6 +546,7 @@
 	{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
 	<li>
 		<h3>Heat {{ heat.heat_id }}</h3>
+		<input type="text" id="heat-note-{{heat.heat_id}}" class="set_heat_note" data-heat="{{heat.heat_id}}" value="{{ heats.query.filter_by(id=heat.heat_id, node_index=0).first().note }}" placeholder="Name (Heat {{heat.heat_id}})" maxlength="80">
 		<ol>
 			{% for node in range(num_nodes) %}
 				<li>

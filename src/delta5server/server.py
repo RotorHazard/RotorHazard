@@ -143,6 +143,7 @@ class Heat(DB.Model):
     heat_id = DB.Column(DB.Integer, nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
     pilot_id = DB.Column(DB.Integer, nullable=False)
+    note = DB.Column(DB.String(80), nullable=True)
 
     def __repr__(self):
         return '<Heat %r>' % self.heat_id
@@ -317,7 +318,6 @@ def race():
 def racepublic():
     '''Route to race management page.'''
     return render_template('racepublic.html', num_nodes=RACE.num_nodes,
-                           current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            getOption=getOption,
         frequencies=[node.frequency for node in INTERFACE.nodes])
@@ -376,6 +376,7 @@ def connect_handler():
     emit_node_data() # Settings page, node channel and triggers
     emit_node_tuning() # Settings page, node tuning values
     emit_race_format() # Settings page, race format values
+    emit_current_heat() # Race page, heat selector
     emit_race_status() # Race page, to set race button states
     emit_current_laps() # Race page, load and current laps
     emit_leaderboard() # Race page, load leaderboard for current laps
@@ -430,6 +431,17 @@ def on_set_pilot_position(data):
     db_update.pilot_id = pilot
     DB.session.commit()
     server_log('Pilot position set: Heat {0} Node {1} Pilot {2}'.format(heat, node_index+1, pilot))
+    emit_heat_data() # Settings page, new pilot position in heats
+
+@SOCKET_IO.on('set_heat_note')
+def on_set_heat_note(data):
+    '''Sets a new pilot in a heat.'''
+    heat = data['heat']
+    note = data['note']
+    db_update = Heat.query.filter_by(heat_id=heat, node_index=0).first()
+    db_update.note = note
+    DB.session.commit()
+    server_log('Heat note: Heat {0}'.format(heat))
     emit_heat_data() # Settings page, new pilot position in heats
 
 @SOCKET_IO.on('add_pilot')
@@ -1026,7 +1038,12 @@ def emit_heat_data():
         for node in range(RACE.num_nodes):
             pilot_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=node).first().pilot_id
             pilots.append(pilot_id)
-        current_heats.append({'callsign': pilots})
+        heat_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=0).first().heat_id
+        note = Heat.query.filter_by(heat_id=heat.heat_id, node_index=0).first().note
+        current_heats.append({'callsign': pilots,
+                              'note': note,
+                              'heat_id': heat_id})
+
     current_heats = {'heat_id': current_heats}
     SOCKET_IO.emit('heat_data', current_heats)
 
@@ -1047,10 +1064,12 @@ def emit_current_heat():
         pilot_id = Heat.query.filter_by( \
             heat_id=RACE.current_heat, node_index=node).first().pilot_id
         callsigns.append(Pilot.query.filter_by(id=pilot_id).first().callsign)
+    heat_note = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first().note
 
     SOCKET_IO.emit('current_heat', {
         'current_heat': RACE.current_heat,
-        'callsign': callsigns
+        'callsign': callsigns,
+        'heat_note': heat_note
     })
 
 def emit_phonetic_data(pilot_id, lap_id, lap_time):
@@ -1266,7 +1285,10 @@ def db_reset_heats():
     '''Resets database heats to default.'''
     DB.session.query(Heat).delete()
     for node in range(RACE.num_nodes):
-        DB.session.add(Heat(heat_id=1, node_index=node, pilot_id=node+1))
+        if node == 0:
+            DB.session.add(Heat(heat_id=1, node_index=node, note='', pilot_id=node+2))
+        else:
+            DB.session.add(Heat(heat_id=1, node_index=node, pilot_id=node+2))
     DB.session.commit()
     server_log('Database heats reset')
 
