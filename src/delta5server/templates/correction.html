@@ -150,8 +150,13 @@
 		d5rt.saveData();
 		$('nav li').removeClass('admin-hide');
 
+		// populate frequency selects
+		$('.frequency_table').each(function(){
+			$(this).html(freqTable.buildSelect());
+		});
+
 		// set up RSSI graphing
-		$('.current .node table tr:first-child').each(function(){
+		$('table.has-graph tr:first-child').each(function(){
 			var node = $(this);
 			var node_id = parseInt(node.find('td select').attr('data-node'));
 			node.before('<tr><td colspan="2" class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></td></tr>');
@@ -251,13 +256,19 @@
 
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
-				$('.channel_' + i).html('<div class="channel-block"><span class="ch">' + msg.channel[i] + '</span> <span class="fr">' + msg.frequency[i] + '</span></div>');
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
 				$('#set_node_offset_' + i).val(msg.node_offset[i]);
 
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
+				var freqExists = $('#f_table_' + i + ' option[value=' + msg.frequency[i] + ']').length;
+				if (freqExists) {
+					$('#f_table_' + i).val(msg.frequency[i]);
+				} else {
+					$('#f_table_' + i).val('n/a');
+				}
+
 				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
 				d5rt.nodes[i].calibration_threshold = msg.trigger_rssi[i] - parseInt($('#set_calibration_threshold').val());
 				d5rt.nodes[i].trigger_threshold = msg.trigger_rssi[i] - parseInt($('#set_trigger_threshold').val());
@@ -268,6 +279,11 @@
 		});
 
 		socket.on('node_tuning', function (msg) {
+			$('#set_profile').empty();
+			for (i = 0; i < msg.profile_ids.length; i++) {
+				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
+			}
+			$('#set_profile').val(msg.last_profile);
 			$('#set_calibration_threshold').val( msg.calibration_threshold);
 			$('#set_calibration_offset').val( msg.calibration_offset);
 			$('#set_trigger_threshold').val( msg.trigger_threshold);
@@ -276,12 +292,27 @@
 			$('#set_profile_description').val( msg.profile_description);
 		});
 
+		$('.frequency_table').change(function (event) {
+			if ($(this).val() != "n/a") {
+				var node = $(this).data('node');
+				var frequency = parseInt($(this).val());
+				$('#s_channel_' + node).val(frequency).trigger('change');
+			}
+		});
+
 		$('.set_frequency').change(function (event) {
 			var data = {
 				node: parseInt($(this).data('node')),
 				frequency: parseInt($(this).val()),
 			};
 			socket.emit('set_frequency', data);
+
+			var freqExists = $('#f_table_' + $(this).data('node') + ' option[value=' + $(this).val() + ']').length;
+			if (freqExists) {
+				$('#f_table_' + $(this).data('node')).val($(this).val());
+			} else {
+				$('#f_table_' + $(this).data('node')).val('n/a');
+			}
 		});
 
 		$('.set_node_offset').change(function (event) {
@@ -360,24 +391,23 @@
 
 <!--Display node data-->
 <h2>Nodes</h2>
-<div class="node-list current">
+<div class="node-list">
 	{% for node in range(num_nodes) %}
 	<div class="node">
 		<h3>Node {{ node + 1 }}</h3>
-		<table>
+		<table class="has-graph">
 			<tr>
 				<td colspan="2">
-					<select class="set_frequency" id="s_channel_{{ node }}" data-node="{{ node }}">
-						{% for frequency in frequencies.query.all() %}
-						<option value="{{ frequency.frequency }}">
-							{{ frequency.channel }} {{ frequency.frequency }}
-						</option>
-						{% endfor %}
-					</select>
+					<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
+
+					<div class="compact-field">
+						<label for="s_channel_{{ node }}">Frequency</label>
+						<input type="number" id="s_channel_{{ node }}" class="set_frequency" data-node="{{ node }}" min="5300" max="6001">
+					</div>
 
 					<div class="compact-field">
 						<label for="set_node_offset_{{ node }}">Offset</label>
-						<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="0" max="65536">
+						<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="-999" max="999">
 					</div>
 				</td>
 			</tr>
@@ -415,8 +445,7 @@
 
 <h3>Instructions:</h3>
 <ol>
-	<li>Set all node scales to 1</li>
-	<li>Recommended: set all node offsets to 0</li>
+	<li>Set all node offsets to 0</li>
 	<li>Set all nodes to a single channel. (Better: use a different VTx for each channel that you will be using)</li>
 	<li>Collect profile data using VTx at different points on the course</li>
 	<li>Run calculator</li>
@@ -546,13 +575,7 @@
 <div class="control-set">
 	<label for="set_profile">Profile:</label>
 	<select id="set_profile">
-		{% for profile in profiles.query.all() %}
-		<option value="{{profile.name}}" {% if profile.name == profiles.query.get(last_profile.query.get(1).profile_id).name %}
-				selected="selected"
-			{% endif %}>
-			{{profile.name}}
-		</option>
-		{% endfor %}
+		<option>Loading...</option>
 	</select>
 	<button type="button" class="" id="add_profile" onclick="this.blur();">+ Add Profile</button>
 	<button type="button" class="btn-danger" id="delete_profile" onclick="this.blur();">&#215; Remove</button>
@@ -576,21 +599,21 @@
 			<label for="set_calibration_offset">Calibration Offset</label>
 			<p class="desc">Trigger is Peak Rssi minus Calibration Offset (Default 8)</p>
 		</div>
-		<input type="number" id="set_calibration_offset">
+		<input type="number" id="set_calibration_offset" min="1" max="65535">
 	</li>
 	<li>
 		<div class="label-block">
 			<label for="set_calibration_threshold">Calibration Threshold</label>
 			<p class="desc">Trigger minus Calibration Threshold ends calibration pass (Default 95)</p>
 		</div>
-		<input type="number" id="set_calibration_threshold">
+		<input type="number" id="set_calibration_threshold" min="1" max="65535">
 	</li>
 	<li>
 		<div class="label-block">
 			<label for="set_trigger_threshold">Trigger Threshold</label>
 			<p class="desc">Trigger minus Trigger Threshold ends normal pass (Default 40)</p>
 		</div>
-		<input type="number" id="set_trigger_threshold">
+		<input type="number" id="set_trigger_threshold" min="1" max="65535">
 	</li>
 	<li>
 		<div class="label-block">
