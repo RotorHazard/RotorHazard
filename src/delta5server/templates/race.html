@@ -272,6 +272,92 @@
 			socket.emit('set_current_heat', data);
 		});
 
+		/* Voice */
+		// construct language selection
+		$('#voice_select').after('<select class="set_language">');
+		var voices = $().articulate('getVoices');
+
+		for (var i in voices) {
+			$('.set_language').append('<option>'+ voices[i].name + '</option>');
+		}
+		$('.set_language').val(d5rt.language).attr('selected', 'selected');
+
+		$('.set_language').change(function (event) {
+			d5rt.language = $(this).val();
+			d5rt.saveData();
+		});
+
+		/* Race Format */
+		socket.on('race_format', function (msg) {
+			$('#set_race_format').empty();
+			for (i = 0; i < msg.format_ids.length; i++) {
+				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
+			}
+			$('#set_race_format').val(msg.last_format);
+		});
+
+		$('#set_race_format').change(function (event) {
+			var data = {
+				race_format: $(this).val()
+			};
+			socket.emit('set_race_format', data);
+		});
+
+		/* Calibration Profiles */
+		socket.on('node_tuning', function (msg) {
+			$('#set_profile').empty();
+			for (i = 0; i < msg.profile_ids.length; i++) {
+				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
+			}
+			$('#set_profile').val(msg.last_profile);
+		});
+
+		$('#set_profile').change(function (event) {
+			var data = {
+				profile: $(this).val()
+			};
+			socket.emit('set_profile', data);
+		});
+
+		/* LED Controls */
+		$('button.LED-color').click(function (event) {
+				var colors = convertColor($(this).data('rgb'));
+				var data = {
+					red: colors.r,
+					green: colors.g,
+					blue: colors.b,
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button.LED-chase').click(function (event) {
+				var colors = convertColor($(this).data('rgb'));
+				var data = {
+					red: colors.r,
+					green: colors.g,
+					blue: colors.b,
+				};
+				socket.emit('LED_chase', data);
+				return false;
+		});
+
+		$('button#LED_RB').click(function (event) {
+			socket.emit('LED_RB');
+			return false;
+		});
+
+		$('button#LED_RBCYCLE').click(function (event) {
+			socket.emit('LED_RBCYCLE');
+			return false;
+		});
+
+		$('button#LED_RBCHASE').click(function (event) {
+			socket.emit('LED_RBCHASE');
+			return false;
+		});
+
+		/* Other */
 		$('button#racedump').click(function (event) {
 			function formatdate(dateObj) {
 				var year = dateObj.getFullYear();
@@ -320,6 +406,7 @@
 			var blob = new Blob([text], {type: "text/plain;charset=utf-8"});
 			saveAs(blob, filename+".csv");
 		});
+
 	});
 
 	function speak(obj) {
@@ -330,81 +417,155 @@
 {% endblock %} {% block content %}
 <main class="page-race">
 
-<div class="timer">
-	{% include "build_timer.html" %}
-</div>
-
-<!--Buttons for controlling the race-->
-<div class="control-set">
-	<label for="set_current_heat" class="screen-reader-text">Current Heat</label>
-	<select id="set_current_heat">
-		{% for heat in heats.query.filter_by(node_index=0).all() %}
-		<option value="{{ heat.heat_id }}" {% if heat.heat_id|int() == current_heat|int() %}
-				selected="selected"
-			{% endif %}>
-			{% if heat.note %}
-				{{ heat.note }}
-			{% else %}
-				Heat {{ heat.heat_id }}
-			{% endif %}
-		</option>
-		{% endfor %}
-	</select>
-	<button type="button" id="start_race" onclick="this.blur();">Start Race</button>
-	<button type="button" id="stop_race" disabled="disabled" onclick="this.blur();">Stop Race</button>
-	<button type="button" id="save_laps" disabled="disabled" onclick="this.blur();">Save Laps</button>
-	<button type="button" id="clear_laps" disabled="disabled" onclick="this.blur();">Clear Laps</button>
-</div>
-
-<!--Display the race leaderboard-->
-<table id="leaderboard">
-	<thead>
-		<tr>
-			<th class="pos">Pos.</th>
-			<th class="pilot">Pilot</th>
-			<th class="laps">Laps</th>
-			<th class="last">Last Lap</th>
-			<th class="behind">Behind</th>
-			<th class="avg">Average</th>
-			<th class="fast">Fastest</th>
-			<th class="total">Total</th>
-		</tr>
-	</thead>
-	<tbody>
-	</tbody>
-</table>
-
-<!--Display the current laps-->
-<div class="race-results">
-	{% for node in range(num_nodes) %}
-	<div class="node">
-		<h4 class="callsign_{{ node }}">
-			{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
-			}}
-		</h4>
-		<div class="race-header">
-			<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
-			<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">Manual</button>
+<div class="panel">
+	<div class="panel-content">
+		<div class="timer">
+			{% include "build_timer.html" %}
 		</div>
-		<table class="laps" id="current_laps_{{ node }}">
+
+		<!--Buttons for controlling the race-->
+		<div class="control-set">
+			<label for="set_current_heat" class="screen-reader-text">Current Heat</label>
+			<select id="set_current_heat">
+				{% for heat in heats.query.filter_by(node_index=0).all() %}
+				<option value="{{ heat.heat_id }}" {% if heat.heat_id|int() == current_heat|int() %}
+						selected="selected"
+					{% endif %}>
+					{% if heat.note %}
+						{{ heat.note }}
+					{% else %}
+						Heat {{ heat.heat_id }}
+					{% endif %}
+				</option>
+				{% endfor %}
+			</select>
+			<button type="button" id="start_race" onclick="this.blur();">Start Race</button>
+			<button type="button" id="stop_race" disabled="disabled" onclick="this.blur();">Stop Race</button>
+			<button type="button" id="save_laps" disabled="disabled" onclick="this.blur();">Save Laps</button>
+			<button type="button" id="clear_laps" disabled="disabled" onclick="this.blur();">Clear Laps</button>
+		</div>
+
+		<!--Display the race leaderboard-->
+		<table id="leaderboard">
 			<thead>
 				<tr>
-					<td class="rssi" colspan="2">
-						<span class="current_rssi_{{ node }}"></span> /
-						<span class="trigger_rssi_{{ node }}"></span> /
-						<span class="peak_rssi_{{ node }}"></span>
-					</td>
+					<th class="pos">Pos.</th>
+					<th class="pilot">Pilot</th>
+					<th class="laps">Laps</th>
+					<th class="last">Last Lap</th>
+					<th class="behind">Behind</th>
+					<th class="avg">Average</th>
+					<th class="fast">Fastest</th>
+					<th class="total">Total</th>
 				</tr>
 			</thead>
 			<tbody>
 			</tbody>
 		</table>
+
+		<!--Display the current laps-->
+		<div class="race-results">
+			{% for node in range(num_nodes) %}
+			<div class="node">
+				<h4 class="callsign_{{ node }}">
+					{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
+					}}
+				</h4>
+				<div class="race-header">
+					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
+					<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">Manual</button>
+				</div>
+				<table class="laps" id="current_laps_{{ node }}">
+					<thead>
+						<tr>
+							<td class="rssi" colspan="2">
+								<span class="current_rssi_{{ node }}"></span> /
+								<span class="trigger_rssi_{{ node }}"></span> /
+								<span class="peak_rssi_{{ node }}"></span>
+							</td>
+						</tr>
+					</thead>
+					<tbody>
+					</tbody>
+				</table>
+			</div>
+			{% endfor %}
+		</div>
 	</div>
-	{% endfor %}
 </div>
 
-<div>
-	<button id="racedump">Export race to file</button>
+<!--Format and Sensor-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Race Management</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<label for="set_race_format">Race Format:</label>
+			<select id="set_race_format">
+				<option>Loading...</option>
+			</select>
+		</div>
+		<div class="control-set">
+			<label for="set_profile">Calibration Profile:</label>
+			<select id="set_profile">
+				<option>Loading...</option>
+			</select>
+		</div>
+	</div>
+</div>
+
+<!--Display Voice-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Audio Control</h2>
+	</div>
+	<div class="panel-content">
+		<div id="voice_select"></div>
+	</div>
+</div>
+
+<!--LED Controls-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>LED Control</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<button class="LED-color" data-rgb="#000000"><img src="..\static\image\LED-off.png"></button>
+			<button id="LED_RBCYCLE"><img src="..\static\image\LED-rainbow.png"></button>
+			<br />
+			<button class="LED-color" data-rgb="#0000ff"><img src="..\static\image\LED-blue.png"></button>
+			<button class="LED-color" data-rgb="#ff3200"><img src="..\static\image\LED-orange.png"></button>
+			<button class="LED-color" data-rgb="#ff003C"><img src="..\static\image\LED-pink.png"></button>
+			<button class="LED-color" data-rgb="#9600ff"><img src="..\static\image\LED-purple.png"></button>
+			<button class="LED-color" data-rgb="#ffD200"><img src="..\static\image\LED-yellow.png"></button>
+			<button class="LED-color" data-rgb="#00ffff"><img src="..\static\image\LED-cyan.png"></button>
+			<button class="LED-color" data-rgb="#00ff00"><img src="..\static\image\LED-green.png"></button>
+			<button class="LED-color" data-rgb="#ff0000"><img src="..\static\image\LED-red.png"></button>
+			<br />
+			<button class="LED-chase" data-rgb="#0000ff"><img src="..\static\image\LED-chase-blue.png"></button>
+			<button class="LED-chase" data-rgb="#ff3200"><img src="..\static\image\LED-chase-orange.png"></button>
+			<button class="LED-chase" data-rgb="#ff003C"><img src="..\static\image\LED-chase-pink.png"></button>
+			<button class="LED-chase" data-rgb="#9600ff"><img src="..\static\image\LED-chase-purple.png"></button>
+			<button class="LED-chase" data-rgb="#ffD200"><img src="..\static\image\LED-chase-yellow.png"></button>
+			<button class="LED-chase" data-rgb="#00ffff"><img src="..\static\image\LED-chase-cyan.png"></button>
+			<button class="LED-chase" data-rgb="#00ff00"><img src="..\static\image\LED-chase-green.png"></button>
+			<button class="LED-chase" data-rgb="#ff0000"><img src="..\static\image\LED-chase-red.png"></button>
+		</div>
+	</div>
+</div>
+
+<!--History Export-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>History Export</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<button id="racedump">Export race to CSV</button>
+		</div>
+	</div>
 </div>
 
 </main>

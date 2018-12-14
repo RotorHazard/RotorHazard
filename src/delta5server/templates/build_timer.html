@@ -10,9 +10,15 @@
 		var pre_race = false; // pre-race countdown
 		var pre_delay = 0; // pre-race countdown duration
 		var hide_countdown = 0; // hide pre-race display (for random delay)
+		var buzzer = false;
+		var stagebuzzer = false;
 
-		this.buzzer = $('buzzer')[0]; // Buzzer audio tag is loaded on race page already
-		this.stagebuzzer = $('stagebuzzer')[0]; // Buzzer audio tag is loaded on race page already
+		if ($('buzzer').length) {
+			this.buzzer = $('buzzer')[0]; // Buzzer audio tag is loaded on race page already
+		}
+		if ($('satgebuzzer').length) {
+			this.stagebuzzer = $('stagebuzzer')[0]; // Buzzer audio tag is loaded on race page already
+		}
 
 		// Start the timer
 		this.start = function () {
@@ -21,7 +27,8 @@
 				$('.timing-clock').addClass('staging');
 				status = 2; // Set status to staging
 				generateTime(); // Updates html timer text
-				stagebuzzer.play(); // Pre-race buzzer
+				if (stagebuzzer)
+					stagebuzzer.play(); // Pre-race buzzer
 				timer_id = setInterval(function () {
 					pre_delay--;
 					if (pre_delay <= 0) {
@@ -29,13 +36,15 @@
 						pre_race = false;
 						timer_control.start();
 					} else {
-						stagebuzzer.play(); // Pre-race buzzer
+						if (stagebuzzer)
+							stagebuzzer.play(); // Pre-race buzzer
 						generateTime(); // Updates html timer text
 					}
 				}, 1000); // 1000 ms update rate
 			} else {
 				$('.timing-clock').removeClass('staging');
-				buzzer.play();
+				if (buzzer)
+					buzzer.play();
 				status = 1; // Set status to running
 				generateTime(); // Updates html timer text
 				timer_id = setInterval(function () {
@@ -143,13 +152,16 @@
 			if (timer.getStatus() == 1) {
 				if (timer.getMode() == 0) { // Count down clock
 					if (time == 0) {
-						buzzer.play(); // End race buzzer
+						if (buzzer)
+							buzzer.play(); // End race buzzer
 						timer.stop();
 					} else if (time < 5) {
-						stagebuzzer.play();
+						if (stagebuzzer)
+							stagebuzzer.play();
 						// speak('<div class="timer">' + time + '</div>');
 					} else if (time == 5) {
-						stagebuzzer.play();
+						if (stagebuzzer)
+							stagebuzzer.play();
 						speak('<div class="timer">5 seconds</div>');
 					} else if (time == 10) {
 						speak('<div class="timer">10 seconds</div>');

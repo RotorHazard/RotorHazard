@@ -111,6 +111,10 @@ button, select {
 	background: linear-gradient(to bottom, hsl(213.8, 53.8%, 46.7%) 0%,hsl(212.7, 67.8%, 29.2%) 100%);
 }
 
+option {
+	background: hsl(212.7, 67.8%, 29.2%);
+}
+
 button:disabled, select:disabled {
 	border: solid 0.125em hsl(225, 1.8%, 43.5%);
 	color: hsl(225, 1.8%, 10%);

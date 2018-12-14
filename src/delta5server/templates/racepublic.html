@@ -7,6 +7,7 @@
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
 		var buzzer = false;
+		var stagebuzzer = false;
 
 		// set up nodes
 		$('.node').each(function(){
@@ -86,7 +87,11 @@
 
 		socket.on('phonetic_data', function (msg) {
 			if (d5rt.primaryPilot == 0 || d5rt.primaryPilot == msg.pilot_id) {
-				var $ttstest = msg.pilot + " lap " + msg.lap + ": " + msg.phonetic;
+				var pilot = msg.callsign;
+				if (msg.pilot)
+					pilot = msg.pilot;
+
+				var $ttstest = pilot + " lap " + msg.lap + ": " + msg.phonetic;
 				speak('<div class="speech">' + $ttstest + '</div>');
 			}
 		})
@@ -125,16 +130,27 @@
 				timer.pre_race(msg.start_delay, msg.hide_stage_timer);
 				timer.start(); // Start clock
 
-				$('button#stop_race').removeAttr('disabled', 'disabled');
 				race_mode = msg.race_time_sec;
-				d5rt.collecting = 'race';
-				racedump.timestamp = new Date();
-				racedump.timedata = [];
 			}, server_delay);
 		});
 
 		socket.on('stop_timer', function (msg) {
 			timer.stop();
+		});
+
+		/* Voice */
+		// construct language selection
+		$('#voice_select').after('<select class="set_language">');
+		var voices = $().articulate('getVoices');
+
+		for (var i in voices) {
+			$('.set_language').append('<option>'+ voices[i].name + '</option>');
+		}
+		$('.set_language').val(d5rt.language).attr('selected', 'selected');
+
+		$('.set_language').change(function (event) {
+			d5rt.language = $(this).val();
+			d5rt.saveData();
 		});
 
 		$('#voice-calls').change(function(){
@@ -151,62 +167,74 @@
 {% endblock %} {% block content %}
 <main class="page-racepublic">
 
-<!--Buttons for controlling the race-->
-<p>{% include "build_timer.html" %}</p>
+<div class="panel">
+	<div class="panel-content">
+		<!--Buttons for controlling the race-->
+		<p>{% include "build_timer.html" %}</p>
 
-<h2 class="current_heat">Loading...</h2>
+		<h2 class="current_heat">Loading...</h2>
 
-<!--Display the race leaderboard-->
-<table class="table" id="leaderboard">
-	<thead>
-		<tr>
-			<th class="pos">Pos.</th>
-			<th class="pilot">Pilot</th>
-			<th class="laps">Laps</th>
-			<th class="last">Last Lap</th>
-			<th class="behind">Behind</th>
-			<th class="avg">Average</th>
-			<th class="fast">Fastest</th>
-			<th class="total">Total</th>
-		</tr>
-	</thead>
-	<tbody>
-	</tbody>
-</table>
-
-<!--Display the current laps-->
-<div class="race-results">
-	{% for node in range(num_nodes) %}
-	<div class="node" data-id="{{ node }}">
-		<h4 class="callsign_{{ node }}">
-			{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
-			}}
-		</h4>
-		<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
-		<table class="laps" id="current_laps_{{ node }}">
+		<!--Display the race leaderboard-->
+		<table class="table" id="leaderboard">
+			<thead>
+				<tr>
+					<th class="pos">Pos.</th>
+					<th class="pilot">Pilot</th>
+					<th class="laps">Laps</th>
+					<th class="last">Last Lap</th>
+					<th class="behind">Behind</th>
+					<th class="avg">Average</th>
+					<th class="fast">Fastest</th>
+					<th class="total">Total</th>
+				</tr>
+			</thead>
 			<tbody>
 			</tbody>
 		</table>
+
+		<!--Display the current laps-->
+		<div class="race-results">
+			{% for node in range(num_nodes) %}
+			<div class="node" data-id="{{ node }}">
+				<h4 class="callsign_{{ node }}">
+					{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
+					}}
+				</h4>
+				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
+				<table class="laps" id="current_laps_{{ node }}">
+					<tbody>
+					</tbody>
+				</table>
+			</div>
+			{% endfor %}
+		</div>
 	</div>
-	{% endfor %}
 </div>
 
-<!--Voice Settings (page-local)-->
-<div class="voice-settings">
-	<ol class="form">
-		<li>
-			<div class="label-block">
-				<label for="voice-calls">Voice Calls</label>
-			</div>
-			<select id="voice-calls">
-				<option value="-1">None</option>
-				<option value="0">All</option>
-				{% for pilot in pilots.query.order_by(pilots.name).all() %} {% if pilot.pilot_id != 0 %}
-					<option value="{{ pilot.pilot_id }}">{{ pilot.callsign }} ({{ pilot.name }})</option>
-				{% endif %} {% endfor %}
-			</select>
-		</li>
-	</ol>
+
+<!--Voice Settings-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Audio Control</h2>
+	</div>
+	<div class="panel-content">
+		<div id="voice_select"></div>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="voice-calls">Voice Calls</label>
+				</div>
+				<select id="voice-calls">
+					<option value="-1">None</option>
+					<option value="0">All</option>
+					{% for pilot in pilots.query.order_by(pilots.name).all() %} {% if pilot.id != 1 %}
+						<option value="{{ pilot.id }}">{{ pilot.callsign }} ({{ pilot.name }})</option>
+					{% endif %} {% endfor %}
+				</select>
+			</li>
+		</ol>
+	</div>
 </div>
+
 </main>
 {% endblock %}

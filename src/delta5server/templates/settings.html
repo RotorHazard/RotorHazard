@@ -13,15 +13,6 @@
 			$(this).html(freqTable.buildSelect());
 		});
 
-		// construct language selection
-		$('#voice_select').after('<select class="set_language">');
-		var voices = $().articulate('getVoices');
-
-		for (var i in voices) {
-			$('.set_language').append('<option>'+ voices[i].name + '</option>');
-		}
-		$('.set_language').val(d5rt.language).attr('selected', 'selected');
-
 		// set up RSSI graphing
 		$('.node table tr:first-child').each(function(){
 			var node = $(this);
@@ -61,6 +52,7 @@
 			}
 		});
 
+		/* Nodes */
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
 				$('#s_channel_' + i).val(msg.frequency[i]);
@@ -88,78 +80,6 @@
 			}
 		});
 
-		socket.on('node_tuning', function (msg) {
-			$('#set_profile').empty();
-			for (i = 0; i < msg.profile_ids.length; i++) {
-				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
-			}
-			$('#set_profile').val(msg.last_profile);
-			$('#set_calibration_threshold').val( msg.calibration_threshold);
-			$('#set_calibration_offset').val( msg.calibration_offset);
-			$('#set_trigger_threshold').val( msg.trigger_threshold);
-			$('#set_filter_ratio').val( msg.filter_ratio / 10000);
-			$('#set_profile_name').val( msg.profile_name);
-			$('#set_profile_description').val( msg.profile_description);
-		});
-
-		socket.on('race_format', function (msg) {
-			$('#set_race_format').empty();
-			for (i = 0; i < msg.format_ids.length; i++) {
-				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
-			}
-			$('#set_race_format').val(msg.last_format);
-			$('#set_format_name').val(msg.format_name);
-			$('#set_race_mode').val(msg.race_mode);
-			$('#set_fix_race_time').val(msg.race_time_sec);
-			$('#set_min_lap').val(msg.min_lap);
-			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
-			$('#set_start_delay_min').val(msg.start_delay_min);
-			$('#set_start_delay_max').val(msg.start_delay_max);
-		});
-
-		socket.on('heat_data', function (msg) {
-			$.each(msg.heat_id, function (i, heat_id) {
-				$('#heat-note-' + heat_id.heat_id).val(heat_id.note);
-				$.each(heat_id.callsign, function (j, callsign) {
-					var selectbox = $('#heat_' + (i + 1) + '_node_' + j);
-					selectbox.val(callsign);
-				});
-			});
-		});
-
-		socket.on('pilot_data', function (msg) {
-			for (i = 0; i < msg.callsign.length; i++) {
-				$('#callsign_' + msg.pilot_id[i]).attr('value', msg.callsign[i]);
-				$('#name_' + msg.pilot_id[i]).attr('value', msg.name[i]);
-				$('#phonetic_' + msg.pilot_id[i]).attr('value', msg.phonetic[i]);
-			}
-
-			$('.set_pilot_position').each(function(){
-				$(this).empty();
-				var pilots = []
-				for (i = 0; i < msg.callsign.length; i++) {
-					pilots.push({
-						id: msg.pilot_id[i],
-						name: msg.name[i],
-						callsign: msg.callsign[i]
-					})
-				}
-
-				pilots.sort(function(a, b){
-					if (a.name < b.name)
-						return -1;
-					if (a.name > b.name)
-						return 1;
-					return 0;
-				});
-
-				for (var i in pilots) {
-					$(this).append('<option value="'+ pilots[i].id + '">' + pilots[i].callsign + ' (' + pilots[i].name + ')</option>');
-				}
-			});
-		});
-
-		/* Nodes */
 		$('.frequency_table').change(function (event) {
 			if ($(this).val() != "n/a") {
 				var node = $(this).data('node');
@@ -193,6 +113,16 @@
 		});
 
 		/* Heats */
+		socket.on('heat_data', function (msg) {
+			$.each(msg.heat_id, function (i, heat_id) {
+				$('#heat-note-' + heat_id.heat_id).val(heat_id.note);
+				$.each(heat_id.callsign, function (j, callsign) {
+					var selectbox = $('#heat_' + (i + 1) + '_node_' + j);
+					selectbox.val(callsign);
+				});
+			});
+		});
+
 		$('.set_heat_note').change(function (event) {
 			var data = {
 				heat: parseInt($(this).data('heat')),
@@ -220,6 +150,38 @@
 		});
 
 		/* Pilots */
+		socket.on('pilot_data', function (msg) {
+			for (i = 0; i < msg.callsign.length; i++) {
+				$('#callsign_' + msg.pilot_id[i]).attr('value', msg.callsign[i]);
+				$('#name_' + msg.pilot_id[i]).attr('value', msg.name[i]);
+				$('#phonetic_' + msg.pilot_id[i]).attr('value', msg.phonetic[i]);
+			}
+
+			$('.set_pilot_position').each(function(){
+				$(this).empty();
+				var pilots = []
+				for (i = 0; i < msg.callsign.length; i++) {
+					pilots.push({
+						id: msg.pilot_id[i],
+						name: msg.name[i],
+						callsign: msg.callsign[i]
+					})
+				}
+
+				pilots.sort(function(a, b){
+					if (a.name < b.name)
+						return -1;
+					if (a.name > b.name)
+						return 1;
+					return 0;
+				});
+
+				for (var i in pilots) {
+					$(this).append('<option value="'+ pilots[i].id + '">' + pilots[i].callsign + ' (' + pilots[i].name + ')</option>');
+				}
+			});
+		});
+
 		$('.set_pilot_name').focus(function(){
 			$(this).select();
 		});
@@ -279,12 +241,35 @@
 		});
 
 		/* Voice */
+		// construct language selection
+		$('#voice_select').after('<select class="set_language">');
+		var voices = $().articulate('getVoices');
+
+		for (var i in voices) {
+			$('.set_language').append('<option>'+ voices[i].name + '</option>');
+		}
+		$('.set_language').val(d5rt.language).attr('selected', 'selected');
+
 		$('.set_language').change(function (event) {
 			d5rt.language = $(this).val();
 			d5rt.saveData();
 		});
 
 		/* Race Format */
+		socket.on('race_format', function (msg) {
+			$('#set_race_format').empty();
+			for (i = 0; i < msg.format_ids.length; i++) {
+				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
+			}
+			$('#set_race_format').val(msg.last_format);
+			$('#set_format_name').val(msg.format_name);
+			$('#set_race_mode').val(msg.race_mode);
+			$('#set_fix_race_time').val(msg.race_time_sec);
+			$('#set_min_lap').val(msg.min_lap);
+			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
+			$('#set_start_delay_min').val(msg.start_delay_min);
+			$('#set_start_delay_max').val(msg.start_delay_max);
+		});
 
 		$('#set_race_format').change(function (event) {
 			var data = {
@@ -353,6 +338,20 @@
 		})
 
 		/* Calibration Profiles */
+		socket.on('node_tuning', function (msg) {
+			$('#set_profile').empty();
+			for (i = 0; i < msg.profile_ids.length; i++) {
+				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
+			}
+			$('#set_profile').val(msg.last_profile);
+			$('#set_calibration_threshold').val( msg.calibration_threshold);
+			$('#set_calibration_offset').val( msg.calibration_offset);
+			$('#set_trigger_threshold').val( msg.trigger_threshold);
+			$('#set_filter_ratio').val( msg.filter_ratio / 10000);
+			$('#set_profile_name').val( msg.profile_name);
+			$('#set_profile_description').val( msg.profile_description);
+		});
+
 		$('#set_profile').change(function (event) {
 			var data = {
 				profile: $(this).val()
@@ -487,342 +486,398 @@
 <main class="page-settings">
 
 <!--Display node data-->
-<h2>Nodes</h2>
-<div class="node-list">
-	{% for node in range(num_nodes) %}
-	<div class="node">
-		<h3>Node {{ node + 1 }}</h3>
-		<table>
-			<tr>
-				<td colspan="2">
-					<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
-
-					<div class="compact-field">
-						<label for="s_channel_{{ node }}">Frequency</label>
-						<input type="number" id="s_channel_{{ node }}" class="set_frequency" data-node="{{ node }}" min="5300" max="6001">
-					</div>
-
-					<div class="compact-field">
-						<label for="set_node_offset_{{ node }}">Offset</label>
-						<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="-999" max="999">
-					</div>
-				</td>
-			</tr>
-			<tr>
-				<td class="datalabel">RSSI</td>
-				<td>
-					<span class="current_rssi_{{ node }}"></span>
-				</td>
-			</tr>
-			<tr>
-				<td class="datalabel">Trigger</td>
-				<td>
-					<span class="trigger_rssi_{{ node }}"></span>
-				</td>
-			</tr>
-			<tr>
-				<td class="datalabel">Peak</td>
-				<td>
-					<span class="peak_rssi_{{ node }}"></span>
-				</td>
-			</tr>
-		</table>
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Nodes</h2>
 	</div>
-	{% endfor %}
+	<div class="panel-content">
+		<div class="node-list">
+			{% for node in range(num_nodes) %}
+			<div class="node">
+				<h3>Node {{ node + 1 }}</h3>
+				<table>
+					<tr>
+						<td colspan="2">
+							<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
+
+							<div class="compact-field">
+								<label for="s_channel_{{ node }}">Frequency</label>
+								<input type="number" id="s_channel_{{ node }}" class="set_frequency" data-node="{{ node }}" min="5300" max="6001">
+							</div>
+
+							<div class="compact-field">
+								<label for="set_node_offset_{{ node }}">Offset</label>
+								<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="-999" max="999">
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td class="datalabel">RSSI</td>
+						<td>
+							<span class="current_rssi_{{ node }}"></span>
+						</td>
+					</tr>
+					<tr>
+						<td class="datalabel">Trigger</td>
+						<td>
+							<span class="trigger_rssi_{{ node }}"></span>
+						</td>
+					</tr>
+					<tr>
+						<td class="datalabel">Peak</td>
+						<td>
+							<span class="peak_rssi_{{ node }}"></span>
+						</td>
+					</tr>
+				</table>
+			</div>
+			{% endfor %}
+		</div>
+		<ul class="graph-key">
+			<li><span style="background-color: hsl(214, 53%, 60%)"></span> RSSI</li>
+			<li><span style="background-color: hsl(8.2, 86.5%, 53.7%)"></span> Peak</li>
+			<li><span style="background-color: hsl(25, 85%, 55%)"></span> Trigger</li>
+			<li><span style="background-color: #999"></span> Trigger Threshold</li>
+			<li><span style="background-color: #666"></span> Calibration Threshold</li>
+		</ul>
+		<a href="/correction">Node Correction</a>
+	</div>
 </div>
-<ul class="graph-key">
-	<li><span style="background-color: hsl(214, 53%, 60%)"></span> RSSI</li>
-	<li><span style="background-color: hsl(8.2, 86.5%, 53.7%)"></span> Peak</li>
-	<li><span style="background-color: hsl(25, 85%, 55%)"></span> Trigger</li>
-	<li><span style="background-color: #999"></span> Trigger Threshold</li>
-	<li><span style="background-color: #666"></span> Calibration Threshold</li>
-</ul>
-<a href="/correction">Node Correction</a>
 
 <!--Heats list for editing-->
-<h2>Heats</h2>
-<p>Changes to heats will affect saved races.</p>
-<ol id="heatsetup" class="heats">
-	{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
-	<li>
-		<h3>Heat {{ heat.heat_id }}</h3>
-		<input type="text" id="heat-note-{{heat.heat_id}}" class="set_heat_note" data-heat="{{heat.heat_id}}" value="{{ heats.query.filter_by(id=heat.heat_id, node_index=0).first().note }}" placeholder="Name (Heat {{heat.heat_id}})" maxlength="80">
-		<ol>
-			{% for node in range(num_nodes) %}
-				<li>
-					<div class="channel_{{ node }}"></div>
-					<div class="pilot-name">
-						<select class="set_pilot_position" id="heat_{{ heat.heat_id }}_node_{{ node }}" data-heat="{{ heat.heat_id }}" data-node="{{ node }}">
-							{% set heatpilotid = pilots.query.filter_by(id=
-								heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id
-								).first().id %}
-							{% for pilot in pilots.query.order_by(pilots.name).all() %}
-							<option value="{{ pilot.id }}"
-								{% if pilot.id|int() == heatpilotid|int() %}
-									selected="selected"
-								{% endif %}>
-								{{ pilot.callsign }} ({{ pilot.name }})
-							</option>
-							{% endfor %}
-						</select>
-					</div>
-				</li>
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Heats</h2>
+	</div>
+	<div class="panel-content">
+		<p>Changes to heats will affect saved races.</p>
+		<ol id="heatsetup" class="heats">
+			{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
+			<li>
+				<h3>Heat {{ heat.heat_id }}</h3>
+				<input type="text" id="heat-note-{{heat.heat_id}}" class="set_heat_note" data-heat="{{heat.heat_id}}" value="{{ heats.query.filter_by(id=heat.heat_id, node_index=0).first().note }}" placeholder="Name (Heat {{heat.heat_id}})" maxlength="80">
+				<ol>
+					{% for node in range(num_nodes) %}
+						<li>
+							<div class="channel_{{ node }}"></div>
+							<div class="pilot-name">
+								<select class="set_pilot_position" id="heat_{{ heat.heat_id }}_node_{{ node }}" data-heat="{{ heat.heat_id }}" data-node="{{ node }}">
+									{% set heatpilotid = pilots.query.filter_by(id=
+										heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id
+										).first().id %}
+									{% for pilot in pilots.query.order_by(pilots.name).all() %}
+									<option value="{{ pilot.id }}"
+										{% if pilot.id|int() == heatpilotid|int() %}
+											selected="selected"
+										{% endif %}>
+										{{ pilot.callsign }} ({{ pilot.name }})
+									</option>
+									{% endfor %}
+								</select>
+							</div>
+						</li>
+					{% endfor %}
+				</ol>
+			</li>
 			{% endfor %}
 		</ol>
-	</li>
-	{% endfor %}
-</ol>
-<div class="control-set">
-	<button type="button" class="btn btn-default" id="add_heat" onclick="this.blur();">+ Add Heat</button>
+		<div class="control-set">
+			<button type="button" class="btn btn-default" id="add_heat" onclick="this.blur();">+ Add Heat</button>
+		</div>
+	</div>
 </div>
 
 <!--Pilots list for editing-->
-<h2>Pilots</h2>
-<ul class="pilots">
-	{% for pilot in pilots.query.all() %} {% if pilot.id != 1 %}
-		<li data-id="{{ pilot.id }}">
-			<label for="name_{{ pilot.id }}" class="screen-reader-text">Name</label>
-			<input type="text" class="set_pilot_name" id="name_{{ pilot.id }}" data-pilot_id="{{ pilot.id }}" value="{{ pilot.name }}" placeholder="Name">
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Pilots</h2>
+	</div>
+	<div class="panel-content">
+		<ul class="pilots">
+			{% for pilot in pilots.query.all() %} {% if pilot.id != 1 %}
+				<li data-id="{{ pilot.id }}">
+					<label for="name_{{ pilot.id }}" class="screen-reader-text">Name</label>
+					<input type="text" class="set_pilot_name" id="name_{{ pilot.id }}" data-pilot_id="{{ pilot.id }}" value="{{ pilot.name }}" placeholder="Name">
 
-			<label for="callsign_{{ pilot.id }}" class="screen-reader-text">Call Sign</label>
-			<input type="text" class="set_pilot_callsign" id="callsign_{{ pilot.id }}" data-pilot_id="{{ pilot.id }}"
-			 value="{{ pilot.callsign }}" placeholder="Call Sign">
+					<label for="callsign_{{ pilot.id }}" class="screen-reader-text">Call Sign</label>
+					<input type="text" class="set_pilot_callsign" id="callsign_{{ pilot.id }}" data-pilot_id="{{ pilot.id }}"
+					 value="{{ pilot.callsign }}" placeholder="Call Sign">
 
-			<label for="" class="screen-reader-text">Phonetic</label>
-			<div class="phonetic">
-				<input type="text" class="set_pilot_phonetic" id="phonetic_{{ pilot.id }}" data-pilot_id="{{ pilot.id }}" value="{{ pilot.phonetic }}" placeholder="Phonetic">
-				<button type="button" class="speak_pilot" onclick="this.blur();" data-pilot_id="{{ pilot.id }}">&#9658; <span class="screen-reader-text">Play</span></button>
-			</div>
-		</li>
-	{% endif %} {% endfor %}
-</ul>
+					<label for="" class="screen-reader-text">Phonetic</label>
+					<div class="phonetic">
+						<input type="text" class="set_pilot_phonetic" id="phonetic_{{ pilot.id }}" data-pilot_id="{{ pilot.id }}" value="{{ pilot.phonetic }}" placeholder="Phonetic">
+						<button type="button" class="speak_pilot" onclick="this.blur();" data-pilot_id="{{ pilot.id }}">&#9658; <span class="screen-reader-text">Play</span></button>
+					</div>
+				</li>
+			{% endif %} {% endfor %}
+		</ul>
 
-<div class="control-set">
-	<button type="button" id="add_pilot" onclick="this.blur();">+ Add Pilot</button>
+		<div class="control-set">
+			<button type="button" id="add_pilot" onclick="this.blur();">+ Add Pilot</button>
+		</div>
+	</div>
 </div>
 
 <!--Display Voice-->
-<h2 id="voice_select">Voice Selection</h2>
-
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Voice Selection</h2>
+	</div>
+	<div class="panel-content">
+		<div id="voice_select"></div>
+	</div>
+</div>
 
 <!--Race Format-->
-<h2>Race Format</h2>
-<div class="control-set">
-	<label for="set_race_format">Format:</label>
-	<select id="set_race_format">
-		<option>Loading...</option>
-	</select>
-	<button type="button" class="" id="add_race_format" onclick="this.blur();">+ Add Format</button>
-	<button type="button" class="btn-danger" id="delete_race_format" onclick="this.blur();">&#215; Remove</button>
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Race Format</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<label for="set_race_format">Format:</label>
+			<select id="set_race_format">
+				<option>Loading...</option>
+			</select>
+			<button type="button" class="" id="add_race_format" onclick="this.blur();">+ Add Format</button>
+			<button type="button" class="btn-danger" id="delete_race_format" onclick="this.blur();">&#215; Remove</button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_format_name">Name</label>
+				</div>
+				<input type="text" id="set_format_name">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_race_mode">Race Timer Mode</label>
+				</div>
+				<select id="set_race_mode">
+					<option value="0">Count Down</option>
+					<option value="1">Count Up</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_fix_race_time">Timer Duration (seconds)</label>
+					<p class="desc">Count-down timed races</p>
+				</div>
+				<input type="number" id="set_fix_race_time" min="0" max="99999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">Minimum lap time (seconds)</label>
+					<p class="desc">Prevents repeated triggering</p>
+				</div>
+				<input type="number" id="set_min_lap" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_hide_stage_timer">Staging Timer Mode</label>
+				</div>
+				<select id="set_hide_stage_timer">
+					<option value="0">Show Countdown</option>
+					<option value="1">Hide Countdown</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_delay_min">Minimum Start Delay</label>
+					<p class="desc">Minimum time before race begins</p>
+				</div>
+				<input type="number" id="set_start_delay_min" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_delay_max">Maximum Start Delay</label>
+					<p class="desc">Maximum time before race begins</p>
+				</div>
+				<input type="number" id="set_start_delay_max" min="0" max="999">
+			</li>
+		</ol>
+	</div>
 </div>
-
-<ol class="form">
-	<li>
-		<div class="label-block">
-			<label for="set_format_name">Name</label>
-		</div>
-		<input type="text" id="set_format_name">
-	</li>
-	<li>
-		<div class="label-block">
-			<label for="set_race_mode">Race Timer Mode</label>
-		</div>
-		<select id="set_race_mode">
-			<option value="0">Count Down</option>
-			<option value="1">Count Up</option>
-		</select>
-	</li>
-	<li>
-		<div class="label-block">
-			<label for="set_fix_race_time">Timer Duration (seconds)</label>
-			<p class="desc">Count-down timed races</p>
-		</div>
-		<input type="number" id="set_fix_race_time" min="0" max="99999">
-	</li>
-	<li>
-		<div class="label-block">
-			<label for="set_min_lap">Minimum lap time (seconds)</label>
-			<p class="desc">Prevents repeated triggering</p>
-		</div>
-		<input type="number" id="set_min_lap" min="0" max="999">
-	</li>
-	<li>
-		<div class="label-block">
-			<label for="set_hide_stage_timer">Staging Timer Mode</label>
-		</div>
-		<select id="set_hide_stage_timer">
-			<option value="0">Show Countdown</option>
-			<option value="1">Hide Countdown</option>
-		</select>
-	</li>
-	<li>
-		<div class="label-block">
-			<label for="set_start_delay_min">Minimum Start Delay</label>
-			<p class="desc">Minimum time before race begins</p>
-		</div>
-		<input type="number" id="set_start_delay_min" min="0" max="999">
-	</li>
-	<li>
-		<div class="label-block">
-			<label for="set_start_delay_max">Maximum Start Delay</label>
-			<p class="desc">Maximum time before race begins</p>
-		</div>
-		<input type="number" id="set_start_delay_max" min="0" max="999">
-	</li>
-</ol>
-
 
 <!--Edit system tuning values-->
-<h2>Sensor Tuning</h2>
-<div class="control-set">
-	<label for="set_profile">Profile:</label>
-	<select id="set_profile">
-		<option>Loading...</option>
-	</select>
-	<button type="button" class="" id="add_profile" onclick="this.blur();">+ Add Profile</button>
-	<button type="button" class="btn-danger" id="delete_profile" onclick="this.blur();">&#215; Remove</button>
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Sensor Tuning</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<label for="set_profile">Profile:</label>
+			<select id="set_profile">
+				<option>Loading...</option>
+			</select>
+			<button type="button" class="" id="add_profile" onclick="this.blur();">+ Add Profile</button>
+			<button type="button" class="btn-danger" id="delete_profile" onclick="this.blur();">&#215; Remove</button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_profile_name">Name</label>
+				</div>
+				<input type="text" id="set_profile_name">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_profile_description">Description</label>
+				</div>
+				<textarea id="set_profile_description"></textarea>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_calibration_offset">Calibration Offset</label>
+					<p class="desc">Trigger is Peak Rssi minus Calibration Offset (Default 8)</p>
+				</div>
+				<input type="number" id="set_calibration_offset" min="1" max="65535">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_calibration_threshold">Calibration Threshold</label>
+					<p class="desc">Trigger minus Calibration Threshold ends calibration pass (Default 95)</p>
+				</div>
+				<input type="number" id="set_calibration_threshold" min="1" max="65535">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_trigger_threshold">Trigger Threshold</label>
+					<p class="desc">Trigger minus Trigger Threshold ends normal pass (Default 40)</p>
+				</div>
+				<input type="number" id="set_trigger_threshold" min="1" max="65535">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_filter_ratio">Filter Ratio</label>
+					<p class="desc">RSSI Smoothing: .0001 smoothest, 1.0 unfiltered. (Default 0.01)</p>
+				</div>
+				<input type="number" id="set_filter_ratio" min=".0001" max="6.5535" step="0.0001">
+			</li>
+		</ol>
+
+		<div class="calibration-guide">
+			<h3>Calibration Guide</h3>
+			<table>
+				<tr>
+					<th>Issue</th>
+					<th>Resolution</th>
+				</tr>
+				<tr>
+					<td>Missing passes</td>
+					<td>Increase Calibration Offset</td>
+				</tr>
+				<tr>
+					<td>Pass registers on other parts of course</td>
+					<td>Decrease Calibration Offset</td>
+				</tr>
+				<tr>
+					<td>First pass triggers before crossing the gate</td>
+					<td>Increase Calibration Threshold</td>
+				</tr>
+				<tr>
+					<td>Not getting a pass record for the first pass</td>
+					<td>Decrease Calibration Threshold</td>
+				</tr>
+				<tr>
+					<td>Several pass records while passing the start gate</td>
+					<td>Increase Trigger Threshold</td>
+				</tr>
+				<tr>
+					<td>Pass registering is significantly delayed</td>
+					<td>Decrease Trigger Threshold</td>
+				</tr>
+				<tr>
+					<td>RSSI too noisy</td>
+					<td>Decrease Filter Ratio</td>
+				</tr>
+				<tr>
+					<td>RSSI reacts slowly to changes</td>
+					<td>Increase Filter Ratio</td>
+				</tr>
+			</table>
+		</div>
+	</div>
 </div>
 
-<ol class="form">
-	<li>
-		<div class="label-block">
-			<label for="set_profile_name">Name</label>
+<!--LED controls-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>LED Testing/Override</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<button class="LED-color" data-rgb="#000000"><img src="..\static\image\LED-off.png"></button>
+			<button id="LED_RBCYCLE"><img src="..\static\image\LED-rainbow.png"></button>
+			<br />
+			<button class="LED-color" data-rgb="#0000ff"><img src="..\static\image\LED-blue.png"></button>
+			<button class="LED-color" data-rgb="#ff3200"><img src="..\static\image\LED-orange.png"></button>
+			<button class="LED-color" data-rgb="#ff003C"><img src="..\static\image\LED-pink.png"></button>
+			<button class="LED-color" data-rgb="#9600ff"><img src="..\static\image\LED-purple.png"></button>
+			<button class="LED-color" data-rgb="#ffD200"><img src="..\static\image\LED-yellow.png"></button>
+			<button class="LED-color" data-rgb="#00ffff"><img src="..\static\image\LED-cyan.png"></button>
+			<button class="LED-color" data-rgb="#00ff00"><img src="..\static\image\LED-green.png"></button>
+			<button class="LED-color" data-rgb="#ff0000"><img src="..\static\image\LED-red.png"></button>
+			<br />
+			<button class="LED-chase" data-rgb="#0000ff"><img src="..\static\image\LED-chase-blue.png"></button>
+			<button class="LED-chase" data-rgb="#ff3200"><img src="..\static\image\LED-chase-orange.png"></button>
+			<button class="LED-chase" data-rgb="#ff003C"><img src="..\static\image\LED-chase-pink.png"></button>
+			<button class="LED-chase" data-rgb="#9600ff"><img src="..\static\image\LED-chase-purple.png"></button>
+			<button class="LED-chase" data-rgb="#ffD200"><img src="..\static\image\LED-chase-yellow.png"></button>
+			<button class="LED-chase" data-rgb="#00ffff"><img src="..\static\image\LED-chase-cyan.png"></button>
+			<button class="LED-chase" data-rgb="#00ff00"><img src="..\static\image\LED-chase-green.png"></button>
+			<button class="LED-chase" data-rgb="#ff0000"><img src="..\static\image\LED-chase-red.png"></button>
 		</div>
-		<input type="text" id="set_profile_name">
-	</li>
-	<li>
-		<div class="label-block">
-			<label for="set_profile_description">Description</label>
-		</div>
-		<textarea id="set_profile_description"></textarea>
-	</li>
-	<li>
-		<div class="label-block">
-			<label for="set_calibration_offset">Calibration Offset</label>
-			<p class="desc">Trigger is Peak Rssi minus Calibration Offset (Default 8)</p>
-		</div>
-		<input type="number" id="set_calibration_offset" min="1" max="65535">
-	</li>
-	<li>
-		<div class="label-block">
-			<label for="set_calibration_threshold">Calibration Threshold</label>
-			<p class="desc">Trigger minus Calibration Threshold ends calibration pass (Default 95)</p>
-		</div>
-		<input type="number" id="set_calibration_threshold" min="1" max="65535">
-	</li>
-	<li>
-		<div class="label-block">
-			<label for="set_trigger_threshold">Trigger Threshold</label>
-			<p class="desc">Trigger minus Trigger Threshold ends normal pass (Default 40)</p>
-		</div>
-		<input type="number" id="set_trigger_threshold" min="1" max="65535">
-	</li>
-	<li>
-		<div class="label-block">
-			<label for="set_filter_ratio">Filter Ratio</label>
-			<p class="desc">RSSI Smoothing: .0001 smoothest, 1.0 unfiltered. (Default 0.01)</p>
-		</div>
-		<input type="number" id="set_filter_ratio" min=".0001" max="6.5535" step="0.0001">
-	</li>
-</ol>
-
-<div class="calibration-guide">
-	<h3>Calibration Guide</h3>
-	<table>
-		<tr>
-			<th>Issue</th>
-			<th>Resolution</th>
-		</tr>
-		<tr>
-			<td>Missing passes</td>
-			<td>Increase Calibration Offset</td>
-		</tr>
-		<tr>
-			<td>Pass registers on other parts of course</td>
-			<td>Decrease Calibration Offset</td>
-		</tr>
-		<tr>
-			<td>First pass triggers before crossing the gate</td>
-			<td>Increase Calibration Threshold</td>
-		</tr>
-		<tr>
-			<td>Not getting a pass record for the first pass</td>
-			<td>Decrease Calibration Threshold</td>
-		</tr>
-		<tr>
-			<td>Several pass records while passing the start gate</td>
-			<td>Increase Trigger Threshold</td>
-		</tr>
-		<tr>
-			<td>Pass registering is significantly delayed</td>
-			<td>Decrease Trigger Threshold</td>
-		</tr>
-		<tr>
-			<td>RSSI too noisy</td>
-			<td>Decrease Filter Ratio</td>
-		</tr>
-		<tr>
-			<td>RSSI reacts slowly to changes</td>
-			<td>Increase Filter Ratio</td>
-		</tr>
-	</table>
+	</div>
 </div>
 
 <!--Reset database-->
-<h2>LED Testing/Override</h2>
-<div class="control-set">
-	<button class="LED-color" data-rgb="#000000"><img src="..\static\image\LED-off.png"></button>
-	<button id="LED_RBCYCLE"><img src="..\static\image\LED-rainbow.png"></button>
-	<br />
-	<button class="LED-color" data-rgb="#0000ff"><img src="..\static\image\LED-blue.png"></button>
-	<button class="LED-color" data-rgb="#ff3200"><img src="..\static\image\LED-orange.png"></button>
-	<button class="LED-color" data-rgb="#ff003C"><img src="..\static\image\LED-pink.png"></button>
-	<button class="LED-color" data-rgb="#9600ff"><img src="..\static\image\LED-purple.png"></button>
-	<button class="LED-color" data-rgb="#ffD200"><img src="..\static\image\LED-yellow.png"></button>
-	<button class="LED-color" data-rgb="#00ffff"><img src="..\static\image\LED-cyan.png"></button>
-	<button class="LED-color" data-rgb="#00ff00"><img src="..\static\image\LED-green.png"></button>
-	<button class="LED-color" data-rgb="#ff0000"><img src="..\static\image\LED-red.png"></button>
-	<br />
-	<button class="LED-chase" data-rgb="#0000ff"><img src="..\static\image\LED-chase-blue.png"></button>
-	<button class="LED-chase" data-rgb="#ff3200"><img src="..\static\image\LED-chase-orange.png"></button>
-	<button class="LED-chase" data-rgb="#ff003C"><img src="..\static\image\LED-chase-pink.png"></button>
-	<button class="LED-chase" data-rgb="#9600ff"><img src="..\static\image\LED-chase-purple.png"></button>
-	<button class="LED-chase" data-rgb="#ffD200"><img src="..\static\image\LED-chase-yellow.png"></button>
-	<button class="LED-chase" data-rgb="#00ffff"><img src="..\static\image\LED-chase-cyan.png"></button>
-	<button class="LED-chase" data-rgb="#00ff00"><img src="..\static\image\LED-chase-green.png"></button>
-	<button class="LED-chase" data-rgb="#ff0000"><img src="..\static\image\LED-chase-red.png"></button>
-</div>
-
-<!--Reset database-->
-<h2>Database</h2>
-<p>Copy out any saved races first!</p>
-<div class="control-set">
-	<select id="reset_type">
-		<option value="races">Clear Races</option>
-		<option value="heats">Clear Races and Heats</option>
-		<option value="pilots">Clear Races, Heats, and Pilots</option>
-	</select>
-	<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">Reset</button>
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Database</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<select id="reset_type">
+				<option value="races">Clear Races</option>
+				<option value="heats">Clear Races and Heats</option>
+				<option value="pilots">Clear Races, Heats, and Pilots</option>
+			</select>
+			<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">Reset</button>
+		</div>
+	</div>
 </div>
 
 <!-- Shut down -->
-<h2>System</h2>
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>System</h2>
+	</div>
+	<div class="panel-content">
+		<div class="label-block">
+			<label for="set_timer_name">Timer Name</label>
+		</div>
+		<input type="text" id="set_timer_name" value="{{ getOption('timerName') }}">
 
-<div class="label-block">
-	<label for="set_timer_name">Timer Name</label>
+		<div class="control-set">
+			<button type="button" class="btn-danger" id="shutdown_pi" onclick="this.blur();">Shut Down</button>
+		</div>
+	</div>
 </div>
-<input type="text" id="set_timer_name" value="{{ getOption('timerName') }}">
 
-<p>(Safely shutdown raspberry pi)</p>
-<div class="control-set">
-	<button type="button" class="btn-danger" id="shutdown_pi" onclick="this.blur();">Shutdown</button>
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Debug</h2>
+	</div>
+	<div class="panel-content">
+		<ul>
+			<li><a href="/hardwarelog">Log</a></li>
+			<li><a href="/database">Database</a></li>
+		</ul>
+	</div>
 </div>
-
-<h2>Debug</h2>
-<ul>
-	<li><a href="/hardwarelog">Log</a></li>
-	<li><a href="/database">Database</a></li>
-</ul>
 
 </main>
 {% endblock %}
