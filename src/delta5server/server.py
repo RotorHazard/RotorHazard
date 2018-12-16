@@ -914,7 +914,9 @@ def emit_node_data():
     SOCKET_IO.emit('node_data', {
         'frequency': [node.frequency for node in INTERFACE.nodes],
         'trigger_rssi': [node.trigger_rssi for node in INTERFACE.nodes],
-        'peak_rssi': [node.peak_rssi for node in INTERFACE.nodes]
+        'node_peak_rssi': [node.node_peak_rssi for node in INTERFACE.nodes],
+        'pass_peak_rssi': [node.pass_peak_rssi for node in INTERFACE.nodes],
+        'debug_pass_count': [node.debug_pass_count for node in INTERFACE.nodes]
     })
 
 def emit_node_offsets():
@@ -1148,6 +1150,7 @@ def phonetictime_format(millis):
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''
     server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, ms_since_lap))
+    node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
     node_data = NodeData.query.filter_by(id=node.index).first()

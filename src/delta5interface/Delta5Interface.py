@@ -15,6 +15,8 @@ READ_CALIBRATION_MODE = 0x16
 READ_CALIBRATION_OFFSET = 0x17
 READ_TRIGGER_THRESHOLD = 0x18
 READ_FILTER_RATIO = 0x19
+READ_REVISION_CODE = 0x22   # read NODE_API_LEVEL and verification value
+READ_NODE_RSSI_PEAK = 0x23  # read 'nodeRssiPeak' value
 
 WRITE_FREQUENCY = 0x51 # Sets frequency (2 byte)
 WRITE_CALIBRATION_THRESHOLD = 0x65
@@ -81,7 +83,7 @@ class Delta5Interface(BaseHardwareInterface):
         for index, addr in enumerate(i2c_addrs):
             try:
                 self.i2c.read_i2c_block_data(addr, READ_ADDRESS, 1)
-                print "Node FOUND at address {0}".format(addr)
+                print "Node {0} found at address {1}".format(index+1, addr)
                 gevent.sleep(I2C_CHILL_TIME)
                 node = Node() # New node instance
                 node.i2c_addr = addr # Set current loop i2c_addr
@@ -93,6 +95,18 @@ class Delta5Interface(BaseHardwareInterface):
 
         for node in self.nodes:
             node.frequency = self.get_value_16(node, READ_FREQUENCY)
+                   # read NODE_API_LEVEL and verification value:
+            rev_val = self.get_value_16(node, READ_REVISION_CODE)
+            if (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
+                node.api_level = rev_val & 0xFF
+            else:
+                node.api_level = 0  # if verify failed (fn not defined) then set API level to 0
+            if node.api_level >= 5:
+                node.api_lvl5_flag = True  # set flag for API level 5 functions supported
+                node.node_peak_rssi = self.get_value_16(node, READ_NODE_RSSI_PEAK)
+                print "Node {0}: API_level={1}, node_peak={2}, freq={3}".format(node.index+1, node.api_level, node.node_peak_rssi, node.frequency)
+            else:
+                print "Node {0}: API_level=0".format(node.index+1)
             node.node_offs_adj = 0
             if node.index == 0:
                 self.calibration_threshold = self.get_value_16(node,
@@ -135,15 +149,24 @@ class Delta5Interface(BaseHardwareInterface):
 
     def update(self):
         for node in self.nodes:
-            data = self.read_block(node.i2c_addr, READ_LAP_STATS, 17)
+            if node.api_lvl5_flag:
+                data = self.read_block(node.i2c_addr, READ_LAP_STATS, 18)
+            else:
+                data = self.read_block(node.i2c_addr, READ_LAP_STATS, 17)
             if data != None:
                 lap_id = data[0]
                 ms_since_lap = unpack_32(data[1:])
                 node.current_rssi = unpack_16(data[5:])
                 node.trigger_rssi = unpack_16(data[7:])
-                node.peak_rssi_raw = unpack_16(data[9:])
-                node.peak_rssi = unpack_16(data[11:])
+                if node.api_lvl5_flag:  # if supported then load 'nodeRssiPeak' value
+                    node.node_peak_rssi = unpack_16(data[9:])
+                node.pass_peak_rssi = unpack_16(data[11:])
                 node.loop_time = unpack_32(data[13:])
+                if node.api_lvl5_flag:  # if supported then load 'crossing' status
+                     if data[17]:
+                         node.crossing_flag = True
+                     else:
+                         node.crossing_flag = False
 
                 if lap_id != node.last_lap_id:
                     if node.last_lap_id != -1 and callable(self.pass_record_callback):
@@ -372,8 +395,8 @@ class Delta5Interface(BaseHardwareInterface):
         node = self.nodes[node_index]
         node.current_rssi = 11
         node.trigger_rssi = 22
-        node.peak_rssi_raw = 33
-        node.peak_rssi = 44
+        node.node_peak_rssi = 77
+        node.pass_peak_rssi = 44
         node.loop_time = 55
         self.pass_record_callback(node, 100)
 

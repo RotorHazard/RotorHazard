@@ -536,6 +536,7 @@ void i2cTransmit() {
 			ioBufferWrite16(state.nodeRssiPeak);  // as of API 5 return 'nodeRssiPeak' here
 			ioBufferWrite16(lastPass.rssiPeak);
 			ioBufferWrite32(state.loopTime);
+			ioBufferWrite8(state.crossing ? (uint8_t)1 : (uint8_t)0);  // as of API 5 return 'crossing' status
 			break;
 		case READ_CALIBRATION_THRESHOLD:
                    // no longer using this; but keep cmd for backward compatibility

@@ -32,7 +32,8 @@ class BaseHardwareInterface(object):
     def get_heartbeat_json(self):
         return {
             'current_rssi': [node.current_rssi for node in self.nodes],
-            'loop_time': [node.loop_time for node in self.nodes]
+            'loop_time': [node.loop_time for node in self.nodes],
+            'crossing_flag': [node.crossing_flag for node in self.nodes]
         }
 
     def get_calibration_threshold_json(self):

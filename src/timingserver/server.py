@@ -278,8 +278,9 @@ def pass_record_callback(node, ms_since_lap):
         'frequency': node.frequency,
         'timestamp': hardwareInterface.milliseconds() - ms_since_lap,
         'trigger_rssi': node.trigger_rssi,
-        'peak_rssi_raw': node.peak_rssi_raw,
-        'peak_rssi': node.peak_rssi})
+        'peak_rssi_raw': node.pass_peak_rssi,  # 'peak_rssi_raw' no longer read from node
+        'pass_peak_rssi': node.pass_peak_rssi,
+        'node_peak_rssi': node.node_peak_rssi})
     if node.index==0:
         theaterChase(strip, Color(0,0,255))  #BLUE theater chase
     elif node.index==1:

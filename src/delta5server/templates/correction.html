@@ -258,7 +258,8 @@
 			for (i = 0; i < msg.frequency.length; i++) {
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
-				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
+				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
+				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
 
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
 				var freqExists = $('#f_table_' + i + ' option[value=' + msg.frequency[i] + ']').length;
@@ -268,7 +269,8 @@
 					$('#f_table_' + i).val('n/a');
 				}
 
-				d5rt.nodes[i].peak_rssi = msg.peak_rssi[i];
+				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
+				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
 				d5rt.nodes[i].calibration_threshold = msg.trigger_rssi[i] - parseInt($('#set_calibration_threshold').val());
 				d5rt.nodes[i].trigger_threshold = msg.trigger_rssi[i] - parseInt($('#set_trigger_threshold').val());
 
@@ -429,9 +431,15 @@
 				</td>
 			</tr>
 			<tr>
-				<td class="datalabel">Peak</td>
+				<td class="datalabel">Node Peak</td>
 				<td>
-					<span class="peak_rssi_{{ node }}"></span>
+					<span class="node_peak_rssi_{{ node }}"></span>
+				</td>
+			</tr>
+			<tr>
+				<td class="datalabel">Pass Peak</td>
+				<td>
+					<span class="pass_peak_rssi_{{ node }}"></span>
 				</td>
 			</tr>
 		</table>
