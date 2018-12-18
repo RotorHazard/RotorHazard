@@ -22,6 +22,11 @@
 		d5rt.saveData();
 		$('nav li').removeClass('admin-hide');
 
+		// populate voice controls
+		$('#voice_callsign').prop( "checked", d5rt.voice_callsign);
+		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
+		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
+
 		// set up RSSI graphing
 		$('.node .race-header').each(function(){
 			var node = $(this);
@@ -171,12 +176,23 @@
 		});
 
 		socket.on('phonetic_data', function (msg) {
-			var pilot = msg.callsign;
-			if (msg.pilot)
-				pilot = msg.pilot;
+			var ttstext = '';
 
-			var $ttstest = pilot + " lap " + msg.lap + ": " + msg.phonetic;
-			speak('<div class="speech">' + $ttstest + '</div>');
+			if (d5rt.voice_callsign) {
+				ttstext = msg.callsign + ", ";
+				if (msg.pilot)
+					ttstext = msg.pilot + ", ";
+			}
+
+			if (d5rt.voice_lap_count) {
+				ttstext += " lap " + msg.lap + ", "
+			}
+
+			if (d5rt.voice_lap_time) {
+				ttstext += msg.phonetic
+			}
+
+			speak('<div class="speech">' + ttstext + '</div>');
 		})
 
 		socket.on('current_heat', function (msg) {
@@ -282,6 +298,21 @@
 
 		$('.set_language').change(function (event) {
 			d5rt.language = $(this).val();
+			d5rt.saveData();
+		});
+
+		$('#voice_callsign').change(function (event) {
+			d5rt.voice_callsign = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_lap_count').change(function (event) {
+			d5rt.voice_lap_count = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_lap_time').change(function (event) {
+			d5rt.voice_lap_time = $(this).prop('checked');
 			d5rt.saveData();
 		});
 
@@ -538,13 +569,31 @@
 	</div>
 </div>
 
-<!--Display Voice-->
+<!--Voice Settings-->
 <div class="panel collapsing">
 	<div class="panel-header">
 		<h2>Audio Control</h2>
 	</div>
 	<div class="panel-content">
-		<div id="voice_select"></div>
+		<p class="form-note">Voice settings apply to this device only.</p>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_language">Voice Select</label>
+				</div>
+				<div id="voice_select"></div>
+			</li>
+			<li>
+				<div class="label-block">
+					Announcements
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="voice_callsign"> Callsign</label></li>
+					<li><label><input type="checkbox" id="voice_lap_count"> Lap Number</label></li>
+					<li><label><input type="checkbox" id="voice_lap_time"> Lap Time</label></li>
+				</ul>
+			</li>
+		</ol>
 	</div>
 </div>
 
