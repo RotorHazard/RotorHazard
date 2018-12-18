@@ -1125,10 +1125,10 @@ def heartbeat_thread_function():
         SOCKET_IO.emit('heartbeat', INTERFACE.get_heartbeat_json())
               # emit rest of node data, but less often:
         heartbeat_thread_function.iter_tracker += 1
-        if heartbeat_thread_function.iter_tracker >= 4:
+        if heartbeat_thread_function.iter_tracker >= 5:
             heartbeat_thread_function.iter_tracker = 0
             emit_node_data()
-        gevent.sleep(0.250)
+        gevent.sleep(0.100)
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''

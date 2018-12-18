@@ -14,8 +14,12 @@
 		timedata: [],
 	};
 
+	var speakObjsQueue = [];
+	var checkSpeakQueueFlag = true;
+
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+		var heatbeatCounter = 0;
 
 		// set admin flag
 		d5rt.admin = true;
@@ -72,42 +76,61 @@
 		});
 
 		socket.on('heartbeat', function (msg) {
-			if (d5rt.collecting) {
-				var timedump = {
-					timestamp: new Date(),
-					nodes: [],
-				};
 
-				for (i = 0; i < msg.current_rssi.length; i++) {
-					timedump.nodes.push(msg.current_rssi[i]);
-				}
-				racedump.timedata.push(timedump)
+			if (speakObjsQueue.length > 0) {
+				var isSpeakingFlag = $().articulate('isSpeaking');
+				if (checkSpeakQueueFlag) {
+					if (!isSpeakingFlag) {
+						var obj = speakObjsQueue.shift();
+						if (speakObjsQueue.length > 0)
+							checkSpeakQueueFlag = false;
+						doSpeak(obj);
+					}
+				}  //make sure previous speak has started before checking queue again
+				else if (isSpeakingFlag)
+					checkSpeakQueueFlag = true;
 			}
 
-			for (i = 0; i < msg.current_rssi.length; i++) {
-				var rssiValue = msg.current_rssi[i];
+			if (++heatbeatCounter >= 2) {   //do these updates less often than speak-queue checks
+				heatbeatCounter = 0;
 
-				if (d5rt.nodes[i].frequency == 0) {
-					rssiValue = 0;
+				if (d5rt.collecting) {
+					var timedump = {
+						timestamp: new Date(),
+						nodes: [],
+					};
+	
+					for (i = 0; i < msg.current_rssi.length; i++) {
+						timedump.nodes.push(msg.current_rssi[i]);
+					}
+					racedump.timedata.push(timedump)
 				}
-
-				$('.current_rssi_' + i).html(rssiValue);
-
-				if (d5rt.nodes[i].graph.options.maxValue < rssiValue) {
-					d5rt.nodes[i].graph.options.maxValue = rssiValue;
-				}
-
-				if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
-					d5rt.nodes[i].graph.options.minValue = rssiValue;
-				}
-
-				if (d5rt.nodes[i].graphing) {
-					d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
-				} else {
-					d5rt.nodes[i].graphing = true;
-					d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
-					d5rt.nodes[i].graph.options.minValue = rssiValue - 10;
-					d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+	
+				for (i = 0; i < msg.current_rssi.length; i++) {
+					var rssiValue = msg.current_rssi[i];
+	
+					if (d5rt.nodes[i].frequency == 0) {
+						rssiValue = 0;
+					}
+	
+					$('.current_rssi_' + i).html(rssiValue);
+	
+					if (d5rt.nodes[i].graph.options.maxValue < rssiValue) {
+						d5rt.nodes[i].graph.options.maxValue = rssiValue;
+					}
+	
+					if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
+						d5rt.nodes[i].graph.options.minValue = rssiValue;
+					}
+	
+					if (d5rt.nodes[i].graphing) {
+						d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+					} else {
+						d5rt.nodes[i].graphing = true;
+						d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
+						d5rt.nodes[i].graph.options.minValue = rssiValue - 10;
+						d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+					}
 				}
 			}
 		});
@@ -449,10 +472,13 @@
 
 	});
 
-	function speak(obj) {
+	function doSpeak(obj) {
 		$(obj).articulate('setVoice','name', d5rt.language).articulate('speak');
 	};
 
+	function speak(obj) {
+		speakObjsQueue.push(obj);
+	};
 </script>
 {% endblock %} {% block content %}
 <main class="page-race">

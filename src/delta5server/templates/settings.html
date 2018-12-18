@@ -2,6 +2,7 @@
 <script type="text/javascript" charset="utf-8">
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+		var heatbeatCounter = 0;
 
 		// set admin flag
 		d5rt.admin = true;
@@ -29,37 +30,40 @@
 		});
 
 		socket.on('heartbeat', function (msg) {
-			for (i = 0; i < msg.current_rssi.length; i++) {
-				var rssiValue = msg.current_rssi[i];
+			if (++heatbeatCounter >= 2) {   //do these updates less often than speak-queue checks
+				heatbeatCounter = 0;
+				for (i = 0; i < msg.current_rssi.length; i++) {
+					var rssiValue = msg.current_rssi[i];
 
-				if (d5rt.nodes[i].frequency == 0) {
-					rssiValue = 0;
-				}
+					if (d5rt.nodes[i].frequency == 0) {
+						rssiValue = 0;
+					}
 
-				$('.current_rssi_' + i).html(rssiValue);
+					$('.current_rssi_' + i).html(rssiValue);
 
-				if (msg.crossing_flag[i]) {
-					$('.crossing_flag_' + i).addClass('is-crossing').html('Crossing');
-				}
-				else {
-					$('.crossing_flag_' + i).removeClass('is-crossing').html('Clear');
-				}
+					if (msg.crossing_flag[i]) {
+						$('.crossing_flag_' + i).addClass('is-crossing').html('Crossing');
+					}
+					else {
+						$('.crossing_flag_' + i).removeClass('is-crossing').html('Clear');
+					}
 
-				if (d5rt.nodes[i].graph.options.maxValue < rssiValue) {
-					d5rt.nodes[i].graph.options.maxValue = rssiValue;
-				}
+					if (d5rt.nodes[i].graph.options.maxValue < rssiValue) {
+						d5rt.nodes[i].graph.options.maxValue = rssiValue;
+					}
 
-				if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
-					d5rt.nodes[i].graph.options.minValue = rssiValue;
-				}
+					if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
+						d5rt.nodes[i].graph.options.minValue = rssiValue;
+					}
 
-				if (d5rt.nodes[i].graphing) {
-					d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
-				} else {
-					d5rt.nodes[i].graphing = true;
-					d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
-					d5rt.nodes[i].graph.options.minValue = rssiValue - 10;
-					d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+					if (d5rt.nodes[i].graphing) {
+						d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+					} else {
+						d5rt.nodes[i].graphing = true;
+						d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
+						d5rt.nodes[i].graph.options.minValue = rssiValue - 10;
+						d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+					}
 				}
 			}
 		});
