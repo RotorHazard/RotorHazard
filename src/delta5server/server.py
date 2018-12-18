@@ -351,7 +351,8 @@ def settings():
                            heats=Heat,
                            profiles = Profiles,
                            race_format=RaceFormat,
-                           getOption=getOption)
+                           getOption=getOption,
+                           ConfigFile=Config['GENERAL']['configFile'])
 
 @APP.route('/correction')
 @requires_auth
