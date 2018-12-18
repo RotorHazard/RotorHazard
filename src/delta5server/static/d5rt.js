@@ -49,6 +49,7 @@ var d5rt = {
 		localStorage['d5rt.voice_callsign'] = JSON.stringify(this.voice_callsign);
 		localStorage['d5rt.voice_lap_count'] = JSON.stringify(this.voice_lap_count);
 		localStorage['d5rt.voice_lap_time'] = JSON.stringify(this.voice_lap_time);
+		localStorage['d5rt.voice_race_timer'] = JSON.stringify(this.voice_race_timer);
 		localStorage['d5rt.admin'] = JSON.stringify(this.admin);
 		localStorage['d5rt.primaryPilot'] = JSON.stringify(this.primaryPilot);
 		return true;
