@@ -90,12 +90,6 @@ function nodeModel() {
 	this.trigger_threshold = false;
 	this.offset = 0;
 	this.corrections = {
-		noise: {
-			rawData: [],
-			min: false,
-			median: false,
-			max: false
-		},
 		floor: {
 			rawData: [],
 			min: false,
@@ -116,7 +110,6 @@ function nodeModel() {
 		},
 
 		median_separation: false,
-		suggestedScale: 1,
 
 		calOffset: {
 			min: 0,
@@ -272,7 +265,6 @@ jQuery(document).ready(function($){
 }
 
 /* Frequency Table */
-
 var freqTable = {
 	frequencies: {
 		'—': 0,

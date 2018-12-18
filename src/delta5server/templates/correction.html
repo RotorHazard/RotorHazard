@@ -20,6 +20,7 @@
 			}
 		}
 
+		/*
 		// suggest scale based on all other median separations
 		for (var i = 0; i < d5rt.nodes.length; i++) {
 			var c = d5rt.nodes[i].corrections;
@@ -32,13 +33,7 @@
 				$('#scale_' + i).html('node error');
 			}
 		}
-
-		// suggest offset based on suggested scale
-		for (var i = 0; i < d5rt.nodes.length; i++) {
-			var c = d5rt.nodes[i].corrections;
-
-			$('#offset_' + i).html( Math.round(c.noise.min * c.suggestedScale));
-		}
+		*/
 
 		// suggest calibration offset
 		for (var i = 0; i < d5rt.nodes.length; i++) {
@@ -167,9 +162,6 @@
 
 		/* test data */
 		/*
-		d5rt.nodes[0].corrections.noise.min = 90;
-		d5rt.nodes[0].corrections.noise.median = 90;
-		d5rt.nodes[0].corrections.noise.max = 91;
 		d5rt.nodes[0].corrections.floor.min = 132;
 		d5rt.nodes[0].corrections.floor.median = 146;
 		d5rt.nodes[0].corrections.floor.max = 181;
@@ -180,9 +172,6 @@
 		d5rt.nodes[0].corrections.gate.median = 237;
 		d5rt.nodes[0].corrections.gate.max = 238;
 
-		d5rt.nodes[1].corrections.noise.min = 100;
-		d5rt.nodes[1].corrections.noise.median = 104;
-		d5rt.nodes[1].corrections.noise.max = 106;
 		d5rt.nodes[1].corrections.floor.min = 132;
 		d5rt.nodes[1].corrections.floor.median = 146;
 		d5rt.nodes[1].corrections.floor.max = 181;
@@ -193,9 +182,6 @@
 		d5rt.nodes[1].corrections.gate.median = 237;
 		d5rt.nodes[1].corrections.gate.max = 242;
 
-		d5rt.nodes[2].corrections.noise.min = 90;
-		d5rt.nodes[2].corrections.noise.median = 90;
-		d5rt.nodes[2].corrections.noise.max = 91;
 		d5rt.nodes[2].corrections.floor.min = 132;
 		d5rt.nodes[2].corrections.floor.median = 146;
 		d5rt.nodes[2].corrections.floor.max = 181;
@@ -206,9 +192,6 @@
 		d5rt.nodes[2].corrections.gate.median = 237;
 		d5rt.nodes[2].corrections.gate.max = 247;
 
-		d5rt.nodes[3].corrections.noise.min = 90;
-		d5rt.nodes[3].corrections.noise.median = 90;
-		d5rt.nodes[3].corrections.noise.max = 91;
 		d5rt.nodes[3].corrections.floor.min = 112;
 		d5rt.nodes[3].corrections.floor.median = 126;
 		d5rt.nodes[3].corrections.floor.max = 141;
@@ -462,7 +445,7 @@
 	<li>Set all nodes to a single channel. (Better: use a different VTx for each channel that you will be using)</li>
 	<li>Collect profile data using VTx at different points on the course</li>
 	<li>Run calculator</li>
-	<li>Set node scales and profile tuning values to match calculated values</li>
+	<li>Set tuning values to match calculated values</li>
 	<li>Test course and use calibration guide for further adjustment</li>
 	<li>If the numbers don't make sense, (such as max values being higher than min values,) consider adjusting your course layout or lower the filter ratio and try again</li>
 </ol>
@@ -495,14 +478,6 @@
 	<li>
 		<div class="label-block">
 			<label for=""></label>
-			<p class="desc">Ensure no VTx is powered on.</p>
-			<p>Collected: <span id="noise_length">0</span></p>
-		</div>
-		<button type="button" class="collect_profile" data-collection-type="noise" id="collect_noise_profile" onclick="this.blur();">Profile Noise</button>
-	</li>
-	<li>
-		<div class="label-block">
-			<label for=""></label>
 			<p class="desc">Run calculations after gathering data profiles.</p>
 		</div>
 		<button type="button" class="" id="calc_corrections" onclick="this.blur();">Calculate Corrections</button>
@@ -530,18 +505,6 @@
 				<td>Floor</td>
 				<td>
 					<span id="min_floor_{{ node }}">-</span> / <span id="median_floor_{{ node }}">-</span> / <span id="max_floor_{{ node }}">-</span>
-				</td>
-			</tr>
-			<tr>
-				<td>Noise</td>
-				<td>
-					<span id="min_noise_{{ node }}">-</span> / <span id="median_noise_{{ node }}">-</span> / <span id="max_noise_{{ node }}">-</span>
-				</td>
-			</tr>
-			<tr>
-				<td>Suggested Node Scale</td>
-				<td>
-					<span id="scale_{{ node }}"></span>
 				</td>
 			</tr>
 			<tr>
