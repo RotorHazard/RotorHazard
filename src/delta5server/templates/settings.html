@@ -21,7 +21,7 @@
 		// set up RSSI graphing
 		$('.node table tr:first-child').each(function(){
 			var node = $(this);
-			var node_id = parseInt(node.find('td select').attr('data-node'));
+			var node_id = parseInt(node.closest('.node').data('node'));
 			node.before('<tr><td colspan="2" class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></td></tr>');
 
 			d5rt.nodes[node_id] = new nodeModel();
@@ -39,10 +39,10 @@
 				$('.current_rssi_' + i).html(rssiValue);
 
 				if (msg.crossing_flag[i]) {
-					$('.crossing_flag_' + i).html(1);
+					$('.crossing_flag_' + i).addClass('is-crossing').html('Crossing');
 				}
 				else {
-					$('.crossing_flag_' + i).html(0);
+					$('.crossing_flag_' + i).removeClass('is-crossing').html('Clear');
 				}
 
 				if (d5rt.nodes[i].graph.options.maxValue < rssiValue) {
@@ -242,7 +242,7 @@
 			var el = $(this).closest('li');
 			var callsign = el.find('.set_pilot_callsign').val()
 			var phonetic = el.find('.set_pilot_phonetic').val()
-			
+
 			var ttstext = callsign;
 			if (phonetic)
 				ttstext = phonetic;
@@ -531,9 +531,12 @@
 	<div class="panel-content">
 		<div class="node-list">
 			{% for node in range(num_nodes) %}
-			<div class="node">
+			<div class="node" data-node="{{ node }}">
 				<h3>Node {{ node + 1 }}</h3>
 				<table>
+					<tr>
+						<td colspan="2" class="crossing crossing_flag_{{ node }}">Clear</td>
+					</tr>
 					<tr>
 						<td colspan="2">
 							<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
@@ -579,12 +582,6 @@
 							<span class="debug_pass_count_{{ node }}"></span>
 						</td>
 					</tr>
-					<tr>
-						<td class="datalabel">Crossing</td>
-						<td>
-							<span class="crossing_flag_{{ node }}"></span>
-						</td>
-					</tr>
 				</table>
 			</div>
 			{% endfor %}
@@ -606,7 +603,7 @@
 		<h2>Heats</h2>
 	</div>
 	<div class="panel-content">
-		<p>Changes to heats will affect saved races.</p>
+		<p class="form-note">Changes to heats will affect saved races.</p>
 		<ol id="heatsetup" class="heats">
 			{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
 			<li>
@@ -809,22 +806,22 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_calibration_offset">Calibration Offset</label>
-					<p class="desc">Trigger is Peak Rssi minus Calibration Offset (Default 8)</p>
+					<label for="set_calibration_offset">Entrance Sensitivity</label>
+					<p class="desc">Pass begins when RSSI rises at least this close to all-time peak (Default 8)</p>
 				</div>
 				<input type="number" id="set_calibration_offset" min="1" max="65535">
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_calibration_threshold">Calibration Threshold</label>
-					<p class="desc">Trigger minus Calibration Threshold ends calibration pass (Default 95)</p>
+					<label for="set_calibration_threshold">Calibration Falloff</label>
+					<p class="desc">Calibration is completed when RSSI falls this amount (Default 95)</p>
 				</div>
 				<input type="number" id="set_calibration_threshold" min="1" max="65535">
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_trigger_threshold">Trigger Threshold</label>
-					<p class="desc">Trigger minus Trigger Threshold ends normal pass (Default 40)</p>
+					<label for="set_trigger_threshold">Exit Falloff</label>
+					<p class="desc">Pass is completed when RSSI falls by this amount (Default 40)</p>
 				</div>
 				<input type="number" id="set_trigger_threshold" min="1" max="65535">
 			</li>
@@ -846,27 +843,27 @@
 				</tr>
 				<tr>
 					<td>Missing passes</td>
-					<td>Increase Calibration Offset</td>
+					<td>Increase Entrance Sensitivity</td>
 				</tr>
 				<tr>
 					<td>Pass registers on other parts of course</td>
-					<td>Decrease Calibration Offset</td>
+					<td>Decrease Entrance Sensitivity</td>
 				</tr>
 				<tr>
 					<td>First pass triggers before crossing the gate</td>
-					<td>Increase Calibration Threshold</td>
+					<td>Increase Calibration Falloff</td>
 				</tr>
 				<tr>
 					<td>Not getting a pass record for the first pass</td>
-					<td>Decrease Calibration Threshold</td>
+					<td>Decrease Calibration Falloff</td>
 				</tr>
 				<tr>
 					<td>Several pass records while passing the start gate</td>
-					<td>Increase Trigger Threshold</td>
+					<td>Increase Exit Falloff</td>
 				</tr>
 				<tr>
 					<td>Pass registering is significantly delayed</td>
-					<td>Decrease Trigger Threshold</td>
+					<td>Decrease Exit Falloff</td>
 				</tr>
 				<tr>
 					<td>RSSI too noisy</td>
@@ -920,11 +917,11 @@
 	<div class="panel-content">
 		<div class="control-set">
 			<select id="reset_type">
-				<option value="races">Clear Races</option>
-				<option value="heats">Clear Races and Heats</option>
-				<option value="pilots">Clear Races, Heats, and Pilots</option>
+				<option value="races">Races</option>
+				<option value="heats">Races and Heats</option>
+				<option value="pilots">Races, Heats, and Pilots</option>
 			</select>
-			<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">Reset</button>
+			<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">Clear Data</button>
 		</div>
 	</div>
 </div>

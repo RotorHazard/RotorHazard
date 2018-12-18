@@ -89,6 +89,14 @@ textarea {
 	height: 6em;
 }
 
+input[type="checkbox"],
+input[type="radio"] {
+	width: auto;
+	border: none;
+	background: transparent;
+	padding: 0;
+}
+
 select {
 	width: 100%;
 }
@@ -133,6 +141,7 @@ button.no-style {
 	min-height: 0;
 	display: block;
 	background: transparent;
+	text-align: inherit;
 }
 
 ol.form {
@@ -142,7 +151,7 @@ ol.form {
 	margin: 0 auto;
 }
 
-ol.form li {
+ol.form>li {
 	margin: 0.5rem 0;
 }
 
@@ -156,8 +165,18 @@ ol.form .desc {
 	font-style: italic;
 }
 
+ol.form ul {
+	width: 20em;
+	list-style: none;
+	padding: 0;
+}
+
+ol.form li+li {
+	margin-top: 0.5em;
+}
+
 @media (min-width: 40em) {
-	ol.form li {
+	ol.form>li {
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-start;
@@ -172,6 +191,11 @@ ol.form .desc {
 	ol.form textarea,
 	ol.form select {
 		width: 20em;
+	}
+
+	ol.form input[type="checkbox"],
+	ol.form input[type="radio"] {
+		width: auto;
 	}
 }
 
@@ -736,6 +760,17 @@ main {
 	border-radius: 0.25rem;
 }
 
+.crossing {
+	text-align: center;
+	color: #fff;
+	background: hsl(212.7, 67.8%, 29.2%);
+}
+
+.crossing.is-crossing {
+	background: hsl(25, 85%, 55%);
+	color: #000;
+}
+
 .page-race tr.lap td:first-child {
 	display: none;
 }
@@ -780,11 +815,14 @@ main {
 	margin-top: 0;
 }
 
-#set_current_heat,
-#set_race_format,
-#set_profile,
-#reset_type {
+.control-set select {
 	width: auto;
+}
+
+.form-note {
+	text-align: center;
+	font-style: italic;
+	margin-bottom: 2em;
 }
 
 th.speak,
