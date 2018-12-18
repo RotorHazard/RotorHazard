@@ -14,6 +14,7 @@ import gevent.monkey
 gevent.monkey.patch_all()
 
 import random
+import json
 
 # LED imports
 import time
@@ -37,21 +38,40 @@ APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, 'da
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 DB = SQLAlchemy(APP)
 
+Config = {}
+Config['GENERAL'] = {}
+Config['LED'] = {}
+
 # LED strip configuration:
-APP.config['LED_COUNT']      = 150      # Number of LED pixels.
-APP.config['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
-APP.config['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
-APP.config['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
-APP.config['LED_BRIGHTNESS'] = 255     # Set to 0 for darkest and 255 for brightest
-APP.config['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
-APP.config['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
-APP.config['LED_STRIP']      = ws.WS2811_STRIP_GRB   # Strip type and colour ordering
+Config['LED']['LED_COUNT']      = 150      # Number of LED pixels.
+Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
+Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
+Config['LED']['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
+Config['LED']['LED_BRIGHTNESS'] = 255     # Set to 0 for darkest and 255 for brightest
+Config['LED']['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
+Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
+Config['LED']['LED_STRIP']      = ws.WS2811_STRIP_GRB   # Strip type and colour ordering
 
 # other default configurations
-APP.config['HTTP_PORT'] = 5000
+Config['GENERAL']['HTTP_PORT'] = 5000
+Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
+Config['GENERAL']['ADMIN_PASSWORD'] = 'delta5'
 
 # override defaults above with config from file
-APP.config.from_object('config')
+try:
+    with open('config.json', 'r') as f:
+        ExternalConfig = json.load(f)
+    Config['GENERAL'].update(ExternalConfig['GENERAL'])
+    Config['LED'].update(ExternalConfig['LED'])
+    Config['GENERAL']['configFile'] = 1
+    print 'Configuration file imported'
+    APP.config['SECRET_KEY'] = Config['GENERAL']['SECRET_KEY']
+except IOError:
+    Config['GENERAL']['configFile'] = 0
+    print 'No configuration file found, using defaults'
+except ValueError:
+    Config['GENERAL']['configFile'] = -1
+    print 'Configuration file invalid, using defaults'
 
 INTERFACE = get_hardware_interface()
 RACE = get_race_state() # For storing race management variables
@@ -120,7 +140,7 @@ def theaterChaseRainbow(strip, wait_ms=25):
                 strip.setPixelColor(i+q, 0)
 
 # Create NeoPixel object with appropriate configuration.
-strip = Adafruit_NeoPixel(APP.config['LED_COUNT'], APP.config['LED_PIN'], APP.config['LED_FREQ_HZ'], APP.config['LED_DMA'], APP.config['LED_INVERT'], APP.config['LED_BRIGHTNESS'], APP.config['LED_CHANNEL'], APP.config['LED_STRIP'])
+strip = Adafruit_NeoPixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], Config['LED']['LED_STRIP'])
 # Intialize the library (must be called once before other functions).
 strip.begin()
 
@@ -228,7 +248,7 @@ def setOption(option, value):
 
 def check_auth(username, password):
     '''Check if a username password combination is valid.'''
-    return username == 'admin' and password == 'delta5'
+    return username == Config['GENERAL']['ADMIN_USERNAME'] and password == Config['GENERAL']['ADMIN_PASSWORD']
 
 def authenticate():
     '''Sends a 401 response that enables basic auth.'''
@@ -1475,4 +1495,4 @@ INTERFACE.set_filter_ratio_global(tune_val.f_ratio)
 print 'Server ready'
 
 if __name__ == '__main__':
-    SOCKET_IO.run(APP, host='0.0.0.0', port=APP.config['HTTP_PORT'], debug=True, use_reloader=False)
+    SOCKET_IO.run(APP, host='0.0.0.0', port=Config['GENERAL']['HTTP_PORT'], debug=True, use_reloader=False)

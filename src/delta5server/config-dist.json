@@ -1,0 +1,17 @@
+{
+	"GENERAL": {
+		"HTTP_PORT": 80,
+		"SECRET_KEY": "secret!",
+		"ADMIN_USERNAME": "admin",
+		"ADMIN_PASSWORD": "delta5"
+	},
+	"LED": {
+		"LED_COUNT": 150,
+		"LED_PIN": 10,
+		"LED_FREQ_HZ": 800000,
+		"LED_DMA": 10,
+		"LED_BRIGHTNESS": 255,
+		"LED_INVERT": false,
+		"LED_CHANNEL": 0
+	}
+}
