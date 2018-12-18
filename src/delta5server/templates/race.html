@@ -30,6 +30,7 @@
 		$('#voice_callsign').prop( "checked", d5rt.voice_callsign);
 		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
 		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
+		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
 
 		// set up RSSI graphing
 		$('.node .race-header').each(function(){
@@ -339,6 +340,11 @@
 			d5rt.saveData();
 		});
 
+		$('#voice_race_timer').change(function (event) {
+			d5rt.voice_race_timer = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
 		/* Race Format */
 		socket.on('race_format', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
@@ -617,6 +623,7 @@
 					<li><label><input type="checkbox" id="voice_callsign"> Callsign</label></li>
 					<li><label><input type="checkbox" id="voice_lap_count"> Lap Number</label></li>
 					<li><label><input type="checkbox" id="voice_lap_time"> Lap Time</label></li>
+					<li><label><input type="checkbox" id="voice_race_timer"> Race Timer</label></li>
 				</ul>
 			</li>
 		</ol>

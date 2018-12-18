@@ -34,6 +34,7 @@ var d5rt = {
 	voice_callsign: true, // speak pilot callsigns
 	voice_lap_count: true, // speak lap counts
 	voice_lap_time: true, // speak lap times
+	voice_race_timer: true, // speak race timer
 	admin: false, // whether to show admin options in nav
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array for rssi graphing
