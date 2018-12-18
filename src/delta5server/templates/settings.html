@@ -272,6 +272,17 @@
 
 		/* Race Format */
 		socket.on('race_format', function (msg) {
+			$('#set_min_lap').val(msg.min_lap);
+		});
+
+		$('#set_min_lap').change(function (event) {
+			var data = {
+				min_lap: parseInt($(this).val())
+			};
+			socket.emit('set_min_lap', data);
+		})
+
+		socket.on('race_format', function (msg) {
 			$('#set_race_format').empty();
 			for (i = 0; i < msg.format_ids.length; i++) {
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
@@ -280,7 +291,6 @@
 			$('#set_format_name').val(msg.format_name);
 			$('#set_race_mode').val(msg.race_mode);
 			$('#set_fix_race_time').val(msg.race_time_sec);
-			$('#set_min_lap').val(msg.min_lap);
 			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
 			$('#set_start_delay_min').val(msg.start_delay_min);
 			$('#set_start_delay_max').val(msg.start_delay_max);
@@ -322,13 +332,6 @@
 				race_time: parseInt($(this).val())
 			};
 			socket.emit('set_fix_race_time', data);
-		})
-
-		$('#set_min_lap').change(function (event) {
-			var data = {
-				min_lap: parseInt($(this).val())
-			};
-			socket.emit('set_min_lap', data);
 		})
 
 		$('#set_hide_stage_timer').change(function (event) {
@@ -667,6 +670,18 @@
 		<h2>Race Format</h2>
 	</div>
 	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">Minimum Lap Time</label>
+					<p class="desc">In seconds</p>
+				</div>
+				<input type="text" id="set_min_lap" min="0" max="999">
+			</li>
+		</ol>
+
+		<hr />
+
 		<div class="control-set">
 			<label for="set_race_format">Format:</label>
 			<select id="set_race_format">
@@ -695,16 +710,9 @@
 			<li>
 				<div class="label-block">
 					<label for="set_fix_race_time">Timer Duration (seconds)</label>
-					<p class="desc">Count-down timed races</p>
+					<p class="desc">Used for Count Down timed races</p>
 				</div>
 				<input type="number" id="set_fix_race_time" min="0" max="99999">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_min_lap">Minimum lap time (seconds)</label>
-					<p class="desc">Prevents repeated triggering</p>
-				</div>
-				<input type="number" id="set_min_lap" min="0" max="999">
 			</li>
 			<li>
 				<div class="label-block">

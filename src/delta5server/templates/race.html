@@ -287,6 +287,17 @@
 
 		/* Race Format */
 		socket.on('race_format', function (msg) {
+			$('#set_min_lap').val(msg.min_lap);
+		});
+
+		$('#set_min_lap').change(function (event) {
+			var data = {
+				min_lap: parseInt($(this).val())
+			};
+			socket.emit('set_min_lap', data);
+		})
+
+		socket.on('race_format', function (msg) {
 			$('#set_race_format').empty();
 			for (i = 0; i < msg.format_ids.length; i++) {
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
@@ -499,18 +510,31 @@
 		<h2>Race Management</h2>
 	</div>
 	<div class="panel-content">
-		<div class="control-set">
-			<label for="set_race_format">Race Format:</label>
-			<select id="set_race_format">
-				<option>Loading...</option>
-			</select>
-		</div>
-		<div class="control-set">
-			<label for="set_profile">Calibration Profile:</label>
-			<select id="set_profile">
-				<option>Loading...</option>
-			</select>
-		</div>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">Minimum Lap Time</label>
+					<p class="desc">In seconds</p>
+				</div>
+				<input type="text" id="set_min_lap" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">Race Format</label>
+				</div>
+				<select id="set_race_format">
+					<option>Loading...</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">Calibration Profile</label>
+				</div>
+				<select id="set_profile">
+					<option>Loading...</option>
+				</select>
+			</li>
+		</ol>
 	</div>
 </div>
 
