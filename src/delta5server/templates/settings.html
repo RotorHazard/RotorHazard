@@ -301,7 +301,7 @@
 		});
 
 		/* Race Format */
-		socket.on('race_format', function (msg) {
+		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
 		});
 
@@ -722,7 +722,7 @@
 					<label for="set_min_lap">Minimum Lap Time</label>
 					<p class="desc">In seconds</p>
 				</div>
-				<input type="text" id="set_min_lap" min="0" max="999">
+				<input type="text" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
 			</li>
 		</ol>
 

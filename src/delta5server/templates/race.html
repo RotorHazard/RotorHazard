@@ -100,30 +100,30 @@
 						timestamp: new Date(),
 						nodes: [],
 					};
-	
+
 					for (i = 0; i < msg.current_rssi.length; i++) {
 						timedump.nodes.push(msg.current_rssi[i]);
 					}
 					racedump.timedata.push(timedump)
 				}
-	
+
 				for (i = 0; i < msg.current_rssi.length; i++) {
 					var rssiValue = msg.current_rssi[i];
-	
+
 					if (d5rt.nodes[i].frequency == 0) {
 						rssiValue = 0;
 					}
-	
+
 					$('.current_rssi_' + i).html(rssiValue);
-	
+
 					if (d5rt.nodes[i].graph.options.maxValue < rssiValue) {
 						d5rt.nodes[i].graph.options.maxValue = rssiValue;
 					}
-	
+
 					if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
 						d5rt.nodes[i].graph.options.minValue = rssiValue;
 					}
-	
+
 					if (d5rt.nodes[i].graphing) {
 						d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
 					} else {
@@ -346,7 +346,7 @@
 		});
 
 		/* Race Format */
-		socket.on('race_format', function (msg) {
+		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
 		});
 
@@ -579,7 +579,7 @@
 					<label for="set_min_lap">Minimum Lap Time</label>
 					<p class="desc">In seconds</p>
 				</div>
-				<input type="text" id="set_min_lap" min="0" max="999">
+				<input type="text" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
 			</li>
 			<li>
 				<div class="label-block">

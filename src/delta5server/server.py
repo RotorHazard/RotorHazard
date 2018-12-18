@@ -401,6 +401,7 @@ def connect_handler():
     emit_race_status() # Race page, to set race button states
     emit_current_laps() # Race page, load and current laps
     emit_leaderboard() # Race page, load leaderboard for current laps
+    emit_min_lap() # Settings and Race, minimum lap time
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
@@ -959,7 +960,7 @@ def emit_node_tuning():
 
 def emit_min_lap():
     '''Emits current minimum lap.'''
-    SOCKET_IO.emit('race_format', {
+    SOCKET_IO.emit('min_lap', {
         'min_lap': getOption('MinLapSec')
     })
 
@@ -1203,7 +1204,7 @@ def pass_record_callback(node, ms_since_lap):
 
                 last_raceFormat = int(getOption("lastFormat"))
                 race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
-                min_lap = getOption("MinLapSec")
+                min_lap = int(getOption("MinLapSec"))
                 if lap_time > (min_lap * 1000) or lap_id == 0:
                     # Add the new lap to the database
                     DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
@@ -1234,8 +1235,8 @@ def pass_record_callback(node, ms_since_lap):
                     elif node.index==7:
                         onoff(strip, Color(255,0,0)) #RED
                 else:
-                    server_log('Pass record under lap minimum: Node: {0}, Lap: {1}, Lap time: {2}' \
-                        .format(node.index+1, lap_id, time_format(lap_time)))
+                    server_log('Pass record under lap minimum ({3}): Node: {0}, Lap: {1}, Lap time: {2}' \
+                        .format(node.index+1, lap_id, time_format(lap_time), min_lap))
             else:
                 server_log('Pass record dismissed: Node: {0}, Pilot not defined' \
                     .format(node.index+1))
