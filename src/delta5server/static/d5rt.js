@@ -129,20 +129,20 @@ function nodeModel() {
 	};
 
 	this.graph = new SmoothieChart({
-				responsive: true,
-				millisPerPixel:50,
-				grid:{
-					strokeStyle:'rgba(255,255,255,0.25)',
-					sharpLines:true,
-					verticalSections:0,
-					borderVisible:false
-				},
-				labels:{
-					precision:0
-				},
-				maxValue: 0,
-				minValue: 0,
-			});
+		responsive: true,
+		millisPerPixel:50,
+		grid:{
+			strokeStyle:'rgba(255,255,255,0.25)',
+			sharpLines:true,
+			verticalSections:0,
+			borderVisible:false
+		},
+		labels:{
+			precision:0
+		},
+		maxValue: 0,
+		minValue: 0,
+	});
 	this.series = new TimeSeries();
 }
 nodeModel.prototype = {

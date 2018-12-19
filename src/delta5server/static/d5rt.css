@@ -199,6 +199,13 @@ ol.form li+li {
 	}
 }
 
+::-moz-selection,
+::selection {
+	background: hsl(25, 85%, 55%);
+	color: #fff;
+	text-shadow: none;
+}
+
 .panel {
 	margin: 0;
 	padding: 0;
@@ -249,13 +256,12 @@ ol.form li+li {
 	height: auto;
 	line-height: normal;
 	padding: 15px 23px 14px;
-	position: absolute;
 	left: 5px;
 	top: 5px;
 	text-decoration: none;
 	text-transform: none;
 	width: auto;
-	z-index: 100000; /* Above WP toolbar */
+	z-index: 100000;
 }
 
 body>header {

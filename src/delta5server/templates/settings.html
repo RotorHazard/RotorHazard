@@ -477,12 +477,18 @@
 			return false;
 		});
 
-		$('#set_timer_name').change(function (event) {
-				var data = {
-					timer_name: $(this).val()
-				};
-				socket.emit('set_timer_name', data);
-				return false;
+		socket.on('set_option', function (msg) {
+			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
+		});
+
+		$('.set-option').change(function (event) {
+			var data = {
+				option: $(this).data('option'),
+				value: $(this).val()
+			};
+			socket.emit('set_option', data);
+			return false;
+		});
 		});
 
 		/* LED Controls */
@@ -734,7 +740,7 @@
 					<label for="set_min_lap">Minimum Lap Time</label>
 					<p class="desc">In seconds</p>
 				</div>
-				<input type="text" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
 			</li>
 		</ol>
 
@@ -955,14 +961,18 @@
 		<h2>System</h2>
 	</div>
 	<div class="panel-content">
-		<div class="label-block">
-			<label for="set_timer_name">Timer Name</label>
-		</div>
-		<input type="text" id="set_timer_name" value="{{ getOption('timerName') }}">
-
 		<div class="control-set">
 			<button type="button" class="btn-danger" id="shutdown_pi" onclick="this.blur();">Shut Down</button>
 		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_timer_name">Timer Name</label>
+				</div>
+				<input type="text" id="set_timer_name" class="set-option" data-option="timerName" value="{{ getOption('timerName') }}">
+			</li>
+		</ol>
 	</div>
 </div>
 
