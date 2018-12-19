@@ -378,7 +378,7 @@ def database():
     '''Route to database page.'''
     return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
         savedraces=SavedRace, race_format=RaceFormat, \
-        node_data=NodeData, getOption=getOption)
+        node_data=NodeData, globalSettings=GlobalSettings, getOption=getOption)
 
 #
 # Socket IO Events

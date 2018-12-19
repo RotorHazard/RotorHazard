@@ -154,5 +154,23 @@
     </tbody>
 </table>
 
+<h2>Global Settings</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Option</th>
+            <th>Value</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for setting in globalSettings.query.all() %}
+        <tr>
+            <td>{{ setting.option_name }}</td>
+            <td>{{ setting.option_value }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
 </main>
 {% endblock %}
