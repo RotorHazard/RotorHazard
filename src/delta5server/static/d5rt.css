@@ -85,6 +85,12 @@ textarea {
 	padding: 0.25rem;
 }
 
+input[type="range"] {
+	width: 100%;
+	padding: 0;
+	margin: 0;
+}
+
 textarea {
 	height: 6em;
 }

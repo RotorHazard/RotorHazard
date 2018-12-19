@@ -1416,6 +1416,21 @@ def db_reset_node_values():
 def db_reset_options_defaults():
     DB.session.query(GlobalSettings).delete()
     setOption("timerName", "Delta5 Race Timer")
+
+    setOption("hue_0", "212")
+    setOption("sat_0", "55")
+    setOption("lum_0_low", "29.2")
+    setOption("lum_0_high", "46.7")
+    setOption("contrast_0_low", "#ffffff")
+    setOption("contrast_0_high", "#ffffff")
+
+    setOption("hue_1", "25")
+    setOption("sat_1", "85.3")
+    setOption("lum_1_low", "37.6")
+    setOption("lum_1_high", "54.5")
+    setOption("contrast_1_low", "#ffffff")
+    setOption("contrast_1_high", "#000000")
+
     setOption("lastProfile", "1")
     setOption("lastFormat", "1")
     setOption("MinLapSec", "5")
