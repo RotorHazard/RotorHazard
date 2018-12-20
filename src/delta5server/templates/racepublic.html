@@ -167,6 +167,19 @@
 			timer.stop();
 		});
 
+		socket.on('pilot_data', function (msg) {
+			var voices = $("#voice-calls");
+			voices.empty();
+			voices.append('<option value="-1">None</option>');
+			voices.append('<option value="0">All</option>');
+			for (var i in msg.pilot_id) {
+				if (msg.pilot_id[i] != 1) {
+					voices.append('<option value="' + msg.pilot_id[i] + '">' + msg.callsign[i] + ' (' + msg.name[i] + ')</option>')
+				}
+			}
+			voices.val(d5rt.primaryPilot);
+		});
+
 		/* Voice */
 		// construct language selection
 		$('#voice_select').after('<select id="set_language" class="set_language">');
@@ -226,7 +239,7 @@
 			{% for node in range(num_nodes) %}
 			<div class="node" data-id="{{ node }}">
 				<h4 class="callsign_{{ node }}">Laoding...</h4>
-				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
+				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
 				<table class="laps" id="current_laps_{{ node }}">
 					<tbody>
 					</tbody>
@@ -256,11 +269,7 @@
 					<label for="voice-calls">Voice Calls</label>
 				</div>
 				<select id="voice-calls">
-					<option value="-1">None</option>
-					<option value="0">All</option>
-					{% for pilot in pilots.query.order_by(pilots.name).all() %} {% if pilot.id != 1 %}
-						<option value="{{ pilot.id }}">{{ pilot.callsign }} ({{ pilot.name }})</option>
-					{% endif %} {% endfor %}
+					<option value="-1">Loading...</option>
 				</select>
 			</li>
 		</ol>

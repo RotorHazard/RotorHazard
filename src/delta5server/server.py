@@ -320,8 +320,7 @@ def index():
 @APP.route('/')
 def heats():
     '''Route to heat summary page.'''
-    return render_template('heats.html', num_nodes=RACE.num_nodes, heats=Heat, pilots=Pilot, \
-        frequencies=[node.frequency for node in INTERFACE.nodes], getOption=getOption)
+    return render_template('heats.html', getOption=getOption)
 
 @APP.route('/race')
 @requires_auth
@@ -336,10 +335,10 @@ def race():
 @APP.route('/current')
 def racepublic():
     '''Route to race management page.'''
-    return render_template('racepublic.html', num_nodes=RACE.num_nodes,
-                           heats=Heat, pilots=Pilot,
-                           getOption=getOption,
-        frequencies=[node.frequency for node in INTERFACE.nodes])
+    return render_template('racepublic.html',
+            num_nodes=RACE.num_nodes,
+            getOption=getOption,
+        )
 
 @APP.route('/settings')
 @requires_auth
@@ -347,10 +346,6 @@ def settings():
     '''Route to settings page.'''
 
     return render_template('settings.html', num_nodes=RACE.num_nodes,
-                           pilots=Pilot,
-                           heats=Heat,
-                           profiles = Profiles,
-                           race_format=RaceFormat,
                            getOption=getOption,
                            ConfigFile=Config['GENERAL']['configFile'])
 
@@ -1384,7 +1379,7 @@ def db_reset_profile():
                              c_threshold=90,
                              t_threshold=40,
                              f_ratio=100))
-    DB.session.add(Profiles(name="default 600mW",
+    DB.session.add(Profiles(name="Outdoor 600mW",
                              description ="High speed, 600mW, open area",
                              c_offset=8,
                              c_threshold=100,

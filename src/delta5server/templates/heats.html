@@ -12,9 +12,54 @@
 				freq.updateBlocks();
 			}
 		});
+
+		socket.on('pilot_data', function (msg) {
+			$(".pilots").empty();
+			for (var i in msg.pilot_id) {
+				if (msg.pilot_id[i] != 1) {
+					var el = $('<li data-id="' + msg.pilot_id[i] + '">');
+					el.append('<div class="name">'+ msg.name[i] + '</div>');
+					el.append('<div class="callsign">' + msg.callsign[i] + '</div>');
+					el.appendTo($('.pilots'));
+				}
+			}
+		});
+
+		socket.on('heat_data', function (msg) {
+			$(".heats").empty();
+			for (var i in msg.heats) {
+				var heats = msg.heats[i];
+				var el = $('<li>');
+				if (heats.note) {
+					el.append('<h3>' + heats.note + '</h3>');
+				} else {
+					el.append('<h3>Heat ' + heats.heat_id + '</h3>');
+				}
+
+				var nodelist = $('<ol>');
+				for (j in heats.pilots) {
+					var heatpilot = heats.pilots[j];
+					var slot = $('<li>');
+					slot.append('<div class="channel-block" data-node="' + j + '"><span class="ch"></span> <span class="fr"></span></div>');
+
+					var callsign;
+					for (var k in msg.pilot_data.pilot_id) {
+						if (msg.pilot_data.pilot_id[k] == heatpilot) {
+							callsign = msg.pilot_data.callsign[k];
+							break;
+						}
+					}
+
+					slot.append('<div class="pilot-name">' + callsign + '</div');
+					nodelist.append(slot);
+				}
+
+				el.append(nodelist);
+				el.appendTo($('.heats'));
 			}
 			freq.updateBlocks();
 		});
+
 	});
 </script>
 
@@ -24,36 +69,13 @@
 
 <h2>Heats</h2>
 <ol class="heats">
-	{% for heat in heats.query.filter_by(node_index=0).order_by(heats.heat_id).all() %}
-	<li class="heat">
-		<h3>{% if heat.note %}
-				{{ heat.note }}
-			{% else %}
-				Heat {{ heat.heat_id }}
-			{% endif %}</h3>
-		<ol>
-			{% for node in range(num_nodes) %}
-			<li>
-				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
-
-				<div class="pilot-name">{{ pilots.query.filter_by(id= heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign
-					}}</div>
-			</li>
-			{% endfor %}
-		</ol>
-	</li>
-	{% endfor %}
+	<li class="heat">Loading...</li>
 </ol>
 
 <!--Display the pilots-->
 <h2>Pilots</h2>
 <ul class="pilots">
-	{% for pilot in pilots.query.order_by(pilots.callsign).all() %} {% if pilot.id != 1 %}
-	<li>
-		<div class="callsign">{{ pilot.callsign }}</div>
-		<div class="name">{{ pilot.name }}</div>
-	</li>
-	{% endif %} {% endfor %}
+	<li>Loading...</li>
 </ul>
 
 <div class="admin">
