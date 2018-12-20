@@ -5,6 +5,7 @@
 	function _timer(callback) {
 		var time = 0; // The default time in seconds
 		var mode = 1; // Count down is 0, count up is 1
+		var race_duration = 0; // Duration for count down mode
 		var status = 0; // Stopped is 0, running is 1, pre-race staging is 2
 		var timer_id; // Used by setInterval function
 		var pre_race = false; // pre-race countdown
@@ -56,6 +57,24 @@
 			}
 		}
 
+		// Start the timer
+		this.continue = function () {
+			status = 1; // Set status to running
+			generateTime(); // Updates html timer text
+			timer_id = setInterval(function () {
+				switch (mode) {
+					default: // Default mode 0 for a countdown timer
+						time--;
+						break;
+					case 1: // Mode 1 for a count up timer
+						time++;
+						break;
+				}
+				generateTime(); // Updates html timer text
+				if (typeof (callback) === 'function') callback(time);
+			}, 1000); // 1000 ms update rate
+		}
+
 		// Stop timer and clear update interval
 		this.stop = function () {
 			status = 0;
@@ -66,8 +85,15 @@
 		// Stop the timer, set the time equal to the passed value, update html clock
 		this.reset = function (reset_time) {
 			this.stop(); // On a reset also stop the clock
-			reset_time = (typeof (reset_time) !== 'undefined') ? reset_time : 0;
-			time = reset_time;
+			if(typeof (reset_time) !== 'undefined') {
+				time = reset_time;
+			} else {
+				if (mode) {
+					time = 0;
+				} else {
+					time = race_duration;
+				}
+			}
 			generateTime(); // Updates html timer text
 		}
 
@@ -89,6 +115,11 @@
 			mode = new_mode;
 		}
 
+		// Return the current race duration
+		this.setRaceDuration = function (new_duration) {
+			race_duration = new_duration;
+		}
+
 		// Return the current time in seconds
 		this.getTime = function () {
 			return time;
@@ -97,6 +128,11 @@
 		// Return the current mode
 		this.getMode = function () {
 			return mode;
+		}
+
+		// Return the current race duration
+		this.getRaceDuration = function () {
+			return race_duration;
 		}
 
 		// Return the current pre-race status
@@ -174,6 +210,12 @@
 					} else if (time == 30) {
 						speak('<div class="timer">30 seconds</div>');
 					}
+				}
+
+				// Request server time resync every 30s
+				if (time % 30 == 10) { // correct close to, but not exactly at, critical time calls
+					request_time = new Date();
+					socket.emit('get_race_elapsed');
 				}
 			}
 		}

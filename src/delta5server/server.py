@@ -921,11 +921,23 @@ def on_LED_RBCHASE():
 def on_set_option(data):
     setOption(data['option'], data['value'])
 
+@SOCKET_IO.on('get_race_elapsed')
+def get_race_elapsed():
+    emit('race_elapsed', {
+        'elapsed': ms_from_race_start()
+    })
+
 # Socket io emit functions
 
 def emit_race_status():
     '''Emits race status.'''
-    SOCKET_IO.emit('race_status', {'race_status': RACE.race_status})
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    SOCKET_IO.emit('race_status', {
+        'race_status': RACE.race_status,
+        'race_mode': race_format.race_mode,
+        'race_time_sec': race_format.race_time_sec,
+    })
 
 def emit_node_data():
     '''Emits node data.'''

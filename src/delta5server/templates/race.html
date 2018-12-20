@@ -6,8 +6,9 @@
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
 
 <script type="text/javascript" charset="utf-8">
+	var socket = false;
 	var request_time;
-	var race_time_sec; // store locally to reset visible timer
+	var resume_check = true;
 
 	var racedump = {
 		timestamp: new Date(),
@@ -18,7 +19,7 @@
 	var checkSpeakQueueFlag = true;
 
 	$(document).ready(function () {
-		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 		var heatbeatCounter = 0;
 
 		// set admin flag
@@ -42,6 +43,33 @@
 			d5rt.nodes[node_id].setup(document.getElementById('rssi-graph-' + node_id));
 		});
 
+		socket.on('race_elapsed', function (msg) {
+			var response_time = new Date();
+			var server_delay = ((response_time - request_time) / 2);
+			if (timer.getStatus() == 1) {
+				var elapsed = msg.elapsed + server_delay;
+				setTimeout(function(){
+					if (timer.getMode()) {
+						// Count up mode
+						timer.stop();
+						timer.reset(Math.floor(elapsed / 1000) + 1);
+						timer.continue(); // Start clock without fanfare
+					} else {
+						// Count down mode
+						var remaining = timer.getRaceDuration() - Math.floor(elapsed / 1000);
+
+						if (remaining > 1) { // don't attempt to resync very late
+							timer.stop();
+							timer.reset(timer.getRaceDuration() - Math.floor(elapsed / 1000));
+							timer.continue(); // Start clock without fanfare
+						} else {
+							timer.reset(0);
+						}
+					}
+				}, 1000 - (elapsed % 1000));
+			}
+		});
+
 		socket.on('race_status', function (msg) {
 			switch (msg.race_status) {
 				case 1: // Race running
@@ -53,6 +81,10 @@
 					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
+					if (resume_check) {
+						timer.reset(0);
+						timer.continue();
+					}
 					break;
 				case 2: // Race stopped, clear or save laps
 					$('button#start_race').attr('disabled', 'disabled');
@@ -73,6 +105,15 @@
 					$('body').addClass('race-new');
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-stopped');
+			}
+			timer.mode(msg.race_mode);
+			timer.setRaceDuration(msg.race_time_sec);
+
+			// resume race if needed
+			if (resume_check) {
+				resume_check = false;
+				request_time = new Date();
+				socket.emit('get_race_elapsed');
 			}
 		});
 
@@ -245,18 +286,13 @@
 			socket.emit('start_race', data);
 			setTimeout(function(){
 				timer.mode(msg.race_mode);
-				if (msg.race_mode) {
-					// Count up mode
-					timer.reset(0);
-				} else {
-					// 0 = Count down mode
-					timer.reset(msg.race_time_sec);
-				}
+				timer.setRaceDuration(msg.race_time_sec);
+				timer.reset();
 				timer.pre_race(msg.start_delay, msg.hide_stage_timer);
 				timer.start(); // Start clock
 
 				$('button#stop_race').removeAttr('disabled', 'disabled');
-				race_mode = msg.race_time_sec;
+
 				d5rt.collecting = 'race';
 				racedump.timestamp = new Date();
 				racedump.timedata = [];
@@ -282,7 +318,7 @@
 
 		$('button#clear_laps').click(function (event) {
 			socket.emit('clear_laps');
-			timer.reset(race_time_sec);
+			timer.reset();
 			return false;
 		});
 
