@@ -403,6 +403,8 @@ def connect_handler():
     emit_current_laps() # Race page, load and current laps
     emit_leaderboard() # Race page, load leaderboard for current laps
     emit_min_lap() # Settings and Race, minimum lap time
+    emit_heat_data()
+    emit_pilot_data()
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
@@ -443,6 +445,7 @@ def on_add_heat():
         DB.session.add(Heat(heat_id=max_heat_id+1, node_index=node, pilot_id=node+2))
     DB.session.commit()
     server_log('Heat added: Heat {0}'.format(max_heat_id+1))
+    emit_heat_data() # Settings page, new pilot position in heats
 
 @SOCKET_IO.on('set_pilot_position')
 def on_set_pilot_position(data):
@@ -478,9 +481,10 @@ def on_add_pilot():
     DB.session.refresh(new_pilot)
     new_pilot.name = 'Pilot %d Name' % (new_pilot.id-1)
     new_pilot.callsign = 'Callsign %d' % (new_pilot.id-1)
-    new_pilot.phonetic = 'Phonetic %d' % (new_pilot.id-1)
+    new_pilot.phonetic = ''
     DB.session.commit()
     server_log('Pilot added: Pilot {0}'.format(new_pilot.id))
+    emit_pilot_data()
 
 @SOCKET_IO.on('set_pilot_callsign')
 def on_set_pilot_callsign(data):
@@ -1084,12 +1088,17 @@ def emit_heat_data():
             pilots.append(pilot_id)
         heat_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=0).first().heat_id
         note = Heat.query.filter_by(heat_id=heat.heat_id, node_index=0).first().note
-        current_heats.append({'callsign': pilots,
+        current_heats.append({'pilots': pilots,
                               'note': note,
                               'heat_id': heat_id})
-
-    current_heats = {'heat_id': current_heats}
-    SOCKET_IO.emit('heat_data', current_heats)
+    SOCKET_IO.emit('heat_data', {
+        'heats': current_heats,
+        'pilot_data': {
+            'pilot_id': [pilot.id for pilot in Pilot.query.all()],
+            'callsign': [pilot.callsign for pilot in Pilot.query.all()],
+            'name': [pilot.name for pilot in Pilot.query.all()]
+        }
+    })
 
 def emit_pilot_data():
     '''Emits pilot data.'''
