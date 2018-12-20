@@ -79,13 +79,7 @@
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
 				d5rt.nodes[i].frequency = msg.frequency[i];
-
-				// populate channel blocks
-				var channelBlock = $('.channel-block[data-node="' + i + '"]');
-				channelBlock.children('.ch').html(freqTable.findByFreq(d5rt.nodes[i].frequency));
-				if (d5rt.nodes[i].frequency == 0) {
-					channelBlock.children('.fr').html('');
-				}
+				freq.updateBlocks();
 			}
 		});
 

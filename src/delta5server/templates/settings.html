@@ -17,7 +17,7 @@
 
 		// populate frequency selects
 		$('.frequency_table').each(function(){
-			$(this).html(freqTable.buildSelect());
+			$(this).html(freq.buildSelect());
 		});
 
 		// set up RSSI graphing
@@ -79,13 +79,6 @@
 				$('.debug_pass_count_' + i).html(msg.debug_pass_count[i]);
 
 				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
-				var freqExists = $('#f_table_' + i + ' option[value=' + msg.frequency[i] + ']').length;
-				if (freqExists) {
-					$('#f_table_' + i).val(msg.frequency[i]);
-				} else {
-					$('#f_table_' + i).val('n/a');
-				}
-
 				d5rt.nodes[i].frequency = msg.frequency[i];
 				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
 				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
@@ -95,6 +88,8 @@
 				*/
 
 				d5rt.nodes[i].updateThresholds();
+				freq.updateSelects();
+				freq.updateBlocks();
 			}
 		});
 

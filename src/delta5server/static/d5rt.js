@@ -313,7 +313,7 @@ jQuery(document).ready(function($){
 }
 
 /* Frequency Table */
-var freqTable = {
+var freq = {
 	frequencies: {
 		'—': 0,
 		R1: 5658,
@@ -397,6 +397,28 @@ var freqTable = {
 			}
 		}
 		return output;
+	},
+	updateSelects: function() {
+		for (var i in d5rt.nodes) {
+			var freqExists = $('#f_table_' + i + ' option[value=' + d5rt.nodes[i].frequency + ']').length;
+			if (freqExists) {
+				$('#f_table_' + i).val(d5rt.nodes[i].frequency[i]);
+			} else {
+				$('#f_table_' + i).val('n/a');
+			}
+		}
+	},
+	updateBlocks: function() {
+		// populate channel blocks
+		for (var i in d5rt.nodes) {
+			var channelBlock = $('.channel-block[data-node="' + i + '"]');
+			channelBlock.children('.ch').html(this.findByFreq(d5rt.nodes[i].frequency));
+			if (d5rt.nodes[i].frequency == 0) {
+				channelBlock.children('.fr').html('');
+			} else {
+				channelBlock.children('.fr').html(d5rt.nodes[i].frequency);
+			}
+		}
 	}
 }
 

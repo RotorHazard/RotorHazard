@@ -190,13 +190,7 @@
 				// import calibration/trigger threshold lines?
 
 				d5rt.nodes[i].updateThresholds();
-
-				// populate channel blocks
-				var channelBlock = $('.channel-block[data-node="' + i + '"]');
-				channelBlock.children('.ch').html(freqTable.findByFreq(d5rt.nodes[i].frequency));
-				if (d5rt.nodes[i].frequency == 0) {
-					channelBlock.children('.fr').html('');
-				}
+				freq.updateBlocks();
 			}
 		});
 

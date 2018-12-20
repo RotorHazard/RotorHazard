@@ -1,12 +1,19 @@
 {% extends "layout.html" %} {% block title %}Heats{% endblock %} {% block head %} {% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
 	$(document).ready(function () {
-		$('.channel-block').each(function(){
-			var frequency = parseInt($(this).children('.fr').html());
-			$(this).children('.ch').html(freqTable.findByFreq(frequency));
-			if (frequency == 0) {
-				$(this).children('.fr').html('');
+		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+		socket.on('node_data', function (msg) {
+			for (var i in msg.frequency) {
+				if (typeof(d5rt.nodes[i]) === 'undefined') {
+					d5rt.nodes[i] = new nodeModel();
+				}
+				d5rt.nodes[i].frequency = msg.frequency[i];
+				freq.updateBlocks();
 			}
+		});
+			}
+			freq.updateBlocks();
 		});
 	});
 </script>
