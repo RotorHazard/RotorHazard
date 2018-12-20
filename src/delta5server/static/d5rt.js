@@ -402,7 +402,7 @@ var freq = {
 		for (var i in d5rt.nodes) {
 			var freqExists = $('#f_table_' + i + ' option[value=' + d5rt.nodes[i].frequency + ']').length;
 			if (freqExists) {
-				$('#f_table_' + i).val(d5rt.nodes[i].frequency[i]);
+				$('#f_table_' + i).val(d5rt.nodes[i].frequency);
 			} else {
 				$('#f_table_' + i).val('n/a');
 			}

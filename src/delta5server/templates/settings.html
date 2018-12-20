@@ -489,7 +489,6 @@
 				reset_type: $('#reset_type').val()
 			};
 			socket.emit('reset_database', data);
-			window.location.href = "/settings";
 			return false;
 		});
 

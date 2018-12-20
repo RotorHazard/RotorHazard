@@ -636,6 +636,9 @@ def on_reset_database(data):
         db_reset_heats()
         db_reset_saved_races()
         db_reset_current_laps()
+    emit_heat_data()
+    emit_pilot_data()
+    emit_current_laps()
 
 @SOCKET_IO.on('shutdown_pi')
 def on_shutdown_pi():
