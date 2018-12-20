@@ -867,3 +867,8 @@ td.speak {
 .admin {
 	margin-top: 1em;
 }
+
+.swatch {
+	padding: 1em;
+	display: inline-block;
+}
