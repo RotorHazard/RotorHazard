@@ -313,8 +313,7 @@ def index():
     #     heat_fast_laps.append(fast_laps)
     # print heat_max_laps
     # print heat_fast_laps
-    return render_template('rounds.html', num_nodes=RACE.num_nodes, rounds=SavedRace, \
-        pilots=Pilot, heats=Heat, getOption=getOption)
+    return render_template('rounds.html', getOption=getOption)
         #, heat_max_laps=heat_max_laps, heat_fast_laps=heat_fast_laps
 
 @APP.route('/')
@@ -406,6 +405,8 @@ def on_load_data(data):
             emit_heat_data(nobroadcast=True)
         elif load_type == 'pilot_data':
             emit_pilot_data(nobroadcast=True)
+        elif load_type == 'round_data':
+            emit_round_data(nobroadcast=True)
         elif load_type == 'race_format':
             emit_race_format(nobroadcast=True)
         elif load_type == 'node_tuning':
@@ -656,6 +657,7 @@ def on_reset_database(data):
     emit_heat_data()
     emit_pilot_data()
     emit_current_laps()
+    emit_round_data()
     emit('reset_confirm')
 
 @SOCKET_IO.on('shutdown_pi')
@@ -850,6 +852,7 @@ def on_save_laps():
     DB.session.commit()
     server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
     on_clear_laps() # Also clear the current laps
+    emit_round_data() # live update rounds page
 
 @SOCKET_IO.on('clear_laps')
 def on_clear_laps():
@@ -1054,6 +1057,46 @@ def emit_current_laps(**params):
         emit('current_laps', emit_payload)
     else:
         SOCKET_IO.emit('current_laps', emit_payload)
+
+def emit_round_data(**params):
+    '''Emits saved races to rounds page.'''
+
+    heats = []
+    for heat in SavedRace.query.with_entities(SavedRace.heat_id).distinct().order_by(SavedRace.heat_id):
+        heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
+
+        rounds = []
+        for round in SavedRace.query.with_entities(SavedRace.round_id).distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRace.round_id):
+            nodes = []
+            for node in range(RACE.num_nodes):
+                nodepilot = Pilot.query.filter_by( id=Heat.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign
+                laps = []
+                for lap in SavedRace.query.filter_by(heat_id=heat.heat_id, round_id=round.round_id, node_index=node).all():
+                    laps.append({
+                            'id': lap.lap_id,
+                            'lap_time_formatted': lap.lap_time_formatted
+                        })
+                nodes.append({
+                    'pilot': nodepilot,
+                    'laps': laps
+                })
+            rounds.append({
+                'id': round.round_id,
+                'nodes': nodes
+            })
+        heats.append({
+            'heat_id': heat.heat_id,
+            'note': heatnote,
+            'rounds': rounds
+        })
+    emit_payload = {
+        'heats': heats
+    }
+
+    if ('nobroadcast' in params):
+        emit('round_data', emit_payload)
+    else:
+        SOCKET_IO.emit('round_data', emit_payload)
 
 def emit_leaderboard(**params):
     '''Emits leaderboard.'''
