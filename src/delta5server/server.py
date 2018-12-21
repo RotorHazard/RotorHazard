@@ -389,22 +389,39 @@ def connect_handler():
     if HEARTBEAT_THREAD is None:
         HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
         server_log('Heartbeat thread started')
-    emit_node_data() # Settings page, node channel and triggers
-    emit_node_offsets() # Settings page, node offsets
-    emit_node_tuning() # Settings page, node tuning values
-    emit_race_format() # Settings page, race format values
-    emit_current_heat() # Race page, heat selector
-    emit_race_status() # Race page, to set race button states
-    emit_current_laps() # Race page, load and current laps
-    emit_leaderboard() # Race page, load leaderboard for current laps
-    emit_min_lap() # Settings and Race, minimum lap time
-    emit_heat_data()
-    emit_pilot_data()
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
     '''Emit disconnect event.'''
     server_log('Client disconnected')
+
+@SOCKET_IO.on('load_data')
+def on_load_data(data):
+    '''Allow pages to load needed data'''
+    load_types = data['load_types']
+    for load_type in load_types:
+        if load_type == 'node_data':
+            emit_node_data(nobroadcast=True)
+        elif load_type == 'heat_data':
+            emit_heat_data(nobroadcast=True)
+        elif load_type == 'pilot_data':
+            emit_pilot_data(nobroadcast=True)
+        elif load_type == 'race_format':
+            emit_race_format(nobroadcast=True)
+        elif load_type == 'node_tuning':
+            emit_node_tuning(nobroadcast=True)
+        elif load_type == 'node_offsets':
+            emit_node_offsets(nobroadcast=True)
+        elif load_type == 'min_lap':
+            emit_min_lap(nobroadcast=True)
+        elif load_type == 'leaderboard':
+            emit_leaderboard(nobroadcast=True)
+        elif load_type == 'current_laps':
+            emit_current_laps(nobroadcast=True)
+        elif load_type == 'race_status':
+            emit_race_status(nobroadcast=True)
+        elif load_type == 'current_heat':
+            emit_current_heat(nobroadcast=True)
 
 # Settings socket io events
 
@@ -931,37 +948,49 @@ def get_race_elapsed():
 
 # Socket io emit functions
 
-def emit_race_status():
+def emit_race_status(**params):
     '''Emits race status.'''
     last_raceFormat = int(getOption("lastFormat"))
     race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
-    SOCKET_IO.emit('race_status', {
-        'race_status': RACE.race_status,
-        'race_mode': race_format.race_mode,
-        'race_time_sec': race_format.race_time_sec,
-    })
+    emit_payload = {
+            'race_status': RACE.race_status,
+            'race_mode': race_format.race_mode,
+            'race_time_sec': race_format.race_time_sec,
+        }
+    if ('nobroadcast' in params):
+        emit('race_status', emit_payload)
+    else:
+        SOCKET_IO.emit('race_status', emit_payload)
 
-def emit_node_data():
+def emit_node_data(**params):
     '''Emits node data.'''
-    SOCKET_IO.emit('node_data', {
-        'frequency': [node.frequency for node in INTERFACE.nodes],
-        'trigger_rssi': [node.trigger_rssi for node in INTERFACE.nodes],
-        'node_peak_rssi': [node.node_peak_rssi for node in INTERFACE.nodes],
-        'pass_peak_rssi': [node.pass_peak_rssi for node in INTERFACE.nodes],
-        'debug_pass_count': [node.debug_pass_count for node in INTERFACE.nodes]
-    })
+    emit_payload = {
+            'frequency': [node.frequency for node in INTERFACE.nodes],
+            'trigger_rssi': [node.trigger_rssi for node in INTERFACE.nodes],
+            'node_peak_rssi': [node.node_peak_rssi for node in INTERFACE.nodes],
+            'pass_peak_rssi': [node.pass_peak_rssi for node in INTERFACE.nodes],
+            'debug_pass_count': [node.debug_pass_count for node in INTERFACE.nodes]
+        }
+    if ('nobroadcast' in params):
+        emit('node_data', emit_payload)
+    else:
+        SOCKET_IO.emit('node_data', emit_payload)
 
-def emit_node_offsets():
+def emit_node_offsets(**params):
     '''Emits node offset values for nodes.'''
-    SOCKET_IO.emit('node_offsets', {
+    emit_payload = {
         'node_offsets': [node.node_offs_adj for node in INTERFACE.nodes]
-    })
+    }
+    if ('nobroadcast' in params):
+        emit('node_offsets', emit_payload)
+    else:
+        SOCKET_IO.emit('node_offsets', emit_payload)
 
-def emit_node_tuning():
+def emit_node_tuning(**params):
     '''Emits node tuning values.'''
     last_profile = int(getOption("lastProfile"))
     tune_val = Profiles.query.get(last_profile)
-    SOCKET_IO.emit('node_tuning', {
+    emit_payload = {
         'profile_ids': [profile.id for profile in Profiles.query.all()],
         'profile_names': [profile.name for profile in Profiles.query.all()],
         'last_profile': last_profile,
@@ -971,19 +1000,27 @@ def emit_node_tuning():
         'filter_ratio': tune_val.f_ratio,
         'profile_name': tune_val.name,
         'profile_description': tune_val.description
-    })
+    }
+    if ('nobroadcast' in params):
+        emit('node_tuning', emit_payload)
+    else:
+        SOCKET_IO.emit('node_tuning', emit_payload)
 
-def emit_min_lap():
+def emit_min_lap(**params):
     '''Emits current minimum lap.'''
-    SOCKET_IO.emit('min_lap', {
+    emit_payload = {
         'min_lap': getOption('MinLapSec')
-    })
+    }
+    if ('nobroadcast' in params):
+        emit('min_lap', emit_payload)
+    else:
+        SOCKET_IO.emit('min_lap', emit_payload)
 
-def emit_race_format():
+def emit_race_format(**params):
     '''Emits node tuning values.'''
     last_format = int(getOption("lastFormat"))
     format_val = RaceFormat.query.get(last_format)
-    SOCKET_IO.emit('race_format', {
+    emit_payload = {
         'format_ids': [raceformat.id for raceformat in RaceFormat.query.all()],
         'format_names': [raceformat.name for raceformat in RaceFormat.query.all()],
         'last_format': last_format,
@@ -993,9 +1030,13 @@ def emit_race_format():
         'hide_stage_timer': format_val.hide_stage_timer,
         'start_delay_min': format_val.start_delay_min,
         'start_delay_max': format_val.start_delay_max
-    })
+    }
+    if ('nobroadcast' in params):
+        emit('race_format', emit_payload)
+    else:
+        SOCKET_IO.emit('race_format', emit_payload)
 
-def emit_current_laps():
+def emit_current_laps(**params):
     '''Emits current laps.'''
     current_laps = []
     # for node in DB.session.query(CurrentLap.node_index).distinct():
@@ -1007,9 +1048,13 @@ def emit_current_laps():
             node_lap_times.append(lap.lap_time_formatted)
         current_laps.append({'lap_id': node_laps, 'lap_time': node_lap_times})
     current_laps = {'node_index': current_laps}
-    SOCKET_IO.emit('current_laps', current_laps)
+    emit_payload = current_laps
+    if ('nobroadcast' in params):
+        emit('current_laps', emit_payload)
+    else:
+        SOCKET_IO.emit('current_laps', emit_payload)
 
-def emit_leaderboard():
+def emit_leaderboard(**params):
     '''Emits leaderboard.'''
     # Get the max laps for each pilot
     max_laps = []
@@ -1064,7 +1109,7 @@ def emit_leaderboard():
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_sorted = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
 
-    SOCKET_IO.emit('leaderboard', {
+    emit_payload = {
         'position': [i+1 for i in range(RACE.num_nodes)],
         'callsign': [leaderboard_sorted[i][0] for i in range(RACE.num_nodes)],
         'laps': [leaderboard_sorted[i][1] for i in range(RACE.num_nodes)],
@@ -1074,9 +1119,13 @@ def emit_leaderboard():
             for i in range(RACE.num_nodes)],
         'average_lap': [time_format(leaderboard_sorted[i][4]) for i in range(RACE.num_nodes)],
         'fastest_lap': [time_format(leaderboard_sorted[i][5]) for i in range(RACE.num_nodes)]
-    })
+    }
+    if ('nobroadcast' in params):
+        emit('leaderboard', emit_payload)
+    else:
+        SOCKET_IO.emit('leaderboard', emit_payload)
 
-def emit_heat_data():
+def emit_heat_data(**params):
     '''Emits heat data.'''
     current_heats = []
     for heat in Heat.query.with_entities(Heat.heat_id).distinct():
@@ -1089,26 +1138,36 @@ def emit_heat_data():
         current_heats.append({'pilots': pilots,
                               'note': note,
                               'heat_id': heat_id})
-    SOCKET_IO.emit('heat_data', {
+
+    emit_payload = {
         'heats': current_heats,
         'pilot_data': {
             'pilot_id': [pilot.id for pilot in Pilot.query.all()],
             'callsign': [pilot.callsign for pilot in Pilot.query.all()],
             'name': [pilot.name for pilot in Pilot.query.all()]
         }
-    })
+    }
+    if ('nobroadcast' in params):
+        emit('heat_data', emit_payload)
+    else:
+        SOCKET_IO.emit('heat_data', emit_payload)
 
-def emit_pilot_data():
+def emit_pilot_data(**params):
     '''Emits pilot data.'''
-    SOCKET_IO.emit('pilot_data', {
+    emit_payload = {
         'pilot_id': [pilot.id for pilot in Pilot.query.all()],
         'callsign': [pilot.callsign for pilot in Pilot.query.all()],
         'phonetic': [pilot.phonetic for pilot in Pilot.query.all()],
         'name': [pilot.name for pilot in Pilot.query.all()]
-    })
+    }
+    if ('nobroadcast' in params):
+        emit('pilot_data', emit_payload)
+    else:
+        SOCKET_IO.emit('pilot_data', emit_payload)
+
     emit_heat_data()
 
-def emit_current_heat():
+def emit_current_heat(**params):
     '''Emits the current heat.'''
     callsigns = []
     for node in range(RACE.num_nodes):
@@ -1117,24 +1176,33 @@ def emit_current_heat():
         callsigns.append(Pilot.query.filter_by(id=pilot_id).first().callsign)
     heat_note = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first().note
 
-    SOCKET_IO.emit('current_heat', {
+    emit_payload = {
         'current_heat': RACE.current_heat,
         'callsign': callsigns,
         'heat_note': heat_note
-    })
+    }
+    if ('nobroadcast' in params):
+        emit('current_heat', emit_payload)
+    else:
+        SOCKET_IO.emit('current_heat', emit_payload)
 
-def emit_phonetic_data(pilot_id, lap_id, lap_time):
+def emit_phonetic_data(pilot_id, lap_id, lap_time, **params):
     '''Emits phonetic data.'''
     phonetic_time = phonetictime_format(lap_time)
     phonetic_name = Pilot.query.filter_by(id=pilot_id).first().phonetic
     callsign = Pilot.query.filter_by(id=pilot_id).first().callsign
     pilot_id = Pilot.query.filter_by(id=pilot_id).first().id
-    SOCKET_IO.emit('phonetic_data', {
+    emit_payload = {
         'pilot': phonetic_name,
         'callsign': callsign,
         'pilot_id': pilot_id,
         'lap': lap_id,
-        'phonetic': phonetic_time})
+        'phonetic': phonetic_time
+    }
+    if ('nobroadcast' in params):
+        emit('phonetic_data', emit_payload)
+    else:
+        SOCKET_IO.emit('phonetic_data', emit_payload)
 
 #
 # Program Functions

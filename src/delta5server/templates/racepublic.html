@@ -9,6 +9,14 @@
 	$(document).ready(function () {
 		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
+		socket.emit('load_data', {'load_types': [
+			'node_data',
+			'leaderboard',
+			'current_laps',
+			'race_status',
+			'current_heat'
+		]});
+
 		// set up nodes
 		$('.node').each(function(){
 			var node_id = parseInt($(this).data('id'));

@@ -20,6 +20,18 @@
 
 	$(document).ready(function () {
 		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+		socket.emit('load_data', {'load_types': [
+			'node_data',
+			'race_format',
+			'node_tuning',
+			'node_offsets',
+			'min_lap',
+			'leaderboard',
+			'current_laps',
+			'race_status',
+			'current_heat'
+		]});
+
 		var heatbeatCounter = 0;
 
 		// set admin flag

@@ -2,6 +2,16 @@
 <script type="text/javascript" charset="utf-8">
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+		socket.emit('load_data', {'load_types': [
+			'node_data',
+			'heat_data',
+			'pilot_data',
+			'race_format',
+			'node_tuning',
+			'node_offsets',
+			'min_lap'
+		]});
+
 		var heatbeatCounter = 0;
 
 		// set admin flag
