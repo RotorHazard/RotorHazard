@@ -470,7 +470,7 @@ def on_set_pilot_position(data):
     db_update.pilot_id = pilot
     DB.session.commit()
     server_log('Pilot position set: Heat {0} Node {1} Pilot {2}'.format(heat, node_index+1, pilot))
-    emit_heat_data() # Settings page, new pilot position in heats
+    emit_heat_data(noself=True) # Settings page, new pilot position in heats
 
 @SOCKET_IO.on('set_heat_note')
 def on_set_heat_note(data):
@@ -481,7 +481,7 @@ def on_set_heat_note(data):
     db_update.note = note
     DB.session.commit()
     server_log('Heat note: Heat {0}'.format(heat))
-    emit_heat_data() # Settings page, new pilot position in heats
+    emit_heat_data(noself=True) # Settings page, new pilot position in heats
 
 @SOCKET_IO.on('add_pilot')
 def on_add_pilot():
@@ -508,7 +508,7 @@ def on_set_pilot_callsign(data):
     db_update.callsign = callsign
     DB.session.commit()
     server_log('Pilot callsign set: Pilot {0} Callsign {1}'.format(pilot_id, callsign))
-    emit_pilot_data() # Settings page, new pilot callsign
+    emit_pilot_data(noself=True) # Settings page, new pilot callsign
     emit_heat_data() # Settings page, new pilot callsign in heats
 
 @SOCKET_IO.on('set_pilot_phonetic')
@@ -520,7 +520,7 @@ def on_set_pilot_phonetic(data):
     db_update.phonetic = phonetic
     DB.session.commit()
     server_log('Pilot phonetic set: Pilot {0} Phonetic {1}'.format(pilot_id, phonetic))
-    emit_pilot_data() # Settings page, new pilot phonetic
+    emit_pilot_data(noself=True) # Settings page, new pilot phonetic
     emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
 @SOCKET_IO.on('set_pilot_name')
@@ -532,7 +532,7 @@ def on_set_pilot_name(data):
     db_update.name = name
     DB.session.commit()
     server_log('Pilot name set: Pilot {0} Name {1}'.format(pilot_id, name))
-    emit_pilot_data() # Settings page, new pilot name
+    emit_pilot_data(noself=True) # Settings page, new pilot name
 
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
@@ -576,7 +576,7 @@ def on_set_profile_name(data):
     profile.name = profile_name
     DB.session.commit()
     server_log('set profile name %s' % (profile_name))
-    emit_node_tuning()
+    emit_node_tuning(noself=True)
 
 @SOCKET_IO.on('set_profile_description')
 def on_set_profile_description(data):
@@ -588,7 +588,7 @@ def on_set_profile_description(data):
     DB.session.commit()
     server_log('set profile description %s for profile %s' %
                (profile_name, profile.name))
-    emit_node_tuning()
+    emit_node_tuning(noself=True)
 
 @SOCKET_IO.on('set_calibration_threshold')
 def on_set_calibration_threshold(data):
@@ -1193,6 +1193,8 @@ def emit_heat_data(**params):
     }
     if ('nobroadcast' in params):
         emit('heat_data', emit_payload)
+    elif ('noself' in params):
+        emit('heat_data', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('heat_data', emit_payload)
 
@@ -1206,6 +1208,8 @@ def emit_pilot_data(**params):
     }
     if ('nobroadcast' in params):
         emit('pilot_data', emit_payload)
+    elif ('noself' in params):
+        emit('pilot_data', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('pilot_data', emit_payload)
 
