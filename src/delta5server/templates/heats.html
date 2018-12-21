@@ -3,7 +3,11 @@
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
-		socket.emit('load_data', {'load_types': ['node_data', 'heat_data', 'pilot_data']});
+		socket.emit('load_data', {'load_types': [
+			'node_data',
+			'heat_data',
+			'pilot_data'
+		]});
 
 		socket.on('node_data', function (msg) {
 			for (var i in msg.frequency) {

@@ -872,3 +872,9 @@ td.speak {
 	padding: 1em;
 	display: inline-block;
 }
+
+@media (max-width: 45em) {
+	button .wide {
+		display: none;
+	}
+}
