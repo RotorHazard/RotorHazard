@@ -656,6 +656,7 @@ def on_reset_database(data):
     emit_heat_data()
     emit_pilot_data()
     emit_current_laps()
+    emit('reset_confirm')
 
 @SOCKET_IO.on('shutdown_pi')
 def on_shutdown_pi():

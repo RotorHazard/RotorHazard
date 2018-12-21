@@ -494,6 +494,17 @@
 		})
 
 		/* Database Reset */
+		socket.on('reset_confirm', function () {
+			$('#reset_confirm').css('opacity', 1.0);
+			setTimeout(function(){
+				$('#reset_confirm').animate({
+					opacity: 0
+				}, {
+					duration: 1000
+				});
+			}, 3000);
+		});
+
 		$('button#reset_database').click(function (event) {
 			var data = {
 				reset_type: $('#reset_type').val()
@@ -976,6 +987,7 @@
 			</select>
 			<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">Clear Data</button>
 		</div>
+		<p id="reset_confirm" style="text-align:center; opacity:0">Data Cleared</p>
 	</div>
 </div>
 
