@@ -193,11 +193,9 @@
 
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
-				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
 
-				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
 				d5rt.nodes[i].frequency = msg.frequency[i];
 				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
 				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
@@ -596,7 +594,6 @@
 						<tr>
 							<td class="rssi" colspan="2">
 								<span class="current_rssi_{{ node }}"></span> /
-								<span class="trigger_rssi_{{ node }}"></span> /
 								<span class="node_peak_rssi_{{ node }}"></span> /
 								<span class="pass_peak_rssi_{{ node }}"></span>
 							</td>

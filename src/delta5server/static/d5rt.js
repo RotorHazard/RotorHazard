@@ -374,6 +374,7 @@ var freq = {
 		U6: 5420,
 		U7: 5438,
 		U8: 5456,
+		U9: 5985,
 		'N/A': 'n/a'
 	},
 	findByFreq: function(frequency) {

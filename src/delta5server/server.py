@@ -411,8 +411,8 @@ def on_load_data(data):
             emit_race_format(nobroadcast=True)
         elif load_type == 'node_tuning':
             emit_node_tuning(nobroadcast=True)
-        elif load_type == 'node_offsets':
-            emit_node_offsets(nobroadcast=True)
+        elif load_type == 'enter_and_exit_at_levels':
+            emit_enter_and_exit_at_levels(nobroadcast=True)
         elif load_type == 'min_lap':
             emit_min_lap(nobroadcast=True)
         elif load_type == 'leaderboard':
@@ -438,17 +438,35 @@ def on_set_frequency(data):
     emit_node_data() # Settings page, new node channel
     INTERFACE.set_frequency(node_index, frequency)
 
-@SOCKET_IO.on('set_node_offset')
-def on_set_node_offset(data):
-    '''Set node calibration-offset-adjustment value.'''
+@SOCKET_IO.on('set_enter_at_level')
+def on_set_enter_at_level(data):
+    '''Set node enter-at level.'''
     node_index = data['node']
-    node_offset = data['node_offset']
-    INTERFACE.chg_node_offs_adj(node_index, node_offset)
-    node_data = NodeData.query.filter_by(id=node_index).first()
-    node_data.offset = node_offset
-    DB.session.commit()
-    server_log('Node offset set: Node {0} Offset {1}'.format(node_index+1, node_offset))
-#    emit_node_data() # Settings page, new node channel
+    enter_at_level = data['enter_at_level']
+    INTERFACE.set_enter_at_level(node_index, enter_at_level)
+    server_log('Node enter-at set: Node {0} Level {1}'.format(node_index+1, enter_at_level))
+
+@SOCKET_IO.on('set_exit_at_level')
+def on_set_exit_at_level(data):
+    '''Set node exit-at level.'''
+    node_index = data['node']
+    exit_at_level = data['exit_at_level']
+    INTERFACE.set_exit_at_level(node_index, exit_at_level)
+    server_log('Node exit-at set: Node {0} Level {1}'.format(node_index+1, exit_at_level))
+
+@SOCKET_IO.on('cap_enter_at_btn')
+def on_cap_enter_at_btn(data):
+    '''Capture enter-at level.'''
+    node_index = data['node_index']
+    if INTERFACE.start_capture_enter_at_level(node_index):
+        server_log('Starting capture of enter-at level for node {0}'.format(node_index+1))
+
+@SOCKET_IO.on('cap_exit_at_btn')
+def on_cap_exit_at_btn(data):
+    '''Capture exit-at level.'''
+    node_index = data['node_index']
+    if INTERFACE.start_capture_exit_at_level(node_index):
+        server_log('Starting capture of exit-at level for node {0}'.format(node_index+1))
 
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
@@ -630,13 +648,14 @@ def on_set_trigger_threshold(data):
 def on_set_filter_ratio(data):
     '''Set Trigger Threshold.'''
     filter_ratio = data['filter_ratio']
-    last_profile = int(getOption("lastProfile"))
-    profile = Profiles.query.filter_by(id=last_profile).first()
-    profile.f_ratio = filter_ratio
-    DB.session.commit()
-    server_log('Filter ratio set: {0}'.format(filter_ratio))
-    emit_node_tuning()
-    INTERFACE.set_filter_ratio_global(filter_ratio)
+    if filter_ratio >= 1 and filter_ratio <= 10000:
+        last_profile = int(getOption("lastProfile"))
+        profile = Profiles.query.filter_by(id=last_profile).first()
+        profile.f_ratio = filter_ratio
+        DB.session.commit()
+        server_log('Filter ratio set: {0}'.format(filter_ratio))
+        emit_node_tuning()
+        INTERFACE.set_filter_ratio_global(filter_ratio)
 
 @SOCKET_IO.on('reset_database')
 def on_reset_database(data):
@@ -820,6 +839,7 @@ def on_start_race(data):
     RACE.race_status = 1 # To enable registering passed laps
     global RACE_START # To redefine main program variable
     RACE_START = datetime.now() # Update the race start time stamp
+    INTERFACE.mark_start_time_global()
     onoff(strip, Color(0,255,0)) #GREEN for GO
     emit_race_status() # Race page, to set race button states
     emit_node_data() # Settings page, node channel and triggers on the launch pads
@@ -970,9 +990,9 @@ def emit_node_data(**params):
     '''Emits node data.'''
     emit_payload = {
             'frequency': [node.frequency for node in INTERFACE.nodes],
-            'trigger_rssi': [node.trigger_rssi for node in INTERFACE.nodes],
             'node_peak_rssi': [node.node_peak_rssi for node in INTERFACE.nodes],
             'pass_peak_rssi': [node.pass_peak_rssi for node in INTERFACE.nodes],
+            'pass_nadir_rssi': [node.pass_nadir_rssi for node in INTERFACE.nodes],
             'debug_pass_count': [node.debug_pass_count for node in INTERFACE.nodes]
         }
     if ('nobroadcast' in params):
@@ -980,15 +1000,16 @@ def emit_node_data(**params):
     else:
         SOCKET_IO.emit('node_data', emit_payload)
 
-def emit_node_offsets(**params):
-    '''Emits node offset values for nodes.'''
+def emit_enter_and_exit_at_levels(**params):
+    '''Emits enter-at and exit-at levels for nodes.'''
     emit_payload = {
-        'node_offsets': [node.node_offs_adj for node in INTERFACE.nodes]
+        'enter_at_levels': [node.enter_at_level for node in INTERFACE.nodes],
+        'exit_at_levels': [node.exit_at_level for node in INTERFACE.nodes]
     }
     if ('nobroadcast' in params):
-        emit('node_offsets', emit_payload)
+        emit('enter_and_exit_at_levels', emit_payload)
     else:
-        SOCKET_IO.emit('node_offsets', emit_payload)
+        SOCKET_IO.emit('enter_and_exit_at_levels', emit_payload)
 
 def emit_node_tuning(**params):
     '''Emits node tuning values.'''
@@ -1252,6 +1273,29 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, **params):
     else:
         SOCKET_IO.emit('phonetic_data', emit_payload)
 
+def emit_enter_at_level(node, **params):
+    '''Emits enter-at level for given node.'''
+    emit_payload = {
+        'node_index': node.index,
+        'level': node.enter_at_level
+    }
+    if ('nobroadcast' in params):
+        emit('node_enter_at_level', emit_payload)
+    else:
+        SOCKET_IO.emit('node_enter_at_level', emit_payload)
+
+def emit_exit_at_level(node, **params):
+    '''Emits exit-at level for given node.'''
+    emit_payload = {
+        'node_index': node.index,
+        'level': node.exit_at_level
+    }
+    if ('nobroadcast' in params):
+        emit('node_exit_at_level', emit_payload)
+    else:
+        SOCKET_IO.emit('node_exit_at_level', emit_payload)
+
+
 #
 # Program Functions
 #
@@ -1262,7 +1306,7 @@ def heartbeat_thread_function():
         SOCKET_IO.emit('heartbeat', INTERFACE.get_heartbeat_json())
               # emit rest of node data, but less often:
         heartbeat_thread_function.iter_tracker += 1
-        if heartbeat_thread_function.iter_tracker >= 5:
+        if heartbeat_thread_function.iter_tracker >= 20:
             heartbeat_thread_function.iter_tracker = 0
             emit_node_data()
         gevent.sleep(0.100)
@@ -1307,7 +1351,10 @@ def phonetictime_format(millis):
 
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''
-    server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, ms_since_lap))
+    if node.lap_ms_since_start >= 0:
+        server_log('Raw pass record: Node: {0}, Lap TimeMS: {1}'.format(node.index+1, node.lap_ms_since_start))
+    else:
+        server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, ms_since_lap))
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
@@ -1319,8 +1366,11 @@ def pass_record_callback(node, ms_since_lap):
                 heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
 
             if pilot_id != 1:
-                # Calculate the lap time stamp, milliseconds since start of race
-                lap_time_stamp = ms_from_race_start() - ms_since_lap
+                
+                if node.lap_ms_since_start >= 0:
+                    lap_time_stamp = node.lap_ms_since_start
+                else:  # use milliseconds since start of race if old-firmware node
+                    lap_time_stamp = ms_from_race_start() - ms_since_lap
 
                 # Get the last completed lap from the database
                 last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
@@ -1380,7 +1430,17 @@ def pass_record_callback(node, ms_since_lap):
         server_log('Pass record dismissed: Node: {0}, Frequency not defined' \
             .format(node.index+1))
 
+def new_enter_or_exit_at_callback(node, is_enter_at_flag):
+    if is_enter_at_flag:
+        server_log('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
+        emit_enter_at_level(node)
+    else:
+        server_log('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.exit_at_level, node.cap_exit_at_count))
+        emit_exit_at_level(node)
+
+# set callback functions invoked by interface module
 INTERFACE.pass_record_callback = pass_record_callback
+INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
 
 def server_log(message):
     '''Messages emitted from the server script.'''
@@ -1413,7 +1473,7 @@ def assign_frequencies():
     for node in NodeData.query.all():
         if node.frequency:
             gevent.sleep(0.100)
-            INTERFACE.set_freq_and_offs(node.id, node.frequency, node.offset)
+            INTERFACE.set_frequency(node.id, node.frequency)
             gevent.sleep(0.100)
 
     server_log('Frequencies assigned to nodes')
@@ -1645,4 +1705,11 @@ INTERFACE.set_filter_ratio_global(tune_val.f_ratio)
 print 'Server ready'
 
 if __name__ == '__main__':
-    SOCKET_IO.run(APP, host='0.0.0.0', port=Config['GENERAL']['HTTP_PORT'], debug=True, use_reloader=False)
+    port_val = Config['GENERAL']['HTTP_PORT']
+    print "Running http server at port " + str(port_val)
+    try:
+        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
+    except KeyboardInterrupt:
+        print "Server terminated by keyboard interrupt"
+    except Exception as ex:
+        print "Server exception:  " + str(ex)
