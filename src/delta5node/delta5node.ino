@@ -555,6 +555,8 @@ byte i2cHandleRx(byte command)
 
         case MARK_START_TIME:  // mark base time for returned lap-ms-since-start values
             state.raceStartTimeStamp = millis();
+                   // make sure there's no lingering previous timestamp:
+            lastPass.timeStamp = state.raceStartTimeStamp;
             if (readAndValidateIoBuffer(MARK_START_TIME, 1))  // read byte value (not used)
                 success = true;
             break;

@@ -161,7 +161,10 @@ class Delta5Interface(BaseHardwareInterface):
                         node.current_rssi = rssi_val
                         
                         if node.api_valid_flag:  # if newer API functions supported
-                            node.lap_ms_since_start = unpack_32(data[1:])
+                            ms_val = unpack_32(data[1:])
+                            if ms_val < 0 or ms_val > 9999999:
+                                ms_val = 0  # don't allow negative or too-large value
+                            node.lap_ms_since_start = ms_val
                             node.node_peak_rssi = unpack_16(data[7:])
                             node.pass_peak_rssi = unpack_16(data[9:])
                             node.loop_time = unpack_32(data[11:])
