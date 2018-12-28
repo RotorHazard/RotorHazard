@@ -438,8 +438,9 @@ class Delta5Interface(BaseHardwareInterface):
             return True
         return False
 
-    def intf_simulate_lap(self, node_index):
+    def intf_simulate_lap(self, node_index, ms_val):
         node = self.nodes[node_index]
+        node.lap_ms_since_start = ms_val
         self.pass_record_callback(node, 100)
 
 def get_hardware_interface():
