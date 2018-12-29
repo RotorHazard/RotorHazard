@@ -33,6 +33,9 @@ SOCKET_IO = SocketIO(APP, async_mode='gevent')
 
 HEARTBEAT_THREAD = None
 
+TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
+DEF_TEAM_NAME = 'A'  # default team
+
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, 'database.db')
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -152,6 +155,7 @@ strip.begin()
 class Pilot(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     callsign = DB.Column(DB.String(80), unique=True, nullable=False)
+    team = DB.Column(DB.String(80), nullable=False)
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
 
@@ -415,6 +419,8 @@ def on_load_data(data):
             emit_enter_and_exit_at_levels(nobroadcast=True)
         elif load_type == 'min_lap':
             emit_min_lap(nobroadcast=True)
+        elif load_type == 'team_racing_mode':
+            emit_team_racing_mode(nobroadcast=True)
         elif load_type == 'leaderboard':
             emit_leaderboard(nobroadcast=True)
         elif load_type == 'current_laps':
@@ -423,6 +429,8 @@ def on_load_data(data):
             emit_race_status(nobroadcast=True)
         elif load_type == 'current_heat':
             emit_current_heat(nobroadcast=True)
+        elif load_type == 'team_racing_stat_if_enb':
+            emit_team_racing_stat_if_enb(nobroadcast=True)
 
 # Settings socket io events
 
@@ -506,12 +514,14 @@ def on_add_pilot():
     '''Adds the next available pilot id number in the database.'''
     new_pilot = Pilot(name='New Pilot',
                            callsign='New callsign',
+                           team=DEF_TEAM_NAME,
                            phonetic = '')
     DB.session.add(new_pilot)
     DB.session.flush()
     DB.session.refresh(new_pilot)
     new_pilot.name = 'Pilot %d Name' % (new_pilot.id-1)
     new_pilot.callsign = 'Callsign %d' % (new_pilot.id-1)
+    new_pilot.team = DEF_TEAM_NAME
     new_pilot.phonetic = ''
     DB.session.commit()
     server_log('Pilot added: Pilot {0}'.format(new_pilot.id))
@@ -528,6 +538,18 @@ def on_set_pilot_callsign(data):
     server_log('Pilot callsign set: Pilot {0} Callsign {1}'.format(pilot_id, callsign))
     emit_pilot_data(noself=True) # Settings page, new pilot callsign
     emit_heat_data() # Settings page, new pilot callsign in heats
+
+@SOCKET_IO.on('set_pilot_team')
+def on_set_pilot_team(data):
+    '''Gets pilot team name to update database.'''
+    pilot_id = data['pilot_id']
+    team_name = data['team_name']
+    db_update = Pilot.query.filter_by(id=pilot_id).first()
+    db_update.team = team_name
+    DB.session.commit()
+    server_log('Pilot team set: Pilot {0} Team {1}'.format(pilot_id, team_name))
+    emit_pilot_data(noself=True) # Settings page, new pilot team
+    #emit_heat_data() # Settings page, new pilot team in heats
 
 @SOCKET_IO.on('set_pilot_phonetic')
 def on_set_pilot_phonetic(data):
@@ -707,6 +729,15 @@ def on_set_min_lap(data):
     server_log("set min lap time to %s seconds" % min_lap)
     emit_min_lap()
 
+@SOCKET_IO.on("set_team_racing_mode")
+def on_set_team_racing_mode(data):
+    enabled_val = data['enabled_val']
+    setOption("TeamRacingMode", data['enabled_val'])
+    server_log("set team racing mode to %s" % enabled_val)
+    emit_team_racing_mode()
+    emit_team_racing_stat_if_enb()
+    emit_leaderboard()
+
 @SOCKET_IO.on("set_race_format")
 def on_set_race_format(data):
     ''' set current race_format '''
@@ -812,6 +843,8 @@ def on_prestage_race():
     clear_laps() # Ensure laps are cleared before race start, shouldn't be needed
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
+    if int(getOption('TeamRacingMode')):
+        emit_team_racing_status()  # Show initial team-racing status info
     INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
     last_raceFormat = int(getOption("lastFormat"))
     race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
@@ -881,6 +914,8 @@ def on_clear_laps():
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
+    if int(getOption('TeamRacingMode')):
+        emit_team_racing_status()  # Show team-racing status info
 
 def clear_laps():
     '''Clear the current laps due to false start or practice.'''
@@ -897,6 +932,8 @@ def on_set_current_heat(data):
     server_log('Current heat set: Heat {0}'.format(new_heat_id))
     emit_current_heat() # Race page, to update heat selection button
     emit_leaderboard() # Race page, to update callsigns in leaderboard
+    if int(getOption('TeamRacingMode')):
+        emit_team_racing_status()  # Show initial team-racing status info
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -924,6 +961,8 @@ def on_delete_lap(data):
     server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_id))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
+    if int(getOption('TeamRacingMode')):
+        emit_team_racing_status()  # Update team-racing status info
 
 @SOCKET_IO.on('simulate_lap')
 def on_simulate_lap(data):
@@ -1040,6 +1079,16 @@ def emit_min_lap(**params):
         emit('min_lap', emit_payload)
     else:
         SOCKET_IO.emit('min_lap', emit_payload)
+
+def emit_team_racing_mode(**params):
+    '''Emits team racing mode.'''
+    emit_payload = {
+        'enabled_val': getOption('TeamRacingMode')
+    }
+    if ('nobroadcast' in params):
+        emit('team_racing_mode', emit_payload)
+    else:
+        SOCKET_IO.emit('team_racing_mode', emit_payload)
 
 def emit_race_format(**params):
     '''Emits node tuning values.'''
@@ -1169,8 +1218,14 @@ def emit_leaderboard(**params):
         pilot_id = Heat.query.filter_by( \
             heat_id=RACE.current_heat, node_index=node).first().pilot_id
         callsigns.append(Pilot.query.filter_by(id=pilot_id).first().callsign)
+    # Get the pilot team names
+    team_names = []
+    for node in range(RACE.num_nodes):
+        pilot_id = Heat.query.filter_by( \
+            heat_id=RACE.current_heat, node_index=node).first().pilot_id
+        team_names.append(Pilot.query.filter_by(id=pilot_id).first().team)
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, last_lap, average_lap, fastest_lap)
+    leaderboard = zip(callsigns, max_laps, total_time, last_lap, average_lap, fastest_lap, team_names)
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_sorted = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
 
@@ -1183,7 +1238,9 @@ def emit_leaderboard(**params):
         'behind': [(leaderboard_sorted[0][1] - leaderboard_sorted[i][1]) \
             for i in range(RACE.num_nodes)],
         'average_lap': [time_format(leaderboard_sorted[i][4]) for i in range(RACE.num_nodes)],
-        'fastest_lap': [time_format(leaderboard_sorted[i][5]) for i in range(RACE.num_nodes)]
+        'fastest_lap': [time_format(leaderboard_sorted[i][5]) for i in range(RACE.num_nodes)],
+        'team_names': [leaderboard_sorted[i][6] for i in range(RACE.num_nodes)],
+        'team_racing_mode' : int(getOption('TeamRacingMode'))
     }
     if ('nobroadcast' in params):
         emit('leaderboard', emit_payload)
@@ -1221,11 +1278,23 @@ def emit_heat_data(**params):
 
 def emit_pilot_data(**params):
     '''Emits pilot data.'''
+    team_options_list = []  # create team-options string for each pilot, with current team selected
+    for pilot in Pilot.query.all():
+        opts_str = ''
+        for name in TEAM_NAMES_LIST:
+            opts_str += '<option value="' + name + '"'
+            if name == pilot.team:
+                opts_str += ' selected'
+            opts_str += '>' + name + '</option>'
+        team_options_list.append(opts_str)
+
     emit_payload = {
         'pilot_id': [pilot.id for pilot in Pilot.query.all()],
         'callsign': [pilot.callsign for pilot in Pilot.query.all()],
+        'team': [pilot.team for pilot in Pilot.query.all()],
         'phonetic': [pilot.phonetic for pilot in Pilot.query.all()],
-        'name': [pilot.name for pilot in Pilot.query.all()]
+        'name': [pilot.name for pilot in Pilot.query.all()],
+        'team_options': team_options_list
     }
     if ('nobroadcast' in params):
         emit('pilot_data', emit_payload)
@@ -1255,7 +1324,53 @@ def emit_current_heat(**params):
     else:
         SOCKET_IO.emit('current_heat', emit_payload)
 
-def emit_phonetic_data(pilot_id, lap_id, lap_time, **params):
+def emit_team_racing_status(cur_pilot_id=-1, **params):
+    '''Emits team-racing status info.'''
+    cur_team_name = None
+    t_laps_dict = {}  # determine number of laps for each team
+    for t_node in range(RACE.num_nodes):
+        node_data = NodeData.query.filter_by(id=t_node).first()
+        if node_data.frequency:
+            t_pilot_id = Heat.query.filter_by( \
+                    heat_id=RACE.current_heat, node_index=t_node).first().pilot_id
+            t_pilot_data = Pilot.query.filter_by(id=t_pilot_id).first()
+            if t_pilot_data.team:
+                t_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
+                        .filter_by(node_index=t_node).scalar()
+                if t_lap_id is None:
+                    t_lap_id = 0
+                if t_pilot_data.team in t_laps_dict:
+                    t_laps_dict[t_pilot_data.team] += t_lap_id
+                else:
+                    t_laps_dict[t_pilot_data.team] = t_lap_id
+                if t_pilot_id == cur_pilot_id:  # save team name for given 'cur_pilot_id'
+                    cur_team_name = t_pilot_data.team
+    disp_str = ' | '
+    for t_name in sorted(t_laps_dict.keys()):
+        disp_str += 'Team ' + t_name + ' LapCount: ' + str(t_laps_dict[t_name]) + ' | '
+    server_log('Team racing status: ' + disp_str)
+    emit_payload = {'team_laps_str': disp_str}
+    if ('nobroadcast' in params):
+        emit('team_racing_status', emit_payload)
+    else:
+        SOCKET_IO.emit('team_racing_status', emit_payload)
+              # return team name and team laps for given 'cur_pilot_id' (if any)
+    if cur_team_name is not None:
+        return cur_team_name, t_laps_dict[cur_team_name]
+    return None, None
+
+def emit_team_racing_stat_if_enb(**params):
+    '''Emits team-racing status info if team racing is enabled.'''
+    if int(getOption('TeamRacingMode')):
+        emit_team_racing_status(**params)
+    else:
+        emit_payload = {'team_laps_str': ''}
+        if ('nobroadcast' in params):
+            emit('team_racing_status', emit_payload)
+        else:
+            SOCKET_IO.emit('team_racing_status', emit_payload)
+
+def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **params):
     '''Emits phonetic data.'''
     phonetic_time = phonetictime_format(lap_time)
     phonetic_name = Pilot.query.filter_by(id=pilot_id).first().phonetic
@@ -1266,7 +1381,9 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, **params):
         'callsign': callsign,
         'pilot_id': pilot_id,
         'lap': lap_id,
-        'phonetic': phonetic_time
+        'phonetic': phonetic_time,
+        'team_name' : team_name,
+        'team_laps' : team_laps
     }
     if ('nobroadcast' in params):
         emit('phonetic_data', emit_payload)
@@ -1400,10 +1517,17 @@ def pass_record_callback(node, ms_since_lap):
 
                     server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
                         .format(node.index+1, lap_id, time_format(lap_time)))
-                    emit_current_laps() # Updates all laps on the race page
-                    emit_leaderboard() # Updates leaderboard
-                    if lap_id > 0:
-                        emit_phonetic_data(pilot_id, lap_id, lap_time) # Sends phonetic data to be spoken
+                    emit_current_laps() # update all laps on the race page
+                    emit_leaderboard() # update leaderboard
+
+                    if int(getOption('TeamRacingMode')):  # update team-racing status info (if enabled)
+                        team_name, team_laps = emit_team_racing_status(pilot_id)
+                    else:
+                        team_name, team_laps = None, None
+
+                    if lap_id > 0:   # send phonetic data to be spoken
+                        emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
+
                     if node.index==0:
                         onoff(strip, Color(0,0,255))  #BLUE
                     elif node.index==1:
@@ -1507,10 +1631,10 @@ def db_reset():
 def db_reset_pilots():
     '''Resets database pilots to default.'''
     DB.session.query(Pilot).delete()
-    DB.session.add(Pilot(callsign='-', name='-None-', phonetic=""))
+    DB.session.add(Pilot(callsign='-', name='-None-', team='', phonetic=''))
     for node in range(RACE.num_nodes):
         DB.session.add(Pilot(callsign='Callsign {0}'.format(node+1), \
-            name='Pilot {0} Name'.format(node+1), phonetic=''))
+            name='Pilot {0} Name'.format(node+1), team=DEF_TEAM_NAME, phonetic=''))
     DB.session.commit()
     server_log('Database pilots reset')
 
@@ -1629,6 +1753,7 @@ def db_reset_options_defaults():
     setOption("lastProfile", "1")
     setOption("lastFormat", "1")
     setOption("MinLapSec", "5")
+    setOption("TeamRacingMode", "0")
     server_log("Reset global settings")
 
 #
