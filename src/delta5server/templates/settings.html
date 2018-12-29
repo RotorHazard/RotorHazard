@@ -8,11 +8,11 @@
 			'pilot_data',
 			'race_format',
 			'node_tuning',
-			'node_offsets',
+			'enter_and_exit_at_levels',
 			'min_lap'
 		]});
 
-		var heatbeatCounter = 0;
+		var heartbeatCounter = 0;
 
 		// set admin flag
 		d5rt.admin = true;
@@ -41,8 +41,8 @@
 		});
 
 		socket.on('heartbeat', function (msg) {
-			if (++heatbeatCounter >= 2) {   //do these updates less often than speak-queue checks
-				heatbeatCounter = 0;
+			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
+				heartbeatCounter = 0;
 				for (i = 0; i < msg.current_rssi.length; i++) {
 					var rssiValue = msg.current_rssi[i];
 
@@ -85,15 +85,15 @@
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
 				$('#s_channel_' + i).val(msg.frequency[i]);
-				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
+				$('.pass_nadir_rssi_' + i).html(msg.pass_nadir_rssi[i]);
 				$('.debug_pass_count_' + i).html(msg.debug_pass_count[i]);
 
-				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
 				d5rt.nodes[i].frequency = msg.frequency[i];
 				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
 				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
+				d5rt.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
 				/*
 				d5rt.nodes[i].calibration_threshold = msg.trigger_rssi[i] - parseInt($('#set_calibration_threshold').val());
 				d5rt.nodes[i].trigger_threshold = msg.trigger_rssi[i] - parseInt($('#set_trigger_threshold').val());
@@ -113,11 +113,23 @@
 			}
 		});
 
-		socket.on('node_offsets', function (msg) {
-			for (i = 0; i < msg.node_offsets.length; i++) {
-				$('#set_node_offset_' + i).val(msg.node_offsets[i]);
-				d5rt.nodes[i].offset = msg.node_offsets[i];
+		socket.on('enter_and_exit_at_levels', function (msg) {
+			for (i = 0; i < msg.enter_at_levels.length; i++) {
+				$('#set_enter_at_level_' + i).val(msg.enter_at_levels[i]);
+				d5rt.nodes[i].enter_at_level = msg.enter_at_levels[i];
+				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
+				d5rt.nodes[i].exit_at_level = msg.exit_at_levels[i];
 			}
+		});
+
+		socket.on('node_enter_at_level', function (msg) {
+			$('#set_enter_at_level_' + msg.node_index).val(msg.level);
+			d5rt.nodes[msg.node_index].enter_at_level = msg.level;
+		});
+
+		socket.on('node_exit_at_level', function (msg) {
+			$('#set_exit_at_level_' + msg.node_index).val(msg.level);
+			d5rt.nodes[msg.node_index].exit_at_level = msg.level;
 		});
 
 		$('.set_frequency').change(function (event) {
@@ -135,13 +147,44 @@
 			}
 		});
 
-		$('.set_node_offset').change(function (event) {
+		$('.set_enter_at_level').change(function (event) {
 			var data = {
 				node: parseInt($(this).data('node')),
-				node_offset: parseInt($(this).val()),
+				enter_at_level: parseInt($(this).val()),
 			};
-			socket.emit('set_node_offset', data);
-			d5rt.nodes[data.node].offset = data.node_offset;
+			if (!Number.isNaN(data.enter_at_level)) {
+				socket.emit('set_enter_at_level', data);
+				d5rt.nodes[data.node].enter_at_level = data.enter_at_level;
+			}
+		});
+
+		$('.set_exit_at_level').change(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				exit_at_level: parseInt($(this).val()),
+			};
+			if (!Number.isNaN(data.exit_at_level)) {
+				socket.emit('set_exit_at_level', data);
+				d5rt.nodes[data.node].exit_at_level = data.exit_at_level;
+			}
+		});
+
+		$('button#cap_enter_at_btn').click(function (event) {
+			var data = {
+				node_index: parseInt($(this).data('node_index')),
+			};
+			$('#set_enter_at_level_' + data.node_index).val('');
+			socket.emit('cap_enter_at_btn', data);
+			return false;
+		});
+
+		$('button#cap_exit_at_btn').click(function (event) {
+			var data = {
+				node_index: parseInt($(this).data('node_index')),
+			};
+			$('#set_exit_at_level_' + data.node_index).val('');
+			socket.emit('cap_exit_at_btn', data);
+			return false;
 		});
 
 		/* Heats */
@@ -650,12 +693,23 @@
 
 							<div class="compact-field">
 								<label for="s_channel_{{ node }}">Frequency</label>
-								<input type="number" id="s_channel_{{ node }}" class="set_frequency" data-node="{{ node }}" min="5300" max="6001">
+								<input type="number" id="s_channel_{{ node }}" class="set_frequency" data-node="{{ node }}" min="5000" max="6001">
 							</div>
 
 							<div class="compact-field">
-								<label for="set_node_offset_{{ node }}">Offset</label>
-								<input type="number" id="set_node_offset_{{ node }}" class="set_node_offset" data-node="{{ node }}" min="-999" max="999">
+								<label for="set_enter_at_level_{{ node }}">EnterAt</label>
+								<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
+							</div>
+							<div class="control-set">
+								<button type="button" class="btn btn-default" id="cap_enter_at_btn" data-node_index="{{ node }}" onclick="this.blur();">Capture^</button>
+							</div>
+
+							<div class="compact-field">
+								<label for="set_exit_at_level_{{ node }}">ExitAt</label>
+								<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
+							</div>
+							<div class="control-set">
+								<button type="button" class="btn btn-default" id="cap_exit_at_btn" data-node_index="{{ node }}" onclick="this.blur();">Capture^</button>
 							</div>
 						</td>
 					</tr>
@@ -663,12 +717,6 @@
 						<td class="datalabel">RSSI</td>
 						<td>
 							<span class="current_rssi_{{ node }}"></span>
-						</td>
-					</tr>
-					<tr>
-						<td class="datalabel">Trigger</td>
-						<td>
-							<span class="trigger_rssi_{{ node }}"></span>
 						</td>
 					</tr>
 					<tr>
@@ -681,6 +729,12 @@
 						<td class="datalabel">PassPeak</td>
 						<td>
 							<span class="pass_peak_rssi_{{ node }}"></span>
+						</td>
+					</tr>
+					<tr>
+						<td class="datalabel">PassNadir</td>
+						<td>
+							<span class="pass_nadir_rssi_{{ node }}"></span>
 						</td>
 					</tr>
 					<tr>
@@ -896,7 +950,7 @@
 					<label for="set_filter_ratio">Filter Ratio</label>
 					<p class="desc">RSSI Smoothing: .0001 smoothest, 1.0 unfiltered. (Default 0.01)</p>
 				</div>
-				<input type="number" id="set_filter_ratio" min=".0001" max="6.5535" step="0.0001">
+				<input type="number" id="set_filter_ratio" min="0.0001" max="1.0" step="0.0001">
 			</li>
 		</ol>
 

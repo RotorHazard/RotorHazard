@@ -7,30 +7,31 @@ from gevent.lock import BoundedSemaphore # To limit i2c calls
 from Node import Node
 from BaseHardwareInterface import BaseHardwareInterface
 
-READ_ADDRESS = 0x00 # Gets i2c address of arduino (1 byte)
-READ_FREQUENCY = 0x03 # Gets channel frequency (2 byte)
+READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
+READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
 READ_LAP_STATS = 0x05
-READ_CALIBRATION_THRESHOLD = 0x15
-READ_CALIBRATION_MODE = 0x16
-READ_CALIBRATION_OFFSET = 0x17
-READ_TRIGGER_THRESHOLD = 0x18
-READ_FILTER_RATIO = 0x19
+READ_FILTER_RATIO = 0x20    # node API_level>=10 uses 16-bit value
 READ_REVISION_CODE = 0x22   # read NODE_API_LEVEL and verification value
 READ_NODE_RSSI_PEAK = 0x23  # read 'nodeRssiPeak' value
+READ_ENTER_AT_LEVEL = 0x31
+READ_EXIT_AT_LEVEL = 0x32
+READ_TIME_MILLIS = 0x33     # read current 'millis()' time value
 
-WRITE_FREQUENCY = 0x51 # Sets frequency (2 byte)
-WRITE_CALIBRATION_THRESHOLD = 0x65
-WRITE_CALIBRATION_MODE = 0x66
-WRITE_CALIBRATION_OFFSET = 0x67
-WRITE_TRIGGER_THRESHOLD = 0x68
-WRITE_FILTER_RATIO = 0x69
+WRITE_FREQUENCY = 0x51      # Sets frequency (2 byte)
+WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
+WRITE_ENTER_AT_LEVEL = 0x71
+WRITE_EXIT_AT_LEVEL = 0x72
+MARK_START_TIME = 0x77      # mark base time for returned lap-ms-since-start values
 
 UPDATE_SLEEP = 0.1 # Main update loop delay
 
-FREQ_ADJLIMIT_MHZ = 5645 # Below this freq do RSSI offset adj
-
 I2C_CHILL_TIME = 0.075 # Delay after i2c read/write
 I2C_RETRY_COUNT = 5 # Limit of i2c retries
+
+MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
+MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
+CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
+ENTER_AT_PEAK_MARGIN = 5         # closest that captured enter-at level can be to node peak RSSI
 
 def unpack_8(data):
     return data[0]
@@ -72,6 +73,7 @@ class Delta5Interface(BaseHardwareInterface):
         self.update_thread = None # Thread for running the main update loop
         self.pass_record_callback = None # Function added in server.py
         self.hardware_log_callback = None # Function added in server.py
+        self.new_enter_or_exit_at_callback = None # Function added in server.py
 
         self.i2c = smbus.SMBus(1) # Start i2c bus
         self.semaphore = BoundedSemaphore(1) # Limits i2c to 1 read/write at a time
@@ -101,26 +103,21 @@ class Delta5Interface(BaseHardwareInterface):
                 node.api_level = rev_val & 0xFF
             else:
                 node.api_level = 0  # if verify failed (fn not defined) then set API level to 0
-            if node.api_level >= 5:
-                node.api_lvl5_flag = True  # set flag for API level 5 functions supported
+            if node.api_level >= 10:
+                node.api_valid_flag = True  # set flag for newer API functions supported
                 node.node_peak_rssi = self.get_value_16(node, READ_NODE_RSSI_PEAK)
-                print "Node {0}: API_level={1}, node_peak={2}, freq={3}".format(node.index+1, node.api_level, node.node_peak_rssi, node.frequency)
+                node.enter_at_level = self.get_value_16(node, READ_ENTER_AT_LEVEL)
+                node.exit_at_level = self.get_value_16(node, READ_EXIT_AT_LEVEL)
+                print "Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level)
             else:
-                print "Node {0}: API_level=0".format(node.index+1)
-            node.node_offs_adj = 0
+                print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
             if node.index == 0:
-                self.calibration_threshold = self.get_value_16(node,
-                    READ_CALIBRATION_THRESHOLD)
-                self.calibration_offset = self.get_value_16(node,
-                    READ_CALIBRATION_OFFSET)
-                self.trigger_threshold = self.get_value_16(node,
-                    READ_TRIGGER_THRESHOLD)
-                self.filter_ratio = self.get_value_8(node,
-                    READ_FILTER_RATIO)
+                if node.api_valid_flag:
+                    self.filter_ratio = self.get_value_16(node, READ_FILTER_RATIO)
+                else:
+                    self.filter_ratio = 10
             else:
-                self.set_calibration_threshold(node.index, self.calibration_threshold)
-                self.set_calibration_offset(node.index, self.calibration_offset)
-                self.set_trigger_threshold(node.index, self.trigger_threshold)
+                self.set_filter_ratio(node.index, self.filter_ratio)
 
 
     #
@@ -149,30 +146,72 @@ class Delta5Interface(BaseHardwareInterface):
 
     def update(self):
         for node in self.nodes:
-            if node.api_lvl5_flag:
-                data = self.read_block(node.i2c_addr, READ_LAP_STATS, 18)
-            else:
-                data = self.read_block(node.i2c_addr, READ_LAP_STATS, 17)
-            if data != None:
-                lap_id = data[0]
-                ms_since_lap = unpack_32(data[1:])
-                node.current_rssi = unpack_16(data[5:])
-                node.trigger_rssi = unpack_16(data[7:])
-                if node.api_lvl5_flag:  # if supported then load 'nodeRssiPeak' value
-                    node.node_peak_rssi = unpack_16(data[9:])
-                node.pass_peak_rssi = unpack_16(data[11:])
-                node.loop_time = unpack_32(data[13:])
-                if node.api_lvl5_flag:  # if supported then load 'crossing' status
-                     if data[17]:
-                         node.crossing_flag = True
-                     else:
-                         node.crossing_flag = False
+            if node.frequency:
+                if node.api_valid_flag or node.api_level >= 5:
+                    data = self.read_block(node.i2c_addr, READ_LAP_STATS, 18)
+                else:
+                    data = self.read_block(node.i2c_addr, READ_LAP_STATS, 17)
+    
+                if data != None:
+                    lap_id = data[0]
+                    lap_time_ms = 0
 
-                if lap_id != node.last_lap_id:
-                    if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                        self.pass_record_callback(node, ms_since_lap)
-                    node.last_lap_id = lap_id
-
+                    rssi_val = unpack_16(data[5:])
+                    if rssi_val >= MIN_RSSI_VALUE and rssi_val <= MAX_RSSI_VALUE:
+                        node.current_rssi = rssi_val
+                        
+                        if node.api_valid_flag:  # if newer API functions supported
+                            ms_val = unpack_32(data[1:])
+                            if ms_val < 0 or ms_val > 9999999:
+                                ms_val = 0  # don't allow negative or too-large value
+                            node.lap_ms_since_start = ms_val
+                            node.node_peak_rssi = unpack_16(data[7:])
+                            node.pass_peak_rssi = unpack_16(data[9:])
+                            node.loop_time = unpack_32(data[11:])
+                            if data[15]:
+                                node.crossing_flag = True
+                            else:
+                                node.crossing_flag = False
+                            node.pass_nadir_rssi = unpack_16(data[16:])
+        
+                        else:  # if newer API functions not supported
+                            lap_time_ms = unpack_32(data[1:])
+                            node.pass_peak_rssi = unpack_16(data[11:])
+                            node.loop_time = unpack_32(data[13:])
+        
+                        # check if new lap detected for node
+                        if lap_id != node.last_lap_id:
+                            if node.last_lap_id != -1 and callable(self.pass_record_callback):
+                                self.pass_record_callback(node, lap_time_ms)
+                            node.last_lap_id = lap_id
+        
+                        # check if capturing enter-at level for node
+                        if node.cap_enter_at_flag:
+                            node.cap_enter_at_total += node.current_rssi
+                            node.cap_enter_at_count += 1
+                            if self.milliseconds() >= node.cap_enter_at_millis:
+                                node.enter_at_level = int(round(node.cap_enter_at_total / node.cap_enter_at_count))
+                                node.cap_enter_at_flag = False
+                                      # if too close node peak then set a bit below node-peak RSSI value:
+                                if node.node_peak_rssi > 0 and node.node_peak_rssi - node.enter_at_level < ENTER_AT_PEAK_MARGIN:
+                                    node.enter_at_level = node.node_peak_rssi - ENTER_AT_PEAK_MARGIN
+                                self.transmit_enter_at_level(node, node.enter_at_level)
+                                if callable(self.new_enter_or_exit_at_callback):
+                                    self.new_enter_or_exit_at_callback(node, True)
+        
+                        # check if capturing exit-at level for node
+                        if node.cap_exit_at_flag:
+                            node.cap_exit_at_total += node.current_rssi
+                            node.cap_exit_at_count += 1
+                            if self.milliseconds() >= node.cap_exit_at_millis:
+                                node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
+                                node.cap_exit_at_flag = False
+                                self.transmit_exit_at_level(node, node.exit_at_level)
+                                if callable(self.new_enter_or_exit_at_callback):
+                                    self.new_enter_or_exit_at_callback(node, False)
+                    else:
+                        self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
+                        
     #
     # I2C Common Functions
     #
@@ -203,10 +242,20 @@ class Delta5Interface(BaseHardwareInterface):
                     else:
                         # self.log('Invalid Checksum ({0}): {1}'.format(retry_count, data))
                         retry_count = retry_count + 1
+                        if retry_count < I2C_RETRY_COUNT:
+                            if retry_count > 1:  # don't log the occasional single retry
+                                self.log('Retry (checksum) in read_block:  addr={0} offs={1} size={2} retry={3} ts={4}'.format(addr, offset, size, retry_count, self.i2c_timestamp))
+                        else:
+                            self.log('Retry (checksum) limit reached in read_block:  addr={0} offs={1} size={2} retry={3} ts={4}'.format(addr, offset, size, retry_count, self.i2c_timestamp))
             except IOError as err:
                 self.log(err)
                 self.i2c_timestamp = self.milliseconds()
                 retry_count = retry_count + 1
+                if retry_count < I2C_RETRY_COUNT:
+                    if retry_count > 1:  # don't log the occasional single retry
+                        self.log('Retry (IOError) in read_block:  addr={0} offs={1} size={2} retry={3} ts={4}'.format(addr, offset, size, retry_count, self.i2c_timestamp))
+                else:
+                    self.log('Retry (IOError) limit reached in read_block:  addr={0} offs={1} size={2} retry={3} ts={4}'.format(addr, offset, size, retry_count, self.i2c_timestamp))
         return data
 
     def write_block(self, addr, offset, data):
@@ -227,10 +276,14 @@ class Delta5Interface(BaseHardwareInterface):
                 self.log(err)
                 self.i2c_timestamp = self.milliseconds()
                 retry_count = retry_count + 1
+                if retry_count < I2C_RETRY_COUNT:
+                    self.log('Retry (IOError) in write_block:  addr={0} offs={1} data={2} retry={3} ts={4}'.format(addr, offset, data, retry_count, self.i2c_timestamp))
+                else:
+                    self.log('Retry (IOError) limit reached in write_block:  addr={0} offs={1} data={2} retry={3} ts={4}'.format(addr, offset, data, retry_count, self.i2c_timestamp))
         return success
 
     #
-    # Internal helper fucntions for setting single values
+    # Internal helper functions for setting single values
     #
 
     def get_value_8(self, node, command):
@@ -282,108 +335,71 @@ class Delta5Interface(BaseHardwareInterface):
             out_value = in_value
         return out_value
 
+    def set_value_8(self, node, write_command, in_value):
+        success = False
+        retry_count = 0
+        out_value = None
+        while success is False and retry_count < I2C_RETRY_COUNT:
+            if self.write_block(node.i2c_addr, write_command, pack_8(in_value)):
+                success = True
+            else:
+                retry_count = retry_count + 1
+                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node))
+        return success
+
     #
     # External functions for setting data
     #
 
-    def set_freq_and_offs(self, node_index, frequency, node_offs_adj):
-        node = self.nodes[node_index]
-        node.node_offs_adj = node_offs_adj
-        node.frequency = self.set_and_validate_value_16(node,
-            WRITE_FREQUENCY,
-            READ_FREQUENCY,
-            frequency)
-
     def set_frequency(self, node_index, frequency):
         node = self.nodes[node_index]
-        upd_flg = False
-        
-        # if lower frequency then call 'set_calibration_offset()' to update node offset
-        if frequency < FREQ_ADJLIMIT_MHZ or node.frequency < FREQ_ADJLIMIT_MHZ:
-            upd_flg = True
-
+        node.debug_pass_count = 0  # reset debug pass count on frequency change
         node.frequency = self.set_and_validate_value_16(node,
             WRITE_FREQUENCY,
             READ_FREQUENCY,
             frequency)
 
-        if upd_flg:
-            self.set_calibration_offset(node_index, self.calibration_offset)
+    def transmit_enter_at_level(self, node, level):
+        return self.set_and_validate_value_16(node,
+            WRITE_ENTER_AT_LEVEL,
+            READ_ENTER_AT_LEVEL,
+            level)
 
-    def chg_node_offs_adj(self, node_index, node_offs_adj):
+    def set_enter_at_level(self, node_index, level):
         node = self.nodes[node_index]
-        if node_offs_adj != node.node_offs_adj:
-            node.node_offs_adj = node_offs_adj
-            self.set_calibration_offset(node.index, self.calibration_offset)
+        if node.api_valid_flag:
+            node.enter_at_level = self.transmit_enter_at_level(node, level)
 
-    def set_calibration_threshold(self, node_index, threshold):
+    def transmit_exit_at_level(self, node, level):
+        return self.set_and_validate_value_16(node,
+            WRITE_EXIT_AT_LEVEL,
+            READ_EXIT_AT_LEVEL,
+            level)
+
+    def set_exit_at_level(self, node_index, level):
         node = self.nodes[node_index]
-        node.calibration_threshold = self.set_and_validate_value_16(node,
-            WRITE_CALIBRATION_THRESHOLD,
-            READ_CALIBRATION_THRESHOLD,
-            threshold)
+        if node.api_valid_flag:
+            node.exit_at_level = self.transmit_exit_at_level(node, level)
 
     def set_calibration_threshold_global(self, threshold):
-        self.calibration_threshold = threshold
-        for node in self.nodes:
-            self.set_calibration_threshold(node.index, threshold)
-        return self.calibration_threshold
-
-    def set_calibration_mode(self, node_index, calibration_mode):
-        node = self.nodes[node_index]
-        self.set_and_validate_value_8(node,
-            WRITE_CALIBRATION_MODE,
-            READ_CALIBRATION_MODE,
-            calibration_mode)
+        return threshold  # dummy function; no longer supported
 
     def enable_calibration_mode(self):
-        for node in self.nodes:
-            self.set_calibration_mode(node.index, True);
-
-    def set_calibration_offset(self, node_index, offset):
-        node = self.nodes[node_index]
-        
-        # if there's an RSSI-offset for this node then apply it
-        if node.node_offs_adj != 0:
-            offset = offset + node.node_offs_adj
-
-        # if lower frequency then apply extra RSSI-offset
-        if node.frequency > 0 and node.frequency < FREQ_ADJLIMIT_MHZ:
-            adj_val = (FREQ_ADJLIMIT_MHZ - node.frequency) / 10
-            if adj_val > 40:
-                adj_val = 40
-            offset = offset + adj_val
-            
-        node.calibration_offset = self.set_and_validate_value_16(node,
-            WRITE_CALIBRATION_OFFSET,
-            READ_CALIBRATION_OFFSET,
-            offset)
+        pass  # dummy function; no longer supported
 
     def set_calibration_offset_global(self, offset):
-        self.calibration_offset = offset
-        for node in self.nodes:
-            self.set_calibration_offset(node.index, offset)
-        return self.calibration_offset
-
-    def set_trigger_threshold(self, node_index, threshold):
-        node = self.nodes[node_index]
-        node.trigger_threshold = self.set_and_validate_value_16(node,
-            WRITE_TRIGGER_THRESHOLD,
-            READ_TRIGGER_THRESHOLD,
-            threshold)
+        return offset  # dummy function; no longer supported
 
     def set_trigger_threshold_global(self, threshold):
-        self.trigger_threshold = threshold
-        for node in self.nodes:
-            self.set_trigger_threshold(node.index, threshold)
-        return self.trigger_threshold
+        return threshold  # dummy function; no longer supported
 
     def set_filter_ratio(self, node_index, filter_ratio):
         node = self.nodes[node_index]
-        node.filter_ratio = self.set_and_validate_value_8(node,
-            WRITE_FILTER_RATIO,
-            READ_FILTER_RATIO,
-            filter_ratio)
+        if node.api_valid_flag:
+            node.filter_ratio = self.set_and_validate_value_16(node,
+                WRITE_FILTER_RATIO,
+                READ_FILTER_RATIO,
+                filter_ratio)
 
     def set_filter_ratio_global(self, filter_ratio):
         self.filter_ratio = filter_ratio
@@ -391,13 +407,40 @@ class Delta5Interface(BaseHardwareInterface):
             self.set_filter_ratio(node.index, filter_ratio)
         return self.filter_ratio
 
-    def intf_simulate_lap(self, node_index):
+    def mark_start_time(self, node_index):
         node = self.nodes[node_index]
-        node.current_rssi = 11
-        node.trigger_rssi = 22
-        node.node_peak_rssi = 77
-        node.pass_peak_rssi = 44
-        node.loop_time = 55
+        if node.api_valid_flag:
+            self.set_value_8(node, MARK_START_TIME, 0)
+
+    def mark_start_time_global(self):
+        for node in self.nodes:
+            self.mark_start_time(node.index)
+
+    def start_capture_enter_at_level(self, node_index):
+        node = self.nodes[node_index]
+        if node.cap_enter_at_flag is False and node.api_valid_flag:
+            node.cap_enter_at_total = 0
+            node.cap_enter_at_count = 0
+                   # set end time for capture of RSSI level:
+            node.cap_enter_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
+            node.cap_enter_at_flag = True
+            return True
+        return False
+
+    def start_capture_exit_at_level(self, node_index):
+        node = self.nodes[node_index]
+        if node.cap_exit_at_flag is False and node.api_valid_flag:
+            node.cap_exit_at_total = 0
+            node.cap_exit_at_count = 0
+                   # set end time for capture of RSSI level:
+            node.cap_exit_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
+            node.cap_exit_at_flag = True
+            return True
+        return False
+
+    def intf_simulate_lap(self, node_index, ms_val):
+        node = self.nodes[node_index]
+        node.lap_ms_since_start = ms_val
         self.pass_record_callback(node, 100)
 
 def get_hardware_interface():
