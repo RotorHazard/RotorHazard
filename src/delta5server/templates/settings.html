@@ -12,7 +12,7 @@
 			'min_lap'
 		]});
 
-		var heatbeatCounter = 0;
+		var heartbeatCounter = 0;
 
 		// set admin flag
 		d5rt.admin = true;
@@ -41,8 +41,8 @@
 		});
 
 		socket.on('heartbeat', function (msg) {
-			if (++heatbeatCounter >= 2) {   //do these updates less often than speak-queue checks
-				heatbeatCounter = 0;
+			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
+				heartbeatCounter = 0;
 				for (i = 0; i < msg.current_rssi.length; i++) {
 					var rssiValue = msg.current_rssi[i];
 

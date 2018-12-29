@@ -32,7 +32,7 @@
 			'current_heat'
 		]});
 
-		var heatbeatCounter = 0;
+		var heartbeatCounter = 0;
 
 		// set admin flag
 		d5rt.admin = true;
@@ -145,8 +145,8 @@
 					checkSpeakQueueFlag = true;
 			}
 
-			if (++heatbeatCounter >= 2) {   //do these updates less often than speak-queue checks
-				heatbeatCounter = 0;
+			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
+				heartbeatCounter = 0;
 
 				if (d5rt.collecting) {
 					var timedump = {
