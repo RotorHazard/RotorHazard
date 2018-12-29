@@ -174,7 +174,7 @@
 					}
 
 					if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
-						d5rt.nodes[i].graph.options.minValue = rssiValue;
+						d5rt.nodes[i].graph.options.minValue = Math.max(0, rssiValue);
 					}
 
 					if (d5rt.nodes[i].graphing) {
@@ -183,7 +183,7 @@
 						if (rssiValue) {
 							d5rt.nodes[i].graphing = true;
 							d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
-							d5rt.nodes[i].graph.options.minValue = rssiValue - 10;
+							d5rt.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
 							d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
 						}
 					}

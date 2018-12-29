@@ -189,7 +189,7 @@ function nodeModel() {
 		labels:{
 			precision:0
 		},
-		maxValue: 0,
+		maxValue: 1,
 		minValue: 0,
 	});
 	this.series = new TimeSeries();
