@@ -9,7 +9,8 @@
 			'race_format',
 			'node_tuning',
 			'enter_and_exit_at_levels',
-			'min_lap'
+			'min_lap',
+			'team_racing_mode'
 		]});
 
 		var heartbeatCounter = 0;
@@ -255,6 +256,9 @@
 					el.append('<input type="text" class="set_pilot_name" id="name_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.name[i] + '" placeholder="Name">');
 					el.append('<label for="callsign_' + msg.pilot_id[i] + '" class="screen-reader-text">Call Sign</label>');
 					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.callsign[i] + '" placeholder="Call Sign">');
+
+					el.append('<div style="display:flex; flex-direction: row; justify-content: center; align-items: center"><label for="">Team:&nbsp;&nbsp;</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '">' + msg.team_options[i] + '</select></div>');
+
 					el.append('<label for="" class="screen-reader-text">Phonetic</label>');
 
 					var phonetic = $('<div class="phonetic">');
@@ -312,6 +316,14 @@
 				callsign: $(this).val()
 			};
 			socket.emit('set_pilot_callsign', data);
+		})
+
+		$(document).on("change", '.set_pilot_team', function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				team_name: $(this).val()
+			};
+			socket.emit('set_pilot_team', data);
 		})
 
 		$(document).on("focus", '.set_pilot_phonetic', function(){
@@ -389,6 +401,17 @@
 				min_lap: parseInt($(this).val())
 			};
 			socket.emit('set_min_lap', data);
+		})
+
+		socket.on('team_racing_mode', function (msg) {
+			$('#set_team_racing_mode').val(msg.enabled_val);  // 0=disabled, 1=enabled
+		});
+
+		$('#set_team_racing_mode').change(function (event) {
+			var data = {
+				enabled_val: parseInt($(this).val())  // 0=disabled, 1=enabled
+			};
+			socket.emit('set_team_racing_mode', data);
 		})
 
 		socket.on('race_format', function (msg) {
@@ -832,6 +855,15 @@
 					<p class="desc">In seconds</p>
 				</div>
 				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_team_racing_mode">Team Racing Mode</label>
+				</div>
+				<select id="set_team_racing_mode">
+					<option value="0">Team Racing Disabled</option>
+					<option value="1">Team Racing Enabled</option>
+				</select>
 			</li>
 		</ol>
 
