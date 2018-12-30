@@ -26,13 +26,15 @@
 			'node_tuning',
 			'node_offsets',
 			'min_lap',
+			'team_racing_mode',
 			'leaderboard',
 			'current_laps',
 			'race_status',
-			'current_heat'
+			'current_heat',
+			'team_racing_stat_if_enb'
 		]});
 
-		var heatbeatCounter = 0;
+		var heartbeatCounter = 0;
 
 		// set admin flag
 		d5rt.admin = true;
@@ -44,11 +46,6 @@
 		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
 		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
 		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
-		$().articulate('volume', d5rt.voice_volume);
-		$('#set_voice_volume').val(d5rt.voice_volume);
-		$('#buzzer')[0].volume = d5rt.tone_volume;
-		$('#stagebuzzer')[0].volume = d5rt.tone_volume;
-		$('#set_tone_volume').val(d5rt.tone_volume);
 
 		// set up RSSI graphing
 		$('.node .race-header').each(function(){
@@ -150,8 +147,8 @@
 					checkSpeakQueueFlag = true;
 			}
 
-			if (++heatbeatCounter >= 2) {   //do these updates less often than speak-queue checks
-				heatbeatCounter = 0;
+			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
+				heartbeatCounter = 0;
 
 				if (d5rt.collecting) {
 					var timedump = {
@@ -198,11 +195,9 @@
 
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
-				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
 
-				d5rt.nodes[i].trigger_rssi = msg.trigger_rssi[i];
 				d5rt.nodes[i].frequency = msg.frequency[i];
 				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
 				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
@@ -238,36 +233,60 @@
 		});
 
 		socket.on('leaderboard', function (msg) {
+			hdr_str = '<tr><th class="pos">Pos.</th><th class="pilot">Pilot</th>';
+			if (msg.team_racing_mode) {
+				hdr_str += '<th class="team">Team</th>';
+			}
+			hdr_str += '<th class="laps">Laps</th><th class="last">Last Lap</th><th class="behind">Behind</th><th class="avg">Average</th><th class="fast">Fastest</th><th class="total">Total</th></tr>';
+			$('.ldrboardheader').html(hdr_str);
 			$('#leaderboard tbody > tr').remove();
 			for (i = 0; i < msg.position.length; i++) {
 				var $tr = $('<tr>').append(
 					$('<td class="pos">').text(msg.position[i]),
-					$('<td class="pilot">').text(msg.callsign[i]),
+					$('<td class="pilot">').text(msg.callsign[i]));
+				if (msg.team_racing_mode) {
+					$tr.append($('<td class="team">').text(msg.team_names[i]));
+				}
+				$tr.append(
 					$('<td class="laps">').text(msg.laps[i]),
 					$('<td class="last">').text(msg.last_lap[i]),
 					$('<td class="behind">').text(msg.behind[i]),
 					$('<td class="avg">').text(msg.average_lap[i]),
 					$('<td class="fast">').text(msg.fastest_lap[i]),
-					$('<td class="total">').text(msg.total_time[i]),
-				).appendTo('#leaderboard');
+					$('<td class="total">').text(msg.total_time[i]));
+				$tr.appendTo('#leaderboard');
 			}
+		});
+
+		socket.on('team_racing_status', function (msg) {
+			$('.team_racing_status').html(msg.team_laps_str);
 		});
 
 		socket.on('phonetic_data', function (msg) {
 			var ttstext = '';
 
 			if (d5rt.voice_callsign) {
-				ttstext = msg.callsign + ", ";
+				ttstext = msg.callsign;
 				if (msg.pilot)
-					ttstext = msg.pilot + ", ";
+					ttstext = msg.pilot;
 			}
 
 			if (d5rt.voice_lap_count) {
-				ttstext += " lap " + msg.lap + ", "
+				if (ttstext.length > 0)
+					ttstext += ", ";
+				ttstext += "lap " + msg.lap;
 			}
 
 			if (d5rt.voice_lap_time) {
-				ttstext += msg.phonetic
+				if (ttstext.length > 0)
+					ttstext += ", ";
+				ttstext += msg.phonetic;
+			}
+
+			if (msg.team_name && msg.team_laps) {
+				if (ttstext.length > 0)
+					ttstext += ", ";
+				ttstext += "team " + msg.team_name + ", lap " + msg.team_laps;
 			}
 
 			speak('<div class="speech">' + ttstext + '</div>');
@@ -394,25 +413,6 @@
 			d5rt.saveData();
 		});
 
-		$('#set_voice_volume').on('input', function (event) {
-			$().articulate('volume', parseFloat($(this).val()));
-		});
-
-		$('#set_voice_volume').on('change', function (event) {
-			d5rt.voice_volume = parseFloat($(this).val());
-			d5rt.saveData();
-		});
-
-		$('#set_tone_volume').on('input', function (event) {
-			$('#buzzer')[0].volume = parseFloat($(this).val());
-			$('#stagebuzzer')[0].volume = parseFloat($(this).val());
-		});
-
-		$('#set_tone_volume').on('change', function (event) {
-			d5rt.tone_volume = parseFloat($(this).val()); 
-			d5rt.saveData();
-		});
-
 		/* Race Format */
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
@@ -423,6 +423,17 @@
 				min_lap: parseInt($(this).val())
 			};
 			socket.emit('set_min_lap', data);
+		})
+
+		socket.on('team_racing_mode', function (msg) {
+			$('#set_team_racing_mode').val(msg.enabled_val);  // 0=disabled, 1=enabled
+		});
+
+		$('#set_team_racing_mode').change(function (event) {
+			var data = {
+				enabled_val: parseInt($(this).val())  // 0=disabled, 1=enabled
+			};
+			socket.emit('set_team_racing_mode', data);
 		})
 
 		socket.on('race_format', function (msg) {
@@ -587,21 +598,13 @@
 
 		<!--Display the race leaderboard-->
 		<table id="leaderboard">
-			<thead>
-				<tr>
-					<th class="pos">Pos.</th>
-					<th class="pilot">Pilot</th>
-					<th class="laps">Laps</th>
-					<th class="last">Last Lap</th>
-					<th class="behind">Behind</th>
-					<th class="avg">Average</th>
-					<th class="fast">Fastest</th>
-					<th class="total">Total</th>
-				</tr>
+			<thead class="ldrboardheader">
 			</thead>
 			<tbody>
 			</tbody>
 		</table>
+
+        <div class="team_racing_status"></div>
 
 		<!--Display the current laps-->
 		<div class="race-results">
@@ -620,7 +623,6 @@
 						<tr>
 							<td class="rssi" colspan="2">
 								<span class="current_rssi_{{ node }}"></span> /
-								<span class="trigger_rssi_{{ node }}"></span> /
 								<span class="node_peak_rssi_{{ node }}"></span> /
 								<span class="pass_peak_rssi_{{ node }}"></span>
 							</td>
@@ -651,7 +653,16 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_min_lap">Race Format</label>
+					<label for="set_team_racing_mode">Team Racing Mode</label>
+				</div>
+				<select id="set_team_racing_mode">
+					<option value="0">Team Racing Disabled</option>
+					<option value="1">Team Racing Enabled</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_race_format">Race Format</label>
 				</div>
 				<select id="set_race_format">
 					<option>Loading...</option>
@@ -659,7 +670,7 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_min_lap">Calibration Profile</label>
+					<label for="set_profile">Calibration Profile</label>
 				</div>
 				<select id="set_profile">
 					<option>Loading...</option>
@@ -694,18 +705,6 @@
 					<li><label><input type="checkbox" id="voice_race_timer"> Race Timer</label></li>
 				</ul>
 			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_voice_volume">Voice Volume</label>
-				</div>
-				<input type="range" id="set_voice_volume" min="0" max="1.0" step="0.01">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_tone_volume">Tone Volume</label>
-				</div>
-				<input type="range" id="set_tone_volume" min="0" max="1.0" step="0.01">
-			</li>			
 		</ol>
 	</div>
 </div>
