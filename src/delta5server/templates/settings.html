@@ -25,6 +25,9 @@
 		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
 		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
 		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
+		$().articulate('volume', d5rt.voice_volume);
+		$('#set_voice_volume').val(d5rt.voice_volume);
+		$('#set_tone_volume').val(d5rt.tone_volume);
 
 		// populate frequency selects
 		$('.frequency_table').each(function(){
@@ -388,6 +391,20 @@
 
 		$('#voice_race_timer').change(function (event) {
 			d5rt.voice_race_timer = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#set_voice_volume').on('input', function (event) {
+			$().articulate('volume', parseFloat($(this).val()));
+		});
+
+		$('#set_voice_volume').on('change', function (event) {
+			d5rt.voice_volume = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#set_tone_volume').on('change', function (event) {
+			d5rt.tone_volume = parseFloat($(this).val()); 
 			d5rt.saveData();
 		});
 
@@ -837,6 +854,18 @@
 					<li><label><input type="checkbox" id="voice_lap_time"> Lap Time</label></li>
 					<li><label><input type="checkbox" id="voice_race_timer"> Race Timer</label></li>
 				</ul>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_volume">Voice Volume</label>
+				</div>
+				<input type="range" id="set_voice_volume" min="0" max="1.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_tone_volume">Tone Volume</label>
+				</div>
+				<input type="range" id="set_tone_volume" min="0" max="1.0" step="0.01">
 			</li>
 		</ol>
 	</div>
