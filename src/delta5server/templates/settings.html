@@ -259,15 +259,13 @@
 					el.append('<input type="text" class="set_pilot_name" id="name_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.name[i] + '" placeholder="Name">');
 					el.append('<label for="callsign_' + msg.pilot_id[i] + '" class="screen-reader-text">Call Sign</label>');
 					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.callsign[i] + '" placeholder="Call Sign">');
-
-					el.append('<div style="display:flex; flex-direction: row; justify-content: center; align-items: center"><label for="">Team:&nbsp;&nbsp;</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '">' + msg.team_options[i] + '</select></div>');
-
-					el.append('<label for="" class="screen-reader-text">Phonetic</label>');
-
+					el.append('<label for="phonetic_' + msg.pilot_id[i] + '" class="screen-reader-text">Phonetic</label>');
 					var phonetic = $('<div class="phonetic">');
 					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.phonetic[i] + '" placeholder="Phonetic">');
 					phonetic.append('<button type="button" class="speak_pilot" onclick="this.blur();" data-pilot_id="' + msg.pilot_id[i] + '">&#9658;&#65038; <span class="screen-reader-text">Play</span></button>');
 					el.append(phonetic);
+					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilot_id[i] + '">Team</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '">' + msg.team_options[i] + '</select></div>');
+
 					el.appendTo($('.pilots'));
 				}
 			}
@@ -877,27 +875,6 @@
 		<h2>Race Format</h2>
 	</div>
 	<div class="panel-content">
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_min_lap">Minimum Lap Time</label>
-					<p class="desc">In seconds</p>
-				</div>
-				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_team_racing_mode">Team Racing Mode</label>
-				</div>
-				<select id="set_team_racing_mode">
-					<option value="0">Team Racing Disabled</option>
-					<option value="1">Team Racing Enabled</option>
-				</select>
-			</li>
-		</ol>
-
-		<hr />
-
 		<div class="control-set">
 			<label for="set_race_format">Format:</label>
 			<select id="set_race_format">
@@ -954,6 +931,27 @@
 				<input type="number" id="set_start_delay_max" min="0" max="999">
 			</li>
 		</ol>
+
+		<hr />
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">Minimum Lap Time</label>
+					<p class="desc">In seconds</p>
+				</div>
+				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_team_racing_mode">Team Racing Mode</label>
+				</div>
+				<select id="set_team_racing_mode">
+					<option value="0">Team Racing Disabled</option>
+					<option value="1">Team Racing Enabled</option>
+				</select>
+			</li>
+		</ol>		
 	</div>
 </div>
 

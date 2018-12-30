@@ -670,22 +670,6 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="set_min_lap">Minimum Lap Time</label>
-					<p class="desc">In seconds</p>
-				</div>
-				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_team_racing_mode">Team Racing Mode</label>
-				</div>
-				<select id="set_team_racing_mode">
-					<option value="0">Team Racing Disabled</option>
-					<option value="1">Team Racing Enabled</option>
-				</select>
-			</li>
-			<li>
-				<div class="label-block">
 					<label for="set_race_format">Race Format</label>
 				</div>
 				<select id="set_race_format">
@@ -698,6 +682,22 @@
 				</div>
 				<select id="set_profile">
 					<option>Loading...</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">Minimum Lap Time</label>
+					<p class="desc">In seconds</p>
+				</div>
+				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_team_racing_mode">Team Racing Mode</label>
+				</div>
+				<select id="set_team_racing_mode">
+					<option value="0">Team Racing Disabled</option>
+					<option value="1">Team Racing Enabled</option>
 				</select>
 			</li>
 		</ol>

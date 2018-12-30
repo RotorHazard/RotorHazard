@@ -847,6 +847,16 @@ td.speak {
 	justify-content: space-between;
 }
 
+.pilot-team {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.pilot-team label {
+	margin-right: 0.5em;
+}
+
 .pilots input {
 	flex: 1 1 auto;
 	min-width: 0;
