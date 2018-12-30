@@ -98,10 +98,6 @@
 				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
 				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
 				d5rt.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
-				/*
-				d5rt.nodes[i].calibration_threshold = msg.trigger_rssi[i] - parseInt($('#set_calibration_threshold').val());
-				d5rt.nodes[i].trigger_threshold = msg.trigger_rssi[i] - parseInt($('#set_trigger_threshold').val());
-				*/
 
 				d5rt.nodes[i].updateThresholds();
 				freq.updateSelects();
@@ -173,7 +169,7 @@
 			}
 		});
 
-		$('button#cap_enter_at_btn').click(function (event) {
+		$('button.cap_enter_at_btn').click(function (event) {
 			var data = {
 				node_index: parseInt($(this).data('node_index')),
 			};
@@ -182,7 +178,7 @@
 			return false;
 		});
 
-		$('button#cap_exit_at_btn').click(function (event) {
+		$('button.cap_exit_at_btn').click(function (event) {
 			var data = {
 				node_index: parseInt($(this).data('node_index')),
 			};
@@ -739,7 +735,7 @@
 								<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
 							</div>
 							<div class="control-set">
-								<button type="button" class="btn btn-default" id="cap_enter_at_btn" data-node_index="{{ node }}" onclick="this.blur();">Capture^</button>
+								<button type="button" class="cap_enter_at_btn" data-node_index="{{ node }}" onclick="this.blur();">Capture &#8593;</button>
 							</div>
 
 							<div class="compact-field">
@@ -747,7 +743,7 @@
 								<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
 							</div>
 							<div class="control-set">
-								<button type="button" class="btn btn-default" id="cap_exit_at_btn" data-node_index="{{ node }}" onclick="this.blur();">Capture^</button>
+								<button type="button" class="cap_exit_at_btn" data-node_index="{{ node }}" onclick="this.blur();">Capture &#8593;</button>
 							</div>
 						</td>
 					</tr>
@@ -790,7 +786,7 @@
 			<li><span style="background-color: hsl(8.2, 86.5%, 53.7%)"></span> Peak</li>
 			<li><span style="background-color: hsl(25, 85%, 55%)"></span> Enter</li>
 			<li><span style="background-color: #999"></span> Exit</li>
-			<li><span style="background-color: #666"></span> Calibration Exit</li>
+			<li><span style="background-color: #666"></span> Nadir</li>
 		</ul>
 		<a href="/correction">Node Correction</a>
 	</div>

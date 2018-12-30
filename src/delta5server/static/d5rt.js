@@ -143,11 +143,11 @@ var d5rt = {
 function nodeModel() {
 	this.trigger_rssi = false;
 	this.frequency = 0;
-	this.peak_rssi = false;
+	this.node_peak_rssi = false;
+	this.pass_nadir_rssi = false;
 	this.graphing = false;
-	this.calibration_threshold = false;
-	this.trigger_threshold = false;
-	this.offset = 0;
+	this.enter_at_level = false;
+	this.exit_at_level = false;
 	this.corrections = {
 		floor: {
 			rawData: [],
@@ -213,19 +213,12 @@ nodeModel.prototype = {
 		this.graph.streamTo(element, 250); // match delay value to heartbeat in server.py
 	},
 	updateThresholds: function(){
-		if (this.trigger_threshold) {
-			this.graph.options.horizontalLines = [
-				{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.trigger_rssi},
-				{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.peak_rssi},
-				{color:'#999', lineWidth:1.7, value: this.trigger_threshold},
-				{color:'#666', lineWidth:1.7, value: this.calibration_threshold},
-			];
-		} else if (this.trigger_rssi) {
-			this.graph.options.horizontalLines = [
-				{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.trigger_rssi},
-				{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.peak_rssi},
-			];
-		}
+		this.graph.options.horizontalLines = [
+			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.enter_at_level},
+			{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.node_peak_rssi},
+			{color:'#999', lineWidth:1.7, value: this.exit_at_level},
+			{color:'#666', lineWidth:1.7, value: this.pass_nadir_rssi},
+		];
 	},
 	calcStats: function(dataType, selfIndex) {
 		dataSet = this.corrections[dataType];
