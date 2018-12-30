@@ -1,4 +1,5 @@
 '''Delta5 race timer server script'''
+SERVER_API = 2 # Server API version
 
 import os
 import sys
@@ -1613,7 +1614,6 @@ def db_init():
     db_reset_race_formats()
     db_reset_node_values()
     db_reset_options_defaults()
-    assign_frequencies()
     server_log('Database initialized')
 
 def db_reset():
@@ -1734,6 +1734,7 @@ def db_reset_node_values():
 
 def db_reset_options_defaults():
     DB.session.query(GlobalSettings).delete()
+    setOption("server_api", SERVER_API)
     setOption("timerName", "Delta5 Race Timer")
 
     setOption("hue_0", "212")
@@ -1770,9 +1771,12 @@ gevent.sleep(0.500)
 # Create database if it doesn't exist
 if not os.path.exists('database.db'):
     db_init()
-else:
-    # Set frequencies and load node correction data
-    assign_frequencies()
+elif getOption('server_api') < SERVER_API:
+    server_log("Old server API version; resetting database")
+    db_init()
+
+
+assign_frequencies()
 
 # Clear any current laps from the database on each program start
 # DB session commit needed to prevent 'application context' errors
