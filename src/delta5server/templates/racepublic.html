@@ -24,7 +24,10 @@
 			d5rt.nodes[node_id] = new nodeModel();
 		});
 
+		// populate voice controls
 		$('#voice-calls').val(parseInt(d5rt.primaryPilot));
+		$().articulate('volume', d5rt.voice_volume);
+		$('#set_voice_volume').val(d5rt.voice_volume);
 
 		socket.on('race_elapsed', function (msg) {
 			var response_time = new Date();
@@ -208,6 +211,14 @@
 			d5rt.primaryPilot = parseInt($(this).val());
 			d5rt.saveData();
 		});
+
+		$('#set_voice_volume').on('input', function (event) {
+			$().articulate('volume', $(this).val());
+		});
+
+		$('#set_voice_volume').on('change', function (event) {
+			d5rt.voice_volume = parseFloat($(this).val()); 
+		});
 	});
 
 	function speak(obj) {
@@ -280,6 +291,12 @@
 				<select id="voice-calls">
 					<option value="-1">Loading...</option>
 				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_volume">Voice Volume</label>
+				</div>
+				<input type="range" id="set_voice_volume" min="0" max="1.0" step="0.01">
 			</li>
 		</ol>
 	</div>
