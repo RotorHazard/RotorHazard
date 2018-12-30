@@ -27,13 +27,20 @@
 #include <Wire.h>
 #include <EEPROM.h>
 
-// Node Setup -- Set node number here (1 - 8)
-#define NODE_NUMBER 1
+// Node Setup
+// Set to 1-8 for manual selection, or 0 for automatic via hardware
+// For automatic selection, ground pins to select node number:
+//                pin 4 open    pin 4 grounded
+// ground pin 5   node 1        node 5
+// ground pin 6   node 2        node 6
+// ground pin 7   node 3        node 7
+// ground pin 8   node 4        node 8
+#define NODE_NUMBER 0
 
 // i2c address for node
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
-#define i2cSlaveAddress (6 + (NODE_NUMBER * 2))
+int i2cSlaveAddress (6 + (NODE_NUMBER * 2));
 
 // API level for read/write commands; increment when commands are modified
 #define NODE_API_LEVEL 10
@@ -128,6 +135,42 @@ int ioBufferIndex = 0;
 // Initialize program
 void setup()
 {
+    if (!NODE_NUMBER) {
+      pinMode(4, INPUT_PULLUP);
+      pinMode(5, INPUT_PULLUP);
+      pinMode(6, INPUT_PULLUP);
+      pinMode(7, INPUT_PULLUP);
+      pinMode(8, INPUT_PULLUP);
+      
+      if (digitalRead(4) == HIGH) {
+        if (digitalRead(5) == LOW) {
+          i2cSlaveAddress = 8;
+        }
+        else if (digitalRead(6) == LOW) {
+          i2cSlaveAddress = 10;
+        }
+        else if (digitalRead(7) == LOW) {
+          i2cSlaveAddress = 12;
+        }
+        else if (digitalRead(8) == LOW) {
+          i2cSlaveAddress = 14;
+        }
+      } else {
+        if (digitalRead(5) == LOW) {
+          i2cSlaveAddress = 16;
+        }
+        else if (digitalRead(6) == LOW) {
+          i2cSlaveAddress = 18;
+        }
+        else if (digitalRead(7) == LOW) {
+          i2cSlaveAddress = 20;
+        }
+        else if (digitalRead(8) == LOW) {
+          i2cSlaveAddress = 22;
+        }
+      }    
+    }
+    
     Serial.begin(115200);  // Start serial for output/debugging
 
     pinMode(slaveSelectPin, OUTPUT);  // RX5808 comms
