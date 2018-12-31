@@ -1605,10 +1605,9 @@ def default_frequencies():
 def assign_frequencies():
     '''Assign set frequencies to nodes'''
     for node in NodeData.query.all():
-        if node.frequency:
-            gevent.sleep(0.100)
-            INTERFACE.set_frequency(node.id, node.frequency)
-            gevent.sleep(0.100)
+        gevent.sleep(0.100)
+        INTERFACE.set_frequency(node.id, node.frequency)
+        gevent.sleep(0.100)
 
     server_log('Frequencies assigned to nodes')
 

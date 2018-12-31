@@ -354,10 +354,17 @@ class Delta5Interface(BaseHardwareInterface):
     def set_frequency(self, node_index, frequency):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
-        node.frequency = self.set_and_validate_value_16(node,
-            WRITE_FREQUENCY,
-            READ_FREQUENCY,
-            frequency)
+        if frequency:
+            node.frequency = self.set_and_validate_value_16(node,
+                WRITE_FREQUENCY,
+                READ_FREQUENCY,
+                frequency)
+        else:  # if freq=0 (node disabled) then write default freq, but save 0 value
+            self.set_and_validate_value_16(node,
+                WRITE_FREQUENCY,
+                READ_FREQUENCY,
+                5800)
+            node.frequency = 0
 
     def transmit_enter_at_level(self, node, level):
         return self.set_and_validate_value_16(node,
