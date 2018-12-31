@@ -124,6 +124,9 @@ var d5rt = {
 			if (localStorage['d5rt.voice_lap_time']) {
 				this.voice_lap_time = JSON.parse(localStorage['d5rt.voice_lap_time']);
 			}
+			if (localStorage['d5rt.voice_race_timer']) {
+				this.voice_race_timer = JSON.parse(localStorage['d5rt.voice_race_timer']);
+			}
 			if (localStorage['d5rt.tone_volume']) {
 				this.tone_volume = JSON.parse(localStorage['d5rt.tone_volume']);
 			}
