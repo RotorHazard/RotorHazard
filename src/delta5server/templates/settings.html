@@ -437,6 +437,7 @@
 			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
 			$('#set_start_delay_min').val(msg.start_delay_min);
 			$('#set_start_delay_max').val(msg.start_delay_max);
+			$('#set_number_laps_win').val(msg.number_laps_win);
 		});
 
 		$('#set_race_format').change(function (event) {
@@ -496,6 +497,13 @@
 				start_delay_max: parseInt($(this).val())
 			};
 			socket.emit('set_start_delay_max', data);
+		})
+
+		$('#set_number_laps_win').change(function (event) {
+			var data = {
+				number_laps_win: parseInt($(this).val())
+			};
+			socket.emit('set_number_laps_win', data);
 		})
 
 		/* Calibration Profiles */
@@ -934,6 +942,12 @@
 					<p class="desc">Maximum time before race begins</p>
 				</div>
 				<input type="number" id="set_start_delay_max" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_number_laps_win">Number of Laps to Win</label>
+				</div>
+				<input type="number" id="set_number_laps_win" min="0" max="999">
 			</li>
 		</ol>
 

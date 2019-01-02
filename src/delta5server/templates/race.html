@@ -296,6 +296,10 @@
 			speak('<div class="speech">' + ttstext + '</div>');
 		})
 
+		socket.on('phonetic_text', function (msg) {
+			speak('<div class="speech">' + msg.text + '</div>');
+		})
+
 		socket.on('current_heat', function (msg) {
 			$('.current_heat').html('Heat ' + msg.current_heat);
 			for (i = 0; i < msg.callsign.length; i++) {

@@ -85,6 +85,8 @@ RACE = get_race_state() # For storing race management variables
 PROGRAM_START = datetime.now()
 RACE_START = datetime.now() # Updated on race start commands
 
+Race_laps_winner_name = None  # set to name of winner in first-to-X-laps race
+
 # LED Code
 def signal_handler(signal, frame):
         colorWipe(strip, Color(0,0,0))
@@ -218,6 +220,7 @@ class RaceFormat(DB.Model):
     hide_stage_timer = DB.Column(DB.Integer, nullable=False)
     start_delay_min = DB.Column(DB.Integer, nullable=False)
     start_delay_max = DB.Column(DB.Integer, nullable=False)
+    number_laps_win = DB.Column(DB.Integer, nullable=False)
 
 class NodeData(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
@@ -760,7 +763,8 @@ def on_add_race_format():
                              race_time_sec=0,
                              hide_stage_timer=0,
                              start_delay_min=3,
-                             start_delay_max=3)
+                             start_delay_max=3,
+                             number_laps_win=0)
     DB.session.add(new_format)
     DB.session.flush()
     DB.session.refresh(new_format)
@@ -820,22 +824,31 @@ def on_set_hide_stage_timer(data):
     server_log("set start type to %s" % hide_stage_timer)
 
 @SOCKET_IO.on("set_start_delay_min")
-def on_set_start_delay(data):
+def on_set_start_delay_min(data):
     start_delay_min = data['start_delay_min']
     last_raceFormat = int(getOption("lastFormat"))
     race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
     race_format.start_delay_min = start_delay_min
     DB.session.commit()
-    server_log("set start delay to %s" % start_delay_min)
+    server_log("set start delay min to %s" % start_delay_min)
 
 @SOCKET_IO.on("set_start_delay_max")
-def on_set_start_delay(data):
+def on_set_start_delay_max(data):
     start_delay_max = data['start_delay_max']
     last_raceFormat = int(getOption("lastFormat"))
     race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
     race_format.start_delay_max = start_delay_max
     DB.session.commit()
-    server_log("set start delay to %s" % start_delay_max)
+    server_log("set start delay max to %s" % start_delay_max)
+
+@SOCKET_IO.on("set_number_laps_win")
+def on_set_number_laps_win(data):
+    number_laps_win = data['number_laps_win']
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    race_format.number_laps_win = number_laps_win
+    DB.session.commit()
+    server_log("set number of laps to win to %s" % number_laps_win)
 
 # Race management socket io events
 
@@ -875,6 +888,8 @@ def on_start_race(data):
     RACE.race_status = 1 # To enable registering passed laps
     global RACE_START # To redefine main program variable
     RACE_START = datetime.now() # Update the race start time stamp
+    global Race_laps_winner_name
+    Race_laps_winner_name = None  # name of winner in first-to-X-laps race
     INTERFACE.mark_start_time_global()
     onoff(strip, Color(0,255,0)) #GREEN for GO
     emit_race_status() # Race page, to set race button states
@@ -1106,7 +1121,8 @@ def emit_race_format(**params):
         'race_time_sec': format_val.race_time_sec,
         'hide_stage_timer': format_val.hide_stage_timer,
         'start_delay_min': format_val.start_delay_min,
-        'start_delay_max': format_val.start_delay_max
+        'start_delay_max': format_val.start_delay_max,
+        'number_laps_win': format_val.number_laps_win
     }
     if ('nobroadcast' in params):
         emit('race_format', emit_payload)
@@ -1358,6 +1374,8 @@ def emit_team_racing_status(cur_pilot_id=-1, **params):
     disp_str = ' | '
     for t_name in sorted(t_laps_dict.keys()):
         disp_str += 'Team ' + t_name + ' LapCount: ' + str(t_laps_dict[t_name]) + ' | '
+    if Race_laps_winner_name is not None:
+        disp_str += 'Winner is Team ' + Race_laps_winner_name
     server_log('Team racing status: ' + disp_str)
     emit_payload = {'team_laps_str': disp_str}
     if ('nobroadcast' in params):
@@ -1380,6 +1398,59 @@ def emit_team_racing_stat_if_enb(**params):
         else:
             SOCKET_IO.emit('team_racing_status', emit_payload)
 
+def check_pilot_laps_win(num_laps_win):
+    '''Checks if a pilot has completed enough laps to win.'''
+    win_pilot_id = -1
+    win_lap_tstamp = 0
+    for node in INTERFACE.nodes:
+        node_data = NodeData.query.filter_by(id=node.index).first()
+        if node_data.frequency:
+            pilot_id = Heat.query.filter_by( \
+                    heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
+            if pilot_id != PILOT_ID_NONE:
+                lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
+                        .filter_by(node_index=node.index).scalar()
+                if lap_id is None:
+                    lap_id = 0
+                            # if pilot crossing for possible winning lap then wait
+                            #  in case lap time turns out to be soonest:
+                if lap_id == num_laps_win - 1 and node.crossing_flag:
+                    server_log('check_pilot_laps_win waiting for crossing, Node {0}'.format(node.index+1))
+                    return -1
+                if lap_id >= num_laps_win:
+                    lap_data = CurrentLap.query.filter_by(node_index=node.index, lap_id=num_laps_win).first()
+                    server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
+                             # save pilot_id for soonest lap time:
+                    if win_pilot_id < 0 or lap_data.lap_time_stamp < win_lap_tstamp:
+                        win_pilot_id = pilot_id
+                        win_lap_tstamp = lap_data.lap_time_stamp
+    server_log('DEBUG check_pilot_laps_win returned win_pilot_id={0}'.format(win_pilot_id))
+    return win_pilot_id
+
+def check_team_laps_win(num_laps_win):
+    '''Checks if a team has completed enough laps to win.'''
+    t_laps_dict = {}  # determine number of laps for each team
+    for t_node in range(RACE.num_nodes):
+        node_data = NodeData.query.filter_by(id=t_node).first()
+        if node_data.frequency:
+            t_pilot_id = Heat.query.filter_by( \
+                    heat_id=RACE.current_heat, node_index=t_node).first().pilot_id
+            if t_pilot_id != PILOT_ID_NONE:
+                t_pilot_data = Pilot.query.filter_by(id=t_pilot_id).first()
+                if t_pilot_data.team:
+                    t_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
+                            .filter_by(node_index=t_node).scalar()
+                    if t_lap_id is None:
+                        t_lap_id = 0
+                    if t_pilot_data.team in t_laps_dict:
+                        t_laps_dict[t_pilot_data.team] += t_lap_id
+                    else:
+                        t_laps_dict[t_pilot_data.team] = t_lap_id
+                    if t_laps_dict[t_pilot_data.team] == num_laps_win:
+                        server_log('DEBUG check_team_laps_win returned win team: ' + t_pilot_data.team)
+                        return t_pilot_data.team
+    return None
+
 def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **params):
     '''Emits phonetic data.'''
     phonetic_time = phonetictime_format(lap_time)
@@ -1399,6 +1470,16 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **param
         emit('phonetic_data', emit_payload)
     else:
         SOCKET_IO.emit('phonetic_data', emit_payload)
+
+def emit_phonetic_text(text_str, **params):
+    '''Emits given phonetic text.'''
+    emit_payload = {
+        'text': text_str
+    }
+    if ('nobroadcast' in params):
+        emit('phonetic_text', emit_payload)
+    else:
+        SOCKET_IO.emit('phonetic_text', emit_payload)
 
 def emit_enter_at_level(node, **params):
     '''Emits enter-at level for given node.'''
@@ -1485,6 +1566,7 @@ def pass_record_callback(node, ms_since_lap):
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
+    global Race_laps_winner_name
     node_data = NodeData.query.filter_by(id=node.index).first()
     if node_data.frequency:
         if RACE.race_status is 1:
@@ -1530,14 +1612,36 @@ def pass_record_callback(node, ms_since_lap):
                     emit_current_laps() # update all laps on the race page
                     emit_leaderboard() # update leaderboard
 
-                    if int(getOption('TeamRacingMode')):  # update team-racing status info (if enabled)
+                    if int(getOption('TeamRacingMode')):  # team racing mode enabled
+                        if race_format.number_laps_win > 0 and Race_laps_winner_name is None:
+                            Race_laps_winner_name = check_team_laps_win(race_format.number_laps_win)
                         team_name, team_laps = emit_team_racing_status(pilot_id)
-                    else:
-                        team_name, team_laps = None, None
 
-                    if lap_id > 0:   # send phonetic data to be spoken
-                        emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
+                        if lap_id > 0:   # send phonetic data to be spoken
+                            if Race_laps_winner_name is None:
+                                emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
+                                
+                                      # a team has won the race and this is the winning lap
+                            elif team_name == Race_laps_winner_name and team_laps == race_format.number_laps_win:
+                                emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
+                                emit_phonetic_text('Winner is team ' + Race_laps_winner_name)
 
+                    else:  # not team racing mode
+                        if lap_id > 0:   # send phonetic data to be spoken
+                            emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+
+                        if race_format.number_laps_win > 0:
+                            win_pilot_id = check_pilot_laps_win(race_format.number_laps_win)
+                            if win_pilot_id >= 0 and Race_laps_winner_name is None:
+
+                                       # a pilot has won the race and has not yet been announced
+                                win_phon_name = Pilot.query.filter_by(id=pilot_id).first().phonetic
+                                win_callsign = Pilot.query.filter_by(id=pilot_id).first().callsign
+                                if len(win_phon_name) <= 0:  # if no phonetic then use callsign
+                                     win_phon_name = win_callsign
+                                Race_laps_winner_name = win_callsign  # call out winner (once)
+                                emit_phonetic_text('Winner is ' + win_phon_name)
+    
                     if node.index==0:
                         onoff(strip, Color(0,0,255))  #BLUE
                     elif node.index==1:
@@ -1707,25 +1811,29 @@ def db_reset_race_formats():
                              race_time_sec=120,
                              hide_stage_timer=1,
                              start_delay_min=2,
-                             start_delay_max=5))
+                             start_delay_max=5,
+                             number_laps_win=0))
     DB.session.add(RaceFormat(name="Whoop Sprint",
                              race_mode=0,
                              race_time_sec=90,
                              hide_stage_timer=1,
                              start_delay_min=2,
-                             start_delay_max=5))
+                             start_delay_max=5,
+                             number_laps_win=0))
     DB.session.add(RaceFormat(name="Limited Class",
                              race_mode=0,
                              race_time_sec=210,
                              hide_stage_timer=1,
                              start_delay_min=2,
-                             start_delay_max=5))
+                             start_delay_max=5,
+                             number_laps_win=0))
     DB.session.add(RaceFormat(name="First to X Laps",
                              race_mode=1,
                              race_time_sec=0,
                              hide_stage_timer=0,
                              start_delay_min=3,
-                             start_delay_max=3))
+                             start_delay_max=3,
+                             number_laps_win=3))
     DB.session.commit()
     setOption("lastFormat", 1)
     server_log("Database reset race formats")
