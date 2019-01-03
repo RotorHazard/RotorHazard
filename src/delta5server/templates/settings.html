@@ -398,7 +398,7 @@
 		});
 
 		$('#set_tone_volume').on('change', function (event) {
-			d5rt.tone_volume = parseFloat($(this).val()); 
+			d5rt.tone_volume = parseFloat($(this).val());
 			d5rt.saveData();
 		});
 
@@ -788,7 +788,16 @@
 			<li><span style="background-color: #999"></span> Exit</li>
 			<li><span style="background-color: #666"></span> Nadir</li>
 		</ul>
-		<a href="/correction">Node Correction</a>
+		<div class="calibration-guide">
+			<h3>Calibration</h3>
+			<ol>
+				<li>Power on a VTx at the same fequency as the node</li>
+				<li>Pass VTx very near the timer until RSSI reaches absolute peak</li>
+				<li>Place VTx outside limit of gate (about 20ft is usually good) and press Capture for EnterAt</li>
+				<li>Place VTx several gate widths away and press Capture for ExitAt</li>
+				<li>Review "Crossing" points and adjust until accurately responding</li>
+			</ol>
+		</div>
 	</div>
 </div>
 
@@ -947,7 +956,7 @@
 					<option value="1">Team Racing Enabled</option>
 				</select>
 			</li>
-		</ol>		
+		</ol>
 	</div>
 </div>
 
@@ -981,75 +990,12 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_calibration_offset">Entrance Sensitivity</label>
-					<p class="desc">Pass begins when RSSI rises at least this close to all-time peak (Default 8)</p>
-				</div>
-				<input type="number" id="set_calibration_offset" min="1" max="65535">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_calibration_threshold">Calibration Falloff</label>
-					<p class="desc">Calibration is completed when RSSI falls this amount (Default 95)</p>
-				</div>
-				<input type="number" id="set_calibration_threshold" min="1" max="65535">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_trigger_threshold">Exit Falloff</label>
-					<p class="desc">Pass is completed when RSSI falls by this amount (Default 40)</p>
-				</div>
-				<input type="number" id="set_trigger_threshold" min="1" max="65535">
-			</li>
-			<li>
-				<div class="label-block">
 					<label for="set_filter_ratio">Filter Ratio</label>
 					<p class="desc">RSSI Smoothing: .0001 smoothest, 1.0 unfiltered. (Default 0.01)</p>
 				</div>
 				<input type="number" id="set_filter_ratio" min="0.0001" max="1.0" step="0.0001">
 			</li>
 		</ol>
-
-		<div class="calibration-guide">
-			<h3>Calibration Guide</h3>
-			<table>
-				<tr>
-					<th>Issue</th>
-					<th>Resolution</th>
-				</tr>
-				<tr>
-					<td>Missing passes</td>
-					<td>Increase Entrance Sensitivity</td>
-				</tr>
-				<tr>
-					<td>Pass registers on other parts of course</td>
-					<td>Decrease Entrance Sensitivity</td>
-				</tr>
-				<tr>
-					<td>First pass triggers before crossing the gate</td>
-					<td>Increase Calibration Falloff</td>
-				</tr>
-				<tr>
-					<td>Not getting a pass record for the first pass</td>
-					<td>Decrease Calibration Falloff</td>
-				</tr>
-				<tr>
-					<td>Several pass records while passing the start gate</td>
-					<td>Increase Exit Falloff</td>
-				</tr>
-				<tr>
-					<td>Pass registering is significantly delayed</td>
-					<td>Decrease Exit Falloff</td>
-				</tr>
-				<tr>
-					<td>RSSI too noisy</td>
-					<td>Decrease Filter Ratio</td>
-				</tr>
-				<tr>
-					<td>RSSI reacts slowly to changes</td>
-					<td>Increase Filter Ratio</td>
-				</tr>
-			</table>
-		</div>
 	</div>
 </div>
 
