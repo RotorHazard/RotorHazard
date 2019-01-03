@@ -860,7 +860,7 @@ def on_prestage_race():
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     if int(getOption('TeamRacingMode')):
-        emit_team_racing_status()  # Show initial team-racing status info
+        check_emit_team_racing_status()  # Show initial team-racing status info
     INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
     last_raceFormat = int(getOption("lastFormat"))
     race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
@@ -933,7 +933,7 @@ def on_clear_laps():
     emit_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
     if int(getOption('TeamRacingMode')):
-        emit_team_racing_status()  # Show team-racing status info
+        check_emit_team_racing_status()  # Show team-racing status info
 
 def clear_laps():
     '''Clear the current laps due to false start or practice.'''
@@ -951,7 +951,7 @@ def on_set_current_heat(data):
     emit_current_heat() # Race page, to update heat selection button
     emit_leaderboard() # Race page, to update callsigns in leaderboard
     if int(getOption('TeamRacingMode')):
-        emit_team_racing_status()  # Show initial team-racing status info
+        check_emit_team_racing_status()  # Show initial team-racing status info
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -980,7 +980,7 @@ def on_delete_lap(data):
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
     if int(getOption('TeamRacingMode')):
-        emit_team_racing_status()  # Update team-racing status info
+        check_emit_team_racing_status()  # Update team-racing status info
 
 @SOCKET_IO.on('simulate_lap')
 def on_simulate_lap(data):
@@ -1349,8 +1349,8 @@ def emit_current_heat(**params):
     else:
         SOCKET_IO.emit('current_heat', emit_payload)
 
-def emit_team_racing_status(cur_pilot_id=-1, **params):
-    '''Emits team-racing status info.'''
+def check_emit_team_racing_status(cur_pilot_id=-1, **params):
+    '''Checks and emits team-racing status info.'''
     cur_team_name = None
     t_laps_dict = {}  # determine number of laps for each team
     for t_node in range(RACE.num_nodes):
@@ -1377,11 +1377,7 @@ def emit_team_racing_status(cur_pilot_id=-1, **params):
     if Race_laps_winner_name is not None:
         disp_str += 'Winner is Team ' + Race_laps_winner_name
     server_log('Team racing status: ' + disp_str)
-    emit_payload = {'team_laps_str': disp_str}
-    if ('nobroadcast' in params):
-        emit('team_racing_status', emit_payload)
-    else:
-        SOCKET_IO.emit('team_racing_status', emit_payload)
+    emit_team_racing_status(disp_str)
               # return team name and team laps for given 'cur_pilot_id' (if any)
     if cur_team_name is not None:
         return cur_team_name, t_laps_dict[cur_team_name]
@@ -1390,13 +1386,17 @@ def emit_team_racing_status(cur_pilot_id=-1, **params):
 def emit_team_racing_stat_if_enb(**params):
     '''Emits team-racing status info if team racing is enabled.'''
     if int(getOption('TeamRacingMode')):
-        emit_team_racing_status(**params)
+        check_emit_team_racing_status(**params)
     else:
-        emit_payload = {'team_laps_str': ''}
-        if ('nobroadcast' in params):
-            emit('team_racing_status', emit_payload)
-        else:
-            SOCKET_IO.emit('team_racing_status', emit_payload)
+        emit_team_racing_status('')
+
+def emit_team_racing_status(disp_str, **params):
+    '''Emits given team-racing status info.'''
+    emit_payload = {'team_laps_str': disp_str}
+    if ('nobroadcast' in params):
+        emit('team_racing_status', emit_payload)
+    else:
+        SOCKET_IO.emit('team_racing_status', emit_payload)
 
 def check_pilot_laps_win(num_laps_win):
     '''Checks if a pilot has completed enough laps to win.'''
@@ -1615,7 +1615,7 @@ def pass_record_callback(node, ms_since_lap):
                     if int(getOption('TeamRacingMode')):  # team racing mode enabled
                         if race_format.number_laps_win > 0 and Race_laps_winner_name is None:
                             Race_laps_winner_name = check_team_laps_win(race_format.number_laps_win)
-                        team_name, team_laps = emit_team_racing_status(pilot_id)
+                        team_name, team_laps = check_emit_team_racing_status(pilot_id)
 
                         if lap_id > 0:   # send phonetic data to be spoken
                             if Race_laps_winner_name is None:
@@ -1627,21 +1627,29 @@ def pass_record_callback(node, ms_since_lap):
                                 emit_phonetic_text('Winner is team ' + Race_laps_winner_name)
 
                     else:  # not team racing mode
-                        if lap_id > 0:   # send phonetic data to be spoken
-                            emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+                        if lap_id > 0:   
+                                            # send phonetic data to be spoken
+                            if race_format.number_laps_win <= 0:
+                                emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
 
-                        if race_format.number_laps_win > 0:
-                            win_pilot_id = check_pilot_laps_win(race_format.number_laps_win)
-                            if win_pilot_id >= 0 and Race_laps_winner_name is None:
+                            else:           # need to check if any pilot has enough laps to win
+                                win_pilot_id = check_pilot_laps_win(race_format.number_laps_win)
+                                if win_pilot_id >= 0:  # a pilot has won the race
+                                    win_callsign = Pilot.query.filter_by(id=win_pilot_id).first().callsign
+                                    emit_team_racing_status('Winner is ' + win_callsign)
+                                    emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+                                    
+                                    if Race_laps_winner_name is None:
+                                            # a pilot has won the race and has not yet been announced
+                                        win_phon_name = Pilot.query.filter_by(id=win_pilot_id).first().phonetic
+                                        if len(win_phon_name) <= 0:  # if no phonetic then use callsign
+                                             win_phon_name = win_callsign
+                                        Race_laps_winner_name = win_callsign  # call out winner (once)
+                                        emit_phonetic_text('Winner is ' + win_phon_name)
 
-                                       # a pilot has won the race and has not yet been announced
-                                win_phon_name = Pilot.query.filter_by(id=pilot_id).first().phonetic
-                                win_callsign = Pilot.query.filter_by(id=pilot_id).first().callsign
-                                if len(win_phon_name) <= 0:  # if no phonetic then use callsign
-                                     win_phon_name = win_callsign
-                                Race_laps_winner_name = win_callsign  # call out winner (once)
-                                emit_phonetic_text('Winner is ' + win_phon_name)
-    
+                                else:  # no pilot has won the race; send phonetic data to be spoken
+                                    emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+
                     if node.index==0:
                         onoff(strip, Color(0,0,255))  #BLUE
                     elif node.index==1:
