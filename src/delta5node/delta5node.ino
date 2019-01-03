@@ -98,8 +98,10 @@ struct
     uint16_t volatile passRssiPeakRaw = 0;
     // peak smoothed rssi seen during current pass
     uint16_t volatile passRssiPeak = 0;
-    // time of the peak raw rssi for the current pass
+    // time of the first peak raw rssi for the current pass
     uint32_t volatile passRssiPeakRawTime = 0;
+    // time of the last peak raw rssi for the current pass
+    uint32_t volatile passRssiPeakRawLastTime = 0;
     // lowest smoothed rssi seen since end of last pass
     uint16_t volatile passRssiNadir = 999;
     // peak smoothed rssi seen since the node frequency was set
@@ -377,6 +379,10 @@ void loop()
             state.passRssiPeakRawTime = millis();
         }
 
+        if (state.rssiRaw == state.passRssiPeakRaw) {
+            state.passRssiPeakRawLastTime = millis();
+        }
+
         // track lowest smoothed rssi seen since end of last pass
         if (state.rssi < state.passRssiNadir)
             state.passRssiNadir = state.rssi;
@@ -396,7 +402,8 @@ void loop()
                 // save values for lap pass
                 lastPass.rssiPeakRaw = state.passRssiPeakRaw;
                 lastPass.rssiPeak = state.passRssiPeak;
-                lastPass.timeStamp = state.passRssiPeakRawTime;
+                // lap timestamp is between first and last peak RSSI
+                lastPass.timeStamp = (state.passRssiPeakRawLastTime + state.passRssiPeakRawTime) / 2;
                 lastPass.rssiNadir = state.passRssiNadir;
                 lastPass.lap = lastPass.lap + 1;
 
