@@ -373,14 +373,18 @@ void loop()
 
         // Find the peak rssi and the time it occured during a crossing event
         // Use the raw value to account for the delay in smoothing.
-        if (state.rssiRaw > state.passRssiPeakRaw)
+        if (state.rssiRaw >= state.passRssiPeakRaw)
         {
-            state.passRssiPeakRaw = state.rssiRaw;
-            state.passRssiPeakRawTime = millis();
-        }
-
-        if (state.rssiRaw == state.passRssiPeakRaw) {
+            // if at max peak for more than one iteration then track first
+            //  and last timestamp so middle-timestamp value can be returned
             state.passRssiPeakRawLastTime = millis();
+
+            if (state.rssiRaw > state.passRssiPeakRaw)
+            {
+                // this is first time this peak-raw-RSSI value was seen, so save value and timestamp
+                state.passRssiPeakRaw = state.rssiRaw;
+                state.passRssiPeakRawTime = state.passRssiPeakRawLastTime;
+            }
         }
 
         // track lowest smoothed rssi seen since end of last pass
