@@ -293,10 +293,10 @@ jQuery(document).ready(function($){
 		var thisitem = $(this).parent();
 		if (thisitem.hasClass('open')) {
 			thisitem.removeClass('open');
-			thisitem.find('.panel-content').slideUp();
+			thisitem.children('.panel-content').slideUp();
 		} else {
 			thisitem.addClass('open');
-			thisitem.find('.panel-content').slideDown();
+			thisitem.children('.panel-content').slideDown();
 		}
 	});
 
