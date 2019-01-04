@@ -1180,13 +1180,98 @@ def emit_round_data(**params):
             'leaderboard': calc_leaderboard(heat_id=heat.heat_id)
         })
     emit_payload = {
-        'heats': heats
+        'heats': heats,
+        'event_leaderboard': calc_event_leaderboard()
     }
 
     if ('nobroadcast' in params):
         emit('round_data', emit_payload)
     else:
         SOCKET_IO.emit('round_data', emit_payload)
+
+def calc_event_leaderboard():
+    # Get the pilot callsigns to add to sort
+    # Get the pilot team names
+    # Get the total laps for each pilot
+    pilot_ids = []
+    callsigns = []
+    team_names = []
+    max_laps = []
+    for pilot in Pilot.query.filter(Pilot.id != PILOT_ID_NONE):
+        pilot_ids.append(pilot.id)
+        callsigns.append(pilot.callsign)
+        team_names.append(pilot.team)
+        stat_query = DB.session.query(DB.func.count(SavedRace.lap_id)) \
+            .filter(SavedRace.pilot_id == pilot.id, SavedRace.lap_id != 0)
+        max_lap = stat_query.scalar()
+        if max_lap is None:
+            max_lap = 0
+        max_laps.append(max_lap)
+    # Get the total race time for each pilot
+    total_time = []
+    for i, pilot in enumerate(pilot_ids):
+        if max_laps[i] is 0:
+            total_time.append(0) # Add zero if no laps completed
+        else:
+            stat_query = DB.session.query(DB.func.sum(SavedRace.lap_time)) \
+                .filter_by(pilot_id=pilot)
+            total_time.append(stat_query.scalar())
+    # Get the average lap time for each pilot
+    average_lap = []
+    for i, pilot in enumerate(pilot_ids):
+        if max_laps[i] is 0:
+            average_lap.append(0) # Add zero if no laps completed
+        else:
+            stat_query = DB.session.query(DB.func.avg(SavedRace.lap_time)) \
+                .filter(SavedRace.pilot_id == pilot, SavedRace.lap_id != 0)
+            avg_lap = stat_query.scalar()
+            average_lap.append(avg_lap)
+    # Get the fastest lap time for each pilot
+    fastest_lap = []
+    for i, pilot in enumerate(pilot_ids):
+        if max_laps[i] is 0:
+            fastest_lap.append(0) # Add zero if no laps completed
+        else:
+            stat_query = DB.session.query(DB.func.min(SavedRace.lap_time)) \
+                .filter(SavedRace.pilot_id == pilot, SavedRace.lap_id != 0)
+            fast_lap = stat_query.scalar()
+            fastest_lap.append(fast_lap)
+    # Combine for sorting
+    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names)
+
+    # Reverse sort max_laps x[1], then sort on total time x[2]
+    leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
+
+    # Sort fastest_laps x[4]
+    leaderboard_by_fastest_lap = sorted(leaderboard, key = lambda x: (x[4]))
+
+    leaderboard_total_data = []
+    for i, row in enumerate(leaderboard_by_race_time, start=1):
+        leaderboard_total_data.append({
+            'position': i,
+            'callsign': row[0],
+            'laps': row[1],
+            'total_time': time_format(row[2]),
+            'average_lap': time_format(row[3]),
+            'team_name': row[5]
+        })
+
+    leaderboard_fast_lap_data = []
+    for i, row in enumerate(leaderboard_by_fastest_lap, start=1):
+        leaderboard_fast_lap_data.append({
+            'position': i,
+            'callsign': row[0],
+            'fastest_lap': time_format(row[4]),
+            'team_name': row[5]
+        })
+
+    leaderboard_output = {
+        'team_racing_mode': int(getOption('TeamRacingMode')), # need to check race format
+        'by_race_time': leaderboard_total_data,
+        'by_fastest_lap': leaderboard_fast_lap_data
+    }
+
+    return leaderboard_output
 
 def calc_leaderboard(**params):
     USE_TABLE = CurrentLap

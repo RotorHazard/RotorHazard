@@ -704,6 +704,10 @@ main {
 	}
 }
 
+.event-leaderboard {
+	margin-bottom: 1em;
+}
+
 .node-list {
 	display: flex;
 	flex-wrap: wrap;

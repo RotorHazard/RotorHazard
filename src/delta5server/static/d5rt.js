@@ -323,7 +323,7 @@ jQuery(document).ready(function($){
 /* Leaderboards */
 function build_leaderboard(leaderboard, display_type) {
 	if (typeof(display_type) === 'undefined')
-		display_type = 'current'
+		display_type = 'current';
 
 	var table = $('<table class="leaderboard">');
 	var header = $('<thead>');
@@ -371,6 +371,54 @@ function build_leaderboard(leaderboard, display_type) {
 	return table;
 }
 
+function build_event_leaderboard(leaderboard, display_type) {
+	if (typeof(display_type) === 'undefined')
+		display_type = 'by_race_time';
+
+	var table = $('<table class="leaderboard event-leaderboard">');
+	var header = $('<thead>');
+	var header_row = $('<tr>');
+	header_row.append('<th class="pos">Pos.</th>');
+	header_row.append('<th class="pilot">Pilot</th>');
+	if (leaderboard.team_racing_mode) {
+		header_row.append('<th class="team">Team</th>');
+	}
+	if (display_type == 'by_race_time') {
+		header_row.append('<th class="laps">Laps</th>');
+		header_row.append('<th class="total">Total</th>');
+		header_row.append('<th class="avg">Average</th>');
+	}
+	if (display_type == 'by_fastest_lap') {
+		header_row.append('<th class="fast">Fastest</th>');
+	}
+	header.append(header_row);
+	table.append(header);
+
+	var body = $('<tbody>');
+
+	for (var i in leaderboard[display_type]) {
+		var row = $('<tr>');
+
+		row.append('<td class="pos">'+ leaderboard[display_type][i].position +'</td>');
+		row.append('<td class="pilot">'+ leaderboard[display_type][i].callsign +'</td>');
+		if (leaderboard.team_racing_mode) {
+			row.append('<td class="team">'+ leaderboard[display_type][i].team_name +'</td>');
+		}
+		if (display_type == 'by_race_time') {
+			row.append('<td class="laps">'+ leaderboard[display_type][i].laps +'</td>');
+			row.append('<td class="total">'+ leaderboard[display_type][i].total_time +'</td>');
+			row.append('<td class="avg">'+ leaderboard[display_type][i].average_lap +'</td>');
+		}
+		if (display_type == 'by_fastest_lap') {
+			row.append('<td class="fast">'+ leaderboard[display_type][i].fastest_lap +'</td>');
+		}
+
+		body.append(row);
+	}
+
+	table.append(body);
+	return table;
+}
 /* Frequency Table */
 var freq = {
 	frequencies: {
