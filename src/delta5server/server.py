@@ -1190,6 +1190,8 @@ def emit_round_data(**params):
 
 def calc_leaderboard(**params):
     USE_TABLE = CurrentLap
+    USE_ROUND = None
+    USE_HEAT = None
     if ('round_id' in params and 'heat_id' in params):
         USE_TABLE = SavedRace
         USE_ROUND = params['round_id']
@@ -1231,7 +1233,7 @@ def calc_leaderboard(**params):
     last_lap = []
     for node in range(RACE.num_nodes):
         if max_laps[node] is 0 \
-            or USE_ROUND == None:
+            or (USE_TABLE == SavedRace and USE_ROUND == None):
             last_lap.append(0) # Add zero if no laps completed
         else:
             stat_query = USE_TABLE.query.filter_by(node_index=node, \
