@@ -321,9 +321,9 @@ jQuery(document).ready(function($){
 }
 
 /* Leaderboards */
-function build_leaderboard(leaderboard, current) {
-	if (typeof(current) === 'undefined')
-		current = false
+function build_leaderboard(leaderboard, display_type) {
+	if (typeof(display_type) === 'undefined')
+		display_type = 'current'
 
 	var table = $('<table class="leaderboard">');
 	var header = $('<thead>');
@@ -334,7 +334,7 @@ function build_leaderboard(leaderboard, current) {
 		header_row.append('<th class="team">Team</th>');
 	}
 	header_row.append('<th class="laps">Laps</th>');
-	if (current) {
+	if (display_type == 'current') {
 		header_row.append('<th class="last">Last Lap</th>');
 		header_row.append('<th class="behind">Behind</th>');
 	}
@@ -356,7 +356,7 @@ function build_leaderboard(leaderboard, current) {
 			row.append('<td class="team">'+ leaderboard.data[i].team_name +'</td>');
 		}
 		row.append('<td class="laps">'+ leaderboard.data[i].laps +'</td>');
-		if (current) {
+		if (display_type == 'current') {
 			row.append('<td class="last">'+ leaderboard.data[i].last_lap +'</td>');
 			row.append('<td class="behind">'+ leaderboard.data[i].behind +'</td>');
 		}

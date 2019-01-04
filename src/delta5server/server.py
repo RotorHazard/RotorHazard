@@ -1149,7 +1149,6 @@ def emit_current_laps(**params):
 
 def emit_round_data(**params):
     '''Emits saved races to rounds page.'''
-
     heats = []
     for heat in SavedRace.query.with_entities(SavedRace.heat_id).distinct().order_by(SavedRace.heat_id):
         heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
@@ -1177,7 +1176,8 @@ def emit_round_data(**params):
         heats.append({
             'heat_id': heat.heat_id,
             'note': heatnote,
-            'rounds': rounds
+            'rounds': rounds,
+            'leaderboard': calc_leaderboard(heat_id=heat.heat_id)
         })
     emit_payload = {
         'heats': heats
@@ -1194,14 +1194,21 @@ def calc_leaderboard(**params):
         USE_TABLE = SavedRace
         USE_ROUND = params['round_id']
         USE_HEAT = params['heat_id']
+    elif ('heat_id' in params):
+        USE_TABLE = SavedRace
+        USE_ROUND = None
+        USE_HEAT = params['heat_id']
 
     # Get the max laps for each pilot
     max_laps = []
     for node in range(RACE.num_nodes):
-        stat_query = DB.session.query(DB.func.max(USE_TABLE.lap_id)) \
-            .filter_by(node_index=node)
+        stat_query = DB.session.query(DB.func.count(USE_TABLE.lap_id)) \
+            .filter(USE_TABLE.node_index == node, USE_TABLE.lap_id != 0)
         if USE_TABLE == SavedRace:
-            stat_query.filter_by(round_id=USE_ROUND, heat_id=USE_HEAT)
+            if USE_ROUND == None:
+                stat_query = stat_query.filter_by(heat_id=USE_HEAT)
+            else:
+                stat_query = stat_query.filter_by(round_id=USE_ROUND, heat_id=USE_HEAT)
         max_lap = stat_query.scalar()
         if max_lap is None:
             max_lap = 0
@@ -1212,22 +1219,28 @@ def calc_leaderboard(**params):
         if max_laps[node] is 0:
             total_time.append(0) # Add zero if no laps completed
         else:
-            stat_query = USE_TABLE.query.filter_by(node_index=node, \
-                lap_id=max_laps[node])
+            stat_query = DB.session.query(DB.func.sum(USE_TABLE.lap_time)) \
+                .filter_by(node_index=node)
             if USE_TABLE == SavedRace:
-                stat_query.filter_by(round_id=USE_ROUND, heat_id=USE_HEAT)
-            total_time.append(stat_query.first().lap_time_stamp)
+                if USE_ROUND == None:
+                    stat_query = stat_query.filter_by(heat_id=USE_HEAT)
+                else:
+                    stat_query = stat_query.filter_by(round_id=USE_ROUND, heat_id=USE_HEAT)
+            total_time.append(stat_query.scalar())
     # Get the last lap for each pilot
     last_lap = []
     for node in range(RACE.num_nodes):
-        if max_laps[node] is 0:
+        if max_laps[node] is 0 \
+            or USE_ROUND == None:
             last_lap.append(0) # Add zero if no laps completed
         else:
             stat_query = USE_TABLE.query.filter_by(node_index=node, \
                 lap_id=max_laps[node])
             if USE_TABLE == SavedRace:
-                stat_query.filter_by(round_id=USE_ROUND, heat_id=USE_HEAT)
-
+                if USE_ROUND == None:
+                    stat_query = stat_query.filter_by(heat_id=USE_HEAT)
+                else:
+                    stat_query = stat_query.filter_by(round_id=USE_ROUND, heat_id=USE_HEAT)
             last_lap.append(stat_query.first().lap_time)
     # Get the average lap time for each pilot
     average_lap = []
@@ -1238,8 +1251,10 @@ def calc_leaderboard(**params):
             stat_query = DB.session.query(DB.func.avg(USE_TABLE.lap_time)) \
                 .filter(USE_TABLE.node_index == node, USE_TABLE.lap_id != 0)
             if USE_TABLE == SavedRace:
-                stat_query.filter_by(round_id=USE_ROUND, heat_id=USE_HEAT)
-
+                if USE_ROUND == None:
+                    stat_query = stat_query.filter_by(heat_id=USE_HEAT)
+                else:
+                    stat_query = stat_query.filter_by(round_id=USE_ROUND, heat_id=USE_HEAT)
             avg_lap = stat_query.scalar()
             average_lap.append(avg_lap)
     # Get the fastest lap time for each pilot
@@ -1251,8 +1266,10 @@ def calc_leaderboard(**params):
             stat_query = DB.session.query(DB.func.min(USE_TABLE.lap_time)) \
                 .filter(USE_TABLE.node_index == node, USE_TABLE.lap_id != 0)
             if USE_TABLE == SavedRace:
-                stat_query.filter_by(round_id=USE_ROUND, heat_id=USE_HEAT)
-
+                if USE_ROUND == None:
+                    stat_query = stat_query.filter_by(heat_id=USE_HEAT)
+                else:
+                    stat_query = stat_query.filter_by(round_id=USE_ROUND, heat_id=USE_HEAT)
             fast_lap = stat_query.scalar()
             fastest_lap.append(fast_lap)
     # Get the pilot callsigns to add to sort
@@ -1613,7 +1630,7 @@ def pass_record_callback(node, ms_since_lap):
                 heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
 
             if pilot_id != PILOT_ID_NONE:
-                
+
                 if node.lap_ms_since_start >= 0:
                     lap_time_stamp = node.lap_ms_since_start
                 else:  # use milliseconds since start of race if old-firmware node
@@ -1658,14 +1675,14 @@ def pass_record_callback(node, ms_since_lap):
                         if lap_id > 0:   # send phonetic data to be spoken
                             if Race_laps_winner_name is None:
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
-                                
+
                                       # a team has won the race and this is the winning lap
                             elif team_name == Race_laps_winner_name and team_laps == race_format.number_laps_win:
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
                                 emit_phonetic_text('Winner is team ' + Race_laps_winner_name)
 
                     else:  # not team racing mode
-                        if lap_id > 0:   
+                        if lap_id > 0:
                                             # send phonetic data to be spoken
                             if race_format.number_laps_win <= 0:
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
@@ -1676,7 +1693,7 @@ def pass_record_callback(node, ms_since_lap):
                                     win_callsign = Pilot.query.filter_by(id=win_pilot_id).first().callsign
                                     emit_team_racing_status('Winner is ' + win_callsign)
                                     emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
-                                    
+
                                     if Race_laps_winner_name is None:
                                             # a pilot has won the race and has not yet been announced
                                         win_phon_name = Pilot.query.filter_by(id=win_pilot_id).first().phonetic

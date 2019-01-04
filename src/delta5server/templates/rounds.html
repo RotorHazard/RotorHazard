@@ -26,6 +26,11 @@
 					panel.append(panel_header);
 
 					var panel_content = $('<div class="panel-content">');
+
+					var heat_leaderboard = $('<div class="leaderboard">');
+					heat_leaderboard.append(build_leaderboard(heat.leaderboard, 'heat'));
+					panel_content.append(heat_leaderboard);
+
 					for (var round_i in heat.rounds) {
 						var round = heat.rounds[round_i];
 						var round_div = $('<div class="round panel collapsing open">');
@@ -33,6 +38,9 @@
 						round_div.append('<div class="panel-header"><h3><button class="no-style">Round ' + round.id + '</button></h3></div>')
 
 						var round_content = $('<div class="panel-content">');
+
+						var race_leaderboard = $('<div class="leaderboard">');
+						race_leaderboard.append(build_leaderboard(round.leaderboard, 'round'));
 
 						var race_results = $('<div class="race-results">');
 
@@ -48,7 +56,6 @@
 							for (var lap_i in node.laps) {
 								var lap = node.laps[lap_i];
 								tbody.append('<tr><td>' + lap.id + '</td><td>' + lap.lap_time_formatted + '</td></tr>')
-
 							}
 
 							table.append(tbody);
@@ -56,12 +63,8 @@
 							race_results.append(node_div);
 						}
 
-						var race_leaderboard = $('<div class="leaderboard">');
-
-						race_leaderboard.append(build_leaderboard(round.leaderboard, false));
-
-						round_content.append(race_results);
 						round_content.append(race_leaderboard);
+						round_content.append(race_results);
 						round_div.append(round_content);
 						panel_content.append(round_div);
 					}
