@@ -1645,6 +1645,17 @@ def emit_exit_at_level(node, **params):
     else:
         SOCKET_IO.emit('node_exit_at_level', emit_payload)
 
+def emit_node_crossing_change(node, **params):
+    '''Emits crossing-flag change for given node.'''
+    emit_payload = {
+        'node_index': node.index,
+        'crossing_flag': node.crossing_flag
+    }
+    if ('nobroadcast' in params):
+        emit('node_crossing_change', emit_payload)
+    else:
+        SOCKET_IO.emit('node_crossing_change', emit_payload)
+
 
 #
 # Program Functions
@@ -1826,9 +1837,13 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
         server_log('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.exit_at_level, node.cap_exit_at_count))
         emit_exit_at_level(node)
 
+def node_crossing_callback(node):
+    emit_node_crossing_change(node)
+
 # set callback functions invoked by interface module
 INTERFACE.pass_record_callback = pass_record_callback
 INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
+INTERFACE.node_crossing_callback = node_crossing_callback
 
 def server_log(message):
     '''Messages emitted from the server script.'''

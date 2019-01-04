@@ -74,6 +74,7 @@ class Delta5Interface(BaseHardwareInterface):
         self.pass_record_callback = None # Function added in server.py
         self.hardware_log_callback = None # Function added in server.py
         self.new_enter_or_exit_at_callback = None # Function added in server.py
+        self.node_crossing_callback = None # Function added in server.py
 
         self.i2c = smbus.SMBus(1) # Start i2c bus
         self.semaphore = BoundedSemaphore(1) # Limits i2c to 1 read/write at a time
@@ -169,9 +170,13 @@ class Delta5Interface(BaseHardwareInterface):
                             node.pass_peak_rssi = unpack_16(data[9:])
                             node.loop_time = unpack_32(data[11:])
                             if data[15]:
-                                node.crossing_flag = True
+                                cross_flag = True
                             else:
-                                node.crossing_flag = False
+                                cross_flag = False
+                            if cross_flag != node.crossing_flag:  # if 'crossing' status changed
+                                node.crossing_flag = cross_flag
+                                if callable(self.node_crossing_callback):
+                                    self.node_crossing_callback(node)
                             node.pass_nadir_rssi = unpack_16(data[16:])
         
                         else:  # if newer API functions not supported
