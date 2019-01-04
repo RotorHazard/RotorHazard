@@ -237,29 +237,8 @@
 		});
 
 		socket.on('leaderboard', function (msg) {
-			hdr_str = '<tr><th class="pos">Pos.</th><th class="pilot">Pilot</th>';
-			if (msg.team_racing_mode) {
-				hdr_str += '<th class="team">Team</th>';
-			}
-			hdr_str += '<th class="laps">Laps</th><th class="last">Last Lap</th><th class="behind">Behind</th><th class="avg">Average</th><th class="fast">Fastest</th><th class="total">Total</th></tr>';
-			$('.ldrboardheader').html(hdr_str);
-			$('#leaderboard tbody > tr').remove();
-			for (i = 0; i < msg.position.length; i++) {
-				var $tr = $('<tr>').append(
-					$('<td class="pos">').text(msg.position[i]),
-					$('<td class="pilot">').text(msg.callsign[i]));
-				if (msg.team_racing_mode) {
-					$tr.append($('<td class="team">').text(msg.team_names[i]));
-				}
-				$tr.append(
-					$('<td class="laps">').text(msg.laps[i]),
-					$('<td class="last">').text(msg.last_lap[i]),
-					$('<td class="behind">').text(msg.behind[i]),
-					$('<td class="avg">').text(msg.average_lap[i]),
-					$('<td class="fast">').text(msg.fastest_lap[i]),
-					$('<td class="total">').text(msg.total_time[i]));
-				$tr.appendTo('#leaderboard');
-			}
+			$('#leaderboard').empty();
+			$('#leaderboard').append(build_leaderboard(msg, true));
 		});
 
 		socket.on('team_racing_status', function (msg) {
@@ -624,12 +603,7 @@
 		</div>
 
 		<!--Display the race leaderboard-->
-		<table id="leaderboard">
-			<thead class="ldrboardheader">
-			</thead>
-			<tbody>
-			</tbody>
-		</table>
+		<div id="leaderboard"></div>
 
         <div class="team_racing_status"></div>
 

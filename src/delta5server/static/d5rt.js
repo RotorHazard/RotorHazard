@@ -289,6 +289,17 @@ jQuery(document).ready(function($){
 	$('table').wrap('<div class="table-wrap">');
 
 	// Panel collapsing
+	$(document).on('click', '.panel-header', function() {
+		var thisitem = $(this).parent();
+		if (thisitem.hasClass('open')) {
+			thisitem.removeClass('open');
+			thisitem.find('.panel-content').slideUp();
+		} else {
+			thisitem.addClass('open');
+			thisitem.find('.panel-content').slideDown();
+		}
+	});
+
 	if ($('.collapsing').length) {
 		$('.collapsing').each(function(){
 			var el = $(this)
@@ -296,16 +307,6 @@ jQuery(document).ready(function($){
 
 			el.find('.panel-content').hide();
 			el.find('.panel-header>*').wrapInner('<button class="no-style">');
-			el.find('.panel-header').click(function(){
-				var thisitem = $(this).parent();
-				if (thisitem.hasClass('open')) {
-					thisitem.removeClass('open');
-					thisitem.find('.panel-content').slideUp();
-				} else {
-					thisitem.addClass('open');
-					thisitem.find('.panel-content').slideDown();
-				}
-			});
 		});
 
 		if(window.location.hash) {
@@ -317,6 +318,57 @@ jQuery(document).ready(function($){
 		}
 	}
 });
+}
+
+/* Leaderboards */
+function build_leaderboard(leaderboard, current) {
+	if (typeof(current) === 'undefined')
+		current = false
+
+	var table = $('<table class="leaderboard">');
+	var header = $('<thead>');
+	var header_row = $('<tr>');
+	header_row.append('<th class="pos">Pos.</th>');
+	header_row.append('<th class="pilot">Pilot</th>');
+	if (leaderboard.team_racing_mode) {
+		header_row.append('<th class="team">Team</th>');
+	}
+	header_row.append('<th class="laps">Laps</th>');
+	if (current) {
+		header_row.append('<th class="last">Last Lap</th>');
+		header_row.append('<th class="behind">Behind</th>');
+	}
+	header_row.append('<th class="avg">Average</th>');
+	header_row.append('<th class="fast">Fastest</th>');
+	header_row.append('<th class="total">Total</th>');
+
+	header.append(header_row);
+	table.append(header);
+
+	var body = $('<tbody>');
+
+	for (var i in leaderboard.data) {
+		var row = $('<tr>');
+
+		row.append('<td class="pos">'+ leaderboard.data[i].position +'</td>');
+		row.append('<td class="pilot">'+ leaderboard.data[i].callsign +'</td>');
+		if (leaderboard.data.team_racing_mode) {
+			row.append('<td class="team">'+ leaderboard.data[i].team_name +'</td>');
+		}
+		row.append('<td class="laps">'+ leaderboard.data[i].laps +'</td>');
+		if (current) {
+			row.append('<td class="last">'+ leaderboard.data[i].last_lap +'</td>');
+			row.append('<td class="behind">'+ leaderboard.data[i].behind +'</td>');
+		}
+		row.append('<td class="avg">'+ leaderboard.data[i].average_lap +'</td>');
+		row.append('<td class="fast">'+ leaderboard.data[i].fastest_lap +'</td>');
+		row.append('<td class="total">'+ leaderboard.data[i].total_time +'</td>');
+
+		body.append(row);
+	}
+
+	table.append(body);
+	return table;
 }
 
 /* Frequency Table */

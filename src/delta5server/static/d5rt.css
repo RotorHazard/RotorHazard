@@ -219,9 +219,6 @@ ol.form li+li {
 
 .panel-header {
 	padding: 0 0 1rem;
-}
-
-.active .panel-header {
 	cursor: pointer;
 }
 
@@ -398,7 +395,7 @@ main {
 }
 
 .round {
-	margin-bottom: 2rem;
+	margin-bottom: 1rem;
 }
 
 .race-results {
