@@ -1,5 +1,5 @@
 '''Delta5 race timer server script'''
-SERVER_API = 2 # Server API version
+SERVER_API = 3 # Server API version
 
 import os
 import sys
