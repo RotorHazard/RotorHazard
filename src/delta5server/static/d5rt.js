@@ -85,6 +85,10 @@ var d5rt = {
 	voice_lap_time: true, // speak lap times
 	voice_race_timer: true, // speak race timer
 	tone_volume: 1.0, // race stage/start tone volume
+	beep_crossing_entered: false, // beep node crossing entered
+	beep_crossing_exited: false, // beep node crossing exited
+	beep_manual_lap_button: false, // beep when manual lap button bit
+	indicator_beep_volume: 0.5, // indicator beep volume
 	admin: false, // whether to show admin options in nav
 	graphing: false,
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
@@ -103,6 +107,10 @@ var d5rt = {
 		localStorage['d5rt.voice_lap_time'] = JSON.stringify(this.voice_lap_time);
 		localStorage['d5rt.voice_race_timer'] = JSON.stringify(this.voice_race_timer);
 		localStorage['d5rt.tone_volume'] = JSON.stringify(this.tone_volume);
+		localStorage['d5rt.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
+		localStorage['d5rt.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
+		localStorage['d5rt.beep_manual_lap_button'] = JSON.stringify(this.beep_manual_lap_button);
+		localStorage['d5rt.indicator_beep_volume'] = JSON.stringify(this.indicator_beep_volume);
 		localStorage['d5rt.admin'] = JSON.stringify(this.admin);
 		localStorage['d5rt.primaryPilot'] = JSON.stringify(this.primaryPilot);
 		return true;
@@ -129,6 +137,18 @@ var d5rt = {
 			}
 			if (localStorage['d5rt.tone_volume']) {
 				this.tone_volume = JSON.parse(localStorage['d5rt.tone_volume']);
+			}
+			if (localStorage['d5rt.beep_crossing_entered']) {
+				this.beep_crossing_entered = JSON.parse(localStorage['d5rt.beep_crossing_entered']);
+			}
+			if (localStorage['d5rt.beep_crossing_exited']) {
+				this.beep_crossing_exited = JSON.parse(localStorage['d5rt.beep_crossing_exited']);
+			}
+			if (localStorage['d5rt.beep_manual_lap_button']) {
+				this.beep_manual_lap_button = JSON.parse(localStorage['d5rt.beep_manual_lap_button']);
+			}
+			if (localStorage['d5rt.indicator_beep_volume']) {
+				this.indicator_beep_volume = JSON.parse(localStorage['d5rt.indicator_beep_volume']);
 			}
 			if (localStorage['d5rt.admin']) {
 				this.admin = JSON.parse(localStorage['d5rt.admin']);
