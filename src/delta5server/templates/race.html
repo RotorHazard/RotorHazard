@@ -6,6 +6,8 @@
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
 
 <script type="text/javascript" charset="utf-8">
+	var globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
+
 	var socket = false;
 	var request_time;
 	var resume_check = true;
@@ -50,6 +52,10 @@
 		$('#buzzer')[0].volume = d5rt.tone_volume;
 		$('#stagebuzzer')[0].volume = d5rt.tone_volume;
 		$('#set_tone_volume').val(d5rt.tone_volume);
+		$('#beep_crossing_entered').prop("checked", d5rt.beep_crossing_entered);
+		$('#beep_crossing_exited').prop("checked", d5rt.beep_crossing_exited);
+		$('#beep_manual_lap_button').prop("checked", d5rt.beep_manual_lap_button);
+		$('#set_beep_volume').val(d5rt.indicator_beep_volume);
 
 		// set up RSSI graphing
 		$('.node .race-header').each(function(){
@@ -175,6 +181,13 @@
 
 					$('.current_rssi_' + i).html(rssiValue);
 
+					if (msg.crossing_flag[i]) {
+						$('.crossing_flag_' + i).addClass('is-crossing').html('Crossing');
+					}
+					else {
+						$('.crossing_flag_' + i).removeClass('is-crossing').html('Clear');
+					}
+
 					if (d5rt.nodes[i].graph.options.maxValue < rssiValue) {
 						d5rt.nodes[i].graph.options.maxValue = rssiValue;
 					}
@@ -272,11 +285,15 @@
 				ttstext += "team " + msg.team_name + ", lap " + msg.team_laps;
 			}
 
-			speak('<div class="speech">' + ttstext + '</div>');
+			if (ttstext.length > 0) {
+				speak('<div class="speech">' + ttstext + '</div>');
+			}
 		})
 
 		socket.on('phonetic_text', function (msg) {
-			speak('<div class="speech">' + msg.text + '</div>');
+			if (msg.text) {
+				speak('<div class="speech">' + msg.text + '</div>');
+			}
 		})
 
 		socket.on('current_heat', function (msg) {
@@ -342,6 +359,8 @@
 		});
 
 		$('button.simulate_lap').click(function (event) {
+			if (d5rt.beep_manual_lap_button)
+				play_beep(100, 2000);
 			var data = {
 				node: parseInt($(this).data('node')),
 			};
@@ -419,6 +438,26 @@
 			d5rt.saveData();
 		});
 
+		$('#beep_crossing_entered').change(function (event) {
+			d5rt.beep_crossing_entered = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#beep_crossing_exited').change(function (event) {
+			d5rt.beep_crossing_exited = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#beep_manual_lap_button').change(function (event) {
+			d5rt.beep_manual_lap_button = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#set_beep_volume').on('change', function (event) {
+			d5rt.indicator_beep_volume = parseFloat($(this).val()); 
+			d5rt.saveData();
+		});
+
 		/* Race Format */
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
@@ -464,6 +503,17 @@
 				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
 			}
 			$('#set_profile').val(msg.last_profile);
+		});
+
+		socket.on('node_crossing_change', function (msg) {
+			if (msg.crossing_flag) {
+				if (d5rt.beep_crossing_entered)
+					play_beep(25, 3500);
+			}
+			else {
+				if (d5rt.beep_crossing_exited)
+					play_beep(35, 2500);
+			}
 		});
 
 		$('#set_profile').change(function (event) {
@@ -570,6 +620,32 @@
 	function speak(obj) {
 		speakObjsQueue.push(obj);
 	};
+
+	//Generate tone. All arguments are optional:
+	//duration of the tone in milliseconds. Default is 500
+	//frequency of the tone in hertz. default is 440
+	//type of tone. Possible values are sine, square, sawtooth, triangle, and custom. Default is sine.
+	//callback to use on end of tone
+	/* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
+	function play_beep(duration, frequency, type, callback) {
+		var oscillator = globalAudioCtx.createOscillator();
+		var gainNode = globalAudioCtx.createGain();
+		
+		oscillator.connect(gainNode);
+		gainNode.connect(globalAudioCtx.destination);
+		
+		gainNode.gain.value = d5rt.indicator_beep_volume;
+		if (frequency)
+			oscillator.frequency.value = frequency;
+		if (type)
+			oscillator.type = type;
+		if (callback)
+			oscillator.onended = callback;
+		
+		oscillator.start();
+		setTimeout(function(){oscillator.stop()}, (duration ? duration : 500));
+	};
+
 </script>
 {% endblock %} {% block content %}
 <main class="page-race">
@@ -619,13 +695,12 @@
 					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
 					<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">Manual</button>
 				</div>
+				<div class="crossing crossing_flag_{{ node }}"><span>Clear</span></div>
 				<table class="laps" id="current_laps_{{ node }}">
 					<thead>
 						<tr>
 							<td class="rssi" colspan="2">
-								<span class="current_rssi_{{ node }}"></span> /
-								<span class="node_peak_rssi_{{ node }}"></span> /
-								<span class="pass_peak_rssi_{{ node }}"></span>
+								<span class="current_rssi_{{ node }}"></span>/<span class="node_peak_rssi_{{ node }}"></span>/<span class="pass_peak_rssi_{{ node }}"></span>
 							</td>
 						</tr>
 					</thead>
@@ -718,6 +793,22 @@
 				</div>
 				<input type="range" id="set_tone_volume" min="0" max="1.0" step="0.01">
 			</li>			
+			<li>
+				<div class="label-block">
+					Indicator Beeps
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="beep_crossing_entered"> Crossing Entered</label></li>
+					<li><label><input type="checkbox" id="beep_crossing_exited"> Crossing Exited</label></li>
+					<li><label><input type="checkbox" id="beep_manual_lap_button"> Manual Lap Button</label></li>
+				</ul>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_beep_volume">Indicator Beeps Volume</label>
+				</div>
+				<input type="range" id="set_beep_volume" min="0" max="1.0" step="0.01">
+			</li>
 		</ol>
 	</div>
 </div>

@@ -1,5 +1,7 @@
 {% extends "layout.html" %} {% block title %}Settings{% endblock %} {% block head %}
 <script type="text/javascript" charset="utf-8">
+	var globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
+
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 		socket.emit('load_data', {'load_types': [
@@ -28,6 +30,10 @@
 		$().articulate('volume', d5rt.voice_volume);
 		$('#set_voice_volume').val(d5rt.voice_volume);
 		$('#set_tone_volume').val(d5rt.tone_volume);
+		$('#beep_crossing_entered').prop("checked", d5rt.beep_crossing_entered);
+		$('#beep_crossing_exited').prop("checked", d5rt.beep_crossing_exited);
+		$('#beep_manual_lap_button').prop("checked", d5rt.beep_manual_lap_button);
+		$('#set_beep_volume').val(d5rt.indicator_beep_volume);
 
 		// populate frequency selects
 		$('.frequency_table').each(function(){
@@ -398,7 +404,27 @@
 		});
 
 		$('#set_tone_volume').on('change', function (event) {
-			d5rt.tone_volume = parseFloat($(this).val());
+			d5rt.tone_volume = parseFloat($(this).val()); 
+			d5rt.saveData();
+		});
+
+		$('#beep_crossing_entered').change(function (event) {
+			d5rt.beep_crossing_entered = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#beep_crossing_exited').change(function (event) {
+			d5rt.beep_crossing_exited = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#beep_manual_lap_button').change(function (event) {
+			d5rt.beep_manual_lap_button = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#set_beep_volume').on('change', function (event) {
+			d5rt.indicator_beep_volume = parseFloat($(this).val()); 
 			d5rt.saveData();
 		});
 
@@ -619,6 +645,17 @@
 			return false;
 		});
 
+		socket.on('node_crossing_change', function (msg) {
+			if (msg.crossing_flag) {
+				if (d5rt.beep_crossing_entered)
+					play_beep(25, 3500);
+			}
+			else {
+				if (d5rt.beep_crossing_exited)
+					play_beep(35, 2500);
+			}
+		});
+
 		function calcContrasts(option_index) {
 			var hue = $('html').css('--hue_' + option_index);
 			var sat = $('html').css('--sat_' + option_index);
@@ -697,6 +734,31 @@
 
 	function speak(obj) {
 		$(obj).articulate('setVoice','name', d5rt.language).articulate('speak');
+	};
+
+	//Generate tone. All arguments are optional:
+	//duration of the tone in milliseconds. Default is 500
+	//frequency of the tone in hertz. default is 440
+	//type of tone. Possible values are sine, square, sawtooth, triangle, and custom. Default is sine.
+	//callback to use on end of tone
+	/* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
+	function play_beep(duration, frequency, type, callback) {
+		var oscillator = globalAudioCtx.createOscillator();
+		var gainNode = globalAudioCtx.createGain();
+		
+		oscillator.connect(gainNode);
+		gainNode.connect(globalAudioCtx.destination);
+		
+		gainNode.gain.value = d5rt.indicator_beep_volume;
+		if (frequency)
+			oscillator.frequency.value = frequency;
+		if (type)
+			oscillator.type = type;
+		if (callback)
+			oscillator.onended = callback;
+		
+		oscillator.start();
+		setTimeout(function(){oscillator.stop()}, (duration ? duration : 500));
 	};
 
 </script>
@@ -877,6 +939,22 @@
 					<label for="set_tone_volume">Tone Volume</label>
 				</div>
 				<input type="range" id="set_tone_volume" min="0" max="1.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					Indicator Beeps
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="beep_crossing_entered"> Crossing Entered</label></li>
+					<li><label><input type="checkbox" id="beep_crossing_exited"> Crossing Exited</label></li>
+					<li><label><input type="checkbox" id="beep_manual_lap_button"> Manual Lap Button</label></li>
+				</ul>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_beep_volume">Indicator Beeps Volume</label>
+				</div>
+				<input type="range" id="set_beep_volume" min="0" max="1.0" step="0.01">
 			</li>
 		</ol>
 	</div>
