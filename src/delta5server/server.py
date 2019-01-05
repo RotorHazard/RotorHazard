@@ -915,11 +915,13 @@ def on_save_laps():
         max_round = 0
     # Loop through laps to copy to saved races
     for node in range(RACE.num_nodes):
-        for lap in CurrentLap.query.filter_by(node_index=node).all():
-            DB.session.add(SavedRace(round_id=max_round+1, heat_id=RACE.current_heat, \
-                node_index=node, pilot_id=lap.pilot_id, lap_id=lap.lap_id, \
-                lap_time_stamp=lap.lap_time_stamp, lap_time=lap.lap_time, \
-                lap_time_formatted=lap.lap_time_formatted))
+        node_data = NodeData.query.filter_by(id=node).first()
+        if node_data.frequency:
+            for lap in CurrentLap.query.filter_by(node_index=node).all():
+                DB.session.add(SavedRace(round_id=max_round+1, heat_id=RACE.current_heat, \
+                    node_index=node, pilot_id=lap.pilot_id, lap_id=lap.lap_id, \
+                    lap_time_stamp=lap.lap_time_stamp, lap_time=lap.lap_time, \
+                    lap_time_formatted=lap.lap_time_formatted))
     DB.session.commit()
     server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
     on_clear_laps() # Also clear the current laps
@@ -1236,14 +1238,37 @@ def calc_event_leaderboard():
                 .filter(SavedRace.pilot_id == pilot, SavedRace.lap_id != 0)
             fast_lap = stat_query.scalar()
             fastest_lap.append(fast_lap)
+
+    # find best consecutive 3 laps
+    races = SavedRace.query.with_entities(SavedRace.round_id, SavedRace.heat_id).distinct().all()
+    consecutives = []
+    for i, pilot in enumerate(pilot_ids):
+        all_consecutives = []
+        for race in races:
+            thisrace = DB.session.query(SavedRace.lap_time) \
+                .filter(SavedRace.round_id == race.round_id, \
+                    SavedRace.heat_id == race.heat_id, \
+                    SavedRace.lap_id != 0, \
+                    SavedRace.pilot_id == pilot).all()
+
+            if len(thisrace) >= 3:
+                for i in range(len(thisrace) - 3):
+                    all_consecutives.append(thisrace[i].lap_time + thisrace[i+1].lap_time + thisrace[i+2].lap_time)
+            else:
+                all_consecutives.append(None)
+
+        # Sort consecutives
+        all_consecutives = sorted(all_consecutives, key = lambda x: (x is None, x))
+        # Get lowest not-none value (if any)
+        print(all_consecutives)
+        consecutives.append(all_consecutives[0])
+
+
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names)
+    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives)
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
-
-    # Sort fastest_laps x[4]
-    leaderboard_by_fastest_lap = sorted(leaderboard, key = lambda x: (x[4]))
 
     leaderboard_total_data = []
     for i, row in enumerate(leaderboard_by_race_time, start=1):
@@ -1256,6 +1281,9 @@ def calc_event_leaderboard():
             'team_name': row[5]
         })
 
+    # Sort fastest_laps x[4]
+    leaderboard_by_fastest_lap = sorted(leaderboard, key = lambda x: (x[4]))
+
     leaderboard_fast_lap_data = []
     for i, row in enumerate(leaderboard_by_fastest_lap, start=1):
         leaderboard_fast_lap_data.append({
@@ -1265,15 +1293,29 @@ def calc_event_leaderboard():
             'team_name': row[5]
         })
 
+    # Sort consecutives x[6]
+    leaderboard_by_consecutives = sorted(leaderboard, key = lambda x: (x is 0, x[6]))
+
+    leaderboard_consecutives_data = []
+    for i, row in enumerate(leaderboard_by_consecutives, start=1):
+        leaderboard_consecutives_data.append({
+            'position': i,
+            'callsign': row[0],
+            'consecutives': time_format(row[6]),
+            'team_name': row[5]
+        })
+
     leaderboard_output = {
         'team_racing_mode': int(getOption('TeamRacingMode')), # need to check race format
         'by_race_time': leaderboard_total_data,
-        'by_fastest_lap': leaderboard_fast_lap_data
+        'by_fastest_lap': leaderboard_fast_lap_data,
+        'by_consecutives': leaderboard_consecutives_data
     }
 
     return leaderboard_output
 
 def calc_leaderboard(**params):
+    ''' Generates heat-based leaderboard '''
     USE_TABLE = CurrentLap
     USE_ROUND = None
     USE_HEAT = None
@@ -1286,9 +1328,33 @@ def calc_leaderboard(**params):
         USE_ROUND = None
         USE_HEAT = params['heat_id']
 
+    nodes_range = range(RACE.num_nodes)
+    # Get the pilot callsigns to add to sort
+    callsigns = []
+    for node in range(RACE.num_nodes):
+        if USE_TABLE == CurrentLap:
+            pilot_id = Heat.query.filter_by( \
+                heat_id=RACE.current_heat, node_index=node).first().pilot_id
+            node_data = NodeData.query.filter_by(id=node).first()
+            if pilot_id != PILOT_ID_NONE and node_data.frequency:
+                callsigns.append(Pilot.query.filter_by(id=pilot_id).first().callsign)
+            else:
+                nodes_range.remove(node)  # skip this node in loops below
+
+        elif USE_TABLE == SavedRace:
+            pilot_id = Heat.query.filter_by( \
+                heat_id=USE_HEAT, node_index=node).first().pilot_id
+            if pilot_id != PILOT_ID_NONE:
+                callsigns.append(Pilot.query.filter_by(id=pilot_id).first().callsign)
+            else:
+                nodes_range.remove(node)  # skip this node in loops below
+
+
+    idx_range = range(len(nodes_range))  # 0-N index values for generated lists
+
     # Get the max laps for each pilot
     max_laps = []
-    for node in range(RACE.num_nodes):
+    for node in idx_range:
         stat_query = DB.session.query(DB.func.count(USE_TABLE.lap_id)) \
             .filter(USE_TABLE.node_index == node, USE_TABLE.lap_id != 0)
         if USE_TABLE == SavedRace:
@@ -1302,12 +1368,12 @@ def calc_leaderboard(**params):
         max_laps.append(max_lap)
     # Get the total race time for each pilot
     total_time = []
-    for node in range(RACE.num_nodes):
-        if max_laps[node] is 0:
+    for idx in idx_range:
+        if max_laps[idx] is 0:
             total_time.append(0) # Add zero if no laps completed
         else:
             stat_query = DB.session.query(DB.func.sum(USE_TABLE.lap_time)) \
-                .filter_by(node_index=node)
+                .filter_by(node_index=nodes_range[idx])
             if USE_TABLE == SavedRace:
                 if USE_ROUND == None:
                     stat_query = stat_query.filter_by(heat_id=USE_HEAT)
@@ -1316,13 +1382,13 @@ def calc_leaderboard(**params):
             total_time.append(stat_query.scalar())
     # Get the last lap for each pilot
     last_lap = []
-    for node in range(RACE.num_nodes):
-        if max_laps[node] is 0 \
+    for idx in idx_range:
+        if max_laps[idx] is 0 \
             or (USE_TABLE == SavedRace and USE_ROUND == None):
             last_lap.append(0) # Add zero if no laps completed
         else:
-            stat_query = USE_TABLE.query.filter_by(node_index=node, \
-                lap_id=max_laps[node])
+            stat_query = USE_TABLE.query.filter_by(node_index=nodes_range[idx], \
+                lap_id=max_laps[idx])
             if USE_TABLE == SavedRace:
                 if USE_ROUND == None:
                     stat_query = stat_query.filter_by(heat_id=USE_HEAT)
@@ -1331,12 +1397,12 @@ def calc_leaderboard(**params):
             last_lap.append(stat_query.first().lap_time)
     # Get the average lap time for each pilot
     average_lap = []
-    for node in range(RACE.num_nodes):
-        if max_laps[node] is 0:
+    for idx in idx_range:
+        if max_laps[idx] is 0:
             average_lap.append(0) # Add zero if no laps completed
         else:
             stat_query = DB.session.query(DB.func.avg(USE_TABLE.lap_time)) \
-                .filter(USE_TABLE.node_index == node, USE_TABLE.lap_id != 0)
+                .filter(USE_TABLE.node_index == nodes_range[idx], USE_TABLE.lap_id != 0)
             if USE_TABLE == SavedRace:
                 if USE_ROUND == None:
                     stat_query = stat_query.filter_by(heat_id=USE_HEAT)
@@ -1346,12 +1412,12 @@ def calc_leaderboard(**params):
             average_lap.append(avg_lap)
     # Get the fastest lap time for each pilot
     fastest_lap = []
-    for node in range(RACE.num_nodes):
-        if max_laps[node] is 0:
+    for idx in idx_range:
+        if max_laps[idx] is 0:
             fastest_lap.append(0) # Add zero if no laps completed
         else:
             stat_query = DB.session.query(DB.func.min(USE_TABLE.lap_time)) \
-                .filter(USE_TABLE.node_index == node, USE_TABLE.lap_id != 0)
+                .filter(USE_TABLE.node_index == nodes_range[idx], USE_TABLE.lap_id != 0)
             if USE_TABLE == SavedRace:
                 if USE_ROUND == None:
                     stat_query = stat_query.filter_by(heat_id=USE_HEAT)
@@ -1359,25 +1425,15 @@ def calc_leaderboard(**params):
                     stat_query = stat_query.filter_by(round_id=USE_ROUND, heat_id=USE_HEAT)
             fast_lap = stat_query.scalar()
             fastest_lap.append(fast_lap)
-    # Get the pilot callsigns to add to sort
-    callsigns = []
-    for node in range(RACE.num_nodes):
-        if USE_TABLE == SavedRace:
-            pilot_id = Heat.query.filter_by( \
-                heat_id=USE_HEAT, node_index=node).first().pilot_id
-        else:
-            pilot_id = Heat.query.filter_by( \
-                heat_id=RACE.current_heat, node_index=node).first().pilot_id
-        callsigns.append(Pilot.query.filter_by(id=pilot_id).first().callsign)
     # Get the pilot team names
     team_names = []
-    for node in range(RACE.num_nodes):
+    for idx in idx_range:
         if USE_TABLE == SavedRace:
             pilot_id = Heat.query.filter_by( \
-                heat_id=USE_HEAT, node_index=node).first().pilot_id
+                heat_id=USE_HEAT, node_index=nodes_range[idx]).first().pilot_id
         else:
             pilot_id = Heat.query.filter_by( \
-                heat_id=RACE.current_heat, node_index=node).first().pilot_id
+                heat_id=RACE.current_heat, node_index=nodes_range[idx]).first().pilot_id
         team_names.append(Pilot.query.filter_by(id=pilot_id).first().team)
     # Combine for sorting
     leaderboard = zip(callsigns, max_laps, total_time, last_lap, average_lap, fastest_lap, team_names)
@@ -1677,6 +1733,9 @@ def ms_from_program_start():
 
 def time_format(millis):
     '''Convert milliseconds to 00:00.000'''
+    if millis is None:
+        return None
+
     millis = int(millis)
     minutes = millis / 60000
     over = millis % 60000

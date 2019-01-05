@@ -391,6 +391,9 @@ function build_event_leaderboard(leaderboard, display_type) {
 	if (display_type == 'by_fastest_lap') {
 		header_row.append('<th class="fast">Fastest</th>');
 	}
+	if (display_type == 'by_consecutives') {
+		header_row.append('<th class="consecutive">Fastest 3 Consecutive</th>');
+	}
 	header.append(header_row);
 	table.append(header);
 
@@ -411,6 +414,9 @@ function build_event_leaderboard(leaderboard, display_type) {
 		}
 		if (display_type == 'by_fastest_lap') {
 			row.append('<td class="fast">'+ leaderboard[display_type][i].fastest_lap +'</td>');
+		}
+		if (display_type == 'by_consecutives') {
+			row.append('<td class="consecutive">'+ leaderboard[display_type][i].consecutives +'</td>');
 		}
 
 		body.append(row);

@@ -25,6 +25,8 @@
 				event_leaderboard.append(build_event_leaderboard(msg.event_leaderboard, 'by_race_time'));
 				event_leaderboard.append('<h3>Fastest Laps</h3>');
 				event_leaderboard.append(build_event_leaderboard(msg.event_leaderboard, 'by_fastest_lap'));
+				event_leaderboard.append('<h3>Fastest Consecutive 3 Laps</h3>');
+				event_leaderboard.append(build_event_leaderboard(msg.event_leaderboard, 'by_consecutives'));
 				panel_content.append(event_leaderboard);
 				panel.append(panel_content);
 
