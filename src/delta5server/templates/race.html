@@ -251,7 +251,7 @@
 
 		socket.on('leaderboard', function (msg) {
 			$('#leaderboard').empty();
-			$('#leaderboard').append(build_leaderboard(msg, true));
+			$('#leaderboard').append(build_leaderboard(msg, 'current'));
 		});
 
 		socket.on('team_racing_status', function (msg) {

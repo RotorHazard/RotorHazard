@@ -1200,15 +1200,14 @@ def calc_event_leaderboard():
     team_names = []
     max_laps = []
     for pilot in Pilot.query.filter(Pilot.id != PILOT_ID_NONE):
-        pilot_ids.append(pilot.id)
-        callsigns.append(pilot.callsign)
-        team_names.append(pilot.team)
         stat_query = DB.session.query(DB.func.count(SavedRace.lap_id)) \
             .filter(SavedRace.pilot_id == pilot.id, SavedRace.lap_id != 0)
         max_lap = stat_query.scalar()
-        if max_lap is None:
-            max_lap = 0
-        max_laps.append(max_lap)
+        if max_lap > 0:
+            pilot_ids.append(pilot.id)
+            callsigns.append(pilot.callsign)
+            team_names.append(pilot.team)
+            max_laps.append(max_lap)
     # Get the total race time for each pilot
     total_time = []
     for i, pilot in enumerate(pilot_ids):
@@ -1250,18 +1249,19 @@ def calc_event_leaderboard():
                     SavedRace.heat_id == race.heat_id, \
                     SavedRace.lap_id != 0, \
                     SavedRace.pilot_id == pilot).all()
-
+           
             if len(thisrace) >= 3:
-                for i in range(len(thisrace) - 3):
+                for i in range(len(thisrace) - 2):
                     all_consecutives.append(thisrace[i].lap_time + thisrace[i+1].lap_time + thisrace[i+2].lap_time)
-            else:
-                all_consecutives.append(None)
 
         # Sort consecutives
         all_consecutives = sorted(all_consecutives, key = lambda x: (x is None, x))
         # Get lowest not-none value (if any)
-        print(all_consecutives)
-        consecutives.append(all_consecutives[0])
+
+        if all_consecutives:
+            consecutives.append(all_consecutives[0])
+        else:
+            consecutives.append(None)
 
 
     # Combine for sorting
@@ -1282,7 +1282,7 @@ def calc_event_leaderboard():
         })
 
     # Sort fastest_laps x[4]
-    leaderboard_by_fastest_lap = sorted(leaderboard, key = lambda x: (x[4]))
+    leaderboard_by_fastest_lap = sorted(leaderboard, key = lambda x: (x[4] if x[4] > 0 else float('inf')))
 
     leaderboard_fast_lap_data = []
     for i, row in enumerate(leaderboard_by_fastest_lap, start=1):
@@ -1294,7 +1294,7 @@ def calc_event_leaderboard():
         })
 
     # Sort consecutives x[6]
-    leaderboard_by_consecutives = sorted(leaderboard, key = lambda x: (x is 0, x[6]))
+    leaderboard_by_consecutives = sorted(leaderboard, key = lambda x: (x[6] if x[6] > 0 else float('inf')))
 
     leaderboard_consecutives_data = []
     for i, row in enumerate(leaderboard_by_consecutives, start=1):

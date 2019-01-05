@@ -118,7 +118,7 @@
 
 		socket.on('leaderboard', function (msg) {
 			$('#leaderboard').empty();
-			$('#leaderboard').append(build_leaderboard(msg, true));
+			$('#leaderboard').append(build_leaderboard(msg, 'current'));
 		});
 
 		socket.on('phonetic_data', function (msg) {
