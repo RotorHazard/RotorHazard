@@ -936,10 +936,14 @@ def on_clear_laps():
     emit_race_status() # Race page, to set race button states
     if int(getOption('TeamRacingMode')):
         check_emit_team_racing_status()  # Show team-racing status info
+    else:
+        emit_team_racing_status('')  # clear any displayed "Winner is" text
 
 def clear_laps():
     '''Clear the current laps due to false start or practice.'''
     RACE.race_status = 0 # Laps cleared, ready to start next race
+    global Race_laps_winner_name
+    Race_laps_winner_name = None  # clear winner in first-to-X-laps race
     DB.session.query(CurrentLap).delete() # Clear out the current laps table
     DB.session.commit()
     server_log('Current laps cleared')
