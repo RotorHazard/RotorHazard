@@ -1354,9 +1354,9 @@ def calc_leaderboard(**params):
 
     # Get the max laps for each pilot
     max_laps = []
-    for node in idx_range:
+    for idx in idx_range:
         stat_query = DB.session.query(DB.func.count(USE_TABLE.lap_id)) \
-            .filter(USE_TABLE.node_index == node, USE_TABLE.lap_id != 0)
+            .filter(USE_TABLE.node_index == nodes_range[idx], USE_TABLE.lap_id != 0)
         if USE_TABLE == SavedRace:
             if USE_ROUND == None:
                 stat_query = stat_query.filter_by(heat_id=USE_HEAT)
