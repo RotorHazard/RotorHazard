@@ -146,6 +146,8 @@ class Delta5Interface(BaseHardwareInterface):
             gevent.sleep(UPDATE_SLEEP)
 
     def update(self):
+        upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_time_ms)
+        cross_list = []  # list of nodes with crossing-flag changes
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
@@ -176,7 +178,7 @@ class Delta5Interface(BaseHardwareInterface):
                             if cross_flag != node.crossing_flag:  # if 'crossing' status changed
                                 node.crossing_flag = cross_flag
                                 if callable(self.node_crossing_callback):
-                                    self.node_crossing_callback(node)
+                                    cross_list.append(node)
                             node.pass_nadir_rssi = unpack_16(data[16:])
         
                         else:  # if newer API functions not supported
@@ -184,12 +186,10 @@ class Delta5Interface(BaseHardwareInterface):
                             node.pass_peak_rssi = unpack_16(data[11:])
                             node.loop_time = unpack_32(data[13:])
         
-                        # check if new lap detected for node
+                        # if new lap detected for node then append item to updates list
                         if lap_id != node.last_lap_id:
-                            if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                                self.pass_record_callback(node, lap_time_ms)
-                            node.last_lap_id = lap_id
-        
+                            upd_list.append((node, lap_id, lap_time_ms))
+
                         # check if capturing enter-at level for node
                         if node.cap_enter_at_flag:
                             node.cap_enter_at_total += node.current_rssi
@@ -216,7 +216,30 @@ class Delta5Interface(BaseHardwareInterface):
                                     self.new_enter_or_exit_at_callback(node, False)
                     else:
                         self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
-                        
+
+        # process any nodes with crossing-flag changes
+        if len(cross_list) > 0:
+            for node in cross_list:
+                self.node_crossing_callback(node)
+
+        # process any nodes with new laps detected
+        if len(upd_list) > 0:
+            if len(upd_list) == 1:  # list contains single item
+                item = upd_list[0]
+                node = item[0]
+                if node.last_lap_id != -1 and callable(self.pass_record_callback):
+                    self.pass_record_callback(node, item[2])  # (node, lap_time_ms)
+                node.last_lap_id = item[1]  # new_lap_id
+                
+            else:  # list contains multiple items; sort so processed in order by lap time
+                upd_list.sort(key = lambda i: i[0].lap_ms_since_start)
+                for item in upd_list:
+                    node = item[0]
+                    if node.last_lap_id != -1 and callable(self.pass_record_callback):
+                        self.pass_record_callback(node, item[2])  # (node, lap_time_ms)
+                    node.last_lap_id = item[1]  # new_lap_id
+
+
     #
     # I2C Common Functions
     #

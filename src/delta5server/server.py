@@ -936,10 +936,14 @@ def on_clear_laps():
     emit_race_status() # Race page, to set race button states
     if int(getOption('TeamRacingMode')):
         check_emit_team_racing_status()  # Show team-racing status info
+    else:
+        emit_team_racing_status('')  # clear any displayed "Winner is" text
 
 def clear_laps():
     '''Clear the current laps due to false start or practice.'''
     RACE.race_status = 0 # Laps cleared, ready to start next race
+    global Race_laps_winner_name
+    Race_laps_winner_name = None  # clear winner in first-to-X-laps race
     DB.session.query(CurrentLap).delete() # Clear out the current laps table
     DB.session.commit()
     server_log('Current laps cleared')
@@ -1354,9 +1358,9 @@ def calc_leaderboard(**params):
 
     # Get the max laps for each pilot
     max_laps = []
-    for node in idx_range:
+    for idx in idx_range:
         stat_query = DB.session.query(DB.func.count(USE_TABLE.lap_id)) \
-            .filter(USE_TABLE.node_index == node, USE_TABLE.lap_id != 0)
+            .filter(USE_TABLE.node_index == nodes_range[idx], USE_TABLE.lap_id != 0)
         if USE_TABLE == SavedRace:
             if USE_ROUND == None:
                 stat_query = stat_query.filter_by(heat_id=USE_HEAT)
@@ -1830,12 +1834,11 @@ def pass_record_callback(node, ms_since_lap):
                         team_name, team_laps = check_emit_team_racing_status(pilot_id)
 
                         if lap_id > 0:   # send phonetic data to be spoken
-                            if Race_laps_winner_name is None:
-                                emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
-
+                            emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
                                       # a team has won the race and this is the winning lap
-                            elif team_name == Race_laps_winner_name and team_laps == race_format.number_laps_win:
-                                emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
+                            if Race_laps_winner_name is not None and \
+                                        team_name == Race_laps_winner_name and \
+                                        team_laps == race_format.number_laps_win:
                                 emit_phonetic_text('Winner is team ' + Race_laps_winner_name)
 
                     else:  # not team racing mode
