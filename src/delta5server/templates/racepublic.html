@@ -6,6 +6,9 @@
 	var buzzer = false;
 	var stagebuzzer = false;
 
+	var speakObjsQueue = [];
+	var checkSpeakQueueFlag = true;
+
 	$(document).ready(function () {
 		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
@@ -86,6 +89,22 @@
 				resume_check = false;
 				request_time = new Date();
 				socket.emit('get_race_elapsed');
+			}
+		});
+
+		socket.on('heartbeat', function (msg) {
+			if (speakObjsQueue.length > 0) {
+				var isSpeakingFlag = $().articulate('isSpeaking');
+				if (checkSpeakQueueFlag) {
+					if (!isSpeakingFlag) {
+						var obj = speakObjsQueue.shift();
+						if (speakObjsQueue.length > 0)
+							checkSpeakQueueFlag = false;
+						doSpeak(obj);
+					}
+				}  //make sure previous speak has started before checking queue again
+				else if (isSpeakingFlag)
+					checkSpeakQueueFlag = true;
 			}
 		});
 
@@ -207,12 +226,23 @@
 		});
 
 		$('#set_voice_volume').on('change', function (event) {
-			d5rt.voice_volume = parseFloat($(this).val()); 
+			d5rt.voice_volume = parseFloat($(this).val());
 		});
 	});
 
-	function speak(obj) {
+	function doSpeak(obj) {
 		$(obj).articulate('setVoice','name', d5rt.language).articulate('speak');
+	};
+
+	function speak(obj, priority) {
+		if (typeof(priority)=='undefined')
+			priority = false;
+
+		if (priority) {
+			speakObjsQueue.unshift(obj);
+		} else {
+			speakObjsQueue.push(obj);
+		}
 	};
 
 </script>

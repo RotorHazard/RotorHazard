@@ -434,7 +434,7 @@
 		});
 
 		$('#set_tone_volume').on('change', function (event) {
-			d5rt.tone_volume = parseFloat($(this).val()); 
+			d5rt.tone_volume = parseFloat($(this).val());
 			d5rt.saveData();
 		});
 
@@ -454,7 +454,7 @@
 		});
 
 		$('#set_beep_volume').on('change', function (event) {
-			d5rt.indicator_beep_volume = parseFloat($(this).val()); 
+			d5rt.indicator_beep_volume = parseFloat($(this).val());
 			d5rt.saveData();
 		});
 
@@ -617,8 +617,15 @@
 		$(obj).articulate('setVoice','name', d5rt.language).articulate('speak');
 	};
 
-	function speak(obj) {
-		speakObjsQueue.push(obj);
+	function speak(obj, priority) {
+		if (typeof(priority)=='undefined')
+			priority = false;
+
+		if (priority) {
+			speakObjsQueue.unshift(obj);
+		} else {
+			speakObjsQueue.push(obj);
+		}
 	};
 
 	//Generate tone. All arguments are optional:
@@ -630,10 +637,10 @@
 	function play_beep(duration, frequency, type, callback) {
 		var oscillator = globalAudioCtx.createOscillator();
 		var gainNode = globalAudioCtx.createGain();
-		
+
 		oscillator.connect(gainNode);
 		gainNode.connect(globalAudioCtx.destination);
-		
+
 		gainNode.gain.value = d5rt.indicator_beep_volume;
 		if (frequency)
 			oscillator.frequency.value = frequency;
@@ -641,7 +648,7 @@
 			oscillator.type = type;
 		if (callback)
 			oscillator.onended = callback;
-		
+
 		oscillator.start();
 		setTimeout(function(){oscillator.stop()}, (duration ? duration : 500));
 	};
@@ -792,7 +799,7 @@
 					<label for="set_tone_volume">Tone Volume</label>
 				</div>
 				<input type="range" id="set_tone_volume" min="0" max="1.0" step="0.01">
-			</li>			
+			</li>
 			<li>
 				<div class="label-block">
 					Indicator Beeps
