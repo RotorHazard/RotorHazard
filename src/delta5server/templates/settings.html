@@ -23,8 +23,8 @@
 		$('nav li').removeClass('admin-hide');
 
 		// populate voice controls
-		$('#voice_callsign').prop( "checked", d5rt.voice_callsign);
 		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
+		$('#voice_team_lap_count').prop( "checked", d5rt.voice_team_lap_count);
 		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
 		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
 		$().articulate('volume', d5rt.voice_volume);
@@ -374,13 +374,13 @@
 			d5rt.saveData();
 		});
 
-		$('#voice_callsign').change(function (event) {
-			d5rt.voice_callsign = $(this).prop('checked');
+		$('#voice_lap_count').change(function (event) {
+			d5rt.voice_lap_count = $(this).prop('checked');
 			d5rt.saveData();
 		});
 
-		$('#voice_lap_count').change(function (event) {
-			d5rt.voice_lap_count = $(this).prop('checked');
+		$('#voice_team_lap_count').change(function (event) {
+			d5rt.voice_team_lap_count = $(this).prop('checked');
 			d5rt.saveData();
 		});
 
@@ -404,7 +404,7 @@
 		});
 
 		$('#set_tone_volume').on('change', function (event) {
-			d5rt.tone_volume = parseFloat($(this).val()); 
+			d5rt.tone_volume = parseFloat($(this).val());
 			d5rt.saveData();
 		});
 
@@ -424,7 +424,7 @@
 		});
 
 		$('#set_beep_volume').on('change', function (event) {
-			d5rt.indicator_beep_volume = parseFloat($(this).val()); 
+			d5rt.indicator_beep_volume = parseFloat($(this).val());
 			d5rt.saveData();
 		});
 
@@ -745,10 +745,10 @@
 	function play_beep(duration, frequency, type, callback) {
 		var oscillator = globalAudioCtx.createOscillator();
 		var gainNode = globalAudioCtx.createGain();
-		
+
 		oscillator.connect(gainNode);
 		gainNode.connect(globalAudioCtx.destination);
-		
+
 		gainNode.gain.value = d5rt.indicator_beep_volume;
 		if (frequency)
 			oscillator.frequency.value = frequency;
@@ -756,7 +756,7 @@
 			oscillator.type = type;
 		if (callback)
 			oscillator.onended = callback;
-		
+
 		oscillator.start();
 		setTimeout(function(){oscillator.stop()}, (duration ? duration : 500));
 	};
@@ -922,10 +922,10 @@
 					Announcements
 				</div>
 				<ul>
-					<li><label><input type="checkbox" id="voice_callsign"> Callsign</label></li>
 					<li><label><input type="checkbox" id="voice_lap_count"> Lap Number</label></li>
 					<li><label><input type="checkbox" id="voice_lap_time"> Lap Time</label></li>
 					<li><label><input type="checkbox" id="voice_race_timer"> Race Timer</label></li>
+					<li><label><input type="checkbox" id="voice_team_lap_count"> Team Lap Total</label></li>
 				</ul>
 			</li>
 			<li>

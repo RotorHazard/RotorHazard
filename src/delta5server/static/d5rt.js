@@ -80,8 +80,8 @@ function hslToHex(h, s, l) {
 var d5rt = {
 	language: '', // local language for voice callout
 	voice_volume: 1.0, // voice call volume
-	voice_callsign: true, // speak pilot callsigns
 	voice_lap_count: true, // speak lap counts
+	voice_team_lap_count: true, // speak team lap counts
 	voice_lap_time: true, // speak lap times
 	voice_race_timer: true, // speak race timer
 	tone_volume: 1.0, // race stage/start tone volume
@@ -102,8 +102,8 @@ var d5rt = {
 		}
 		localStorage['d5rt.language'] = JSON.stringify(this.language);
 		localStorage['d5rt.voice_volume'] = JSON.stringify(this.voice_volume);
-		localStorage['d5rt.voice_callsign'] = JSON.stringify(this.voice_callsign);
 		localStorage['d5rt.voice_lap_count'] = JSON.stringify(this.voice_lap_count);
+		localStorage['d5rt.voice_team_lap_count'] = JSON.stringify(this.voice_team_lap_count);
 		localStorage['d5rt.voice_lap_time'] = JSON.stringify(this.voice_lap_time);
 		localStorage['d5rt.voice_race_timer'] = JSON.stringify(this.voice_race_timer);
 		localStorage['d5rt.tone_volume'] = JSON.stringify(this.tone_volume);
@@ -123,11 +123,11 @@ var d5rt = {
 			if (localStorage['d5rt.voice_volume']) {
 				this.voice_volume = JSON.parse(localStorage['d5rt.voice_volume']);
 			}
-			if (localStorage['d5rt.voice_callsign']) {
-				this.voice_callsign = JSON.parse(localStorage['d5rt.voice_callsign']);
-			}
 			if (localStorage['d5rt.voice_lap_count']) {
 				this.voice_lap_count = JSON.parse(localStorage['d5rt.voice_lap_count']);
+			}
+			if (localStorage['d5rt.voice_team_lap_count']) {
+				this.voice_team_lap_count = JSON.parse(localStorage['d5rt.voice_team_lap_count']);
 			}
 			if (localStorage['d5rt.voice_lap_time']) {
 				this.voice_lap_time = JSON.parse(localStorage['d5rt.voice_lap_time']);

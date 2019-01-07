@@ -43,8 +43,8 @@
 		$('nav li').removeClass('admin-hide');
 
 		// populate voice controls
-		$('#voice_callsign').prop( "checked", d5rt.voice_callsign);
 		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
+		$('#voice_team_lap_count').prop( "checked", d5rt.voice_team_lap_count);
 		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
 		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
 		$().articulate('volume', d5rt.voice_volume);
@@ -261,7 +261,7 @@
 		socket.on('phonetic_data', function (msg) {
 			var ttstext = '';
 
-			if (d5rt.voice_callsign) {
+			if (d5rt.voice_lap_count || d5rt.voice_lap_time) {
 				ttstext = msg.callsign;
 				if (msg.pilot)
 					ttstext = msg.pilot;
@@ -279,7 +279,7 @@
 				ttstext += msg.phonetic;
 			}
 
-			if (msg.team_name && msg.team_laps) {
+			if (msg.team_name && msg.team_laps && d5rt.voice_team_lap_count) {
 				if (ttstext.length > 0)
 					ttstext += ", ";
 				ttstext += "team " + msg.team_name + ", lap " + msg.team_laps;
@@ -399,13 +399,13 @@
 			d5rt.saveData();
 		});
 
-		$('#voice_callsign').change(function (event) {
-			d5rt.voice_callsign = $(this).prop('checked');
+		$('#voice_lap_count').change(function (event) {
+			d5rt.voice_lap_count = $(this).prop('checked');
 			d5rt.saveData();
 		});
 
-		$('#voice_lap_count').change(function (event) {
-			d5rt.voice_lap_count = $(this).prop('checked');
+		$('#voice_team_lap_count').change(function (event) {
+			d5rt.voice_team_lap_count = $(this).prop('checked');
 			d5rt.saveData();
 		});
 
@@ -782,10 +782,10 @@
 					Announcements
 				</div>
 				<ul>
-					<li><label><input type="checkbox" id="voice_callsign"> Callsign</label></li>
 					<li><label><input type="checkbox" id="voice_lap_count"> Lap Number</label></li>
 					<li><label><input type="checkbox" id="voice_lap_time"> Lap Time</label></li>
 					<li><label><input type="checkbox" id="voice_race_timer"> Race Timer</label></li>
+					<li><label><input type="checkbox" id="voice_team_lap_count"> Team Lap Total</label></li>
 				</ul>
 			</li>
 			<li>
