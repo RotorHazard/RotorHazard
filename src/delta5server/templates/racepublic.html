@@ -13,7 +13,7 @@
 		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
 		socket.emit('load_data', {'load_types': [
-			'node_data',
+			'frequency_data',
 			'pilot_data',
 			'leaderboard',
 			'current_laps',
@@ -108,8 +108,9 @@
 			}
 		});
 
-		socket.on('node_data', function (msg) {
+		socket.on('frequency_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
+				$('#s_channel_' + i).val(msg.frequency[i]);
 				d5rt.nodes[i].frequency = msg.frequency[i];
 				freq.updateBlocks();
 			}

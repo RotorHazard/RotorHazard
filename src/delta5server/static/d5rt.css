@@ -535,7 +535,11 @@ main {
 	font-size: 1rem;
 }
 
-.datalabel {
+.datarow {
+	font-size: 1rem;
+}
+
+.datarow td:first-child {
 	text-align: left;
 }
 

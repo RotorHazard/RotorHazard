@@ -24,6 +24,7 @@
 		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 		socket.emit('load_data', {'load_types': [
 			'node_data',
+			'frequency_data',
 			'race_format',
 			'node_tuning',
 			'min_lap',
@@ -142,7 +143,6 @@
 		});
 
 		socket.on('heartbeat', function (msg) {
-
 			if (speakObjsQueue.length > 0) {
 				var isSpeakingFlag = $().articulate('isSpeaking');
 				if (checkSpeakQueueFlag) {
@@ -210,18 +210,25 @@
 			}
 		});
 
-		socket.on('node_data', function (msg) {
+		socket.on('frequency_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
+				$('#s_channel_' + i).val(msg.frequency[i]);
+				d5rt.nodes[i].frequency = msg.frequency[i];
+				freq.updateBlocks();
+			}
+		});
+
+		socket.on('node_data', function (msg) {
+			for (i = 0; i < msg.node_peak_rssi.length; i++) {
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
+				$('.pass_nadir_rssi_' + i).html(msg.pass_nadir_rssi[i]);
 
-				d5rt.nodes[i].frequency = msg.frequency[i];
 				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
 				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
-				// import calibration/trigger threshold lines?
+				d5rt.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
 
 				d5rt.nodes[i].updateThresholds();
-				freq.updateBlocks();
 			}
 		});
 
@@ -486,7 +493,7 @@
 			for (i = 0; i < msg.format_ids.length; i++) {
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
 			}
-			$('#set_race_format').val(msg.last_format);
+			$('#set_race_format').val(msg.current_format);
 		});
 
 		$('#set_race_format').change(function (event) {
@@ -502,7 +509,7 @@
 			for (i = 0; i < msg.profile_ids.length; i++) {
 				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
 			}
-			$('#set_profile').val(msg.last_profile);
+			$('#set_profile').val(msg.current_profile);
 		});
 
 		socket.on('node_crossing_change', function (msg) {

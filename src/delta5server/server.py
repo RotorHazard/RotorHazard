@@ -1,5 +1,5 @@
 '''Delta5 race timer server script'''
-SERVER_API = 3 # Server API version
+SERVER_API = 4 # Server API version
 
 import os
 import sys
@@ -207,9 +207,9 @@ class Profiles(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), unique=True, nullable=False)
     description = DB.Column(DB.String(256), nullable=True)
-    c_offset = DB.Column(DB.Integer, nullable=True)
-    c_threshold = DB.Column(DB.Integer, nullable=True)
-    t_threshold = DB.Column(DB.Integer, nullable=True)
+    frequencies = DB.Column(DB.String(80), nullable=False)
+    enter_ats = DB.Column(DB.String(80), nullable=True)
+    exit_ats = DB.Column(DB.String(80), nullable=True)
     f_ratio = DB.Column(DB.Integer, nullable=True)
 
 class RaceFormat(DB.Model):
@@ -221,11 +221,6 @@ class RaceFormat(DB.Model):
     start_delay_min = DB.Column(DB.Integer, nullable=False)
     start_delay_max = DB.Column(DB.Integer, nullable=False)
     number_laps_win = DB.Column(DB.Integer, nullable=False)
-
-class NodeData(DB.Model):
-    id = DB.Column(DB.Integer, primary_key=True)
-    frequency = DB.Column(DB.Integer, nullable=False)
-    offset = DB.Column(DB.Integer, nullable=False)
 
 class GlobalSettings(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
@@ -291,38 +286,6 @@ def index():
     # - One for all rounds, grouped by heats
     # - One for all pilots, sorted by fastest lap and shows average and other stats
     # - One for individual heats
-    #
-    # Calculate heat summaries
-    # heat_max_laps = []
-    # heat_fast_laps = []
-    # for heat in SavedRace.query.with_entities(SavedRace.heat_id).distinct() \
-    #     .order_by(SavedRace.heat_id):
-    #     max_laps = []
-    #     fast_laps = []
-    #     for node in range(RACE.num_nodes):
-    #         node_max_laps = 0
-    #         node_fast_lap = 0
-    #         for race_round in SavedRace.query.with_entities(SavedRace.round_id).distinct() \
-    #             .filter_by(heat_id=heat.heat_id).order_by(SavedRace.round_id):
-    #             round_max_lap = DB.session.query(DB.func.max(SavedRace.lap_id)) \
-    #                 .filter_by(heat_id=heat.heat_id, round_id=race_round.round_id, \
-    #                 node_index=node).scalar()
-    #             if round_max_lap is None:
-    #                 round_max_lap = 0
-    #             else:
-    #                 round_fast_lap = DB.session.query(DB.func.min(SavedRace.lap_time)) \
-    #                 .filter(SavedRace.node_index == node, SavedRace.lap_id != 0).scalar()
-    #                 if node_fast_lap == 0:
-    #                     node_fast_lap = round_fast_lap
-    #                 if node_fast_lap != 0 and round_fast_lap < node_fast_lap:
-    #                     node_fast_lap = round_fast_lap
-    #             node_max_laps = node_max_laps + round_max_lap
-    #         max_laps.append(node_max_laps)
-    #         fast_laps.append(time_format(node_fast_lap))
-    #     heat_max_laps.append(max_laps)
-    #     heat_fast_laps.append(fast_laps)
-    # print heat_max_laps
-    # print heat_fast_laps
     return render_template('rounds.html', getOption=getOption)
         #, heat_max_laps=heat_max_laps, heat_fast_laps=heat_fast_laps
 
@@ -364,7 +327,7 @@ def correction():
     '''Route to node correction page.'''
 
     return render_template('correction.html', num_nodes=RACE.num_nodes,
-                           last_profile = getOption("lastProfile"),
+                           current_profile = getOption("currentProfile"),
                            profiles = Profiles,
                            getOption=getOption)
 
@@ -382,7 +345,7 @@ def database():
     '''Route to database page.'''
     return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
         savedraces=SavedRace, race_format=RaceFormat, \
-        node_data=NodeData, globalSettings=GlobalSettings, getOption=getOption)
+        profiles=Profiles, globalSettings=GlobalSettings, getOption=getOption)
 
 #
 # Socket IO Events
@@ -411,6 +374,8 @@ def on_load_data(data):
     for load_type in load_types:
         if load_type == 'node_data':
             emit_node_data(nobroadcast=True)
+        elif load_type == 'frequency_data':
+            emit_frequency_data(nobroadcast=True)
         elif load_type == 'heat_data':
             emit_heat_data(nobroadcast=True)
         elif load_type == 'pilot_data':
@@ -445,18 +410,79 @@ def on_set_frequency(data):
     '''Set node frequency.'''
     node_index = data['node']
     frequency = data['frequency']
-    node_data = NodeData.query.filter_by(id=node_index).first()
-    node_data.frequency = frequency
+
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
+    freqs = json.loads(profile.frequencies)
+    freqs["f"][node_index] = frequency
+    profile.frequencies = json.dumps(freqs)
+
     DB.session.commit()
+
+    '''Set node frequency.'''
     server_log('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
-    emit_node_data() # Settings page, new node channel
     INTERFACE.set_frequency(node_index, frequency)
+    emit_frequency_data()
+
+@SOCKET_IO.on('set_frequency_preset')
+def on_set_frequency_preset(data):
+    ''' Set nodes to preset frequencies '''
+    freqs = []
+    if data['preset'] == 'All-N1':
+        current_profile = int(getOption("currentProfile"))
+        profile = Profiles.query.get(current_profile)
+        profile_freqs = json.loads(profile.frequencies)
+        frequency = profile_freqs["f"][0]
+        for idx in range(RACE.num_nodes):
+            freqs.append(frequency)
+    else:
+        if data['preset'] == 'RB-4':
+            freqs = [5658, 5732, 5843, 5880, 0, 0, 0, 0]
+        elif data['preset'] == 'RB-8':
+            freqs = [5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917]
+        elif data['preset'] == 'IMD5C':
+            freqs = [5658, 5695, 5760, 5800, 5885, 0, 0, 0]
+        else: #IMD6C is default
+            freqs = [5658, 5695, 5760, 5800, 5880, 5917, 0, 0]
+
+    set_all_frequencies(freqs)
+
+def set_all_frequencies(freqs):
+    ''' Set frequencies for all nodes '''
+    # Set DB
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
+    profile_freqs = json.loads(profile.frequencies)
+
+    for idx in range(RACE.num_nodes):
+        profile_freqs["f"][idx] = freqs[idx]
+        server_log('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs[idx]))
+
+    profile.frequencies = json.dumps(profile_freqs)
+    DB.session.commit()
+
+    #Emit node data before actual update (for UI responsiveness)
+    emit('frequency_data', {
+            'frequency': freqs[:RACE.num_nodes],
+        })
+
+    # Finally, do hardware update
+    for idx in range(RACE.num_nodes):
+        INTERFACE.set_frequency(idx, freqs[idx])
 
 @SOCKET_IO.on('set_enter_at_level')
 def on_set_enter_at_level(data):
     '''Set node enter-at level.'''
     node_index = data['node']
     enter_at_level = data['enter_at_level']
+
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
+    enter_ats = json.loads(profile.enter_ats)
+    enter_ats["v"][node_index] = enter_at_level
+    profile.enter_ats = json.dumps(enter_ats)
+    DB.session.commit()
+
     INTERFACE.set_enter_at_level(node_index, enter_at_level)
     server_log('Node enter-at set: Node {0} Level {1}'.format(node_index+1, enter_at_level))
 
@@ -465,8 +491,36 @@ def on_set_exit_at_level(data):
     '''Set node exit-at level.'''
     node_index = data['node']
     exit_at_level = data['exit_at_level']
+
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
+    exit_ats = json.loads(profile.exit_ats)
+    exit_ats["v"][node_index] = exit_at_level
+    profile.exit_ats = json.dumps(exit_ats)
+    DB.session.commit()
+
     INTERFACE.set_exit_at_level(node_index, exit_at_level)
     server_log('Node exit-at set: Node {0} Level {1}'.format(node_index+1, exit_at_level))
+
+def set_all_enter_ats(enter_at_levels):
+    #Emit node data before actual update (for UI responsiveness)
+    emit('enter_at_levels', {
+            'enter_ats': enter_at_levels,
+        })
+
+    # Fianlly, do hardware update
+    for idx in range(RACE.num_nodes):
+        INTERFACE.set_enter_at_level(idx, enter_at_levels[idx])
+
+def set_all_exit_ats(exit_at_levels):
+    #Emit node data before actual update (for UI responsiveness)
+    emit('exit_at_levels', {
+            'exit_ats': exit_at_levels,
+        })
+
+    # Fianlly, do hardware update
+    for idx in range(RACE.num_nodes):
+        INTERFACE.set_exit_at_level(idx, exit_at_levels[idx])
 
 @SOCKET_IO.on('cap_enter_at_btn')
 def on_cap_enter_at_btn(data):
@@ -538,7 +592,7 @@ def on_set_pilot_callsign(data):
     '''Gets pilot callsign to update database.'''
     pilot_id = data['pilot_id']
     callsign = data['callsign']
-    db_update = Pilot.query.filter_by(id=pilot_id).first()
+    db_update = Pilot.query.get(pilot_id)
     db_update.callsign = callsign
     DB.session.commit()
     server_log('Pilot callsign set: Pilot {0} Callsign {1}'.format(pilot_id, callsign))
@@ -550,7 +604,7 @@ def on_set_pilot_team(data):
     '''Gets pilot team name to update database.'''
     pilot_id = data['pilot_id']
     team_name = data['team_name']
-    db_update = Pilot.query.filter_by(id=pilot_id).first()
+    db_update = Pilot.query.get(pilot_id)
     db_update.team = team_name
     DB.session.commit()
     server_log('Pilot team set: Pilot {0} Team {1}'.format(pilot_id, team_name))
@@ -562,7 +616,7 @@ def on_set_pilot_phonetic(data):
     '''Gets pilot phonetic to update database.'''
     pilot_id = data['pilot_id']
     phonetic = data['phonetic']
-    db_update = Pilot.query.filter_by(id=pilot_id).first()
+    db_update = Pilot.query.get(pilot_id)
     db_update.phonetic = phonetic
     DB.session.commit()
     server_log('Pilot phonetic set: Pilot {0} Phonetic {1}'.format(pilot_id, phonetic))
@@ -574,7 +628,7 @@ def on_set_pilot_name(data):
     '''Gets pilot name to update database.'''
     pilot_id = data['pilot_id']
     name = data['name']
-    db_update = Pilot.query.filter_by(id=pilot_id).first()
+    db_update = Pilot.query.get(pilot_id)
     db_update.name = name
     DB.session.commit()
     server_log('Pilot name set: Pilot {0} Name {1}'.format(pilot_id, name))
@@ -583,12 +637,17 @@ def on_set_pilot_name(data):
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
     '''Adds new profile in the database.'''
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
+    new_freqs = {}
+    new_freqs["f"] = default_frequencies()
+
     new_profile = Profiles(name='New Profile',
                            description = 'New Profile',
-                           c_offset=8,
-                           c_threshold=90,
-                           t_threshold=40,
-                           f_ratio=100)
+                           frequencies = json.dumps(new_freqs),
+                           enter_ats = profile.enter_ats,
+                           exit_ats = profile.exit_ats,
+                           f_ratio = 100)
     DB.session.add(new_profile)
     DB.session.flush()
     DB.session.refresh(new_profile)
@@ -600,25 +659,20 @@ def on_add_profile():
 def on_delete_profile():
     '''Delete profile'''
     if (DB.session.query(Profiles).count() > 1): # keep one profile
-        last_profile = int(getOption("lastProfile"))
-        profile = Profiles.query.get(last_profile)
+        current_profile = int(getOption("currentProfile"))
+        profile = Profiles.query.get(current_profile)
         DB.session.delete(profile)
         DB.session.commit()
         first_profile_id = Profiles.query.first().id
-        setOption("lastProfile", first_profile_id)
-        profile =Profiles.query.get(first_profile_id)
-        emit_node_tuning()
-        INTERFACE.set_calibration_threshold_global(profile.c_threshold)
-        INTERFACE.set_calibration_offset_global(profile.c_offset)
-        INTERFACE.set_trigger_threshold_global(profile.t_threshold)
-        INTERFACE.set_filter_ratio_global(profile.f_ratio)
+        setOption("currentProfile", first_profile_id)
+        on_set_profile(data={ 'profile': first_profile_id })
 
 @SOCKET_IO.on('set_profile_name')
 def on_set_profile_name(data):
     ''' update profile name '''
     profile_name = data['profile_name']
-    last_profile = int(getOption("lastProfile"))
-    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
     profile.name = profile_name
     DB.session.commit()
     server_log('set profile name %s' % (profile_name))
@@ -628,62 +682,64 @@ def on_set_profile_name(data):
 def on_set_profile_description(data):
     ''' update profile description '''
     profile_description = data['profile_description']
-    last_profile = int(getOption("lastProfile"))
-    profile = Profiles.query.filter_by(id=last_profile).first()
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
     profile.description = profile_description
     DB.session.commit()
     server_log('set profile description %s for profile %s' %
                (profile_name, profile.name))
     emit_node_tuning(noself=True)
 
-@SOCKET_IO.on('set_calibration_threshold')
-def on_set_calibration_threshold(data):
-    '''Set Calibration Threshold.'''
-    calibration_threshold = data['calibration_threshold']
-    last_profile = int(getOption("lastProfile"))
-    profile = Profiles.query.filter_by(id=last_profile).first()
-    profile.c_threshold = calibration_threshold
-    DB.session.commit()
-    server_log('Calibration threshold set: {0}'.format(calibration_threshold))
-    emit_node_tuning()
-    INTERFACE.set_calibration_threshold_global(calibration_threshold)
-
-@SOCKET_IO.on('set_calibration_offset')
-def on_set_calibration_offset(data):
-    '''Set Calibration Offset.'''
-    calibration_offset = data['calibration_offset']
-    last_profile = int(getOption("lastProfile"))
-    profile = Profiles.query.filter_by(id=last_profile).first()
-    profile.c_offset = calibration_offset
-    DB.session.commit()
-    server_log('Calibration offset set: {0}'.format(calibration_offset))
-    emit_node_tuning()
-    INTERFACE.set_calibration_offset_global(calibration_offset)
-
-@SOCKET_IO.on('set_trigger_threshold')
-def on_set_trigger_threshold(data):
-    '''Set Trigger Threshold.'''
-    trigger_threshold = data['trigger_threshold']
-    last_profile = int(getOption("lastProfile"))
-    profile = Profiles.query.filter_by(id=last_profile).first()
-    profile.t_threshold = trigger_threshold
-    DB.session.commit()
-    server_log('Trigger threshold set: {0}'.format(trigger_threshold))
-    emit_node_tuning()
-    INTERFACE.set_trigger_threshold_global(trigger_threshold)
-
 @SOCKET_IO.on('set_filter_ratio')
 def on_set_filter_ratio(data):
-    '''Set Trigger Threshold.'''
+    '''Set Filter Ratio'''
     filter_ratio = data['filter_ratio']
     if filter_ratio >= 1 and filter_ratio <= 10000:
-        last_profile = int(getOption("lastProfile"))
-        profile = Profiles.query.filter_by(id=last_profile).first()
+        current_profile = int(getOption("currentProfile"))
+        profile = Profiles.query.get(current_profile)
         profile.f_ratio = filter_ratio
         DB.session.commit()
         server_log('Filter ratio set: {0}'.format(filter_ratio))
         emit_node_tuning()
         INTERFACE.set_filter_ratio_global(filter_ratio)
+
+@SOCKET_IO.on("set_profile")
+def on_set_profile(data):
+    ''' set current profile '''
+    profile_val = int(data['profile'])
+    profile = Profiles.query.get(profile_val)
+    setOption("currentProfile", data['profile'])
+    server_log("set profile to '%s'" % profile_val)
+    emit_node_tuning()
+
+    # set freqs, enter_ats, and exit_ats
+    freqs_loaded = json.loads(profile.frequencies)
+    freqs = freqs_loaded["f"]
+    set_all_frequencies(freqs)
+    
+    if profile.enter_ats:
+        enter_ats_loaded = json.loads(profile.enter_ats)
+        enter_ats = enter_ats_loaded["v"]
+        set_all_enter_ats(enter_ats)
+    else: #handle null data by copying in current values
+        enter_at_levels = {}
+        enter_at_levels["v"] = [node.enter_at_level for node in INTERFACE.nodes]
+        enter_levels_serial = json.dumps(enter_at_levels)
+        profile.enter_ats = enter_levels_serial
+
+    if profile.exit_ats:
+        exit_ats_loaded = json.loads(profile.exit_ats)
+        exit_ats = exit_ats_loaded["v"]
+        set_all_exit_ats(exit_ats)
+    else: #handle null data by copying in current values
+        exit_at_levels = {}
+        exit_at_levels["v"] = [node.exit_at_level for node in INTERFACE.nodes]
+        exit_levels_serial = json.dumps(exit_at_levels)
+        profile.exit_ats = exit_levels_serial
+
+    DB.session.commit()
+    emit_enter_and_exit_at_levels()
+
 
 @SOCKET_IO.on('reset_database')
 def on_reset_database(data):
@@ -713,21 +769,6 @@ def on_shutdown_pi():
     server_log('Shutdown pi')
     os.system("sudo shutdown now")
 
-
-@SOCKET_IO.on("set_profile")
-def on_set_profile(data):
-    ''' set current profile '''
-    profile_val = data['profile']
-    profile =Profiles.query.filter_by(id=profile_val).first()
-    DB.session.flush()
-    setOption("lastProfile", profile.id)
-    DB.session.commit()
-    emit_node_tuning()
-    server_log("set tune profile to '%s'" % profile_val)
-    INTERFACE.set_calibration_threshold_global(profile.c_threshold)
-    INTERFACE.set_calibration_offset_global(profile.c_offset)
-    INTERFACE.set_trigger_threshold_global(profile.t_threshold)
-
 @SOCKET_IO.on("set_min_lap")
 def on_set_min_lap(data):
     min_lap = data['min_lap']
@@ -748,9 +789,9 @@ def on_set_team_racing_mode(data):
 def on_set_race_format(data):
     ''' set current race_format '''
     race_format_val = data['race_format']
-    race_format = RaceFormat.query.filter_by(id=race_format_val).first()
+    race_format = RaceFormat.query.get(race_format_val)
     DB.session.flush()
-    setOption("lastFormat", race_format_val)
+    setOption("currentFormat", race_format_val)
     DB.session.commit()
     emit_race_format()
     server_log("set race format to '%s'" % race_format_val)
@@ -776,12 +817,12 @@ def on_add_race_format():
 def on_delete_race_format():
     '''Delete profile'''
     if (DB.session.query(RaceFormat).count() > 1): # keep one format
-        last_raceFormat = int(getOption("lastFormat"))
+        last_raceFormat = int(getOption("currentFormat"))
         raceformat = RaceFormat.query.get(last_raceFormat)
         DB.session.delete(raceformat)
         DB.session.commit()
         first_raceFormat_id = RaceFormat.query.first().id
-        setOption("lastFormat", first_raceFormat_id)
+        setOption("currentFormat", first_raceFormat_id)
         raceformat = RaceFormat.query.get(first_raceFormat_id)
         emit_race_format()
 
@@ -789,8 +830,8 @@ def on_delete_race_format():
 def on_set_race_format_name(data):
     ''' update profile name '''
     format_name = data['format_name']
-    last_raceFormat = int(getOption("lastFormat"))
-    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    last_raceFormat = int(getOption("currentFormat"))
+    race_format = RaceFormat.query.get(last_raceFormat)
     race_format.name = format_name
     DB.session.commit()
     server_log('set format name %s' % (format_name))
@@ -799,8 +840,8 @@ def on_set_race_format_name(data):
 @SOCKET_IO.on("set_race_mode")
 def on_set_race_mode(data):
     race_mode = data['race_mode']
-    last_raceFormat = int(getOption("lastFormat"))
-    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    last_raceFormat = int(getOption("currentFormat"))
+    race_format = RaceFormat.query.get(last_raceFormat)
     race_format.race_mode = race_mode
     DB.session.commit()
     server_log("set race mode to %s" % race_mode)
@@ -808,8 +849,8 @@ def on_set_race_mode(data):
 @SOCKET_IO.on("set_fix_race_time")
 def on_set_fix_race_time(data):
     race_time = data['race_time']
-    last_raceFormat = int(getOption("lastFormat"))
-    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    last_raceFormat = int(getOption("currentFormat"))
+    race_format = RaceFormat.query.get(last_raceFormat)
     race_format.race_time_sec = race_time
     DB.session.commit()
     server_log("set fixed time race to %s seconds" % race_time)
@@ -817,8 +858,8 @@ def on_set_fix_race_time(data):
 @SOCKET_IO.on("set_hide_stage_timer")
 def on_set_hide_stage_timer(data):
     hide_stage_timer = data['hide_stage_timer']
-    last_raceFormat = int(getOption("lastFormat"))
-    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    last_raceFormat = int(getOption("currentFormat"))
+    race_format = RaceFormat.query.get(last_raceFormat)
     race_format.hide_stage_timer = hide_stage_timer
     DB.session.commit()
     server_log("set start type to %s" % hide_stage_timer)
@@ -826,8 +867,8 @@ def on_set_hide_stage_timer(data):
 @SOCKET_IO.on("set_start_delay_min")
 def on_set_start_delay_min(data):
     start_delay_min = data['start_delay_min']
-    last_raceFormat = int(getOption("lastFormat"))
-    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    last_raceFormat = int(getOption("currentFormat"))
+    race_format = RaceFormat.query.get(last_raceFormat)
     race_format.start_delay_min = start_delay_min
     DB.session.commit()
     server_log("set start delay min to %s" % start_delay_min)
@@ -835,8 +876,8 @@ def on_set_start_delay_min(data):
 @SOCKET_IO.on("set_start_delay_max")
 def on_set_start_delay_max(data):
     start_delay_max = data['start_delay_max']
-    last_raceFormat = int(getOption("lastFormat"))
-    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    last_raceFormat = int(getOption("currentFormat"))
+    race_format = RaceFormat.query.get(last_raceFormat)
     race_format.start_delay_max = start_delay_max
     DB.session.commit()
     server_log("set start delay max to %s" % start_delay_max)
@@ -844,8 +885,8 @@ def on_set_start_delay_max(data):
 @SOCKET_IO.on("set_number_laps_win")
 def on_set_number_laps_win(data):
     number_laps_win = data['number_laps_win']
-    last_raceFormat = int(getOption("lastFormat"))
-    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    last_raceFormat = int(getOption("currentFormat"))
+    race_format = RaceFormat.query.get(last_raceFormat)
     race_format.number_laps_win = number_laps_win
     DB.session.commit()
     server_log("set number of laps to win to %s" % number_laps_win)
@@ -862,8 +903,8 @@ def on_prestage_race():
     if int(getOption('TeamRacingMode')):
         check_emit_team_racing_status()  # Show initial team-racing status info
     INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
-    last_raceFormat = int(getOption("lastFormat"))
-    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    last_raceFormat = int(getOption("currentFormat"))
+    race_format = RaceFormat.query.get(last_raceFormat)
     MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
     MAX = max(race_format.start_delay_min, race_format.start_delay_max)
     DELAY = random.randint(MIN, MAX)
@@ -893,7 +934,6 @@ def on_start_race(data):
     INTERFACE.mark_start_time_global()
     onoff(strip, Color(0,255,0)) #GREEN for GO
     emit_race_status() # Race page, to set race button states
-    emit_node_data() # Settings page, node channel and triggers on the launch pads
     server_log('Race started at {0}'.format(RACE_START))
 
 @SOCKET_IO.on('stop_race')
@@ -915,8 +955,10 @@ def on_save_laps():
         max_round = 0
     # Loop through laps to copy to saved races
     for node in range(RACE.num_nodes):
-        node_data = NodeData.query.filter_by(id=node).first()
-        if node_data.frequency:
+        current_profile = int(getOption("currentProfile"))
+        profile = Profiles.query.get(current_profile)
+        profile_freqs = json.loads(profile.frequencies)
+        if profile_freqs["f"][node]:
             for lap in CurrentLap.query.filter_by(node_index=node).all():
                 DB.session.add(SavedRace(round_id=max_round+1, heat_id=RACE.current_heat, \
                     node_index=node, pilot_id=lap.pilot_id, lap_id=lap.lap_id, \
@@ -1037,8 +1079,8 @@ def get_race_elapsed():
 
 def emit_race_status(**params):
     '''Emits race status.'''
-    last_raceFormat = int(getOption("lastFormat"))
-    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    last_raceFormat = int(getOption("currentFormat"))
+    race_format = RaceFormat.query.get(last_raceFormat)
     emit_payload = {
             'race_status': RACE.race_status,
             'race_mode': race_format.race_mode,
@@ -1049,10 +1091,19 @@ def emit_race_status(**params):
     else:
         SOCKET_IO.emit('race_status', emit_payload)
 
-def emit_node_data(**params):
+def emit_frequency_data(**params):
     '''Emits node data.'''
     emit_payload = {
             'frequency': [node.frequency for node in INTERFACE.nodes],
+        }
+    if ('nobroadcast' in params):
+        emit('frequency_data', emit_payload)
+    else:
+        SOCKET_IO.emit('frequency_data', emit_payload)
+
+def emit_node_data(**params):
+    '''Emits node data.'''
+    emit_payload = {
             'node_peak_rssi': [node.node_peak_rssi for node in INTERFACE.nodes],
             'pass_peak_rssi': [node.pass_peak_rssi for node in INTERFACE.nodes],
             'pass_nadir_rssi': [node.pass_nadir_rssi for node in INTERFACE.nodes],
@@ -1076,15 +1127,12 @@ def emit_enter_and_exit_at_levels(**params):
 
 def emit_node_tuning(**params):
     '''Emits node tuning values.'''
-    last_profile = int(getOption("lastProfile"))
-    tune_val = Profiles.query.get(last_profile)
+    current_profile = int(getOption("currentProfile"))
+    tune_val = Profiles.query.get(current_profile)
     emit_payload = {
         'profile_ids': [profile.id for profile in Profiles.query.all()],
         'profile_names': [profile.name for profile in Profiles.query.all()],
-        'last_profile': last_profile,
-        'calibration_threshold': tune_val.c_threshold,
-        'calibration_offset': tune_val.c_offset,
-        'trigger_threshold': tune_val.t_threshold,
+        'current_profile': current_profile,
         'filter_ratio': tune_val.f_ratio,
         'profile_name': tune_val.name,
         'profile_description': tune_val.description
@@ -1116,12 +1164,12 @@ def emit_team_racing_mode(**params):
 
 def emit_race_format(**params):
     '''Emits node tuning values.'''
-    last_format = int(getOption("lastFormat"))
-    format_val = RaceFormat.query.get(last_format)
+    current_format = int(getOption("currentFormat"))
+    format_val = RaceFormat.query.get(current_format)
     emit_payload = {
         'format_ids': [raceformat.id for raceformat in RaceFormat.query.all()],
         'format_names': [raceformat.name for raceformat in RaceFormat.query.all()],
-        'last_format': last_format,
+        'current_format': current_format,
         'format_name': format_val.name,
         'race_mode': format_val.race_mode,
         'race_time_sec': format_val.race_time_sec,
@@ -1253,7 +1301,7 @@ def calc_event_leaderboard():
                     SavedRace.heat_id == race.heat_id, \
                     SavedRace.lap_id != 0, \
                     SavedRace.pilot_id == pilot).all()
-           
+
             if len(thisrace) >= 3:
                 for i in range(len(thisrace) - 2):
                     all_consecutives.append(thisrace[i].lap_time + thisrace[i+1].lap_time + thisrace[i+2].lap_time)
@@ -1339,9 +1387,12 @@ def calc_leaderboard(**params):
         if USE_TABLE == CurrentLap:
             pilot_id = Heat.query.filter_by( \
                 heat_id=RACE.current_heat, node_index=node).first().pilot_id
-            node_data = NodeData.query.filter_by(id=node).first()
-            if pilot_id != PILOT_ID_NONE and node_data.frequency:
-                callsigns.append(Pilot.query.filter_by(id=pilot_id).first().callsign)
+            current_profile = int(getOption("currentProfile"))
+            profile = Profiles.query.get(current_profile)
+            profile_freqs = json.loads(profile.frequencies)
+
+            if pilot_id != PILOT_ID_NONE and profile_freqs["f"][node]:
+                callsigns.append(Pilot.query.get(pilot_id).callsign)
             else:
                 nodes_range.remove(node)  # skip this node in loops below
 
@@ -1349,7 +1400,7 @@ def calc_leaderboard(**params):
             pilot_id = Heat.query.filter_by( \
                 heat_id=USE_HEAT, node_index=node).first().pilot_id
             if pilot_id != PILOT_ID_NONE:
-                callsigns.append(Pilot.query.filter_by(id=pilot_id).first().callsign)
+                callsigns.append(Pilot.query.get(pilot_id).callsign)
             else:
                 nodes_range.remove(node)  # skip this node in loops below
 
@@ -1438,7 +1489,7 @@ def calc_leaderboard(**params):
         else:
             pilot_id = Heat.query.filter_by( \
                 heat_id=RACE.current_heat, node_index=nodes_range[idx]).first().pilot_id
-        team_names.append(Pilot.query.filter_by(id=pilot_id).first().team)
+        team_names.append(Pilot.query.get(pilot_id).team)
     # Combine for sorting
     leaderboard = zip(callsigns, max_laps, total_time, last_lap, average_lap, fastest_lap, team_names)
     # Reverse sort max_laps x[1], then sort on total time x[2]
@@ -1538,7 +1589,7 @@ def emit_current_heat(**params):
     for node in range(RACE.num_nodes):
         pilot_id = Heat.query.filter_by( \
             heat_id=RACE.current_heat, node_index=node).first().pilot_id
-        callsigns.append(Pilot.query.filter_by(id=pilot_id).first().callsign)
+        callsigns.append(Pilot.query.get(pilot_id).callsign)
     heat_note = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first().note
 
     emit_payload = {
@@ -1556,12 +1607,14 @@ def check_emit_team_racing_status(cur_pilot_id=-1, **params):
     cur_team_name = None
     t_laps_dict = {}  # determine number of laps for each team
     for t_node in range(RACE.num_nodes):
-        node_data = NodeData.query.filter_by(id=t_node).first()
-        if node_data.frequency:
+        current_profile = int(getOption("currentProfile"))
+        profile = Profiles.query.get(current_profile)
+        profile_freqs = json.loads(profile.frequencies)
+        if profile_freqs["f"][t_node]:
             t_pilot_id = Heat.query.filter_by( \
                     heat_id=RACE.current_heat, node_index=t_node).first().pilot_id
             if t_pilot_id != PILOT_ID_NONE:
-                t_pilot_data = Pilot.query.filter_by(id=t_pilot_id).first()
+                t_pilot_data = Pilot.query.get(t_pilot_id)
                 if t_pilot_data.team:
                     t_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
                             .filter_by(node_index=t_node).scalar()
@@ -1605,8 +1658,10 @@ def check_pilot_laps_win(num_laps_win):
     win_pilot_id = -1
     win_lap_tstamp = 0
     for node in INTERFACE.nodes:
-        node_data = NodeData.query.filter_by(id=node.index).first()
-        if node_data.frequency:
+        current_profile = int(getOption("currentProfile"))
+        profile = Profiles.query.get(current_profile)
+        profile_freqs = json.loads(profile.frequencies)
+        if profile_freqs["f"][node.index]:
             pilot_id = Heat.query.filter_by( \
                     heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
             if pilot_id != PILOT_ID_NONE:
@@ -1633,12 +1688,14 @@ def check_team_laps_win(num_laps_win):
     '''Checks if a team has completed enough laps to win.'''
     t_laps_dict = {}  # determine number of laps for each team
     for t_node in range(RACE.num_nodes):
-        node_data = NodeData.query.filter_by(id=t_node).first()
-        if node_data.frequency:
+        current_profile = int(getOption("currentProfile"))
+        profile = Profiles.query.get(current_profile)
+        profile_freqs = json.loads(profile.frequencies)
+        if profile_freqs["f"][t_node]:
             t_pilot_id = Heat.query.filter_by( \
                     heat_id=RACE.current_heat, node_index=t_node).first().pilot_id
             if t_pilot_id != PILOT_ID_NONE:
-                t_pilot_data = Pilot.query.filter_by(id=t_pilot_id).first()
+                t_pilot_data = Pilot.query.get(t_pilot_id)
                 if t_pilot_data.team:
                     t_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
                             .filter_by(node_index=t_node).scalar()
@@ -1656,9 +1713,9 @@ def check_team_laps_win(num_laps_win):
 def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **params):
     '''Emits phonetic data.'''
     phonetic_time = phonetictime_format(lap_time)
-    phonetic_name = Pilot.query.filter_by(id=pilot_id).first().phonetic
-    callsign = Pilot.query.filter_by(id=pilot_id).first().callsign
-    pilot_id = Pilot.query.filter_by(id=pilot_id).first().id
+    phonetic_name = Pilot.query.get(pilot_id).phonetic
+    callsign = Pilot.query.get(pilot_id).callsign
+    pilot_id = Pilot.query.get(pilot_id).id
     emit_payload = {
         'pilot': phonetic_name,
         'callsign': callsign,
@@ -1783,8 +1840,10 @@ def pass_record_callback(node, ms_since_lap):
     emit_node_data() # For updated triggers and peaks
 
     global Race_laps_winner_name
-    node_data = NodeData.query.filter_by(id=node.index).first()
-    if node_data.frequency:
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
+    profile_freqs = json.loads(profile.frequencies)
+    if profile_freqs["f"][node.index]:
         if RACE.race_status is 1:
             # Get the current pilot id on the node
             pilot_id = Heat.query.filter_by( \
@@ -1813,8 +1872,8 @@ def pass_record_callback(node, ms_since_lap):
                     lap_time = lap_time_stamp - last_lap_time_stamp
                     lap_id = last_lap_id + 1
 
-                last_raceFormat = int(getOption("lastFormat"))
-                race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+                last_raceFormat = int(getOption("currentFormat"))
+                race_format = RaceFormat.query.get(last_raceFormat)
                 min_lap = int(getOption("MinLapSec"))
                 if lap_time > (min_lap * 1000) or lap_id == 0:
                     # Add the new lap to the database
@@ -1850,13 +1909,13 @@ def pass_record_callback(node, ms_since_lap):
                             else:           # need to check if any pilot has enough laps to win
                                 win_pilot_id = check_pilot_laps_win(race_format.number_laps_win)
                                 if win_pilot_id >= 0:  # a pilot has won the race
-                                    win_callsign = Pilot.query.filter_by(id=win_pilot_id).first().callsign
+                                    win_callsign = Pilot.query.get(win_pilot_id).callsign
                                     emit_team_racing_status('Winner is ' + win_callsign)
                                     emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
 
                                     if Race_laps_winner_name is None:
                                             # a pilot has won the race and has not yet been announced
-                                        win_phon_name = Pilot.query.filter_by(id=win_pilot_id).first().phonetic
+                                        win_phon_name = Pilot.query.get(win_pilot_id).phonetic
                                         if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                                              win_phon_name = win_callsign
                                         Race_laps_winner_name = win_callsign  # call out winner (once)
@@ -1921,26 +1980,22 @@ INTERFACE.hardware_log_callback = hardware_log_callback
 
 def default_frequencies():
     '''Set node frequencies, R1367 for 4, IMD6C+ for 5+.'''
-    frequencies_imd = [5658, 5695, 5760, 5800, 5880, 5917, 0, 0]
-    frequencies_rb4 = [5658, 5732, 5843, 5880]
-    for index, node in enumerate(INTERFACE.nodes):
-        gevent.sleep(0.100)
-        node_data = NodeData.query.filter_by(id=index).first()
-        if RACE.num_nodes < 5:
-            node_data.frequency = frequencies_rb4[index]
-        else:
-            node_data.frequency = frequencies_imd[index]
-
-    server_log('Default frequencies set')
+    if RACE.num_nodes < 5:
+        freqs = [5658, 5732, 5843, 5880, 0, 0, 0, 0]
+    else:
+        freqs = [5658, 5695, 5760, 5800, 5880, 5917, 0, 0]
+    return freqs
 
 def assign_frequencies():
-    '''Assign set frequencies to nodes'''
-    for node in NodeData.query.all():
-        gevent.sleep(0.100)
-        INTERFACE.set_frequency(node.id, node.frequency)
-        gevent.sleep(0.100)
+    '''Assign frequencies to nodes'''
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
+    freqs = json.loads(profile.frequencies)
 
-    server_log('Frequencies assigned to nodes')
+    for idx in range(RACE.num_nodes):
+        INTERFACE.set_frequency(idx, freqs["f"][idx])
+        server_log('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs["f"][idx]))
+    DB.session.commit()
 
 def db_init():
     '''Initialize database.'''
@@ -1951,8 +2006,8 @@ def db_init():
     db_reset_saved_races()
     db_reset_profile()
     db_reset_race_formats()
-    db_reset_node_values()
     db_reset_options_defaults()
+    assign_frequencies()
     server_log('Database initialized')
 
 def db_reset():
@@ -1963,7 +2018,6 @@ def db_reset():
     db_reset_saved_races()
     db_reset_profile()
     db_reset_race_formats()
-    db_reset_node_values()
     assign_frequencies()
     server_log('Database reset')
 
@@ -2003,32 +2057,20 @@ def db_reset_saved_races():
 def db_reset_profile():
     '''Set default profile'''
     DB.session.query(Profiles).delete()
-    DB.session.add(Profiles(name="Outdoor 25mW",
-                             description ="High speed, 25mW, open area",
-                             c_offset=8,
-                             c_threshold=65,
-                             t_threshold=40,
+
+    new_freqs = {}
+    new_freqs["f"] = default_frequencies()
+
+    DB.session.add(Profiles(name="Outdoor",
+                             description = "Medium filtering",
+                             frequencies = json.dumps(new_freqs),
                              f_ratio=100))
-    DB.session.add(Profiles(name="Indoor 25mW",
-                             description ="Low speed, 25mW, enclosed area",
-                             c_offset=16,
-                             c_threshold=30,
-                             t_threshold=40,
+    DB.session.add(Profiles(name="Indoor",
+                             description = "Strong filtering",
+                             frequencies = json.dumps(new_freqs),
                              f_ratio=10))
-    DB.session.add(Profiles(name="Outdoor 200mW",
-                             description ="High speed, 200mW, open area",
-                             c_offset=8,
-                             c_threshold=90,
-                             t_threshold=40,
-                             f_ratio=100))
-    DB.session.add(Profiles(name="Outdoor 600mW",
-                             description ="High speed, 600mW, open area",
-                             c_offset=8,
-                             c_threshold=100,
-                             t_threshold=40,
-                             f_ratio=100))
     DB.session.commit()
-    setOption("lastProfile", 1)
+    setOption("currentProfile", 1)
     server_log("Database set default profiles")
 
 def db_reset_race_formats():
@@ -2062,18 +2104,8 @@ def db_reset_race_formats():
                              start_delay_max=3,
                              number_laps_win=3))
     DB.session.commit()
-    setOption("lastFormat", 1)
+    setOption("currentFormat", 1)
     server_log("Database reset race formats")
-
-def db_reset_node_values():
-    DB.session.query(NodeData).delete()
-    for node in range(RACE.num_nodes):
-        DB.session.add(NodeData(id=node,
-                                frequency=0,
-                                offset=0))
-    DB.session.commit()
-    default_frequencies()
-    server_log("Database cleared node correction")
 
 def db_reset_options_defaults():
     DB.session.query(GlobalSettings).delete()
@@ -2094,10 +2126,11 @@ def db_reset_options_defaults():
     setOption("contrast_1_low", "#ffffff")
     setOption("contrast_1_high", "#000000")
 
-    setOption("lastProfile", "1")
-    setOption("lastFormat", "1")
+    setOption("currentProfile", "1")
+    setOption("currentFormat", "1")
     setOption("MinLapSec", "5")
     setOption("TeamRacingMode", "0")
+
     server_log("Reset global settings")
 
 #
@@ -2114,23 +2147,17 @@ gevent.sleep(0.500)
 # Create database if it doesn't exist
 if not os.path.exists('database.db'):
     db_init()
-elif getOption('server_api') < SERVER_API:
+elif int(getOption('server_api')) < SERVER_API:
     server_log("Old server API version; resetting database")
     db_init()
-
-
-assign_frequencies()
 
 # Clear any current laps from the database on each program start
 # DB session commit needed to prevent 'application context' errors
 db_reset_current_laps()
 
 # Send initial profile values to nodes
-last_profile = int(getOption("lastProfile"))
-tune_val = Profiles.query.get(last_profile)
-INTERFACE.set_calibration_threshold_global(tune_val.c_threshold)
-INTERFACE.set_calibration_offset_global(tune_val.c_offset)
-INTERFACE.set_trigger_threshold_global(tune_val.t_threshold)
+current_profile = int(getOption("currentProfile"))
+tune_val = Profiles.query.get(current_profile)
 INTERFACE.set_filter_ratio_global(tune_val.f_ratio)
 
 # Test data - Current laps

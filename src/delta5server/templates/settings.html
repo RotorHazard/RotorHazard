@@ -6,6 +6,7 @@
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 		socket.emit('load_data', {'load_types': [
 			'node_data',
+			'frequency_data',
 			'heat_data',
 			'pilot_data',
 			'race_format',
@@ -41,7 +42,7 @@
 		});
 
 		// set up RSSI graphing
-		$('.node table tr:first-child').each(function(){
+		$('.has-graph tr:first-child').each(function(){
 			var node = $(this);
 			var node_id = parseInt(node.closest('.node').data('node'));
 			node.before('<tr><td colspan="2" class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></td></tr>');
@@ -69,9 +70,11 @@
 						$('.crossing_flag_' + i).removeClass('is-crossing').html('Clear');
 					}
 
-					if (d5rt.nodes[i].graph.options.maxValue < rssiValue) {
-						d5rt.nodes[i].graph.options.maxValue = rssiValue;
-					}
+					d5rt.nodes[i].graph.options.maxValue = Math.max(
+						rssiValue, 
+						d5rt.nodes[i].node_peak_rssi + 1,
+						d5rt.nodes[i].enter_at_level + 10,
+					);
 
 					if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
 						d5rt.nodes[i].graph.options.minValue = rssiValue;
@@ -91,23 +94,110 @@
 			}
 		});
 
-		/* Nodes */
-		socket.on('node_data', function (msg) {
+		/* Profiles */
+		socket.on('node_tuning', function (msg) {
+			$('#set_profile').empty();
+			for (i = 0; i < msg.profile_ids.length; i++) {
+				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
+			}
+			$('#set_profile').val(msg.current_profile);
+			$('#set_calibration_threshold').val( msg.calibration_threshold);
+			$('#set_calibration_offset').val( msg.calibration_offset);
+			$('#set_trigger_threshold').val( msg.trigger_threshold);
+			$('#set_filter_ratio').val( msg.filter_ratio / 10000);
+			$('#set_profile_name').val( msg.profile_name);
+			$('#set_profile_description').val( msg.profile_description);
+		});
+
+		$('#set_profile').change(function (event) {
+			var data = {
+				profile: parseInt($(this).val())
+			};
+			socket.emit('set_profile', data);
+		});
+
+		$('button#add_profile').click(function (event) {
+			socket.emit('add_profile');
+			return false;
+		});
+
+		$('button#delete_profile').click(function (event) {
+			socket.emit('delete_profile');
+			return false;
+		});
+
+		$('#set_profile_name').change(function (event) {
+			var data = {
+				profile_name: $(this).val()
+			};
+			socket.emit('set_profile_name', data);
+		})
+
+		$('#set_calibration_threshold').change(function (event) {
+			var data = {
+				calibration_threshold: parseInt($(this).val())
+			};
+			socket.emit('set_calibration_threshold', data);
+		})
+
+		$('#set_calibration_offset').change(function (event) {
+			var data = {
+				calibration_offset: parseInt($(this).val())
+			};
+			socket.emit('set_calibration_offset', data);
+		})
+
+		$('#set_trigger_threshold').change(function (event) {
+			var data = {
+				trigger_threshold: parseInt($(this).val())
+			};
+			socket.emit('set_trigger_threshold', data);
+		})
+
+		$('#set_filter_ratio').change(function (event) {
+		    var data = {
+		    	filter_ratio: parseInt($(this).val() * 10000),
+		    }
+		    socket.emit('set_filter_ratio', data);
+		});
+
+		$('#set_profile_description').change(function (event) {
+			var data = {
+				profile_description: $(this).val()
+			};
+			socket.emit('set_profile_description', data);
+		})
+
+		/* Frequency Setup */
+		socket.on('frequency_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
 				$('#s_channel_' + i).val(msg.frequency[i]);
+				d5rt.nodes[i].frequency = msg.frequency[i];
+				freq.updateSelects();
+				freq.updateBlocks();
+			}
+		});
+
+		$('button.set_frequency_preset').click(function (event) {
+			var data = {
+				preset: $(this).data('preset')
+			};
+			socket.emit('set_frequency_preset', data);
+		});
+
+		/* Nodes */
+		socket.on('node_data', function (msg) {
+			for (i = 0; i < msg.node_peak_rssi.length; i++) {
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
 				$('.pass_nadir_rssi_' + i).html(msg.pass_nadir_rssi[i]);
 				$('.debug_pass_count_' + i).html(msg.debug_pass_count[i]);
 
-				d5rt.nodes[i].frequency = msg.frequency[i];
 				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
 				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
 				d5rt.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
 
 				d5rt.nodes[i].updateThresholds();
-				freq.updateSelects();
-				freq.updateBlocks();
 			}
 		});
 
@@ -456,7 +546,7 @@
 			for (i = 0; i < msg.format_ids.length; i++) {
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
 			}
-			$('#set_race_format').val(msg.last_format);
+			$('#set_race_format').val(msg.current_format);
 			$('#set_format_name').val(msg.format_name);
 			$('#set_race_mode').val(msg.race_mode);
 			$('#set_fix_race_time').val(msg.race_time_sec);
@@ -530,80 +620,6 @@
 				number_laps_win: parseInt($(this).val())
 			};
 			socket.emit('set_number_laps_win', data);
-		})
-
-		/* Calibration Profiles */
-		socket.on('node_tuning', function (msg) {
-			$('#set_profile').empty();
-			for (i = 0; i < msg.profile_ids.length; i++) {
-				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
-			}
-			$('#set_profile').val(msg.last_profile);
-			$('#set_calibration_threshold').val( msg.calibration_threshold);
-			$('#set_calibration_offset').val( msg.calibration_offset);
-			$('#set_trigger_threshold').val( msg.trigger_threshold);
-			$('#set_filter_ratio').val( msg.filter_ratio / 10000);
-			$('#set_profile_name').val( msg.profile_name);
-			$('#set_profile_description').val( msg.profile_description);
-		});
-
-		$('#set_profile').change(function (event) {
-			var data = {
-				profile: $(this).val()
-			};
-			socket.emit('set_profile', data);
-		});
-
-		$('button#add_profile').click(function (event) {
-			socket.emit('add_profile');
-			return false;
-		});
-
-		$('button#delete_profile').click(function (event) {
-			socket.emit('delete_profile');
-			return false;
-		});
-
-		$('#set_profile_name').change(function (event) {
-			var data = {
-				profile_name: $(this).val()
-			};
-			socket.emit('set_profile_name', data);
-		})
-
-		$('#set_calibration_threshold').change(function (event) {
-			var data = {
-				calibration_threshold: parseInt($(this).val())
-			};
-			socket.emit('set_calibration_threshold', data);
-		})
-
-		$('#set_calibration_offset').change(function (event) {
-			var data = {
-				calibration_offset: parseInt($(this).val())
-			};
-			socket.emit('set_calibration_offset', data);
-		})
-
-		$('#set_trigger_threshold').change(function (event) {
-			var data = {
-				trigger_threshold: parseInt($(this).val())
-			};
-			socket.emit('set_trigger_threshold', data);
-		})
-
-		$('#set_filter_ratio').change(function (event) {
-		    var data = {
-		    	filter_ratio: parseInt($(this).val() * 10000),
-		    }
-		    socket.emit('set_filter_ratio', data);
-		});
-
-		$('#set_profile_description').change(function (event) {
-			var data = {
-				profile_description: $(this).val()
-			};
-			socket.emit('set_profile_description', data);
 		})
 
 		/* Database Reset */
@@ -779,72 +795,125 @@
 	</div>
 {% endif %}
 
-<!--Display node data-->
+<!--Environment-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>Nodes</h2>
+		<h2>Profiles</h2>
+	</div>
+	<div class="panel-content">
+		<p class="form-note">Stores frequency settings and sensor tuning values</p>
+
+		<div class="control-set">
+			<label for="set_profile">Profile:</label>
+			<select id="set_profile">
+				<option>Loading...</option>
+			</select>
+			<button type="button" class="" id="add_profile" onclick="this.blur();">+ Add Profile</button>
+			<button type="button" class="btn-danger" id="delete_profile" onclick="this.blur();">&#215; Remove</button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_profile_name">Name</label>
+				</div>
+				<input type="text" id="set_profile_name">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_profile_description">Description</label>
+				</div>
+				<textarea id="set_profile_description"></textarea>
+			</li>
+		</ol>
+	</div>
+</div>
+
+<!--Frequency Setup-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Frequency Setup</h2>
+	</div>
+	<div class="panel-content">
+		<!--Apply preset-->
+		<div class="control-set">
+			Preset: 
+			<button type="button" class="set_frequency_preset" data-preset="All-N1" onclick="this.blur();">Apply Node 1</button>
+			<button type="button" class="set_frequency_preset" data-preset="RB-4" onclick="this.blur();">Raceband 4</button>
+			<button type="button" class="set_frequency_preset" data-preset="IMD5C" onclick="this.blur();">IMD5C</button>
+			<button type="button" class="set_frequency_preset" data-preset="IMD6C" onclick="this.blur();">IMD6C</button>
+			<button type="button" class="set_frequency_preset" data-preset="RB-8" onclick="this.blur();">Raceband 8</button>
+		</div>
+
+		<div class="node-list">
+			{% for node in range(num_nodes) %}
+				<div class="node" data-node="{{ node }}">
+					<h3><label for="set_freq_node_{{ node }}">Node {{ node + 1 }}</label></h3>
+					<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
+					<label for="s_channel_{{ node }}" class="screen-reader-text">Frequency</label>
+					<input type="number" id="s_channel_{{ node }}" class="set_frequency" data-node="{{ node }}" min="5000" max="6001">
+				</div>
+			{% endfor %}
+		</div>
+	</div>
+</div>
+
+<!--Sensor Tuning-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>Sensor Tuning</h2>
 	</div>
 	<div class="panel-content">
 		<div class="node-list">
 			{% for node in range(num_nodes) %}
 			<div class="node" data-node="{{ node }}">
 				<h3>Node {{ node + 1 }}</h3>
-				<table>
+				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
+				<table class="has-graph">
 					<tr>
 						<td colspan="2" class="crossing crossing_flag_{{ node }}">Clear</td>
 					</tr>
 					<tr>
 						<td colspan="2">
-							<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
-
-							<div class="compact-field">
-								<label for="s_channel_{{ node }}">Frequency</label>
-								<input type="number" id="s_channel_{{ node }}" class="set_frequency" data-node="{{ node }}" min="5000" max="6001">
-							</div>
-
 							<div class="compact-field">
 								<label for="set_enter_at_level_{{ node }}">EnterAt</label>
 								<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
 							</div>
-							<div class="control-set">
-								<button type="button" class="cap_enter_at_btn" data-node_index="{{ node }}" onclick="this.blur();">Capture &#8593;</button>
-							</div>
+							<button type="button" class="cap_enter_at_btn" data-node_index="{{ node }}" onclick="this.blur();">Capture &#8593;</button>
 
 							<div class="compact-field">
 								<label for="set_exit_at_level_{{ node }}">ExitAt</label>
 								<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
 							</div>
-							<div class="control-set">
-								<button type="button" class="cap_exit_at_btn" data-node_index="{{ node }}" onclick="this.blur();">Capture &#8593;</button>
-							</div>
+							<button type="button" class="cap_exit_at_btn" data-node_index="{{ node }}" onclick="this.blur();">Capture &#8593;</button>
 						</td>
 					</tr>
-					<tr>
-						<td class="datalabel">RSSI</td>
+					<tr class="datarow">
+						<td>RSSI</td>
 						<td>
 							<span class="current_rssi_{{ node }}"></span>
 						</td>
 					</tr>
-					<tr>
-						<td class="datalabel">NodePeak</td>
+					<tr class="datarow">
+						<td>NodePeak</td>
 						<td>
 							<span class="node_peak_rssi_{{ node }}"></span>
 						</td>
 					</tr>
-					<tr>
-						<td class="datalabel">PassPeak</td>
+					<tr class="datarow">
+						<td>PassPeak</td>
 						<td>
 							<span class="pass_peak_rssi_{{ node }}"></span>
 						</td>
 					</tr>
-					<tr>
-						<td class="datalabel">PassNadir</td>
+					<tr class="datarow">
+						<td>PassNadir</td>
 						<td>
 							<span class="pass_nadir_rssi_{{ node }}"></span>
 						</td>
 					</tr>
-					<tr>
-						<td class="datalabel">PassCount</td>
+					<tr class="datarow">
+						<td>PassCount</td>
 						<td>
 							<span class="debug_pass_count_{{ node }}"></span>
 						</td>
@@ -860,6 +929,19 @@
 			<li><span style="background-color: #999"></span> Exit</li>
 			<li><span style="background-color: #666"></span> Nadir</li>
 		</ul>
+
+		<!--Edit system tuning values-->
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_filter_ratio">Filter Ratio</label>
+					<p class="desc">RSSI Smoothing: .0001 smoothest, 1.0 unfiltered. (Default 0.01)</p>
+				</div>
+				<input type="number" id="set_filter_ratio" min="0.0001" max="1.0" step="0.0001">
+			</li>
+		</ol>
+
+
 		<div class="calibration-guide">
 			<h3>Calibration</h3>
 			<ol>
@@ -1054,49 +1136,10 @@
 	</div>
 </div>
 
-<!--Edit system tuning values-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>Sensor Tuning</h2>
-	</div>
-	<div class="panel-content">
-		<div class="control-set">
-			<label for="set_profile">Profile:</label>
-			<select id="set_profile">
-				<option>Loading...</option>
-			</select>
-			<button type="button" class="" id="add_profile" onclick="this.blur();">+ Add Profile</button>
-			<button type="button" class="btn-danger" id="delete_profile" onclick="this.blur();">&#215; Remove</button>
-		</div>
-
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_profile_name">Name</label>
-				</div>
-				<input type="text" id="set_profile_name">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_profile_description">Description</label>
-				</div>
-				<textarea id="set_profile_description"></textarea>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_filter_ratio">Filter Ratio</label>
-					<p class="desc">RSSI Smoothing: .0001 smoothest, 1.0 unfiltered. (Default 0.01)</p>
-				</div>
-				<input type="number" id="set_filter_ratio" min="0.0001" max="1.0" step="0.0001">
-			</li>
-		</ol>
-	</div>
-</div>
-
 <!--LED controls-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>LED Testing/Override</h2>
+		<h2>LED Control</h2>
 	</div>
 	<div class="panel-content">
 		<div class="control-set">

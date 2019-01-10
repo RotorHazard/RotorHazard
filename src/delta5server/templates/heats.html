@@ -4,12 +4,12 @@
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
 		socket.emit('load_data', {'load_types': [
-			'node_data',
+			'frequency_data',
 			'heat_data',
 			'pilot_data'
 		]});
 
-		socket.on('node_data', function (msg) {
+		socket.on('frequency_data', function (msg) {
 			for (var i in msg.frequency) {
 				if (typeof(d5rt.nodes[i]) === 'undefined') {
 					d5rt.nodes[i] = new nodeModel();
