@@ -1,6 +1,6 @@
 {% extends "layout.html" %} {% block title %}Settings{% endblock %} {% block head %}
 <script type="text/javascript" charset="utf-8">
-	var globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
+	var globalAudioCtx;
 
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
@@ -743,6 +743,8 @@
 	//callback to use on end of tone
 	/* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
 	function play_beep(duration, frequency, type, callback) {
+		globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
+
 		var oscillator = globalAudioCtx.createOscillator();
 		var gainNode = globalAudioCtx.createGain();
 

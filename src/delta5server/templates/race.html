@@ -6,7 +6,7 @@
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
 
 <script type="text/javascript" charset="utf-8">
-	var globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
+	var globalAudioCtx;
 
 	var socket = false;
 	var request_time;
@@ -635,6 +635,8 @@
 	//callback to use on end of tone
 	/* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
 	function play_beep(duration, frequency, type, callback) {
+		globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
+
 		var oscillator = globalAudioCtx.createOscillator();
 		var gainNode = globalAudioCtx.createGain();
 
