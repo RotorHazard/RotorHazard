@@ -426,7 +426,7 @@ def on_set_frequency(data):
 
 @SOCKET_IO.on('set_frequency_preset')
 def on_set_frequency_preset(data):
-    ''' Set nodes to preset frequencies '''
+    ''' Apply preset frequencies '''
     freqs = []
     if data['preset'] == 'All-N1':
         current_profile = int(getOption("currentProfile"))
@@ -446,9 +446,11 @@ def on_set_frequency_preset(data):
             freqs = [5658, 5695, 5760, 5800, 5880, 5917, 0, 0]
 
     set_all_frequencies(freqs)
+    emit_frequency_data()
+    hardware_set_all_frequencies(freqs)
 
 def set_all_frequencies(freqs):
-    ''' Set frequencies for all nodes '''
+    ''' Set frequencies for all nodes (but do not update hardware) '''
     # Set DB
     current_profile = int(getOption("currentProfile"))
     profile = Profiles.query.get(current_profile)
@@ -461,12 +463,8 @@ def set_all_frequencies(freqs):
     profile.frequencies = json.dumps(profile_freqs)
     DB.session.commit()
 
-    #Emit node data before actual update (for UI responsiveness)
-    emit('frequency_data', {
-            'frequency': freqs[:RACE.num_nodes],
-        })
-
-    # Finally, do hardware update
+def hardware_set_all_frequencies(freqs):
+    '''do hardware update for frequencies'''
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs[idx])
 
@@ -502,23 +500,13 @@ def on_set_exit_at_level(data):
     INTERFACE.set_exit_at_level(node_index, exit_at_level)
     server_log('Node exit-at set: Node {0} Level {1}'.format(node_index+1, exit_at_level))
 
-def set_all_enter_ats(enter_at_levels):
-    #Emit node data before actual update (for UI responsiveness)
-    emit('enter_at_levels', {
-            'enter_ats': enter_at_levels,
-        })
-
-    # Fianlly, do hardware update
+def hardware_set_all_enter_ats(enter_at_levels):
+    '''send update to nodes'''
     for idx in range(RACE.num_nodes):
         INTERFACE.set_enter_at_level(idx, enter_at_levels[idx])
 
-def set_all_exit_ats(exit_at_levels):
-    #Emit node data before actual update (for UI responsiveness)
-    emit('exit_at_levels', {
-            'exit_ats': exit_at_levels,
-        })
-
-    # Fianlly, do hardware update
+def hardware_set_all_exit_ats(exit_at_levels):
+    '''send update to nodes'''
     for idx in range(RACE.num_nodes):
         INTERFACE.set_exit_at_level(idx, exit_at_levels[idx])
 
@@ -675,7 +663,7 @@ def on_set_profile_name(data):
     profile = Profiles.query.get(current_profile)
     profile.name = profile_name
     DB.session.commit()
-    server_log('set profile name %s' % (profile_name))
+    server_log('Set profile name %s' % (profile_name))
     emit_node_tuning(noself=True)
 
 @SOCKET_IO.on('set_profile_description')
@@ -686,7 +674,7 @@ def on_set_profile_description(data):
     profile = Profiles.query.get(current_profile)
     profile.description = profile_description
     DB.session.commit()
-    server_log('set profile description %s for profile %s' %
+    server_log('Set profile description %s for profile %s' %
                (profile_name, profile.name))
     emit_node_tuning(noself=True)
 
@@ -699,50 +687,52 @@ def on_set_filter_ratio(data):
         profile = Profiles.query.get(current_profile)
         profile.f_ratio = filter_ratio
         DB.session.commit()
-        server_log('Filter ratio set: {0}'.format(filter_ratio))
+        server_log('Set Filter ratio to: {0}'.format(filter_ratio))
         emit_node_tuning()
         INTERFACE.set_filter_ratio_global(filter_ratio)
 
 @SOCKET_IO.on("set_profile")
-def on_set_profile(data):
+def on_set_profile(data, emit_vals=True):
     ''' set current profile '''
     profile_val = int(data['profile'])
     profile = Profiles.query.get(profile_val)
     setOption("currentProfile", data['profile'])
-    server_log("set profile to '%s'" % profile_val)
-    emit_node_tuning()
-
+    server_log("Set Profile to '%s'" % profile_val)
     # set freqs, enter_ats, and exit_ats
     freqs_loaded = json.loads(profile.frequencies)
     freqs = freqs_loaded["f"]
-    set_all_frequencies(freqs)
-    
+
     if profile.enter_ats:
         enter_ats_loaded = json.loads(profile.enter_ats)
         enter_ats = enter_ats_loaded["v"]
-        set_all_enter_ats(enter_ats)
-    else: #handle null data by copying in current values
+    else: #handle null data by copying in hardware values
         enter_at_levels = {}
         enter_at_levels["v"] = [node.enter_at_level for node in INTERFACE.nodes]
         enter_levels_serial = json.dumps(enter_at_levels)
         profile.enter_ats = enter_levels_serial
+        enter_ats = enter_at_levels["v"]
 
     if profile.exit_ats:
         exit_ats_loaded = json.loads(profile.exit_ats)
         exit_ats = exit_ats_loaded["v"]
-        set_all_exit_ats(exit_ats)
-    else: #handle null data by copying in current values
+    else: #handle null data by copying in hardware values
         exit_at_levels = {}
         exit_at_levels["v"] = [node.exit_at_level for node in INTERFACE.nodes]
         exit_levels_serial = json.dumps(exit_at_levels)
         profile.exit_ats = exit_levels_serial
-
-    #set filter ratio
-    INTERFACE.set_filter_ratio_global(profile.f_ratio)
+        exit_ats = exit_at_levels["v"]
 
     DB.session.commit()
-    emit_enter_and_exit_at_levels()
+    if emit_vals:
+        emit_node_tuning()
+        emit_enter_and_exit_at_levels()
+        emit_frequency_data()
 
+    hardware_set_all_frequencies(freqs)
+    hardware_set_all_enter_ats(enter_ats)
+    hardware_set_all_exit_ats(exit_ats)
+    #set filter ratio
+    INTERFACE.set_filter_ratio_global(profile.f_ratio)
 
 @SOCKET_IO.on('reset_database')
 def on_reset_database(data):
@@ -1096,8 +1086,12 @@ def emit_race_status(**params):
 
 def emit_frequency_data(**params):
     '''Emits node data.'''
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
+    profile_freqs = json.loads(profile.frequencies)
+
     emit_payload = {
-            'frequency': [node.frequency for node in INTERFACE.nodes],
+            'frequency': profile_freqs["f"][:RACE.num_nodes]
         }
     if ('nobroadcast' in params):
         emit('frequency_data', emit_payload)
@@ -1119,9 +1113,14 @@ def emit_node_data(**params):
 
 def emit_enter_and_exit_at_levels(**params):
     '''Emits enter-at and exit-at levels for nodes.'''
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
+    profile_enter_ats = json.loads(profile.enter_ats)
+    profile_exit_ats = json.loads(profile.exit_ats)
+
     emit_payload = {
-        'enter_at_levels': [node.enter_at_level for node in INTERFACE.nodes],
-        'exit_at_levels': [node.exit_at_level for node in INTERFACE.nodes]
+        'enter_at_levels': profile_enter_ats["v"][:RACE.num_nodes],
+        'exit_at_levels': profile_exit_ats["v"][:RACE.num_nodes]
     }
     if ('nobroadcast' in params):
         emit('enter_and_exit_at_levels', emit_payload)
@@ -2160,8 +2159,7 @@ db_reset_current_laps()
 
 # Send initial profile values to nodes
 current_profile = int(getOption("currentProfile"))
-tune_val = Profiles.query.get(current_profile)
-INTERFACE.set_filter_ratio_global(tune_val.f_ratio)
+on_set_profile({'profile': current_profile}, False)
 
 # Test data - Current laps
 # DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))

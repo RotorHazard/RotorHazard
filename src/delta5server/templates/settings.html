@@ -72,7 +72,7 @@
 					}
 
 					d5rt.nodes[i].graph.options.maxValue = Math.max(
-						rssiValue, 
+						rssiValue,
 						d5rt.nodes[i].node_peak_rssi + 1,
 						d5rt.nodes[i].enter_at_level + 10,
 					);
@@ -102,12 +102,9 @@
 				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
 			}
 			$('#set_profile').val(msg.current_profile);
-			$('#set_calibration_threshold').val( msg.calibration_threshold);
-			$('#set_calibration_offset').val( msg.calibration_offset);
-			$('#set_trigger_threshold').val( msg.trigger_threshold);
-			   	var pos = logsl.position(msg.filter_ratio / 10000);
-   				$('#set_filter_ratio').val(12 - pos);
-   				$('#filter_value').html((msg.filter_ratio / 10000).toFixed(4));
+			var pos = logsl.position(msg.filter_ratio / 10000);
+			$('#set_filter_ratio').val(12 - pos);
+			$('#filter_value').html((msg.filter_ratio / 10000).toFixed(4));
 			$('#set_filter_ratio').val( );
 			$('#set_profile_name').val( msg.profile_name);
 			$('#set_profile_description').val( msg.profile_description);
@@ -135,27 +132,6 @@
 				profile_name: $(this).val()
 			};
 			socket.emit('set_profile_name', data);
-		})
-
-		$('#set_calibration_threshold').change(function (event) {
-			var data = {
-				calibration_threshold: parseInt($(this).val())
-			};
-			socket.emit('set_calibration_threshold', data);
-		})
-
-		$('#set_calibration_offset').change(function (event) {
-			var data = {
-				calibration_offset: parseInt($(this).val())
-			};
-			socket.emit('set_calibration_offset', data);
-		})
-
-		$('#set_trigger_threshold').change(function (event) {
-			var data = {
-				trigger_threshold: parseInt($(this).val())
-			};
-			socket.emit('set_trigger_threshold', data);
 		})
 
 		$('#set_profile_description').change(function (event) {
@@ -287,12 +263,12 @@
 		});
 
 		$('#set_filter_ratio').change(function (event) {
-		    var val = logsl.value(12 - $(this).val());
-		    val = (val * 10000).toFixed(0);
-		    var data = {
-		    	filter_ratio: parseInt(val),
-		    }
-		    socket.emit('set_filter_ratio', data);
+			var val = logsl.value(12 - $(this).val());
+			val = (val * 10000).toFixed(0);
+			var data = {
+				filter_ratio: parseInt(val),
+			}
+			socket.emit('set_filter_ratio', data);
 		});
 
 		/* Heats */
@@ -849,7 +825,7 @@
 	<div class="panel-content">
 		<!--Apply preset-->
 		<div class="control-set">
-			Preset: 
+			Preset:
 			<button type="button" class="set_frequency_preset" data-preset="All-N1" onclick="this.blur();">Apply Node 1</button>
 			<button type="button" class="set_frequency_preset" data-preset="RB-4" onclick="this.blur();">Raceband 4</button>
 			<button type="button" class="set_frequency_preset" data-preset="IMD5C" onclick="this.blur();">IMD5C</button>
@@ -1234,7 +1210,7 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_hue_secondary">Secondary Saturation</label>
+					<label for="set_sat_secondary">Secondary Saturation</label>
 				</div>
 				<input type="range" id="set_sat_secondary" class="set-option sat-control" data-option="sat_1" value="{{ getOption('sat_1') }}" min="0" max="100">
 			</li>
