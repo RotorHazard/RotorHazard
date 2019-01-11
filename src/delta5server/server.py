@@ -737,6 +737,9 @@ def on_set_profile(data):
         exit_levels_serial = json.dumps(exit_at_levels)
         profile.exit_ats = exit_levels_serial
 
+    #set filter ratio
+    INTERFACE.set_filter_ratio_global(profile.f_ratio)
+
     DB.session.commit()
     emit_enter_and_exit_at_levels()
 
