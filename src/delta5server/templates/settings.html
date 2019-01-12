@@ -26,6 +26,7 @@
 		$('nav li').removeClass('admin-hide');
 
 		// populate voice controls
+		$('#voice_callsign').prop( "checked", d5rt.voice_callsign);
 		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
 		$('#voice_team_lap_count').prop( "checked", d5rt.voice_team_lap_count);
 		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
@@ -505,6 +506,11 @@
 
 		$('#set_language').change(function (event) {
 			d5rt.language = $(this).val();
+			d5rt.saveData();
+		});
+
+		$('#voice_callsign').change(function (event) {
+			d5rt.voice_callsign = $(this).prop('checked');
 			d5rt.saveData();
 		});
 
@@ -1064,6 +1070,7 @@
 					Announcements
 				</div>
 				<ul>
+					<li><label><input type="checkbox" id="voice_callsign"> Callsign</label></li>
 					<li><label><input type="checkbox" id="voice_lap_count"> Lap Number</label></li>
 					<li><label><input type="checkbox" id="voice_lap_time"> Lap Time</label></li>
 					<li><label><input type="checkbox" id="voice_race_timer"> Race Timer</label></li>
