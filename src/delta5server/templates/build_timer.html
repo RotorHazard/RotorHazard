@@ -185,6 +185,7 @@
 						if (buzzer)
 							buzzer.play(); // End race buzzer
 						timer.stop();
+						socket.emit('race_time_finished');  // signal server
 					} else if (time <= 5) {
 						if (stagebuzzer)
 							stagebuzzer.play(); // Final seconds

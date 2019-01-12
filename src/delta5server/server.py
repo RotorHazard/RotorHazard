@@ -89,6 +89,8 @@ PROGRAM_START = datetime.now()
 RACE_START = datetime.now() # Updated on race start commands
 
 Race_laps_winner_name = None  # set to name of winner in first-to-X-laps race
+RACE_STATUS_TIED_STR = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
+RACE_STATUS_CROSSING = 'Waiting for cross'  # indicator for Most Laps Wins race
 
 # LED Code
 def signal_handler(signal, frame):
@@ -234,6 +236,7 @@ class RaceFormat(DB.Model):
     start_delay_min = DB.Column(DB.Integer, nullable=False)
     start_delay_max = DB.Column(DB.Integer, nullable=False)
     number_laps_win = DB.Column(DB.Integer, nullable=False)
+    laps_wins_mode = DB.Column(DB.Integer, nullable=False)
 
 class GlobalSettings(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
@@ -860,9 +863,10 @@ def on_add_race_format():
                              race_mode=1,
                              race_time_sec=0,
                              hide_stage_timer=0,
-                             start_delay_min=3,
-                             start_delay_max=3,
-                             number_laps_win=0)
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             number_laps_win=0,
+                             laps_wins_mode=0)
     DB.session.add(new_format)
     DB.session.flush()
     DB.session.refresh(new_format)
@@ -947,6 +951,15 @@ def on_set_number_laps_win(data):
     race_format.number_laps_win = number_laps_win
     DB.session.commit()
     server_log("set number of laps to win to %s" % number_laps_win)
+
+@SOCKET_IO.on("set_laps_wins_mode")
+def on_set_laps_wins_mode(data):
+    laps_wins_mode = data['laps_wins_mode']
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    race_format.laps_wins_mode = laps_wins_mode
+    DB.session.commit()
+    server_log("set laps wins mode to %s" % laps_wins_mode)
 
 # Race management socket io events
 
@@ -1134,6 +1147,13 @@ def get_race_elapsed():
         'elapsed': ms_from_race_start()
     })
 
+@SOCKET_IO.on('race_time_finished')
+def race_time_finished():
+    last_raceFormat = int(getOption("lastFormat"))
+    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+    if race_format.laps_wins_mode > 0:  # Most Laps Wins Enabled
+        check_most_laps_win(-1)  # check if pilot or team has most laps for win
+
 # Socket io emit functions
 
 def emit_race_status(**params):
@@ -1251,6 +1271,7 @@ def emit_race_format(**params):
         'start_delay_min': format_val.start_delay_min,
         'start_delay_max': format_val.start_delay_max,
         'number_laps_win': format_val.number_laps_win,
+        'laps_wins_mode': format_val.laps_wins_mode,
         'locked': locked
     }
     if ('nobroadcast' in params):
@@ -1852,6 +1873,83 @@ def check_team_laps_win(num_laps_win):
                         return t_pilot_data.team
     return None
 
+def check_most_laps_win(pass_node_index):
+    '''Checks if pilot or team has most laps for a win.'''
+    # pass_node_index: -1 if called from 'race_time_finished()'; node.index if called from 'pass_record_callback()'
+    global Race_laps_winner_name
+    
+    if int(getOption('TeamRacingMode')):  # team racing mode enabled
+        pass
+        
+    else:  # not team racing mode
+
+        pilots_list = []  # (lap_id, lap_time_stamp, pilot_id, node)
+        max_lap_id = 0
+        for node in INTERFACE.nodes:
+            node_data = NodeData.query.filter_by(id=node.index).first()
+            if node_data.frequency:
+                pilot_id = Heat.query.filter_by( \
+                        heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
+                if pilot_id != PILOT_ID_NONE:
+                    lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
+                            .filter_by(node_index=node.index).scalar()
+                    if lap_id > 0:
+                        lap_data = CurrentLap.query.filter_by(node_index=node.index, lap_id=lap_id).first()
+                        if lap_data:
+                            pilots_list.append((lap_id, lap_data.lap_time_stamp, pilot_id, node))
+                            if lap_id > max_lap_id:
+                                max_lap_id = lap_id
+
+        server_log('DEBUG check_most_laps_win pass_node_index={0} max_lap={1}'.format(pass_node_index, max_lap_id))
+
+        if max_lap_id <= 0:  # if no laps then bail out
+            Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
+            return
+
+        # if any (other) pilot is in the process of crossing the gate and within one lap of
+        #  winning then bail out (and wait for next 'pass_record_callback()' event)
+        for item in pilots_list:
+            if item[3].crossing_flag and item[3].index != pass_node_index and item[0] >= max_lap_id - 1:
+                if pass_node_index < 0 and Race_laps_winner_name is None:  # called from 'race_time_finished()'
+                    Race_laps_winner_name = RACE_STATUS_CROSSING  # indicate waiting for crossing
+                server_log('check_most_laps_win waiting for crossing, Node {0}'.format(item[3].index+1))
+                return
+
+        # check for pilots with max laps; if more than one then select one with
+        #  soonest lap time (if called from 'pass_record_callback()' fn) or
+        #  indicate status tied (if called from 'race_time_finished()' fn)
+        win_pilot_id = -1
+        win_lap_tstamp = 0
+        for item in pilots_list:
+            if item[0] == max_lap_id:
+                if win_pilot_id < 0:  # this is first one so far at max_lap
+                    win_pilot_id = item[2]
+                    win_lap_tstamp = item[1]
+                else:  # other pilots found at max_lap
+                             # if called from 'pass_record_callback()' and not waiting for crossing
+                    if pass_node_index >= 0 and Race_laps_winner_name is not RACE_STATUS_CROSSING:
+                        if item[1] < win_lap_tstamp:  # this pilot has sooner lap time
+                            win_pilot_id = item[2]
+                            win_lap_tstamp = item[1]
+                    else:  # called from 'race_time_finished()' or was waiting for crossing
+                        Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
+                        emit_team_racing_status(Race_laps_winner_name)
+                        emit_phonetic_text('Race tied')
+                        return  # wait for next 'pass_record_callback()' event
+
+        server_log('DEBUG check_most_laps_win win_pilot_id={0}'.format(win_pilot_id))
+
+        if win_pilot_id >= 0:
+            win_callsign = Pilot.query.filter_by(id=win_pilot_id).first().callsign
+            Race_laps_winner_name = win_callsign  # indicate a pilot has won
+            emit_team_racing_status('Winner is ' + Race_laps_winner_name)
+            win_phon_name = Pilot.query.filter_by(id=win_pilot_id).first().phonetic
+            if len(win_phon_name) <= 0:  # if no phonetic then use callsign
+                win_phon_name = win_callsign
+            emit_phonetic_text('Race done, winner is ' + win_phon_name)
+        else:
+            Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
+
 def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **params):
     '''Emits phonetic data.'''
     phonetic_time = phonetictime_format(lap_time)
@@ -2030,14 +2128,23 @@ def pass_record_callback(node, ms_since_lap):
                     emit_leaderboard() # update leaderboard
 
                     if int(getOption('TeamRacingMode')):  # team racing mode enabled
-                        if race_format.number_laps_win > 0 and Race_laps_winner_name is None:
-                            Race_laps_winner_name = check_team_laps_win(race_format.number_laps_win)
+
+                        if race_format.laps_wins_mode <= 0:  # not Most Laps Wins race
+                            if race_format.number_laps_win > 0 and Race_laps_winner_name is None:
+                                Race_laps_winner_name = check_team_laps_win(race_format.number_laps_win)
                         team_name, team_laps = check_emit_team_racing_status(pilot_id)
 
                         if lap_id > 0:   # send phonetic data to be spoken
                             emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
-                                      # a team has won the race and this is the winning lap
-                            if Race_laps_winner_name is not None and \
+                            
+                                                 # if Most Laps Wins race is tied then check for winner
+                            if race_format.laps_wins_mode > 0:
+                                if Race_laps_winner_name is RACE_STATUS_TIED_STR or \
+                                            Race_laps_winner_name is RACE_STATUS_CROSSING:
+                                    check_most_laps_win(node.index)
+                            
+                                      # if a team has won the race and this is the winning lap
+                            elif Race_laps_winner_name is not None and \
                                         team_name == Race_laps_winner_name and \
                                         team_laps == race_format.number_laps_win:
                                 emit_phonetic_text('Winner is team ' + Race_laps_winner_name)
@@ -2047,6 +2154,12 @@ def pass_record_callback(node, ms_since_lap):
                                             # send phonetic data to be spoken
                             if race_format.number_laps_win <= 0:
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+
+                                                 # if Most Laps Wins race is tied then check for winner
+                                if race_format.laps_wins_mode > 0:
+                                    if Race_laps_winner_name is RACE_STATUS_TIED_STR or \
+                                                Race_laps_winner_name is RACE_STATUS_CROSSING:
+                                        check_most_laps_win(node.index)
 
                             else:           # need to check if any pilot has enough laps to win
                                 win_pilot_id = check_pilot_laps_win(race_format.number_laps_win)
@@ -2059,7 +2172,7 @@ def pass_record_callback(node, ms_since_lap):
                                             # a pilot has won the race and has not yet been announced
                                         win_phon_name = Pilot.query.get(win_pilot_id).phonetic
                                         if len(win_phon_name) <= 0:  # if no phonetic then use callsign
-                                             win_phon_name = win_callsign
+                                            win_phon_name = win_callsign
                                         Race_laps_winner_name = win_callsign  # call out winner (once)
                                         emit_phonetic_text('Winner is ' + win_phon_name)
 
@@ -2228,35 +2341,48 @@ def db_reset_race_formats():
                              hide_stage_timer=1,
                              start_delay_min=2,
                              start_delay_max=5,
-                             number_laps_win=0))
+                             number_laps_win=0,
+                             laps_wins_mode=0))
     DB.session.add(RaceFormat(name="Whoop Sprint",
                              race_mode=0,
                              race_time_sec=90,
                              hide_stage_timer=1,
                              start_delay_min=2,
                              start_delay_max=5,
-                             number_laps_win=0))
+                             number_laps_win=0,
+                             laps_wins_mode=0))
     DB.session.add(RaceFormat(name="Limited Class",
                              race_mode=0,
                              race_time_sec=210,
                              hide_stage_timer=1,
                              start_delay_min=2,
                              start_delay_max=5,
-                             number_laps_win=0))
+                             number_laps_win=0,
+                             laps_wins_mode=0))
     DB.session.add(RaceFormat(name="First to 3 Laps",
                              race_mode=1,
                              race_time_sec=0,
                              hide_stage_timer=0,
-                             start_delay_min=3,
-                             start_delay_max=3,
-                             number_laps_win=3))
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             number_laps_win=3,
+                             laps_wins_mode=0))
+    DB.session.add(RaceFormat(name="Most Laps Wins",
+                             race_mode=0,
+                             race_time_sec=120,
+                             hide_stage_timer=1,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             number_laps_win=0,
+                             laps_wins_mode=1))
     DB.session.add(RaceFormat(name="Open Practice",
                              race_mode=1,
                              race_time_sec=0,
                              hide_stage_timer=0,
                              start_delay_min=3,
                              start_delay_max=3,
-                             number_laps_win=0))
+                             number_laps_win=0,
+                             laps_wins_mode=0))
     DB.session.commit()
     setOption("currentFormat", 1)
     server_log("Database reset race formats")
