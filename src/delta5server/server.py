@@ -1102,11 +1102,15 @@ def on_delete_lap(data):
     if int(getOption('TeamRacingMode')):
               # update team-racing status info
         race_format = RaceFormat.query.get(int(getOption("currentFormat")))
-        if race_format.laps_wins_mode <= 0 and race_format.number_laps_win > 0:
-            t_laps_dict, team_name, pilot_team_dict = get_team_laps_info(-1, race_format.number_laps_win)
-            check_team_laps_win(t_laps_dict, race_format.number_laps_win, pilot_team_dict)
-        else:
-            t_laps_dict = get_team_laps_info()[0]
+        if race_format.laps_wins_mode <= 0:  # if not Most Laps Wins race
+            if race_format.number_laps_win > 0:  # if number-laps-win race
+                t_laps_dict, team_name, pilot_team_dict = get_team_laps_info(-1, race_format.number_laps_win)
+                check_team_laps_win(t_laps_dict, race_format.number_laps_win, pilot_team_dict)
+            else:
+                t_laps_dict = get_team_laps_info()[0]
+        else:  # if Most Laps Wins race enabled
+            t_laps_dict, t_name, pilot_team_dict = get_team_laps_info()
+            check_most_laps_win(node_index, t_laps_dict, pilot_team_dict)
         check_emit_team_racing_status(t_laps_dict)
 
 @SOCKET_IO.on('simulate_lap')
@@ -1159,7 +1163,7 @@ def race_time_finished():
     last_raceFormat = int(getOption("currentFormat"))
     race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
     if race_format and race_format.laps_wins_mode > 0:  # Most Laps Wins Enabled
-        check_most_laps_win(-1)  # check if pilot or team has most laps for win
+        check_most_laps_win()  # check if pilot or team has most laps for win
 
 # Socket io emit functions
 
@@ -1776,15 +1780,12 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
     '''Calculates and returns team-racing info.'''
               # create dictionary with key=pilot_id, value=team_name
     pilot_team_dict = dict(Pilot.query.with_entities(Pilot.id, Pilot.team).all())
-
-    server_log('DEBUG get_team_laps_info pilot_team_dict: {0}'.format(pilot_team_dict))
+    #server_log('DEBUG get_team_laps_info pilot_team_dict: {0}'.format(pilot_team_dict))
 
     t_laps_dict = {}  # create dictionary (key=team_name, value=[lapCount,timestamp]) with initial zero laps
     for team_name in pilot_team_dict.values():
         if len(team_name) > 0 and team_name not in t_laps_dict:
             t_laps_dict[team_name] = [0, 0]
-
-    server_log('DEBUG get_team_laps_info init t_laps_dict: {0}'.format(t_laps_dict))
 
               # iterate through list of laps, sorted by lap timestamp
     for item in sorted(CurrentLap.query.with_entities(CurrentLap.lap_time_stamp, CurrentLap.lap_id, CurrentLap.pilot_id).all()):
@@ -1793,11 +1794,8 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
             t_laps_dict[team_name][0] += 1       # increment lap count for team
             if num_laps_win == 0 or item[1] <= num_laps_win:
                 t_laps_dict[team_name][1] = item[0]  # update lap_time_stamp (if not past winning lap)
-
-            server_log('DEBUG get_team_laps_info team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
-
-
-    server_log('DEBUG get_team_laps_info filled t_laps_dict: {0}'.format(t_laps_dict))
+            #server_log('DEBUG get_team_laps_info team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
+    #server_log('DEBUG get_team_laps_info t_laps_dict: {0}'.format(t_laps_dict))
 
     if cur_pilot_id >= 0:  # determine name for 'cur_pilot_id' if given
         cur_team_name = pilot_team_dict[cur_pilot_id]
@@ -1815,7 +1813,11 @@ def check_emit_team_racing_status(t_laps_dict=None, **params):
     for t_name in sorted(t_laps_dict.keys()):
         disp_str += 'Team ' + t_name + ' Lap: ' + str(t_laps_dict[t_name][0]) + ' | '
     if Race_laps_winner_name is not None:
-        disp_str += 'Winner is Team ' + Race_laps_winner_name
+        if Race_laps_winner_name is not RACE_STATUS_TIED_STR and \
+                Race_laps_winner_name is not RACE_STATUS_CROSSING:
+            disp_str += 'Winner is Team ' + Race_laps_winner_name
+        else:
+            disp_str += Race_laps_winner_name
     server_log('Team racing status: ' + disp_str)
     emit_team_racing_status(disp_str)
 
@@ -1834,13 +1836,11 @@ def emit_team_racing_status(disp_str, **params):
     else:
         SOCKET_IO.emit('team_racing_status', emit_payload)
 
-def check_pilot_laps_win(num_laps_win):
+def check_pilot_laps_win(pass_node_index, num_laps_win):
     '''Checks if a pilot has completed enough laps to win.'''
     win_pilot_id = -1
     win_lap_tstamp = 0
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
-    profile_freqs = json.loads(profile.frequencies)
+    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
     for node in INTERFACE.nodes:
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
             pilot_id = Heat.query.filter_by( \
@@ -1850,73 +1850,143 @@ def check_pilot_laps_win(num_laps_win):
                         .filter_by(node_index=node.index).scalar()
                 if lap_id is None:
                     lap_id = 0
-                            # if pilot crossing for possible winning lap then wait
-                            #  in case lap time turns out to be soonest:
-                if lap_id == num_laps_win - 1 and node.crossing_flag:
+                            # if (other) pilot crossing for possible winning lap then wait
+                            #  in case lap time turns out to be earliest:
+                if node.crossing_flag and node.index != pass_node_index and lap_id == num_laps_win - 1:
                     server_log('check_pilot_laps_win waiting for crossing, Node {0}'.format(node.index+1))
                     return -1
                 if lap_id >= num_laps_win:
                     lap_data = CurrentLap.query.filter_by(node_index=node.index, lap_id=num_laps_win).first()
-                    server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
-                             # save pilot_id for soonest lap time:
+                    #server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
+                             # save pilot_id for earliest lap time:
                     if win_pilot_id < 0 or lap_data.lap_time_stamp < win_lap_tstamp:
                         win_pilot_id = pilot_id
                         win_lap_tstamp = lap_data.lap_time_stamp
-    server_log('DEBUG check_pilot_laps_win returned win_pilot_id={0}'.format(win_pilot_id))
+    #server_log('DEBUG check_pilot_laps_win returned win_pilot_id={0}'.format(win_pilot_id))
     return win_pilot_id
 
-def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict):
+def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_index=-1):
     '''Checks if a team has completed enough laps to win.'''
     global Race_laps_winner_name
          # make sure there's not a pilot in the process of crossing for a winning lap
     if Race_laps_winner_name is None and pilot_team_dict:
-        current_profile = int(getOption("currentProfile"))
-        profile = Profiles.query.get(current_profile)
-        profile_freqs = json.loads(profile.frequencies)
-        for node in INTERFACE.nodes:
-            if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
-                pilot_id = Heat.query.filter_by( \
-                        heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
-                if pilot_id != PILOT_ID_NONE:
-                    team_name = pilot_team_dict[pilot_id]
-                    if team_name:
-                        ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
-                                    # if pilot crossing for possible winning lap then wait
-                                    #  in case lap time turns out to be soonest:
-                        if ent and ent[0] == num_laps_win - 1 and node.crossing_flag:
-                            server_log('check_team_laps_win waiting for crossing, Node {0}'.format(node.index+1))
-                            return
+        profile_freqs = None
+        for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
+            if node.crossing_flag and node.index != pass_node_index:
+                if not profile_freqs:
+                    profile_freqs = json.loads(Profiles.query.get( \
+                                               int(getOption("currentProfile"))).frequencies)
+                if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
+                    pilot_id = Heat.query.filter_by( \
+                               heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
+                    if pilot_id != PILOT_ID_NONE:  # node has pilot assigned to it
+                        team_name = pilot_team_dict[pilot_id]
+                        if team_name:
+                            ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
+                                        # if pilot crossing for possible winning lap then wait
+                                        #  in case lap time turns out to be earliest:
+                            if ent and ent[0] == num_laps_win - 1:
+                                server_log('check_team_laps_win waiting for crossing, Node {0}'.format(node.index+1))
+                                return
     win_name = None
     win_tstamp = -1
          # for each team, check if team has enough laps to win (and, if more
-         #  than one has enough laps, pick team with soonest timestamp)
+         #  than one has enough laps, pick team with earliest timestamp)
     for team_name in t_laps_dict.keys():
         ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
         if ent[0] >= num_laps_win and (win_tstamp < 0 or ent[1] < win_tstamp):
             win_name = team_name
             win_tstamp = ent[1]
-    server_log('DEBUG check_team_laps_win win_name={0} tstamp={1}'.format(win_name,win_tstamp))
+    #server_log('DEBUG check_team_laps_win win_name={0} tstamp={1}'.format(win_name,win_tstamp))
     Race_laps_winner_name = win_name
 
-def check_most_laps_win(pass_node_index):
+def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=None):
     '''Checks if pilot or team has most laps for a win.'''
     # pass_node_index: -1 if called from 'race_time_finished()'; node.index if called from 'pass_record_callback()'
     global Race_laps_winner_name
     
     if int(getOption('TeamRacingMode')):  # team racing mode enabled
-        pass
+
+             # if not passed in then determine number of laps for each team
+        if t_laps_dict is None:
+            t_laps_dict, t_name, pilot_team_dict = get_team_laps_info()
+
+        max_lap_count = -1
+        win_name = None
+        win_tstamp = -1
+        tied_flag = False
+             # find team with most laps
+        for team_name in t_laps_dict.keys():
+            ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
+            if ent[0] >= max_lap_count:
+                if ent[0] > max_lap_count:  # if team has highest lap count found so far
+                    max_lap_count = ent[0]
+                    win_name = team_name
+                    win_tstamp = ent[1]
+                    tied_flag = False
+                else:  # if team is tied for highest lap count found so far
+                             # if called from 'pass_record_callback()' and not waiting for crossing
+                    if pass_node_index >= 0 and Race_laps_winner_name is not RACE_STATUS_CROSSING:
+                        if ent[1] < win_tstamp:  # this team has earlier lap time
+                            win_name = team_name
+                            win_tstamp = ent[1]
+                    else:  # called from 'race_time_finished()' or was waiting for crossing
+                        tied_flag = True
+        #server_log('DEBUG check_most_laps_win tied={0} win_name={1} tstamp={2}'.format(tied_flag,win_name,win_tstamp))
+
+        if tied_flag or max_lap_count <= 0:
+            Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
+            check_emit_team_racing_status(t_laps_dict)
+            emit_phonetic_text('Race tied')
+            return  # wait for next 'pass_record_callback()' event
+
+        if win_name:  # if a team looks like the winner
+
+                 # make sure there's not a pilot in the process of crossing for a winning lap
+            if (Race_laps_winner_name is None or Race_laps_winner_name is RACE_STATUS_TIED_STR or \
+                                Race_laps_winner_name is RACE_STATUS_CROSSING) and pilot_team_dict:
+                profile_freqs = None
+                for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
+                    if node.crossing_flag and node.index != pass_node_index:
+                        if not profile_freqs:
+                            profile_freqs = json.loads(Profiles.query.get( \
+                                            int(getOption("currentProfile"))).frequencies)
+                        if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
+                            pilot_id = Heat.query.filter_by( \
+                                    heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
+                            if pilot_id != PILOT_ID_NONE:  # node has pilot assigned to it
+                                team_name = pilot_team_dict[pilot_id]
+                                if team_name:
+                                    ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
+                                                # if pilot crossing for possible winning lap then wait
+                                                #  in case lap time turns out to be earliest:
+                                    if ent and ent[0] == max_lap_count - 1:
+                                                      # if called from 'race_time_finished()' then allow
+                                                      #  race tied when gate crossing completes
+                                        if pass_node_index < 0:
+                                            Race_laps_winner_name = RACE_STATUS_CROSSING
+                                        else:  # if called from 'pass_record_callback()' then no more ties
+                                            Race_laps_winner_name = RACE_STATUS_TIED_STR
+                                        server_log('check_most_laps_win waiting for crossing, Node {0}'.\
+                                                                              format(node.index+1))
+                                        return
         
+            Race_laps_winner_name = win_name  # indicate a team has won
+            check_emit_team_racing_status(t_laps_dict)
+            emit_phonetic_text('Race done, winner is team ' + Race_laps_winner_name)
+
+        else:    # if no team looks like the winner
+            Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
+
     else:  # not team racing mode
 
         pilots_list = []  # (lap_id, lap_time_stamp, pilot_id, node)
         max_lap_id = 0
-        current_profile = int(getOption("currentProfile"))
-        profile = Profiles.query.get(current_profile)
-        profile_freqs = json.loads(profile.frequencies)
-        for node in INTERFACE.nodes:
+        profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+        for node in INTERFACE.nodes:  # load per-pilot data into 'pilots_list'
             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
                 pilot_id = Heat.query.filter_by( \
-                        heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
+                           heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
                 if pilot_id != PILOT_ID_NONE:
                     lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
                             .filter_by(node_index=node.index).scalar()
@@ -1926,8 +1996,7 @@ def check_most_laps_win(pass_node_index):
                             pilots_list.append((lap_id, lap_data.lap_time_stamp, pilot_id, node))
                             if lap_id > max_lap_id:
                                 max_lap_id = lap_id
-
-        server_log('DEBUG check_most_laps_win pass_node_index={0} max_lap={1}'.format(pass_node_index, max_lap_id))
+        #server_log('DEBUG check_most_laps_win pass_node_index={0} max_lap={1}'.format(pass_node_index, max_lap_id))
 
         if max_lap_id <= 0:  # if no laps then bail out
             Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
@@ -1937,13 +2006,16 @@ def check_most_laps_win(pass_node_index):
         #  winning then bail out (and wait for next 'pass_record_callback()' event)
         for item in pilots_list:
             if item[3].crossing_flag and item[3].index != pass_node_index and item[0] >= max_lap_id - 1:
-                if pass_node_index < 0 and Race_laps_winner_name is None:  # called from 'race_time_finished()'
-                    Race_laps_winner_name = RACE_STATUS_CROSSING  # indicate waiting for crossing
+                       # if called from 'race_time_finished()' then allow race tied after crossing
+                if pass_node_index < 0:
+                    Race_laps_winner_name = RACE_STATUS_CROSSING
+                else:  # if called from 'pass_record_callback()' then no more ties
+                    Race_laps_winner_name = RACE_STATUS_TIED_STR
                 server_log('check_most_laps_win waiting for crossing, Node {0}'.format(item[3].index+1))
                 return
 
         # check for pilots with max laps; if more than one then select one with
-        #  soonest lap time (if called from 'pass_record_callback()' fn) or
+        #  earliest lap time (if called from 'pass_record_callback()' fn) or
         #  indicate status tied (if called from 'race_time_finished()' fn)
         win_pilot_id = -1
         win_lap_tstamp = 0
@@ -1955,7 +2027,7 @@ def check_most_laps_win(pass_node_index):
                 else:  # other pilots found at max_lap
                              # if called from 'pass_record_callback()' and not waiting for crossing
                     if pass_node_index >= 0 and Race_laps_winner_name is not RACE_STATUS_CROSSING:
-                        if item[1] < win_lap_tstamp:  # this pilot has sooner lap time
+                        if item[1] < win_lap_tstamp:  # this pilot has earlier lap time
                             win_pilot_id = item[2]
                             win_lap_tstamp = item[1]
                     else:  # called from 'race_time_finished()' or was waiting for crossing
@@ -1963,8 +2035,7 @@ def check_most_laps_win(pass_node_index):
                         emit_team_racing_status(Race_laps_winner_name)
                         emit_phonetic_text('Race tied')
                         return  # wait for next 'pass_record_callback()' event
-
-        server_log('DEBUG check_most_laps_win win_pilot_id={0}'.format(win_pilot_id))
+        #server_log('DEBUG check_most_laps_win win_pilot_id={0}'.format(win_pilot_id))
 
         if win_pilot_id >= 0:
             win_callsign = Pilot.query.filter_by(id=win_pilot_id).first().callsign
@@ -2107,9 +2178,7 @@ def pass_record_callback(node, ms_since_lap):
     emit_node_data() # For updated triggers and peaks
 
     global Race_laps_winner_name
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
-    profile_freqs = json.loads(profile.frequencies)
+    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
     if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
         if RACE.race_status is 1:
             # Get the current pilot id on the node
@@ -2162,7 +2231,7 @@ def pass_record_callback(node, ms_since_lap):
                             t_laps_dict, team_name, pilot_team_dict = \
                                          get_team_laps_info(pilot_id, race_format.number_laps_win)
                             team_laps = t_laps_dict[team_name][0]
-                            check_team_laps_win(t_laps_dict, race_format.number_laps_win, pilot_team_dict)
+                            check_team_laps_win(t_laps_dict, race_format.number_laps_win, pilot_team_dict, node.index)
                         else:
                             t_laps_dict, team_name, pilot_team_dict = get_team_laps_info(pilot_id)
                             team_laps = t_laps_dict[team_name][0]
@@ -2175,7 +2244,7 @@ def pass_record_callback(node, ms_since_lap):
                             if race_format.laps_wins_mode > 0:
                                 if Race_laps_winner_name is RACE_STATUS_TIED_STR or \
                                             Race_laps_winner_name is RACE_STATUS_CROSSING:
-                                    check_most_laps_win(node.index)
+                                    check_most_laps_win(node.index, t_laps_dict, pilot_team_dict)
                             
                                       # if a team has won the race and this is the winning lap
                             elif Race_laps_winner_name is not None and \
@@ -2196,7 +2265,7 @@ def pass_record_callback(node, ms_since_lap):
                                         check_most_laps_win(node.index)
 
                             else:           # need to check if any pilot has enough laps to win
-                                win_pilot_id = check_pilot_laps_win(race_format.number_laps_win)
+                                win_pilot_id = check_pilot_laps_win(node.index, race_format.number_laps_win)
                                 if win_pilot_id >= 0:  # a pilot has won the race
                                     win_callsign = Pilot.query.get(win_pilot_id).callsign
                                     emit_team_racing_status('Winner is ' + win_callsign)
