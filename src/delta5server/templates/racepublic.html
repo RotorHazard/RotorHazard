@@ -138,7 +138,7 @@
 
 		socket.on('leaderboard', function (msg) {
 			$('#leaderboard').empty();
-			$('#leaderboard').append(build_leaderboard(msg, 'current'));
+			$('#leaderboard').append(build_leaderboard(msg.by_race_time, 'current'));
 		});
 
 		socket.on('phonetic_data', function (msg) {

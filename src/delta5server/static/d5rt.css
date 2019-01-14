@@ -56,6 +56,12 @@ h3 {
 	color: #fff;
 }
 
+h4 {
+	padding: 0.25rem;
+	background: background: hsl(25, 85%, 55%);
+	color: #000;
+}
+
 table {
 	border-collapse: collapse;
 	min-width: 100%;
@@ -525,6 +531,7 @@ main {
 
 .node h3,
 .node h4,
+.node h5,
 .heats h3 {
 	padding: 0.25rem;
 	background: hsl(25, 85%, 55%);
@@ -533,6 +540,11 @@ main {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	font-size: 1rem;
+}
+
+.node h5 {
+	background: #9e3d22;
+	color: #fff;
 }
 
 .datarow {
@@ -689,21 +701,21 @@ main {
 }
 
 @media (max-width: 45em) {
-	#leaderboard th {
+	.responsive-wrap th {
 		font-size: 0.75em;
 	}
 }
 
 @media (max-width: 38em) {
-	#leaderboard {
+	.responsive-wrap {
 		font-size: 1rem;
 		overflow: auto;
 	}
-	#leaderboard th {
+	.responsive-wrap th {
 		font-size: 0.75em;
 		text-overflow: ellipsis;
 	}
-	#leaderboard .behind {
+	.responsive-wrap .behind {
 		display: none;
 	}
 }

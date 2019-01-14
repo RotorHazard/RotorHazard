@@ -9,6 +9,7 @@
 			'node_data',
 			'frequency_data',
 			'heat_data',
+			'class_data',
 			'pilot_data',
 			'race_format',
 			'node_tuning',
@@ -72,7 +73,7 @@
 					}
 
 					d5rt.nodes[i].graph.options.maxValue = Math.max(
-						rssiValue, 
+						rssiValue,
 						d5rt.nodes[i].node_peak_rssi + 1,
 						d5rt.nodes[i].enter_at_level + 10,
 					);
@@ -102,12 +103,9 @@
 				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
 			}
 			$('#set_profile').val(msg.current_profile);
-			$('#set_calibration_threshold').val( msg.calibration_threshold);
-			$('#set_calibration_offset').val( msg.calibration_offset);
-			$('#set_trigger_threshold').val( msg.trigger_threshold);
-			   	var pos = logsl.position(msg.filter_ratio / 10000);
-   				$('#set_filter_ratio').val(12 - pos);
-   				$('#filter_value').html((msg.filter_ratio / 10000).toFixed(4));
+			var pos = logsl.position(msg.filter_ratio / 10000);
+			$('#set_filter_ratio').val(12 - pos);
+			$('#filter_value').html((msg.filter_ratio / 10000).toFixed(4));
 			$('#set_filter_ratio').val( );
 			$('#set_profile_name').val( msg.profile_name);
 			$('#set_profile_description').val( msg.profile_description);
@@ -135,27 +133,6 @@
 				profile_name: $(this).val()
 			};
 			socket.emit('set_profile_name', data);
-		})
-
-		$('#set_calibration_threshold').change(function (event) {
-			var data = {
-				calibration_threshold: parseInt($(this).val())
-			};
-			socket.emit('set_calibration_threshold', data);
-		})
-
-		$('#set_calibration_offset').change(function (event) {
-			var data = {
-				calibration_offset: parseInt($(this).val())
-			};
-			socket.emit('set_calibration_offset', data);
-		})
-
-		$('#set_trigger_threshold').change(function (event) {
-			var data = {
-				trigger_threshold: parseInt($(this).val())
-			};
-			socket.emit('set_trigger_threshold', data);
 		})
 
 		$('#set_profile_description').change(function (event) {
@@ -287,12 +264,12 @@
 		});
 
 		$('#set_filter_ratio').change(function (event) {
-		    var val = logsl.value(12 - $(this).val());
-		    val = (val * 10000).toFixed(0);
-		    var data = {
-		    	filter_ratio: parseInt(val),
-		    }
-		    socket.emit('set_filter_ratio', data);
+			var val = logsl.value(12 - $(this).val());
+			val = (val * 10000).toFixed(0);
+			var data = {
+				filter_ratio: parseInt(val),
+			}
+			socket.emit('set_filter_ratio', data);
 		});
 
 		/* Heats */
@@ -307,12 +284,16 @@
 				el.append(input);
 				var nodelist = $('<ol>');
 
+				// nodes
 				for (j in heats.pilots) {
 					var heatpilot = heats.pilots[j];
 					var slot = $('<li>');
 					slot.append('<div class="channel-block" data-node="' + j + '"><span class="ch"></span> <span class="fr"></span></div>');
 					var pilot = $('<div class="pilot-name">');
-					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '">')
+					// pilot selectors
+					var is_disabled = heats.locked ? 'disabled="disabled"' : '';
+					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" ' + is_disabled + '>')
+					selectbox.append('<option value="0">None</option>')
 						for (var k in msg.pilot_data.pilot_id) {
 							selectbox.append('<option value="' + msg.pilot_data.pilot_id[k] + '">' + msg.pilot_data.callsign[k] + ' (' + msg.pilot_data.name[k] + ')</option>')
 						}
@@ -321,8 +302,24 @@
 					slot.append(pilot);
 					nodelist.append(slot);
 				}
-
 				el.append(nodelist);
+
+				// update class selector
+
+				if (msg.classes.length) {				
+					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '">')
+						selectbox.append('<option value="0">Unclassified</option>')
+						for (var k in msg.classes) {
+							selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
+						}
+					if (heats.class_id > 0) {
+						selectbox.val(heats.class_id);
+					} else {
+						selectbox.val(0);
+					}
+					el.append(selectbox);			
+				}
+
 				el.appendTo($('.heats'));
 			}
 			freq.updateBlocks();
@@ -345,11 +342,46 @@
 			socket.emit('set_pilot_position', data);
 		});
 
+		$(document).on("change", '.set_heat_class', function (event) {
+			var data = {
+				heat: parseInt($(this).data('heat')),
+				class: $(this).val(),
+			};
+			socket.emit('set_heat_class', data);
+		});
+
 		$('button#add_heat').click(function (event) {
 			socket.emit('add_heat');
-			// This isn't getting an updated database I think
-			// $( "#heats" ).empty();
-			// document.getElementById("heats").innerHTML = // jinja template include
+			return false;
+		});
+
+		socket.on('class_data', function (msg) {
+			$(".race_classes").empty();
+			if (msg.classes.length) {
+				for (var i in msg.classes) {
+					var race_class = msg.classes[i];
+					var el = $('<li>');
+					el.append('<h3>Class ' + race_class.id + '</h3>');
+					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="Name (Class ' + race_class.id + ')" maxlength="80">');
+					input.val(race_class.name);
+					el.append(input);
+					el.appendTo($('.race_classes'));
+				}
+			} else {
+				$('.race_classes').append('<li>Add to split event into classes</li>');
+			}
+		});
+
+		$(document).on("change", '.set_race_class_name', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				class_name: $(this).val(),
+			};
+			socket.emit('set_race_class_name', data);
+		});
+
+		$('button#add_race_class').click(function (event) {
+			socket.emit('add_race_class');
 			return false;
 		});
 
@@ -357,7 +389,7 @@
 		socket.on('pilot_data', function (msg) {
 			$(".pilots").empty();
 			for (var i in msg.pilot_id) {
-				if (msg.pilot_id[i] != 1) {
+				if (msg.pilot_id[i] != 0) {
 					var el = $('<li data-id="' + msg.pilot_id[i] + '">');
 					el.append('<label for="name_' + msg.pilot_id[i] + '" class="screen-reader-text">Name</label>');
 					el.append('<input type="text" class="set_pilot_name" id="name_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.name[i] + '" placeholder="Name">');
@@ -561,11 +593,17 @@
 			$('#set_race_format').val(msg.current_format);
 			$('#set_format_name').val(msg.format_name);
 			$('#set_race_mode').val(msg.race_mode);
+			$('#set_race_mode').prop('disabled', msg.locked);
 			$('#set_fix_race_time').val(msg.race_time_sec);
+			$('#set_fix_race_time').prop('disabled', msg.locked);
 			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
+			$('#set_hide_stage_timer').prop('disabled', msg.locked);
 			$('#set_start_delay_min').val(msg.start_delay_min);
+			$('#set_start_delay_min').prop('disabled', msg.locked);
 			$('#set_start_delay_max').val(msg.start_delay_max);
+			$('#set_start_delay_max').prop('disabled', msg.locked);
 			$('#set_number_laps_win').val(msg.number_laps_win);
+			$('#set_number_laps_win').prop('disabled', msg.locked);
 		});
 
 		$('#set_race_format').change(function (event) {
@@ -849,7 +887,7 @@
 	<div class="panel-content">
 		<!--Apply preset-->
 		<div class="control-set">
-			Preset: 
+			Preset:
 			<button type="button" class="set_frequency_preset" data-preset="All-N1" onclick="this.blur();">Apply Node 1</button>
 			<button type="button" class="set_frequency_preset" data-preset="RB-4" onclick="this.blur();">Raceband 4</button>
 			<button type="button" class="set_frequency_preset" data-preset="IMD5C" onclick="this.blur();">IMD5C</button>
@@ -970,15 +1008,23 @@
 <!--Heats list for editing-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>Heats</h2>
+		<h2>Heats and Classes</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">Changes to heats will affect saved races.</p>
+		<p class="form-note">Pilot selections cannot be modified for heats with saved races. (Clear races to release.)</p>
+
 		<ol id="heats" class="heats">
 			<li>Loading...</li>
 		</ol>
 		<div class="control-set">
 			<button type="button" class="btn btn-default" id="add_heat" onclick="this.blur();">+ Add Heat</button>
+		</div>
+
+		<ol id="race_classes" class="race_classes">
+			<li>Loading...</li>
+		</ol>
+		<div class="control-set">
+			<button type="button" class="btn btn-default" id="add_race_class" onclick="this.blur();">+ Add Class</button>
 		</div>
 	</div>
 </div>
@@ -1062,6 +1108,8 @@
 		<h2>Race Format</h2>
 	</div>
 	<div class="panel-content">
+		<p class="form-note">Formats used with saved races cannot be modified. (Clear races to release.)</p>
+
 		<div class="control-set">
 			<label for="set_race_format">Format:</label>
 			<select id="set_race_format">
@@ -1189,7 +1237,9 @@
 			<select id="reset_type">
 				<option value="races">Races</option>
 				<option value="heats">Races and Heats</option>
+				<option value="classes">Races, Heats, and Classes</option>
 				<option value="pilots">Races, Heats, and Pilots</option>
+				<option value="all">Races, Heats, Classes, and Pilots</option>
 			</select>
 			<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">Clear Data</button>
 		</div>
@@ -1234,7 +1284,7 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_hue_secondary">Secondary Saturation</label>
+					<label for="set_sat_secondary">Secondary Saturation</label>
 				</div>
 				<input type="range" id="set_sat_secondary" class="set-option sat-control" data-option="sat_1" value="{{ getOption('sat_1') }}" min="0" max="100">
 			</li>

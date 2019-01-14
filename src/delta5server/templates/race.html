@@ -98,11 +98,12 @@
 		socket.on('race_status', function (msg) {
 			switch (msg.race_status) {
 				case 1: // Race running
-					$('button#start_race').attr('disabled', 'disabled');
-					$('button#stop_race').removeAttr('disabled');
-					$('button#save_laps').attr('disabled', 'disabled');
-					$('button#clear_laps').attr('disabled', 'disabled');
-					$('button.simulate_lap').removeAttr('disabled');
+					$('.set_current_heat').prop('disabled', true);
+					$('button#start_race').prop('disabled', true);
+					$('button#stop_race').prop('disabled', false);
+					$('button#save_laps').prop('disabled', true);
+					$('button#clear_laps').prop('disabled', true);
+					$('button.simulate_lap').prop('disabled', false);
 					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
@@ -112,21 +113,23 @@
 					}
 					break;
 				case 2: // Race stopped, clear or save laps
-					$('button#start_race').attr('disabled', 'disabled');
-					$('button#stop_race').attr('disabled', 'disabled');
-					$('button#save_laps').removeAttr('disabled');
-					$('button#clear_laps').removeAttr('disabled');
-					$('button.simulate_lap').attr('disabled', 'disabled');
+					$('.set_current_heat').prop('disabled', true);
+					$('button#start_race').prop('disabled', true);
+					$('button#stop_race').prop('disabled', true);
+					$('button#save_laps').prop('disabled', false);
+					$('button#clear_laps').prop('disabled', false);
+					$('button.simulate_lap').prop('disabled', true);
 					$('body').addClass('race-stopped');
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-new');
 					break;
 				default: // Waiting to start new race
-					$('button#start_race').removeAttr('disabled');
-					$('button#stop_race').attr('disabled', 'disabled');
-					$('button#save_laps').attr('disabled', 'disabled');
-					$('button#clear_laps').attr('disabled', 'disabled');
-					$('button.simulate_lap').attr('disabled', 'disabled');
+					$('.set_current_heat').prop('disabled', false);
+					$('button#start_race').prop('disabled', false);
+					$('button#stop_race').prop('disabled', true);
+					$('button#save_laps').prop('disabled', true);
+					$('button#clear_laps').prop('disabled', true);
+					$('button.simulate_lap').prop('disabled', true);
 					$('body').addClass('race-new');
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-stopped');
@@ -258,7 +261,7 @@
 
 		socket.on('leaderboard', function (msg) {
 			$('#leaderboard').empty();
-			$('#leaderboard').append(build_leaderboard(msg, 'current'));
+			$('#leaderboard').append(build_leaderboard(msg.by_race_time, 'current'));
 		});
 
 		socket.on('team_racing_status', function (msg) {
@@ -334,7 +337,7 @@
 				timer.pre_race(msg.start_delay, msg.hide_stage_timer);
 				timer.start(); // Start clock
 
-				$('button#stop_race').removeAttr('disabled', 'disabled');
+				$('button#stop_race').prop('disabled', true);
 
 				d5rt.collecting = 'race';
 				racedump.timestamp = new Date();
@@ -345,7 +348,8 @@
 		$('button#start_race').click(function (event) {
 			socket.emit('prestage_race');
 			$('.timing-clock').html('--:--');
-			$('button#start_race').attr('disabled', 'disabled');
+			$('button#start_race').prop('disabled', true);
+			$('.set_current_heat').prop('disabled', true);
 			return false;
 		});
 
@@ -595,14 +599,6 @@
 				text = text + ',' + $('.callsign_' + j).html().trim();
 			}
 			text = text + '\r\n';
-
-			/*
-			text = text + 'Offset';
-			for (var i in racedump.offsets) {
-				text = text + ',' + racedump.offsets[i];
-			}
-			text = text + '\r\n';
-			*/
 
 			for (var i in racedump.timedata) {
 				text = text + formattime(racedump.timedata[i].timestamp);

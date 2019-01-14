@@ -333,10 +333,10 @@ jQuery(document).ready(function($){
 		var thisitem = $(this).parent();
 		if (thisitem.hasClass('open')) {
 			thisitem.removeClass('open');
-			thisitem.children('.panel-content').slideUp();
+			thisitem.children('.panel-content').stop().slideUp();
 		} else {
 			thisitem.addClass('open');
-			thisitem.children('.panel-content').slideDown();
+			thisitem.children('.panel-content').stop().slideDown();
 		}
 	});
 
@@ -363,8 +363,9 @@ jQuery(document).ready(function($){
 /* Leaderboards */
 function build_leaderboard(leaderboard, display_type) {
 	if (typeof(display_type) === 'undefined')
-		display_type = 'current';
+		display_type = 'by_race_time';
 
+	var twrap = $('<div class="responsive-wrap">');
 	var table = $('<table class="leaderboard">');
 	var header = $('<thead>');
 	var header_row = $('<tr>');
@@ -373,124 +374,72 @@ function build_leaderboard(leaderboard, display_type) {
 	if (leaderboard.team_racing_mode) {
 		header_row.append('<th class="team">Team</th>');
 	}
-	header_row.append('<th class="laps">Laps</th>');
-	if (display_type == 'current') {
-		header_row.append('<th class="last">Last Lap</th>');
-		header_row.append('<th class="behind">Behind</th>');
-	}
-	header_row.append('<th class="avg">Average</th>');
-	header_row.append('<th class="fast">Fastest</th>');
-	header_row.append('<th class="total">Total</th>');
-
-	header.append(header_row);
-	table.append(header);
-
-	var body = $('<tbody>');
-
-	for (var i in leaderboard.data) {
-		var row = $('<tr>');
-
-		row.append('<td class="pos">'+ leaderboard.data[i].position +'</td>');
-		row.append('<td class="pilot">'+ leaderboard.data[i].callsign +'</td>');
-		if (leaderboard.team_racing_mode) {
-			row.append('<td class="team">'+ leaderboard.data[i].team_name +'</td>');
-		}
-		row.append('<td class="laps">'+ leaderboard.data[i].laps +'</td>');
-		if (display_type == 'current') {
-			var lap = leaderboard.data[i].last_lap;
-			if (!lap || lap == '0:00.000')
-				lap = '&#8212;';
-			row.append('<td class="last">'+ lap +'</td>');
-			row.append('<td class="behind">'+ leaderboard.data[i].behind +'</td>');
-		}
-		var lap = leaderboard.data[i].average_lap;
-		if (!lap || lap == '0:00.000')
-			lap = '&#8212;';
-		row.append('<td class="avg">'+ lap +'</td>');
-
-		var lap = leaderboard.data[i].fastest_lap;
-		if (!lap || lap == '0:00.000')
-			lap = '&#8212;';
-		row.append('<td class="fast">'+ lap +'</td>');
-
-/*
-		var lap = leaderboard.data[i].consecutives;
-		if (!lap)
-			lap = '&#8212;';
-		row.append('<td class="consecutive">'+ lap +'</td>');
-*/
-		var lap = leaderboard.data[i].total_time;
-		if (!lap || lap == '0:00.000')
-			lap = '&#8212;';
-		row.append('<td class="total">'+ lap +'</td>');
-
-		body.append(row);
-	}
-
-	table.append(body);
-	return table;
-}
-
-function build_event_leaderboard(leaderboard, display_type) {
-	if (typeof(display_type) === 'undefined')
-		display_type = 'by_race_time';
-
-	var table = $('<table class="leaderboard event-leaderboard">');
-	var header = $('<thead>');
-	var header_row = $('<tr>');
-	header_row.append('<th class="pos">Pos.</th>');
-	header_row.append('<th class="pilot">Pilot</th>');
-	if (leaderboard.team_racing_mode) {
-		header_row.append('<th class="team">Team</th>');
-	}
-	if (display_type == 'by_race_time') {
+	if (display_type == 'by_race_time' ||
+		display_type == 'heat' ||
+		display_type == 'round' ||
+		display_type == 'current') {
 		header_row.append('<th class="laps">Laps</th>');
 		header_row.append('<th class="total">Total</th>');
 		header_row.append('<th class="avg">Average</th>');
 	}
-	if (display_type == 'by_fastest_lap') {
+	if (display_type == 'by_fastest_lap' ||
+		display_type == 'heat' ||
+		display_type == 'round' ||
+		display_type == 'current') {
 		header_row.append('<th class="fast">Fastest</th>');
 	}
-	if (display_type == 'by_consecutives') {
-		header_row.append('<th class="consecutive">Fastest 3 Consecutive</th>');
+	if (display_type == 'by_consecutives' ||
+		display_type == 'heat' ||
+		display_type == 'round' ||
+		display_type == 'current') {
+		header_row.append('<th class="consecutive">3 Consecutive</th>');
 	}
 	header.append(header_row);
 	table.append(header);
 
 	var body = $('<tbody>');
 
-	for (var i in leaderboard[display_type]) {
+	for (var i in leaderboard) {
 		var row = $('<tr>');
 
-		row.append('<td class="pos">'+ leaderboard[display_type][i].position +'</td>');
-		row.append('<td class="pilot">'+ leaderboard[display_type][i].callsign +'</td>');
+		row.append('<td class="pos">'+ leaderboard[i].position +'</td>');
+		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
 		if (leaderboard.team_racing_mode) {
-			row.append('<td class="team">'+ leaderboard[display_type][i].team_name +'</td>');
+			row.append('<td class="team">'+ leaderboard[i].team_name +'</td>');
 		}
-		if (display_type == 'by_race_time') {
-			var lap = leaderboard[display_type][i].laps;
+		if (display_type == 'by_race_time' ||
+		display_type == 'heat' ||
+		display_type == 'round' ||
+		display_type == 'current') {
+			var lap = leaderboard[i].laps;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			row.append('<td class="laps">'+ lap +'</td>');
 
-			var lap = leaderboard[display_type][i].total_time;
+			var lap = leaderboard[i].total_time;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			row.append('<td class="total">'+ lap +'</td>');
 
-			var lap = leaderboard[display_type][i].average_lap;
+			var lap = leaderboard[i].average_lap;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			row.append('<td class="avg">'+ lap +'</td>');
 		}
-		if (display_type == 'by_fastest_lap') {
-			var lap = leaderboard[display_type][i].fastest_lap;
+		if (display_type == 'by_fastest_lap' ||
+		display_type == 'heat' ||
+		display_type == 'round' ||
+		display_type == 'current') {
+			var lap = leaderboard[i].fastest_lap;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			row.append('<td class="fast">'+ lap +'</td>');
 		}
-		if (display_type == 'by_consecutives') {
-			var lap = leaderboard[display_type][i].consecutives;
+		if (display_type == 'by_consecutives' ||
+		display_type == 'heat' ||
+		display_type == 'round' ||
+		display_type == 'current') {
+			var lap = leaderboard[i].consecutives;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			row.append('<td class="consecutive">'+ lap +'</td>');
@@ -500,7 +449,8 @@ function build_event_leaderboard(leaderboard, display_type) {
 	}
 
 	table.append(body);
-	return table;
+	twrap.append(table);
+	return twrap;
 }
 /* Frequency Table */
 var freq = {
