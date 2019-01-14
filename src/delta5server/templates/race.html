@@ -262,7 +262,7 @@
 
 		socket.on('leaderboard', function (msg) {
 			$('#leaderboard').empty();
-			$('#leaderboard').append(build_leaderboard(msg.by_race_time, 'current'));
+			$('#leaderboard').append(build_leaderboard(msg.by_race_time, 'current', msg.meta));
 		});
 
 		socket.on('team_racing_status', function (msg) {
@@ -310,7 +310,7 @@
 		socket.on('current_heat', function (msg) {
 			$('.current_heat').html('Heat ' + msg.current_heat);
 			for (i = 0; i < msg.callsign.length; i++) {
-				$('.callsign_' + i).html(msg.callsign[i]);
+				$('.callsign_' + i).html(msg.callsign[i] ? msg.callsign[i] : 'None');
 			}
 		});
 

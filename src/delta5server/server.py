@@ -621,8 +621,8 @@ def on_add_pilot():
     DB.session.add(new_pilot)
     DB.session.flush()
     DB.session.refresh(new_pilot)
-    new_pilot.name = 'Pilot %d Name' % (new_pilot.id-1)
-    new_pilot.callsign = 'Callsign %d' % (new_pilot.id-1)
+    new_pilot.name = 'Pilot %d Name' % (new_pilot.id)
+    new_pilot.callsign = 'Callsign %d' % (new_pilot.id)
     new_pilot.team = DEF_TEAM_NAME
     new_pilot.phonetic = ''
     DB.session.commit()
@@ -1385,6 +1385,10 @@ def calc_leaderboard(**params):
         USE_ROUND = None
         USE_HEAT = params['heat_id']
 
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
+    profile_freqs = json.loads(profile.frequencies)
+
     # Get the pilot ids for all relevant data
     # Add pilot callsigns
     # Add pilot team names
@@ -1399,11 +1403,12 @@ def calc_leaderboard(**params):
                 .filter(CurrentLap.pilot_id == pilot.id, \
                     CurrentLap.lap_id != 0)
             max_lap = stat_query.scalar()
-
-            pilot_ids.append(pilot.id)
-            callsigns.append(pilot.callsign)
-            team_names.append(pilot.team)
-            max_laps.append(max_lap)
+            current_heat = Heat.query.filter_by(heat_id=RACE.current_heat, pilot_id=pilot.id).first()
+            if current_heat and profile_freqs["f"][current_heat.node_index] != FREQUENCY_ID_NONE:
+                pilot_ids.append(pilot.id)
+                callsigns.append(pilot.callsign)
+                team_names.append(pilot.team)
+                max_laps.append(max_lap)
         else:
             if USE_CLASS:
                 stat_query = DB.session.query(DB.func.count(SavedRace.lap_id)) \
@@ -1645,7 +1650,9 @@ def calc_leaderboard(**params):
         })
 
     leaderboard_output = {
-        'team_racing_mode': int(getOption('TeamRacingMode')), # need to check race format
+        'meta': {
+            'team_racing_mode': int(getOption('TeamRacingMode')),
+        },
         'by_race_time': leaderboard_total_data,
         'by_fastest_lap': leaderboard_fast_lap_data,
         'by_consecutives': leaderboard_consecutives_data
@@ -1763,7 +1770,11 @@ def emit_current_heat(**params):
     for node in range(RACE.num_nodes):
         pilot_id = Heat.query.filter_by( \
             heat_id=RACE.current_heat, node_index=node).first().pilot_id
-        callsigns.append(Pilot.query.get(pilot_id).callsign)
+        pilot = Pilot.query.get(pilot_id)
+        if pilot:
+            callsigns.append(pilot.callsign)
+        else:
+            callsigns.append(None)
     heat_note = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first().note
 
     emit_payload = {

@@ -366,9 +366,13 @@ jQuery(document).ready(function($){
 }
 
 /* Leaderboards */
-function build_leaderboard(leaderboard, display_type) {
+function build_leaderboard(leaderboard, display_type, meta) {
 	if (typeof(display_type) === 'undefined')
 		display_type = 'by_race_time';
+	if (typeof(meta) === 'undefined') {
+		meta = new Object;
+		meta.team_racing_mode = false;
+	}
 
 	var twrap = $('<div class="responsive-wrap">');
 	var table = $('<table class="leaderboard">');
@@ -376,7 +380,7 @@ function build_leaderboard(leaderboard, display_type) {
 	var header_row = $('<tr>');
 	header_row.append('<th class="pos">Pos.</th>');
 	header_row.append('<th class="pilot">Pilot</th>');
-	if (leaderboard.team_racing_mode) {
+	if (meta.team_racing_mode) {
 		header_row.append('<th class="team">Team</th>');
 	}
 	if (display_type == 'by_race_time' ||
@@ -409,7 +413,7 @@ function build_leaderboard(leaderboard, display_type) {
 
 		row.append('<td class="pos">'+ leaderboard[i].position +'</td>');
 		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
-		if (leaderboard.team_racing_mode) {
+		if (meta.team_racing_mode) {
 			row.append('<td class="team">'+ leaderboard[i].team_name +'</td>');
 		}
 		if (display_type == 'by_race_time' ||
