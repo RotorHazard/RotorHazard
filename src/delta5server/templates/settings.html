@@ -26,6 +26,7 @@
 		$('nav li').removeClass('admin-hide');
 
 		// populate voice controls
+		$('#voice_callsign').prop( "checked", d5rt.voice_callsign);
 		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
 		$('#voice_team_lap_count').prop( "checked", d5rt.voice_team_lap_count);
 		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
@@ -508,6 +509,11 @@
 			d5rt.saveData();
 		});
 
+		$('#voice_callsign').change(function (event) {
+			d5rt.voice_callsign = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
 		$('#voice_lap_count').change(function (event) {
 			d5rt.voice_lap_count = $(this).prop('checked');
 			d5rt.saveData();
@@ -604,6 +610,8 @@
 			$('#set_start_delay_max').prop('disabled', msg.locked);
 			$('#set_number_laps_win').val(msg.number_laps_win);
 			$('#set_number_laps_win').prop('disabled', msg.locked);
+			$('#set_laps_wins_mode').val(msg.laps_wins_mode);
+			$('#set_laps_wins_mode').prop('disabled', msg.locked);
 		});
 
 		$('#set_race_format').change(function (event) {
@@ -670,6 +678,13 @@
 				number_laps_win: parseInt($(this).val())
 			};
 			socket.emit('set_number_laps_win', data);
+		})
+
+		$('#set_laps_wins_mode').change(function (event) {
+			var data = {
+				laps_wins_mode: parseInt($(this).val())
+			};
+			socket.emit('set_laps_wins_mode', data);
 		})
 
 		/* Database Reset */
@@ -1064,6 +1079,7 @@
 					Announcements
 				</div>
 				<ul>
+					<li><label><input type="checkbox" id="voice_callsign"> Callsign</label></li>
 					<li><label><input type="checkbox" id="voice_lap_count"> Lap Number</label></li>
 					<li><label><input type="checkbox" id="voice_lap_time"> Lap Time</label></li>
 					<li><label><input type="checkbox" id="voice_race_timer"> Race Timer</label></li>
@@ -1168,8 +1184,18 @@
 			<li>
 				<div class="label-block">
 					<label for="set_number_laps_win">Number of Laps to Win</label>
+					<p class="desc">Used if Most Laps Wins Disabled</p>
 				</div>
 				<input type="number" id="set_number_laps_win" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_laps_wins_mode">Laps Wins Mode</label>
+				</div>
+				<select id="set_laps_wins_mode">
+					<option value="0">Most Laps Wins Disabled</option>
+					<option value="1">Most Laps Wins Enabled</option>
+				</select>
 			</li>
 		</ol>
 
