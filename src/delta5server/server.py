@@ -2584,8 +2584,40 @@ gevent.sleep(0.500)
 if not os.path.exists('database.db'):
     db_init()
 elif int(getOption('server_api')) < SERVER_API:
-    server_log("Old server API version; resetting database")
+    server_log('Old server API version; resetting database')
+    try:
+        server_log('Recovering Pilot data from previous database')
+        pilot_query_all = Pilot.query.all()
+    except:
+        server_log('Error while reading data from previous database')
+    DB.session.close()
+    os.remove('database.db')
     db_init()
+    try:
+        id_corr = 0
+        for pilot_data in pilot_query_all:
+            if pilot_data.id != PILOT_ID_NONE and pilot_data.callsign != '-':
+                pilot_data.id -= id_corr  # correct for first slot "None" pilot
+                db_update = Pilot.query.get(pilot_data.id)
+                if db_update is None:
+                    DB.session.add(Pilot(id=pilot_data.id, callsign='Callsign', \
+                                   name='Name', team=DEF_TEAM_NAME, phonetic=''))
+                    db_update = Pilot.query.get(pilot_data.id)
+                if hasattr(pilot_data, 'callsign'):
+                    db_update.callsign = pilot_data.callsign
+                if hasattr(pilot_data, 'phonetic'):
+                    db_update.phonetic = pilot_data.phonetic
+                if hasattr(pilot_data, 'name'):
+                    db_update.name = pilot_data.name
+                if hasattr(pilot_data, 'team'):
+                    db_update.team = pilot_data.team
+            else:
+                id_corr = 1
+        DB.session.commit()
+        server_log('Database pilots restored')
+    except:
+        server_log('Error while writing data from previous database')
+    
 
 # Clear any current laps from the database on each program start
 # DB session commit needed to prevent 'application context' errors
