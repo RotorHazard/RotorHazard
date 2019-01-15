@@ -1926,6 +1926,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         win_name = None
         win_tstamp = -1
         tied_flag = False
+        num_max_lap = 0
              # find team with most laps
         for team_name in t_laps_dict.keys():
             ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
@@ -1935,9 +1936,11 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                     win_name = team_name
                     win_tstamp = ent[1]
                     tied_flag = False
+                    num_max_lap = 1
                 else:  # if team is tied for highest lap count found so far
                              # if called from 'pass_record_callback()' and not waiting for crossing
                     if pass_node_index >= 0 and Race_laps_winner_name is not RACE_STATUS_CROSSING:
+                        num_max_lap += 1  # count number of teams at max lap
                         if ent[1] < win_tstamp:  # this team has earlier lap time
                             win_name = team_name
                             win_tstamp = ent[1]
@@ -1953,38 +1956,58 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
 
         if win_name:  # if a team looks like the winner
 
+            pass_node_team_laps = -1
                  # make sure there's not a pilot in the process of crossing for a winning lap
             if (Race_laps_winner_name is None or Race_laps_winner_name is RACE_STATUS_TIED_STR or \
                                 Race_laps_winner_name is RACE_STATUS_CROSSING) and pilot_team_dict:
                 profile_freqs = None
                 for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
-                    if node.crossing_flag and node.index != pass_node_index:
-                        if not profile_freqs:
-                            profile_freqs = json.loads(Profiles.query.get( \
-                                            int(getOption("currentProfile"))).frequencies)
-                        if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
-                            pilot_id = Heat.query.filter_by( \
-                                    heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
-                            if pilot_id != PILOT_ID_NONE:  # node has pilot assigned to it
-                                team_name = pilot_team_dict[pilot_id]
-                                if team_name:
-                                    ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
-                                                # if pilot crossing for possible winning lap then wait
-                                                #  in case lap time turns out to be earliest:
-                                    if ent and ent[0] == max_lap_count - 1:
-                                                      # if called from 'race_time_finished()' then allow
-                                                      #  race tied when gate crossing completes
-                                        if pass_node_index < 0:
-                                            Race_laps_winner_name = RACE_STATUS_CROSSING
-                                        else:  # if called from 'pass_record_callback()' then no more ties
-                                            Race_laps_winner_name = RACE_STATUS_TIED_STR
-                                        server_log('check_most_laps_win waiting for crossing, Node {0}'.\
-                                                                              format(node.index+1))
-                                        return
-        
-            Race_laps_winner_name = win_name  # indicate a team has won
-            check_emit_team_racing_status(t_laps_dict)
-            emit_phonetic_text('Race done, winner is team ' + Race_laps_winner_name)
+                    if node.index != pass_node_index:  # if node is for other pilot
+                        if node.crossing_flag:
+                            if not profile_freqs:
+                                profile_freqs = json.loads(Profiles.query.get( \
+                                                int(getOption("currentProfile"))).frequencies)
+                            if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
+                                pilot_id = Heat.query.filter_by( \
+                                        heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
+                                if pilot_id != PILOT_ID_NONE:  # node has pilot assigned to it
+                                    team_name = pilot_team_dict[pilot_id]
+                                    if team_name:
+                                        ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
+                                                    # if pilot crossing for possible winning lap then wait
+                                                    #  in case lap time turns out to be earliest:
+                                        if ent and ent[0] == max_lap_count - 1:
+                                                          # if called from 'race_time_finished()' then allow
+                                                          #  race tied when gate crossing completes
+                                            if pass_node_index < 0:
+                                                Race_laps_winner_name = RACE_STATUS_CROSSING
+                                            else:  # if called from 'pass_record_callback()' then no more ties
+                                                Race_laps_winner_name = RACE_STATUS_TIED_STR
+                                            server_log('check_most_laps_win waiting for crossing, Node {0}'.\
+                                                                                  format(node.index+1))
+                                            return
+
+                    # if race currently tied and called from 'pass_record_callback()' then
+                    #  get number of team laps for node/pilot that caused current lap pass
+                    elif Race_laps_winner_name is RACE_STATUS_TIED_STR:
+                        pilot_id = Heat.query.filter_by( \
+                                heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
+                        if pilot_id != PILOT_ID_NONE:  # node has pilot assigned to it
+                            team_name = pilot_team_dict[pilot_id]
+                            if team_name:
+                                ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
+                                if ent:
+                                    pass_node_team_laps = ent[0]
+
+                   # if race currently tied and called from 'pass_record_callback()'
+                   #  and team for current-pass pilot is not only one at max lap
+                   #  then don't stop the tied race in progress
+            if not (Race_laps_winner_name is RACE_STATUS_TIED_STR and \
+                            (pass_node_team_laps < max_lap_count or \
+                            (pass_node_team_laps == max_lap_count and num_max_lap > 1))):
+                Race_laps_winner_name = win_name  # indicate a team has won
+                check_emit_team_racing_status(t_laps_dict)
+                emit_phonetic_text('Race done, winner is team ' + Race_laps_winner_name)
 
         else:    # if no team looks like the winner
             Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
@@ -1993,6 +2016,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
 
         pilots_list = []  # (lap_id, lap_time_stamp, pilot_id, node)
         max_lap_id = 0
+        num_max_lap = 0
         profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
         for node in INTERFACE.nodes:  # load per-pilot data into 'pilots_list'
             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
@@ -2007,23 +2031,40 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                             pilots_list.append((lap_id, lap_data.lap_time_stamp, pilot_id, node))
                             if lap_id > max_lap_id:
                                 max_lap_id = lap_id
+                                num_max_lap = 1
+                            elif lap_id == max_lap_id:
+                                num_max_lap += 1  # count number of nodes at max lap
         #server_log('DEBUG check_most_laps_win pass_node_index={0} max_lap={1}'.format(pass_node_index, max_lap_id))
 
         if max_lap_id <= 0:  # if no laps then bail out
             Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
+            if pass_node_index < 0:  # if called from 'race_time_finished()'
+                emit_team_racing_status(Race_laps_winner_name)
+                emit_phonetic_text('Race tied')
             return
 
         # if any (other) pilot is in the process of crossing the gate and within one lap of
         #  winning then bail out (and wait for next 'pass_record_callback()' event)
+        pass_node_lap_id = -1
         for item in pilots_list:
-            if item[3].crossing_flag and item[3].index != pass_node_index and item[0] >= max_lap_id - 1:
-                       # if called from 'race_time_finished()' then allow race tied after crossing
-                if pass_node_index < 0:
-                    Race_laps_winner_name = RACE_STATUS_CROSSING
-                else:  # if called from 'pass_record_callback()' then no more ties
-                    Race_laps_winner_name = RACE_STATUS_TIED_STR
-                server_log('check_most_laps_win waiting for crossing, Node {0}'.format(item[3].index+1))
-                return
+            if item[3].index != pass_node_index:  # if node is for other pilot
+                if item[3].crossing_flag and item[0] >= max_lap_id - 1:
+                           # if called from 'race_time_finished()' then allow race tied after crossing
+                    if pass_node_index < 0:
+                        Race_laps_winner_name = RACE_STATUS_CROSSING
+                    else:  # if called from 'pass_record_callback()' then no more ties
+                        Race_laps_winner_name = RACE_STATUS_TIED_STR
+                    server_log('check_most_laps_win waiting for crossing, Node {0}'.format(item[3].index+1))
+                    return
+            else:
+                pass_node_lap_id = item[0]  # save 'lap_id' for node/pilot that caused current lap pass
+
+        # if race currently tied and called from 'pass_record_callback()'
+        #  and current-pass pilot is not only one at max lap
+        #  then clear 'pass_node_index' so pass will not stop a tied race in progress
+        if Race_laps_winner_name is RACE_STATUS_TIED_STR and pass_node_index >= 0 and \
+                (pass_node_lap_id < max_lap_id or (pass_node_lap_id == max_lap_id and num_max_lap > 1)):
+            pass_node_index = -1
 
         # check for pilots with max laps; if more than one then select one with
         #  earliest lap time (if called from 'pass_record_callback()' fn) or
@@ -2042,9 +2083,10 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                             win_pilot_id = item[2]
                             win_lap_tstamp = item[1]
                     else:  # called from 'race_time_finished()' or was waiting for crossing
-                        Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
-                        emit_team_racing_status(Race_laps_winner_name)
-                        emit_phonetic_text('Race tied')
+                        if Race_laps_winner_name is not RACE_STATUS_TIED_STR:
+                            Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
+                            emit_team_racing_status(Race_laps_winner_name)
+                            emit_phonetic_text('Race tied')
                         return  # wait for next 'pass_record_callback()' event
         #server_log('DEBUG check_most_laps_win win_pilot_id={0}'.format(win_pilot_id))
 
