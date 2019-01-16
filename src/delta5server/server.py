@@ -1318,17 +1318,19 @@ def emit_round_data(**params):
         for round in SavedRace.query.with_entities(SavedRace.round_id).distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRace.round_id):
             nodes = []
             for node in range(RACE.num_nodes):
-                nodepilot = Pilot.query.filter_by( id=Heat.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign
-                laps = []
-                for lap in SavedRace.query.filter_by(heat_id=heat.heat_id, round_id=round.round_id, node_index=node).all():
-                    laps.append({
-                            'id': lap.lap_id,
-                            'lap_time_formatted': lap.lap_time_formatted
-                        })
-                nodes.append({
-                    'pilot': nodepilot,
-                    'laps': laps
-                })
+                pilot_data = Pilot.query.filter_by( id=Heat.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first()
+                if pilot_data:
+                    nodepilot = pilot_data.callsign
+                    laps = []
+                    for lap in SavedRace.query.filter_by(heat_id=heat.heat_id, round_id=round.round_id, node_index=node).all():
+                        laps.append({
+                                'id': lap.lap_id,
+                                'lap_time_formatted': lap.lap_time_formatted
+                            })
+                    nodes.append({
+                        'pilot': nodepilot,
+                        'laps': laps
+                    })
             rounds.append({
                 'id': round.round_id,
                 'nodes': nodes,
