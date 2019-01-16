@@ -1769,12 +1769,17 @@ def emit_pilot_data(**params):
 def emit_current_heat(**params):
     '''Emits the current heat.'''
     callsigns = []
-    for node in range(RACE.num_nodes):
-        pilot_id = Heat.query.filter_by( \
-            heat_id=RACE.current_heat, node_index=node).first().pilot_id
-        pilot = Pilot.query.get(pilot_id)
-        if pilot:
-            callsigns.append(pilot.callsign)
+                             # dict for current heat with key=node_index, value=pilot_id
+    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
+                      filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+    for node_index in range(RACE.num_nodes):
+        pilot_id = node_pilot_dict.get(node_index)
+        if pilot_id:
+            pilot = Pilot.query.get(pilot_id)
+            if pilot:
+                callsigns.append(pilot.callsign)
+            else:
+                callsigns.append(None)
         else:
             callsigns.append(None)
     heat_note = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first().note
@@ -1794,11 +1799,13 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
               # create dictionary with key=pilot_id, value=team_name
     pilot_team_dict = {}
     profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+                             # dict for current heat with key=node_index, value=pilot_id
+    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
+                      filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
     for node in INTERFACE.nodes:
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
-            pilot_id = Heat.query.filter_by( \
-                    heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
-            if pilot_id != PILOT_ID_NONE:
+            pilot_id = node_pilot_dict.get(node.index)
+            if pilot_id:
                 pilot_team_dict[pilot_id] = Pilot.query.filter_by(id=pilot_id).first().team
     #server_log('DEBUG get_team_laps_info pilot_team_dict: {0}'.format(pilot_team_dict))
 
@@ -1861,11 +1868,13 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
     win_pilot_id = -1
     win_lap_tstamp = 0
     profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+                             # dict for current heat with key=node_index, value=pilot_id
+    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
+                      filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
     for node in INTERFACE.nodes:
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
-            pilot_id = Heat.query.filter_by( \
-                    heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
-            if pilot_id != PILOT_ID_NONE:
+            pilot_id = node_pilot_dict.get(node.index)
+            if pilot_id:
                 lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
                         .filter_by(node_index=node.index).scalar()
                 if lap_id is None:
@@ -1891,15 +1900,17 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
          # make sure there's not a pilot in the process of crossing for a winning lap
     if Race_laps_winner_name is None and pilot_team_dict:
         profile_freqs = None
+                                  # dict for current heat with key=node_index, value=pilot_id
+        node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
+                          filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
         for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
             if node.crossing_flag and node.index != pass_node_index:
                 if not profile_freqs:
                     profile_freqs = json.loads(Profiles.query.get( \
                                                int(getOption("currentProfile"))).frequencies)
                 if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
-                    pilot_id = Heat.query.filter_by( \
-                               heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
-                    if pilot_id != PILOT_ID_NONE:  # node has pilot assigned to it
+                    pilot_id = node_pilot_dict.get(node.index)
+                    if pilot_id:  # node has pilot assigned to it
                         team_name = pilot_team_dict[pilot_id]
                         if team_name:
                             ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
@@ -1970,6 +1981,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
             if (Race_laps_winner_name is None or Race_laps_winner_name is RACE_STATUS_TIED_STR or \
                                 Race_laps_winner_name is RACE_STATUS_CROSSING) and pilot_team_dict:
                 profile_freqs = None
+                node_pilot_dict = None  # dict for current heat with key=node_index, value=pilot_id
                 for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
                     if node.index != pass_node_index:  # if node is for other pilot
                         if node.crossing_flag:
@@ -1977,9 +1989,11 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                                 profile_freqs = json.loads(Profiles.query.get( \
                                                 int(getOption("currentProfile"))).frequencies)
                             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
-                                pilot_id = Heat.query.filter_by( \
-                                        heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
-                                if pilot_id != PILOT_ID_NONE:  # node has pilot assigned to it
+                                if not node_pilot_dict:
+                                    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
+                                              filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+                                pilot_id = node_pilot_dict.get(node.index)
+                                if pilot_id:  # node has pilot assigned to it
                                     team_name = pilot_team_dict[pilot_id]
                                     if team_name:
                                         ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
@@ -1999,9 +2013,11 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                     # if race currently tied and called from 'pass_record_callback()' then
                     #  get number of team laps for node/pilot that caused current lap pass
                     elif Race_laps_winner_name is RACE_STATUS_TIED_STR:
-                        pilot_id = Heat.query.filter_by( \
-                                heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
-                        if pilot_id != PILOT_ID_NONE:  # node has pilot assigned to it
+                        if not node_pilot_dict:
+                            node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
+                                      filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+                        pilot_id = node_pilot_dict.get(node.index)
+                        if pilot_id:  # node has pilot assigned to it
                             team_name = pilot_team_dict[pilot_id]
                             if team_name:
                                 ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
@@ -2027,11 +2043,13 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         max_lap_id = 0
         num_max_lap = 0
         profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+                                  # dict for current heat with key=node_index, value=pilot_id
+        node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
+                          filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
         for node in INTERFACE.nodes:  # load per-pilot data into 'pilots_list'
             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
-                pilot_id = Heat.query.filter_by( \
-                           heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
-                if pilot_id != PILOT_ID_NONE:
+                pilot_id = node_pilot_dict.get(node.index)
+                if pilot_id:
                     lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
                             .filter_by(node_index=node.index).scalar()
                     if lap_id > 0:
