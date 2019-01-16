@@ -1792,7 +1792,14 @@ def emit_current_heat(**params):
 def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
     '''Calculates and returns team-racing info.'''
               # create dictionary with key=pilot_id, value=team_name
-    pilot_team_dict = dict(Pilot.query.with_entities(Pilot.id, Pilot.team).all())
+    pilot_team_dict = {}
+    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+    for node in INTERFACE.nodes:
+        if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
+            pilot_id = Heat.query.filter_by( \
+                    heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
+            if pilot_id != PILOT_ID_NONE:
+                pilot_team_dict[pilot_id] = Pilot.query.filter_by(id=pilot_id).first().team
     #server_log('DEBUG get_team_laps_info pilot_team_dict: {0}'.format(pilot_team_dict))
 
     t_laps_dict = {}  # create dictionary (key=team_name, value=[lapCount,timestamp]) with initial zero laps
