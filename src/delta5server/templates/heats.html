@@ -43,12 +43,13 @@
 				}
 
 				var nodelist = $('<ol>');
+				var callsign;
 				for (j in heats.pilots) {
 					var heatpilot = heats.pilots[j];
 					var slot = $('<li>');
 					slot.append('<div class="channel-block" data-node="' + j + '"><span class="ch"></span> <span class="fr"></span></div>');
 
-					var callsign;
+					callsign = '-None-';
 					for (var k in msg.pilot_data.pilot_id) {
 						if (msg.pilot_data.pilot_id[k] == heatpilot) {
 							callsign = msg.pilot_data.callsign[k];
