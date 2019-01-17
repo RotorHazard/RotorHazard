@@ -3,6 +3,8 @@ SERVER_API = 6 # Server API version
 
 import os
 import sys
+import shutil
+import base64
 from datetime import datetime
 from functools import wraps
 
@@ -39,11 +41,14 @@ HEAT_ID_NONE = 0  # indicator value for practice heat
 CLASS_ID_NONE = 0  # indicator value for unclassified heat
 FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
+DB_FILE_NAME = 'database.db'
+DB_BKP_DIR_NAME = 'db_bkp'
+
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 DEF_TEAM_NAME = 'A'  # default team
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
-APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, 'database.db')
+APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 DB = SQLAlchemy(APP)
 
@@ -353,7 +358,7 @@ def correction():
 @requires_auth
 def hardwarelog():
     '''Route to hardware log page.'''
-    return render_template('hardwarelog.html')
+    return render_template('hardwarelog.html', getOption=getOption)
 
 @APP.route('/database')
 @requires_auth
@@ -787,6 +792,19 @@ def on_set_profile(data, emit_vals=True):
     hardware_set_all_exit_ats(exit_ats)
     #set filter ratio
     INTERFACE.set_filter_ratio_global(profile.f_ratio)
+
+@SOCKET_IO.on('backup_database')
+def on_backup_database():
+    '''Backup database.'''
+    bkp_name = backup_db_file(True)  # make copy of DB file
+         # read DB data and convert to Base64
+    with open(bkp_name, mode='rb') as file:
+        file_content = base64.encodestring(file.read())
+    emit_payload = {
+        'file_name': os.path.basename(bkp_name),
+        'file_data' : file_content
+    }
+    SOCKET_IO.emit('database_bkp_done', emit_payload)
 
 @SOCKET_IO.on('reset_database')
 def on_reset_database(data):
@@ -2596,6 +2614,28 @@ def db_reset_options_defaults():
 
     server_log("Reset global settings")
 
+def backup_db_file(copy_flag):
+    DB.session.close()
+    try:     # generate timestamp from last-modified time of database file
+        time_str = datetime.fromtimestamp(os.stat(DB_FILE_NAME).st_mtime).strftime('%Y%m%d_%H%M%S')
+    except:  # if error then use 'now' timestamp
+        time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+    try:
+        (dbname, dbext) = os.path.splitext(DB_FILE_NAME)
+        bkp_name = DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
+        if copy_flag:
+            if not os.path.exists(DB_BKP_DIR_NAME):
+                os.makedirs(DB_BKP_DIR_NAME)
+            shutil.copy2(DB_FILE_NAME, bkp_name);
+            server_log('Copied database file to:  ' + bkp_name)
+        else:
+            os.renames(DB_FILE_NAME, bkp_name);
+            server_log('Moved old database file to:  ' + bkp_name)
+    except Exception as ex:
+        server_log('Error backing up database file:  ' + str(ex))
+    return bkp_name
+
+
 #
 # Program Initialize
 #
@@ -2608,7 +2648,7 @@ print 'Number of nodes found: {0}'.format(RACE.num_nodes)
 gevent.sleep(0.500)
 
 # Create database if it doesn't exist
-if not os.path.exists('database.db'):
+if not os.path.exists(DB_FILE_NAME):
     db_init()
 elif int(getOption('server_api')) < SERVER_API:
     server_log('Old server API version; resetting database')
@@ -2617,8 +2657,7 @@ elif int(getOption('server_api')) < SERVER_API:
         pilot_query_all = Pilot.query.all()
     except:
         server_log('Error while reading data from previous database')
-    DB.session.close()
-    os.remove('database.db')
+    backup_db_file(False)  # rename and move DB file
     db_init()
     try:
         id_corr = 0
@@ -2644,7 +2683,7 @@ elif int(getOption('server_api')) < SERVER_API:
         server_log('Database pilots restored')
     except:
         server_log('Error while writing data from previous database')
-    
+
 
 # Clear any current laps from the database on each program start
 # DB session commit needed to prevent 'application context' errors

@@ -1,4 +1,7 @@
 {% extends "layout.html" %} {% block title %}Settings{% endblock %} {% block head %}
+<script type="text/javascript" src="./static/Blob.js"></script>
+<script type="text/javascript" src="./static/FileSaver.min.js"></script>
+
 <script type="text/javascript" charset="utf-8">
 	var globalAudioCtx;
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
@@ -687,6 +690,23 @@
 			socket.emit('set_laps_wins_mode', data);
 		})
 
+		$('button#backup_database').click(function (event) {
+			socket.emit('backup_database');
+			return false;
+		});
+
+		socket.on('database_bkp_done', function (msg) {
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+			    byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			// construct blob from byte array and initiate browser save-as
+			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
+		});
+
 		/* Database Reset */
 		socket.on('reset_confirm', function () {
 			$('#reset_confirm').css('opacity', 1.0);
@@ -1259,6 +1279,9 @@
 		<h2>Database</h2>
 	</div>
 	<div class="panel-content">
+		<div class="control-set">
+			<button type="button" class="" id="backup_database" onclick="this.blur();">Backup Database</button>
+		</div>
 		<div class="control-set">
 			<select id="reset_type">
 				<option value="races">Races</option>
