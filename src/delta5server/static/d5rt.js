@@ -100,6 +100,8 @@ LogSlider.prototype = {
 var d5rt = {
 	language: '', // local language for voice callout
 	voice_volume: 1.0, // voice call volume
+	voice_rate: 1.25,  // voice call speak pitch
+	voice_pitch: 1.0,  // voice call speak rate
 	voice_callsign: true, // speak pilot callsigns
 	voice_lap_count: true, // speak lap counts
 	voice_team_lap_count: true, // speak team lap counts
@@ -123,6 +125,8 @@ var d5rt = {
 		}
 		localStorage['d5rt.language'] = JSON.stringify(this.language);
 		localStorage['d5rt.voice_volume'] = JSON.stringify(this.voice_volume);
+		localStorage['d5rt.voice_rate'] = JSON.stringify(this.voice_rate);
+		localStorage['d5rt.voice_pitch'] = JSON.stringify(this.voice_pitch);
 		localStorage['d5rt.voice_callsign'] = JSON.stringify(this.voice_callsign);
 		localStorage['d5rt.voice_lap_count'] = JSON.stringify(this.voice_lap_count);
 		localStorage['d5rt.voice_team_lap_count'] = JSON.stringify(this.voice_team_lap_count);
@@ -144,6 +148,12 @@ var d5rt = {
 			}
 			if (localStorage['d5rt.voice_volume']) {
 				this.voice_volume = JSON.parse(localStorage['d5rt.voice_volume']);
+			}
+			if (localStorage['d5rt.voice_rate']) {
+				this.voice_rate = JSON.parse(localStorage['d5rt.voice_rate']);
+			}
+			if (localStorage['d5rt.voice_pitch']) {
+				this.voice_pitch = JSON.parse(localStorage['d5rt.voice_pitch']);
 			}
 			if (localStorage['d5rt.voice_callsign']) {
 				this.voice_callsign = JSON.parse(localStorage['d5rt.voice_callsign']);
