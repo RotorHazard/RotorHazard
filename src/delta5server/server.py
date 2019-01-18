@@ -43,6 +43,8 @@ FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
+CONFIG_FILE_NAME = 'config.json'
+LANGUAGE_FILE_NAME = 'language.json'
 
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 DEF_TEAM_NAME = 'A'  # default team
@@ -73,7 +75,7 @@ Config['GENERAL']['ADMIN_PASSWORD'] = 'delta5'
 
 # override defaults above with config from file
 try:
-    with open('config.json', 'r') as f:
+    with open(CONFIG_FILE_NAME, 'r') as f:
         ExternalConfig = json.load(f)
     Config['GENERAL'].update(ExternalConfig['GENERAL'])
     Config['LED'].update(ExternalConfig['LED'])
@@ -87,6 +89,39 @@ except ValueError:
     Config['GENERAL']['configFile'] = -1
     print 'Configuration file invalid, using defaults'
 
+#
+# Translation functions
+#
+
+Languages = {}
+# Load language file
+try:
+    with open(LANGUAGE_FILE_NAME, 'r') as f:
+        Languages = json.load(f)
+    print 'Language file imported'
+except IOError:
+    print 'No language file found, using defaults'
+except ValueError:
+    print 'Language file invalid, using defaults'
+
+def __(text, domain=''):
+    # return translated string
+    if not domain:
+        lang = getOption('currentLanguage')
+
+    if lang:
+        if lang in Languages:
+            print(Languages[lang])
+            return Languages[lang]['values'][text]
+    return text
+
+def getLanguages():
+    # get list of available languages
+    langs = []
+    for lang in Languages:
+        langs.append(lang)
+    return langs
+
 INTERFACE = get_hardware_interface()
 RACE = get_race_state() # For storing race management variables
 
@@ -97,7 +132,10 @@ Race_laps_winner_name = None  # set to name of winner in first-to-X-laps race
 RACE_STATUS_TIED_STR = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
 RACE_STATUS_CROSSING = 'Waiting for cross'  # indicator for Most Laps Wins race
 
+#
 # LED Code
+#
+
 def signal_handler(signal, frame):
         colorWipe(strip, Color(0,0,0))
         sys.exit(0)
@@ -313,7 +351,7 @@ def index():
 @APP.route('/')
 def heats():
     '''Route to heat summary page.'''
-    return render_template('heats.html', getOption=getOption)
+    return render_template('heats.html', getOption=getOption, __=__)
 
 @APP.route('/race')
 @requires_auth
@@ -1392,7 +1430,7 @@ def calc_leaderboard(**params):
     USE_ROUND = None
     USE_HEAT = None
     USE_CLASS = None
-    
+
     if ('current_race' in params):
         USE_CURRENT = True
 
@@ -1441,7 +1479,7 @@ def calc_leaderboard(**params):
                         .filter(SavedRace.pilot_id == pilot.id, \
                             SavedRace.heat_id == USE_HEAT, \
                             SavedRace.round_id == USE_ROUND, \
-                            SavedRace.lap_id != 0)                    
+                            SavedRace.lap_id != 0)
                 else:
                     stat_query = DB.session.query(DB.func.count(SavedRace.lap_id)) \
                         .filter(SavedRace.pilot_id == pilot.id, \
@@ -1497,7 +1535,7 @@ def calc_leaderboard(**params):
             if USE_CURRENT:
                 stat_query = CurrentLap.query \
                     .filter_by(pilot_id=pilot) \
-                    .order_by(-CurrentLap.lap_id)               
+                    .order_by(-CurrentLap.lap_id)
                 total_time.append(stat_query.first().lap_time)
             else:
                 last_lap.append(None)
@@ -1527,7 +1565,7 @@ def calc_leaderboard(**params):
                         stat_query = DB.session.query(DB.func.avg(SavedRace.lap_time)) \
                             .filter(SavedRace.pilot_id == pilot, \
                                 SavedRace.lap_id != 0, \
-                                SavedRace.heat_id == USE_HEAT)                        
+                                SavedRace.heat_id == USE_HEAT)
                 else:
                     stat_query = DB.session.query(DB.func.avg(SavedRace.lap_time)) \
                         .filter(SavedRace.pilot_id == pilot, SavedRace.lap_id != 0)
@@ -1584,7 +1622,7 @@ def calc_leaderboard(**params):
                         .filter(SavedRace.lap_id != 0, \
                             SavedRace.round_id == USE_ROUND, \
                             SavedRace.heat_id == USE_HEAT, \
-                            SavedRace.pilot_id == pilot).all()                    
+                            SavedRace.pilot_id == pilot).all()
                 else:
                     races = SavedRace.query.with_entities(SavedRace.round_id, SavedRace.heat_id) \
                         .filter(SavedRace.heat_id == USE_HEAT) \
@@ -1953,7 +1991,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
     '''Checks if pilot or team has most laps for a win.'''
     # pass_node_index: -1 if called from 'race_time_finished()'; node.index if called from 'pass_record_callback()'
     global Race_laps_winner_name
-    
+
     if int(getOption('TeamRacingMode')):  # team racing mode enabled
 
              # if not passed in then determine number of laps for each team
@@ -2337,13 +2375,13 @@ def pass_record_callback(node, ms_since_lap):
 
                         if lap_id > 0:   # send phonetic data to be spoken
                             emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
-                            
+
                                       # if Most Laps Wins race is tied then check for winner
                             if race_format.laps_wins_mode > 0:
                                 if Race_laps_winner_name is RACE_STATUS_TIED_STR or \
                                             Race_laps_winner_name is RACE_STATUS_CROSSING:
                                     check_most_laps_win(node.index, t_laps_dict, pilot_team_dict)
-                            
+
                                       # if a team has won the race and this is the winning lap
                             elif Race_laps_winner_name is not None and \
                                         team_name == Race_laps_winner_name and \
@@ -2607,6 +2645,7 @@ def db_reset_options_defaults():
     setOption("contrast_1_low", "#ffffff")
     setOption("contrast_1_high", "#000000")
 
+    setOption('currentLanguage', '')
     setOption("currentProfile", "1")
     setOption("currentFormat", "1")
     setOption("MinLapSec", "5")
