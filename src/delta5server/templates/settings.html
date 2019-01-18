@@ -35,7 +35,14 @@
 		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
 		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
 		$().articulate('volume', d5rt.voice_volume);
+		$('#voice_volume_value').html(d5rt.voice_volume.toFixed(2));
 		$('#set_voice_volume').val(d5rt.voice_volume);
+		$().articulate('rate', d5rt.voice_rate);
+		$('#voice_rate_value').html(d5rt.voice_rate.toFixed(2));
+		$('#set_voice_rate').val(d5rt.voice_rate);
+		$().articulate('pitch', d5rt.voice_pitch);
+		$('#voice_pitch_value').html(d5rt.voice_pitch.toFixed(2));
+		$('#set_voice_pitch').val(d5rt.voice_pitch);
 		$('#set_tone_volume').val(d5rt.tone_volume);
 		$('#beep_crossing_entered').prop("checked", d5rt.beep_crossing_entered);
 		$('#beep_crossing_exited').prop("checked", d5rt.beep_crossing_exited);
@@ -512,6 +519,11 @@
 			d5rt.saveData();
 		});
 
+		$('button#play_voice_test').click(function (event) {
+			speak('<div class="speech">' + $('#voice_test_text').val() + '</div>');
+			return false;
+		});
+
 		$('#voice_callsign').change(function (event) {
 			d5rt.voice_callsign = $(this).prop('checked');
 			d5rt.saveData();
@@ -538,11 +550,35 @@
 		});
 
 		$('#set_voice_volume').on('input', function (event) {
-			$().articulate('volume', parseFloat($(this).val()));
+			val = parseFloat($(this).val())
+			$().articulate('volume', val);
+			$('#voice_volume_value').html(val.toFixed(2));
 		});
 
 		$('#set_voice_volume').on('change', function (event) {
 			d5rt.voice_volume = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#set_voice_rate').on('input', function (event) {
+			val = parseFloat($(this).val())
+			$().articulate('rate', val);
+			$('#voice_rate_value').html(val.toFixed(2));
+		});
+
+		$('#set_voice_rate').on('change', function (event) {
+			d5rt.voice_rate = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#set_voice_pitch').on('input', function (event) {
+			val = parseFloat($(this).val())
+			$().articulate('pitch', val);
+			$('#voice_pitch_value').html(val.toFixed(2));
+		});
+
+		$('#set_voice_pitch').on('change', function (event) {
+			d5rt.voice_pitch = parseFloat($(this).val());
 			d5rt.saveData();
 		});
 
@@ -1094,6 +1130,15 @@
 				</div>
 				<div id="voice_select"></div>
 			</li>
+
+			<li>
+				<div class="label-block">
+					Voice Test &nbsp; &nbsp;
+				</div>
+				<input type="text" id="voice_test_text" value="{{ getOption('timerName') }}">
+				<button type="button" class="button" id="play_voice_test" onclick="this.blur();">&#9658;&#65038; <span class="screen-reader-text">Play</span></button>
+			</li>
+
 			<li>
 				<div class="label-block">
 					Announcements
@@ -1109,8 +1154,23 @@
 			<li>
 				<div class="label-block">
 					<label for="set_voice_volume">Voice Volume</label>
+					<p class="desc">Volume: <span id="voice_volume_value"></span></p>
 				</div>
 				<input type="range" id="set_voice_volume" min="0" max="1.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_rate">Voice Rate</label>
+					<p class="desc">Rate: <span id="voice_rate_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_rate" min="0" max="2.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_pitch">Voice Pitch</label>
+					<p class="desc">Pitch: <span id="voice_pitch_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
 			</li>
 			<li>
 				<div class="label-block">

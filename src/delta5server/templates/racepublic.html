@@ -31,7 +31,14 @@
 		// populate voice controls
 		$('#voice-calls').val(parseInt(d5rt.primaryPilot));
 		$().articulate('volume', d5rt.voice_volume);
+		$('#voice_volume_value').html(d5rt.voice_volume.toFixed(2));
 		$('#set_voice_volume').val(d5rt.voice_volume);
+		$().articulate('rate', d5rt.voice_rate);
+		$('#voice_rate_value').html(d5rt.voice_rate.toFixed(2));
+		$('#set_voice_rate').val(d5rt.voice_rate);
+		$().articulate('pitch', d5rt.voice_pitch);
+		$('#voice_pitch_value').html(d5rt.voice_pitch.toFixed(2));
+		$('#set_voice_pitch').val(d5rt.voice_pitch);
 
 		socket.on('race_elapsed', function (msg) {
 			var response_time = new Date();
@@ -223,11 +230,36 @@
 		});
 
 		$('#set_voice_volume').on('input', function (event) {
-			$().articulate('volume', $(this).val());
+			val = parseFloat($(this).val())
+			$().articulate('volume', val);
+			$('#voice_volume_value').html(val.toFixed(2));
 		});
 
 		$('#set_voice_volume').on('change', function (event) {
 			d5rt.voice_volume = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#set_voice_rate').on('input', function (event) {
+			val = parseFloat($(this).val())
+			$().articulate('rate', val);
+			$('#voice_rate_value').html(val.toFixed(2));
+		});
+
+		$('#set_voice_rate').on('change', function (event) {
+			d5rt.voice_rate = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#set_voice_pitch').on('input', function (event) {
+			val = parseFloat($(this).val())
+			$().articulate('pitch', val);
+			$('#voice_pitch_value').html(val.toFixed(2));
+		});
+
+		$('#set_voice_pitch').on('change', function (event) {
+			d5rt.voice_pitch = parseFloat($(this).val());
+			d5rt.saveData();
 		});
 	});
 
@@ -301,8 +333,23 @@
 			<li>
 				<div class="label-block">
 					<label for="set_voice_volume">Voice Volume</label>
+					<p class="desc">Volume: <span id="voice_volume_value"></span></p>
 				</div>
 				<input type="range" id="set_voice_volume" min="0" max="1.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_rate">Voice Rate</label>
+					<p class="desc">Rate: <span id="voice_rate_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_rate" min="0" max="2.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_pitch">Voice Pitch</label>
+					<p class="desc">Pitch: <span id="voice_pitch_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
 			</li>
 		</ol>
 	</div>
