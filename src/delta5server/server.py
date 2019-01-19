@@ -111,8 +111,8 @@ def __(text, domain=''):
 
     if lang:
         if lang in Languages:
-            print(Languages[lang])
-            return Languages[lang]['values'][text]
+            if text in Languages[lang]['values']:
+                return Languages[lang]['values'][text]
     return text
 
 def getLanguages():
@@ -121,6 +121,13 @@ def getLanguages():
     for lang in Languages:
         langs.append(lang)
     return langs
+
+def getFullLanguage(lang):
+    # return full language dictionary
+    if lang:
+        if lang in Languages:
+            return json.dumps(Languages[lang]['values'])
+    return {}
 
 INTERFACE = get_hardware_interface()
 RACE = get_race_state() # For storing race management variables
@@ -345,50 +352,53 @@ def index():
     # - One for all rounds, grouped by heats
     # - One for all pilots, sorted by fastest lap and shows average and other stats
     # - One for individual heats
-    return render_template('rounds.html', getOption=getOption)
-        #, heat_max_laps=heat_max_laps, heat_fast_laps=heat_fast_laps
+    return render_template('rounds.html', getOption=getOption, __=__, 
+        lang=getFullLanguage(getOption('currentLanguage')))
 
 @APP.route('/')
 def heats():
     '''Route to heat summary page.'''
-    return render_template('heats.html', getOption=getOption, __=__)
+    return render_template('heats.html', getOption=getOption, __=__, 
+        lang=getFullLanguage(getOption('currentLanguage')))
 
 @APP.route('/race')
 @requires_auth
 def race():
     '''Route to race management page.'''
-    return render_template('race.html', num_nodes=RACE.num_nodes,
-                           current_heat=RACE.current_heat,
-                           heats=Heat, pilots=Pilot,
-                           getOption=getOption,
+    return render_template('race.html', getOption=getOption, __=__, 
+        lang=getFullLanguage(getOption('currentLanguage')),
+        num_nodes=RACE.num_nodes,
+        current_heat=RACE.current_heat,
+        heats=Heat, pilots=Pilot,
         frequencies=[node.frequency for node in INTERFACE.nodes])
 
 @APP.route('/current')
 def racepublic():
     '''Route to race management page.'''
-    return render_template('racepublic.html',
-            num_nodes=RACE.num_nodes,
-            getOption=getOption,
-        )
+    return render_template('racepublic.html', getOption=getOption, __=__, 
+        lang=getFullLanguage(getOption('currentLanguage')),
+        num_nodes=RACE.num_nodes)
 
 @APP.route('/settings')
 @requires_auth
 def settings():
     '''Route to settings page.'''
 
-    return render_template('settings.html', num_nodes=RACE.num_nodes,
-                           getOption=getOption,
-                           ConfigFile=Config['GENERAL']['configFile'])
+    return render_template('settings.html', getOption=getOption, __=__, 
+        lang=getFullLanguage(getOption('currentLanguage')),
+        num_nodes=RACE.num_nodes,
+        ConfigFile=Config['GENERAL']['configFile'])
 
 @APP.route('/correction')
 @requires_auth
 def correction():
     '''Route to node correction page.'''
 
-    return render_template('correction.html', num_nodes=RACE.num_nodes,
-                           current_profile = getOption("currentProfile"),
-                           profiles = Profiles,
-                           getOption=getOption)
+    return render_template('correction.html', getOption=getOption, __=__, 
+        lang=getFullLanguage(getOption('currentLanguage')),
+        num_nodes=RACE.num_nodes,
+        current_profile = getOption("currentProfile"),
+        profiles = Profiles)
 
 # Debug Routes
 
@@ -396,15 +406,18 @@ def correction():
 @requires_auth
 def hardwarelog():
     '''Route to hardware log page.'''
-    return render_template('hardwarelog.html', getOption=getOption)
+    return render_template('hardwarelog.html', getOption=getOption, __=__, 
+        lang=getFullLanguage(getOption('currentLanguage')))
 
 @APP.route('/database')
 @requires_auth
 def database():
     '''Route to database page.'''
-    return render_template('database.html', pilots=Pilot, heats=Heat, currentlaps=CurrentLap, \
-        savedraces=SavedRace, race_format=RaceFormat, \
-        profiles=Profiles, globalSettings=GlobalSettings, getOption=getOption)
+    return render_template('database.html', getOption=getOption, __=__, 
+        lang=getFullLanguage(getOption('currentLanguage')),
+        pilots=Pilot, heats=Heat, currentlaps=CurrentLap,
+        savedraces=SavedRace, race_format=RaceFormat,
+        profiles=Profiles, globalSettings=GlobalSettings)
 
 #
 # Socket IO Events
@@ -636,7 +649,7 @@ def on_add_race_class():
     DB.session.add(new_race_class)
     DB.session.flush()
     DB.session.refresh(new_race_class)
-    new_race_class.name = 'Class %d' % (new_race_class.id)
+    new_race_class.name = __('Class %d') % (new_race_class.id)
     DB.session.commit()
     server_log('Class added: Class {0}'.format(new_race_class))
     emit_class_data()
@@ -658,7 +671,7 @@ def on_set_race_class_name(data):
 def on_add_pilot():
     '''Adds the next available pilot id number in the database.'''
     new_pilot = Pilot(name='New Pilot',
-                           callsign='New callsign',
+                           callsign='New Callsign',
                            team=DEF_TEAM_NAME,
                            phonetic = '')
     DB.session.add(new_pilot)
@@ -727,8 +740,8 @@ def on_add_profile():
     new_freqs = {}
     new_freqs["f"] = default_frequencies()
 
-    new_profile = Profiles(name='New Profile',
-                           description = 'New Profile',
+    new_profile = Profiles(name=__('New Profile'),
+                           description = __('New Profile'),
                            frequencies = json.dumps(new_freqs),
                            enter_ats = profile.enter_ats,
                            exit_ats = profile.exit_ats,
@@ -926,7 +939,7 @@ def on_add_race_format():
     DB.session.add(new_format)
     DB.session.flush()
     DB.session.refresh(new_format)
-    new_format.name = 'Format %s' % new_format.id
+    new_format.name = __('Format %d') % new_format.id
     DB.session.commit()
     on_set_race_format(data={ 'race_format': new_format.id })
 
@@ -2560,12 +2573,12 @@ def db_reset_profile():
     new_freqs = {}
     new_freqs["f"] = default_frequencies()
 
-    DB.session.add(Profiles(name="Outdoor",
-                             description = "Medium filtering",
+    DB.session.add(Profiles(name=__("Outdoor"),
+                             description = __("Medium filtering"),
                              frequencies = json.dumps(new_freqs),
                              f_ratio=100))
-    DB.session.add(Profiles(name="Indoor",
-                             description = "Strong filtering",
+    DB.session.add(Profiles(name=__("Indoor"),
+                             description = __("Strong filtering"),
                              frequencies = json.dumps(new_freqs),
                              f_ratio=10))
     DB.session.commit()
@@ -2574,7 +2587,7 @@ def db_reset_profile():
 
 def db_reset_race_formats():
     DB.session.query(RaceFormat).delete()
-    DB.session.add(RaceFormat(name="MultiGP Qualifier",
+    DB.session.add(RaceFormat(name=__("MultiGP Qualifier"),
                              race_mode=0,
                              race_time_sec=120,
                              hide_stage_timer=1,
@@ -2582,7 +2595,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              number_laps_win=0,
                              laps_wins_mode=0))
-    DB.session.add(RaceFormat(name="Whoop Sprint",
+    DB.session.add(RaceFormat(name=__("Whoop Sprint"),
                              race_mode=0,
                              race_time_sec=90,
                              hide_stage_timer=1,
@@ -2590,7 +2603,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              number_laps_win=0,
                              laps_wins_mode=0))
-    DB.session.add(RaceFormat(name="Limited Class",
+    DB.session.add(RaceFormat(name=__("Limited Class"),
                              race_mode=0,
                              race_time_sec=210,
                              hide_stage_timer=1,
@@ -2598,7 +2611,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              number_laps_win=0,
                              laps_wins_mode=0))
-    DB.session.add(RaceFormat(name="First to 3 Laps",
+    DB.session.add(RaceFormat(name=__("First to 3 Laps"),
                              race_mode=1,
                              race_time_sec=0,
                              hide_stage_timer=0,
@@ -2606,7 +2619,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              number_laps_win=3,
                              laps_wins_mode=0))
-    DB.session.add(RaceFormat(name="Most Laps Wins",
+    DB.session.add(RaceFormat(name=__("Most Laps Wins"),
                              race_mode=0,
                              race_time_sec=120,
                              hide_stage_timer=1,
@@ -2614,7 +2627,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              number_laps_win=0,
                              laps_wins_mode=1))
-    DB.session.add(RaceFormat(name="Open Practice",
+    DB.session.add(RaceFormat(name=__("Open Practice"),
                              race_mode=1,
                              race_time_sec=0,
                              hide_stage_timer=0,
@@ -2629,7 +2642,7 @@ def db_reset_race_formats():
 def db_reset_options_defaults():
     DB.session.query(GlobalSettings).delete()
     setOption("server_api", SERVER_API)
-    setOption("timerName", "Delta5 Race Timer")
+    setOption("timerName", __("Delta5 Race Timer"))
 
     setOption("hue_0", "212")
     setOption("sat_0", "55")

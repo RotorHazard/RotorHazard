@@ -39,7 +39,7 @@
 				if (heats.note) {
 					el.append('<h3>' + heats.note + '</h3>');
 				} else {
-					el.append('<h3>Heat ' + heats.heat_id + '</h3>');
+					el.append('<h3>'+ __('Heat') + ' ' + heats.heat_id + '</h3>');
 				}
 
 				var nodelist = $('<ol>');
@@ -49,7 +49,7 @@
 					var slot = $('<li>');
 					slot.append('<div class="channel-block" data-node="' + j + '"><span class="ch"></span> <span class="fr"></span></div>');
 
-					callsign = '-None-';
+					callsign = __('-None-');
 					for (var k in msg.pilot_data.pilot_id) {
 						if (msg.pilot_data.pilot_id[k] == heatpilot) {
 							callsign = msg.pilot_data.callsign[k];
@@ -74,19 +74,19 @@
 
 <!--Display the heats-->
 
-<h2>{{ __("Heats") }}</h2>
+<h2>{{ __('Heats') }}</h2>
 <ol class="heats">
-	<li class="heat">Loading...</li>
+	<li class="heat">{{ __('Loading...') }}</li>
 </ol>
 
 <!--Display the pilots-->
-<h2>{{ __("Pilots") }}</h2>
+<h2>{{ __('Pilots') }}</h2>
 <ul class="pilots">
-	<li>Loading...</li>
+	<li>{{ __('Loading...') }}</li>
 </ul>
 
 <div class="admin">
-	<p><a href="/settings">{{ __("Admin") }}</a></p>
+	<p><a href="/settings">{{ __('Admin') }}</a></p>
 </div>
 
 </main>

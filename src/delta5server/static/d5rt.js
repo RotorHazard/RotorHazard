@@ -88,17 +88,25 @@ function LogSlider(options) {
 LogSlider.prototype = {
    // Calculate value from a slider position
    value: function(position) {
-      return Math.exp((position - this.minpos) * this.scale + this.minlval);
+	  return Math.exp((position - this.minpos) * this.scale + this.minlval);
    },
    // Calculate slider position from a value
    position: function(value) {
-      return this.minpos + (Math.log(value) - this.minlval) / this.scale;
+	  return this.minpos + (Math.log(value) - this.minlval) / this.scale;
    }
 };
 
+function __(text) {
+	// return translated string
+	if (language_strings[text]) {
+		return language_strings[text]
+	}
+	return text
+}
+
 /* d5rt object for local settings/storage */
 var d5rt = {
-	language: '', // local language for voice callout
+	voice_language: '', // voice type for text-to-speech callouts
 	voice_volume: 1.0, // voice call volume
 	voice_rate: 1.25,  // voice call speak pitch
 	voice_pitch: 1.0,  // voice call speak rate
@@ -227,22 +235,6 @@ function nodeModel() {
 		},
 
 		median_separation: false,
-
-		calOffset: {
-			min: 0,
-			best: 0,
-			max: Infinity
-		},
-		calThrs: {
-			min: 0,
-			best: 0,
-			max: Infinity
-		},
-		trigThrs: {
-			min: 0,
-			best: 0,
-			max: Infinity
-		}
 	};
 
 	this.graph = new SmoothieChart({
@@ -277,17 +269,6 @@ nodeModel.prototype = {
 			{color:'#999', lineWidth:1.7, value: this.exit_at_level},
 			{color:'#666', lineWidth:1.7, value: this.pass_nadir_rssi},
 		];
-	},
-	calcStats: function(dataType, selfIndex) {
-		dataSet = this.corrections[dataType];
-		dataSet.max = Math.max(...dataSet.rawData);
-		dataSet.min = Math.min(...dataSet.rawData);
-		dataSet.median = median(dataSet.rawData);
-		// dataSet.range = dataSet.max - dataSet.min;
-
-		$('#max_' + dataType + '_' + selfIndex).html(dataSet.max);
-		$('#median_' + dataType + '_' + selfIndex).html(dataSet.median);
-		$('#min_' + dataType + '_' + selfIndex).html(dataSet.min);
 	}
 }
 
@@ -304,7 +285,7 @@ jQuery(document).ready(function($){
 	}
 
 	// header collapsing (hamburger)
-	$('#logo').after('<button class="hamburger">Menu</button>');
+	$('#logo').after('<button class="hamburger">' + __('Menu') + '</button>');
 
 	$('.hamburger').on('click', function(event) {
 		if ($('body').hasClass('nav-over')) {
@@ -388,30 +369,30 @@ function build_leaderboard(leaderboard, display_type, meta) {
 	var table = $('<table class="leaderboard">');
 	var header = $('<thead>');
 	var header_row = $('<tr>');
-	header_row.append('<th class="pos">Pos.</th>');
-	header_row.append('<th class="pilot">Pilot</th>');
+	header_row.append('<th class="pos">' + __('Pos.') + '</th>');
+	header_row.append('<th class="pilot">' + __('Pilot') + '</th>');
 	if (meta.team_racing_mode) {
-		header_row.append('<th class="team">Team</th>');
+		header_row.append('<th class="team">' + __('Team') + '</th>');
 	}
 	if (display_type == 'by_race_time' ||
 		display_type == 'heat' ||
 		display_type == 'round' ||
 		display_type == 'current') {
-		header_row.append('<th class="laps">Laps</th>');
-		header_row.append('<th class="total">Total</th>');
-		header_row.append('<th class="avg">Average</th>');
+		header_row.append('<th class="laps">' + __('Laps') + '</th>');
+		header_row.append('<th class="total">' + __('Total') + '</th>');
+		header_row.append('<th class="avg">' + __('Avg.') + '</th>');
 	}
 	if (display_type == 'by_fastest_lap' ||
 		display_type == 'heat' ||
 		display_type == 'round' ||
 		display_type == 'current') {
-		header_row.append('<th class="fast">Fastest</th>');
+		header_row.append('<th class="fast">' + __('Fastest') + '</th>');
 	}
 	if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
 		display_type == 'round' ||
 		display_type == 'current') {
-		header_row.append('<th class="consecutive">3 Consecutive</th>');
+		header_row.append('<th class="consecutive">' + __('3 Consecutive') + '</th>');
 	}
 	header.append(header_row);
 	table.append(header);
@@ -549,9 +530,9 @@ var freq = {
 		var keyNames = Object.keys(this.frequencies);
 		for (var i in keyNames) {
 			if (this.frequencies[keyNames[i]] == 0) {
-				output += '<option value="0">Disabled</option>';
+				output += '<option value="0">' + __('Disabled') + '</option>';
 			} else if (this.frequencies[keyNames[i]] == 'n/a') {
-				output += '<option value="n/a">N/A</option>';
+				output += '<option value="n/a">' + __('N/A') + '</option>';
 			} else {
 				output += '<option value="' + this.frequencies[keyNames[i]] + '">' + keyNames[i] + ' ' + this.frequencies[keyNames[i]] + '</option>';
 			}

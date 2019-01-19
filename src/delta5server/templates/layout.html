@@ -19,6 +19,11 @@
 	<script type="text/javascript" src="./static/d5rt.js"></script>
 	<link rel="stylesheet" href="./static/d5rt.css"></link>
 
+
+	<script type="text/javascript" charset="utf-8">
+		var language_strings = {{ lang|safe }};
+	</script>
+
 	<!-- Repeated styles for color overrides -->
 	<style>
 	/* ******* */
@@ -127,11 +132,11 @@
 		<div id="logo">{{ getOption("timerName") }}</div>
 		<nav id="nav-main">
 			<ul>
-				<li><a href="/">Heats</a></li>
-				<li><a href="/results">Results</a></li>
-				<li><a href="/current">Current</a></li>
-				<li class="admin-hide"><a href="/race">Run</a></li>
-				<li class="admin-hide"><a href="/settings">Settings</a></li>
+				<li><a href="/">{{ __("Heats") }}</a></li>
+				<li><a href="/results">{{ __("Results") }}</a></li>
+				<li><a href="/current">{{ __("Current") }}</a></li>
+				<li class="admin-hide"><a href="/race">{{ __("Run") }}</a></li>
+				<li class="admin-hide"><a href="/settings">{{ __("Settings") }}</a></li>
 			</ul>
 		</nav>
 	</header>

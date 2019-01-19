@@ -154,13 +154,13 @@
 				if (msg.pilot)
 					pilot = msg.pilot;
 
-				var $ttstest = pilot + " lap " + msg.lap + ": " + msg.phonetic;
+				var $ttstest = pilot + " " + __('Lap') + " " + msg.lap + ": " + msg.phonetic;
 				speak('<div class="speech">' + $ttstest + '</div>');
 			}
 		})
 
 		socket.on('current_heat', function (msg) {
-			var heatname = 'Heat ' + msg.current_heat;
+			var heatname = __('Heat') + ' ' + msg.current_heat;
 			if (msg.heat_note)
 				heatname = msg.heat_note;
 
@@ -217,10 +217,10 @@
 		for (var i in voices) {
 			$('.set_language').append('<option>'+ voices[i].name + '</option>');
 		}
-		$('.set_language').val(d5rt.language).attr('selected', 'selected');
+		$('.set_language').val(d5rt.voice_language).attr('selected', 'selected');
 
 		$('.set_language').change(function (event) {
-			d5rt.language = $(this).val();
+			d5rt.voice_language = $(this).val();
 			d5rt.saveData();
 		});
 
@@ -264,7 +264,7 @@
 	});
 
 	function doSpeak(obj) {
-		$(obj).articulate('setVoice','name', d5rt.language).articulate('speak');
+		$(obj).articulate('setVoice','name', d5rt.voice_language).articulate('speak');
 	};
 
 	function speak(obj, priority) {
@@ -287,7 +287,7 @@
 		<!--Buttons for controlling the race-->
 		<p>{% include "build_timer.html" %}</p>
 
-		<h2 class="current_heat">Loading...</h2>
+		<h2 class="current_heat">{{ __('Loading...') }}</h2>
 
 		<!--Display the race leaderboard-->
 		<div id="leaderboard"></div>
@@ -296,7 +296,7 @@
 		<div class="race-results">
 			{% for node in range(num_nodes) %}
 			<div class="node" data-id="{{ node }}">
-				<h4 class="callsign_{{ node }}">Loading...</h4>
+				<h4 class="callsign_{{ node }}">{{ __('Loading...') }}</h4>
 				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
 				<table class="laps" id="current_laps_{{ node }}">
 					<tbody>
@@ -312,42 +312,42 @@
 <!--Voice Settings-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>Audio Control</h2>
+		<h2>{{ __('Audio Control') }}</h2>
 	</div>
 	<div class="panel-content">
 
 		<ol class="form">
 			<li>
 				<div class="label-block" id="voice_select">
-					<label for="set_language">Voice Select</label>
+					<label for="set_language">{{ __('Voice Select') }}</label>
 				</div>
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="voice-calls">Voice Calls</label>
+					<label for="voice-calls">{{ __('Voice Calls') }}</label>
 				</div>
 				<select id="voice-calls">
-					<option value="-1">Loading...</option>
+					<option value="-1">{{ __('Loading...') }}</option>
 				</select>
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_voice_volume">Voice Volume</label>
-					<p class="desc">Volume: <span id="voice_volume_value"></span></p>
+					<label for="set_voice_volume">{{ __('Voice Volume') }}</label>
+					<p class="desc">{{ __('Volume') }}: <span id="voice_volume_value"></span></p>
 				</div>
 				<input type="range" id="set_voice_volume" min="0" max="1.0" step="0.01">
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_voice_rate">Voice Rate</label>
-					<p class="desc">Rate: <span id="voice_rate_value"></span></p>
+					<label for="set_voice_rate">{{ __('Voice Rate') }}</label>
+					<p class="desc">{{ __('Rate') }}: <span id="voice_rate_value"></span></p>
 				</div>
 				<input type="range" id="set_voice_rate" min="0" max="2.0" step="0.01">
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_voice_pitch">Voice Pitch</label>
-					<p class="desc">Pitch: <span id="voice_pitch_value"></span></p>
+					<label for="set_voice_pitch">{{ __('Voice Pitch') }}</label>
+					<p class="desc">{{ __('Pitch') }}: <span id="voice_pitch_value"></span></p>
 				</div>
 				<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
 			</li>

@@ -1,13 +1,13 @@
 {% extends "layout.html" %} {% block title %}Database{% endblock %} {% block content %}
 <main class="page-database">
-<h2>Pilots</h2>
+<h2>{{ _('Pilots') }}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Pilot ID</th>
-            <th>Call Sign</th>
-            <th>Name</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Pilot ID') }}</th>
+            <th>{{ _('Call Sign') }}</th>
+            <th>{{ _('Name') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -22,14 +22,14 @@
     </tbody>
 </table>
 
-<h2>Heats</h2>
+<h2>{{ _('Heats') }}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Heat ID</th>
-            <th>Node Index</th>
-            <th>Pilot ID</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Heat ID') }}</th>
+            <th>{{ _('Node Index') }}</th>
+            <th>{{ _('Pilot ID') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -44,17 +44,17 @@
     </tbody>
 </table>
 
-<h2>Current Laps</h2>
+<h2>{{ _('Current Laps') }}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Node Index</th>
-            <th>Pilot ID</th>
-            <th>Lap ID</th>
-            <th>Lap Time Stamp</th>
-            <th>Lap Time</th>
-            <th>Lap Time Formatted</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Node Index') }}</th>
+            <th>{{ _('Pilot ID') }}</th>
+            <th>{{ _('Lap ID') }}</th>
+            <th>{{ _('Lap Time Stamp') }}</th>
+            <th>{{ _('Lap Time') }}</th>
+            <th>{{ _('Lap Time Formatted') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -72,19 +72,19 @@
     </tbody>
 </table>
 
-<h2>Saved Races</h2>
+<h2>{{ _('Saved Races') }}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Round ID</th>
-            <th>Heat ID</th>
-            <th>Node Index</th>
-            <th>Pilot ID</th>
-            <th>Lap ID</th>
-            <th>Lap Time Stamp</th>
-            <th>Lap Time</th>
-            <th>Lap Time Formatted</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Round ID') }}</th>
+            <th>{{ _('Heat ID') }}</th>
+            <th>{{ _('Node Index') }}</th>
+            <th>{{ _('Pilot ID') }}</th>
+            <th>{{ _('Lap ID') }}</th>
+            <th>{{ _('Lap Time Stamp') }}</th>
+            <th>{{ _('Lap Time') }}</th>
+            <th>{{ _('Lap Time Formatted') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -104,18 +104,18 @@
     </tbody>
 </table>
 
-<h2>Race Format</h2>
+<h2>{{ _('Race Format') }}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Mode</th>
-            <th>Time</th>
-            <th>Minimum Lap</th>
-            <th>Hide Staging Timer</th>
-            <th>Min Start Delay</th>
-            <th>Max Start Delay</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Name') }}</th>
+            <th>{{ _('Mode') }}</th>
+            <th>{{ _('Time') }}</th>
+            <th>{{ _('Minimum Lap') }}</th>
+            <th>{{ _('Hide Staging Timer') }}</th>
+            <th>{{ _('Min Start Delay') }}</th>
+            <th>{{ _('Max Start Delay') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -135,32 +135,12 @@
     </tbody>
 </table>
 
-<h2>Node Data</h2>
+<h2>{{ _('Global Settings') }}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Frequency</th>
-            <th>Offset</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for node in node_data.query.all() %}
-        <tr>
-            <td>{{ node.id }}</td>
-            <td>{{ node.frequency }}</td>
-            <td>{{ node.offset }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
-<h2>Global Settings</h2>
-<table class="table">
-    <thead>
-        <tr>
-            <th>Option</th>
-            <th>Value</th>
+            <th>{{ _('Option') }}</th>
+            <th>{{ _('Value') }}</th>
         </tr>
     </thead>
     <tbody>
