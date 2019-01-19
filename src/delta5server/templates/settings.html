@@ -509,15 +509,20 @@
 		$('#voice_select').after('<select id="set_language">');
 		var voices = $().articulate('getVoices');
 
-		for (var i in voices) {
-			$('#set_language').append('<option>'+ voices[i].name + '</option>');
-		}
-		$('#set_language').val(d5rt.voice_language).attr('selected', 'selected');
-
 		$('#set_language').change(function (event) {
 			d5rt.voice_language = $(this).val();
 			d5rt.saveData();
 		});
+
+		for (var i in voices) {
+			$('#set_language').append('<option>'+ voices[i].name + '</option>');
+		}
+		if (d5rt.voice_language) {
+			$('#set_language').val(d5rt.voice_language);	
+		} else {
+			$('#set_language').selectedIndex = 0;
+			$('#set_language').trigger('change');
+		}
 
 		$('button#play_voice_test').click(function (event) {
 			speak('<div class="speech">' + $('#voice_test_text').val() + '</div>');
@@ -1207,7 +1212,7 @@
 		<p class="form-note">{{ __('Formats used with saved races cannot be modified. (Clear races to release.)') }}</p>
 
 		<div class="control-set">
-			<label for="set_race_format">Format:') }}</label>
+			<label for="set_race_format">{{ __('Format:') }}</label>
 			<select id="set_race_format">
 				<option>{{ __('Loading...') }}</option>
 			</select>

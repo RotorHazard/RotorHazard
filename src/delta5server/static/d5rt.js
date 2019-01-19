@@ -131,7 +131,7 @@ var d5rt = {
 		if (!supportsLocalStorage()) {
 			return false;
 		}
-		localStorage['d5rt.language'] = JSON.stringify(this.language);
+		localStorage['d5rt.voice_language'] = JSON.stringify(this.language);
 		localStorage['d5rt.voice_volume'] = JSON.stringify(this.voice_volume);
 		localStorage['d5rt.voice_rate'] = JSON.stringify(this.voice_rate);
 		localStorage['d5rt.voice_pitch'] = JSON.stringify(this.voice_pitch);
@@ -151,8 +151,8 @@ var d5rt = {
 	},
 	restoreData: function(dataType) {
 		if (supportsLocalStorage()) {
-			if (localStorage['d5rt.language']) {
-				this.language = JSON.parse(localStorage['d5rt.language']);
+			if (localStorage['d5rt.voice_language']) {
+				this.language = JSON.parse(localStorage['d5rt.voice_language']);
 			}
 			if (localStorage['d5rt.voice_volume']) {
 				this.voice_volume = JSON.parse(localStorage['d5rt.voice_volume']);
