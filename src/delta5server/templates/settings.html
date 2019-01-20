@@ -162,6 +162,13 @@
 				freq.updateSelects();
 				freq.updateBlocks();
 			}
+			if (msg.imd_rating) {
+				$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +
+                      ': ' + msg.imd_rating + ' &nbsp; <a href="/imdtabler">view</a>');
+			}
+			else {
+				$('#imd_rating_label').empty();
+			}
 		});
 
 		$('button.set_frequency_preset').click(function (event) {
@@ -1014,6 +1021,7 @@
 				</div>
 			{% endfor %}
 		</div>
+		<div class="control-set" id="imd_rating_label"></div>
 	</div>
 </div>
 
