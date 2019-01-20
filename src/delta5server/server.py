@@ -5,8 +5,10 @@ import os
 import sys
 import shutil
 import base64
+import subprocess
 from datetime import datetime
 from functools import wraps
+from collections import OrderedDict
 
 from flask import Flask, render_template, request, Response
 from flask_socketio import SocketIO, emit
@@ -45,6 +47,7 @@ DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
 CONFIG_FILE_NAME = 'config.json'
 LANGUAGE_FILE_NAME = 'language.json'
+IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 DEF_TEAM_NAME = 'A'  # default team
@@ -406,6 +409,13 @@ def correction():
         current_profile = getOption("currentProfile"),
         profiles = Profiles)
 
+@APP.route('/imdtabler')
+def imdtabler():
+    '''Route to IMDTabler page.'''
+
+    return render_template('imdtabler.html', getOption=getOption, __=__, 
+        lang=getFullLanguage(getOption('currentLanguage')))
+
 # Debug Routes
 
 @APP.route('/hardwarelog')
@@ -484,6 +494,8 @@ def on_load_data(data):
             emit_team_racing_stat_if_enb(nobroadcast=True)
         elif load_type == 'language':
             emit_language(nobroadcast=True)
+        elif load_type == 'imdtabler_data':
+            emit_imdtabler_data(nobroadcast=True)
 
 # Settings socket io events
 
@@ -1270,8 +1282,24 @@ def emit_frequency_data(**params):
     profile = Profiles.query.get(current_profile)
     profile_freqs = json.loads(profile.frequencies)
 
+    try:
+        imd_val = None
+        if os.path.exists(IMDTABLER_JAR_NAME):
+            fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
+            fs_list = []
+            for val in fi_list:  # convert list of integers to list of strings
+                if val > 0:      # drop any zero entries
+                    fs_list.append(str(val))
+            if len(fs_list) > 2:
+                imd_val = subprocess.check_output(  # invoke jar; get response
+                            ['java', '-jar', IMDTABLER_JAR_NAME, '-r'] + fs_list).rstrip()
+    except Exception as ex:
+        imd_val = None
+        server_log('IMDTabler exception:  ' + str(ex))
+
     emit_payload = {
-            'frequency': profile_freqs["f"][:RACE.num_nodes]
+            'frequency': profile_freqs["f"][:RACE.num_nodes],
+            'imd_rating': imd_val
         }
     if ('nobroadcast' in params):
         emit('frequency_data', emit_payload)
@@ -2300,6 +2328,36 @@ def emit_node_crossing_change(node, **params):
         emit('node_crossing_change', emit_payload)
     else:
         SOCKET_IO.emit('node_crossing_change', emit_payload)
+
+def emit_imdtabler_data(**params):
+    '''Emits IMDTabler page.'''
+
+    current_profile = int(getOption("currentProfile"))
+    profile = Profiles.query.get(current_profile)
+    profile_freqs = json.loads(profile.frequencies)
+    try:
+        imdtabler_data = None
+        if os.path.exists(IMDTABLER_JAR_NAME):
+            fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
+            fs_list = []
+            for val in fi_list:  # convert list of integers to list of strings
+                if val > 0:      # drop any zero entries
+                    fs_list.append(str(val))
+            if len(fs_list) > 2:
+                imdtabler_data = subprocess.check_output(  # invoke jar; get response
+                            ['java', '-jar', IMDTABLER_JAR_NAME, '-t'] + fs_list)
+    except Exception as ex:
+        imdtabler_data = None
+        server_log('emit_imdtabler_page exception:  ' + str(ex))
+
+    emit_payload = {
+        'table_data': imdtabler_data,
+    }
+
+    if ('nobroadcast' in params):
+        emit('imdtabler_data', emit_payload)
+    else:
+        SOCKET_IO.emit('imdtabler_data', emit_payload)
 
 
 #
