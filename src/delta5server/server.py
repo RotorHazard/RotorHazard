@@ -5,8 +5,10 @@ import os
 import sys
 import shutil
 import base64
+import subprocess
 from datetime import datetime
 from functools import wraps
+from collections import OrderedDict
 
 from flask import Flask, render_template, request, Response
 from flask_socketio import SocketIO, emit
@@ -45,6 +47,7 @@ DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
 CONFIG_FILE_NAME = 'config.json'
 LANGUAGE_FILE_NAME = 'language.json'
+IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 DEF_TEAM_NAME = 'A'  # default team
@@ -1270,8 +1273,24 @@ def emit_frequency_data(**params):
     profile = Profiles.query.get(current_profile)
     profile_freqs = json.loads(profile.frequencies)
 
+    try:
+        imd_val = None
+        if os.path.exists(IMDTABLER_JAR_NAME):
+            fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
+            fs_list = []
+            for val in fi_list:  # convert list of integers to list of strings
+                if val > 0:      # drop any zero entries
+                    fs_list.append(str(val))
+            if len(fs_list) > 2:
+                imd_val = subprocess.check_output(  # invoke jar; get response
+                            ['java', '-jar', IMDTABLER_JAR_NAME, '-r'] + fs_list).rstrip()
+    except Exception as ex:
+        imd_val = None
+        server_log('IMDTabler exception:  ' + str(ex))
+
     emit_payload = {
-            'frequency': profile_freqs["f"][:RACE.num_nodes]
+            'frequency': profile_freqs["f"][:RACE.num_nodes],
+            'imd_rating': imd_val
         }
     if ('nobroadcast' in params):
         emit('frequency_data', emit_payload)
