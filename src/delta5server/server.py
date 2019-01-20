@@ -1,5 +1,5 @@
 '''Delta5 race timer server script'''
-SERVER_API = 6 # Server API version
+SERVER_API = 7 # Server API version
 
 import os
 import sys
@@ -72,6 +72,7 @@ Config['LED']['LED_STRIP']      = ws.WS2811_STRIP_GRB   # Strip type and colour 
 Config['GENERAL']['HTTP_PORT'] = 5000
 Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
 Config['GENERAL']['ADMIN_PASSWORD'] = 'delta5'
+Config['GENERAL']['DEBUG'] = False
 
 # override defaults above with config from file
 try:
@@ -119,7 +120,10 @@ def getLanguages():
     # get list of available languages
     langs = []
     for lang in Languages:
-        langs.append(lang)
+        l = {}
+        l['id'] = lang
+        l['name'] = Languages[lang]['name']
+        langs.append(l)
     return langs
 
 def getFullLanguage(lang):
@@ -236,6 +240,7 @@ class Heat(DB.Model):
 class RaceClass(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=True)
+    format_id = DB.Column(DB.Integer, nullable=False)
 
     def __repr__(self):
         return '<RaceClass %r>' % self.id
@@ -387,7 +392,8 @@ def settings():
     return render_template('settings.html', getOption=getOption, __=__, 
         lang=getFullLanguage(getOption('currentLanguage')),
         num_nodes=RACE.num_nodes,
-        ConfigFile=Config['GENERAL']['configFile'])
+        ConfigFile=Config['GENERAL']['configFile'],
+        Debug=Config['GENERAL']['DEBUG'])
 
 @APP.route('/correction')
 @requires_auth
@@ -476,6 +482,8 @@ def on_load_data(data):
             emit_current_heat(nobroadcast=True)
         elif load_type == 'team_racing_stat_if_enb':
             emit_team_racing_stat_if_enb(nobroadcast=True)
+        elif load_type == 'language':
+            emit_language(nobroadcast=True)
 
 # Settings socket io events
 
@@ -584,6 +592,12 @@ def hardware_set_all_exit_ats(exit_at_levels):
     for idx in range(RACE.num_nodes):
         INTERFACE.set_exit_at_level(idx, exit_at_levels[idx])
 
+@SOCKET_IO.on('set_language')
+def on_set_language(data):
+    '''Set interface language.'''
+    setOption('currentLanguage', data['language'])
+    DB.session.commit()
+
 @SOCKET_IO.on('cap_enter_at_btn')
 def on_cap_enter_at_btn(data):
     '''Capture enter-at level.'''
@@ -645,7 +659,7 @@ def on_set_heat_class(data):
 @SOCKET_IO.on('add_race_class')
 def on_add_race_class():
     '''Adds the next available pilot id number in the database.'''
-    new_race_class = RaceClass(name='New class')
+    new_race_class = RaceClass(name='New class', format_id=0)
     DB.session.add(new_race_class)
     DB.session.flush()
     DB.session.refresh(new_race_class)
@@ -677,8 +691,8 @@ def on_add_pilot():
     DB.session.add(new_pilot)
     DB.session.flush()
     DB.session.refresh(new_pilot)
-    new_pilot.name = 'Pilot %d Name' % (new_pilot.id)
-    new_pilot.callsign = 'Callsign %d' % (new_pilot.id)
+    new_pilot.name = __('Pilot %d Name') % (new_pilot.id)
+    new_pilot.callsign = __('Callsign %d') % (new_pilot.id)
     new_pilot.team = DEF_TEAM_NAME
     new_pilot.phonetic = ''
     DB.session.commit()
@@ -749,7 +763,7 @@ def on_add_profile():
     DB.session.add(new_profile)
     DB.session.flush()
     DB.session.refresh(new_profile)
-    new_profile.name = 'Profile %s' % new_profile.id
+    new_profile.name = __('Profile %s') % new_profile.id
     DB.session.commit()
     on_set_profile(data={ 'profile': new_profile.id })
 
@@ -1310,6 +1324,17 @@ def emit_node_tuning(**params):
     else:
         SOCKET_IO.emit('node_tuning', emit_payload)
 
+def emit_language(**params):
+    '''Emits race status.'''
+    emit_payload = {
+            'language': getOption("currentLanguage"),
+            'languages': getLanguages()
+        }
+    if ('nobroadcast' in params):
+        emit('language', emit_payload)
+    else:
+        SOCKET_IO.emit('language', emit_payload)
+
 def emit_min_lap(**params):
     '''Emits current minimum lap.'''
     emit_payload = {
@@ -1331,7 +1356,7 @@ def emit_team_racing_mode(**params):
         SOCKET_IO.emit('team_racing_mode', emit_payload)
 
 def emit_race_format(**params):
-    '''Emits node tuning values.'''
+    '''Emits race format values.'''
     current_format = int(getOption("currentFormat"))
     format_val = RaceFormat.query.get(current_format)
     has_race = SavedRace.query.filter_by(format_id=current_format).first()
@@ -1794,10 +1819,26 @@ def emit_class_data(**params):
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
+        current_class['format'] = race_class.format_id
+
+        has_race = SavedRace.query.filter_by(class_id=race_class.id).first()
+        if has_race:
+            current_class['locked'] = True
+        else:
+            current_class['locked'] = False
+
         current_classes.append(current_class)
 
+    formats = []
+    for race_format in RaceFormat.query.all():
+        raceformat = {}
+        raceformat['id'] = race_format.id
+        raceformat['name'] = race_format.name
+        formats.append(raceformat)
+
     emit_payload = {
-        'classes': current_classes
+        'classes': current_classes,
+        'formats': formats
     }
     if ('nobroadcast' in params):
         emit('class_data', emit_payload)

@@ -531,8 +531,7 @@ main {
 
 .node h3,
 .node h4,
-.node h5,
-.heats h3 {
+.node h5 {
 	padding: 0.25rem;
 	background: hsl(25, 85%, 55%);
 	color: #000;
@@ -719,6 +718,63 @@ main {
 		display: none;
 	}
 }
+
+.race_classes {
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-wrap: wrap;
+	margin: 0 -0.25em;
+}
+
+.race_classes>li {
+	width: calc(20% - 0.5em);
+	text-overflow: ellipsis;
+	margin: 0 0.25em 0.5em;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+@media (max-width: 68em){
+	.race_classes>li {
+		width: calc(25% - 0.5em);
+	}
+}
+
+@media (max-width: 48em){
+	.race_classes>li {
+		width: calc(33.3333% - 0.5em);
+	}
+}
+
+@media (max-width: 36em){
+	.race_classes>li {
+		width: calc(50% - 0.5em);
+	}
+}
+
+@media (max-width: 23em){
+	.race_classes>li {
+		width: 100%;
+	}
+}
+
+.page-settings .race_classes>li {
+	width: calc(33.3333% - 0.5em);
+}
+
+@media (max-width: 54em){
+	.page-settings .race_classes>li {
+		width: calc(50% - 0.5em);
+	}
+}
+
+@media (max-width: 30em){
+	.page-settings .race_classes>li {
+		width: 100%;
+	}
+}
+
 
 .event-leaderboard {
 	margin-bottom: 1em;

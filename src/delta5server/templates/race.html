@@ -405,17 +405,17 @@
 
 		/* Voice */
 		// construct language selection
-		$('#voice_select').after('<select class="set_language">');
+		$('#voice_select').after('<select class="set_voice_language">');
 		var voices = $().articulate('getVoices');
 
 		for (var i in voices) {
-			$('.set_language').append('<option>'+ voices[i].name + '</option>');
+			$('.set_voice_language').append('<option>'+ voices[i].name + '</option>');
 		}
 		if (d5rt.voice_language) {
-			$('#set_language').val(d5rt.voice_language).attr('selected', 'selected');	
+			$('#set_voice_language').val(d5rt.voice_language);	
 		}
 
-		$('.set_language').change(function (event) {
+		$('.set_voice_language').change(function (event) {
 			d5rt.voice_language = $(this).val();
 			d5rt.saveData();
 		});
@@ -817,7 +817,7 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="set_language">{{ __('Voice Select') }}</label>
+					<label for="set_voice_language">{{ __('Voice Select') }}</label>
 				</div>
 				<div id="voice_select"></div>
 			</li>

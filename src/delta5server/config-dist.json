@@ -3,7 +3,8 @@
 		"HTTP_PORT": 5000,
 		"SECRET_KEY": "secret!",
 		"ADMIN_USERNAME": "admin",
-		"ADMIN_PASSWORD": "delta5"
+		"ADMIN_PASSWORD": "delta5",
+		"DEBUG": false
 	},
 	"LED": {
 		"LED_COUNT": 150,

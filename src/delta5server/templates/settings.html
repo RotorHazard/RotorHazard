@@ -18,7 +18,8 @@
 			'node_tuning',
 			'enter_and_exit_at_levels',
 			'min_lap',
-			'team_racing_mode'
+			'team_racing_mode',
+			'language'
 		]});
 
 		var heartbeatCounter = 0;
@@ -302,13 +303,13 @@
 					slot.append('<div class="channel-block" data-node="' + j + '"><span class="ch"></span> <span class="fr"></span></div>');
 					var pilot = $('<div class="pilot-name">');
 					// pilot selectors
-					var is_disabled = heats.locked ? 'disabled="disabled"' : '';
-					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" ' + is_disabled + '>')
+					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" >')
 					selectbox.append('<option value="0">None</option>')
 						for (var k in msg.pilot_data.pilot_id) {
 							selectbox.append('<option value="' + msg.pilot_data.pilot_id[k] + '">' + msg.pilot_data.callsign[k] + ' (' + msg.pilot_data.name[k] + ')</option>')
 						}
 					selectbox.val(heatpilot);
+					selectbox.prop('disabled', heats.locked);
 					pilot.append(selectbox);
 					slot.append(pilot);
 					nodelist.append(slot);
@@ -316,7 +317,6 @@
 				el.append(nodelist);
 
 				// update class selector
-
 				if (msg.classes.length) {				
 					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '">')
 						selectbox.append('<option value="0">Unclassified</option>')
@@ -328,6 +328,7 @@
 					} else {
 						selectbox.val(0);
 					}
+					selectbox.prop('disabled', heats.locked);
 					el.append(selectbox);			
 				}
 
@@ -376,6 +377,16 @@
 					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
 					input.val(race_class.name);
 					el.append(input);
+
+					var selectbox = $('<select class="set_class_format" id="class_format_' + race_class.id + '">')
+					selectbox.append('<option value="0">' + __('-None-') + '</option>')
+					for (var j in msg.formats) {
+						selectbox.append('<option value="' + msg.formats[j].id +'">' + msg.formats[j].name + '</option>')
+					}
+					selectbox.val(race_class.format);
+					selectbox.prop('disabled', race_class.locked);
+					el.append(selectbox);
+					
 					el.appendTo($('.race_classes'));
 				}
 			} else {
@@ -506,22 +517,22 @@
 
 		/* Voice */
 		// construct language selection
-		$('#voice_select').after('<select id="set_language">');
+		$('#voice_select').after('<select id="set_voice_language">');
 		var voices = $().articulate('getVoices');
 
-		$('#set_language').change(function (event) {
+		$('#set_voice_language').change(function (event) {
 			d5rt.voice_language = $(this).val();
 			d5rt.saveData();
 		});
 
 		for (var i in voices) {
-			$('#set_language').append('<option>'+ voices[i].name + '</option>');
+			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
 		}
 		if (d5rt.voice_language) {
-			$('#set_language').val(d5rt.voice_language);	
+			$('#set_voice_language').val(d5rt.voice_language);	
 		} else {
-			$('#set_language').selectedIndex = 0;
-			$('#set_language').trigger('change');
+			$('#set_voice_language').selectedIndex = 0;
+			$('#set_voice_language').trigger('change');
 		}
 
 		$('button#play_voice_test').click(function (event) {
@@ -785,6 +796,28 @@
 			};
 			socket.emit('set_option', data);
 			return false;
+		});
+
+		socket.on('language', function (msg) {
+			$('#set_language').empty();
+			$('#set_language').append('<option value="">English</option>')
+			for (i = 0; i < msg.languages.length; i++) {
+				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+			
+			if (msg.language) {
+				$('#set_language').val(msg.language);
+			} else {
+				$('#set_voice_language').selectedIndex = 0;
+			}
+		});
+
+		$('#set_language').change(function (event) {
+			var data = {
+				language: $(this).val()
+			};
+			socket.emit('set_language', data);
+			location.reload(true);
 		});
 
 		socket.on('node_crossing_change', function (msg) {
@@ -1087,7 +1120,7 @@
 		<h2>{{ __('Heats and Classes') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">{{ __('Pilot selections cannot be modified for heats with saved races. (Clear races to release.)') }}</p>
+		<p class="form-note">{{ __('Selections cannot be modified for heats/classes with saved races. (Clear races to release.)') }}</p>
 
 		<ol id="heats" class="heats">
 			<li>{{ __('Loading...') }}</li>
@@ -1131,7 +1164,7 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="set_language">{{ __('Voice Select') }}</label>
+					<label for="set_voice_language">{{ __('Voice Select') }}</label>
 				</div>
 				<div id="voice_select"></div>
 			</li>
@@ -1346,6 +1379,7 @@
 	<div class="panel-content">
 		<div class="control-set">
 			<button type="button" class="" id="backup_database" onclick="this.blur();">{{ __('Backup Database') }}</button>
+			{% if Debug %}<a href="/database" class="debug">{{ __('View Database') }}</a>{% endif %}
 		</div>
 		<div class="control-set">
 			<select id="reset_type">
@@ -1369,9 +1403,19 @@
 	<div class="panel-content">
 		<div class="control-set">
 			<button type="button" class="btn-danger" id="shutdown_pi" onclick="this.blur();">{{ __('Shut Down') }}</button>
+			{% if Debug %}<a href="/hardwarelog" class="debug">{{ __('Log') }}</a>{% endif %}
 		</div>
 
 		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_language">{{ __('Language') }}</label>
+				</div>
+				<select id="set_language">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+
 			<li>
 				<div class="label-block">
 					<label for="set_timer_name">{{ __('Timer Name') }}</label>
@@ -1408,19 +1452,6 @@
 			<div class="swatch primary-color">{{ __('Primary Color') }}</div>
 			<div class="swatch secondary-color">{{ __('Secondary Color') }}</div>
 		</div>
-	</div>
-</div>
-
-<!-- Debug -->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Debug') }}</h2>
-	</div>
-	<div class="panel-content">
-		<ul>
-			<li><a href="/hardwarelog">{{ __('Log') }}</a></li>
-			<li><a href="/database">{{ __('Database') }}</a></li>
-		</ul>
 	</div>
 </div>
 
