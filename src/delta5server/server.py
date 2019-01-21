@@ -494,8 +494,8 @@ def on_load_data(data):
             emit_team_racing_stat_if_enb(nobroadcast=True)
         elif load_type == 'language':
             emit_language(nobroadcast=True)
-        elif load_type == 'imdtabler_data':
-            emit_imdtabler_data(nobroadcast=True)
+        elif load_type == 'imdtabler_page':
+            emit_imdtabler_page(nobroadcast=True)
 
 # Settings socket io events
 
@@ -1259,6 +1259,12 @@ def race_time_finished():
     race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
     if race_format and race_format.laps_wins_mode > 0:  # Most Laps Wins Enabled
         check_most_laps_win()  # check if pilot or team has most laps for win
+
+@SOCKET_IO.on('imdtabler_update_freqs')
+def imdtabler_update_freqs(data):
+    ''' Update IMDTabler page with new frequencies list '''
+    emit_imdtabler_data(data['freq_list'].replace(',',' ').split())
+
 
 # Socket io emit functions
 
@@ -2329,29 +2335,43 @@ def emit_node_crossing_change(node, **params):
     else:
         SOCKET_IO.emit('node_crossing_change', emit_payload)
 
-def emit_imdtabler_data(**params):
-    '''Emits IMDTabler page.'''
+def emit_imdtabler_page(**params):
+    '''Emits IMDTabler page, using current profile frequencies.'''
 
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
-    profile_freqs = json.loads(profile.frequencies)
     try:
-        imdtabler_data = None
+        imdtabler_ver = None
+        if os.path.exists(IMDTABLER_JAR_NAME):  # get IMDTabler version string
+            imdtabler_ver = subprocess.check_output( \
+                            ['java', '-jar', IMDTABLER_JAR_NAME, '-v']).rstrip()
+
+        profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
         if os.path.exists(IMDTABLER_JAR_NAME):
             fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
             fs_list = []
             for val in fi_list:  # convert list of integers to list of strings
                 if val > 0:      # drop any zero entries
                     fs_list.append(str(val))
-            if len(fs_list) > 2:
-                imdtabler_data = subprocess.check_output(  # invoke jar; get response
+            emit_imdtabler_data(fs_list, imdtabler_ver)
+    except Exception as ex:
+        server_log('emit_imdtabler_page exception:  ' + str(ex))
+
+def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
+    '''Emits IMDTabler data for given frequencies.'''
+
+    try:
+        imdtabler_data = None
+        if os.path.exists(IMDTABLER_JAR_NAME):
+            if len(fs_list) > 2:  # if 3+ then invoke jar; get response
+                imdtabler_data = subprocess.check_output( \
                             ['java', '-jar', IMDTABLER_JAR_NAME, '-t'] + fs_list)
     except Exception as ex:
         imdtabler_data = None
-        server_log('emit_imdtabler_page exception:  ' + str(ex))
+        server_log('emit_imdtabler_data exception:  ' + str(ex))
 
     emit_payload = {
+        'freq_list': ' '.join(fs_list),
         'table_data': imdtabler_data,
+        'version_str': imdtabler_ver
     }
 
     if ('nobroadcast' in params):
