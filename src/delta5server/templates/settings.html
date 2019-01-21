@@ -1,169 +1,470 @@
 {% extends "layout.html" %} {% block title %}Settings{% endblock %} {% block head %}
+<script type="text/javascript" src="./static/Blob.js"></script>
+<script type="text/javascript" src="./static/FileSaver.min.js"></script>
+
 <script type="text/javascript" charset="utf-8">
-	function voice_label(idlang) {
-		switch (idlang) {
-		case 1:
-			$('.sel_lang').html("David - English (United States) en-US");
-			break;
-		case 2:
-			$('.sel_lang').html("Zira - English (United States) en-US");
-			break;
-		case 3:
-			$('.sel_lang').html("US English en-US");
-			break;		
-		case 4:
-			$('.sel_lang').html("UK English Female en-GB");
-			break;		
-		case 5:
-			$('.sel_lang').html("UK English Male en-GB");
-			break;		
-		case 6:
-			$('.sel_lang').html("Deutsch de-DE");
-			break;		
-		case 7:
-			$('.sel_lang').html("español es-ES");
-			break;		
-		case 8:
-			$('.sel_lang').html("español de Estados Unidos es-US");
-			break;		
-		case 9:
-			$('.sel_lang').html("français fr-FR");
-			break;		
-		case 10:
-			$('.sel_lang').html("हिन्दी hi-IN");
-			break;		
-		case 11:
-			$('.sel_lang').html("Bahasa Indonesia id-ID");
-			break;		
-		case 12:
-			$('.sel_lang').html("italiano it-IT");
-			break;		
-		case 13:
-			$('.sel_lang').html("日本語 ja-JP");
-			break;		
-		case 14:
-			$('.sel_lang').html("한국의 ko-KR");
-			break;		
-		case 15:
-			$('.sel_lang').html("Nederlands nl-NL");
-			break;		
-		case 16:
-			$('.sel_lang').html("polski pl-PL");
-			break;		
-		case 17:
-			$('.sel_lang').html("português do Brasil pt-BR");
-			break;		
-		case 18:
-			$('.sel_lang').html("русский ru-RU");
-			break;		
-		case 19:
-			$('.sel_lang').html("國語（臺灣） zh-TW");
-			break;		
-		default:
-			$('.sel_lang').html("None");
-			break;
-		}		
-	}
-	
+	var globalAudioCtx;
+	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
+
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+		socket.emit('load_data', {'load_types': [
+			'node_data',
+			'frequency_data',
+			'heat_data',
+			'class_data',
+			'pilot_data',
+			'race_format',
+			'node_tuning',
+			'enter_and_exit_at_levels',
+			'min_lap',
+			'team_racing_mode',
+			'language'
+		]});
 
-		voice_label( {{ lang_id }} );
-		
+		var heartbeatCounter = 0;
+
+		// set admin flag
+		d5rt.admin = true;
+		d5rt.saveData();
+		$('nav li').removeClass('admin-hide');
+
+		// populate voice controls
+		$('#voice_callsign').prop( "checked", d5rt.voice_callsign);
+		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
+		$('#voice_team_lap_count').prop( "checked", d5rt.voice_team_lap_count);
+		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
+		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
+		$().articulate('volume', d5rt.voice_volume);
+		$('#voice_volume_value').html(d5rt.voice_volume.toFixed(2));
+		$('#set_voice_volume').val(d5rt.voice_volume);
+		$().articulate('rate', d5rt.voice_rate);
+		$('#voice_rate_value').html(d5rt.voice_rate.toFixed(2));
+		$('#set_voice_rate').val(d5rt.voice_rate);
+		$().articulate('pitch', d5rt.voice_pitch);
+		$('#voice_pitch_value').html(d5rt.voice_pitch.toFixed(2));
+		$('#set_voice_pitch').val(d5rt.voice_pitch);
+		$('#set_tone_volume').val(d5rt.tone_volume);
+		$('#beep_crossing_entered').prop("checked", d5rt.beep_crossing_entered);
+		$('#beep_crossing_exited').prop("checked", d5rt.beep_crossing_exited);
+		$('#beep_manual_lap_button').prop("checked", d5rt.beep_manual_lap_button);
+		$('#set_beep_volume').val(d5rt.indicator_beep_volume);
+
+		// populate frequency selects
+		$('.frequency_table').each(function(){
+			$(this).html(freq.buildSelect());
+		});
+
+		// set up RSSI graphing
+		$('.has-graph tr:first-child').each(function(){
+			var node = $(this);
+			var node_id = parseInt(node.closest('.node').data('node'));
+			node.before('<tr><td colspan="2" class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></td></tr>');
+
+			d5rt.nodes[node_id] = new nodeModel();
+			d5rt.nodes[node_id].setup(document.getElementById('rssi-graph-' + node_id));
+		});
+
 		socket.on('heartbeat', function (msg) {
-			for (i = 0; i < msg.current_rssi.length; i++) {
-				$('.current_rssi_' + i).html(msg.current_rssi[i]);
+			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
+				heartbeatCounter = 0;
+				for (i = 0; i < msg.current_rssi.length; i++) {
+					var rssiValue = msg.current_rssi[i];
+
+					if (d5rt.nodes[i].frequency == 0) {
+						rssiValue = 0;
+					}
+
+					$('.current_rssi_' + i).html(rssiValue);
+
+					if (msg.crossing_flag[i]) {
+						$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
+					}
+					else {
+						$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
+					}
+
+					d5rt.nodes[i].graph.options.maxValue = Math.max(
+						rssiValue,
+						d5rt.nodes[i].node_peak_rssi + 1,
+						d5rt.nodes[i].enter_at_level + 10,
+					);
+
+					if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
+						d5rt.nodes[i].graph.options.minValue = rssiValue;
+					}
+
+					if (d5rt.nodes[i].graphing) {
+						d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+					} else {
+						if (rssiValue) {
+							d5rt.nodes[i].graphing = true;
+							d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
+							d5rt.nodes[i].graph.options.minValue = rssiValue - 10;
+							d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+						}
+					}
+				}
 			}
 		});
 
-		socket.on('node_data', function (msg) {
-			for (i = 0; i < msg.frequency.length; i++) {
-				$('.channel_' + i).html(msg.channel[i] + ' ' + msg.frequency[i]);
-				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
-				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
-			}
-		});
-
+		/* Profiles */
 		socket.on('node_tuning', function (msg) {
-			$('.set_calibration_threshold').val( msg.calibration_threshold);
-			$('.set_calibration_offset').val( msg.calibration_offset);
-			$('.set_trigger_threshold').val( msg.trigger_threshold);
-			$('.set_profile_name').val( msg.profile_name);
-			$('.set_profile_description').val( msg.profile_description);
-
+			$('#set_profile').empty();
+			for (i = 0; i < msg.profile_ids.length; i++) {
+				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
+			}
+			$('#set_profile').val(msg.current_profile);
+			var pos = logsl.position(msg.filter_ratio / 10000);
+			$('#set_filter_ratio').val(12 - pos);
+			$('#filter_value').html((msg.filter_ratio / 10000).toFixed(4));
+			$('#set_filter_ratio').val( );
+			$('#set_profile_name').val( msg.profile_name);
+			$('#set_profile_description').val( msg.profile_description);
 		});
 
-		socket.on('set_fix_race_time', function (msg) {
-			$('.set_fix_race_time').val( msg.fix_race_time);
+		$('#set_profile').change(function (event) {
+			var data = {
+				profile: parseInt($(this).val())
+			};
+			socket.emit('set_profile', data);
 		});
 
-		socket.on('heat_data', function (msg) {
-			$.each(msg.heat_id, function (i, heat_id) {
-				$.each(heat_id.callsign, function (j, callsign) {
-					$('.heat_' + (i + 1) + '_node_' + j).html(callsign);
-				});
-			});
+		$('button#add_profile').click(function (event) {
+			socket.emit('add_profile');
+			return false;
 		});
 
-		socket.on('pilot_data', function (msg) {
-			for (i = 0; i < msg.callsign.length; i++) {
-				$('.callsign_' + i).attr('value', msg.callsign[i]);
-				$('.name_' + i).attr('value', msg.name[i]);
+		$('button#delete_profile').click(function (event) {
+			socket.emit('delete_profile');
+			return false;
+		});
+
+		$('#set_profile_name').change(function (event) {
+			var data = {
+				profile_name: $(this).val()
+			};
+			socket.emit('set_profile_name', data);
+		})
+
+		$('#set_profile_description').change(function (event) {
+			var data = {
+				profile_description: $(this).val()
+			};
+			socket.emit('set_profile_description', data);
+		})
+
+		/* Frequency Setup */
+		socket.on('frequency_data', function (msg) {
+			for (i = 0; i < msg.frequency.length; i++) {
+				$('#s_channel_' + i).val(msg.frequency[i]);
+				d5rt.nodes[i].frequency = msg.frequency[i];
+				freq.updateSelects();
+				freq.updateBlocks();
+			}
+			if (msg.imd_rating) {
+				$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +
+                      ': ' + msg.imd_rating + ' &nbsp; <a href="/imdtabler">view</a>');
+			}
+			else {
+				$('#imd_rating_label').empty();
 			}
 		});
-		
-		socket.on('language_data', function (msg) {
-			var $langid = msg.language;
-			sellang = $langid;
-			voice_label($langid);
+
+		$('button.set_frequency_preset').click(function (event) {
+			var data = {
+				preset: $(this).data('preset')
+			};
+			socket.emit('set_frequency_preset', data);
 		});
 
-		socket.on('speak_phonetic_text', function (msg) {
-			var $ttstext = msg.text;
-			speak('<div class="speech">' + $ttstext + '</div> div.speech');				
-		})
-		
-		$('.set_frequency li a').click(function (event) {
+		/* Nodes */
+		socket.on('node_data', function (msg) {
+			for (i = 0; i < msg.node_peak_rssi.length; i++) {
+				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
+				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
+				$('.pass_nadir_rssi_' + i).html(msg.pass_nadir_rssi[i]);
+				$('.debug_pass_count_' + i).html(msg.debug_pass_count[i]);
+
+				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
+				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
+				d5rt.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
+
+				d5rt.nodes[i].updateThresholds();
+			}
+		});
+
+		$('.frequency_table').change(function (event) {
+			if ($(this).val() != "n/a") {
+				var node = $(this).data('node');
+				var frequency = parseInt($(this).val());
+				$('#s_channel_' + node).val(frequency).trigger('change');
+			}
+		});
+
+		socket.on('enter_and_exit_at_levels', function (msg) {
+			for (i = 0; i < msg.enter_at_levels.length; i++) {
+				$('#set_enter_at_level_' + i).val(msg.enter_at_levels[i]);
+				d5rt.nodes[i].enter_at_level = msg.enter_at_levels[i];
+				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
+				d5rt.nodes[i].exit_at_level = msg.exit_at_levels[i];
+			}
+		});
+
+		socket.on('node_enter_at_level', function (msg) {
+			$('#set_enter_at_level_' + msg.node_index).val(msg.level);
+			d5rt.nodes[msg.node_index].enter_at_level = msg.level;
+		});
+
+		socket.on('node_exit_at_level', function (msg) {
+			$('#set_exit_at_level_' + msg.node_index).val(msg.level);
+			d5rt.nodes[msg.node_index].exit_at_level = msg.level;
+		});
+
+		$('.set_frequency').change(function (event) {
 			var data = {
 				node: parseInt($(this).data('node')),
-				frequency: parseInt($(this).data('frequency'))
+				frequency: parseInt($(this).val()),
 			};
 			socket.emit('set_frequency', data);
-		})
 
-		$('.set_language li a').click(function (event) {
+			var freqExists = $('#f_table_' + $(this).data('node') + ' option[value=' + $(this).val() + ']').length;
+			if (freqExists) {
+				$('#f_table_' + $(this).data('node')).val($(this).val());
+			} else {
+				$('#f_table_' + $(this).data('node')).val('n/a');
+			}
+		});
+
+		$('.set_enter_at_level').change(function (event) {
 			var data = {
-				language: parseInt($(this).data('language'))
+				node: parseInt($(this).data('node')),
+				enter_at_level: parseInt($(this).val()),
 			};
-			socket.emit('set_language', data);
-		})		
-		
-		$('.set_pilot_position li a').click(function (event) {
+			if (!Number.isNaN(data.enter_at_level)) {
+				socket.emit('set_enter_at_level', data);
+				d5rt.nodes[data.node].enter_at_level = data.enter_at_level;
+			}
+		});
+
+		$('.set_exit_at_level').change(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				exit_at_level: parseInt($(this).val()),
+			};
+			if (!Number.isNaN(data.exit_at_level)) {
+				socket.emit('set_exit_at_level', data);
+				d5rt.nodes[data.node].exit_at_level = data.exit_at_level;
+			}
+		});
+
+		$('button.cap_enter_at_btn').click(function (event) {
+			var data = {
+				node_index: parseInt($(this).data('node_index')),
+			};
+			$('#set_enter_at_level_' + data.node_index).val('');
+			socket.emit('cap_enter_at_btn', data);
+			return false;
+		});
+
+		$('button.cap_exit_at_btn').click(function (event) {
+			var data = {
+				node_index: parseInt($(this).data('node_index')),
+			};
+			$('#set_exit_at_level_' + data.node_index).val('');
+			socket.emit('cap_exit_at_btn', data);
+			return false;
+		});
+
+
+		$('#set_filter_ratio').on('input', function (event) {
+			var val = logsl.value(12 - $(this).val());
+			$('#filter_value').html(val.toFixed(4));
+		});
+
+		$('#set_filter_ratio').change(function (event) {
+			var val = logsl.value(12 - $(this).val());
+			val = (val * 10000).toFixed(0);
+			var data = {
+				filter_ratio: parseInt(val),
+			}
+			socket.emit('set_filter_ratio', data);
+		});
+
+		/* Heats */
+		socket.on('heat_data', function (msg) {
+			$(".heats").empty();
+			for (var i in msg.heats) {
+				var heats = msg.heats[i];
+				var el = $('<li>');
+				el.append('<h3>Heat ' + heats.heat_id + '</h3>');
+				var input = $('<input type="text" id="heat-note-' + heats.heat_id + '" class="set_heat_note" data-heat="' + heats.heat_id + '" placeholder="' + __('Name') + ' (' + __('Heat') + ' ' + heats.heat_id + ')" maxlength="80">');
+				input.val(heats.note);
+				el.append(input);
+				var nodelist = $('<ol>');
+
+				// nodes
+				for (j in heats.pilots) {
+					var heatpilot = heats.pilots[j];
+					var slot = $('<li>');
+					slot.append('<div class="channel-block" data-node="' + j + '"><span class="ch"></span> <span class="fr"></span></div>');
+					var pilot = $('<div class="pilot-name">');
+					// pilot selectors
+					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" >')
+					selectbox.append('<option value="0">None</option>')
+						for (var k in msg.pilot_data.pilot_id) {
+							selectbox.append('<option value="' + msg.pilot_data.pilot_id[k] + '">' + msg.pilot_data.callsign[k] + ' (' + msg.pilot_data.name[k] + ')</option>')
+						}
+					selectbox.val(heatpilot);
+					selectbox.prop('disabled', heats.locked);
+					pilot.append(selectbox);
+					slot.append(pilot);
+					nodelist.append(slot);
+				}
+				el.append(nodelist);
+
+				// update class selector
+				if (msg.classes.length) {				
+					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '">')
+						selectbox.append('<option value="0">Unclassified</option>')
+						for (var k in msg.classes) {
+							selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
+						}
+					if (heats.class_id > 0) {
+						selectbox.val(heats.class_id);
+					} else {
+						selectbox.val(0);
+					}
+					selectbox.prop('disabled', heats.locked);
+					el.append(selectbox);			
+				}
+
+				el.appendTo($('.heats'));
+			}
+			freq.updateBlocks();
+		});
+
+		$(document).on("change", '.set_heat_note', function (event) {
+			var data = {
+				heat: parseInt($(this).data('heat')),
+				note: $(this).val(),
+			};
+			socket.emit('set_heat_note', data);
+		});
+
+		$(document).on("change", '.set_pilot_position', function (event) {
 			var data = {
 				heat: parseInt($(this).data('heat')),
 				node: parseInt($(this).data('node')),
-				pilot: parseInt($(this).data('pilot'))
+				pilot: parseInt($(this).val())
 			};
 			socket.emit('set_pilot_position', data);
-		})
+		});
 
-		$('.set_pilot_callsign').change(function (event) {
+		$(document).on("change", '.set_heat_class', function (event) {
 			var data = {
-				pilot_id: parseInt($(this).data('pilot_id')),
-				callsign: $(this).val()
+				heat: parseInt($(this).data('heat')),
+				class: $(this).val(),
 			};
-			socket.emit('set_pilot_callsign', data);
-		})
+			socket.emit('set_heat_class', data);
+		});
 
-		$('.set_pilot_phonetic').change(function (event) {
+		$('button#add_heat').click(function (event) {
+			socket.emit('add_heat');
+			return false;
+		});
+
+		socket.on('class_data', function (msg) {
+			$(".race_classes").empty();
+			if (msg.classes.length) {
+				for (var i in msg.classes) {
+					var race_class = msg.classes[i];
+					var el = $('<li>');
+					el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');
+					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
+					input.val(race_class.name);
+					el.append(input);
+
+					var selectbox = $('<select class="set_class_format" id="class_format_' + race_class.id + '">')
+					selectbox.append('<option value="0">' + __('-None-') + '</option>')
+					for (var j in msg.formats) {
+						selectbox.append('<option value="' + msg.formats[j].id +'">' + msg.formats[j].name + '</option>')
+					}
+					selectbox.val(race_class.format);
+					selectbox.prop('disabled', race_class.locked);
+					el.append(selectbox);
+					
+					el.appendTo($('.race_classes'));
+				}
+			} else {
+				$('.race_classes').append('<li>' + __('Add to split event into classes') + '</li>');
+			}
+		});
+
+		$(document).on("change", '.set_race_class_name', function (event) {
 			var data = {
-				pilot_id: parseInt($(this).data('pilot_id')),
-				phonetic: $(this).val()
+				class_id: parseInt($(this).data('class_id')),
+				class_name: $(this).val(),
 			};
-			socket.emit('set_pilot_phonetic', data);
-		})		
-		
-		$('.set_pilot_name').change(function (event) {
+			socket.emit('set_race_class_name', data);
+		});
+
+		$('button#add_race_class').click(function (event) {
+			socket.emit('add_race_class');
+			return false;
+		});
+
+		/* Pilots */
+		socket.on('pilot_data', function (msg) {
+			$(".pilots").empty();
+			for (var i in msg.pilot_id) {
+				if (msg.pilot_id[i] != 0) {
+					var el = $('<li data-id="' + msg.pilot_id[i] + '">');
+					el.append('<label for="name_' + msg.pilot_id[i] + '" class="screen-reader-text">' + __('Name') + '</label>');
+					el.append('<input type="text" class="set_pilot_name" id="name_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.name[i] + '" placeholder="' + __('Name') +'">');
+					el.append('<label for="callsign_' + msg.pilot_id[i] + '" class="screen-reader-text">' + __('Callsign') + '</label>');
+					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.callsign[i] + '" placeholder="' + __('Callsign') +'">');
+					el.append('<label for="phonetic_' + msg.pilot_id[i] + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
+					var phonetic = $('<div class="phonetic">');
+					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.phonetic[i] + '" placeholder="' + __('Phonetic') + '">');
+					phonetic.append('<button type="button" class="speak_pilot" onclick="this.blur();" data-pilot_id="' + msg.pilot_id[i] + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+					el.append(phonetic);
+					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilot_id[i] + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '">' + msg.team_options[i] + '</select></div>');
+
+					el.appendTo($('.pilots'));
+				}
+			}
+
+			$('.set_pilot_position').each(function(){
+				$(this).empty();
+				var pilots = []
+				for (i = 0; i < msg.callsign.length; i++) {
+					pilots.push({
+						id: msg.pilot_id[i],
+						name: msg.name[i],
+						callsign: msg.callsign[i]
+					})
+				}
+
+				pilots.sort(function(a, b){
+					if (a.name < b.name)
+						return -1;
+					if (a.name > b.name)
+						return 1;
+					return 0;
+				});
+
+				for (var i in pilots) {
+					$(this).append('<option value="'+ pilots[i].id + '">' + pilots[i].callsign + ' (' + pilots[i].name + ')</option>');
+				}
+			});
+		});
+
+		$(document).on("focus", '.set_pilot_name', function(){
+			$(this).select();
+		});
+
+		$(document).on("change", '.set_pilot_name', function (event) {
 			var data = {
 				pilot_id: parseInt($(this).data('pilot_id')),
 				name: $(this).val()
@@ -171,434 +472,996 @@
 			socket.emit('set_pilot_name', data);
 		})
 
-		$('.set_calibration_threshold').change(function (event) {
+		$(document).on("focus", '.set_pilot_callsign', function(){
+			$(this).select();
+		});
+
+		$(document).on("change", '.set_pilot_callsign', function (event) {
 			var data = {
-				calibration_threshold: parseInt($(this).val())
+				pilot_id: parseInt($(this).data('pilot_id')),
+				callsign: $(this).val()
 			};
-			socket.emit('set_calibration_threshold', data);
+			socket.emit('set_pilot_callsign', data);
 		})
 
-		$('.set_calibration_offset').change(function (event) {
+		$(document).on("change", '.set_pilot_team', function (event) {
 			var data = {
-				calibration_offset: parseInt($(this).val())
+				pilot_id: parseInt($(this).data('pilot_id')),
+				team_name: $(this).val()
 			};
-			socket.emit('set_calibration_offset', data);
+			socket.emit('set_pilot_team', data);
 		})
 
-		$('.set_trigger_threshold').change(function (event) {
+		$(document).on("focus", '.set_pilot_phonetic', function(){
+			$(this).select();
+		});
+
+		$(document).on("change", '.set_pilot_phonetic', function (event) {
 			var data = {
-				trigger_threshold: parseInt($(this).val())
+				pilot_id: parseInt($(this).data('pilot_id')),
+				phonetic: $(this).val()
 			};
-			socket.emit('set_trigger_threshold', data);
-		})
-		$('.set_profile_name').change(function (event) {
-			var data = {
-				profile_name: $(this).val()
-			};
-			socket.emit('set_profile_name', data);
-			window.location.href = "/settings";
+			socket.emit('set_pilot_phonetic', data);
 		})
 
-		$('.set_profile_description').change(function (event) {
-			var data = {
-				profile_desciption: $(this).val()
-			};
-			socket.emit('set_profile_desciption', data);
+		$(document).on("click", 'button.speak_pilot', function (event) {
+			var el = $(this).closest('li');
+			var callsign = el.find('.set_pilot_callsign').val()
+			var phonetic = el.find('.set_pilot_phonetic').val()
 
-		})
-		$('button#add_heat').click(function (event) {
-			socket.emit('add_heat');
-			window.location.href = "/settings"; // Update to not need page reload
-			// This isn't getting an updated database I think
-			// $( "#heats" ).empty();
-			// document.getElementById("heats").innerHTML = // jinja template include
+			var ttstext = callsign;
+			if (phonetic)
+				ttstext = phonetic;
+
+			speak('<div class="speech">' + ttstext + '</div>');
 			return false;
 		});
 
 		$('button#add_pilot').click(function (event) {
 			socket.emit('add_pilot');
-			window.location.href = "/settings"; // Update to not need page reload
-			// This isn't getting an updated database I think
-			// $( "#heats" ).empty();
-			// document.getElementById("heats").innerHTML = // jinja template include
 			return false;
 		});
-		$('button#speak_pilot').click(function (event) {
+
+		/* Voice */
+		// construct language selection
+		$('#voice_select').after('<select id="set_voice_language">');
+		var voices = $().articulate('getVoices');
+
+		$('#set_voice_language').change(function (event) {
+			d5rt.voice_language = $(this).val();
+			d5rt.saveData();
+		});
+
+		for (var i in voices) {
+			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
+		}
+		if (d5rt.voice_language) {
+			$('#set_voice_language').val(d5rt.voice_language);	
+		} else {
+			$('#set_voice_language').selectedIndex = 0;
+			$('#set_voice_language').trigger('change');
+		}
+
+		$('button#play_voice_test').click(function (event) {
+			speak('<div class="speech">' + $('#voice_test_text').val() + '</div>');
+			return false;
+		});
+
+		$('#voice_callsign').change(function (event) {
+			d5rt.voice_callsign = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_lap_count').change(function (event) {
+			d5rt.voice_lap_count = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_team_lap_count').change(function (event) {
+			d5rt.voice_team_lap_count = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_lap_time').change(function (event) {
+			d5rt.voice_lap_time = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_race_timer').change(function (event) {
+			d5rt.voice_race_timer = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#set_voice_volume').on('input', function (event) {
+			val = parseFloat($(this).val())
+			$().articulate('volume', val);
+			$('#voice_volume_value').html(val.toFixed(2));
+		});
+
+		$('#set_voice_volume').on('change', function (event) {
+			d5rt.voice_volume = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#set_voice_rate').on('input', function (event) {
+			val = parseFloat($(this).val())
+			$().articulate('rate', val);
+			$('#voice_rate_value').html(val.toFixed(2));
+		});
+
+		$('#set_voice_rate').on('change', function (event) {
+			d5rt.voice_rate = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#set_voice_pitch').on('input', function (event) {
+			val = parseFloat($(this).val())
+			$().articulate('pitch', val);
+			$('#voice_pitch_value').html(val.toFixed(2));
+		});
+
+		$('#set_voice_pitch').on('change', function (event) {
+			d5rt.voice_pitch = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#set_tone_volume').on('change', function (event) {
+			d5rt.tone_volume = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#beep_crossing_entered').change(function (event) {
+			d5rt.beep_crossing_entered = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#beep_crossing_exited').change(function (event) {
+			d5rt.beep_crossing_exited = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#beep_manual_lap_button').change(function (event) {
+			d5rt.beep_manual_lap_button = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#set_beep_volume').on('change', function (event) {
+			d5rt.indicator_beep_volume = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		/* Race Format */
+		socket.on('min_lap', function (msg) {
+			$('#set_min_lap').val(msg.min_lap);
+		});
+
+		$('#set_min_lap').change(function (event) {
 			var data = {
-				pilot_id: parseInt($(this).data('pilot_id')),
-				phonetic: $(this).val()
+				min_lap: parseInt($(this).val())
 			};
-			socket.emit('speak_pilot', data);
-			return false;
-		});
-		$('button#add_profile').click(function (event) {
-			socket.emit('add_profile');
-			window.location.href = "/settings"; // Update to not need page reload
-			return false;
-		});
-		$('button#delete_profile').click(function (event) {
-			socket.emit('delete_profile');
-			window.location.href = "/settings"; // Update to not need page reload
-			return false;
-		});
-		$('button#reset_database').click(function (event) {
-			socket.emit('reset_database');
-			window.location.href = "/settings"; // Update to not need page reload
-			return false;
-		});
-
-		$('button#reset_database_keep_pilots').click(function (event) {
-			socket.emit('reset_database_keep_pilots');
-			window.location.href = "/settings"; // Update to not need page reload
-			return false;
-		});
-
-		$('button#shutdown_pi').click(function (event) {
-			socket.emit('shutdown_pi');
-			return false;
-		});
-
-
-		$('.set_profile li a').click(function (event) {
-			var data = {
-				profile: $(this).data('profile')
-			};
-			$('button#set_profile').html($(this).data('profile'));
-			socket.emit('set_profile', data);
+			socket.emit('set_min_lap', data);
 		})
 
-		$('.set_fix_race_time').change(function (event) {
+		socket.on('team_racing_mode', function (msg) {
+			$('#set_team_racing_mode').val(msg.enabled_val);  // 0=disabled, 1=enabled
+		});
+
+		$('#set_team_racing_mode').change(function (event) {
+			var data = {
+				enabled_val: parseInt($(this).val())  // 0=disabled, 1=enabled
+			};
+			socket.emit('set_team_racing_mode', data);
+		})
+
+		socket.on('race_format', function (msg) {
+			$('#set_race_format').empty();
+			for (i = 0; i < msg.format_ids.length; i++) {
+				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
+			}
+			$('#set_race_format').val(msg.current_format);
+			$('#set_format_name').val(msg.format_name);
+			$('#set_race_mode').val(msg.race_mode);
+			$('#set_race_mode').prop('disabled', msg.locked);
+			$('#set_fix_race_time').val(msg.race_time_sec);
+			$('#set_fix_race_time').prop('disabled', msg.locked);
+			$('#set_hide_stage_timer').val(msg.hide_stage_timer);
+			$('#set_hide_stage_timer').prop('disabled', msg.locked);
+			$('#set_start_delay_min').val(msg.start_delay_min);
+			$('#set_start_delay_min').prop('disabled', msg.locked);
+			$('#set_start_delay_max').val(msg.start_delay_max);
+			$('#set_start_delay_max').prop('disabled', msg.locked);
+			$('#set_number_laps_win').val(msg.number_laps_win);
+			$('#set_number_laps_win').prop('disabled', msg.locked);
+			$('#set_laps_wins_mode').val(msg.laps_wins_mode);
+			$('#set_laps_wins_mode').prop('disabled', msg.locked);
+		});
+
+		$('#set_race_format').change(function (event) {
+			var data = {
+				race_format: $(this).val()
+			};
+			socket.emit('set_race_format', data);
+		});
+
+		$('button#add_race_format').click(function (event) {
+			socket.emit('add_race_format');
+			return false;
+		});
+
+		$('button#delete_race_format').click(function (event) {
+			socket.emit('delete_race_format');
+			return false;
+		});
+
+		$('#set_format_name').change(function (event) {
+			var data = {
+				format_name: $(this).val()
+			};
+			socket.emit('set_race_format_name', data);
+		})
+
+		$('#set_race_mode').change(function (event) {
+			var data = {
+				race_mode: parseInt($(this).val())
+			};
+			socket.emit('set_race_mode', data);
+		})
+
+		$('#set_fix_race_time').change(function (event) {
 			var data = {
 				race_time: parseInt($(this).val())
 			};
 			socket.emit('set_fix_race_time', data);
 		})
 
+		$('#set_hide_stage_timer').change(function (event) {
+			var data = {
+				hide_stage_timer: parseInt($(this).val())
+			};
+			socket.emit('set_hide_stage_timer', data);
+		})
+
+		$('#set_start_delay_min').change(function (event) {
+			var data = {
+				start_delay_min: parseInt($(this).val())
+			};
+			socket.emit('set_start_delay_min', data);
+		})
+
+		$('#set_start_delay_max').change(function (event) {
+			var data = {
+				start_delay_max: parseInt($(this).val())
+			};
+			socket.emit('set_start_delay_max', data);
+		})
+
+		$('#set_number_laps_win').change(function (event) {
+			var data = {
+				number_laps_win: parseInt($(this).val())
+			};
+			socket.emit('set_number_laps_win', data);
+		})
+
+		$('#set_laps_wins_mode').change(function (event) {
+			var data = {
+				laps_wins_mode: parseInt($(this).val())
+			};
+			socket.emit('set_laps_wins_mode', data);
+		})
+
+		$('button#backup_database').click(function (event) {
+			socket.emit('backup_database');
+			return false;
+		});
+
+		socket.on('database_bkp_done', function (msg) {
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+			    byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			// construct blob from byte array and initiate browser save-as
+			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
+		});
+
+		/* Database Reset */
+		socket.on('reset_confirm', function () {
+			$('#reset_confirm').css('opacity', 1.0);
+			setTimeout(function(){
+				$('#reset_confirm').animate({
+					opacity: 0
+				}, {
+					duration: 1000
+				});
+			}, 3000);
+		});
+
+		$('button#reset_database').click(function (event) {
+			var data = {
+				reset_type: $('#reset_type').val()
+			};
+			socket.emit('reset_database', data);
+			return false;
+		});
+
+		/* System */
+		$('button#shutdown_pi').click(function (event) {
+			socket.emit('shutdown_pi');
+			return false;
+		});
+
+		socket.on('set_option', function (msg) {
+			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
+		});
+
+		$('.set-option').change(function (event) {
+			var data = {
+				option: $(this).data('option'),
+				value: $(this).val()
+			};
+			socket.emit('set_option', data);
+			return false;
+		});
+
+		socket.on('language', function (msg) {
+			$('#set_language').empty();
+			$('#set_language').append('<option value="">English</option>')
+			for (i = 0; i < msg.languages.length; i++) {
+				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+			
+			if (msg.language) {
+				$('#set_language').val(msg.language);
+			} else {
+				$('#set_voice_language').selectedIndex = 0;
+			}
+		});
+
+		$('#set_language').change(function (event) {
+			var data = {
+				language: $(this).val()
+			};
+			socket.emit('set_language', data);
+			location.reload(true);
+		});
+
+		socket.on('node_crossing_change', function (msg) {
+			if (msg.crossing_flag) {
+				if (d5rt.beep_crossing_entered)
+					play_beep(25, 3500);
+			}
+			else {
+				if (d5rt.beep_crossing_exited)
+					play_beep(35, 2500);
+			}
+		});
+
+		function calcContrasts(option_index) {
+			var hue = $('html').css('--hue_' + option_index);
+			var sat = $('html').css('--sat_' + option_index);
+			var lum_low = $('html').css('--lum_' + option_index + '_low');
+			var lum_high = $('html').css('--lum_' + option_index + '_high');
+
+			var hex_low = hslToHex(hue, sat, lum_low);
+			var contrast_low = contrastColor(hex_low);
+			$('html').css('--contrast_' + option_index + '_low', contrast_low);
+
+			var hex_high = hslToHex(hue, sat, lum_high);
+			var contrast_high = contrastColor(hex_high);
+			$('html').css('--contrast_' + option_index + '_high', contrast_high);
+		}
+
+		$.cssNumber.hue_0 = true;
+		$.cssNumber.hue_1 = true;
+		$.cssNumber.sat_0 = true;
+		$.cssNumber.sat_1 = true;
+
+		$('.hue-control').on('input', function (event) {
+			var option = $(this).data('option');
+			var value = $(this).val();
+			$('html').css('--' + option, value);
+			var option_index = option.split('_')[1];
+			calcContrasts(option_index);
+		});
+
+		$('.sat-control').on('input', function (event) {
+			var option = $(this).data('option');
+			var value = $(this).val();
+			$('html').css('--' + option, value + '%');
+			var option_index = option.split('_')[1];
+			calcContrasts(option_index);
+		});
+
+		/* LED Controls */
+		$('button.LED-color').click(function (event) {
+				var colors = convertColor($(this).data('rgb'));
+				var data = {
+					red: colors.r,
+					green: colors.g,
+					blue: colors.b,
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button.LED-chase').click(function (event) {
+				var colors = convertColor($(this).data('rgb'));
+				var data = {
+					red: colors.r,
+					green: colors.g,
+					blue: colors.b,
+				};
+				socket.emit('LED_chase', data);
+				return false;
+		});
+
+		$('button#LED_RB').click(function (event) {
+			socket.emit('LED_RB');
+			return false;
+		});
+
+		$('button#LED_RBCYCLE').click(function (event) {
+			socket.emit('LED_RBCYCLE');
+			return false;
+		});
+
+		$('button#LED_RBCHASE').click(function (event) {
+			socket.emit('LED_RBCHASE');
+			return false;
+		});
+
 	});
 
-	var sellang = {{ lang_id }};
-
 	function speak(obj) {
-		switch (sellang) {
-			case 1:
-				$(obj).articulate('setVoice','name','Microsoft David Desktop - English (United States)').articulate('speak');
-				break;
-			case 2:
-				$(obj).articulate('setVoice','name','Microsoft Zira Desktop - English (United States)').articulate('speak');
-				break;
-			case 3:
-				$(obj).articulate('setVoice','name','Google US English').articulate('speak');
-				break;
-			case 4:
-				$(obj).articulate('setVoice','name','Google UK English Female').articulate('speak');
-				break;
-			case 5:
-				$(obj).articulate('setVoice','name','Google UK English Male').articulate('speak');
-				break;
-			case 6:
-				$(obj).articulate('setVoice','name','Google Deutsch').articulate('speak');
-				break;			
-			case 7:
-				$(obj).articulate('setVoice','name','Google español').articulate('speak');
-				break;
-			case 8:
-				$(obj).articulate('setVoice','name','Google español de Estados Unidos').articulate('speak');
-				break;
-			case 9:
-				$(obj).articulate('setVoice','name','Google français').articulate('speak');
-				break;
-			case 10:
-				$(obj).articulate('setVoice','name','Google हिन्दी').articulate('speak');
-				break;
-			case 11:
-				$(obj).articulate('setVoice','name','Google Bahasa Indonesia').articulate('speak');
-				break;
-			case 12:
-				$(obj).articulate('setVoice','name','Google italiano').articulate('speak');
-				break;
-			case 13:
-				$(obj).articulate('setVoice','name','Google 日本語').articulate('speak');
-				break;
-			case 14:
-				$(obj).articulate('setVoice','name','Google 한국의').articulate('speak');
-				break;
-			case 15:
-				$(obj).articulate('setVoice','name','Google Nederlands').articulate('speak');
-				break;
-			case 16:
-				$(obj).articulate('setVoice','name','Google polski').articulate('speak');
-				break;
-			case 17:
-				$(obj).articulate('setVoice','name','Google português do Brasil').articulate('speak');
-				break;
-			case 18:
-				$(obj).articulate('setVoice','name','Google русский').articulate('speak');
-				break;
-			case 19:
-				$(obj).articulate('setVoice','name','Google 國語（臺灣）').articulate('speak');
-				break;
-		}
+		$(obj).articulate('setVoice','name', d5rt.voice_language).articulate('speak');
 	};
 
-	function ratenormal(obj) {
-		$(obj).articulate('rate', 1.0);
-	};
-	function ratefast(obj) {
-		$(obj).articulate('rate', 3.0);
+	//Generate tone. All arguments are optional:
+	//duration of the tone in milliseconds. Default is 500
+	//frequency of the tone in hertz. default is 440
+	//type of tone. Possible values are sine, square, sawtooth, triangle, and custom. Default is sine.
+	//callback to use on end of tone
+	/* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
+	function play_beep(duration, frequency, type, callback) {
+		globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
+
+		var oscillator = globalAudioCtx.createOscillator();
+		var gainNode = globalAudioCtx.createGain();
+
+		oscillator.connect(gainNode);
+		gainNode.connect(globalAudioCtx.destination);
+
+		gainNode.gain.value = d5rt.indicator_beep_volume;
+		if (frequency)
+			oscillator.frequency.value = frequency;
+		if (type)
+			oscillator.type = type;
+		if (callback)
+			oscillator.onended = callback;
+
+		oscillator.start();
+		setTimeout(function(){oscillator.stop()}, (duration ? duration : 500));
 	};
 
 </script>
 {% endblock %} {% block content %}
+<main class="page-settings">
 
-<!--Display node data-->
-<h4>Nodes</h4>
-<div class="row">
-	{% for node in range(num_nodes) %}
-	<div class='col-xs-8 col-sm-4 col-md-2'>
-		<div class='panel panel-default'>
-			<div class="panel-heading">
-				<h4 class="panel-title">{{ node + 1 }}</h4>
+{% if ConfigFile == -1 %}
+	<div class="config-bad">
+		<p><strong>{{ __('The config.json file is invalid. Falling back to default configuration.') }}</strong></p>
+		<p>{{ __('To ensure your config.json file is valid JSON format, consider using a validator such as <a href="https://jsonlint.com/">JSONLint</a>.') }}</p>
+	</div>
+{% elif ConfigFile == 0 %}
+	<div class="config-none">
+		<p><strong>{{ __('No configuration file was loaded. Falling back to default configuration.') }}</strong></p>
+		<p>{{ __('Copy <em>delta5server/config-dist.json</em> to <em>delta5server/config.json</em> and then update settings for your server port number, admin username/password, and LED configuration.') }}</p>
+	</div>
+{% endif %}
+
+<!--Environment-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Profiles') }}</h2>
+	</div>
+	<div class="panel-content">
+		<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
+
+		<div class="control-set">
+			<label for="set_profile">{{ __('Profile') }}:</label>
+			<select id="set_profile">
+				<option>{{ __('Loading...') }}</option>
+			</select>
+			<button type="button" class="" id="add_profile" onclick="this.blur();">+ {{ __('Add Profile') }}</button>
+			<button type="button" class="btn-danger" id="delete_profile" onclick="this.blur();">&#215; {{ __('Remove') }}</button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_profile_name">{{ __('Name') }}</label>
+				</div>
+				<input type="text" id="set_profile_name">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_profile_description">{{ __('Description') }}</label>
+				</div>
+				<textarea id="set_profile_description"></textarea>
+			</li>
+		</ol>
+	</div>
+</div>
+
+<!--Frequency Setup-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Frequency Setup') }}</h2>
+	</div>
+	<div class="panel-content">
+		<!--Apply preset-->
+		<div class="control-set">
+			Preset:
+			<button type="button" class="set_frequency_preset" data-preset="All-N1" onclick="this.blur();">{{ __('Apply Node 1') }}</button>
+			<button type="button" class="set_frequency_preset" data-preset="RB-4" onclick="this.blur();">{{ __('Raceband 4') }}</button>
+			<button type="button" class="set_frequency_preset" data-preset="IMD5C" onclick="this.blur();">{{ __('IMD5C') }}</button>
+			<button type="button" class="set_frequency_preset" data-preset="IMD6C" onclick="this.blur();">{{ __('IMD6C') }}</button>
+			<button type="button" class="set_frequency_preset" data-preset="RB-8" onclick="this.blur();">{{ __('Raceband 8') }}</button>
+		</div>
+
+		<div class="node-list">
+			{% for node in range(num_nodes) %}
+				<div class="node" data-node="{{ node }}">
+					<h3><label for="set_freq_node_{{ node }}">{{ __('Node') }} {{ node + 1 }}</label></h3>
+					<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
+					<label for="s_channel_{{ node }}" class="screen-reader-text">Frequency</label>
+					<input type="number" id="s_channel_{{ node }}" class="set_frequency" data-node="{{ node }}" min="5000" max="6001">
+				</div>
+			{% endfor %}
+		</div>
+		<div class="control-set" id="imd_rating_label"></div>
+	</div>
+</div>
+
+<!--Sensor Tuning-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Sensor Tuning') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div class="node-list">
+			{% for node in range(num_nodes) %}
+			<div class="node" data-node="{{ node }}">
+				<h3>{{ __('Node') }} {{ node + 1 }}</h3>
+				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
+				<table class="has-graph">
+					<tr>
+						<td colspan="2" class="crossing crossing_flag_{{ node }}">{{ __('Clear') }}</td>
+					</tr>
+					<tr>
+						<td colspan="2">
+							<div class="compact-field">
+								<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
+								<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
+							</div>
+							<button type="button" class="cap_enter_at_btn" data-node_index="{{ node }}" onclick="this.blur();">{{ __('Capture') }} &#8593;</button>
+
+							<div class="compact-field">
+								<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
+								<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
+							</div>
+							<button type="button" class="cap_exit_at_btn" data-node_index="{{ node }}" onclick="this.blur();">{{ __('Capture') }} &#8593;</button>
+						</td>
+					</tr>
+					<tr class="datarow">
+						<td>{{ __('RSSI') }}</td>
+						<td>
+							<span class="current_rssi_{{ node }}"></span>
+						</td>
+					</tr>
+					<tr class="datarow">
+						<td>{{ __('NodePeak') }}</td>
+						<td>
+							<span class="node_peak_rssi_{{ node }}"></span>
+						</td>
+					</tr>
+					<tr class="datarow">
+						<td>{{ __('PassPeak') }}</td>
+						<td>
+							<span class="pass_peak_rssi_{{ node }}"></span>
+						</td>
+					</tr>
+					<tr class="datarow">
+						<td>{{ __('PassNadir') }}</td>
+						<td>
+							<span class="pass_nadir_rssi_{{ node }}"></span>
+						</td>
+					</tr>
+					<tr class="datarow">
+						<td>{{ __('PassCount') }}</td>
+						<td>
+							<span class="debug_pass_count_{{ node }}"></span>
+						</td>
+					</tr>
+				</table>
 			</div>
-			<table class="table">
-				<tr>
-					<td colspan="2">
-						Freq.
-						<!--Need to have two drop downs, band and frequency, one drop is long of a list-->
-						<div class="btn-group">
-							<button class="btn btn-default dropdown-toggle channel_{{ node }}" type="button" data-toggle="dropdown" aria-haspopup="true"
-							 aria-expanded="true"></button>
-							<ul class="dropdown-menu set_frequency">
-								{% for frequency in frequencies.query.all() %}
-								<li><a role="button" data-node="{{ node }}" data-frequency="{{ frequency.frequency }}">{{ frequency.channel }} {{ frequency.frequency }}</a></li>
-								{% endfor %}
-							</ul>
-						</div>
-					</td>
-				</tr>
-				<tr>
-					<td>RSSI</td>
-					<td>
-						<span class="current_rssi_{{ node }}"></span>
-					</td>
-				</tr>
-				<tr>
-					<td>Trigger</td>
-					<td>
-						<span class="trigger_rssi_{{ node }}"></span>
-					</td>
-				</tr>
-				<tr>
-					<td>Peak</td>
-					<td>
-						<span class="peak_rssi_{{ node }}"></span>
-					</td>
-				</tr>
-			</table>
+			{% endfor %}
+		</div>
+		<ul class="graph-key">
+			<li><span style="background-color: hsl(214, 53%, 60%)"></span> {{ __('RSSI') }}</li>
+			<li><span style="background-color: hsl(8.2, 86.5%, 53.7%)"></span> {{ __('Peak') }}</li>
+			<li><span style="background-color: hsl(25, 85%, 55%)"></span> {{ __('Enter') }}</li>
+			<li><span style="background-color: #999"></span> {{ __('Exit') }}</li>
+			<li><span style="background-color: #666"></span> {{ __('Nadir') }}</li>
+		</ul>
+
+		<!--Edit system tuning values-->
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_filter_ratio">RSSI Smoothing') }}</label>
+					<p class="desc">{{ __('Filter Ratio') }}: <span id="filter_value"></span></p>
+				</div>
+				<input type="range" id="set_filter_ratio" min="0" max="12" step="1">
+			</li>
+		</ol>
+
+
+		<div class="calibration-guide">
+			<h3>Calibration</h3>
+			<ol>
+				<li>Power on a VTx at the same fequency as the node</li>
+				<li>Pass VTx very near the timer until RSSI reaches absolute peak</li>
+				<li>Place VTx outside limit of gate (about 20ft is usually good) and press Capture for EnterAt</li>
+				<li>Place VTx several gate widths away and press Capture for ExitAt</li>
+				<li>Review "Crossing" points and adjust until accurately responding</li>
+			</ol>
 		</div>
 	</div>
-	{% endfor %}
 </div>
 
 <!--Heats list for editing-->
-<h4>Heats
-	<button type="button" class="btn btn-default" id="add_heat" onclick="this.blur();">Add Heat</button>
-</h4>
-<p>Don't change a heat after it has a saved race.</p>
-<div id="heats">
-	<div class="row">
-		{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
-		<div class='col-xs-8 col-md-4'>
-			<div class='panel panel-default'>
-				<div class="panel-heading">
-					<h4 class="panel-title">{{ heat.heat_id }} (Heat note)</h4>
-				</div>
-				<table class="table">
-					{% for node in range(num_nodes) %}
-					<tr>
-						<td>
-							<div class="channel_{{ node }}"></div>
-						</td>
-						<td>
-							<div class="btn-group">
-								<button class="btn btn-default dropdown-toggle heat_{{ heat.heat_id }}_node_{{ node }}" type="button" data-toggle="dropdown"
-								 aria-haspopup="true" aria-expanded="true">
-								{{ pilots.query.filter_by(pilot_id=
-									heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id
-									).first().callsign }}
-								</button>
-								<ul class="dropdown-menu set_pilot_position">
-									{% for pilot in pilots.query.all() %}
-									<li><a role="button" data-heat="{{ heat.heat_id }}" data-node="{{ node }}" data-pilot="{{ pilot.pilot_id }}">{{ pilot.callsign }}</a></li>
-									{% endfor %}
-								</ul>
-							</div>
-						</td>
-					</tr>
-					{% endfor %}
-				</table>
-			</div>
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Heats and Classes') }}</h2>
+	</div>
+	<div class="panel-content">
+		<p class="form-note">{{ __('Selections cannot be modified for heats/classes with saved races. (Clear races to release.)') }}</p>
+
+		<ol id="heats" class="heats">
+			<li>{{ __('Loading...') }}</li>
+		</ol>
+		<div class="control-set">
+			<button type="button" class="btn btn-default" id="add_heat" onclick="this.blur();">+ {{ __('Add Heat') }}</button>
 		</div>
-		{% endfor %}
+
+		<ol id="race_classes" class="race_classes">
+			<li>{{ __('Loading...') }}</li>
+		</ol>
+		<div class="control-set">
+			<button type="button" class="btn btn-default" id="add_race_class" onclick="this.blur();">+ {{ __('Add Class') }}</button>
+		</div>
 	</div>
 </div>
 
 <!--Pilots list for editing-->
-<h4>Pilots
-	<button type="button" class="btn btn-default" id="add_pilot" onclick="this.blur();">Add Pilot</button>
-</h4>
-<p>Spelling corrections only after saving races.</p>
-<div class="row">
-	<div class='col-xs-16 col-md-8'>
-		<div class='panel panel-default'>
-			<table class="table">
-				<thead>
-					<tr>
-						<th>Pilot ID</th>
-						<th>Call Sign</th>
-						<th>Phonetic</th>
-						<th></th>
-						<th>Name</th>
-						</tr>
-				</thead>
-				<tbody>
-					{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
-					<tr>
-						<td>{{ pilot.pilot_id }}</td>
-						<td>
-							<input type="text" class="form-control set_pilot_callsign callsign_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
-							 value="{{ pilot.callsign }}">
-						</td>
-						<td>
-							<input type="text" class="form-control set_pilot_phonetic phonetic_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}"
-							 value="{{ pilot.phonetic }}">
-						</td>
-						<td>
-							<button type="button" class="btn btn-default" id="speak_pilot" onclick="this.blur();" data-pilot_id="{{ pilot.pilot_id }}">&#9658;</button>
-						</td>
-						<td>
-							<input type="text" class="form-control set_pilot_name name_{{ pilot.pilot_id }}" data-pilot_id="{{ pilot.pilot_id }}" value="{{ pilot.name }}">
-						</td>
-					</tr>
-					{% endif %} {% endfor %}
-				</tbody>
-			</table>
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Pilots') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ul class="pilots">
+			<li>{{ __('Loading...') }}</li>
+		</ul>
+
+		<div class="control-set">
+			<button type="button" id="add_pilot" onclick="this.blur();">+ {{ __('Add Pilot') }}</button>
 		</div>
 	</div>
 </div>
 
-<!--Display Voice-->
-<h4>Voice Selection</h4>
-<div class="row">
-	<div class='col-xs-8 col-sm-4 col-md-2'>
-						<div class="btn-group">
-							<button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true"
-							 aria-expanded="true"><span class="sel_lang"></span></button>
-							<ul class="dropdown-menu set_language">
-								<li><a role="button" data-language="0">None</a></li>
-								<li><a role="button" data-language="1">David - English (United States en-US</a></li>
-								<li><a role="button" data-language="2">Zira - English (United States) en-US</a></li>
-								<li><a role="button" data-language="3">US English en-US</a></li>
-								<li><a role="button" data-language="4">UK English Female en-GB</a></li>
-								<li><a role="button" data-language="5">UK English Male en-GB</a></li>
-								<li><a role="button" data-language="6">Deutsch de-DE</a></li>
-								<li><a role="button" data-language="7">español es-ES</a></li>
-								<li><a role="button" data-language="8">español de Estados Unidos es-US</a></li>
-								<li><a role="button" data-language="9">français fr-FR</a></li>
-								<li><a role="button" data-language="10">हिन्दी hi-IN</a></li>
-								<li><a role="button" data-language="11">Bahasa Indonesia id-ID</a></li>
-								<li><a role="button" data-language="12">italiano it-IT</a></li>
-								<li><a role="button" data-language="13">日本語 ja-JP</a></li>
-								<li><a role="button" data-language="14">한국의 ko-KR</a></li>
-								<li><a role="button" data-language="15">Nederlands nl-NL</a></li>
-								<li><a role="button" data-language="16">polski pl-PL</a></li>
-								<li><a role="button" data-language="17">português do Brasil pt-BR</a></li>
-								<li><a role="button" data-language="18">русский ru-RU</a></li>
-								<li><a role="button" data-language="19">國語（臺灣） zh-TW</a></li>
-							</ul>
-						</div>
+<!--Voice Settings-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Audio Control') }}</h2>
+	</div>
+	<div class="panel-content">
+		<p class="form-note">{{ __('Voice settings apply to this device only.') }}</p>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_voice_language">{{ __('Voice Select') }}</label>
+				</div>
+				<div id="voice_select"></div>
+			</li>
+
+			<li>
+				<div class="label-block">
+					{{ __('Voice Test') }} &nbsp; &nbsp;
+				</div>
+				<input type="text" id="voice_test_text" value="{{ getOption('timerName') }}">
+				<button type="button" class="button" id="play_voice_test" onclick="this.blur();">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>
+			</li>
+
+			<li>
+				<div class="label-block">
+					{{ __('Announcements') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="voice_callsign"> {{ __('Callsign') }}</label></li>
+					<li><label><input type="checkbox" id="voice_lap_count"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="voice_lap_time"> {{ __('Lap Time') }}</label></li>
+					<li><label><input type="checkbox" id="voice_race_timer"> {{ __('Race Timer') }}</label></li>
+					<li><label><input type="checkbox" id="voice_team_lap_count"> {{ __('Team Lap Total') }}</label></li>
+				</ul>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_volume">{{ __('Voice Volume') }}</label>
+					<p class="desc">{{ __('Volume') }}: <span id="voice_volume_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_volume" min="0" max="1.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_rate">{{ __('Voice Rate') }}</label>
+					<p class="desc">{{ __('Rate') }}: <span id="voice_rate_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_rate" min="0" max="2.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_pitch">{{ __('Voice Pitch') }}</label>
+					<p class="desc">{{ __('Pitch') }}: <span id="voice_pitch_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_tone_volume">{{ __('Tone Volume') }}</label>
+				</div>
+				<input type="range" id="set_tone_volume" min="0" max="1.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					{{ __('Indicator Beeps') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
+					<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
+					<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
+				</ul>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_beep_volume">{{ __('Indicator Beeps Volume') }}</label>
+				</div>
+				<input type="range" id="set_beep_volume" min="0" max="1.0" step="0.01">
+			</li>
+		</ol>
 	</div>
 </div>
 
-<!--Edit system tuning values-->
-<h4>Sensor Tuning</h4>
-<div class="dropdown">
-	<b> Profile : </b>
-  <button class="btn btn-default dropdown-toggle" type="button" id="set_profile" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-    {{profiles.query.get(last_profile.query.get(1).profile_id).name}}
-    <span class="caret"></span>
-  </button>
-	<button type="button" class="btn btn-default" id="add_profile" onclick="this.blur();">+</button>
-	<button type="button" class="btn btn-default" id="delete_profile" onclick="this.blur();">x</button>
-  <ul class="dropdown-menu set_profile">
-		{% for profile in profiles.query.all() %}
-		 <li><a role="button" data-profile="{{profile.name}}">{{profile.name}}</a></li>
-		{% endfor %}
-  </ul>
-</div>
-<div class="row">
-	<div class='col-xs-16 col-md-8'>
-		<div class='panel panel-default'>
-			<table class="table">
-				<tr>
-					<td><b> Name </b></td>
-					<td><input type="text" class="form-control set_profile_name"></td>
-				</tr>
-				<tr>
-					<td><b> Description </b></td>
-					<td><input type="textarea" class="form-control set_profile_description" rows="4"></td>
-				</tr>
-				<tr>
-					<td><b>Calibration Offset (Default 8)</b><br>Trigger is Peak Rssi minus Calibration Offset</td>
-					<td>
-						<input type="text" class="form-control set_calibration_offset">
-					</td>
-				</tr>
-				<tr>
-					<td><b>Calibration Threshold (Default 95)</b><br>Trigger minus Calibration Threshold ends calibration pass</td>
-					<td>
-						<input type="text" class="form-control set_calibration_threshold">
-					</td>
-				</tr>
-				<tr>
-					<td><b>Trigger Threshold (Default 40)</b><br>Trigger minus Trigger Threshold ends normal pass</td>
-					<td>
-						<input type="text" class="form-control set_trigger_threshold">
-					</td>
-				</tr>
-			</table>
+<!--Race Format-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Race Format') }}</h2>
+	</div>
+	<div class="panel-content">
+		<p class="form-note">{{ __('Formats used with saved races cannot be modified. (Clear races to release.)') }}</p>
+
+		<div class="control-set">
+			<label for="set_race_format">{{ __('Format:') }}</label>
+			<select id="set_race_format">
+				<option>{{ __('Loading...') }}</option>
+			</select>
+			<button type="button" class="" id="add_race_format" onclick="this.blur();">+ {{ __('Add Format') }}</button>
+			<button type="button" class="btn-danger" id="delete_race_format" onclick="this.blur();">&#215; {{ __('Remove') }}</button>
 		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_format_name">{{ __('Name') }}</label>
+				</div>
+				<input type="text" id="set_format_name">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_race_mode">{{ __('Race Timer Mode') }}</label>
+				</div>
+				<select id="set_race_mode">
+					<option value="0">{{ __('Count Down') }}</option>
+					<option value="1">{{ __('Count Up') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_fix_race_time">{{ __('Timer Duration (seconds)') }}</label>
+					<p class="desc">{{ __('Used for Count Down timed races') }}</p>
+				</div>
+				<input type="number" id="set_fix_race_time" min="0" max="99999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_hide_stage_timer">{{ __('Staging Timer Mode') }}</label>
+				</div>
+				<select id="set_hide_stage_timer">
+					<option value="0">{{ __('Show Countdown') }}</option>
+					<option value="1">{{ __('Hide Countdown') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_delay_min">{{ __('Minimum Start Delay') }}</label>
+					<p class="desc">{{ __('Minimum time before race begins') }}</p>
+				</div>
+				<input type="number" id="set_start_delay_min" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_delay_max">{{ __('Maximum Start Delay') }}</label>
+					<p class="desc">{{ __('Maximum time before race begins') }}</p>
+				</div>
+				<input type="number" id="set_start_delay_max" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
+					<p class="desc">{{ __('Used if Most Laps Wins Disabled') }}</p>
+				</div>
+				<input type="number" id="set_number_laps_win" min="0" max="999">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_laps_wins_mode">{{ __('Laps Wins Mode') }}</label>
+				</div>
+				<select id="set_laps_wins_mode">
+					<option value="0">{{ __('Most Laps Wins Disabled') }}</option>
+					<option value="1">{{ __('Most Laps Wins Enabled') }}</option>
+				</select>
+			</li>
+		</ol>
+
+		<hr />
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
+					<p class="desc">{{ __('In seconds') }}</p>
+				</div>
+				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_team_racing_mode">{{ __('Team Racing Mode') }}</label>
+				</div>
+				<select id="set_team_racing_mode">
+					<option value="0">{{ __('Team Racing Disabled') }}</option>
+					<option value="1">{{ __('Team Racing Enabled') }}</option>
+				</select>
+			</li>
+		</ol>
 	</div>
 </div>
-<h4> Fixed Race Time</h4>
-<div class="row">
-	<div class='col-xs-16 col-md-8'>
-		<div class='panel panel-default'>
-			<table class="table">
-				<tr>
-					<td><b>Time</b><br> maximum race time in seconds</td>
-					<td>
-						<input type="text" class="form-control set_fix_race_time" value="{{current_fix_race_time}}">
-					</td>
-				</tr>
-		 </table>
+
+<!--LED controls-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('LED Control') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<button class="LED-color" data-rgb="#000000"><img src="..\static\image\LED-off.png"></button>
+			<button id="LED_RBCYCLE"><img src="..\static\image\LED-rainbow.png"></button>
+			<br />
+			<button class="LED-color" data-rgb="#0000ff"><img src="..\static\image\LED-blue.png"></button>
+			<button class="LED-color" data-rgb="#ff3200"><img src="..\static\image\LED-orange.png"></button>
+			<button class="LED-color" data-rgb="#ff003C"><img src="..\static\image\LED-pink.png"></button>
+			<button class="LED-color" data-rgb="#9600ff"><img src="..\static\image\LED-purple.png"></button>
+			<button class="LED-color" data-rgb="#ffD200"><img src="..\static\image\LED-yellow.png"></button>
+			<button class="LED-color" data-rgb="#00ffff"><img src="..\static\image\LED-cyan.png"></button>
+			<button class="LED-color" data-rgb="#00ff00"><img src="..\static\image\LED-green.png"></button>
+			<button class="LED-color" data-rgb="#ff0000"><img src="..\static\image\LED-red.png"></button>
+			<br />
+			<button class="LED-chase" data-rgb="#0000ff"><img src="..\static\image\LED-chase-blue.png"></button>
+			<button class="LED-chase" data-rgb="#ff3200"><img src="..\static\image\LED-chase-orange.png"></button>
+			<button class="LED-chase" data-rgb="#ff003C"><img src="..\static\image\LED-chase-pink.png"></button>
+			<button class="LED-chase" data-rgb="#9600ff"><img src="..\static\image\LED-chase-purple.png"></button>
+			<button class="LED-chase" data-rgb="#ffD200"><img src="..\static\image\LED-chase-yellow.png"></button>
+			<button class="LED-chase" data-rgb="#00ffff"><img src="..\static\image\LED-chase-cyan.png"></button>
+			<button class="LED-chase" data-rgb="#00ff00"><img src="..\static\image\LED-chase-green.png"></button>
+			<button class="LED-chase" data-rgb="#ff0000"><img src="..\static\image\LED-chase-red.png"></button>
 		</div>
 	</div>
 </div>
 
 <!--Reset database-->
-<h4>Database (Copy out any saved races first!)</h4>
-<div>
-	<button type="button" class="btn btn-danger" id="reset_database" onclick="this.blur();">Reset Database</button>
-	<button type="button" class="btn btn-warning" id="reset_database_keep_pilots" onclick="this.blur();">Reset Keep Pilots</button>
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Database') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<button type="button" class="" id="backup_database" onclick="this.blur();">{{ __('Backup Database') }}</button>
+			{% if Debug %}<a href="/database" class="debug">{{ __('View Database') }}</a>{% endif %}
+		</div>
+		<div class="control-set">
+			<select id="reset_type">
+				<option value="races">{{ __('Races') }}</option>
+				<option value="heats">{{ __('Races and Heats') }}</option>
+				<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
+				<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
+				<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
+			</select>
+			<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">{{ __('Clear Data') }}</button>
+		</div>
+		<p id="reset_confirm" style="text-align:center; opacity:0">{{ __('Data Cleared') }}</p>
+	</div>
 </div>
 
-<!--Reset database-->
-<h4>System (Safely shutdown raspberry pi)</h4>
-<div>
-	<button type="button" class="btn btn-default" id="shutdown_pi" onclick="this.blur();">Shutdown</button>
+<!-- System -->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('System') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<button type="button" class="btn-danger" id="shutdown_pi" onclick="this.blur();">{{ __('Shut Down') }}</button>
+			{% if Debug %}<a href="/hardwarelog" class="debug">{{ __('Log') }}</a>{% endif %}
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_language">{{ __('Language') }}</label>
+				</div>
+				<select id="set_language">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+
+			<li>
+				<div class="label-block">
+					<label for="set_timer_name">{{ __('Timer Name') }}</label>
+				</div>
+				<input type="text" id="set_timer_name" class="set-option" data-option="timerName" value="{{ getOption('timerName') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_hue_primary">{{ __('Primary Hue') }}</label>
+				</div>
+				<input type="range" id="set_hue_primary" class="set-option hue-control" data-option="hue_0" value="{{ getOption('hue_0') }}" min="0" max="359">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_sat_primary">{{ __('Primary Saturation') }}</label>
+				</div>
+				<input type="range" id="set_sat_primary" class="set-option sat-control" data-option="sat_0" value="{{ getOption('sat_0') }}" min="0" max="100">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_hue_secondary">{{ __('Secondary Hue') }}</label>
+				</div>
+				<input type="range" id="set_hue_secondary" class="set-option hue-control" data-option="hue_1" value="{{ getOption('hue_1') }}" min="0" max="359">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_sat_secondary">{{ __('Secondary Saturation') }}</label>
+				</div>
+				<input type="range" id="set_sat_secondary" class="set-option sat-control" data-option="sat_1" value="{{ getOption('sat_1') }}" min="0" max="100">
+			</li>
+		</ol>
+
+		<div class="control-set">
+			<div class="swatch primary-color">{{ __('Primary Color') }}</div>
+			<div class="swatch secondary-color">{{ __('Secondary Color') }}</div>
+		</div>
+	</div>
 </div>
 
-</br>
-<!--Bottom whitespace-->
-
+</main>
 {% endblock %}

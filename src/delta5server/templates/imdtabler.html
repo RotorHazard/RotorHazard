@@ -1,0 +1,92 @@
+{% extends "layout.html" %} {% block title %}IMDTabler{% endblock %} {% block head %} {% endblock %} {% block content %}
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function () {
+		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+		socket.emit('load_data', {'load_types': [
+			'imdtabler_page'
+		]});
+
+		socket.on('imdtabler_data', function (msg) {
+			if (msg.version_str)
+				$('#version_info').html(msg.version_str)
+			if (msg.table_data) {
+				$('#freq_list_input').val(msg.freq_list);
+				$('.table_data').html('<p>(' +
+						__('Hover the mouse cursor over table cells for information') +
+						')</p>' + msg.table_data + '<br>');
+			}
+			else {
+				$('#freq_list_input').val(msg.freq_list);
+				$('.table_data').html('<br>');
+			}
+		});
+
+		$('#view_frequencies').click(function (event) {
+			$('.table_data').html('<p>' + __('Loading') + '...</p>')
+			var data = {
+				freq_list: $('#freq_list_input').val()
+			};
+			socket.emit('imdtabler_update_freqs', data);
+			return false;
+		});
+
+		$("#freq_list_input").keyup(function(event) {
+		    if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
+		        $("#view_frequencies").click();
+		    }
+		});
+
+		$('.freq_set_link').click(function (event) {
+			$('#freq_list_input').val($(this).data('freqs'));
+	        $("#view_frequencies").click();
+			return false;
+		});
+
+	});
+</script>
+<main class="page-imdtabler">
+
+<h2>IMDTabler - {{ __('Intermodulation Distortion Table Generator') }}</h2>
+
+<p>Sample frequency sets:<br>
+<a href="" class="freq_set_link" data-freqs="5658 5695 5760 5800 5880 5917">IMD 6C</a>: 5658 5695 5760 5800 5880 5917, <a href="" class="freq_set_link" data-freqs="5665 5725 5820 5860 5945">ET5</a>: 5665 5725 5820 5860 5945<br>
+<a href="" class="freq_set_link" data-freqs="5645 5685 5760 5805 5905 5945">ETBest6</a>: 5645 5685 5760 5805 5905 5945, <a href="" class="freq_set_link" data-freqs="5645 5685 5760 5905 5945">ET6minus1</a>: 5645 5685 5760 5905 5945<br>
+<a href="" class="freq_set_link" data-freqs="5665 5752 5800 5866 5905">ET5A</a>: 5665 5752 5800 5866 5905, <a href="" class="freq_set_link" data-freqs="5658 5732 5843 5917">Racebnd4</a>: 5658 5732 5843 5917<br>
+<a href="" class="freq_set_link" data-freqs="5645 5740 5820 5860 5945"></a><a href="" class="freq_set_link" data-freqs="5658 5695 5732 5769 5806 5843 5880 5917">raceband</a>: 5658 5695 5732 5769 5806 5843 5880 5917,
+<a href="" class="freq_set_link" data-freqs="5780 5860 5945">Freq in YT video</a>: 5780 5860 5945</p>
+
+<div class="heats">
+	<table border="0" cellpadding="0" cellspacing="2"><tbody><tr>
+		<td align="right">{{ __('Enter frequencies') }}: </td>
+		<td align="center"><input type="text" size="50" id="freq_list_input"></td>
+		<td align="left"><button type="button" class="" id="view_frequencies" onclick="this.blur();">{{ __('View') }}</button></td>
+	</tr></tbody></table>
+</div>
+
+<div class="heats">
+	<div class="table_data"><p>{{ __('Loading') }}...</p></div>
+</div>
+
+<p>IMD rating: A "perfect" table will be rated at 100; lower values are worse. For each (valid) cell in the table with a frequency-difference value less than 35, a value of (35-diff)^2 is added to a ratings total (the squaring is to make low-difference values detract more from the IMD rating). The ratings total is then divided by the number of selected frequencies and again by 5, and then subtracted from 100 to get the IMD rating.<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;
+&nbsp;&nbsp;&nbsp; 1&nbsp;&nbsp; &nbsp; &nbsp; 2&nbsp; &nbsp;
+&nbsp;&nbsp; 3&nbsp; &nbsp; &nbsp;&nbsp; 4&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp; 5&nbsp; &nbsp; &nbsp;&nbsp; 6&nbsp; &nbsp; &nbsp;&nbsp;
+7&nbsp; &nbsp; &nbsp;&nbsp; 8<br>
+Band F: 5740 5760 5780 5800 5820 5840 5860 5880  (IRC NexWave / Fatshark)<br>
+Band E: 5705 5685 5665 5645 5885 5905 5925 5945  (Boscam E / DJI)<br>
+Band B: 5733 5752 5771 5790 5809 5828 5847 5866  (Boscam B)<br>
+Band A: 5865 5845 5825 5805 5785 5765 5745 5725  (Boscam A / TBS / RC305)<br>
+Band R:  5658 5695 5732 5769 5806 5843 5880 5917  (Raceband)<br>
+
+<div id='version_info'></div><br>
+
+Web Links:&nbsp; <a href="http://www.etheli.com/IMD" target="_blank">IMDTools</a>,
+<a href="http://etserv.etheli.com/IMDTabler/run" target="_blank">IMDTabler</a>,
+<a href="http://etserv.etheli.com/FreqSetGen/run" target="_blank">FreqSetGen</a>
+</p>
+
+</main>
+{% endblock %}

@@ -1,55 +1,93 @@
 {% extends "layout.html" %} {% block title %}Heats{% endblock %} {% block head %} {% endblock %} {% block content %}
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function () {
+		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+		socket.emit('load_data', {'load_types': [
+			'frequency_data',
+			'heat_data',
+			'pilot_data'
+		]});
+
+		socket.on('frequency_data', function (msg) {
+			for (var i in msg.frequency) {
+				if (typeof(d5rt.nodes[i]) === 'undefined') {
+					d5rt.nodes[i] = new nodeModel();
+				}
+				d5rt.nodes[i].frequency = msg.frequency[i];
+				freq.updateBlocks();
+			}
+		});
+
+		socket.on('pilot_data', function (msg) {
+			$(".pilots").empty();
+			for (var i in msg.pilot_id) {
+				if (msg.pilot_id[i] != 1) {
+					var el = $('<li data-id="' + msg.pilot_id[i] + '">');
+					el.append('<div class="name">'+ msg.name[i] + '</div>');
+					el.append('<div class="callsign">' + msg.callsign[i] + '</div>');
+					el.appendTo($('.pilots'));
+				}
+			}
+		});
+
+		socket.on('heat_data', function (msg) {
+			$(".heats").empty();
+			for (var i in msg.heats) {
+				var heats = msg.heats[i];
+				var el = $('<li>');
+				if (heats.note) {
+					el.append('<h3>' + heats.note + '</h3>');
+				} else {
+					el.append('<h3>'+ __('Heat') + ' ' + heats.heat_id + '</h3>');
+				}
+
+				var nodelist = $('<ol>');
+				var callsign;
+				for (j in heats.pilots) {
+					var heatpilot = heats.pilots[j];
+					var slot = $('<li>');
+					slot.append('<div class="channel-block" data-node="' + j + '"><span class="ch"></span> <span class="fr"></span></div>');
+
+					callsign = __('-None-');
+					for (var k in msg.pilot_data.pilot_id) {
+						if (msg.pilot_data.pilot_id[k] == heatpilot) {
+							callsign = msg.pilot_data.callsign[k];
+							break;
+						}
+					}
+
+					slot.append('<div class="pilot-name">' + callsign + '</div');
+					nodelist.append(slot);
+				}
+
+				el.append(nodelist);
+				el.appendTo($('.heats'));
+			}
+			freq.updateBlocks();
+		});
+
+	});
+</script>
+
+<main class="page-heats">
 
 <!--Display the heats-->
-<h4>Heats</h4>
-<div class="row">
-	{% for heat in heats.query.with_entities(heats.heat_id).distinct().order_by(heats.heat_id) %}
-	<div class='col-xs-8 col-md-4'>
-		<div class='panel panel-default'>
-			<div class="panel-heading">
-				<h4 class="panel-title">{{ heat.heat_id }} (Heat note)</h4>
-			</div>
-			<table class="table">
-				{% for node in range(num_nodes) %}
-				<tr>
-					<td>
-						{{ channels[node] }} {{ frequencies[node] }}
-					</td>
-					<td>
-						{{ pilots.query.filter_by(pilot_id= heats.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first().callsign
-						}}
-					</td>
-				</tr>
-				{% endfor %}
-			</table>
-		</div>
-	</div>
-	{% endfor %}
-</div>
+
+<h2>{{ __('Heats') }}</h2>
+<ol class="heats">
+	<li class="heat">{{ __('Loading...') }}</li>
+</ol>
 
 <!--Display the pilots-->
-<h4>Pilots</h4>
-<div class="row">
-	<div class='col-xs-16 col-md-6'>
-		<div class='panel panel-default'>
-			<table class="table">
-				<thead>
-					<tr>
-						<th>Call Sign</th>
-						<th>Name</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for pilot in pilots.query.all() %} {% if pilot.pilot_id != 0 %}
-					<tr>
-						<td>{{ pilot.callsign }}</td>
-						<td>{{ pilot.name }}</td>
-					</tr>
-					{% endif %} {% endfor %}
-				</tbody>
-			</table>
-		</div>
-	</div>
+<h2>{{ __('Pilots') }}</h2>
+<ul class="pilots">
+	<li>{{ __('Loading...') }}</li>
+</ul>
+
+<div class="admin">
+	<p><a href="/settings">{{ __('Admin') }}</a></p>
 </div>
 
+</main>
 {% endblock %}

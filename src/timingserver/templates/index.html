@@ -84,8 +84,8 @@
             reset = function() {
                 for (i=0; i<num_nodes; i++) {
                     $('#lap_table_' + i).empty();
-                    $('#peak_rssi_' + i).html(0);
-                    $('#peak_rssi_bar_' + i).css("width", normalize_rssi(0)+'%');
+                    $('#pass_peak_rssi_' + i).html(0);
+                    $('#pass_peak_rssi_bar_' + i).css("width", normalize_rssi(0)+'%');
                     $('#trigger_rssi_' + i).html(0);
                     $('#trigger_rssi_bar_' + i).css("width", normalize_rssi(0)+'%');
                 }
@@ -166,8 +166,8 @@
                                 </div>
                             </form>
                             <div class="progress">
-                              <div id="peak_rssi_bar_${index}" class="progress-bar progress-bar-info" role="progressbar" style="width: 0%">
-                                <span id='peak_rssi_${index}'>0</span>
+                              <div id="pass_peak_rssi_bar_${index}" class="progress-bar progress-bar-info" role="progressbar" style="width: 0%">
+                                <span id='pass_peak_rssi_${index}'>0</span>
                               </div>
                             </div>
                             <div class="progress">
@@ -272,11 +272,11 @@
                 var time_lap = msg.timestamp - last_lap_timestamp[msg.node];
                 var time_total = msg.timestamp - start_timestamp[msg.node];
                 last_lap_timestamp[msg.node] = msg.timestamp;
-                lap_table.append(Lap(lap_table[0].children.length, msg.peak_rssi, ms_to_time(time_lap), ms_to_time(time_total)));
+                lap_table.append(Lap(lap_table[0].children.length, msg.pass_peak_rssi, ms_to_time(time_lap), ms_to_time(time_total)));
                 append_to_log('on pass_record ' + JSON.stringify(msg));
 
-                $('#peak_rssi_' + msg.node).html(msg.peak_rssi);
-                $('#peak_rssi_bar_' + msg.node).css("width", normalize_rssi(msg.peak_rssi)+'%');
+                $('#pass_peak_rssi_' + msg.node).html(msg.pass_peak_rssi);
+                $('#pass_peak_rssi_bar_' + msg.node).css("width", normalize_rssi(msg.pass_peak_rssi)+'%');
                 $('#trigger_rssi_' + msg.node).html(msg.trigger_rssi);
                 $('#trigger_rssi_bar_' + msg.node).css("width", normalize_rssi(msg.trigger_rssi)+'%');
             });

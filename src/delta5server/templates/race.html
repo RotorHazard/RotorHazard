@@ -1,51 +1,245 @@
-{% extends "layout.html" %} {% block title %}Race{% endblock %}{% block head %}
-
+{% extends "layout.html" %} {% block title %}Run{% endblock %}{% block head %}
 <audio id="buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
+<audio id="stagebuzzer" src="./static/audio/stage.mp3" type="audio/mp3"></audio>
+
+<script type="text/javascript" src="./static/Blob.js"></script>
+<script type="text/javascript" src="./static/FileSaver.min.js"></script>
 
 <script type="text/javascript" charset="utf-8">
-	$(document).ready(function () {
-		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+	var globalAudioCtx;
 
-		var buzzer = $('#buzzer')[0];
+	var socket = false;
+	var request_time;
+	var resume_check = true;
+
+	var racedump = {
+		timestamp: new Date(),
+		timedata: [],
+	};
+
+	var speakObjsQueue = [];
+	var checkSpeakQueueFlag = true;
+
+	$(document).ready(function () {
+		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+		socket.emit('load_data', {'load_types': [
+			'node_data',
+			'frequency_data',
+			'race_format',
+			'node_tuning',
+			'min_lap',
+			'team_racing_mode',
+			'leaderboard',
+			'current_laps',
+			'race_status',
+			'current_heat',
+			'team_racing_stat_if_enb'
+		]});
+
+		var heartbeatCounter = 0;
+
+		// set admin flag
+		d5rt.admin = true;
+		d5rt.saveData();
+		$('nav li').removeClass('admin-hide');
+
+		// populate voice controls
+		$('#voice_callsign').prop( "checked", d5rt.voice_callsign);
+		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
+		$('#voice_team_lap_count').prop( "checked", d5rt.voice_team_lap_count);
+		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
+		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
+		$().articulate('volume', d5rt.voice_volume);
+		$('#voice_volume_value').html(d5rt.voice_volume.toFixed(2));
+		$('#set_voice_volume').val(d5rt.voice_volume);
+		$().articulate('rate', d5rt.voice_rate);
+		$('#voice_rate_value').html(d5rt.voice_rate.toFixed(2));
+		$('#set_voice_rate').val(d5rt.voice_rate);
+		$().articulate('pitch', d5rt.voice_pitch);
+		$('#voice_pitch_value').html(d5rt.voice_pitch.toFixed(2));
+		$('#set_voice_pitch').val(d5rt.voice_pitch);
+		$('#buzzer')[0].volume = d5rt.tone_volume;
+		$('#stagebuzzer')[0].volume = d5rt.tone_volume;
+		$('#set_tone_volume').val(d5rt.tone_volume);
+		$('#beep_crossing_entered').prop("checked", d5rt.beep_crossing_entered);
+		$('#beep_crossing_exited').prop("checked", d5rt.beep_crossing_exited);
+		$('#beep_manual_lap_button').prop("checked", d5rt.beep_manual_lap_button);
+		$('#set_beep_volume').val(d5rt.indicator_beep_volume);
+
+		// set up RSSI graphing
+		$('.node .race-header').each(function(){
+			var node = $(this);
+			var node_id = parseInt(node.find('button').attr('data-node'));
+			node.before('<div class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></div>');
+
+			d5rt.nodes[node_id] = new nodeModel();
+			d5rt.nodes[node_id].setup(document.getElementById('rssi-graph-' + node_id));
+		});
+
+		socket.on('race_elapsed', function (msg) {
+			var response_time = new Date();
+			var server_delay = ((response_time - request_time) / 2);
+			if (timer.getStatus() == 1) {
+				var elapsed = msg.elapsed + server_delay;
+				setTimeout(function(){
+					if (timer.getMode()) {
+						// Count up mode
+						timer.stop();
+						timer.reset(Math.floor(elapsed / 1000) + 1);
+						timer.continue(); // Start clock without fanfare
+					} else {
+						// Count down mode
+						var remaining = timer.getRaceDuration() - Math.floor(elapsed / 1000);
+
+						if (remaining > 1) { // don't attempt to resync very late
+							timer.stop();
+							timer.reset(timer.getRaceDuration() - Math.floor(elapsed / 1000));
+							timer.continue(); // Start clock without fanfare
+						} else {
+							timer.reset(0);
+						}
+					}
+				}, 1000 - (elapsed % 1000));
+			}
+		});
 
 		socket.on('race_status', function (msg) {
 			switch (msg.race_status) {
 				case 1: // Race running
-					$('button#current_heat').attr('disabled', 'disabled');
-					$('button#start_race').attr('disabled', 'disabled');
-					$('button#start_race_2min').attr('disabled', 'disabled');
-					$('button#stop_race').removeAttr('disabled');
-					$('button#save_laps').attr('disabled', 'disabled');
-					$('button#clear_laps').attr('disabled', 'disabled');
+					$('.set_current_heat').prop('disabled', true);
+					$('button#start_race').prop('disabled', true);
+					$('button#stop_race').prop('disabled', false);
+					$('button#save_laps').prop('disabled', true);
+					$('button#clear_laps').prop('disabled', true);
+					$('button.simulate_lap').prop('disabled', false);
+					$('body').addClass('race-running');
+					$('body').removeClass('race-stopped');
+					$('body').removeClass('race-new');
+					if (resume_check) {
+						timer.reset(0);
+						timer.continue();
+					}
 					break;
 				case 2: // Race stopped, clear or save laps
-					$('button#current_heat').attr('disabled', 'disabled');
-					$('button#start_race').attr('disabled', 'disabled');
-					$('button#start_race_2min').attr('disabled', 'disabled');
-					$('button#stop_race').attr('disabled', 'disabled');
-					$('button#save_laps').removeAttr('disabled');
-					$('button#clear_laps').removeAttr('disabled');
+					$('.set_current_heat').prop('disabled', true);
+					$('button#start_race').prop('disabled', true);
+					$('button#stop_race').prop('disabled', true);
+					$('button#save_laps').prop('disabled', false);
+					$('button#clear_laps').prop('disabled', false);
+					$('button.simulate_lap').prop('disabled', true);
+					$('body').addClass('race-stopped');
+					$('body').removeClass('race-running');
+					$('body').removeClass('race-new');
 					break;
 				default: // Waiting to start new race
-					$('button#current_heat').removeAttr('disabled');
-					$('button#start_race').removeAttr('disabled');
-					$('button#start_race_2min').removeAttr('disabled');
-					$('button#stop_race').attr('disabled', 'disabled');
-					$('button#save_laps').attr('disabled', 'disabled');
-					$('button#clear_laps').attr('disabled', 'disabled');
+					$('.set_current_heat').prop('disabled', false);
+					$('button#start_race').prop('disabled', false);
+					$('button#stop_race').prop('disabled', true);
+					$('button#save_laps').prop('disabled', true);
+					$('button#clear_laps').prop('disabled', true);
+					$('button.simulate_lap').prop('disabled', true);
+					$('body').addClass('race-new');
+					$('body').removeClass('race-running');
+					$('body').removeClass('race-stopped');
+			}
+			timer.mode(msg.race_mode);
+			timer.setRaceDuration(msg.race_time_sec);
+
+			// resume race if needed
+			if (resume_check) {
+				resume_check = false;
+				request_time = new Date();
+				socket.emit('get_race_elapsed');
 			}
 		});
 
 		socket.on('heartbeat', function (msg) {
-			for (i = 0; i < msg.current_rssi.length; i++) {
-				$('.current_rssi_' + i).html(msg.current_rssi[i]);
+			if (speakObjsQueue.length > 0) {
+				var isSpeakingFlag = $().articulate('isSpeaking');
+				if (checkSpeakQueueFlag) {
+					if (!isSpeakingFlag) {
+						var obj = speakObjsQueue.shift();
+						if (speakObjsQueue.length > 0)
+							checkSpeakQueueFlag = false;
+						doSpeak(obj);
+					}
+				}  //make sure previous speak has started before checking queue again
+				else if (isSpeakingFlag)
+					checkSpeakQueueFlag = true;
+			}
+
+			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
+				heartbeatCounter = 0;
+
+				if (d5rt.collecting) {
+					var timedump = {
+						timestamp: new Date(),
+						nodes: [],
+					};
+
+					for (i = 0; i < msg.current_rssi.length; i++) {
+						timedump.nodes.push(msg.current_rssi[i]);
+					}
+					racedump.timedata.push(timedump)
+				}
+
+				for (i = 0; i < msg.current_rssi.length; i++) {
+					var rssiValue = msg.current_rssi[i];
+
+					if (d5rt.nodes[i].frequency == 0) {
+						rssiValue = 0;
+					}
+
+					$('.current_rssi_' + i).html(rssiValue);
+
+					if (msg.crossing_flag[i]) {
+						$('.crossing_flag_' + i).addClass('is-crossing').html('Crossing');
+					}
+					else {
+						$('.crossing_flag_' + i).removeClass('is-crossing').html('Clear');
+					}
+
+					if (d5rt.nodes[i].graph.options.maxValue < rssiValue) {
+						d5rt.nodes[i].graph.options.maxValue = rssiValue;
+					}
+
+					if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
+						d5rt.nodes[i].graph.options.minValue = Math.max(0, rssiValue);
+					}
+
+					if (d5rt.nodes[i].graphing) {
+						d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+					} else {
+						if (rssiValue) {
+							d5rt.nodes[i].graphing = true;
+							d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
+							d5rt.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
+							d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+						}
+					}
+				}
+			}
+		});
+
+		socket.on('frequency_data', function (msg) {
+			for (i = 0; i < msg.frequency.length; i++) {
+				$('#s_channel_' + i).val(msg.frequency[i]);
+				d5rt.nodes[i].frequency = msg.frequency[i];
+				freq.updateBlocks();
 			}
 		});
 
 		socket.on('node_data', function (msg) {
-			for (i = 0; i < msg.frequency.length; i++) {
-				$('.trigger_rssi_' + i).html(msg.trigger_rssi[i]);
-				$('.peak_rssi_' + i).html(msg.peak_rssi[i]);
+			for (i = 0; i < msg.node_peak_rssi.length; i++) {
+				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
+				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
+				$('.pass_nadir_rssi_' + i).html(msg.pass_nadir_rssi[i]);
+
+				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
+				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
+				d5rt.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
+
+				d5rt.nodes[i].updateThresholds();
 			}
 		});
 
@@ -55,81 +249,115 @@
 				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
 					// No lap deletion for first lap
 					if (node_index.lap_id[j] == 0) {
-						var $tr = $('<tr>').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td style="padding-right: 0px">').text(node_index.lap_time[j])
+						var $tr = $('<tr class="lap_0">').append(
+							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
+							$('<td colspan="2">').text(node_index.lap_time[j])
 						).appendTo('#current_laps_' + i);
 					}
 					else {
 						var $tr = $('<tr>').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td style="padding-right: 0px">').text(node_index.lap_time[j] + ' ').append(
-								$('<button type="button" class="btn btn-default glyphicon glyphicon-remove delete_lap" style="padding: 0px" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '" onclick="this.blur();">')
+							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
+							$('<td colspan="2">').text(node_index.lap_time[j] + ' ').append(
+								$('<button type="button" class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '" onclick="this.blur();">&#215;</button>')
 							)
 						).appendTo('#current_laps_' + i);
 					}
 
 				});
 			});
-			// buzzer.play(); // Play buzzer on new lap but not on page load?
 		});
 
 		socket.on('leaderboard', function (msg) {
-			$('#leaderboard tbody > tr').remove();
-			for (i = 0; i < msg.position.length; i++) {
-				var $tr = $('<tr>').append(
-					$('<td>').text(msg.position[i]),
-					$('<td>').text(msg.callsign[i]),
-					$('<td>').text(msg.laps[i]),
-					$('<td>').text(msg.last_lap[i]),
-					$('<td>').text(msg.behind[i]),
-					$('<td>').text(msg.average_lap[i]),
-					$('<td>').text(msg.fastest_lap[i]),
-					$('<td>').text(msg.total_time[i]),
-				).appendTo('#leaderboard');
-			}
+			$('#leaderboard').empty();
+			$('#leaderboard').append(build_leaderboard(msg.by_race_time, 'current', msg.meta));
+		});
+
+		socket.on('team_racing_status', function (msg) {
+			$('.team_racing_status').html(msg.team_laps_str);
 		});
 
 		socket.on('phonetic_data', function (msg) {
-			var $ttstest = msg.pilot + " lap " + msg.lap + " " + msg.phonetic;
-			speak('<div class="speech">' + $ttstest + '</div> div.speech');				
+			var ttstext = '';
+
+			if (d5rt.voice_callsign) {
+				ttstext = msg.callsign;
+				if (msg.pilot)
+					ttstext = msg.pilot;
+			}
+
+			if (d5rt.voice_lap_count) {
+				if (ttstext.length > 0)
+					ttstext += ", ";
+				ttstext += __('Lap') + " " + msg.lap;
+			}
+
+			if (d5rt.voice_lap_time) {
+				if (ttstext.length > 0)
+					ttstext += ", ";
+				ttstext += msg.phonetic;
+			}
+
+			if (msg.team_name && msg.team_laps && d5rt.voice_team_lap_count) {
+				if (ttstext.length > 0)
+					ttstext += ", ";
+				ttstext += __('Team') + " " + msg.team_name + ", " + __('Lap') + " " + msg.team_laps;
+			}
+
+			if (ttstext.length > 0) {
+				speak('<div class="speech">' + ttstext + '</div>');
+			}
 		})
 
-		socket.on('language_data', function (msg) {
-			var $testlang = msg.language;
-			sellang = $testlang;
+		socket.on('phonetic_text', function (msg) {
+			if (msg.text) {
+				speak('<div class="speech">' + msg.text + '</div>');
+			}
 		})
-		
+
 		socket.on('current_heat', function (msg) {
 			$('.current_heat').html('Heat ' + msg.current_heat);
 			for (i = 0; i < msg.callsign.length; i++) {
-				$('.callsign_' + i).html(msg.callsign[i]);
+				$('.callsign_' + i).html(msg.callsign[i] ? msg.callsign[i] : 'None');
 			}
-		});
-
-		socket.on('start_timer', function (msg) {
-			timer.reset(-1); // Stop and reset with -1 seconds to catch buzzer
-			timer.mode(1); // Count up mode
-			timer.start(); // Start clock
-		});
-
-		socket.on('start_timer_2min', function (msg) {
-			timer.reset({{fix_race_time+1}});
-			timer.mode(0); // Count down mode
-			timer.start(); // Start clock
 		});
 
 		socket.on('stop_timer', function (msg) {
 			timer.stop();
 		});
 
-		$('button#start_race').click(function (event) {
-			socket.emit('start_race');
-			return false;
+		socket.on('prestage_ready', function (msg) {
+			request_time = new Date();
+			socket.emit('stage_race', msg);
 		});
 
-		$('button#start_race_2min').click(function (event) {
-			socket.emit('start_race_2min');
+		socket.on('stage_ready', function (msg) {
+			var response_time = new Date();
+			var server_delay = ((response_time - request_time) / 2);
+
+			var data = { // supply delay to stage 2
+				delay: msg.start_delay
+			}
+			socket.emit('start_race', data);
+			setTimeout(function(){
+				timer.mode(msg.race_mode);
+				timer.setRaceDuration(msg.race_time_sec);
+				timer.reset();
+				timer.pre_race(msg.start_delay, msg.hide_stage_timer);
+				timer.start(); // Start clock
+
+				$('button#stop_race').prop('disabled', true);
+
+				d5rt.collecting = 'race';
+				racedump.timestamp = new Date();
+				racedump.timedata = [];
+			}, server_delay);
+		});
+
+		$('button#start_race').click(function (event) {
+			socket.emit('prestage_race');
+			$('.timing-clock').html('--:--');
+			$('button#start_race').prop('disabled', true);
+			$('.set_current_heat').prop('disabled', true);
 			return false;
 		});
 
@@ -145,10 +373,13 @@
 
 		$('button#clear_laps').click(function (event) {
 			socket.emit('clear_laps');
+			timer.reset();
 			return false;
 		});
 
-		$('button#simulate_lap').click(function (event) {
+		$('button.simulate_lap').click(function (event) {
+			if (d5rt.beep_manual_lap_button)
+				play_beep(100, 2000);
 			var data = {
 				node: parseInt($(this).data('node')),
 			};
@@ -156,192 +387,6 @@
 			return false;
 		});
 
-		$('button#LED_OFF').click(function (event) { //OFF
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(0),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_solid', data);
-                return false;
-		});
-		
-		$('button#LED_1S').click(function (event) { //Node 1 Solid Blue
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(0),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_solid', data);
-                return false;
-		});
-		
-		$('button#LED_2S').click(function (event) { //Node 2 Solid Orange
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(50),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_solid', data);
-                return false;
-		});
-		
-		$('button#LED_3S').click(function (event) { //Node 3 Solid Pink
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(0),
-                                blue: parseInt(60),
-                };
-                socket.emit('LED_solid', data);
-                return false;
-		});
-		
-		$('button#LED_4S').click(function (event) { //Node 4 Solid Purple
-                var data = {
-                                red: parseInt(150),
-                                green: parseInt(0),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_solid', data);
-                return false;
-		});
-
-		$('button#LED_5S').click(function (event) { //Node 5 Solid Yellow
-                var data = {
-                                red: parseInt(250),
-                                green: parseInt(210),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_solid', data);
-                return false;
-		});
-
-		$('button#LED_6S').click(function (event) { //Node 6 Solid Cyan
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(255),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_solid', data);
-                return false;
-		});
-
-		$('button#LED_7S').click(function (event) { //Node 7 Solid Green
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(255),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_solid', data);
-                return false;
-		});
-
-		$('button#LED_8S').click(function (event) { //Node 8 Solid Red
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(0),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_solid', data);
-                return false;
-		});
-
-		$('button#LED_1C').click(function (event) { //Node 1 Chase Blue
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(0),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_chase', data);
-                return false;
-		});
-		
-		$('button#LED_2C').click(function (event) { //Node 2 Chase Orange
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(50),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_chase', data);
-                return false;
-		});
-		
-		$('button#LED_3C').click(function (event) { //Node 3 Chase Pink
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(0),
-                                blue: parseInt(60),
-                };
-                socket.emit('LED_chase', data);
-                return false;
-		});
-		
-		$('button#LED_4C').click(function (event) { //Node 4 Chase Purple
-                var data = {
-                                red: parseInt(150),
-                                green: parseInt(0),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_chase', data);
-                return false;
-		});
-
-		$('button#LED_5C').click(function (event) { //Node 5 Chase Yellow
-                var data = {
-                                red: parseInt(250),
-                                green: parseInt(210),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_chase', data);
-                return false;
-		});
-
-		$('button#LED_6C').click(function (event) { //Node 6 Chase Cyan
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(255),
-                                blue: parseInt(255),
-                };
-                socket.emit('LED_chase', data);
-                return false;
-		});
-
-		$('button#LED_7C').click(function (event) { //Node 7 Chase Green
-                var data = {
-                                red: parseInt(0),
-                                green: parseInt(255),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_chase', data);
-                return false;
-		});
-
-		$('button#LED_8C').click(function (event) { //Node 8 Chase Red
-                var data = {
-                                red: parseInt(255),
-                                green: parseInt(0),
-                                blue: parseInt(0),
-                };
-                socket.emit('LED_chase', data);
-                return false;
-		});
-
-		
-		$('button#LED_RB').click(function (event) {
-			socket.emit('LED_RB');
-			return false;
-		});
-		
-		$('button#LED_RBCYCLE').click(function (event) {
-			socket.emit('LED_RBCYCLE');
-			return false;
-		});
-		
-		$('button#LED_RBCHASE').click(function (event) {
-			socket.emit('LED_RBCHASE');
-			return false;
-		});
-		
 		$(document).on("click", ".delete_lap", function (event) { // Needed for buttons added after document load
 			var data = {
 				node: parseInt($(this).data('node')),
@@ -351,195 +396,532 @@
 			return false;
 		});
 
-		$('.set_current_heat li a').click(function (event) {
+		$('#set_current_heat').change(function (event) {
 			var data = {
-				heat: parseInt($(this).data('heat')),
+				heat: parseInt($(this).val()),
 			};
 			socket.emit('set_current_heat', data);
 		});
+
+		/* Voice */
+		// construct language selection
+		$('#voice_select').after('<select class="set_voice_language">');
+		var voices = $().articulate('getVoices');
+
+		for (var i in voices) {
+			$('.set_voice_language').append('<option>'+ voices[i].name + '</option>');
+		}
+		if (d5rt.voice_language) {
+			$('#set_voice_language').val(d5rt.voice_language);	
+		}
+
+		$('.set_voice_language').change(function (event) {
+			d5rt.voice_language = $(this).val();
+			d5rt.saveData();
+		});
+
+		$('#voice_callsign').change(function (event) {
+			d5rt.voice_callsign = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_lap_count').change(function (event) {
+			d5rt.voice_lap_count = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_team_lap_count').change(function (event) {
+			d5rt.voice_team_lap_count = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_lap_time').change(function (event) {
+			d5rt.voice_lap_time = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_race_timer').change(function (event) {
+			d5rt.voice_race_timer = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#set_voice_volume').on('input', function (event) {
+			val = parseFloat($(this).val())
+			$().articulate('volume', val);
+			$('#voice_volume_value').html(val.toFixed(2));
+		});
+
+		$('#set_voice_volume').on('change', function (event) {
+			d5rt.voice_volume = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#set_voice_rate').on('input', function (event) {
+			val = parseFloat($(this).val())
+			$().articulate('rate', val);
+			$('#voice_rate_value').html(val.toFixed(2));
+		});
+
+		$('#set_voice_rate').on('change', function (event) {
+			d5rt.voice_rate = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#set_voice_pitch').on('input', function (event) {
+			val = parseFloat($(this).val())
+			$().articulate('pitch', val);
+			$('#voice_pitch_value').html(val.toFixed(2));
+		});
+
+		$('#set_voice_pitch').on('change', function (event) {
+			d5rt.voice_pitch = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#set_tone_volume').on('input', function (event) {
+			$('#buzzer')[0].volume = parseFloat($(this).val());
+			$('#stagebuzzer')[0].volume = parseFloat($(this).val());
+		});
+
+		$('#set_tone_volume').on('change', function (event) {
+			d5rt.tone_volume = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		$('#beep_crossing_entered').change(function (event) {
+			d5rt.beep_crossing_entered = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#beep_crossing_exited').change(function (event) {
+			d5rt.beep_crossing_exited = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#beep_manual_lap_button').change(function (event) {
+			d5rt.beep_manual_lap_button = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#set_beep_volume').on('change', function (event) {
+			d5rt.indicator_beep_volume = parseFloat($(this).val());
+			d5rt.saveData();
+		});
+
+		/* Race Format */
+		socket.on('min_lap', function (msg) {
+			$('#set_min_lap').val(msg.min_lap);
+		});
+
+		$('#set_min_lap').change(function (event) {
+			var data = {
+				min_lap: parseInt($(this).val())
+			};
+			socket.emit('set_min_lap', data);
+		})
+
+		socket.on('team_racing_mode', function (msg) {
+			$('#set_team_racing_mode').val(msg.enabled_val);  // 0=disabled, 1=enabled
+		});
+
+		$('#set_team_racing_mode').change(function (event) {
+			var data = {
+				enabled_val: parseInt($(this).val())  // 0=disabled, 1=enabled
+			};
+			socket.emit('set_team_racing_mode', data);
+		})
+
+		socket.on('race_format', function (msg) {
+			$('#set_race_format').empty();
+			for (i = 0; i < msg.format_ids.length; i++) {
+				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
+			}
+			$('#set_race_format').val(msg.current_format);
+		});
+
+		$('#set_race_format').change(function (event) {
+			var data = {
+				race_format: $(this).val()
+			};
+			socket.emit('set_race_format', data);
+		});
+
+		/* Calibration Profiles */
+		socket.on('node_tuning', function (msg) {
+			$('#set_profile').empty();
+			for (i = 0; i < msg.profile_ids.length; i++) {
+				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
+			}
+			$('#set_profile').val(msg.current_profile);
+		});
+
+		socket.on('node_crossing_change', function (msg) {
+			if (msg.crossing_flag) {
+				if (d5rt.beep_crossing_entered)
+					play_beep(25, 3500);
+			}
+			else {
+				if (d5rt.beep_crossing_exited)
+					play_beep(35, 2500);
+			}
+		});
+
+		$('#set_profile').change(function (event) {
+			var data = {
+				profile: $(this).val()
+			};
+			socket.emit('set_profile', data);
+		});
+
+		/* LED Controls */
+		$('button.LED-color').click(function (event) {
+				var colors = convertColor($(this).data('rgb'));
+				var data = {
+					red: colors.r,
+					green: colors.g,
+					blue: colors.b,
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
+		$('button.LED-chase').click(function (event) {
+				var colors = convertColor($(this).data('rgb'));
+				var data = {
+					red: colors.r,
+					green: colors.g,
+					blue: colors.b,
+				};
+				socket.emit('LED_chase', data);
+				return false;
+		});
+
+		$('button#LED_RB').click(function (event) {
+			socket.emit('LED_RB');
+			return false;
+		});
+
+		$('button#LED_RBCYCLE').click(function (event) {
+			socket.emit('LED_RBCYCLE');
+			return false;
+		});
+
+		$('button#LED_RBCHASE').click(function (event) {
+			socket.emit('LED_RBCHASE');
+			return false;
+		});
+
+		/* Other */
+		$('button#racedump').click(function (event) {
+			function formatdate(dateObj) {
+				var year = dateObj.getFullYear();
+				var month = dateObj.getMonth() + 1;
+				month = month < 10 ? '0'+month : month;
+				var day = dateObj.getDate();
+				day = day < 10 ? '0'+day : day;
+				return year + '-' + month + '-' + day;
+			}
+			function formattime(dateObj) {
+				var hours = dateObj.getHours();
+				var minutes = dateObj.getMinutes();
+				minutes = minutes < 10 ? '0'+minutes : minutes;
+				var seconds = dateObj.getSeconds();
+				seconds = seconds < 10 ? '0'+seconds : seconds;
+				var millis = dateObj.getMilliseconds();
+				millis = ('00' + millis).slice(-3);
+				return hours + ':' + minutes + ':' + seconds + '.' + millis;
+			}
+			var text = '';
+
+			text = text + __('Time');
+			for(var j in d5rt.nodes) {
+				text = text + ',' + $('.callsign_' + j).html().trim();
+			}
+			text = text + '\r\n';
+
+			for (var i in racedump.timedata) {
+				text = text + formattime(racedump.timedata[i].timestamp);
+				for(var j in racedump.timedata[i].nodes) {
+					text = text + ',' + racedump.timedata[i].nodes[j];
+				}
+				text = text + '\r\n';
+			}
+
+			var formatted = formatdate(racedump.timestamp) + '.' + formattime(racedump.timestamp);
+			var filename = 'd5rt-race-' + formatted;
+			var blob = new Blob([text], {type: "text/plain;charset=utf-8"});
+			saveAs(blob, filename+".csv");
+		});
+
 	});
 
-	var sellang = {{ lang_id }};
+	function doSpeak(obj) {
+		$(obj).articulate('setVoice','name', d5rt.voice_language).articulate('speak');
+	};
 
-	function speak(obj) {
-		switch (sellang) {
-			case 1:
-				$(obj).articulate('setVoice','name','Microsoft David Desktop - English (United States)').articulate('speak');
-				break;
-			case 2:
-				$(obj).articulate('setVoice','name','Microsoft Zira Desktop - English (United States)').articulate('speak');
-				break;
-			case 3:
-				$(obj).articulate('setVoice','name','Google US English').articulate('speak');
-				break;
-			case 4:
-				$(obj).articulate('setVoice','name','Google UK English Female').articulate('speak');
-				break;
-			case 5:
-				$(obj).articulate('setVoice','name','Google UK English Male').articulate('speak');
-				break;
-			case 6:
-				$(obj).articulate('setVoice','name','Google Deutsch').articulate('speak');
-				break;			
-			case 7:
-				$(obj).articulate('setVoice','name','Google español').articulate('speak');
-				break;
-			case 8:
-				$(obj).articulate('setVoice','name','Google español de Estados Unidos').articulate('speak');
-				break;
-			case 9:
-				$(obj).articulate('setVoice','name','Google français').articulate('speak');
-				break;
-			case 10:
-				$(obj).articulate('setVoice','name','Google हिन्दी').articulate('speak');
-				break;
-			case 11:
-				$(obj).articulate('setVoice','name','Google Bahasa Indonesia').articulate('speak');
-				break;
-			case 12:
-				$(obj).articulate('setVoice','name','Google italiano').articulate('speak');
-				break;
-			case 13:
-				$(obj).articulate('setVoice','name','Google 日本語').articulate('speak');
-				break;
-			case 14:
-				$(obj).articulate('setVoice','name','Google 한국의').articulate('speak');
-				break;
-			case 15:
-				$(obj).articulate('setVoice','name','Google Nederlands').articulate('speak');
-				break;
-			case 16:
-				$(obj).articulate('setVoice','name','Google polski').articulate('speak');
-				break;
-			case 17:
-				$(obj).articulate('setVoice','name','Google português do Brasil').articulate('speak');
-				break;
-			case 18:
-				$(obj).articulate('setVoice','name','Google русский').articulate('speak');
-				break;
-			case 19:
-				$(obj).articulate('setVoice','name','Google 國語（臺灣）').articulate('speak');
-				break;
+	function speak(obj, priority) {
+		if (typeof(priority)=='undefined')
+			priority = false;
+
+		if (priority) {
+			speakObjsQueue.unshift(obj);
+		} else {
+			speakObjsQueue.push(obj);
 		}
 	};
 
-	function ratenormal(obj) {
-		$(obj).articulate('rate', 1.0);
+	//Generate tone. All arguments are optional:
+	//duration of the tone in milliseconds. Default is 500
+	//frequency of the tone in hertz. default is 440
+	//type of tone. Possible values are sine, square, sawtooth, triangle, and custom. Default is sine.
+	//callback to use on end of tone
+	/* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
+	function play_beep(duration, frequency, type, callback) {
+		globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
+
+		var oscillator = globalAudioCtx.createOscillator();
+		var gainNode = globalAudioCtx.createGain();
+
+		oscillator.connect(gainNode);
+		gainNode.connect(globalAudioCtx.destination);
+
+		gainNode.gain.value = d5rt.indicator_beep_volume;
+		if (frequency)
+			oscillator.frequency.value = frequency;
+		if (type)
+			oscillator.type = type;
+		if (callback)
+			oscillator.onended = callback;
+
+		oscillator.start();
+		setTimeout(function(){oscillator.stop()}, (duration ? duration : 500));
 	};
-	function ratefast(obj) {
-		$(obj).articulate('rate', 3.0);
-	};
+
 </script>
 {% endblock %} {% block content %}
+<main class="page-race">
 
-<!--Buttons for controlling the race-->
-<div class="row">
-	<div class='col-xs-12'>
-		<div class="btn-group">
-			<button class="btn btn-default dropdown-toggle current_heat" id="current_heat" type="button" data-toggle="dropdown" aria-haspopup="true"
-			 aria-expanded="true">
-		 Heat {{ current_heat }}
-		 </button>
-			<ul class="dropdown-menu set_current_heat">
-				{% for heat in heats.query.with_entities(heats.heat_id).distinct() %}
-				<li><a role="button" data-heat="{{ heat.heat_id }}">Heat {{ heat.heat_id }}</a></li>
+<div class="panel">
+	<div class="panel-content">
+		<div class="timer">
+			{% include "build_timer.html" %}
+		</div>
+
+		<!--Buttons for controlling the race-->
+		<div class="control-set">
+			<label for="set_current_heat" class="screen-reader-text">{{ __('Current Heat') }}</label>
+			<select id="set_current_heat">
+				{% for heat in heats.query.filter_by(node_index=0).all() %}
+				<option value="{{ heat.heat_id }}" {% if heat.heat_id|int() == current_heat|int() %}
+						selected="selected"
+					{% endif %}>
+					{% if heat.note %}
+						{{ heat.note }}
+					{% else %}
+						Heat {{ heat.heat_id }}
+					{% endif %}
+				</option>
 				{% endfor %}
-			</ul>
+			</select>
+			<button type="button" id="start_race" onclick="this.blur();">{{ __('Start') }}<span class="wide"> {{ __('Race') }}</span></button>
+			<button type="button" id="stop_race" disabled="disabled" onclick="this.blur();">{{ __('Stop') }}<span class="wide"> {{ __('Race') }}</span></button>
+			<button type="button" id="save_laps" disabled="disabled" onclick="this.blur();">{{ __('Save') }}<span class="wide"> {{ __('Laps') }}</span></button>
+			<button type="button" id="clear_laps" disabled="disabled" onclick="this.blur();">{{ __('Clear') }}<span class="wide"> {{ __('Laps') }}</span></button>
 		</div>
-		<button type="button" class="btn btn-default" id="start_race" onclick="this.blur();">Start Race</button>
-		<button type="button" class="btn btn-default" id="start_race_2min" onclick="this.blur();">Start Fixed Time Race</button> {% include
-		"build_timer.html" %}
-		<button type="button" class="btn btn-default" id="stop_race" disabled="disabled" onclick="this.blur();">Stop Race</button>
-		<button type="button" class="btn btn-default" id="save_laps" disabled="disabled" onclick="this.blur();">Save Laps</button>
-		<button type="button" class="btn btn-default" id="clear_laps" disabled="disabled" onclick="this.blur();">Clear Laps</button>
-		<hr>
-		<button type="button" class="btn btn-default" id="LED_OFF"><img src="..\static\image\LED-off.png"></button>
-		<button type="button" class="btn btn-default" id="LED_RBCYCLE"><img src="..\static\image\LED-rainbow.png"></button>
-		<br>
-		<button type="button" class="btn btn-default" id="LED_1S"><img src="..\static\image\LED-blue.png"></button>
-		<button type="button" class="btn btn-default" id="LED_2S"><img src="..\static\image\LED-orange.png"></button>
-		<button type="button" class="btn btn-default" id="LED_3S"><img src="..\static\image\LED-pink.png"></button>
-		<button type="button" class="btn btn-default" id="LED_4S"><img src="..\static\image\LED-purple.png"></button>
-		<button type="button" class="btn btn-default" id="LED_5S"><img src="..\static\image\LED-yellow.png"></button>
-		<button type="button" class="btn btn-default" id="LED_6S"><img src="..\static\image\LED-cyan.png"></button>
-		<button type="button" class="btn btn-default" id="LED_7S"><img src="..\static\image\LED-green.png"></button>
-		<button type="button" class="btn btn-default" id="LED_8S"><img src="..\static\image\LED-red.png"></button>
-		<br>
-		<button type="button" class="btn btn-default" id="LED_1C"><img src="..\static\image\LED-chase-blue.png"></button>
-		<button type="button" class="btn btn-default" id="LED_2C"><img src="..\static\image\LED-chase-orange.png"></button>
-		<button type="button" class="btn btn-default" id="LED_3C"><img src="..\static\image\LED-chase-pink.png"></button>
-		<button type="button" class="btn btn-default" id="LED_4C"><img src="..\static\image\LED-chase-purple.png"></button>
-		<button type="button" class="btn btn-default" id="LED_5C"><img src="..\static\image\LED-chase-yellow.png"></button>
-		<button type="button" class="btn btn-default" id="LED_6C"><img src="..\static\image\LED-chase-cyan.png"></button>
-		<button type="button" class="btn btn-default" id="LED_7C"><img src="..\static\image\LED-chase-green.png"></button>
-		<button type="button" class="btn btn-default" id="LED_8C"><img src="..\static\image\LED-chase-red.png"></button>
 
-	</div>
-</div>
+		<!--Display the race leaderboard-->
+		<div id="leaderboard"></div>
 
-<!--Space between button row and leaderboard-->
-<p> </p>
+        <div class="team_racing_status"></div>
 
-<!--Display the race leaderboard-->
-<div class="row">
-	<div class='col-xs-16 col-md-12'>
-		<div class='panel panel-default'>
-			<table class="table" id="leaderboard">
-				<thead>
-					<tr>
-						<th>Pos.</th>
-						<th>Pilot</th>
-						<th>Laps</th>
-						<th>Last Lap</th>
-						<th>Behind</th>
-						<th>Average</th>
-						<th>Fastest</th>
-						<th>Total</th>
-					</tr>
-				</thead>
-				<tbody>
-				</tbody>
-			</table>
-		</div>
-	</div>
-</div>
-
-<!--Display the current laps-->
-<div class="row">
-	{% for node in range(num_nodes) %}
-	<div class="col-xs-4 col-md-2">
-		<div class='panel panel-default'>
-			<div class="panel-heading">
-				<h4 class="panel-title callsign_{{ node }}">
-					{{ pilots.query.filter_by( pilot_id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
+		<!--Display the current laps-->
+		<div class="race-results">
+			{% for node in range(num_nodes) %}
+			<div class="node">
+				<h4 class="callsign_{{ node }}">
+					{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 					}}
 				</h4>
+				<div class="race-header">
+					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
+					<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">{{ __('Manual') }}</button>
+				</div>
+				<div class="crossing crossing_flag_{{ node }}"><span>{{ __('Clear') }}</span></div>
+				<table class="laps" id="current_laps_{{ node }}">
+					<thead>
+						<tr>
+							<td class="rssi" colspan="2">
+								<span class="current_rssi_{{ node }}"></span>/<span class="node_peak_rssi_{{ node }}"></span>/<span class="pass_peak_rssi_{{ node }}"></span>
+							</td>
+						</tr>
+					</thead>
+					<tbody>
+					</tbody>
+				</table>
 			</div>
-			<div class="panel-heading">
-				<p class="panel-title">
-					<small>{{ channels[node] }} {{ frequencies[node] }}</small>
-				</p>
-				<!-- Comment-out <p></p> above and enable 'button' below to get simulate-lap buttons for debug testing -->
-				<!--
-				<button type="button" class="btn btn-default" id="simulate_lap" data-node="{{ node }}" onclick="this.blur();"><small>{{ channels[node] }} {{ frequencies[node] }}</small></button>
-				-->
-			</div>
-			<table class="table" id="current_laps_{{ node }}">
-				<thead>
-					<tr>
-						<td colspan="2">
-							<span class="current_rssi_{{ node }}"></span> /
-							<span class="trigger_rssi_{{ node }}"></span> /
-							<span class="peak_rssi_{{ node }}"></span>
-						</td>
-					</tr>
-				</thead>
-				<tbody>
-				</tbody>
-			</table>
+			{% endfor %}
 		</div>
 	</div>
-	{% endfor %}
 </div>
 
+<!--Format and Sensor-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Race Management') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_race_format">{{ __('Race Format') }}</label>
+				</div>
+				<select id="set_race_format">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_profile">{{ __('Profile') }}</label>
+				</div>
+				<select id="set_profile">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
+					<p class="desc">In seconds</p>
+				</div>
+				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_team_racing_mode">{{ __('Team Racing Mode') }}</label>
+				</div>
+				<select id="set_team_racing_mode">
+					<option value="0">{{ __('Team Racing Disabled') }}</option>
+					<option value="1">{{ __('Team Racing Enabled') }}</option>
+				</select>
+			</li>
+		</ol>
+	</div>
+</div>
+
+<!--Voice Settings-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Audio Control') }}</h2>
+	</div>
+	<div class="panel-content">
+		<p class="form-note">{{ __('Voice settings apply to this device only.') }}</p>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_voice_language">{{ __('Voice Select') }}</label>
+				</div>
+				<div id="voice_select"></div>
+			</li>
+			<li>
+				<div class="label-block">
+					{{ __('Announcements') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="voice_callsign"> {{ __('Callsign') }}</label></li>
+					<li><label><input type="checkbox" id="voice_lap_count"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="voice_lap_time"> {{ __('Lap Time') }}</label></li>
+					<li><label><input type="checkbox" id="voice_race_timer"> {{ __('Race Timer') }}</label></li>
+					<li><label><input type="checkbox" id="voice_team_lap_count"> {{ __('Team Lap Total') }}</label></li>
+				</ul>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_volume">{{ __('Voice Volume') }}</label>
+					<p class="desc">{{ __('Volume') }}: <span id="voice_volume_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_volume" min="0" max="1.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_rate">{{ __('Voice Rate') }}</label>
+					<p class="desc">{{ __('Rate') }}: <span id="voice_rate_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_rate" min="0" max="2.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_pitch">{{ __('Voice Pitch') }}</label>
+					<p class="desc">{{ __('Pitch') }}: <span id="voice_pitch_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_tone_volume">{{ __('Tone Volume') }}</label>
+				</div>
+				<input type="range" id="set_tone_volume" min="0" max="1.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					{{ __('Indicator Beeps') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
+					<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
+					<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
+				</ul>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_beep_volume">{{ __('Indicator Beeps Volume') }}</label>
+				</div>
+				<input type="range" id="set_beep_volume" min="0" max="1.0" step="0.01">
+			</li>
+		</ol>
+	</div>
+</div>
+
+<!--LED Controls-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('LED Control') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<button class="LED-color" data-rgb="#000000"><img src="..\static\image\LED-off.png"></button>
+			<button id="LED_RBCYCLE"><img src="..\static\image\LED-rainbow.png"></button>
+			<br />
+			<button class="LED-color" data-rgb="#0000ff"><img src="..\static\image\LED-blue.png"></button>
+			<button class="LED-color" data-rgb="#ff3200"><img src="..\static\image\LED-orange.png"></button>
+			<button class="LED-color" data-rgb="#ff003C"><img src="..\static\image\LED-pink.png"></button>
+			<button class="LED-color" data-rgb="#9600ff"><img src="..\static\image\LED-purple.png"></button>
+			<button class="LED-color" data-rgb="#ffD200"><img src="..\static\image\LED-yellow.png"></button>
+			<button class="LED-color" data-rgb="#00ffff"><img src="..\static\image\LED-cyan.png"></button>
+			<button class="LED-color" data-rgb="#00ff00"><img src="..\static\image\LED-green.png"></button>
+			<button class="LED-color" data-rgb="#ff0000"><img src="..\static\image\LED-red.png"></button>
+			<br />
+			<button class="LED-chase" data-rgb="#0000ff"><img src="..\static\image\LED-chase-blue.png"></button>
+			<button class="LED-chase" data-rgb="#ff3200"><img src="..\static\image\LED-chase-orange.png"></button>
+			<button class="LED-chase" data-rgb="#ff003C"><img src="..\static\image\LED-chase-pink.png"></button>
+			<button class="LED-chase" data-rgb="#9600ff"><img src="..\static\image\LED-chase-purple.png"></button>
+			<button class="LED-chase" data-rgb="#ffD200"><img src="..\static\image\LED-chase-yellow.png"></button>
+			<button class="LED-chase" data-rgb="#00ffff"><img src="..\static\image\LED-chase-cyan.png"></button>
+			<button class="LED-chase" data-rgb="#00ff00"><img src="..\static\image\LED-chase-green.png"></button>
+			<button class="LED-chase" data-rgb="#ff0000"><img src="..\static\image\LED-chase-red.png"></button>
+		</div>
+	</div>
+</div>
+
+<!--History Export-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('History Export') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div class="control-set">
+			<button id="racedump">{{ __('Export race to CSV') }}</button>
+		</div>
+	</div>
+</div>
+
+</main>
 {% endblock %}

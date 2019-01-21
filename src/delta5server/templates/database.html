@@ -1,12 +1,13 @@
 {% extends "layout.html" %} {% block title %}Database{% endblock %} {% block content %}
-<h3>Pilots</h3>
+<main class="page-database">
+<h2>{{ _('Pilots') }}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Pilot ID</th>
-            <th>Call Sign</th>
-            <th>Name</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Pilot ID') }}</th>
+            <th>{{ _('Call Sign') }}</th>
+            <th>{{ _('Name') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -21,14 +22,14 @@
     </tbody>
 </table>
 
-<h3>Heats</h3>
+<h2>{{ _('Heats') }}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Heat ID</th>
-            <th>Node Index</th>
-            <th>Pilot ID</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Heat ID') }}</th>
+            <th>{{ _('Node Index') }}</th>
+            <th>{{ _('Pilot ID') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -43,17 +44,17 @@
     </tbody>
 </table>
 
-<h3>Current Laps</h3>
+<h2>{{ _('Current Laps') }}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Node Index</th>
-            <th>Pilot ID</th>
-            <th>Lap ID</th>
-            <th>Lap Time Stamp</th>
-            <th>Lap Time</th>
-            <th>Lap Time Formatted</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Node Index') }}</th>
+            <th>{{ _('Pilot ID') }}</th>
+            <th>{{ _('Lap ID') }}</th>
+            <th>{{ _('Lap Time Stamp') }}</th>
+            <th>{{ _('Lap Time') }}</th>
+            <th>{{ _('Lap Time Formatted') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -71,19 +72,19 @@
     </tbody>
 </table>
 
-<h3>Saved Races</h3>
+<h2>{{ _('Saved Races') }}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Round ID</th>
-            <th>Heat ID</th>
-            <th>Node Index</th>
-            <th>Pilot ID</th>
-            <th>Lap ID</th>
-            <th>Lap Time Stamp</th>
-            <th>Lap Time</th>
-            <th>Lap Time Formatted</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Round ID') }}</th>
+            <th>{{ _('Heat ID') }}</th>
+            <th>{{ _('Node Index') }}</th>
+            <th>{{ _('Pilot ID') }}</th>
+            <th>{{ _('Lap ID') }}</th>
+            <th>{{ _('Lap Time Stamp') }}</th>
+            <th>{{ _('Lap Time') }}</th>
+            <th>{{ _('Lap Time Formatted') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -103,26 +104,54 @@
     </tbody>
 </table>
 
-<h3>Frequencies</h3>
+<h2>{{ _('Race Format') }}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Band</th>
-            <th>Channel</th>
-            <th>Frequency</th>
+            <th>{{ _('ID') }}</th>
+            <th>{{ _('Name') }}</th>
+            <th>{{ _('Mode') }}</th>
+            <th>{{ _('Time') }}</th>
+            <th>{{ _('Minimum Lap') }}</th>
+            <th>{{ _('Hide Staging Timer') }}</th>
+            <th>{{ _('Min Start Delay') }}</th>
+            <th>{{ _('Max Start Delay') }}</th>
         </tr>
     </thead>
     <tbody>
-        {% for frequency in frequencies.query.all() %}
+        {% for raceformat in race_format.query.all() %}
         <tr>
-            <td>{{ frequency.id }}</td>
-            <td>{{ frequency.band }}</td>
-            <td>{{ frequency.channel }}</td>
-            <td>{{ frequency.frequency }}</td>
+            <td>{{ raceformat.id }}</td>
+            <td>{{ raceformat.name }}</td>
+            <td>{{ raceformat.race_mode }}</td>
+            <td>{{ raceformat.race_time_sec }}</td>
+            <td>{{ raceformat.min_lap_sec }}</td>
+            <td>{{ raceformat.hide_stage_timer }}</td>
+            <td>{{ raceformat.start_delay_min }}</td>
+            <td>{{ raceformat.start_delay_max }}</td>
+            <td>{{ raceformat.number_laps_win }}</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 
+<h2>{{ _('Global Settings') }}</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>{{ _('Option') }}</th>
+            <th>{{ _('Value') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for setting in globalSettings.query.all() %}
+        <tr>
+            <td>{{ setting.option_name }}</td>
+            <td>{{ setting.option_value }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+</main>
 {% endblock %}
