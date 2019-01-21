@@ -8,7 +8,8 @@ RotorHazard builds on the [Delta5 Race Timer](https://github.com/scottgchin/delt
 ## Major Features
 * Timing and event management on the same hardware
 * Modern, mobile-firendly, and highly responsive user interface
-* Manage pilots, heats, race classes, and get 
+* Manage pilots, heats, race classes, race formats, and tuning profiles
+* LED and audio support to indicate race staging, starts, and other events
 * Real-time statistics and race history
 * Fine control of filtering and calibration allows indoor and outdoor use, even in difficult multipathing environments
 * Supports all frequencies in the 5.8GHz band
