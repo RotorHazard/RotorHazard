@@ -1,0 +1,38 @@
+{% extends "layout.html" %} {% block title %}Home{% endblock %} {% block head %} {% endblock %} {% block content %}
+
+<main class="page-home">
+
+<div class="header">
+	<h1>
+		<div class="screen-reader-text">{{ getOption("timerName") }}</div>
+		<img src="..\static\image\RotorHazard Logo.svg" alt="RotorHazard / FPV Race Timer" />	
+	</h1>
+</div>
+
+<div class="panel">
+	<div class="panel-header">
+		<h2>Current Event</h2>
+	</div>
+	<div class="panel-content">
+		<h1>{{ getOption('eventName') }}</h1>
+		<p>{{ getOption('eventDescription') }}</p>
+	</div>
+</div>
+
+<div class="panel">
+	<div class="panel-header">
+		<h2>Actions</h2>
+	</div>
+	<div class="panel-content">
+		<ul class="home-menu">
+			<li><a class="button-like" href="/heats">{{ __("Event Heats and Classes") }}</a></li>
+			<li><a class="button-like" href="/results">{{ __("View Race Results") }}</a></li>
+			<li><a class="button-like" href="/current">{{ __("Spectate Current Race") }}</a></li>
+			<li class="admin-hide"><a class="button-like" href="/race">{{ __("Start Race") }}</a></li>
+			<li><a class="button-like" href="/settings">{{ __("Admin / Settings") }}</a></li>
+		</ul>			
+	</div>
+</div>
+
+</main>
+{% endblock %}

@@ -8,5 +8,5 @@ class Delta5Race():
         self.race_status = 0
 
 def get_race_state():
-    '''Returns the delta 5 race object.'''
+    '''Returns the race object.'''
     return Delta5Race()

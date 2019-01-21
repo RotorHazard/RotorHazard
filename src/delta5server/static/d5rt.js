@@ -285,7 +285,7 @@ jQuery(document).ready(function($){
 	}
 
 	// header collapsing (hamburger)
-	$('#logo').after('<button class="hamburger">' + __('Menu') + '</button>');
+	$('#timer-name').after('<button class="hamburger">' + __('Menu') + '</button>');
 
 	$('.hamburger').on('click', function(event) {
 		if ($('body').hasClass('nav-over')) {
@@ -325,7 +325,7 @@ jQuery(document).ready(function($){
 	$('table').wrap('<div class="table-wrap">');
 
 	// Panel collapsing
-	$(document).on('click', '.panel-header', function() {
+	$(document).on('click', '.collapsing .panel-header', function() {
 		var thisitem = $(this).parent();
 		if (thisitem.hasClass('open')) {
 			thisitem.removeClass('open');

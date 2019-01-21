@@ -5,6 +5,7 @@
 
 		socket.emit('load_data', {'load_types': [
 			'frequency_data',
+			'class_data',
 			'heat_data',
 			'pilot_data'
 		]});
@@ -22,7 +23,7 @@
 		socket.on('pilot_data', function (msg) {
 			$(".pilots").empty();
 			for (var i in msg.pilot_id) {
-				if (msg.pilot_id[i] != 1) {
+				if (msg.pilot_id[i]) {
 					var el = $('<li data-id="' + msg.pilot_id[i] + '">');
 					el.append('<div class="name">'+ msg.name[i] + '</div>');
 					el.append('<div class="callsign">' + msg.callsign[i] + '</div>');
@@ -67,13 +68,50 @@
 			freq.updateBlocks();
 		});
 
+		socket.on('class_data', function (msg) {
+			$(".race_classes").empty();
+
+			if (msg.classes.length) {
+
+				var classlist = $('<ol>');
+				for (var i in msg.classes) {
+					var race_class = msg.classes[i];
+					var el = $('<li>');
+					
+					if (race_class.name) {
+						el.append('<h3>' + race_class.name + '</h3>');
+					} else {
+						el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');			
+					}
+
+					if (race_class.description) {
+						el.append('<p>' + race_class.description + '</p>');
+					}
+
+					if (race_class.format) {
+						el.append('<p>' + msg.formats[race_class.format].name + '</p>');
+					}
+
+					el.appendTo(classlist);
+				}
+				classlist.appendTo($('.race_classes'));
+			} else {
+				$('.race_classes').append('<p class="form-note">' + __('This is a single-class event.') + '</p>');
+			}
+		});
+
 	});
 </script>
 
 <main class="page-heats">
 
-<!--Display the heats-->
+<!--Display the classes-->
+<h2>{{ __('Classes') }}</h2>
+<div id="race_classes" class="race_classes">
+	<p class="form-note">{{ __('Loading...') }}</p>
+</div>
 
+<!--Display the heats-->
 <h2>{{ __('Heats') }}</h2>
 <ol class="heats">
 	<li class="heat">{{ __('Loading...') }}</li>
@@ -84,10 +122,6 @@
 <ul class="pilots">
 	<li>{{ __('Loading...') }}</li>
 </ul>
-
-<div class="admin">
-	<p><a href="/settings">{{ __('Admin') }}</a></p>
-</div>
 
 </main>
 {% endblock %}

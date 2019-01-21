@@ -1,5 +1,5 @@
-'''Delta5 race timer server script'''
-SERVER_API = 7 # Server API version
+'''RotorHazard server script'''
+SERVER_API = 8 # Server API version
 
 import os
 import sys
@@ -74,7 +74,7 @@ Config['LED']['LED_STRIP']      = ws.WS2811_STRIP_GRB   # Strip type and colour 
 # other default configurations
 Config['GENERAL']['HTTP_PORT'] = 5000
 Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
-Config['GENERAL']['ADMIN_PASSWORD'] = 'delta5'
+Config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
 Config['GENERAL']['DEBUG'] = False
 
 # override defaults above with config from file
@@ -243,6 +243,7 @@ class Heat(DB.Model):
 class RaceClass(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=True)
+    description = DB.Column(DB.String(256), nullable=True)
     format_id = DB.Column(DB.Integer, nullable=False)
 
     def __repr__(self):
@@ -348,8 +349,20 @@ def requires_auth(f):
 # Routes
 #
 
-@APP.route('/results')
+@APP.route('/')
 def index():
+    '''Route to home page.'''
+    return render_template('home.html', getOption=getOption, __=__, 
+        lang=getFullLanguage(getOption('currentLanguage')))
+
+@APP.route('/heats')
+def heats():
+    '''Route to heat summary page.'''
+    return render_template('heats.html', getOption=getOption, __=__, 
+        lang=getFullLanguage(getOption('currentLanguage')))
+
+@APP.route('/results')
+def results():
     '''Route to round summary page.'''
     # A more generic and flexible way of viewing saved race data is needed
     # - Individual round/race summaries
@@ -361,12 +374,6 @@ def index():
     # - One for all pilots, sorted by fastest lap and shows average and other stats
     # - One for individual heats
     return render_template('rounds.html', getOption=getOption, __=__, 
-        lang=getFullLanguage(getOption('currentLanguage')))
-
-@APP.route('/')
-def heats():
-    '''Route to heat summary page.'''
-    return render_template('heats.html', getOption=getOption, __=__, 
         lang=getFullLanguage(getOption('currentLanguage')))
 
 @APP.route('/race')
@@ -676,6 +683,7 @@ def on_add_race_class():
     DB.session.flush()
     DB.session.refresh(new_race_class)
     new_race_class.name = __('Class %d') % (new_race_class.id)
+    new_race_class.description = __('Class %d') % (new_race_class.id)
     DB.session.commit()
     server_log('Class added: Class {0}'.format(new_race_class))
     emit_class_data()
@@ -1481,6 +1489,7 @@ def emit_round_data(**params):
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
+        current_class['description'] = race_class.name
         current_class['leaderboard'] = calc_leaderboard(class_id=race_class.id)
         current_classes[race_class.id] = current_class
 
@@ -1608,7 +1617,7 @@ def calc_leaderboard(**params):
                 stat_query = CurrentLap.query \
                     .filter_by(pilot_id=pilot) \
                     .order_by(-CurrentLap.lap_id)
-                total_time.append(stat_query.first().lap_time)
+                last_lap.append(stat_query.first().lap_time)
             else:
                 last_lap.append(None)
     # Get the average lap time for each pilot
@@ -1828,6 +1837,7 @@ def emit_heat_data(**params):
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
+        current_class['description'] = race_class.name
         current_classes.append(current_class)
 
     emit_payload = {
@@ -1980,13 +1990,13 @@ def check_emit_team_racing_status(t_laps_dict=None, **params):
               # if not passed in then determine number of laps for each team
     if t_laps_dict is None:
         t_laps_dict = get_team_laps_info()[0]
-    disp_str = ' | '
+    disp_str = ''
     for t_name in sorted(t_laps_dict.keys()):
-        disp_str += 'Team ' + t_name + ' Lap: ' + str(t_laps_dict[t_name][0]) + ' | '
+        disp_str += ' <span class="team-laps">Team ' + t_name + ' Lap: ' + str(t_laps_dict[t_name][0]) + '</span>'
     if Race_laps_winner_name is not None:
         if Race_laps_winner_name is not RACE_STATUS_TIED_STR and \
                 Race_laps_winner_name is not RACE_STATUS_CROSSING:
-            disp_str += 'Winner is Team ' + Race_laps_winner_name
+            disp_str += '<span class="team-winner">Winner is Team ' + Race_laps_winner_name + '</span>'
         else:
             disp_str += Race_laps_winner_name
     server_log('Team racing status: ' + disp_str)
@@ -2761,7 +2771,7 @@ def db_reset_race_formats():
 def db_reset_options_defaults():
     DB.session.query(GlobalSettings).delete()
     setOption("server_api", SERVER_API)
-    setOption("timerName", __("Delta5 Race Timer"))
+    setOption("timerName", __("RotorHazard"))
 
     setOption("hue_0", "212")
     setOption("sat_0", "55")
@@ -2777,11 +2787,14 @@ def db_reset_options_defaults():
     setOption("contrast_1_low", "#ffffff")
     setOption("contrast_1_high", "#000000")
 
-    setOption('currentLanguage', '')
+    setOption("currentLanguage", "")
     setOption("currentProfile", "1")
     setOption("currentFormat", "1")
     setOption("MinLapSec", "5")
     setOption("TeamRacingMode", "0")
+
+    setOption("eventName", __("FPV Race"))
+    setOption("eventDescription", "")
 
     server_log("Reset global settings")
 
@@ -2826,6 +2839,28 @@ elif int(getOption('server_api')) < SERVER_API:
     try:
         server_log('Recovering Pilot data from previous database')
         pilot_query_all = Pilot.query.all()
+
+        carryoverOpts = [
+            "timerName",
+            "hue_0",
+            "sat_0", 
+            "lum_0_low",
+            "lum_0_high",
+            "contrast_0_low",
+            "contrast_0_high",
+            "hue_1",
+            "sat_1",
+            "lum_1_low",
+            "lum_1_high",
+            "contrast_1_low",
+            "contrast_1_high",
+            "currentLanguage"
+        ]
+
+        carryOver = {}
+        for opt in carryoverOpts:
+            carryOver[opt] = getOption(opt)
+
     except:
         server_log('Error while reading data from previous database')
     backup_db_file(False)  # rename and move DB file
@@ -2852,6 +2887,12 @@ elif int(getOption('server_api')) < SERVER_API:
                 id_corr = 1
         DB.session.commit()
         server_log('Database pilots restored')
+
+        for opt in carryOver:
+            setOption(opt, carryOver[opt])
+        DB.session.commit()
+        server_log('UI Options restored')
+
     except:
         server_log('Error while writing data from previous database')
 

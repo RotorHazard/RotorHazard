@@ -32,6 +32,7 @@ h2 {
 	color: #fff;
 	position: relative;
 	margin-bottom: 1rem;
+	font-weight: 500;
 }
 
 h2:before {
@@ -113,7 +114,7 @@ select {
 	width: 100%;
 }
 
-button, select {
+button, select, .button-like {
 	border: solid 0.125em hsl(212.7, 67.8%, 29.2%);
 	border-radius: 0.25rem;
 	padding: 0.25em 0.5em;
@@ -124,11 +125,21 @@ button, select {
 	box-sizing: border-box;
 	display: inline-block;
 	vertical-align: middle;
+	text-decoration: none;
 
 	background: hsl(212.7, 67.8%, 29.2%);
 	background: -moz-linear-gradient(top, hsl(213.8, 53.8%, 46.7%) 0%, hsl(212.7, 67.8%, 29.2%) 100%);
 	background: -webkit-linear-gradient(top, hsl(213.8, 53.8%, 46.7%) 0%,hsl(212.7, 67.8%, 29.2%) 100%);
 	background: linear-gradient(to bottom, hsl(213.8, 53.8%, 46.7%) 0%,hsl(212.7, 67.8%, 29.2%) 100%);
+}
+
+.button-like {
+	line-height: 1.8;
+	padding: 0 0.5em;
+}
+
+.button-like:hover {
+	color: #fff;
 }
 
 option {
@@ -154,6 +165,7 @@ button.no-style {
 	display: block;
 	background: transparent;
 	text-align: inherit;
+	font-weight: 500;
 }
 
 ol.form {
@@ -225,6 +237,9 @@ ol.form li+li {
 
 .panel-header {
 	padding: 0 0 1rem;
+}
+
+.collapsing .panel-header {
 	cursor: pointer;
 }
 
@@ -285,8 +300,19 @@ body>header {
 	line-height: 1;
 }
 
-#logo {
+#timer-name {
 	width: 12rem;
+	text-overflow: ellipsis;
+}
+
+#timer-name img {
+	height: 1em;
+	vertical-align: middle;
+}
+
+#timer-name a {
+	color: #fff;
+	text-decoration: none;
 }
 
 .hamburger {
@@ -359,12 +385,15 @@ nav li.admin-hide {
 }
 
 @media (max-width: 20em){
-	#logo {
+	#timer-name {
+		width: 1.2em;
+	}
+	#timer-name a {
 		display: none;
 	}
 
 	.hamburger {
-		width: 100%;
+		width: calc(100% - 1.2em);
 	}
 }
 
@@ -374,6 +403,47 @@ main {
 	margin: 0 auto;
 }
 
+/* Home */
+
+.page-home .header h1 {
+	text-align: center;
+	font-size: 1em;
+	margin: 1rem 0;
+}
+
+.page-home .header h1 img {
+	margin: 0 auto;
+}
+
+main.page-home {
+	max-width: 35em;
+}
+
+.page-home .home-menu {
+	max-width: 20em;
+	margin: 1em auto;
+	padding: 0;
+	list-style: none;
+}
+
+.page-home .home-menu li {
+	margin: 0.5em 0;
+	padding: 0;
+}
+
+.page-home .home-menu li a {
+	width: 100%;
+	font-size: 1.2em;
+	text-align: center;
+}
+
+@media (max-width: 30em) {
+	.page-home .home-menu li a {
+		font-size: 1em;
+	}	
+}
+
+/* Race */
 .timing-clock {
 	font-size: 3rem;
 	background: #000;
@@ -719,7 +789,7 @@ main {
 	}
 }
 
-.race_classes {
+.race_classes ol {
 	padding: 0;
 	list-style: none;
 	display: flex;
@@ -727,7 +797,7 @@ main {
 	margin: 0 -0.25em;
 }
 
-.race_classes>li {
+.race_classes>ol>li {
 	width: calc(20% - 0.5em);
 	text-overflow: ellipsis;
 	margin: 0 0.25em 0.5em;
@@ -736,45 +806,44 @@ main {
 }
 
 @media (max-width: 68em){
-	.race_classes>li {
+	.race_classes>ol>li {
 		width: calc(25% - 0.5em);
 	}
 }
 
 @media (max-width: 48em){
-	.race_classes>li {
+	.race_classes>ol>li {
 		width: calc(33.3333% - 0.5em);
 	}
 }
 
 @media (max-width: 36em){
-	.race_classes>li {
+	.race_classes>ol>li {
 		width: calc(50% - 0.5em);
 	}
 }
 
 @media (max-width: 23em){
-	.race_classes>li {
+	.race_classes>ol>li {
 		width: 100%;
 	}
 }
 
-.page-settings .race_classes>li {
+.page-settings .race_classes>ol>li {
 	width: calc(33.3333% - 0.5em);
 }
 
 @media (max-width: 54em){
-	.page-settings .race_classes>li {
+	.page-settings .race_classes>ol>li {
 		width: calc(50% - 0.5em);
 	}
 }
 
 @media (max-width: 30em){
-	.page-settings .race_classes>li {
+	.page-settings .race_classes>ol>li {
 		width: 100%;
 	}
 }
-
 
 .event-leaderboard {
 	margin-bottom: 1em;
@@ -947,9 +1016,18 @@ td.speak {
 	font-size: 0.75em;
 }
 
-.admin {
-	margin-top: 1em;
+.team_racing_status {
+	text-align: center;
+	justify-content: center;
+	display: flex;
+	flex-wrap: wrap;
+	font-weight: bold;
 }
+
+.team_racing_status>* {
+	margin: 0.5em 1em;
+}
+
 
 .swatch {
 	padding: 1em;
@@ -960,4 +1038,14 @@ td.speak {
 	button .wide {
 		display: none;
 	}
+}
+
+footer {
+	text-align: center;
+	font-size: 0.75em;
+}
+
+footer img {
+	height: 2.5em;
+	vertical-align: middle;
 }

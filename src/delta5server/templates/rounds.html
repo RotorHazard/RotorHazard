@@ -71,7 +71,11 @@
 							class_leaderboard.append(class_leaderboard_content);
 							class_panel_content.append(class_leaderboard);
 						} else {
-							class_panel_header.append('<h2><button class="no-style">' + __('Unclassified') + '</button></h2>')
+							if ($.isEmptyObject(msg.classes)) {
+								class_panel_header.append('<h2><button class="no-style">' + __('Heats') + '</button></h2>')
+							} else {
+								class_panel_header.append('<h2><button class="no-style">' + __('Unclassified') + '</button></h2>')
+							}
 						}
 
 						class_panel.append(class_panel_header);
@@ -94,14 +98,16 @@
 								var panel_content = $('<div class="panel-content" style="display: none">');
 
 								// heat leaderboards
-								var heat_summary_panel = $('<div class="panel collapsing open">');
-								heat_summary_panel.append('<div class="panel-header"><h4><button class="no-style">' + __('Heat Summary') + '</button></h4></div>')
-								var heat_summary_panel_content = $('<div class="panel-content">');
-								var heat_leaderboard = $('<div class="leaderboard">');
-								heat_leaderboard.append(build_leaderboard(heat.leaderboard.by_race_time, 'heat', msg.meta));
-								heat_summary_panel_content.append(heat_leaderboard);
-								heat_summary_panel.append(heat_summary_panel_content);
-								panel_content.append(heat_summary_panel);
+								if (heat.rounds.length > 1) {
+									var heat_summary_panel = $('<div class="panel collapsing open">');
+									heat_summary_panel.append('<div class="panel-header"><h4><button class="no-style">' + __('Heat Summary') + '</button></h4></div>')
+									var heat_summary_panel_content = $('<div class="panel-content">');
+									var heat_leaderboard = $('<div class="leaderboard">');
+									heat_leaderboard.append(build_leaderboard(heat.leaderboard.by_race_time, 'heat', msg.meta));
+									heat_summary_panel_content.append(heat_leaderboard);
+									heat_summary_panel.append(heat_summary_panel_content);
+									panel_content.append(heat_summary_panel);			
+								}
 
 								// rounds
 								for (var round_i in heat.rounds) {

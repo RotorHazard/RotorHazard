@@ -5,7 +5,7 @@
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="description" content="Delta5 VTX Timer">
+	<meta name="description" content="RotorHazard">
 	<meta name="google" content="notranslate">
 	<title>{% block title %}{% endblock %}: {{ getOption("timerName") }}</title>
 
@@ -128,10 +128,10 @@
 
 <body>
 	<header>
-		<div id="logo">{{ getOption("timerName") }}</div>
+		<div id="timer-name"><img src="..\static\image\RotorHazard Icon.svg"> <a href="/">{{ getOption("timerName") }}</a></div>
 		<nav id="nav-main">
 			<ul>
-				<li><a href="/">{{ __("Heats") }}</a></li>
+				<li><a href="/heats">{{ __("Event") }}</a></li>
 				<li><a href="/results">{{ __("Results") }}</a></li>
 				<li><a href="/current">{{ __("Current") }}</a></li>
 				<li class="admin-hide"><a href="/race">{{ __("Run") }}</a></li>
@@ -143,6 +143,10 @@
 
 	<!--Child template content-->
 	{% block content %}{% endblock %}
+
+	<footer>
+		<p>Powered by <img src="..\static\image\RotorHazard Logo.svg" alt="RotorHazard / FPV Race Timer" /></p>
+	</footer>
 </body>
 
 </html>

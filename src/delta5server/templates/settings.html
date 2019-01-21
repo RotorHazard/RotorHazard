@@ -376,13 +376,21 @@
 
 		socket.on('class_data', function (msg) {
 			$(".race_classes").empty();
+
 			if (msg.classes.length) {
+				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '</p>');
+
+				var classlist = $('<ol>');
 				for (var i in msg.classes) {
 					var race_class = msg.classes[i];
 					var el = $('<li>');
 					el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');
 					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
 					input.val(race_class.name);
+					el.append(input);
+
+					var input = $('<textarea id="race_class_description-' + race_class.id + '" class="set_race_class_description" data-class_id="' + race_class.id + '" placeholder="' + __('Class Description') + '" maxlength="256">');
+					input.val(race_class.description);
 					el.append(input);
 
 					var selectbox = $('<select class="set_class_format" id="class_format_' + race_class.id + '">')
@@ -394,10 +402,11 @@
 					selectbox.prop('disabled', race_class.locked);
 					el.append(selectbox);
 					
-					el.appendTo($('.race_classes'));
+					el.appendTo(classlist);
 				}
+				classlist.appendTo($('.race_classes'));
 			} else {
-				$('.race_classes').append('<li>' + __('Add to split event into classes') + '</li>');
+				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
 			}
 		});
 
@@ -1122,26 +1131,49 @@
 	</div>
 </div>
 
+<!--Event and Class info-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Event and Classes') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_event_name">{{ __('Event Name') }}</label>
+				</div>
+				<input type="text" id="set_event_name" class="set-option" data-option="eventName" value="{{ getOption('eventName') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_event_description">{{ __('Event Description') }}</label>
+				</div>
+				<textarea id="set_event_description" class="set-option" data-option="eventDescription" maxlength="256">{{ getOption('eventDescription') }}</textarea>
+			</li>
+		</ol>
+
+		<div id="race_classes" class="race_classes">
+			<p class="form-note">{{ __('Loading...') }}</p>
+		</div>
+		<div class="control-set">
+			<button type="button" class="btn btn-default" id="add_race_class" onclick="this.blur();">+ {{ __('Add Class') }}</button>
+		</div>
+	</div>
+</div>
+
 <!--Heats list for editing-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Heats and Classes') }}</h2>
+		<h2>{{ __('Heats') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">{{ __('Selections cannot be modified for heats/classes with saved races. (Clear races to release.)') }}</p>
+		<p class="form-note">{{ __('Selections cannot be modified for heats with saved races. (Clear races to release.)') }}</p>
 
 		<ol id="heats" class="heats">
 			<li>{{ __('Loading...') }}</li>
 		</ol>
 		<div class="control-set">
 			<button type="button" class="btn btn-default" id="add_heat" onclick="this.blur();">+ {{ __('Add Heat') }}</button>
-		</div>
-
-		<ol id="race_classes" class="race_classes">
-			<li>{{ __('Loading...') }}</li>
-		</ol>
-		<div class="control-set">
-			<button type="button" class="btn btn-default" id="add_race_class" onclick="this.blur();">+ {{ __('Add Class') }}</button>
 		</div>
 	</div>
 </div>
@@ -1387,7 +1419,7 @@
 	<div class="panel-content">
 		<div class="control-set">
 			<button type="button" class="" id="backup_database" onclick="this.blur();">{{ __('Backup Database') }}</button>
-			{% if Debug %}<a href="/database" class="debug">{{ __('View Database') }}</a>{% endif %}
+			{% if Debug %}<a href="/database" class="debug button-like">{{ __('View Database') }}</a>{% endif %}
 		</div>
 		<div class="control-set">
 			<select id="reset_type">
@@ -1411,7 +1443,7 @@
 	<div class="panel-content">
 		<div class="control-set">
 			<button type="button" class="btn-danger" id="shutdown_pi" onclick="this.blur();">{{ __('Shut Down') }}</button>
-			{% if Debug %}<a href="/hardwarelog" class="debug">{{ __('Log') }}</a>{% endif %}
+			{% if Debug %}<a href="/hardwarelog" class="debug button-like">{{ __('Log') }}</a>{% endif %}
 		</div>
 
 		<ol class="form">
