@@ -5,18 +5,20 @@
     <thead>
         <tr>
             <th>{{ __('ID') }}</th>
-            <th>{{ __('Pilot ID') }}</th>
             <th>{{ __('Call Sign') }}</th>
             <th>{{ __('Name') }}</th>
+            <th>{{ __('Phonetic') }}</th>
+            <th>{{ __('Team') }}</th>
         </tr>
     </thead>
     <tbody>
         {% for pilot in pilots.query.all() %}
         <tr>
             <td>{{ pilot.id }}</td>
-            <td>{{ pilot.pilot_id }}</td>
             <td>{{ pilot.callsign }}</td>
             <td>{{ pilot.name }}</td>
+            <td>{{ pilot.phonetic }}</td>
+            <td>{{ pilot.team }}</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -30,6 +32,8 @@
             <th>{{ __('Heat ID') }}</th>
             <th>{{ __('Node Index') }}</th>
             <th>{{ __('Pilot ID') }}</th>
+            <th>{{ __('Note') }}</th>
+            <th>{{ __('Class ID') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -39,6 +43,30 @@
             <td>{{ heat.heat_id }}</td>
             <td>{{ heat.node_index }}</td>
             <td>{{ heat.pilot_id }}</td>
+            <td>{{ heat.note }}</td>
+            <td>{{ heat.class_id }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2>{{ __('Race Class') }}</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>{{ __('ID') }}</th>
+            <th>{{ __('Name') }}</th>
+            <th>{{ __('Description') }}</th>
+            <th>{{ __('Format ID') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for raceclass in race_class.query.all() %}
+        <tr>
+            <td>{{ raceclass.id }}</td>
+            <td>{{ raceclass.name }}</td>
+            <td>{{ raceclass.description }}</td>
+            <td>{{ raceclass.format_id }}</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -79,6 +107,7 @@
             <th>{{ __('ID') }}</th>
             <th>{{ __('Round ID') }}</th>
             <th>{{ __('Heat ID') }}</th>
+            <th>{{ __('Class ID') }}</th>
             <th>{{ __('Node Index') }}</th>
             <th>{{ __('Pilot ID') }}</th>
             <th>{{ __('Lap ID') }}</th>
@@ -93,12 +122,41 @@
             <td>{{ savedrace.id }}</td>
             <td>{{ savedrace.round_id }}</td>
             <td>{{ savedrace.heat_id }}</td>
+            <td>{{ savedrace.class_id }}</td>
             <td>{{ savedrace.node_index }}</td>
             <td>{{ savedrace.pilot_id }}</td>
             <td>{{ savedrace.lap_id }}</td>
             <td>{{ savedrace.lap_time_stamp }}</td>
             <td>{{ savedrace.lap_time }}</td>
             <td>{{ savedrace.lap_time_formatted }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2>{{ __('Profiles') }}</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>{{ __('ID') }}</th>
+            <th>{{ __('Name') }}</th>
+            <th>{{ __('Description') }}</th>
+            <th>{{ __('Frequencies') }}</th>
+            <th>{{ __('EnterAts') }}</th>
+            <th>{{ __('ExitAts') }}</th>
+            <th>{{ __('Filter Ratio') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for profile in profiles.query.all() %}
+        <tr>
+            <td>{{ profile.id }}</td>
+            <td>{{ profile.name }}</td>
+            <td>{{ profile.description }}</td>
+            <td>{{ profile.frequencies }}</td>
+            <td>{{ profile.enter_ats }}</td>
+            <td>{{ profile.exit_ats }}</td>
+            <td>{{ profile.f_ratio }}</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -112,10 +170,11 @@
             <th>{{ __('Name') }}</th>
             <th>{{ __('Mode') }}</th>
             <th>{{ __('Time') }}</th>
-            <th>{{ __('Minimum Lap') }}</th>
             <th>{{ __('Hide Staging Timer') }}</th>
             <th>{{ __('Min Start Delay') }}</th>
             <th>{{ __('Max Start Delay') }}</th>
+            <th>{{ __('Minimum Lap') }}</th>
+            <th>{{ __('Laps Win Mode') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -125,11 +184,12 @@
             <td>{{ raceformat.name }}</td>
             <td>{{ raceformat.race_mode }}</td>
             <td>{{ raceformat.race_time_sec }}</td>
-            <td>{{ raceformat.min_lap_sec }}</td>
             <td>{{ raceformat.hide_stage_timer }}</td>
             <td>{{ raceformat.start_delay_min }}</td>
             <td>{{ raceformat.start_delay_max }}</td>
             <td>{{ raceformat.number_laps_win }}</td>
+            <td>{{ raceformat.min_lap_sec }}</td>
+            <td>{{ raceformat.laps_win_mode }}</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -139,6 +199,7 @@
 <table class="table">
     <thead>
         <tr>
+            <th>{{ __('ID') }}</th>
             <th>{{ __('Option') }}</th>
             <th>{{ __('Value') }}</th>
         </tr>
@@ -146,6 +207,7 @@
     <tbody>
         {% for setting in globalSettings.query.all() %}
         <tr>
+            <td>{{ setting.id }}</td>
             <td>{{ setting.option_name }}</td>
             <td>{{ setting.option_value }}</td>
         </tr>

@@ -148,6 +148,10 @@
 			$('#leaderboard').append(build_leaderboard(msg.by_race_time, 'current', msg.meta));
 		});
 
+		socket.on('team_racing_status', function (msg) {
+			$('.team_racing_status').html(msg.team_laps_str);
+		});
+
 		socket.on('phonetic_data', function (msg) {
 			if (d5rt.primaryPilot == 0 || d5rt.primaryPilot == msg.pilot_id) {
 				var pilot = msg.callsign;
@@ -210,21 +214,24 @@
 		});
 
 		/* Voice */
-		// construct language selection
-		$('#voice_select').after('<select id="set_voice_language" class="set_voice_language">');
-		var voices = $().articulate('getVoices');
-
-		for (var i in voices) {
-			$('.set_voice_language').append('<option>'+ voices[i].name + '</option>');
-		}
-		if (d5rt.voice_language) {
-			$('#set_voice_language').val(d5rt.voice_language);	
-		}
-
-		$('.set_voice_language').change(function (event) {
+		$(document).on('change', '#set_voice_language', function (event) {
 			d5rt.voice_language = $(this).val();
 			d5rt.saveData();
 		});
+
+		// construct language selection
+		$('#voice_select').after('<select id="set_voice_language">');
+		var voices = $().articulate('getVoices');
+
+		for (var i in voices) {
+			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
+		}
+		if (d5rt.voice_language) {
+			$('#set_voice_language').val(d5rt.voice_language);	
+		} else {
+			$('#set_voice_language').selectedIndex = 0;
+			$('#set_voice_language').trigger('change');
+		}
 
 		$('#voice-calls').change(function(){
 			d5rt.primaryPilot = parseInt($(this).val());
@@ -293,6 +300,8 @@
 
 		<!--Display the race leaderboard-->
 		<div id="leaderboard"></div>
+
+		<div class="team_racing_status"></div>
 
 		<!--Display the current laps-->
 		<div class="race-results">

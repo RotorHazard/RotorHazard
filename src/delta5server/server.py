@@ -438,9 +438,14 @@ def database():
     '''Route to database page.'''
     return render_template('database.html', getOption=getOption, __=__, 
         lang=getFullLanguage(getOption('currentLanguage')),
-        pilots=Pilot, heats=Heat, currentlaps=CurrentLap,
-        savedraces=SavedRace, race_format=RaceFormat,
-        profiles=Profiles, globalSettings=GlobalSettings)
+        pilots=Pilot, 
+        heats=Heat, 
+        race_class=RaceClass,
+        currentlaps=CurrentLap,
+        savedraces=SavedRace, 
+        profiles=Profiles,
+        race_format=RaceFormat,
+        globalSettings=GlobalSettings)
 
 #
 # Socket IO Events
@@ -691,7 +696,7 @@ def on_add_race_class():
 
 @SOCKET_IO.on('set_race_class_name')
 def on_set_race_class_name(data):
-    '''Sets a new pilot in a heat.'''
+    '''Sets race class name.'''
     race_class = data['class_id']
     race_class_name = data['class_name']
     db_update = RaceClass.query.get(race_class)
@@ -700,6 +705,17 @@ def on_set_race_class_name(data):
     server_log('Class {0} name: {1}'.format(race_class, race_class_name))
     emit_class_data(noself=True)
     emit_heat_data() # Update class names in heat displays
+
+@SOCKET_IO.on('set_race_class_format')
+def on_set_race_class_format(data):
+    '''Sets race class format.'''
+    race_class = data['class_id']
+    race_class_format = data['class_format']
+    db_update = RaceClass.query.get(race_class)
+    db_update.format_id = race_class_format
+    DB.session.commit()
+    server_log('Class {0} format: {1}'.format(race_class, race_class_format))
+    emit_class_data(noself=True)
 
 @SOCKET_IO.on('add_pilot')
 def on_add_pilot():
@@ -1837,7 +1853,7 @@ def emit_heat_data(**params):
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
-        current_class['description'] = race_class.name
+        current_class['description'] = race_class.description
         current_classes.append(current_class)
 
     emit_payload = {

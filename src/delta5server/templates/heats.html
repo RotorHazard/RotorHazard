@@ -61,8 +61,21 @@
 					slot.append('<div class="pilot-name">' + callsign + '</div');
 					nodelist.append(slot);
 				}
-
 				el.append(nodelist);
+
+				// class indicator
+				if (msg.classes.length) {				
+					if (heats.class_id) {
+						for (var i in msg.classes) {
+							if (msg.classes[i].id == heats.class_id) {
+								el.append('<div class="race_class">' + msg.classes[i].name + '</div>')
+							}
+						}
+					} else {
+						el.append('<div class="race_class">Unclassified</div>');
+					}
+				}
+
 				el.appendTo($('.heats'));
 			}
 			freq.updateBlocks();
@@ -84,13 +97,19 @@
 						el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');			
 					}
 
+					var class_info = $('<div class="class-info">');
+
 					if (race_class.description) {
-						el.append('<p>' + race_class.description + '</p>');
+						class_info.append('<p>' + race_class.description + '</p>');
 					}
 
 					if (race_class.format) {
-						el.append('<p>' + msg.formats[race_class.format].name + '</p>');
+						class_info.append('<p>' + msg.formats[race_class.format].name + '</p>');
+					} else {
+						class_info.append('<p>No format restriction</p>');
 					}
+
+					class_info.appendTo(el);
 
 					el.appendTo(classlist);
 				}

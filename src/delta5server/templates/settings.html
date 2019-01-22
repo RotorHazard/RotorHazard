@@ -393,7 +393,7 @@
 					input.val(race_class.description);
 					el.append(input);
 
-					var selectbox = $('<select class="set_class_format" id="class_format_' + race_class.id + '">')
+					var selectbox = $('<select class="set_race_class_format" id="class_format_' + race_class.id + '" data-class_id="' + race_class.id + '">')
 					selectbox.append('<option value="0">' + __('-None-') + '</option>')
 					for (var j in msg.formats) {
 						selectbox.append('<option value="' + msg.formats[j].id +'">' + msg.formats[j].name + '</option>')
@@ -416,6 +416,14 @@
 				class_name: $(this).val(),
 			};
 			socket.emit('set_race_class_name', data);
+		});
+
+		$(document).on("change", '.set_race_class_format', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				class_format: $(this).val(),
+			};
+			socket.emit('set_race_class_format', data);
 		});
 
 		$('button#add_race_class').click(function (event) {
@@ -532,14 +540,14 @@
 		});
 
 		/* Voice */
-		// construct language selection
-		$('#voice_select').after('<select id="set_voice_language">');
-		var voices = $().articulate('getVoices');
-
-		$('#set_voice_language').change(function (event) {
+		$(document).on('change', '#set_voice_language', function (event) {
 			d5rt.voice_language = $(this).val();
 			d5rt.saveData();
 		});
+
+		// construct language selection
+		$('#voice_select').after('<select id="set_voice_language">');
+		var voices = $().articulate('getVoices');
 
 		for (var i in voices) {
 			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
@@ -1110,7 +1118,7 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="set_filter_ratio">RSSI Smoothing') }}</label>
+					<label for="set_filter_ratio">{{ __('RSSI Smoothing') }}</label>
 					<p class="desc">{{ __('Filter Ratio') }}: <span id="filter_value"></span></p>
 				</div>
 				<input type="range" id="set_filter_ratio" min="0" max="12" step="1">
