@@ -350,7 +350,7 @@ nav a {
 	display: block;
 }
 
-nav li.admin-hide {
+.admin-hide {
 	display: none;
 }
 
@@ -440,7 +440,7 @@ main.page-home {
 @media (max-width: 30em) {
 	.page-home .home-menu li a {
 		font-size: 1em;
-	}	
+	}
 }
 
 /* Race */
@@ -724,7 +724,7 @@ main.page-home {
 
 .page-heats .race_class {
 	padding: 0.5em;
-	border: solid 0.0625em #d1d3d4;	
+	border: solid 0.0625em #d1d3d4;
 	border-top: none;
 }
 

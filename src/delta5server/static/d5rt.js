@@ -281,7 +281,7 @@ jQuery(document).ready(function($){
 	d5rt.restoreData();
 
 	if (d5rt.admin) {
-		$('nav li').removeClass('admin-hide');
+		$('*').removeClass('admin-hide');
 	}
 
 	// header collapsing (hamburger)
