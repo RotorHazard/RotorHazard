@@ -131,7 +131,7 @@ var d5rt = {
 		if (!supportsLocalStorage()) {
 			return false;
 		}
-		localStorage['d5rt.voice_language'] = JSON.stringify(this.language);
+		localStorage['d5rt.voice_language'] = JSON.stringify(this.voice_language);
 		localStorage['d5rt.voice_volume'] = JSON.stringify(this.voice_volume);
 		localStorage['d5rt.voice_rate'] = JSON.stringify(this.voice_rate);
 		localStorage['d5rt.voice_pitch'] = JSON.stringify(this.voice_pitch);
@@ -152,7 +152,7 @@ var d5rt = {
 	restoreData: function(dataType) {
 		if (supportsLocalStorage()) {
 			if (localStorage['d5rt.voice_language']) {
-				this.language = JSON.parse(localStorage['d5rt.voice_language']);
+				this.voice_language = JSON.parse(localStorage['d5rt.voice_language']);
 			}
 			if (localStorage['d5rt.voice_volume']) {
 				this.voice_volume = JSON.parse(localStorage['d5rt.voice_volume']);
@@ -277,7 +277,7 @@ nodeModel.prototype = {
 if (typeof jQuery != 'undefined') {
 jQuery(document).ready(function($){
 	// restore local settings
-	d5rt.language = $().articulate('getVoices')[0].name; // set default voice
+	d5rt.voice_language = $().articulate('getVoices')[0].name; // set default voice
 	d5rt.restoreData();
 
 	if (d5rt.admin) {

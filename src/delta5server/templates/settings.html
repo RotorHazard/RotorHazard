@@ -5,6 +5,7 @@
 <script type="text/javascript" charset="utf-8">
 	var globalAudioCtx;
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
+	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
@@ -36,19 +37,21 @@
 		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
 		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
 		$().articulate('volume', d5rt.voice_volume);
-		$('#voice_volume_value').html(d5rt.voice_volume.toFixed(2));
-		$('#set_voice_volume').val(d5rt.voice_volume);
+		$('#set_voice_volume').val(volume_logsl.position(d5rt.voice_volume));
+		$('#voice_volume_value').html($('#set_voice_volume').val());
 		$().articulate('rate', d5rt.voice_rate);
 		$('#voice_rate_value').html(d5rt.voice_rate.toFixed(2));
 		$('#set_voice_rate').val(d5rt.voice_rate);
 		$().articulate('pitch', d5rt.voice_pitch);
 		$('#voice_pitch_value').html(d5rt.voice_pitch.toFixed(2));
 		$('#set_voice_pitch').val(d5rt.voice_pitch);
-		$('#set_tone_volume').val(d5rt.tone_volume);
+		$('#set_tone_volume').val(volume_logsl.position(d5rt.tone_volume));
+		$('#tone_volume_value').html($('#set_tone_volume').val());
 		$('#beep_crossing_entered').prop("checked", d5rt.beep_crossing_entered);
 		$('#beep_crossing_exited').prop("checked", d5rt.beep_crossing_exited);
 		$('#beep_manual_lap_button').prop("checked", d5rt.beep_manual_lap_button);
-		$('#set_beep_volume').val(d5rt.indicator_beep_volume);
+		$('#set_indicator_volume').val(volume_logsl.position(d5rt.indicator_beep_volume));
+		$('#indicator_volume_value').html($('#set_indicator_volume').val());
 
 		// populate frequency selects
 		$('.frequency_table').each(function(){
@@ -324,7 +327,7 @@
 				el.append(nodelist);
 
 				// update class selector
-				if (msg.classes.length) {				
+				if (msg.classes.length) {
 					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '">')
 						selectbox.append('<option value="0">Unclassified</option>')
 						for (var k in msg.classes) {
@@ -336,7 +339,7 @@
 						selectbox.val(0);
 					}
 					selectbox.prop('disabled', heats.locked);
-					el.append(selectbox);			
+					el.append(selectbox);
 				}
 
 				el.appendTo($('.heats'));
@@ -401,7 +404,7 @@
 					selectbox.val(race_class.format);
 					selectbox.prop('disabled', race_class.locked);
 					el.append(selectbox);
-					
+
 					el.appendTo(classlist);
 				}
 				classlist.appendTo($('.race_classes'));
@@ -552,17 +555,7 @@
 		for (var i in voices) {
 			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
 		}
-		if (d5rt.voice_language) {
-			$('#set_voice_language').val(d5rt.voice_language);	
-		} else {
-			$('#set_voice_language').selectedIndex = 0;
-			$('#set_voice_language').trigger('change');
-		}
-
-		$('button#play_voice_test').click(function (event) {
-			speak('<div class="speech">' + $('#voice_test_text').val() + '</div>');
-			return false;
-		});
+		$('#set_voice_language').val(d5rt.voice_language);
 
 		$('#voice_callsign').change(function (event) {
 			d5rt.voice_callsign = $(this).prop('checked');
@@ -590,13 +583,14 @@
 		});
 
 		$('#set_voice_volume').on('input', function (event) {
-			val = parseFloat($(this).val())
+			var val = volume_logsl.value($(this).val());
 			$().articulate('volume', val);
-			$('#voice_volume_value').html(val.toFixed(2));
+			$('#voice_volume_value').html($(this).val());
 		});
 
-		$('#set_voice_volume').on('change', function (event) {
-			d5rt.voice_volume = parseFloat($(this).val());
+		$('#set_voice_volume').change(function (event) {
+			var val = volume_logsl.value($(this).val());
+			d5rt.voice_volume = val;
 			d5rt.saveData();
 		});
 
@@ -622,8 +616,15 @@
 			d5rt.saveData();
 		});
 
-		$('#set_tone_volume').on('change', function (event) {
-			d5rt.tone_volume = parseFloat($(this).val());
+		$('#set_tone_volume').on('input', function (event) {
+			var val = volume_logsl.value($(this).val());
+			d5rt.tone_volume = val;
+			$('#tone_volume_value').html($(this).val());
+		});
+
+		$('#set_tone_volume').change(function (event) {
+			var val = volume_logsl.value($(this).val());
+			d5rt.tone_volume = val;
 			d5rt.saveData();
 		});
 
@@ -642,9 +643,21 @@
 			d5rt.saveData();
 		});
 
-		$('#set_beep_volume').on('change', function (event) {
-			d5rt.indicator_beep_volume = parseFloat($(this).val());
+		$('#set_indicator_volume').on('input', function (event) {
+			var val = volume_logsl.value($(this).val());
+			d5rt.indicator_beep_volume = val;
+			$('#indicator_volume_value').html($(this).val());
+		});
+
+		$('#set_indicator_volume').change(function (event) {
+			var val = volume_logsl.value($(this).val());
+			d5rt.indicator_beep_volume = val;
 			d5rt.saveData();
+		});
+
+		$('button#play_voice_test').click(function (event) {
+			speak('<div class="speech">' + $('#voice_test_text').val() + '</div>');
+			return false;
 		});
 
 		/* Race Format */
@@ -828,7 +841,7 @@
 			for (i = 0; i < msg.languages.length; i++) {
 				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
-			
+
 			if (msg.language) {
 				$('#set_language').val(msg.language);
 			} else {
@@ -1216,7 +1229,6 @@
 				</div>
 				<div id="voice_select"></div>
 			</li>
-
 			<li>
 				<div class="label-block">
 					{{ __('Voice Test') }} &nbsp; &nbsp;
@@ -1224,7 +1236,6 @@
 				<input type="text" id="voice_test_text" value="{{ getOption('timerName') }}">
 				<button type="button" class="button" id="play_voice_test" onclick="this.blur();">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>
 			</li>
-
 			<li>
 				<div class="label-block">
 					{{ __('Announcements') }}
@@ -1242,7 +1253,7 @@
 					<label for="set_voice_volume">{{ __('Voice Volume') }}</label>
 					<p class="desc">{{ __('Volume') }}: <span id="voice_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_voice_volume" min="0" max="1.0" step="0.01">
+				<input type="range" id="set_voice_volume" min="1" max="100">
 			</li>
 			<li>
 				<div class="label-block">
@@ -1261,8 +1272,9 @@
 			<li>
 				<div class="label-block">
 					<label for="set_tone_volume">{{ __('Tone Volume') }}</label>
+					<p class="desc">{{ __('Volume') }}: <span id="tone_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_tone_volume" min="0" max="1.0" step="0.01">
+				<input type="range" id="set_tone_volume" min="1" max="100">
 			</li>
 			<li>
 				<div class="label-block">
@@ -1276,9 +1288,10 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_beep_volume">{{ __('Indicator Beeps Volume') }}</label>
+					<label for="set_indicator_volume">{{ __('Indicator Beeps Volume') }}</label>
+					<p class="desc">{{ __('Volume') }}: <span id="indicator_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_beep_volume" min="0" max="1.0" step="0.01">
+				<input type="range" id="set_indicator_volume" min="1" max="100">
 			</li>
 		</ol>
 	</div>
