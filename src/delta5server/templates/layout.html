@@ -9,6 +9,17 @@
 	<meta name="google" content="notranslate">
 	<title>{% block title %}{% endblock %}: {{ getOption("timerName") }}</title>
 
+	<!-- Icons -->
+	<link rel="apple-touch-icon" sizes="180x180" href="/static/image/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/static/image/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/static/image/favicon-16x16.png">
+	<link rel="manifest" href="/static/image/site.webmanifest">
+	<link rel="mask-icon" href="/static/image/safari-pinned-tab.svg" color="#ee7a28">
+	<link rel="shortcut icon" href="/static/image/favicon.ico">
+	<meta name="msapplication-TileColor" content="#ee7a28">
+	<meta name="msapplication-config" content="/static/image/browserconfig.xml">
+	<meta name="theme-color" content="#224873">
+
 	<!-- Script libraries -->
 	<script type="text/javascript" src="./static/jquery-3.2.1/jquery.min.js"></script>
 	<script type="text/javascript" src="./static/articulate/articulate.js"></script>
@@ -63,7 +74,7 @@
 	}
 	h4 {
 		background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
-		color: var(--contrast_1_high);		
+		color: var(--contrast_1_high);
 	}
 	button, select {
 		border-color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
