@@ -3,7 +3,6 @@
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
 
 <script type="text/javascript" charset="utf-8">
-	var globalAudioCtx;
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 
@@ -947,34 +946,6 @@
 	function speak(obj) {
 		$(obj).articulate('setVoice','name', d5rt.voice_language).articulate('speak');
 	};
-
-	//Generate tone. All arguments are optional:
-	//duration of the tone in milliseconds. Default is 500
-	//frequency of the tone in hertz. default is 440
-	//type of tone. Possible values are sine, square, sawtooth, triangle, and custom. Default is sine.
-	//callback to use on end of tone
-	/* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
-	function play_beep(duration, frequency, type, callback) {
-		globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
-
-		var oscillator = globalAudioCtx.createOscillator();
-		var gainNode = globalAudioCtx.createGain();
-
-		oscillator.connect(gainNode);
-		gainNode.connect(globalAudioCtx.destination);
-
-		gainNode.gain.value = d5rt.indicator_beep_volume;
-		if (frequency)
-			oscillator.frequency.value = frequency;
-		if (type)
-			oscillator.type = type;
-		if (callback)
-			oscillator.onended = callback;
-
-		oscillator.start();
-		setTimeout(function(){oscillator.stop()}, (duration ? duration : 500));
-	};
-
 </script>
 {% endblock %} {% block content %}
 <main class="page-settings">

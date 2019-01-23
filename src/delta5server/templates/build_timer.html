@@ -22,8 +22,7 @@
 				$('.timing-clock').addClass('staging');
 				status = 2; // Set status to staging
 				generateTime(); // Updates html timer text
-				if (stagebuzzer)
-					stagebuzzer.play(); // Pre-race buzzer
+				play_beep(100, 440, d5rt.tone_volume, 'triangle');
 				timer_id = setInterval(function () {
 					pre_delay--;
 					if (pre_delay <= 0) {
@@ -31,15 +30,13 @@
 						pre_race = false;
 						timer_control.start();
 					} else {
-						if (stagebuzzer)
-							stagebuzzer.play(); // Pre-race buzzer
+						play_beep(100, 440, d5rt.tone_volume, 'triangle');
 						generateTime(); // Updates html timer text
 					}
 				}, 1000); // 1000 ms update rate
 			} else {
 				$('.timing-clock').removeClass('staging');
-				if (buzzer)
-					buzzer.play();
+				play_beep(700, 880, d5rt.tone_volume, 'triangle', 0.25);
 				status = 1; // Set status to running
 				generateTime(); // Updates html timer text
 				timer_id = setInterval(function () {
@@ -182,13 +179,11 @@
 			if (timer.getStatus() == 1) {
 				if (timer.getMode() == 0) { // Count down clock
 					if (time == 0) {
-						if (buzzer)
-							buzzer.play(); // End race buzzer
+						play_beep(700, 880, d5rt.tone_volume, 'triangle', 0.25);
 						timer.stop();
 						socket.emit('race_time_finished');  // signal server
-					} else if (time <= 5) {
-						if (stagebuzzer)
-							stagebuzzer.play(); // Final seconds
+					} else if (time <= 5) { // Final seconds
+						play_beep(100, 440, d5rt.tone_volume, 'triangle');
 					} else if (time == 10) {
 						if (d5rt.voice_race_timer)
 							speak('<div class="timer">10 ' + __('Seconds') + '</div>', true);

@@ -104,6 +104,66 @@ function __(text) {
 	return text
 }
 
+var globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
+
+var node_tone = [
+	440,
+	466.2,
+	493.9,
+	523.3,
+	554.4,
+	587.3,
+	622.3,
+	659.3
+];
+
+// test for Firefox (has broken RamptoValue audio function)
+var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+
+//Generate tone. All arguments are optional:
+//duration of the tone in milliseconds. Default is 500
+//frequency of the tone in hertz. default is 440
+//type of tone. Possible values are sine, square, sawtooth, triangle, and custom. Default is sine.
+//callback to use on end of tone
+/* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
+function play_beep(duration, frequency, volume, type, fadetime, callback) {
+	var oscillator = globalAudioCtx.createOscillator();
+	var gainNode = globalAudioCtx.createGain();
+
+	oscillator.connect(gainNode);
+	gainNode.connect(globalAudioCtx.destination);
+
+	if (!duration)
+		duration = 500;
+
+	if (volume) {
+		gainNode.gain.value = volume;
+	} else {
+		gainNode.gain.value = 1;
+	}
+
+	if (frequency)
+		oscillator.frequency.value = frequency;
+	if (type)
+		oscillator.type = type;
+	if (!fadetime)
+		fadetime = 1;
+	if (callback)
+		oscillator.onended = callback;
+
+	if(isFirefox)
+		fadetime = 0;
+
+	oscillator.start();
+	setTimeout(function(fade){
+		gainNode.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + fade);
+	}, duration, fadetime);
+	/*
+	setTimeout(function(){
+		oscillator.stop();
+	}, duration + (fadetime * 1000));*/
+};
+
 /* d5rt object for local settings/storage */
 var d5rt = {
 	voice_language: '', // voice type for text-to-speech callouts
