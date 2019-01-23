@@ -1985,13 +1985,15 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
             t_laps_dict[team_name] = [0, 0]
 
               # iterate through list of laps, sorted by lap timestamp
-    for item in sorted(CurrentLap.query.with_entities(CurrentLap.lap_time_stamp, CurrentLap.lap_id, CurrentLap.pilot_id).all()):
-        team_name = pilot_team_dict[item[2]]
-        if item[1] > 0 and team_name in t_laps_dict:
-            t_laps_dict[team_name][0] += 1       # increment lap count for team
-            if num_laps_win == 0 or item[1] <= num_laps_win:
-                t_laps_dict[team_name][1] = item[0]  # update lap_time_stamp (if not past winning lap)
-            #server_log('DEBUG get_team_laps_info team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
+    for item in sorted(CurrentLap.query.with_entities(CurrentLap.lap_time_stamp, CurrentLap.lap_id, \
+                                                      CurrentLap.pilot_id).all()):
+        if item[1] > 0:  # current lap is > 0
+            team_name = pilot_team_dict[item[2]]
+            if team_name in t_laps_dict:
+                t_laps_dict[team_name][0] += 1       # increment lap count for team
+                if num_laps_win == 0 or t_laps_dict[team_name][0] <= num_laps_win:
+                    t_laps_dict[team_name][1] = item[0]  # update lap_time_stamp (if not past winning lap)
+                #server_log('DEBUG get_team_laps_info team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
     #server_log('DEBUG get_team_laps_info t_laps_dict: {0}'.format(t_laps_dict))
 
     if cur_pilot_id >= 0:  # determine name for 'cur_pilot_id' if given
@@ -2015,7 +2017,7 @@ def check_emit_team_racing_status(t_laps_dict=None, **params):
             disp_str += '<span class="team-winner">Winner is Team ' + Race_laps_winner_name + '</span>'
         else:
             disp_str += Race_laps_winner_name
-    server_log('Team racing status: ' + disp_str)
+    #server_log('Team racing status: ' + disp_str)
     emit_team_racing_status(disp_str)
 
 def emit_team_racing_stat_if_enb(**params):
