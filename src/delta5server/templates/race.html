@@ -565,11 +565,15 @@
 		socket.on('node_crossing_change', function (msg) {
 			if (msg.crossing_flag) {
 				if (d5rt.beep_crossing_entered)
-					play_beep(25, node_tone[node_index], d5rt.indicator_beep_volume, 'square');
+					play_beep(25, node_tone[msg.node_index], d5rt.indicator_beep_volume, 'square');
 			}
 			else {
-				if (d5rt.beep_crossing_exited)
-					play_beep(35, node_tone[node_index], d5rt.indicator_beep_volume, 'sawtooth');
+				if (d5rt.beep_crossing_exited) {
+					play_beep(35, node_tone[msg.node_index], d5rt.indicator_beep_volume, 'sawtooth', 0.02);
+					setTimeout(function(tone){
+						play_beep(35, node_tone[tone], d5rt.indicator_beep_volume, 'sawtooth', );
+					}, 70, msg.node_index);
+				}
 			}
 		});
 
