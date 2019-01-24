@@ -1134,12 +1134,22 @@
 		<div class="calibration-guide">
 			<h3>Calibration</h3>
 			<ol>
-				<li>Power on a VTx at the same fequency as the node</li>
-				<li>Pass VTx very near the timer until RSSI reaches absolute peak</li>
-				<li>Place VTx outside limit of gate (about 20ft is usually good) and press Capture for EnterAt</li>
-				<li>Place VTx several gate widths away and press Capture for ExitAt</li>
+				<li>Power on a VTx at the same frequency as the node</li>
+				<li>Pass VTx very near the timer to establish peak RSSI for node</li>
+				<li>Place VTx 5-10 feet away and press 'Capture' for EnterAt</li>
+				<li>Place VTx 20-30 feet away and press 'Capture' for ExitAt</li>
 				<li>Review "Crossing" points and adjust until accurately responding</li>
+				<li>The EnterAt value should always be higher than the ExitAt value</li>
 			</ol>
+			<h3>Troubleshooting</h3>
+			<ul>
+				<li>If gate crossings are being missed then lower EnterAt</li>
+				<li>If gate crossing are triggered when they shouldn't be then increase EnterAt</li>
+				<li>If a pass by the timer is resulting in multiple crossings, lower ExitAt</li>
+				<li>If the 'Crossing' indicator is stuck on then increase ExitAt</li>
+				<li>If crossings are still erratic, increase RSSI Smoothing to reduce noise</li>
+                <li>If missing high-speed passes, try decreasing RSSI Smoothing</li>
+			</ul>
 		</div>
 	</div>
 </div>
