@@ -669,9 +669,15 @@
 			d5rt.saveData();
 		});
 
-		$('button#play_voice_test').click(function (event) {
+		$('#play_voice_test').click(function (event) {
 			speak('<div class="speech">' + $('#voice_test_text').val() + '</div>');
 			return false;
+		});
+
+		$("#voice_test_text").keyup(function(event) {
+		    if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
+		        $("#play_voice_test").click();
+		    }
 		});
 
 		/* Race Format */
