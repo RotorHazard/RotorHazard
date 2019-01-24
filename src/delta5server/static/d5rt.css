@@ -301,7 +301,7 @@ body>header {
 }
 
 #timer-name {
-	width: 15rem;
+	width: calc(100% - 8rem);
 	text-overflow: ellipsis;
 }
 
@@ -319,7 +319,7 @@ body>header {
 	display: none;
 	padding: 0 2em 0 0;
 	background: url(image/hamburger.svg) right center no-repeat;
-	width: calc(100% - 13rem);
+	width: 8rem;
 	text-align: right;
 	border: none;
 	margin-top: 0;
@@ -413,6 +413,7 @@ main {
 
 .page-home .header h1 img {
 	margin: 0 auto;
+	padding: 0 3%;
 }
 
 main.page-home {
