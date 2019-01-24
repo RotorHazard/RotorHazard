@@ -24,6 +24,7 @@
 			'frequency_data',
 			'race_format',
 			'node_tuning',
+			'enter_and_exit_at_levels',
 			'min_lap',
 			'team_racing_mode',
 			'leaderboard',
@@ -196,13 +197,17 @@
 						$('.crossing_flag_' + i).removeClass('is-crossing').html('Clear');
 					}
 
-					if (d5rt.nodes[i].graph.options.maxValue < rssiValue) {
-						d5rt.nodes[i].graph.options.maxValue = rssiValue;
-					}
+					d5rt.nodes[i].graph.options.maxValue = Math.max(
+						rssiValue,
+						d5rt.nodes[i].node_peak_rssi + 1,
+						d5rt.nodes[i].enter_at_level + 10,
+					);
 
-					if (d5rt.nodes[i].graph.options.minValue > rssiValue) {
-						d5rt.nodes[i].graph.options.minValue = Math.max(0, rssiValue);
-					}
+					d5rt.nodes[i].graph.options.minValue = Math.max(0, Math.min(
+						d5rt.nodes[i].graph.options.minValue,
+						rssiValue,
+						d5rt.nodes[i].enter_at_level - 10,
+					));
 
 					if (d5rt.nodes[i].graphing) {
 						d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
@@ -237,6 +242,15 @@
 				d5rt.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
 
 				d5rt.nodes[i].updateThresholds();
+			}
+		});
+
+		socket.on('enter_and_exit_at_levels', function (msg) {
+			for (i = 0; i < msg.enter_at_levels.length; i++) {
+				$('#set_enter_at_level_' + i).val(msg.enter_at_levels[i]);
+				d5rt.nodes[i].enter_at_level = msg.enter_at_levels[i];
+				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
+				d5rt.nodes[i].exit_at_level = msg.exit_at_levels[i];
 			}
 		});
 
