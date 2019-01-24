@@ -26,7 +26,7 @@
 ## Hardware Setup
 
 ### RX5808 Video Receivers
-Modify the rx5808 receivers to use SPI.
+Make sure your receivers support SPI. Most RX5808 modules on sale today already arrive with SPI enabled. If they do not, modify the rx5808 receivers to enable SPI support.
 
 Remove the shield from the rx5808, the shield is normally held on by a few spots of solder around the edges. Use some solder wick to remove the solder and free the shield from the receiver. Be careful not to damage any ground pads on the receiver. There are usually small holes around the edge you can use to help push off the shield.
 
@@ -61,6 +61,16 @@ Configure the '#define NODE_NUMBER' line of the .ino for each node before upload
 // Node Setup -- Set node number here (1 - 8)
 #define NODE_NUMBER 1
 ```
+
+Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:
+node #1: ground pin 5
+node #2: ground pin 6
+node #3: ground pin 7
+node #4: ground pin 8
+node #5: ground pin 5 and pin 4
+node #6: ground pin 6 and pin 4
+node #7: ground pin 7 and pin 4
+node #8: ground pin 8 and pin 4
 
 ### System (Raspberry Pi)
 Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN STRETCH WITH DESKTOP'
@@ -135,6 +145,13 @@ cd /home/pi/delta5_race_timer/src
 sudo chmod 777 delta5server 
 ```
 
+### Java Support
+Java enables calculating of IMD scores. If you started with RASPBIAN STRETCH WITH DESKTOP, this step should not be necessary as JAVA is installed by default. Otherwise:
+```
+sudo apt-get install oracle-java8-jdk
+```
+
+
 ## Reboot System
 ```
 sudo reboot
@@ -142,9 +159,7 @@ sudo reboot
 
 ## Starting the System
 
-The following instructions will start the Delta5 Race Timer web server on the raspberry pi allowing full control and configuration of the system to run races and save lap times.  
-
-Alternatively, to use your Delta5 Race Timer hardware with 3rd party timing software, replace each reference of 'delta5server' with 'timingserver' in the following instructions.
+The following instructions will start the web server on the raspberry pi allowing full control and configuration of the system to run races and save lap times.  
 
 #### Manual Start
 Open a terminal in '/delta5_race_timer/src/delta5server' and run
