@@ -146,6 +146,9 @@ Race_laps_winner_name = None  # set to name of winner in first-to-X-laps race
 RACE_STATUS_TIED_STR = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
 RACE_STATUS_CROSSING = 'Waiting for cross'  # indicator for Most Laps Wins race
 
+Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
+
+
 #
 # LED Code
 #
@@ -455,7 +458,8 @@ def database():
 def connect_handler():
     '''Starts the delta 5 interface and a heartbeat thread for rssi.'''
     server_log('Client connected')
-    heartbeat_thread_function.iter_tracker = 0  # declare/init variable for HB function
+    heartbeat_thread_function.iter_tracker = 0  # declare/init variables for HB function
+    heartbeat_thread_function.imdtabler_flag = False
     INTERFACE.start()
     global HEARTBEAT_THREAD
     if HEARTBEAT_THREAD is None:
@@ -1308,33 +1312,18 @@ def emit_race_status(**params):
 
 def emit_frequency_data(**params):
     '''Emits node data.'''
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
-    profile_freqs = json.loads(profile.frequencies)
-
-    try:
-        imd_val = None
-        if os.path.exists(IMDTABLER_JAR_NAME):
-            fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
-            fs_list = []
-            for val in fi_list:  # convert list of integers to list of strings
-                if val > 0:      # drop any zero entries
-                    fs_list.append(str(val))
-            if len(fs_list) > 2:
-                imd_val = subprocess.check_output(  # invoke jar; get response
-                            ['java', '-jar', IMDTABLER_JAR_NAME, '-r'] + fs_list).rstrip()
-    except Exception as ex:
-        imd_val = None
-        server_log('IMDTabler exception:  ' + str(ex))
-
+    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
     emit_payload = {
-            'frequency': profile_freqs["f"][:RACE.num_nodes],
-            'imd_rating': imd_val
+            'frequency': profile_freqs["f"][:RACE.num_nodes]
         }
     if ('nobroadcast' in params):
         emit('frequency_data', emit_payload)
     else:
         SOCKET_IO.emit('frequency_data', emit_payload)
+              # if IMDTabler.java available then trigger call to
+              #  'emit_imdtabler_rating' via heartbeat function:
+    if Use_imdtabler_jar_flag:
+        heartbeat_thread_function.imdtabler_flag = True
 
 def emit_node_data(**params):
     '''Emits node data.'''
@@ -2365,47 +2354,60 @@ def emit_node_crossing_change(node, **params):
 
 def emit_imdtabler_page(**params):
     '''Emits IMDTabler page, using current profile frequencies.'''
-
-    try:
-        imdtabler_ver = None
-        if os.path.exists(IMDTABLER_JAR_NAME):  # get IMDTabler version string
+    if Use_imdtabler_jar_flag:
+        try:                          # get IMDTabler version string
             imdtabler_ver = subprocess.check_output( \
-                            ['java', '-jar', IMDTABLER_JAR_NAME, '-v']).rstrip()
-
-        profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
-        if os.path.exists(IMDTABLER_JAR_NAME):
+                                ['java', '-jar', IMDTABLER_JAR_NAME, '-v']).rstrip()
+            profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
             fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
             fs_list = []
             for val in fi_list:  # convert list of integers to list of strings
                 if val > 0:      # drop any zero entries
                     fs_list.append(str(val))
             emit_imdtabler_data(fs_list, imdtabler_ver)
-    except Exception as ex:
-        server_log('emit_imdtabler_page exception:  ' + str(ex))
+        except Exception as ex:
+            server_log('emit_imdtabler_page exception:  ' + str(ex))
 
 def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
     '''Emits IMDTabler data for given frequencies.'''
-
     try:
         imdtabler_data = None
-        if os.path.exists(IMDTABLER_JAR_NAME):
-            if len(fs_list) > 2:  # if 3+ then invoke jar; get response
-                imdtabler_data = subprocess.check_output( \
-                            ['java', '-jar', IMDTABLER_JAR_NAME, '-t'] + fs_list)
+        if len(fs_list) > 2:  # if 3+ then invoke jar; get response
+            imdtabler_data = subprocess.check_output( \
+                        ['java', '-jar', IMDTABLER_JAR_NAME, '-t'] + fs_list)
     except Exception as ex:
         imdtabler_data = None
         server_log('emit_imdtabler_data exception:  ' + str(ex))
-
     emit_payload = {
         'freq_list': ' '.join(fs_list),
         'table_data': imdtabler_data,
         'version_str': imdtabler_ver
     }
-
     if ('nobroadcast' in params):
         emit('imdtabler_data', emit_payload)
     else:
         SOCKET_IO.emit('imdtabler_data', emit_payload)
+
+def emit_imdtabler_rating():
+    '''Emits IMDTabler rating for current profile frequencies.'''
+    try:
+        profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+        imd_val = None
+        fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
+        fs_list = []
+        for val in fi_list:  # convert list of integers to list of strings
+            if val > 0:      # drop any zero entries
+                fs_list.append(str(val))
+        if len(fs_list) > 2:
+            imd_val = subprocess.check_output(  # invoke jar; get response
+                        ['java', '-jar', IMDTABLER_JAR_NAME, '-r'] + fs_list).rstrip()
+    except Exception as ex:
+        imd_val = None
+        server_log('emit_imdtabler_rating exception:  ' + str(ex))
+    emit_payload = {
+            'imd_rating': imd_val
+        }
+    SOCKET_IO.emit('imdtabler_rating', emit_payload)
 
 
 #
@@ -2416,8 +2418,13 @@ def heartbeat_thread_function():
     '''Emits current rssi data.'''
     while True:
         SOCKET_IO.emit('heartbeat', INTERFACE.get_heartbeat_json())
-              # emit rest of node data, but less often:
         heartbeat_thread_function.iter_tracker += 1
+                   # update displayed IMD rating after freqs changed:
+        if heartbeat_thread_function.imdtabler_flag and \
+                (heartbeat_thread_function.iter_tracker % 5) == 0:
+            heartbeat_thread_function.imdtabler_flag = False
+            emit_imdtabler_rating()
+                   # emit rest of node data, but less often:
         if heartbeat_thread_function.iter_tracker >= 20:
             heartbeat_thread_function.iter_tracker = 0
             emit_node_data()
@@ -2913,6 +2920,27 @@ elif int(getOption('server_api')) < SERVER_API:
 
     except:
         server_log('Error while writing data from previous database')
+
+
+if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
+    try:
+        java_ver = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
+        server_log('Found installed:  ' + java_ver.split('\n')[0])
+    except:
+        java_ver = None
+        server_log('Unable to find java; for IMDTabler functionality try:')
+        server_log('sudo apt-get install oracle-java8-jdk')
+    if java_ver:
+        try:
+            imdtabler_ver = subprocess.check_output( \
+                        ['java', '-jar', IMDTABLER_JAR_NAME, '-v'], \
+                        stderr=subprocess.STDOUT).rstrip()
+            Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
+            server_log('Found installed:  ' + imdtabler_ver)
+        except Exception as ex:
+            server_log('Error checking IMDTabler:  ' + str(ex))
+else:
+    server_log('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
 
 
 # Clear any current laps from the database on each program start

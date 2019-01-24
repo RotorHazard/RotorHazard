@@ -164,9 +164,22 @@
 				freq.updateSelects();
 				freq.updateBlocks();
 			}
+		});
+
+		function show_imd_rating(val) {
+			$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +
+                  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
+		};
+
+		function show_imd_rating_dashes() {
+			if ($.trim($('#imd_rating_label').html()) != '') {
+				show_imd_rating('---');
+			}
+		};
+
+		socket.on('imdtabler_rating', function (msg) {
 			if (msg.imd_rating) {
-				$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +
-                      ': ' + msg.imd_rating + ' &nbsp; <a href="/imdtabler">view</a>');
+				show_imd_rating(msg.imd_rating);
 			}
 			else {
 				$('#imd_rating_label').empty();
@@ -174,6 +187,7 @@
 		});
 
 		$('button.set_frequency_preset').click(function (event) {
+			show_imd_rating_dashes();
 			var data = {
 				preset: $(this).data('preset')
 			};
@@ -224,6 +238,7 @@
 		});
 
 		$('.set_frequency').change(function (event) {
+			show_imd_rating_dashes();
 			var data = {
 				node: parseInt($(this).data('node')),
 				frequency: parseInt($(this).val()),
