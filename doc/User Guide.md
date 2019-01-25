@@ -1,73 +1,125 @@
 # Delta 5 Race Timer User Guide
 
+## Initial Setup
+
 ### Hardware and Software Setup
 Follow the instructions here if not done already: [/doc/Hardware and Software Setup Instructions.md](Hardware%20and%20Software%20Setup%20Instructions.md)
+
+### Set up Config File
+in src/delta5server, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the HTTP_PORT, SECRET_KEY, ADMIN_USERNAME, and ADMIN_PASSWORD values. Make sure you keep this config file as valid JSON. Use of an linter like [JSONLint](https://jsonlint.com/) can help prevent errors.
+
+HTTP_PORT is the port value the server will run on. By default, HTTP uses port 80. Other values will require that you specify the port as part of the URL. However, if you have other web services running on the pi, port 80 may already be in use and the server will fail to start. Port 5000 should be available.
+
+SECRET_KEY should be modified to any random value.
+
+ADMIN_USERNAME and ADMIN_PASSWORD are the login credentials you will use to make changes to settings.
+
 
 ### Connect to the Server
 Find the ip address of the raspberry pi by opening the 'Clients' list on your routers admin page.
 
-Open a browser and type in the ip address of the timing system on your network using port 5000 or as configured in 'server.py'.
+Open a browser and type in the ip address of the timing system on your network and the port value you set above (if not 80).
 ```
 XXX.XXX.XXX.XXX:5000/
 ```
 
-Pages reserved for the race director are password protected with the default user 'admin' and password 'delta5'.
+Pages reserved for the race director are password protected with the username and password specified in the config file.
 
-### System Settings and Configuration ('Settings' page)
+## Pages
 
-Start by resetting the database at the start of each race event. You have the option of a complete reset 'Reset Database' or if mostly the same pilots are racing 'Reset Keep Pilots'.
+### Home
 
-Frequencies are configured under the Nodes heading. Defaults are IMD for up to 6 nodes or Raceband when 7 or 8 nodes are detected. Use the dropdowns to change frequencies as needed.
+This page displays the event name and description, along with a set of buttons to various other pages.
 
-Click 'Add Pilot' until you have an entry for each pilot racing and then update the pilot callsigns and names.
 
-Click 'Add Heat' until there are enough for all the pilots racing. Assign each pilot to a heat using the drop down buttons. The '-' pilot can be used for blank positions.
+### Event
 
-If you are noticing any missed or multiple laps when passing the gate, the sensor tuning values can be adjusted from defaults with a detailed description found here [/doc/Tuning Parameters.md](Tuning%20Parameters.md)
+This public page displays the current class setup (if applicable), and a summary of pilots and their heats with channel assignment.
 
-The following voices are available for selection for lap time call outs (these are broswer dependent, but has been tested in Chrome):
-```
-David - English (United States) en-US
-Zira - English (United States) en-US
-US English en-US
-UK English Female en-GB
-UK English Male en-GB
-Deutsch de-DE
-español es-ES
-español de Estados Unidos es-US
-français fr-FR
-हिन्दी hi-IN
-Bahasa Indonesia id-ID
-italiano it-IT
-日本語 ja-JP
-한국의 ko-KR
-Nederlands nl-NL
-polski pl-PL
-português do Brasil pt-BR
-русский ru-RU
-國語（臺灣） zh-TW
-```
 
-### Running Races ('Race' page)
+### Results
 
-The race director will spend most of their time on this page running races.
+This public page will display results and calculated statistics of all previously saved races, organized into collapsible panels. Aggregate results are displayed for each heat with multiple rounds, each class, and the entire event.
 
-Start by selecting the 'Heat' button to set which heat will be racing.
 
-Click 'Start Race' for a count up timer starting from zero with no defined end. This is used for heads up racing, first to finish X laps. The race director clicks the 'Stop Race' button after all pilots have completed their laps.
+### Current
 
-Alternatively click the 'Start Race 2min' for a count down timer from two minutes. This is used for most laps racing, each pilot has two minutes to complete as many laps as possible. After the last buzzer and all pilots have completed their last lap, click the 'Stop Race' button.
+This page displays information about the currently running race, including real-time race time, pilot lap times and leaderboard. It automatially updates with the event, and is suitable for projecting to a prominently displayed screen.
 
-For each node in a row under the pilot callsigns will be the RSSI values, Current RSSI / Trigger / Peak. This gives the race director immediate sensor feedback for any adjustments that might need to be made.
+In the Audio Control section, the user can select whether any one pilot, all pilots, or no pilots will have laps announced. In this way, a pilot might elect to hear only their own laps announced. A user can also adjust the voice, volume, rate, and pitch of these announcements.
 
-During a race there will be a 'X' button next to each lap. This will discard that lap and move it's time into the next lap if it's not the last lap. It's generally perferable to tune the system to pick up more laps instead of missing laps and this is how the extras are deleted. At the end of the race you may have pilots flying by the start gate when they go to land, this is also how you remove those laps which might get picked up.
 
-After each race, click 'Save Laps' to store the results of a good race to the database, or 'Clear Laps' for a false start or as needed to discard the current laps.
+### Settings
 
-### Saved Races ('Rounds' page)
+#### Profiles
+Profiles contain settings for various circumstances or environments, such as outdoor and indoor areas. Settings saved into the profile are frequencies, node tuning values, and RSSI smoothing. Choose an active profile. Settings that you adjust will be saved to the currently active profile.
 
-This is a public page, previous race results are displayed on this page sorted by heats and rounds.
+#### Frequency Setup
+Choose a preset or manually select frequencies for each node. Arbitrary frequency selection is possible, as is disabling a node. The IMD score for currently selected frequencies is calculated and displayed at the bottom of the panel.
 
-### Pilots and Heats ('Heats' page)
+#### Sensor Tuning
+See [/doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
 
-Also a public page, shows a summary of pilots and their heats with channel assignment.
+#### Event and Classes
+Event information is displayed on the home page when users first connect to the system.
+
+Classes are not required for events; there's no need to create a class unless you will have two or more in the event. Classes can be used to have separate generated statistics for groups of heats. For example, Open and Spec class, or Beginner/Pro classes.
+
+#### Heats
+Add heats until there are enough for all pilots racing. Optional heat names can be added if desired. Heat slots may be set to *None* if no pilot is assigned there.
+
+If you are using classes, assign each heat to a class. Be sure to add enough heats for each pilot in each class; heats assigned to one class are not available in another.
+
+As you run races, heats will become locked and cannot be modified. This protects saved race data from becoming invalid. To modify heats again, open the *Database* panel and clear races.
+
+#### Pilots
+Add an entry for each pilot that will race. The system will announce pilots based on their callsign. A phonetic spelling for a callsign may be used to influence the voice callouts; it is not required.
+
+#### Audio Control
+All audio controls are local to the browser and device where you set them, including the list of available languages, volumes, and which announcements or indicators are in use.
+
+Voice select chooses the text-to-speech engine. Available selections are provided by the web browser and operating system.
+
+Announcements allow the user to choose to hear each pilot's callsign, lap number, and/or lap time as they cross. The "Race Timer" announcement will perioically call out how much time has elapsed or is remaining, depending on the timer mode in the race format. "Team Lap Total" is used only when "Team Racing Mode" is enabled.
+
+Voice volume, rate, and pitch control all text-to-speech announcements. "Tone Volume" controls race start and end signals.
+
+Indicator beeps are very short tones that give feedback on how the timer is working, and are most useful when trying to tune it. Each node is identified with a unique audio pitch. "Crossing Entered" will beep once when a pass begins, and "Crossing Exited" will beep twice rapidly when a pass is completed. "Manual Lap Button" will beep once if the "Manual" button is used to force a simulated pass.
+
+#### Race Format
+Race formats collect settings that define how a race is conducted. Choose an active race format. Settings that you adjust here will be saved to the currently active format.
+
+Timer mode can count up, or count down. Use "Count Up" for a heads-up, "first to X laps" style. Use "Count Down" for a fixed-time format. Timer duration is only used in "Count Down" mode.
+
+Staging Timer Mode affects whether the time display will be visible before a race. "Show Countdown" will show the time until the race start signal; "Hide Countdown" will display "Ready" until the race begins.
+
+Minimum and Maximum Start Delay adjust how many second the staging (pre-race) timer lasts. Set these to the same number for a fixed countodwn time, or to different numbers for a random time within this range.
+
+Minimum lap time and team racing mode are not stored with the race format.
+
+Minimum lap time automatically discards passes that would have registered laps less than the specified duration. Use with caution, as this will discard data that may have been valid.
+
+#### LED Control
+This section will override the current LED display.
+
+#### Database
+Choose to backup the current database (save to a file on the pi and prompt to download it) or clear data. You may clear races, classes, heats, and pilots.
+
+#### System
+Choose the interface language, and change parameters that affect the appearance of the timer such as its name and color scheme. You can also shut down the server from here.
+
+
+### Run
+
+Select the Heat for the race which is to be run next.
+
+Start the race when ready. The timer will do a quick communication to the server to  compensate for client/server response time, then begin the staging procedure defined by the current race format.
+
+During the race, there is an "×" next to each counted lap. This will discard that lap pass, so its time is moved to the next lap. Use this to remove errant extra passes, or clean up pilots flying close to the start gate after their race finished.
+
+A "Manual" button is provided to force lap pass for that node to be immediately recorded.
+
+You must use the "Stop Race" button to discontinue counting laps. This is true even if the timer reaches zero in a "Count Down" format—a popular race format allows pilots to finish the lap they are on when time expires.
+
+Once a race has concluded, you must choose "Save Laps" or "Clear Laps" before starting another race. "Save Laps" will store race results to the database and display them on the "Results" page. "Clear Laps" will discard the race results. 
+
