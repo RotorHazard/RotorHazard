@@ -26,4 +26,5 @@ For initial setup and running races, follow these instructions: [/doc/User Guide
 * Eric Thomas
 * Scott Chin and other Delta5 Contributors
 
-Additional community contributions are welcome.
+Community contributions are welcome.
+Submit an [issue](https://github.com/RotorHazard/RotorHazard/issues) or [pull request](https://github.com/RotorHazard/RotorHazard/pulls), or discuss the project on [Facebook](https://www.facebook.com/groups/749387998753163/)
