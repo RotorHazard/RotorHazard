@@ -301,7 +301,7 @@ body>header {
 }
 
 #timer-name {
-	width: calc(100% - 8rem);
+	width: 15rem;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	overflow: hidden;
@@ -356,7 +356,11 @@ nav a {
 	display: none;
 }
 
-@media (max-width: 44em){
+@media (max-width: 50em){
+
+	#timer-name {
+		width: calc(100% - 8rem);
+	}
 	.hamburger {
 		display: block;
 	}
@@ -610,9 +614,6 @@ main.page-home {
 	color: #000;
 	white-space: nowrap;
 	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	overflow: hidden;
 	font-size: 1rem;
 }
 
@@ -657,9 +658,6 @@ main.page-home {
 
 .heats>li {
 	width: calc(20% - 0.5em);
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	overflow: hidden;
 	margin: 0 0.25em 0.5em;
 	padding: 0;
 	box-sizing: border-box;
@@ -802,9 +800,6 @@ main.page-home {
 	}
 	.responsive-wrap th {
 		font-size: 0.75em;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		overflow: hidden;
 	}
 	.responsive-wrap .behind {
 		display: none;
