@@ -721,6 +721,17 @@ def on_set_race_class_format(data):
     server_log('Class {0} format: {1}'.format(race_class, race_class_format))
     emit_class_data(noself=True)
 
+@SOCKET_IO.on('set_race_class_description')
+def on_set_race_class_name(data):
+    '''Sets race class name.'''
+    race_class = data['class_id']
+    race_class_description = data['class_description']
+    db_update = RaceClass.query.get(race_class)
+    db_update.description = race_class_description
+    DB.session.commit()
+    server_log('Class {0} description: {1}'.format(race_class, race_class_description))
+    emit_class_data(noself=True)
+
 @SOCKET_IO.on('add_pilot')
 def on_add_pilot():
     '''Adds the next available pilot id number in the database.'''
@@ -1868,6 +1879,7 @@ def emit_class_data(**params):
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
+        current_class['description'] = race_class.description
         current_class['format'] = race_class.format_id
 
         has_race = SavedRace.query.filter_by(class_id=race_class.id).first()

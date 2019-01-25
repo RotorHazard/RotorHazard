@@ -445,6 +445,14 @@
 			socket.emit('set_race_class_format', data);
 		});
 
+		$(document).on("change", '.set_race_class_description', function (event) {
+			var data = {
+				class_id: parseInt($(this).data('class_id')),
+				class_description: $(this).val(),
+			};
+			socket.emit('set_race_class_description', data);
+		});
+
 		$('button#add_race_class').click(function (event) {
 			socket.emit('add_race_class');
 			return false;
