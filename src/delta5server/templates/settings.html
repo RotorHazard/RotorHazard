@@ -987,13 +987,13 @@
 
 {% if ConfigFile == -1 %}
 	<div class="config-bad">
-		<p><strong>{{ __('The config.json file is invalid. Falling back to default configuration.') }}</strong></p>
-		<p>{{ __('To ensure your config.json file is valid JSON format, consider using a validator such as <a href="https://jsonlint.com/">JSONLint</a>.') }}</p>
+		<p><strong>{{ __('The config.json file is invalid. Falling back to default configuration.') | safe }}</strong></p>
+		<p>{{ __('To ensure your config.json file is valid JSON format, consider using a validator such as <a href="https://jsonlint.com/">JSONLint</a>.') | safe }}</p>
 	</div>
 {% elif ConfigFile == 0 %}
 	<div class="config-none">
-		<p><strong>{{ __('No configuration file was loaded. Falling back to default configuration.') }}</strong></p>
-		<p>{{ __('Copy <em>delta5server/config-dist.json</em> to <em>delta5server/config.json</em> and then update settings for your server port number, admin username/password, and LED configuration.') }}</p>
+		<p><strong>{{ __('No configuration file was loaded. Falling back to default configuration.') | safe }}</strong></p>
+		<p>{{ __('Copy <em>delta5server/config-dist.json</em> to <em>delta5server/config.json</em> and then update settings for your server port number, admin username/password, and LED configuration.') | safe }}</p>
 	</div>
 {% endif %}
 
