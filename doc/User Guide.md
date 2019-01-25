@@ -123,3 +123,4 @@ You must use the "Stop Race" button to discontinue counting laps. This is true e
 
 Once a race has concluded, you must choose "Save Laps" or "Clear Laps" before starting another race. "Save Laps" will store race results to the database and display them on the "Results" page. "Clear Laps" will discard the race results. 
 
+The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. Audio Control and LED Contral are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race.
