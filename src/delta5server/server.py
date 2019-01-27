@@ -613,12 +613,14 @@ def on_set_exit_at_level(data):
 def hardware_set_all_enter_ats(enter_at_levels):
     '''send update to nodes'''
     for idx in range(RACE.num_nodes):
-        INTERFACE.set_enter_at_level(idx, enter_at_levels[idx])
+        if enter_at_levels[idx]:
+            INTERFACE.set_enter_at_level(idx, enter_at_levels[idx])
 
 def hardware_set_all_exit_ats(exit_at_levels):
     '''send update to nodes'''
     for idx in range(RACE.num_nodes):
-        INTERFACE.set_exit_at_level(idx, exit_at_levels[idx])
+        if exit_at_levels[idx]:
+            INTERFACE.set_exit_at_level(idx, exit_at_levels[idx])
 
 @SOCKET_IO.on('set_language')
 def on_set_language(data):
