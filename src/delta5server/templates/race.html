@@ -104,7 +104,7 @@
 		socket.on('race_status', function (msg) {
 			switch (msg.race_status) {
 				case 1: // Race running
-					$('.set_current_heat').prop('disabled', true);
+					$('#set_current_heat').prop('disabled', true);
 					$('button#start_race').prop('disabled', true);
 					$('button#stop_race').prop('disabled', false);
 					$('button#save_laps').prop('disabled', true);
@@ -119,7 +119,7 @@
 					}
 					break;
 				case 2: // Race stopped, clear or save laps
-					$('.set_current_heat').prop('disabled', true);
+					$('#set_current_heat').prop('disabled', true);
 					$('button#start_race').prop('disabled', true);
 					$('button#stop_race').prop('disabled', true);
 					$('button#save_laps').prop('disabled', false);
@@ -130,7 +130,7 @@
 					$('body').removeClass('race-new');
 					break;
 				default: // Waiting to start new race
-					$('.set_current_heat').prop('disabled', false);
+					$('#set_current_heat').prop('disabled', false);
 					$('button#start_race').prop('disabled', false);
 					$('button#stop_race').prop('disabled', true);
 					$('button#save_laps').prop('disabled', true);

@@ -420,6 +420,7 @@ main {
 .page-home .header h1 img {
 	margin: 0 auto;
 	padding: 0 3%;
+	max-width: 94%;
 }
 
 main.page-home {
