@@ -1,3 +1,5 @@
+![RotorHazard Logo](/src/delta5server/static/image/RotorHazard%20Logo.svg)
+
 # RotorHazard
 FPV Race Timing and Event Management
 
@@ -21,10 +23,12 @@ To build the system, follow the instructions here: [/doc/Hardware and Software S
 For initial setup and running races, follow these instructions: [/doc/User Guide.md](/doc/User%20Guide.md)
 
 ## Contributors
-* Supported by [Propwashed](https://propwashed.com)
 * Michael Niggel
 * Eric Thomas
-* Scott Chin and other Delta5 Contributors
+* Scott Chin and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
+
+Supported by:
+[![Propwashed Logo](/doc/img/Propwashed-Logo-200w.png)](https://propwashed.com)
 
 Community contributions are welcome.
 Submit an [issue](https://github.com/RotorHazard/RotorHazard/issues) or [pull request](https://github.com/RotorHazard/RotorHazard/pulls), or discuss the project on [Facebook](https://www.facebook.com/groups/749387998753163/)
