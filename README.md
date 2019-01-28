@@ -27,8 +27,10 @@ For initial setup and running races, follow these instructions: [/doc/User Guide
 * Eric Thomas
 * Scott Chin and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
 
-Supported by:
+### Supported by:
 [![Propwashed Logo](/doc/img/Propwashed-Logo-200w.png)](https://propwashed.com)
 
-Community contributions are welcome.
-Submit an [issue](https://github.com/RotorHazard/RotorHazard/issues) or [pull request](https://github.com/RotorHazard/RotorHazard/pulls), or discuss the project on [Facebook](https://www.facebook.com/groups/749387998753163/)
+
+Community contributions are welcome and encouraged.
+
+Submit an [issue](https://github.com/RotorHazard/RotorHazard/issues) or [pull request](https://github.com/RotorHazard/RotorHazard/pulls), or discuss the project on [Facebook](https://www.facebook.com/groups/749387998753163/).
