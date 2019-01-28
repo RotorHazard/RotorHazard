@@ -225,7 +225,7 @@ strip.begin()
 class Pilot(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     callsign = DB.Column(DB.String(80), unique=True, nullable=False)
-    team = DB.Column(DB.String(80), nullable=False)
+    team = DB.Column(DB.String(80), nullable=False, default=DEF_TEAM_NAME)
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
 
@@ -309,12 +309,15 @@ class GlobalSettings(DB.Model):
 # Option helpers
 #
 
-def getOption(option):
-    settings = GlobalSettings.query.filter_by(option_name=option).first()
-    if settings:
-        return settings.option_value
-    else:
-        return False
+def getOption(option, default_value=False):
+    try:
+        settings = GlobalSettings.query.filter_by(option_name=option).first()
+        if settings:
+            return settings.option_value
+        else:
+            return default_value
+    except:
+        return default_value
 
 def setOption(option, value):
     settings = GlobalSettings.query.filter_by(option_name=option).first()
@@ -873,43 +876,47 @@ def on_set_profile(data, emit_vals=True):
     ''' set current profile '''
     profile_val = int(data['profile'])
     profile = Profiles.query.get(profile_val)
-    setOption("currentProfile", data['profile'])
-    server_log("Set Profile to '%s'" % profile_val)
-    # set freqs, enter_ats, and exit_ats
-    freqs_loaded = json.loads(profile.frequencies)
-    freqs = freqs_loaded["f"]
+    if profile:
+        setOption("currentProfile", data['profile'])
+        server_log("Set Profile to '%s'" % profile_val)
+        # set freqs, enter_ats, and exit_ats
+        freqs_loaded = json.loads(profile.frequencies)
+        freqs = freqs_loaded["f"]
+    
+        if profile.enter_ats:
+            enter_ats_loaded = json.loads(profile.enter_ats)
+            enter_ats = enter_ats_loaded["v"]
+        else: #handle null data by copying in hardware values
+            enter_at_levels = {}
+            enter_at_levels["v"] = [node.enter_at_level for node in INTERFACE.nodes]
+            enter_levels_serial = json.dumps(enter_at_levels)
+            profile.enter_ats = enter_levels_serial
+            enter_ats = enter_at_levels["v"]
+    
+        if profile.exit_ats:
+            exit_ats_loaded = json.loads(profile.exit_ats)
+            exit_ats = exit_ats_loaded["v"]
+        else: #handle null data by copying in hardware values
+            exit_at_levels = {}
+            exit_at_levels["v"] = [node.exit_at_level for node in INTERFACE.nodes]
+            exit_levels_serial = json.dumps(exit_at_levels)
+            profile.exit_ats = exit_levels_serial
+            exit_ats = exit_at_levels["v"]
+    
+        DB.session.commit()
+        if emit_vals:
+            emit_node_tuning()
+            emit_enter_and_exit_at_levels()
+            emit_frequency_data()
+    
+        hardware_set_all_frequencies(freqs)
+        hardware_set_all_enter_ats(enter_ats)
+        hardware_set_all_exit_ats(exit_ats)
+        #set filter ratio
+        INTERFACE.set_filter_ratio_global(profile.f_ratio)
 
-    if profile.enter_ats:
-        enter_ats_loaded = json.loads(profile.enter_ats)
-        enter_ats = enter_ats_loaded["v"]
-    else: #handle null data by copying in hardware values
-        enter_at_levels = {}
-        enter_at_levels["v"] = [node.enter_at_level for node in INTERFACE.nodes]
-        enter_levels_serial = json.dumps(enter_at_levels)
-        profile.enter_ats = enter_levels_serial
-        enter_ats = enter_at_levels["v"]
-
-    if profile.exit_ats:
-        exit_ats_loaded = json.loads(profile.exit_ats)
-        exit_ats = exit_ats_loaded["v"]
-    else: #handle null data by copying in hardware values
-        exit_at_levels = {}
-        exit_at_levels["v"] = [node.exit_at_level for node in INTERFACE.nodes]
-        exit_levels_serial = json.dumps(exit_at_levels)
-        profile.exit_ats = exit_levels_serial
-        exit_ats = exit_at_levels["v"]
-
-    DB.session.commit()
-    if emit_vals:
-        emit_node_tuning()
-        emit_enter_and_exit_at_levels()
-        emit_frequency_data()
-
-    hardware_set_all_frequencies(freqs)
-    hardware_set_all_enter_ats(enter_ats)
-    hardware_set_all_exit_ats(exit_ats)
-    #set filter ratio
-    INTERFACE.set_filter_ratio_global(profile.f_ratio)
+    else:
+        server_log('Invalid set_profile value: ' + str(profile_val))
 
 @SOCKET_IO.on('backup_database')
 def on_backup_database():
@@ -2858,6 +2865,38 @@ def backup_db_file(copy_flag):
         server_log('Error backing up database file:  ' + str(ex))
     return bkp_name
 
+def query_table_data(class_type, filter_crit=None, filter_value=0):
+    try:
+        if filter_crit is None:
+            return class_type.query.all()
+        return class_type.query.filter(filter_crit==filter_value).all()
+    except Exception:
+        server_log('Unable to read "{0}" table from previous database'.format(class_type.__name__))
+
+def restore_table(class_type, table_query_data, match_name='name'):
+    if table_query_data:
+        try:
+            for row_data in table_query_data:
+                if (class_type is not Pilot) or getattr(row_data, 'callsign', '') != '-' or \
+                                              getattr(row_data, 'name', '') != '-None-':
+                    db_update = class_type.query.filter(getattr(class_type,match_name)==getattr(row_data,match_name)).first()
+                    if db_update is None:
+                        new_data = class_type()
+                        for col in class_type.__table__.columns.keys():
+                            if col != 'id':
+                                setattr(new_data, col, getattr(row_data, col))
+                        #server_log('DEBUG row_data add:  ' + str(getattr(new_data, match_name)))
+                        DB.session.add(new_data)
+                    else:
+                        #server_log('DEBUG row_data update:  ' + str(getattr(row_data, match_name)))
+                        for col in class_type.__table__.columns.keys():
+                            if col != 'id':
+                                setattr(db_update, col, getattr(row_data, col))
+                    DB.session.flush()
+            server_log('Database table "{0}" restored'.format(class_type.__name__))
+        except Exception as ex:
+            server_log('Error restoring "{0}" table from previous database:  {1}'.format(class_type.__name__, ex))
+
 
 #
 # Program Initialize
@@ -2877,7 +2916,11 @@ elif int(getOption('server_api')) < SERVER_API:
     server_log('Old server API version; resetting database')
     try:
         server_log('Recovering Pilot data from previous database')
-        pilot_query_all = Pilot.query.all()
+        pilot_query_data = query_table_data(Pilot)
+        raceFormat_query_data = query_table_data(RaceFormat)
+        profiles_query_data = query_table_data(Profiles)
+        raceClass_query_data = query_table_data(RaceClass)
+        heat_query_data = query_table_data(Heat, Heat.heat_id, 1)
 
         carryoverOpts = [
             "timerName",
@@ -2893,48 +2936,48 @@ elif int(getOption('server_api')) < SERVER_API:
             "lum_1_high",
             "contrast_1_low",
             "contrast_1_high",
-            "currentLanguage"
+            "currentLanguage",
+            "currentProfile",
+            "currentFormat", 
+            "MinLapSec",
+            "TeamRacingMode"
         ]
-
         carryOver = {}
         for opt in carryoverOpts:
-            carryOver[opt] = getOption(opt)
+            val = getOption(opt, None)
+            if val is not None:
+                carryOver[opt] = val
 
-    except:
-        server_log('Error while reading data from previous database')
+    except Exception as ex:
+        server_log('Error reading data from previous database:  ' + str(ex))
+
     backup_db_file(False)  # rename and move DB file
     db_init()
     try:
-        id_corr = 0
-        for pilot_data in pilot_query_all:
-            if pilot_data.id != PILOT_ID_NONE and pilot_data.callsign != '-':
-                pilot_data.id -= id_corr  # correct for first slot "None" pilot
-                db_update = Pilot.query.get(pilot_data.id)
-                if db_update is None:
-                    DB.session.add(Pilot(id=pilot_data.id, callsign='Callsign', \
-                                   name='Name', team=DEF_TEAM_NAME, phonetic=''))
-                    db_update = Pilot.query.get(pilot_data.id)
-                if hasattr(pilot_data, 'callsign'):
-                    db_update.callsign = pilot_data.callsign
-                if hasattr(pilot_data, 'phonetic'):
-                    db_update.phonetic = pilot_data.phonetic
-                if hasattr(pilot_data, 'name'):
-                    db_update.name = pilot_data.name
-                if hasattr(pilot_data, 'team'):
-                    db_update.team = pilot_data.team
-            else:
-                id_corr = 1
-        DB.session.commit()
-        server_log('Database pilots restored')
+        if pilot_query_data:
+            DB.session.query(Pilot).delete()
+            restore_table(Pilot, pilot_query_data, 'callsign')
+        restore_table(RaceFormat, raceFormat_query_data)
+        restore_table(Profiles, profiles_query_data)
+        restore_table(RaceClass, raceClass_query_data)
+        if heat_query_data and len(heat_query_data) == RACE.num_nodes:
+            DB.session.query(Heat).delete()
+            restore_table(Heat, heat_query_data, 'node_index')
 
         for opt in carryOver:
             setOption(opt, carryOver[opt])
-        DB.session.commit()
         server_log('UI Options restored')
 
-    except:
-        server_log('Error while writing data from previous database')
+    except Exception as ex:
+        server_log('Error while writing data from previous database:  ' + str(ex))
+        
+    DB.session.commit()
 
+    pilot_query_data = None       # make sure temp data is released
+    raceFormat_query_data = None
+    profiles_query_data = None
+    raceClass_query_data = None
+    heat_query_data = None
 
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     try:
