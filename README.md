@@ -22,6 +22,9 @@ To build the system, follow the instructions here: [/doc/Hardware and Software S
 ## User Guide
 For initial setup and running races, follow these instructions: [/doc/User Guide.md](/doc/User%20Guide.md)
 
+## Migrating from/to Delta5
+RotorHazard uses the same hardware, but different code for the nodes. Re-flash your Arduinos as in the [setup instructions](/doc/Hardware%20and%20Software%20Setup%20Instructions.md#receiver-nodes-arduinos) whenever you switch between the two projects.
+
 ## Contributors
 * Michael Niggel
 * Eric Thomas
