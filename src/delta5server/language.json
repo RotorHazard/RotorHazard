@@ -1,6 +1,6 @@
 {
-	"German": {
-		"name": "German",
+	"de": {
+		"name": "Deutsch",
 		"values": {
 			"Start": "Starte",
 			"Stop": "Stoppe",
@@ -173,7 +173,6 @@
 			"Most Laps Wins":"Meiste Runden gewinnen",
 			"Open Practice":"Offenes Training",
 			"FPV Race":"FPV Rennen"
-
 		}
 	}
 }
