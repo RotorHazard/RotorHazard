@@ -358,13 +358,13 @@ def requires_auth(f):
 @APP.route('/')
 def index():
     '''Route to home page.'''
-    return render_template('home.html', getOption=getOption, __=__, 
+    return render_template('home.html', getOption=getOption, __=__,
         lang=getFullLanguage(getOption('currentLanguage')))
 
 @APP.route('/heats')
 def heats():
     '''Route to heat summary page.'''
-    return render_template('heats.html', getOption=getOption, __=__, 
+    return render_template('heats.html', getOption=getOption, __=__,
         lang=getFullLanguage(getOption('currentLanguage')))
 
 @APP.route('/results')
@@ -379,14 +379,14 @@ def results():
     # - One for all rounds, grouped by heats
     # - One for all pilots, sorted by fastest lap and shows average and other stats
     # - One for individual heats
-    return render_template('rounds.html', getOption=getOption, __=__, 
+    return render_template('rounds.html', getOption=getOption, __=__,
         lang=getFullLanguage(getOption('currentLanguage')))
 
 @APP.route('/race')
 @requires_auth
 def race():
     '''Route to race management page.'''
-    return render_template('race.html', getOption=getOption, __=__, 
+    return render_template('race.html', getOption=getOption, __=__,
         lang=getFullLanguage(getOption('currentLanguage')),
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat,
@@ -396,7 +396,7 @@ def race():
 @APP.route('/current')
 def racepublic():
     '''Route to race management page.'''
-    return render_template('racepublic.html', getOption=getOption, __=__, 
+    return render_template('racepublic.html', getOption=getOption, __=__,
         lang=getFullLanguage(getOption('currentLanguage')),
         num_nodes=RACE.num_nodes)
 
@@ -405,7 +405,7 @@ def racepublic():
 def settings():
     '''Route to settings page.'''
 
-    return render_template('settings.html', getOption=getOption, __=__, 
+    return render_template('settings.html', getOption=getOption, __=__,
         lang=getFullLanguage(getOption('currentLanguage')),
         num_nodes=RACE.num_nodes,
         ConfigFile=Config['GENERAL']['configFile'],
@@ -416,7 +416,7 @@ def settings():
 def correction():
     '''Route to node correction page.'''
 
-    return render_template('correction.html', getOption=getOption, __=__, 
+    return render_template('correction.html', getOption=getOption, __=__,
         lang=getFullLanguage(getOption('currentLanguage')),
         num_nodes=RACE.num_nodes,
         current_profile = getOption("currentProfile"),
@@ -426,7 +426,7 @@ def correction():
 def imdtabler():
     '''Route to IMDTabler page.'''
 
-    return render_template('imdtabler.html', getOption=getOption, __=__, 
+    return render_template('imdtabler.html', getOption=getOption, __=__,
         lang=getFullLanguage(getOption('currentLanguage')))
 
 # Debug Routes
@@ -435,20 +435,20 @@ def imdtabler():
 @requires_auth
 def hardwarelog():
     '''Route to hardware log page.'''
-    return render_template('hardwarelog.html', getOption=getOption, __=__, 
+    return render_template('hardwarelog.html', getOption=getOption, __=__,
         lang=getFullLanguage(getOption('currentLanguage')))
 
 @APP.route('/database')
 @requires_auth
 def database():
     '''Route to database page.'''
-    return render_template('database.html', getOption=getOption, __=__, 
+    return render_template('database.html', getOption=getOption, __=__,
         lang=getFullLanguage(getOption('currentLanguage')),
-        pilots=Pilot, 
-        heats=Heat, 
+        pilots=Pilot,
+        heats=Heat,
         race_class=RaceClass,
         currentlaps=CurrentLap,
-        savedraces=SavedRace, 
+        savedraces=SavedRace,
         profiles=Profiles,
         race_format=RaceFormat,
         globalSettings=GlobalSettings)
@@ -882,7 +882,7 @@ def on_set_profile(data, emit_vals=True):
         # set freqs, enter_ats, and exit_ats
         freqs_loaded = json.loads(profile.frequencies)
         freqs = freqs_loaded["f"]
-    
+
         if profile.enter_ats:
             enter_ats_loaded = json.loads(profile.enter_ats)
             enter_ats = enter_ats_loaded["v"]
@@ -892,7 +892,7 @@ def on_set_profile(data, emit_vals=True):
             enter_levels_serial = json.dumps(enter_at_levels)
             profile.enter_ats = enter_levels_serial
             enter_ats = enter_at_levels["v"]
-    
+
         if profile.exit_ats:
             exit_ats_loaded = json.loads(profile.exit_ats)
             exit_ats = exit_ats_loaded["v"]
@@ -902,13 +902,13 @@ def on_set_profile(data, emit_vals=True):
             exit_levels_serial = json.dumps(exit_at_levels)
             profile.exit_ats = exit_levels_serial
             exit_ats = exit_at_levels["v"]
-    
+
         DB.session.commit()
         if emit_vals:
             emit_node_tuning()
             emit_enter_and_exit_at_levels()
             emit_frequency_data()
-    
+
         hardware_set_all_frequencies(freqs)
         hardware_set_all_enter_ats(enter_ats)
         hardware_set_all_exit_ats(exit_ats)
@@ -2330,6 +2330,10 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **param
     else:
         SOCKET_IO.emit('phonetic_data', emit_payload)
 
+def emit_phonetic_data_first_pass():
+    '''Just emits that a first pass was recorded'''
+    SOCKET_IO.emit('phonetic_data_first_pass')
+
 def emit_phonetic_text(text_str, **params):
     '''Emits given phonetic text.'''
     emit_payload = {
@@ -2561,6 +2565,9 @@ def pass_record_callback(node, ms_since_lap):
                             team_laps = t_laps_dict[team_name][0]
                         check_emit_team_racing_status(t_laps_dict)
 
+                        if lap_id == 0:
+                            server_log('first Pass record ')
+                            emit_phonetic_data_first_pass() # Sends phonetic data to be spoken on first pass                    
                         if lap_id > 0:   # send phonetic data to be spoken
                             emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
 
@@ -2577,6 +2584,9 @@ def pass_record_callback(node, ms_since_lap):
                                 emit_phonetic_text('Winner is team ' + Race_laps_winner_name)
 
                     else:  # not team racing mode
+                        if lap_id == 0:
+                            server_log('first Pass record ')
+                            emit_phonetic_data_first_pass() # Sends phonetic data to be spoken on first pass
                         if lap_id > 0:
                                             # send phonetic data to be spoken
                             if race_format.number_laps_win <= 0:
@@ -2925,7 +2935,7 @@ elif int(getOption('server_api')) < SERVER_API:
         carryoverOpts = [
             "timerName",
             "hue_0",
-            "sat_0", 
+            "sat_0",
             "lum_0_low",
             "lum_0_high",
             "contrast_0_low",
@@ -2938,7 +2948,7 @@ elif int(getOption('server_api')) < SERVER_API:
             "contrast_1_high",
             "currentLanguage",
             "currentProfile",
-            "currentFormat", 
+            "currentFormat",
             "MinLapSec",
             "TeamRacingMode"
         ]
@@ -2970,7 +2980,7 @@ elif int(getOption('server_api')) < SERVER_API:
 
     except Exception as ex:
         server_log('Error while writing data from previous database:  ' + str(ex))
-        
+
     DB.session.commit()
 
     pilot_query_data = None       # make sure temp data is released
