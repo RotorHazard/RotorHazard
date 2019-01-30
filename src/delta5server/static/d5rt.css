@@ -1034,7 +1034,17 @@ td.speak {
 	display: inline-block;
 }
 
+button .narrow {
+	display: none;
+}
+button .wide {
+	display: inline;
+}
+
 @media (max-width: 45em) {
+	button .narrow {
+		display: inline;
+	}
 	button .wide {
 		display: none;
 	}
