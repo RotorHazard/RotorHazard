@@ -191,10 +191,10 @@
 					$('.current_rssi_' + i).html(rssiValue);
 
 					if (msg.crossing_flag[i]) {
-						$('.crossing_flag_' + i).addClass('is-crossing').html('Crossing');
+						$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
 					}
 					else {
-						$('.crossing_flag_' + i).removeClass('is-crossing').html('Clear');
+						$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
 					}
 
 					d5rt.nodes[i].graph.options.maxValue = Math.max(
@@ -720,10 +720,10 @@
 				</option>
 				{% endfor %}
 			</select>
-			<button type="button" id="start_race" onclick="this.blur();">{{ __('Start') }}<span class="wide"> {{ __('Race') }}</span></button>
-			<button type="button" id="stop_race" disabled="disabled" onclick="this.blur();">{{ __('Stop') }}<span class="wide"> {{ __('Race') }}</span></button>
-			<button type="button" id="save_laps" disabled="disabled" onclick="this.blur();">{{ __('Save') }}<span class="wide"> {{ __('Laps') }}</span></button>
-			<button type="button" id="clear_laps" disabled="disabled" onclick="this.blur();">{{ __('Clear') }}<span class="wide"> {{ __('Laps') }}</span></button>
+			<button type="button" id="start_race" onclick="this.blur();"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
+			<button type="button" id="stop_race" disabled="disabled" onclick="this.blur();"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
+			<button type="button" id="save_laps" disabled="disabled" onclick="this.blur();"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save Laps') }}</span></button>
+			<button type="button" id="clear_laps" disabled="disabled" onclick="this.blur();"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
 		</div>
 
 		<!--Display the race leaderboard-->
@@ -782,7 +782,7 @@
 			<li>
 				<div class="label-block">
 					<label for="set_min_lap">{{ __('Minimum Lap Time') }}</label>
-					<p class="desc">In seconds</p>
+					<p class="desc">{{ __('In seconds') }}</p>
 				</div>
 				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
 			</li>

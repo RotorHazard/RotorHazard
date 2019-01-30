@@ -1041,7 +1041,7 @@
 		<div class="control-set">
 			Preset:
 			<button type="button" class="set_frequency_preset" data-preset="All-N1" onclick="this.blur();">{{ __('Apply Node 1') }}</button>
-			<button type="button" class="set_frequency_preset" data-preset="RB-4" onclick="this.blur();">{{ __('Raceband 4') }}</button>
+			<button type="button" class="set_frequency_preset" data-preset="RB-4" onclick="this.blur();">{{ __('R1367') }}</button>
 			<button type="button" class="set_frequency_preset" data-preset="IMD5C" onclick="this.blur();">{{ __('IMD5C') }}</button>
 			<button type="button" class="set_frequency_preset" data-preset="IMD6C" onclick="this.blur();">{{ __('IMD6C') }}</button>
 			<button type="button" class="set_frequency_preset" data-preset="RB-8" onclick="this.blur();">{{ __('Raceband 8') }}</button>
@@ -1146,23 +1146,23 @@
 
 
 		<div class="calibration-guide">
-			<h3>Calibration</h3>
+			<h3>{{ __('Calibration') }}</h3>
 			<ol>
-				<li>Power on a VTx at the same frequency as the node</li>
-				<li>Pass VTx very near the timer to establish peak RSSI for node</li>
-				<li>Place VTx 5-10 feet away and press 'Capture' for EnterAt</li>
-				<li>Place VTx 20-30 feet away and press 'Capture' for ExitAt</li>
-				<li>Review "Crossing" points and adjust until accurately responding</li>
-				<li>The EnterAt value should always be higher than the ExitAt value</li>
+				<li>{{ __('Power on a VTx at the same frequency as the node') }}</li>
+				<li>{{ __('Pass VTx very near the timer to establish peak RSSI for node') }}</li>
+				<li>{{ __('Place VTx 5-10 feet away and press "Capture" for EnterAt') }}</li>
+				<li>{{ __('Place VTx 20-30 feet away and press "Capture" for ExitAt') }}</li>
+				<li>{{ __('Review "Crossing" points and adjust until accurately responding') }}</li>
+				<li>{{ __('The EnterAt value should always be higher than the ExitAt value') }}</li>
 			</ol>
-			<h3>Troubleshooting</h3>
+			<h3>{{ __('Troubleshooting') }}</h3>
 			<ul>
-				<li>If gate crossings are being missed then lower EnterAt</li>
-				<li>If gate crossing are triggered when they shouldn't be then increase EnterAt</li>
-				<li>If a pass by the timer is resulting in multiple crossings, lower ExitAt</li>
-				<li>If the 'Crossing' indicator is stuck on then increase ExitAt</li>
-				<li>If crossings are still erratic, increase RSSI Smoothing to reduce noise</li>
-                <li>If missing high-speed passes, try decreasing RSSI Smoothing</li>
+				<li>{{ __('If gate crossings are being missed then lower EnterAt') }}</li>
+				<li>{{ __("If gate crossing are triggered when they shouldn't be then increase EnterAt") }}</li>
+				<li>{{ __('If a pass by the timer is resulting in multiple crossings, lower ExitAt') }}</li>
+				<li>{{ __('If the "Crossing" indicator is stuck on then increase ExitAt') }}</li>
+				<li>{{ __('If crossings are still erratic, increase RSSI Smoothing to reduce noise') }}</li>
+                <li>{{ __('If missing high-speed passes, try decreasing RSSI Smoothing') }}</li>
 			</ul>
 		</div>
 	</div>
