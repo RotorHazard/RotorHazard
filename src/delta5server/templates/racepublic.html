@@ -208,9 +208,7 @@
 			voices.append('<option value="-1">' + __('None') + '</option>');
 			voices.append('<option value="0">' + __('All') + '</option>');
 			for (var i in msg.pilot_id) {
-				if (msg.pilot_id[i] != 1) {
-					voices.append('<option value="' + msg.pilot_id[i] + '">' + msg.callsign[i] + ' (' + msg.name[i] + ')</option>')
-				}
+				voices.append('<option value="' + msg.pilot_id[i] + '">' + msg.callsign[i] + ' (' + msg.name[i] + ')</option>')
 			}
 			voices.val(d5rt.primaryPilot);
 		});
