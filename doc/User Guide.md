@@ -1,9 +1,11 @@
-# Delta 5 Race Timer User Guide
+# RotorHazard Race Timer User Guide
 
 ## Initial Setup
 
 ### Hardware and Software Setup
-Follow the instructions here if not done already: [/doc/Hardware and Software Setup Instructions.md](Hardware%20and%20Software%20Setup%20Instructions.md)
+Follow the instructions here if not done already:  
+[doc/Hardware Setup.md](Hardware%20Setup.md)  
+[doc/Software Setup.md](Software%20Setup.md)
 
 ### Set up Config File
 in src/delta5server, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the HTTP_PORT, SECRET_KEY, ADMIN_USERNAME, and ADMIN_PASSWORD values. Make sure you keep this config file as valid JSON. Use of an linter like [JSONLint](https://jsonlint.com/) can help prevent errors.
@@ -58,7 +60,7 @@ Profiles contain settings for various circumstances or environments, such as out
 Choose a preset or manually select frequencies for each node. Arbitrary frequency selection is possible, as is disabling a node. The IMD score for currently selected frequencies is calculated and displayed at the bottom of the panel.
 
 #### Sensor Tuning
-See [/doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
+See [doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
 
 #### Event and Classes
 Event information is displayed on the home page when users first connect to the system.
