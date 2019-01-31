@@ -37,7 +37,10 @@ RotorHazard uses the same hardware, but different code for the nodes. Re-flash y
 ### Supported by:
 [![Propwashed Logo](doc/img/Propwashed-Logo-200w.png)](https://propwashed.com)
 
+## Feedback
 
-Community contributions are welcome and encouraged.
+Discuss RotorHazard on Facebook:  https://www.facebook.com/groups/rotorhazard
 
-Submit an [issue](https://github.com/RotorHazard/RotorHazard/issues) or [pull request](https://github.com/RotorHazard/RotorHazard/pulls), or discuss the project on [Facebook](https://www.facebook.com/groups/rotorhazard).
+To report bugs or request features, please post a GitHub issue [here](https://github.com/RotorHazard/RotorHazard/issues).
+
+Community contributions are welcome and encouraged; see the [Development.md](doc/Development.md) doc for more info.
