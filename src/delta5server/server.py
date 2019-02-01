@@ -2330,10 +2330,10 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **param
     else:
         SOCKET_IO.emit('phonetic_data', emit_payload)
 
-def emit_first_pass_registered():
+def emit_first_pass_registered(node_idx, **params):
     '''Emits when first pass (lap 0) is registered during a race'''
     emit_payload = {
-        'node_index': node.index,
+        'node_index': node_idx,
     }
     if ('nobroadcast' in params):
         emit('first_pass_registered', emit_payload)
@@ -2573,7 +2573,7 @@ def pass_record_callback(node, ms_since_lap):
 
                         if lap_id == 0:
                             server_log('first Pass record ')
-                            emit_first_pass_registered(node) # Sends phonetic data to be spoken on first pass
+                            emit_first_pass_registered(node.index) # Sends phonetic data to be spoken on first pass
                         if lap_id > 0:   # send phonetic data to be spoken
                             emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
 
@@ -2592,7 +2592,7 @@ def pass_record_callback(node, ms_since_lap):
                     else:  # not team racing mode
                         if lap_id == 0:
                             server_log('first Pass record ')
-                            emit_first_pass_registered(node) # Sends phonetic data to be spoken on first pass
+                            emit_first_pass_registered(node.index) # Sends phonetic data to be spoken on first pass
                         if lap_id > 0:
                                             # send phonetic data to be spoken
                             if race_format.number_laps_win <= 0:
