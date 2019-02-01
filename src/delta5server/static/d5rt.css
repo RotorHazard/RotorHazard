@@ -925,6 +925,11 @@ main.page-home {
 	color: #000;
 }
 
+.min-lap-warning {
+	background: hsl(25, 85%, 55%);
+	color: #000;
+}
+
 .page-race tr.lap td:first-child {
 	display: none;
 }

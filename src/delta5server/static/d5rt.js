@@ -180,6 +180,7 @@ var d5rt = {
 	beep_crossing_exited: false, // beep node crossing exited
 	beep_manual_lap_button: false, // beep when manual lap button bit
 	indicator_beep_volume: 0.5, // indicator beep volume
+	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
 	graphing: false,
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
@@ -205,6 +206,7 @@ var d5rt = {
 		localStorage['d5rt.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
 		localStorage['d5rt.beep_manual_lap_button'] = JSON.stringify(this.beep_manual_lap_button);
 		localStorage['d5rt.indicator_beep_volume'] = JSON.stringify(this.indicator_beep_volume);
+		localStorage['d5rt.min_lap'] = JSON.stringify(this.min_lap);
 		localStorage['d5rt.admin'] = JSON.stringify(this.admin);
 		localStorage['d5rt.primaryPilot'] = JSON.stringify(this.primaryPilot);
 		return true;
@@ -252,6 +254,9 @@ var d5rt = {
 			}
 			if (localStorage['d5rt.indicator_beep_volume']) {
 				this.indicator_beep_volume = JSON.parse(localStorage['d5rt.indicator_beep_volume']);
+			}
+			if (localStorage['d5rt.min_lap']) {
+				this.min_lap = JSON.parse(localStorage['d5rt.min_lap']);
 			}
 			if (localStorage['d5rt.admin']) {
 				this.admin = JSON.parse(localStorage['d5rt.admin']);

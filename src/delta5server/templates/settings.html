@@ -693,13 +693,23 @@
 		/* Race Format */
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
+			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
+			d5rt.min_lap = msg.min_lap;
 		});
 
 		$('#set_min_lap').change(function (event) {
+			d5rt.min_lap = msg.min_lap;
 			var data = {
 				min_lap: parseInt($(this).val())
 			};
 			socket.emit('set_min_lap', data);
+		})
+
+		$('#set_min_lap_behavior').change(function (event) {
+			var data = {
+				min_lap_behavior: parseInt($(this).val())
+			};
+			socket.emit('set_min_lap_behavior', data);
 		})
 
 		socket.on('team_racing_mode', function (msg) {
@@ -1403,6 +1413,15 @@
 					<p class="desc">{{ __('In seconds') }}</p>
 				</div>
 				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap_behavior">{{ __('Minimum Lap Behavior') }}</label>
+				</div>
+				<select id="set_min_lap_behavior">
+					<option value="0">{{ __('Highlight Short Laps') }}</option>
+					<option value="1">{{ __('Discard New Short Laps') }}</option>
+				</select>
 			</li>
 			<li>
 				<div class="label-block">

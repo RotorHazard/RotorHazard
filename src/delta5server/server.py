@@ -977,7 +977,14 @@ def on_set_min_lap(data):
     min_lap = data['min_lap']
     setOption("MinLapSec", data['min_lap'])
     server_log("set min lap time to %s seconds" % min_lap)
-    emit_min_lap()
+    emit_min_lap(noself=True)
+
+@SOCKET_IO.on("set_min_lap_behavior")
+def on_set_min_lap_behavior(data):
+    min_lap_behavior = data['min_lap_behavior']
+    setOption("MinLapBehavior", data['min_lap_behavior'])
+    server_log("set min lap behavior to %s" % min_lap_behavior)
+    emit_min_lap(noself=True)
 
 @SOCKET_IO.on("set_team_racing_mode")
 def on_set_team_racing_mode(data):
@@ -1405,7 +1412,8 @@ def emit_language(**params):
 def emit_min_lap(**params):
     '''Emits current minimum lap.'''
     emit_payload = {
-        'min_lap': getOption('MinLapSec')
+        'min_lap': getOption('MinLapSec'),
+        'min_lap_behavior': getOption("MinLapBehavior")
     }
     if ('nobroadcast' in params):
         emit('min_lap', emit_payload)
@@ -1457,11 +1465,17 @@ def emit_current_laps(**params):
     # for node in DB.session.query(CurrentLap.node_index).distinct():
     for node in range(RACE.num_nodes):
         node_laps = []
+        node_lap_raw = []
         node_lap_times = []
         for lap in CurrentLap.query.filter_by(node_index=node).all():
             node_laps.append(lap.lap_id)
+            node_lap_raw.append(lap.lap_time)
             node_lap_times.append(lap.lap_time_formatted)
-        current_laps.append({'lap_id': node_laps, 'lap_time': node_lap_times})
+        current_laps.append({
+            'lap_id': node_laps,
+            'lap_raw': node_lap_raw,
+            'lap_time': node_lap_times
+        })
     current_laps = {'node_index': current_laps}
     emit_payload = current_laps
     if ('nobroadcast' in params):
@@ -2535,7 +2549,8 @@ def pass_record_callback(node, ms_since_lap):
                 last_raceFormat = int(getOption("currentFormat"))
                 race_format = RaceFormat.query.get(last_raceFormat)
                 min_lap = int(getOption("MinLapSec"))
-                if lap_time > (min_lap * 1000) or lap_id == 0:
+                min_lap_behavior = int(getOption("MinLapBehavior"))
+                if lap_id == 0 or min_lap_behavior == 0 or lap_time > (min_lap * 1000):
                     # Add the new lap to the database
                     DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
                         lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
@@ -2837,6 +2852,7 @@ def db_reset_options_defaults():
     setOption("currentProfile", "1")
     setOption("currentFormat", "1")
     setOption("MinLapSec", "5")
+    setOption("MinLapBehavior", "0")
     setOption("TeamRacingMode", "0")
 
     setOption("eventName", __("FPV Race"))

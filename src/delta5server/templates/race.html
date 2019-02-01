@@ -259,20 +259,25 @@
 				$('#current_laps_' + i + ' tbody > tr').remove();
 				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
 					// No lap deletion for first lap
+					var $tr = '';
 					if (node_index.lap_id[j] == 0) {
-						var $tr = $('<tr class="lap_0">').append(
+						$tr = $('<tr class="lap_0">').append(
 							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
 							$('<td colspan="2">').text(node_index.lap_time[j])
-						).appendTo('#current_laps_' + i);
+						)
 					}
 					else {
-						var $tr = $('<tr>').append(
+						$tr = $('<tr>').append(
 							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
 							$('<td colspan="2">').text(node_index.lap_time[j] + ' ').append(
 								$('<button type="button" class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '" onclick="this.blur();">&#215;</button>')
 							)
-						).appendTo('#current_laps_' + i);
+						)
 					}
+					if (j && node_index.lap_raw[j] < (d5rt.min_lap * 1000)) {
+						$tr.addClass('min-lap-warning');
+					}
+					$tr.appendTo('#current_laps_' + i);
 
 				});
 			});
@@ -532,13 +537,23 @@
 		/* Race Format */
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
+			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
+			d5rt.min_lap = msg.min_lap;
 		});
 
 		$('#set_min_lap').change(function (event) {
+			d5rt.min_lap = $(this).val();
 			var data = {
 				min_lap: parseInt($(this).val())
 			};
 			socket.emit('set_min_lap', data);
+		})
+
+		$('#set_min_lap_behavior').change(function (event) {
+			var data = {
+				min_lap_behavior: parseInt($(this).val())
+			};
+			socket.emit('set_min_lap_behavior', data);
 		})
 
 		socket.on('team_racing_mode', function (msg) {
@@ -785,6 +800,15 @@
 					<p class="desc">{{ __('In seconds') }}</p>
 				</div>
 				<input type="number" id="set_min_lap" min="0" max="999" value="{{ getOption('MinLapSec') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_min_lap_behavior">{{ __('Minimum Lap Behavior') }}</label>
+				</div>
+				<select id="set_min_lap_behavior">
+					<option value="0">{{ __('Highlight Short Laps') }}</option>
+					<option value="1">{{ __('Discard New Short Laps') }}</option>
+				</select>
 			</li>
 			<li>
 				<div class="label-block">
