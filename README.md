@@ -37,6 +37,10 @@ RotorHazard uses the same hardware, but different code for the nodes. Re-flash y
 ### Supported by:
 [![Propwashed Logo](doc/img/Propwashed-Logo-200w.png)](https://propwashed.com)
 
+### Translators
+* Dutch: Kenny Van Der Sypt
+* German: Klaus Michael Schneider
+
 ## Feedback
 
 Discuss RotorHazard on Facebook:  https://www.facebook.com/groups/rotorhazard
