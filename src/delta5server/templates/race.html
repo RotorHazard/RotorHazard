@@ -320,11 +320,11 @@
 			}
 		})
 
-		socket.on('phonetic_data_first_pass', function (msg) {
-            if (d5rt.beep_on_first_pass_button) {
-                play_beep(10, node_tone[$(this).data('node')], d5rt.indicator_beep_volume, 'square');
-            }
-        });
+		socket.on('play_first_pass_beep', function (msg) {
+			if (d5rt.beep_on_first_pass_button) {
+				play_beep(10, node_tone[$(this).data('node')], d5rt.indicator_beep_volume, 'square');
+			}
+		});
 
 		socket.on('phonetic_text', function (msg) {
 			if (msg.text) {
