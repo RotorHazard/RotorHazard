@@ -174,10 +174,7 @@
 			"Open Practice":"Offenes Training",
 			"FPV Race":"FPV Rennen"
 		}
-	}
-}
-
-{
+	},
 	"nl-be": {
 		"name": "Nederlands",
 		"values": {
