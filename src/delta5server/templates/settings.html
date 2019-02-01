@@ -49,6 +49,7 @@
 		$('#beep_crossing_entered').prop("checked", d5rt.beep_crossing_entered);
 		$('#beep_crossing_exited').prop("checked", d5rt.beep_crossing_exited);
 		$('#beep_manual_lap_button').prop("checked", d5rt.beep_manual_lap_button);
+		$('#beep_on_first_pass_button').prop("checked", d5rt.beep_on_first_pass_button);
 		$('#set_indicator_volume').val(volume_logsl.position(d5rt.indicator_beep_volume));
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
 
@@ -567,6 +568,8 @@
 		});
 
 		/* Voice */
+		$('#beep_on_first_pass_button').prop('disabled', d5rt.beep_crossing_exited);
+
 		$(document).on('change', '#set_voice_language', function (event) {
 			d5rt.voice_language = $(this).val();
 			d5rt.saveData();
@@ -659,11 +662,17 @@
 
 		$('#beep_crossing_exited').change(function (event) {
 			d5rt.beep_crossing_exited = $(this).prop('checked');
+			$('#beep_on_first_pass_button').prop('disabled', d5rt.beep_crossing_exited);
 			d5rt.saveData();
 		});
 
 		$('#beep_manual_lap_button').change(function (event) {
 			d5rt.beep_manual_lap_button = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#beep_on_first_pass_button').change(function (event) {
+			d5rt.beep_on_first_pass_button = $(this).prop('checked');
 			d5rt.saveData();
 		});
 
@@ -1300,6 +1309,7 @@
 					<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
 					<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
 					<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
+					<li><label><input type="checkbox" id="beep_on_first_pass_button"> {{ __('On first pass') }}</label></li>
 				</ul>
 			</li>
 			<li>

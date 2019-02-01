@@ -320,9 +320,12 @@
 			}
 		})
 
-		socket.on('play_first_pass_beep', function (msg) {
-			if (d5rt.beep_on_first_pass_button) {
-				play_beep(10, node_tone[$(this).data('node')], d5rt.indicator_beep_volume, 'square');
+		socket.on('first_pass_registered', function (msg) {
+			if (!d5rt.beep_crossing_exited && d5rt.beep_on_first_pass_button) {
+				play_beep(35, node_tone[msg.node_index], d5rt.indicator_beep_volume, 'sawtooth', 0.02);
+				setTimeout(function(tone){
+					play_beep(35, node_tone[tone], d5rt.indicator_beep_volume, 'sawtooth', );
+				}, 70, msg.node_index);
 			}
 		});
 
@@ -424,6 +427,8 @@
 		});
 
 		/* Voice */
+		$('#beep_on_first_pass_button').prop('disabled', d5rt.beep_crossing_exited);
+
 		$(document).on('change', '#set_voice_language', function (event) {
 			d5rt.voice_language = $(this).val();
 			d5rt.saveData();
@@ -516,6 +521,7 @@
 
 		$('#beep_crossing_exited').change(function (event) {
 			d5rt.beep_crossing_exited = $(this).prop('checked');
+			$('#beep_on_first_pass_button').prop('disabled', d5rt.beep_crossing_exited);
 			d5rt.saveData();
 		});
 
