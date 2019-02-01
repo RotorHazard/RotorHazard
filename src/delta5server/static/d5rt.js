@@ -179,7 +179,7 @@ var d5rt = {
 	beep_crossing_entered: false, // beep node crossing entered
 	beep_crossing_exited: false, // beep node crossing exited
 	beep_manual_lap_button: false, // beep when manual lap button bit
-	beep_on_first_pass_button: true, // beep during the first pass where not voice announcment is played
+	beep_on_first_pass_button: false, // beep during the first pass where not voice announcment is played
 	indicator_beep_volume: 0.5, // indicator beep volume
 	admin: false, // whether to show admin options in nav
 	graphing: false,
