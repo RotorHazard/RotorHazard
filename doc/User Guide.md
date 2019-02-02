@@ -8,9 +8,9 @@ Follow the instructions here if not done already:
 [doc/Software Setup.md](Software%20Setup.md)
 
 ### Set up Config File
-in src/delta5server, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the HTTP_PORT, SECRET_KEY, ADMIN_USERNAME, and ADMIN_PASSWORD values. Make sure you keep this config file as valid JSON. Use of an linter like [JSONLint](https://jsonlint.com/) can help prevent errors.
+In the "src/delta5server" directory, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the HTTP_PORT, SECRET_KEY, ADMIN_USERNAME, and ADMIN_PASSWORD values. Make sure you keep this config file as valid JSON. A linter utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
 
-HTTP_PORT is the port value the server will run on. By default, HTTP uses port 80. Other values will require that you specify the port as part of the URL. However, if you have other web services running on the pi, port 80 may already be in use and the server will fail to start. Port 5000 should be available.
+HTTP_PORT is the port value the server will run on. By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and the server will fail to start. Port 5000 should be available. (Note that if port 80 is used, the server will need to be run using the *sudo* command.)
 
 SECRET_KEY should be modified to any random value.
 
@@ -18,14 +18,14 @@ ADMIN_USERNAME and ADMIN_PASSWORD are the login credentials you will use to make
 
 
 ### Connect to the Server
-Find the ip address of the raspberry pi by opening the 'Clients' list on your routers admin page.
+A computer, phone or tablet may be used to interact with the race timer by launching a web browser and entering the IP address of the Raspberry Pi. The Raspberry Pi may be connected using an ethernet cable, or to an available WiFi network. If the IP address of the Pi is not known, it may be viewed using the terminal command "ifconfig", and it can configured to a static value on the Pi desktop via the "Network Preferences." If the Pi is connected to a WiFi network, its IP address may be found in the 'Clients' list on the admin page for the network's router.
 
-Open a browser and type in the ip address of the timing system on your network and the port value you set above (if not 80).
+In the web browser, type in the IP address of for the race timer and the port value you set in the config file (if not 80).
 ```
-XXX.XXX.XXX.XXX:5000/
+XXX.XXX.XXX.XXX:5000
 ```
 
-Pages reserved for the race director are password protected with the username and password specified in the config file.
+Once the page is successfully displayed, it may be bookmarked in the browser. Pages reserved for the race director ("Admin / Settings") are password protected with the username and password specified in the config file.
 
 ## Pages
 
