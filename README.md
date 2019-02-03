@@ -40,6 +40,7 @@ RotorHazard uses the same hardware, but different code for the nodes. Re-flash y
 ### Translators
 * Dutch: Kenny Van Der Sypt
 * German: Klaus Michael Schneider
+* Spanish: Ramon Hernandez Roldan
 
 ## Feedback
 
