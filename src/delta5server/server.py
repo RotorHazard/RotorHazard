@@ -1223,6 +1223,27 @@ def on_set_current_heat(data):
     if int(getOption('TeamRacingMode')):
         check_emit_team_racing_status()  # Show initial team-racing status info
 
+@SOCKET_IO.on('recover_pass')
+def on_recover_pass(data):
+    node_index = data['node']
+    catch_history = INTERFACE.get_catch_history(node_index)
+    server_log(catch_history['pass_ms'])
+    if data['method'] == 'max':
+        INTERFACE.intf_simulate_lap(node_index, catch_history['pass_ms'])
+        on_set_enter_at_level({
+            'node': node_index,
+            'enter_at_level': catch_history['rssi_max']
+        })
+
+    if data['method'] == 'min':
+        on_set_exit_at_level({
+            'node': node_index,
+            'exit_at_level': catch_history['rssi_min']
+        })
+
+    server_log('Recovering pass: Node {0} Method {1}'.format(node_index, data['method']))
+    emit_enter_and_exit_at_levels(nobroadcast=True)
+
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
     '''Delete a false lap.'''

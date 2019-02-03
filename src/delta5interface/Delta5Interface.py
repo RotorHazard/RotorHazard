@@ -16,6 +16,7 @@ READ_NODE_RSSI_PEAK = 0x23  # read 'nodeRssiPeak' value
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
 READ_TIME_MILLIS = 0x33     # read current 'millis()' time value
+READ_CATCH_HISTORY = 0x34   # get lap catch history data
 
 WRITE_FREQUENCY = 0x51      # Sets frequency (2 byte)
 WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
@@ -477,6 +478,15 @@ class Delta5Interface(BaseHardwareInterface):
         node = self.nodes[node_index]
         node.lap_ms_since_start = ms_val
         self.pass_record_callback(node, 100)
+
+    def get_catch_history(self, node_index):
+        node = self.nodes[node_index]
+        data = self.read_block(node.i2c_addr, READ_CATCH_HISTORY, 8)
+        return {
+            'rssi_min': unpack_16(data[0:]),
+            'rssi_max': unpack_16(data[2:]),
+            'pass_ms': unpack_32(data[4:])
+        }
 
 def get_hardware_interface():
     '''Returns the delta 5 interface object.'''

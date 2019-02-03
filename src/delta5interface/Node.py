@@ -25,6 +25,9 @@ class Node:
         self.cap_exit_at_total = 0
         self.cap_exit_at_count = 0
         self.cap_exit_at_millis = 0
+        self.history_rssi_min = 0
+        self.history_rssi_max = 0
+        self.history_lap_time = 0
 
     def get_settings_json(self):
         return {

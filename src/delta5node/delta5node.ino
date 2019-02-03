@@ -1,10 +1,12 @@
-// Delta 5 Race Timer by Scott Chin
+// RotorHazard FPV Race Timing
+// Based on Delta 5 Race Timer by Scott Chin
 // SPI driver based on fs_skyrf_58g-main.c Written by Simon Chambers
 // I2C functions by Mike Ochtman
 //
 // MIT License
 //
 // Copyright (c) 2017 Scott G Chin
+// Copyright (c) 2019 Michael Niggel and Eric Thomas
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,13 +30,14 @@
 #include <EEPROM.h>
 
 // Node Setup
-// Set to 1-8 for manual selection, or 0 for automatic via hardware
-// For automatic selection, ground pins to select node number:
+// Set to 1-8 for manual selection, or 0 for automatic selection via hardware pin
+// For automatic selection, ground pins for each node:
 //                pin 4 open    pin 4 grounded
 // ground pin 5   node 1        node 5
 // ground pin 6   node 2        node 6
 // ground pin 7   node 3        node 7
 // ground pin 8   node 4        node 8
+
 #define NODE_NUMBER 0
 
 // i2c address for node
@@ -43,7 +46,7 @@
 int i2cSlaveAddress (6 + (NODE_NUMBER * 2));
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 10
+#define NODE_API_LEVEL 11
 
 const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 const int spiDataPin = 11;
@@ -58,6 +61,7 @@ const int spiClockPin = 13;
 #define READ_ENTER_AT_LEVEL 0x31
 #define READ_EXIT_AT_LEVEL 0x32
 #define READ_TIME_MILLIS 0x33     // read current 'millis()' value
+#define READ_CATCH_HISTORY 0x34
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_FILTER_RATIO 0x70   // API_level>=10 uses 16-bit value
@@ -124,6 +128,26 @@ struct
     uint16_t volatile rssiNadir;
     uint8_t volatile lap;
 } lastPass;
+
+const uint32_t historyExpireDuration = 10000000; // catch window in microseconds (10 seconds)
+struct
+{
+    // minimum smoothed rssi
+    uint16_t volatile rssiMin;
+    // when to look for a new minimum
+    uint32_t volatile minExpires;
+
+    // maximum smoothed rssi
+    uint16_t volatile rssiMax;
+    // peak RSSI
+    uint16_t volatile rssiPeak;
+    // first peak timestamp
+    uint32_t volatile peakFirstTime;
+    // last peak timestamp
+    uint32_t volatile peakLastTime;
+    // when to look for a new maximum
+    uint32_t volatile maxExpires;
+} history;
 
 uint8_t volatile ioCommand;  // I2C code to identify messages
 uint8_t volatile ioBuffer[32];  // Data array for sending over i2c, up to 32 bytes per message
@@ -202,6 +226,14 @@ void setup()
     lastPass.rssiPeak = 0;
     lastPass.lap = 0;
     lastPass.timeStamp = 0;
+
+    history.rssiMin = 9999;
+    history.minExpires = 0;
+    history.rssiMax = 0;
+    history.rssiPeak = 0;        
+    history.peakFirstTime = 0;
+    history.peakLastTime = 0;
+    history.maxExpires = 0;
 
     // if EEPROM-check value matches then read stored values
     if (readWordFromEeprom(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
@@ -343,10 +375,12 @@ int rssiRead()
 void loop()
 {
     //delay(250);
+    uint32_t loopMicros = micros();
+    uint32_t loopMillis = millis();
 
     // Calculate the time it takes to run the main loop
     uint32_t lastLoopTimeStamp = state.lastLoopTimeStamp;
-    state.lastLoopTimeStamp = micros();
+    state.lastLoopTimeStamp = loopMicros;
     state.loopTime = state.lastLoopTimeStamp - lastLoopTimeStamp;
 
     state.rssiRaw = rssiRead();
@@ -377,7 +411,7 @@ void loop()
         {
             // if at max peak for more than one iteration then track first
             //  and last timestamp so middle-timestamp value can be returned
-            state.passRssiPeakRawLastTime = millis();
+            state.passRssiPeakRawLastTime = loopMillis;
 
             if (state.rssiRaw > state.passRssiPeakRaw)
             {
@@ -418,6 +452,43 @@ void loop()
                 state.passRssiNadir = 999;
             }
         }
+
+        // Manual pass catching logic
+
+        // if catch history expires, reset all values (including peak check)
+        if (loopMicros > history.maxExpires) { 
+            // use smoothed RSSI for determining expiration
+            history.rssiMax = state.rssiSmoothed;
+            history.maxExpires = loopMicros + historyExpireDuration;    
+
+            // read raw RSSI to get accurate pass time
+            history.rssiPeak = state.rssiRaw;
+            history.peakFirstTime = loopMillis;
+            history.peakLastTime = loopMillis;
+        }
+
+        // if a new peak is found, reset exipration (track peak for at least this long)
+        if (state.rssiSmoothed > history.rssiMax) {
+            history.rssiMax = state.rssiSmoothed;
+            history.maxExpires = loopMicros + historyExpireDuration;    
+        }
+
+        if (state.rssiRaw == history.rssiPeak) {
+            history.peakLastTime = loopMillis;
+        } else if (state.rssiRaw > history.rssiPeak) {
+            history.rssiPeak = state.rssiRaw;
+            history.peakFirstTime = loopMillis;
+            history.peakLastTime = loopMillis;
+        }
+
+        // if no lower values read within catch history, reset all values
+        // if a lower value is read, reset exipration (track low value for at least this long)
+        if (state.rssiSmoothed < history.rssiMin
+            || loopMicros > history.minExpires) {
+            history.rssiMin = state.rssiSmoothed;
+            history.minExpires = loopMicros + historyExpireDuration;
+        }
+
     }
 }
 
@@ -609,8 +680,17 @@ byte i2cHandleRx(byte command)
 
         case MARK_START_TIME:  // mark base time for returned lap-ms-since-start values
             state.raceStartTimeStamp = millis();
-                   // make sure there's no lingering previous timestamp:
+            // make sure there's no lingering previous timestamp:
             lastPass.timeStamp = state.raceStartTimeStamp;
+            // reset history
+            history.peakFirstTime = state.raceStartTimeStamp;
+            history.peakLastTime = state.raceStartTimeStamp;
+            history.rssiMin = 9999;
+            history.minExpires = 0;
+            history.rssiMax = 0;
+            history.rssiPeak = 0;        
+            history.maxExpires = 0;
+
             if (readAndValidateIoBuffer(MARK_START_TIME, 1))  // read byte value (not used)
                 success = true;
             break;
@@ -676,6 +756,16 @@ void i2cTransmit()
 
         case READ_TIME_MILLIS:
             ioBufferWrite32(millis());
+            break;
+
+        case READ_CATCH_HISTORY:  // manual pass catching
+            // calculate timestamp from history only on demand
+            uint32_t lapTimeStamp;
+            lapTimeStamp = ((history.peakLastTime + history.peakFirstTime) / 2) - state.raceStartTimeStamp;
+
+            ioBufferWrite16(history.rssiMin);
+            ioBufferWrite16(history.rssiMax);
+            ioBufferWrite32(lapTimeStamp);  // lap ms-since-start
             break;
 
         default:  // If an invalid command is sent, write nothing back, master must react

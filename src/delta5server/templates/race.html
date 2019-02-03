@@ -403,6 +403,15 @@
 			return false;
 		});
 
+		$('button.catch_pass').click(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				method: $(this).data('method'),
+			};
+			socket.emit('recover_pass', data);
+			return false;
+		});
+
 		$('button.simulate_lap').click(function (event) {
 			if (d5rt.beep_manual_lap_button) {
 				play_beep(35, node_tone[$(this).data('node')], d5rt.indicator_beep_volume, 'sawtooth');
@@ -772,6 +781,11 @@
 					{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 					}}
 				</h4>
+				<div class="node_tuning">
+					<button type="button" class="catch_pass" data-node="{{ node }}" data-method="max" onclick="this.blur();">{{ __('Catch Missed Lap') }}</button>
+					<button type="button" class="catch_pass" data-node="{{ node }}" data-method="min" onclick="this.blur();">{{ __('Force End Crossing') }}</button>
+				</div>
+
 				<div class="race-header">
 					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
 					<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">{{ __('Manual') }}</button>

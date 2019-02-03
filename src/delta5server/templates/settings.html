@@ -240,6 +240,15 @@
 			d5rt.nodes[msg.node_index].exit_at_level = msg.level;
 		});
 
+		$('button.catch_pass').click(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				method: $(this).data('method'),
+			};
+			socket.emit('recover_pass', data);
+			return false;
+		});
+
 		$('.set_frequency').change(function (event) {
 			show_imd_rating_dashes();
 			var data = {
@@ -1109,6 +1118,10 @@
 							</div>
 							<button type="button" class="cap_exit_at_btn" data-node_index="{{ node }}" onclick="this.blur();">{{ __('Capture') }} &#8593;</button>
 						</td>
+					</tr>
+					<tr>
+						<button type="button" class="catch_pass" data-node="{{ node }}" data-method="max" onclick="this.blur();">{{ __('Catch Missed Lap') }}</button>
+						<button type="button" class="catch_pass" data-node="{{ node }}" data-method="min" onclick="this.blur();">{{ __('Force End Crossing') }}</button>
 					</tr>
 					<tr class="datarow">
 						<td>{{ __('RSSI') }}</td>
