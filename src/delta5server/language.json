@@ -353,7 +353,7 @@
 		}
 	},
 	"es": {
-		"name": "Spanish"
+		"name": "Spanish",
 		"values": {
 			"Start": "Start",
 			"Stop": "Stop",
