@@ -930,6 +930,19 @@ main.page-home {
 	color: #000;
 }
 
+.node-warnings {
+	text-align: left;
+	background: hsl(25, 85%, 55%);
+	color: #000;
+	margin: 0;
+	padding: 0.5em 0.5em 0.5em 1.5em;
+	font-size: 1rem;
+}
+
+.node-warnings li+li {
+	margin-top: 0.5em;
+}
+
 .page-race tr.lap td:first-child {
 	display: none;
 }

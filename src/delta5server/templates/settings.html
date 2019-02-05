@@ -210,6 +210,7 @@
 				d5rt.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
 
 				d5rt.nodes[i].updateThresholds();
+				$('#node_notice_' + i).html(d5rt.nodes[i].checkValues());
 			}
 		});
 
@@ -227,17 +228,20 @@
 				d5rt.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
 				d5rt.nodes[i].exit_at_level = msg.exit_at_levels[i];
+				$('#node_notice_' + i).html(d5rt.nodes[i].checkValues())
 			}
 		});
 
 		socket.on('node_enter_at_level', function (msg) {
 			$('#set_enter_at_level_' + msg.node_index).val(msg.level);
 			d5rt.nodes[msg.node_index].enter_at_level = msg.level;
+			$('#node_notice_' + i).html(d5rt.nodes[i].checkValues())
 		});
 
 		socket.on('node_exit_at_level', function (msg) {
 			$('#set_exit_at_level_' + msg.node_index).val(msg.level);
 			d5rt.nodes[msg.node_index].exit_at_level = msg.level;
+			$('#node_notice_' + i).html(d5rt.nodes[i].checkValues())
 		});
 
 		$('.set_frequency').change(function (event) {
@@ -1109,6 +1113,9 @@
 							</div>
 							<button type="button" class="cap_exit_at_btn" data-node_index="{{ node }}" onclick="this.blur();">{{ __('Capture') }} &#8593;</button>
 						</td>
+					</tr>
+					<tr>
+						<td colspan="2" id="node_notice_{{ node }}"></td>
 					</tr>
 					<tr class="datarow">
 						<td>{{ __('RSSI') }}</td>
