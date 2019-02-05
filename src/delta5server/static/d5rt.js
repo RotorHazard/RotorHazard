@@ -331,7 +331,7 @@ nodeModel.prototype = {
 
 		if (this.enter_at_level > this.node_peak_rssi) {
 			warnings.push(__('EnterAt is higher than NodePeak: <strong>Passes may not register</strong>'));
-		} else if (this.enter_at_level > this.node_peak_rssi + 10) {
+		} else if (this.enter_at_level > this.node_peak_rssi - 10) {
 			warnings.push(__('EnterAt is very near NodePeak: <strong>Passes may not register</strong>'));
 		}
 
@@ -348,10 +348,11 @@ nodeModel.prototype = {
 
 		if (this.exit_at_level < this.pass_nadir_rssi) {
 			warnings.push(__('ExitAt is lower than PassNadir: <strong>Passes may not complete</strong>'));
-		} else if (this.exit_at_level < this.pass_nadir_rssi - 10) {
+		} else if (this.exit_at_level < this.pass_nadir_rssi + 10) {
 			warnings.push(__('ExitAt is very near PassNadir: <strong>Passes may not complete</strong>'));
 		}
 
+		var output = '';
 		if (warnings.length) {
 			var output = $('<ul class="node-warnings">');
 			for (i in warnings) {
