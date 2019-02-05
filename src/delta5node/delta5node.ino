@@ -46,7 +46,7 @@
 int i2cSlaveAddress (6 + (NODE_NUMBER * 2));
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 11
+#define NODE_API_LEVEL 12
 
 const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 const int spiDataPin = 11;
@@ -60,6 +60,7 @@ const int spiClockPin = 13;
 #define READ_NODE_RSSI_PEAK 0x23  // read 'state.nodeRssiPeak' value
 #define READ_ENTER_AT_LEVEL 0x31
 #define READ_EXIT_AT_LEVEL 0x32
+#define READ_HISTORY_EXPIRE_DURATION 0x35
 #define READ_TIME_MILLIS 0x33     // read current 'millis()' value
 #define READ_CATCH_HISTORY 0x34
 
@@ -67,6 +68,7 @@ const int spiClockPin = 13;
 #define WRITE_FILTER_RATIO 0x70   // API_level>=10 uses 16-bit value
 #define WRITE_ENTER_AT_LEVEL 0x71
 #define WRITE_EXIT_AT_LEVEL 0x72
+#define WRITE_HISTORY_EXPIRE_DURATION 0x73  // adjust history catch window size
 #define MARK_START_TIME 0x77  // mark base time for returned lap-ms-since-start values
 
 #define FILTER_RATIO_DIVIDER 10000.0f
@@ -74,7 +76,8 @@ const int spiClockPin = 13;
 #define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
 #define EEPROM_ADRW_ENTERAT 2      //address for stored 'enterAtLevel'
 #define EEPROM_ADRW_EXITAT 4       //address for stored 'exitAtLevel'
-#define EEPROM_ADRW_CHECKWORD 6    //address for integrity-check value
+#define EEPROM_ADRW_EXPIRE 6       //address for stored catch history expire duration
+#define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
 #define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
 
 struct
@@ -129,9 +132,11 @@ struct
     uint8_t volatile lap;
 } lastPass;
 
-const uint32_t historyExpireDuration = 10000000; // catch window in microseconds (10 seconds)
 struct
 {
+    // catch window in milliseconds
+    uint32_t expireDuration = 10000; // default is 10 seconds
+
     // minimum smoothed rssi
     uint16_t volatile rssiMin;
     // when to look for a new minimum
@@ -167,7 +172,7 @@ void setup()
       pinMode(6, INPUT_PULLUP);
       pinMode(7, INPUT_PULLUP);
       pinMode(8, INPUT_PULLUP);
-      
+
       if (digitalRead(4) == HIGH) {
         if (digitalRead(5) == LOW) {
           i2cSlaveAddress = 8;
@@ -194,9 +199,9 @@ void setup()
         else if (digitalRead(8) == LOW) {
           i2cSlaveAddress = 22;
         }
-      }    
+      }
     }
-    
+
     Serial.begin(115200);  // Start serial for output/debugging
 
     pinMode(slaveSelectPin, OUTPUT);  // RX5808 comms
@@ -230,7 +235,7 @@ void setup()
     history.rssiMin = 9999;
     history.minExpires = 0;
     history.rssiMax = 0;
-    history.rssiPeak = 0;        
+    history.rssiPeak = 0;
     history.peakFirstTime = 0;
     history.peakLastTime = 0;
     history.maxExpires = 0;
@@ -241,12 +246,14 @@ void setup()
         settings.vtxFreq = readWordFromEeprom(EEPROM_ADRW_RXFREQ);
         settings.enterAtLevel = readWordFromEeprom(EEPROM_ADRW_ENTERAT);
         settings.exitAtLevel = readWordFromEeprom(EEPROM_ADRW_EXITAT);
+        history.expireDuration = readWordFromEeprom(EEPROM_ADRW_EXPIRE);
     }
     else
     {    // if no match then initialize EEPROM values
         writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
         writeWordToEeprom(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
         writeWordToEeprom(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
+        writeWordToEeprom(EEPROM_ADRW_EXPIRE, history.expireDuration);
         writeWordToEeprom(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
     }
 
@@ -387,10 +394,10 @@ void loop()
     state.rssiSmoothed = (settings.filterRatioFloat * (float) state.rssiRaw)
             + ((1.0f - settings.filterRatioFloat) * state.rssiSmoothed);
     state.rssi = (int) state.rssiSmoothed;
-    
+
     if (state.rxFreqSetFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received
-        
+
         // Keep track of peak (smoothed) rssi
         if (state.rssi > state.nodeRssiPeak)
         {
@@ -424,10 +431,10 @@ void loop()
         // track lowest smoothed rssi seen since end of last pass
         if (state.rssi < state.passRssiNadir)
             state.passRssiNadir = state.rssi;
-        
+
         if (state.crossing)
         {  //lap pass is in progress
-            
+
             // track RSSI peak for current lap pass
             if (state.rssi > state.passRssiPeak)
                 state.passRssiPeak = state.rssi;
@@ -436,7 +443,7 @@ void loop()
             if (state.rssi < settings.exitAtLevel)
             {
                 Serial.println("Crossing = False");
-                
+
                 // save values for lap pass
                 lastPass.rssiPeakRaw = state.passRssiPeakRaw;
                 lastPass.rssiPeak = state.passRssiPeak;
@@ -456,10 +463,10 @@ void loop()
         // Manual pass catching logic
 
         // if catch history expires, reset all values (including peak check)
-        if (loopMicros > history.maxExpires) { 
+        if (loopMillis > history.maxExpires) {
             // use smoothed RSSI for determining expiration
             history.rssiMax = state.rssiSmoothed;
-            history.maxExpires = loopMicros + historyExpireDuration;    
+            history.maxExpires = loopMillis + history.expireDuration;
 
             // read raw RSSI to get accurate pass time
             history.rssiPeak = state.rssiRaw;
@@ -470,7 +477,7 @@ void loop()
         // if a new peak is found, reset exipration (track peak for at least this long)
         if (state.rssiSmoothed > history.rssiMax) {
             history.rssiMax = state.rssiSmoothed;
-            history.maxExpires = loopMicros + historyExpireDuration;    
+            history.maxExpires = loopMillis + history.expireDuration;
         }
 
         if (state.rssiRaw == history.rssiPeak) {
@@ -484,9 +491,9 @@ void loop()
         // if no lower values read within catch history, reset all values
         // if a lower value is read, reset exipration (track low value for at least this long)
         if (state.rssiSmoothed < history.rssiMin
-            || loopMicros > history.minExpires) {
+            || loopMillis > history.minExpires) {
             history.rssiMin = state.rssiSmoothed;
-            history.minExpires = loopMicros + historyExpireDuration;
+            history.minExpires = loopMillis + history.expireDuration;
         }
 
     }
@@ -678,6 +685,15 @@ byte i2cHandleRx(byte command)
             }
             break;
 
+        case WRITE_HISTORY_EXPIRE_DURATION:
+            if (readAndValidateIoBuffer(WRITE_HISTORY_EXPIRE_DURATION, 2))
+            {
+                history.expireDuration = ioBufferRead16();
+                writeWordToEeprom(EEPROM_ADRW_EXPIRE, history.expireDuration);
+                success = true;
+            }
+            break;
+
         case MARK_START_TIME:  // mark base time for returned lap-ms-since-start values
             state.raceStartTimeStamp = millis();
             // make sure there's no lingering previous timestamp:
@@ -688,7 +704,7 @@ byte i2cHandleRx(byte command)
             history.rssiMin = 9999;
             history.minExpires = 0;
             history.rssiMax = 0;
-            history.rssiPeak = 0;        
+            history.rssiPeak = 0;
             history.maxExpires = 0;
 
             if (readAndValidateIoBuffer(MARK_START_TIME, 1))  // read byte value (not used)
@@ -744,6 +760,10 @@ void i2cTransmit()
 
         case READ_FILTER_RATIO:
             ioBufferWrite16(settings.filterRatio);
+            break;
+
+        case READ_HISTORY_EXPIRE_DURATION:
+            ioBufferWrite16(history.expireDuration);
             break;
 
         case READ_REVISION_CODE:  // reply with NODE_API_LEVEL and verification value
