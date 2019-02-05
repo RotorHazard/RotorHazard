@@ -1,6 +1,6 @@
 # Software Setup Instructions
 
-### Receiver Nodes (Arduinos)
+## Receiver Nodes (Arduinos)
 Note: The latest Arduino IDE (1.8+) is required from https://www.arduino.cc/en/Main/Software
 
 Open 'RotorHazard/src/delta5node/delta5node.ino' in the Arduino IDE.
@@ -21,7 +21,7 @@ node #6: ground pin 6 and pin 4
 node #7: ground pin 7 and pin 4  
 node #8: ground pin 8 and pin 4
 
-### System (Raspberry Pi)
+## System (Raspberry Pi)
 Note: Many of the setup commands below require that the Rasperry Pi has internet access.
 
 Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN STRETCH WITH DESKTOP'
@@ -33,11 +33,13 @@ sudo raspi-config
 ```
 Select Interfacing Options and enable: SSH, SPI, and I2C.
 
+Do system update and upgrade (this can take a few minutes):
+```
+sudo apt-get update && sudo apt-get upgrade
+```
 
 Install python and the python drivers for the GPIO.
 ```
-sudo apt-get update 
-sudo apt-get upgrade
 sudo apt-get install python-dev python-rpi.gpio libffi-dev python-smbus build-essential python-pip git scons swig
 sudo pip install cffi
 ```
@@ -53,13 +55,6 @@ core_freq=250
 ```
 Save and exit the file with Ctrl-X
 
-
-Install the Python library:
-```
-cd python
-sudo python setup.py install
-```
-
 Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.0.0" with the current version code, and enter the commands:
 ```
 cd ~
@@ -67,11 +62,6 @@ wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.0.0 -O temp.zip
 unzip temp.zip
 mv RotorHazard-1.0.0 RotorHazard
 rm temp.zip
-```
-
-System update and upgrade:
-```
-sudo apt-get update && sudo apt-get upgrade
 ```
 
 Install web server dependencies:
@@ -99,19 +89,25 @@ cd rpi_ws281x
 sudo scons
 ```
 
+Install the Python library:
+```
+cd python
+sudo python setup.py install
+```
+
 ### Java Support
 Java enables calculating of IMD scores. If you started with RASPBIAN STRETCH WITH DESKTOP, this step should not be necessary as Java is installed by default. Otherwise:
 ```
 sudo apt-get install oracle-java8-jdk
 ```
 
-## Reboot System
+### Reboot System
 After the above setup steps are performed, the system should be rebooted by entering the following:
 ```
 sudo reboot
 ```
 
-## Starting the System
+### Starting the System
 
 The following instructions will start the web server on the raspberry pi, allowing full control and configuration of the system to run races and save lap times.  
 
@@ -155,7 +151,7 @@ sudo systemctl enable rotorhazard.service
 sudo reboot
 ```
 
-## Shutting down the System
+### Shutting down the System
 A system shutdown should always be performed before unplugging the power, either by clicking on the 'Shutdown' button on the 'Settings' page, or by entering the following in a terminal:
 ```
 sudo shutdown now
