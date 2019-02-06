@@ -308,6 +308,7 @@ function nodeModel() {
 		median_separation: false,
 	};
 
+	this.canvas = false;
 	this.graph = new SmoothieChart({
 		responsive: true,
 		millisPerPixel:50,
@@ -324,6 +325,10 @@ function nodeModel() {
 		minValue: 0,
 	});
 	this.series = new TimeSeries();
+
+	this.graphPausedTime = false;
+	this.graphPaused = false;
+	this.pauseSeries = new TimeSeries();
 }
 nodeModel.prototype = {
 	checkValues: function(){
@@ -366,15 +371,18 @@ nodeModel.prototype = {
 			strokeStyle:'hsl(214, 53%, 60%)',
 			fillStyle:'hsla(214, 53%, 60%, 0.4)'
 		});
-		this.graph.streamTo(element, 250); // match delay value to heartbeat in server.py
+		this.graph.streamTo(element, 200); // match delay value to heartbeat in server.py
 	},
 	updateThresholds: function(){
 		this.graph.options.horizontalLines = [
-			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.enter_at_level},
-			{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.node_peak_rssi},
-			{color:'#999', lineWidth:1.7, value: this.exit_at_level},
-			{color:'#666', lineWidth:1.7, value: this.pass_nadir_rssi},
+			{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.enter_at_level}, // red
+			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.exit_at_level}, // orange
+			// {color:'#999', lineWidth:1.7, value: this.node_peak_rssi},
+			// {color:'#666', lineWidth:1.7, value: this.pass_nadir_rssi},
 		];
+		if (this.graphPaused) {
+			this.graph.render(this.canvas, this.graphPausedTime);
+		}
 	}
 }
 

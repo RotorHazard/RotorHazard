@@ -65,15 +65,13 @@
 		$('#set_indicator_volume').val(volume_logsl.position(d5rt.indicator_beep_volume));
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
 
-		// set up RSSI graphing
-		$('.node .race-header').each(function(){
-			var node = $(this);
-			var node_id = parseInt(node.find('button').attr('data-node'));
-			node.before('<div class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></div>');
-
-			d5rt.nodes[node_id] = new nodeModel();
-			d5rt.nodes[node_id].setup(document.getElementById('rssi-graph-' + node_id));
-		});
+		// set up node local store
+		for (i = 0; i < {{ num_nodes }}; i++) {
+			d5rt.nodes[i] = new nodeModel();
+			// start RSSI graphing
+			d5rt.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
+			d5rt.nodes[i].setup(d5rt.nodes[i].canvas);
+		}
 
 		socket.on('race_elapsed', function (msg) {
 			var response_time = new Date();
@@ -207,7 +205,7 @@
 					d5rt.nodes[i].graph.options.minValue = Math.max(0, Math.min(
 						d5rt.nodes[i].graph.options.minValue,
 						rssiValue,
-						d5rt.nodes[i].enter_at_level - 10,
+						d5rt.nodes[i].exit_at_level - 10,
 					));
 
 					if (d5rt.nodes[i].graphing) {
@@ -436,6 +434,23 @@
 			}
 		});
 
+		$('button.pause_graph').click(function (event) {
+			var node = d5rt.nodes[parseInt($(this).data('node'))]
+			if (node.graphPaused) {
+				node.graph.options.scaleSmoothing = 0.125;
+				node.graph.removeTimeSeries(node.pauseSeries)
+				node.graph.addTimeSeries(node.series, {lineWidth:1.7,
+					strokeStyle:'hsl(214, 53%, 60%)',
+					fillStyle:'hsla(214, 53%, 60%, 0.4)'
+				});
+				node.graph.start();
+			} else {
+				node.graph.stop();
+				node.graphPausedTime = new Date().getTime();
+				node.pauseSeries = node.series;
+				node.graph.options.scaleSmoothing = 1;
+				node.graph.removeTimeSeries(node.series)
+		});
 		$('button.catch_pass').click(function (event) {
 			var data = {
 				node: parseInt($(this).data('node')),
@@ -810,6 +825,7 @@
 		<div class="race-results">
 			{% for node in range(num_nodes) %}
 			<div class="node">
+				<div class="rssi-graph"><canvas id="rssi-graph-{{ node }}"></div>
 				<h4 class="callsign_{{ node }}">
 					{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 					}}
