@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-SERVER_API = 8 # Server API version
+SERVER_API = 9 # Server API version
 
 import os
 import sys
@@ -976,8 +976,10 @@ def on_shutdown_pi():
 def on_set_min_lap(data):
     min_lap = data['min_lap']
     setOption("MinLapSec", data['min_lap'])
+    setOption("HistoryExpireDuration", data['min_lap'])
     server_log("set min lap time to %s seconds" % min_lap)
     emit_min_lap(noself=True)
+    INTERFACE.set_history_expire_global(data['min_lap'] * 1000)
 
 @SOCKET_IO.on("set_min_lap_behavior")
 def on_set_min_lap_behavior(data):
@@ -1222,6 +1224,27 @@ def on_set_current_heat(data):
     emit_leaderboard() # Race page, to update callsigns in leaderboard
     if int(getOption('TeamRacingMode')):
         check_emit_team_racing_status()  # Show initial team-racing status info
+
+@SOCKET_IO.on('recover_pass')
+def on_recover_pass(data):
+    node_index = data['node']
+    catch_history = INTERFACE.get_catch_history(node_index)
+    server_log(catch_history['pass_ms'])
+    if data['method'] == 'max':
+        INTERFACE.intf_simulate_lap(node_index, catch_history['pass_ms'])
+        on_set_enter_at_level({
+            'node': node_index,
+            'enter_at_level': catch_history['rssi_max'] - int(getOption("HistoryMaxOffset"))
+        })
+
+    if data['method'] == 'min':
+        on_set_exit_at_level({
+            'node': node_index,
+            'exit_at_level': catch_history['rssi_min'] + int(getOption("HistoryMinOffset"))
+        })
+
+    server_log('Recovering pass: Node {0} Method {1}'.format(node_index, data['method']))
+    emit_enter_and_exit_at_levels(nobroadcast=True)
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -2871,6 +2894,10 @@ def db_reset_options_defaults():
     setOption("MinLapBehavior", "0")
     setOption("TeamRacingMode", "0")
 
+    setOption("HistoryExpireDuration", "10000")
+    setOption("HistoryMaxOffset", "10")
+    setOption("HistoryMinOffset", "10")
+
     setOption("eventName", __("FPV Race"))
     setOption("eventDescription", "")
 
@@ -3039,6 +3066,7 @@ db_reset_current_laps()
 # Send initial profile values to nodes
 current_profile = int(getOption("currentProfile"))
 on_set_profile({'profile': current_profile}, False)
+INTERFACE.set_history_expire_global(int(getOption("HistoryExpireDuration")))
 
 # Test data - Current laps
 # DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
@@ -3080,8 +3108,6 @@ on_set_profile({'profile': current_profile}, False)
 # DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=750, lap_time=750, lap_time_formatted=time_format(750)))
 # DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=11750, lap_time=11000, lap_time_formatted=time_format(11000)))
 # DB.session.commit()
-
-print 'Server ready'
 
 if __name__ == '__main__':
     port_val = Config['GENERAL']['HTTP_PORT']

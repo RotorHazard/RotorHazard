@@ -237,6 +237,7 @@
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
 				$('.pass_nadir_rssi_' + i).html(msg.pass_nadir_rssi[i]);
+				$('.debug_pass_count_' + i).html(msg.debug_pass_count[i]);
 
 				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
 				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
@@ -253,6 +254,16 @@
 				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
 				d5rt.nodes[i].exit_at_level = msg.exit_at_levels[i];
 			}
+		});
+
+		socket.on('node_enter_at_level', function (msg) {
+			$('#set_enter_at_level_' + msg.node_index).val(msg.level);
+			d5rt.nodes[msg.node_index].enter_at_level = msg.level;
+		});
+
+		socket.on('node_exit_at_level', function (msg) {
+			$('#set_exit_at_level_' + msg.node_index).val(msg.level);
+			d5rt.nodes[msg.node_index].exit_at_level = msg.level;
 		});
 
 		socket.on('current_laps', function (msg) {
@@ -400,6 +411,37 @@
 		$('button#clear_laps').click(function (event) {
 			socket.emit('clear_laps');
 			timer.reset();
+			return false;
+		});
+
+		$('.set_enter_at_level').change(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				enter_at_level: parseInt($(this).val()),
+			};
+			if (!Number.isNaN(data.enter_at_level)) {
+				socket.emit('set_enter_at_level', data);
+				d5rt.nodes[data.node].enter_at_level = data.enter_at_level;
+			}
+		});
+
+		$('.set_exit_at_level').change(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				exit_at_level: parseInt($(this).val()),
+			};
+			if (!Number.isNaN(data.exit_at_level)) {
+				socket.emit('set_exit_at_level', data);
+				d5rt.nodes[data.node].exit_at_level = data.exit_at_level;
+			}
+		});
+
+		$('button.catch_pass').click(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				method: $(this).data('method'),
+			};
+			socket.emit('recover_pass', data);
 			return false;
 		});
 
@@ -772,11 +814,60 @@
 					{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 					}}
 				</h4>
+				<div class="crossing crossing_flag_{{ node }}"><span>{{ __('Clear') }}</span></div>
+				<div class="panel collapsing">
+					<div class="panel-header">
+						<h3>▼ {{ __('Tuning') }}</h3>
+					</div>
+					<div class="panel-content">
+						<div class="compact-field">
+							<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
+							<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
+						</div>
+						<div class="compact-field">
+							<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
+							<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
+						</div>
+						<button type="button" class="catch_pass" data-node="{{ node }}" data-method="max" onclick="this.blur();">{{ __('Catch Missed Lap') }}</button>
+						<button type="button" class="catch_pass" data-node="{{ node }}" data-method="min" onclick="this.blur();">{{ __('Force End Crossing') }}</button>
+						<table>
+							<tr class="datarow">
+								<td>{{ __('RSSI') }}</td>
+								<td>
+									<span class="current_rssi_{{ node }}"></span>
+								</td>
+							</tr>
+							<tr class="datarow">
+								<td>{{ __('NodePeak') }}</td>
+								<td>
+									<span class="node_peak_rssi_{{ node }}"></span>
+								</td>
+							</tr>
+							<tr class="datarow">
+								<td>{{ __('PassPeak') }}</td>
+								<td>
+									<span class="pass_peak_rssi_{{ node }}"></span>
+								</td>
+							</tr>
+							<tr class="datarow">
+								<td>{{ __('PassNadir') }}</td>
+								<td>
+									<span class="pass_nadir_rssi_{{ node }}"></span>
+								</td>
+							</tr>
+							<tr class="datarow">
+								<td>{{ __('PassCount') }}</td>
+								<td>
+									<span class="debug_pass_count_{{ node }}"></span>
+								</td>
+							</tr>
+						</table>
+					</div>
+				</div>
 				<div class="race-header">
 					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
 					<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">{{ __('Manual') }}</button>
 				</div>
-				<div class="crossing crossing_flag_{{ node }}"><span>{{ __('Clear') }}</span></div>
 				<table class="laps" id="current_laps_{{ node }}">
 					<thead>
 					</thead>

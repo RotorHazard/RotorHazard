@@ -244,6 +244,15 @@
 			$('#node_notice_' + i).html(d5rt.nodes[i].checkValues())
 		});
 
+		$('button.catch_pass').click(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				method: $(this).data('method'),
+			};
+			socket.emit('recover_pass', data);
+			return false;
+		});
+
 		$('.set_frequency').change(function (event) {
 			show_imd_rating_dashes();
 			var data = {
@@ -1112,6 +1121,9 @@
 								<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
 							</div>
 							<button type="button" class="cap_exit_at_btn" data-node_index="{{ node }}" onclick="this.blur();">{{ __('Capture') }} &#8593;</button>
+
+							<button type="button" class="catch_pass" data-node="{{ node }}" data-method="max" onclick="this.blur();">{{ __('Catch Missed Lap') }}</button>
+							<button type="button" class="catch_pass" data-node="{{ node }}" data-method="min" onclick="this.blur();">{{ __('Force End Crossing') }}</button>
 						</td>
 					</tr>
 					<tr>
@@ -1168,8 +1180,19 @@
 				</div>
 				<input type="range" id="set_filter_ratio" min="0" max="12" step="1">
 			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_recovery_max_offset">{{ __('Missed Lap Offset') }}</label>
+				</div>
+				<input type="text" id="set_recovery_max_offset" class="set-option" data-option="HistoryMaxOffset" value="{{ getOption('HistoryMaxOffset') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_recovery_min_offset">{{ __('End Crossing Offset') }}</label>
+				</div>
+				<input type="text" id="set_recovery_min_offset" class="set-option" data-option="HistoryMinOffset" value="{{ getOption('HistoryMinOffset') }}">
+			</li>
 		</ol>
-
 
 		<div class="calibration-guide">
 			<h3>{{ __('Calibration') }}</h3>

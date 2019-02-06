@@ -15,12 +15,15 @@ READ_REVISION_CODE = 0x22   # read NODE_API_LEVEL and verification value
 READ_NODE_RSSI_PEAK = 0x23  # read 'nodeRssiPeak' value
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
+READ_HISTORY_EXPIRE_DURATION = 0x35
 READ_TIME_MILLIS = 0x33     # read current 'millis()' time value
+READ_CATCH_HISTORY = 0x34   # get lap catch history data
 
 WRITE_FREQUENCY = 0x51      # Sets frequency (2 byte)
 WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
+WRITE_HISTORY_EXPIRE_DURATION = 0x73
 MARK_START_TIME = 0x77      # mark base time for returned lap-ms-since-start values
 
 UPDATE_SLEEP = 0.1 # Main update loop delay
@@ -154,7 +157,7 @@ class Delta5Interface(BaseHardwareInterface):
                     data = self.read_block(node.i2c_addr, READ_LAP_STATS, 18)
                 else:
                     data = self.read_block(node.i2c_addr, READ_LAP_STATS, 17)
-    
+
                 if data != None:
                     lap_id = data[0]
                     lap_time_ms = 0
@@ -162,7 +165,7 @@ class Delta5Interface(BaseHardwareInterface):
                     rssi_val = unpack_16(data[5:])
                     if rssi_val >= MIN_RSSI_VALUE and rssi_val <= MAX_RSSI_VALUE:
                         node.current_rssi = rssi_val
-                        
+
                         if node.api_valid_flag:  # if newer API functions supported
                             ms_val = unpack_32(data[1:])
                             if ms_val < 0 or ms_val > 9999999:
@@ -180,12 +183,12 @@ class Delta5Interface(BaseHardwareInterface):
                                 if callable(self.node_crossing_callback):
                                     cross_list.append(node)
                             node.pass_nadir_rssi = unpack_16(data[16:])
-        
+
                         else:  # if newer API functions not supported
                             lap_time_ms = unpack_32(data[1:])
                             node.pass_peak_rssi = unpack_16(data[11:])
                             node.loop_time = unpack_32(data[13:])
-        
+
                         # if new lap detected for node then append item to updates list
                         if lap_id != node.last_lap_id:
                             upd_list.append((node, lap_id, lap_time_ms))
@@ -203,7 +206,7 @@ class Delta5Interface(BaseHardwareInterface):
                                 self.transmit_enter_at_level(node, node.enter_at_level)
                                 if callable(self.new_enter_or_exit_at_callback):
                                     self.new_enter_or_exit_at_callback(node, True)
-        
+
                         # check if capturing exit-at level for node
                         if node.cap_exit_at_flag:
                             node.cap_exit_at_total += node.current_rssi
@@ -230,7 +233,7 @@ class Delta5Interface(BaseHardwareInterface):
                 if node.last_lap_id != -1 and callable(self.pass_record_callback):
                     self.pass_record_callback(node, item[2])  # (node, lap_time_ms)
                 node.last_lap_id = item[1]  # new_lap_id
-                
+
             else:  # list contains multiple items; sort so processed in order by lap time
                 upd_list.sort(key = lambda i: i[0].lap_ms_since_start)
                 for item in upd_list:
@@ -442,6 +445,19 @@ class Delta5Interface(BaseHardwareInterface):
             self.set_filter_ratio(node.index, filter_ratio)
         return self.filter_ratio
 
+
+    def set_history_expire(self, node_index, history_expire_duration):
+        node = self.nodes[node_index]
+        if node.api_valid_flag:
+            node.history_expire_duration = self.set_and_validate_value_16(node,
+                WRITE_HISTORY_EXPIRE_DURATION,
+                READ_HISTORY_EXPIRE_DURATION,
+                history_expire_duration)
+
+    def set_history_expire_global(self, history_expire_duration):
+        for node in self.nodes:
+            self.set_history_expire(node.index, history_expire_duration)
+
     def mark_start_time(self, node_index):
         node = self.nodes[node_index]
         if node.api_valid_flag:
@@ -477,6 +493,15 @@ class Delta5Interface(BaseHardwareInterface):
         node = self.nodes[node_index]
         node.lap_ms_since_start = ms_val
         self.pass_record_callback(node, 100)
+
+    def get_catch_history(self, node_index):
+        node = self.nodes[node_index]
+        data = self.read_block(node.i2c_addr, READ_CATCH_HISTORY, 8)
+        return {
+            'rssi_min': unpack_16(data[0:]),
+            'rssi_max': unpack_16(data[2:]),
+            'pass_ms': unpack_32(data[4:])
+        }
 
 def get_hardware_interface():
     '''Returns the delta 5 interface object.'''
