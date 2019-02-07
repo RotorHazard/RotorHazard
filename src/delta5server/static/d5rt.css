@@ -488,6 +488,15 @@ main.page-home {
 	margin: 0 -0.25rem;
 }
 
+.tuning-detail {
+	position: relative;
+	background: #fff;
+	padding: 1rem;
+	width: auto;
+	max-width: 20em;
+	margin: 1rem auto;
+}
+
 .node {
 	box-sizing: border-box;
 	min-width: 7em;
@@ -881,13 +890,12 @@ main.page-home {
 
 .rssi-graph canvas {
 	width: 100%;
-	height: 3rem;
+	height: 6rem;
 	display: block;
 }
 
-.page-settings .rssi-graph canvas,
-.page-correction .rssi-graph canvas {
-	height: 6rem;
+.rssi-graph.page canvas {
+	height: 3rem;
 }
 
 .graph-key {
@@ -1045,7 +1053,6 @@ td.speak {
 .team_racing_status>* {
 	margin: 0.5em 1em;
 }
-
 
 .swatch {
 	padding: 1em;

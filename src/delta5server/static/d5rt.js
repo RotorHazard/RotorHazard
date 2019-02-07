@@ -488,7 +488,7 @@ jQuery(document).ready(function($){
 
 		if(window.location.hash) {
 			var panel = $(window.location.hash);
-			if (panel.length() && panel.children().hasClass('panel-header')) {
+			if (panel.length && panel.children().hasClass('panel-header')) {
 				panel.addClass('open').find('.panel-content').show();
 				location.hash = window.location.hash;
 			}
