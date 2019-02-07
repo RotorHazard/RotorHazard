@@ -119,6 +119,8 @@ var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 //callback to use on end of tone
 /* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
 function play_beep(duration, frequency, volume, type, fadetime, callback) {
+	globalAudioCtx.resume();
+
 	var oscillator = globalAudioCtx.createOscillator();
 	var gainNode = globalAudioCtx.createGain();
 
