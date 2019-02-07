@@ -998,18 +998,19 @@ def on_set_race_format(data):
 
 @SOCKET_IO.on('add_race_format')
 def on_add_race_format():
-    '''Adds new format in the database.'''
-    new_format = RaceFormat(name='New Format',
-                             race_mode=1,
-                             race_time_sec=0,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             number_laps_win=0,
-                             laps_wins_mode=0)
+    '''Adds new format in the database by duplicating an existing one.'''
+    source_format_id = getOption("currentFormat")
+    source_format = RaceFormat.query.get(source_format_id)
+    new_format = RaceFormat(name=__('Copy of %s') % source_format.name,
+                             race_mode=source_format.race_mode,
+                             race_time_sec=source_format.race_time_sec ,
+                             start_delay_min=source_format.start_delay_min,
+                             start_delay_max=source_format.start_delay_max,
+                             number_laps_win=source_format.number_laps_win,
+                             laps_wins_mode=source_format.laps_wins_mode)
     DB.session.add(new_format)
     DB.session.flush()
     DB.session.refresh(new_format)
-    new_format.name = __('Format %d') % new_format.id
     DB.session.commit()
     on_set_race_format(data={ 'race_format': new_format.id })
 
