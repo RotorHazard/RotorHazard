@@ -10,7 +10,7 @@
 		var timer_id; // Used by setInterval function
 		var pre_race = false; // pre-race countdown
 		var pre_delay = 0; // pre-race countdown duration
-		var hide_countdown = 0; // hide pre-race display (for random delay)
+		var hide_countdown = false; // hide pre-race display (for random delay)
 
 		this.buzzer = $('#buzzer')[0]; // Buzzer audio tag is loaded on race page already
 		this.stagebuzzer = $('#stagebuzzer')[0]; // Buzzer audio tag is loaded on race page already
@@ -98,7 +98,7 @@
 		this.pre_race = function (delay, hide) {
 			this.stop(); // On a reset also stop the clock
 			delay = (typeof (delay) !== 'undefined') ? delay : 0;
-			hide = (typeof (hide) !== 'undefined') ? hide : 0;
+			hide = (typeof (hide) !== 'undefined') ? hide : false;
 
 			if (delay) {
 				pre_race = true;

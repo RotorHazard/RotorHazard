@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-SERVER_API = 9 # Server API version
+SERVER_API = 10 # Server API version
 
 import os
 import sys
@@ -291,7 +291,6 @@ class RaceFormat(DB.Model):
     name = DB.Column(DB.String(80), unique=True, nullable=False)
     race_mode = DB.Column(DB.Integer, nullable=False)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
-    hide_stage_timer = DB.Column(DB.Integer, nullable=False)
     start_delay_min = DB.Column(DB.Integer, nullable=False)
     start_delay_max = DB.Column(DB.Integer, nullable=False)
     number_laps_win = DB.Column(DB.Integer, nullable=False)
@@ -1003,7 +1002,6 @@ def on_add_race_format():
     new_format = RaceFormat(name='New Format',
                              race_mode=1,
                              race_time_sec=0,
-                             hide_stage_timer=0,
                              start_delay_min=2,
                              start_delay_max=5,
                              number_laps_win=0,
@@ -1056,15 +1054,6 @@ def on_set_fix_race_time(data):
     race_format.race_time_sec = race_time
     DB.session.commit()
     server_log("set fixed time race to %s seconds" % race_time)
-
-@SOCKET_IO.on("set_hide_stage_timer")
-def on_set_hide_stage_timer(data):
-    hide_stage_timer = data['hide_stage_timer']
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
-    race_format.hide_stage_timer = hide_stage_timer
-    DB.session.commit()
-    server_log("set start type to %s" % hide_stage_timer)
 
 @SOCKET_IO.on("set_start_delay_min")
 def on_set_start_delay_min(data):
@@ -1121,7 +1110,7 @@ def on_prestage_race():
     DELAY = random.randint(MIN, MAX)
 
     SOCKET_IO.emit('prestage_ready', {
-        'hide_stage_timer': race_format.hide_stage_timer,
+        'hide_stage_timer': MIN != MAX,
         'start_delay': DELAY,
         'race_mode': race_format.race_mode,
         'race_time_sec': race_format.race_time_sec
@@ -1218,25 +1207,22 @@ def on_set_current_heat(data):
 def on_recover_pass(data):
     node_index = data['node']
     catch_history = INTERFACE.get_catch_history(node_index)
-    if catch_history:
-        server_log(catch_history['pass_ms'])
-        if data['method'] == 'max':
-            INTERFACE.intf_simulate_lap(node_index, catch_history['pass_ms'])
-            on_set_enter_at_level({
-                'node': node_index,
-                'enter_at_level': catch_history['rssi_max'] - int(getOption("HistoryMaxOffset"))
-            })
-    
-        if data['method'] == 'min':
-            on_set_exit_at_level({
-                'node': node_index,
-                'exit_at_level': catch_history['rssi_min'] + int(getOption("HistoryMinOffset"))
-            })
-    
-        server_log('Recovering pass: Node {0} Method {1}'.format(node_index, data['method']))
-        emit_enter_and_exit_at_levels(nobroadcast=True)
-    else:
-        server_log('Unable to fetch catch history from node {0}'.format(node_index+1))
+    server_log(catch_history['pass_ms'])
+    if data['method'] == 'max':
+        INTERFACE.intf_simulate_lap(node_index, catch_history['pass_ms'])
+        on_set_enter_at_level({
+            'node': node_index,
+            'enter_at_level': catch_history['rssi_max'] - int(getOption("HistoryMaxOffset"))
+        })
+
+    if data['method'] == 'min':
+        on_set_exit_at_level({
+            'node': node_index,
+            'exit_at_level': catch_history['rssi_min'] + int(getOption("HistoryMinOffset"))
+        })
+
+    server_log('Recovering pass: Node {0} Method {1}'.format(node_index, data['method']))
+    emit_enter_and_exit_at_levels(nobroadcast=True)
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -1472,7 +1458,6 @@ def emit_race_format(**params):
         'format_name': format_val.name,
         'race_mode': format_val.race_mode,
         'race_time_sec': format_val.race_time_sec,
-        'hide_stage_timer': format_val.hide_stage_timer,
         'start_delay_min': format_val.start_delay_min,
         'start_delay_max': format_val.start_delay_max,
         'number_laps_win': format_val.number_laps_win,
@@ -2821,7 +2806,6 @@ def db_reset_race_formats():
     DB.session.add(RaceFormat(name=__("MultiGP Qualifier"),
                              race_mode=0,
                              race_time_sec=120,
-                             hide_stage_timer=1,
                              start_delay_min=2,
                              start_delay_max=5,
                              number_laps_win=0,
@@ -2829,7 +2813,6 @@ def db_reset_race_formats():
     DB.session.add(RaceFormat(name=__("Whoop Sprint"),
                              race_mode=0,
                              race_time_sec=90,
-                             hide_stage_timer=1,
                              start_delay_min=2,
                              start_delay_max=5,
                              number_laps_win=0,
@@ -2837,7 +2820,6 @@ def db_reset_race_formats():
     DB.session.add(RaceFormat(name=__("Limited Class"),
                              race_mode=0,
                              race_time_sec=210,
-                             hide_stage_timer=1,
                              start_delay_min=2,
                              start_delay_max=5,
                              number_laps_win=0,
@@ -2845,7 +2827,6 @@ def db_reset_race_formats():
     DB.session.add(RaceFormat(name=__("First to 3 Laps"),
                              race_mode=1,
                              race_time_sec=0,
-                             hide_stage_timer=0,
                              start_delay_min=2,
                              start_delay_max=5,
                              number_laps_win=3,
@@ -2853,7 +2834,6 @@ def db_reset_race_formats():
     DB.session.add(RaceFormat(name=__("Most Laps Wins"),
                              race_mode=0,
                              race_time_sec=120,
-                             hide_stage_timer=1,
                              start_delay_min=2,
                              start_delay_max=5,
                              number_laps_win=0,
@@ -2861,7 +2841,6 @@ def db_reset_race_formats():
     DB.session.add(RaceFormat(name=__("Open Practice"),
                              race_mode=1,
                              race_time_sec=0,
-                             hide_stage_timer=0,
                              start_delay_min=3,
                              start_delay_max=3,
                              number_laps_win=0,

@@ -1458,15 +1458,6 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_hide_stage_timer">{{ __('Staging Timer Mode') }}</label>
-				</div>
-				<select id="set_hide_stage_timer">
-					<option value="0">{{ __('Show Countdown') }}</option>
-					<option value="1">{{ __('Hide Countdown') }}</option>
-				</select>
-			</li>
-			<li>
-				<div class="label-block">
 					<label for="set_start_delay_min">{{ __('Minimum Start Delay') }}</label>
 					<p class="desc">{{ __('Minimum time before race begins') }}</p>
 				</div>
@@ -1475,7 +1466,8 @@
 			<li>
 				<div class="label-block">
 					<label for="set_start_delay_max">{{ __('Maximum Start Delay') }}</label>
-					<p class="desc">{{ __('Maximum time before race begins') }}</p>
+					<p class="desc">{{ __('Maximum time before race begins') }}<br />
+						{{ __('Staging timer is hidden unless value matches Minimum Start Delay') }}</p>
 				</div>
 				<input type="number" id="set_start_delay_max" min="0" max="999">
 			</li>
