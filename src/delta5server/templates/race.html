@@ -270,6 +270,7 @@
 				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
 				d5rt.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
 
+				$('#node_notice_' + i).html(d5rt.nodes[i].checkValues());
 				d5rt.nodes[i].updateThresholds();
 			}
 		});
@@ -280,17 +281,26 @@
 				d5rt.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
 				d5rt.nodes[i].exit_at_level = msg.exit_at_levels[i];
+
+				$('#node_notice_' + i).html(d5rt.nodes[i].checkValues());
+				d5rt.nodes[i].updateThresholds();
 			}
 		});
 
 		socket.on('node_enter_at_level', function (msg) {
 			$('#set_enter_at_level_' + msg.node_index).val(msg.level);
 			d5rt.nodes[msg.node_index].enter_at_level = msg.level;
+
+			$('#node_notice_' + i).html(d5rt.nodes[msg.node_index].checkValues());
+			d5rt.nodes[msg.node_index].updateThresholds();
 		});
 
 		socket.on('node_exit_at_level', function (msg) {
 			$('#set_exit_at_level_' + msg.node_index).val(msg.level);
 			d5rt.nodes[msg.node_index].exit_at_level = msg.level;
+
+			$('#node_notice_' + i).html(d5rt.nodes[msg.node_index].checkValues());
+			d5rt.nodes[msg.node_index].updateThresholds();
 		});
 
 		socket.on('current_laps', function (msg) {
@@ -449,6 +459,7 @@
 			if (!Number.isNaN(data.enter_at_level)) {
 				socket.emit('set_enter_at_level', data);
 				d5rt.nodes[data.node].enter_at_level = data.enter_at_level;
+				d5rt.nodes[data.node].updateThresholds();
 			}
 		});
 
@@ -460,6 +471,7 @@
 			if (!Number.isNaN(data.exit_at_level)) {
 				socket.emit('set_exit_at_level', data);
 				d5rt.nodes[data.node].exit_at_level = data.exit_at_level;
+				d5rt.nodes[data.node].updateThresholds();
 			}
 		});
 
@@ -884,16 +896,16 @@
 			{% for node in range(num_nodes) %}
 			<div class="node">
 				<a href="#tuning-detail-{{node}}" data-node="{{ node }}" class="open-mfp-popup">{{ __('Tuning') }}</a>
+				<div class="race-header">
+					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
+					<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">{{ __('Manual') }}</button>
+				</div>
 				<div class="rssi-graph page" data-node="{{ node }}"><canvas id="rssi-graph-{{ node }}"></div>
 				<h4 class="callsign_{{ node }}">
 					{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 					}}
 				</h4>
 				<div class="crossing crossing_flag_{{ node }}"><span>{{ __('Clear') }}</span></div>
-				<div class="race-header">
-					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
-					<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">{{ __('Manual') }}</button>
-				</div>
 				<table class="laps" id="current_laps_{{ node }}">
 					<thead>
 					</thead>
@@ -948,6 +960,7 @@
 							</td>
 						</tr>
 					</table>
+					<div id="node_notice_{{ node }}"></div>
 				</div>
 			</div>
 			{% endfor %}
