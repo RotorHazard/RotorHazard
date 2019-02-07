@@ -448,7 +448,7 @@ class Delta5Interface(BaseHardwareInterface):
 
     def set_history_expire(self, node_index, history_expire_duration):
         node = self.nodes[node_index]
-        if node.api_valid_flag:
+        if node.api_level >= 12:
             node.history_expire_duration = self.set_and_validate_value_16(node,
                 WRITE_HISTORY_EXPIRE_DURATION,
                 READ_HISTORY_EXPIRE_DURATION,
@@ -496,12 +496,14 @@ class Delta5Interface(BaseHardwareInterface):
 
     def get_catch_history(self, node_index):
         node = self.nodes[node_index]
-        data = self.read_block(node.i2c_addr, READ_CATCH_HISTORY, 8)
-        return {
-            'rssi_min': unpack_16(data[0:]),
-            'rssi_max': unpack_16(data[2:]),
-            'pass_ms': unpack_32(data[4:])
-        }
+        if node.api_level >= 12:
+            data = self.read_block(node.i2c_addr, READ_CATCH_HISTORY, 8)
+            return {
+                'rssi_min': unpack_16(data[0:]),
+                'rssi_max': unpack_16(data[2:]),
+                'pass_ms': unpack_32(data[4:])
+            }
+        return None
 
 def get_hardware_interface():
     '''Returns the delta 5 interface object.'''

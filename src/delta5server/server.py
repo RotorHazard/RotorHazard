@@ -1218,22 +1218,25 @@ def on_set_current_heat(data):
 def on_recover_pass(data):
     node_index = data['node']
     catch_history = INTERFACE.get_catch_history(node_index)
-    server_log(catch_history['pass_ms'])
-    if data['method'] == 'max':
-        INTERFACE.intf_simulate_lap(node_index, catch_history['pass_ms'])
-        on_set_enter_at_level({
-            'node': node_index,
-            'enter_at_level': catch_history['rssi_max'] - int(getOption("HistoryMaxOffset"))
-        })
-
-    if data['method'] == 'min':
-        on_set_exit_at_level({
-            'node': node_index,
-            'exit_at_level': catch_history['rssi_min'] + int(getOption("HistoryMinOffset"))
-        })
-
-    server_log('Recovering pass: Node {0} Method {1}'.format(node_index, data['method']))
-    emit_enter_and_exit_at_levels(nobroadcast=True)
+    if catch_history:
+        server_log(catch_history['pass_ms'])
+        if data['method'] == 'max':
+            INTERFACE.intf_simulate_lap(node_index, catch_history['pass_ms'])
+            on_set_enter_at_level({
+                'node': node_index,
+                'enter_at_level': catch_history['rssi_max'] - int(getOption("HistoryMaxOffset"))
+            })
+    
+        if data['method'] == 'min':
+            on_set_exit_at_level({
+                'node': node_index,
+                'exit_at_level': catch_history['rssi_min'] + int(getOption("HistoryMinOffset"))
+            })
+    
+        server_log('Recovering pass: Node {0} Method {1}'.format(node_index, data['method']))
+        emit_enter_and_exit_at_levels(nobroadcast=True)
+    else:
+        server_log('Unable to fetch catch history from node {0}'.format(node_index+1))
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
