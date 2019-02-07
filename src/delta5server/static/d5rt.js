@@ -96,14 +96,6 @@ LogSlider.prototype = {
    }
 };
 
-function __(text) {
-	// return translated string
-	if (language_strings[text]) {
-		return language_strings[text]
-	}
-	return text
-}
-
 var globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
 
 var node_tone = [
@@ -166,7 +158,11 @@ function play_beep(duration, frequency, volume, type, fadetime, callback) {
 
 /* d5rt object for local settings/storage */
 var d5rt = {
-	voice_language: '', // voice type for text-to-speech callouts
+	language_strings: {},
+	interface_language: '',
+	// text-to-speech callout options
+	voice_string_language: 'match-timer', // text source language
+	voice_language: '', // speech synthesis engine (browser-supplied)
 	voice_volume: 1.0, // voice call volume
 	voice_rate: 1.25,  // voice call speak pitch
 	voice_pitch: 1.0,  // voice call speak rate
@@ -193,6 +189,7 @@ var d5rt = {
 		if (!supportsLocalStorage()) {
 			return false;
 		}
+		localStorage['d5rt.voice_string_language'] = JSON.stringify(this.voice_string_language);
 		localStorage['d5rt.voice_language'] = JSON.stringify(this.voice_language);
 		localStorage['d5rt.voice_volume'] = JSON.stringify(this.voice_volume);
 		localStorage['d5rt.voice_rate'] = JSON.stringify(this.voice_rate);
@@ -215,6 +212,9 @@ var d5rt = {
 	},
 	restoreData: function(dataType) {
 		if (supportsLocalStorage()) {
+			if (localStorage['d5rt.voice_string_language']) {
+				this.voice_string_language = JSON.parse(localStorage['d5rt.voice_string_language']);
+			}
 			if (localStorage['d5rt.voice_language']) {
 				this.voice_language = JSON.parse(localStorage['d5rt.voice_language']);
 			}
@@ -273,6 +273,31 @@ var d5rt = {
 		}
 		return false;
 	},
+}
+
+function __(text) {
+	// return translated string
+	if (d5rt.language_strings[d5rt.interface_language]) {
+		if (d5rt.language_strings[d5rt.interface_language]['values'][text]) {
+			return d5rt.language_strings[d5rt.interface_language]['values'][text]
+		}
+	}
+	return text
+}
+
+function __l(text) {
+	// return translated string for local voice
+	var lang = d5rt.voice_string_language;
+	if (d5rt.voice_string_language == 'match-timer') {
+		lang = d5rt.interface_language;
+	}
+
+	if (d5rt.language_strings[lang]) {
+		if (d5rt.language_strings[lang]['values'][text]) {
+			return d5rt.language_strings[lang]['values'][text]
+		}
+	}
+	return text
 }
 
 /* Data model for nodes */

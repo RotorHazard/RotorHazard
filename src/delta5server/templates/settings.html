@@ -9,6 +9,8 @@
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 		socket.emit('load_data', {'load_types': [
+			'all_languages',
+			'language',
 			'node_data',
 			'frequency_data',
 			'heat_data',
@@ -21,6 +23,33 @@
 			'team_racing_mode',
 			'language'
 		]});
+
+		socket.on('all_languages', function (msg) {
+			d5rt.language_strings = msg.languages;
+		});
+
+		socket.on('language', function (msg) {
+			$('#set_language').empty();
+			$('#set_language').append('<option value="">English</option>')
+			for (i = 0; i < msg.languages.length; i++) {
+				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+
+			$('#set_voice_string_language').empty();
+			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
+			$('#set_voice_string_language').append('<option value="">English</option>')
+			for (i = 0; i < msg.languages.length; i++) {
+				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+			$('#set_voice_string_language').val(d5rt.voice_string_language);
+
+			if (msg.language) {
+				d5rt.interface_language = msg.language;
+				$('#set_language').val(msg.language);
+			} else {
+				$('#set_language').selectedIndex = 0;
+			}
+		});
 
 		var heartbeatCounter = 0;
 
@@ -625,6 +654,11 @@
 		}
 		$('#set_voice_language').val(d5rt.voice_language);
 
+		$('#set_voice_string_language').change(function (event) {
+			d5rt.voice_string_language = $(this).val();
+			d5rt.saveData();
+		});
+
 		$('#voice_callsign').change(function (event) {
 			d5rt.voice_callsign = $(this).prop('checked');
 			d5rt.saveData();
@@ -923,20 +957,6 @@
 			};
 			socket.emit('set_option', data);
 			return false;
-		});
-
-		socket.on('language', function (msg) {
-			$('#set_language').empty();
-			$('#set_language').append('<option value="">English</option>')
-			for (i = 0; i < msg.languages.length; i++) {
-				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
-			}
-
-			if (msg.language) {
-				$('#set_language').val(msg.language);
-			} else {
-				$('#set_voice_language').selectedIndex = 0;
-			}
 		});
 
 		$('#set_language').change(function (event) {
@@ -1316,6 +1336,14 @@
 					<label for="set_voice_language">{{ __('Voice Select') }}</label>
 				</div>
 				<div id="voice_select"></div>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_string_language">{{ __('Voice Language') }}</label>
+				</div>
+				<select id="set_voice_string_language">
+					<option>{{ __('Loading...') }}</option>
+				</select>
 			</li>
 			<li>
 				<div class="label-block">

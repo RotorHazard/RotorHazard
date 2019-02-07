@@ -4,11 +4,23 @@
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
 		socket.emit('load_data', {'load_types': [
+			'all_languages',
+			'language',
 			'frequency_data',
 			'class_data',
 			'heat_data',
 			'pilot_data'
 		]});
+
+		socket.on('all_languages', function (msg) {
+			d5rt.language_strings = msg.languages;
+		});
+
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				d5rt.interface_language = msg.language;
+			}
+		});
 
 		socket.on('frequency_data', function (msg) {
 			for (var i in msg.frequency) {
@@ -64,7 +76,7 @@
 				el.append(nodelist);
 
 				// class indicator
-				if (msg.classes.length) {				
+				if (msg.classes.length) {
 					if (heats.class_id) {
 						for (var i in msg.classes) {
 							if (msg.classes[i].id == heats.class_id) {
@@ -90,11 +102,11 @@
 				for (var i in msg.classes) {
 					var race_class = msg.classes[i];
 					var el = $('<li>');
-					
+
 					if (race_class.name) {
 						el.append('<h3>' + race_class.name + '</h3>');
 					} else {
-						el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');			
+						el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');
 					}
 
 					var class_info = $('<div class="class-info">');

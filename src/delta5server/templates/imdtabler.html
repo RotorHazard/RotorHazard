@@ -4,8 +4,20 @@
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
 		socket.emit('load_data', {'load_types': [
+			'all_languages',
+			'language',
 			'imdtabler_page'
 		]});
+
+		socket.on('all_languages', function (msg) {
+			d5rt.language_strings = msg.languages;
+		});
+
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				d5rt.interface_language = msg.language;
+			}
+		});
 
 		socket.on('imdtabler_data', function (msg) {
 			if (msg.version_str)

@@ -20,6 +20,8 @@
 	$(document).ready(function () {
 		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 		socket.emit('load_data', {'load_types': [
+			'all_languages',
+			'language',
 			'node_data',
 			'frequency_data',
 			'race_format',
@@ -33,6 +35,33 @@
 			'current_heat',
 			'team_racing_stat_if_enb'
 		]});
+
+		socket.on('all_languages', function (msg) {
+			d5rt.language_strings = msg.languages;
+		});
+
+		socket.on('language', function (msg) {
+			$('#set_language').empty();
+			$('#set_language').append('<option value="">English</option>')
+			for (i = 0; i < msg.languages.length; i++) {
+				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+
+			$('#set_voice_string_language').empty();
+			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
+			$('#set_voice_string_language').append('<option value="">English</option>')
+			for (i = 0; i < msg.languages.length; i++) {
+				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+			$('#set_voice_string_language').val(d5rt.voice_string_language);
+
+			if (msg.language) {
+				d5rt.interface_language = msg.language;
+				$('#set_language').val(msg.language);
+			} else {
+				$('#set_language').selectedIndex = 0;
+			}
+		});
 
 		var heartbeatCounter = 0;
 
@@ -314,7 +343,7 @@
 			if (d5rt.voice_lap_count) {
 				if (ttstext.length > 0)
 					ttstext += ", ";
-				ttstext += __('Lap') + " " + msg.lap;
+				ttstext += __l('Lap') + " " + msg.lap;
 			}
 
 			if (d5rt.voice_lap_time) {
@@ -326,7 +355,7 @@
 			if (msg.team_name && msg.team_laps && d5rt.voice_team_lap_count) {
 				if (ttstext.length > 0)
 					ttstext += ", ";
-				ttstext += __('Team') + " " + msg.team_name + ", " + __('Lap') + " " + msg.team_laps;
+				ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
 			}
 
 			if (ttstext.length > 0) {
@@ -345,7 +374,7 @@
 
 		socket.on('phonetic_text', function (msg) {
 			if (msg.text) {
-				speak('<div class="speech">' + msg.text + '</div>');
+				speak('<div class="speech">' + __l(msg.text) + '</div>');
 			}
 		})
 
@@ -504,6 +533,11 @@
 			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
 		}
 		$('#set_voice_language').val(d5rt.voice_language);
+
+		$('#set_voice_string_language').change(function (event) {
+			d5rt.voice_string_language = $(this).val();
+			d5rt.saveData();
+		});
 
 		$('#voice_callsign').change(function (event) {
 			d5rt.voice_callsign = $(this).prop('checked');
@@ -961,6 +995,14 @@
 					<label for="set_voice_language">{{ __('Voice Select') }}</label>
 				</div>
 				<div id="voice_select"></div>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_string_language">{{ __('Voice Language') }}</label>
+				</div>
+				<select id="set_voice_string_language">
+					<option>{{ __('Loading...') }}</option>
+				</select>
 			</li>
 			<li>
 				<div class="label-block">

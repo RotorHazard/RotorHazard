@@ -15,6 +15,8 @@
 		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
 		socket.emit('load_data', {'load_types': [
+			'all_languages',
+			'language',
 			'frequency_data',
 			'pilot_data',
 			'leaderboard',
@@ -23,6 +25,33 @@
 			'current_heat',
 			'team_racing_stat_if_enb'
 		]});
+
+		socket.on('all_languages', function (msg) {
+			d5rt.language_strings = msg.languages;
+		});
+
+		socket.on('language', function (msg) {
+			$('#set_language').empty();
+			$('#set_language').append('<option value="">English</option>')
+			for (i = 0; i < msg.languages.length; i++) {
+				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+
+			$('#set_voice_string_language').empty();
+			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
+			$('#set_voice_string_language').append('<option value="">English</option>')
+			for (i = 0; i < msg.languages.length; i++) {
+				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+			$('#set_voice_string_language').val(d5rt.voice_string_language);
+
+			if (msg.language) {
+				d5rt.interface_language = msg.language;
+				$('#set_language').val(msg.language);
+			} else {
+				$('#set_language').selectedIndex = 0;
+			}
+		});
 
 		// set up nodes
 		$('.node').each(function(){

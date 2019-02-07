@@ -4,8 +4,20 @@
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
 		socket.emit('load_data', {'load_types': [
-			'round_data'
+			'all_languages',
+			'language',
+			'round_data',
 		]});
+
+		socket.on('all_languages', function (msg) {
+			d5rt.language_strings = msg.languages;
+		});
+
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				d5rt.interface_language = msg.language;
+			}
+		});
 
 		socket.on('round_data', function (msg) {
 			var page = $('.page-rounds')
@@ -39,7 +51,7 @@
 						for (var class_heat in msg.heats_by_class[race_class]) {
 							if (msg.heats[msg.heats_by_class[race_class][class_heat]]) {
 								valid_heats = true;
-								break;								
+								break;
 							}
 						}
 					}
@@ -58,7 +70,7 @@
 							var class_leaderboard_header = $('<div class="panel-header">');
 							class_leaderboard_header.append('<h3><button class="no-style">' + __('Class Summary') + '</button></h3>');
 							class_leaderboard.append(class_leaderboard_header);
-		
+
 							var class_leaderboard_content = $('<div class="panel-content" style="display: none">');
 
 							class_leaderboard_content.append('<h4>' + __('Race Totals') + '</h4>');
@@ -106,7 +118,7 @@
 									heat_leaderboard.append(build_leaderboard(heat.leaderboard.by_race_time, 'heat', msg.meta));
 									heat_summary_panel_content.append(heat_leaderboard);
 									heat_summary_panel.append(heat_summary_panel_content);
-									panel_content.append(heat_summary_panel);			
+									panel_content.append(heat_summary_panel);
 								}
 
 								// rounds
