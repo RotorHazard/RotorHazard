@@ -190,7 +190,9 @@
 		});
 
 		socket.on('phonetic_data', function (msg) {
-			if (d5rt.primaryPilot == 0 || d5rt.primaryPilot == msg.pilot_id) {
+			if (d5rt.primaryPilot == 0 || d5rt.primaryPilot == msg.pilot_id
+				&& d5rt.min_lap * 1000 < msg.raw_time) {
+
 				var ttstext = '';
 
 				if (d5rt.voice_callsign) {

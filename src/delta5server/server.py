@@ -2336,6 +2336,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
 
 def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **params):
     '''Emits phonetic data.'''
+    raw_time = lap_time
     phonetic_time = phonetictime_format(lap_time)
     phonetic_name = Pilot.query.get(pilot_id).phonetic
     callsign = Pilot.query.get(pilot_id).callsign
@@ -2345,6 +2346,7 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **param
         'callsign': callsign,
         'pilot_id': pilot_id,
         'lap': lap_id,
+        'raw_time': raw_time,
         'phonetic': phonetic_time,
         'team_name' : team_name,
         'team_laps' : team_laps

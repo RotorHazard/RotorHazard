@@ -342,34 +342,36 @@
 		});
 
 		socket.on('phonetic_data', function (msg) {
-			var ttstext = '';
+			if (d5rt.min_lap * 1000 < msg.raw_time) {
+				var ttstext = '';
 
-			if (d5rt.voice_callsign) {
-				ttstext = msg.callsign;
-				if (msg.pilot)
-					ttstext = msg.pilot;
-			}
+				if (d5rt.voice_callsign) {
+					ttstext = msg.callsign;
+					if (msg.pilot)
+						ttstext = msg.pilot;
+				}
 
-			if (d5rt.voice_lap_count) {
-				if (ttstext.length > 0)
-					ttstext += ", ";
-				ttstext += __l('Lap') + " " + msg.lap;
-			}
+				if (d5rt.voice_lap_count) {
+					if (ttstext.length > 0)
+						ttstext += ", ";
+					ttstext += __l('Lap') + " " + msg.lap;
+				}
 
-			if (d5rt.voice_lap_time) {
-				if (ttstext.length > 0)
-					ttstext += ", ";
-				ttstext += msg.phonetic;
-			}
+				if (d5rt.voice_lap_time) {
+					if (ttstext.length > 0)
+						ttstext += ", ";
+					ttstext += msg.phonetic;
+				}
 
-			if (msg.team_name && msg.team_laps && d5rt.voice_team_lap_count) {
-				if (ttstext.length > 0)
-					ttstext += ", ";
-				ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
-			}
+				if (msg.team_name && msg.team_laps && d5rt.voice_team_lap_count) {
+					if (ttstext.length > 0)
+						ttstext += ", ";
+					ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
+				}
 
-			if (ttstext.length > 0) {
-				speak('<div class="speech">' + ttstext + '</div>');
+				if (ttstext.length > 0) {
+					speak('<div class="speech">' + ttstext + '</div>');
+				}
 			}
 		})
 
