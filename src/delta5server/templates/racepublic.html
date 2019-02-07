@@ -61,6 +61,12 @@
 
 		// populate voice controls
 		$('#voice-calls').val(parseInt(d5rt.primaryPilot));
+
+		$('#voice_callsign').prop( "checked", d5rt.voice_callsign);
+		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
+		$('#voice_team_lap_count').prop( "checked", d5rt.voice_team_lap_count);
+		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
+		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
 		$().articulate('volume', d5rt.voice_volume);
 		$('#set_voice_volume').val(volume_logsl.position(d5rt.voice_volume));
 		$('#voice_volume_value').html($('#set_voice_volume').val());
@@ -185,12 +191,35 @@
 
 		socket.on('phonetic_data', function (msg) {
 			if (d5rt.primaryPilot == 0 || d5rt.primaryPilot == msg.pilot_id) {
-				var pilot = msg.callsign;
-				if (msg.pilot)
-					pilot = msg.pilot;
+				var ttstext = '';
 
-				var $ttstest = pilot + " " + __('Lap') + " " + msg.lap + ": " + msg.phonetic;
-				speak('<div class="speech">' + $ttstest + '</div>');
+				if (d5rt.voice_callsign) {
+					ttstext = msg.callsign;
+					if (msg.pilot)
+						ttstext = msg.pilot;
+				}
+
+				if (d5rt.voice_lap_count) {
+					if (ttstext.length > 0)
+						ttstext += ", ";
+					ttstext += __l('Lap') + " " + msg.lap;
+				}
+
+				if (d5rt.voice_lap_time) {
+					if (ttstext.length > 0)
+						ttstext += ", ";
+					ttstext += msg.phonetic;
+				}
+
+				if (msg.team_name && msg.team_laps && d5rt.voice_team_lap_count) {
+					if (ttstext.length > 0)
+						ttstext += ", ";
+					ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
+				}
+
+				if (ttstext.length > 0) {
+					speak('<div class="speech">' + ttstext + '</div>');
+				}
 			}
 		})
 
@@ -257,8 +286,33 @@
 		}
 		$('#set_voice_language').val(d5rt.voice_language);
 
+		$('#set_voice_string_language').change(function (event) {
+			d5rt.voice_string_language = $(this).val();
+			d5rt.saveData();
+		});
+
 		$('#voice_callsign').change(function (event) {
 			d5rt.voice_callsign = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_lap_count').change(function (event) {
+			d5rt.voice_lap_count = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_team_lap_count').change(function (event) {
+			d5rt.voice_team_lap_count = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_lap_time').change(function (event) {
+			d5rt.voice_lap_time = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_race_timer').change(function (event) {
+			d5rt.voice_race_timer = $(this).prop('checked');
 			d5rt.saveData();
 		});
 
@@ -365,11 +419,31 @@
 			</li>
 			<li>
 				<div class="label-block">
+					<label for="set_voice_string_language">{{ __('Voice Language') }}</label>
+				</div>
+				<select id="set_voice_string_language">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="voice-calls">{{ __('Voice Calls') }}</label>
 				</div>
 				<select id="voice-calls">
 					<option value="-1">{{ __('Loading...') }}</option>
 				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					{{ __('Announcements') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="voice_callsign"> {{ __('Callsign') }}</label></li>
+					<li><label><input type="checkbox" id="voice_lap_count"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="voice_lap_time"> {{ __('Lap Time') }}</label></li>
+					<li><label><input type="checkbox" id="voice_race_timer"> {{ __('Race Timer') }}</label></li>
+					<li><label><input type="checkbox" id="voice_team_lap_count"> {{ __('Team Lap Total') }}</label></li>
+				</ul>
 			</li>
 			<li>
 				<div class="label-block">
