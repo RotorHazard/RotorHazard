@@ -28,7 +28,6 @@
 			'node_tuning',
 			'enter_and_exit_at_levels',
 			'min_lap',
-			'team_racing_mode',
 			'leaderboard',
 			'current_laps',
 			'race_status',
@@ -687,17 +686,6 @@
 			socket.emit('set_min_lap_behavior', data);
 		})
 
-		socket.on('team_racing_mode', function (msg) {
-			$('#set_team_racing_mode').val(msg.enabled_val);  // 0=disabled, 1=enabled
-		});
-
-		$('#set_team_racing_mode').change(function (event) {
-			var data = {
-				enabled_val: parseInt($(this).val())  // 0=disabled, 1=enabled
-			};
-			socket.emit('set_team_racing_mode', data);
-		})
-
 		socket.on('race_format', function (msg) {
 			$('#set_race_format').empty();
 			for (i = 0; i < msg.format_ids.length; i++) {
@@ -1007,15 +995,6 @@
 				<select id="set_min_lap_behavior">
 					<option value="0">{{ __('Highlight Short Laps') }}</option>
 					<option value="1">{{ __('Discard New Short Laps') }}</option>
-				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_team_racing_mode">{{ __('Team Racing Mode') }}</label>
-				</div>
-				<select id="set_team_racing_mode">
-					<option value="0">{{ __('Team Racing Disabled') }}</option>
-					<option value="1">{{ __('Team Racing Enabled') }}</option>
 				</select>
 			</li>
 		</ol>

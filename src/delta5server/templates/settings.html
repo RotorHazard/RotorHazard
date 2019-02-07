@@ -798,13 +798,9 @@
 			socket.emit('set_min_lap_behavior', data);
 		})
 
-		socket.on('team_racing_mode', function (msg) {
-			$('#set_team_racing_mode').val(msg.enabled_val);  // 0=disabled, 1=enabled
-		});
-
 		$('#set_team_racing_mode').change(function (event) {
 			var data = {
-				enabled_val: parseInt($(this).val())  // 0=disabled, 1=enabled
+				team_racing_mode: parseInt($(this).val())  // 0=disabled, 1=enabled
 			};
 			socket.emit('set_team_racing_mode', data);
 		})
@@ -828,8 +824,10 @@
 			$('#set_start_delay_max').prop('disabled', msg.locked);
 			$('#set_number_laps_win').val(msg.number_laps_win);
 			$('#set_number_laps_win').prop('disabled', msg.locked);
-			$('#set_laps_wins_mode').val(msg.laps_wins_mode);
-			$('#set_laps_wins_mode').prop('disabled', msg.locked);
+			$('#set_win_condition').val(msg.win_condition);
+			$('#set_win_condition').prop('disabled', msg.locked);
+			$('#set_team_racing_mode').val(msg.team_racing_mode);
+			$('#set_team_racing_mode').prop('disabled', msg.locked);
 		});
 
 		$('#set_race_format').change(function (event) {
@@ -898,11 +896,11 @@
 			socket.emit('set_number_laps_win', data);
 		})
 
-		$('#set_laps_wins_mode').change(function (event) {
+		$('#set_win_condition').change(function (event) {
 			var data = {
-				laps_wins_mode: parseInt($(this).val())
+				win_condition: parseInt($(this).val())
 			};
-			socket.emit('set_laps_wins_mode', data);
+			socket.emit('set_win_condition', data);
 		})
 
 		$('button#backup_database').click(function (event) {
@@ -1480,11 +1478,25 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_laps_wins_mode">{{ __('Laps Wins Mode') }}</label>
+					<label for="set_win_condition">{{ __('Win Condition') }}</label>
 				</div>
-				<select id="set_laps_wins_mode">
-					<option value="0">{{ __('Most Laps Wins Disabled') }}</option>
-					<option value="1">{{ __('Most Laps Wins Enabled') }}</option>
+				<select id="set_win_condition">
+					<option value="0">{{ __('None') }}</option>
+					<option value="1">{{ __('Most Laps') }}</option>
+					<option value="2">{{ __('First to X Laps') }}</option>
+					<!-- Yet to be implemented in server.py
+					<option value="3">{{ __('Fastest Lap') }}</option>
+					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
+					-->
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_team_racing_mode">{{ __('Team Racing Mode') }}</label>
+				</div>
+				<select id="set_team_racing_mode">
+					<option value="0">{{ __('Team Racing Disabled') }}</option>
+					<option value="1">{{ __('Team Racing Enabled') }}</option>
 				</select>
 			</li>
 		</ol>
@@ -1508,15 +1520,7 @@
 					<option value="1">{{ __('Discard New Short Laps') }}</option>
 				</select>
 			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_team_racing_mode">{{ __('Team Racing Mode') }}</label>
-				</div>
-				<select id="set_team_racing_mode">
-					<option value="0">{{ __('Team Racing Disabled') }}</option>
-					<option value="1">{{ __('Team Racing Enabled') }}</option>
-				</select>
-			</li>
+
 		</ol>
 	</div>
 </div>

@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-SERVER_API = 10 # Server API version
+SERVER_API = 11 # Server API version
 
 import os
 import sys
@@ -294,7 +294,14 @@ class RaceFormat(DB.Model):
     start_delay_min = DB.Column(DB.Integer, nullable=False)
     start_delay_max = DB.Column(DB.Integer, nullable=False)
     number_laps_win = DB.Column(DB.Integer, nullable=False)
-    laps_wins_mode = DB.Column(DB.Integer, nullable=False)
+    win_condition = DB.Column(DB.Integer, nullable=False)
+    team_racing_mode = DB.Column(DB.Boolean, nullable=False)
+
+WIN_CONDITION_NONE = 0
+WIN_CONDITION_MOST_LAPS = 1
+WIN_CONDITION_FIRST_TO_LAP_X = 2
+WIN_CONDITION_FASTEST_LAP = 3 # Not yet implemented
+WIN_CONDITION_FASTEST_3_CONSECUTIVE = 4 # Not yet implemented
 
 class GlobalSettings(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
@@ -485,8 +492,6 @@ def on_load_data(data):
             emit_enter_and_exit_at_levels(nobroadcast=True)
         elif load_type == 'min_lap':
             emit_min_lap(nobroadcast=True)
-        elif load_type == 'team_racing_mode':
-            emit_team_racing_mode(nobroadcast=True)
         elif load_type == 'leaderboard':
             emit_leaderboard(nobroadcast=True)
         elif load_type == 'current_laps':
@@ -976,15 +981,6 @@ def on_set_min_lap_behavior(data):
     server_log("set min lap behavior to %s" % min_lap_behavior)
     emit_min_lap(noself=True)
 
-@SOCKET_IO.on("set_team_racing_mode")
-def on_set_team_racing_mode(data):
-    enabled_val = data['enabled_val']
-    setOption("TeamRacingMode", data['enabled_val'])
-    server_log("set team racing mode to %s" % enabled_val)
-    emit_team_racing_mode()
-    emit_team_racing_stat_if_enb()
-    emit_leaderboard()
-
 @SOCKET_IO.on("set_race_format")
 def on_set_race_format(data):
     ''' set current race_format '''
@@ -1007,7 +1003,8 @@ def on_add_race_format():
                              start_delay_min=source_format.start_delay_min,
                              start_delay_max=source_format.start_delay_max,
                              number_laps_win=source_format.number_laps_win,
-                             laps_wins_mode=source_format.laps_wins_mode)
+                             win_condition=source_format.win_condition,
+                             team_racing_mode=source_format.team_racing_mode)
     DB.session.add(new_format)
     DB.session.flush()
     DB.session.refresh(new_format)
@@ -1031,8 +1028,7 @@ def on_delete_race_format():
 def on_set_race_format_name(data):
     ''' update profile name '''
     format_name = data['format_name']
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
     race_format.name = format_name
     DB.session.commit()
     server_log('set format name %s' % (format_name))
@@ -1083,14 +1079,23 @@ def on_set_number_laps_win(data):
     DB.session.commit()
     server_log("set number of laps to win to %s" % number_laps_win)
 
-@SOCKET_IO.on("set_laps_wins_mode")
-def on_set_laps_wins_mode(data):
-    laps_wins_mode = data['laps_wins_mode']
+@SOCKET_IO.on("set_win_condition")
+def on_set_win_condition(data):
+    win_condition = data['win_condition']
     last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
-    race_format.laps_wins_mode = laps_wins_mode
+    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format.win_condition = win_condition
     DB.session.commit()
-    server_log("set laps wins mode to %s" % laps_wins_mode)
+    server_log("set laps wins mode to %s" % win_condition)
+
+@SOCKET_IO.on("set_team_racing_mode")
+def on_set_team_racing_mode(data):
+    team_racing_mode = data['team_racing_mode']
+    last_raceFormat = int(getOption("currentFormat"))
+    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format.team_racing_mode = (True if team_racing_mode else False)
+    DB.session.commit()
+    server_log("set team racing mode to %s" % enabled_val)
 
 # Race management socket io events
 
@@ -1101,11 +1106,11 @@ def on_prestage_race():
     clear_laps() # Ensure laps are cleared before race start, shouldn't be needed
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
-    if int(getOption('TeamRacingMode')):
-        check_emit_team_racing_status()  # Show initial team-racing status info
     INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
     last_raceFormat = int(getOption("currentFormat"))
     race_format = RaceFormat.query.get(last_raceFormat)
+    if race_format.team_racing_mode:
+        check_emit_team_racing_status()  # Show initial team-racing status info
     MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
     MAX = max(race_format.start_delay_min, race_format.start_delay_max)
     DELAY = random.randint(MIN, MAX)
@@ -1179,7 +1184,8 @@ def on_clear_laps():
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
-    if int(getOption('TeamRacingMode')):
+    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    if race_format.team_racing_mode:
         check_emit_team_racing_status()  # Show team-racing status info
     else:
         emit_team_racing_status('')  # clear any displayed "Winner is" text
@@ -1201,7 +1207,8 @@ def on_set_current_heat(data):
     server_log('Current heat set: Heat {0}'.format(new_heat_id))
     emit_current_heat() # Race page, to update heat selection button
     emit_leaderboard() # Race page, to update callsigns in leaderboard
-    if int(getOption('TeamRacingMode')):
+    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    if race_format.team_racing_mode:
         check_emit_team_racing_status()  # Show initial team-racing status info
 
 @SOCKET_IO.on('recover_pass')
@@ -1251,10 +1258,10 @@ def on_delete_lap(data):
     server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_id))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
-    if int(getOption('TeamRacingMode')):
-              # update team-racing status info
-        race_format = RaceFormat.query.get(int(getOption("currentFormat")))
-        if race_format.laps_wins_mode <= 0:  # if not Most Laps Wins race
+    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    if race_format.team_racing_mode:
+        # update team-racing status info
+        if race_format.win_condition != WIN_CONDITION_MOST_LAPS:  # if not Most Laps Wins race
             if race_format.number_laps_win > 0:  # if number-laps-win race
                 t_laps_dict, team_name, pilot_team_dict = get_team_laps_info(-1, race_format.number_laps_win)
                 check_team_laps_win(t_laps_dict, race_format.number_laps_win, pilot_team_dict)
@@ -1314,7 +1321,7 @@ def get_race_elapsed():
 def race_time_finished():
     last_raceFormat = int(getOption("currentFormat"))
     race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
-    if race_format and race_format.laps_wins_mode > 0:  # Most Laps Wins Enabled
+    if race_format and race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
         check_most_laps_win()  # check if pilot or team has most laps for win
 
 @SOCKET_IO.on('imdtabler_update_freqs')
@@ -1432,16 +1439,6 @@ def emit_min_lap(**params):
     else:
         SOCKET_IO.emit('min_lap', emit_payload)
 
-def emit_team_racing_mode(**params):
-    '''Emits team racing mode.'''
-    emit_payload = {
-        'enabled_val': getOption('TeamRacingMode')
-    }
-    if ('nobroadcast' in params):
-        emit('team_racing_mode', emit_payload)
-    else:
-        SOCKET_IO.emit('team_racing_mode', emit_payload)
-
 def emit_race_format(**params):
     '''Emits race format values.'''
     current_format = int(getOption("currentFormat"))
@@ -1462,13 +1459,16 @@ def emit_race_format(**params):
         'start_delay_min': format_val.start_delay_min,
         'start_delay_max': format_val.start_delay_max,
         'number_laps_win': format_val.number_laps_win,
-        'laps_wins_mode': format_val.laps_wins_mode,
+        'win_condition': format_val.win_condition,
+        'team_racing_mode': 1 if format_val.team_racing_mode else 0,
         'locked': locked
     }
     if ('nobroadcast' in params):
         emit('race_format', emit_payload)
     else:
         SOCKET_IO.emit('race_format', emit_payload)
+        emit_team_racing_stat_if_enb()
+        emit_leaderboard()
 
 def emit_current_laps(**params):
     '''Emits current laps.'''
@@ -1838,9 +1838,10 @@ def calc_leaderboard(**params):
             'consecutives': time_format(row[6]),
         })
 
+    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
     leaderboard_output = {
         'meta': {
-            'team_racing_mode': int(getOption('TeamRacingMode')),
+            'team_racing_mode': race_format.team_racing_mode,
         },
         'by_race_time': leaderboard_total_data,
         'by_fastest_lap': leaderboard_fast_lap_data,
@@ -2057,7 +2058,8 @@ def check_emit_team_racing_status(t_laps_dict=None, **params):
 
 def emit_team_racing_stat_if_enb(**params):
     '''Emits team-racing status info if team racing is enabled.'''
-    if int(getOption('TeamRacingMode')):
+    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    if race_format.team_racing_mode:
         check_emit_team_racing_status(**params)
     else:
         emit_team_racing_status('')
@@ -2143,7 +2145,8 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
     # pass_node_index: -1 if called from 'race_time_finished()'; node.index if called from 'pass_record_callback()'
     global Race_laps_winner_name
 
-    if int(getOption('TeamRacingMode')):  # team racing mode enabled
+    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    if race_format.team_racing_mode: # team racing mode enabled
 
              # if not passed in then determine number of laps for each team
         if t_laps_dict is None:
@@ -2569,8 +2572,7 @@ def pass_record_callback(node, ms_since_lap):
                     lap_time = lap_time_stamp - last_lap_time_stamp
                     lap_id = last_lap_id + 1
 
-                last_raceFormat = int(getOption("currentFormat"))
-                race_format = RaceFormat.query.get(last_raceFormat)
+                race_format = RaceFormat.query.get(int(getOption('currentFormat')))
                 min_lap = int(getOption("MinLapSec"))
                 min_lap_behavior = int(getOption("MinLapBehavior"))
                 if lap_id == 0 or min_lap_behavior == 0 or lap_time > (min_lap * 1000):
@@ -2585,13 +2587,13 @@ def pass_record_callback(node, ms_since_lap):
                     emit_current_laps() # update all laps on the race page
                     emit_leaderboard() # update leaderboard
 
-                    if int(getOption('TeamRacingMode')):  # team racing mode enabled
+                    if race_format.team_racing_mode: # team racing mode enabled
 
-                                       # if not Most Laps Wins race and is number-laps-win race
-                                       #  then check if a team has enough laps to win
-                        if race_format.laps_wins_mode <= 0 and race_format.number_laps_win > 0:
+                        # if win condition is first-to-x-laps and x is valid
+                        #  then check if a team has enough laps to win
+                        if race_format.win_condition == WIN_CONDITION_FIRST_TO_LAP_X and race_format.number_laps_win > 0:
                             t_laps_dict, team_name, pilot_team_dict = \
-                                         get_team_laps_info(pilot_id, race_format.number_laps_win)
+                                get_team_laps_info(pilot_id, race_format.number_laps_win)
                             team_laps = t_laps_dict[team_name][0]
                             check_team_laps_win(t_laps_dict, race_format.number_laps_win, pilot_team_dict, node.index)
                         else:
@@ -2605,13 +2607,13 @@ def pass_record_callback(node, ms_since_lap):
                         if lap_id > 0:   # send phonetic data to be spoken
                             emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
 
-                                      # if Most Laps Wins race is tied then check for winner
-                            if race_format.laps_wins_mode > 0:
+                            # if Most Laps Wins race is tied then check for winner
+                            if race_format.win_condition == WIN_CONDITION_MOST_LAPS:
                                 if Race_laps_winner_name is RACE_STATUS_TIED_STR or \
                                             Race_laps_winner_name is RACE_STATUS_CROSSING:
                                     check_most_laps_win(node.index, t_laps_dict, pilot_team_dict)
 
-                                      # if a team has won the race and this is the winning lap
+                            # if a team has won the race and this is the winning lap
                             elif Race_laps_winner_name is not None and \
                                         team_name == Race_laps_winner_name and \
                                         team_laps >= race_format.number_laps_win:
@@ -2623,29 +2625,30 @@ def pass_record_callback(node, ms_since_lap):
                             emit_first_pass_registered(node.index) # Sends phonetic data to be spoken on first pass
                         if lap_id > 0:
                                             # send phonetic data to be spoken
-                            if race_format.number_laps_win <= 0:
+                            if race_format.win_condition != WIN_CONDITION_FIRST_TO_LAP_X or race_format.number_laps_win <= 0:
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
 
                                                  # if Most Laps Wins race is tied then check for winner
-                                if race_format.laps_wins_mode > 0:
+                                if race_format.win_condition == WIN_CONDITION_MOST_LAPS:
                                     if Race_laps_winner_name is RACE_STATUS_TIED_STR or \
                                                 Race_laps_winner_name is RACE_STATUS_CROSSING:
                                         check_most_laps_win(node.index)
 
                             else:           # need to check if any pilot has enough laps to win
-                                win_pilot_id = check_pilot_laps_win(node.index, race_format.number_laps_win)
-                                if win_pilot_id >= 0:  # a pilot has won the race
-                                    win_callsign = Pilot.query.get(win_pilot_id).callsign
-                                    emit_team_racing_status('Winner is ' + win_callsign)
-                                    emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+                                if race_format.win_condition == WIN_CONDITION_FIRST_TO_LAP_X:
+                                    win_pilot_id = check_pilot_laps_win(node.index, race_format.number_laps_win)
+                                    if win_pilot_id >= 0:  # a pilot has won the race
+                                        win_callsign = Pilot.query.get(win_pilot_id).callsign
+                                        emit_team_racing_status('Winner is ' + win_callsign)
+                                        emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
 
-                                    if Race_laps_winner_name is None:
-                                            # a pilot has won the race and has not yet been announced
-                                        win_phon_name = Pilot.query.get(win_pilot_id).phonetic
-                                        if len(win_phon_name) <= 0:  # if no phonetic then use callsign
-                                            win_phon_name = win_callsign
-                                        Race_laps_winner_name = win_callsign  # call out winner (once)
-                                        emit_phonetic_text('Winner is ' + win_phon_name)
+                                        if Race_laps_winner_name is None:
+                                                # a pilot has won the race and has not yet been announced
+                                            win_phon_name = Pilot.query.get(win_pilot_id).phonetic
+                                            if len(win_phon_name) <= 0:  # if no phonetic then use callsign
+                                                win_phon_name = win_callsign
+                                            Race_laps_winner_name = win_callsign  # call out winner (once)
+                                            emit_phonetic_text('Winner is ' + win_phon_name)
 
                                 else:  # no pilot has won the race; send phonetic data to be spoken
                                     emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
@@ -2806,48 +2809,62 @@ def db_reset_profile():
 
 def db_reset_race_formats():
     DB.session.query(RaceFormat).delete()
-    DB.session.add(RaceFormat(name=__("MultiGP Qualifier"),
+    DB.session.add(RaceFormat(name=__("MultiGP Standard"),
                              race_mode=0,
                              race_time_sec=120,
                              start_delay_min=2,
                              start_delay_max=5,
                              number_laps_win=0,
-                             laps_wins_mode=0))
+                             win_condition=WIN_CONDITION_MOST_LAPS,
+                             team_racing_mode=False))
     DB.session.add(RaceFormat(name=__("Whoop Sprint"),
                              race_mode=0,
                              race_time_sec=90,
                              start_delay_min=2,
                              start_delay_max=5,
                              number_laps_win=0,
-                             laps_wins_mode=0))
+                             win_condition=WIN_CONDITION_MOST_LAPS,
+                             team_racing_mode=False))
     DB.session.add(RaceFormat(name=__("Limited Class"),
                              race_mode=0,
                              race_time_sec=210,
                              start_delay_min=2,
                              start_delay_max=5,
                              number_laps_win=0,
-                             laps_wins_mode=0))
+                             win_condition=WIN_CONDITION_MOST_LAPS,
+                             team_racing_mode=False))
     DB.session.add(RaceFormat(name=__("First to 3 Laps"),
                              race_mode=1,
                              race_time_sec=0,
                              start_delay_min=2,
                              start_delay_max=5,
                              number_laps_win=3,
-                             laps_wins_mode=0))
-    DB.session.add(RaceFormat(name=__("Most Laps Wins"),
-                             race_mode=0,
-                             race_time_sec=120,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             number_laps_win=0,
-                             laps_wins_mode=1))
+                             win_condition=WIN_CONDITION_FIRST_TO_LAP_X,
+                             team_racing_mode=False))
     DB.session.add(RaceFormat(name=__("Open Practice"),
                              race_mode=1,
                              race_time_sec=0,
                              start_delay_min=3,
                              start_delay_max=3,
                              number_laps_win=0,
-                             laps_wins_mode=0))
+                             win_condition=WIN_CONDITION_NONE,
+                             team_racing_mode=False))
+    DB.session.add(RaceFormat(name=__("Team / Most Laps Wins"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             number_laps_win=0,
+                             win_condition=WIN_CONDITION_MOST_LAPS,
+                             team_racing_mode=True))
+    DB.session.add(RaceFormat(name=__("Team / First to 7 Laps"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             number_laps_win=7,
+                             win_condition=WIN_CONDITION_FIRST_TO_LAP_X,
+                             team_racing_mode=True))
     DB.session.commit()
     setOption("currentFormat", 1)
     server_log("Database reset race formats")
@@ -2874,9 +2891,8 @@ def db_reset_options_defaults():
     setOption("currentLanguage", "")
     setOption("currentProfile", "1")
     setOption("currentFormat", "1")
-    setOption("MinLapSec", "5")
+    setOption("MinLapSec", "10")
     setOption("MinLapBehavior", "0")
-    setOption("TeamRacingMode", "0")
 
     setOption("HistoryExpireDuration", "10000")
     setOption("HistoryMaxOffset", "10")
@@ -2983,7 +2999,6 @@ elif int(getOption('server_api')) < SERVER_API:
             "currentProfile",
             "currentFormat",
             "MinLapSec",
-            "TeamRacingMode"
         ]
         carryOver = {}
         for opt in carryoverOpts:
