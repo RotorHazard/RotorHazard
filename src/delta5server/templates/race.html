@@ -20,6 +20,8 @@
 	$(document).ready(function () {
 		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 		socket.emit('load_data', {'load_types': [
+			'all_languages',
+			'language',
 			'node_data',
 			'frequency_data',
 			'race_format',
@@ -33,6 +35,33 @@
 			'current_heat',
 			'team_racing_stat_if_enb'
 		]});
+
+		socket.on('all_languages', function (msg) {
+			d5rt.language_strings = msg.languages;
+		});
+
+		socket.on('language', function (msg) {
+			$('#set_language').empty();
+			$('#set_language').append('<option value="">English</option>')
+			for (i = 0; i < msg.languages.length; i++) {
+				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+
+			$('#set_voice_string_language').empty();
+			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
+			$('#set_voice_string_language').append('<option value="">English</option>')
+			for (i = 0; i < msg.languages.length; i++) {
+				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+			}
+			$('#set_voice_string_language').val(d5rt.voice_string_language);
+
+			if (msg.language) {
+				d5rt.interface_language = msg.language;
+				$('#set_language').val(msg.language);
+			} else {
+				$('#set_language').selectedIndex = 0;
+			}
+		});
 
 		var heartbeatCounter = 0;
 
@@ -65,15 +94,13 @@
 		$('#set_indicator_volume').val(volume_logsl.position(d5rt.indicator_beep_volume));
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
 
-		// set up RSSI graphing
-		$('.node .race-header').each(function(){
-			var node = $(this);
-			var node_id = parseInt(node.find('button').attr('data-node'));
-			node.before('<div class="rssi-graph"><canvas id="rssi-graph-' + node_id + '"></div>');
-
-			d5rt.nodes[node_id] = new nodeModel();
-			d5rt.nodes[node_id].setup(document.getElementById('rssi-graph-' + node_id));
-		});
+		// set up node local store
+		for (i = 0; i < {{ num_nodes }}; i++) {
+			d5rt.nodes[i] = new nodeModel();
+			// start RSSI graphing
+			d5rt.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
+			d5rt.nodes[i].setup(d5rt.nodes[i].canvas);
+		}
 
 		socket.on('race_elapsed', function (msg) {
 			var response_time = new Date();
@@ -207,7 +234,7 @@
 					d5rt.nodes[i].graph.options.minValue = Math.max(0, Math.min(
 						d5rt.nodes[i].graph.options.minValue,
 						rssiValue,
-						d5rt.nodes[i].enter_at_level - 10,
+						d5rt.nodes[i].exit_at_level - 10,
 					));
 
 					if (d5rt.nodes[i].graphing) {
@@ -243,6 +270,7 @@
 				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
 				d5rt.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
 
+				$('#node_notice_' + i).html(d5rt.nodes[i].checkValues());
 				d5rt.nodes[i].updateThresholds();
 			}
 		});
@@ -253,17 +281,26 @@
 				d5rt.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
 				d5rt.nodes[i].exit_at_level = msg.exit_at_levels[i];
+
+				$('#node_notice_' + i).html(d5rt.nodes[i].checkValues());
+				d5rt.nodes[i].updateThresholds();
 			}
 		});
 
 		socket.on('node_enter_at_level', function (msg) {
 			$('#set_enter_at_level_' + msg.node_index).val(msg.level);
 			d5rt.nodes[msg.node_index].enter_at_level = msg.level;
+
+			$('#node_notice_' + i).html(d5rt.nodes[msg.node_index].checkValues());
+			d5rt.nodes[msg.node_index].updateThresholds();
 		});
 
 		socket.on('node_exit_at_level', function (msg) {
 			$('#set_exit_at_level_' + msg.node_index).val(msg.level);
 			d5rt.nodes[msg.node_index].exit_at_level = msg.level;
+
+			$('#node_notice_' + i).html(d5rt.nodes[msg.node_index].checkValues());
+			d5rt.nodes[msg.node_index].updateThresholds();
 		});
 
 		socket.on('current_laps', function (msg) {
@@ -316,7 +353,7 @@
 			if (d5rt.voice_lap_count) {
 				if (ttstext.length > 0)
 					ttstext += ", ";
-				ttstext += __('Lap') + " " + msg.lap;
+				ttstext += __l('Lap') + " " + msg.lap;
 			}
 
 			if (d5rt.voice_lap_time) {
@@ -328,7 +365,7 @@
 			if (msg.team_name && msg.team_laps && d5rt.voice_team_lap_count) {
 				if (ttstext.length > 0)
 					ttstext += ", ";
-				ttstext += __('Team') + " " + msg.team_name + ", " + __('Lap') + " " + msg.team_laps;
+				ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
 			}
 
 			if (ttstext.length > 0) {
@@ -347,7 +384,7 @@
 
 		socket.on('phonetic_text', function (msg) {
 			if (msg.text) {
-				speak('<div class="speech">' + msg.text + '</div>');
+				speak('<div class="speech">' + __l(msg.text) + '</div>');
 			}
 		})
 
@@ -422,6 +459,7 @@
 			if (!Number.isNaN(data.enter_at_level)) {
 				socket.emit('set_enter_at_level', data);
 				d5rt.nodes[data.node].enter_at_level = data.enter_at_level;
+				d5rt.nodes[data.node].updateThresholds();
 			}
 		});
 
@@ -433,7 +471,33 @@
 			if (!Number.isNaN(data.exit_at_level)) {
 				socket.emit('set_exit_at_level', data);
 				d5rt.nodes[data.node].exit_at_level = data.exit_at_level;
+				d5rt.nodes[data.node].updateThresholds();
 			}
+		});
+
+		$('button.pause_graph').click(function (event) {
+			var node = d5rt.nodes[parseInt($(this).data('node'))]
+			if (node.graphPaused) {
+				node.graph.options.scaleSmoothing = 0.125;
+				node.graph.removeTimeSeries(node.pauseSeries)
+				node.graph.addTimeSeries(node.series, {lineWidth:1.7,
+					strokeStyle:'hsl(214, 53%, 60%)',
+					fillStyle:'hsla(214, 53%, 60%, 0.4)'
+				});
+				node.graph.start();
+			} else {
+				node.graph.stop();
+				node.graphPausedTime = new Date().getTime();
+				node.pauseSeries = node.series;
+				node.graph.options.scaleSmoothing = 1;
+				node.graph.removeTimeSeries(node.series)
+				node.graph.addTimeSeries(node.pauseSeries, {lineWidth:1.7,
+					strokeStyle:'hsl(214, 53%, 60%)',
+					fillStyle:'hsla(214, 53%, 60%, 0.4)'
+				});
+				node.graph.render(node.canvas, node.graphPausedTime);
+			}
+			node.graphPaused = !node.graphPaused;
 		});
 
 		$('button.catch_pass').click(function (event) {
@@ -489,6 +553,11 @@
 			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
 		}
 		$('#set_voice_language').val(d5rt.voice_language);
+
+		$('#set_voice_string_language').change(function (event) {
+			d5rt.voice_string_language = $(this).val();
+			d5rt.saveData();
+		});
 
 		$('#voice_callsign').change(function (event) {
 			d5rt.voice_callsign = $(this).prop('checked');
@@ -753,6 +822,22 @@
 			saveAs(blob, filename+".csv");
 		});
 
+		$('.open-mfp-popup').magnificPopup({
+			type:'inline',
+			midClick: true,
+			callbacks: {
+				open: function(){
+					var node = $.magnificPopup.instance.st.el.data('node');
+					var graph = $('#rssi-graph-' + node);
+					$(this.content).find('.rssi-graph').append(graph);
+				},
+				close: function(){
+					var node = $.magnificPopup.instance.st.el.data('node');
+					var graph = $('#rssi-graph-' + node);
+					$('.rssi-graph.page[data-node="' + node + '"]').prepend(graph);
+				}
+			}
+		});
 	});
 
 	function doSpeak(obj) {
@@ -810,70 +895,73 @@
 		<div class="race-results">
 			{% for node in range(num_nodes) %}
 			<div class="node">
+				<a href="#tuning-detail-{{node}}" data-node="{{ node }}" class="open-mfp-popup">{{ __('Tuning') }}</a>
+				<div class="race-header">
+					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
+					<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">{{ __('Manual') }}</button>
+				</div>
+				<div class="rssi-graph page" data-node="{{ node }}"><canvas id="rssi-graph-{{ node }}"></div>
 				<h4 class="callsign_{{ node }}">
 					{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
 					}}
 				</h4>
 				<div class="crossing crossing_flag_{{ node }}"><span>{{ __('Clear') }}</span></div>
-				<div class="panel collapsing">
-					<div class="panel-header">
-						<h3>▼ {{ __('Tuning') }}</h3>
-					</div>
-					<div class="panel-content">
-						<div class="compact-field">
-							<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
-							<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
-						</div>
-						<div class="compact-field">
-							<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
-							<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
-						</div>
-						<button type="button" class="catch_pass" data-node="{{ node }}" data-method="max" onclick="this.blur();">{{ __('Catch Missed Lap') }}</button>
-						<button type="button" class="catch_pass" data-node="{{ node }}" data-method="min" onclick="this.blur();">{{ __('Force End Crossing') }}</button>
-						<table>
-							<tr class="datarow">
-								<td>{{ __('RSSI') }}</td>
-								<td>
-									<span class="current_rssi_{{ node }}"></span>
-								</td>
-							</tr>
-							<tr class="datarow">
-								<td>{{ __('NodePeak') }}</td>
-								<td>
-									<span class="node_peak_rssi_{{ node }}"></span>
-								</td>
-							</tr>
-							<tr class="datarow">
-								<td>{{ __('PassPeak') }}</td>
-								<td>
-									<span class="pass_peak_rssi_{{ node }}"></span>
-								</td>
-							</tr>
-							<tr class="datarow">
-								<td>{{ __('PassNadir') }}</td>
-								<td>
-									<span class="pass_nadir_rssi_{{ node }}"></span>
-								</td>
-							</tr>
-							<tr class="datarow">
-								<td>{{ __('PassCount') }}</td>
-								<td>
-									<span class="debug_pass_count_{{ node }}"></span>
-								</td>
-							</tr>
-						</table>
-					</div>
-				</div>
-				<div class="race-header">
-					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
-					<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">{{ __('Manual') }}</button>
-				</div>
 				<table class="laps" id="current_laps_{{ node }}">
 					<thead>
 					</thead>
 					<tbody>
 					</tbody>
 				</table>
+
+				<div id="tuning-detail-{{node}}" class="tuning-detail mfp-hide">
+					<h4>{{ __('Tuning: Node') }} {{ node + 1 }}</h4>
+					<div class="rssi-graph popup" data-node="{{ node }}"></div>
+					<button type="button" class="pause_graph" data-node="{{ node }}" onclick="this.blur();">{{ __('Pause/Resume Graph') }}</button>
+
+					<div>
+						<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
+						<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
+					</div>
+					<div>
+						<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
+						<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
+					</div>
+					<button type="button" class="catch_pass" data-node="{{ node }}" data-method="max" onclick="this.blur();">{{ __('Catch Missed Lap') }}</button>
+					<button type="button" class="catch_pass" data-node="{{ node }}" data-method="min" onclick="this.blur();">{{ __('Force End Crossing') }}</button>
+					<table>
+						<tr class="datarow">
+							<td>{{ __('RSSI') }}</td>
+							<td>
+								<span class="current_rssi_{{ node }}"></span>
+							</td>
+						</tr>
+						<tr class="datarow">
+							<td>{{ __('NodePeak') }}</td>
+							<td>
+								<span class="node_peak_rssi_{{ node }}"></span>
+							</td>
+						</tr>
+						<tr class="datarow">
+							<td>{{ __('PassPeak') }}</td>
+							<td>
+								<span class="pass_peak_rssi_{{ node }}"></span>
+							</td>
+						</tr>
+						<tr class="datarow">
+							<td>{{ __('PassNadir') }}</td>
+							<td>
+								<span class="pass_nadir_rssi_{{ node }}"></span>
+							</td>
+						</tr>
+						<tr class="datarow">
+							<td>{{ __('PassCount') }}</td>
+							<td>
+								<span class="debug_pass_count_{{ node }}"></span>
+							</td>
+						</tr>
+					</table>
+					<div id="node_notice_{{ node }}"></div>
+				</div>
 			</div>
 			{% endfor %}
 		</div>
@@ -945,6 +1033,14 @@
 					<label for="set_voice_language">{{ __('Voice Select') }}</label>
 				</div>
 				<div id="voice_select"></div>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_string_language">{{ __('Voice Language') }}</label>
+				</div>
+				<select id="set_voice_string_language">
+					<option>{{ __('Loading...') }}</option>
+				</select>
 			</li>
 			<li>
 				<div class="label-block">

@@ -129,12 +129,9 @@ def getLanguages():
         langs.append(l)
     return langs
 
-def getFullLanguage(lang):
+def getAllLanguages():
     # return full language dictionary
-    if lang:
-        if lang in Languages:
-            return json.dumps(Languages[lang]['values'])
-    return {}
+    return Languages
 
 INTERFACE = get_hardware_interface()
 RACE = get_race_state() # For storing race management variables
@@ -358,14 +355,12 @@ def requires_auth(f):
 @APP.route('/')
 def index():
     '''Route to home page.'''
-    return render_template('home.html', getOption=getOption, __=__,
-        lang=getFullLanguage(getOption('currentLanguage')))
+    return render_template('home.html', getOption=getOption, __=__)
 
 @APP.route('/heats')
 def heats():
     '''Route to heat summary page.'''
-    return render_template('heats.html', getOption=getOption, __=__,
-        lang=getFullLanguage(getOption('currentLanguage')))
+    return render_template('heats.html', getOption=getOption, __=__)
 
 @APP.route('/results')
 def results():
@@ -379,15 +374,13 @@ def results():
     # - One for all rounds, grouped by heats
     # - One for all pilots, sorted by fastest lap and shows average and other stats
     # - One for individual heats
-    return render_template('rounds.html', getOption=getOption, __=__,
-        lang=getFullLanguage(getOption('currentLanguage')))
+    return render_template('rounds.html', getOption=getOption, __=__)
 
 @APP.route('/race')
 @requires_auth
 def race():
     '''Route to race management page.'''
     return render_template('race.html', getOption=getOption, __=__,
-        lang=getFullLanguage(getOption('currentLanguage')),
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat,
         heats=Heat, pilots=Pilot,
@@ -397,7 +390,6 @@ def race():
 def racepublic():
     '''Route to race management page.'''
     return render_template('racepublic.html', getOption=getOption, __=__,
-        lang=getFullLanguage(getOption('currentLanguage')),
         num_nodes=RACE.num_nodes)
 
 @APP.route('/settings')
@@ -406,7 +398,6 @@ def settings():
     '''Route to settings page.'''
 
     return render_template('settings.html', getOption=getOption, __=__,
-        lang=getFullLanguage(getOption('currentLanguage')),
         num_nodes=RACE.num_nodes,
         ConfigFile=Config['GENERAL']['configFile'],
         Debug=Config['GENERAL']['DEBUG'])
@@ -417,7 +408,6 @@ def correction():
     '''Route to node correction page.'''
 
     return render_template('correction.html', getOption=getOption, __=__,
-        lang=getFullLanguage(getOption('currentLanguage')),
         num_nodes=RACE.num_nodes,
         current_profile = getOption("currentProfile"),
         profiles = Profiles)
@@ -426,8 +416,7 @@ def correction():
 def imdtabler():
     '''Route to IMDTabler page.'''
 
-    return render_template('imdtabler.html', getOption=getOption, __=__,
-        lang=getFullLanguage(getOption('currentLanguage')))
+    return render_template('imdtabler.html', getOption=getOption, __=__)
 
 # Debug Routes
 
@@ -435,15 +424,13 @@ def imdtabler():
 @requires_auth
 def hardwarelog():
     '''Route to hardware log page.'''
-    return render_template('hardwarelog.html', getOption=getOption, __=__,
-        lang=getFullLanguage(getOption('currentLanguage')))
+    return render_template('hardwarelog.html', getOption=getOption, __=__)
 
 @APP.route('/database')
 @requires_auth
 def database():
     '''Route to database page.'''
     return render_template('database.html', getOption=getOption, __=__,
-        lang=getFullLanguage(getOption('currentLanguage')),
         pilots=Pilot,
         heats=Heat,
         race_class=RaceClass,
@@ -513,6 +500,8 @@ def on_load_data(data):
             emit_team_racing_stat_if_enb(nobroadcast=True)
         elif load_type == 'language':
             emit_language(nobroadcast=True)
+        elif load_type == 'all_languages':
+            emit_all_languages(nobroadcast=True)
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
 
@@ -1431,6 +1420,16 @@ def emit_language(**params):
         emit('language', emit_payload)
     else:
         SOCKET_IO.emit('language', emit_payload)
+
+def emit_all_languages(**params):
+    '''Emits full language dictionary.'''
+    emit_payload = {
+            'languages': getAllLanguages()
+        }
+    if ('nobroadcast' in params):
+        emit('all_languages', emit_payload)
+    else:
+        SOCKET_IO.emit('all_languages', emit_payload)
 
 def emit_min_lap(**params):
     '''Emits current minimum lap.'''

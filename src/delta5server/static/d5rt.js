@@ -96,14 +96,6 @@ LogSlider.prototype = {
    }
 };
 
-function __(text) {
-	// return translated string
-	if (language_strings[text]) {
-		return language_strings[text]
-	}
-	return text
-}
-
 var globalAudioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
 
 var node_tone = [
@@ -127,6 +119,8 @@ var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 //callback to use on end of tone
 /* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
 function play_beep(duration, frequency, volume, type, fadetime, callback) {
+	globalAudioCtx.resume();
+
 	var oscillator = globalAudioCtx.createOscillator();
 	var gainNode = globalAudioCtx.createGain();
 
@@ -166,7 +160,11 @@ function play_beep(duration, frequency, volume, type, fadetime, callback) {
 
 /* d5rt object for local settings/storage */
 var d5rt = {
-	voice_language: '', // voice type for text-to-speech callouts
+	language_strings: {},
+	interface_language: '',
+	// text-to-speech callout options
+	voice_string_language: 'match-timer', // text source language
+	voice_language: '', // speech synthesis engine (browser-supplied)
 	voice_volume: 1.0, // voice call volume
 	voice_rate: 1.25,  // voice call speak pitch
 	voice_pitch: 1.0,  // voice call speak rate
@@ -193,6 +191,7 @@ var d5rt = {
 		if (!supportsLocalStorage()) {
 			return false;
 		}
+		localStorage['d5rt.voice_string_language'] = JSON.stringify(this.voice_string_language);
 		localStorage['d5rt.voice_language'] = JSON.stringify(this.voice_language);
 		localStorage['d5rt.voice_volume'] = JSON.stringify(this.voice_volume);
 		localStorage['d5rt.voice_rate'] = JSON.stringify(this.voice_rate);
@@ -215,6 +214,9 @@ var d5rt = {
 	},
 	restoreData: function(dataType) {
 		if (supportsLocalStorage()) {
+			if (localStorage['d5rt.voice_string_language']) {
+				this.voice_string_language = JSON.parse(localStorage['d5rt.voice_string_language']);
+			}
 			if (localStorage['d5rt.voice_language']) {
 				this.voice_language = JSON.parse(localStorage['d5rt.voice_language']);
 			}
@@ -275,6 +277,31 @@ var d5rt = {
 	},
 }
 
+function __(text) {
+	// return translated string
+	if (d5rt.language_strings[d5rt.interface_language]) {
+		if (d5rt.language_strings[d5rt.interface_language]['values'][text]) {
+			return d5rt.language_strings[d5rt.interface_language]['values'][text]
+		}
+	}
+	return text
+}
+
+function __l(text) {
+	// return translated string for local voice
+	var lang = d5rt.voice_string_language;
+	if (d5rt.voice_string_language == 'match-timer') {
+		lang = d5rt.interface_language;
+	}
+
+	if (d5rt.language_strings[lang]) {
+		if (d5rt.language_strings[lang]['values'][text]) {
+			return d5rt.language_strings[lang]['values'][text]
+		}
+	}
+	return text
+}
+
 /* Data model for nodes */
 function nodeModel() {
 	this.trigger_rssi = false;
@@ -308,6 +335,7 @@ function nodeModel() {
 		median_separation: false,
 	};
 
+	this.canvas = false;
 	this.graph = new SmoothieChart({
 		responsive: true,
 		millisPerPixel:50,
@@ -324,6 +352,10 @@ function nodeModel() {
 		minValue: 0,
 	});
 	this.series = new TimeSeries();
+
+	this.graphPausedTime = false;
+	this.graphPaused = false;
+	this.pauseSeries = new TimeSeries();
 }
 nodeModel.prototype = {
 	checkValues: function(){
@@ -366,15 +398,18 @@ nodeModel.prototype = {
 			strokeStyle:'hsl(214, 53%, 60%)',
 			fillStyle:'hsla(214, 53%, 60%, 0.4)'
 		});
-		this.graph.streamTo(element, 250); // match delay value to heartbeat in server.py
+		this.graph.streamTo(element, 200); // match delay value to heartbeat in server.py
 	},
 	updateThresholds: function(){
 		this.graph.options.horizontalLines = [
-			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.enter_at_level},
-			{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.node_peak_rssi},
-			{color:'#999', lineWidth:1.7, value: this.exit_at_level},
-			{color:'#666', lineWidth:1.7, value: this.pass_nadir_rssi},
+			{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.enter_at_level}, // red
+			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.exit_at_level}, // orange
+			// {color:'#999', lineWidth:1.7, value: this.node_peak_rssi},
+			// {color:'#666', lineWidth:1.7, value: this.pass_nadir_rssi},
 		];
+		if (this.graphPaused) {
+			this.graph.render(this.canvas, this.graphPausedTime);
+		}
 	}
 }
 
@@ -453,7 +488,7 @@ jQuery(document).ready(function($){
 
 		if(window.location.hash) {
 			var panel = $(window.location.hash);
-			if (panel.length() && panel.children().hasClass('panel-header')) {
+			if (panel.length && panel.children().hasClass('panel-header')) {
 				panel.addClass('open').find('.panel-content').show();
 				location.hash = window.location.hash;
 			}
