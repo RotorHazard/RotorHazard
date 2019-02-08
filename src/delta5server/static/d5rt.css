@@ -1198,3 +1198,52 @@ footer img {
 	height: 2.5em;
 	vertical-align: middle;
 }
+
+/* ************* */
+/* Print Styling */
+/* ************* */
+
+@media print {
+	pre, blockquote {
+		border: 1px solid #999;
+		page-break-inside: avoid;
+	}
+
+	thead {
+		display: table-header-group;
+	}
+
+	tr, img {
+		break-inside: avoid;
+	}
+
+	img {
+		max-width: 100% !important;
+	}
+
+	@page {
+		margin: 0.5cm;
+	}
+
+	p, h2, h3 {
+		orphans: 3;
+		widows: 3;
+	}
+
+	h2, h3 {
+		break-after: avoid;
+	}
+
+	hr {
+		border-top: solid 0.0625em;
+	}
+
+	#banner-msg,
+	body>header {
+		display: none;
+	}
+
+	.panel-content {
+		display: block !important;
+	}
+}
