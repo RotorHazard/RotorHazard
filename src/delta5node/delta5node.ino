@@ -29,8 +29,14 @@
 #include <Wire.h>
 #include <EEPROM.h>
 
-// Node Setup
-// Set to 1-8 for manual selection, or 0 for automatic selection via hardware pin
+
+// ******************************************************************** //
+
+// *** Node Setup — Set node number here (1–8): ***
+#define NODE_NUMBER 0
+
+// Set to 1–8 for manual selection.
+// Or, set to 0 for automatic selection via hardware pin.
 // For automatic selection, ground pins for each node:
 //                pin 4 open    pin 4 grounded
 // ground pin 5   node 1        node 5
@@ -38,7 +44,13 @@
 // ground pin 7   node 3        node 7
 // ground pin 8   node 4        node 8
 
-#define NODE_NUMBER 0
+// See https://github.com/RotorHazard/RotorHazard/blob/master/doc/Software%20Setup.md#receiver-nodes-arduinos
+
+// ******************************************************************** //
+
+
+
+
 
 // i2c address for node
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
