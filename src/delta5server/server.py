@@ -43,6 +43,9 @@ HEAT_ID_NONE = 0  # indicator value for practice heat
 CLASS_ID_NONE = 0  # indicator value for unclassified heat
 FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
+EVENT_RESULTS_CACHE = {} # Cache of results page leaderboards
+EVENT_RESULTS_CACHE_VAILD = False # Whether cache is valid (False = regenerate cache)
+
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
 CONFIG_FILE_NAME = 'config.json'
@@ -662,7 +665,10 @@ def on_set_pilot_position(data):
 
 @SOCKET_IO.on('set_heat_note')
 def on_set_heat_note(data):
-    '''Sets a new pilot in a heat.'''
+    '''Sets name of heat.'''
+    global EVENT_RESULTS_CACHE_VAILD
+    EVENT_RESULTS_CACHE_VAILD = False
+
     heat = data['heat']
     note = data['note']
     db_update = Heat.query.filter_by(heat_id=heat, node_index=0).first()
@@ -699,6 +705,9 @@ def on_add_race_class():
 @SOCKET_IO.on('set_race_class_name')
 def on_set_race_class_name(data):
     '''Sets race class name.'''
+    global EVENT_RESULTS_CACHE_VAILD
+    EVENT_RESULTS_CACHE_VAILD = False
+
     race_class = data['class_id']
     race_class_name = data['class_name']
     db_update = RaceClass.query.get(race_class)
@@ -721,7 +730,7 @@ def on_set_race_class_format(data):
 
 @SOCKET_IO.on('set_race_class_description')
 def on_set_race_class_name(data):
-    '''Sets race class name.'''
+    '''Sets race class description.'''
     race_class = data['class_id']
     race_class_description = data['class_description']
     db_update = RaceClass.query.get(race_class)
@@ -751,6 +760,9 @@ def on_add_pilot():
 @SOCKET_IO.on('set_pilot_callsign')
 def on_set_pilot_callsign(data):
     '''Gets pilot callsign to update database.'''
+    global EVENT_RESULTS_CACHE_VAILD
+    EVENT_RESULTS_CACHE_VAILD = False
+
     pilot_id = data['pilot_id']
     callsign = data['callsign']
     db_update = Pilot.query.get(pilot_id)
@@ -787,6 +799,9 @@ def on_set_pilot_phonetic(data):
 @SOCKET_IO.on('set_pilot_name')
 def on_set_pilot_name(data):
     '''Gets pilot name to update database.'''
+    global EVENT_RESULTS_CACHE_VAILD
+    EVENT_RESULTS_CACHE_VAILD = False
+
     pilot_id = data['pilot_id']
     name = data['name']
     db_update = Pilot.query.get(pilot_id)
@@ -1154,6 +1169,8 @@ def on_race_status():
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
     '''Save current laps data to the database.'''
+    global EVENT_RESULTS_CACHE_VAILD
+    EVENT_RESULTS_CACHE_VAILD = False
     heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first()
     # Get the last saved round for the current heat
     max_round = DB.session.query(DB.func.max(SavedRace.round_id)) \
@@ -1500,59 +1517,69 @@ def emit_round_data_notify(**params):
 
 def emit_round_data(**params):
     '''Emits saved races to rounds page.'''
-    heats = {}
-    for heat in SavedRace.query.with_entities(SavedRace.heat_id).distinct().order_by(SavedRace.heat_id):
-        heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
+    global EVENT_RESULTS_CACHE
+    global EVENT_RESULTS_CACHE_VAILD
 
-        rounds = []
-        for round in SavedRace.query.with_entities(SavedRace.round_id).distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRace.round_id):
-            nodes = []
-            for node in range(RACE.num_nodes):
-                pilot_data = Pilot.query.filter_by( id=Heat.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first()
-                if pilot_data:
-                    nodepilot = pilot_data.callsign
-                    laps = []
-                    for lap in SavedRace.query.filter_by(heat_id=heat.heat_id, round_id=round.round_id, node_index=node).all():
-                        laps.append({
-                                'id': lap.lap_id,
-                                'lap_time_formatted': lap.lap_time_formatted
-                            })
-                    nodes.append({
-                        'pilot': nodepilot,
-                        'laps': laps
-                    })
-            rounds.append({
-                'id': round.round_id,
-                'nodes': nodes,
-                'leaderboard': calc_leaderboard(heat_id=heat.heat_id, round_id=round.round_id)
-            })
-        heats[heat.heat_id] = {
-            'heat_id': heat.heat_id,
-            'note': heatnote,
-            'rounds': rounds,
-            'leaderboard': calc_leaderboard(heat_id=heat.heat_id)
+    if EVENT_RESULTS_CACHE_VAILD:
+        emit_payload = EVENT_RESULTS_CACHE
+
+    else:
+        heats = {}
+        for heat in SavedRace.query.with_entities(SavedRace.heat_id).distinct().order_by(SavedRace.heat_id):
+            heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
+
+            rounds = []
+            for round in SavedRace.query.with_entities(SavedRace.round_id).distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRace.round_id):
+                nodes = []
+                for node in range(RACE.num_nodes):
+                    pilot_data = Pilot.query.filter_by( id=Heat.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first()
+                    if pilot_data:
+                        nodepilot = pilot_data.callsign
+                        laps = []
+                        for lap in SavedRace.query.filter_by(heat_id=heat.heat_id, round_id=round.round_id, node_index=node).all():
+                            laps.append({
+                                    'id': lap.lap_id,
+                                    'lap_time_formatted': lap.lap_time_formatted
+                                })
+                        nodes.append({
+                            'pilot': nodepilot,
+                            'laps': laps
+                        })
+                rounds.append({
+                    'id': round.round_id,
+                    'nodes': nodes,
+                    'leaderboard': calc_leaderboard(heat_id=heat.heat_id, round_id=round.round_id)
+                })
+            heats[heat.heat_id] = {
+                'heat_id': heat.heat_id,
+                'note': heatnote,
+                'rounds': rounds,
+                'leaderboard': calc_leaderboard(heat_id=heat.heat_id)
+            }
+
+        heats_by_class = {}
+        heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
+        for race_class in RaceClass.query.all():
+            heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
+
+        current_classes = {}
+        for race_class in RaceClass.query.all():
+            current_class = {}
+            current_class['id'] = race_class.id
+            current_class['name'] = race_class.name
+            current_class['description'] = race_class.name
+            current_class['leaderboard'] = calc_leaderboard(class_id=race_class.id)
+            current_classes[race_class.id] = current_class
+
+        emit_payload = {
+            'heats': heats,
+            'heats_by_class': heats_by_class,
+            'classes': current_classes,
+            'event_leaderboard': calc_leaderboard()
         }
 
-    heats_by_class = {}
-    heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
-    for race_class in RaceClass.query.all():
-        heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
-
-    current_classes = {}
-    for race_class in RaceClass.query.all():
-        current_class = {}
-        current_class['id'] = race_class.id
-        current_class['name'] = race_class.name
-        current_class['description'] = race_class.name
-        current_class['leaderboard'] = calc_leaderboard(class_id=race_class.id)
-        current_classes[race_class.id] = current_class
-
-    emit_payload = {
-        'heats': heats,
-        'heats_by_class': heats_by_class,
-        'classes': current_classes,
-        'event_leaderboard': calc_leaderboard()
-    }
+        EVENT_RESULTS_CACHE = emit_payload
+        EVENT_RESULTS_CACHE_VAILD = True
 
     if ('nobroadcast' in params):
         emit('round_data', emit_payload)
