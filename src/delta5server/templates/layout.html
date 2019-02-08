@@ -32,11 +32,9 @@
 	<script type="text/javascript" src="./static/d5rt.js"></script>
 	<link rel="stylesheet" href="./static/d5rt.css"></link>
 
-	<!-- Repeated styles for color overrides -->
 	<style>
-	/* ******* */
-	/* Color styles with CSS variables for interface adjustments */
 
+	/* CSS variables for interface adjustments */
 	html {
 		--hue_0: {{ getOption("hue_0") }};
 		--sat_0: {{ getOption("sat_0") }}%;
@@ -50,91 +48,6 @@
 		--lum_1_high: {{ getOption("lum_1_high") }}%;
 		--contrast_1_low: {{ getOption("contrast_1_low") }};
 		--contrast_1_high: {{ getOption("contrast_1_high") }};
-	}
-	a {
-		color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
-	}
-	a:hover {
-		color: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
-	}
-	h2 {
-		background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
-		color: var(--contrast_0_high);
-	}
-	h2:before {
-		background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
-		color: var(--contrast_0_high);
-	}
-	h3 {
-		background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
-		color: var(--contrast_0_low);
-	}
-	h4 {
-		background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
-		color: var(--contrast_1_high);
-	}
-	button, select {
-		border-color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
-		background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
-		background: -moz-linear-gradient(top, hsl(var(--hue_0), var(--sat_0), var(--lum_0_high)) 0%, hsl(var(--hue_0), var(--sat_0), var(--lum_0_low)) 100%);
-		background: -webkit-linear-gradient(top, hsl(var(--hue_0), var(--sat_0), var(--lum_0_high)) 0%,hsl(var(--hue_0), var(--sat_0), var(--lum_0_low)) 100%);
-		background: linear-gradient(to bottom, hsl(var(--hue_0), var(--sat_0), var(--lum_0_high)) 0%,hsl(var(--hue_0), var(--sat_0), var(--lum_0_low)) 100%);
-		color: var(--contrast_0_low);
-	}
-	option {
-		background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
-		color: var(--contrast_0_low);
-	}
-	::-moz-selection,
-	::selection {
-		background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
-		color: var(--contrast_1_high);
-	}
-	.node h3,
-	.node h4 {
-		background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
-		color: var(--contrast_1_high);
-	}
-	.node h5 {
-		background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_low));
-		color: var(--contrast_1_low);
-	}
-	.pilots li .name {
-		color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
-	}
-	.crossing {
-		background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
-		color: var(--contrast_0_low);
-	}
-	.crossing.is-crossing {
-		background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
-		color: var(--contrast_1_high);
-	}
-	.min-lap-warning {
-		background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
-		color: var(--contrast_1_high);
-	}
-	.node-warnings {
-		background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
-		color: var(--contrast_1_high);
-	}
-	.channel-block {
-		background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_low));
-		color: var(--contrast_1_low);
-	}
-	.primary-color {
-		background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
-		background: -moz-linear-gradient(top, hsl(var(--hue_0), var(--sat_0), var(--lum_0_high)) 0%, hsl(var(--hue_0), var(--sat_0), var(--lum_0_low)) 100%);
-		background: -webkit-linear-gradient(top, hsl(var(--hue_0), var(--sat_0), var(--lum_0_high)) 0%,hsl(var(--hue_0), var(--sat_0), var(--lum_0_low)) 100%);
-		background: linear-gradient(to bottom, hsl(var(--hue_0), var(--sat_0), var(--lum_0_high)) 0%,hsl(var(--hue_0), var(--sat_0), var(--lum_0_low)) 100%);
-		color: var(--contrast_0_low);
-	}
-	.secondary-color {
-		background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_low));
-		background: -moz-linear-gradient(top, hsl(var(--hue_1), var(--sat_1), var(--lum_1_high)) 0%, hsl(var(--hue_1), var(--sat_1), var(--lum_1_low)) 100%);
-		background: -webkit-linear-gradient(top, hsl(var(--hue_1), var(--sat_1), var(--lum_1_high)) 0%,hsl(var(--hue_1), var(--sat_1), var(--lum_1_low)) 100%);
-		background: linear-gradient(to bottom, hsl(var(--hue_1), var(--sat_1), var(--lum_1_high)) 0%,hsl(var(--hue_1), var(--sat_1), var(--lum_1_low)) 100%);
-		color: var(--contrast_1_low);
 	}
 
 	</style>
