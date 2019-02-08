@@ -19,6 +19,12 @@
 			}
 		});
 
+		socket.on('round_data_notify', function () {
+			socket.emit('load_data', {'load_types': [
+				'round_data',
+			]});
+		});
+
 		socket.on('round_data', function (msg) {
 			var page = $('.page-rounds')
 			page.empty();

@@ -956,7 +956,7 @@ def on_reset_database(data):
     emit_race_format()
     emit_class_data()
     emit_current_laps()
-    emit_round_data()
+    emit_round_data_notify()
     emit('reset_confirm')
 
 @SOCKET_IO.on('shutdown_pi')
@@ -1175,7 +1175,7 @@ def on_save_laps():
     DB.session.commit()
     server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
     on_clear_laps() # Also clear the current laps
-    emit_round_data() # live update rounds page
+    emit_round_data_notify() # live update rounds page
 
 @SOCKET_IO.on('clear_laps')
 def on_clear_laps():
@@ -1494,6 +1494,10 @@ def emit_current_laps(**params):
     else:
         SOCKET_IO.emit('current_laps', emit_payload)
 
+def emit_round_data_notify(**params):
+    '''Let clients know round data is updated so they can request it.'''
+    SOCKET_IO.emit('round_data_notify')
+
 def emit_round_data(**params):
     '''Emits saved races to rounds page.'''
     heats = {}
@@ -1574,9 +1578,33 @@ def calc_leaderboard(**params):
         USE_ROUND = None
         USE_HEAT = params['heat_id']
 
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
-    profile_freqs = json.loads(profile.frequencies)
+    # Get meta
+    if USE_CURRENT:
+        current_profile = int(getOption("currentProfile"))
+        profile = Profiles.query.get(current_profile)
+        profile_freqs = json.loads(profile.frequencies)
+
+        current_format = int(getOption("currentFormat"))
+    else:
+        if USE_CLASS:
+            current_format = RaceClass.query.get(USE_CLASS).format_id
+
+        elif USE_HEAT:
+            if USE_ROUND:
+                current_format = SavedRace.query.filter_by(heat_id=USE_HEAT, round_id=USE_ROUND).first().format_id
+            else:
+                heat_class = Heat.query.filter_by(heat_id=USE_HEAT).first().class_id
+                if heat_class:
+                    current_format = RaceClass.query.get(heat_class).format_id
+                else:
+                    current_format = None
+        else:
+            current_format = None
+
+    if current_format:
+        race_format = RaceFormat.query.get(current_format)
+    else:
+        race_format = None
 
     # Get the pilot ids for all relevant data
     # Add pilot callsigns
@@ -1586,6 +1614,7 @@ def calc_leaderboard(**params):
     callsigns = []
     team_names = []
     max_laps = []
+
     for pilot in Pilot.query.filter(Pilot.id != PILOT_ID_NONE):
         if USE_CURRENT:
             stat_query = DB.session.query(DB.func.count(CurrentLap.lap_id)) \
@@ -1627,9 +1656,15 @@ def calc_leaderboard(**params):
                 callsigns.append(pilot.callsign)
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
-    # Get the total race time for each pilot
+
     total_time = []
+    last_lap = []
+    average_lap = []
+    fastest_lap = []
+    consecutives = []
+
     for i, pilot in enumerate(pilot_ids):
+        # Get the total race time for each pilot
         if max_laps[i] is 0:
             total_time.append(0) # Add zero if no laps completed
         else:
@@ -1657,9 +1692,8 @@ def calc_leaderboard(**params):
                         .filter_by(pilot_id=pilot)
 
             total_time.append(stat_query.scalar())
-    # Get the last lap for each pilot (current race only)
-    last_lap = []
-    for i, pilot in enumerate(pilot_ids):
+
+        # Get the last lap for each pilot (current race only)
         if max_laps[i] is 0:
             last_lap.append(None) # Add zero if no laps completed
         else:
@@ -1670,9 +1704,8 @@ def calc_leaderboard(**params):
                 last_lap.append(stat_query.first().lap_time)
             else:
                 last_lap.append(None)
-    # Get the average lap time for each pilot
-    average_lap = []
-    for i, pilot in enumerate(pilot_ids):
+
+        # Get the average lap time for each pilot
         if max_laps[i] is 0:
             average_lap.append(0) # Add zero if no laps completed
         else:
@@ -1703,9 +1736,8 @@ def calc_leaderboard(**params):
 
             avg_lap = stat_query.scalar()
             average_lap.append(avg_lap)
-    # Get the fastest lap time for each pilot
-    fastest_lap = []
-    for i, pilot in enumerate(pilot_ids):
+
+        # Get the fastest lap time for each pilot
         if max_laps[i] is 0:
             fastest_lap.append(0) # Add zero if no laps completed
         else:
@@ -1734,9 +1766,7 @@ def calc_leaderboard(**params):
             fast_lap = stat_query.scalar()
             fastest_lap.append(fast_lap)
 
-    # find best consecutive 3 laps
-    consecutives = []
-    for i, pilot in enumerate(pilot_ids):
+        # find best consecutive 3 laps
         races = []
         if USE_CURRENT:
             single_race = DB.session.query(CurrentLap.lap_time) \
@@ -1838,15 +1868,22 @@ def calc_leaderboard(**params):
             'consecutives': time_format(row[6]),
         })
 
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
     leaderboard_output = {
-        'meta': {
-            'team_racing_mode': race_format.team_racing_mode,
-        },
         'by_race_time': leaderboard_total_data,
         'by_fastest_lap': leaderboard_fast_lap_data,
         'by_consecutives': leaderboard_consecutives_data
     }
+
+    if race_format:
+        leaderboard_output['meta'] = {
+            'win_condition': race_format.win_condition,
+            'team_racing_mode': race_format.team_racing_mode,
+        }
+    else:
+        leaderboard_output['meta'] = {
+            'win_condition': WIN_CONDITION_NONE,
+            'team_racing_mode': False
+        }
 
     return leaderboard_output
 
