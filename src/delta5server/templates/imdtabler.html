@@ -1,8 +1,6 @@
 {% extends "layout.html" %} {% block title %}IMDTabler{% endblock %} {% block head %} {% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
 	$(document).ready(function () {
-		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-
 		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',
@@ -72,7 +70,7 @@
 	<table border="0" cellpadding="0" cellspacing="2"><tbody><tr>
 		<td align="right">{{ __('Enter frequencies') }}: </td>
 		<td align="center"><input type="text" size="50" id="freq_list_input"></td>
-		<td align="left"><button type="button" class="" id="view_frequencies" onclick="this.blur();">{{ __('View') }}</button></td>
+		<td align="left"><button id="view_frequencies">{{ __('View') }}</button></td>
 	</tr></tbody></table>
 </div>
 

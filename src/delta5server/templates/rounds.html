@@ -1,8 +1,6 @@
 {% extends "layout.html" %} {% block title %}Rounds{% endblock %} {% block head %} {% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
 	$(document).ready(function () {
-		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-
 		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',

@@ -7,7 +7,6 @@
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 
 	$(document).ready(function () {
-		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',
@@ -137,6 +136,19 @@
 					}
 				}
 			}
+		});
+
+		/* Send Message */
+		$('button#send_message').click(function (event) {
+			var data = {
+				message: $('#message_body').val(),
+				interrupt: $('#message_interrupt').prop('checked')
+			};
+			socket.emit('broadcast_message', data);
+
+			$('#message_body').val('');
+			$('#message_interrupt').prop('checked', false);
+			return false;
 		});
 
 		/* Profiles */
@@ -544,7 +556,7 @@
 					el.append('<label for="phonetic_' + msg.pilot_id[i] + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
 					var phonetic = $('<div class="phonetic">');
 					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.phonetic[i] + '" placeholder="' + __('Phonetic') + '">');
-					phonetic.append('<button type="button" class="speak_pilot" onclick="this.blur();" data-pilot_id="' + msg.pilot_id[i] + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+					phonetic.append('<button class="speak_pilot" data-pilot_id="' + msg.pilot_id[i] + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
 					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilot_id[i] + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '">' + msg.team_options[i] + '</select></div>');
 
@@ -1077,6 +1089,19 @@
 	</div>
 {% endif %}
 
+<!--Client Messaging-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Send Message') }}</h2>
+	</div>
+	<div class="panel-content">
+		<p><label for="message_body" class="screen-reader-text">{{ __('Message Body') }}</label>
+		<input type="text" id="message_body" maxlength="256" placeholder="Message">{{ getOption('eventDescription') }}</textarea></p>
+		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}</label></p>
+		<p><button id="send_message">{{ __('Send Message') }}</button></p>
+	</div>
+</div>
+
 <!--Environment-->
 <div class="panel collapsing">
 	<div class="panel-header">
@@ -1090,8 +1115,8 @@
 			<select id="set_profile">
 				<option>{{ __('Loading...') }}</option>
 			</select>
-			<button type="button" class="" id="add_profile" onclick="this.blur();">+ {{ __('Add Profile') }}</button>
-			<button type="button" class="btn-danger" id="delete_profile" onclick="this.blur();">&#215; {{ __('Remove') }}</button>
+			<button id="add_profile">+ {{ __('Add Profile') }}</button>
+			<button class="btn-danger" id="delete_profile">&#215; {{ __('Remove') }}</button>
 		</div>
 
 		<ol class="form">
@@ -1120,11 +1145,11 @@
 		<!--Apply preset-->
 		<div class="control-set">
 			Preset:
-			<button type="button" class="set_frequency_preset" data-preset="All-N1" onclick="this.blur();">{{ __('Apply Node 1') }}</button>
-			<button type="button" class="set_frequency_preset" data-preset="RB-4" onclick="this.blur();">{{ __('R1367') }}</button>
-			<button type="button" class="set_frequency_preset" data-preset="IMD5C" onclick="this.blur();">{{ __('IMD5C') }}</button>
-			<button type="button" class="set_frequency_preset" data-preset="IMD6C" onclick="this.blur();">{{ __('IMD6C') }}</button>
-			<button type="button" class="set_frequency_preset" data-preset="RB-8" onclick="this.blur();">{{ __('Raceband 8') }}</button>
+			<button class="set_frequency_preset" data-preset="All-N1">{{ __('Apply Node 1') }}</button>
+			<button class="set_frequency_preset" data-preset="RB-4">{{ __('R1367') }}</button>
+			<button class="set_frequency_preset" data-preset="IMD5C">{{ __('IMD5C') }}</button>
+			<button class="set_frequency_preset" data-preset="IMD6C">{{ __('IMD6C') }}</button>
+			<button class="set_frequency_preset" data-preset="RB-8">{{ __('Raceband 8') }}</button>
 		</div>
 
 		<div class="node-list">
@@ -1159,23 +1184,23 @@
 				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
 				<div class="rssi-graph"><canvas id="rssi-graph-{{ node }}"></div>
 				<div class="crossing crossing_flag_{{ node }}">{{ __('Clear') }}</div>
-				<div class="">
-					<button type="button" class="pause_graph" data-node="{{ node }}" onclick="this.blur();">{{ __('Pause/Resume Graph') }}</button>
+				<div>
+					<button class="pause_graph" data-node="{{ node }}">{{ __('Pause/Resume Graph') }}</button>
 
 					<div class="compact-field">
 						<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
 						<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
 					</div>
-					<button type="button" class="cap_enter_at_btn" data-node_index="{{ node }}" onclick="this.blur();">{{ __('Capture') }} &#8593;</button>
+					<button class="cap_enter_at_btn" data-node_index="{{ node }}">{{ __('Capture') }} &#8593;</button>
 
 					<div class="compact-field">
 						<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
 						<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
 					</div>
-					<button type="button" class="cap_exit_at_btn" data-node_index="{{ node }}" onclick="this.blur();">{{ __('Capture') }} &#8593;</button>
+					<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }} &#8593;</button>
 
-					<button type="button" class="catch_pass" data-node="{{ node }}" data-method="max" onclick="this.blur();">{{ __('Catch Missed Lap') }}</button>
-					<button type="button" class="catch_pass" data-node="{{ node }}" data-method="min" onclick="this.blur();">{{ __('Force End Crossing') }}</button>
+					<button class="catch_pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
+					<button class="catch_pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
 				</div>
 				<div id="node_notice_{{ node }}"></div>
 				<table>
@@ -1285,7 +1310,7 @@
 			<p class="form-note">{{ __('Loading...') }}</p>
 		</div>
 		<div class="control-set">
-			<button type="button" class="btn btn-default" id="add_race_class" onclick="this.blur();">+ {{ __('Add Class') }}</button>
+			<button id="add_race_class">+ {{ __('Add Class') }}</button>
 		</div>
 	</div>
 </div>
@@ -1302,7 +1327,7 @@
 			<li>{{ __('Loading...') }}</li>
 		</ol>
 		<div class="control-set">
-			<button type="button" class="btn btn-default" id="add_heat" onclick="this.blur();">+ {{ __('Add Heat') }}</button>
+			<button id="add_heat">+ {{ __('Add Heat') }}</button>
 		</div>
 	</div>
 </div>
@@ -1318,7 +1343,7 @@
 		</ul>
 
 		<div class="control-set">
-			<button type="button" id="add_pilot" onclick="this.blur();">+ {{ __('Add Pilot') }}</button>
+			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
 		</div>
 	</div>
 </div>
@@ -1350,7 +1375,7 @@
 					{{ __('Voice Test') }} &nbsp; &nbsp;
 				</div>
 				<input type="text" id="voice_test_text" value="{{ getOption('timerName') }}">
-				<button type="button" class="button" id="play_voice_test" onclick="this.blur();">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>
+				<button class="button" id="play_voice_test">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>
 			</li>
 			<li>
 				<div class="label-block">
@@ -1427,8 +1452,8 @@
 			<select id="set_race_format">
 				<option>{{ __('Loading...') }}</option>
 			</select>
-			<button type="button" class="" id="add_race_format" onclick="this.blur();">+ {{ __('Duplicate Format') }}</button>
-			<button type="button" class="btn-danger" id="delete_race_format" onclick="this.blur();">&#215; {{ __('Remove') }}</button>
+			<button id="add_race_format">+ {{ __('Duplicate Format') }}</button>
+			<button class="btn-danger" id="delete_race_format">&#215; {{ __('Remove') }}</button>
 		</div>
 
 		<ol class="form">
@@ -1563,7 +1588,7 @@
 	</div>
 	<div class="panel-content">
 		<div class="control-set">
-			<button type="button" class="" id="backup_database" onclick="this.blur();">{{ __('Backup Database') }}</button>
+			<button id="backup_database">{{ __('Backup Database') }}</button>
 			{% if Debug %}<a href="/database" class="debug button-like">{{ __('View Database') }}</a>{% endif %}
 		</div>
 		<div class="control-set">
@@ -1574,7 +1599,7 @@
 				<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
 				<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
 			</select>
-			<button type="button" class="btn-danger" id="reset_database" onclick="this.blur();">{{ __('Clear Data') }}</button>
+			<button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
 		</div>
 		<p id="reset_confirm" style="text-align:center; opacity:0">{{ __('Data Cleared') }}</p>
 	</div>
@@ -1587,7 +1612,7 @@
 	</div>
 	<div class="panel-content">
 		<div class="control-set">
-			<button type="button" class="btn-danger" id="shutdown_pi" onclick="this.blur();">{{ __('Shut Down') }}</button>
+			<button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
 			{% if Debug %}<a href="/hardwarelog" class="debug button-like">{{ __('Log') }}</a>{% endif %}
 		</div>
 

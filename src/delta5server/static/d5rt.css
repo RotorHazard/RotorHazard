@@ -110,6 +110,7 @@ input[type="range"] {
 
 textarea {
 	height: 6em;
+	max-width: 30em;
 }
 
 input[type="checkbox"],
@@ -308,6 +309,67 @@ ol.form li+li {
 	text-transform: none;
 	width: auto;
 	z-index: 100000;
+}
+
+.priority-message-interrupt {
+	position: relative;
+	background: #fff;
+	width: auto;
+	max-width: 20em;
+	margin: 1rem auto;
+	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
+}
+
+.priority-message-interrupt h2 {
+	background: hsl(8.2, 86.5%, 53.7%);
+	background: -moz-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%, hsl(13.1, 64.6%, 37.6%) 100%);
+	background: -webkit-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
+	background: linear-gradient(to bottom, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
+}
+
+.priority-message-interrupt h2::before {
+	content: none;
+}
+
+.priority-message-interrupt .message {
+	padding: 0 1rem 1rem;
+}
+
+.mfp-close {
+	color: #fff;
+	width: 2.4rem;
+	height: 1em;
+	font-size: 1.2rem;
+	line-height: 1;
+	font-family: inherit;
+	font-weight: bold;
+}
+
+.mfp-close-btn-in .mfp-close {
+	color: #fff;
+}
+
+#banner-msg {
+	border-bottom: solid 0.125em hsl(23.1, 64.6%, 37.6%);
+	background: hsl(25, 85%, 55%);
+	color: #000;
+	padding: 0.5rem;
+	text-align: center;
+	position: relative;
+	display: none;
+	border-bottom-color: hsl(var(--hue_1), var(--sat_1), var(--lum_1_low));
+	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
+	color: var(--contrast_1_high);
+}
+
+#banner-dismiss {
+	position: absolute;
+	right: 0;
+	top: 0;
+	font-size: 1.2rem;
+	width: 2rem;
+	line-height: 2;
+	font-weight: bold;
 }
 
 body>header {

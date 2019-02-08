@@ -414,6 +414,37 @@ nodeModel.prototype = {
 }
 
 /* global page behaviors */
+var socket = false;
+var standard_message_queue = [];
+var interrupt_message_queue = [];
+
+function get_standard_message() {
+	msg = standard_message_queue[0];
+	$('#banner-msg .message').html(msg);
+	$('#banner-msg').slideDown();
+}
+
+function get_interrupt_message() {
+	msg = interrupt_message_queue[0];
+
+	var message_el = $('<div class="priority-message-interrupt">');
+	message_el.append('<h2>' + __('Alert') + '</h2>');
+	message_el.append('<div class="message">' + msg + '</div>');
+
+	$.magnificPopup.open({
+		items: {
+			src: message_el,
+			type: 'inline',
+		},
+		callbacks: {
+			afterClose: function(){
+				interrupt_message_queue.shift()
+				if (interrupt_message_queue.length)
+					get_interrupt_message()
+			}
+		}
+	});
+}
 
 if (typeof jQuery != 'undefined') {
 jQuery(document).ready(function($){
@@ -494,6 +525,36 @@ jQuery(document).ready(function($){
 			}
 		}
 	}
+
+	$(document).on('click', 'button', function(el){
+		this.blur();
+	});
+
+	// startup socket connection
+	socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+	socket.on('priority_message', function (msg) {
+		if (msg.interrupt) {
+			interrupt_message_queue.push(msg.message);
+			if (interrupt_message_queue.length == 1) {
+				get_interrupt_message()
+			}
+		} else {
+			standard_message_queue.push(msg.message);
+			if (standard_message_queue.length == 1) {
+				get_standard_message()
+			}
+		}
+	});
+
+	$(document).on('click', '#banner-msg', function(el){
+		$('#banner-msg').slideUp(400, function(){
+			standard_message_queue.shift()
+			if (standard_message_queue.length) {
+				get_standard_message()
+			}
+		});
+	});
 });
 }
 

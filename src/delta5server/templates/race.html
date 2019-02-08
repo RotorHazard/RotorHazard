@@ -5,7 +5,6 @@
 <script type="text/javascript" charset="utf-8">
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 
-	var socket = false;
 	var request_time;
 	var resume_check = true;
 
@@ -18,7 +17,6 @@
 	var checkSpeakQueueFlag = true;
 
 	$(document).ready(function () {
-		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',
@@ -318,7 +316,7 @@
 						$tr = $('<tr>').append(
 							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
 							$('<td colspan="2">').text(node_index.lap_time[j] + ' ').append(
-								$('<button type="button" class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '" onclick="this.blur();">&#215;</button>')
+								$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '">&#215;</button>')
 							)
 						)
 					}
@@ -870,10 +868,10 @@
 				</option>
 				{% endfor %}
 			</select>
-			<button type="button" id="start_race" onclick="this.blur();"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
-			<button type="button" id="stop_race" disabled="disabled" onclick="this.blur();"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
-			<button type="button" id="save_laps" disabled="disabled" onclick="this.blur();"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save Laps') }}</span></button>
-			<button type="button" id="clear_laps" disabled="disabled" onclick="this.blur();"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
+			<button id="start_race"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
+			<button id="stop_race" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
+			<button id="save_laps" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save Laps') }}</span></button>
+			<button id="clear_laps" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
 		</div>
 
 		<!--Display the race leaderboard-->
@@ -888,7 +886,7 @@
 				<a href="#tuning-detail-{{node}}" data-node="{{ node }}" class="open-mfp-popup">{{ __('Tuning') }}</a>
 				<div class="race-header">
 					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
-					<button type="button" class="simulate_lap" data-node="{{ node }}" onclick="this.blur();">{{ __('Manual') }}</button>
+					<button class="simulate_lap" data-node="{{ node }}">{{ __('Manual') }}</button>
 				</div>
 				<div class="rssi-graph page" data-node="{{ node }}"><canvas id="rssi-graph-{{ node }}"></div>
 				<h4 class="callsign_{{ node }}">
@@ -906,7 +904,7 @@
 				<div id="tuning-detail-{{node}}" class="tuning-detail mfp-hide">
 					<h4>{{ __('Tuning: Node') }} {{ node + 1 }}</h4>
 					<div class="rssi-graph popup" data-node="{{ node }}"></div>
-					<button type="button" class="pause_graph" data-node="{{ node }}" onclick="this.blur();">{{ __('Pause/Resume Graph') }}</button>
+					<button class="pause_graph" data-node="{{ node }}">{{ __('Pause/Resume Graph') }}</button>
 
 					<div>
 						<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
@@ -916,8 +914,8 @@
 						<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
 						<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
 					</div>
-					<button type="button" class="catch_pass" data-node="{{ node }}" data-method="max" onclick="this.blur();">{{ __('Catch Missed Lap') }}</button>
-					<button type="button" class="catch_pass" data-node="{{ node }}" data-method="min" onclick="this.blur();">{{ __('Force End Crossing') }}</button>
+					<button class="catch_pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
+					<button class="catch_pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
 					<table>
 						<tr class="datarow">
 							<td>{{ __('RSSI') }}</td>

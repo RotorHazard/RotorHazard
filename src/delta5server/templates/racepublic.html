@@ -2,7 +2,6 @@
 <script type="text/javascript" charset="utf-8">
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 
-	var socket = false;
 	var request_time;
 	var resume_check = true;
 	var buzzer = false;
@@ -12,8 +11,6 @@
 	var checkSpeakQueueFlag = true;
 
 	$(document).ready(function () {
-		socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-
 		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',

@@ -512,6 +512,10 @@ def on_load_data(data):
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
 
+@SOCKET_IO.on('broadcast_message')
+def on_broadcast_message(data):
+    emit_priority_message(data['message'], data['interrupt'])
+
 # Settings socket io events
 
 @SOCKET_IO.on('set_frequency')
@@ -977,6 +981,7 @@ def on_reset_database(data):
 @SOCKET_IO.on('shutdown_pi')
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
+    emit_priority_message(__('Server has shut down.'), True)
     server_log('Shutdown pi')
     os.system("sudo shutdown now")
 
@@ -1348,6 +1353,14 @@ def imdtabler_update_freqs(data):
 
 
 # Socket io emit functions
+
+def emit_priority_message(message, interrupt=False):
+    ''' Emits message to all clients '''
+    emit_payload = {
+        'message': message,
+        'interrupt': interrupt
+    }
+    SOCKET_IO.emit('priority_message', emit_payload)
 
 def emit_race_status(**params):
     '''Emits race status.'''
