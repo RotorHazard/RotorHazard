@@ -141,6 +141,7 @@ RACE = get_race_state() # For storing race management variables
 
 PROGRAM_START = datetime.now()
 RACE_START = datetime.now() # Updated on race start commands
+RACE_DURATION_MS = 0 # calculated when race is stopped
 
 Race_laps_winner_name = None  # set to name of winner in first-to-X-laps race
 RACE_STATUS_TIED_STR = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
@@ -1166,8 +1167,16 @@ def on_start_race(data):
 def on_race_status():
     '''Stops the race and stops registering laps.'''
     RACE.race_status = 2 # To stop registering passed laps, waiting for laps to be cleared
+    global RACE_DURATION_MS # To redefine main program variable
+    RACE_END = datetime.now() # Update the race end time stamp
+
+    delta_time = RACE_END - RACE_START
+    milli_sec = (delta_time.days * 24 * 60 * 60 + delta_time.seconds) \
+        * 1000 + delta_time.microseconds / 1000.0
+    RACE_DURATION_MS = milli_sec
+
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
-    server_log('Race stopped')
+    server_log('Race stopped at {0} ({1})'.format(RACE_END, RACE_DURATION_MS))
     emit_race_status() # Race page, to set race button states
     onoff(strip, Color(255,0,0)) #RED ON
 
@@ -2621,7 +2630,11 @@ def pass_record_callback(node, ms_since_lap):
     global Race_laps_winner_name
     profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
     if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
-        if RACE.race_status is 1:
+        # always count laps if race is running, otherwise test if lap should have counted before race end (RACE_DURATION_MS is invalid while race is in progress)
+        if RACE.race_status is 1 \
+            or (node.lap_ms_since_start >=0 and \
+                node.lap_ms_since_start < RACE_DURATION_MS):
+
             # Get the current pilot id on the node
             pilot_id = Heat.query.filter_by( \
                 heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
