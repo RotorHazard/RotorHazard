@@ -28,6 +28,7 @@ class Node:
         self.history_rssi_min = 0
         self.history_rssi_max = 0
         self.history_lap_time = 0
+        self.under_min_lap_count = 0
 
     def get_settings_json(self):
         return {

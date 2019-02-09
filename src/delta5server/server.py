@@ -1153,6 +1153,8 @@ def on_stage_race(data):
 def on_start_race(data):
     '''Starts the D5 race'''
     time.sleep(data['delay']) # TODO: Make this a non-blocking delay so race can be cancelled inside staging ***
+    for node in INTERFACE.nodes:
+        node.under_min_lap_count = 0
     RACE.race_status = 1 # To enable registering passed laps
     global RACE_START # To redefine main program variable
     RACE_START = datetime.now() # Update the race start time stamp
@@ -1179,6 +1181,13 @@ def on_race_status():
     server_log('Race stopped at {0} ({1})'.format(RACE_END, RACE_DURATION_MS))
     emit_race_status() # Race page, to set race button states
     onoff(strip, Color(255,0,0)) #RED ON
+
+    min_laps_list = []  # show nodes with laps under minimum (if any)
+    for node in INTERFACE.nodes:
+        if node.under_min_lap_count > 0:
+            min_laps_list.append('Node {0} Count={1}'.format(node.index+1, node.under_min_lap_count))
+    if len(min_laps_list) > 0:
+        server_log('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -2603,10 +2612,10 @@ def phonetictime_format(millis):
 
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''
-    if node.lap_ms_since_start >= 0:
-        server_log('Raw pass record: Node: {0}, Lap TimeMS: {1}'.format(node.index+1, node.lap_ms_since_start))
-    else:
-        server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, ms_since_lap))
+    #if node.lap_ms_since_start >= 0:
+    #    server_log('Raw pass record: Node: {0}, Lap TimeMS: {1}'.format(node.index+1, node.lap_ms_since_start))
+    #else:
+    #    server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, ms_since_lap))
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
@@ -2648,15 +2657,25 @@ def pass_record_callback(node, ms_since_lap):
                 race_format = RaceFormat.query.get(int(getOption('currentFormat')))
                 min_lap = int(getOption("MinLapSec"))
                 min_lap_behavior = int(getOption("MinLapBehavior"))
-                if lap_id == 0 or min_lap_behavior == 0 or lap_time > (min_lap * 1000):
+                
+                lap_ok_flag = True
+                if lap_id != 0:  # if initial lap then always accept and don't check lap time; else:
+                    if lap_time < (min_lap * 1000):  # if lap time less than minimum
+                        node.under_min_lap_count += 1
+                        server_log('Pass record under lap minimum ({3}): Node={0}, Lap={1}, LapTime={2}, Count={4}' \
+                                   .format(node.index+1, lap_id, time_format(lap_time), min_lap, node.under_min_lap_count))
+                        if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
+                            lap_ok_flag = False
+                
+                if lap_ok_flag:
                     # Add the new lap to the database
                     DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
                         lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
                         lap_time_formatted=time_format(lap_time)))
                     DB.session.commit()
 
-                    server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
-                        .format(node.index+1, lap_id, time_format(lap_time)))
+                    #server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
+                    #    .format(node.index+1, lap_id, time_format(lap_time)))
                     emit_current_laps() # update all laps on the race page
                     emit_leaderboard() # update leaderboard
 
@@ -2674,9 +2693,6 @@ def pass_record_callback(node, ms_since_lap):
                             team_laps = t_laps_dict[team_name][0]
                         check_emit_team_racing_status(t_laps_dict)
 
-                        if lap_id == 0:
-                            server_log('first Pass record ')
-                            emit_first_pass_registered(node.index) # Sends phonetic data to be spoken on first pass
                         if lap_id > 0:   # send phonetic data to be spoken
                             emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
 
@@ -2691,11 +2707,10 @@ def pass_record_callback(node, ms_since_lap):
                                         team_name == Race_laps_winner_name and \
                                         team_laps >= race_format.number_laps_win:
                                 emit_phonetic_text('Winner is team ' + Race_laps_winner_name)
+                        elif lap_id == 0:
+                            emit_first_pass_registered(node.index) # play first-pass sound
 
                     else:  # not team racing mode
-                        if lap_id == 0:
-                            server_log('first Pass record ')
-                            emit_first_pass_registered(node.index) # Sends phonetic data to be spoken on first pass
                         if lap_id > 0:
                                             # send phonetic data to be spoken
                             if race_format.win_condition != WIN_CONDITION_FIRST_TO_LAP_X or race_format.number_laps_win <= 0:
@@ -2725,6 +2740,8 @@ def pass_record_callback(node, ms_since_lap):
 
                                 else:  # no pilot has won the race; send phonetic data to be spoken
                                     emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+                        elif lap_id == 0:
+                            emit_first_pass_registered(node.index) # play first-pass sound
 
                     if node.index==0:
                         onoff(strip, Color(0,0,255))  #BLUE
@@ -2742,9 +2759,6 @@ def pass_record_callback(node, ms_since_lap):
                         onoff(strip, Color(0,255,0)) #GREEN
                     elif node.index==7:
                         onoff(strip, Color(255,0,0)) #RED
-                else:
-                    server_log('Pass record under lap minimum ({3}): Node: {0}, Lap: {1}, Lap time: {2}' \
-                        .format(node.index+1, lap_id, time_format(lap_time), min_lap))
             else:
                 server_log('Pass record dismissed: Node: {0}, Pilot not defined' \
                     .format(node.index+1))
