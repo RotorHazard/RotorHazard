@@ -670,9 +670,10 @@
 		});
 
 		$('#set_min_lap').change(function (event) {
-			d5rt.min_lap = $(this).val();
+			var min_lap_val = parseInt($(this).val());
+			d5rt.min_lap = min_lap_val;
 			var data = {
-				min_lap: parseInt($(this).val())
+				min_lap: min_lap_val
 			};
 			socket.emit('set_min_lap', data);
 		})
