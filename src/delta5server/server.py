@@ -1116,7 +1116,7 @@ def on_set_team_racing_mode(data):
     race_format = RaceFormat.query.get(last_raceFormat)
     race_format.team_racing_mode = (True if team_racing_mode else False)
     DB.session.commit()
-    server_log("set team racing mode to %s" % enabled_val)
+    server_log("set team racing mode to %s" % team_racing_mode)
 
 # Race management socket io events
 
@@ -1300,7 +1300,8 @@ def on_delete_lap(data):
                 t_laps_dict = get_team_laps_info()[0]
         else:  # if Most Laps Wins race enabled
             t_laps_dict, t_name, pilot_team_dict = get_team_laps_info()
-            check_most_laps_win(node_index, t_laps_dict, pilot_team_dict)
+            if ms_from_race_start() > race_format.race_time_sec*1000:  # if race done
+                check_most_laps_win(node_index, t_laps_dict, pilot_team_dict)
         check_emit_team_racing_status(t_laps_dict)
 
 @SOCKET_IO.on('simulate_lap')
@@ -2138,7 +2139,7 @@ def check_emit_team_racing_status(t_laps_dict=None, **params):
                 Race_laps_winner_name is not RACE_STATUS_CROSSING:
             disp_str += '<span class="team-winner">Winner is Team ' + Race_laps_winner_name + '</span>'
         else:
-            disp_str += Race_laps_winner_name
+            disp_str += '<span class="team-winner">' + Race_laps_winner_name + '</span>'
     #server_log('Team racing status: ' + disp_str)
     emit_team_racing_status(disp_str)
 
@@ -2272,7 +2273,6 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
 
         if win_name:  # if a team looks like the winner
 
-            pass_node_team_laps = -1
                  # make sure there's not a pilot in the process of crossing for a winning lap
             if (Race_laps_winner_name is None or Race_laps_winner_name is RACE_STATUS_TIED_STR or \
                                 Race_laps_winner_name is RACE_STATUS_CROSSING) and pilot_team_dict:
@@ -2306,26 +2306,9 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                                                                                   format(node.index+1))
                                             return
 
-                    # if race currently tied and called from 'pass_record_callback()' then
-                    #  get number of team laps for node/pilot that caused current lap pass
-                    elif Race_laps_winner_name is RACE_STATUS_TIED_STR:
-                        if not node_pilot_dict:
-                            node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                                      filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
-                        pilot_id = node_pilot_dict.get(node.index)
-                        if pilot_id:  # node has pilot assigned to it
-                            team_name = pilot_team_dict[pilot_id]
-                            if team_name:
-                                ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
-                                if ent:
-                                    pass_node_team_laps = ent[0]
-
-                   # if race currently tied and called from 'pass_record_callback()'
-                   #  and team for current-pass pilot is not only one at max lap
+                   # if race currently tied and more than one team at max lap
                    #  then don't stop the tied race in progress
-            if not (Race_laps_winner_name is RACE_STATUS_TIED_STR and \
-                            (pass_node_team_laps < max_lap_count or \
-                            (pass_node_team_laps == max_lap_count and num_max_lap > 1))):
+            if (Race_laps_winner_name is not RACE_STATUS_TIED_STR) or num_max_lap <= 1:
                 Race_laps_winner_name = win_name  # indicate a team has won
                 check_emit_team_racing_status(t_laps_dict)
                 emit_phonetic_text('Race done, winner is team ' + Race_laps_winner_name)
