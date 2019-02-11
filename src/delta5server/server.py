@@ -1152,19 +1152,20 @@ def on_stage_race(data):
 
 @SOCKET_IO.on('start_race')
 def on_start_race(data):
-    '''Starts the D5 race'''
+    '''Starts the race'''
     time.sleep(data['delay']) # TODO: Make this a non-blocking delay so race can be cancelled inside staging ***
-    for node in INTERFACE.nodes:
-        node.under_min_lap_count = 0
-    RACE.race_status = 1 # To enable registering passed laps
-    global RACE_START # To redefine main program variable
-    RACE_START = datetime.now() # Update the race start time stamp
-    global Race_laps_winner_name
-    Race_laps_winner_name = None  # name of winner in first-to-X-laps race
-    INTERFACE.mark_start_time_global()
-    onoff(strip, Color(0,255,0)) #GREEN for GO
-    emit_race_status() # Race page, to set race button states
-    server_log('Race started at {0}'.format(RACE_START))
+    if RACE.race_status != 1: # Only start a race if it is not already in progress
+        for node in INTERFACE.nodes:
+            node.under_min_lap_count = 0
+        RACE.race_status = 1 # To enable registering passed laps
+        global RACE_START # To redefine main program variable
+        RACE_START = datetime.now() # Update the race start time stamp
+        global Race_laps_winner_name
+        Race_laps_winner_name = None  # name of winner in first-to-X-laps race
+        INTERFACE.mark_start_time_global()
+        onoff(strip, Color(0,255,0)) #GREEN for GO
+        emit_race_status() # Race page, to set race button states
+        server_log('Race started at {0}'.format(RACE_START))
 
 @SOCKET_IO.on('stop_race')
 def on_race_status():
