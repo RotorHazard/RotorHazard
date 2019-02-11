@@ -22,6 +22,7 @@
 			'language',
 			'node_data',
 			'frequency_data',
+			'heat_data',
 			'race_format',
 			'node_tuning',
 			'enter_and_exit_at_levels',
@@ -29,7 +30,6 @@
 			'leaderboard',
 			'current_laps',
 			'race_status',
-			'current_heat',
 			'team_racing_stat_if_enb'
 		]});
 
@@ -256,6 +256,25 @@
 			}
 		});
 
+		socket.on('heat_data', function (msg) {
+			$('#set_current_heat').empty();
+			for (var i in msg.heats) {
+				var heat = msg.heats[i];
+				var opt = $('<option value="' + heat.heat_id + '">');
+
+				if (heat.note) {
+					opt.html(heat.note);
+				} else {
+					opt.html(__('Heat') + ' ' + heat.heat_id);
+				}
+				$('#set_current_heat').append(opt);
+			}
+
+			socket.emit('load_data', {'load_types': [
+				'current_heat',
+			]});
+		});
+
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.node_peak_rssi.length; i++) {
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
@@ -388,9 +407,16 @@
 		})
 
 		socket.on('current_heat', function (msg) {
-			$('.current_heat').html('Heat ' + msg.current_heat);
+			$('#set_current_heat').val(msg.current_heat);
 			for (i = 0; i < msg.callsign.length; i++) {
 				$('.callsign_' + i).html(msg.callsign[i] ? msg.callsign[i] : 'None');
+			}
+			if (msg.heat_format) {
+				$('#set_race_format').val(msg.heat_format);
+				$('#set_race_format').trigger('change');
+				$('#set_race_format').prop('disabled', true);
+			} else {
+				$('#set_race_format').prop('disabled', false);
 			}
 		});
 
@@ -857,17 +883,7 @@
 		<div class="control-set">
 			<label for="set_current_heat" class="screen-reader-text">{{ __('Current Heat') }}</label>
 			<select id="set_current_heat">
-				{% for heat in heats.query.filter_by(node_index=0).all() %}
-				<option value="{{ heat.heat_id }}" {% if heat.heat_id|int() == current_heat|int() %}
-						selected="selected"
-					{% endif %}>
-					{% if heat.note %}
-						{{ heat.note }}
-					{% else %}
-						Heat {{ heat.heat_id }}
-					{% endif %}
-				</option>
-				{% endfor %}
+				<option value="">{{ __('Loading...') }}</option>
 			</select>
 			<button id="start_race"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
 			<button id="stop_race" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>

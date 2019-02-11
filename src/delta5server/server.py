@@ -732,6 +732,7 @@ def on_set_race_class_format(data):
     DB.session.commit()
     server_log('Class {0} format: {1}'.format(race_class, race_class_format))
     emit_class_data(noself=True)
+    emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
 
 @SOCKET_IO.on('set_race_class_description')
 def on_set_race_class_name(data):
@@ -2084,12 +2085,20 @@ def emit_current_heat(**params):
                 callsigns.append(None)
         else:
             callsigns.append(None)
-    heat_note = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first().note
+
+    heat_data = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first()
+
+    heat_note = heat_data.note
+
+    heat_format = None
+    if heat_data.class_id != CLASS_ID_NONE:
+        heat_format = RaceClass.query.get(heat_data.class_id).format_id
 
     emit_payload = {
         'current_heat': RACE.current_heat,
         'callsign': callsigns,
-        'heat_note': heat_note
+        'heat_note': heat_note,
+        'heat_format': heat_format
     }
     if ('nobroadcast' in params):
         emit('current_heat', emit_payload)
@@ -2657,7 +2666,7 @@ def pass_record_callback(node, ms_since_lap):
                 race_format = RaceFormat.query.get(int(getOption('currentFormat')))
                 min_lap = int(getOption("MinLapSec"))
                 min_lap_behavior = int(getOption("MinLapBehavior"))
-                
+
                 lap_ok_flag = True
                 if lap_id != 0:  # if initial lap then always accept and don't check lap time; else:
                     if lap_time < (min_lap * 1000):  # if lap time less than minimum
@@ -2666,7 +2675,7 @@ def pass_record_callback(node, ms_since_lap):
                                    .format(node.index+1, lap_id, time_format(lap_time), min_lap, node.under_min_lap_count))
                         if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                             lap_ok_flag = False
-                
+
                 if lap_ok_flag:
                     # Add the new lap to the database
                     DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
@@ -3153,6 +3162,9 @@ db_reset_current_laps()
 current_profile = int(getOption("currentProfile"))
 on_set_profile({'profile': current_profile}, False)
 INTERFACE.set_history_expire_global(int(getOption("HistoryExpireDuration")))
+
+# Set current heat on startup
+RACE.current_heat = Heat.query.first().heat_id
 
 # Test data - Current laps
 # DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
