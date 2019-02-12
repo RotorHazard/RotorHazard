@@ -173,6 +173,7 @@ var d5rt = {
 	voice_team_lap_count: true, // speak team lap counts
 	voice_lap_time: true, // speak lap times
 	voice_race_timer: true, // speak race timer
+	voice_race_winner: true, // speak race winner
 	tone_volume: 1.0, // race stage/start tone volume
 	beep_crossing_entered: false, // beep node crossing entered
 	beep_crossing_exited: false, // beep node crossing exited
@@ -201,6 +202,7 @@ var d5rt = {
 		localStorage['d5rt.voice_team_lap_count'] = JSON.stringify(this.voice_team_lap_count);
 		localStorage['d5rt.voice_lap_time'] = JSON.stringify(this.voice_lap_time);
 		localStorage['d5rt.voice_race_timer'] = JSON.stringify(this.voice_race_timer);
+		localStorage['d5rt.voice_race_winner'] = JSON.stringify(this.voice_race_winner);
 		localStorage['d5rt.tone_volume'] = JSON.stringify(this.tone_volume);
 		localStorage['d5rt.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
 		localStorage['d5rt.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
@@ -243,6 +245,9 @@ var d5rt = {
 			}
 			if (localStorage['d5rt.voice_race_timer']) {
 				this.voice_race_timer = JSON.parse(localStorage['d5rt.voice_race_timer']);
+			}
+			if (localStorage['d5rt.voice_race_winner']) {
+				this.voice_race_winner = JSON.parse(localStorage['d5rt.voice_race_winner']);
 			}
 			if (localStorage['d5rt.tone_volume']) {
 				this.tone_volume = JSON.parse(localStorage['d5rt.tone_volume']);

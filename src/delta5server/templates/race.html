@@ -73,6 +73,7 @@
 		$('#voice_team_lap_count').prop( "checked", d5rt.voice_team_lap_count);
 		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
 		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
+		$('#voice_race_winner').prop( "checked", d5rt.voice_race_winner);
 		$().articulate('volume', d5rt.voice_volume);
 		$('#set_voice_volume').val(volume_logsl.position(d5rt.voice_volume));
 		$('#voice_volume_value').html($('#set_voice_volume').val());
@@ -402,7 +403,9 @@
 
 		socket.on('phonetic_text', function (msg) {
 			if (msg.text) {
-				speak('<div class="speech">' + __l(msg.text) + '</div>');
+				if (!msg.domain || d5rt['voice_' + msg.domain]) {
+					speak('<div class="speech">' + __l(msg.text) + '</div>');
+				}
 			}
 		})
 
@@ -606,6 +609,11 @@
 
 		$('#voice_race_timer').change(function (event) {
 			d5rt.voice_race_timer = $(this).prop('checked');
+			d5rt.saveData();
+		});
+
+		$('#voice_race_winner').change(function (event) {
+			d5rt.voice_race_winner = $(this).prop('checked');
 			d5rt.saveData();
 		});
 
@@ -1048,6 +1056,7 @@
 					<li><label><input type="checkbox" id="voice_lap_time"> {{ __('Lap Time') }}</label></li>
 					<li><label><input type="checkbox" id="voice_race_timer"> {{ __('Race Timer') }}</label></li>
 					<li><label><input type="checkbox" id="voice_team_lap_count"> {{ __('Team Lap Total') }}</label></li>
+					<li><label><input type="checkbox" id="voice_race_winner"> {{ __('Race Winner') }}</label></li>
 				</ul>
 			</li>
 			<li>

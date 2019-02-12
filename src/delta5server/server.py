@@ -2287,7 +2287,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         if tied_flag or max_lap_count <= 0:
             Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
             check_emit_team_racing_status(t_laps_dict)
-            emit_phonetic_text('Race tied')
+            emit_phonetic_text('Race tied', 'race_winner')
             return  # wait for next 'pass_record_callback()' event
 
         if win_name:  # if a team looks like the winner
@@ -2330,7 +2330,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
             if (Race_laps_winner_name is not RACE_STATUS_TIED_STR) or num_max_lap <= 1:
                 Race_laps_winner_name = win_name  # indicate a team has won
                 check_emit_team_racing_status(t_laps_dict)
-                emit_phonetic_text('Race done, winner is team ' + Race_laps_winner_name)
+                emit_phonetic_text('Race done, winner is team ' + Race_laps_winner_name, 'race_winner')
 
         else:    # if no team looks like the winner
             Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
@@ -2365,7 +2365,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
             Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
             if pass_node_index < 0:  # if called from 'race_time_finished()'
                 emit_team_racing_status(Race_laps_winner_name)
-                emit_phonetic_text('Race tied')
+                emit_phonetic_text('Race tied', 'race_winner')
             return
 
         # if any (other) pilot is in the process of crossing the gate and within one lap of
@@ -2411,7 +2411,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                         if Race_laps_winner_name is not RACE_STATUS_TIED_STR:
                             Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
                             emit_team_racing_status(Race_laps_winner_name)
-                            emit_phonetic_text('Race tied')
+                            emit_phonetic_text('Race tied', 'race_winner')
                         return  # wait for next 'pass_record_callback()' event
         #server_log('DEBUG check_most_laps_win win_pilot_id={0}'.format(win_pilot_id))
 
@@ -2422,7 +2422,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
             win_phon_name = Pilot.query.filter_by(id=win_pilot_id).first().phonetic
             if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                 win_phon_name = win_callsign
-            emit_phonetic_text('Race done, winner is ' + win_phon_name)
+            emit_phonetic_text('Race done, winner is ' + win_phon_name, 'race_winner')
         else:
             Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
 
@@ -2458,10 +2458,11 @@ def emit_first_pass_registered(node_idx, **params):
     else:
         SOCKET_IO.emit('first_pass_registered', emit_payload)
 
-def emit_phonetic_text(text_str, **params):
+def emit_phonetic_text(text_str, domain=False, **params):
     '''Emits given phonetic text.'''
     emit_payload = {
-        'text': text_str
+        'text': text_str,
+        'domain': domain
     }
     if ('nobroadcast' in params):
         emit('phonetic_text', emit_payload)
@@ -2716,7 +2717,7 @@ def pass_record_callback(node, ms_since_lap):
                             elif Race_laps_winner_name is not None and \
                                         team_name == Race_laps_winner_name and \
                                         team_laps >= race_format.number_laps_win:
-                                emit_phonetic_text('Winner is team ' + Race_laps_winner_name)
+                                emit_phonetic_text('Winner is team ' + Race_laps_winner_name, 'race_winner')
                         elif lap_id == 0:
                             emit_first_pass_registered(node.index) # play first-pass sound
 
@@ -2746,7 +2747,7 @@ def pass_record_callback(node, ms_since_lap):
                                             if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                                                 win_phon_name = win_callsign
                                             Race_laps_winner_name = win_callsign  # call out winner (once)
-                                            emit_phonetic_text('Winner is ' + win_phon_name)
+                                            emit_phonetic_text('Winner is ' + win_phon_name, 'race_winner')
 
                                 else:  # no pilot has won the race; send phonetic data to be spoken
                                     emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
