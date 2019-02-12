@@ -1070,15 +1070,6 @@
 			socket.emit('LED_RBCHASE');
 			return false;
 		});
-
-		$('.open-mfp-popup').magnificPopup({
-			type:'inline',
-			midClick: true,
-		});
-
-		$('.cancel').click(function() {
-	    	$.magnificPopup.close();
-		});
 	});
 
 	function speak(obj) {

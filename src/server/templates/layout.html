@@ -69,7 +69,15 @@
 				<li><a href="/current">{{ __("Current") }}</a></li>
 				<li class="admin-hide"><a href="/race">{{ __("Run") }}</a></li>
 				<li class="admin-hide"><a href="/settings">{{ __("Settings") }}</a></li>
-				<li class="admin-hide"><a href="/imdtabler">IMDTabler</a></li>
+				<li class="admin-hide extra">
+					<a href="#">...</a>
+					<ul>
+						<li><a href="/imdtabler">{{ __("IMDTabler") }}</a></li>
+						<li><a href="https://github.com/RotorHazard/RotorHazard/tree/master/doc">{{ __("Show documentation (on GitHub)") }}</a></li>
+						<li><a href="https://github.com/RotorHazard/RotorHazard/">{{ __("RotorHazard on GitHub") }}</a></li>
+						<li><a href="#about" class="open-mfp-popup">{{ __("About RotorHazard") }}</a></li>
+					</ul>
+				</li>
 			</ul>
 		</nav>
 	</header>
@@ -80,6 +88,18 @@
 	<footer>
 		<p>Powered by <img src="../static/image/RotorHazard Logo.svg" alt="RotorHazard / FPV Race Timer" /></p>
 	</footer>
+
+	<div id="about" class="mfp-hide popup-basic">
+		<h2>{{ __("About RotorHazard") }}</h2>
+		<div class="popup-content">
+			<ul>
+				<li>Version: 1.1.0</li>
+				<li>Server API: 11</li>
+				<li>Node API: --</li>
+				<li>Recommended Node API: 12</li>
+			</ul>
+		</div>
+	</div>
 </body>
 
 </html>
