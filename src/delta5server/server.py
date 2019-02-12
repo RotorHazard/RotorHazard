@@ -44,7 +44,7 @@ CLASS_ID_NONE = 0  # indicator value for unclassified heat
 FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
 EVENT_RESULTS_CACHE = {} # Cache of results page leaderboards
-EVENT_RESULTS_CACHE_VAILD = False # Whether cache is valid (False = regenerate cache)
+EVENT_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
 
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
@@ -671,8 +671,8 @@ def on_set_pilot_position(data):
 @SOCKET_IO.on('set_heat_note')
 def on_set_heat_note(data):
     '''Sets name of heat.'''
-    global EVENT_RESULTS_CACHE_VAILD
-    EVENT_RESULTS_CACHE_VAILD = False
+    global EVENT_RESULTS_CACHE_VALID
+    EVENT_RESULTS_CACHE_VALID = False
 
     heat = data['heat']
     note = data['note']
@@ -710,8 +710,8 @@ def on_add_race_class():
 @SOCKET_IO.on('set_race_class_name')
 def on_set_race_class_name(data):
     '''Sets race class name.'''
-    global EVENT_RESULTS_CACHE_VAILD
-    EVENT_RESULTS_CACHE_VAILD = False
+    global EVENT_RESULTS_CACHE_VALID
+    EVENT_RESULTS_CACHE_VALID = False
 
     race_class = data['class_id']
     race_class_name = data['class_name']
@@ -766,8 +766,8 @@ def on_add_pilot():
 @SOCKET_IO.on('set_pilot_callsign')
 def on_set_pilot_callsign(data):
     '''Gets pilot callsign to update database.'''
-    global EVENT_RESULTS_CACHE_VAILD
-    EVENT_RESULTS_CACHE_VAILD = False
+    global EVENT_RESULTS_CACHE_VALID
+    EVENT_RESULTS_CACHE_VALID = False
 
     pilot_id = data['pilot_id']
     callsign = data['callsign']
@@ -805,8 +805,8 @@ def on_set_pilot_phonetic(data):
 @SOCKET_IO.on('set_pilot_name')
 def on_set_pilot_name(data):
     '''Gets pilot name to update database.'''
-    global EVENT_RESULTS_CACHE_VAILD
-    EVENT_RESULTS_CACHE_VAILD = False
+    global EVENT_RESULTS_CACHE_VALID
+    EVENT_RESULTS_CACHE_VALID = False
 
     pilot_id = data['pilot_id']
     name = data['name']
@@ -1194,8 +1194,8 @@ def on_race_status():
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
     '''Save current laps data to the database.'''
-    global EVENT_RESULTS_CACHE_VAILD
-    EVENT_RESULTS_CACHE_VAILD = False
+    global EVENT_RESULTS_CACHE_VALID
+    EVENT_RESULTS_CACHE_VALID = False
     heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first()
     # Get the last saved round for the current heat
     max_round = DB.session.query(DB.func.max(SavedRace.round_id)) \
@@ -1552,9 +1552,9 @@ def emit_round_data_notify(**params):
 def emit_round_data(**params):
     '''Emits saved races to rounds page.'''
     global EVENT_RESULTS_CACHE
-    global EVENT_RESULTS_CACHE_VAILD
+    global EVENT_RESULTS_CACHE_VALID
 
-    if EVENT_RESULTS_CACHE_VAILD:
+    if EVENT_RESULTS_CACHE_VALID:
         emit_payload = EVENT_RESULTS_CACHE
 
     else:
@@ -1613,7 +1613,7 @@ def emit_round_data(**params):
         }
 
         EVENT_RESULTS_CACHE = emit_payload
-        EVENT_RESULTS_CACHE_VAILD = True
+        EVENT_RESULTS_CACHE_VALID = True
 
     if ('nobroadcast' in params):
         emit('round_data', emit_payload)
