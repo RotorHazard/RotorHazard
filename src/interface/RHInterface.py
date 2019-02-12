@@ -1,4 +1,4 @@
-'''Delta 5 hardware interface layer.'''
+'''RotorHazard hardware interface layer.'''
 
 import smbus # For i2c comms
 import gevent # For threads and timing
@@ -70,7 +70,7 @@ def validate_checksum(data):
     return checksum == data[-1]
 
 
-class Delta5Interface(BaseHardwareInterface):
+class RHInterface(BaseHardwareInterface):
     def __init__(self):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
@@ -94,7 +94,7 @@ class Delta5Interface(BaseHardwareInterface):
                 node = Node() # New node instance
                 node.i2c_addr = addr # Set current loop i2c_addr
                 node.index = index
-                self.nodes.append(node) # Add new node to Delta5Interface
+                self.nodes.append(node) # Add new node to RHInterface
             except IOError as err:
                 print "No node at address {0}".format(addr)
             gevent.sleep(I2C_CHILL_TIME)
@@ -131,7 +131,7 @@ class Delta5Interface(BaseHardwareInterface):
     def log(self, message):
         '''Hardware log of messages.'''
         if callable(self.hardware_log_callback):
-            string = 'Delta 5 Log: {0}'.format(message)
+            string = 'Interface: {0}'.format(message)
             self.hardware_log_callback(string)
 
     #
@@ -506,5 +506,5 @@ class Delta5Interface(BaseHardwareInterface):
         return None
 
 def get_hardware_interface():
-    '''Returns the delta 5 interface object.'''
-    return Delta5Interface()
+    '''Returns the RotorHazard interface object.'''
+    return RHInterface()

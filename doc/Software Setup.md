@@ -3,7 +3,7 @@
 ## Receiver Nodes (Arduinos)
 Note: The latest Arduino IDE (1.8+) is required from https://www.arduino.cc/en/Main/Software
 
-Open 'RotorHazard/src/delta5node/delta5node.ino' in the Arduino IDE.
+Open 'RotorHazard/src/node/node.ino' in the Arduino IDE.
 
 Configure the '#define NODE_NUMBER' line of the .ino for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
 ```
@@ -11,14 +11,14 @@ Configure the '#define NODE_NUMBER' line of the .ino for each node before upload
 #define NODE_NUMBER 1
 ```
 
-Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:  
-node #1: ground pin 5  
-node #2: ground pin 6  
-node #3: ground pin 7  
-node #4: ground pin 8  
-node #5: ground pin 5 and pin 4  
-node #6: ground pin 6 and pin 4  
-node #7: ground pin 7 and pin 4  
+Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:
+node #1: ground pin 5
+node #2: ground pin 6
+node #3: ground pin 7
+node #4: ground pin 8
+node #5: ground pin 5 and pin 4
+node #6: ground pin 6 and pin 4
+node #7: ground pin 7 and pin 4
 node #8: ground pin 8 and pin 4
 
 ## System (Raspberry Pi)
@@ -66,7 +66,7 @@ rm temp.zip
 
 Install web server dependencies:
 ```
-cd /home/pi/RotorHazard/src/delta5server
+cd /home/pi/RotorHazard/src/server
 sudo pip install -r requirements.txt
 ```
 
@@ -74,7 +74,7 @@ Update permissions in working folder:
 ```
 cd ~
 cd /home/pi/RotorHazard/src
-sudo chmod 777 delta5server 
+sudo chmod 777 server
 ```
 
 ### WS2812b LED Support
@@ -109,12 +109,12 @@ sudo reboot
 
 ### Starting the System
 
-The following instructions will start the web server on the raspberry pi, allowing full control and configuration of the system to run races and save lap times.  
+The following instructions will start the web server on the raspberry pi, allowing full control and configuration of the system to run races and save lap times.
 
 #### Manual Start
 Open a terminal and enter the following:
 ```
-cd /home/pi/RotorHazard/src/delta5server
+cd /home/pi/RotorHazard/src/server
 python server.py
 ```
 The server may be stopped by hitting Ctrl-C
@@ -131,7 +131,7 @@ Description=RotorHazard Server
 After=multi-user.target
 
 [Service]
-WorkingDirectory=/home/pi/RotorHazard/src/delta5server
+WorkingDirectory=/home/pi/RotorHazard/src/server
 ExecStart=/usr/bin/python server.py
 
 [Install]
@@ -159,6 +159,6 @@ sudo shutdown now
 
 -----------------------------
 
-See Also:  
-[doc/Hardware Setup.md](Hardware%20Setup.md)  
+See Also:
+[doc/Hardware Setup.md](Hardware%20Setup.md)
 [doc/User Guide.md](User%20Guide.md)

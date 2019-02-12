@@ -34,7 +34,7 @@
 		]});
 
 		socket.on('all_languages', function (msg) {
-			d5rt.language_strings = msg.languages;
+			rotorhazard.language_strings = msg.languages;
 		});
 
 		socket.on('language', function (msg) {
@@ -50,10 +50,10 @@
 			for (i = 0; i < msg.languages.length; i++) {
 				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
-			$('#set_voice_string_language').val(d5rt.voice_string_language);
+			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
 
 			if (msg.language) {
-				d5rt.interface_language = msg.language;
+				rotorhazard.interface_language = msg.language;
 				$('#set_language').val(msg.language);
 			} else {
 				$('#set_language').selectedIndex = 0;
@@ -63,41 +63,41 @@
 		var heartbeatCounter = 0;
 
 		// set admin flag
-		d5rt.admin = true;
-		d5rt.saveData();
+		rotorhazard.admin = true;
+		rotorhazard.saveData();
 		$('nav li').removeClass('admin-hide');
 
 		// populate voice controls
-		$('#voice_callsign').prop( "checked", d5rt.voice_callsign);
-		$('#voice_lap_count').prop( "checked", d5rt.voice_lap_count);
-		$('#voice_team_lap_count').prop( "checked", d5rt.voice_team_lap_count);
-		$('#voice_lap_time').prop( "checked", d5rt.voice_lap_time);
-		$('#voice_race_timer').prop( "checked", d5rt.voice_race_timer);
-		$('#voice_race_winner').prop( "checked", d5rt.voice_race_winner);
-		$().articulate('volume', d5rt.voice_volume);
-		$('#set_voice_volume').val(volume_logsl.position(d5rt.voice_volume));
+		$('#voice_callsign').prop( "checked", rotorhazard.voice_callsign);
+		$('#voice_lap_count').prop( "checked", rotorhazard.voice_lap_count);
+		$('#voice_team_lap_count').prop( "checked", rotorhazard.voice_team_lap_count);
+		$('#voice_lap_time').prop( "checked", rotorhazard.voice_lap_time);
+		$('#voice_race_timer').prop( "checked", rotorhazard.voice_race_timer);
+		$('#voice_race_winner').prop( "checked", rotorhazard.voice_race_winner);
+		$().articulate('volume', rotorhazard.voice_volume);
+		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
 		$('#voice_volume_value').html($('#set_voice_volume').val());
-		$().articulate('rate', d5rt.voice_rate);
-		$('#voice_rate_value').html(d5rt.voice_rate.toFixed(2));
-		$('#set_voice_rate').val(d5rt.voice_rate);
-		$().articulate('pitch', d5rt.voice_pitch);
-		$('#voice_pitch_value').html(d5rt.voice_pitch.toFixed(2));
-		$('#set_voice_pitch').val(d5rt.voice_pitch);
-		$('#set_tone_volume').val(volume_logsl.position(d5rt.tone_volume));
+		$().articulate('rate', rotorhazard.voice_rate);
+		$('#voice_rate_value').html(rotorhazard.voice_rate.toFixed(2));
+		$('#set_voice_rate').val(rotorhazard.voice_rate);
+		$().articulate('pitch', rotorhazard.voice_pitch);
+		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
+		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
+		$('#set_tone_volume').val(volume_logsl.position(rotorhazard.tone_volume));
 		$('#tone_volume_value').html($('#set_tone_volume').val());
-		$('#beep_crossing_entered').prop("checked", d5rt.beep_crossing_entered);
-		$('#beep_crossing_exited').prop("checked", d5rt.beep_crossing_exited);
-		$('#beep_manual_lap_button').prop("checked", d5rt.beep_manual_lap_button);
-		$('#beep_on_first_pass_button').prop("checked", d5rt.beep_on_first_pass_button);
-		$('#set_indicator_volume').val(volume_logsl.position(d5rt.indicator_beep_volume));
+		$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
+		$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
+		$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
+		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
+		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
 
 		// set up node local store
 		for (i = 0; i < {{ num_nodes }}; i++) {
-			d5rt.nodes[i] = new nodeModel();
+			rotorhazard.nodes[i] = new nodeModel();
 			// start RSSI graphing
-			d5rt.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
-			d5rt.nodes[i].setup(d5rt.nodes[i].canvas);
+			rotorhazard.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
+			rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
 		}
 
 		socket.on('race_elapsed', function (msg) {
@@ -195,7 +195,7 @@
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
 				heartbeatCounter = 0;
 
-				if (d5rt.collecting) {
+				if (rotorhazard.collecting) {
 					var timedump = {
 						timestamp: new Date(),
 						nodes: [],
@@ -210,7 +210,7 @@
 				for (i = 0; i < msg.current_rssi.length; i++) {
 					var rssiValue = msg.current_rssi[i];
 
-					if (d5rt.nodes[i].frequency == 0) {
+					if (rotorhazard.nodes[i].frequency == 0) {
 						rssiValue = 0;
 					}
 
@@ -223,26 +223,26 @@
 						$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
 					}
 
-					d5rt.nodes[i].graph.options.maxValue = Math.max(
+					rotorhazard.nodes[i].graph.options.maxValue = Math.max(
 						rssiValue,
-						d5rt.nodes[i].node_peak_rssi + 1,
-						d5rt.nodes[i].enter_at_level + 10,
+						rotorhazard.nodes[i].node_peak_rssi + 1,
+						rotorhazard.nodes[i].enter_at_level + 10,
 					);
 
-					d5rt.nodes[i].graph.options.minValue = Math.max(0, Math.min(
-						d5rt.nodes[i].graph.options.minValue,
+					rotorhazard.nodes[i].graph.options.minValue = Math.max(0, Math.min(
+						rotorhazard.nodes[i].graph.options.minValue,
 						rssiValue,
-						d5rt.nodes[i].exit_at_level - 10,
+						rotorhazard.nodes[i].exit_at_level - 10,
 					));
 
-					if (d5rt.nodes[i].graphing) {
-						d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+					if (rotorhazard.nodes[i].graphing) {
+						rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
 					} else {
 						if (rssiValue) {
-							d5rt.nodes[i].graphing = true;
-							d5rt.nodes[i].graph.options.maxValue = rssiValue + 100;
-							d5rt.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
-							d5rt.nodes[i].series.append(new Date().getTime(), rssiValue);
+							rotorhazard.nodes[i].graphing = true;
+							rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
+							rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
+							rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
 						}
 					}
 				}
@@ -252,7 +252,7 @@
 		socket.on('frequency_data', function (msg) {
 			for (i = 0; i < msg.frequency.length; i++) {
 				$('#s_channel_' + i).val(msg.frequency[i]);
-				d5rt.nodes[i].frequency = msg.frequency[i];
+				rotorhazard.nodes[i].frequency = msg.frequency[i];
 				freq.updateBlocks();
 			}
 		});
@@ -283,41 +283,41 @@
 				$('.pass_nadir_rssi_' + i).html(msg.pass_nadir_rssi[i]);
 				$('.debug_pass_count_' + i).html(msg.debug_pass_count[i]);
 
-				d5rt.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
-				d5rt.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
-				d5rt.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
+				rotorhazard.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
+				rotorhazard.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
+				rotorhazard.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
 
-				$('#node_notice_' + i).html(d5rt.nodes[i].checkValues());
-				d5rt.nodes[i].updateThresholds();
+				$('#node_notice_' + i).html(rotorhazard.nodes[i].checkValues());
+				rotorhazard.nodes[i].updateThresholds();
 			}
 		});
 
 		socket.on('enter_and_exit_at_levels', function (msg) {
 			for (i = 0; i < msg.enter_at_levels.length; i++) {
 				$('#set_enter_at_level_' + i).val(msg.enter_at_levels[i]);
-				d5rt.nodes[i].enter_at_level = msg.enter_at_levels[i];
+				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
-				d5rt.nodes[i].exit_at_level = msg.exit_at_levels[i];
+				rotorhazard.nodes[i].exit_at_level = msg.exit_at_levels[i];
 
-				$('#node_notice_' + i).html(d5rt.nodes[i].checkValues());
-				d5rt.nodes[i].updateThresholds();
+				$('#node_notice_' + i).html(rotorhazard.nodes[i].checkValues());
+				rotorhazard.nodes[i].updateThresholds();
 			}
 		});
 
 		socket.on('node_enter_at_level', function (msg) {
 			$('#set_enter_at_level_' + msg.node_index).val(msg.level);
-			d5rt.nodes[msg.node_index].enter_at_level = msg.level;
+			rotorhazard.nodes[msg.node_index].enter_at_level = msg.level;
 
-			$('#node_notice_' + i).html(d5rt.nodes[msg.node_index].checkValues());
-			d5rt.nodes[msg.node_index].updateThresholds();
+			$('#node_notice_' + i).html(rotorhazard.nodes[msg.node_index].checkValues());
+			rotorhazard.nodes[msg.node_index].updateThresholds();
 		});
 
 		socket.on('node_exit_at_level', function (msg) {
 			$('#set_exit_at_level_' + msg.node_index).val(msg.level);
-			d5rt.nodes[msg.node_index].exit_at_level = msg.level;
+			rotorhazard.nodes[msg.node_index].exit_at_level = msg.level;
 
-			$('#node_notice_' + i).html(d5rt.nodes[msg.node_index].checkValues());
-			d5rt.nodes[msg.node_index].updateThresholds();
+			$('#node_notice_' + i).html(rotorhazard.nodes[msg.node_index].checkValues());
+			rotorhazard.nodes[msg.node_index].updateThresholds();
 		});
 
 		socket.on('current_laps', function (msg) {
@@ -340,7 +340,7 @@
 							)
 						)
 					}
-					if (j && node_index.lap_raw[j] < (d5rt.min_lap * 1000)) {
+					if (j && node_index.lap_raw[j] < (rotorhazard.min_lap * 1000)) {
 						$tr.addClass('min-lap-warning');
 					}
 					$tr.appendTo('#current_laps_' + i);
@@ -359,28 +359,28 @@
 		});
 
 		socket.on('phonetic_data', function (msg) {
-			if (d5rt.min_lap * 1000 < msg.raw_time) {
+			if (rotorhazard.min_lap * 1000 < msg.raw_time) {
 				var ttstext = '';
 
-				if (d5rt.voice_callsign) {
+				if (rotorhazard.voice_callsign) {
 					ttstext = msg.callsign;
 					if (msg.pilot)
 						ttstext = msg.pilot;
 				}
 
-				if (d5rt.voice_lap_count) {
+				if (rotorhazard.voice_lap_count) {
 					if (ttstext.length > 0)
 						ttstext += ", ";
 					ttstext += __l('Lap') + " " + msg.lap;
 				}
 
-				if (d5rt.voice_lap_time) {
+				if (rotorhazard.voice_lap_time) {
 					if (ttstext.length > 0)
 						ttstext += ", ";
 					ttstext += msg.phonetic;
 				}
 
-				if (msg.team_name && msg.team_laps && d5rt.voice_team_lap_count) {
+				if (msg.team_name && msg.team_laps && rotorhazard.voice_team_lap_count) {
 					if (ttstext.length > 0)
 						ttstext += ", ";
 					ttstext += __l('Team') + " " + msg.team_name + ", " + __l('Lap') + " " + msg.team_laps;
@@ -393,17 +393,17 @@
 		})
 
 		socket.on('first_pass_registered', function (msg) {
-			if (!d5rt.beep_crossing_exited && d5rt.beep_on_first_pass_button) {
-				play_beep(35, node_tone[msg.node_index], d5rt.indicator_beep_volume, 'sawtooth', 0.02);
+			if (!rotorhazard.beep_crossing_exited && rotorhazard.beep_on_first_pass_button) {
+				play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
 				setTimeout(function(tone){
-					play_beep(35, node_tone[tone], d5rt.indicator_beep_volume, 'sawtooth', );
+					play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth', );
 				}, 70, msg.node_index);
 			}
 		});
 
 		socket.on('phonetic_text', function (msg) {
 			if (msg.text) {
-				if (!msg.domain || d5rt['voice_' + msg.domain]) {
+				if (!msg.domain || rotorhazard['voice_' + msg.domain]) {
 					speak('<div class="speech">' + __l(msg.text) + '</div>');
 				}
 			}
@@ -449,7 +449,7 @@
 
 				$('button#stop_race').prop('disabled', true);
 
-				d5rt.collecting = 'race';
+				rotorhazard.collecting = 'race';
 				racedump.timestamp = new Date();
 				racedump.timedata = [];
 			}, server_delay);
@@ -486,8 +486,8 @@
 			};
 			if (!Number.isNaN(data.enter_at_level)) {
 				socket.emit('set_enter_at_level', data);
-				d5rt.nodes[data.node].enter_at_level = data.enter_at_level;
-				d5rt.nodes[data.node].updateThresholds();
+				rotorhazard.nodes[data.node].enter_at_level = data.enter_at_level;
+				rotorhazard.nodes[data.node].updateThresholds();
 			}
 		});
 
@@ -498,13 +498,13 @@
 			};
 			if (!Number.isNaN(data.exit_at_level)) {
 				socket.emit('set_exit_at_level', data);
-				d5rt.nodes[data.node].exit_at_level = data.exit_at_level;
-				d5rt.nodes[data.node].updateThresholds();
+				rotorhazard.nodes[data.node].exit_at_level = data.exit_at_level;
+				rotorhazard.nodes[data.node].updateThresholds();
 			}
 		});
 
 		$('button.pause_graph').click(function (event) {
-			var node = d5rt.nodes[parseInt($(this).data('node'))]
+			var node = rotorhazard.nodes[parseInt($(this).data('node'))]
 			if (node.graphPaused) {
 				node.graph.options.scaleSmoothing = 0.125;
 				node.graph.removeTimeSeries(node.pauseSeries)
@@ -538,8 +538,8 @@
 		});
 
 		$('button.simulate_lap').click(function (event) {
-			if (d5rt.beep_manual_lap_button) {
-				play_beep(35, node_tone[$(this).data('node')], d5rt.indicator_beep_volume, 'sawtooth');
+			if (rotorhazard.beep_manual_lap_button) {
+				play_beep(35, node_tone[$(this).data('node')], rotorhazard.indicator_beep_volume, 'sawtooth');
 			}
 
 			var data = {
@@ -566,11 +566,11 @@
 		});
 
 		/* Voice */
-		$('#beep_on_first_pass_button').prop('disabled', d5rt.beep_crossing_exited);
+		$('#beep_on_first_pass_button').prop('disabled', rotorhazard.beep_crossing_exited);
 
 		$(document).on('change', '#set_voice_language', function (event) {
-			d5rt.voice_language = $(this).val();
-			d5rt.saveData();
+			rotorhazard.voice_language = $(this).val();
+			rotorhazard.saveData();
 		});
 
 		// construct language selection
@@ -580,41 +580,41 @@
 		for (var i in voices) {
 			$('#set_voice_language').append('<option>'+ voices[i].name + '</option>');
 		}
-		$('#set_voice_language').val(d5rt.voice_language);
+		$('#set_voice_language').val(rotorhazard.voice_language);
 
 		$('#set_voice_string_language').change(function (event) {
-			d5rt.voice_string_language = $(this).val();
-			d5rt.saveData();
+			rotorhazard.voice_string_language = $(this).val();
+			rotorhazard.saveData();
 		});
 
 		$('#voice_callsign').change(function (event) {
-			d5rt.voice_callsign = $(this).prop('checked');
-			d5rt.saveData();
+			rotorhazard.voice_callsign = $(this).prop('checked');
+			rotorhazard.saveData();
 		});
 
 		$('#voice_lap_count').change(function (event) {
-			d5rt.voice_lap_count = $(this).prop('checked');
-			d5rt.saveData();
+			rotorhazard.voice_lap_count = $(this).prop('checked');
+			rotorhazard.saveData();
 		});
 
 		$('#voice_team_lap_count').change(function (event) {
-			d5rt.voice_team_lap_count = $(this).prop('checked');
-			d5rt.saveData();
+			rotorhazard.voice_team_lap_count = $(this).prop('checked');
+			rotorhazard.saveData();
 		});
 
 		$('#voice_lap_time').change(function (event) {
-			d5rt.voice_lap_time = $(this).prop('checked');
-			d5rt.saveData();
+			rotorhazard.voice_lap_time = $(this).prop('checked');
+			rotorhazard.saveData();
 		});
 
 		$('#voice_race_timer').change(function (event) {
-			d5rt.voice_race_timer = $(this).prop('checked');
-			d5rt.saveData();
+			rotorhazard.voice_race_timer = $(this).prop('checked');
+			rotorhazard.saveData();
 		});
 
 		$('#voice_race_winner').change(function (event) {
-			d5rt.voice_race_winner = $(this).prop('checked');
-			d5rt.saveData();
+			rotorhazard.voice_race_winner = $(this).prop('checked');
+			rotorhazard.saveData();
 		});
 
 		$('#set_voice_volume').on('input', function (event) {
@@ -625,8 +625,8 @@
 
 		$('#set_voice_volume').change(function (event) {
 			var val = volume_logsl.value($(this).val());
-			d5rt.voice_volume = val;
-			d5rt.saveData();
+			rotorhazard.voice_volume = val;
+			rotorhazard.saveData();
 		});
 
 		$('#set_voice_rate').on('input', function (event) {
@@ -636,8 +636,8 @@
 		});
 
 		$('#set_voice_rate').on('change', function (event) {
-			d5rt.voice_rate = parseFloat($(this).val());
-			d5rt.saveData();
+			rotorhazard.voice_rate = parseFloat($(this).val());
+			rotorhazard.saveData();
 		});
 
 		$('#set_voice_pitch').on('input', function (event) {
@@ -647,65 +647,65 @@
 		});
 
 		$('#set_voice_pitch').on('change', function (event) {
-			d5rt.voice_pitch = parseFloat($(this).val());
-			d5rt.saveData();
+			rotorhazard.voice_pitch = parseFloat($(this).val());
+			rotorhazard.saveData();
 		});
 
 		$('#set_tone_volume').on('input', function (event) {
 			var val = volume_logsl.value($(this).val());
-			d5rt.tone_volume = val;
+			rotorhazard.tone_volume = val;
 			$('#tone_volume_value').html($(this).val());
 		});
 
 		$('#set_tone_volume').change(function (event) {
 			var val = volume_logsl.value($(this).val());
-			d5rt.tone_volume = val;
-			d5rt.saveData();
+			rotorhazard.tone_volume = val;
+			rotorhazard.saveData();
 		});
 
 		$('#beep_crossing_entered').change(function (event) {
-			d5rt.beep_crossing_entered = $(this).prop('checked');
-			d5rt.saveData();
+			rotorhazard.beep_crossing_entered = $(this).prop('checked');
+			rotorhazard.saveData();
 		});
 
 		$('#beep_crossing_exited').change(function (event) {
-			d5rt.beep_crossing_exited = $(this).prop('checked');
-			$('#beep_on_first_pass_button').prop('disabled', d5rt.beep_crossing_exited);
-			d5rt.saveData();
+			rotorhazard.beep_crossing_exited = $(this).prop('checked');
+			$('#beep_on_first_pass_button').prop('disabled', rotorhazard.beep_crossing_exited);
+			rotorhazard.saveData();
 		});
 
 		$('#beep_manual_lap_button').change(function (event) {
-			d5rt.beep_manual_lap_button = $(this).prop('checked');
-			d5rt.saveData();
+			rotorhazard.beep_manual_lap_button = $(this).prop('checked');
+			rotorhazard.saveData();
 		});
 
 		$('#beep_on_first_pass_button').change(function (event) {
-			d5rt.beep_on_first_pass_button = $(this).prop('checked');
-			d5rt.saveData();
+			rotorhazard.beep_on_first_pass_button = $(this).prop('checked');
+			rotorhazard.saveData();
 		});
 
 		$('#set_indicator_volume').on('input', function (event) {
 			var val = volume_logsl.value($(this).val());
-			d5rt.indicator_beep_volume = val;
+			rotorhazard.indicator_beep_volume = val;
 			$('#indicator_volume_value').html($(this).val());
 		});
 
 		$('#set_indicator_volume').change(function (event) {
 			var val = volume_logsl.value($(this).val());
-			d5rt.indicator_beep_volume = val;
-			d5rt.saveData();
+			rotorhazard.indicator_beep_volume = val;
+			rotorhazard.saveData();
 		});
 
 		/* Race Format */
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
 			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
-			d5rt.min_lap = msg.min_lap;
+			rotorhazard.min_lap = msg.min_lap;
 		});
 
 		$('#set_min_lap').change(function (event) {
 			var min_lap_val = parseInt($(this).val());
-			d5rt.min_lap = min_lap_val;
+			rotorhazard.min_lap = min_lap_val;
 			var data = {
 				min_lap: min_lap_val
 			};
@@ -745,14 +745,14 @@
 
 		socket.on('node_crossing_change', function (msg) {
 			if (msg.crossing_flag) {
-				if (d5rt.beep_crossing_entered)
-					play_beep(25, node_tone[msg.node_index], d5rt.indicator_beep_volume, 'square');
+				if (rotorhazard.beep_crossing_entered)
+					play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
 			}
 			else {
-				if (d5rt.beep_crossing_exited) {
-					play_beep(35, node_tone[msg.node_index], d5rt.indicator_beep_volume, 'sawtooth', 0.02);
+				if (rotorhazard.beep_crossing_exited) {
+					play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
 					setTimeout(function(tone){
-						play_beep(35, node_tone[tone], d5rt.indicator_beep_volume, 'sawtooth', );
+						play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth', );
 					}, 70, msg.node_index);
 				}
 			}
@@ -826,7 +826,7 @@
 			var text = '';
 
 			text = text + __('Time');
-			for(var j in d5rt.nodes) {
+			for(var j in rotorhazard.nodes) {
 				text = text + ',' + $('.callsign_' + j).html().trim();
 			}
 			text = text + '\r\n';
@@ -840,7 +840,7 @@
 			}
 
 			var formatted = formatdate(racedump.timestamp) + '.' + formattime(racedump.timestamp);
-			var filename = 'd5rt-race-' + formatted;
+			var filename = 'rotorhazard-race-' + formatted;
 			var blob = new Blob([text], {type: "text/plain;charset=utf-8"});
 			saveAs(blob, filename+".csv");
 		});
@@ -864,7 +864,7 @@
 	});
 
 	function doSpeak(obj) {
-		$(obj).articulate('setVoice','name', d5rt.voice_language).articulate('speak');
+		$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
 	};
 
 	function speak(obj, priority) {

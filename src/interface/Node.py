@@ -1,4 +1,4 @@
-'''Node class for the delta 5 interface.'''
+'''Node class for the RotorHazard interface.'''
 
 class Node:
     '''Node class represents the arduino/rx pair.'''

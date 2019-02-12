@@ -1,6 +1,6 @@
 '''Class to hold race management variables.'''
 
-class Delta5Race():
+class RHRace():
     '''Class to hold race management variables.'''
     def __init__(self):
         self.num_nodes = 0
@@ -9,4 +9,4 @@ class Delta5Race():
 
 def get_race_state():
     '''Returns the race object.'''
-    return Delta5Race()
+    return RHRace()

@@ -11,21 +11,21 @@
 		]});
 
 		socket.on('all_languages', function (msg) {
-			d5rt.language_strings = msg.languages;
+			rotorhazard.language_strings = msg.languages;
 		});
 
 		socket.on('language', function (msg) {
 			if (msg.language) {
-				d5rt.interface_language = msg.language;
+				rotorhazard.interface_language = msg.language;
 			}
 		});
 
 		socket.on('frequency_data', function (msg) {
 			for (var i in msg.frequency) {
-				if (typeof(d5rt.nodes[i]) === 'undefined') {
-					d5rt.nodes[i] = new nodeModel();
+				if (typeof(rotorhazard.nodes[i]) === 'undefined') {
+					rotorhazard.nodes[i] = new nodeModel();
 				}
-				d5rt.nodes[i].frequency = msg.frequency[i];
+				rotorhazard.nodes[i].frequency = msg.frequency[i];
 				freq.updateBlocks();
 			}
 		});

@@ -3,12 +3,12 @@
 ## Initial Setup
 
 ### Hardware and Software Setup
-Follow the instructions here if not done already:  
-[doc/Hardware Setup.md](Hardware%20Setup.md)  
+Follow the instructions here if not done already:
+[doc/Hardware Setup.md](Hardware%20Setup.md)
 [doc/Software Setup.md](Software%20Setup.md)
 
 ### Set up Config File
-In the "src/delta5server" directory, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the HTTP_PORT, SECRET_KEY, ADMIN_USERNAME, and ADMIN_PASSWORD values. Make sure you keep this config file as valid JSON. A linter utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
+In the "src/server" directory, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the HTTP_PORT, SECRET_KEY, ADMIN_USERNAME, and ADMIN_PASSWORD values. Make sure you keep this config file as valid JSON. A linter utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
 
 HTTP_PORT is the port value the server will run on. By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and the server will fail to start. Port 5000 should be available. (Note that if port 80 is used, the server will need to be run using the *sudo* command.)
 
@@ -123,6 +123,6 @@ A "Manual" button is provided to force lap pass for that node to be immediately 
 
 You must use the "Stop Race" button to discontinue counting laps. This is true even if the timer reaches zero in a "Count Down" format—a popular race format allows pilots to finish the lap they are on when time expires.
 
-Once a race has concluded, you must choose "Save Laps" or "Clear Laps" before starting another race. "Save Laps" will store race results to the database and display them on the "Results" page. "Clear Laps" will discard the race results. 
+Once a race has concluded, you must choose "Save Laps" or "Clear Laps" before starting another race. "Save Laps" will store race results to the database and display them on the "Results" page. "Clear Laps" will discard the race results.
 
 The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. Audio Control and LED Contral are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race.

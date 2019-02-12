@@ -8,12 +8,12 @@
 		]});
 
 		socket.on('all_languages', function (msg) {
-			d5rt.language_strings = msg.languages;
+			rotorhazard.language_strings = msg.languages;
 		});
 
 		socket.on('language', function (msg) {
 			if (msg.language) {
-				d5rt.interface_language = msg.language;
+				rotorhazard.interface_language = msg.language;
 			}
 		});
 
