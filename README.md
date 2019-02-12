@@ -9,7 +9,7 @@ RotorHazard builds on the [Delta5 Race Timer](https://github.com/scottgchin/delt
 
 ## Major Features
 * Timing and event management on the same hardware
-* Modern, mobile-firendly, and highly responsive user interface
+* Modern, mobile-friendly, and highly responsive user interface
 * Manage pilots, heats, race classes, race formats, and tuning profiles
 * LED and audio support to indicate race staging, starts, and other events
 * Real-time statistics and race history
@@ -17,23 +17,34 @@ RotorHazard builds on the [Delta5 Race Timer](https://github.com/scottgchin/delt
 * Supports all frequencies in the 5.8GHz band
 
 ## Hardware and Software Setup
-To build the system, follow the instructions here: [/doc/Hardware and Software Setup Instructions.md](/doc/Hardware%20and%20Software%20Setup%20Instructions.md)
+To build and configure the system, follow the instructions here:
+[doc/Hardware Setup.md](doc/Hardware%20Setup.md)
+[doc/Software Setup.md](doc/Software%20Setup.md)
 
 ## User Guide
-For initial setup and running races, follow these instructions: [/doc/User Guide.md](/doc/User%20Guide.md)
+For initial setup and running races, follow these instructions: [doc/User Guide.md](doc/User%20Guide.md)
 
 ## Migrating from/to Delta5
-RotorHazard uses the same hardware, but different code for the nodes. Re-flash your Arduinos as in the [setup instructions](/doc/Hardware%20and%20Software%20Setup%20Instructions.md#receiver-nodes-arduinos) whenever you switch between the two projects.
+RotorHazard uses the same hardware, but different code for the nodes. Re-flash your Arduinos as in the [setup instructions](doc/Software%20Setup.md#receiver-nodes-arduinos) whenever you switch between the two projects.
 
 ## Contributors
 * Michael Niggel
 * Eric Thomas
+* Klaus Michael Schneider
 * Scott Chin and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
 
 ### Supported by:
-[![Propwashed Logo](/doc/img/Propwashed-Logo-200w.png)](https://propwashed.com)
+[![Propwashed Logo](doc/img/Propwashed-Logo-200w.png)](https://propwashed.com)
 
+### Translators
+* Dutch: Kenny Van Der Sypt
+* German: Klaus Michael Schneider
+* Spanish: Ramon Hernandez Roldan
 
-Community contributions are welcome and encouraged.
+## Feedback
 
-Submit an [issue](https://github.com/RotorHazard/RotorHazard/issues) or [pull request](https://github.com/RotorHazard/RotorHazard/pulls), or discuss the project on [Facebook](https://www.facebook.com/groups/749387998753163/).
+Discuss RotorHazard on Facebook:  https://www.facebook.com/groups/rotorhazard
+
+To report bugs or request features, please post a GitHub issue [here](https://github.com/RotorHazard/RotorHazard/issues).
+
+Community contributions are welcome and encouraged; see the [Development.md](doc/Development.md) doc for more info.
