@@ -1654,6 +1654,13 @@
 			</li>
 			<li>
 				<div class="label-block">
+					<label for="set_timer_logo">{{ __('Timer Logo') }}</label>
+					<p class="desc">{{ __('File path relative to RotorHazard/server/static') }}</p>
+				</div>
+				<input type="text" id="set_timer_logo" class="set-option" data-option="timerLogo" value="{{ getOption('timerLogo') }}" placeholder="image/group-logo.png">
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="set_hue_primary">{{ __('Primary Hue') }}</label>
 				</div>
 				<input type="range" id="set_hue_primary" class="set-option hue-control" data-option="hue_0" value="{{ getOption('hue_0') }}" min="0" max="359">

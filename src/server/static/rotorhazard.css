@@ -513,6 +513,9 @@ main {
 	margin: 0 auto;
 	padding: 0 3%;
 	max-width: 94%;
+	max-height: 40vw;
+	width: auto;
+	height: auto;
 }
 
 main.page-home {

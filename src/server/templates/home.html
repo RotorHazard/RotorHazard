@@ -23,8 +23,11 @@
 
 <div class="header">
 	<h1>
-		<div class="screen-reader-text">{{ getOption("timerName") }}</div>
-		<img src="../static/image/RotorHazard Logo.svg" alt="RotorHazard / FPV Race Timer" />
+		{% if getOption("timerLogo") %}
+			<img src="./static/{{ getOption('timerLogo') }}" alt="{{ getOption('timerName') }}" />
+		{% else %}
+			<img src="./static/image/RotorHazard Logo.svg" alt="{{ getOption('timerName') }}" />
+		{% endif %}
 	</h1>
 </div>
 

@@ -26,11 +26,11 @@ import time
 from neopixel import *
 import signal
 
-sys.path.append('../delta5interface')
-sys.path.append('/home/pi/delta5_race_timer/src/delta5interface')  # Needed to run on startup
-from Delta5Interface import get_hardware_interface
+sys.path.append('../interface')
+sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
-from Delta5Race import get_race_state
+from RHInterface import get_hardware_interface
+from RHRace import get_race_state
 
 APP = Flask(__name__, static_url_path='/static')
 APP.config['SECRET_KEY'] = 'secret!'
@@ -456,7 +456,7 @@ def database():
 
 @SOCKET_IO.on('connect')
 def connect_handler():
-    '''Starts the delta 5 interface and a heartbeat thread for rssi.'''
+    '''Starts the interface and a heartbeat thread for rssi.'''
     server_log('Client connected')
     heartbeat_thread_function.iter_tracker = 0  # declare/init variables for HB function
     heartbeat_thread_function.imdtabler_flag = False
@@ -2800,7 +2800,7 @@ def server_log(message):
     SOCKET_IO.emit('hardware_log', message)
 
 def hardware_log_callback(message):
-    '''Message emitted from the delta 5 interface class.'''
+    '''Message emitted from the interface class.'''
     print message
     SOCKET_IO.emit('hardware_log', message)
 
@@ -2972,6 +2972,7 @@ def db_reset_options_defaults():
     DB.session.query(GlobalSettings).delete()
     setOption("server_api", SERVER_API)
     setOption("timerName", __("RotorHazard"))
+    setOption("timerLogo", "")
 
     setOption("hue_0", "212")
     setOption("sat_0", "55")
@@ -3082,6 +3083,7 @@ elif int(getOption('server_api')) < SERVER_API:
 
         carryoverOpts = [
             "timerName",
+            "timerLogo",
             "hue_0",
             "sat_0",
             "lum_0_low",
