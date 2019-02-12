@@ -941,14 +941,10 @@
 
 		/* Database Reset */
 		socket.on('reset_confirm', function () {
-			$('#reset_confirm').css('opacity', 1.0);
-			setTimeout(function(){
-				$('#reset_confirm').animate({
-					opacity: 0
-				}, {
-					duration: 1000
-				});
-			}, 3000);
+			standard_message_queue.push(__('Data Cleared'));
+			if (standard_message_queue.length == 1) {
+				get_standard_message()
+			}
 		});
 
 		$('button#reset_database').click(function (event) {
@@ -1075,6 +1071,14 @@
 			return false;
 		});
 
+		$('.open-mfp-popup').magnificPopup({
+			type:'inline',
+			midClick: true,
+		});
+
+		$('.cancel').click(function() {
+	    	$.magnificPopup.close();
+		});
 	});
 
 	function speak(obj) {
@@ -1609,7 +1613,6 @@
 			</select>
 			<button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
 		</div>
-		<p id="reset_confirm" style="text-align:center; opacity:0">{{ __('Data Cleared') }}</p>
 	</div>
 </div>
 
@@ -1620,8 +1623,17 @@
 	</div>
 	<div class="panel-content">
 		<div class="control-set">
-			<button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
+			<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
 			{% if Debug %}<a href="/hardwarelog" class="debug button-like">{{ __('Log') }}</a>{% endif %}
+		</div>
+
+		<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide">
+			<h2>Alert</h2>
+			<div class="message">
+				<p>{{ __('Shut down server?') }}</p>
+				<button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button>
+			</div>
 		</div>
 
 		<ol class="form">

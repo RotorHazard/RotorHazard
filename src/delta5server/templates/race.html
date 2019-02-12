@@ -845,7 +845,7 @@
 			saveAs(blob, filename+".csv");
 		});
 
-		$('.open-mfp-popup').magnificPopup({
+		$('.open-mfp-popup-tuning').magnificPopup({
 			type:'inline',
 			midClick: true,
 			callbacks: {
@@ -908,7 +908,7 @@
 		<div class="race-results">
 			{% for node in range(num_nodes) %}
 			<div class="node">
-				<a href="#tuning-detail-{{node}}" data-node="{{ node }}" class="open-mfp-popup">{{ __('Tuning') }}</a>
+				<a href="#tuning-detail-{{node}}" data-node="{{ node }}" class="open-mfp-popup-tuning">{{ __('Tuning') }}</a>
 				<div class="race-header">
 					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
 					<button class="simulate_lap" data-node="{{ node }}">{{ __('Manual') }}</button>

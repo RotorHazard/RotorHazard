@@ -985,6 +985,7 @@ def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
     emit_priority_message(__('Server has shut down.'), True)
     server_log('Shutdown pi')
+    time.sleep(1);
     os.system("sudo shutdown now")
 
 @SOCKET_IO.on("set_min_lap")
