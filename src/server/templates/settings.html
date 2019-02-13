@@ -120,8 +120,8 @@
 					);
 
 					rotorhazard.nodes[i].graph.options.minValue = Math.max(0, Math.min(
-						rotorhazard.nodes[i].graph.options.minValue,
 						rssiValue,
+						rotorhazard.nodes[i].node_nadir_rssi - 1,
 						rotorhazard.nodes[i].exit_at_level - 10,
 					));
 
@@ -240,11 +240,13 @@
 		socket.on('node_data', function (msg) {
 			for (i = 0; i < msg.node_peak_rssi.length; i++) {
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
+				$('.node_nadir_rssi_' + i).html(msg.node_nadir_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
 				$('.pass_nadir_rssi_' + i).html(msg.pass_nadir_rssi[i]);
 				$('.debug_pass_count_' + i).html(msg.debug_pass_count[i]);
 
 				rotorhazard.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
+				rotorhazard.nodes[i].node_nadir_rssi = msg.node_nadir_rssi[i];
 				rotorhazard.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
 				rotorhazard.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
 
@@ -1216,6 +1218,12 @@
 						<td>{{ __('NodePeak') }}</td>
 						<td>
 							<span class="node_peak_rssi_{{ node }}"></span>
+						</td>
+					</tr>
+					<tr class="datarow">
+						<td>{{ __('NodeNadir') }}</td>
+						<td>
+							<span class="node_nadir_rssi_{{ node }}"></span>
 						</td>
 					</tr>
 					<tr class="datarow">

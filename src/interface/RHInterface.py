@@ -13,6 +13,7 @@ READ_LAP_STATS = 0x05
 READ_FILTER_RATIO = 0x20    # node API_level>=10 uses 16-bit value
 READ_REVISION_CODE = 0x22   # read NODE_API_LEVEL and verification value
 READ_NODE_RSSI_PEAK = 0x23  # read 'nodeRssiPeak' value
+READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
 READ_HISTORY_EXPIRE_DURATION = 0x35
@@ -110,6 +111,8 @@ class RHInterface(BaseHardwareInterface):
             if node.api_level >= 10:
                 node.api_valid_flag = True  # set flag for newer API functions supported
                 node.node_peak_rssi = self.get_value_16(node, READ_NODE_RSSI_PEAK)
+                if node.api_level >= 13:
+                    node.node_nadir_rssi = self.get_value_16(node, READ_NODE_RSSI_NADIR)
                 node.enter_at_level = self.get_value_16(node, READ_ENTER_AT_LEVEL)
                 node.exit_at_level = self.get_value_16(node, READ_EXIT_AT_LEVEL)
                 print "Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level)
@@ -154,7 +157,10 @@ class RHInterface(BaseHardwareInterface):
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
-                    data = self.read_block(node.i2c_addr, READ_LAP_STATS, 18)
+                    if node.api_valid_flag or node.api_level >= 13:
+                        data = self.read_block(node.i2c_addr, READ_LAP_STATS, 20)
+                    else:
+                        data = self.read_block(node.i2c_addr, READ_LAP_STATS, 18)
                 else:
                     data = self.read_block(node.i2c_addr, READ_LAP_STATS, 17)
 
@@ -183,6 +189,9 @@ class RHInterface(BaseHardwareInterface):
                                 if callable(self.node_crossing_callback):
                                     cross_list.append(node)
                             node.pass_nadir_rssi = unpack_16(data[16:])
+
+                            if node.api_level >= 13:
+                                node.node_nadir_rssi = unpack_16(data[18:])
 
                         else:  # if newer API functions not supported
                             lap_time_ms = unpack_32(data[1:])

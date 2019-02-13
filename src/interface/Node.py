@@ -8,6 +8,7 @@ class Node:
         self.frequency = 0
         self.current_rssi = 0
         self.node_peak_rssi = 0
+        self.node_nadir_rssi = 0
         self.pass_peak_rssi = 0
         self.pass_nadir_rssi = 0
         self.last_lap_id = -1

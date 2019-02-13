@@ -514,6 +514,7 @@ function nodeModel() {
 	this.trigger_rssi = false;
 	this.frequency = 0;
 	this.node_peak_rssi = false;
+	this.node_nadir_rssi = false;
 	this.pass_peak_rssi = false;
 	this.pass_nadir_rssi = false;
 	this.graphing = false;
@@ -568,27 +569,29 @@ nodeModel.prototype = {
 	checkValues: function(){
 		var warnings = [];
 
-		if (this.enter_at_level > this.node_peak_rssi) {
-			warnings.push(__('EnterAt is higher than NodePeak: <strong>Passes may not register</strong>'));
-		} else if (this.enter_at_level > this.node_peak_rssi - 10) {
-			warnings.push(__('EnterAt is very near NodePeak: <strong>Passes may not register</strong>'));
+		if (this.node_nadir_rssi > 0 && this.node_nadir_rssi < this.node_peak_rssi - 20) {
+			// assume node data is invalid unless nadir and peak are minimally separated
+			if (this.enter_at_level > this.node_peak_rssi) {
+				warnings.push(__('EnterAt is higher than NodePeak: <strong>Passes may not register</strong>. Ensure you have completed a lap pass before changing node values.'));
+			} else if (this.enter_at_level > this.node_peak_rssi - 10) {
+				warnings.push(__('EnterAt is very near NodePeak: <strong>Passes may not register</strong>. Ensure you have completed a lap pass before changing node values.'));
+			}
 		}
 
-//		add if NodeNadir is implemented
-//		if (this.exit_at_level <= this.node_nadir_rssi) {
-//			warnings.push('ExitAt is lower than NodeNadir: Passes WILL NOT register');
-//		}
+		if (this.node_nadir_rssi > 0 && this.exit_at_level <= this.node_nadir_rssi) {
+			warnings.push('ExitAt is lower than NodeNadir: <strong>Passes WILL NOT register</strong>.');
+		}
 
 		if (this.enter_at_level <= this.exit_at_level) {
-			warnings.push(__('EnterAt must be greater than ExitAt: <strong>Passes WILL NOT register correctly</strong>'));
+			warnings.push(__('EnterAt must be greater than ExitAt: <strong>Passes WILL NOT register correctly</strong>.'));
 		} else if (this.enter_at_level <= this.exit_at_level + 20) {
-			warnings.push(__('EnterAt is very near ExitAt: <strong>Passes may register too frequently</strong>'));
+			warnings.push(__('EnterAt is very near ExitAt: <strong>Passes may register too frequently</strong>.'));
 		}
 
 		if (this.exit_at_level < this.pass_nadir_rssi) {
-			warnings.push(__('ExitAt is lower than PassNadir: <strong>Passes may not complete</strong>'));
+			warnings.push(__('ExitAt is lower than PassNadir: <strong>Passes may not complete</strong>.'));
 		} else if (this.exit_at_level < this.pass_nadir_rssi + 10) {
-			warnings.push(__('ExitAt is very near PassNadir: <strong>Passes may not complete</strong>'));
+			warnings.push(__('ExitAt is very near PassNadir: <strong>Passes may not complete</strong>.'));
 		}
 
 		var output = '';
