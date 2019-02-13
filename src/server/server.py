@@ -676,14 +676,16 @@ def on_set_exit_at_level(data):
 
 def hardware_set_all_enter_ats(enter_at_levels):
     '''send update to nodes'''
+    var_max = len(enter_at_levels)
     for idx in range(RACE.num_nodes):
-        if enter_at_levels[idx]:
+        if idx < var_max and enter_at_levels[idx]:
             INTERFACE.set_enter_at_level(idx, enter_at_levels[idx])
 
 def hardware_set_all_exit_ats(exit_at_levels):
     '''send update to nodes'''
+    var_max = len(exit_at_levels)
     for idx in range(RACE.num_nodes):
-        if exit_at_levels[idx]:
+        if idx < var_max and exit_at_levels[idx]:
             INTERFACE.set_exit_at_level(idx, exit_at_levels[idx])
 
 @SOCKET_IO.on('set_language')
