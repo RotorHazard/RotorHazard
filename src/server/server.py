@@ -157,48 +157,57 @@ def getAllLanguages():
 #
 
 def buildServerInfo():
-    server_info = "<ul>"
+    serverInfo = {}
+
+    serverInfo['about_html'] = "<ul>"
 
     # Release Version
-    server_info += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
+    serverInfo['release_version'] = RELEASE_VERSION
+    serverInfo['about_html'] += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
 
     # Server API
-    server_info += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
+    serverInfo['server_api'] = SERVER_API
+    serverInfo['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
 
     # Node API levels
     node_api_level = False
-    node_api_match = True
+    serverInfo['node_api_match'] = True
     if INTERFACE.nodes[0].api_level:
         node_api_level = INTERFACE.nodes[0].api_level
+        serverInfo['node_api_lowest'] = node_api_level
 
-        node_api_levels = []
+        serverInfo['node_api_levels'] = []
         for node in INTERFACE.nodes:
-            node_api_levels.append(node.api_level)
+            serverInfo['node_api_levels'].append(node.api_level)
+
             if node.api_level is not node_api_level:
-                node_api_match = False
+                serverInfo['node_api_match'] = False
 
-    server_info += "<li>" + __("Node API") + ": "
+            if node.api_level < serverInfo['node_api_lowest']:
+                serverInfo['node_api_lowest'] = node.api_level
+
+    serverInfo['about_html'] += "<li>" + __("Node API") + ": "
     if node_api_level:
-        if node_api_match:
-            server_info += str(node_api_level)
+        if serverInfo['node_api_match']:
+            serverInfo['about_html'] += str(node_api_level)
         else:
-            server_info += "[ "
-            for idx, level in node_api_levels:
-                server_info += str(idx+1) + ":" + str(level) + " "
-            server_info += "]"
+            serverInfo['about_html'] += "[ "
+            for idx, level in serverInfo['node_api_levels']:
+                serverInfo['about_html'] += str(idx+1) + ":" + str(level) + " "
+            serverInfo['about_html'] += "]"
     else:
-        server_info += "None (Delta5)"
+        serverInfo['about_html'] += "None (Delta5)"
 
-    server_info += "</li>"
+    serverInfo['about_html'] += "</li>"
 
-    if node_api_match is False or node_api_level < NODE_API_BEST:
+    serverInfo['node_api_best'] = NODE_API_BEST
+    if serverInfo['node_api_match'] is False or node_api_level < NODE_API_BEST:
         # Show Recommended API notice
-        server_info += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
+        serverInfo['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
 
-    server_info += "</ul>"
+    serverInfo['about_html'] += "</ul>"
 
-    print server_info
-    return server_info
+    return serverInfo
 
 
 #
@@ -416,12 +425,12 @@ def requires_auth(f):
 @APP.route('/')
 def index():
     '''Route to home page.'''
-    return render_template('home.html', getOption=getOption, __=__)
+    return render_template('home.html', serverInfo=serverInfo, getOption=getOption, __=__)
 
 @APP.route('/heats')
 def heats():
     '''Route to heat summary page.'''
-    return render_template('heats.html', getOption=getOption, __=__)
+    return render_template('heats.html', serverInfo=serverInfo, getOption=getOption, __=__)
 
 @APP.route('/results')
 def results():
@@ -435,13 +444,13 @@ def results():
     # - One for all rounds, grouped by heats
     # - One for all pilots, sorted by fastest lap and shows average and other stats
     # - One for individual heats
-    return render_template('rounds.html', getOption=getOption, __=__)
+    return render_template('rounds.html', serverInfo=serverInfo, getOption=getOption, __=__)
 
 @APP.route('/race')
 @requires_auth
 def race():
     '''Route to race management page.'''
-    return render_template('race.html', getOption=getOption, __=__,
+    return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat,
         heats=Heat, pilots=Pilot,
@@ -450,7 +459,7 @@ def race():
 @APP.route('/current')
 def racepublic():
     '''Route to race management page.'''
-    return render_template('racepublic.html', getOption=getOption, __=__,
+    return render_template('racepublic.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/settings')
@@ -458,7 +467,7 @@ def racepublic():
 def settings():
     '''Route to settings page.'''
 
-    return render_template('settings.html', getOption=getOption, __=__,
+    return render_template('settings.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config['GENERAL']['configFile'],
         Debug=Config['GENERAL']['DEBUG'])
@@ -468,7 +477,7 @@ def settings():
 def correction():
     '''Route to node correction page.'''
 
-    return render_template('correction.html', getOption=getOption, __=__,
+    return render_template('correction.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         current_profile = getOption("currentProfile"),
         profiles = Profiles)
@@ -477,7 +486,7 @@ def correction():
 def imdtabler():
     '''Route to IMDTabler page.'''
 
-    return render_template('imdtabler.html', getOption=getOption, __=__)
+    return render_template('imdtabler.html', serverInfo=serverInfo, getOption=getOption, __=__)
 
 # Debug Routes
 
@@ -485,13 +494,13 @@ def imdtabler():
 @requires_auth
 def hardwarelog():
     '''Route to hardware log page.'''
-    return render_template('hardwarelog.html', getOption=getOption, __=__)
+    return render_template('hardwarelog.html', serverInfo=serverInfo, getOption=getOption, __=__)
 
 @APP.route('/database')
 @requires_auth
 def database():
     '''Route to database page.'''
-    return render_template('database.html', getOption=getOption, __=__,
+    return render_template('database.html', serverInfo=serverInfo, getOption=getOption, __=__,
         pilots=Pilot,
         heats=Heat,
         race_class=RaceClass,
@@ -3120,6 +3129,14 @@ print 'Number of nodes found: {0}'.format(RACE.num_nodes)
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
 
+# collect server info for About panel
+serverInfo = buildServerInfo()
+server_log('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
+if serverInfo['node_api_match'] is False:
+    server_log('** WARNING: Node API mismatch **')
+if serverInfo['node_api_lowest'] < NODE_API_BEST:
+    server_log('** NOTICE: Node firmware update available **')
+
 # Create database if it doesn't exist
 if not os.path.exists(DB_FILE_NAME):
     db_init()
@@ -3223,9 +3240,6 @@ INTERFACE.set_history_expire_global(int(getOption("HistoryExpireDuration")))
 # Set current heat on startup
 if Heat.query.first():
     RACE.current_heat = Heat.query.first().heat_id
-
-# collect server info for About panel
-setOption("serverInfo", buildServerInfo())
 
 # Start HTTP server
 if __name__ == '__main__':
