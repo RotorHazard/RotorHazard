@@ -73,9 +73,9 @@
 					<a href="#">...</a>
 					<ul>
 						<li><a href="/imdtabler">{{ __("IMDTabler") }}</a></li>
-						<li><a href="https://github.com/RotorHazard/RotorHazard/tree/master/doc">{{ __("Show documentation (on GitHub)") }}</a></li>
-						<li><a href="https://github.com/RotorHazard/RotorHazard/">{{ __("RotorHazard on GitHub") }}</a></li>
 						<li><a href="#about" class="open-mfp-popup">{{ __("About RotorHazard") }}</a></li>
+						<li><a href="https://github.com/RotorHazard/RotorHazard/tree/master/doc">{{ __("Show documentation (on GitHub)") }} &#10132;&#xFE0E;</a></li>
+						<li><a href="https://github.com/RotorHazard/RotorHazard/">{{ __("RotorHazard on GitHub") }} &#10132;&#xFE0E;</a></li>
 					</ul>
 				</li>
 			</ul>
@@ -86,10 +86,10 @@
 	{% block content %}{% endblock %}
 
 	<footer>
-		<p>Powered by <img src="../static/image/RotorHazard Logo.svg" alt="RotorHazard / FPV Race Timer" /></p>
+		<p>Powered by <a href="https://github.com/RotorHazard/RotorHazard/"><img src="../static/image/RotorHazard Logo.svg" alt="RotorHazard / FPV Race Timer" /></a></p>
 	</footer>
 
-	<div id="about" class="mfp-hide popup-basic">
+	<div id="about" class="mfp-hide popup">
 		<h2>{{ __("About RotorHazard") }}</h2>
 		<div class="popup-content">
 			{{ getOption("serverInfo") | safe }}

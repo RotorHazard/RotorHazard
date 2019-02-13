@@ -253,7 +253,7 @@ ol.form li+li {
 	color: var(--contrast_1_high);
 }
 
-.popup-basic {
+.popup {
 	position: relative;
 	background: #fff;
 	width: auto;
@@ -261,16 +261,18 @@ ol.form li+li {
 	margin: 1rem auto;
 }
 
-.popup-basic h2 {
+.popup h2 {
 	margin-bottom: 0;
+	padding: 0 2.5rem 0 0.5rem;
 }
 
-.popup-basic h2::before {
+.popup h2::before {
 	content: none;
 }
 
 .popup-content {
-	padding: 1rem;
+	padding: 0 1rem;
+	overflow: hidden;
 }
 
 .panel {
@@ -332,11 +334,6 @@ ol.form li+li {
 }
 
 .priority-message-interrupt {
-	position: relative;
-	background: #fff;
-	width: auto;
-	max-width: 20em;
-	margin: 1rem auto;
 	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
 }
 
@@ -345,14 +342,6 @@ ol.form li+li {
 	background: -moz-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%, hsl(13.1, 64.6%, 37.6%) 100%);
 	background: -webkit-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
 	background: linear-gradient(to bottom, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
-}
-
-.priority-message-interrupt h2::before {
-	content: none;
-}
-
-.priority-message-interrupt .message {
-	padding: 0 1rem 1rem;
 }
 
 .mfp-close {
@@ -672,15 +661,6 @@ main.page-home {
 	display: flex;
 	flex-wrap: wrap;
 	margin: 0 -0.25rem;
-}
-
-.tuning-detail {
-	position: relative;
-	background: #fff;
-	padding: 1rem;
-	width: auto;
-	max-width: 20em;
-	margin: 1rem auto;
 }
 
 .node {
@@ -1154,12 +1134,6 @@ main.page-home {
 	display: none;
 }
 
-.delete_lap {
-	/*
-	width: 100%;
-	*/
-}
-
 .channel-block {
 	background: #9e3d22;
 	color: #fff;
@@ -1190,6 +1164,10 @@ main.page-home {
 .page-race .channel-block {
 	display: inline-flex;
 	margin-right: 0.5rem;
+}
+
+.tuning-detail .popup-content {
+	padding: 0 0 1rem;
 }
 
 .page-racepublic h2 {

@@ -1468,6 +1468,7 @@ def emit_node_data(**params):
     '''Emits node data.'''
     emit_payload = {
             'node_peak_rssi': [node.node_peak_rssi for node in INTERFACE.nodes],
+            'node_nadir_rssi': [node.node_nadir_rssi for node in INTERFACE.nodes],
             'pass_peak_rssi': [node.pass_peak_rssi for node in INTERFACE.nodes],
             'pass_nadir_rssi': [node.pass_nadir_rssi for node in INTERFACE.nodes],
             'debug_pass_count': [node.debug_pass_count for node in INTERFACE.nodes]

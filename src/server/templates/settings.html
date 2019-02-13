@@ -1626,12 +1626,12 @@
 			{% if Debug %}<a href="/hardwarelog" class="debug button-like">{{ __('Log') }}</a>{% endif %}
 		</div>
 
-		<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide">
+		<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>Alert</h2>
-			<div class="message">
+			<div class="popup-content">
 				<p>{{ __('Shut down server?') }}</p>
-				<button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
-				<button class="cancel">{{ __('Cancel') }}</button>
+				<p><button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>
 

@@ -572,9 +572,9 @@ nodeModel.prototype = {
 		if (this.node_nadir_rssi > 0 && this.node_nadir_rssi < this.node_peak_rssi - 20) {
 			// assume node data is invalid unless nadir and peak are minimally separated
 			if (this.enter_at_level > this.node_peak_rssi) {
-				warnings.push(__('EnterAt is higher than NodePeak: <strong>Passes may not register</strong>. Ensure you have completed a lap pass before changing node values.'));
+				warnings.push(__('EnterAt is higher than NodePeak: <strong>Passes may not register</strong>. Ensure you have completed a lap pass before adjusting node values.'));
 			} else if (this.enter_at_level > this.node_peak_rssi - 10) {
-				warnings.push(__('EnterAt is very near NodePeak: <strong>Passes may not register</strong>. Ensure you have completed a lap pass before changing node values.'));
+				warnings.push(__('EnterAt is very near NodePeak: <strong>Passes may not register</strong>. Ensure you have completed a lap pass before adjusting node values.'));
 			}
 		}
 
@@ -637,9 +637,9 @@ function get_standard_message() {
 function get_interrupt_message() {
 	msg = interrupt_message_queue[0];
 
-	var message_el = $('<div class="priority-message-interrupt">');
+	var message_el = $('<div class="priority-message-interrupt popup">');
 	message_el.append('<h2>' + __('Alert') + '</h2>');
-	message_el.append('<div class="message">' + msg + '</div>');
+	message_el.append('<div class="popup-content"><p>' + msg + '</p></div>');
 
 	$.magnificPopup.open({
 		items: {
