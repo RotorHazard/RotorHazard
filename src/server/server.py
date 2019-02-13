@@ -3119,33 +3119,9 @@ def restore_table(class_type, table_query_data, match_name='name'):
         except Exception as ex:
             server_log('Error restoring "{0}" table from previous database:  {1}'.format(class_type.__name__, ex))
 
-
-#
-# Program Initialize
-#
-
-# Save number of nodes found
-RACE.num_nodes = len(INTERFACE.nodes)
-print 'Number of nodes found: {0}'.format(RACE.num_nodes)
-
-# Delay to get I2C addresses through interface class initialization
-gevent.sleep(0.500)
-
-# collect server info for About panel
-serverInfo = buildServerInfo()
-server_log('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-if serverInfo['node_api_match'] is False:
-    server_log('** WARNING: Node API mismatch **')
-if serverInfo['node_api_lowest'] < NODE_API_BEST:
-    server_log('** NOTICE: Node firmware update available **')
-
-# Create database if it doesn't exist
-if not os.path.exists(DB_FILE_NAME):
-    db_init()
-elif int(getOption('server_api')) < SERVER_API:
-    server_log('Old server API version; resetting database')
+def recover_database():
     try:
-        server_log('Recovering Pilot data from previous database')
+        server_log('Recovering data from previous database')
         pilot_query_data = query_table_data(Pilot)
         raceFormat_query_data = query_table_data(RaceFormat)
         profiles_query_data = query_table_data(Profiles)
@@ -3203,12 +3179,51 @@ elif int(getOption('server_api')) < SERVER_API:
 
     DB.session.commit()
 
-    pilot_query_data = None       # make sure temp data is released
-    raceFormat_query_data = None
-    profiles_query_data = None
-    raceClass_query_data = None
-    heat_query_data = None
+def expand_heats():
+    for heat_ids in Heat.query.with_entities(Heat.heat_id).distinct():
+        for node in range(RACE.num_nodes):
+            heat_row = Heat.query.filter_by(heat_id=heat_ids.heat_id, node_index=node)
+            if not heat_row.count():
+                DB.session.add(Heat(heat_id=heat_ids.heat_id, node_index=node, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE))
 
+    DB.session.commit()
+
+#
+# Program Initialize
+#
+
+# Save number of nodes found
+RACE.num_nodes = len(INTERFACE.nodes)
+print 'Number of nodes found: {0}'.format(RACE.num_nodes)
+
+# Delay to get I2C addresses through interface class initialization
+gevent.sleep(0.500)
+
+# collect server info for About panel
+serverInfo = buildServerInfo()
+server_log('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
+if serverInfo['node_api_match'] is False:
+    server_log('** WARNING: Node API mismatch **')
+if serverInfo['node_api_lowest'] < NODE_API_BEST:
+    server_log('** NOTICE: Node firmware update available **')
+
+# Create database if it doesn't exist
+if not os.path.exists(DB_FILE_NAME):
+    db_init()
+elif int(getOption('server_api')) < SERVER_API:
+    server_log('Old server API version; resetting database')
+    recover_database()
+elif not Profiles.query.count():
+    server_log('Profiles are empty; resetting database')
+    recover_database()
+elif not RaceFormat.query.count():
+    server_log('Formats are empty; resetting database')
+    recover_database()
+
+# Expand heats (if number of nodes increases)
+expand_heats()
+
+# Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     try:
         java_ver = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
