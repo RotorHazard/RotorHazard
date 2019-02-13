@@ -145,7 +145,7 @@
 		// This methode will render the time variable to minute:second format
 		function generateTime() {
 			if (pre_race && hide_countdown) {
-				$('.timing-clock').html(__('Ready'));
+				$('.timing-clock').html(__l('Ready'));
 			} else {
 				var display_time = time;
 				if (pre_race) display_time = pre_delay;
@@ -186,25 +186,25 @@
 						play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 					} else if (time == 10) {
 						if (rotorhazard.voice_race_timer)
-							speak('<div class="timer">10 ' + __('Seconds') + '</div>', true);
+							speak('<div class="timer">10 ' + __l('Seconds') + '</div>', true);
 					}
 				}
 
 				if (rotorhazard.voice_race_timer) {
 					if (time > 3600 && !(time % 3600)) { // 2+ hour callout (endurance)
 						var hours = time / 3600;
-						speak('<div class="timer">' + hours + ' ' + __('Hours') + '</div>', true);
+						speak('<div class="timer">' + hours + ' ' + __l('Hours') + '</div>', true);
 					} else if (time == 3600) {
-						speak('<div class="timer">1 ' + __('Hour') + '</div>', true);
+						speak('<div class="timer">1 ' + __l('Hour') + '</div>', true);
 					} else if (time == 1800) {
-						speak('<div class="timer">30 ' + __('Minutes') + '</div>', true);
+						speak('<div class="timer">30 ' + __l('Minutes') + '</div>', true);
 					} else if (time > 60 && time <= 300 && !(time % 60)) { // 2–5 min callout
 						var minutes = time / 60;
-						speak('<div class="timer">' + minutes + ' ' + __('Minutes') + '</div>', true);
+						speak('<div class="timer">' + minutes + ' ' + __l('Minutes') + '</div>', true);
 					} else if (time == 60) {
-						speak('<div class="timer">1 ' + __('Minute') + '</div>', true);
+						speak('<div class="timer">1 ' + __l('Minute') + '</div>', true);
 					} else if (time == 30) {
-						speak('<div class="timer">30 ' + __('Seconds') + '</div>', true);
+						speak('<div class="timer">30 ' + __l('Seconds') + '</div>', true);
 					}
 				}
 
