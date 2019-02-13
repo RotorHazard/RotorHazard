@@ -1,5 +1,7 @@
 '''RotorHazard server script'''
+RELEASE_VERSION = "1.1.0 (development)" # Public release version code
 SERVER_API = 11 # Server API version
+NODE_API_BEST = 13 # Most recent node API
 
 import os
 import sys
@@ -96,6 +98,20 @@ except ValueError:
     Config['GENERAL']['configFile'] = -1
     print 'Configuration file invalid, using defaults'
 
+
+INTERFACE = get_hardware_interface()
+RACE = get_race_state() # For storing race management variables
+
+PROGRAM_START = datetime.now()
+RACE_START = datetime.now() # Updated on race start commands
+RACE_DURATION_MS = 0 # calculated when race is stopped
+
+Race_laps_winner_name = None  # set to name of winner in first-to-X-laps race
+RACE_STATUS_TIED_STR = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
+RACE_STATUS_CROSSING = 'Waiting for cross'  # indicator for Most Laps Wins race
+
+Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
+
 #
 # Translation functions
 #
@@ -136,18 +152,53 @@ def getAllLanguages():
     # return full language dictionary
     return Languages
 
-INTERFACE = get_hardware_interface()
-RACE = get_race_state() # For storing race management variables
+#
+# Server Info
+#
 
-PROGRAM_START = datetime.now()
-RACE_START = datetime.now() # Updated on race start commands
-RACE_DURATION_MS = 0 # calculated when race is stopped
+def buildServerInfo():
+    server_info = "<ul>"
 
-Race_laps_winner_name = None  # set to name of winner in first-to-X-laps race
-RACE_STATUS_TIED_STR = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
-RACE_STATUS_CROSSING = 'Waiting for cross'  # indicator for Most Laps Wins race
+    # Release Version
+    server_info += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
 
-Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
+    # Server API
+    server_info += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
+
+    # Node API levels
+    node_api_level = False
+    node_api_match = True
+    if INTERFACE.nodes[0].api_level:
+        node_api_level = INTERFACE.nodes[0].api_level
+
+        node_api_levels = []
+        for node in INTERFACE.nodes:
+            node_api_levels.append(node.api_level)
+            if node.api_level is not node_api_level:
+                node_api_match = False
+
+    server_info += "<li>" + __("Node API") + ": "
+    if node_api_level:
+        if node_api_match:
+            server_info += str(node_api_level)
+        else:
+            server_info += "[ "
+            for idx, level in node_api_levels:
+                server_info += str(idx+1) + ":" + str(level) + " "
+            server_info += "]"
+    else:
+        server_info += "None (Delta5)"
+
+    server_info += "</li>"
+
+    if node_api_match is False or node_api_level < NODE_API_BEST:
+        # Show Recommended API notice
+        server_info += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
+
+    server_info += "</ul>"
+
+    print server_info
+    return server_info
 
 
 #
@@ -3169,49 +3220,13 @@ on_set_profile({'profile': current_profile}, False)
 INTERFACE.set_history_expire_global(int(getOption("HistoryExpireDuration")))
 
 # Set current heat on startup
-RACE.current_heat = Heat.query.first().heat_id
+if Heat.query.first():
+    RACE.current_heat = Heat.query.first().heat_id
 
-# Test data - Current laps
-# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
-# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=1, lap_time_stamp=11000, lap_time=10000, lap_time_formatted=time_format(10000)))
-# DB.session.add(CurrentLap(node_index=2, pilot_id=2, lap_id=2, lap_time_stamp=21000, lap_time=10000, lap_time_formatted=time_format(10000)))
-# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
-# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=1, lap_time_stamp=12000, lap_time=11000, lap_time_formatted=time_format(11000)))
-# DB.session.add(CurrentLap(node_index=3, pilot_id=3, lap_id=2, lap_time_stamp=24000, lap_time=12000, lap_time_formatted=time_format(12000)))
-# DB.session.add(CurrentLap(node_index=4, pilot_id=4, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
-# DB.session.add(CurrentLap(node_index=4, pilot_id=4, lap_id=1, lap_time_stamp=12000, lap_time=11000, lap_time_formatted=time_format(11000)))
-# DB.session.add(CurrentLap(node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
-# DB.session.add(CurrentLap(node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=13000, lap_time=12000, lap_time_formatted=time_format(12000)))
-# DB.session.commit()
+# collect server info for About panel
+setOption("serverInfo", buildServerInfo())
 
-# Test data - SavedRace
-# db_init()
-# on_add_heat()
-# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
-# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=2, pilot_id=2, lap_id=1, lap_time_stamp=15000, lap_time=14000, lap_time_formatted=time_format(14000)))
-# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=2, pilot_id=2, lap_id=2, lap_time_stamp=30000, lap_time=15000, lap_time_formatted=time_format(15000)))
-# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=3, pilot_id=3, lap_id=0, lap_time_stamp=1500, lap_time=1500, lap_time_formatted=time_format(1500)))
-# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=3, pilot_id=3, lap_id=1, lap_time_stamp=15000, lap_time=13500, lap_time_formatted=time_format(13500)))
-# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=750, lap_time=750, lap_time_formatted=time_format(750)))
-# DB.session.add(SavedRace(round_id=1, heat_id=2, node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=10750, lap_time=10000, lap_time_formatted=time_format(10000)))
-# DB.session.commit()
-# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
-# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=2, pilot_id=2, lap_id=1, lap_time_stamp=15000, lap_time=14000, lap_time_formatted=time_format(14000)))
-# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=2, pilot_id=2, lap_id=2, lap_time_stamp=30000, lap_time=15000, lap_time_formatted=time_format(15000)))
-# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=3, pilot_id=3, lap_id=0, lap_time_stamp=1500, lap_time=1500, lap_time_formatted=time_format(1500)))
-# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=3, pilot_id=3, lap_id=1, lap_time_stamp=15000, lap_time=13500, lap_time_formatted=time_format(13500)))
-# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=750, lap_time=750, lap_time_formatted=time_format(750)))
-# DB.session.add(SavedRace(round_id=1, heat_id=1, node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=10750, lap_time=10000, lap_time_formatted=time_format(10000)))
-# DB.session.commit()
-# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=2, pilot_id=2, lap_id=0, lap_time_stamp=1000, lap_time=1000, lap_time_formatted=time_format(1000)))
-# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=2, pilot_id=2, lap_id=1, lap_time_stamp=16000, lap_time=15000, lap_time_formatted=time_format(15000)))
-# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=2, pilot_id=2, lap_id=2, lap_time_stamp=31000, lap_time=16000, lap_time_formatted=time_format(16000)))
-# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=3, pilot_id=3, lap_id=0, lap_time_stamp=1500, lap_time=1500, lap_time_formatted=time_format(1500)))
-# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=3, pilot_id=3, lap_id=1, lap_time_stamp=16000, lap_time=14500, lap_time_formatted=time_format(14500)))
-# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=1, pilot_id=1, lap_id=0, lap_time_stamp=750, lap_time=750, lap_time_formatted=time_format(750)))
-# DB.session.add(SavedRace(round_id=2, heat_id=1, node_index=1, pilot_id=1, lap_id=1, lap_time_stamp=11750, lap_time=11000, lap_time_formatted=time_format(11000)))
-# DB.session.commit()
-
+# Start HTTP server
 if __name__ == '__main__':
     port_val = Config['GENERAL']['HTTP_PORT']
     print "Running http server at port " + str(port_val)

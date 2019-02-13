@@ -92,12 +92,7 @@
 	<div id="about" class="mfp-hide popup-basic">
 		<h2>{{ __("About RotorHazard") }}</h2>
 		<div class="popup-content">
-			<ul>
-				<li>Version: 1.1.0</li>
-				<li>Server API: 11</li>
-				<li>Node API: --</li>
-				<li>Recommended Node API: 12</li>
-			</ul>
+			{{ getOption("serverInfo") | safe }}
 		</div>
 	</div>
 </body>
