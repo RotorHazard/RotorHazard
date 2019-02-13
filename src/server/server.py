@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "1.1.0 (development)" # Public release version code
-SERVER_API = 11 # Server API version
+SERVER_API = 12 # Server API version
 NODE_API_BEST = 13 # Most recent node API
 
 import os
@@ -648,6 +648,10 @@ def on_set_enter_at_level(data):
     node_index = data['node']
     enter_at_level = data['enter_at_level']
 
+    if not enter_at_level:
+        server_log('Node enter-at set null; getting from node: Node {0}'.format(node_index+1))
+        enter_at_level = INTERFACE.nodes[node_index].enter_at_level
+
     current_profile = int(getOption("currentProfile"))
     profile = Profiles.query.get(current_profile)
     enter_ats = json.loads(profile.enter_ats)
@@ -664,6 +668,10 @@ def on_set_exit_at_level(data):
     node_index = data['node']
     exit_at_level = data['exit_at_level']
 
+    if not exit_at_level:
+        server_log('Node exit-at set null; getting from node: Node {0}'.format(node_index+1))
+        exit_at_level = INTERFACE.nodes[node_index].exit_at_level
+
     current_profile = int(getOption("currentProfile"))
     profile = Profiles.query.get(current_profile)
     exit_ats = json.loads(profile.exit_ats)
@@ -676,17 +684,26 @@ def on_set_exit_at_level(data):
 
 def hardware_set_all_enter_ats(enter_at_levels):
     '''send update to nodes'''
-    var_max = len(enter_at_levels)
     for idx in range(RACE.num_nodes):
-        if idx < var_max and enter_at_levels[idx]:
+        if enter_at_levels[idx]:
             INTERFACE.set_enter_at_level(idx, enter_at_levels[idx])
+        else:
+            on_set_enter_at_level({
+                'node': idx,
+                'enter_at_level': INTERFACE.nodes[idx].enter_at_level
+                })
 
 def hardware_set_all_exit_ats(exit_at_levels):
     '''send update to nodes'''
-    var_max = len(exit_at_levels)
     for idx in range(RACE.num_nodes):
-        if idx < var_max and exit_at_levels[idx]:
+        if exit_at_levels[idx]:
             INTERFACE.set_exit_at_level(idx, exit_at_levels[idx])
+        else:
+            on_set_exit_at_level({
+                'node': idx,
+                'exit_at_level': INTERFACE.nodes[idx].exit_at_level
+                })
+
 
 @SOCKET_IO.on('set_language')
 def on_set_language(data):
@@ -2957,13 +2974,20 @@ def db_reset_profile():
     new_freqs = {}
     new_freqs["f"] = default_frequencies()
 
+    template = {}
+    template["v"] = [None, None, None, None, None, None, None, None]
+
     DB.session.add(Profiles(name=__("Outdoor"),
                              description = __("Medium filtering"),
                              frequencies = json.dumps(new_freqs),
+                             enter_ats = json.dumps(template),
+                             exit_ats = json.dumps(template),
                              f_ratio=100))
     DB.session.add(Profiles(name=__("Indoor"),
                              description = __("Strong filtering"),
                              frequencies = json.dumps(new_freqs),
+                             enter_ats = json.dumps(template),
+                             exit_ats = json.dumps(template),
                              f_ratio=10))
     DB.session.commit()
     setOption("currentProfile", 1)
