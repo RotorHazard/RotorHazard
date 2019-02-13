@@ -437,6 +437,10 @@ def results():
     # - One for individual heats
     return render_template('rounds.html', getOption=getOption, __=__)
 
+@APP.route('/laps')
+def laps():
+    return render_template('laps.html', getOption=getOption, __=__)
+
 @APP.route('/race')
 @requires_auth
 def race():
@@ -563,6 +567,8 @@ def on_load_data(data):
             emit_all_languages(nobroadcast=True)
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
+        elif load_type == 'laps_statistic_data':
+            emit_laps_statistic_data(nobroadcast=True)
 
 @SOCKET_IO.on('broadcast_message')
 def on_broadcast_message(data):
@@ -1029,6 +1035,7 @@ def on_reset_database(data):
     emit_class_data()
     emit_current_laps()
     emit_round_data_notify()
+    emit_laps_statistic_data()
     emit('reset_confirm')
 
 @SOCKET_IO.on('shutdown_pi')
@@ -1270,6 +1277,7 @@ def on_save_laps():
     server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
     on_clear_laps() # Also clear the current laps
     emit_round_data_notify() # live update rounds page
+    emit_laps_statistic_data() #live update the lap statistics page
 
 @SOCKET_IO.on('clear_laps')
 def on_clear_laps():
@@ -2612,7 +2620,130 @@ def emit_imdtabler_rating():
         }
     SOCKET_IO.emit('imdtabler_rating', emit_payload)
 
+def emit_laps_statistic_data(**params):
+    total_top_fastes_laps = []
+    laps_per_pilot = {}
+    avg_50_laptime_array = {}
+    avg_80_laptime_array = {}
+    avg_90_laptime_array = {}
+    current_lap_counter = 0
+    top_pilot_lapnumber_array = []
+    top_pilot_50_avg_array = []
+    top_pilot_80_avg_array = []
+    top_pilot_90_avg_array = []
+    top_pilot_fastes_lap_array = []
+    pilot_details_array = []
 
+    #get the 10 fastes laps from the database, ignore all laps with lap id 0 because those are the initial passes
+    for lap in SavedRace.query.filter(SavedRace.lap_id!=0).order_by(SavedRace.lap_time):
+        tmp_row = []
+        tmp_row.append(Pilot.query.filter(Pilot.id==lap.pilot_id)[0].name)
+        tmp_row.append(lap.lap_time_formatted)
+        total_top_fastes_laps.append(tmp_row)
+        current_lap_counter = current_lap_counter +1
+        if current_lap_counter == 10:
+            break
+
+    #loop thouh all plilots to gets statistics for each one of them
+    for pilot in Pilot.query:
+        #get the number of laps for the current pilot
+         laps_current_pilot = SavedRace.query.filter(SavedRace.lap_id!=0, SavedRace.pilot_id==pilot.id).count()
+         laps_per_pilot[pilot.id] = laps_current_pilot
+         pilot_details = []
+         pilot_details.append(pilot.name)
+         #initiate variable to calculate average values
+         lapcount = 0
+         avg_50_laptime = 0
+         avg_80_laptime = 0
+         avg_90_laptime = 0
+         fastes_lap = 0
+         pilot_all_laps =[]
+         #query all laps for the pilot orderd by laptime
+         for lap in SavedRace.query.filter(SavedRace.lap_id!=0,SavedRace.pilot_id==pilot.id).order_by(SavedRace.lap_time):
+             lapcount = lapcount +1
+             pilot_all_laps.append(lap.lap_time_formatted)
+             if lapcount == 1 :
+                 #the first lap is the fastes one
+                 fastes_lap = lap.lap_time
+             #accomulate the times for the 50% 80% and 90% average values
+             if lapcount <= laps_current_pilot * 0.5:
+                 avg_50_laptime = avg_50_laptime + lap.lap_time
+             if lapcount <= laps_current_pilot * 0.8:
+                 avg_80_laptime = avg_80_laptime + lap.lap_time
+             if lapcount <= laps_current_pilot * 0.9:
+                 avg_90_laptime = avg_90_laptime + lap.lap_time
+
+         pilot_details.append(pilot_all_laps)
+
+         #calculate the average values for the top  50% 80% and 90% laps
+         if laps_current_pilot > 1:
+             avg_50_laptime = avg_50_laptime /  int(laps_current_pilot * 0.5)
+             avg_80_laptime = avg_80_laptime /  int(laps_current_pilot * 0.8)
+             avg_90_laptime = avg_90_laptime /  int(laps_current_pilot * 0.9)
+         avg_50_laptime_array[pilot.id] = time_format(avg_50_laptime)
+         avg_80_laptime_array[pilot.id] = time_format(avg_80_laptime)
+         avg_90_laptime_array[pilot.id] = time_format(avg_90_laptime)
+
+         pilot_details.append(laps_current_pilot)
+         if laps_current_pilot > 0:
+             tmp_row = []
+             tmp_row.append(pilot.name)
+             tmp_row.append(laps_current_pilot)
+             top_pilot_lapnumber_array.append(tmp_row)
+
+         pilot_details_stats =[]
+         if avg_50_laptime > 0:
+            tmp_row = []
+            tmp_row.append(pilot.name)
+            tmp_row.append(time_format(avg_50_laptime))
+            top_pilot_50_avg_array.append(tmp_row)
+            pilot_details_stats.append('50% avg: '+time_format(avg_50_laptime))
+
+         if avg_80_laptime > 0:
+            tmp_row = []
+            tmp_row.append(pilot.name)
+            tmp_row.append(time_format(avg_80_laptime))
+            top_pilot_80_avg_array.append(tmp_row)
+            pilot_details_stats.append('80% avg: '+time_format(avg_80_laptime))
+
+         if avg_90_laptime > 0:
+            tmp_row = []
+            tmp_row.append(pilot.name)
+            tmp_row.append(time_format(avg_90_laptime))
+            top_pilot_90_avg_array.append(tmp_row)
+            pilot_details_stats.append('90% avg: '+time_format(avg_90_laptime))
+
+         if fastes_lap > 0:
+            tmp_row = []
+            tmp_row.append(pilot.name)
+            tmp_row.append(time_format(fastes_lap))
+            top_pilot_fastes_lap_array.append(tmp_row)
+            pilot_details_stats.append('fastes: '+time_format(fastes_lap))
+
+         pilot_details.append(pilot_details_stats)
+
+         pilot_details_array.append(pilot_details)
+
+    top_pilot_lapnumber_array.sort(key=lambda x : x[1], reverse=True)
+    top_pilot_50_avg_array.sort(key=lambda x : x[1])
+    top_pilot_80_avg_array.sort(key=lambda x : x[1])
+    top_pilot_90_avg_array.sort(key=lambda x : x[1])
+    top_pilot_fastes_lap_array.sort(key=lambda x : x[1])
+
+    emit_payload = {
+        'total_top_fastes_laps':total_top_fastes_laps,
+        'top_pilot_50_avg_array': top_pilot_50_avg_array,
+        'top_pilot_80_avg_array': top_pilot_80_avg_array,
+        'top_pilot_90_avg_array': top_pilot_90_avg_array,
+        'top_pilot_lapnumber_array': top_pilot_lapnumber_array,
+        'top_pilot_fastes_lap_array': top_pilot_fastes_lap_array,
+        'pilot_details_array':pilot_details_array
+    }
+
+    if ('nobroadcast' in params):
+        emit('laps_statistic_data', emit_payload)
+    else:
+        SOCKET_IO.emit('laps_statistic_data', emit_payload)
 #
 # Program Functions
 #
