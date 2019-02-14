@@ -93,7 +93,7 @@
 	<div id="about" class="mfp-hide popup">
 		<h2>{{ __("About RotorHazard") }}</h2>
 		<div class="popup-content">
-			{{ getOption("serverInfo") | safe }}
+			{{ serverInfo['about_html'] | safe }}
 		</div>
 	</div>
 </body>

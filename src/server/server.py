@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "1.1.0 (development)" # Public release version code
-SERVER_API = 11 # Server API version
+SERVER_API = 12 # Server API version
 NODE_API_BEST = 13 # Most recent node API
 
 import os
@@ -157,48 +157,57 @@ def getAllLanguages():
 #
 
 def buildServerInfo():
-    server_info = "<ul>"
+    serverInfo = {}
+
+    serverInfo['about_html'] = "<ul>"
 
     # Release Version
-    server_info += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
+    serverInfo['release_version'] = RELEASE_VERSION
+    serverInfo['about_html'] += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
 
     # Server API
-    server_info += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
+    serverInfo['server_api'] = SERVER_API
+    serverInfo['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
 
     # Node API levels
     node_api_level = False
-    node_api_match = True
+    serverInfo['node_api_match'] = True
     if INTERFACE.nodes[0].api_level:
         node_api_level = INTERFACE.nodes[0].api_level
+        serverInfo['node_api_lowest'] = node_api_level
 
-        node_api_levels = []
+        serverInfo['node_api_levels'] = []
         for node in INTERFACE.nodes:
-            node_api_levels.append(node.api_level)
+            serverInfo['node_api_levels'].append(node.api_level)
+
             if node.api_level is not node_api_level:
-                node_api_match = False
+                serverInfo['node_api_match'] = False
 
-    server_info += "<li>" + __("Node API") + ": "
+            if node.api_level < serverInfo['node_api_lowest']:
+                serverInfo['node_api_lowest'] = node.api_level
+
+    serverInfo['about_html'] += "<li>" + __("Node API") + ": "
     if node_api_level:
-        if node_api_match:
-            server_info += str(node_api_level)
+        if serverInfo['node_api_match']:
+            serverInfo['about_html'] += str(node_api_level)
         else:
-            server_info += "[ "
-            for idx, level in node_api_levels:
-                server_info += str(idx+1) + ":" + str(level) + " "
-            server_info += "]"
+            serverInfo['about_html'] += "[ "
+            for idx, level in serverInfo['node_api_levels']:
+                serverInfo['about_html'] += str(idx+1) + ":" + str(level) + " "
+            serverInfo['about_html'] += "]"
     else:
-        server_info += "None (Delta5)"
+        serverInfo['about_html'] += "None (Delta5)"
 
-    server_info += "</li>"
+    serverInfo['about_html'] += "</li>"
 
-    if node_api_match is False or node_api_level < NODE_API_BEST:
+    serverInfo['node_api_best'] = NODE_API_BEST
+    if serverInfo['node_api_match'] is False or node_api_level < NODE_API_BEST:
         # Show Recommended API notice
-        server_info += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
+        serverInfo['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
 
-    server_info += "</ul>"
+    serverInfo['about_html'] += "</ul>"
 
-    print server_info
-    return server_info
+    return serverInfo
 
 
 #
@@ -416,12 +425,12 @@ def requires_auth(f):
 @APP.route('/')
 def index():
     '''Route to home page.'''
-    return render_template('home.html', getOption=getOption, __=__)
+    return render_template('home.html', serverInfo=serverInfo, getOption=getOption, __=__)
 
 @APP.route('/heats')
 def heats():
     '''Route to heat summary page.'''
-    return render_template('heats.html', getOption=getOption, __=__)
+    return render_template('heats.html', serverInfo=serverInfo, getOption=getOption, __=__)
 
 @APP.route('/results')
 def results():
@@ -435,7 +444,7 @@ def results():
     # - One for all rounds, grouped by heats
     # - One for all pilots, sorted by fastest lap and shows average and other stats
     # - One for individual heats
-    return render_template('rounds.html', getOption=getOption, __=__)
+    return render_template('rounds.html', serverInfo=serverInfo, getOption=getOption, __=__)
 
 @APP.route('/laps')
 def laps():
@@ -445,7 +454,7 @@ def laps():
 @requires_auth
 def race():
     '''Route to race management page.'''
-    return render_template('race.html', getOption=getOption, __=__,
+    return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat,
         heats=Heat, pilots=Pilot,
@@ -454,7 +463,7 @@ def race():
 @APP.route('/current')
 def racepublic():
     '''Route to race management page.'''
-    return render_template('racepublic.html', getOption=getOption, __=__,
+    return render_template('racepublic.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/settings')
@@ -462,7 +471,7 @@ def racepublic():
 def settings():
     '''Route to settings page.'''
 
-    return render_template('settings.html', getOption=getOption, __=__,
+    return render_template('settings.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config['GENERAL']['configFile'],
         Debug=Config['GENERAL']['DEBUG'])
@@ -472,7 +481,7 @@ def settings():
 def correction():
     '''Route to node correction page.'''
 
-    return render_template('correction.html', getOption=getOption, __=__,
+    return render_template('correction.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         current_profile = getOption("currentProfile"),
         profiles = Profiles)
@@ -481,7 +490,7 @@ def correction():
 def imdtabler():
     '''Route to IMDTabler page.'''
 
-    return render_template('imdtabler.html', getOption=getOption, __=__)
+    return render_template('imdtabler.html', serverInfo=serverInfo, getOption=getOption, __=__)
 
 # Debug Routes
 
@@ -489,13 +498,13 @@ def imdtabler():
 @requires_auth
 def hardwarelog():
     '''Route to hardware log page.'''
-    return render_template('hardwarelog.html', getOption=getOption, __=__)
+    return render_template('hardwarelog.html', serverInfo=serverInfo, getOption=getOption, __=__)
 
 @APP.route('/database')
 @requires_auth
 def database():
     '''Route to database page.'''
-    return render_template('database.html', getOption=getOption, __=__,
+    return render_template('database.html', serverInfo=serverInfo, getOption=getOption, __=__,
         pilots=Pilot,
         heats=Heat,
         race_class=RaceClass,
@@ -645,6 +654,10 @@ def on_set_enter_at_level(data):
     node_index = data['node']
     enter_at_level = data['enter_at_level']
 
+    if not enter_at_level:
+        server_log('Node enter-at set null; getting from node: Node {0}'.format(node_index+1))
+        enter_at_level = INTERFACE.nodes[node_index].enter_at_level
+
     current_profile = int(getOption("currentProfile"))
     profile = Profiles.query.get(current_profile)
     enter_ats = json.loads(profile.enter_ats)
@@ -661,6 +674,10 @@ def on_set_exit_at_level(data):
     node_index = data['node']
     exit_at_level = data['exit_at_level']
 
+    if not exit_at_level:
+        server_log('Node exit-at set null; getting from node: Node {0}'.format(node_index+1))
+        exit_at_level = INTERFACE.nodes[node_index].exit_at_level
+
     current_profile = int(getOption("currentProfile"))
     profile = Profiles.query.get(current_profile)
     exit_ats = json.loads(profile.exit_ats)
@@ -676,12 +693,23 @@ def hardware_set_all_enter_ats(enter_at_levels):
     for idx in range(RACE.num_nodes):
         if enter_at_levels[idx]:
             INTERFACE.set_enter_at_level(idx, enter_at_levels[idx])
+        else:
+            on_set_enter_at_level({
+                'node': idx,
+                'enter_at_level': INTERFACE.nodes[idx].enter_at_level
+                })
 
 def hardware_set_all_exit_ats(exit_at_levels):
     '''send update to nodes'''
     for idx in range(RACE.num_nodes):
         if exit_at_levels[idx]:
             INTERFACE.set_exit_at_level(idx, exit_at_levels[idx])
+        else:
+            on_set_exit_at_level({
+                'node': idx,
+                'exit_at_level': INTERFACE.nodes[idx].exit_at_level
+                })
+
 
 @SOCKET_IO.on('set_language')
 def on_set_language(data):
@@ -3077,13 +3105,20 @@ def db_reset_profile():
     new_freqs = {}
     new_freqs["f"] = default_frequencies()
 
+    template = {}
+    template["v"] = [None, None, None, None, None, None, None, None]
+
     DB.session.add(Profiles(name=__("Outdoor"),
                              description = __("Medium filtering"),
                              frequencies = json.dumps(new_freqs),
+                             enter_ats = json.dumps(template),
+                             exit_ats = json.dumps(template),
                              f_ratio=100))
     DB.session.add(Profiles(name=__("Indoor"),
                              description = __("Strong filtering"),
                              frequencies = json.dumps(new_freqs),
+                             enter_ats = json.dumps(template),
+                             exit_ats = json.dumps(template),
                              f_ratio=10))
     DB.session.commit()
     setOption("currentProfile", 1)
@@ -3239,25 +3274,9 @@ def restore_table(class_type, table_query_data, match_name='name'):
         except Exception as ex:
             server_log('Error restoring "{0}" table from previous database:  {1}'.format(class_type.__name__, ex))
 
-
-#
-# Program Initialize
-#
-
-# Save number of nodes found
-RACE.num_nodes = len(INTERFACE.nodes)
-print 'Number of nodes found: {0}'.format(RACE.num_nodes)
-
-# Delay to get I2C addresses through interface class initialization
-gevent.sleep(0.500)
-
-# Create database if it doesn't exist
-if not os.path.exists(DB_FILE_NAME):
-    db_init()
-elif int(getOption('server_api')) < SERVER_API:
-    server_log('Old server API version; resetting database')
+def recover_database():
     try:
-        server_log('Recovering Pilot data from previous database')
+        server_log('Recovering data from previous database')
         pilot_query_data = query_table_data(Pilot)
         raceFormat_query_data = query_table_data(RaceFormat)
         profiles_query_data = query_table_data(Profiles)
@@ -3315,12 +3334,51 @@ elif int(getOption('server_api')) < SERVER_API:
 
     DB.session.commit()
 
-    pilot_query_data = None       # make sure temp data is released
-    raceFormat_query_data = None
-    profiles_query_data = None
-    raceClass_query_data = None
-    heat_query_data = None
+def expand_heats():
+    for heat_ids in Heat.query.with_entities(Heat.heat_id).distinct():
+        for node in range(RACE.num_nodes):
+            heat_row = Heat.query.filter_by(heat_id=heat_ids.heat_id, node_index=node)
+            if not heat_row.count():
+                DB.session.add(Heat(heat_id=heat_ids.heat_id, node_index=node, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE))
 
+    DB.session.commit()
+
+#
+# Program Initialize
+#
+
+# Save number of nodes found
+RACE.num_nodes = len(INTERFACE.nodes)
+print 'Number of nodes found: {0}'.format(RACE.num_nodes)
+
+# Delay to get I2C addresses through interface class initialization
+gevent.sleep(0.500)
+
+# collect server info for About panel
+serverInfo = buildServerInfo()
+server_log('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
+if serverInfo['node_api_match'] is False:
+    server_log('** WARNING: Node API mismatch **')
+if serverInfo['node_api_lowest'] < NODE_API_BEST:
+    server_log('** NOTICE: Node firmware update available **')
+
+# Create database if it doesn't exist
+if not os.path.exists(DB_FILE_NAME):
+    db_init()
+elif int(getOption('server_api')) < SERVER_API:
+    server_log('Old server API version; resetting database')
+    recover_database()
+elif not Profiles.query.count():
+    server_log('Profiles are empty; resetting database')
+    recover_database()
+elif not RaceFormat.query.count():
+    server_log('Formats are empty; resetting database')
+    recover_database()
+
+# Expand heats (if number of nodes increases)
+expand_heats()
+
+# Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     try:
         java_ver = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
@@ -3354,9 +3412,6 @@ INTERFACE.set_history_expire_global(int(getOption("HistoryExpireDuration")))
 # Set current heat on startup
 if Heat.query.first():
     RACE.current_heat = Heat.query.first().heat_id
-
-# collect server info for About panel
-setOption("serverInfo", buildServerInfo())
 
 # Start HTTP server
 if __name__ == '__main__':
