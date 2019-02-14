@@ -30,7 +30,31 @@
 						pre_race = false;
 						timer_control.start();
 					} else {
-						play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+						if(pre_delay <= 5)
+						{
+							play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+						}
+						else if (pre_delay == 6){
+							 speak('<div class="timer">' + __l('Start Race in less than 5') + '</div>', true);
+						}
+						else if (pre_delay == 10){
+							 speak('<div class="timer">' + __l('Start Race in 10 seconds') + '</div>', true);
+						}
+						else if (pre_delay == 20){
+							 speak('<div class="timer">' + __l('Start Race in 20 seconds') + '</div>', true);
+						}
+						else if (pre_delay == 30){
+							 speak('<div class="timer">' + __l('Start Race in 30 seconds') + '</div>', true);
+						}
+						else if (pre_delay == 45){
+							 speak('<div class="timer">' + __l('Start Race in 45 seconds') + '</div>', true);
+						}
+						else if (pre_delay == 60){
+							 speak('<div class="timer">' + __l('Start Race in 1 Minute') + '</div>', true);
+						}
+						else if (pre_delay == 120){
+							 speak('<div class="timer">' + __l('Start Race in 2 Minutes') + '</div>', true);
+						}
 						generateTime(); // Updates html timer text
 					}
 				}, 1000); // 1000 ms update rate

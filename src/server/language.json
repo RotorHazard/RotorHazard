@@ -205,7 +205,15 @@
 			"EnterAt must be greater than ExitAt: <strong>Passes WILL NOT register correctly</strong>.":"EnterAt muss größer sein als ExitAt: <strong>Durchflüge klnnen nicht richtig erkannt werden</strong>.",
 			"EnterAt is very near ExitAt: <strong>Passes may register too frequently</strong>.":"EnterAt sehr nah an ExitAt: <strong>Druchflüge können zu häufig erkannt werden</strong>.",
 			"ExitAt is lower than PassNadir: <strong>Passes may not complete</strong>.":"ExitAt ist kleiner als PassNadir: <strong>Durchflüge können unter Umständen nicht abgeschlossen werden</strong>.",
-			"ExitAt is very near PassNadir: <strong>Passes may not complete</strong>.":"ExitAt sehr nah an PassNadir: <strong>Durchflüge können unter Umständen nicht abgeschlossen werden</strong>."
+			"ExitAt is very near PassNadir: <strong>Passes may not complete</strong>.":"ExitAt sehr nah an PassNadir: <strong>Durchflüge können unter Umständen nicht abgeschlossen werden</strong>.",
+			"Start Race in less than 5":"Rennen Startet in wenige als 5 Sekunden",
+			"Start Race in 10 seconds":"Rennen Startet in 10 Sekunden",
+			"Start Race in 20 seconds":"Rennen Startet in 20 Sekunden",
+			"Start Race in 30 seconds":"Rennen Startet in 30 Sekunden",
+			"Start Race in 45 seconds":"Rennen Startet in 45 Sekunden",
+			"Start Race in 1 Minute":"Rennen Startet in 1 Minute",
+			"Start Race in 2 Minutes":"Rennen Startet in 2 Minuten"
+
 		}
 	},
 	"nl-be": {
