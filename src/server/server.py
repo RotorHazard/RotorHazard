@@ -448,7 +448,7 @@ def results():
 
 @APP.route('/laps')
 def laps():
-    return render_template('laps.html', getOption=getOption, __=__)
+    return render_template('laps.html',  serverInfo=serverInfo, getOption=getOption, __=__)
 
 @APP.route('/race')
 @requires_auth
