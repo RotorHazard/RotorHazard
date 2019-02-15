@@ -569,12 +569,12 @@ nodeModel.prototype = {
 	checkValues: function(){
 		var warnings = [];
 
-		if (this.node_nadir_rssi > 0 && this.node_nadir_rssi < this.node_peak_rssi - 20) {
+		if (this.node_nadir_rssi > 0 && this.node_nadir_rssi < this.node_peak_rssi - 40) {
 			// assume node data is invalid unless nadir and peak are minimally separated
 			if (this.enter_at_level > this.node_peak_rssi) {
-				warnings.push(__('EnterAt is higher than NodePeak: <strong>Passes may not register</strong>. Ensure you have completed a lap pass before adjusting node values.'));
+				warnings.push(__('EnterAt is higher than NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>'));
 			} else if (this.enter_at_level > this.node_peak_rssi - 10) {
-				warnings.push(__('EnterAt is very near NodePeak: <strong>Passes may not register</strong>. Ensure you have completed a lap pass before adjusting node values.'));
+				warnings.push(__('EnterAt is very near NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>'));
 			}
 		}
 

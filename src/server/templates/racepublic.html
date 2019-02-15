@@ -222,6 +222,14 @@
 			}
 		})
 
+		socket.on('phonetic_text', function (msg) {
+			if (msg.text) {
+				if (!msg.domain || rotorhazard['voice_' + msg.domain]) {
+					speak('<div class="speech">' + __l(msg.text) + '</div>');
+				}
+			}
+		})
+
 		socket.on('current_heat', function (msg) {
 			var heatname = __('Heat') + ' ' + msg.current_heat;
 			if (msg.heat_note)

@@ -316,7 +316,7 @@
 			node.graphPaused = !node.graphPaused;
 		});
 
-		$('button.catch_pass').click(function (event) {
+		$('button.catch-pass').click(function (event) {
 			var data = {
 				node: parseInt($(this).data('node')),
 				method: $(this).data('method'),
@@ -1186,25 +1186,28 @@
 			<div class="node" data-node="{{ node }}">
 				<h3>{{ __('Node') }} {{ node + 1 }}</h3>
 				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
-				<div class="rssi-graph"><canvas id="rssi-graph-{{ node }}"></div>
+				<div class="rssi-graph">
+					<button class="pause_graph" data-node="{{ node }}">&#x23ef;&#xFE0E;<span class="screen-reader-text"> {{ __('Pause/Resume Graph') }}</span></button>
+					<canvas id="rssi-graph-{{ node }}">
+				</div>
 				<div class="crossing crossing_flag_{{ node }}">{{ __('Clear') }}</div>
-				<div>
-					<button class="pause_graph" data-node="{{ node }}">{{ __('Pause/Resume Graph') }}</button>
-
-					<div class="compact-field">
+				<div class="node-controls">
+					<div class="enter-exit-control">
 						<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
 						<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
+						<button class="cap_enter_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
 					</div>
-					<button class="cap_enter_at_btn" data-node_index="{{ node }}">{{ __('Capture') }} &#8593;</button>
 
-					<div class="compact-field">
+					<div class="enter-exit-control">
 						<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
 						<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
+						<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
 					</div>
-					<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }} &#8593;</button>
 
-					<button class="catch_pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
-					<button class="catch_pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
+					<div class="catch-passes">
+						<button class="catch-pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
+						<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
+					</div>
 				</div>
 				<div id="node_notice_{{ node }}"></div>
 				<table>
@@ -1261,12 +1264,14 @@
 			<li>
 				<div class="label-block">
 					<label for="set_recovery_max_offset">{{ __('Missed Lap Offset') }}</label>
+					<p class="desc">{{ __('Adjusts EnterAt value after "Catch Missed Lap"') }}</p>
 				</div>
 				<input type="text" id="set_recovery_max_offset" class="set-option" data-option="HistoryMaxOffset" value="{{ getOption('HistoryMaxOffset') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_recovery_min_offset">{{ __('End Crossing Offset') }}</label>
+					<p class="desc">{{ __('Adjusts ExitAt value after "Force End Crossing"') }}</p>
 				</div>
 				<input type="text" id="set_recovery_min_offset" class="set-option" data-option="HistoryMinOffset" value="{{ getOption('HistoryMinOffset') }}">
 			</li>

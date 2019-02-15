@@ -505,6 +505,24 @@
 			}
 		});
 
+		$('button.cap_enter_at_btn').click(function (event) {
+			var data = {
+				node_index: parseInt($(this).data('node_index')),
+			};
+			$('#set_enter_at_level_' + data.node_index).val('');
+			socket.emit('cap_enter_at_btn', data);
+			return false;
+		});
+
+		$('button.cap_exit_at_btn').click(function (event) {
+			var data = {
+				node_index: parseInt($(this).data('node_index')),
+			};
+			$('#set_exit_at_level_' + data.node_index).val('');
+			socket.emit('cap_exit_at_btn', data);
+			return false;
+		});
+
 		$('button.pause_graph').click(function (event) {
 			var node = rotorhazard.nodes[parseInt($(this).data('node'))]
 			if (node.graphPaused) {
@@ -530,7 +548,7 @@
 			node.graphPaused = !node.graphPaused;
 		});
 
-		$('button.catch_pass').click(function (event) {
+		$('button.catch-pass').click(function (event) {
 			var data = {
 				node: parseInt($(this).data('node')),
 				method: $(this).data('method'),
@@ -860,6 +878,10 @@
 					var node = $.magnificPopup.instance.st.el.data('node');
 					var graph = $('#rssi-graph-' + node);
 					$('.rssi-graph.page[data-node="' + node + '"]').prepend(graph);
+
+					if (rotorhazard.nodes[node].graphPaused) {
+						$('button.pause_graph[data-node=' + node + ']').click();
+					}
 				}
 			}
 		});
@@ -910,10 +932,10 @@
 		<div class="race-results">
 			{% for node in range(num_nodes) %}
 			<div class="node">
-				<a href="#tuning-detail-{{node}}" data-node="{{ node }}" class="open-mfp-popup-tuning">{{ __('Tuning') }}</a>
 				<div class="race-header">
+					<a href="#tuning-detail-{{node}}" data-node="{{ node }}" class="open-mfp-popup-tuning button-like btn-warning" title="{{ __('Tuning') }}">&#9888;</a>
 					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
-					<button class="simulate_lap" data-node="{{ node }}">{{ __('Manual') }}</button>
+					<button class="simulate_lap" data-node="{{ node }}" title="{{ __('Manual') }}">+ {{ __('Lap') }}</button>
 				</div>
 				<div class="rssi-graph page" data-node="{{ node }}"><canvas id="rssi-graph-{{ node }}"></div>
 				<h4 class="callsign_{{ node }}">
@@ -932,19 +954,32 @@
 					<h2>{{ __('Tuning: Node') }} {{ node + 1 }}</h2>
 					<div class="popup-content">
 
-						<div class="rssi-graph popup" data-node="{{ node }}"></div>
-						<button class="pause_graph" data-node="{{ node }}">{{ __('Pause/Resume Graph') }}</button>
+						<div class="rssi-graph in-popup" data-node="{{ node }}">
+							<button class="pause_graph" data-node="{{ node }}">&#x23ef;&#xFE0E;<span class="screen-reader-text"> {{ __('Pause/Resume Graph') }}</span></button>
+						</div>
+						<div class="crossing crossing_flag_{{ node }}"><span>{{ __('Clear') }}</span></div>
 
-						<div>
-							<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
-							<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
+						<div class="node-controls">
+							<div class="enter-exit-control">
+								<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
+								<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
+								<button class="cap_enter_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
+							</div>
+
+							<div class="enter-exit-control">
+								<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
+								<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
+								<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
+							</div>
+
+							<div class="catch-passes">
+								<button class="catch-pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
+								<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
+							</div>
 						</div>
-						<div>
-							<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
-							<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
-						</div>
-						<button class="catch_pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
-						<button class="catch_pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
+
+						<div id="node_notice_{{ node }}"></div>
+
 						<table>
 							<tr class="datarow">
 								<td>{{ __('RSSI') }}</td>
@@ -983,7 +1018,6 @@
 								</td>
 							</tr>
 						</table>
-						<div id="node_notice_{{ node }}"></div>
 					</div>
 				</div>
 			</div>
@@ -1152,7 +1186,7 @@
 </div>
 
 <!--History Export-->
-<div class="panel collapsing">
+<div class="panel collapsing debug">
 	<div class="panel-header">
 		<h2>{{ __('History Export') }}</h2>
 	</div>
