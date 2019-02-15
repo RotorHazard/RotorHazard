@@ -3237,6 +3237,9 @@ if not os.path.exists(DB_FILE_NAME):
 elif int(getOption('server_api')) < SERVER_API:
     server_log('Old server API version; resetting database')
     recover_database()
+elif not Heat.query.count():
+    server_log('Heats are empty; resetting database')
+    recover_database()
 elif not Profiles.query.count():
     server_log('Profiles are empty; resetting database')
     recover_database()
