@@ -30,7 +30,7 @@
 						pre_race = false;
 						timer_control.start();
 					} else {
-						if(pre_delay <= 5)
+						if(pre_delay <= 5 || !rotorhazard.voice_announce_time_to_race_start)
 						{
 							play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 						}

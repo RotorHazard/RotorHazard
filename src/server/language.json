@@ -212,7 +212,8 @@
 			"Start Race in 30 seconds":"Rennen Startet in 30 Sekunden",
 			"Start Race in 45 seconds":"Rennen Startet in 45 Sekunden",
 			"Start Race in 1 Minute":"Rennen Startet in 1 Minute",
-			"Start Race in 2 Minutes":"Rennen Startet in 2 Minuten"
+			"Start Race in 2 Minutes":"Rennen Startet in 2 Minuten",
+			"Callout time till Race start if delay is > 5s":"Sprachcountdown wenn die Zeit bis zum Start größer als 5s ist"
 
 		}
 	},

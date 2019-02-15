@@ -74,6 +74,7 @@
 		$('#voice_lap_time').prop( "checked", rotorhazard.voice_lap_time);
 		$('#voice_race_timer').prop( "checked", rotorhazard.voice_race_timer);
 		$('#voice_race_winner').prop( "checked", rotorhazard.voice_race_winner);
+		$('#voice_announce_time_to_race_start').prop( "checked", rotorhazard.voice_announce_time_to_race_start);
 		$().articulate('volume', rotorhazard.voice_volume);
 		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
 		$('#voice_volume_value').html($('#set_voice_volume').val());
@@ -619,6 +620,11 @@
 			rotorhazard.saveData();
 		});
 
+		$('#voice_announce_time_to_race_start').change(function (event) {
+			rotorhazard.voice_announce_time_to_race_start = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+
 		$('#set_voice_volume').on('input', function (event) {
 			var val = volume_logsl.value($(this).val());
 			$().articulate('volume', val);
@@ -1068,6 +1074,7 @@
 					<li><label><input type="checkbox" id="voice_race_timer"> {{ __('Race Timer') }}</label></li>
 					<li><label><input type="checkbox" id="voice_team_lap_count"> {{ __('Team Lap Total') }}</label></li>
 					<li><label><input type="checkbox" id="voice_race_winner"> {{ __('Race Winner') }}</label></li>
+					<li><label><input type="checkbox" id="voice_announce_time_to_race_start"> {{ __('Callout time till Race start if delay is > 5s') }}</label></li>
 				</ul>
 			</li>
 			<li>
