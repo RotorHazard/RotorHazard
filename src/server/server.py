@@ -3228,6 +3228,13 @@ print 'Number of nodes found: {0}'.format(RACE.num_nodes)
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
 
+# if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
+db_inited_flag = False
+if not os.path.exists(DB_FILE_NAME):
+    server_log('No database.db file found; creating initial database')
+    db_init()
+    db_inited_flag = True
+
 # collect server info for About panel
 serverInfo = buildServerInfo()
 server_log('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
@@ -3236,21 +3243,19 @@ if serverInfo['node_api_match'] is False:
 if serverInfo['node_api_lowest'] < NODE_API_BEST:
     server_log('** NOTICE: Node firmware update available **')
 
-# Create database if it doesn't exist
-if not os.path.exists(DB_FILE_NAME):
-    db_init()
-elif int(getOption('server_api')) < SERVER_API:
-    server_log('Old server API version; resetting database')
-    recover_database()
-elif not Heat.query.count():
-    server_log('Heats are empty; resetting database')
-    recover_database()
-elif not Profiles.query.count():
-    server_log('Profiles are empty; resetting database')
-    recover_database()
-elif not RaceFormat.query.count():
-    server_log('Formats are empty; resetting database')
-    recover_database()
+if not db_inited_flag:
+    if int(getOption('server_api')) < SERVER_API:
+        server_log('Old server API version; resetting database')
+        recover_database()
+    elif not Heat.query.count():
+        server_log('Heats are empty; resetting database')
+        recover_database()
+    elif not Profiles.query.count():
+        server_log('Profiles are empty; resetting database')
+        recover_database()
+    elif not RaceFormat.query.count():
+        server_log('Formats are empty; resetting database')
+        recover_database()
 
 # Expand heats (if number of nodes increases)
 expand_heats()

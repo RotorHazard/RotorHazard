@@ -147,9 +147,12 @@ class RHInterface(BaseHardwareInterface):
             self.update_thread = gevent.spawn(self.update_loop)
 
     def update_loop(self):
-        while True:
-            self.update()
-            gevent.sleep(UPDATE_SLEEP)
+        try:
+            while True:
+                self.update()
+                gevent.sleep(UPDATE_SLEEP)
+        except KeyboardInterrupt:
+            print "Update thread terminated by keyboard interrupt"
 
     def update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_time_ms)
