@@ -11,6 +11,7 @@
 		var pre_race = false; // pre-race countdown
 		var pre_delay = 0; // pre-race countdown duration
 		var hide_countdown = false; // hide pre-race display (for random delay)
+		var emit_finished_flag = false; // true if emitting 'race_time_finished' after countdown
 
 		this.buzzer = $('#buzzer')[0]; // Buzzer audio tag is loaded on race page already
 		this.stagebuzzer = $('#stagebuzzer')[0]; // Buzzer audio tag is loaded on race page already
@@ -112,7 +113,7 @@
 			mode = new_mode;
 		}
 
-		// Return the current race duration
+		// Set the race duration
 		this.setRaceDuration = function (new_duration) {
 			race_duration = new_duration;
 		}
@@ -142,7 +143,17 @@
 			return status;
 		}
 
-		// This methode will render the time variable to minute:second format
+		// Enable emitting 'race_time_finished' after countdown
+		this.enableEmitFinished = function () {
+			emit_finished_flag = true;
+		}
+
+		// Return true if emitting 'race_time_finished' after countdown
+		this.getEmitFinishedFlag = function () {
+			return emit_finished_flag;
+		}
+
+		// This method will render the time variable to minute:second format
 		function generateTime() {
 			if (pre_race && hide_countdown) {
 				$('.timing-clock').html(__l('Ready'));
@@ -181,7 +192,9 @@
 					if (time == 0) {
 						play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 						timer.stop();
-						socket.emit('race_time_finished');  // signal server
+						if (timer.getEmitFinishedFlag()) {
+							socket.emit('race_time_finished');  // signal server
+						}
 					} else if (time <= 5) { // Final seconds
 						play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 					} else if (time == 10) {

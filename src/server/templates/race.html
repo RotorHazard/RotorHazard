@@ -446,6 +446,7 @@
 				timer.mode(msg.race_mode);
 				timer.setRaceDuration(msg.race_time_sec);
 				timer.reset();
+				timer.enableEmitFinished()  // enable emitting 'race_time_finished' after countdown
 				timer.pre_race(msg.start_delay, msg.hide_stage_timer);
 				timer.start(); // Start clock
 

@@ -1238,6 +1238,7 @@ def on_start_race(data):
         for node in INTERFACE.nodes:
             node.under_min_lap_count = 0
         RACE.race_status = 1 # To enable registering passed laps
+        RACE.timer_running = 1 # indicate race timer is running
         global RACE_START # To redefine main program variable
         RACE_START = datetime.now() # Update the race start time stamp
         global Race_laps_winner_name
@@ -1248,9 +1249,10 @@ def on_start_race(data):
         server_log('Race started at {0}'.format(RACE_START))
 
 @SOCKET_IO.on('stop_race')
-def on_race_status():
+def on_stop_race():
     '''Stops the race and stops registering laps.'''
     RACE.race_status = 2 # To stop registering passed laps, waiting for laps to be cleared
+    RACE.timer_running = 0 # indicate race timer not running
     global RACE_DURATION_MS # To redefine main program variable
     RACE_END = datetime.now() # Update the race end time stamp
 
@@ -1315,6 +1317,7 @@ def on_clear_laps():
 def clear_laps():
     '''Clear the current laps due to false start or practice.'''
     RACE.race_status = 0 # Laps cleared, ready to start next race
+    RACE.timer_running = 0 # indicate race timer not running
     global Race_laps_winner_name
     Race_laps_winner_name = None  # clear winner in first-to-X-laps race
     DB.session.query(CurrentLap).delete() # Clear out the current laps table
@@ -1442,10 +1445,12 @@ def get_race_elapsed():
 
 @SOCKET_IO.on('race_time_finished')
 def race_time_finished():
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
-    if race_format and race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
-        check_most_laps_win()  # check if pilot or team has most laps for win
+    if RACE.timer_running:
+        RACE.timer_running = 0 # indicate race timer no longer running
+        last_raceFormat = int(getOption("currentFormat"))
+        race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
+        if race_format and race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
+            check_most_laps_win()  # check if pilot or team has most laps for win
 
 @SOCKET_IO.on('imdtabler_update_freqs')
 def imdtabler_update_freqs(data):
