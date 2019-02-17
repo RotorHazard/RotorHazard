@@ -157,7 +157,7 @@ class RHInterface(BaseHardwareInterface):
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
-                    if node.api_valid_flag or node.api_level >= 13:
+                    if node.api_level >= 13:
                         data = self.read_block(node.i2c_addr, READ_LAP_STATS, 20)
                     else:
                         data = self.read_block(node.i2c_addr, READ_LAP_STATS, 18)
