@@ -3,8 +3,8 @@
 ## Initial Setup
 
 ### Hardware and Software Setup
-Follow the instructions here if not done already:
-[doc/Hardware Setup.md](Hardware%20Setup.md)
+Follow the instructions here if not done already:  
+[doc/Hardware Setup.md](Hardware%20Setup.md)  
 [doc/Software Setup.md](Software%20Setup.md)
 
 ### Set up Config File
