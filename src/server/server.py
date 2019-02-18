@@ -1340,22 +1340,63 @@ def on_set_current_heat(data):
 def on_recover_pass(data):
     node_index = data['node']
     catch_history = INTERFACE.get_catch_history(node_index)
-    server_log(catch_history['pass_ms'])
+
+    server_log('Recovering pass: Node {0} / Method {1} / Pass {2}'.format(node_index + 1, data['method'], catch_history['pass_ms']))
+
     if data['method'] == 'max':
+        # get best lap possible regardless of data validity (client asked for one)
         INTERFACE.intf_simulate_lap(node_index, catch_history['pass_ms'])
-        on_set_enter_at_level({
-            'node': node_index,
-            'enter_at_level': catch_history['rssi_max'] - int(getOption("HistoryMaxOffset"))
-        })
+
+        new_enterat = catch_history['rssi_max'] - int(getOption("HistoryMaxOffset"))
+
+        if new_enterat > INTERFACE.nodes[node_index].node_nadir_rssi:
+            if new_enterat < INTERFACE.nodes[node_index].node_peak_rssi:
+                if new_enterat >= INTERFACE.nodes[node_index].exit_at_level + int(getOption("HistoryMinOffset")):
+                    on_set_enter_at_level({
+                        'node': node_index,
+                        'enter_at_level': new_enterat
+                    })
+                else:
+                    emit_priority_message(__('No tuning adjustment made on node {0}: Requested Enterat of {1} is too close or below ExitAt.').format(node_index + 1, new_enterat), False, nobroadcast=True)
+                    server_log('Skipping EnterAt adjustment: RSSI of {0} too close to ExitAt {1}' \
+                        .format(catch_history['rssi_max'], INTERFACE.nodes[node_index].exit_at_level))
+
+            else:
+                emit_priority_message(__('Tuning adjust failed on node {0}: Bad RSSI value ').format(node_index + 1), False, nobroadcast=True)
+                server_log('Skipping EnterAt adjustment: RSSI of {0} below Node Peak {1}' \
+                    .format(catch_history['rssi_max'], INTERFACE.nodes[node_index].node_peak_rssi))
+        else:
+            emit_priority_message(__('Tuning adjust failed on node {0}: Bad RSSI value').format(node_index + 1), False, nobroadcast=True)
+            server_log('Skipping EnterAt adjustment: RSSI of {0} above Node Nadir {1}' \
+                .format(catch_history['rssi_max'], INTERFACE.nodes[node_index].node_nadir_rssi))
 
     if data['method'] == 'min':
-        on_set_exit_at_level({
-            'node': node_index,
-            'exit_at_level': catch_history['rssi_min'] + int(getOption("HistoryMinOffset"))
-        })
+        new_exitat = catch_history['rssi_min'] + int(getOption("HistoryMinOffset"))
 
-    server_log('Recovering pass: Node {0} Method {1}'.format(node_index, data['method']))
-    emit_enter_and_exit_at_levels(nobroadcast=True)
+        if new_exitat > INTERFACE.nodes[node_index].node_nadir_rssi:
+            if new_exitat < INTERFACE.nodes[node_index].node_peak_rssi:
+                if new_exitat >= INTERFACE.nodes[node_index].enter_at_level:
+                    on_set_enter_at_level({
+                        'node': node_index,
+                        'enter_at_level': new_exitat + int(getOption("HistoryMaxOffset"))
+                    })
+                    emit_priority_message(__('WARNING: Force end on node {0} required increase of EnterAt. EnterAt may be improperly calibrated.').format(node_index + 1), False, nobroadcast=True)
+                    server_log('Forced end required EnterAt adjustment')
+                else:
+                    emit_priority_message(__('Force end failed on node {0}: Bad RSSI value.').format(node_index + 1), False, nobroadcast=True)
+                    server_log('Skipping ExitAt adjustment: RSSI of {0} under Node Peak {1}' \
+                        .format(catch_history['rssi_min'], INTERFACE.nodes[node_index].node_peak_rssi))
+
+            on_set_exit_at_level({
+                'node': node_index,
+                'exit_at_level': new_exitat
+            })
+        else:
+            emit_priority_message(__('Force end failed on node {0}: Bad RSSI value').format(node_index + 1), False, nobroadcast=True)
+            server_log('Skipping ExitAt adjustment: RSSI of {0} above Node Nadir {1}' \
+                .format(catch_history['rssi_min'], INTERFACE.nodes[node_index].node_nadir_rssi))
+
+    emit_enter_and_exit_at_levels()
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -1460,13 +1501,16 @@ def imdtabler_update_freqs(data):
 
 # Socket io emit functions
 
-def emit_priority_message(message, interrupt=False):
+def emit_priority_message(message, interrupt=False, **params):
     ''' Emits message to all clients '''
     emit_payload = {
         'message': message,
         'interrupt': interrupt
     }
-    SOCKET_IO.emit('priority_message', emit_payload)
+    if ('nobroadcast' in params):
+        emit('priority_message', emit_payload)
+    else:
+        SOCKET_IO.emit('priority_message', emit_payload)
 
 def emit_race_status(**params):
     '''Emits race status.'''
