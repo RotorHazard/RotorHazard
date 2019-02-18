@@ -454,6 +454,7 @@ nav a {
 	color: #fff;
 	text-decoration: none;
 	display: block;
+	transition: 0.1s linear all;
 }
 
 /* Dropdowns */
@@ -488,17 +489,6 @@ ul.show-menu {
 
 nav>ul>li>ul li {
 	position: static;
-}
-
-nav>ul>li>ul a {
-	display: block;
-	text-shadow: none;
-	transition: 0.1s linear all;
-}
-
-nav>ul>li>ul a:hover,
-nav>ul>li>ul a:focus {
-	text-shadow: none;
 }
 
 @media (max-width: 52em){
