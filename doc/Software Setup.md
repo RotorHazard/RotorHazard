@@ -38,9 +38,13 @@ Do system update and upgrade (this can take a few minutes):
 sudo apt-get update && sudo apt-get upgrade
 ```
 
-Install python and the python drivers for the GPIO.
+Install Python and the Python drivers for the GPIO.
 ```
 sudo apt-get install python-dev python-rpi.gpio libffi-dev python-smbus build-essential python-pip git scons swig
+```
+
+Install the function interface into Python
+```
 sudo pip install cffi
 ```
 
