@@ -74,3 +74,10 @@ Node is never *clear*:
 
 Missing high-speed passes:
 * Decrease *RSSI Smoothing*
+
+## Retroactive Pass Recording
+If you notice a pass was not recorded, you may use the "Catch Missed Pass" button. The timer will review recent RSSI history for the node and find the most likely occurrence of a missed pass, recording it as a lap. The node's EnterAt value is then adjusted so that similar passes to the one marked as "missed" will be counted in the future. If the adjustment would make the node unstable, a warning is issued instead.
+
+If you notice a node crossing does not complete within a reasonable time, you may use the "Force End Crossing" button. The timer will review recent RSSI history for the node and find a low point where the crossing could be safely ended. The node's ExitAt value is then adjusted so that passes will end at this point in the future. If the adjustment would make the node unstable, a warning is issued instead. 
+
+The window of time both of these functions use is based on the current "minimum lap" setting.
