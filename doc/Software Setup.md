@@ -26,12 +26,14 @@ Note: Many of the setup commands below require that the Rasperry Pi has internet
 
 Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN STRETCH WITH DESKTOP'
 
+Add an empty file called "ssh" to the root directory of the SD card.  Per "https://www.raspberrypi.org/documentation/remote-access/ssh/"
+
 Configure the interface options on the Raspberry Pi.
 Open a Terminal window and enter the following command:
 ```
 sudo raspi-config
 ```
-Select Interfacing Options and enable: SSH, SPI, and I2C.
+Select Interfacing Options and enable: SSH, SPI, and I2C.  (Skip SSH if you added the empty "ssh" file above.
 
 Do system update and upgrade (this can take a few minutes):
 ```
@@ -69,6 +71,7 @@ rm temp.zip
 ```
 
 Install web server dependencies:
+(Server may be called Delta5Server on earlier downloads of RotorHazard)
 ```
 cd /home/pi/RotorHazard/src/server
 sudo pip install -r requirements.txt
@@ -160,6 +163,9 @@ A system shutdown should always be performed before unplugging the power, either
 ```
 sudo shutdown now
 ```
+
+### Setting up the pi as a Wifi Access Point (AP)
+Follow the instructions @ https://github.com/SurferTim/documentation/blob/6bc583965254fa292a470990c40b145f553f6b34/configuration/wireless/access-point.md to install hostapd.  Completing the instructions will also allow the AP to route traffic to the wired connection (assuming the wired connection has internet)
 
 -----------------------------
 
