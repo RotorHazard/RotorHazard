@@ -1407,8 +1407,7 @@ def on_recover_pass(data):
                     .format(catch_history['rssi_min'], INTERFACE.nodes[node_index].node_nadir_rssi))
         else:
             emit_priority_message(__('Cannot force end: Node {0} is not crossing').format(node_index + 1), False, nobroadcast=True)
-            server_log('Skipping ExitAt adjustment: Node {0} is not crossing' \
-                .format(catch_history['rssi_min'], INTERFACE.nodes[node_index].node_nadir_rssi))
+            server_log('Skipping ExitAt adjustment: Node {0} is not crossing'.format(node_index + 1))
 
     emit_enter_and_exit_at_levels()
 
