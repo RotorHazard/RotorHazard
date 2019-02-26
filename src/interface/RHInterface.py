@@ -26,6 +26,7 @@ WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
 WRITE_HISTORY_EXPIRE_DURATION = 0x73
 MARK_START_TIME = 0x77      # mark base time for returned lap-ms-since-start values
+FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 
 UPDATE_SLEEP = 0.1 # Main update loop delay
 
@@ -291,7 +292,7 @@ class RHInterface(BaseHardwareInterface):
                         else:
                             self.log('Retry (checksum) limit reached in read_block:  addr={0} offs={1} size={2} retry={3} ts={4}'.format(addr, offset, size, retry_count, self.i2c_timestamp))
             except IOError as err:
-                self.log(err)
+                self.log('Read Error: ' + str(err))
                 self.i2c_timestamp = self.milliseconds()
                 retry_count = retry_count + 1
                 if retry_count < I2C_RETRY_COUNT:
@@ -316,7 +317,7 @@ class RHInterface(BaseHardwareInterface):
                     self.i2c_timestamp = self.milliseconds()
                     success = True
             except IOError as err:
-                self.log(err)
+                self.log('Write Error: ' + str(err))
                 self.i2c_timestamp = self.milliseconds()
                 retry_count = retry_count + 1
                 if retry_count < I2C_RETRY_COUNT:
@@ -457,7 +458,6 @@ class RHInterface(BaseHardwareInterface):
             self.set_filter_ratio(node.index, filter_ratio)
         return self.filter_ratio
 
-
     def set_history_expire(self, node_index, history_expire_duration):
         node = self.nodes[node_index]
         if node.api_level >= 12:
@@ -516,6 +516,12 @@ class RHInterface(BaseHardwareInterface):
                 'pass_ms': unpack_32(data[4:])
             }
         return None
+
+    def force_end_crossing(self, node_index):
+        node = self.nodes[node_index]
+        if node.api_level >= 14:
+            self.set_value_8(node, FORCE_END_CROSSING, 0)
+
 
 def get_hardware_interface():
     '''Returns the RotorHazard interface object.'''

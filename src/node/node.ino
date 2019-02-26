@@ -58,7 +58,7 @@
 int i2cSlaveAddress (6 + (NODE_NUMBER * 2));
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 13
+#define NODE_API_LEVEL 14
 
 const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 const int spiDataPin = 11;
@@ -83,6 +83,7 @@ const int spiClockPin = 13;
 #define WRITE_EXIT_AT_LEVEL 0x72
 #define WRITE_HISTORY_EXPIRE_DURATION 0x73  // adjust history catch window size
 #define MARK_START_TIME 0x77  // mark base time for returned lap-ms-since-start values
+#define FORCE_END_CROSSING 0x78  // kill current crossing flag regardless of RSSI value
 
 #define FILTER_RATIO_DIVIDER 10000.0f
 
@@ -465,20 +466,7 @@ void loop()
             if (state.rssi < settings.exitAtLevel)
             {
                 Serial.println("Crossing = False");
-
-                // save values for lap pass
-                lastPass.rssiPeakRaw = state.passRssiPeakRaw;
-                lastPass.rssiPeak = state.passRssiPeak;
-                // lap timestamp is between first and last peak RSSI
-                lastPass.timeStamp = (state.passRssiPeakRawLastTime + state.passRssiPeakRawTime) / 2;
-                lastPass.rssiNadir = state.passRssiNadir;
-                lastPass.lap = lastPass.lap + 1;
-
-                // reset lap-pass variables
-                state.crossing = false;
-                state.passRssiPeakRaw = 0;
-                state.passRssiPeak = 0;
-                state.passRssiNadir = 999;
+                end_crossing()
             }
         }
 
@@ -520,6 +508,24 @@ void loop()
 
     }
 }
+
+// Function called when crossing ends (by RSSI or I2C command)
+void end_crossing() {
+    // save values for lap pass
+    lastPass.rssiPeakRaw = state.passRssiPeakRaw;
+    lastPass.rssiPeak = state.passRssiPeak;
+    // lap timestamp is between first and last peak RSSI
+    lastPass.timeStamp = (state.passRssiPeakRawLastTime + state.passRssiPeakRawTime) / 2;
+    lastPass.rssiNadir = state.passRssiNadir;
+    lastPass.lap = lastPass.lap + 1;
+
+    // reset lap-pass variables
+    state.crossing = false;
+    state.passRssiPeakRaw = 0;
+    state.passRssiPeak = 0;
+    state.passRssiNadir = 999;
+}
+
 
 // Function called by twi interrupt service when master sends information to the slave
 // or when master sets up a specific read request
@@ -733,6 +739,14 @@ byte i2cHandleRx(byte command)
             if (readAndValidateIoBuffer(MARK_START_TIME, 1))  // read byte value (not used)
                 success = true;
             break;
+
+        case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
+            end_crossing();
+
+            if (readAndValidateIoBuffer(FORCE_END_CROSSING, 1))  // read byte value (not used)
+                success = true;
+            break;
+
     }
 
     ioCommand = 0;  // Clear previous command

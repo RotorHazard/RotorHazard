@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "1.1.0 (development)" # Public release version code
 SERVER_API = 12 # Server API version
-NODE_API_BEST = 13 # Most recent node API
+NODE_API_BEST = 14 # Most recent node API
 
 import os
 import sys
@@ -1341,9 +1341,9 @@ def on_recover_pass(data):
     node_index = data['node']
     catch_history = INTERFACE.get_catch_history(node_index)
 
-    server_log('Recovering pass: Node {0} / Method {1} / Pass {2}'.format(node_index + 1, data['method'], catch_history['pass_ms']))
+    if data['method'] == 'max': # catch missed pass
+        server_log('Recovering pass: Node {0} / Pass {1}'.format(node_index + 1, catch_history['pass_ms']))
 
-    if data['method'] == 'max':
         # get best lap possible regardless of data validity (client asked for one)
         INTERFACE.intf_simulate_lap(node_index, catch_history['pass_ms'])
 
@@ -1370,30 +1370,44 @@ def on_recover_pass(data):
             server_log('Skipping EnterAt adjustment: RSSI of {0} above Node Nadir {1}' \
                 .format(catch_history['rssi_max'], INTERFACE.nodes[node_index].node_nadir_rssi))
 
-    if data['method'] == 'min':
-        new_exitat = catch_history['rssi_min'] + int(getOption("HistoryMinOffset"))
+    if data['method'] == 'min': # force end crossing
+        server_log('Force end crossing: Node {0}'.format(node_index + 1))
 
-        if new_exitat > INTERFACE.nodes[node_index].node_nadir_rssi:
-            if new_exitat < INTERFACE.nodes[node_index].node_peak_rssi:
-                if new_exitat >= INTERFACE.nodes[node_index].enter_at_level:
-                    on_set_enter_at_level({
-                        'node': node_index,
-                        'enter_at_level': new_exitat + int(getOption("HistoryMaxOffset"))
-                    })
-                    emit_priority_message(__('WARNING: Force end on node {0} required increase of EnterAt. EnterAt may be improperly calibrated.').format(node_index + 1), False, nobroadcast=True)
-                    server_log('Forced end required EnterAt adjustment')
-                else:
-                    emit_priority_message(__('Force end failed on node {0}: Bad RSSI value.').format(node_index + 1), False, nobroadcast=True)
-                    server_log('Skipping ExitAt adjustment: RSSI of {0} under Node Peak {1}' \
-                        .format(catch_history['rssi_min'], INTERFACE.nodes[node_index].node_peak_rssi))
+        # end crossing now
+        if INTERFACE.nodes[node_index].crossing_flag:
+            INTERFACE.force_end_crossing(node_index)
 
-            on_set_exit_at_level({
-                'node': node_index,
-                'exit_at_level': new_exitat
-            })
+            new_exitat = catch_history['rssi_min'] + int(getOption("HistoryMinOffset"))
+
+            if new_exitat > INTERFACE.nodes[node_index].node_nadir_rssi:
+                if new_exitat < INTERFACE.nodes[node_index].node_peak_rssi:
+                    if new_exitat >= INTERFACE.nodes[node_index].enter_at_level:
+                        if new_exitat + int(getOption("HistoryMaxOffset")) < INTERFACE.nodes[node_index].node_peak_rssi:
+                            on_set_enter_at_level({
+                                'node': node_index,
+                                'enter_at_level': new_exitat + int(getOption("HistoryMaxOffset"))
+                            })
+                            emit_priority_message(__('WARNING: Force end on node {0} required increase of EnterAt. EnterAt may be improperly calibrated.').format(node_index + 1), False, nobroadcast=True)
+                            server_log('Forced end required EnterAt adjustment')
+                        else:
+                            emit_priority_message(__('WARNING: Force end adjustment on node {0} failed: insufficient RSSI range.').format(node_index + 1), False, nobroadcast=True)
+                            server_log('Skipping EnterAt adjustment: adjustment required, but would have set above NodePeak')
+                    else:
+                        emit_priority_message(__('Force end failed on node {0}: Bad RSSI value.').format(node_index + 1), False, nobroadcast=True)
+                        server_log('Skipping ExitAt adjustment: RSSI of {0} under Node Peak {1}' \
+                            .format(catch_history['rssi_min'], INTERFACE.nodes[node_index].node_peak_rssi))
+
+                on_set_exit_at_level({
+                    'node': node_index,
+                    'exit_at_level': new_exitat
+                })
+            else:
+                emit_priority_message(__('Force end failed on node {0}: Bad RSSI value').format(node_index + 1), False, nobroadcast=True)
+                server_log('Skipping ExitAt adjustment: RSSI of {0} above Node Nadir {1}' \
+                    .format(catch_history['rssi_min'], INTERFACE.nodes[node_index].node_nadir_rssi))
         else:
-            emit_priority_message(__('Force end failed on node {0}: Bad RSSI value').format(node_index + 1), False, nobroadcast=True)
-            server_log('Skipping ExitAt adjustment: RSSI of {0} above Node Nadir {1}' \
+            emit_priority_message(__('Cannot force end: Node {0} is not crossing').format(node_index + 1), False, nobroadcast=True)
+            server_log('Skipping ExitAt adjustment: Node {0} is not crossing' \
                 .format(catch_history['rssi_min'], INTERFACE.nodes[node_index].node_nadir_rssi))
 
     emit_enter_and_exit_at_levels()
