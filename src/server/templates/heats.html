@@ -79,6 +79,7 @@
 						for (var i in msg.classes) {
 							if (msg.classes[i].id == heats.class_id) {
 								el.append('<div class="race_class">' + msg.classes[i].name + '</div>')
+								break;
 							}
 						}
 					} else {
@@ -114,7 +115,12 @@
 					}
 
 					if (race_class.format) {
-						class_info.append('<p><strong>Format:</strong> ' + msg.formats[race_class.format].name + '</p>');
+						for (var i in msg.formats) {
+							if (msg.formats[i].id == race_class.format) {
+								class_info.append('<p><strong>Format:</strong> ' + msg.formats[i].name + '</p>');
+								break;
+							}
+						}
 					} else {
 						class_info.append('<p>No format restriction</p>');
 					}
