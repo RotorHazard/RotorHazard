@@ -466,7 +466,7 @@ void loop()
             if (state.rssi < settings.exitAtLevel)
             {
                 Serial.println("Crossing = False");
-                end_crossing()
+                end_crossing();
             }
         }
 
