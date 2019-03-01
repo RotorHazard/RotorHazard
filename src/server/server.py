@@ -2892,8 +2892,10 @@ def pass_record_callback(node, ms_since_lap):
                                             Race_laps_winner_name = win_callsign  # call out winner (once)
                                             emit_phonetic_text('Winner is ' + win_phon_name, 'race_winner')
 
-                                else:  # no pilot has won the race; send phonetic data to be spoken
-                                    emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+                                    else:  # no pilot has won the race; send phonetic data to be spoken
+                                        emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+                                else:  # other win conditions
+                                        emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
                         elif lap_id == 0:
                             emit_first_pass_registered(node.index) # play first-pass sound
 
