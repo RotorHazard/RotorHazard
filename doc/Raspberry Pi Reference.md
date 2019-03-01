@@ -46,6 +46,8 @@ $ sudo apt-get install git
 ```
 
 ### Wireless Access Point
+[Install and configure dnsmasq and hostapd](https://github.com/SurferTim/documentation/blob/6bc583965254fa292a470990c40b145f553f6b34/configuration/wireless/access-point.md)
 
+Completing the instructions will also allow the AP to route traffic to the wired connection (assuming the wired connection has internet)
 
-
+While some models of Raspberry Pi have onboard wireless networking, it is not recommended for most users of the timer. The internal wireless has poor range, and placing the timer on the ground (which is common) or inside a directional RF shield (necessary for many indoor spaces) will further reduce its capability. Instead, use an external WiFi module or connect the Pi to a standalone wireless router.
