@@ -2,6 +2,7 @@
 RELEASE_VERSION = "1.1.2 (dev)" # Public release version code
 SERVER_API = 12 # Server API version
 NODE_API_BEST = 14 # Most recent node API
+JSON_API = 1 # JSON API version
 
 import os
 import sys
@@ -169,14 +170,19 @@ def buildServerInfo():
     serverInfo['server_api'] = SERVER_API
     serverInfo['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
 
+    # Server API
+    serverInfo['json_api'] = JSON_API
+
     # Node API levels
     node_api_level = False
     serverInfo['node_api_match'] = True
+    serverInfo['node_api_lowest'] = False
+    serverInfo['node_api_levels'] = []
+
     if INTERFACE.nodes[0].api_level:
         node_api_level = INTERFACE.nodes[0].api_level
         serverInfo['node_api_lowest'] = node_api_level
 
-        serverInfo['node_api_levels'] = []
         for node in INTERFACE.nodes:
             serverInfo['node_api_levels'].append(node.api_level)
 
@@ -220,9 +226,9 @@ def signal_handler(signal, frame):
 
 # LED one color ON/OFF
 def onoff(strip, color):
-	for i in range(strip.numPixels()):
-		strip.setPixelColor(i, color)
-	strip.show()
+    for i in range(strip.numPixels()):
+        strip.setPixelColor(i, color)
+    strip.show()
 
 def theaterChase(strip, color, wait_ms=50, iterations=5):
     """Movie theater light style chaser animation."""
@@ -509,6 +515,185 @@ def database():
         profiles=Profiles,
         race_format=RaceFormat,
         globalSettings=GlobalSettings)
+
+# JSON API
+
+from sqlalchemy.ext.declarative import DeclarativeMeta
+
+class AlchemyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj.__class__, DeclarativeMeta):
+            # an SQLAlchemy class
+            fields = {}
+            for field in [x for x in dir(obj) if not x.startswith('_') and x != 'metadata']:
+                data = obj.__getattribute__(field)
+                if field is not "query" \
+                    and field is not "query_class":
+                    try:
+                        json.dumps(data) # this will fail on non-encodable values, like other classes
+                        if field is "frequencies":
+                            fields[field] = json.loads(data)["f"]
+                        elif field is "enter_ats" or field is "exit_ats":
+                            fields[field] = json.loads(data)["v"]
+                        else:
+                            fields[field] = data
+                    except TypeError:
+                        fields[field] = None
+            # a json-encodable dict
+            return fields
+
+        return json.JSONEncoder.default(self, obj)
+
+@APP.route('/api/pilot/<int:pilot_id>')
+def api_pilot(pilot_id):
+    pilot = Pilot.query.get(pilot_id)
+    response = APP.response_class(
+        response=json.dumps(pilot, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/heat/<int:heat_id>')
+def api_heat(heat_id):
+    heatdata = Heat.query.filter_by(heat_id=heat_id, node_index=0).first()
+    if heatdata:
+        pilots = []
+        for node in range(RACE.num_nodes):
+            pilot_id = Heat.query.filter_by(heat_id=heat_id, node_index=node).first().pilot_id
+            pilots.append(pilot_id)
+        note = heatdata.note
+        race_class = heatdata.class_id
+        has_race = SavedRace.query.filter_by(heat_id=heat_id).first()
+        if has_race:
+            locked = True
+        else:
+            locked = False
+
+        heat = {'pilots': pilots,
+                              'note': note,
+                              'heat_id': heat_id,
+                              'class_id': race_class,
+                              'locked': locked}
+    else:
+        heat = None
+
+    response = APP.response_class(
+        response=json.dumps(heat, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/class/<int:class_id>')
+def api_class(class_id):
+    race_class = RaceClass.query.get(class_id)
+    response = APP.response_class(
+        response=json.dumps(race_class, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/format/<int:format_id>')
+def api_format(format_id):
+    raceformat = RaceFormat.query.get(format_id)
+    response = APP.response_class(
+        response=json.dumps(raceformat, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/profile/<int:profile_id>')
+def api_profile(profile_id):
+    profile = Profiles.query.get(profile_id)
+    response = APP.response_class(
+        response=json.dumps(profile, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/race/current')
+def api_race_current():
+    laps = CurrentLap.query.all()
+    if laps:
+        race = []
+        for lap in laps:
+            race.append(lap)
+
+        payload = json.dumps(race, cls=AlchemyEncoder)
+    else:
+        payload = json.dumps(None);
+
+    response = APP.response_class(
+        response=payload,
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/race/<int:heat_id>/<int:round_id>')
+def api_race(heat_id, round_id):
+    laps = SavedRace.query.filter_by(heat_id=heat_id, round_id=round_id).all()
+    if laps:
+        race = []
+        for lap in laps:
+            race.append(lap)
+
+        payload = json.dumps(race, cls=AlchemyEncoder)
+    else:
+        payload = json.dumps(None);
+
+    response = APP.response_class(
+        response=payload,
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/status')
+def api_status():
+    data = {
+        "server_api": serverInfo['server_api'],
+        "json_api": serverInfo['json_api'],
+        "node_api_best": serverInfo['node_api_best'],
+        "release_version": serverInfo['release_version'],
+        "node_api_match": serverInfo['node_api_match'],
+        "node_api_lowest": serverInfo['node_api_lowest'],
+        "node_api_levels": serverInfo['node_api_levels'],
+        "current_heat": RACE.current_heat,
+        "num_nodes": RACE.num_nodes,
+        "race_status": RACE.race_status,
+        "currentProfile": getOption('currentProfile'),
+        "currentFormat": getOption('currentFormat'),
+    }
+    response = APP.response_class(
+        response=json.dumps(data),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/options')
+def api_options():
+    opt_query = GlobalSettings.query.all()
+    options = {}
+    if opt_query:
+        for opt in opt_query:
+            options[opt.option_name] = opt.option_value
+
+        payload = json.dumps(options, cls=AlchemyEncoder)
+    else:
+        payload = json.dumps(None);
+
+    response = APP.response_class(
+        response=payload,
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 #
 # Socket IO Events
@@ -3122,9 +3307,10 @@ def db_reset_race_formats():
 def db_reset_options_defaults():
     DB.session.query(GlobalSettings).delete()
     setOption("server_api", SERVER_API)
+    # group identifiers
     setOption("timerName", __("RotorHazard"))
     setOption("timerLogo", "")
-
+    # group colors
     setOption("hue_0", "212")
     setOption("sat_0", "55")
     setOption("lum_0_low", "29.2")
@@ -3138,17 +3324,18 @@ def db_reset_options_defaults():
     setOption("lum_1_high", "54.5")
     setOption("contrast_1_low", "#ffffff")
     setOption("contrast_1_high", "#000000")
-
+    # timer state
     setOption("currentLanguage", "")
     setOption("currentProfile", "1")
     setOption("currentFormat", "1")
+    # minimum lap
     setOption("MinLapSec", "10")
     setOption("MinLapBehavior", "0")
-
+    # pass catching settings
     setOption("HistoryExpireDuration", "10000")
     setOption("HistoryMaxOffset", "10")
     setOption("HistoryMinOffset", "10")
-
+    # event information
     setOption("eventName", __("FPV Race"))
     setOption("eventDescription", "")
 
