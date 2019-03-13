@@ -431,7 +431,9 @@
 
 		socket.on('prestage_ready', function (msg) {
 			request_time = new Date();
-			socket.emit('stage_race', msg);
+			if (socket.id == msg.initiator) {
+				socket.emit('stage_race', msg);
+			}
 		});
 
 		socket.on('stage_ready', function (msg) {
@@ -441,7 +443,9 @@
 			var data = { // supply delay to stage 2
 				delay: msg.start_delay
 			}
-			socket.emit('start_race', data);
+			if (socket.id == msg.initiator) {
+				socket.emit('start_race', data);
+			}
 			setTimeout(function(){
 				timer.mode(msg.race_mode);
 				timer.setRaceDuration(msg.race_time_sec);
@@ -459,7 +463,9 @@
 		});
 
 		$('button#start_race').click(function (event) {
-			socket.emit('prestage_race');
+			socket.emit('prestage_race', {
+				'initiator': socket.id
+			});
 			$('.timing-clock').html('--:--');
 			$('button#start_race').prop('disabled', true);
 			$('.set_current_heat').prop('disabled', true);

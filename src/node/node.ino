@@ -58,7 +58,7 @@
 int i2cSlaveAddress (6 + (NODE_NUMBER * 2));
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 14
+#define NODE_API_LEVEL 15
 
 const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 const int spiDataPin = 11;
@@ -234,6 +234,8 @@ void setup()
     Wire.begin(i2cSlaveAddress);  // I2C slave address setup
     Wire.onReceive(i2cReceive);  // Trigger 'i2cReceive' function on incoming data
     Wire.onRequest(i2cTransmit);  // Trigger 'i2cTransmit' function for outgoing data, on master request
+
+    TWAR = (i2cSlaveAddress << 1) | 1;  // enable broadcasts to be received
 
     // set ADC prescaler to 16 to speedup ADC readings
     sbi(ADCSRA, ADPS2);

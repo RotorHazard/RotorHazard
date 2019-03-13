@@ -84,6 +84,7 @@ class RHInterface(BaseHardwareInterface):
         self.i2c = smbus.SMBus(1) # Start i2c bus
         self.semaphore = BoundedSemaphore(1) # Limits i2c to 1 read/write at a time
         self.i2c_timestamp = -1
+        self.i2c_lock = False # prevent calling i2c during race staging
 
         # Scans all i2c_addrs to populate nodes array
         self.nodes = [] # Array to hold each node object
@@ -156,6 +157,11 @@ class RHInterface(BaseHardwareInterface):
             print "Update thread terminated by keyboard interrupt"
 
     def update(self):
+        # stop asking for node updates during race staging
+        # (clear i2c comms in prep for immediate start broadcast)
+        if self.i2c_lock:
+            return None
+
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_time_ms)
         cross_list = []  # list of nodes with crossing-flag changes
         for node in self.nodes:
@@ -271,6 +277,10 @@ class RHInterface(BaseHardwareInterface):
 
     def read_block(self, addr, offset, size):
         '''Read i2c data given an address, code, and data size.'''
+        if self.i2c_lock:
+            self.log('Read prevented: I2C Locked')
+            return None
+
         success = False
         retry_count = 0
         data = None
@@ -304,6 +314,10 @@ class RHInterface(BaseHardwareInterface):
 
     def write_block(self, addr, offset, data):
         '''Write i2c data given an address, code, and data.'''
+        if self.i2c_lock:
+            self.log('Write prevented: I2C Locked')
+            return False
+
         success = False
         retry_count = 0
         data_with_checksum = data
@@ -391,9 +405,27 @@ class RHInterface(BaseHardwareInterface):
                 self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node))
         return success
 
+    def broadcast_value_8(self, write_command, in_value):
+        success = False
+        retry_count = 0
+        out_value = None
+        while success is False and retry_count < I2C_RETRY_COUNT:
+            if self.write_block(0x00, write_command, pack_8(in_value)):
+                success = True
+            else:
+                retry_count = retry_count + 1
+                self.log('Value Not Set ({0}): {1}/{2}/broadcast'.format(retry_count, write_command, in_value))
+        return success
+
     #
     # External functions for setting data
     #
+
+    def lock_i2c(self):
+        self.i2c_lock = True
+
+    def unlock_i2c(self):
+        self.i2c_lock = False
 
     def set_frequency(self, node_index, frequency):
         node = self.nodes[node_index]
@@ -470,14 +502,15 @@ class RHInterface(BaseHardwareInterface):
         for node in self.nodes:
             self.set_history_expire(node.index, history_expire_duration)
 
-    def mark_start_time(self, node_index):
-        node = self.nodes[node_index]
-        if node.api_valid_flag:
-            self.set_value_8(node, MARK_START_TIME, 0)
+#    def mark_start_time(self, node_index):
+#        node = self.nodes[node_index]
+#        if node.api_valid_flag:
+#            self.set_value_8(node, MARK_START_TIME, 0)
 
     def mark_start_time_global(self):
-        for node in self.nodes:
-            self.mark_start_time(node.index)
+        self.unlock_i2c()
+        if self.nodes[0].api_valid_flag:
+            self.broadcast_value_8(MARK_START_TIME, 0)
 
     def start_capture_enter_at_level(self, node_index):
         node = self.nodes[node_index]

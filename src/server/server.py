@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "1.1.2 (dev)" # Public release version code
+RELEASE_VERSION = "1.2.0 (dev)" # Public release version code
 SERVER_API = 12 # Server API version
 NODE_API_BEST = 14 # Most recent node API
 
@@ -1202,8 +1202,9 @@ def on_set_team_racing_mode(data):
 # Race management socket io events
 
 @SOCKET_IO.on('prestage_race')
-def on_prestage_race():
+def on_prestage_race(data):
     '''Common race start events (do early to prevent processing delay when start is called)'''
+    initiator = data['initiator'] # client ID of session that started the race
     onoff(strip, Color(255,128,0)) #ORANGE for STAGING
     clear_laps() # Ensure laps are cleared before race start, shouldn't be needed
     emit_current_laps() # Race page, blank laps to the web client
@@ -1221,13 +1222,18 @@ def on_prestage_race():
         'hide_stage_timer': MIN != MAX,
         'start_delay': DELAY,
         'race_mode': race_format.race_mode,
-        'race_time_sec': race_format.race_time_sec
+        'race_time_sec': race_format.race_time_sec,
+        'initiator': initiator
     }) # Loop back to race page with chosen delay
+
+    INTERFACE.lock_i2c()
 
 
 @SOCKET_IO.on('stage_race')
 def on_stage_race(data):
     '''Bounce a response back to client for determining response time'''
+    INTERFACE.mark_start_time_global()
+    INTERFACE.lock_i2c()
     SOCKET_IO.emit('stage_ready', data)
 
 @SOCKET_IO.on('start_race')
@@ -1243,8 +1249,11 @@ def on_start_race(data):
         RACE_START = datetime.now() # Update the race start time stamp
         global Race_laps_winner_name
         Race_laps_winner_name = None  # name of winner in first-to-X-laps race
+        print(datetime.now())
         INTERFACE.mark_start_time_global()
+        print(datetime.now())
         onoff(strip, Color(0,255,0)) #GREEN for GO
+        print(datetime.now())
         emit_race_status() # Race page, to set race button states
         server_log('Race started at {0}'.format(RACE_START))
 
