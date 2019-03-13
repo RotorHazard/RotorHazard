@@ -1249,11 +1249,8 @@ def on_start_race(data):
         RACE_START = datetime.now() # Update the race start time stamp
         global Race_laps_winner_name
         Race_laps_winner_name = None  # name of winner in first-to-X-laps race
-        print(datetime.now())
         INTERFACE.mark_start_time_global()
-        print(datetime.now())
         onoff(strip, Color(0,255,0)) #GREEN for GO
-        print(datetime.now())
         emit_race_status() # Race page, to set race button states
         server_log('Race started at {0}'.format(RACE_START))
 
