@@ -595,7 +595,7 @@
 			"ExitAt is lower than PassNadir: <strong>Passes may not complete</strong>.": "ExitAt es inferior a PassNadir: <strong> Es posible que los pases no se completen </strong>.",
 			"ExitAt is very near PassNadir: <strong>Passes may not complete</strong>.": "ExitAt está muy cerca de PassNadir: <strong> Es posible que los pases no se completen </strong>."
 		}
-	}
+	},
 	"Fr-be": {
 		"name": "Français",
 		"values": {
@@ -715,13 +715,13 @@
 			"Pass VTx very near the timer to establish peak RSSI for node": "Passez le VTx très près du timer pour établir le RSSI de pointe pour le noeud",
 			"Place VTx 5-10 feet away and press \"Capture\" for EnterAt": "Placez le VTx à 1,5 - 3 metre (5-10 pieds) de distance et appuyez sur \"Capture\" pour EnterAt",
 			"Place VTx 20-30 feet away and press \"Capture\" for ExitAt": "Placez le VTx à une distance de 6 à 9m (20 à 30 pieds) et appuyez sur \"Capture\" pour ExitAt",
-			"Review \"Crossing\" points and adjust until accurately respon": "Revue \"Crossing\"Points d'intersection\et ajuster jusqu'à ce que la réponse soit précise",
+			"Review \"Crossing\" points and adjust until accurately respon": "Revue \"Crossing\"Points d'intersection et ajuster jusqu'à ce que la réponse soit précise",
 			"The EnterAt value should always be higher than the ExitAt value": "La valeur EnterAt doit toujours être supérieure à la valeur ExitAt.",
 			"Troubleshooting": "Diagnostic des problèmes",
 			"If gate crossings are being missed then lower EnterAt": "Si des passages de portail sont manqués, abaissez EnterAt",
 			"If gate crossing are triggered when they shouldn't be then increase EnterAt": "Si le franchissement d'un portail est déclenché alors qu'il ne devrait pas l'être, alors augmentez EnterAt",
 			"If a pass by the timer is resulting in multiple crossings, lower ExitAt": "Si un passage par le timer entraîne de multiples passages à niveau, abaissez la valeur ExitAt",
-			"If the \"Crossing\" indicator is stuck on then increase ExitAt": "Si l'indicateur \Crossing\est coincé, augmentez ExitAt",
+			"If the \"Crossing\" indicator is stuck on then increase ExitAt": "Si l'indicateur \"Crossing\" est coincé, augmentez ExitAt",
 			"If crossings are still erratic, increase RSSI Smoothing to reduce noise": "Si les passages à niveau sont encore irréguliers, augmentez le lissage RSSI pour réduire le bruit.",
 			"If missing high-speed passes, try decreasing RSSI Smoothing": "Si vous manquez des passages haute vitesse, essayez de diminuer le lissage RSSI.",
 			"Event and Classes": "Événements et Classes",
