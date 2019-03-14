@@ -1027,6 +1027,9 @@ def on_backup_database():
 @SOCKET_IO.on('reset_database')
 def on_reset_database(data):
     '''Reset database.'''
+    global EVENT_RESULTS_CACHE_VALID
+    EVENT_RESULTS_CACHE_VALID = False
+
     reset_type = data['reset_type']
     if reset_type == 'races':
         db_reset_saved_races()
