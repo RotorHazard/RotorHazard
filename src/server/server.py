@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "1.2.0 (dev)" # Public release version code
 SERVER_API = 12 # Server API version
-NODE_API_BEST = 14 # Most recent node API
+NODE_API_BEST = 15 # Most recent node API
 
 import os
 import sys

@@ -502,15 +502,21 @@ class RHInterface(BaseHardwareInterface):
         for node in self.nodes:
             self.set_history_expire(node.index, history_expire_duration)
 
-#    def mark_start_time(self, node_index):
-#        node = self.nodes[node_index]
-#        if node.api_valid_flag:
-#            self.set_value_8(node, MARK_START_TIME, 0)
+    def mark_start_time(self, node_index):
+        node = self.nodes[node_index]
+        if node.api_valid_flag:
+            self.set_value_8(node, MARK_START_TIME, 0)
 
     def mark_start_time_global(self):
         self.unlock_i2c()
-        if self.nodes[0].api_valid_flag:
-            self.broadcast_value_8(MARK_START_TIME, 0)
+        bcast_flag = False
+        for node in self.nodes:
+            if self.nodes[0].api_level >= 15:
+                if bcast_flag is False:
+                    bcast_flag = True  # only send broadcast once
+                    self.broadcast_value_8(MARK_START_TIME, 0)
+            else:
+                self.mark_start_time(node.index)  # if older API node
 
     def start_capture_enter_at_level(self, node_index):
         node = self.nodes[node_index]
