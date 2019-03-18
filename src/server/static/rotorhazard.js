@@ -97,10 +97,10 @@ LogSlider.prototype = {
 };
 
 var keyCodeMap = {
-        48:"0", 49:"1", 50:"2", 51:"3", 52:"4", 53:"5", 54:"6", 55:"7", 56:"8", 57:"9", 59:";",
-        65:"a", 66:"b", 67:"c", 68:"d", 69:"e", 70:"f", 71:"g", 72:"h", 73:"i", 74:"j", 75:"k", 76:"l",
-        77:"m", 78:"n", 79:"o", 80:"p", 81:"q", 82:"r", 83:"s", 84:"t", 85:"u", 86:"v", 87:"w", 88:"x", 89:"y", 90:"z",
-        96:"0", 97:"1", 98:"2", 99:"3", 100:"4", 101:"5", 102:"6", 103:"7", 104:"8", 105:"9"
+		48:"0", 49:"1", 50:"2", 51:"3", 52:"4", 53:"5", 54:"6", 55:"7", 56:"8", 57:"9", 59:";",
+		65:"a", 66:"b", 67:"c", 68:"d", 69:"e", 70:"f", 71:"g", 72:"h", 73:"i", 74:"j", 75:"k", 76:"l",
+		77:"m", 78:"n", 79:"o", 80:"p", 81:"q", 82:"r", 83:"s", 84:"t", 85:"u", 86:"v", 87:"w", 88:"x", 89:"y", 90:"z",
+		96:"0", 97:"1", 98:"2", 99:"3", 100:"4", 101:"5", 102:"6", 103:"7", 104:"8", 105:"9"
 }
 
 $.fn.setup_navigation = function(settings) {
@@ -290,7 +290,7 @@ $.fn.setup_navigation = function(settings) {
 		}
 	});
 
-  	$(document).click(function(){ $('.'+settings.menuHoverClass).attr('aria-hidden', 'true').removeClass(settings.menuHoverClass).find('a').attr('tabIndex',-1); });
+	$(document).click(function(){ $('.'+settings.menuHoverClass).attr('aria-hidden', 'true').removeClass(settings.menuHoverClass).find('a').attr('tabIndex',-1); });
 
 	$(this).click(function(e){
 		e.stopPropagation();
@@ -619,6 +619,108 @@ nodeModel.prototype = {
 		];
 		if (this.graphPaused) {
 			this.graph.render(this.canvas, this.graphPausedTime);
+		}
+	}
+}
+
+/* Data model for timer */
+function timerModel() {
+	// interval control
+	this.timeout = false;
+	this.interval_check = 100;
+	this.expected = false;
+
+	// callbacks
+	this.interval_callback = 10; // number of iterations per 'iteration' callback
+	this.callback_iteration_count = 0;
+	this.callbacks = {
+		'iteration': false,
+		'error': false,
+		'expired': false
+	};
+
+	this.running = false;
+	this.count_down = true;
+	this.duration = 0; // count down duration
+	this.time = 0; // time, in seconds
+}
+nodeModel.prototype = {
+	step: function() { // timer control
+		if (this.count_down) {
+			this.time--;
+			if (this.time) {
+				if (this.callbacks.expired) {
+					try {
+						this.callbacks.expired()
+					}
+					catch {
+						console.log('expired callback is not callable');
+					}
+				}
+			}
+		} else {
+			this.time++;
+		}
+
+		callback_iteration_count++;
+		if (this.callback_iteration_count >= this.interval_callback) {
+			this.callback_iteration_count = 0;
+			if (this.callbacks.iteration) {
+				try {
+					this.callbacks.iteration(this.time)
+				}
+				catch {
+					console.log('iteration callback is not callable');
+					this.stop();
+				}
+			}
+		}
+
+		var drift = Date.now() - this.expected;
+		if (drift > this.interval_check) {
+			if (this.callbacks.error) {
+				try {
+					this.callbacks.error();
+				}
+				catch {
+					console.log('error callback is not callable');
+				}
+			}
+		}
+		this.expected += this.interval_check;
+		timeout = setTimeout(this.step, Math.max(0, this.interval_check - drift));
+	},
+	start: function(){
+		this.expected = Date.now() + this.interval_check;
+		this.timeout = setTimeout(this.step, this.interval_check);
+		this.running = true;
+	},
+	stop: function(){
+		clearTimeout(this.timeout);
+		this.running = false;
+	},
+	renderHTML: function(display_time) {
+		if(typeof(display_time) == undefined) {
+			display_time = this.time;
+		}
+
+		var hour = Math.floor(display_time / 3600);
+		display_time = display_time - (hour * 3600);
+		var minute = Math.floor(display_time / 60);
+		var second = display_time % 60;
+
+		second = (second < 10) ? '0' + second : second; // Pad zero if under 10
+		minute = (minute < 10) ? '0' + minute : minute;
+
+		if (display_time < 0) {
+			second = '--';
+			minute = '--';
+		}
+
+		if (hour) {
+			return hour + ':' + minute + ':' + second;
+		} else {
+			return minute + ':' + second;
 		}
 	}
 }
