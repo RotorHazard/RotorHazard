@@ -19,6 +19,7 @@ from flask_sqlalchemy import SQLAlchemy
 import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
+import gevent.Timeout
 
 import random
 import json
@@ -1242,7 +1243,13 @@ def on_stage_race(data):
 @SOCKET_IO.on('start_race')
 def on_start_race(data):
     '''Starts the race'''
-    time.sleep(data['delay']) # TODO: Make this a non-blocking delay so race can be cancelled inside staging ***
+    try:
+        gevent.with_timeout(10, race_start_thread, data['delay'])
+    except Timeout:
+        print('Race start thread timed out')
+
+def race_start_thread(staging_delay):
+    gevent.sleep(staging_delay)
     if RACE.race_status != 1: # Only start a race if it is not already in progress
         for node in INTERFACE.nodes:
             node.under_min_lap_count = 0
@@ -1256,6 +1263,7 @@ def on_start_race(data):
         onoff(strip, Color(0,255,0)) #GREEN for GO
         emit_race_status() # Race page, to set race button states
         server_log('Race started at {0}'.format(RACE_START))
+
 
 @SOCKET_IO.on('stop_race')
 def on_stop_race():

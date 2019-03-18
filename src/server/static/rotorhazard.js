@@ -360,130 +360,6 @@ function play_beep(duration, frequency, volume, type, fadetime, callback) {
 	}, duration + (fadetime * 1000));*/
 };
 
-/* rotorhazard object for local settings/storage */
-var rotorhazard = {
-	language_strings: {},
-	interface_language: '',
-	// text-to-speech callout options
-	voice_string_language: 'match-timer', // text source language
-	voice_language: '', // speech synthesis engine (browser-supplied)
-	voice_volume: 1.0, // voice call volume
-	voice_rate: 1.25,  // voice call speak pitch
-	voice_pitch: 1.0,  // voice call speak rate
-	voice_callsign: true, // speak pilot callsigns
-	voice_lap_count: true, // speak lap counts
-	voice_team_lap_count: true, // speak team lap counts
-	voice_lap_time: true, // speak lap times
-	voice_race_timer: true, // speak race timer
-	voice_race_winner: true, // speak race winner
-	tone_volume: 1.0, // race stage/start tone volume
-	beep_crossing_entered: false, // beep node crossing entered
-	beep_crossing_exited: false, // beep node crossing exited
-	beep_manual_lap_button: false, // beep when manual lap button bit
-	beep_on_first_pass_button: false, // beep during the first pass where not voice announcment is played
-	indicator_beep_volume: 0.5, // indicator beep volume
-	min_lap: 0, // minimum lap time
-	admin: false, // whether to show admin options in nav
-	graphing: false,
-	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
-	nodes: [], // node array
-	collecting: false,
-	collection_amount: 25, // number of rssi data points to capture
-
-	saveData: function() {
-		if (!supportsLocalStorage()) {
-			return false;
-		}
-		localStorage['rotorhazard.voice_string_language'] = JSON.stringify(this.voice_string_language);
-		localStorage['rotorhazard.voice_language'] = JSON.stringify(this.voice_language);
-		localStorage['rotorhazard.voice_volume'] = JSON.stringify(this.voice_volume);
-		localStorage['rotorhazard.voice_rate'] = JSON.stringify(this.voice_rate);
-		localStorage['rotorhazard.voice_pitch'] = JSON.stringify(this.voice_pitch);
-		localStorage['rotorhazard.voice_callsign'] = JSON.stringify(this.voice_callsign);
-		localStorage['rotorhazard.voice_lap_count'] = JSON.stringify(this.voice_lap_count);
-		localStorage['rotorhazard.voice_team_lap_count'] = JSON.stringify(this.voice_team_lap_count);
-		localStorage['rotorhazard.voice_lap_time'] = JSON.stringify(this.voice_lap_time);
-		localStorage['rotorhazard.voice_race_timer'] = JSON.stringify(this.voice_race_timer);
-		localStorage['rotorhazard.voice_race_winner'] = JSON.stringify(this.voice_race_winner);
-		localStorage['rotorhazard.tone_volume'] = JSON.stringify(this.tone_volume);
-		localStorage['rotorhazard.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
-		localStorage['rotorhazard.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
-		localStorage['rotorhazard.beep_manual_lap_button'] = JSON.stringify(this.beep_manual_lap_button);
-		localStorage['rotorhazard.beep_on_first_pass_button'] = JSON.stringify(this.beep_on_first_pass_button);
-		localStorage['rotorhazard.indicator_beep_volume'] = JSON.stringify(this.indicator_beep_volume);
-		localStorage['rotorhazard.min_lap'] = JSON.stringify(this.min_lap);
-		localStorage['rotorhazard.admin'] = JSON.stringify(this.admin);
-		localStorage['rotorhazard.primaryPilot'] = JSON.stringify(this.primaryPilot);
-		return true;
-	},
-	restoreData: function(dataType) {
-		if (supportsLocalStorage()) {
-			if (localStorage['rotorhazard.voice_string_language']) {
-				this.voice_string_language = JSON.parse(localStorage['rotorhazard.voice_string_language']);
-			}
-			if (localStorage['rotorhazard.voice_language']) {
-				this.voice_language = JSON.parse(localStorage['rotorhazard.voice_language']);
-			}
-			if (localStorage['rotorhazard.voice_volume']) {
-				this.voice_volume = JSON.parse(localStorage['rotorhazard.voice_volume']);
-			}
-			if (localStorage['rotorhazard.voice_rate']) {
-				this.voice_rate = JSON.parse(localStorage['rotorhazard.voice_rate']);
-			}
-			if (localStorage['rotorhazard.voice_pitch']) {
-				this.voice_pitch = JSON.parse(localStorage['rotorhazard.voice_pitch']);
-			}
-			if (localStorage['rotorhazard.voice_callsign']) {
-				this.voice_callsign = JSON.parse(localStorage['rotorhazard.voice_callsign']);
-			}
-			if (localStorage['rotorhazard.voice_lap_count']) {
-				this.voice_lap_count = JSON.parse(localStorage['rotorhazard.voice_lap_count']);
-			}
-			if (localStorage['rotorhazard.voice_team_lap_count']) {
-				this.voice_team_lap_count = JSON.parse(localStorage['rotorhazard.voice_team_lap_count']);
-			}
-			if (localStorage['rotorhazard.voice_lap_time']) {
-				this.voice_lap_time = JSON.parse(localStorage['rotorhazard.voice_lap_time']);
-			}
-			if (localStorage['rotorhazard.voice_race_timer']) {
-				this.voice_race_timer = JSON.parse(localStorage['rotorhazard.voice_race_timer']);
-			}
-			if (localStorage['rotorhazard.voice_race_winner']) {
-				this.voice_race_winner = JSON.parse(localStorage['rotorhazard.voice_race_winner']);
-			}
-			if (localStorage['rotorhazard.tone_volume']) {
-				this.tone_volume = JSON.parse(localStorage['rotorhazard.tone_volume']);
-			}
-			if (localStorage['rotorhazard.beep_crossing_entered']) {
-				this.beep_crossing_entered = JSON.parse(localStorage['rotorhazard.beep_crossing_entered']);
-			}
-			if (localStorage['rotorhazard.beep_crossing_exited']) {
-				this.beep_crossing_exited = JSON.parse(localStorage['rotorhazard.beep_crossing_exited']);
-			}
-			if (localStorage['rotorhazard.beep_manual_lap_button']) {
-				this.beep_manual_lap_button = JSON.parse(localStorage['rotorhazard.beep_manual_lap_button']);
-			}
-			if (localStorage['rotorhazard.beep_on_first_pass_button']) {
-				this.beep_on_first_pass_button = JSON.parse(localStorage['rotorhazard.beep_on_first_pass_button']);
-			}
-			if (localStorage['rotorhazard.indicator_beep_volume']) {
-				this.indicator_beep_volume = JSON.parse(localStorage['rotorhazard.indicator_beep_volume']);
-			}
-			if (localStorage['rotorhazard.min_lap']) {
-				this.min_lap = JSON.parse(localStorage['rotorhazard.min_lap']);
-			}
-			if (localStorage['rotorhazard.admin']) {
-				this.admin = JSON.parse(localStorage['rotorhazard.admin']);
-			}
-			if (localStorage['rotorhazard.primaryPilot']) {
-				this.primaryPilot = JSON.parse(localStorage['rotorhazard.primaryPilot']);
-			}
-			return true;
-		}
-		return false;
-	},
-}
-
 function __(text) {
 	// return translated string
 	if (rotorhazard.language_strings[rotorhazard.interface_language]) {
@@ -627,34 +503,43 @@ nodeModel.prototype = {
 function timerModel() {
 	// interval control
 	this.timeout = false;
-	this.interval_check = 100;
+	this.interval_check = 100; // in ms
 	this.expected = false;
 
 	// callbacks
-	this.interval_callback = 10; // number of iterations per 'iteration' callback
+	this.interval_callback = 10; // number of checks per 'iteration' callback
+	// 'iteration' is called each (interval_check * interval_callback) ms
 	this.callback_iteration_count = 0;
+
 	this.callbacks = {
+		'start': false,
+		'continue': false,
 		'iteration': false,
 		'error': false,
-		'expired': false
+		'expire': false
 	};
 
 	this.running = false;
+	this.hidden = false; // display 'ready' message instead of showing time remaining
 	this.count_down = true;
-	this.duration = 0; // count down duration
+	this.duration = 0; // count down duration, in seconds
 	this.time = 0; // time, in seconds
 }
-nodeModel.prototype = {
+timerModel.prototype = {
 	step: function() { // timer control
+		var continue_timer = true;
+
 		if (this.count_down) {
 			this.time--;
-			if (this.time) {
-				if (this.callbacks.expired) {
+			if (this.time <= 0) {
+				continue_timer = false;
+				this.running = false;
+				if (this.callbacks.expire) {
 					try {
-						this.callbacks.expired()
+						this.callbacks.expire()
 					}
 					catch {
-						console.log('expired callback is not callable');
+						console.log('expire callback is not callable');
 					}
 				}
 			}
@@ -662,44 +547,112 @@ nodeModel.prototype = {
 			this.time++;
 		}
 
-		callback_iteration_count++;
-		if (this.callback_iteration_count >= this.interval_callback) {
-			this.callback_iteration_count = 0;
-			if (this.callbacks.iteration) {
-				try {
-					this.callbacks.iteration(this.time)
-				}
-				catch {
-					console.log('iteration callback is not callable');
-					this.stop();
+		if (continue_timer) {
+			callback_iteration_count++;
+			if (this.callback_iteration_count >= this.interval_callback) {
+				this.callback_iteration_count = 0;
+				if (this.callbacks.iteration) {
+					try {
+						this.callbacks.iteration(this.time)
+					}
+					catch {
+						console.log('iteration callback is not callable');
+						this.stop();
+					}
 				}
 			}
-		}
 
-		var drift = Date.now() - this.expected;
-		if (drift > this.interval_check) {
-			if (this.callbacks.error) {
-				try {
-					this.callbacks.error();
-				}
-				catch {
-					console.log('error callback is not callable');
+			var drift = Date.now() - this.expected;
+			if (drift > this.interval_check) {
+				// *** likely by server time resync
+				if (this.callbacks.error) {
+					try {
+						this.callbacks.error();
+					}
+					catch {
+						console.log('error callback is not callable');
+					}
 				}
 			}
+			this.expected += this.interval_check;
+			timeout = setTimeout(this.step, Math.max(0, this.interval_check - drift));
+
+			console.log('Timer drift: ' + drift);
 		}
-		this.expected += this.interval_check;
-		timeout = setTimeout(this.step, Math.max(0, this.interval_check - drift));
 	},
 	start: function(){
+		// start from current position of this.time
 		this.expected = Date.now() + this.interval_check;
 		this.timeout = setTimeout(this.step, this.interval_check);
 		this.running = true;
+		this.callback_iteration_count = 0;
+		if (this.callbacks.start) {
+			try {
+				this.callbacks.start()
+			}
+			catch {
+				console.log('start callback is not callable');
+			}
+		}
+	},
+	continueFrom: function(race_start_ms) {
+		// start from time offset from race start
+		var now = Date.now() // get first so other instructions don't alter it
+		if (this.running) {
+			console.log ('resync diff: ' + (now - race_start_ms) - (this.expected - (this.time + (callback_iteration_count * this.interval_check / 1000))));
+		}
+
+		var race_start_seconds = Math.floor(race_start_ms / 1000); // in seconds
+		clearTimeout(this.timeout);
+
+		if (this.count_down) {
+			var remaining = this.duration - race_start_seconds;
+			if (remaining > 1) {
+				this.time = remaining;
+			} else {
+				this.time = 0;
+				return false; // don't attempt to resync very late
+			}
+		} else {
+			this.time = race_start_seconds;
+		}
+
+		var race_start_frac = race_start_ms % 1000; // in ms
+		var interval_start_frac = (race_start_frac / this.interval_check) % this.interval_callback; // in intervals
+		var recovery_interval = this.interval_check - (interval_start_frac % this.interval_check);
+
+		this.expected = now + recovery_interval;
+		this.timeout = setTimeout(this.step, recovery_interval);
+		this.running = true;
+		this.callback_iteration_count = 0;
+		this.callback_iteration_count = Math.floor(interval_start_frac);
+
+		if (this.callbacks.continue) {
+			try {
+				this.callbacks.continue()
+			}
+			catch {
+				console.log('continue callback is not callable');
+			}
+		}
 	},
 	stop: function(){
+		// stop timing
 		clearTimeout(this.timeout);
 		this.running = false;
 	},
+	reset: function(){
+		if (this.count_down) {
+			this.time = this.duration;
+		} else {
+			this.time = 0;
+		}
+	},
 	renderHTML: function(display_time) {
+		if (this.hidden) {
+			return __l('Ready');
+		}
+
 		if(typeof(display_time) == undefined) {
 			display_time = this.time;
 		}
@@ -722,6 +675,246 @@ nodeModel.prototype = {
 		} else {
 			return minute + ':' + second;
 		}
+	}
+}
+
+/* rotorhazard object for local settings/storage */
+var rotorhazard = {
+	language_strings: {},
+	interface_language: '',
+	// text-to-speech callout options
+	voice_string_language: 'match-timer', // text source language
+	voice_language: '', // speech synthesis engine (browser-supplied)
+	voice_volume: 1.0, // voice call volume
+	voice_rate: 1.25,  // voice call speak pitch
+	voice_pitch: 1.0,  // voice call speak rate
+	voice_callsign: true, // speak pilot callsigns
+	voice_lap_count: true, // speak lap counts
+	voice_team_lap_count: true, // speak team lap counts
+	voice_lap_time: true, // speak lap times
+	voice_race_timer: true, // speak race timer
+	voice_race_winner: true, // speak race winner
+	tone_volume: 1.0, // race stage/start tone volume
+	beep_crossing_entered: false, // beep node crossing entered
+	beep_crossing_exited: false, // beep node crossing exited
+	beep_manual_lap_button: false, // beep when manual lap button bit
+	beep_on_first_pass_button: false, // beep during the first pass where not voice announcment is played
+	indicator_beep_volume: 0.5, // indicator beep volume
+	min_lap: 0, // minimum lap time
+	admin: false, // whether to show admin options in nav
+	graphing: false, // currently graphing RSSI
+	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
+	nodes: [], // node array
+	collecting: false,
+	collection_amount: 25, // number of rssi data points to capture
+
+	timer: {
+		deferred: new timerModel(),
+		staging: new timerModel(),
+		race: new timerModel()
+	}
+	saveData: function() {
+		if (!supportsLocalStorage()) {
+			return false;
+		}
+		localStorage['rotorhazard.voice_string_language'] = JSON.stringify(this.voice_string_language);
+		localStorage['rotorhazard.voice_language'] = JSON.stringify(this.voice_language);
+		localStorage['rotorhazard.voice_volume'] = JSON.stringify(this.voice_volume);
+		localStorage['rotorhazard.voice_rate'] = JSON.stringify(this.voice_rate);
+		localStorage['rotorhazard.voice_pitch'] = JSON.stringify(this.voice_pitch);
+		localStorage['rotorhazard.voice_callsign'] = JSON.stringify(this.voice_callsign);
+		localStorage['rotorhazard.voice_lap_count'] = JSON.stringify(this.voice_lap_count);
+		localStorage['rotorhazard.voice_team_lap_count'] = JSON.stringify(this.voice_team_lap_count);
+		localStorage['rotorhazard.voice_lap_time'] = JSON.stringify(this.voice_lap_time);
+		localStorage['rotorhazard.voice_race_timer'] = JSON.stringify(this.voice_race_timer);
+		localStorage['rotorhazard.voice_race_winner'] = JSON.stringify(this.voice_race_winner);
+		localStorage['rotorhazard.tone_volume'] = JSON.stringify(this.tone_volume);
+		localStorage['rotorhazard.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
+		localStorage['rotorhazard.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
+		localStorage['rotorhazard.beep_manual_lap_button'] = JSON.stringify(this.beep_manual_lap_button);
+		localStorage['rotorhazard.beep_on_first_pass_button'] = JSON.stringify(this.beep_on_first_pass_button);
+		localStorage['rotorhazard.indicator_beep_volume'] = JSON.stringify(this.indicator_beep_volume);
+		localStorage['rotorhazard.min_lap'] = JSON.stringify(this.min_lap);
+		localStorage['rotorhazard.admin'] = JSON.stringify(this.admin);
+		localStorage['rotorhazard.primaryPilot'] = JSON.stringify(this.primaryPilot);
+		return true;
+	},
+	restoreData: function(dataType) {
+		if (supportsLocalStorage()) {
+			if (localStorage['rotorhazard.voice_string_language']) {
+				this.voice_string_language = JSON.parse(localStorage['rotorhazard.voice_string_language']);
+			}
+			if (localStorage['rotorhazard.voice_language']) {
+				this.voice_language = JSON.parse(localStorage['rotorhazard.voice_language']);
+			}
+			if (localStorage['rotorhazard.voice_volume']) {
+				this.voice_volume = JSON.parse(localStorage['rotorhazard.voice_volume']);
+			}
+			if (localStorage['rotorhazard.voice_rate']) {
+				this.voice_rate = JSON.parse(localStorage['rotorhazard.voice_rate']);
+			}
+			if (localStorage['rotorhazard.voice_pitch']) {
+				this.voice_pitch = JSON.parse(localStorage['rotorhazard.voice_pitch']);
+			}
+			if (localStorage['rotorhazard.voice_callsign']) {
+				this.voice_callsign = JSON.parse(localStorage['rotorhazard.voice_callsign']);
+			}
+			if (localStorage['rotorhazard.voice_lap_count']) {
+				this.voice_lap_count = JSON.parse(localStorage['rotorhazard.voice_lap_count']);
+			}
+			if (localStorage['rotorhazard.voice_team_lap_count']) {
+				this.voice_team_lap_count = JSON.parse(localStorage['rotorhazard.voice_team_lap_count']);
+			}
+			if (localStorage['rotorhazard.voice_lap_time']) {
+				this.voice_lap_time = JSON.parse(localStorage['rotorhazard.voice_lap_time']);
+			}
+			if (localStorage['rotorhazard.voice_race_timer']) {
+				this.voice_race_timer = JSON.parse(localStorage['rotorhazard.voice_race_timer']);
+			}
+			if (localStorage['rotorhazard.voice_race_winner']) {
+				this.voice_race_winner = JSON.parse(localStorage['rotorhazard.voice_race_winner']);
+			}
+			if (localStorage['rotorhazard.tone_volume']) {
+				this.tone_volume = JSON.parse(localStorage['rotorhazard.tone_volume']);
+			}
+			if (localStorage['rotorhazard.beep_crossing_entered']) {
+				this.beep_crossing_entered = JSON.parse(localStorage['rotorhazard.beep_crossing_entered']);
+			}
+			if (localStorage['rotorhazard.beep_crossing_exited']) {
+				this.beep_crossing_exited = JSON.parse(localStorage['rotorhazard.beep_crossing_exited']);
+			}
+			if (localStorage['rotorhazard.beep_manual_lap_button']) {
+				this.beep_manual_lap_button = JSON.parse(localStorage['rotorhazard.beep_manual_lap_button']);
+			}
+			if (localStorage['rotorhazard.beep_on_first_pass_button']) {
+				this.beep_on_first_pass_button = JSON.parse(localStorage['rotorhazard.beep_on_first_pass_button']);
+			}
+			if (localStorage['rotorhazard.indicator_beep_volume']) {
+				this.indicator_beep_volume = JSON.parse(localStorage['rotorhazard.indicator_beep_volume']);
+			}
+			if (localStorage['rotorhazard.min_lap']) {
+				this.min_lap = JSON.parse(localStorage['rotorhazard.min_lap']);
+			}
+			if (localStorage['rotorhazard.admin']) {
+				this.admin = JSON.parse(localStorage['rotorhazard.admin']);
+			}
+			if (localStorage['rotorhazard.primaryPilot']) {
+				this.primaryPilot = JSON.parse(localStorage['rotorhazard.primaryPilot']);
+			}
+			return true;
+		}
+		return false;
+	},
+}
+
+// deferred timer callbacks (time until race)
+rotorhazard.timer.deferred.callbacks.start = function(){
+	if (rotorhazard.timer.staging.running || rotorhazard.timer.race.running) {  // defer timing to staging/race timers
+		rotorhazard.timer.deferred.stop();
+	}
+}
+rotorhazard.timer.deferred.callbacks.iteration = function(){
+	if (rotorhazard.voice_race_timer) {
+		if (this.time > 3600 && !(this.time % 3600)) { // 2+ hour callout
+			var hours = this.time / 3600;
+			speak('<div>' __l('Race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
+		} else if (this.time == 3600) {
+			speak('<div>' __l('Race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
+		} else if (this.time == 1800) {
+			speak('<div>' __l('Race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
+		} else if (this.time > 60 && this.time <= 300 && !(this.time % 60)) { // 2–5 min callout
+			var minutes = this.time / 60;
+			speak('<div>' __l('Race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
+		} else if (this.time == 60) {
+			speak('<div>' __l('Race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
+		} else if (this.time == 30) {
+			speak('<div>' __l('Race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
+		} else if (this.time == 10) {
+			speak('<div>' __l('Race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
+		}
+	}
+
+	$('.timing-clock').html(this.renderHTML());
+}
+rotorhazard.timer.deferred.callbacks.expire = function(){
+	rotorhazard.timer.staging.start();
+}
+
+// staging timer callbacks
+rotorhazard.timer.staging.callbacks.start = function(){
+	if (rotorhazard.timer.race.running) { // defer timing to race timer
+		rotorhazard.timer.staging.stop();
+	} else {
+		// beep every second during staging (timer may be hidden)
+		play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+		$('.timing-clock').addClass('staging');
+		$('.timing-clock').html(this.renderHTML());
+	}
+	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
+}
+rotorhazard.timer.staging.callbacks.iteration = function(){
+	// beep every second during staging (timer may be hidden)
+	play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+	$('.timing-clock').html(this.renderHTML());
+}
+rotorhazard.timer.staging.callbacks.expire = function(){
+	rotorhazard.timer.race.start();
+}
+
+// race timer callbacks
+rotorhazard.timer.race.callbacks.start = function(){
+	// "go" tone
+	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+	$('.timing-clock').html(this.renderHTML());
+	$('.timing-clock').removeClass('staging');
+	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
+	rotorhazard.timer.staging.stop();
+}
+rotorhazard.timer.race.callbacks.continue = function(){
+	$('.timing-clock').html(this.renderHTML());
+	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
+	rotorhazard.timer.staging.stop();
+}
+rotorhazard.timer.race.callbacks.iteration = function(){
+	if (this.count_down) {
+		if (this.time <= 5) { // Final seconds
+			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+		} else if (this.time == 10) { // announce 10s only when counting down
+			if (rotorhazard.voice_race_timer)
+				speak('<div>10 ' + __l('Seconds') + '</div>', true);
+		}
+	}
+
+	if (rotorhazard.voice_race_timer) {
+		if (this.time > 3600 && !(this.time % 3600)) { // 2+ hour callout (endurance)
+			var hours = this.time / 3600;
+			speak('<div>' + hours + ' ' + __l('Hours') + '</div>', true);
+		} else if (this.time == 3600) {
+			speak('<div>1 ' + __l('Hour') + '</div>', true);
+		} else if (this.time == 1800) {
+			speak('<div>30 ' + __l('Minutes') + '</div>', true);
+		} else if (this.time > 60 && this.time <= 300 && !(this.time % 60)) { // 2–5 min callout
+			var minutes = this.time / 60;
+			speak('<div>' + minutes + ' ' + __l('Minutes') + '</div>', true);
+		} else if (this.time == 60) {
+			speak('<div>1 ' + __l('Minute') + '</div>', true);
+		} else if (this.time == 30) {
+			speak('<div>30 ' + __l('Seconds') + '</div>', true);
+		}
+	}
+
+	$('.timing-clock').html(this.renderHTML());
+
+	// Request server time resync every 30s
+	if (this.time % 30 == 10) { // correct close to, but not exactly at, critical time calls
+		request_time = new Date();
+		socket.emit('get_race_elapsed');
+	}
+}
+rotorhazard.timer.race.callbacks.expire = function(){
+	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+	if (emit_finished_flag) { // ***
+		socket.emit('race_time_finished');
 	}
 }
 

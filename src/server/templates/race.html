@@ -103,27 +103,10 @@
 		socket.on('race_elapsed', function (msg) {
 			var response_time = new Date();
 			var server_delay = ((response_time - request_time) / 2);
-			if (timer.getStatus() == 1) {
-				var elapsed = msg.elapsed + server_delay;
-				setTimeout(function(){
-					if (timer.getMode()) {
-						// Count up mode
-						timer.stop();
-						timer.reset(Math.floor(elapsed / 1000) + 1);
-						timer.continue(); // Start clock without fanfare
-					} else {
-						// Count down mode
-						var remaining = timer.getRaceDuration() - Math.floor(elapsed / 1000);
 
-						if (remaining > 1) { // don't attempt to resync very late
-							timer.stop();
-							timer.reset(timer.getRaceDuration() - Math.floor(elapsed / 1000));
-							timer.continue(); // Start clock without fanfare
-						} else {
-							timer.reset(0);
-						}
-					}
-				}, 1000 - (elapsed % 1000));
+			if (rotorhazard.timer.race.running) {
+				var elapsed = msg.elapsed + server_delay;
+				rotorhazard.timer.race.continueFrom(elapsed);
 			}
 		});
 
@@ -140,8 +123,7 @@
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
 					if (resume_check) {
-						timer.reset(0);
-						timer.continue();
+						rotorhazard.timer.race.reset()
 					}
 					break;
 				case 2: // Race stopped, clear or save laps
@@ -166,8 +148,9 @@
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-stopped');
 			}
-			timer.mode(msg.race_mode);
-			timer.setRaceDuration(msg.race_time_sec);
+
+			rotorhazard.timer.race.count_down = Boolean(msg.race_mode);
+			rotorhazard.timer.race.duration = msg.race_time_sec;
 
 			// resume race if needed
 			if (resume_check) {
@@ -426,7 +409,7 @@
 		});
 
 		socket.on('stop_timer', function (msg) {
-			timer.stop();
+			rotorhazard.timer.race.stop();
 		});
 
 		socket.on('prestage_ready', function (msg) {
@@ -446,13 +429,9 @@
 			if (socket.id == msg.initiator) {
 				socket.emit('start_race', data);
 			}
+
 			setTimeout(function(){
-				timer.mode(msg.race_mode);
-				timer.setRaceDuration(msg.race_time_sec);
-				timer.reset();
-				timer.enableEmitFinished()  // enable emitting 'race_time_finished' after countdown
-				timer.pre_race(msg.start_delay, msg.hide_stage_timer);
-				timer.start(); // Start clock
+				rotorhazard.timer.staging.start();
 
 				$('button#stop_race').prop('disabled', true);
 
@@ -460,6 +439,17 @@
 				racedump.timestamp = new Date();
 				racedump.timedata = [];
 			}, server_delay);
+
+			// timer.enableEmitFinished()  // enable emitting 'race_time_finished' after countdown
+			// ***
+
+			rotorhazard.timer.staging.duration = msg.start_delay;
+			rotorhazard.timer.staging.hidden = msg.hide_stage_timer;
+			rotorhazard.timer.staging.reset();
+
+			rotorhazard.timer.race.count_down = Boolean(msg.race_mode);
+			rotorhazard.timer.race.duration = msg.race_time_sec;
+			rotorhazard.timer.race.reset();
 		});
 
 		$('button#start_race').click(function (event) {
@@ -484,7 +474,8 @@
 
 		$('button#clear_laps').click(function (event) {
 			socket.emit('clear_laps');
-			timer.reset();
+			rotorhazard.timer.race.reset();
+			$('.timing-clock').html(rotorhazard.timer.race.renderHTML());
 			return false;
 		});
 
@@ -915,7 +906,7 @@
 <div class="panel">
 	<div class="panel-content">
 		<div class="timer">
-			{% include "build_timer.html" %}
+			<div class="timing-clock">--:--</div>
 		</div>
 
 		<!--Buttons for controlling the race-->
