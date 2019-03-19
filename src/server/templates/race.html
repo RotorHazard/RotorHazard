@@ -103,14 +103,14 @@
 		socket.on('race_elapsed', function (msg) {
 			var response_time = new Date();
 			var server_delay = ((response_time - request_time) / 2);
-
-			if (rotorhazard.timer.race.running) {
-				var elapsed = msg.elapsed + server_delay;
-				rotorhazard.timer.race.continueFrom(elapsed);
-			}
+			var elapsed = msg.elapsed + server_delay;
+			rotorhazard.timer.race.continueFrom(elapsed);
 		});
 
 		socket.on('race_status', function (msg) {
+			rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
+			rotorhazard.timer.race.duration = msg.race_time_sec;
+
 			switch (msg.race_status) {
 				case 1: // Race running
 					$('#set_current_heat').prop('disabled', true);
@@ -124,6 +124,9 @@
 					$('body').removeClass('race-new');
 					if (resume_check) {
 						rotorhazard.timer.race.reset()
+						resume_check = false;
+						request_time = new Date();
+						socket.emit('get_race_elapsed');
 					}
 					break;
 				case 2: // Race stopped, clear or save laps
@@ -147,16 +150,6 @@
 					$('body').addClass('race-new');
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-stopped');
-			}
-
-			rotorhazard.timer.race.count_down = Boolean(msg.race_mode);
-			rotorhazard.timer.race.duration = msg.race_time_sec;
-
-			// resume race if needed
-			if (resume_check) {
-				resume_check = false;
-				request_time = new Date();
-				socket.emit('get_race_elapsed');
 			}
 		});
 
@@ -447,7 +440,7 @@
 			rotorhazard.timer.staging.hidden = msg.hide_stage_timer;
 			rotorhazard.timer.staging.reset();
 
-			rotorhazard.timer.race.count_down = Boolean(msg.race_mode);
+			rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
 			rotorhazard.timer.race.duration = msg.race_time_sec;
 			rotorhazard.timer.race.reset();
 		});
@@ -464,6 +457,8 @@
 
 		$('button#stop_race').click(function (event) {
 			socket.emit('stop_race');
+			rotorhazard.timer.staging.stop();
+			rotorhazard.timer.race.stop();
 			return false;
 		});
 

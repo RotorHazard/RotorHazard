@@ -19,7 +19,7 @@ from flask_sqlalchemy import SQLAlchemy
 import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
-import gevent.Timeout
+import gevent.timeout
 
 import random
 import json

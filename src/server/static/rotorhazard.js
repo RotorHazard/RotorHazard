@@ -521,91 +521,126 @@ function timerModel() {
 
 	this.running = false;
 	this.hidden = false; // display 'ready' message instead of showing time remaining
-	this.count_down = true;
+	this.count_up = false;
 	this.duration = 0; // count down duration, in seconds
 	this.time = 0; // time, in seconds
-}
-timerModel.prototype = {
-	step: function() { // timer control
+
+	this.drift_history = [];
+	this.drift_history_samples = 10;
+	this.drift_correction = 0;
+
+	var self = this;
+
+	function step() { // timer control
 		var continue_timer = true;
 
-		if (this.count_down) {
-			this.time--;
-			if (this.time <= 0) {
-				continue_timer = false;
-				this.running = false;
-				if (this.callbacks.expire) {
+		self.callback_iteration_count++;
+		if (self.callback_iteration_count >= self.interval_callback) {
+			self.callback_iteration_count = 0;
+
+			if (self.count_up) {
+				self.time++;
+
+				if (self.callbacks.iteration) {
 					try {
-						this.callbacks.expire()
+						self.callbacks.iteration(self)
 					}
-					catch {
-						console.log('expire callback is not callable');
+					catch(error) {
+						console.log('iteration callback error: ' + error);
+						continue_timer = false;
+						self.stop();
+					}
+				}
+			} else {
+				self.time--;
+				if (self.time <= 0) {
+					continue_timer = false;
+					self.running = false;
+					if (self.callbacks.expire) {
+						try {
+							self.callbacks.expire(self)
+						}
+						catch(error) {
+							console.log('expire callback error: ' + error);
+						}
+					}
+				} else {
+					if (self.callbacks.iteration) {
+						try {
+							self.callbacks.iteration(self)
+						}
+						catch(error) {
+							console.log('iteration callback error: ' + error);
+							continue_timer = false;
+							self.stop();
+						}
 					}
 				}
 			}
-		} else {
-			this.time++;
 		}
 
 		if (continue_timer) {
-			callback_iteration_count++;
-			if (this.callback_iteration_count >= this.interval_callback) {
-				this.callback_iteration_count = 0;
-				if (this.callbacks.iteration) {
-					try {
-						this.callbacks.iteration(this.time)
-					}
-					catch {
-						console.log('iteration callback is not callable');
-						this.stop();
-					}
-				}
-			}
-
-			var drift = Date.now() - this.expected;
-			if (drift > this.interval_check) {
+			var drift = Date.now() - self.expected;
+			if (drift > self.interval_check) {
 				// *** likely by server time resync
-				if (this.callbacks.error) {
+				if (self.callbacks.error) {
 					try {
-						this.callbacks.error();
+						self.callbacks.error(self);
 					}
-					catch {
-						console.log('error callback is not callable');
+					catch(error) {
+						console.log('error callback error: ' + error);
 					}
 				}
 			}
-			this.expected += this.interval_check;
-			timeout = setTimeout(this.step, Math.max(0, this.interval_check - drift));
+			self.expected += self.interval_check;
+			self.timeout = setTimeout(step, Math.max(0, self.interval_check - drift - self.drift_correction));
 
-			console.log('Timer drift: ' + drift);
+			self.drift_history.push(drift + self.drift_correction);
+			self.drift_correction = median(self.drift_history) / 2
+			if (self.drift_history.length >= self.drift_history_samples) {
+				self.drift_history.shift();
+			}
+
 		}
-	},
-	start: function(){
+	}
+
+	this.start = function(){
 		// start from current position of this.time
 		this.expected = Date.now() + this.interval_check;
-		this.timeout = setTimeout(this.step, this.interval_check);
+		this.timeout = setTimeout(step, this.interval_check);
 		this.running = true;
 		this.callback_iteration_count = 0;
 		if (this.callbacks.start) {
 			try {
-				this.callbacks.start()
+				this.callbacks.start(this)
 			}
-			catch {
-				console.log('start callback is not callable');
+			catch(error) {
+				console.log('start callback error: ' + error);
 			}
 		}
-	},
-	continueFrom: function(race_start_ms) {
+	}
+
+	this.continueFrom = function(race_start_ms) {
 		// start from time offset from race start
 		var now = Date.now() // get first so other instructions don't alter it
 		if (this.running) {
-			console.log ('resync diff: ' + (now - race_start_ms) - (this.expected - (this.time + (callback_iteration_count * this.interval_check / 1000))));
+			var race_start_pi = (now - race_start_ms);
+			if (this.count_up) {
+				var race_start_browser = (this.expected - (this.time * 1000 + (this.callback_iteration_count * this.interval_check / 1000)));
+			} else {
+				var race_start_browser = (this.expected - ((this.duration - this.time) * 1000 + (this.callback_iteration_count * this.interval_check / 1000)));
+			}
+
+			var diff = race_start_pi - race_start_browser;
+			console.log('resync diff: ' + diff);
 		}
 
 		var race_start_seconds = Math.floor(race_start_ms / 1000); // in seconds
 		clearTimeout(this.timeout);
 
-		if (this.count_down) {
+		if (this.count_up) {
+			this.time = race_start_seconds;
+		} else {
 			var remaining = this.duration - race_start_seconds;
 			if (remaining > 1) {
 				this.time = remaining;
@@ -613,8 +648,6 @@ timerModel.prototype = {
 				this.time = 0;
 				return false; // don't attempt to resync very late
 			}
-		} else {
-			this.time = race_start_seconds;
 		}
 
 		var race_start_frac = race_start_ms % 1000; // in ms
@@ -622,38 +655,42 @@ timerModel.prototype = {
 		var recovery_interval = this.interval_check - (interval_start_frac % this.interval_check);
 
 		this.expected = now + recovery_interval;
-		this.timeout = setTimeout(this.step, recovery_interval);
+		this.timeout = setTimeout(step, recovery_interval);
 		this.running = true;
 		this.callback_iteration_count = 0;
 		this.callback_iteration_count = Math.floor(interval_start_frac);
 
 		if (this.callbacks.continue) {
 			try {
-				this.callbacks.continue()
+				this.callbacks.continue(this)
 			}
-			catch {
-				console.log('continue callback is not callable');
+			catch(error) {
+				console.log('continue callback error: ' + error);
 			}
 		}
-	},
-	stop: function(){
+	}
+
+	this.stop = function(){
 		// stop timing
 		clearTimeout(this.timeout);
 		this.running = false;
-	},
-	reset: function(){
-		if (this.count_down) {
-			this.time = this.duration;
-		} else {
+	}
+
+	this.reset = function(){
+		this.stop();
+		if (this.count_up) {
 			this.time = 0;
+		} else {
+			this.time = this.duration;
 		}
-	},
-	renderHTML: function(display_time) {
+	}
+
+	this.renderHTML = function(display_time) {
 		if (this.hidden) {
 			return __l('Ready');
 		}
 
-		if(typeof(display_time) == undefined) {
+		if(typeof display_time != 'number') {
 			display_time = this.time;
 		}
 
@@ -712,7 +749,7 @@ var rotorhazard = {
 		deferred: new timerModel(),
 		staging: new timerModel(),
 		race: new timerModel()
-	}
+	},
 	saveData: function() {
 		if (!supportsLocalStorage()) {
 			return false;
@@ -808,114 +845,132 @@ var rotorhazard = {
 }
 
 // deferred timer callbacks (time until race)
-rotorhazard.timer.deferred.callbacks.start = function(){
+rotorhazard.timer.deferred.callbacks.start = function(timer){
 	if (rotorhazard.timer.staging.running || rotorhazard.timer.race.running) {  // defer timing to staging/race timers
 		rotorhazard.timer.deferred.stop();
 	}
 }
-rotorhazard.timer.deferred.callbacks.iteration = function(){
+rotorhazard.timer.deferred.callbacks.iteration = function(timer){
 	if (rotorhazard.voice_race_timer) {
-		if (this.time > 3600 && !(this.time % 3600)) { // 2+ hour callout
-			var hours = this.time / 3600;
-			speak('<div>' __l('Race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
-		} else if (this.time == 3600) {
-			speak('<div>' __l('Race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
-		} else if (this.time == 1800) {
-			speak('<div>' __l('Race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
-		} else if (this.time > 60 && this.time <= 300 && !(this.time % 60)) { // 2–5 min callout
-			var minutes = this.time / 60;
-			speak('<div>' __l('Race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
-		} else if (this.time == 60) {
-			speak('<div>' __l('Race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
-		} else if (this.time == 30) {
-			speak('<div>' __l('Race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
-		} else if (this.time == 10) {
-			speak('<div>' __l('Race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
+		if (timer.time > 3600 && !(timer.time % 3600)) { // 2+ hour callout
+			var hours = timer.time / 3600;
+			speak('<div>' + __l('Race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
+		} else if (timer.time == 3600) {
+			speak('<div>' + __l('Race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
+		} else if (timer.time == 1800) {
+			speak('<div>' + __l('Race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time > 60 && timer.time <= 300 && !(timer.time % 60)) { // 2–5 min callout
+			var minutes = timer.time / 60;
+			speak('<div>' + __l('Race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time == 60) {
+			speak('<div>' + __l('Race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
+		} else if (timer.time == 30) {
+			speak('<div>' + __l('Race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
+		} else if (timer.time == 10) {
+			speak('<div>' + __l('Race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
 		}
 	}
 
-	$('.timing-clock').html(this.renderHTML());
+	if(false) { // include staging time in deferred time ?? ***
+		if (timer.time <= rotorhazard.timer.staging.duration) {
+			rotorhazard.timer.deferred.stop();
+			rotorhazard.timer.staging.start();
+		}
+	}
+
+	$('.timing-clock').html(timer.renderHTML());
 }
-rotorhazard.timer.deferred.callbacks.expire = function(){
+rotorhazard.timer.deferred.callbacks.expire = function(timer){
 	rotorhazard.timer.staging.start();
 }
 
 // staging timer callbacks
-rotorhazard.timer.staging.callbacks.start = function(){
+rotorhazard.timer.staging.callbacks.start = function(timer){
 	if (rotorhazard.timer.race.running) { // defer timing to race timer
 		rotorhazard.timer.staging.stop();
 	} else {
 		// beep every second during staging (timer may be hidden)
 		play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 		$('.timing-clock').addClass('staging');
-		$('.timing-clock').html(this.renderHTML());
+		$('.timing-clock').html(timer.renderHTML());
 	}
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
 }
-rotorhazard.timer.staging.callbacks.iteration = function(){
-	// beep every second during staging (timer may be hidden)
-	play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-	$('.timing-clock').html(this.renderHTML());
+rotorhazard.timer.staging.callbacks.iteration = function(timer){
+	if (timer.hidden) {
+		// beep every second during staging if timer is hidden
+		play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+	} else if (timer.time == 30
+		|| timer.time == 20
+		|| timer.time == 10) {
+		speak('<div>' + __l('Race begins in') + ' ' + timer.time + ' ' + __l('Seconds') + '</div>', true);
+	} else if (timer.time <= 5) {
+		// staging beep for last 5 seconds before start
+		play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+	}
+
+	$('.timing-clock').html(timer.renderHTML());
 }
-rotorhazard.timer.staging.callbacks.expire = function(){
+rotorhazard.timer.staging.callbacks.expire = function(timer){
 	rotorhazard.timer.race.start();
 }
 
 // race timer callbacks
-rotorhazard.timer.race.callbacks.start = function(){
+rotorhazard.timer.race.callbacks.start = function(timer){
 	// "go" tone
 	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
-	$('.timing-clock').html(this.renderHTML());
+	$('.timing-clock').html(timer.renderHTML());
 	$('.timing-clock').removeClass('staging');
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
 	rotorhazard.timer.staging.stop();
 }
-rotorhazard.timer.race.callbacks.continue = function(){
-	$('.timing-clock').html(this.renderHTML());
+rotorhazard.timer.race.callbacks.continue = function(timer){
+	$('.timing-clock').html(timer.renderHTML());
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
 	rotorhazard.timer.staging.stop();
 }
-rotorhazard.timer.race.callbacks.iteration = function(){
-	if (this.count_down) {
-		if (this.time <= 5) { // Final seconds
+rotorhazard.timer.race.callbacks.iteration = function(timer){
+	if (timer.count_up) {
+		if (timer.time <= 5) { // Final seconds
 			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-		} else if (this.time == 10) { // announce 10s only when counting down
+		} else if (timer.time == 10) { // announce 10s only when counting down
 			if (rotorhazard.voice_race_timer)
 				speak('<div>10 ' + __l('Seconds') + '</div>', true);
 		}
 	}
 
 	if (rotorhazard.voice_race_timer) {
-		if (this.time > 3600 && !(this.time % 3600)) { // 2+ hour callout (endurance)
-			var hours = this.time / 3600;
+		if (timer.time > 3600 && !(timer.time % 3600)) { // 2+ hour callout (endurance)
+			var hours = timer.time / 3600;
 			speak('<div>' + hours + ' ' + __l('Hours') + '</div>', true);
-		} else if (this.time == 3600) {
+		} else if (timer.time == 3600) {
 			speak('<div>1 ' + __l('Hour') + '</div>', true);
-		} else if (this.time == 1800) {
+		} else if (timer.time == 1800) {
 			speak('<div>30 ' + __l('Minutes') + '</div>', true);
-		} else if (this.time > 60 && this.time <= 300 && !(this.time % 60)) { // 2–5 min callout
-			var minutes = this.time / 60;
+		} else if (timer.time > 60 && timer.time <= 300 && !(timer.time % 60)) { // 2–5 min callout
+			var minutes = timer.time / 60;
 			speak('<div>' + minutes + ' ' + __l('Minutes') + '</div>', true);
-		} else if (this.time == 60) {
+		} else if (timer.time == 60) {
 			speak('<div>1 ' + __l('Minute') + '</div>', true);
-		} else if (this.time == 30) {
+		} else if (timer.time == 30) {
 			speak('<div>30 ' + __l('Seconds') + '</div>', true);
 		}
 	}
 
-	$('.timing-clock').html(this.renderHTML());
+	$('.timing-clock').html(timer.renderHTML());
 
 	// Request server time resync every 30s
-	if (this.time % 30 == 10) { // correct close to, but not exactly at, critical time calls
+	if (timer.time % 30 == 10) { // correct close to, but not exactly at, critical time calls
 		request_time = new Date();
 		socket.emit('get_race_elapsed');
 	}
 }
-rotorhazard.timer.race.callbacks.expire = function(){
+rotorhazard.timer.race.callbacks.expire = function(timer){
 	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
-	if (emit_finished_flag) { // ***
+	$('.timing-clock').html(timer.renderHTML());
+	// if (emit_finished_flag) { // ***
 		socket.emit('race_time_finished');
-	}
+	// }
 }
 
 /* global page behaviors */
