@@ -7,7 +7,8 @@ function supportsLocalStorage() {
 	}
 }
 
-function median(values){
+function median(arr){
+	values = arr.concat()
 	values.sort(function(a,b){
 		return a-b;
 	});
@@ -515,7 +516,6 @@ function timerModel() {
 		'start': false,
 		'continue': false,
 		'iteration': false,
-		'error': false,
 		'expire': false
 	};
 
@@ -524,6 +524,7 @@ function timerModel() {
 	this.count_up = false;
 	this.duration = 0; // count down duration, in seconds
 	this.time = 0; // time, in seconds
+	this.started = 0; // timer's "start timestamp" (pseudo-value)
 
 	this.drift_history = [];
 	this.drift_history_samples = 10;
@@ -580,23 +581,17 @@ function timerModel() {
 		}
 
 		if (continue_timer) {
-			var drift = Date.now() - self.expected;
+			var now = Date.now()
+			var drift = now - self.expected;
 			if (drift > self.interval_check) {
-				// *** likely by server time resync
-				if (self.callbacks.error) {
-					try {
-						self.callbacks.error(self);
-					}
-					catch(error) {
-						console.log('error callback error: ' + error);
-					}
-				}
+				// resync large interval based on start time
+				self.continueFrom(now - self.started);
 			}
 			self.expected += self.interval_check;
 			self.timeout = setTimeout(step, Math.max(0, self.interval_check - drift - self.drift_correction));
 
 			self.drift_history.push(drift + self.drift_correction);
-			self.drift_correction = median(self.drift_history) / 2
+			self.drift_correction = median(self.drift_history);
 			if (self.drift_history.length >= self.drift_history_samples) {
 				self.drift_history.shift();
 			}
@@ -606,7 +601,9 @@ function timerModel() {
 
 	this.start = function(){
 		// start from current position of this.time
-		this.expected = Date.now() + this.interval_check;
+		var now = Date.now();
+		this.expected = now + this.interval_check;
+		this.started = now;
 		this.timeout = setTimeout(step, this.interval_check);
 		this.running = true;
 		this.callback_iteration_count = 0;
@@ -659,6 +656,7 @@ function timerModel() {
 		this.running = true;
 		this.callback_iteration_count = 0;
 		this.callback_iteration_count = Math.floor(interval_start_frac);
+		this.started = now - (this.time * 1000);
 
 		if (this.callbacks.continue) {
 			try {
