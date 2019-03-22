@@ -530,6 +530,11 @@ function timerModel() {
 	this.drift_history_samples = 10;
 	this.drift_correction = 0;
 
+	this.resync_time = 0; // next resync
+	this.resync_interval = 30; // seconds between resyncs
+	this.resync_window = 10; // window in which to choose a random time to resync
+	this.resync_offset = 12; // offset from resync interval to begin window
+
 	var self = this;
 
 	function step() { // timer control
@@ -913,11 +918,25 @@ rotorhazard.timer.race.callbacks.start = function(timer){
 	$('.timing-clock').removeClass('staging');
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
 	rotorhazard.timer.staging.stop();
+
+	// init server resync
+	if (timer.count_up) {
+		timer.resync_time = timer.time - (timer.time % timer.resync_interval) + Math.ceil(Math.random() * timer.resync_window) + timer.resync_offset;
+	} else {
+		timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.ceil(Math.random() * timer.resync_window) - timer.resync_offset;
+	}
 }
 rotorhazard.timer.race.callbacks.continue = function(timer){
 	$('.timing-clock').html(timer.renderHTML());
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
 	rotorhazard.timer.staging.stop();
+
+	// init server resync
+	if (timer.count_up) {
+		timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.ceil(Math.random() * timer.resync_window) + timer.resync_offset;
+	} else {
+		timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.ceil(Math.random() * timer.resync_window) - timer.resync_offset;
+	}
 }
 rotorhazard.timer.race.callbacks.iteration = function(timer){
 	if (!timer.count_up) {
@@ -949,10 +968,23 @@ rotorhazard.timer.race.callbacks.iteration = function(timer){
 
 	$('.timing-clock').html(timer.renderHTML());
 
-	// Request server time resync every 30s
-	if (timer.time % 30 == 10) { // correct close to, but not exactly at, critical time calls
-		request_time = new Date();
-		socket.emit('get_race_elapsed');
+	// Request server time resync
+	if (timer.count_up) {
+		if (timer.time >= timer.resync_time) {
+			console.log('server resync at: ' + timer.time);
+			timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.ceil(Math.random() * timer.resync_window) + timer.resync_offset;
+
+			request_time = new Date();
+			socket.emit('get_race_elapsed');
+		}
+	} else {
+		if (timer.time <= timer.resync_time) {
+			console.log('server resync at: ' + timer.time);
+			timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.ceil(Math.random() * timer.resync_window) - timer.resync_offset;
+
+			request_time = new Date();
+			socket.emit('get_race_elapsed');
+		}
 	}
 }
 rotorhazard.timer.race.callbacks.expire = function(timer){
