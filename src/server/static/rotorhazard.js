@@ -584,18 +584,18 @@ function timerModel() {
 			var now = Date.now()
 			var drift = now - self.expected;
 			if (drift > self.interval_check) {
-				// resync large interval based on start time
+				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
 				self.continueFrom(now - self.started);
-			}
-			self.expected += self.interval_check;
-			self.timeout = setTimeout(step, Math.max(0, self.interval_check - drift - self.drift_correction));
+			} else {
+				self.expected += self.interval_check;
+				self.timeout = setTimeout(step, Math.max(0, self.interval_check - drift - self.drift_correction));
 
-			self.drift_history.push(drift + self.drift_correction);
-			self.drift_correction = median(self.drift_history);
-			if (self.drift_history.length >= self.drift_history_samples) {
-				self.drift_history.shift();
+				self.drift_history.push(drift + self.drift_correction);
+				self.drift_correction = median(self.drift_history);
+				if (self.drift_history.length >= self.drift_history_samples) {
+					self.drift_history.shift();
+				}
 			}
-
 		}
 	}
 
@@ -620,20 +620,15 @@ function timerModel() {
 	this.continueFrom = function(race_start_ms) {
 		// start from time offset from race start
 		var now = Date.now() // get first so other instructions don't alter it
+		clearTimeout(this.timeout);
+
 		if (this.running) {
 			var race_start_pi = (now - race_start_ms);
-			if (this.count_up) {
-				var race_start_browser = (this.expected - (this.time * 1000 + (this.callback_iteration_count * this.interval_check / 1000)));
-			} else {
-				var race_start_browser = (this.expected - ((this.duration - this.time) * 1000 + (this.callback_iteration_count * this.interval_check / 1000)));
-			}
-
-			var diff = race_start_pi - race_start_browser;
+			var diff = race_start_pi - this.started;
 			console.log('resync diff: ' + diff);
 		}
 
 		var race_start_seconds = Math.floor(race_start_ms / 1000); // in seconds
-		clearTimeout(this.timeout);
 
 		if (this.count_up) {
 			this.time = race_start_seconds;
@@ -647,16 +642,13 @@ function timerModel() {
 			}
 		}
 
-		var race_start_frac = race_start_ms % 1000; // in ms
-		var interval_start_frac = (race_start_frac / this.interval_check) % this.interval_callback; // in intervals
-		var recovery_interval = this.interval_check - (interval_start_frac % this.interval_check);
+		var recovery_interval = this.interval_check - (race_start_ms % this.interval_check);
 
 		this.expected = now + recovery_interval;
 		this.timeout = setTimeout(step, recovery_interval);
 		this.running = true;
-		this.callback_iteration_count = 0;
-		this.callback_iteration_count = Math.floor(interval_start_frac);
-		this.started = now - (this.time * 1000);
+		this.callback_iteration_count = race_start_ms % (this.interval_check * this.interval_callback);
+		this.started = now - race_start_ms;
 
 		if (this.callbacks.continue) {
 			try {
@@ -928,7 +920,7 @@ rotorhazard.timer.race.callbacks.continue = function(timer){
 	rotorhazard.timer.staging.stop();
 }
 rotorhazard.timer.race.callbacks.iteration = function(timer){
-	if (timer.count_up) {
+	if (!timer.count_up) {
 		if (timer.time <= 5) { // Final seconds
 			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 		} else if (timer.time == 10) { // announce 10s only when counting down

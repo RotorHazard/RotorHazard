@@ -1510,6 +1510,7 @@ def on_set_option(data):
 
 @SOCKET_IO.on('get_race_elapsed')
 def get_race_elapsed():
+    # never broadcasts to all
     emit('race_elapsed', {
         'elapsed': ms_from_race_start()
     })
