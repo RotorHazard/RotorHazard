@@ -9,6 +9,7 @@ import shutil
 import base64
 import subprocess
 from datetime import datetime
+from datetime import timedelta
 from functools import wraps
 from collections import OrderedDict
 
@@ -1080,7 +1081,7 @@ def on_set_min_lap_behavior(data):
 @SOCKET_IO.on("set_race_format")
 def on_set_race_format(data):
     ''' set current race_format '''
-    if RACE.race_status = 0: # prevernt format change if race running
+    if RACE.race_status == 0: # prevent format change if race running
         race_format_val = data['race_format']
         race_format = RaceFormat.query.get(race_format_val)
         DB.session.flush()
@@ -1113,7 +1114,7 @@ def on_add_race_format():
 @SOCKET_IO.on('delete_race_format')
 def on_delete_race_format():
     '''Delete profile'''
-    if RACE.race_status = 0: # prevernt format change if race running
+    if RACE.race_status == 0: # prevent format change if race running
         if (DB.session.query(RaceFormat).count() > 1): # keep one format
             last_raceFormat = int(getOption("currentFormat"))
             raceformat = RaceFormat.query.get(last_raceFormat)
@@ -1208,8 +1209,10 @@ def on_prestage_race(data):
     initiator = data['initiator'] # client ID of session that started the race
     onoff(strip, Color(255,128,0)) #ORANGE for STAGING
     clear_laps() # Ensure laps are cleared before race start, shouldn't be needed
+    RACE.race_status = 3
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
+    emit_race_status() # Race page, blank laps to the web client
     INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
     last_raceFormat = int(getOption("currentFormat"))
     race_format = RaceFormat.query.get(last_raceFormat)
@@ -1243,7 +1246,10 @@ def on_start_race(data):
     try:
         gevent.with_timeout(10, race_start_thread, data['delay'])
     except Timeout:
-        print('Race start thread timed out')
+        # Race failed to start
+        RACE.race_status = 0
+        server_log('WARNING: Race start thread timed out')
+        emit_race_status()
 
 def race_start_thread(staging_delay):
     gevent.sleep(staging_delay)
@@ -1511,15 +1517,6 @@ def get_race_elapsed():
     emit('race_elapsed', {
         'elapsed': ms_from_race_start()
     })
-
-@SOCKET_IO.on('race_time_finished')
-def race_time_finished():
-    if RACE.timer_running:
-        RACE.timer_running = 0 # indicate race timer no longer running
-        last_raceFormat = int(getOption("currentFormat"))
-        race_format = RaceFormat.query.filter_by(id=last_raceFormat).first()
-        if race_format and race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
-            check_most_laps_win()  # check if pilot or team has most laps for win
 
 @SOCKET_IO.on('imdtabler_update_freqs')
 def imdtabler_update_freqs(data):
@@ -2727,12 +2724,17 @@ def heartbeat_thread_function():
     while True:
         SOCKET_IO.emit('heartbeat', INTERFACE.get_heartbeat_json())
         heartbeat_thread_function.iter_tracker += 1
-                   # update displayed IMD rating after freqs changed:
+
+        # check if race timer is finished
+        if RACE.timer_running:
+            check_race_time_expired()
+
+        # update displayed IMD rating after freqs changed:
         if heartbeat_thread_function.imdtabler_flag and \
                 (heartbeat_thread_function.iter_tracker % 5) == 0:
             heartbeat_thread_function.imdtabler_flag = False
             emit_imdtabler_rating()
-                   # emit rest of node data, but less often:
+        # emit rest of node data, but less often:
         if heartbeat_thread_function.iter_tracker >= 20:
             heartbeat_thread_function.iter_tracker = 0
             emit_node_data()
@@ -2778,6 +2780,15 @@ def phonetictime_format(millis):
         return '{0:01d} {1:02d}.{2:01d}'.format(minutes, seconds, tenths)
     else:
         return '{0:01d}.{1:01d}'.format(seconds, tenths)
+
+def check_race_time_expired():
+    last_raceFormat = int(getOption("currentFormat"))
+    race_format = RaceFormat.query.get(last_raceFormat)
+    if race_format and race_format.race_mode == 0: # count down
+        if datetime.now() >= RACE_START + timedelta(0, race_format.race_time_sec):
+            RACE.timer_running = 0 # indicate race timer no longer running
+            if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
+                check_most_laps_win()  # check if pilot or team has most laps for win
 
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''

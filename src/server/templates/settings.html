@@ -98,18 +98,8 @@
 		socket.on('race_status', function (msg) {
 			switch (msg.race_status) {
 				case 1: // Race running
-					$('#set_race_format').prop('disabled', true);
-					$('#add_race_format').prop('disabled', true);
-					$('#delete_race_format').prop('disabled', true);
-					$('#set_format_name').prop('disabled', true);
-					$('#set_race_mode').prop('disabled', true);
-					$('#set_fix_race_time').prop('disabled', true);
-					$('#set_start_delay_min').prop('disabled', true);
-					$('#set_start_delay_max').prop('disabled', true);
-					$('#set_number_laps_win').prop('disabled', true);
-					$('#set_win_condition').prop('disabled', true);
-					$('#set_team_racing_mode').prop('disabled', true);
 				case 2: // Race stopped, clear or save laps
+				case 3: // Race staging
 					$('#set_race_format').prop('disabled', true);
 					$('#add_race_format').prop('disabled', true);
 					$('#delete_race_format').prop('disabled', true);
@@ -121,6 +111,7 @@
 					$('#set_number_laps_win').prop('disabled', true);
 					$('#set_win_condition').prop('disabled', true);
 					$('#set_team_racing_mode').prop('disabled', true);
+					break;
 				default: // Waiting to start new race
 					$('#set_race_format').prop('disabled', false);
 					$('#add_race_format').prop('disabled', false);

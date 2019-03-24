@@ -990,9 +990,6 @@ rotorhazard.timer.race.callbacks.iteration = function(timer){
 rotorhazard.timer.race.callbacks.expire = function(timer){
 	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 	$('.timing-clock').html(timer.renderHTML());
-	// if (emit_finished_flag) { // ***
-		socket.emit('race_time_finished');
-	// }
 }
 
 /* global page behaviors */

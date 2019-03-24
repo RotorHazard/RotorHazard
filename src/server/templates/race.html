@@ -113,15 +113,18 @@
 
 			switch (msg.race_status) {
 				case 1: // Race running
+				case 3: // staging
 					$('#set_current_heat').prop('disabled', true);
 					$('button#start_race').prop('disabled', true);
 					$('button#stop_race').prop('disabled', false);
 					$('button#save_laps').prop('disabled', true);
 					$('button#clear_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', false);
-					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
+					break;
+				case 1:
+					$('body').addClass('race-running');
 					if (resume_check) {
 						rotorhazard.timer.race.reset()
 						resume_check = false;
@@ -432,9 +435,6 @@
 				racedump.timestamp = new Date();
 				racedump.timedata = [];
 			}, server_delay);
-
-			// timer.enableEmitFinished()  // enable emitting 'race_time_finished' after countdown
-			// ***
 
 			rotorhazard.timer.staging.duration = msg.start_delay;
 			rotorhazard.timer.staging.hidden = msg.hide_stage_timer;
