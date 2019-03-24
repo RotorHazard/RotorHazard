@@ -473,16 +473,6 @@ def settings():
         ConfigFile=Config['GENERAL']['configFile'],
         Debug=Config['GENERAL']['DEBUG'])
 
-@APP.route('/correction')
-@requires_auth
-def correction():
-    '''Route to node correction page.'''
-
-    return render_template('correction.html', serverInfo=serverInfo, getOption=getOption, __=__,
-        num_nodes=RACE.num_nodes,
-        current_profile = getOption("currentProfile"),
-        profiles = Profiles)
-
 @APP.route('/imdtabler')
 def imdtabler():
     '''Route to IMDTabler page.'''
@@ -1090,13 +1080,16 @@ def on_set_min_lap_behavior(data):
 @SOCKET_IO.on("set_race_format")
 def on_set_race_format(data):
     ''' set current race_format '''
-    race_format_val = data['race_format']
-    race_format = RaceFormat.query.get(race_format_val)
-    DB.session.flush()
-    setOption("currentFormat", race_format_val)
-    DB.session.commit()
-    emit_race_format()
-    server_log("set race format to '%s'" % race_format_val)
+    if RACE.race_status = 0: # prevernt format change if race running
+        race_format_val = data['race_format']
+        race_format = RaceFormat.query.get(race_format_val)
+        DB.session.flush()
+        setOption("currentFormat", race_format_val)
+        DB.session.commit()
+        emit_race_format()
+        server_log("set race format to '%s'" % race_format_val)
+    else:
+        server_log("format change prevented by active race")
 
 @SOCKET_IO.on('add_race_format')
 def on_add_race_format():
@@ -1120,15 +1113,19 @@ def on_add_race_format():
 @SOCKET_IO.on('delete_race_format')
 def on_delete_race_format():
     '''Delete profile'''
-    if (DB.session.query(RaceFormat).count() > 1): # keep one format
-        last_raceFormat = int(getOption("currentFormat"))
-        raceformat = RaceFormat.query.get(last_raceFormat)
-        DB.session.delete(raceformat)
-        DB.session.commit()
-        first_raceFormat_id = RaceFormat.query.first().id
-        setOption("currentFormat", first_raceFormat_id)
-        raceformat = RaceFormat.query.get(first_raceFormat_id)
-        emit_race_format()
+    if RACE.race_status = 0: # prevernt format change if race running
+        if (DB.session.query(RaceFormat).count() > 1): # keep one format
+            last_raceFormat = int(getOption("currentFormat"))
+            raceformat = RaceFormat.query.get(last_raceFormat)
+            DB.session.delete(raceformat)
+            DB.session.commit()
+            first_raceFormat_id = RaceFormat.query.first().id
+            setOption("currentFormat", first_raceFormat_id)
+            raceformat = RaceFormat.query.get(first_raceFormat_id)
+            emit_race_format()
+    else:
+        server_log("format change prevented by active race")
+
 
 @SOCKET_IO.on('set_race_format_name')
 def on_set_race_format_name(data):
