@@ -1137,6 +1137,7 @@ def on_set_race_format_name(data):
     DB.session.commit()
     server_log('set format name %s' % (format_name))
     emit_race_format()
+    emit_class_data()
 
 @SOCKET_IO.on("set_race_mode")
 def on_set_race_mode(data):
