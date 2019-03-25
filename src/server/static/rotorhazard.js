@@ -886,7 +886,6 @@ rotorhazard.timer.staging.callbacks.start = function(timer){
 	} else {
 		// beep every second during staging (timer may be hidden)
 		play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-		$('.timing-clock').addClass('staging');
 		$('.timing-clock').html(timer.renderHTML());
 	}
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
@@ -915,7 +914,6 @@ rotorhazard.timer.race.callbacks.start = function(timer){
 	// "go" tone
 	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 	$('.timing-clock').html(timer.renderHTML());
-	$('.timing-clock').removeClass('staging');
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
 	rotorhazard.timer.staging.stop();
 

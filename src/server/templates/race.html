@@ -113,18 +113,16 @@
 
 			switch (msg.race_status) {
 				case 1: // Race running
-				case 3: // staging
+					$('body').addClass('race-running');
 					$('#set_current_heat').prop('disabled', true);
 					$('button#start_race').prop('disabled', true);
 					$('button#stop_race').prop('disabled', false);
 					$('button#save_laps').prop('disabled', true);
-					$('button#clear_laps').prop('disabled', true);
+					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', false);
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
-					break;
-				case 1:
-					$('body').addClass('race-running');
+					$('.timing-clock').removeClass('staging');
 					if (resume_check) {
 						rotorhazard.timer.race.reset()
 						resume_check = false;
@@ -137,22 +135,35 @@
 					$('button#start_race').prop('disabled', true);
 					$('button#stop_race').prop('disabled', true);
 					$('button#save_laps').prop('disabled', false);
-					$('button#clear_laps').prop('disabled', false);
+					$('button#discard_laps').prop('disabled', false);
 					$('button.simulate_lap').prop('disabled', true);
 					$('body').addClass('race-stopped');
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-new');
+					$('.timing-clock').removeClass('staging');
+					break;
+				case 3: // staging
+					$('#set_current_heat').prop('disabled', true);
+					$('button#start_race').prop('disabled', true);
+					$('button#stop_race').prop('disabled', false);
+					$('button#save_laps').prop('disabled', true);
+					$('button#discard_laps').prop('disabled', true);
+					$('button.simulate_lap').prop('disabled', false);
+					$('body').removeClass('race-stopped');
+					$('body').removeClass('race-new');
+					$('.timing-clock').addClass('staging');
 					break;
 				default: // Waiting to start new race
 					$('#set_current_heat').prop('disabled', false);
 					$('button#start_race').prop('disabled', false);
 					$('button#stop_race').prop('disabled', true);
 					$('button#save_laps').prop('disabled', true);
-					$('button#clear_laps').prop('disabled', true);
+					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', true);
 					$('body').addClass('race-new');
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-stopped');
+					$('.timing-clock').removeClass('staging');
 			}
 		});
 
@@ -405,6 +416,7 @@
 		});
 
 		socket.on('stop_timer', function (msg) {
+			rotorhazard.timer.staging.stop();
 			rotorhazard.timer.race.stop();
 		});
 
@@ -428,8 +440,6 @@
 
 			setTimeout(function(){
 				rotorhazard.timer.staging.start();
-
-				$('button#stop_race').prop('disabled', true);
 
 				rotorhazard.collecting = 'race';
 				racedump.timestamp = new Date();
@@ -467,8 +477,8 @@
 			return false;
 		});
 
-		$('button#clear_laps').click(function (event) {
-			socket.emit('clear_laps');
+		$('button#discard_laps').click(function (event) {
+			socket.emit('discard_laps');
 			rotorhazard.timer.race.reset();
 			$('.timing-clock').html(rotorhazard.timer.race.renderHTML());
 			return false;
@@ -913,7 +923,7 @@
 			<button id="start_race"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
 			<button id="stop_race" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
 			<button id="save_laps" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save Laps') }}</span></button>
-			<button id="clear_laps" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
+			<button id="discard_laps" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
 		</div>
 
 		<!--Display the race leaderboard-->

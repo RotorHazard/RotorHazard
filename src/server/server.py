@@ -50,6 +50,10 @@ FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 EVENT_RESULTS_CACHE = {} # Cache of results page leaderboards
 EVENT_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
 
+LAST_RACE_CACHE = {} # Cache of current race after clearing
+LAST_RACE_LAPS_CACHE = {} # Cache of current race after clearing
+LAST_RACE_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
+
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
 CONFIG_FILE_NAME = 'config.json'
@@ -107,6 +111,11 @@ RACE = get_race_state() # For storing race management variables
 PROGRAM_START = datetime.now()
 RACE_START = datetime.now() # Updated on race start commands
 RACE_DURATION_MS = 0 # calculated when race is stopped
+
+RACE_STATUS_READY = 0
+RACE_STATUS_STAGING = 3
+RACE_STATUS_RACING = 1
+RACE_STATUS_DONE = 2
 
 Race_laps_winner_name = None  # set to name of winner in first-to-X-laps race
 RACE_STATUS_TIED_STR = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
@@ -550,6 +559,8 @@ def on_load_data(data):
             emit_min_lap(nobroadcast=True)
         elif load_type == 'leaderboard':
             emit_leaderboard(nobroadcast=True)
+        elif load_type == 'leaderboard_cache':
+            emit_leaderboard(nobroadcast=True, use_cache=True)
         elif load_type == 'current_laps':
             emit_current_laps(nobroadcast=True)
         elif load_type == 'race_status':
@@ -1081,7 +1092,7 @@ def on_set_min_lap_behavior(data):
 @SOCKET_IO.on("set_race_format")
 def on_set_race_format(data):
     ''' set current race_format '''
-    if RACE.race_status == 0: # prevent format change if race running
+    if RACE.race_status == RACE_STATUS_READY: # prevent format change if race running
         race_format_val = data['race_format']
         race_format = RaceFormat.query.get(race_format_val)
         DB.session.flush()
@@ -1114,7 +1125,7 @@ def on_add_race_format():
 @SOCKET_IO.on('delete_race_format')
 def on_delete_race_format():
     '''Delete profile'''
-    if RACE.race_status == 0: # prevent format change if race running
+    if RACE.race_status == RACE_STATUS_READY: # prevent format change if race running
         if (DB.session.query(RaceFormat).count() > 1): # keep one format
             last_raceFormat = int(getOption("currentFormat"))
             raceformat = RaceFormat.query.get(last_raceFormat)
@@ -1208,9 +1219,13 @@ def on_set_team_racing_mode(data):
 def on_prestage_race(data):
     '''Common race start events (do early to prevent processing delay when start is called)'''
     initiator = data['initiator'] # client ID of session that started the race
+
     onoff(strip, Color(255,128,0)) #ORANGE for STAGING
-    clear_laps() # Ensure laps are cleared before race start, shouldn't be needed
-    RACE.race_status = 3
+    clear_laps() # Clear laps before race start
+    global LAST_RACE_CACHE_VALID
+    LAST_RACE_CACHE_VALID = False # invalidate last race results cache
+    RACE.timer_running = 0 # indicate race timer not running
+    RACE.race_status = RACE_STATUS_STAGING
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, blank laps to the web client
@@ -1248,16 +1263,16 @@ def on_start_race(data):
         gevent.with_timeout(10, race_start_thread, data['delay'])
     except Timeout:
         # Race failed to start
-        RACE.race_status = 0
+        RACE.race_status = RACE_STATUS_READY
         server_log('WARNING: Race start thread timed out')
         emit_race_status()
 
 def race_start_thread(staging_delay):
     gevent.sleep(staging_delay)
-    if RACE.race_status != 1: # Only start a race if it is not already in progress
+    if RACE.race_status == RACE_STATUS_STAGING: # Only start a race if it is not already in progress
         for node in INTERFACE.nodes:
             node.under_min_lap_count = 0
-        RACE.race_status = 1 # To enable registering passed laps
+        RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
         RACE.timer_running = 1 # indicate race timer is running
         global RACE_START # To redefine main program variable
         RACE_START = datetime.now() # Update the race start time stamp
@@ -1268,31 +1283,36 @@ def race_start_thread(staging_delay):
         emit_race_status() # Race page, to set race button states
         server_log('Race started at {0}'.format(RACE_START))
 
-
 @SOCKET_IO.on('stop_race')
 def on_stop_race():
     '''Stops the race and stops registering laps.'''
-    RACE.race_status = 2 # To stop registering passed laps, waiting for laps to be cleared
-    RACE.timer_running = 0 # indicate race timer not running
-    global RACE_DURATION_MS # To redefine main program variable
-    RACE_END = datetime.now() # Update the race end time stamp
+    if RACE.race_status == RACE_STATUS_RACING:
+        global RACE_DURATION_MS # To redefine main program variable
+        RACE_END = datetime.now() # Update the race end time stamp
+        delta_time = RACE_END - RACE_START
+        milli_sec = (delta_time.days * 24 * 60 * 60 + delta_time.seconds) \
+            * 1000 + delta_time.microseconds / 1000.0
+        RACE_DURATION_MS = milli_sec
 
-    delta_time = RACE_END - RACE_START
-    milli_sec = (delta_time.days * 24 * 60 * 60 + delta_time.seconds) \
-        * 1000 + delta_time.microseconds / 1000.0
-    RACE_DURATION_MS = milli_sec
+        server_log('Race stopped at {0} ({1})'.format(RACE_END, RACE_DURATION_MS))
+
+        min_laps_list = []  # show nodes with laps under minimum (if any)
+        for node in INTERFACE.nodes:
+            if node.under_min_lap_count > 0:
+                min_laps_list.append('Node {0} Count={1}'.format(node.index+1, node.under_min_lap_count))
+        if len(min_laps_list) > 0:
+            server_log('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
+
+        RACE.race_status = RACE_STATUS_DONE # To stop registering passed laps, waiting for laps to be cleared
+    else:
+        server_log('Race stopped during staging')
+        RACE.race_status = RACE_STATUS_READY # Go back to ready state
+
+    RACE.timer_running = 0 # indicate race timer not running
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
-    server_log('Race stopped at {0} ({1})'.format(RACE_END, RACE_DURATION_MS))
     emit_race_status() # Race page, to set race button states
     onoff(strip, Color(255,0,0)) #RED ON
-
-    min_laps_list = []  # show nodes with laps under minimum (if any)
-    for node in INTERFACE.nodes:
-        if node.under_min_lap_count > 0:
-            min_laps_list.append('Node {0} Count={1}'.format(node.index+1, node.under_min_lap_count))
-    if len(min_laps_list) > 0:
-        server_log('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -1319,13 +1339,14 @@ def on_save_laps():
                     lap_time_formatted=lap.lap_time_formatted))
     DB.session.commit()
     server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
-    on_clear_laps() # Also clear the current laps
+    on_discard_laps() # Also clear the current laps
     emit_round_data_notify() # live update rounds page
 
-@SOCKET_IO.on('clear_laps')
-def on_clear_laps():
-    '''Clear the current laps due to false start or practice.'''
+@SOCKET_IO.on('discard_laps')
+def on_discard_laps():
+    '''Clear the current laps without saving.'''
     clear_laps()
+    RACE.race_status = RACE_STATUS_READY # Flag status as ready to start next race
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
@@ -1336,10 +1357,12 @@ def on_clear_laps():
         emit_team_racing_status('')  # clear any displayed "Winner is" text
 
 def clear_laps():
-    '''Clear the current laps due to false start or practice.'''
-    RACE.race_status = 0 # Laps cleared, ready to start next race
-    RACE.timer_running = 0 # indicate race timer not running
+    '''Clear the current laps table.'''
+    global LAST_RACE_CACHE
+    global LAST_RACE_CACHE_VALID
     global Race_laps_winner_name
+    LAST_RACE_CACHE = calc_leaderboard(current_race=True)
+    LAST_RACE_CACHE_VALID = True
     Race_laps_winner_name = None  # clear winner in first-to-X-laps race
     DB.session.query(CurrentLap).delete() # Clear out the current laps table
     DB.session.commit()
@@ -1679,23 +1702,29 @@ def emit_race_format(**params):
 
 def emit_current_laps(**params):
     '''Emits current laps.'''
-    current_laps = []
-    # for node in DB.session.query(CurrentLap.node_index).distinct():
-    for node in range(RACE.num_nodes):
-        node_laps = []
-        node_lap_raw = []
-        node_lap_times = []
-        for lap in CurrentLap.query.filter_by(node_index=node).all():
-            node_laps.append(lap.lap_id)
-            node_lap_raw.append(lap.lap_time)
-            node_lap_times.append(lap.lap_time_formatted)
-        current_laps.append({
-            'lap_id': node_laps,
-            'lap_raw': node_lap_raw,
-            'lap_time': node_lap_times
-        })
-    current_laps = {'node_index': current_laps}
-    emit_payload = current_laps
+    global LAST_RACE_LAPS_CACHE
+    if 'use_cache' in params and LAST_RACE_CACHE_VALID:
+        emit_payload = LAST_RACE_LAPS_CACHE
+    else:
+        current_laps = []
+        # for node in DB.session.query(CurrentLap.node_index).distinct():
+        for node in range(RACE.num_nodes):
+            node_laps = []
+            node_lap_raw = []
+            node_lap_times = []
+            for lap in CurrentLap.query.filter_by(node_index=node).all():
+                node_laps.append(lap.lap_id)
+                node_lap_raw.append(lap.lap_time)
+                node_lap_times.append(lap.lap_time_formatted)
+            current_laps.append({
+                'lap_id': node_laps,
+                'lap_raw': node_lap_raw,
+                'lap_time': node_lap_times
+            })
+        current_laps = {'node_index': current_laps}
+        emit_payload = current_laps
+        LAST_RACE_LAPS_CACHE = current_laps
+
     if ('nobroadcast' in params):
         emit('current_laps', emit_payload)
     else:
@@ -2106,7 +2135,10 @@ def calc_leaderboard(**params):
 
 def emit_leaderboard(**params):
     '''Emits leaderboard.'''
-    emit_payload = calc_leaderboard(current_race=True)
+    if 'use_cache' in params and LAST_RACE_CACHE_VALID:
+        emit_payload = LAST_RACE_CACHE
+    else:
+        emit_payload = calc_leaderboard(current_race=True)
 
     if ('nobroadcast' in params):
         emit('leaderboard', emit_payload)
@@ -2804,7 +2836,7 @@ def pass_record_callback(node, ms_since_lap):
     profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
     if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end (RACE_DURATION_MS is invalid while race is in progress)
-        if RACE.race_status is 1 \
+        if RACE.race_status is RACE_STATUS_RACING \
             or (node.lap_ms_since_start >=0 and \
                 node.lap_ms_since_start < RACE_DURATION_MS):
 
