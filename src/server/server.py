@@ -20,7 +20,6 @@ from flask_sqlalchemy import SQLAlchemy
 import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
-import gevent.timeout
 
 import random
 import json
@@ -1253,33 +1252,41 @@ def on_prestage_race(data):
 def on_stage_race(data):
     '''Bounce a response back to client for determining response time'''
     INTERFACE.mark_start_time_global()
-    INTERFACE.lock_i2c()
     SOCKET_IO.emit('stage_ready', data)
+    INTERFACE.lock_i2c()
 
 @SOCKET_IO.on('start_race')
 def on_start_race(data):
     '''Starts the race'''
-    try:
-        gevent.with_timeout(10, race_start_thread, data['delay'])
-    except Timeout:
-        # Race failed to start
-        RACE.race_status = RACE_STATUS_READY
-        server_log('WARNING: Race start thread timed out')
-        emit_race_status()
+    start_time = datetime.now()
+    gevent.spawn(race_start_thread, data['delay'], start_time)
 
-def race_start_thread(staging_delay):
-    gevent.sleep(staging_delay)
+def race_start_thread(staging_delay, start_time):
+    scheduled_start = start_time + timedelta(0, staging_delay)
+    global RACE_START
+    global Race_laps_winner_name
+
+    # non-blocking delay before time-critical code
+    while staging_delay > 1:
+        staging_delay -= 1
+        gevent.sleep(1)
+
     if RACE.race_status == RACE_STATUS_STAGING: # Only start a race if it is not already in progress
-        for node in INTERFACE.nodes:
-            node.under_min_lap_count = 0
-        RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
-        RACE.timer_running = 1 # indicate race timer is running
-        global RACE_START # To redefine main program variable
-        RACE_START = datetime.now() # Update the race start time stamp
-        global Race_laps_winner_name
-        Race_laps_winner_name = None  # name of winner in first-to-X-laps race
+        # use blocking delay at end of sequence for maximum precision
+        while datetime.now() < scheduled_start:
+            pass
+
+        # do time-critical tasks
         INTERFACE.mark_start_time_global()
         onoff(strip, Color(0,255,0)) #GREEN for GO
+
+        # do secondary start tasks
+        RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
+        RACE.timer_running = 1 # indicate race timer is running
+        RACE_START = scheduled_start # Update the race start time stamp
+        for node in INTERFACE.nodes:
+            node.under_min_lap_count = 0
+        Race_laps_winner_name = None  # name of winner in first-to-X-laps race
         emit_race_status() # Race page, to set race button states
         server_log('Race started at {0}'.format(RACE_START))
 
