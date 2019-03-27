@@ -504,13 +504,9 @@ nodeModel.prototype = {
 function timerModel() {
 	// interval control
 	this.timeout = false;
-	this.interval_check = 100; // in ms
+	this.interval = 100; // in ms
+	this.precision = 1; // to correct floating point errors
 	this.expected = false;
-
-	// callbacks
-	this.interval_callback = 10; // number of checks per 'iteration' callback
-	// 'iteration' is called each (interval_check * interval_callback) ms
-	this.callback_iteration_count = 0;
 
 	this.callbacks = {
 		'start': false,
@@ -540,13 +536,33 @@ function timerModel() {
 	function step() { // timer control
 		var continue_timer = true;
 
-		self.callback_iteration_count++;
-		if (self.callback_iteration_count >= self.interval_callback) {
-			self.callback_iteration_count = 0;
+		if (self.count_up) {
+			self.time = (self.time + self.interval / 1000).toFixed(self.precision);
 
-			if (self.count_up) {
-				self.time++;
-
+			if (self.callbacks.iteration) {
+				try {
+					self.callbacks.iteration(self)
+				}
+				catch(error) {
+					console.log('iteration callback error: ' + error);
+					continue_timer = false;
+					self.stop();
+				}
+			}
+		} else {
+			self.time = (self.time - self.interval / 1000).toFixed(self.precision);
+			if (self.time <= 0) {
+				continue_timer = false;
+				self.running = false;
+				if (self.callbacks.expire) {
+					try {
+						self.callbacks.expire(self)
+					}
+					catch(error) {
+						console.log('expire callback error: ' + error);
+					}
+				}
+			} else {
 				if (self.callbacks.iteration) {
 					try {
 						self.callbacks.iteration(self)
@@ -557,43 +573,18 @@ function timerModel() {
 						self.stop();
 					}
 				}
-			} else {
-				self.time--;
-				if (self.time <= 0) {
-					continue_timer = false;
-					self.running = false;
-					if (self.callbacks.expire) {
-						try {
-							self.callbacks.expire(self)
-						}
-						catch(error) {
-							console.log('expire callback error: ' + error);
-						}
-					}
-				} else {
-					if (self.callbacks.iteration) {
-						try {
-							self.callbacks.iteration(self)
-						}
-						catch(error) {
-							console.log('iteration callback error: ' + error);
-							continue_timer = false;
-							self.stop();
-						}
-					}
-				}
 			}
 		}
 
 		if (continue_timer) {
 			var now = Date.now()
 			var drift = now - self.expected;
-			if (drift > self.interval_check) {
+			if (drift > self.interval) {
 				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
 				self.continueFrom(now - self.started);
 			} else {
-				self.expected += self.interval_check;
-				self.timeout = setTimeout(step, Math.max(0, self.interval_check - drift - self.drift_correction));
+				self.expected += self.interval;
+				self.timeout = setTimeout(step, Math.max(0, self.interval - drift - self.drift_correction));
 
 				self.drift_history.push(drift + self.drift_correction);
 				self.drift_correction = median(self.drift_history);
@@ -607,11 +598,10 @@ function timerModel() {
 	this.start = function(){
 		// start from current position of this.time
 		var now = Date.now();
-		this.expected = now + this.interval_check;
+		this.expected = now + this.interval;
 		this.started = now;
-		this.timeout = setTimeout(step, this.interval_check);
+		this.timeout = setTimeout(step, this.interval);
 		this.running = true;
-		this.callback_iteration_count = 0;
 		if (this.callbacks.start) {
 			try {
 				this.callbacks.start(this)
@@ -628,31 +618,34 @@ function timerModel() {
 		clearTimeout(this.timeout);
 
 		if (this.running) {
-			var race_start_pi = (now - race_start_ms);
-			var diff = race_start_pi - this.started;
+			var time_pi = (now - race_start_ms);
+			var diff = time_pi - this.started;
 			console.log('resync diff: ' + diff);
 		}
 
-		var race_start_seconds = Math.floor(race_start_ms / 1000); // in seconds
+		var race_start_time = Math.trunc(race_start_ms / 100) / 10; // in seconds
 
 		if (this.count_up) {
-			this.time = race_start_seconds;
+			this.time = race_start_time;
 		} else {
-			var remaining = this.duration - race_start_seconds;
-			if (remaining > 1) {
-				this.time = remaining;
+			if (race_start_time < 0) {
+				this.time = -race_start_time;
+				var recovery_interval = -race_start_ms % this.interval;
 			} else {
-				this.time = 0;
-				return false; // don't attempt to resync very late
+				var remaining = this.duration - race_start_time;
+				if (remaining > 1) {
+					this.time = remaining;
+				} else {
+					this.time = 0;
+					return false; // don't attempt to resync very late
+				}
+				var recovery_interval = this.interval - (race_start_ms % this.interval);
 			}
 		}
-
-		var recovery_interval = this.interval_check - (race_start_ms % this.interval_check);
 
 		this.expected = now + recovery_interval;
 		this.timeout = setTimeout(step, recovery_interval);
 		this.running = true;
-		this.callback_iteration_count = race_start_ms % (this.interval_check * this.interval_callback);
 		this.started = now - race_start_ms;
 
 		if (this.callbacks.continue) {
@@ -673,6 +666,8 @@ function timerModel() {
 
 	this.reset = function(){
 		this.stop();
+		this.drift_history = [];
+		this.drift_correction = 0;
 		if (this.count_up) {
 			this.time = 0;
 		} else {
@@ -688,6 +683,8 @@ function timerModel() {
 		if(typeof display_time != 'number') {
 			display_time = this.time;
 		}
+
+		display_time = Math.floor(this.time);
 
 		var hour = Math.floor(display_time / 3600);
 		display_time = display_time - (hour * 3600);
@@ -890,20 +887,25 @@ rotorhazard.timer.staging.callbacks.start = function(timer){
 	}
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
 }
+rotorhazard.timer.staging.callbacks.continue = function(timer){
+	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
+}
 rotorhazard.timer.staging.callbacks.iteration = function(timer){
-	if (timer.hidden) {
-		// beep every second during staging if timer is hidden
-		play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-	} else if (timer.time == 30
-		|| timer.time == 20
-		|| timer.time == 10) {
-		speak('<div>' + __l('Race begins in') + ' ' + timer.time + ' ' + __l('Seconds') + '</div>', true);
-	} else if (timer.time <= 5) {
-		// staging beep for last 5 seconds before start
-		play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-	}
+	if (timer.time * 10 % 10 == 0) {
+		if (timer.hidden) {
+			// beep every second during staging if timer is hidden
+			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+		} else if (timer.time == 30
+			|| timer.time == 20
+			|| timer.time == 10) {
+			speak('<div>' + __l('Race begins in') + ' ' + timer.time + ' ' + __l('Seconds') + '</div>', true);
+		} else if (timer.time <= 5) {
+			// staging beep for last 5 seconds before start
+			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+		}
 
-	$('.timing-clock').html(timer.renderHTML());
+		$('.timing-clock').html(timer.renderHTML());
+	}
 }
 rotorhazard.timer.staging.callbacks.expire = function(timer){
 	rotorhazard.timer.race.start();
@@ -937,51 +939,53 @@ rotorhazard.timer.race.callbacks.continue = function(timer){
 	}
 }
 rotorhazard.timer.race.callbacks.iteration = function(timer){
-	if (!timer.count_up) {
-		if (timer.time <= 5) { // Final seconds
-			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-		} else if (timer.time == 10) { // announce 10s only when counting down
-			if (rotorhazard.voice_race_timer)
-				speak('<div>10 ' + __l('Seconds') + '</div>', true);
+	if (timer.time * 10 % 10 == 0) {
+		if (!timer.count_up) {
+			if (timer.time <= 5) { // Final seconds
+				play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+			} else if (timer.time == 10) { // announce 10s only when counting down
+				if (rotorhazard.voice_race_timer)
+					speak('<div>10 ' + __l('Seconds') + '</div>', true);
+			}
 		}
-	}
 
-	if (rotorhazard.voice_race_timer) {
-		if (timer.time > 3600 && !(timer.time % 3600)) { // 2+ hour callout (endurance)
-			var hours = timer.time / 3600;
-			speak('<div>' + hours + ' ' + __l('Hours') + '</div>', true);
-		} else if (timer.time == 3600) {
-			speak('<div>1 ' + __l('Hour') + '</div>', true);
-		} else if (timer.time == 1800) {
-			speak('<div>30 ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time > 60 && timer.time <= 300 && !(timer.time % 60)) { // 2–5 min callout
-			var minutes = timer.time / 60;
-			speak('<div>' + minutes + ' ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time == 60) {
-			speak('<div>1 ' + __l('Minute') + '</div>', true);
-		} else if (timer.time == 30) {
-			speak('<div>30 ' + __l('Seconds') + '</div>', true);
+		if (rotorhazard.voice_race_timer) {
+			if (timer.time > 3600 && !(timer.time % 3600)) { // 2+ hour callout (endurance)
+				var hours = timer.time / 3600;
+				speak('<div>' + hours + ' ' + __l('Hours') + '</div>', true);
+			} else if (timer.time == 3600) {
+				speak('<div>1 ' + __l('Hour') + '</div>', true);
+			} else if (timer.time == 1800) {
+				speak('<div>30 ' + __l('Minutes') + '</div>', true);
+			} else if (timer.time > 60 && timer.time <= 300 && !(timer.time % 60)) { // 2–5 min callout
+				var minutes = timer.time / 60;
+				speak('<div>' + minutes + ' ' + __l('Minutes') + '</div>', true);
+			} else if (timer.time == 60) {
+				speak('<div>1 ' + __l('Minute') + '</div>', true);
+			} else if (timer.time == 30) {
+				speak('<div>30 ' + __l('Seconds') + '</div>', true);
+			}
 		}
-	}
 
-	$('.timing-clock').html(timer.renderHTML());
+		$('.timing-clock').html(timer.renderHTML());
 
-	// Request server time resync
-	if (timer.count_up) {
-		if (timer.time >= timer.resync_time) {
-			console.log('server resync at: ' + timer.time);
-			timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.ceil(Math.random() * timer.resync_window) + timer.resync_offset;
+		// Request server time resync
+		if (timer.count_up) {
+			if (timer.time >= timer.resync_time) {
+				console.log('server resync at: ' + timer.time);
+				timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.ceil(Math.random() * timer.resync_window) + timer.resync_offset;
 
-			request_time = new Date();
-			socket.emit('get_race_elapsed');
-		}
-	} else {
-		if (timer.time <= timer.resync_time) {
-			console.log('server resync at: ' + timer.time);
-			timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.ceil(Math.random() * timer.resync_window) - timer.resync_offset;
+				request_time = new Date();
+				socket.emit('get_race_elapsed');
+			}
+		} else {
+			if (timer.time <= timer.resync_time) {
+				console.log('server resync at: ' + timer.time);
+				timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.ceil(Math.random() * timer.resync_window) - timer.resync_offset;
 
-			request_time = new Date();
-			socket.emit('get_race_elapsed');
+				request_time = new Date();
+				socket.emit('get_race_elapsed');
+			}
 		}
 	}
 }

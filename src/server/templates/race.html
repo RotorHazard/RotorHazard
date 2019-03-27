@@ -102,9 +102,19 @@
 
 		socket.on('race_elapsed', function (msg) {
 			var response_time = new Date();
-			var server_delay = ((response_time - request_time) / 2);
-			var elapsed = msg.elapsed + server_delay;
-			rotorhazard.timer.race.continueFrom(elapsed);
+			var server_delay = response_time - request_time;
+			console.log('response: ' + server_delay);
+			var elapsed = msg.elapsed + (server_delay / 2);
+
+			if (elapsed < 0) {
+				rotorhazard.timer.staging.continueFrom(elapsed);
+
+				rotorhazard.collecting = 'race';
+				racedump.timestamp = new Date();
+				racedump.timedata = [];
+			} else {
+				rotorhazard.timer.race.continueFrom(elapsed);
+			}
 		});
 
 		socket.on('race_status', function (msg) {
@@ -420,33 +430,7 @@
 			rotorhazard.timer.race.stop();
 		});
 
-		socket.on('prestage_ready', function (msg) {
-			request_time = new Date();
-			if (socket.id == msg.initiator) {
-				socket.emit('stage_race', msg);
-			}
-		});
-
 		socket.on('stage_ready', function (msg) {
-			var response_time = new Date();
-			var server_delay = ((response_time - request_time) / 2);
-			console.log('response: ' + server_delay)
-
-			var data = { // supply delay to stage 2
-				delay: msg.start_delay
-			}
-			if (socket.id == msg.initiator) {
-				socket.emit('start_race', data);
-			}
-
-			setTimeout(function(){
-				rotorhazard.timer.staging.start();
-
-				rotorhazard.collecting = 'race';
-				racedump.timestamp = new Date();
-				racedump.timedata = [];
-			}, server_delay);
-
 			rotorhazard.timer.staging.duration = msg.start_delay;
 			rotorhazard.timer.staging.hidden = msg.hide_stage_timer;
 			rotorhazard.timer.staging.reset();
@@ -454,12 +438,15 @@
 			rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
 			rotorhazard.timer.race.duration = msg.race_time_sec;
 			rotorhazard.timer.race.reset();
+
+			setTimeout(function(){
+				request_time = new Date();
+				socket.emit('get_race_elapsed');
+			}, (Math.random() * 0.5) + 0.25);
 		});
 
 		$('button#start_race').click(function (event) {
-			socket.emit('prestage_race', {
-				'initiator': socket.id
-			});
+			socket.emit('stage_race');
 			$('.timing-clock').html('--:--');
 			$('button#start_race').prop('disabled', true);
 			$('.set_current_heat').prop('disabled', true);

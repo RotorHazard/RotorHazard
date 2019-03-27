@@ -1214,64 +1214,52 @@ def on_set_team_racing_mode(data):
 
 # Race management socket io events
 
-@SOCKET_IO.on('prestage_race')
-def on_prestage_race(data):
-    '''Common race start events (do early to prevent processing delay when start is called)'''
-    initiator = data['initiator'] # client ID of session that started the race
-
-    onoff(strip, Color(255,128,0)) #ORANGE for STAGING
-    clear_laps() # Clear laps before race start
-    global LAST_RACE_CACHE_VALID
-    LAST_RACE_CACHE_VALID = False # invalidate last race results cache
-    RACE.timer_running = 0 # indicate race timer not running
-    RACE.race_status = RACE_STATUS_STAGING
-    emit_current_laps() # Race page, blank laps to the web client
-    emit_leaderboard() # Race page, blank leaderboard to the web client
-    emit_race_status() # Race page, blank laps to the web client
-    INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
-    if race_format.team_racing_mode:
-        check_emit_team_racing_status()  # Show initial team-racing status info
-    MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
-    MAX = max(race_format.start_delay_min, race_format.start_delay_max)
-    DELAY = random.randint(MIN, MAX)
-
-    SOCKET_IO.emit('prestage_ready', {
-        'hide_stage_timer': MIN != MAX,
-        'start_delay': DELAY,
-        'race_mode': race_format.race_mode,
-        'race_time_sec': race_format.race_time_sec,
-        'initiator': initiator
-    }) # Loop back to race page with chosen delay
-
-    INTERFACE.lock_i2c()
-
-
 @SOCKET_IO.on('stage_race')
-def on_stage_race(data):
-    '''Bounce a response back to client for determining response time'''
-    INTERFACE.mark_start_time_global()
-    SOCKET_IO.emit('stage_ready', data)
-    INTERFACE.lock_i2c()
+def on_stage_race():
+    if RACE.race_status == RACE_STATUS_READY: # only initiate staging if ready
+        '''Common race start events (do early to prevent processing delay when start is called)'''
+        global RACE_START
+        global LAST_RACE_CACHE_VALID
+        INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-@SOCKET_IO.on('start_race')
-def on_start_race(data):
-    '''Starts the race'''
-    start_time = datetime.now()
-    gevent.spawn(race_start_thread, data['delay'], start_time)
+        onoff(strip, Color(255,128,0)) #ORANGE for STAGING
+        clear_laps() # Clear laps before race start
+        LAST_RACE_CACHE_VALID = False # invalidate last race results cache
+        RACE.timer_running = 0 # indicate race timer not running
+        RACE.race_status = RACE_STATUS_STAGING
+        emit_current_laps() # Race page, blank laps to the web client
+        emit_leaderboard() # Race page, blank leaderboard to the web client
+        emit_race_status()
+        last_raceFormat = int(getOption("currentFormat"))
+        race_format = RaceFormat.query.get(last_raceFormat)
+        if race_format.team_racing_mode:
+            check_emit_team_racing_status()  # Show initial team-racing status info
+        MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
+        MAX = max(race_format.start_delay_min, race_format.start_delay_max)
+        DELAY = random.randint(MIN, MAX) + 1 # Add 1 for prestage
 
-def race_start_thread(staging_delay, start_time):
-    scheduled_start = start_time + timedelta(0, staging_delay)
-    global RACE_START
+        start_time = datetime.now()
+        RACE_START = start_time + timedelta(0, DELAY)
+        gevent.spawn(race_start_thread, start_time, DELAY)
+
+        SOCKET_IO.emit('stage_ready', {
+            'hide_stage_timer': MIN != MAX,
+            'start_delay': DELAY,
+            'race_mode': race_format.race_mode,
+            'race_time_sec': race_format.race_time_sec,
+        }) # Loop back to race page with chosen delay
+
+def race_start_thread(start_time, staging_delay):
     global Race_laps_winner_name
 
     # non-blocking delay before time-critical code
-    while staging_delay > 1:
-        staging_delay -= 1
-        gevent.sleep(1)
+    gevent.sleep(staging_delay - 1)
+
+    # prep i2c for quick start
+    INTERFACE.lock_i2c()
 
     if RACE.race_status == RACE_STATUS_STAGING: # Only start a race if it is not already in progress
+        scheduled_start = start_time + timedelta(0, staging_delay)
         # use blocking delay at end of sequence for maximum precision
         while datetime.now() < scheduled_start:
             pass
@@ -1280,10 +1268,9 @@ def race_start_thread(staging_delay, start_time):
         INTERFACE.mark_start_time_global()
         onoff(strip, Color(0,255,0)) #GREEN for GO
 
-        # do secondary start tasks
+        # do secondary start tasks (small delay is acceptable)
         RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
         RACE.timer_running = 1 # indicate race timer is running
-        RACE_START = scheduled_start # Update the race start time stamp
         for node in INTERFACE.nodes:
             node.under_min_lap_count = 0
         Race_laps_winner_name = None  # name of winner in first-to-X-laps race
