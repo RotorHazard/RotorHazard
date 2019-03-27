@@ -135,7 +135,6 @@
 					$('.timing-clock').removeClass('staging');
 					if (resume_check) {
 						rotorhazard.timer.race.reset()
-						resume_check = false;
 						request_time = new Date();
 						socket.emit('get_race_elapsed');
 					}
@@ -175,6 +174,8 @@
 					$('body').removeClass('race-stopped');
 					$('.timing-clock').removeClass('staging');
 			}
+
+			resume_check = false;
 		});
 
 		socket.on('heartbeat', function (msg) {
@@ -442,7 +443,7 @@
 			setTimeout(function(){
 				request_time = new Date();
 				socket.emit('get_race_elapsed');
-			}, (Math.random() * 0.5) + 0.25);
+			}, (Math.random() * 500) + 250);
 		});
 
 		$('button#start_race').click(function (event) {

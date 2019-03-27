@@ -537,7 +537,7 @@ function timerModel() {
 		var continue_timer = true;
 
 		if (self.count_up) {
-			self.time = (self.time + self.interval / 1000).toFixed(self.precision);
+			self.time = parseFloat((self.time + self.interval / 1000).toFixed(self.precision));
 
 			if (self.callbacks.iteration) {
 				try {
@@ -550,7 +550,7 @@ function timerModel() {
 				}
 			}
 		} else {
-			self.time = (self.time - self.interval / 1000).toFixed(self.precision);
+			self.time = parseFloat((self.time - self.interval / 1000).toFixed(self.precision));
 			if (self.time <= 0) {
 				continue_timer = false;
 				self.running = false;
@@ -624,13 +624,15 @@ function timerModel() {
 		}
 
 		var race_start_time = Math.trunc(race_start_ms / 100) / 10; // in seconds
+		var recovery_interval = false;
 
 		if (this.count_up) {
 			this.time = race_start_time;
+			recovery_interval = this.interval - (race_start_ms % this.interval);
 		} else {
 			if (race_start_time < 0) {
 				this.time = -race_start_time;
-				var recovery_interval = -race_start_ms % this.interval;
+				recovery_interval = -race_start_ms % this.interval;
 			} else {
 				var remaining = this.duration - race_start_time;
 				if (remaining > 1) {
@@ -639,7 +641,7 @@ function timerModel() {
 					this.time = 0;
 					return false; // don't attempt to resync very late
 				}
-				var recovery_interval = this.interval - (race_start_ms % this.interval);
+				recovery_interval = this.interval - (race_start_ms % this.interval);
 			}
 		}
 
@@ -968,24 +970,24 @@ rotorhazard.timer.race.callbacks.iteration = function(timer){
 		}
 
 		$('.timing-clock').html(timer.renderHTML());
+	}
 
-		// Request server time resync
-		if (timer.count_up) {
-			if (timer.time >= timer.resync_time) {
-				console.log('server resync at: ' + timer.time);
-				timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.ceil(Math.random() * timer.resync_window) + timer.resync_offset;
+	// Request server time resync
+	if (timer.count_up) {
+		if (timer.time >= timer.resync_time) {
+			console.log('server resync at: ' + timer.time);
+			timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.ceil(Math.random() * timer.resync_window) + timer.resync_offset;
 
-				request_time = new Date();
-				socket.emit('get_race_elapsed');
-			}
-		} else {
-			if (timer.time <= timer.resync_time) {
-				console.log('server resync at: ' + timer.time);
-				timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.ceil(Math.random() * timer.resync_window) - timer.resync_offset;
+			request_time = new Date();
+			socket.emit('get_race_elapsed');
+		}
+	} else {
+		if (timer.time <= timer.resync_time) {
+			console.log('server resync at: ' + timer.time);
+			timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.ceil(Math.random() * timer.resync_window) - timer.resync_offset;
 
-				request_time = new Date();
-				socket.emit('get_race_elapsed');
-			}
+			request_time = new Date();
+			socket.emit('get_race_elapsed');
 		}
 	}
 }
