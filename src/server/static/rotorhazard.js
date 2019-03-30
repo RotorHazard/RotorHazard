@@ -843,39 +843,36 @@ rotorhazard.timer.deferred.callbacks.start = function(timer){
 	if (rotorhazard.timer.staging.running || rotorhazard.timer.race.running) {  // defer timing to staging/race timers
 		rotorhazard.timer.deferred.stop();
 	}
+	timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.random() * timer.resync_window - timer.resync_offset;
+}
+rotorhazard.timer.deferred.callbacks.continue = function(timer){
+	timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.random() * timer.resync_window - timer.resync_offset;
 }
 rotorhazard.timer.deferred.callbacks.iteration = function(timer){
 	if (rotorhazard.voice_race_timer) {
 		if (timer.time > 3600 && !(timer.time % 3600)) { // 2+ hour callout
 			var hours = timer.time / 3600;
-			speak('<div>' + __l('Race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
+			speak('<div>' + __l('Next race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
 		} else if (timer.time == 3600) {
-			speak('<div>' + __l('Race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
+			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
 		} else if (timer.time == 1800) {
-			speak('<div>' + __l('Race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
+			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
 		} else if (timer.time > 60 && timer.time <= 300 && !(timer.time % 60)) { // 2–5 min callout
 			var minutes = timer.time / 60;
-			speak('<div>' + __l('Race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
+			speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
 		} else if (timer.time == 60) {
-			speak('<div>' + __l('Race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
+			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
 		} else if (timer.time == 30) {
-			speak('<div>' + __l('Race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
+			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
 		} else if (timer.time == 10) {
-			speak('<div>' + __l('Race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
-		}
-	}
-
-	if(false) { // include staging time in deferred time ?? ***
-		if (timer.time <= rotorhazard.timer.staging.duration) {
-			rotorhazard.timer.deferred.stop();
-			rotorhazard.timer.staging.start();
+			speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
 		}
 	}
 
 	$('.timing-clock').html(timer.renderHTML());
 }
 rotorhazard.timer.deferred.callbacks.expire = function(timer){
-	rotorhazard.timer.staging.start();
+	$('.timing-clock').html(__('Wait'));
 }
 
 // staging timer callbacks
@@ -889,6 +886,7 @@ rotorhazard.timer.staging.callbacks.start = function(timer){
 	}
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
 }
+
 rotorhazard.timer.staging.callbacks.continue = function(timer){
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
 }
@@ -900,7 +898,7 @@ rotorhazard.timer.staging.callbacks.iteration = function(timer){
 		} else if (timer.time == 30
 			|| timer.time == 20
 			|| timer.time == 10) {
-			speak('<div>' + __l('Race begins in') + ' ' + timer.time + ' ' + __l('Seconds') + '</div>', true);
+			speak('<div>' + __l('Starting in') + ' ' + timer.time + ' ' + __l('Seconds') + '</div>', true);
 		} else if (timer.time <= 5) {
 			// staging beep for last 5 seconds before start
 			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
@@ -923,9 +921,9 @@ rotorhazard.timer.race.callbacks.start = function(timer){
 
 	// init server resync
 	if (timer.count_up) {
-		timer.resync_time = timer.time - (timer.time % timer.resync_interval) + Math.ceil(Math.random() * timer.resync_window) + timer.resync_offset;
+		timer.resync_time = timer.time - (timer.time % timer.resync_interval) + Math.random() * timer.resync_window + timer.resync_offset;
 	} else {
-		timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.ceil(Math.random() * timer.resync_window) - timer.resync_offset;
+		timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.random() * timer.resync_window - timer.resync_offset;
 	}
 }
 rotorhazard.timer.race.callbacks.continue = function(timer){
@@ -935,9 +933,9 @@ rotorhazard.timer.race.callbacks.continue = function(timer){
 
 	// init server resync
 	if (timer.count_up) {
-		timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.ceil(Math.random() * timer.resync_window) + timer.resync_offset;
+		timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.random() * timer.resync_window + timer.resync_offset;
 	} else {
-		timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.ceil(Math.random() * timer.resync_window) - timer.resync_offset;
+		timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.random() * timer.resync_window - timer.resync_offset;
 	}
 }
 rotorhazard.timer.race.callbacks.iteration = function(timer){
@@ -976,7 +974,7 @@ rotorhazard.timer.race.callbacks.iteration = function(timer){
 	if (timer.count_up) {
 		if (timer.time >= timer.resync_time) {
 			console.log('server resync at: ' + timer.time);
-			timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.ceil(Math.random() * timer.resync_window) + timer.resync_offset;
+			timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.random() * timer.resync_window + timer.resync_offset;
 
 			request_time = new Date();
 			socket.emit('get_race_elapsed');
@@ -984,7 +982,7 @@ rotorhazard.timer.race.callbacks.iteration = function(timer){
 	} else {
 		if (timer.time <= timer.resync_time) {
 			console.log('server resync at: ' + timer.time);
-			timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.ceil(Math.random() * timer.resync_window) - timer.resync_offset;
+			timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.random() * timer.resync_window - timer.resync_offset;
 
 			request_time = new Date();
 			socket.emit('get_race_elapsed');

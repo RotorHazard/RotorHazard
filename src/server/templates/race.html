@@ -100,6 +100,17 @@
 			rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
 		}
 
+		socket.on('race_scheduled', function (msg) {
+			var response_time = new Date();
+			var server_delay = response_time - request_time;
+			console.log('response: ' + server_delay);
+			var scheduled_at = msg.scheduled_at + (server_delay / 2);
+
+			if (scheduled_at < 0) {
+				rotorhazard.timer.deferred.continueFrom(scheduled_at);
+			}
+		});
+
 		socket.on('race_elapsed', function (msg) {
 			var response_time = new Date();
 			var server_delay = response_time - request_time;
@@ -130,6 +141,7 @@
 					$('button#save_laps').prop('disabled', true);
 					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', false);
+					$('button#schedule_race').prop('disabled', true);
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
 					$('.timing-clock').removeClass('staging');
@@ -146,6 +158,7 @@
 					$('button#save_laps').prop('disabled', false);
 					$('button#discard_laps').prop('disabled', false);
 					$('button.simulate_lap').prop('disabled', true);
+					$('button#schedule_race').prop('disabled', true);
 					$('body').addClass('race-stopped');
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-new');
@@ -158,9 +171,15 @@
 					$('button#save_laps').prop('disabled', true);
 					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', false);
+					$('button#schedule_race').prop('disabled', true);
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
 					$('.timing-clock').addClass('staging');
+					if (resume_check) {
+						rotorhazard.staging.race.reset()
+						request_time = new Date();
+						socket.emit('get_race_elapsed');
+					}
 					break;
 				default: // Waiting to start new race
 					$('#set_current_heat').prop('disabled', false);
@@ -169,10 +188,17 @@
 					$('button#save_laps').prop('disabled', true);
 					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', true);
+					$('button#schedule_race').prop('disabled', false);
 					$('body').addClass('race-new');
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('.timing-clock').removeClass('staging');
+					if (resume_check) {
+						rotorhazard.timer.deferred.reset()
+						request_time = new Date();
+						socket.emit('get_race_scheduled');
+					}
+					break;
 			}
 
 			resume_check = false;
@@ -709,6 +735,16 @@
 		});
 
 		/* Race Format */
+
+		$('#schedule_race').click(function (event) {
+			var data = {
+				m: parseInt($('#schedule_m').val() || 0),
+				s: parseInt($('#schedule_s').val() || 0)
+			};
+			request_time = new Date();
+			socket.emit('schedule_race', data);
+		})
+
 		socket.on('min_lap', function (msg) {
 			$('#set_min_lap').val(msg.min_lap);
 			$('#set_min_lap_behavior').val(msg.min_lap_behavior);
@@ -1025,6 +1061,14 @@
 	</div>
 	<div class="panel-content">
 		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="schedule_race_time">{{ __('Time Until Race Start') }}</label>
+				</div>
+				<div>
+					<label for="schedule_m" class="screen-reader-text">{{ __('Minutes') }}</label><input type="number" id="schedule_m" min="0" max="999" placeholder="mm">:<label for="schedule_s" class="screen-reader-text">{{ __('Seconds') }}</label><input type="number" id="schedule_s" min="0" max="59" placeholder="ss"> <button id="schedule_race">{{ __('Schedule Race') }}</button>
+				</div>
+			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_race_format">{{ __('Race Format') }}</label>

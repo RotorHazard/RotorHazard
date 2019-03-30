@@ -702,6 +702,16 @@ main.page-home {
 	margin: 0.25em;
 }
 
+#schedule_m {
+	width: 4em;
+	text-align: right;
+}
+
+#schedule_s {
+	width: 3em;
+	text-align: right;
+}
+
 @media (max-width: 42em) {
 	.compact-field input {
 		width: 100%;

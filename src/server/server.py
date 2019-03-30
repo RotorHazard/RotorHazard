@@ -109,7 +109,11 @@ RACE = get_race_state() # For storing race management variables
 
 PROGRAM_START = datetime.now()
 RACE_START = datetime.now() # Updated on race start commands
+RACE_START_TOKEN = False # Check start thread matches correct stage sequence
 RACE_DURATION_MS = 0 # calculated when race is stopped
+
+RACE_SCHEDULED = False # Whether to start a race when time
+RACE_SCHEDULED_TIME = 0 # Start race when time reaches this value
 
 RACE_STATUS_READY = 0
 RACE_STATUS_STAGING = 3
@@ -1100,6 +1104,7 @@ def on_set_race_format(data):
         emit_race_format()
         server_log("set race format to '%s'" % race_format_val)
     else:
+        emit_race_format()
         server_log("format change prevented by active race")
 
 @SOCKET_IO.on('add_race_format')
@@ -1214,11 +1219,30 @@ def on_set_team_racing_mode(data):
 
 # Race management socket io events
 
+@SOCKET_IO.on('schedule_race')
+def on_schedule_race(data):
+    global RACE_SCHEDULED
+    global RACE_SCHEDULED_TIME
+
+    RACE_SCHEDULED_TIME = datetime.now() + timedelta(0, data['m'] * 60 + data['s'], 250000)
+    # Add .25s to accunt for instruction processing
+    RACE_SCHEDULED = True
+    scheduled_at = ms_to_race_scheduled()
+
+    dt = -scheduled_at
+
+    SOCKET_IO.emit('race_scheduled', {
+        'scheduled_at': scheduled_at
+        })
+
+    emit_priority_message(__("Next race begins in: " + time_format_mmss(dt)), True)
+
 @SOCKET_IO.on('stage_race')
 def on_stage_race():
     if RACE.race_status == RACE_STATUS_READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
         global RACE_START
+        global RACE_START_TOKEN
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
@@ -1240,16 +1264,17 @@ def on_stage_race():
 
         start_time = datetime.now()
         RACE_START = start_time + timedelta(0, DELAY)
-        gevent.spawn(race_start_thread, start_time, DELAY)
+        RACE_START_TOKEN = random.random()
+        gevent.spawn(race_start_thread, start_time, DELAY, RACE_START_TOKEN)
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,
             'start_delay': DELAY,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
-        }) # Loop back to race page with chosen delay
+        }) # Announce staging with chosen delay
 
-def race_start_thread(start_time, staging_delay):
+def race_start_thread(start_time, staging_delay, start_token):
     global Race_laps_winner_name
 
     # non-blocking delay before time-critical code
@@ -1258,7 +1283,11 @@ def race_start_thread(start_time, staging_delay):
     # prep i2c for quick start
     INTERFACE.lock_i2c()
 
-    if RACE.race_status == RACE_STATUS_STAGING: # Only start a race if it is not already in progress
+    if RACE.race_status == RACE_STATUS_STAGING and \
+        RACE_START_TOKEN == start_token:
+        # Only start a race if it is not already in progress
+        # Null this thread if token has changed (race stopped/started quickly)
+
         scheduled_start = start_time + timedelta(0, staging_delay)
         # use blocking delay at end of sequence for maximum precision
         while datetime.now() < scheduled_start:
@@ -1299,10 +1328,12 @@ def on_stop_race():
 
         RACE.race_status = RACE_STATUS_DONE # To stop registering passed laps, waiting for laps to be cleared
     else:
-        server_log('Race stopped during staging')
+        server_log('No active race to stop')
         RACE.race_status = RACE_STATUS_READY # Go back to ready state
 
     RACE.timer_running = 0 # indicate race timer not running
+    RACE_SCHEDULED = False # also stop any deferred start
+
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
@@ -1534,6 +1565,13 @@ def get_race_elapsed():
     # never broadcasts to all
     emit('race_elapsed', {
         'elapsed': ms_from_race_start()
+    })
+
+@SOCKET_IO.on('get_race_scheduled')
+def get_race_elapsed():
+    # never broadcasts to all
+    emit('race_scheduled', {
+        'elapsed': ms_to_race_scheduled()
     })
 
 @SOCKET_IO.on('imdtabler_update_freqs')
@@ -2761,10 +2799,19 @@ def heartbeat_thread_function():
                 (heartbeat_thread_function.iter_tracker % 5) == 0:
             heartbeat_thread_function.imdtabler_flag = False
             emit_imdtabler_rating()
+
         # emit rest of node data, but less often:
         if heartbeat_thread_function.iter_tracker >= 20:
             heartbeat_thread_function.iter_tracker = 0
             emit_node_data()
+
+        # check if race is to be started
+        global RACE_SCHEDULED
+        if RACE_SCHEDULED:
+            if datetime.now() > RACE_SCHEDULED_TIME:
+                on_stage_race()
+                RACE_SCHEDULED = False
+
         gevent.sleep(0.100)
 
 def ms_from_race_start():
@@ -2773,6 +2820,16 @@ def ms_from_race_start():
     milli_sec = (delta_time.days * 24 * 60 * 60 + delta_time.seconds) \
         * 1000 + delta_time.microseconds / 1000.0
     return milli_sec
+
+def ms_to_race_scheduled():
+    '''Return milliseconds since race start.'''
+    if RACE_SCHEDULED:
+        delta_time = datetime.now() - RACE_SCHEDULED_TIME
+        milli_sec = (delta_time.days * 24 * 60 * 60 + delta_time.seconds) \
+            * 1000 + delta_time.microseconds / 1000.0
+        return milli_sec
+    else:
+        return None
 
 def ms_from_program_start():
     '''Returns the elapsed milliseconds since the start of the program.'''
@@ -2807,6 +2864,18 @@ def phonetictime_format(millis):
         return '{0:01d} {1:02d}.{2:01d}'.format(minutes, seconds, tenths)
     else:
         return '{0:01d}.{1:01d}'.format(seconds, tenths)
+
+def time_format_mmss(millis):
+    '''Convert milliseconds to 00:00'''
+    if millis is None:
+        return None
+
+    millis = int(millis)
+    minutes = millis / 60000
+    over = millis % 60000
+    seconds = over / 1000
+    over = over % 1000
+    return '{0:01d}:{1:02d}'.format(minutes, seconds)
 
 def check_race_time_expired():
     last_raceFormat = int(getOption("currentFormat"))
