@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "1.2.0 (dev)" # Public release version code
-SERVER_API = 12 # Server API version
+SERVER_API = 14 # Server API version
 NODE_API_BEST = 15 # Most recent node API
 
 import os
@@ -351,6 +351,8 @@ class SavedRace(DB.Model):
     lap_time_stamp = DB.Column(DB.Integer, nullable=False)
     lap_time = DB.Column(DB.Integer, nullable=False)
     lap_time_formatted = DB.Column(DB.Integer, nullable=False)
+    raw_history_values = DB.Column(DB.String, nullable=True)
+    raw_history_crossings = DB.Column(DB.String, nullable=True)
 
     def __repr__(self):
         return '<SavedRace %r>' % self.round_id
@@ -1261,6 +1263,8 @@ def on_stage_race():
         emit_current_laps() # Race page, blank laps to the web client
         emit_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
+        for node in INTERFACE.nodes:
+            node.raw_history = {}
         last_raceFormat = int(getOption("currentFormat"))
         race_format = RaceFormat.query.get(last_raceFormat)
         if race_format.team_racing_mode:
@@ -1362,11 +1366,25 @@ def on_save_laps():
     for node in range(RACE.num_nodes):
         if profile_freqs["f"][node] != FREQUENCY_ID_NONE:
             for lap in CurrentLap.query.filter_by(node_index=node).all():
-                DB.session.add(SavedRace(round_id=max_round+1, heat_id=RACE.current_heat, \
-                    format_id=getOption('currentFormat'), class_id=heat.class_id, \
-                    node_index=node, pilot_id=lap.pilot_id, lap_id=lap.lap_id, \
-                    lap_time_stamp=lap.lap_time_stamp, lap_time=lap.lap_time, \
-                    lap_time_formatted=lap.lap_time_formatted))
+                if lap.lap_id == 0:
+                    raw_values = json.dumps(INTERFACE.nodes[node].raw_history_values)
+                    raw_crossings = json.dumps(INTERFACE.nodes[node].raw_history_crossings)
+                else:
+                    raw_values = None
+                    raw_crossings = None
+
+                DB.session.add(SavedRace(round_id=max_round+1, \
+                    heat_id=RACE.current_heat, \
+                    format_id=getOption('currentFormat'), \
+                    class_id=heat.class_id, \
+                    node_index=node, pilot_id=lap.pilot_id, \
+                    lap_id=lap.lap_id, \
+                    lap_time_stamp=lap.lap_time_stamp, \
+                    lap_time=lap.lap_time, \
+                    lap_time_formatted=lap.lap_time_formatted, \
+                    raw_history_values=raw_values,
+                    raw_history_crossings=raw_crossings
+                ))
     DB.session.commit()
     server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
     on_discard_laps() # Also clear the current laps
@@ -2789,7 +2807,20 @@ def emit_imdtabler_rating():
 def heartbeat_thread_function():
     '''Emits current rssi data.'''
     while True:
-        SOCKET_IO.emit('heartbeat', INTERFACE.get_heartbeat_json())
+        node_data = INTERFACE.get_heartbeat_json()
+
+        # store history
+        race_time = ms_from_race_start()
+        for node in INTERFACE.nodes:
+            if RACE.race_status is RACE_STATUS_RACING or \
+                (RACE.race_status is RACE_STATUS_DONE and node.crossing_flag):
+
+                node.raw_history_values.append({
+                    race_time: node.current_rssi
+                })
+
+
+        SOCKET_IO.emit('heartbeat', node_data)
         heartbeat_thread_function.iter_tracker += 1
 
         # check if race timer is finished
@@ -2887,6 +2918,13 @@ def check_race_time_expired():
 
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''
+
+    # save any pass during race into history
+    if RACE.race_status is RACE_STATUS_RACING:
+        node.raw_history_crossings.append({
+            node.lap_ms_since_start: node.current_rssi
+        })
+
     #if node.lap_ms_since_start >= 0:
     #    server_log('Raw pass record: Node: {0}, Lap TimeMS: {1}'.format(node.index+1, node.lap_ms_since_start))
     #else:

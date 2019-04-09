@@ -30,6 +30,9 @@ class Node:
         self.history_rssi_max = 0
         self.history_lap_time = 0
         self.under_min_lap_count = 0
+        self.raw_history_values = []
+        self.raw_history_crossings = []
+
 
     def get_settings_json(self):
         return {
