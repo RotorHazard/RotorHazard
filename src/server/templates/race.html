@@ -6,6 +6,7 @@
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 
 	var request_time;
+	var request_pi_time;
 	var resume_check = true;
 
 	var racedump = {
@@ -32,6 +33,24 @@
 			'race_status',
 			'team_racing_stat_if_enb'
 		]});
+
+		// schedule server sync in ~1s (wait for client and server to settle after connect)
+		setInterval(function(){
+			rotorhazard.pi_time_request = Date.now();
+			socket.emit('get_pi_time');
+		}, 1000);
+
+		socket.on('pi_time', function (msg) {
+			var response_time = Date.now();
+			var server_delay = response_time - rotorhazard.pi_time_request;
+			var server_oneway = server_delay ? server_delay / 2 : server_delay;
+			rotorhazard.pi_time_diff = response_time - server_oneway - msg.pi_time;
+
+			console.log('response: ' + server_delay);
+			console.log('response_time: ' + response_time);
+			console.log('pi_time: ' + msg.pi_time);
+			console.log('time diff: ' + (msg.pi_time - response_time));
+		});
 
 		socket.on('all_languages', function (msg) {
 			rotorhazard.language_strings = msg.languages;
@@ -119,10 +138,6 @@
 
 			if (elapsed < 0) {
 				rotorhazard.timer.staging.continueFrom(elapsed);
-
-				rotorhazard.collecting = 'race';
-				racedump.timestamp = new Date();
-				racedump.timedata = [];
 			} else {
 				rotorhazard.timer.race.continueFrom(elapsed);
 			}
@@ -221,18 +236,6 @@
 
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
 				heartbeatCounter = 0;
-
-				if (rotorhazard.collecting) {
-					var timedump = {
-						timestamp: new Date(),
-						nodes: [],
-					};
-
-					for (i = 0; i < msg.current_rssi.length; i++) {
-						timedump.nodes.push(msg.current_rssi[i]);
-					}
-					racedump.timedata.push(timedump)
-				}
 
 				for (i = 0; i < msg.current_rssi.length; i++) {
 					var rssiValue = msg.current_rssi[i];
@@ -453,27 +456,36 @@
 		});
 
 		socket.on('stop_timer', function (msg) {
-			rotorhazard.timer.staging.stop();
-			rotorhazard.timer.race.stop();
+			rotorhazard.timer.stopAll();
 		});
 
 		socket.on('stage_ready', function (msg) {
-			rotorhazard.timer.staging.duration = msg.start_delay;
+			rotorhazard.timer.stopAll();
+
+			rotorhazard.race_start_pi = msg.pi_starts_at;
+			rotorhazard.race_start_local = rotorhazard.race_start_pi - rotorhazard.pi_time_diff;
+
+			rotorhazard.timer.race.zero_time = rotorhazard.race_start_local;
+			rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
+			rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
+			rotorhazard.timer.race.duration = msg.race_time_sec;
+
+			rotorhazard.timer.race.start();
+
+/*
+			rotorhazard.timer.staging.duration = Date.now() - rotorhazard.race_start_local;
 			rotorhazard.timer.staging.hidden = msg.hide_stage_timer;
 			rotorhazard.timer.staging.reset();
 
 			rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
 			rotorhazard.timer.race.duration = msg.race_time_sec;
 			rotorhazard.timer.race.reset();
-
-			setTimeout(function(){
-				request_time = new Date();
-				socket.emit('get_race_elapsed');
-			}, (Math.random() * 500) + 250);
+*/
 		});
 
 		$('button#start_race').click(function (event) {
 			socket.emit('stage_race');
+			rotorhazard.timer.stopAll();
 			$('.timing-clock').html('--:--');
 			$('button#start_race').prop('disabled', true);
 			$('.set_current_heat').prop('disabled', true);
@@ -482,8 +494,7 @@
 
 		$('button#stop_race').click(function (event) {
 			socket.emit('stop_race');
-			rotorhazard.timer.staging.stop();
-			rotorhazard.timer.race.stop();
+			rotorhazard.timer.stopAll();
 			return false;
 		});
 

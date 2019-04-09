@@ -397,28 +397,6 @@ function nodeModel() {
 	this.graphing = false;
 	this.enter_at_level = false;
 	this.exit_at_level = false;
-	this.corrections = {
-		floor: {
-			rawData: [],
-			min: false,
-			median: false,
-			max: false
-		},
-		nearest: {
-			rawData: [],
-			min: false,
-			median: false,
-			max: false
-		},
-		gate: {
-			rawData: [],
-			min: false,
-			median: false,
-			max: false
-		},
-
-		median_separation: false,
-	};
 
 	this.canvas = false;
 	this.graph = new SmoothieChart({
@@ -510,17 +488,26 @@ function timerModel() {
 
 	this.callbacks = {
 		'start': false,
-		'continue': false,
+		'stop': false,
 		'iteration': false,
-		'expire': false
+		'expire': false,
+		'zero': false,
 	};
 
+	this.zero_time = 0; // timestamp for timer's zero point
+	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
+	this.time = false; // simplified relative time
+	this.count_up = false; // use fixed-length timer
+	this.duration = 0; // fixed-length duration, in seconds
+
+/*
 	this.running = false;
 	this.hidden = false; // display 'ready' message instead of showing time remaining
 	this.count_up = false;
 	this.duration = 0; // count down duration, in seconds
 	this.time = 0; // time, in seconds
 	this.started = 0; // timer's "start timestamp" (pseudo-value)
+*/
 
 	this.drift_history = [];
 	this.drift_history_samples = 10;
@@ -534,45 +521,36 @@ function timerModel() {
 	var self = this;
 
 	function step() { // timer control
+		var diff = self.zero_time - Date.now();
 		var continue_timer = true;
 
-		if (self.count_up) {
-			self.time = parseFloat((self.time + self.interval / 1000).toFixed(self.precision));
+		if (diff > self.interval / 2) {
+			// time is positive
+			if (!self.count_up) {
+				self.time = (self.duration * 1000) - (Math.round(diff * 10000) / 10);
 
-			if (self.callbacks.iteration) {
-				try {
-					self.callbacks.iteration(self)
-				}
-				catch(error) {
-					console.log('iteration callback error: ' + error);
+				if (self.time <= 0) {
 					continue_timer = false;
-					self.stop();
-				}
-			}
-		} else {
-			self.time = parseFloat((self.time - self.interval / 1000).toFixed(self.precision));
-			if (self.time <= 0) {
-				continue_timer = false;
-				self.running = false;
-				if (self.callbacks.expire) {
-					try {
-						self.callbacks.expire(self)
+					self.running = false;
+					if (self.callbacks.expire instanceof Function) {
+						self.callbacks.expire(self);
 					}
-					catch(error) {
-						console.log('expire callback error: ' + error);
+				} else {
+					if (self.callbacks.iteration instanceof Function) {
+						self.callbacks.iteration(self);
 					}
 				}
 			} else {
-				if (self.callbacks.iteration) {
-					try {
-						self.callbacks.iteration(self)
-					}
-					catch(error) {
-						console.log('iteration callback error: ' + error);
-						continue_timer = false;
-						self.stop();
-					}
+				self.time = Math.round(diff * 10000) / 10;
+
+				if (self.callbacks.iteration instanceof Function) {
+					self.callbacks.iteration(self);
 				}
+			}
+		} else {
+			// negative or zero
+			if (self.callbacks.iteration instanceof Function) {
+				self.callbacks.iteration(self);
 			}
 		}
 
@@ -581,10 +559,10 @@ function timerModel() {
 			var drift = now - self.expected;
 			if (drift > self.interval) {
 				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
-				self.continueFrom(now - self.started);
+				self.start();
 			} else {
-				self.expected += self.interval;
-				self.timeout = setTimeout(step, Math.max(0, self.interval - drift - self.drift_correction));
+				self.get_next_step(now);
+				self.timeout = setTimeout(step, Math.max(0, self.interval - self.drift_correction));
 
 				self.drift_history.push(drift + self.drift_correction);
 				self.drift_correction = median(self.drift_history);
@@ -595,11 +573,26 @@ function timerModel() {
 		}
 	}
 
+	this.get_next_step = function(now){
+		var diff = this.zero_time - now;
+		var to_next = this.interval - (diff % this.interval)
+		if (to_next < this.interval / 10) { // wait to sync if too short
+			this.expected = now + this.interval - to_next + this.interval;
+			this.interval = to_next + this.interval;
+		}
+		this.expected = now + this.interval - to_next;
+		this.interval = to_next;
+	}
+
 	this.start = function(){
-		// start from current position of this.time
+		// start
 		var now = Date.now();
-		this.expected = now + this.interval;
-		this.started = now;
+		if (this.running) {
+			clearTimeout(this.timeout);
+		}
+
+		this.get_next_step(now);
+
 		this.timeout = setTimeout(step, this.interval);
 		this.running = true;
 		if (this.callbacks.start) {
@@ -664,6 +657,14 @@ function timerModel() {
 		// stop timing
 		clearTimeout(this.timeout);
 		this.running = false;
+		if (this.callbacks.stop) {
+			try {
+				this.callbacks.stop(this)
+			}
+			catch(error) {
+				console.log('stop callback error: ' + error);
+			}
+		}
 	}
 
 	this.reset = function(){
@@ -677,16 +678,12 @@ function timerModel() {
 		}
 	}
 
-	this.renderHTML = function(display_time) {
-		if (this.hidden) {
+	this.renderHTML = function() {
+		display_time = Math.floor(this.time);
+
+		if (this.hidden_staging && display_time < 0) {
 			return __l('Ready');
 		}
-
-		if(typeof display_time != 'number') {
-			display_time = this.time;
-		}
-
-		display_time = Math.floor(this.time);
 
 		var hour = Math.floor(display_time / 3600);
 		display_time = display_time - (hour * 3600);
@@ -736,13 +733,21 @@ var rotorhazard = {
 	graphing: false, // currently graphing RSSI
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array
-	collecting: false,
-	collection_amount: 25, // number of rssi data points to capture
+
+	pi_time_request: false,
+	pi_time_diff: false,
+	race_start_pi: false,
+	race_start_local: false,
 
 	timer: {
 		deferred: new timerModel(),
 		staging: new timerModel(),
-		race: new timerModel()
+		race: new timerModel(),
+		stopAll: function() {
+			this.deferred.stop();
+			this.staging.stop();
+			this.race.stop();
+		}
 	},
 	saveData: function() {
 		if (!supportsLocalStorage()) {

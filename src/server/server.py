@@ -8,8 +8,8 @@ import sys
 import shutil
 import base64
 import subprocess
+from monotonic import monotonic
 from datetime import datetime
-from datetime import timedelta
 from functools import wraps
 from collections import OrderedDict
 
@@ -107,8 +107,8 @@ except ValueError:
 INTERFACE = get_hardware_interface()
 RACE = get_race_state() # For storing race management variables
 
-PROGRAM_START = datetime.now()
-RACE_START = datetime.now() # Updated on race start commands
+PROGRAM_START = monotonic()
+RACE_START = monotonic() # Updated on race start commands
 RACE_START_TOKEN = False # Check start thread matches correct stage sequence
 RACE_DURATION_MS = 0 # calculated when race is stopped
 
@@ -1224,7 +1224,7 @@ def on_schedule_race(data):
     global RACE_SCHEDULED
     global RACE_SCHEDULED_TIME
 
-    RACE_SCHEDULED_TIME = datetime.now() + timedelta(0, data['m'] * 60 + data['s'], 250000)
+    RACE_SCHEDULED_TIME = monotonic() + data['m'] * 60 + data['s'] + 0.25
     # Add .25s to accunt for instruction processing
     RACE_SCHEDULED = True
     scheduled_at = ms_to_race_scheduled()
@@ -1236,6 +1236,13 @@ def on_schedule_race(data):
         })
 
     emit_priority_message(__("Next race begins in: " + time_format_mmss(dt)), True)
+
+@SOCKET_IO.on('get_pi_time')
+def on_get_pi_time():
+    # never broadcasts to all (client must make request)
+    emit('pi_time', {
+        'pi_time_s': monotonic()
+    })
 
 @SOCKET_IO.on('stage_race')
 def on_stage_race():
@@ -1262,23 +1269,23 @@ def on_stage_race():
         MAX = max(race_format.start_delay_min, race_format.start_delay_max)
         DELAY = random.randint(MIN, MAX) + 1 # Add 1 for prestage
 
-        start_time = datetime.now()
-        RACE_START = start_time + timedelta(0, DELAY)
+        RACE_START = monotonic() + DELAY
         RACE_START_TOKEN = random.random()
-        gevent.spawn(race_start_thread, start_time, DELAY, RACE_START_TOKEN)
+        gevent.spawn(race_start_thread, RACE_START_TOKEN)
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,
-            'start_delay': DELAY,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
+            'pi_starts_at_s': RACE_START
         }) # Announce staging with chosen delay
 
-def race_start_thread(start_time, staging_delay, start_token):
+def race_start_thread(start_token):
     global Race_laps_winner_name
 
     # non-blocking delay before time-critical code
-    gevent.sleep(staging_delay - 1)
+    while (monotonic() < RACE_START - 2):
+        gevent.sleep(0.1)
 
     # prep i2c for quick start
     INTERFACE.lock_i2c()
@@ -1288,9 +1295,8 @@ def race_start_thread(start_time, staging_delay, start_token):
         # Only start a race if it is not already in progress
         # Null this thread if token has changed (race stopped/started quickly)
 
-        scheduled_start = start_time + timedelta(0, staging_delay)
-        # use blocking delay at end of sequence for maximum precision
-        while datetime.now() < scheduled_start:
+        # use blocking delay until race start for maximum precision
+        while monotonic() < RACE_START:
             pass
 
         # do time-critical tasks
@@ -1299,22 +1305,21 @@ def race_start_thread(start_time, staging_delay, start_token):
 
         # do secondary start tasks (small delay is acceptable)
         RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
+        emit_race_status() # Race page, to set race button states
         RACE.timer_running = 1 # indicate race timer is running
         for node in INTERFACE.nodes:
             node.under_min_lap_count = 0
         Race_laps_winner_name = None  # name of winner in first-to-X-laps race
-        emit_race_status() # Race page, to set race button states
-        server_log('Race started at {0}'.format(RACE_START))
+        server_log('Race started at {0} / {1}'.format(RACE_START, monotonic()))
 
 @SOCKET_IO.on('stop_race')
 def on_stop_race():
     '''Stops the race and stops registering laps.'''
     if RACE.race_status == RACE_STATUS_RACING:
         global RACE_DURATION_MS # To redefine main program variable
-        RACE_END = datetime.now() # Update the race end time stamp
+        RACE_END = monotonic() # Update the race end time stamp
         delta_time = RACE_END - RACE_START
-        milli_sec = (delta_time.days * 24 * 60 * 60 + delta_time.seconds) \
-            * 1000 + delta_time.microseconds / 1000.0
+        milli_sec = delta_time / 1000.0
         RACE_DURATION_MS = milli_sec
 
         server_log('Race stopped at {0} ({1})'.format(RACE_END, RACE_DURATION_MS))
@@ -1560,18 +1565,12 @@ def on_LED_RBCHASE():
 def on_set_option(data):
     setOption(data['option'], data['value'])
 
-@SOCKET_IO.on('get_race_elapsed')
-def get_race_elapsed():
-    # never broadcasts to all
-    emit('race_elapsed', {
-        'elapsed': ms_from_race_start()
-    })
-
 @SOCKET_IO.on('get_race_scheduled')
 def get_race_elapsed():
     # never broadcasts to all
+
     emit('race_scheduled', {
-        'elapsed': ms_to_race_scheduled()
+        'scheduled_at': ms_to_race_scheduled()
     })
 
 @SOCKET_IO.on('imdtabler_update_freqs')
@@ -1597,10 +1596,13 @@ def emit_race_status(**params):
     '''Emits race status.'''
     last_raceFormat = int(getOption("currentFormat"))
     race_format = RaceFormat.query.get(last_raceFormat)
+
     emit_payload = {
             'race_status': RACE.race_status,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
+            'hide_stage_timer': race_format.start_delay_min != race_format.start_delay_max,
+            'pi_starts_at_s': RACE_START
         }
     if ('nobroadcast' in params):
         emit('race_status', emit_payload)
@@ -2808,7 +2810,7 @@ def heartbeat_thread_function():
         # check if race is to be started
         global RACE_SCHEDULED
         if RACE_SCHEDULED:
-            if datetime.now() > RACE_SCHEDULED_TIME:
+            if monotonic() > RACE_SCHEDULED_TIME:
                 on_stage_race()
                 RACE_SCHEDULED = False
 
@@ -2816,26 +2818,23 @@ def heartbeat_thread_function():
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''
-    delta_time = datetime.now() - RACE_START
-    milli_sec = (delta_time.days * 24 * 60 * 60 + delta_time.seconds) \
-        * 1000 + delta_time.microseconds / 1000.0
+    delta_time = monotonic() - RACE_START
+    milli_sec = delta_time / 1000.0
     return milli_sec
 
 def ms_to_race_scheduled():
     '''Return milliseconds since race start.'''
     if RACE_SCHEDULED:
-        delta_time = datetime.now() - RACE_SCHEDULED_TIME
-        milli_sec = (delta_time.days * 24 * 60 * 60 + delta_time.seconds) \
-            * 1000 + delta_time.microseconds / 1000.0
+        delta_time = monotonic() - RACE_SCHEDULED_TIME
+        milli_sec = delta_time / 1000.0
         return milli_sec
     else:
         return None
 
 def ms_from_program_start():
     '''Returns the elapsed milliseconds since the start of the program.'''
-    delta_time = datetime.now() - PROGRAM_START
-    milli_sec = (delta_time.days * 24 * 60 * 60 + delta_time.seconds) \
-        * 1000 + delta_time.microseconds / 1000.0
+    delta_time = monotonic() - PROGRAM_START
+    milli_sec = delta_time / 1000.0
     return milli_sec
 
 def time_format(millis):
@@ -2881,7 +2880,7 @@ def check_race_time_expired():
     last_raceFormat = int(getOption("currentFormat"))
     race_format = RaceFormat.query.get(last_raceFormat)
     if race_format and race_format.race_mode == 0: # count down
-        if datetime.now() >= RACE_START + timedelta(0, race_format.race_time_sec):
+        if monotonic() >= RACE_START + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
             if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
