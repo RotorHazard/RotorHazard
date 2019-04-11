@@ -3,6 +3,7 @@
 import smbus # For i2c comms
 import gevent # For threads and timing
 from gevent.lock import BoundedSemaphore # To limit i2c calls
+from monotonic import monotonic # to capture read timing
 
 from Node import Node
 from BaseHardwareInterface import BaseHardwareInterface
@@ -16,15 +17,17 @@ READ_NODE_RSSI_PEAK = 0x23  # read 'nodeRssiPeak' value
 READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
-READ_HISTORY_EXPIRE_DURATION = 0x35
 READ_TIME_MILLIS = 0x33     # read current 'millis()' time value
 READ_CATCH_HISTORY = 0x34   # get lap catch history data
+READ_HISTORY_EXPIRE_DURATION = 0x35
+READ_NODE_SYNC = 0x37       # check node sync value
 
 WRITE_FREQUENCY = 0x51      # Sets frequency (2 byte)
 WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
 WRITE_HISTORY_EXPIRE_DURATION = 0x73
+WRITE_NODE_SYNC = 0x74      # set node sync value
 MARK_START_TIME = 0x77      # mark base time for returned lap-ms-since-start values
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 
@@ -64,6 +67,15 @@ def unpack_32(data):
     result = (result << 8) | data[3]
     return result
 
+def pack_32(data):
+    '''Returns a 4 part array from the full variable.'''
+    part_a = (data >> 24)
+    part_b = (data >> 16) & 0xFF
+    part_c = (data >> 8) & 0xFF
+    part_d = (data & 0xFF)
+    return [part_a, part_b, part_c, part_d]
+
+
 def validate_checksum(data):
     '''Returns True if the checksum matches the data.'''
     if data is None:
@@ -84,7 +96,8 @@ class RHInterface(BaseHardwareInterface):
         self.i2c = smbus.SMBus(1) # Start i2c bus
         self.semaphore = BoundedSemaphore(1) # Limits i2c to 1 read/write at a time
         self.i2c_timestamp = -1
-        self.i2c_lock = False # prevent calling i2c during race staging
+        self.read_request = None # request time of last I2C read
+        self.read_response = None # response time of last I2C read
 
         # Scans all i2c_addrs to populate nodes array
         self.nodes = [] # Array to hold each node object
@@ -120,6 +133,12 @@ class RHInterface(BaseHardwareInterface):
                 print "Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level)
             else:
                 print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
+            if node.api_level >= 15:
+                sync = self.sync_node_timing(node)
+                if sync != None:
+                    print "Node {0} acquired sync: response {1:1.4f}s".format(node.index+1, sync['node_response_s'])
+                else:
+                    print "Node sync unavailable"
             if node.index == 0:
                 if node.api_valid_flag:
                     self.filter_ratio = self.get_value_16(node, READ_FILTER_RATIO)
@@ -158,9 +177,6 @@ class RHInterface(BaseHardwareInterface):
 
     def update(self):
         # stop asking for node updates during race staging
-        # (clear i2c comms in prep for immediate start broadcast)
-        if self.i2c_lock:
-            return None
 
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_time_ms)
         cross_list = []  # list of nodes with crossing-flag changes
@@ -277,10 +293,6 @@ class RHInterface(BaseHardwareInterface):
 
     def read_block(self, addr, offset, size):
         '''Read i2c data given an address, code, and data size.'''
-        if self.i2c_lock:
-            self.log('Read prevented: I2C Locked')
-            return None
-
         success = False
         retry_count = 0
         data = None
@@ -288,7 +300,9 @@ class RHInterface(BaseHardwareInterface):
             try:
                 with self.semaphore: # Wait if i2c comms is already in progress
                     self.i2c_sleep()
+                    self.read_request = monotonic()
                     data = self.i2c.read_i2c_block_data(addr, offset, size + 1)
+                    self.read_response = monotonic()
                     self.i2c_timestamp = self.milliseconds()
                     if validate_checksum(data):
                         success = True
@@ -314,10 +328,6 @@ class RHInterface(BaseHardwareInterface):
 
     def write_block(self, addr, offset, data):
         '''Write i2c data given an address, code, and data.'''
-        if self.i2c_lock:
-            self.log('Write prevented: I2C Locked')
-            return False
-
         success = False
         retry_count = 0
         data_with_checksum = data
@@ -358,6 +368,13 @@ class RHInterface(BaseHardwareInterface):
             result = unpack_16(data)
         return result
 
+    def get_value_32(self, node, command):
+        data = self.read_block(node.i2c_addr, command, 4)
+        result = None
+        if data != None:
+            result = unpack_32(data)
+        return result
+
     def set_and_validate_value_8(self, node, write_command, read_command, in_value):
         success = False
         retry_count = 0
@@ -393,12 +410,42 @@ class RHInterface(BaseHardwareInterface):
             out_value = in_value
         return out_value
 
+    def set_and_validate_value_32(self, node, write_command, read_command, in_value):
+        success = False
+        retry_count = 0
+        out_value = None
+        while success is False and retry_count < I2C_RETRY_COUNT:
+            self.write_block(node.i2c_addr, write_command, pack_32(in_value))
+            out_value = self.get_value_32(node, read_command)
+                   # confirm same value (also handle negative value)
+            if out_value == in_value or out_value == in_value + (1 << 32):
+                success = True
+            else:
+                retry_count = retry_count + 1
+                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node))
+
+        if out_value == None:
+            out_value = in_value
+        return out_value
+
     def set_value_8(self, node, write_command, in_value):
         success = False
         retry_count = 0
         out_value = None
         while success is False and retry_count < I2C_RETRY_COUNT:
             if self.write_block(node.i2c_addr, write_command, pack_8(in_value)):
+                success = True
+            else:
+                retry_count = retry_count + 1
+                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node))
+        return success
+
+    def set_value_32(self, node, write_command, in_value):
+        success = False
+        retry_count = 0
+        out_value = None
+        while success is False and retry_count < I2C_RETRY_COUNT:
+            if self.write_block(node.i2c_addr, write_command, pack_32(in_value)):
                 success = True
             else:
                 retry_count = retry_count + 1
@@ -417,15 +464,21 @@ class RHInterface(BaseHardwareInterface):
                 self.log('Value Not Set ({0}): {1}/{2}/broadcast'.format(retry_count, write_command, in_value))
         return success
 
+    def broadcast_value_32(self, write_command, in_value):
+        success = False
+        retry_count = 0
+        out_value = None
+        while success is False and retry_count < I2C_RETRY_COUNT:
+            if self.write_block(0x00, write_command, pack_32(in_value)):
+                success = True
+            else:
+                retry_count = retry_count + 1
+                self.log('Value Not Set ({0}): {1}/{2}/broadcast'.format(retry_count, write_command, in_value))
+        return success
+
     #
     # External functions for setting data
     #
-
-    def lock_i2c(self):
-        self.i2c_lock = True
-
-    def unlock_i2c(self):
-        self.i2c_lock = False
 
     def set_frequency(self, node_index, frequency):
         node = self.nodes[node_index]
@@ -502,21 +555,21 @@ class RHInterface(BaseHardwareInterface):
         for node in self.nodes:
             self.set_history_expire(node.index, history_expire_duration)
 
-    def mark_start_time(self, node_index):
+    def mark_start_time(self, node_index, start_time):
         node = self.nodes[node_index]
         if node.api_valid_flag:
-            self.set_value_8(node, MARK_START_TIME, 0)
+            self.set_value_32(node, MARK_START_TIME, start_time)
 
-    def mark_start_time_global(self):
-        self.unlock_i2c()
+    def mark_start_time_global(self, pi_time):
         bcast_flag = False
+        start_time = int(round(pi_time * 1000)) # convert to ms
         for node in self.nodes:
             if self.nodes[0].api_level >= 15:
                 if bcast_flag is False:
                     bcast_flag = True  # only send broadcast once
-                    self.broadcast_value_8(MARK_START_TIME, 0)
+                    self.broadcast_value_32(MARK_START_TIME, start_time)
             else:
-                self.mark_start_time(node.index)  # if older API node
+                self.mark_start_time(node.index, start_time)  # if older API node
 
     def start_capture_enter_at_level(self, node_index):
         node = self.nodes[node_index]
@@ -561,6 +614,38 @@ class RHInterface(BaseHardwareInterface):
         if node.api_level >= 14:
             self.set_value_8(node, FORCE_END_CROSSING, 0)
 
+    def sync_node_timing(self, node):
+        if node.api_level >= 16:
+            # get current sync
+            old_sync = self.read_block(node.i2c_addr, READ_NODE_SYNC, 4)
+            old_sync_val = unpack_32(old_sync[0:])
+
+            # get node timing
+            data = self.read_block(node.i2c_addr, READ_TIME_MILLIS, 4)
+            node_millis = unpack_32(data[0:])
+
+            # calculate time differences
+            response_roundtrip = self.read_response - self.read_request
+            response_oneway = response_roundtrip / 2
+            pi_time_zero = (self.read_response - response_oneway) * 1000 # in ms
+            node_time_zero = node_millis
+            node_time_diff = int(round(pi_time_zero - node_millis)) # node time in int
+
+            # send time diff
+            self.set_and_validate_value_32(node,
+                WRITE_NODE_SYNC,
+                READ_NODE_SYNC,
+                node_time_diff)
+
+            # find sync delta
+            sync_delta = old_sync_val - node_time_diff
+
+            return {
+                'node_time': node_millis,
+                'sync_delta': sync_delta,
+                'node_response_s': response_roundtrip
+            }
+        return None
 
 def get_hardware_interface():
     '''Returns the RotorHazard interface object.'''

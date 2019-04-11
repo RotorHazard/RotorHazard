@@ -36,7 +36,7 @@
 #define NODE_NUMBER 0
 
 // Set to 1–8 for manual selection.
-// Or, set to 0 for automatic selection via hardware pin.
+// Leave at 0 for automatic selection via hardware pin.
 // For automatic selection, ground pins for each node:
 //                pin 4 open    pin 4 grounded
 // ground pin 5   node 1        node 5
@@ -58,7 +58,7 @@
 int i2cSlaveAddress (6 + (NODE_NUMBER * 2));
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 15
+#define NODE_API_LEVEL 16
 
 const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 const int spiDataPin = 11;
@@ -73,15 +73,17 @@ const int spiClockPin = 13;
 #define READ_NODE_RSSI_NADIR 0x24  // read 'state.nodeRssiNadir' value
 #define READ_ENTER_AT_LEVEL 0x31
 #define READ_EXIT_AT_LEVEL 0x32
-#define READ_HISTORY_EXPIRE_DURATION 0x35
 #define READ_TIME_MILLIS 0x33     // read current 'millis()' value
 #define READ_CATCH_HISTORY 0x34
+#define READ_HISTORY_EXPIRE_DURATION 0x35
+#define READ_NODE_SYNC 0x36       // check node sync value
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_FILTER_RATIO 0x70   // API_level>=10 uses 16-bit value
 #define WRITE_ENTER_AT_LEVEL 0x71
 #define WRITE_EXIT_AT_LEVEL 0x72
 #define WRITE_HISTORY_EXPIRE_DURATION 0x73  // adjust history catch window size
+#define WRITE_NODE_SYNC 0x74   // set node sync value
 #define MARK_START_TIME 0x77  // mark base time for returned lap-ms-since-start values
 #define FORCE_END_CROSSING 0x78  // kill current crossing flag regardless of RSSI value
 
@@ -137,6 +139,12 @@ struct
     // variables to track the loop time
     uint32_t volatile loopTime = 0;
     uint32_t volatile lastLoopTimeStamp = 0;
+
+    // sync offset for pi time
+    uint32_t volatile syncOffset = 0;
+
+    // race scheduling
+    bool volatile race_started = false;
 } state;
 
 struct
@@ -408,6 +416,7 @@ void loop()
     state.lastLoopTimeStamp = loopMicros;
     state.loopTime = state.lastLoopTimeStamp - lastLoopTimeStamp;
 
+    // read and process RSSI
     state.rssiRaw = rssiRead();
     state.rssiSmoothed = (settings.filterRatioFloat * (float) state.rssiRaw)
             + ((1.0f - settings.filterRatioFloat) * state.rssiSmoothed);
@@ -415,6 +424,22 @@ void loop()
 
     if (state.rxFreqSetFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received
+        // initialize race when started
+        if (loopMillis < state.raceStartTimeStamp) {
+            state.race_started = false;
+        } else if (!state.race_started) {
+            state.race_started = true;
+            // make sure there's no lingering previous pass:
+            lastPass.timeStamp = state.raceStartTimeStamp;
+            // reset history
+            history.peakFirstTime = state.raceStartTimeStamp;
+            history.peakLastTime = state.raceStartTimeStamp;
+            history.rssiMin = 999;
+            history.minExpires = 0;
+            history.rssiMax = 0;
+            history.rssiPeak = 0;
+            history.maxExpires = 0;
+        }
 
         // Keep track of peak (smoothed) rssi
         if (state.rssi > state.nodeRssiPeak)
@@ -624,6 +649,16 @@ uint16_t ioBufferRead16()
     return result;
 }
 
+uint32_t ioBufferRead32()
+{
+    uint32_t result;
+    result = ioBuffer[ioBufferIndex++];
+    result = (result << 8) | ioBuffer[ioBufferIndex++];
+    result = (result << 16) | ioBuffer[ioBufferIndex++];
+    result = (result << 24) | ioBuffer[ioBufferIndex++];
+    return result;
+}
+
 void ioBufferWrite8(uint8_t data)
 {
     ioBuffer[ioBufferSize++] = data;
@@ -726,20 +761,22 @@ byte i2cHandleRx(byte command)
             break;
 
         case MARK_START_TIME:  // mark base time for returned lap-ms-since-start values
-            state.raceStartTimeStamp = millis();
-            // make sure there's no lingering previous timestamp:
-            lastPass.timeStamp = state.raceStartTimeStamp;
-            // reset history
-            history.peakFirstTime = state.raceStartTimeStamp;
-            history.peakLastTime = state.raceStartTimeStamp;
-            history.rssiMin = 999;
-            history.minExpires = 0;
-            history.rssiMax = 0;
-            history.rssiPeak = 0;
-            history.maxExpires = 0;
-
-            if (readAndValidateIoBuffer(MARK_START_TIME, 1))  // read byte value (not used)
+            if (state.syncOffset == 0) {
+                state.raceStartTimeStamp = millis();
+                state.race_started = false;
                 success = true;
+            } else if (readAndValidateIoBuffer(MARK_START_TIME, 4)) {
+                state.raceStartTimeStamp = ioBufferRead32() - state.syncOffset;
+                success = true;
+            }
+            break;
+
+        case WRITE_NODE_SYNC:
+            if (readAndValidateIoBuffer(WRITE_NODE_SYNC, 4))
+            {
+                state.syncOffset = ioBufferRead32();
+                success = true;
+            }
             break;
 
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
@@ -820,6 +857,10 @@ void i2cTransmit()
 
         case READ_TIME_MILLIS:
             ioBufferWrite32(millis());
+            break;
+
+        case READ_NODE_SYNC:
+            ioBufferWrite32(state.syncOffset);
             break;
 
         case READ_CATCH_HISTORY:  // manual pass catching

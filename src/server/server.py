@@ -1291,21 +1291,20 @@ def race_start_thread(start_token):
     while (monotonic() < RACE_START - 2):
         gevent.sleep(0.1)
 
-    # prep i2c for quick start
-    INTERFACE.lock_i2c()
-
     if RACE.race_status == RACE_STATUS_STAGING and \
         RACE_START_TOKEN == start_token:
         # Only start a race if it is not already in progress
         # Null this thread if token has changed (race stopped/started quickly)
 
-        # use blocking delay until race start for maximum precision
+        # send start time to nodes
+        INTERFACE.mark_start_time_global(RACE_START)
+
+        # create blocking delay until race start
         while monotonic() < RACE_START:
             pass
 
         # do time-critical tasks
-        INTERFACE.mark_start_time_global()
-        onoff(strip, Color(0,255,0)) #GREEN for GO
+        # onoff(strip, Color(0,255,0)) #GREEN for GO
 
         # do secondary start tasks (small delay is acceptable)
         RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
