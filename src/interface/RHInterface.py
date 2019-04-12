@@ -73,6 +73,7 @@ def pack_32(data):
     part_b = (data >> 16) & 0xFF
     part_c = (data >> 8) & 0xFF
     part_d = (data & 0xFF)
+    print('{4} -> {0:b}:{1:b}:{2:b}:{3:b}'.format(part_a, part_b, part_c, part_d, data))
     return [part_a, part_b, part_c, part_d]
 
 
@@ -96,8 +97,8 @@ class RHInterface(BaseHardwareInterface):
         self.i2c = smbus.SMBus(1) # Start i2c bus
         self.semaphore = BoundedSemaphore(1) # Limits i2c to 1 read/write at a time
         self.i2c_timestamp = -1
-        self.read_request = None # request time of last I2C read
-        self.read_response = None # response time of last I2C read
+        self.i2c_request = None # request time of last I2C read
+        self.i2c_response = None # response time of last I2C read
 
         # Scans all i2c_addrs to populate nodes array
         self.nodes = [] # Array to hold each node object
@@ -300,9 +301,9 @@ class RHInterface(BaseHardwareInterface):
             try:
                 with self.semaphore: # Wait if i2c comms is already in progress
                     self.i2c_sleep()
-                    self.read_request = monotonic()
+                    self.i2c_request = monotonic()
                     data = self.i2c.read_i2c_block_data(addr, offset, size + 1)
-                    self.read_response = monotonic()
+                    self.i2c_response = monotonic()
                     self.i2c_timestamp = self.milliseconds()
                     if validate_checksum(data):
                         success = True
@@ -337,7 +338,9 @@ class RHInterface(BaseHardwareInterface):
             try:
                 with self.semaphore: # Wait if i2c comms is already in progress
                     self.i2c_sleep()
+                    # self.i2c_request = monotonic()
                     self.i2c.write_i2c_block_data(addr, offset, data_with_checksum)
+                    # self.i2c_response = monotonic()
                     self.i2c_timestamp = self.milliseconds()
                     success = True
             except IOError as err:
@@ -563,6 +566,7 @@ class RHInterface(BaseHardwareInterface):
     def mark_start_time_global(self, pi_time):
         bcast_flag = False
         start_time = int(round(pi_time * 1000)) # convert to ms
+        print(start_time)
         for node in self.nodes:
             if self.nodes[0].api_level >= 15:
                 if bcast_flag is False:
@@ -616,6 +620,7 @@ class RHInterface(BaseHardwareInterface):
 
     def sync_node_timing(self, node):
         if node.api_level >= 16:
+
             # get current sync
             old_sync = self.read_block(node.i2c_addr, READ_NODE_SYNC, 4)
             old_sync_val = unpack_32(old_sync[0:])
@@ -625,20 +630,33 @@ class RHInterface(BaseHardwareInterface):
             node_millis = unpack_32(data[0:])
 
             # calculate time differences
-            response_roundtrip = self.read_response - self.read_request
+            response_roundtrip = self.i2c_response - self.i2c_request
             response_oneway = response_roundtrip / 2
-            pi_time_zero = (self.read_response - response_oneway) * 1000 # in ms
+            pi_time_zero = (self.i2c_response - response_oneway) * 1000 # in ms
             node_time_zero = node_millis
-            node_time_diff = int(round(pi_time_zero - node_millis)) # node time in int
+            node_time_diff = int(round(node_millis - pi_time_zero)) # node time in int
+
+            node_time_diff_adjust = node_time_diff + 1000000000
+            # pi/i2c has a hard time with negative numbers
+            # might fail if you run your pi/nodes for more than a week
 
             # send time diff
-            self.set_and_validate_value_32(node,
+            read = self.set_and_validate_value_32(node,
                 WRITE_NODE_SYNC,
                 READ_NODE_SYNC,
-                node_time_diff)
+                node_time_diff_adjust)
 
             # find sync delta
-            sync_delta = old_sync_val - node_time_diff
+            sync_delta = old_sync_val + node_time_diff
+
+            print('old_diff: {0}'.format(old_sync_val))
+            print('millis:   {0}'.format(node_millis))
+            print('response: {0}'.format(self.i2c_response))
+            print('delay   : {0}'.format(response_roundtrip))
+            print('new_diff: {0}'.format(node_time_diff))
+            print('readback: {0}'.format(read))
+            rbadjust = read - 1000000000;
+            print('rbadjust: {0}'.format(rbadjust))
 
             return {
                 'node_time': node_millis,

@@ -1322,7 +1322,7 @@ def on_stop_race():
         global RACE_DURATION_MS # To redefine main program variable
         RACE_END = monotonic() # Update the race end time stamp
         delta_time = RACE_END - RACE_START
-        milli_sec = delta_time / 1000.0
+        milli_sec = delta_time * 1000.0
         RACE_DURATION_MS = milli_sec
 
         server_log('Race stopped at {0} ({1})'.format(RACE_END, RACE_DURATION_MS))
@@ -2849,14 +2849,14 @@ def heartbeat_thread_function():
 def ms_from_race_start():
     '''Return milliseconds since race start.'''
     delta_time = monotonic() - RACE_START
-    milli_sec = delta_time / 1000.0
+    milli_sec = delta_time * 1000.0
     return milli_sec
 
 def ms_to_race_scheduled():
     '''Return milliseconds since race start.'''
     if RACE_SCHEDULED:
         delta_time = monotonic() - RACE_SCHEDULED_TIME
-        milli_sec = delta_time / 1000.0
+        milli_sec = delta_time * 1000.0
         return milli_sec
     else:
         return None
@@ -2864,7 +2864,7 @@ def ms_to_race_scheduled():
 def ms_from_program_start():
     '''Returns the elapsed milliseconds since the start of the program.'''
     delta_time = monotonic() - PROGRAM_START
-    milli_sec = delta_time / 1000.0
+    milli_sec = delta_time * 1000.0
     return milli_sec
 
 def time_format(millis):

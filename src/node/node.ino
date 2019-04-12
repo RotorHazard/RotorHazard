@@ -141,7 +141,7 @@ struct
     uint32_t volatile lastLoopTimeStamp = 0;
 
     // sync offset for pi time
-    uint32_t volatile syncOffset = 0;
+    int32_t volatile syncOffset = 0;
 
     // race scheduling
     bool volatile race_started = false;
@@ -654,8 +654,8 @@ uint32_t ioBufferRead32()
     uint32_t result;
     result = ioBuffer[ioBufferIndex++];
     result = (result << 8) | ioBuffer[ioBufferIndex++];
-    result = (result << 16) | ioBuffer[ioBufferIndex++];
-    result = (result << 24) | ioBuffer[ioBufferIndex++];
+    result = (result << 8) | ioBuffer[ioBufferIndex++];
+    result = (result << 8) | ioBuffer[ioBufferIndex++];
     return result;
 }
 
@@ -697,6 +697,7 @@ byte i2cHandleRx(byte command)
 {  // The first byte sent by the I2C master is the command
     bool success = false;
     uint16_t u16val;
+    uint32_t u32val;
 
     switch (command)
     {
@@ -761,11 +762,7 @@ byte i2cHandleRx(byte command)
             break;
 
         case MARK_START_TIME:  // mark base time for returned lap-ms-since-start values
-            if (state.syncOffset == 0) {
-                state.raceStartTimeStamp = millis();
-                state.race_started = false;
-                success = true;
-            } else if (readAndValidateIoBuffer(MARK_START_TIME, 4)) {
+            if (readAndValidateIoBuffer(MARK_START_TIME, 4)) {
                 state.raceStartTimeStamp = ioBufferRead32() - state.syncOffset;
                 success = true;
             }
@@ -774,7 +771,7 @@ byte i2cHandleRx(byte command)
         case WRITE_NODE_SYNC:
             if (readAndValidateIoBuffer(WRITE_NODE_SYNC, 4))
             {
-                state.syncOffset = ioBufferRead32();
+                state.syncOffset = ((int32_t) ioBufferRead32()) - 1000000000; // remove large offset that prevents negative number
                 success = true;
             }
             break;
@@ -860,7 +857,7 @@ void i2cTransmit()
             break;
 
         case READ_NODE_SYNC:
-            ioBufferWrite32(state.syncOffset);
+            ioBufferWrite32(state.syncOffset + 1000000000); // add large number to keep value positive during comms
             break;
 
         case READ_CATCH_HISTORY:  // manual pass catching
