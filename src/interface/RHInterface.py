@@ -20,7 +20,7 @@ READ_EXIT_AT_LEVEL = 0x32
 READ_TIME_MILLIS = 0x33     # read current 'millis()' time value
 READ_CATCH_HISTORY = 0x34   # get lap catch history data
 READ_HISTORY_EXPIRE_DURATION = 0x35
-READ_NODE_SYNC = 0x37       # check node sync value
+READ_NODE_SYNC = 0x36       # check node sync value
 
 WRITE_FREQUENCY = 0x51      # Sets frequency (2 byte)
 WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
@@ -73,7 +73,6 @@ def pack_32(data):
     part_b = (data >> 16) & 0xFF
     part_c = (data >> 8) & 0xFF
     part_d = (data & 0xFF)
-    print('{4} -> {0:b}:{1:b}:{2:b}:{3:b}'.format(part_a, part_b, part_c, part_d, data))
     return [part_a, part_b, part_c, part_d]
 
 
@@ -134,12 +133,13 @@ class RHInterface(BaseHardwareInterface):
                 print "Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level)
             else:
                 print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
-            if node.api_level >= 15:
-                sync = self.sync_node_timing(node)
-                if sync != None:
-                    print "Node {0} acquired sync: response {1:1.4f}s".format(node.index+1, sync['node_response_s'])
-                else:
-                    print "Node sync unavailable"
+
+            sync = self.sync_node_timing(node)
+            if sync != None:
+                print "Node {0} acquired sync within {1:1.2f}ms".format(node.index+1, sync['response_s'] * 1000)
+            else:
+                print "WARNING: Node sync unavailable"
+
             if node.index == 0:
                 if node.api_valid_flag:
                     self.filter_ratio = self.get_value_16(node, READ_FILTER_RATIO)
@@ -566,7 +566,6 @@ class RHInterface(BaseHardwareInterface):
     def mark_start_time_global(self, pi_time):
         bcast_flag = False
         start_time = int(round(pi_time * 1000)) # convert to ms
-        print(start_time)
         for node in self.nodes:
             if self.nodes[0].api_level >= 15:
                 if bcast_flag is False:
@@ -619,11 +618,13 @@ class RHInterface(BaseHardwareInterface):
             self.set_value_8(node, FORCE_END_CROSSING, 0)
 
     def sync_node_timing(self, node):
+        success = False
+
         if node.api_level >= 16:
 
             # get current sync
             old_sync = self.read_block(node.i2c_addr, READ_NODE_SYNC, 4)
-            old_sync_val = unpack_32(old_sync[0:])
+            old_sync_val = (unpack_32(old_sync[0:]) + 2**31) % 2**32 - 2**31
 
             # get node timing
             data = self.read_block(node.i2c_addr, READ_TIME_MILLIS, 4)
@@ -636,34 +637,31 @@ class RHInterface(BaseHardwareInterface):
             node_time_zero = node_millis
             node_time_diff = int(round(node_millis - pi_time_zero)) # node time in int
 
-            node_time_diff_adjust = node_time_diff + 1000000000
-            # pi/i2c has a hard time with negative numbers
-            # might fail if you run your pi/nodes for more than a week
+            node_time_diff_adjust = node_time_diff % 2**32 # convert to unsigned
 
             # send time diff
-            read = self.set_and_validate_value_32(node,
+            validate = self.set_and_validate_value_32(node,
                 WRITE_NODE_SYNC,
                 READ_NODE_SYNC,
                 node_time_diff_adjust)
 
+            if node_time_diff == (validate + 2**31) % 2**32 - 2**31: # convert back to signed
+                success = True
+
             # find sync delta
             sync_delta = old_sync_val + node_time_diff
 
-            print('old_diff: {0}'.format(old_sync_val))
-            print('millis:   {0}'.format(node_millis))
-            print('response: {0}'.format(self.i2c_response))
-            print('delay   : {0}'.format(response_roundtrip))
-            print('new_diff: {0}'.format(node_time_diff))
-            print('readback: {0}'.format(read))
-            rbadjust = read - 1000000000;
-            print('rbadjust: {0}'.format(rbadjust))
-
             return {
-                'node_time': node_millis,
+                'success': success,
                 'sync_delta': sync_delta,
-                'node_response_s': response_roundtrip
+                'response_s': response_roundtrip
             }
+
         return None
+
+    def sync_node_timing_global(self):
+        for node in self.nodes:
+            self.sync_node_timing(node)
 
 def get_hardware_interface():
     '''Returns the RotorHazard interface object.'''

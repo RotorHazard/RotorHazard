@@ -87,6 +87,8 @@ Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
 Config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
 Config['GENERAL']['DEBUG'] = False
 
+Config['GENERAL']['NODE_RESYNC_INTERVAL'] = 60
+
 # override defaults above with config from file
 try:
     with open(CONFIG_FILE_NAME, 'r') as f:
@@ -186,19 +188,23 @@ def buildServerInfo():
     # Node API levels
     node_api_level = False
     serverInfo['node_api_match'] = True
-    if INTERFACE.nodes[0].api_level:
-        node_api_level = INTERFACE.nodes[0].api_level
-        serverInfo['node_api_lowest'] = node_api_level
+    if len(INTERFACE.nodes):
+        if INTERFACE.nodes[0].api_level:
+            node_api_level = INTERFACE.nodes[0].api_level
+            serverInfo['node_api_lowest'] = node_api_level
 
-        serverInfo['node_api_levels'] = []
-        for node in INTERFACE.nodes:
-            serverInfo['node_api_levels'].append(node.api_level)
+            serverInfo['node_api_levels'] = []
+            for node in INTERFACE.nodes:
+                serverInfo['node_api_levels'].append(node.api_level)
 
-            if node.api_level is not node_api_level:
-                serverInfo['node_api_match'] = False
+                if node.api_level is not node_api_level:
+                    serverInfo['node_api_match'] = False
 
-            if node.api_level < serverInfo['node_api_lowest']:
-                serverInfo['node_api_lowest'] = node.api_level
+                if node.api_level < serverInfo['node_api_lowest']:
+                    serverInfo['node_api_lowest'] = node.api_level
+    else:
+        serverInfo['node_api_lowest'] = None
+        serverInfo['node_api_levels'] = [None]
 
     serverInfo['about_html'] += "<li>" + __("Node API") + ": "
     if node_api_level:
@@ -1296,6 +1302,9 @@ def race_start_thread(start_token):
         # Only start a race if it is not already in progress
         # Null this thread if token has changed (race stopped/started quickly)
 
+        # resync nodes
+        INTERFACE.sync_node_timing_global()
+
         # send start time to nodes
         INTERFACE.mark_start_time_global(RACE_START)
 
@@ -1304,7 +1313,7 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        # onoff(strip, Color(0,255,0)) #GREEN for GO
+        onoff(strip, Color(0,255,0)) #GREEN for GO
 
         # do secondary start tasks (small delay is acceptable)
         RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
@@ -1313,7 +1322,7 @@ def race_start_thread(start_token):
         for node in INTERFACE.nodes:
             node.under_min_lap_count = 0
         Race_laps_winner_name = None  # name of winner in first-to-X-laps race
-        server_log('Race started at {0} / {1}'.format(RACE_START, monotonic()))
+        server_log('Race started at {0}'.format(RACE_START))
 
 @SOCKET_IO.on('stop_race')
 def on_stop_race():
@@ -2833,9 +2842,12 @@ def heartbeat_thread_function():
             emit_imdtabler_rating()
 
         # emit rest of node data, but less often:
-        if heartbeat_thread_function.iter_tracker >= 20:
-            heartbeat_thread_function.iter_tracker = 0
+        if heartbeat_thread_function.iter_tracker % 20 == 0:
             emit_node_data()
+
+        # resync nodes
+        if heartbeat_thread_function.iter_tracker % (Config['GENERAL']['NODE_RESYNC_INTERVAL'] * 10) == 0:
+            INTERFACE.sync_node_timing_global()
 
         # check if race is to be started
         global RACE_SCHEDULED
@@ -3440,7 +3452,10 @@ def expand_heats():
 
 # Save number of nodes found
 RACE.num_nodes = len(INTERFACE.nodes)
-print 'Number of nodes found: {0}'.format(RACE.num_nodes)
+if RACE.num_nodes == 0:
+    print '*** WARNING: NO RECEIVER NODES FOUND ***'
+else:
+    print 'Number of nodes found: {0}'.format(RACE.num_nodes)
 
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)

@@ -141,7 +141,7 @@ struct
     uint32_t volatile lastLoopTimeStamp = 0;
 
     // sync offset for pi time
-    int32_t volatile syncOffset = 0;
+    uint32_t volatile syncOffset = 0;
 
     // race scheduling
     bool volatile race_started = false;
@@ -225,9 +225,9 @@ void setup()
         }
       }
     }
-
+   
     Serial.begin(115200);  // Start serial for output/debugging
-
+   
     pinMode(slaveSelectPin, OUTPUT);  // RX5808 comms
     pinMode(spiDataPin, OUTPUT);
     pinMode(spiClockPin, OUTPUT);
@@ -238,6 +238,17 @@ void setup()
     };  // Wait for the Serial port to initialise
     Serial.print("Ready: ");
     Serial.println(i2cSlaveAddress);
+
+    pinMode(LED_BUILTIN, OUTPUT);
+    if (i2cSlaveAddress < 8) {
+      // no valid address was set, halt and blink rapidly
+      while (1) {
+        digitalWrite(LED_BUILTIN, HIGH);
+        delay(100);
+        digitalWrite(LED_BUILTIN, LOW);
+        delay(100);
+      }
+    }
 
     Wire.begin(i2cSlaveAddress);  // I2C slave address setup
     Wire.onReceive(i2cReceive);  // Trigger 'i2cReceive' function on incoming data
@@ -425,20 +436,20 @@ void loop()
     if (state.rxFreqSetFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received
         // initialize race when started
-        if (loopMillis < state.raceStartTimeStamp) {
-            state.race_started = false;
-        } else if (!state.race_started) {
-            state.race_started = true;
-            // make sure there's no lingering previous pass:
-            lastPass.timeStamp = state.raceStartTimeStamp;
-            // reset history
-            history.peakFirstTime = state.raceStartTimeStamp;
-            history.peakLastTime = state.raceStartTimeStamp;
-            history.rssiMin = 999;
-            history.minExpires = 0;
-            history.rssiMax = 0;
-            history.rssiPeak = 0;
-            history.maxExpires = 0;
+        if (!state.race_started) {
+            if (loopMillis >= state.raceStartTimeStamp) {
+                state.race_started = true;
+                // make sure there's no lingering previous pass:
+                lastPass.timeStamp = state.raceStartTimeStamp;
+                // reset history
+                history.peakFirstTime = state.raceStartTimeStamp;
+                history.peakLastTime = state.raceStartTimeStamp;
+                history.rssiMin = 999;
+                history.minExpires = 0;
+                history.rssiMax = 0;
+                history.rssiPeak = 0;
+                history.maxExpires = 0;
+            }
         }
 
         // Keep track of peak (smoothed) rssi
@@ -532,7 +543,15 @@ void loop()
             history.rssiMin = state.rssiSmoothed;
             history.minExpires = loopMillis + history.expireDuration;
         }
+    }
 
+    // Status LED
+    if (state.crossing ||  // on while crossing
+        ((loopMillis - (state.syncOffset % 1000)) / 100) % 10 == 0 // blink in sync
+      ) {
+      digitalWrite(LED_BUILTIN, HIGH);
+    } else {
+      digitalWrite(LED_BUILTIN, LOW);
     }
 }
 
@@ -672,10 +691,10 @@ void ioBufferWrite16(uint16_t data)
 
 void ioBufferWrite32(uint32_t data)
 {
-    ioBuffer[ioBufferSize++] = (uint16_t)(data >> 24);
-    ioBuffer[ioBufferSize++] = (uint16_t)(data >> 16);
-    ioBuffer[ioBufferSize++] = (uint16_t)(data >> 8);
-    ioBuffer[ioBufferSize++] = (uint16_t)(data & 0xFF);
+    ioBuffer[ioBufferSize++] = (uint32_t)(data >> 24);
+    ioBuffer[ioBufferSize++] = (uint32_t)(data >> 16);
+    ioBuffer[ioBufferSize++] = (uint32_t)(data >> 8);
+    ioBuffer[ioBufferSize++] = (uint32_t)(data & 0xFF);
 }
 
 void ioBufferWriteChecksum()
@@ -697,7 +716,6 @@ byte i2cHandleRx(byte command)
 {  // The first byte sent by the I2C master is the command
     bool success = false;
     uint16_t u16val;
-    uint32_t u32val;
 
     switch (command)
     {
@@ -762,17 +780,28 @@ byte i2cHandleRx(byte command)
             break;
 
         case MARK_START_TIME:  // mark base time for returned lap-ms-since-start values
-            if (readAndValidateIoBuffer(MARK_START_TIME, 4)) {
-                state.raceStartTimeStamp = ioBufferRead32() - state.syncOffset;
+            if (state.syncOffset == 0) {
+                state.raceStartTimeStamp = millis();
+                state.race_started = false;
                 success = true;
+            } else if (readAndValidateIoBuffer(MARK_START_TIME, 4)) {
+                state.raceStartTimeStamp = ioBufferRead32() + state.syncOffset;
+                success = true;
+                if (millis() < state.raceStartTimeStamp) {
+                  state.race_started = false;
+                }                
             }
             break;
 
         case WRITE_NODE_SYNC:
             if (readAndValidateIoBuffer(WRITE_NODE_SYNC, 4))
             {
-                state.syncOffset = ((int32_t) ioBufferRead32()) - 1000000000; // remove large offset that prevents negative number
+                state.syncOffset = ioBufferRead32();
                 success = true;
+
+                if (millis() < state.raceStartTimeStamp) {
+                  state.race_started = false;
+                }
             }
             break;
 
@@ -857,7 +886,7 @@ void i2cTransmit()
             break;
 
         case READ_NODE_SYNC:
-            ioBufferWrite32(state.syncOffset + 1000000000); // add large number to keep value positive during comms
+            ioBufferWrite32(state.syncOffset);
             break;
 
         case READ_CATCH_HISTORY:  // manual pass catching

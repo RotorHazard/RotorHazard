@@ -97,6 +97,21 @@ LogSlider.prototype = {
    }
 };
 
+if ( !window.performance || !window.performance.now ) {
+	Date.now || ( Date.now = function () {
+		return new this().getTime();
+	});
+
+	( window.performance ||
+		( window.performance = {} ) ).now = function () {
+			return Date.now() - offset;
+		};
+
+	var offset = ( window.performance.timing ||
+		( window.performance.timing = {} ) ).navigatorStart ||
+			( window.performance.timing.navigatorStart = Date.now() );
+}
+
 var keyCodeMap = {
 		48:"0", 49:"1", 50:"2", 51:"3", 52:"4", 53:"5", 54:"6", 55:"7", 56:"8", 57:"9", 59:";",
 		65:"a", 66:"b", 67:"c", 68:"d", 69:"e", 70:"f", 71:"g", 72:"h", 73:"i", 74:"j", 75:"k", 76:"l",
@@ -481,88 +496,91 @@ nodeModel.prototype = {
 /* Data model for timer */
 function timerModel() {
 	// interval control
-	this.timeout = false;
 	this.interval = 100; // in ms
-	this.precision = 1; // to correct floating point errors
+	this.min_interval = 10; // skip interval if too soon
+
+	this.timeout = false;
 	this.expected = false;
+	this.next_interval = 100; // in ms
 
 	this.callbacks = {
 		'start': false,
 		'stop': false,
-		'iteration': false,
+		'step': false,
 		'expire': false,
 		'zero': false,
 	};
 
-	this.zero_time = 0; // timestamp for timer's zero point
+	this.running = false;
+	this.zero_time = null; // timestamp for timer's zero point
 	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
-	this.time = false; // simplified relative time
+	this.time_s = false; // simplified relative time in seconds
 	this.count_up = false; // use fixed-length timer
 	this.duration = 0; // fixed-length duration, in seconds
-
-/*
-	this.running = false;
-	this.hidden = false; // display 'ready' message instead of showing time remaining
-	this.count_up = false;
-	this.duration = 0; // count down duration, in seconds
-	this.time = 0; // time, in seconds
-	this.started = 0; // timer's "start timestamp" (pseudo-value)
-*/
 
 	this.drift_history = [];
 	this.drift_history_samples = 10;
 	this.drift_correction = 0;
 
-	this.resync_time = 0; // next resync
-	this.resync_interval = 30; // seconds between resyncs
-	this.resync_window = 10; // window in which to choose a random time to resync
-	this.resync_offset = 12; // offset from resync interval to begin window
-
 	var self = this;
 
 	function step() { // timer control
-		var diff = self.zero_time - Date.now();
+		var diff = window.performance.now() - self.zero_time;
 		var continue_timer = true;
 
-		if (diff > self.interval / 2) {
-			// time is positive
+		if (diff > self.interval / -2) {
+			// time is positive or zero
 			if (!self.count_up) {
-				self.time = (self.duration * 1000) - (Math.round(diff * 10000) / 10);
+				var new_time_s = self.duration - (Math.round(diff / 100) / 10);
 
-				if (self.time <= 0) {
-					continue_timer = false;
-					self.running = false;
-					if (self.callbacks.expire instanceof Function) {
-						self.callbacks.expire(self);
-					}
-				} else {
-					if (self.callbacks.iteration instanceof Function) {
-						self.callbacks.iteration(self);
+				if (new_time_s != self.time_s) { // prevent double callbacks
+					self.time_s = new_time_s;
+
+					if (self.time_s <= 0) {
+						continue_timer = false;
+						self.running = false;
+						if (self.callbacks.expire instanceof Function) {
+							self.callbacks.expire(self);
+						}
+					} else {
+						if (self.callbacks.step instanceof Function) {
+							self.callbacks.step(self);
+						}
 					}
 				}
 			} else {
-				self.time = Math.round(diff * 10000) / 10;
+				var new_time_s = Math.round(diff / 100) / 10;
 
-				if (self.callbacks.iteration instanceof Function) {
-					self.callbacks.iteration(self);
+				if (new_time_s != self.time_s) { // prevent double callbacks
+					self.time_s = new_time_s;
+
+					if (self.callbacks.step instanceof Function) {
+						self.callbacks.step(self);
+					}
 				}
 			}
 		} else {
-			// negative or zero
-			if (self.callbacks.iteration instanceof Function) {
-				self.callbacks.iteration(self);
+			// negative
+			var new_time_s = Math.round(diff / 100) / 10;
+
+			if (new_time_s != self.time_s) { // prevent double callbacks
+				self.time_s = new_time_s;
+
+				if (self.callbacks.step instanceof Function) {
+					self.callbacks.step(self);
+				}
 			}
 		}
 
 		if (continue_timer) {
-			var now = Date.now()
+			var now = window.performance.now()
 			var drift = now - self.expected;
 			if (drift > self.interval) {
 				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
 				self.start();
 			} else {
 				self.get_next_step(now);
-				self.timeout = setTimeout(step, Math.max(0, self.interval - self.drift_correction));
+				self.timeout = setTimeout(step, Math.max(0, self.next_interval - self.drift_correction));
 
 				self.drift_history.push(drift + self.drift_correction);
 				self.drift_correction = median(self.drift_history);
@@ -574,82 +592,65 @@ function timerModel() {
 	}
 
 	this.get_next_step = function(now){
+		// find current differential
 		var diff = this.zero_time - now;
-		var to_next = this.interval - (diff % this.interval)
-		if (to_next < this.interval / 10) { // wait to sync if too short
-			this.expected = now + this.interval - to_next + this.interval;
-			this.interval = to_next + this.interval;
+
+		if (diff >= 0) {
+			// waiting for zero
+			var to_next = diff % this.interval;
+		} else {
+			// timer past zero
+			var to_next = this.interval + (diff % this.interval);
 		}
-		this.expected = now + this.interval - to_next;
-		this.interval = to_next;
+
+		this.expected = now + to_next;
+		this.next_interval = to_next;
+
+		if (to_next < this.min_interval) { // skip tic if too short (prevents extra tics from delay compensation)
+			this.expected += this.interval;
+			this.next_interval += this.interval;
+		}
 	}
 
-	this.start = function(){
-		// start
-		var now = Date.now();
+	this.start = function(remote_time_zero, local_remote_diiferential){
+		// reset simplified time and drift history
+		rotorhazard.timer.race.time_s = false;
+		this.drift_history = [];
+		this.drift_correction = 0;
+
+		// self-sync
+		this.sync(remote_time_zero, local_remote_diiferential);
+
+		// start timing loop
+		this.continue();
+
+		// do callback
+		if (self.callbacks.start instanceof Function) {
+			self.callbacks.start(this);
+		}
+	}
+
+	this.continue = function(race_start_ms) {
+		// begin timing loop from unknown position
+		var now = window.performance.now();
 		if (this.running) {
 			clearTimeout(this.timeout);
 		}
 
 		this.get_next_step(now);
 
-		this.timeout = setTimeout(step, this.interval);
+		this.timeout = setTimeout(step, this.next_interval);
 		this.running = true;
-		if (this.callbacks.start) {
-			try {
-				this.callbacks.start(this)
-			}
-			catch(error) {
-				console.log('start callback error: ' + error);
-			}
-		}
 	}
 
-	this.continueFrom = function(race_start_ms) {
-		// start from time offset from race start
-		var now = Date.now() // get first so other instructions don't alter it
-		clearTimeout(this.timeout);
-
-		if (this.running) {
-			var time_pi = (now - race_start_ms);
-			var diff = time_pi - this.started;
-			console.log('resync diff: ' + diff);
-		}
-
-		var race_start_time = Math.trunc(race_start_ms / 100) / 10; // in seconds
-		var recovery_interval = false;
-
-		if (this.count_up) {
-			this.time = race_start_time;
-			recovery_interval = this.interval - (race_start_ms % this.interval);
+	this.sync = function(remote_time_zero, local_remote_diiferential) {
+		// set local timer zero based on remote zero and calculated differential
+		if (local_remote_diiferential && remote_time_zero) {
+			// only valid with both components
+			this.zero_time = remote_time_zero - local_remote_diiferential;
 		} else {
-			if (race_start_time < 0) {
-				this.time = -race_start_time;
-				recovery_interval = -race_start_ms % this.interval;
-			} else {
-				var remaining = this.duration - race_start_time;
-				if (remaining > 1) {
-					this.time = remaining;
-				} else {
-					this.time = 0;
-					return false; // don't attempt to resync very late
-				}
-				recovery_interval = this.interval - (race_start_ms % this.interval);
-			}
-		}
-
-		this.expected = now + recovery_interval;
-		this.timeout = setTimeout(step, recovery_interval);
-		this.running = true;
-		this.started = now - race_start_ms;
-
-		if (this.callbacks.continue) {
-			try {
-				this.callbacks.continue(this)
-			}
-			catch(error) {
-				console.log('continue callback error: ' + error);
-			}
+			// otherwise don't consider valid
+			this.zero_time = null;
 		}
 	}
 
@@ -657,32 +658,24 @@ function timerModel() {
 		// stop timing
 		clearTimeout(this.timeout);
 		this.running = false;
-		if (this.callbacks.stop) {
-			try {
-				this.callbacks.stop(this)
-			}
-			catch(error) {
-				console.log('stop callback error: ' + error);
-			}
-		}
-	}
-
-	this.reset = function(){
-		this.stop();
-		this.drift_history = [];
-		this.drift_correction = 0;
-		if (this.count_up) {
-			this.time = 0;
-		} else {
-			this.time = this.duration;
+		if (self.callbacks.stop instanceof Function) {
+			self.callbacks.stop(this);
 		}
 	}
 
 	this.renderHTML = function() {
-		display_time = Math.floor(this.time);
+		if (this.zero_time == null || typeof this.time_s != 'number') {
+			return '--:--';
+		}
 
-		if (this.hidden_staging && display_time < 0) {
+		if (this.hidden_staging && this.time_s < 0) {
 			return __l('Ready');
+		}
+
+		if (this.time_s >= 0 && !this.count_up) {
+			var display_time = Math.abs(Math.ceil(this.time_s));
+		} else {
+			var display_time = Math.abs(Math.floor(this.time_s));
 		}
 
 		var hour = Math.floor(display_time / 3600);
@@ -692,11 +685,6 @@ function timerModel() {
 
 		second = (second < 10) ? '0' + second : second; // Pad zero if under 10
 		minute = (minute < 10) ? '0' + minute : minute;
-
-		if (display_time < 0) {
-			second = '--';
-			minute = '--';
-		}
 
 		if (hour) {
 			return hour + ':' + minute + ':' + second;
@@ -734,10 +722,10 @@ var rotorhazard = {
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array
 
+	// all times in ms (decimal micros if available)
 	pi_time_request: false,
 	pi_time_diff: false,
 	race_start_pi: false,
-	race_start_local: false,
 
 	timer: {
 		deferred: new timerModel(),
@@ -745,7 +733,6 @@ var rotorhazard = {
 		race: new timerModel(),
 		stopAll: function() {
 			this.deferred.stop();
-			this.staging.stop();
 			this.race.stop();
 		}
 	},
@@ -848,28 +835,24 @@ rotorhazard.timer.deferred.callbacks.start = function(timer){
 	if (rotorhazard.timer.staging.running || rotorhazard.timer.race.running) {  // defer timing to staging/race timers
 		rotorhazard.timer.deferred.stop();
 	}
-	timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.random() * timer.resync_window - timer.resync_offset;
 }
-rotorhazard.timer.deferred.callbacks.continue = function(timer){
-	timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.random() * timer.resync_window - timer.resync_offset;
-}
-rotorhazard.timer.deferred.callbacks.iteration = function(timer){
+rotorhazard.timer.deferred.callbacks.step = function(timer){
 	if (rotorhazard.voice_race_timer) {
-		if (timer.time > 3600 && !(timer.time % 3600)) { // 2+ hour callout
-			var hours = timer.time / 3600;
+		if (timer.time_s > 3600 && !(timer.time_s % 3600)) { // 2+ hour callout
+			var hours = timer.time_s / 3600;
 			speak('<div>' + __l('Next race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
-		} else if (timer.time == 3600) {
+		} else if (timer.time_s == 3600) {
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
-		} else if (timer.time == 1800) {
+		} else if (timer.time_s == 1800) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time > 60 && timer.time <= 300 && !(timer.time % 60)) { // 2–5 min callout
-			var minutes = timer.time / 60;
+		} else if (timer.time_s > 60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
+			var minutes = timer.time_s / 60;
 			speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time == 60) {
+		} else if (timer.time_s == 60) {
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
-		} else if (timer.time == 30) {
+		} else if (timer.time_s == 30) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
-		} else if (timer.time == 10) {
+		} else if (timer.time_s == 10) {
 			speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
 		}
 	}
@@ -880,121 +863,72 @@ rotorhazard.timer.deferred.callbacks.expire = function(timer){
 	$('.timing-clock').html(__('Wait'));
 }
 
-// staging timer callbacks
-rotorhazard.timer.staging.callbacks.start = function(timer){
-	if (rotorhazard.timer.race.running) { // defer timing to race timer
-		rotorhazard.timer.staging.stop();
-	} else {
-		// beep every second during staging (timer may be hidden)
-		play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-		$('.timing-clock').html(timer.renderHTML());
-	}
-	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
-}
-
-rotorhazard.timer.staging.callbacks.continue = function(timer){
-	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
-}
-rotorhazard.timer.staging.callbacks.iteration = function(timer){
-	if (timer.time * 10 % 10 == 0) {
-		if (timer.hidden) {
-			// beep every second during staging if timer is hidden
-			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-		} else if (timer.time == 30
-			|| timer.time == 20
-			|| timer.time == 10) {
-			speak('<div>' + __l('Starting in') + ' ' + timer.time + ' ' + __l('Seconds') + '</div>', true);
-		} else if (timer.time <= 5) {
-			// staging beep for last 5 seconds before start
-			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-		}
-
-		$('.timing-clock').html(timer.renderHTML());
-	}
-}
-rotorhazard.timer.staging.callbacks.expire = function(timer){
-	rotorhazard.timer.race.start();
-}
-
-// race timer callbacks
+// race/staging timer callbacks
 rotorhazard.timer.race.callbacks.start = function(timer){
-	// "go" tone
-	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 	$('.timing-clock').html(timer.renderHTML());
-	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
-	rotorhazard.timer.staging.stop();
-
-	// init server resync
-	if (timer.count_up) {
-		timer.resync_time = timer.time - (timer.time % timer.resync_interval) + Math.random() * timer.resync_window + timer.resync_offset;
-	} else {
-		timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.random() * timer.resync_window - timer.resync_offset;
-	}
+	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
 }
 rotorhazard.timer.race.callbacks.continue = function(timer){
 	$('.timing-clock').html(timer.renderHTML());
-	rotorhazard.timer.deferred.stop(); // cancel lower priority timers
-	rotorhazard.timer.staging.stop();
-
-	// init server resync
-	if (timer.count_up) {
-		timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.random() * timer.resync_window + timer.resync_offset;
-	} else {
-		timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.random() * timer.resync_window - timer.resync_offset;
-	}
+	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
 }
-rotorhazard.timer.race.callbacks.iteration = function(timer){
-	if (timer.time * 10 % 10 == 0) {
-		if (!timer.count_up) {
-			if (timer.time <= 5) { // Final seconds
+rotorhazard.timer.race.callbacks.step = function(timer){
+	if (timer.time_s < 0) {
+		if (timer.hidden_staging) {
+			// beep every second during staging if timer is hidden
+			if (timer.time_s * 10 % 10 == 0) {
 				play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-			} else if (timer.time == 10) { // announce 10s only when counting down
+			}
+		} else if (timer.time_s == 30
+			|| timer.time_s == 20
+			|| timer.time_s == 10) {
+			speak('<div>' + __l('Starting in') + ' ' + timer.time_s + ' ' + __l('Seconds') + '</div>', true);
+		} else if (timer.time_s <= 5) {
+			// staging beep for last 5 seconds before start
+			if (timer.time_s * 10 % 10 == 0) {
+				play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+			}
+		}
+	} else if (timer.time_s == 0 ||
+		(!timer.count_up && timer.time_s == timer.duration)
+		) {
+		// play start tone
+		play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+	} else {
+		if (!timer.count_up) {
+			if (timer.time_s <= 5) { // Final seconds
+				if (timer.time_s * 10 % 10 == 0) {
+					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+				}
+			} else if (timer.time_s == 10) { // announce 10s only when counting down
 				if (rotorhazard.voice_race_timer)
 					speak('<div>10 ' + __l('Seconds') + '</div>', true);
 			}
 		}
 
 		if (rotorhazard.voice_race_timer) {
-			if (timer.time > 3600 && !(timer.time % 3600)) { // 2+ hour callout (endurance)
-				var hours = timer.time / 3600;
+			if (timer.time_s > 3600 && !(timer.time_s % 3600)) { // 2+ hour callout (endurance)
+				var hours = timer.time_s / 3600;
 				speak('<div>' + hours + ' ' + __l('Hours') + '</div>', true);
-			} else if (timer.time == 3600) {
+			} else if (timer.time_s == 3600) {
 				speak('<div>1 ' + __l('Hour') + '</div>', true);
-			} else if (timer.time == 1800) {
+			} else if (timer.time_s == 1800) {
 				speak('<div>30 ' + __l('Minutes') + '</div>', true);
-			} else if (timer.time > 60 && timer.time <= 300 && !(timer.time % 60)) { // 2–5 min callout
-				var minutes = timer.time / 60;
+			} else if (timer.time_s > 60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
+				var minutes = timer.time_s / 60;
 				speak('<div>' + minutes + ' ' + __l('Minutes') + '</div>', true);
-			} else if (timer.time == 60) {
+			} else if (timer.time_s == 60) {
 				speak('<div>1 ' + __l('Minute') + '</div>', true);
-			} else if (timer.time == 30) {
+			} else if (timer.time_s == 30) {
 				speak('<div>30 ' + __l('Seconds') + '</div>', true);
 			}
 		}
-
-		$('.timing-clock').html(timer.renderHTML());
 	}
-
-	// Request server time resync
-	if (timer.count_up) {
-		if (timer.time >= timer.resync_time) {
-			console.log('server resync at: ' + timer.time);
-			timer.resync_time = timer.time + timer.resync_interval - (timer.time % timer.resync_interval) + Math.random() * timer.resync_window + timer.resync_offset;
-
-			request_time = new Date();
-			socket.emit('get_race_elapsed');
-		}
-	} else {
-		if (timer.time <= timer.resync_time) {
-			console.log('server resync at: ' + timer.time);
-			timer.resync_time = timer.time - (timer.time % timer.resync_interval) - Math.random() * timer.resync_window - timer.resync_offset;
-
-			request_time = new Date();
-			socket.emit('get_race_elapsed');
-		}
-	}
+	$('.timing-clock').html(timer.renderHTML());
 }
+
 rotorhazard.timer.race.callbacks.expire = function(timer){
+	// play expired tone
 	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 	$('.timing-clock').html(timer.renderHTML());
 }
