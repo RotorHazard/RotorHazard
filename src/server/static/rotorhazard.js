@@ -508,7 +508,6 @@ function timerModel() {
 		'stop': false,
 		'step': false,
 		'expire': false,
-		'zero': false,
 	};
 
 	this.running = false;
@@ -664,7 +663,7 @@ function timerModel() {
 	}
 
 	this.renderHTML = function() {
-		if (this.zero_time == null || typeof this.time_s != 'number') {
+		if (this.zero_time == null || typeof this.time_s != 'number' || !this.running) {
 			return '--:--';
 		}
 
@@ -859,16 +858,15 @@ rotorhazard.timer.deferred.callbacks.step = function(timer){
 
 	$('.timing-clock').html(timer.renderHTML());
 }
+rotorhazard.timer.deferred.callbacks.stop = function(timer){
+	$('.timing-clock').html(timer.renderHTML());
+}
 rotorhazard.timer.deferred.callbacks.expire = function(timer){
 	$('.timing-clock').html(__('Wait'));
 }
 
 // race/staging timer callbacks
 rotorhazard.timer.race.callbacks.start = function(timer){
-	$('.timing-clock').html(timer.renderHTML());
-	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
-}
-rotorhazard.timer.race.callbacks.continue = function(timer){
 	$('.timing-clock').html(timer.renderHTML());
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
 }
@@ -926,7 +924,6 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 	}
 	$('.timing-clock').html(timer.renderHTML());
 }
-
 rotorhazard.timer.race.callbacks.expire = function(timer){
 	// play expired tone
 	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);

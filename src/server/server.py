@@ -1232,18 +1232,28 @@ def on_schedule_race(data):
     global RACE_SCHEDULED
     global RACE_SCHEDULED_TIME
 
-    RACE_SCHEDULED_TIME = monotonic() + data['m'] * 60 + data['s'] + 0.25
-    # Add .25s to accunt for instruction processing
+    RACE_SCHEDULED_TIME = monotonic() + (data['m'] * 60) + data['s']
     RACE_SCHEDULED = True
-    scheduled_at = ms_to_race_scheduled()
-
-    dt = -scheduled_at
 
     SOCKET_IO.emit('race_scheduled', {
-        'scheduled_at': scheduled_at
+        'scheduled': RACE_SCHEDULED,
+        'scheduled_at': RACE_SCHEDULED_TIME
         })
 
-    emit_priority_message(__("Next race begins in: " + time_format_mmss(dt)), True)
+    emit_priority_message(__("Next race begins in {0:01d}:{1:02d}".format(data['m'], data['s'])), True)
+
+@SOCKET_IO.on('cancel_schedule_race')
+def on_schedule_race():
+    global RACE_SCHEDULED
+
+    RACE_SCHEDULED = False
+
+    SOCKET_IO.emit('race_scheduled', {
+        'scheduled': RACE_SCHEDULED,
+        'scheduled_at': RACE_SCHEDULED_TIME
+        })
+
+    emit_priority_message(__("Scheduled race cancelled"), False)
 
 @SOCKET_IO.on('get_pi_time')
 def on_get_pi_time():
@@ -1350,7 +1360,6 @@ def on_stop_race():
 
     RACE.timer_running = 0 # indicate race timer not running
     RACE_SCHEDULED = False # also stop any deferred start
-
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
@@ -1596,7 +1605,8 @@ def get_race_elapsed():
     # never broadcasts to all
 
     emit('race_scheduled', {
-        'scheduled_at': ms_to_race_scheduled()
+        'scheduled': RACE_SCHEDULED,
+        'scheduled_at': RACE_SCHEDULED_TIME
     })
 
 @SOCKET_IO.on('imdtabler_update_freqs')

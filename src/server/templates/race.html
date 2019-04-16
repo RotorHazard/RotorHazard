@@ -139,13 +139,21 @@
 			rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
 		}
 
+		socket.on('race_scheduled', function (msg) {
+			if (msg.scheduled) {
+				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
+				rotorhazard.timer.deferred.start(deferred_start, rotorhazard.pi_time_diff);
+			} else {
+				rotorhazard.timer.deferred.stop();
+			}
+		});
+
 		socket.on('race_status', function (msg) {
 			rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
 			rotorhazard.timer.race.duration = msg.race_time_sec;
 
 			switch (msg.race_status) {
 				case 1: // Race running
-					$('body').addClass('race-running');
 					$('#set_current_heat').prop('disabled', true);
 					$('button#start_race').prop('disabled', true);
 					$('button#stop_race').prop('disabled', false);
@@ -153,6 +161,7 @@
 					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', false);
 					$('button#schedule_race').prop('disabled', true);
+					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
 					$('.timing-clock').removeClass('staging');
@@ -168,8 +177,8 @@
 					$('button#discard_laps').prop('disabled', false)
 					$('button.simulate_lap').prop('disabled', true);
 					$('button#schedule_race').prop('disabled', true);
-					$('body').addClass('race-stopped');
 					$('body').removeClass('race-running');
+					$('body').addClass('race-stopped');
 					$('body').removeClass('race-new');
 					$('.timing-clock').removeClass('staging');
 					break;
@@ -181,6 +190,7 @@
 					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', false);
 					$('button#schedule_race').prop('disabled', true);
+					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
 					$('.timing-clock').addClass('staging');
@@ -196,10 +206,13 @@
 					$('button#discard_laps').prop('disabled', true);
 					$('button.simulate_lap').prop('disabled', true);
 					$('button#schedule_race').prop('disabled', false);
-					$('body').addClass('race-new');
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-stopped');
+					$('body').addClass('race-new');
 					$('.timing-clock').removeClass('staging');
+					if (resume_check) {
+						socket.emit('get_race_scheduled');
+					}
 					break;
 			}
 
@@ -714,12 +727,20 @@
 		/* Race Format */
 
 		$('#schedule_race').click(function (event) {
-			var data = {
-				m: parseInt($('#schedule_m').val() || 0),
-				s: parseInt($('#schedule_s').val() || 0)
-			};
-			request_time = new Date();
-			socket.emit('schedule_race', data);
+			var m = parseInt($('#schedule_m').val() || 0);
+			var s = parseInt($('#schedule_s').val() || 0);
+			if (m || s) {
+				var data = {
+					m: m,
+					s: s
+				};
+				request_time = new Date();
+				socket.emit('schedule_race', data);
+			}
+		})
+
+		$('#cancel_schedule_race').click(function (event) {
+			socket.emit('cancel_schedule_race');
 		})
 
 		socket.on('min_lap', function (msg) {
@@ -1043,7 +1064,7 @@
 					<label for="schedule_race_time">{{ __('Time Until Race Start') }}</label>
 				</div>
 				<div>
-					<label for="schedule_m" class="screen-reader-text">{{ __('Minutes') }}</label><input type="number" id="schedule_m" min="0" max="999" placeholder="mm">:<label for="schedule_s" class="screen-reader-text">{{ __('Seconds') }}</label><input type="number" id="schedule_s" min="0" max="59" placeholder="ss"> <button id="schedule_race">{{ __('Schedule Race') }}</button>
+					<label for="schedule_m" class="screen-reader-text">{{ __('Minutes') }}</label><input type="number" id="schedule_m" min="0" max="999" placeholder="mm">:<label for="schedule_s" class="screen-reader-text">{{ __('Seconds') }}</label><input type="number" id="schedule_s" min="0" max="59" placeholder="ss"> <button id="schedule_race">{{ __('Schedule Race') }}</button> <button id="cancel_schedule_race">{{ __('Cancel') }}</button>
 				</div>
 			</li>
 			<li>
