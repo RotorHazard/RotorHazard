@@ -57,7 +57,7 @@ def pack_16(data):
     '''Returns a 2 part array from the full variable.'''
     part_a = (data >> 8)
     part_b = (data & 0xFF)
-    return [part_a, part_b]
+    return [int(part_a), int(part_b)]
 
 def unpack_32(data):
     '''Returns the full variable from 4 bytes input.'''
@@ -73,7 +73,7 @@ def pack_32(data):
     part_b = (data >> 16) & 0xFF
     part_c = (data >> 8) & 0xFF
     part_d = (data & 0xFF)
-    return [part_a, part_b, part_c, part_d]
+    return [int(part_a), int(part_b), int(part_c), int(part_d)]
 
 
 def validate_checksum(data):
@@ -333,7 +333,7 @@ class RHInterface(BaseHardwareInterface):
         retry_count = 0
         data_with_checksum = data
         data_with_checksum.append(offset)
-        data_with_checksum.append(sum(data_with_checksum) & 0xFF)
+        data_with_checksum.append(int(sum(data_with_checksum) & 0xFF))
         while success is False and retry_count < I2C_RETRY_COUNT:
             try:
                 with self.semaphore: # Wait if i2c comms is already in progress
