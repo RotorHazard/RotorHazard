@@ -28,7 +28,7 @@
 
 #include <Wire.h>
 #include <EEPROM.h>
-
+#include "FastRunningMedian.h"
 
 // ******************************************************************** //
 
@@ -77,6 +77,7 @@ const int spiClockPin = 13;
 #define READ_CATCH_HISTORY 0x34
 #define READ_HISTORY_EXPIRE_DURATION 0x35
 #define READ_NODE_SYNC 0x36       // check node sync value
+#define READ_CLOCK_ERROR 0x37
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_FILTER_RATIO 0x70   // API_level>=10 uses 16-bit value
@@ -84,6 +85,8 @@ const int spiClockPin = 13;
 #define WRITE_EXIT_AT_LEVEL 0x72
 #define WRITE_HISTORY_EXPIRE_DURATION 0x73  // adjust history catch window size
 #define WRITE_NODE_SYNC 0x74   // set node sync value
+#define WRITE_CLOCK_ERROR 0x75   // set pi clock differential
+
 #define MARK_START_TIME 0x77  // mark base time for returned lap-ms-since-start values
 #define FORCE_END_CROSSING 0x78  // kill current crossing flag regardless of RSSI value
 
@@ -109,39 +112,30 @@ struct
 
 struct
 {
-    // True when the quad is going through the gate
-    bool volatile crossing = false;
-    // Current unsmoothed rssi
-    uint16_t volatile rssiRaw = 0;
-    // Smoothed rssi value, needs to be a float for smoothing to work
-    float volatile rssiSmoothed = 0;
-    // int representation of the smoothed rssi value
-    uint16_t volatile rssi = 0;
-    // peak raw rssi seen during current pass
-    uint16_t volatile passRssiPeakRaw = 0;
-    // peak smoothed rssi seen during current pass
-    uint16_t volatile passRssiPeak = 0;
-    // time of the first peak raw rssi for the current pass
-    uint32_t volatile passRssiPeakRawTime = 0;
-    // time of the last peak raw rssi for the current pass
-    uint32_t volatile passRssiPeakRawLastTime = 0;
-    // lowest smoothed rssi seen since end of last pass
-    uint16_t volatile passRssiNadir = 999;
-    // peak smoothed rssi seen since the node frequency was set
-    uint16_t volatile nodeRssiPeak = 0;
-    // lowest smoothed rssi seen since the node frequency was set
-    uint16_t volatile nodeRssiNadir = 999;
-    // Set true after initial WRITE_FREQUENCY command received
-    bool volatile rxFreqSetFlag = false;
-    // base time for returned lap-ms-since-start values
-    uint32_t volatile raceStartTimeStamp = 0;
+    bool volatile crossing = false; // True when the quad is going through the gate
+//    uint16_t volatile rssiRaw = 0; // Current unsmoothed rssi *** unused
+    uint16_t volatile rssiSmoothed = 0; // Smoothed rssi value
+    uint32_t volatile rssiTimestamp = 0; // timestamp of the smoothed value
+
+    uint16_t volatile passRssiPeakRaw = 0; // peak raw rssi seen during current pass
+    uint16_t volatile passRssiPeak = 0; // peak smoothed rssi seen during current pass
+    uint32_t volatile passRssiPeakRawTime = 0; // time of the first peak raw rssi for the current pass
+    uint32_t volatile passRssiPeakRawLastTime = 0; // time of the last peak raw rssi for the current pass
+    uint16_t volatile passRssiNadir = 999; // lowest smoothed rssi seen since end of last pass
+    uint16_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set
+    uint16_t volatile nodeRssiNadir = 999; // lowest smoothed rssi seen since the node frequency was set
+
+    bool volatile rxFreqSetFlag = false; // Set true after initial WRITE_FREQUENCY command received
+
+    uint32_t volatile raceStartTimeStamp = 0; // base time for returned lap-ms-since-start values
 
     // variables to track the loop time
     uint32_t volatile loopTime = 0;
-    uint32_t volatile lastLoopTimeStamp = 0;
+    uint32_t volatile lastloopMicros = 0;
 
     // sync offset for pi time
-    uint32_t volatile syncOffset = 0;
+    int32_t volatile syncOffset = 0;
+    float volatile clockError = 1; // clock speed differential from pi
 
     // race scheduling
     bool volatile race_started = false;
@@ -158,24 +152,16 @@ struct
 
 struct
 {
-    // catch window in milliseconds
-    uint32_t expireDuration = 10000; // default is 10 seconds
+    uint32_t expireDuration = 10000; // catch window in milliseconds (default 10s)
 
-    // minimum smoothed rssi
-    uint16_t volatile rssiMin;
-    // when to look for a new minimum
-    uint32_t volatile minExpires;
+    uint16_t volatile rssiMin; // minimum smoothed rssi
+    uint32_t volatile minExpires; // when to look for a new minimum
 
-    // maximum smoothed rssi
-    uint16_t volatile rssiMax;
-    // peak RSSI
-    uint16_t volatile rssiPeak;
-    // first peak timestamp
-    uint32_t volatile peakFirstTime;
-    // last peak timestamp
-    uint32_t volatile peakLastTime;
-    // when to look for a new maximum
-    uint32_t volatile maxExpires;
+    uint16_t volatile rssiMax; // maximum smoothed rssi
+    uint16_t volatile rssiPeak; // peak RSSI
+    uint32_t volatile peakFirstTime; // first peak timestamp
+    uint32_t volatile peakLastTime; // last peak timestamp
+    uint32_t volatile maxExpires; // when to look for a new maximum
 } history;
 
 uint8_t volatile ioCommand;  // I2C code to identify messages
@@ -186,6 +172,14 @@ int ioBufferIndex = 0;
 // Defines for fast ADC reads
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+
+
+#define SmoothingSamples 193
+FastRunningMedian<uint16_t, SmoothingSamples, 0> rssiMedian;
+
+#define SmoothingTimestampSize 97 // half median window, rounded up
+uint32_t volatile SmoothingTimestamps[SmoothingTimestampSize];
+uint8_t SmoothingTimestampsIndex = 0;
 
 // Initialize program
 void setup()
@@ -225,9 +219,9 @@ void setup()
         }
       }
     }
-   
+
     Serial.begin(115200);  // Start serial for output/debugging
-   
+
     pinMode(slaveSelectPin, OUTPUT);  // RX5808 comms
     pinMode(spiDataPin, OUTPUT);
     pinMode(spiClockPin, OUTPUT);
@@ -236,19 +230,8 @@ void setup()
     while (!Serial)
     {
     };  // Wait for the Serial port to initialise
-    Serial.print("Ready: ");
+    Serial.print(F("Ready: "));
     Serial.println(i2cSlaveAddress);
-
-    pinMode(LED_BUILTIN, OUTPUT);
-    if (i2cSlaveAddress < 8) {
-      // no valid address was set, halt and blink rapidly
-      while (1) {
-        digitalWrite(LED_BUILTIN, HIGH);
-        delay(100);
-        digitalWrite(LED_BUILTIN, LOW);
-        delay(100);
-      }
-    }
 
     Wire.begin(i2cSlaveAddress);  // I2C slave address setup
     Wire.onReceive(i2cReceive);  // Trigger 'i2cReceive' function on incoming data
@@ -263,7 +246,6 @@ void setup()
 
     // Initialize defaults
     settings.filterRatioFloat = settings.filterRatio / FILTER_RATIO_DIVIDER;
-    state.rssi = 0;
     lastPass.rssiPeakRaw = 0;
     lastPass.rssiPeak = 0;
     lastPass.lap = 0;
@@ -415,95 +397,113 @@ int rssiRead()
     return analogRead(0);
 }
 
+uint32_t loopMillis = 0;
+
 // Main loop
 void loop()
 {
+    
     //delay(250);
+    while (loopMillis == millis()) {
+      // wait;
+    }
     uint32_t loopMicros = micros();
-    uint32_t loopMillis = millis();
+    loopMillis = millis();
 
-    // Calculate the time it takes to run the main loop
-    uint32_t lastLoopTimeStamp = state.lastLoopTimeStamp;
-    state.lastLoopTimeStamp = loopMicros;
-    state.loopTime = state.lastLoopTimeStamp - lastLoopTimeStamp;
+    // read and process RSSI close to timestamp
+    // state.rssiRaw = rssiRead();
+    rssiMedian.addValue(rssiRead());
+    state.rssiSmoothed = rssiMedian.getMedian(); // retrieve the median
 
-    // read and process RSSI
-    state.rssiRaw = rssiRead();
+    SmoothingTimestamps[SmoothingTimestampsIndex] = loopMillis;
+    SmoothingTimestampsIndex++;
+    if (SmoothingTimestampsIndex >= SmoothingTimestampSize) {
+        SmoothingTimestampsIndex = 0;
+    }
+    state.rssiTimestamp = SmoothingTimestamps[SmoothingTimestampsIndex];
+
+    /*
+    // old basic weighting filter
     state.rssiSmoothed = (settings.filterRatioFloat * (float) state.rssiRaw)
             + ((1.0f - settings.filterRatioFloat) * state.rssiSmoothed);
     state.rssi = (int) state.rssiSmoothed;
+    */
+
+    // Calculate the time it takes to run the main loop
+    state.loopTime = loopMicros - state.lastloopMicros;
+    state.lastloopMicros = loopMicros;
 
     if (state.rxFreqSetFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received
+
         // initialize race when started
-        if (!state.race_started) {
-            if (loopMillis >= state.raceStartTimeStamp) {
-                state.race_started = true;
-                // make sure there's no lingering previous pass:
-                lastPass.timeStamp = state.raceStartTimeStamp;
-                // reset history
-                history.peakFirstTime = state.raceStartTimeStamp;
-                history.peakLastTime = state.raceStartTimeStamp;
-                history.rssiMin = 999;
-                history.minExpires = 0;
-                history.rssiMax = 0;
-                history.rssiPeak = 0;
-                history.maxExpires = 0;
-            }
+        if (loopMillis < state.raceStartTimeStamp) {
+            state.race_started = false;
+        } else if (!state.race_started) {
+            state.race_started = true;
+            // make sure there's no lingering previous pass:
+            lastPass.timeStamp = state.raceStartTimeStamp;
+            // reset history
+            history.peakFirstTime = state.raceStartTimeStamp;
+            history.peakLastTime = state.raceStartTimeStamp;
+            history.rssiMin = 999;
+            history.minExpires = 0;
+            history.rssiMax = 0;
+            history.rssiPeak = 0;
+            history.maxExpires = 0;
         }
 
         // Keep track of peak (smoothed) rssi
-        if (state.rssi > state.nodeRssiPeak)
+        if (state.rssiSmoothed > state.nodeRssiPeak)
         {
-            state.nodeRssiPeak = state.rssi;
-            Serial.print("New nodeRssiPeak = ");
+            state.nodeRssiPeak = state.rssiSmoothed;
+            Serial.print(F("New nodeRssiPeak = "));
             Serial.println(state.nodeRssiPeak);
         }
 
-        if (state.rssi < state.nodeRssiNadir)
+        if (state.rssiSmoothed < state.nodeRssiNadir)
         {
-            state.nodeRssiNadir = state.rssi;
-            Serial.print("New nodeRssiNadir = ");
+            state.nodeRssiNadir = state.rssiSmoothed;
+            Serial.print(F("New nodeRssiNadir = "));
             Serial.println(state.nodeRssiNadir);
         }
 
-        if ((!state.crossing) && state.rssi >= settings.enterAtLevel)
+        if ((!state.crossing) && state.rssiSmoothed >= settings.enterAtLevel)
         {
             state.crossing = true;  // quad is going through the gate (lap pass starting)
-            Serial.println("Crossing = True");
+            Serial.println(F("Crossing = True"));
         }
 
         // Find the peak rssi and the time it occured during a crossing event
-        // Use the raw value to account for the delay in smoothing.
-        if (state.rssiRaw >= state.passRssiPeakRaw)
+        if (state.rssiSmoothed >= state.passRssiPeakRaw)
         {
             // if at max peak for more than one iteration then track first
             //  and last timestamp so middle-timestamp value can be returned
-            state.passRssiPeakRawLastTime = loopMillis;
+            state.passRssiPeakRawLastTime = state.rssiTimestamp;
 
-            if (state.rssiRaw > state.passRssiPeakRaw)
+            if (state.rssiSmoothed > state.passRssiPeakRaw)
             {
                 // this is first time this peak-raw-RSSI value was seen, so save value and timestamp
-                state.passRssiPeakRaw = state.rssiRaw;
+                state.passRssiPeakRaw = state.rssiSmoothed;
                 state.passRssiPeakRawTime = state.passRssiPeakRawLastTime;
             }
         }
 
         // track lowest smoothed rssi seen since end of last pass
-        if (state.rssi < state.passRssiNadir)
-            state.passRssiNadir = state.rssi;
+        if (state.rssiSmoothed < state.passRssiNadir)
+            state.passRssiNadir = state.rssiSmoothed;
 
         if (state.crossing)
         {  //lap pass is in progress
 
             // track RSSI peak for current lap pass
-            if (state.rssi > state.passRssiPeak)
-                state.passRssiPeak = state.rssi;
+            if (state.rssiSmoothed > state.passRssiPeak)
+                state.passRssiPeak = state.rssiSmoothed;
 
             // see if quad has left the gate
-            if (state.rssi < settings.exitAtLevel)
+            if (state.rssiSmoothed < settings.exitAtLevel)
             {
-                Serial.println("Crossing = False");
+                Serial.println(F("Crossing = False"));
                 end_crossing();
             }
         }
@@ -516,10 +516,10 @@ void loop()
             history.rssiMax = state.rssiSmoothed;
             history.maxExpires = loopMillis + history.expireDuration;
 
-            // read raw RSSI to get accurate pass time
-            history.rssiPeak = state.rssiRaw;
-            history.peakFirstTime = loopMillis;
-            history.peakLastTime = loopMillis;
+            // read RSSI to get accurate pass time
+            history.rssiPeak = state.rssiSmoothed;
+            history.peakFirstTime = state.rssiTimestamp;
+            history.peakLastTime = state.rssiTimestamp;
         }
 
         // if a new peak is found, reset exipration (track peak for at least this long)
@@ -528,12 +528,12 @@ void loop()
             history.maxExpires = loopMillis + history.expireDuration;
         }
 
-        if (state.rssiRaw == history.rssiPeak) {
-            history.peakLastTime = loopMillis;
-        } else if (state.rssiRaw > history.rssiPeak) {
-            history.rssiPeak = state.rssiRaw;
-            history.peakFirstTime = loopMillis;
-            history.peakLastTime = loopMillis;
+        if (state.rssiSmoothed == history.rssiPeak) {
+            history.peakLastTime = state.rssiTimestamp;
+        } else if (state.rssiSmoothed > history.rssiPeak) {
+            history.rssiPeak = state.rssiSmoothed;
+            history.peakFirstTime = state.rssiTimestamp;
+            history.peakLastTime = state.rssiTimestamp;
         }
 
         // if no lower values read within catch history, reset all values
@@ -547,12 +547,13 @@ void loop()
 
     // Status LED
     if (state.crossing ||  // on while crossing
-        ((loopMillis - (state.syncOffset % 1000)) / 100) % 10 == 0 // blink in sync
+        (int32_t(int32_t(int32_t(loopMillis) - state.raceStartTimeStamp) * state.clockError) / 100) % 10 == 0 // blink in sync
       ) {
       digitalWrite(LED_BUILTIN, HIGH);
     } else {
       digitalWrite(LED_BUILTIN, LOW);
     }
+
 }
 
 // Function called when crossing ends (by RSSI or I2C command)
@@ -580,13 +581,13 @@ void i2cReceive(int byteCount)
    // If byteCount is zero, the master only checked for presence of the slave device, no response necessary
     if (byteCount == 0)
     {
-        Serial.println("Error: no bytes for a receive?");
+        Serial.println(F("Error: no bytes for a receive?"));
         return;
     }
 
     if (byteCount != Wire.available())
     {
-        Serial.println("Error: rx byte count and wire available don't agree");
+        Serial.println(F("Error: rx byte count and wire available don't agree"));
     }
 
     ioCommand = Wire.read();  // The first byte sent is a command byte
@@ -599,7 +600,7 @@ void i2cReceive(int byteCount)
     {  // Otherwise this is a request FROM this device
         if (Wire.available())
         {  // There shouldn't be any data present on the line for a read request
-            Serial.print("Error: Wire.available() on a read request.");
+            Serial.print(F("Error: Wire.available() on a read request."));
             Serial.println(ioCommand, HEX);
             while (Wire.available())
             {
@@ -617,13 +618,13 @@ bool readAndValidateIoBuffer(byte command, int expectedSize)
 
     if (expectedSize == 0)
     {
-        Serial.println("No Expected Size");
+        Serial.println(F("No Expected Size"));
         return true;
     }
 
     if (!Wire.available())
     {
-        Serial.println("Nothing Avialable");
+        Serial.println(F("Nothing Avialable"));
         return false;
     }
 
@@ -639,7 +640,7 @@ bool readAndValidateIoBuffer(byte command, int expectedSize)
     if (checksum != ioBuffer[ioBufferSize - 1]
             || ioBufferSize - 2 != expectedSize)
     {
-        Serial.println("invalid checksum");
+        Serial.println(F("invalid checksum"));
         Serial.println(checksum);
         Serial.println(ioBuffer[ioBufferSize - 1]);
         Serial.println(ioBufferSize - 2);
@@ -649,7 +650,7 @@ bool readAndValidateIoBuffer(byte command, int expectedSize)
 
     if (command != ioBuffer[ioBufferSize - 2])
     {
-        Serial.println("command does not match");
+        Serial.println(F("command does not match"));
         return false;
     }
     return true;
@@ -727,14 +728,14 @@ byte i2cHandleRx(byte command)
                 setRxModule(settings.vtxFreq);  // Shouldn't do this in Interrupt Service Routine
                 success = true;
                 state.rxFreqSetFlag = true;
-                Serial.print("Set RX freq = ");
+                Serial.print(F("Set RX freq = "));
                 Serial.println(settings.vtxFreq);
                 if (settings.vtxFreq != u16val)
                 {  // if RX frequency changed
                     writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
                     state.nodeRssiPeak = 0;  // restart rssi peak tracking for node
                     state.nodeRssiNadir = 999;
-                    Serial.println("Set nodeRssiPeak = 0, nodeRssiNadir = 999");
+                    Serial.println(F("Set nodeRssiPeak = 0, nodeRssiNadir = 999"));
                 }
             }
             break;
@@ -787,9 +788,6 @@ byte i2cHandleRx(byte command)
             } else if (readAndValidateIoBuffer(MARK_START_TIME, 4)) {
                 state.raceStartTimeStamp = ioBufferRead32() + state.syncOffset;
                 success = true;
-                if (millis() < state.raceStartTimeStamp) {
-                  state.race_started = false;
-                }                
             }
             break;
 
@@ -798,10 +796,21 @@ byte i2cHandleRx(byte command)
             {
                 state.syncOffset = ioBufferRead32();
                 success = true;
+            }
+            break;
 
-                if (millis() < state.raceStartTimeStamp) {
-                  state.race_started = false;
-                }
+        case WRITE_CLOCK_ERROR:
+            if (readAndValidateIoBuffer(WRITE_CLOCK_ERROR, 4))
+            {
+                union u_tag {
+                   uint32_t b;
+                   float fval;
+                } u;
+
+                u.b = ioBufferRead32();
+                state.clockError = u.fval;
+                
+                success = true;
             }
             break;
 
@@ -818,7 +827,7 @@ byte i2cHandleRx(byte command)
 
     if (!success)
     {  // Set control to rxFault if 0xFF result
-        Serial.print("RX Fault command: ");
+        Serial.print(F("RX Fault command: "));
         Serial.println(command, HEX);
     }
     return success;
@@ -843,8 +852,8 @@ void i2cTransmit()
 
         case READ_LAP_STATS:
             ioBufferWrite8(lastPass.lap);
-            ioBufferWrite32(lastPass.timeStamp - state.raceStartTimeStamp);  // lap ms-since-start
-            ioBufferWrite16(state.rssi);
+            ioBufferWrite32(uint32_t((lastPass.timeStamp - state.raceStartTimeStamp) * state.clockError));  // lap ms-since-start
+            ioBufferWrite16(state.rssiSmoothed);
             ioBufferWrite16(state.nodeRssiPeak);
             ioBufferWrite16(lastPass.rssiPeak);  // RSSI peak for last lap pass
             ioBufferWrite32(state.loopTime);
@@ -889,6 +898,17 @@ void i2cTransmit()
             ioBufferWrite32(state.syncOffset);
             break;
 
+        case READ_CLOCK_ERROR:
+            union u_tag {
+               uint32_t b;
+               float fval;
+            } u;
+
+            u.fval = state.clockError;
+
+            ioBufferWrite32(u.b);
+            break;
+
         case READ_CATCH_HISTORY:  // manual pass catching
             // calculate timestamp from history only on demand
             uint32_t lapTimeStamp;
@@ -900,7 +920,7 @@ void i2cTransmit()
             break;
 
         default:  // If an invalid command is sent, write nothing back, master must react
-            Serial.print("TX Fault command: ");
+            Serial.print(F("TX Fault command: "));
             Serial.println(ioCommand, HEX);
     }
 
@@ -927,3 +947,4 @@ uint16_t readWordFromEeprom(int addr)
     const uint8_t hb = EEPROM.read(addr + 1);
     return (((uint16_t) hb) << 8) + lb;
 }
+
