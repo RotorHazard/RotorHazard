@@ -2,6 +2,11 @@ from datetime import datetime
 from datetime import timedelta
 import time
 
+def diff_milliseconds(t2, t1):
+   dt = t2 - t1
+   ms = round((dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0)
+   return ms
+
 class BaseHardwareInterface(object):
     def __init__(self):
         self.calibration_threshold = 20
@@ -12,8 +17,7 @@ class BaseHardwareInterface(object):
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
-       dt = datetime.now() - self.start_time
-       ms = round((dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0)
+       ms = diff_milliseconds(datetime.now(), self.start_time)
        return ms
 
     #

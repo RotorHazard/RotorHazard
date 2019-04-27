@@ -13,7 +13,7 @@ from datetime import datetime
 from functools import wraps
 from collections import OrderedDict
 
-from flask import Flask, render_template, request, Response
+from flask import Flask, render_template, request, Response, session
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
 
@@ -32,6 +32,7 @@ import signal
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
+from BaseHardwareInterface import diff_milliseconds
 from RHInterface import get_hardware_interface
 from RHRace import get_race_state
 
@@ -109,7 +110,13 @@ except ValueError:
 INTERFACE = get_hardware_interface()
 RACE = get_race_state() # For storing race management variables
 
-PROGRAM_START = monotonic()
+EPOCH_START = datetime(1970, 1, 1)
+pre_program_start = monotonic()
+PROGRAM_START_TIMESTAMP = diff_milliseconds(datetime.now(), EPOCH_START)
+post_program_start = monotonic()
+# take the average to be as accurate as we can
+PROGRAM_START = (pre_program_start + post_program_start)/2
+PROGRAM_START_OFFSET = PROGRAM_START - PROGRAM_START_TIMESTAMP
 RACE_START = monotonic() # Updated on race start commands
 RACE_START_TOKEN = False # Check start thread matches correct stage sequence
 RACE_DURATION_MS = 0 # calculated when race is stopped
@@ -543,6 +550,37 @@ def disconnect_handler():
     '''Emit disconnect event.'''
     server_log('Client disconnected')
 
+# LiveTime compatible events
+
+@SOCKET_IO.on('get_version')
+def on_get_version():
+    session['LiveTime'] = True
+    ver_parts = RELEASE_VERSION.split('.')
+    return {'major': ver_parts[0], 'minor': ver_parts[1]}
+
+@SOCKET_IO.on('get_timestamp')
+def on_get_timestamp():
+    return {'timestamp': monotonic() - PROGRAM_START_OFFSET}
+
+@SOCKET_IO.on('get_settings')
+def on_get_settings():
+    return {'nodes': [{
+        'frequency': node.frequency,
+        'trigger_rssi': node.enter_at_level
+        } for node in INTERFACE.nodes
+    ]}
+
+@SOCKET_IO.on('reset_auto_calibration')
+def on_reset_auto_calibration(data):
+    on_stop_race()
+    on_discard_laps()
+    on_set_race_format({'race_format': 8}) # slave race format
+    setOption("MinLapSec", "0")
+    setOption("MinLapBehavior", "0")
+    on_stage_race()
+
+# RotorHazard events
+
 @SOCKET_IO.on('load_data')
 def on_load_data(data):
     '''Allow pages to load needed data'''
@@ -598,6 +636,8 @@ def on_broadcast_message(data):
 @SOCKET_IO.on('set_frequency')
 def on_set_frequency(data):
     '''Set node frequency.'''
+    if isinstance(data, basestring): # LiveTime compatibility
+        data = json.loads(data)
     node_index = data['node']
     frequency = data['frequency']
 
@@ -612,7 +652,10 @@ def on_set_frequency(data):
     '''Set node frequency.'''
     server_log('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
     INTERFACE.set_frequency(node_index, frequency)
-    emit_frequency_data()
+    if session.get('LiveTime', False):
+        emit('frequency_set', data)
+    else:
+        emit_frequency_data()
 
 @SOCKET_IO.on('set_frequency_preset')
 def on_set_frequency_preset(data):
@@ -2994,6 +3037,11 @@ def pass_record_callback(node, ms_since_lap):
                             lap_ok_flag = False
 
                 if lap_ok_flag:
+                    SOCKET_IO.emit('pass_record', {
+                        'node': node.index,
+                        'frequency': node.frequency,
+                        'timestamp': lap_time_stamp + (RACE_START - PROGRAM_START_OFFSET)
+                    })
                     # Add the new lap to the database
                     DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
                         lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
@@ -3287,6 +3335,14 @@ def db_reset_race_formats():
                              number_laps_win=7,
                              win_condition=WIN_CONDITION_FIRST_TO_LAP_X,
                              team_racing_mode=True))
+    DB.session.add(RaceFormat(name=__("Slave"),
+                             race_mode=1,
+                             race_time_sec=0,
+                             start_delay_min=0,
+                             start_delay_max=0,
+                             number_laps_win=0,
+                             win_condition=WIN_CONDITION_NONE,
+                             team_racing_mode=False))
     DB.session.commit()
     setOption("currentFormat", 1)
     server_log("Database reset race formats")
