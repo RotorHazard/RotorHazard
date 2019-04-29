@@ -294,6 +294,102 @@ for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
     CLUSTER.addSlave(slave)
 
 #
+# Slaves
+#
+
+class Slave:
+    def __init__(self, id, info):
+        self.id = id
+        self.info = info
+        self.sio = socketio.Client()
+        self.sio.on('pass_record', self.on_pass_record)
+        addr = info['address']
+        if not '://' in addr:
+            addr = 'http://'+addr
+        self.sio.connect(addr)
+        self.emit('join_cluster')
+
+    def emit(self, event, data = None):
+        self.sio.emit(event, data)
+
+    def on_pass_record(self, data):
+        node_index = data['node']
+        pilot_id = Heat.query.filter_by( \
+            heat_id=RACE.current_heat, node_index=node_index).one_or_none().pilot_id
+
+        if pilot_id != PILOT_ID_NONE:
+
+	        split_ts = data['timestamp'] + (PROGRAM_START_MILLIS_OFFSET - 1000.0*RACE_START)
+	        last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)).filter_by(node_index=node_index).scalar()
+	        if last_lap_id is None: # first lap
+	            current_lap_id = 0
+	            last_lap_ts = 0
+	        else:
+	            current_lap_id = last_lap_id + 1
+	            last_lap_ts = CurrentLap.query.filter_by(node_index=node_index, lap_id=last_lap_id).one().lap_time_stamp
+
+	        split_id = self.id
+	        last_split_id = DB.session.query(DB.func.max(LapSplit.split_id)).filter_by(node_index=node_index, lap_id=current_lap_id).scalar()
+	        if last_split_id is None: # first split for this lap
+	            if split_id > 0:
+	                server_log('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
+	            last_split_ts = last_lap_ts
+	        else:
+	            if split_id > last_split_id:
+	                if split_id > last_split_id + 1:
+	                    server_log('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
+	                last_split_ts = LapSplit.query.filter_by(node_index=node_index, lap_id=current_lap_id, split_id=last_split_id).one().split_time_stamp
+	            else:
+	                server_log('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
+	                last_split_ts = None
+
+	        if last_split_ts is not None:
+	            split_time = split_ts - last_split_ts
+	            server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}' \
+	                .format(node_index+1, current_lap_id+1, time_format(split_time)))
+	
+	            DB.session.add(LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=current_lap_id, split_id=split_id, \
+	                split_time_stamp=split_ts, split_time=split_time, split_time_formatted=time_format(split_time)))
+	            DB.session.commit()
+	            emit_current_laps() # update all laps on the race page
+        else:
+            server_log('Split pass record dismissed: Node: {0}, Frequency not defined' \
+                .format(node_index+1))
+
+class Cluster:
+    def __init__(self):
+        self.slaves = []
+
+    def add_slave(self, id, info):
+        self.slaves.append(Slave(id, info))
+
+    def emit(self, event, data = None):
+        for slave in self.slaves:
+            gevent.spawn(slave.emit, event, data)
+
+    def emitToMirrors(self, event, data = None):
+        for slave in self.slaves:
+            if slave.info['mode'] == 'mirror':
+                gevent.spawn(slave.emit, event, data)
+
+CLUSTER = Cluster()
+for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
+    startConnectTime = monotonic()
+    while monotonic() < startConnectTime + Config['GENERAL']['SLAVE_TIMEOUT']:
+        if isinstance(slave_info, basestring):
+            slave_addr = slave_info
+            slave_info = {'address': slave_addr, 'mode': 'timer'}
+        else:
+            slave_addr = slave_info['address']
+        print "Slave {0}: connecting to {1}...".format(index+1, slave_addr)
+        try:
+            CLUSTER.add_slave(index, slave_info)
+            print "Slave {0}: connected to {1}".format(index+1, slave_addr)
+            break
+        except socketio.exceptions.ConnectionError:
+            print "Slave {0}: connection to {1} failed!".format(index+1, slave_addr)
+
+#
 # Translation functions
 #
 
@@ -2347,35 +2443,35 @@ def emit_current_laps(**params):
     if 'use_cache' in params and LAST_RACE_CACHE_VALID:
         emit_payload = LAST_RACE_LAPS_CACHE
     else:
-        current_laps = []
-        # for node in DB.session.query(CurrentLap.node_index).distinct():
-        for node in range(RACE.num_nodes):
-            node_laps = []
-            last_lap_id = -1
-            for lap in CurrentLap.query.filter_by(node_index=node).order_by(CurrentLap.lap_id).all():
-                splits = get_splits(node, lap.lap_id, True)
-                node_laps.append({
-                    'lap_id': lap.lap_id,
-                    'lap_raw': lap.lap_time,
-                    'lap_time': lap.lap_time_formatted,
-                    'lap_time_stamp': lap.lap_time_stamp,
-                    'splits': splits
-                })
-                last_lap_id = lap.lap_id
-            splits = get_splits(node, last_lap_id+1, False)
-            if splits:
-                node_laps.append({
-                    'lap_id': last_lap_id+1,
-                    'lap_time': '',
-                    'lap_time_stamp': 0,
-                    'splits': splits
-                })
-            current_laps.append({
-                'laps': node_laps
-            })
-        current_laps = {'node_index': current_laps}
-        emit_payload = current_laps
-        LAST_RACE_LAPS_CACHE = current_laps
+	    current_laps = []
+	    # for node in DB.session.query(CurrentLap.node_index).distinct():
+	    for node in range(RACE.num_nodes):
+	        node_laps = []
+	        last_lap_id = -1
+	        for lap in CurrentLap.query.filter_by(node_index=node).order_by(CurrentLap.lap_id).all():
+	            splits = get_splits(node, lap.lap_id, True)
+	            node_laps.append({
+	                'lap_id': lap.lap_id,
+	                'lap_raw': lap.lap_time,
+	                'lap_time': lap.lap_time_formatted,
+	                'lap_time_stamp': lap.lap_time_stamp,
+	                'splits': splits
+	            })
+	            last_lap_id = lap.lap_id
+	        splits = get_splits(node, last_lap_id+1, False)
+	        if splits:
+	            node_laps.append({
+	                'lap_id': last_lap_id+1,
+	                'lap_time': '',
+	                'lap_time_stamp': 0,
+	                'splits': splits
+	            })
+	        current_laps.append({
+	            'laps': node_laps
+	        })
+	    current_laps = {'node_index': current_laps}
+	    emit_payload = current_laps
+	    LAST_RACE_LAPS_CACHE = current_laps
 
     if ('nobroadcast' in params):
         emit('current_laps', emit_payload)
@@ -3622,7 +3718,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     else: # This is a normal completed lap
                         # Find the time stamp of the last lap completed
                         last_lap_time_stamp = CurrentLap.query.filter_by( \
-                            node_index=node.index, lap_id=last_lap_id).one().lap_time_stamp
+                        node_index=node.index, lap_id=last_lap_id).one().lap_time_stamp
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
                         lap_id = last_lap_id + 1
