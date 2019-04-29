@@ -355,26 +355,34 @@
 		});
 
 		socket.on('current_laps', function (msg) {
-			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json array
+			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json object
 				$('#current_laps_' + i + ' tbody > tr').remove();
-				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
+				$.each(node_index.laps, function (j, lap) { // j is loop num, lap_id is json object
+					var split_times = $.map(lap.splits, function(split, k) {
+						return split.split_time;
+					});
 					// No lap deletion for first lap
 					var $tr = '';
-					if (node_index.lap_id[j] == 0) {
+					var lapTime = lap.lap_time;
+					if (split_times.length > 0) {
+						lapTime += ' (' + split_times.join() + ')';
+					}
+					if (lap.lap_id == 0) {
 						$tr = $('<tr class="lap_0">').append(
-							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
-							$('<td colspan="2">').text(node_index.lap_time[j])
+							// $('<td>').text(lap.lap_id), // trim for better small UI (can't adjust colspan in CSS)
+							$('<td colspan="2">').text(lapTime)
 						)
 					}
 					else {
+						var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
 						$tr = $('<tr>').append(
-							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
-							$('<td colspan="2">').text(node_index.lap_time[j] + ' ').append(
-								$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '">&#215;</button>')
-							).prepend($('<span class="from_start">').text(formatTimeMillis(node_index.lap_time_stamp[j])))
+							// $('<td>').text(lap.lap_id), // trim for better small UI (can't adjust colspan in CSS)
+							$('<td colspan="2">').text(lapTime + ' ').append(
+								$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + lap.lap_id + '">&#215;</button>')
+							).prepend($('<span class="from_start">').text(lapTimeStamp))
 						)
 					}
-					if (j && node_index.lap_raw[j] < (rotorhazard.min_lap * 1000)) {
+					if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
 						$tr.addClass('min-lap-warning');
 					}
 					$tr.appendTo('#current_laps_' + i);

@@ -186,23 +186,31 @@
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				rotorhazard.nodes[i].frequency = msg.frequency[i];
 				freq.updateBlocks();
-			}
+			} 
 		});
 
 		socket.on('current_laps', function (msg) {
-			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json array
+			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json object
 				$('#current_laps_' + i + ' tbody > tr').remove();
-				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
-					if (node_index.lap_id[j] == 0) {
+				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
+					var split_times = $.map(lap.splits, function(split, k) {
+						return split.split_time;
+					});
+					var lapTime = lap.lap_time;
+					if (split_times.length > 0) {
+						lapTime += ' (' + split_times.join() + ')';
+					}
+					if (lap.lap_id == 0) {
 						var $tr = $('<tr class="lap_0">').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j])
+							$('<td>').text(lap.lap_id),
+							$('<td>').text(lapTime)
 						).appendTo('#current_laps_' + i);
 					}
 					else {
+						var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
 						var $tr = $('<tr>').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j]).prepend($('<span class="from_start">').text(formatTimeMillis(node_index.lap_time_stamp[j])))
+							$('<td>').text(lap.lap_id),
+							$('<td>').text(lapTime).prepend($('<span class="from_start">').text(lapTimeStamp))
 						).appendTo('#current_laps_' + i);
 					}
 				});
