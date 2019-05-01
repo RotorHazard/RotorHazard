@@ -18,17 +18,11 @@ READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
 READ_TIME_MILLIS = 0x33     # read current 'millis()' time value
-READ_CATCH_HISTORY = 0x34   # get lap catch history data
-READ_HISTORY_EXPIRE_DURATION = 0x35
-READ_NODE_SYNC = 0x36       # check node sync value
 
 WRITE_FREQUENCY = 0x51      # Sets frequency (2 byte)
 WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
-WRITE_HISTORY_EXPIRE_DURATION = 0x73
-WRITE_NODE_SYNC = 0x74      # set node sync value
-MARK_START_TIME = 0x77      # mark base time for returned lap-ms-since-start values
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 
 UPDATE_SLEEP = 0.1 # Main update loop delay
@@ -134,20 +128,6 @@ class RHInterface(BaseHardwareInterface):
             else:
                 print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
 
-            sync = self.sync_node_timing(node)
-            if sync != None:
-                print "Node {0} acquired sync within {1:1.2f}ms".format(node.index+1, sync['response_s'] * 1000)
-            else:
-                print "WARNING: Node sync unavailable"
-
-            if node.index == 0:
-                if node.api_valid_flag:
-                    self.filter_ratio = self.get_value_16(node, READ_FILTER_RATIO)
-                else:
-                    self.filter_ratio = 10
-            else:
-                self.set_filter_ratio(node.index, self.filter_ratio)
-
 
     #
     # Class Functions
@@ -177,14 +157,18 @@ class RHInterface(BaseHardwareInterface):
             print "Update thread terminated by keyboard interrupt"
 
     def update(self):
-        # stop asking for node updates during race staging
-
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_time_ms)
         cross_list = []  # list of nodes with crossing-flag changes
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
-                    if node.api_level >= 13:
+                    if node.api_level >= 17:
+                        data = self.read_block(node.i2c_addr, READ_LAP_STATS, 28)
+                        server_roundtrip = self.i2c_response - self.i2c_request
+                        server_oneway = server_roundtrip / 2
+                        readtime = self.i2c_response - server_oneway
+
+                    elif node.api_level >= 13:
                         data = self.read_block(node.i2c_addr, READ_LAP_STATS, 20)
                     else:
                         data = self.read_block(node.i2c_addr, READ_LAP_STATS, 18)
@@ -200,10 +184,15 @@ class RHInterface(BaseHardwareInterface):
                         node.current_rssi = rssi_val
 
                         if node.api_valid_flag:  # if newer API functions supported
-                            ms_val = unpack_32(data[1:])
-                            if ms_val < 0 or ms_val > 9999999:
-                                ms_val = 0  # don't allow negative or too-large value
-                            node.lap_ms_since_start = ms_val
+                            if node.api_level >= 17:
+                                lap_differential = unpack_32(data[1:])
+                                # lap_timestamp = readtime - lap_differential ***
+                                lap_time_ms = lap_differential + server_oneway
+                            else:
+                                ms_val = unpack_32(data[1:])
+                                if ms_val < 0 or ms_val > 9999999:
+                                    ms_val = 0  # don't allow negative or too-large value
+                                node.lap_ms_since_start = ms_val
                             node.node_peak_rssi = unpack_16(data[7:])
                             node.pass_peak_rssi = unpack_16(data[9:])
                             node.loop_time = unpack_32(data[11:])
@@ -253,6 +242,42 @@ class RHInterface(BaseHardwareInterface):
                                 self.transmit_exit_at_level(node, node.exit_at_level)
                                 if callable(self.new_enter_or_exit_at_callback):
                                     self.new_enter_or_exit_at_callback(node, False)
+
+                        # get and process history data
+                        if node.api_level >= 17:
+                            peakRssi = unpack_16(data[20:])
+                            peakTime = unpack_16(data[22:])
+                            nadirRssi = unpack_16(data[24:])
+                            nadirTime = unpack_16(data[26:])
+
+                            if peakRssi > 0:
+                                if nadirRssi > 0:
+                                    # both
+                                    if peakTime < nadirTime:
+                                        # process peak first
+                                        node.history_values.append(peakRssi)
+                                        node.history_times.append(readtime - (peakTime / 1000))
+                                        node.history_values.append(nadirRssi)
+                                        node.history_times.append(readtime - (nadirTime / 1000))
+
+                                    else:
+                                        # process nadir first
+                                        node.history_values.append(nadirRssi)
+                                        node.history_times.append(readtime - (nadirTime / 1000))
+                                        node.history_values.append(peakRssi)
+                                        node.history_times.append(readtime - (peakTime / 1000))
+                                else:
+                                    # peak, no nadir
+                                    # process peak only
+                                    node.history_values.append(peakRssi)
+                                    node.history_times.append(readtime - (peakTime / 1000))
+                            elif nadirRssi > 0:
+                                # no peak, nadir
+                                # process nadir only
+                                node.history_values.append(nadirRssi)
+                                node.history_times.append(readtime - (nadirTime / 1000))
+
+
                     else:
                         self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
 
@@ -532,32 +557,6 @@ class RHInterface(BaseHardwareInterface):
     def set_trigger_threshold_global(self, threshold):
         return threshold  # dummy function; no longer supported
 
-    def set_filter_ratio(self, node_index, filter_ratio):
-        node = self.nodes[node_index]
-        if node.api_valid_flag:
-            node.filter_ratio = self.set_and_validate_value_16(node,
-                WRITE_FILTER_RATIO,
-                READ_FILTER_RATIO,
-                filter_ratio)
-
-    def set_filter_ratio_global(self, filter_ratio):
-        self.filter_ratio = filter_ratio
-        for node in self.nodes:
-            self.set_filter_ratio(node.index, filter_ratio)
-        return self.filter_ratio
-
-    def set_history_expire(self, node_index, history_expire_duration):
-        node = self.nodes[node_index]
-        if node.api_level >= 12:
-            node.history_expire_duration = self.set_and_validate_value_16(node,
-                WRITE_HISTORY_EXPIRE_DURATION,
-                READ_HISTORY_EXPIRE_DURATION,
-                history_expire_duration)
-
-    def set_history_expire_global(self, history_expire_duration):
-        for node in self.nodes:
-            self.set_history_expire(node.index, history_expire_duration)
-
     def mark_start_time(self, node_index, start_time):
         node = self.nodes[node_index]
         if node.api_valid_flag:
@@ -601,67 +600,10 @@ class RHInterface(BaseHardwareInterface):
         node.lap_ms_since_start = ms_val
         self.pass_record_callback(node, 100)
 
-    def get_catch_history(self, node_index):
-        node = self.nodes[node_index]
-        if node.api_level >= 12:
-            data = self.read_block(node.i2c_addr, READ_CATCH_HISTORY, 8)
-            return {
-                'rssi_min': unpack_16(data[0:]),
-                'rssi_max': unpack_16(data[2:]),
-                'pass_ms': unpack_32(data[4:])
-            }
-        return None
-
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
         if node.api_level >= 14:
             self.set_value_8(node, FORCE_END_CROSSING, 0)
-
-    def sync_node_timing(self, node):
-        success = False
-
-        if node.api_level >= 16:
-
-            # get current sync
-            old_sync = self.read_block(node.i2c_addr, READ_NODE_SYNC, 4)
-            old_sync_val = (unpack_32(old_sync[0:]) + 2**31) % 2**32 - 2**31
-
-            # get node timing
-            data = self.read_block(node.i2c_addr, READ_TIME_MILLIS, 4)
-            node_millis = unpack_32(data[0:])
-
-            # calculate time differences
-            response_roundtrip = self.i2c_response - self.i2c_request
-            response_oneway = response_roundtrip / 2
-            pi_time_zero = (self.i2c_response - response_oneway) * 1000 # in ms
-            node_time_zero = node_millis
-            node_time_diff = int(round(node_millis - pi_time_zero)) # node time in int
-
-            node_time_diff_adjust = node_time_diff % 2**32 # convert to unsigned
-
-            # send time diff
-            validate = self.set_and_validate_value_32(node,
-                WRITE_NODE_SYNC,
-                READ_NODE_SYNC,
-                node_time_diff_adjust)
-
-            if node_time_diff == (validate + 2**31) % 2**32 - 2**31: # convert back to signed
-                success = True
-
-            # find sync delta
-            sync_delta = old_sync_val + node_time_diff
-
-            return {
-                'success': success,
-                'sync_delta': sync_delta,
-                'response_s': response_roundtrip
-            }
-
-        return None
-
-    def sync_node_timing_global(self):
-        for node in self.nodes:
-            self.sync_node_timing(node)
 
 def get_hardware_interface():
     '''Returns the RotorHazard interface object.'''

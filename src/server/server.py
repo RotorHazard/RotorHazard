@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "1.2.0 (dev)" # Public release version code
-SERVER_API = 14 # Server API version
-NODE_API_BEST = 15 # Most recent node API
+RELEASE_VERSION = "2.0.0 (dev)" # Public release version code
+SERVER_API = 15 # Server API version
+NODE_API_BEST = 17 # Most recent node API
 
 import os
 import sys
@@ -87,7 +87,7 @@ Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
 Config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
 Config['GENERAL']['DEBUG'] = False
 
-Config['GENERAL']['NODE_RESYNC_INTERVAL'] = 60
+Config['GENERAL']['NODE_DRIFT_CALC_TIME'] = 10
 
 # override defaults above with config from file
 try:
@@ -212,7 +212,7 @@ def buildServerInfo():
             serverInfo['about_html'] += str(node_api_level)
         else:
             serverInfo['about_html'] += "[ "
-            for idx, level in serverInfo['node_api_levels']:
+            for idx, level in enumerate(serverInfo['node_api_levels']):
                 serverInfo['about_html'] += str(idx+1) + ":" + str(level) + " "
             serverInfo['about_html'] += "]"
     else:
@@ -357,8 +357,8 @@ class SavedRace(DB.Model):
     lap_time_stamp = DB.Column(DB.Integer, nullable=False)
     lap_time = DB.Column(DB.Integer, nullable=False)
     lap_time_formatted = DB.Column(DB.Integer, nullable=False)
-    raw_history_values = DB.Column(DB.String, nullable=True)
-    raw_history_crossings = DB.Column(DB.String, nullable=True)
+    history_values = DB.Column(DB.String, nullable=True)
+    history_times = DB.Column(DB.String, nullable=True)
 
     def __repr__(self):
         return '<SavedRace %r>' % self.round_id
@@ -1019,8 +1019,6 @@ def on_set_profile(data, emit_vals=True):
         hardware_set_all_frequencies(freqs)
         hardware_set_all_enter_ats(enter_ats)
         hardware_set_all_exit_ats(exit_ats)
-        #set filter ratio
-        INTERFACE.set_filter_ratio_global(profile.f_ratio)
 
     else:
         server_log('Invalid set_profile value: ' + str(profile_val))
@@ -1088,10 +1086,8 @@ def on_shutdown_pi():
 def on_set_min_lap(data):
     min_lap = data['min_lap']
     setOption("MinLapSec", data['min_lap'])
-    setOption("HistoryExpireDuration", data['min_lap'])
     server_log("set min lap time to %s seconds" % min_lap)
     emit_min_lap(noself=True)
-    INTERFACE.set_history_expire_global(data['min_lap'] * 1000)
 
 @SOCKET_IO.on("set_min_lap_behavior")
 def on_set_min_lap_behavior(data):
@@ -1279,8 +1275,11 @@ def on_stage_race():
         emit_current_laps() # Race page, blank laps to the web client
         emit_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
-        for node in INTERFACE.nodes:
-            node.raw_history = {}
+
+        for node in INTERFACE.nodes: # clear race history
+            node.history_values = []
+            node.history_times = []
+
         last_raceFormat = int(getOption("currentFormat"))
         race_format = RaceFormat.query.get(last_raceFormat)
         if race_format.team_racing_mode:
@@ -1311,12 +1310,6 @@ def race_start_thread(start_token):
         RACE_START_TOKEN == start_token:
         # Only start a race if it is not already in progress
         # Null this thread if token has changed (race stopped/started quickly)
-
-        # resync nodes
-        INTERFACE.sync_node_timing_global()
-
-        # send start time to nodes
-        INTERFACE.mark_start_time_global(RACE_START)
 
         # create blocking delay until race start
         while monotonic() < RACE_START:
@@ -1384,11 +1377,11 @@ def on_save_laps():
         if profile_freqs["f"][node] != FREQUENCY_ID_NONE:
             for lap in CurrentLap.query.filter_by(node_index=node).all():
                 if lap.lap_id == 0:
-                    raw_values = json.dumps(INTERFACE.nodes[node].raw_history_values)
-                    raw_crossings = json.dumps(INTERFACE.nodes[node].raw_history_crossings)
+                    raw_values = json.dumps(INTERFACE.nodes[node].history_values)
+                    raw_times = json.dumps(INTERFACE.nodes[node].history_times)
                 else:
                     raw_values = None
-                    raw_crossings = None
+                    raw_times = None
 
                 DB.session.add(SavedRace(round_id=max_round+1, \
                     heat_id=RACE.current_heat, \
@@ -1399,8 +1392,8 @@ def on_save_laps():
                     lap_time_stamp=lap.lap_time_stamp, \
                     lap_time=lap.lap_time, \
                     lap_time_formatted=lap.lap_time_formatted, \
-                    raw_history_values=raw_values,
-                    raw_history_crossings=raw_crossings
+                    history_values=raw_values, \
+                    history_times=raw_times
                 ))
     DB.session.commit()
     server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
@@ -2827,17 +2820,6 @@ def heartbeat_thread_function():
     while True:
         node_data = INTERFACE.get_heartbeat_json()
 
-        # store history
-        race_time = ms_from_race_start()
-        for node in INTERFACE.nodes:
-            if RACE.race_status is RACE_STATUS_RACING or \
-                (RACE.race_status is RACE_STATUS_DONE and node.crossing_flag):
-
-                node.raw_history_values.append({
-                    race_time: node.current_rssi
-                })
-
-
         SOCKET_IO.emit('heartbeat', node_data)
         heartbeat_thread_function.iter_tracker += 1
 
@@ -2854,10 +2836,6 @@ def heartbeat_thread_function():
         # emit rest of node data, but less often:
         if heartbeat_thread_function.iter_tracker % 20 == 0:
             emit_node_data()
-
-        # resync nodes
-        if heartbeat_thread_function.iter_tracker % (Config['GENERAL']['NODE_RESYNC_INTERVAL'] * 10) == 0:
-            INTERFACE.sync_node_timing_global()
 
         # check if race is to be started
         global RACE_SCHEDULED
@@ -2939,12 +2917,6 @@ def check_race_time_expired():
 
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''
-
-    # save any pass during race into history
-    if RACE.race_status is RACE_STATUS_RACING:
-        node.raw_history_crossings.append({
-            node.lap_ms_since_start: node.current_rssi
-        })
 
     #if node.lap_ms_since_start >= 0:
     #    server_log('Raw pass record: Node: {0}, Lap TimeMS: {1}'.format(node.index+1, node.lap_ms_since_start))
@@ -3531,7 +3503,6 @@ db_reset_current_laps()
 # Send initial profile values to nodes
 current_profile = int(getOption("currentProfile"))
 on_set_profile({'profile': current_profile}, False)
-INTERFACE.set_history_expire_global(int(getOption("HistoryExpireDuration")))
 
 # Set current heat on startup
 if Heat.query.first():
@@ -3547,3 +3518,4 @@ if __name__ == '__main__':
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
+

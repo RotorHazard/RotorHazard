@@ -5,8 +5,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2017 Scott G Chin
-// Copyright (c) 2019 Michael Niggel and Eric Thomas
+// Copyright (c) 2019 Michael Niggel and other contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -58,7 +57,7 @@
 int i2cSlaveAddress (6 + (NODE_NUMBER * 2));
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 16
+#define NODE_API_LEVEL 17
 
 const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 const int spiDataPin = 11;
@@ -106,15 +105,13 @@ struct
     uint16_t volatile enterAtLevel = 192;
     // lap pass ends when RSSI goes below this level
     uint16_t volatile exitAtLevel = 160;
-    uint16_t volatile filterRatio = 10;
-    float volatile filterRatioFloat = 0.0f;
 } settings;
 
 struct
 {
     bool volatile crossing = false; // True when the quad is going through the gate
-//    uint16_t volatile rssiRaw = 0; // Current unsmoothed rssi *** unused
     uint16_t volatile rssiSmoothed = 0; // Smoothed rssi value
+    uint16_t volatile lastRssiSmoothed = 0;
     uint32_t volatile rssiTimestamp = 0; // timestamp of the smoothed value
 
     uint16_t volatile passRssiPeakRaw = 0; // peak raw rssi seen during current pass
@@ -122,24 +119,32 @@ struct
     uint32_t volatile passRssiPeakRawTime = 0; // time of the first peak raw rssi for the current pass
     uint32_t volatile passRssiPeakRawLastTime = 0; // time of the last peak raw rssi for the current pass
     uint16_t volatile passRssiNadir = 999; // lowest smoothed rssi seen since end of last pass
+
     uint16_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set
     uint16_t volatile nodeRssiNadir = 999; // lowest smoothed rssi seen since the node frequency was set
 
     bool volatile rxFreqSetFlag = false; // Set true after initial WRITE_FREQUENCY command received
 
-    uint32_t volatile raceStartTimeStamp = 0; // base time for returned lap-ms-since-start values
-
     // variables to track the loop time
     uint32_t volatile loopTime = 0;
     uint32_t volatile lastloopMicros = 0;
-
-    // sync offset for pi time
-    int32_t volatile syncOffset = 0;
-    float volatile clockError = 1; // clock speed differential from pi
-
-    // race scheduling
-    bool volatile race_started = false;
 } state;
+
+struct
+{
+    uint16_t volatile peakRssi;
+    uint32_t volatile peakFirstTime;
+    uint32_t volatile peakLastTime;
+    uint32_t volatile peakTime;
+    bool volatile peakSend;
+
+    uint16_t volatile nadirRssi;
+    uint16_t volatile nadirTime;
+    bool volatile nadirSend;
+    
+    bool volatile isRising;
+    bool volatile isFalling;
+} history;
 
 struct
 {
@@ -149,20 +154,6 @@ struct
     uint16_t volatile rssiNadir;
     uint8_t volatile lap;
 } lastPass;
-
-struct
-{
-    uint32_t expireDuration = 10000; // catch window in milliseconds (default 10s)
-
-    uint16_t volatile rssiMin; // minimum smoothed rssi
-    uint32_t volatile minExpires; // when to look for a new minimum
-
-    uint16_t volatile rssiMax; // maximum smoothed rssi
-    uint16_t volatile rssiPeak; // peak RSSI
-    uint32_t volatile peakFirstTime; // first peak timestamp
-    uint32_t volatile peakLastTime; // last peak timestamp
-    uint32_t volatile maxExpires; // when to look for a new maximum
-} history;
 
 uint8_t volatile ioCommand;  // I2C code to identify messages
 uint8_t volatile ioBuffer[32];  // Data array for sending over i2c, up to 32 bytes per message
@@ -245,19 +236,10 @@ void setup()
     cbi(ADCSRA, ADPS0);
 
     // Initialize defaults
-    settings.filterRatioFloat = settings.filterRatio / FILTER_RATIO_DIVIDER;
     lastPass.rssiPeakRaw = 0;
     lastPass.rssiPeak = 0;
     lastPass.lap = 0;
     lastPass.timeStamp = 0;
-
-    history.rssiMin = 999;
-    history.minExpires = 0;
-    history.rssiMax = 0;
-    history.rssiPeak = 0;
-    history.peakFirstTime = 0;
-    history.peakLastTime = 0;
-    history.maxExpires = 0;
 
     // if EEPROM-check value matches then read stored values
     if (readWordFromEeprom(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
@@ -265,14 +247,12 @@ void setup()
         settings.vtxFreq = readWordFromEeprom(EEPROM_ADRW_RXFREQ);
         settings.enterAtLevel = readWordFromEeprom(EEPROM_ADRW_ENTERAT);
         settings.exitAtLevel = readWordFromEeprom(EEPROM_ADRW_EXITAT);
-        history.expireDuration = readWordFromEeprom(EEPROM_ADRW_EXPIRE);
     }
     else
     {    // if no match then initialize EEPROM values
         writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
         writeWordToEeprom(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
         writeWordToEeprom(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
-        writeWordToEeprom(EEPROM_ADRW_EXPIRE, history.expireDuration);
         writeWordToEeprom(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
     }
 
@@ -398,20 +378,17 @@ int rssiRead()
 }
 
 uint32_t loopMillis = 0;
+uint16_t lastRssi = 0;
 
 // Main loop
 void loop()
 {
+    state.lastRssiSmoothed = state.rssiSmoothed;
     
-    //delay(250);
-    while (loopMillis == millis()) {
-      // wait;
-    }
     uint32_t loopMicros = micros();
     loopMillis = millis();
-
-    // read and process RSSI close to timestamp
-    // state.rssiRaw = rssiRead();
+    
+    // read raw RSSI close to taking timestamp
     rssiMedian.addValue(rssiRead());
     state.rssiSmoothed = rssiMedian.getMedian(); // retrieve the median
 
@@ -422,35 +399,55 @@ void loop()
     }
     state.rssiTimestamp = SmoothingTimestamps[SmoothingTimestampsIndex];
 
-    /*
-    // old basic weighting filter
-    state.rssiSmoothed = (settings.filterRatioFloat * (float) state.rssiRaw)
-            + ((1.0f - settings.filterRatioFloat) * state.rssiSmoothed);
-    state.rssi = (int) state.rssiSmoothed;
-    */
-
-    // Calculate the time it takes to run the main loop
-    state.loopTime = loopMicros - state.lastloopMicros;
-    state.lastloopMicros = loopMicros;
-
     if (state.rxFreqSetFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received
 
-        // initialize race when started
-        if (loopMillis < state.raceStartTimeStamp) {
-            state.race_started = false;
-        } else if (!state.race_started) {
-            state.race_started = true;
-            // make sure there's no lingering previous pass:
-            lastPass.timeStamp = state.raceStartTimeStamp;
-            // reset history
-            history.peakFirstTime = state.raceStartTimeStamp;
-            history.peakLastTime = state.raceStartTimeStamp;
-            history.rssiMin = 999;
-            history.minExpires = 0;
-            history.rssiMax = 0;
-            history.rssiPeak = 0;
-            history.maxExpires = 0;
+        // update history
+        if (state.rssiSmoothed > state.lastRssiSmoothed) { // RSSI is rising
+          if (history.peakSend = true) {
+            if (state.rssiSmoothed > history.peakRssi) {
+              history.peakSend = false;
+            }
+          }
+        
+          if (!history.peakSend) {
+            if (state.rssiSmoothed > history.peakRssi) {
+              history.peakRssi = state.rssiSmoothed;
+              history.peakFirstTime = history.peakLastTime = state.rssiTimestamp;
+            }
+          }
+        
+          if (history.isFalling) {
+            history.nadirTime = state.rssiTimestamp;
+            history.nadirSend = true;
+          }
+        
+          history.isRising = true;
+          history.isFalling = false;
+        
+        } else if (state.rssiSmoothed < state.lastRssiSmoothed) { // RSSI is falling
+          if (history.isRising) {
+            history.peakTime = (history.peakFirstTime + history.peakLastTime) / 2;
+            history.peakSend = true;
+          }
+        
+          if (history.nadirSend) {
+            if (state.rssiSmoothed < history.nadirRssi) {
+              history.nadirSend = false;
+            }
+          }
+        
+          if (!history.nadirSend) {
+            history.nadirRssi = state.rssiSmoothed;
+          }
+        
+          history.isRising = false;
+          history.isFalling = true;
+          
+        } else { // RSSI is equal
+          if (history.isRising) {
+            history.peakLastTime = state.rssiTimestamp;
+          }
         }
 
         // Keep track of peak (smoothed) rssi
@@ -507,47 +504,15 @@ void loop()
                 end_crossing();
             }
         }
-
-        // Manual pass catching logic
-
-        // if catch history expires, reset all values (including peak check)
-        if (loopMillis > history.maxExpires) {
-            // use smoothed RSSI for determining expiration
-            history.rssiMax = state.rssiSmoothed;
-            history.maxExpires = loopMillis + history.expireDuration;
-
-            // read RSSI to get accurate pass time
-            history.rssiPeak = state.rssiSmoothed;
-            history.peakFirstTime = state.rssiTimestamp;
-            history.peakLastTime = state.rssiTimestamp;
-        }
-
-        // if a new peak is found, reset exipration (track peak for at least this long)
-        if (state.rssiSmoothed > history.rssiMax) {
-            history.rssiMax = state.rssiSmoothed;
-            history.maxExpires = loopMillis + history.expireDuration;
-        }
-
-        if (state.rssiSmoothed == history.rssiPeak) {
-            history.peakLastTime = state.rssiTimestamp;
-        } else if (state.rssiSmoothed > history.rssiPeak) {
-            history.rssiPeak = state.rssiSmoothed;
-            history.peakFirstTime = state.rssiTimestamp;
-            history.peakLastTime = state.rssiTimestamp;
-        }
-
-        // if no lower values read within catch history, reset all values
-        // if a lower value is read, reset exipration (track low value for at least this long)
-        if (state.rssiSmoothed < history.rssiMin
-            || loopMillis > history.minExpires) {
-            history.rssiMin = state.rssiSmoothed;
-            history.minExpires = loopMillis + history.expireDuration;
-        }
     }
+
+    // Calculate the time it takes to run the main loop
+    state.loopTime = loopMicros - state.lastloopMicros;
+    state.lastloopMicros = loopMicros;
 
     // Status LED
     if (state.crossing ||  // on while crossing
-        (int32_t(int32_t(int32_t(loopMillis) - state.raceStartTimeStamp) * state.clockError) / 100) % 10 == 0 // blink in sync
+        (loopMillis / 100) % 10 == 0 // blink
       ) {
       digitalWrite(LED_BUILTIN, HIGH);
     } else {
@@ -758,62 +723,6 @@ byte i2cHandleRx(byte command)
             }
             break;
 
-        case WRITE_FILTER_RATIO:
-            if (readAndValidateIoBuffer(WRITE_FILTER_RATIO, 2))
-            {
-                u16val = ioBufferRead16();
-                if (u16val >= 1 && u16val <= FILTER_RATIO_DIVIDER)
-                {
-                    settings.filterRatio = u16val;
-                    settings.filterRatioFloat = settings.filterRatio / FILTER_RATIO_DIVIDER;
-                    success = true;
-                }
-            }
-            break;
-
-        case WRITE_HISTORY_EXPIRE_DURATION:
-            if (readAndValidateIoBuffer(WRITE_HISTORY_EXPIRE_DURATION, 2))
-            {
-                history.expireDuration = ioBufferRead16();
-                writeWordToEeprom(EEPROM_ADRW_EXPIRE, history.expireDuration);
-                success = true;
-            }
-            break;
-
-        case MARK_START_TIME:  // mark base time for returned lap-ms-since-start values
-            if (state.syncOffset == 0) {
-                state.raceStartTimeStamp = millis();
-                state.race_started = false;
-                success = true;
-            } else if (readAndValidateIoBuffer(MARK_START_TIME, 4)) {
-                state.raceStartTimeStamp = ioBufferRead32() + state.syncOffset;
-                success = true;
-            }
-            break;
-
-        case WRITE_NODE_SYNC:
-            if (readAndValidateIoBuffer(WRITE_NODE_SYNC, 4))
-            {
-                state.syncOffset = ioBufferRead32();
-                success = true;
-            }
-            break;
-
-        case WRITE_CLOCK_ERROR:
-            if (readAndValidateIoBuffer(WRITE_CLOCK_ERROR, 4))
-            {
-                union u_tag {
-                   uint32_t b;
-                   float fval;
-                } u;
-
-                u.b = ioBufferRead32();
-                state.clockError = u.fval;
-                
-                success = true;
-            }
-            break;
-
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
             end_crossing();
 
@@ -852,7 +761,7 @@ void i2cTransmit()
 
         case READ_LAP_STATS:
             ioBufferWrite8(lastPass.lap);
-            ioBufferWrite32(uint32_t((lastPass.timeStamp - state.raceStartTimeStamp) * state.clockError));  // lap ms-since-start
+            ioBufferWrite32(millis() - lastPass.timeStamp);  // ms since lap
             ioBufferWrite16(state.rssiSmoothed);
             ioBufferWrite16(state.nodeRssiPeak);
             ioBufferWrite16(lastPass.rssiPeak);  // RSSI peak for last lap pass
@@ -860,6 +769,26 @@ void i2cTransmit()
             ioBufferWrite8(state.crossing ? (uint8_t) 1 : (uint8_t) 0);  // 'crossing' status
             ioBufferWrite16(lastPass.rssiNadir);  // lowest rssi since end of last pass
             ioBufferWrite16(state.nodeRssiNadir);
+
+            if (history.peakSend) {
+                ioBufferWrite16(history.peakRssi);
+                ioBufferWrite16(uint16_t(millis() - history.peakTime));
+                history.peakSend = false;
+                history.peakRssi = state.rssiSmoothed;
+            } else {
+                ioBufferWrite16(0);
+                ioBufferWrite16(0);
+            }
+            
+            if (history.nadirSend) {
+                ioBufferWrite16(history.nadirRssi);
+                ioBufferWrite16(uint16_t(millis() - history.nadirTime));
+                history.nadirSend = false;
+                history.nadirRssi = state.rssiSmoothed;
+            } else {
+                ioBufferWrite16(0);
+                ioBufferWrite16(0);
+            }
             break;
 
         case READ_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
@@ -868,14 +797,6 @@ void i2cTransmit()
 
         case READ_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
             ioBufferWrite16(settings.exitAtLevel);
-            break;
-
-        case READ_FILTER_RATIO:
-            ioBufferWrite16(settings.filterRatio);
-            break;
-
-        case READ_HISTORY_EXPIRE_DURATION:
-            ioBufferWrite16(history.expireDuration);
             break;
 
         case READ_REVISION_CODE:  // reply with NODE_API_LEVEL and verification value
@@ -892,31 +813,6 @@ void i2cTransmit()
 
         case READ_TIME_MILLIS:
             ioBufferWrite32(millis());
-            break;
-
-        case READ_NODE_SYNC:
-            ioBufferWrite32(state.syncOffset);
-            break;
-
-        case READ_CLOCK_ERROR:
-            union u_tag {
-               uint32_t b;
-               float fval;
-            } u;
-
-            u.fval = state.clockError;
-
-            ioBufferWrite32(u.b);
-            break;
-
-        case READ_CATCH_HISTORY:  // manual pass catching
-            // calculate timestamp from history only on demand
-            uint32_t lapTimeStamp;
-            lapTimeStamp = ((history.peakLastTime + history.peakFirstTime) / 2) - state.raceStartTimeStamp;
-
-            ioBufferWrite16(history.rssiMin);
-            ioBufferWrite16(history.rssiMax);
-            ioBufferWrite32(lapTimeStamp);  // lap ms-since-start
             break;
 
         default:  // If an invalid command is sent, write nothing back, master must react
