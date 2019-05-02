@@ -1276,10 +1276,6 @@ def on_stage_race():
         emit_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
 
-        for node in INTERFACE.nodes: # clear race history
-            node.history_values = []
-            node.history_times = []
-
         last_raceFormat = int(getOption("currentFormat"))
         race_format = RaceFormat.query.get(last_raceFormat)
         if race_format.team_racing_mode:
@@ -1319,12 +1315,16 @@ def race_start_thread(start_token):
         onoff(strip, Color(0,255,0)) #GREEN for GO
 
         # do secondary start tasks (small delay is acceptable)
-        RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
-        emit_race_status() # Race page, to set race button states
-        RACE.timer_running = 1 # indicate race timer is running
+
         for node in INTERFACE.nodes:
+            node.history_values = [] # clear race history
+            node.history_times = []
             node.under_min_lap_count = 0
+
+        RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
+        RACE.timer_running = 1 # indicate race timer is running
         Race_laps_winner_name = None  # name of winner in first-to-X-laps race
+        emit_race_status() # Race page, to set race button states
         server_log('Race started at {0}'.format(RACE_START))
 
 @SOCKET_IO.on('stop_race')
