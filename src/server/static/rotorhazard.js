@@ -617,8 +617,10 @@ function timerModel() {
 		this.drift_history = [];
 		this.drift_correction = 0;
 
-		// self-sync
-		this.sync(remote_time_zero, local_remote_diiferential);
+		// get sync if needed
+		if (typeof remote_time_zero !== "undefined" && typeof local_remote_diiferential !== "undefined") {
+			this.sync(remote_time_zero, local_remote_diiferential);
+		}
 
 		// start timing loop
 		this.continue();
