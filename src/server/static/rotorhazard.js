@@ -727,6 +727,7 @@ var rotorhazard = {
 	pi_time_request: false,
 	pi_time_diff: false,
 	race_start_pi: false,
+	pi_time_diff_samples: [], // stored previously acquired offsets
 
 	timer: {
 		deferred: new timerModel(),
