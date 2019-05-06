@@ -327,6 +327,34 @@ var node_tone = [
 	659.3
 ];
 
+// context unlocking
+function webAudioUnlock (context) {
+	return new Promise(function (resolve, reject) {
+		if (context.state === 'suspended') {
+			var unlock = function() {
+				context.resume().then(function() {
+					$(document).off('touchstart', unlock);
+					$(document).off('touchend', unlock);
+					$(document).off('mouseup', unlock);
+
+					resolve(true);
+				},
+				function (reason) {
+					reject(reason);
+				});
+			};
+
+			$(document).on('touchstart', unlock);
+			$(document).on('touchend', unlock);
+			$(document).on('mouseup', unlock);
+		} else {
+			resolve(false);
+		}
+	});
+}
+
+webAudioUnlock(globalAudioCtx);
+
 // test for Firefox (has broken RamptoValue audio function)
 var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 
@@ -337,8 +365,6 @@ var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 //callback to use on end of tone
 /* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
 function play_beep(duration, frequency, volume, type, fadetime, callback) {
-	globalAudioCtx.resume();
-
 	var oscillator = globalAudioCtx.createOscillator();
 	var gainNode = globalAudioCtx.createGain();
 
