@@ -19,6 +19,7 @@
 			'node_tuning',
 			'enter_and_exit_at_levels',
 			'min_lap',
+			'race_status',
 			'team_racing_mode',
 		]});
 
@@ -93,6 +94,42 @@
 			rotorhazard.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
 			rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
 		}
+
+		socket.on('race_status', function (msg) {
+			switch (msg.race_status) {
+				case 1: // Race running
+				case 2: // Race stopped, clear or save laps
+				case 3: // Race staging
+					$('#set_race_format').prop('disabled', true);
+					$('#add_race_format').prop('disabled', true);
+					$('#delete_race_format').prop('disabled', true);
+					$('#set_format_name').prop('disabled', true);
+					$('#set_race_mode').prop('disabled', true);
+					$('#set_fix_race_time').prop('disabled', true);
+					$('#set_start_delay_min').prop('disabled', true);
+					$('#set_start_delay_max').prop('disabled', true);
+					$('#set_number_laps_win').prop('disabled', true);
+					$('#set_win_condition').prop('disabled', true);
+					$('#set_team_racing_mode').prop('disabled', true);
+					break;
+				default: // Waiting to start new race
+					$('#set_race_format').prop('disabled', false);
+					$('#add_race_format').prop('disabled', false);
+					$('#delete_race_format').prop('disabled', false);
+					$('#set_format_name').prop('disabled', false);
+					$('#set_race_mode').prop('disabled', false);
+					$('#set_fix_race_time').prop('disabled', false);
+					$('#set_start_delay_min').prop('disabled', false);
+					$('#set_start_delay_max').prop('disabled', false);
+					$('#set_number_laps_win').prop('disabled', false);
+					$('#set_win_condition').prop('disabled', false);
+					$('#set_team_racing_mode').prop('disabled', false);
+
+					socket.emit('load_data', {'load_types': [
+						'race_format',
+					]});
+			}
+		});
 
 		socket.on('heartbeat', function (msg) {
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
@@ -1462,6 +1499,7 @@
 	</div>
 	<div class="panel-content">
 		<p class="form-note">{{ __('Formats used with saved races cannot be modified. (Clear races to release.)') }}</p>
+		<p class="form-note">{{ __('Format cannot be changed while a race is running.') }}</p>
 
 		<div class="control-set">
 			<label for="set_race_format">{{ __('Format:') }}</label>
