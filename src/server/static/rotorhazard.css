@@ -454,6 +454,7 @@ nav a {
 	color: #fff;
 	text-decoration: none;
 	display: block;
+	transition: 0.1s linear all;
 }
 
 /* Dropdowns */
@@ -463,7 +464,7 @@ nav>ul>li>ul {
 	right: -9999px;
 	opacity: 0;
 	transition: 0.1s linear opacity;
-	min-width: 15em;
+	min-width: 18em;
 	z-index: 1000;
 	background: #000;
 	color: #fff;
@@ -488,17 +489,6 @@ ul.show-menu {
 
 nav>ul>li>ul li {
 	position: static;
-}
-
-nav>ul>li>ul a {
-	display: block;
-	text-shadow: none;
-	transition: 0.1s linear all;
-}
-
-nav>ul>li>ul a:hover,
-nav>ul>li>ul a:focus {
-	text-shadow: none;
 }
 
 @media (max-width: 52em){
@@ -671,27 +661,58 @@ main.page-home {
 	flex: 1 0 7em;
 }
 
-.compact-field {
+.node-controls {
+	margin-top: 0.25em;
+}
+
+.enter-exit-control {
 	display: flex;
 	justify-content: space-between;
 	align-items: baseline;
-	margin: 0.25em 0;
+	margin: 0.25em -0.25em;
 	flex-wrap: wrap;
 	font-size: 1rem;
 }
 
-.compact-field label {
-	text-align: left;
+.enter-exit-control > *{
+	margin: 0.25em;
 }
 
-.compact-field input {
+.enter-exit-control label {
+	text-align: left;
+	flex: 1 0;
+}
+
+.enter-exit-control input {
 	width: 4em;
 }
 
+.enter-exit-control button {
+	margin-left: auto;
+}
+
+.node-controls .catch-passes {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-around;
+	margin: 0.25em -0.25em;
+}
+
+.catch-pass {
+	margin: 0.25em;
+}
+
+#schedule_m {
+	width: 4em;
+	text-align: right;
+}
+
+#schedule_s {
+	width: 3em;
+	text-align: right;
+}
+
 @media (max-width: 42em) {
-	.compact-field label {
-		display: none;
-	}
 	.compact-field input {
 		width: 100%;
 	}
@@ -819,9 +840,14 @@ main.page-home {
 }
 
 .race-header {
-	margin: 0.5rem 0;
+	margin: 0.25rem -0.125rem 0;
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-end;
+	flex-wrap: wrap;
+}
+
+.race-header>* {
+	margin: 0 0.125rem 0.25rem;
 }
 
 .heats {
@@ -830,10 +856,6 @@ main.page-home {
 	display: flex;
 	flex-wrap: wrap;
 	margin: 0 -0.25em;
-}
-
-.page-settings .heats {
-	justify-content: center;
 }
 
 .heats>li {
@@ -919,10 +941,6 @@ main.page-home {
 	display: flex;
 	flex-wrap: wrap;
 	margin: 0 -0.25em;
-}
-
-.page-settings .pilots {
-	justify-content: center;
 }
 
 .pilots li {
@@ -1059,14 +1077,31 @@ main.page-home {
 	background: linear-gradient(to bottom, hsl(41.1, 86.2%, 54.5%) 0%,hsl(23.1, 64.6%, 37.6%) 100%);
 }
 
-.rssi-graph canvas {
+.rssi-graph {
 	width: 100%;
 	height: 6rem;
+	background: #000;
+	position: relative;
+}
+
+.rssi-graph.page {
+	height: 3rem;
+}
+
+.rssi-graph canvas {
+	width: 100%;
+	height: 100%;
 	display: block;
 }
 
-.rssi-graph.page canvas {
-	height: 3rem;
+.rssi-graph button {
+	position: absolute;
+	bottom: 0.25em;
+	left: 0.25em;
+	color: #fff;
+	z-index: 1;
+	background: transparent;
+	border: none;
 }
 
 .graph-key {
@@ -1163,11 +1198,12 @@ main.page-home {
 
 .page-race .channel-block {
 	display: inline-flex;
-	margin-right: 0.5rem;
+	border-radius: 0.25rem;
+	flex: 1;
 }
 
 .tuning-detail .popup-content {
-	padding: 0 0 1rem;
+	padding: 1rem;
 }
 
 .page-racepublic h2 {

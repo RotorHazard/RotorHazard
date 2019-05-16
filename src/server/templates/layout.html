@@ -22,15 +22,15 @@
 
 	<!-- Scripts -->
 	<script type="text/javascript" src="./static/jquery-3.2.1/jquery.min.js"></script>
-	<script type="text/javascript" src="./static/articulate/articulate.js"></script>
+	<script type="text/javascript" src="./static/articulate/articulate.min.js"></script>
 	<script type="text/javascript" src="./static/socket.io-1.3.5/socket.io.min.js"></script>
 	<script type="text/javascript" src="./static/smoothie/smoothie.js"></script>
 	<script type="text/javascript" src="./static/magnific-1.1.0/magnific-inline-min.js"></script>
-	<script type="text/javascript" src="./static/rotorhazard.js"></script>
+	<script type="text/javascript" src="./static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 
 	<!-- CSS -->
 	<link rel="stylesheet" href="./static/magnific-1.1.0/magnific-popup.css"></link>
-	<link rel="stylesheet" href="./static/rotorhazard.css"></link>
+	<link rel="stylesheet" href="./static/rotorhazard.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 	<style>
 
@@ -69,13 +69,13 @@
 				<li><a href="/current">{{ __("Current") }}</a></li>
 				<li class="admin-hide"><a href="/race">{{ __("Run") }}</a></li>
 				<li class="admin-hide"><a href="/settings">{{ __("Settings") }}</a></li>
-				<li class="admin-hide extra">
+				<li class="extra">
 					<a href="#">...</a>
 					<ul>
 						<li><a href="/imdtabler">{{ __("IMDTabler") }}</a></li>
+						<li><a href="https://github.com/RotorHazard/RotorHazard/tree/master/doc" target="_blank">{{ __("Show documentation (on GitHub)") }} &#10132;&#xFE0E;</a></li>
+						<li><a href="https://github.com/RotorHazard/RotorHazard/" target="_blank">{{ __("RotorHazard on GitHub") }} &#10132;&#xFE0E;</a></li>
 						<li><a href="#about" class="open-mfp-popup">{{ __("About RotorHazard") }}</a></li>
-						<li><a href="https://github.com/RotorHazard/RotorHazard/tree/master/doc">{{ __("Show documentation (on GitHub)") }} &#10132;&#xFE0E;</a></li>
-						<li><a href="https://github.com/RotorHazard/RotorHazard/">{{ __("RotorHazard on GitHub") }} &#10132;&#xFE0E;</a></li>
 					</ul>
 				</li>
 			</ul>
@@ -86,7 +86,7 @@
 	{% block content %}{% endblock %}
 
 	<footer>
-		<p>Powered by <a href="https://github.com/RotorHazard/RotorHazard/"><img src="../static/image/RotorHazard Logo.svg" alt="RotorHazard / FPV Race Timer" /></a></p>
+		<p>Powered by <a href="https://github.com/RotorHazard/RotorHazard/"><img src="../static/image/RotorHazard Logo.svg" alt="RotorHazard / FPV Race Timer" /></a> v{{ serverInfo['release_version'] }}</p>
 	</footer>
 
 	<div id="about" class="mfp-hide popup">

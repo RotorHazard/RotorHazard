@@ -19,6 +19,7 @@
 			'node_tuning',
 			'enter_and_exit_at_levels',
 			'min_lap',
+			'race_status',
 			'team_racing_mode',
 		]});
 
@@ -93,6 +94,42 @@
 			rotorhazard.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
 			rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
 		}
+
+		socket.on('race_status', function (msg) {
+			switch (msg.race_status) {
+				case 1: // Race running
+				case 2: // Race stopped, clear or save laps
+				case 3: // Race staging
+					$('#set_race_format').prop('disabled', true);
+					$('#add_race_format').prop('disabled', true);
+					$('#delete_race_format').prop('disabled', true);
+					$('#set_format_name').prop('disabled', true);
+					$('#set_race_mode').prop('disabled', true);
+					$('#set_fix_race_time').prop('disabled', true);
+					$('#set_start_delay_min').prop('disabled', true);
+					$('#set_start_delay_max').prop('disabled', true);
+					$('#set_number_laps_win').prop('disabled', true);
+					$('#set_win_condition').prop('disabled', true);
+					$('#set_team_racing_mode').prop('disabled', true);
+					break;
+				default: // Waiting to start new race
+					$('#set_race_format').prop('disabled', false);
+					$('#add_race_format').prop('disabled', false);
+					$('#delete_race_format').prop('disabled', false);
+					$('#set_format_name').prop('disabled', false);
+					$('#set_race_mode').prop('disabled', false);
+					$('#set_fix_race_time').prop('disabled', false);
+					$('#set_start_delay_min').prop('disabled', false);
+					$('#set_start_delay_max').prop('disabled', false);
+					$('#set_number_laps_win').prop('disabled', false);
+					$('#set_win_condition').prop('disabled', false);
+					$('#set_team_racing_mode').prop('disabled', false);
+
+					socket.emit('load_data', {'load_types': [
+						'race_format',
+					]});
+			}
+		});
 
 		socket.on('heartbeat', function (msg) {
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
@@ -316,7 +353,7 @@
 			node.graphPaused = !node.graphPaused;
 		});
 
-		$('button.catch_pass').click(function (event) {
+		$('button.catch-pass').click(function (event) {
 			var data = {
 				node: parseInt($(this).data('node')),
 				method: $(this).data('method'),
@@ -1186,25 +1223,28 @@
 			<div class="node" data-node="{{ node }}">
 				<h3>{{ __('Node') }} {{ node + 1 }}</h3>
 				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
-				<div class="rssi-graph"><canvas id="rssi-graph-{{ node }}"></div>
+				<div class="rssi-graph">
+					<button class="pause_graph" data-node="{{ node }}">&#x23ef;&#xFE0E;<span class="screen-reader-text"> {{ __('Pause/Resume Graph') }}</span></button>
+					<canvas id="rssi-graph-{{ node }}">
+				</div>
 				<div class="crossing crossing_flag_{{ node }}">{{ __('Clear') }}</div>
-				<div>
-					<button class="pause_graph" data-node="{{ node }}">{{ __('Pause/Resume Graph') }}</button>
-
-					<div class="compact-field">
+				<div class="node-controls">
+					<div class="enter-exit-control">
 						<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
 						<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
+						<button class="cap_enter_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
 					</div>
-					<button class="cap_enter_at_btn" data-node_index="{{ node }}">{{ __('Capture') }} &#8593;</button>
 
-					<div class="compact-field">
+					<div class="enter-exit-control">
 						<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
 						<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
+						<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
 					</div>
-					<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }} &#8593;</button>
 
-					<button class="catch_pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
-					<button class="catch_pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
+					<div class="catch-passes">
+						<!-- <button class="catch-pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button> -->
+						<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
+					</div>
 				</div>
 				<div id="node_notice_{{ node }}"></div>
 				<table>
@@ -1261,12 +1301,14 @@
 			<li>
 				<div class="label-block">
 					<label for="set_recovery_max_offset">{{ __('Missed Lap Offset') }}</label>
+					<p class="desc">{{ __('Adjusts EnterAt value after "Catch Missed Lap"') }}</p>
 				</div>
 				<input type="text" id="set_recovery_max_offset" class="set-option" data-option="HistoryMaxOffset" value="{{ getOption('HistoryMaxOffset') }}">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_recovery_min_offset">{{ __('End Crossing Offset') }}</label>
+					<p class="desc">{{ __('Adjusts ExitAt value after "Force End Crossing"') }}</p>
 				</div>
 				<input type="text" id="set_recovery_min_offset" class="set-option" data-option="HistoryMinOffset" value="{{ getOption('HistoryMinOffset') }}">
 			</li>
@@ -1457,6 +1499,7 @@
 	</div>
 	<div class="panel-content">
 		<p class="form-note">{{ __('Formats used with saved races cannot be modified. (Clear races to release.)') }}</p>
+		<p class="form-note">{{ __('Format cannot be changed while a race is running.') }}</p>
 
 		<div class="control-set">
 			<label for="set_race_format">{{ __('Format:') }}</label>
@@ -1508,7 +1551,7 @@
 			<li>
 				<div class="label-block">
 					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
-					<p class="desc">{{ __('Used if Most Laps Wins Disabled') }}</p>
+					<p class="desc">{{ __('Used with First to X Laps races') }}</p>
 				</div>
 				<input type="number" id="set_number_laps_win" min="0" max="999">
 			</li>

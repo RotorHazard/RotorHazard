@@ -16,8 +16,10 @@ class Node:
         self.loop_time = 10
         self.crossing_flag = False
         self.debug_pass_count = 0
+
         self.enter_at_level = 0
         self.exit_at_level = 0
+
         self.cap_enter_at_flag = False
         self.cap_enter_at_total = 0
         self.cap_enter_at_count = 0
@@ -26,10 +28,12 @@ class Node:
         self.cap_exit_at_total = 0
         self.cap_exit_at_count = 0
         self.cap_exit_at_millis = 0
-        self.history_rssi_min = 0
-        self.history_rssi_max = 0
-        self.history_lap_time = 0
+
         self.under_min_lap_count = 0
+
+        self.history_values = []
+        self.history_times = []
+
 
     def get_settings_json(self):
         return {
