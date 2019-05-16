@@ -11,14 +11,14 @@ Configure the '#define NODE_NUMBER' line of the .ino for each node before upload
 #define NODE_NUMBER 1
 ```
 
-Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:
-node #1: ground pin 5
-node #2: ground pin 6
-node #3: ground pin 7
-node #4: ground pin 8
-node #5: ground pin 5 and pin 4
-node #6: ground pin 6 and pin 4
-node #7: ground pin 7 and pin 4
+Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:  
+node #1: ground pin 5  
+node #2: ground pin 6  
+node #3: ground pin 7  
+node #4: ground pin 8  
+node #5: ground pin 5 and pin 4  
+node #6: ground pin 6 and pin 4  
+node #7: ground pin 7 and pin 4  
 node #8: ground pin 8 and pin 4
 
 ## System (Raspberry Pi)
@@ -38,9 +38,13 @@ Do system update and upgrade (this can take a few minutes):
 sudo apt-get update && sudo apt-get upgrade
 ```
 
-Install python and the python drivers for the GPIO.
+Install Python and the Python drivers for the GPIO.
 ```
 sudo apt-get install python-dev python-rpi.gpio libffi-dev python-smbus build-essential python-pip git scons swig
+```
+
+Install the function interface into Python
+```
 sudo pip install cffi
 ```
 
@@ -55,12 +59,12 @@ core_freq=250
 ```
 Save and exit the file with Ctrl-X
 
-Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.0.0" with the current version code, and enter the commands:
+Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.1.0" with the current version code, and enter the commands:
 ```
 cd ~
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.0.0 -O temp.zip
+wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.1.0 -O temp.zip
 unzip temp.zip
-mv RotorHazard-1.0.0 RotorHazard
+mv RotorHazard-1.1.0 RotorHazard
 rm temp.zip
 ```
 
@@ -159,6 +163,6 @@ sudo shutdown now
 
 -----------------------------
 
-See Also:
-[doc/Hardware Setup.md](Hardware%20Setup.md)
+See Also:  
+[doc/Hardware Setup.md](Hardware%20Setup.md)  
 [doc/User Guide.md](User%20Guide.md)

@@ -15,10 +15,11 @@ RotorHazard builds on the [Delta5 Race Timer](https://github.com/scottgchin/delt
 * Real-time statistics and race history
 * Fine control of filtering and calibration allows indoor and outdoor use, even in difficult multipathing environments
 * Supports all frequencies in the 5.8GHz band
+* Includes basic support for Team racing and most-laps-wins races
 
 ## Hardware and Software Setup
-To build and configure the system, follow the instructions here:
-[doc/Hardware Setup.md](doc/Hardware%20Setup.md)
+To build and configure the system, follow the instructions here:  
+[doc/Hardware Setup.md](doc/Hardware%20Setup.md)  
 [doc/Software Setup.md](doc/Software%20Setup.md)
 
 ## User Guide
@@ -40,6 +41,7 @@ RotorHazard uses the same hardware, but different code for the nodes. Re-flash y
 * Dutch: Kenny Van Der Sypt
 * German: Klaus Michael Schneider
 * Spanish: Ramon Hernandez Roldan
+* French: Yannick M.
 
 ## Feedback
 

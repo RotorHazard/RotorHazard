@@ -7,7 +7,8 @@ function supportsLocalStorage() {
 	}
 }
 
-function median(values){
+function median(arr){
+	values = arr.concat()
 	values.sort(function(a,b){
 		return a-b;
 	});
@@ -96,11 +97,26 @@ LogSlider.prototype = {
    }
 };
 
+if ( !window.performance || !window.performance.now ) {
+	Date.now || ( Date.now = function () {
+		return new this().getTime();
+	});
+
+	( window.performance ||
+		( window.performance = {} ) ).now = function () {
+			return Date.now() - offset;
+		};
+
+	var offset = ( window.performance.timing ||
+		( window.performance.timing = {} ) ).navigatorStart ||
+			( window.performance.timing.navigatorStart = Date.now() );
+}
+
 var keyCodeMap = {
-        48:"0", 49:"1", 50:"2", 51:"3", 52:"4", 53:"5", 54:"6", 55:"7", 56:"8", 57:"9", 59:";",
-        65:"a", 66:"b", 67:"c", 68:"d", 69:"e", 70:"f", 71:"g", 72:"h", 73:"i", 74:"j", 75:"k", 76:"l",
-        77:"m", 78:"n", 79:"o", 80:"p", 81:"q", 82:"r", 83:"s", 84:"t", 85:"u", 86:"v", 87:"w", 88:"x", 89:"y", 90:"z",
-        96:"0", 97:"1", 98:"2", 99:"3", 100:"4", 101:"5", 102:"6", 103:"7", 104:"8", 105:"9"
+		48:"0", 49:"1", 50:"2", 51:"3", 52:"4", 53:"5", 54:"6", 55:"7", 56:"8", 57:"9", 59:";",
+		65:"a", 66:"b", 67:"c", 68:"d", 69:"e", 70:"f", 71:"g", 72:"h", 73:"i", 74:"j", 75:"k", 76:"l",
+		77:"m", 78:"n", 79:"o", 80:"p", 81:"q", 82:"r", 83:"s", 84:"t", 85:"u", 86:"v", 87:"w", 88:"x", 89:"y", 90:"z",
+		96:"0", 97:"1", 98:"2", 99:"3", 100:"4", 101:"5", 102:"6", 103:"7", 104:"8", 105:"9"
 }
 
 $.fn.setup_navigation = function(settings) {
@@ -290,7 +306,7 @@ $.fn.setup_navigation = function(settings) {
 		}
 	});
 
-  	$(document).click(function(){ $('.'+settings.menuHoverClass).attr('aria-hidden', 'true').removeClass(settings.menuHoverClass).find('a').attr('tabIndex',-1); });
+	$(document).click(function(){ $('.'+settings.menuHoverClass).attr('aria-hidden', 'true').removeClass(settings.menuHoverClass).find('a').attr('tabIndex',-1); });
 
 	$(this).click(function(e){
 		e.stopPropagation();
@@ -311,6 +327,34 @@ var node_tone = [
 	659.3
 ];
 
+// context unlocking
+function webAudioUnlock (context) {
+	return new Promise(function (resolve, reject) {
+		if (context.state === 'suspended') {
+			var unlock = function() {
+				context.resume().then(function() {
+					$(document).off('touchstart', unlock);
+					$(document).off('touchend', unlock);
+					$(document).off('mouseup', unlock);
+
+					resolve(true);
+				},
+				function (reason) {
+					reject(reason);
+				});
+			};
+
+			$(document).on('touchstart', unlock);
+			$(document).on('touchend', unlock);
+			$(document).on('mouseup', unlock);
+		} else {
+			resolve(false);
+		}
+	});
+}
+
+webAudioUnlock(globalAudioCtx);
+
 // test for Firefox (has broken RamptoValue audio function)
 var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 
@@ -321,8 +365,6 @@ var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 //callback to use on end of tone
 /* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
 function play_beep(duration, frequency, volume, type, fadetime, callback) {
-	globalAudioCtx.resume();
-
 	var oscillator = globalAudioCtx.createOscillator();
 	var gainNode = globalAudioCtx.createGain();
 
@@ -360,6 +402,325 @@ function play_beep(duration, frequency, volume, type, fadetime, callback) {
 	}, duration + (fadetime * 1000));*/
 };
 
+function __(text) {
+	// return translated string
+	if (rotorhazard.language_strings[rotorhazard.interface_language]) {
+		if (rotorhazard.language_strings[rotorhazard.interface_language]['values'][text]) {
+			return rotorhazard.language_strings[rotorhazard.interface_language]['values'][text]
+		}
+	}
+	return text
+}
+
+function __l(text) {
+	// return translated string for local voice
+	var lang = rotorhazard.voice_string_language;
+	if (rotorhazard.voice_string_language == 'match-timer') {
+		lang = rotorhazard.interface_language;
+	}
+
+	if (rotorhazard.language_strings[lang]) {
+		if (rotorhazard.language_strings[lang]['values'][text]) {
+			return rotorhazard.language_strings[lang]['values'][text]
+		}
+	}
+	return text
+}
+
+/* Data model for nodes */
+function nodeModel() {
+	this.trigger_rssi = false;
+	this.frequency = 0;
+	this.node_peak_rssi = false;
+	this.node_nadir_rssi = false;
+	this.pass_peak_rssi = false;
+	this.pass_nadir_rssi = false;
+	this.graphing = false;
+	this.enter_at_level = false;
+	this.exit_at_level = false;
+
+	this.canvas = false;
+	this.graph = new SmoothieChart({
+		responsive: true,
+		millisPerPixel:50,
+		grid:{
+			strokeStyle:'rgba(255,255,255,0.25)',
+			sharpLines:true,
+			verticalSections:0,
+			borderVisible:false
+		},
+		labels:{
+			precision:0
+		},
+		maxValue: 1,
+		minValue: 0,
+	});
+	this.series = new TimeSeries();
+
+	this.graphPausedTime = false;
+	this.graphPaused = false;
+	this.pauseSeries = new TimeSeries();
+}
+nodeModel.prototype = {
+	checkValues: function(){
+		var warnings = [];
+
+		if (this.node_nadir_rssi > 0 && this.node_nadir_rssi < this.node_peak_rssi - 40) {
+			// assume node data is invalid unless nadir and peak are minimally separated
+			if (this.enter_at_level > this.node_peak_rssi) {
+				warnings.push(__('EnterAt is higher than NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>'));
+			} else if (this.enter_at_level > this.node_peak_rssi - 10) {
+				warnings.push(__('EnterAt is very near NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>'));
+			}
+		}
+
+		if (this.node_nadir_rssi > 0 && this.exit_at_level <= this.node_nadir_rssi) {
+			warnings.push('ExitAt is lower than NodeNadir: <strong>Passes WILL NOT register</strong>.');
+		}
+
+		if (this.enter_at_level <= this.exit_at_level) {
+			warnings.push(__('EnterAt must be greater than ExitAt: <strong>Passes WILL NOT register correctly</strong>.'));
+		} else if (this.enter_at_level <= this.exit_at_level + 20) {
+			warnings.push(__('EnterAt is very near ExitAt: <strong>Passes may register too frequently</strong>.'));
+		}
+
+		if (this.exit_at_level < this.pass_nadir_rssi) {
+			warnings.push(__('ExitAt is lower than PassNadir: <strong>Passes may not complete</strong>.'));
+		} else if (this.exit_at_level < this.pass_nadir_rssi + 10) {
+			warnings.push(__('ExitAt is very near PassNadir: <strong>Passes may not complete</strong>.'));
+		}
+
+		var output = '';
+		if (warnings.length) {
+			var output = $('<ul class="node-warnings">');
+			for (i in warnings) {
+				output.append('<li>' + warnings[i] + '</li>')
+			}
+		}
+		return output;
+	},
+	setup: function(element){
+		this.graph.addTimeSeries(this.series, {lineWidth:1.7,
+			strokeStyle:'hsl(214, 53%, 60%)',
+			fillStyle:'hsla(214, 53%, 60%, 0.4)'
+		});
+		this.graph.streamTo(element, 200); // match delay value to heartbeat in server.py
+	},
+	updateThresholds: function(){
+		this.graph.options.horizontalLines = [
+			{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.enter_at_level}, // red
+			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.exit_at_level}, // orange
+			// {color:'#999', lineWidth:1.7, value: this.node_peak_rssi},
+			// {color:'#666', lineWidth:1.7, value: this.pass_nadir_rssi},
+		];
+		if (this.graphPaused) {
+			this.graph.render(this.canvas, this.graphPausedTime);
+		}
+	}
+}
+
+/* Data model for timer */
+function timerModel() {
+	// interval control
+	this.interval = 100; // in ms
+	this.min_interval = 10; // skip interval if too soon
+
+	this.timeout = false;
+	this.expected = false;
+	this.next_interval = 100; // in ms
+
+	this.callbacks = {
+		'start': false,
+		'stop': false,
+		'step': false,
+		'expire': false,
+	};
+
+	this.running = false;
+	this.zero_time = null; // timestamp for timer's zero point
+	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
+	this.time_s = false; // simplified relative time in seconds
+	this.count_up = false; // use fixed-length timer
+	this.duration = 0; // fixed-length duration, in seconds
+
+	this.drift_history = [];
+	this.drift_history_samples = 10;
+	this.drift_correction = 0;
+
+	var self = this;
+
+	function step() { // timer control
+		var diff = window.performance.now() - self.zero_time;
+		var continue_timer = true;
+
+		if (diff > self.interval / -2) {
+			// time is positive or zero
+			if (!self.count_up) {
+				var new_time_s = self.duration - (Math.round(diff / 100) / 10);
+
+				if (new_time_s != self.time_s) { // prevent double callbacks
+					self.time_s = new_time_s;
+
+					if (self.time_s <= 0) {
+						continue_timer = false;
+						self.running = false;
+						if (self.callbacks.expire instanceof Function) {
+							self.callbacks.expire(self);
+						}
+					} else {
+						if (self.callbacks.step instanceof Function) {
+							self.callbacks.step(self);
+						}
+					}
+				}
+			} else {
+				var new_time_s = Math.round(diff / 100) / 10;
+
+				if (new_time_s != self.time_s) { // prevent double callbacks
+					self.time_s = new_time_s;
+
+					if (self.callbacks.step instanceof Function) {
+						self.callbacks.step(self);
+					}
+				}
+			}
+		} else {
+			// negative
+			var new_time_s = Math.round(diff / 100) / 10;
+
+			if (new_time_s != self.time_s) { // prevent double callbacks
+				self.time_s = new_time_s;
+
+				if (self.callbacks.step instanceof Function) {
+					self.callbacks.step(self);
+				}
+			}
+		}
+
+		if (continue_timer) {
+			var now = window.performance.now()
+			var drift = now - self.expected;
+			if (drift > self.interval) {
+				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
+				self.start();
+			} else {
+				self.get_next_step(now);
+				self.timeout = setTimeout(step, Math.max(0, self.next_interval - self.drift_correction));
+
+				self.drift_history.push(drift + self.drift_correction);
+				self.drift_correction = median(self.drift_history);
+				if (self.drift_history.length >= self.drift_history_samples) {
+					self.drift_history.shift();
+				}
+			}
+		}
+	}
+
+	this.get_next_step = function(now){
+		// find current differential
+		var diff = this.zero_time - now;
+
+		if (diff >= 0) {
+			// waiting for zero
+			var to_next = diff % this.interval;
+		} else {
+			// timer past zero
+			var to_next = this.interval + (diff % this.interval);
+		}
+
+		this.expected = now + to_next;
+		this.next_interval = to_next;
+
+		if (to_next < this.min_interval) { // skip tic if too short (prevents extra tics from delay compensation)
+			this.expected += this.interval;
+			this.next_interval += this.interval;
+		}
+	}
+
+	this.start = function(remote_time_zero, local_remote_diiferential){
+		// reset simplified time and drift history
+		rotorhazard.timer.race.time_s = false;
+		this.drift_history = [];
+		this.drift_correction = 0;
+
+		// get sync if needed
+		if (typeof remote_time_zero !== "undefined" && typeof local_remote_diiferential !== "undefined") {
+			this.sync(remote_time_zero, local_remote_diiferential);
+		}
+
+		// start timing loop
+		this.continue();
+
+		// do callback
+		if (self.callbacks.start instanceof Function) {
+			self.callbacks.start(this);
+		}
+	}
+
+	this.continue = function(race_start_ms) {
+		// begin timing loop from unknown position
+		var now = window.performance.now();
+		if (this.running) {
+			clearTimeout(this.timeout);
+		}
+
+		this.get_next_step(now);
+
+		this.timeout = setTimeout(step, this.next_interval);
+		this.running = true;
+	}
+
+	this.sync = function(remote_time_zero, local_remote_diiferential) {
+		// set local timer zero based on remote zero and calculated differential
+		if (local_remote_diiferential && remote_time_zero) {
+			// only valid with both components
+			this.zero_time = remote_time_zero - local_remote_diiferential;
+		} else {
+			// otherwise don't consider valid
+			this.zero_time = null;
+		}
+	}
+
+	this.stop = function(){
+		// stop timing
+		clearTimeout(this.timeout);
+		this.running = false;
+		if (self.callbacks.stop instanceof Function) {
+			self.callbacks.stop(this);
+		}
+	}
+
+	this.renderHTML = function() {
+		if (this.zero_time == null || typeof this.time_s != 'number' || !this.running) {
+			return '--:--';
+		}
+
+		if (this.hidden_staging && this.time_s < 0) {
+			return __l('Ready');
+		}
+
+		if (this.time_s >= 0 && !this.count_up) {
+			var display_time = Math.abs(Math.ceil(this.time_s));
+		} else {
+			var display_time = Math.abs(Math.floor(this.time_s));
+		}
+
+		var hour = Math.floor(display_time / 3600);
+		display_time = display_time - (hour * 3600);
+		var minute = Math.floor(display_time / 60);
+		var second = display_time % 60;
+
+		second = (second < 10) ? '0' + second : second; // Pad zero if under 10
+		minute = (minute < 10) ? '0' + minute : minute;
+
+		if (hour) {
+			return hour + ':' + minute + ':' + second;
+		} else {
+			return minute + ':' + second;
+		}
+	}
+}
+
 /* rotorhazard object for local settings/storage */
 var rotorhazard = {
 	language_strings: {},
@@ -384,12 +745,25 @@ var rotorhazard = {
 	indicator_beep_volume: 0.5, // indicator beep volume
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
-	graphing: false,
+	graphing: false, // currently graphing RSSI
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array
-	collecting: false,
-	collection_amount: 25, // number of rssi data points to capture
 
+	// all times in ms (decimal micros if available)
+	pi_time_request: false,
+	pi_time_diff: false,
+	race_start_pi: false,
+	pi_time_diff_samples: [], // stored previously acquired offsets
+
+	timer: {
+		deferred: new timerModel(),
+		staging: new timerModel(),
+		race: new timerModel(),
+		stopAll: function() {
+			this.deferred.stop();
+			this.race.stop();
+		}
+	},
 	saveData: function() {
 		if (!supportsLocalStorage()) {
 			return false;
@@ -484,143 +858,105 @@ var rotorhazard = {
 	},
 }
 
-function __(text) {
-	// return translated string
-	if (rotorhazard.language_strings[rotorhazard.interface_language]) {
-		if (rotorhazard.language_strings[rotorhazard.interface_language]['values'][text]) {
-			return rotorhazard.language_strings[rotorhazard.interface_language]['values'][text]
+// deferred timer callbacks (time until race)
+rotorhazard.timer.deferred.callbacks.start = function(timer){
+	if (rotorhazard.timer.staging.running || rotorhazard.timer.race.running) {  // defer timing to staging/race timers
+		rotorhazard.timer.deferred.stop();
+	}
+}
+rotorhazard.timer.deferred.callbacks.step = function(timer){
+	if (rotorhazard.voice_race_timer) {
+		if (timer.time_s > 3600 && !(timer.time_s % 3600)) { // 2+ hour callout
+			var hours = timer.time_s / 3600;
+			speak('<div>' + __l('Next race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
+		} else if (timer.time_s == 3600) {
+			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
+		} else if (timer.time_s == 1800) {
+			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time_s > 60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
+			var minutes = timer.time_s / 60;
+			speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
+		} else if (timer.time_s == 60) {
+			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
+		} else if (timer.time_s == 30) {
+			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
+		} else if (timer.time_s == 10) {
+			speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
 		}
 	}
-	return text
+
+	$('.timing-clock').html(timer.renderHTML());
+}
+rotorhazard.timer.deferred.callbacks.stop = function(timer){
+	$('.timing-clock').html(timer.renderHTML());
+}
+rotorhazard.timer.deferred.callbacks.expire = function(timer){
+	$('.timing-clock').html(__('Wait'));
 }
 
-function __l(text) {
-	// return translated string for local voice
-	var lang = rotorhazard.voice_string_language;
-	if (rotorhazard.voice_string_language == 'match-timer') {
-		lang = rotorhazard.interface_language;
-	}
-
-	if (rotorhazard.language_strings[lang]) {
-		if (rotorhazard.language_strings[lang]['values'][text]) {
-			return rotorhazard.language_strings[lang]['values'][text]
+// race/staging timer callbacks
+rotorhazard.timer.race.callbacks.start = function(timer){
+	$('.timing-clock').html(timer.renderHTML());
+	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
+}
+rotorhazard.timer.race.callbacks.step = function(timer){
+	if (timer.time_s < 0) {
+		if (timer.hidden_staging) {
+			// beep every second during staging if timer is hidden
+			if (timer.time_s * 10 % 10 == 0) {
+				play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+			}
+		} else if (timer.time_s == 30
+			|| timer.time_s == 20
+			|| timer.time_s == 10) {
+			speak('<div>' + __l('Starting in') + ' ' + timer.time_s + ' ' + __l('Seconds') + '</div>', true);
+		} else if (timer.time_s <= 5) {
+			// staging beep for last 5 seconds before start
+			if (timer.time_s * 10 % 10 == 0) {
+				play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+			}
 		}
-	}
-	return text
-}
-
-/* Data model for nodes */
-function nodeModel() {
-	this.trigger_rssi = false;
-	this.frequency = 0;
-	this.node_peak_rssi = false;
-	this.node_nadir_rssi = false;
-	this.pass_peak_rssi = false;
-	this.pass_nadir_rssi = false;
-	this.graphing = false;
-	this.enter_at_level = false;
-	this.exit_at_level = false;
-	this.corrections = {
-		floor: {
-			rawData: [],
-			min: false,
-			median: false,
-			max: false
-		},
-		nearest: {
-			rawData: [],
-			min: false,
-			median: false,
-			max: false
-		},
-		gate: {
-			rawData: [],
-			min: false,
-			median: false,
-			max: false
-		},
-
-		median_separation: false,
-	};
-
-	this.canvas = false;
-	this.graph = new SmoothieChart({
-		responsive: true,
-		millisPerPixel:50,
-		grid:{
-			strokeStyle:'rgba(255,255,255,0.25)',
-			sharpLines:true,
-			verticalSections:0,
-			borderVisible:false
-		},
-		labels:{
-			precision:0
-		},
-		maxValue: 1,
-		minValue: 0,
-	});
-	this.series = new TimeSeries();
-
-	this.graphPausedTime = false;
-	this.graphPaused = false;
-	this.pauseSeries = new TimeSeries();
-}
-nodeModel.prototype = {
-	checkValues: function(){
-		var warnings = [];
-
-		if (this.node_nadir_rssi > 0 && this.node_nadir_rssi < this.node_peak_rssi - 20) {
-			// assume node data is invalid unless nadir and peak are minimally separated
-			if (this.enter_at_level > this.node_peak_rssi) {
-				warnings.push(__('EnterAt is higher than NodePeak: <strong>Passes may not register</strong>. Ensure you have completed a lap pass before adjusting node values.'));
-			} else if (this.enter_at_level > this.node_peak_rssi - 10) {
-				warnings.push(__('EnterAt is very near NodePeak: <strong>Passes may not register</strong>. Ensure you have completed a lap pass before adjusting node values.'));
+	} else if (timer.time_s == 0 ||
+		(!timer.count_up && timer.time_s == timer.duration)
+		) {
+		// play start tone
+		play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+	} else {
+		if (!timer.count_up) {
+			if (timer.time_s <= 5) { // Final seconds
+				if (timer.time_s * 10 % 10 == 0) {
+					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+				}
+			} else if (timer.time_s == 10) { // announce 10s only when counting down
+				if (rotorhazard.voice_race_timer)
+					speak('<div>10 ' + __l('Seconds') + '</div>', true);
 			}
 		}
 
-		if (this.node_nadir_rssi > 0 && this.exit_at_level <= this.node_nadir_rssi) {
-			warnings.push('ExitAt is lower than NodeNadir: <strong>Passes WILL NOT register</strong>.');
-		}
-
-		if (this.enter_at_level <= this.exit_at_level) {
-			warnings.push(__('EnterAt must be greater than ExitAt: <strong>Passes WILL NOT register correctly</strong>.'));
-		} else if (this.enter_at_level <= this.exit_at_level + 20) {
-			warnings.push(__('EnterAt is very near ExitAt: <strong>Passes may register too frequently</strong>.'));
-		}
-
-		if (this.exit_at_level < this.pass_nadir_rssi) {
-			warnings.push(__('ExitAt is lower than PassNadir: <strong>Passes may not complete</strong>.'));
-		} else if (this.exit_at_level < this.pass_nadir_rssi + 10) {
-			warnings.push(__('ExitAt is very near PassNadir: <strong>Passes may not complete</strong>.'));
-		}
-
-		var output = '';
-		if (warnings.length) {
-			var output = $('<ul class="node-warnings">');
-			for (i in warnings) {
-				output.append('<li>' + warnings[i] + '</li>')
+		if (rotorhazard.voice_race_timer) {
+			if (timer.time_s > 3600 && !(timer.time_s % 3600)) { // 2+ hour callout (endurance)
+				var hours = timer.time_s / 3600;
+				speak('<div>' + hours + ' ' + __l('Hours') + '</div>', true);
+			} else if (timer.time_s == 3600) {
+				speak('<div>1 ' + __l('Hour') + '</div>', true);
+			} else if (timer.time_s == 1800) {
+				speak('<div>30 ' + __l('Minutes') + '</div>', true);
+			} else if (timer.time_s > 60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
+				var minutes = timer.time_s / 60;
+				speak('<div>' + minutes + ' ' + __l('Minutes') + '</div>', true);
+			} else if (timer.time_s == 60) {
+				speak('<div>1 ' + __l('Minute') + '</div>', true);
+			} else if (timer.time_s == 30) {
+				speak('<div>30 ' + __l('Seconds') + '</div>', true);
 			}
 		}
-		return output;
-	},
-	setup: function(element){
-		this.graph.addTimeSeries(this.series, {lineWidth:1.7,
-			strokeStyle:'hsl(214, 53%, 60%)',
-			fillStyle:'hsla(214, 53%, 60%, 0.4)'
-		});
-		this.graph.streamTo(element, 200); // match delay value to heartbeat in server.py
-	},
-	updateThresholds: function(){
-		this.graph.options.horizontalLines = [
-			{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.enter_at_level}, // red
-			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.exit_at_level}, // orange
-			// {color:'#999', lineWidth:1.7, value: this.node_peak_rssi},
-			// {color:'#666', lineWidth:1.7, value: this.pass_nadir_rssi},
-		];
-		if (this.graphPaused) {
-			this.graph.render(this.canvas, this.graphPausedTime);
-		}
 	}
+	$('.timing-clock').html(timer.renderHTML());
+}
+rotorhazard.timer.race.callbacks.expire = function(timer){
+	// play expired tone
+	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+	$('.timing-clock').html(timer.renderHTML());
 }
 
 /* global page behaviors */
