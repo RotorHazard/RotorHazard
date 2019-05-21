@@ -2,7 +2,7 @@
 
 import smbus # For i2c comms
 import io
-import bme280
+import importlib
 import gevent # For threads and timing
 from gevent.lock import BoundedSemaphore # To limit i2c calls
 from monotonic import monotonic # to capture read timing
@@ -138,16 +138,20 @@ class RHInterface(BaseHardwareInterface):
         self.bme280_addrs = []
         self.bme280_data = []
         supported_bme280_addrs = [0x76, 0x77]
-        for index, addr in enumerate(supported_bme280_addrs):
-            try:
-                data = bme280.sample(self.i2c, addr)
-                print "BME280 found at address {0}".format(addr)
+        try:
+            self.bme280SampleMethod = getattr(importlib.import_module('bme280'), 'sample')
+            for index, addr in enumerate(supported_bme280_addrs):
+                try:
+                    data = self.bme280SampleMethod(self.i2c, addr)
+                    print "BME280 found at address {0}".format(addr)
+                    gevent.sleep(I2C_CHILL_TIME)
+                    self.bme280_addrs.append(addr)
+                    self.bme280_data.append(data)
+                except IOError as err:
+                    print "No BME280 at address {0}".format(addr)
                 gevent.sleep(I2C_CHILL_TIME)
-                self.bme280_addrs.append(addr)
-                self.bme280_data.append(data)
-            except IOError as err:
-                print "No BME280 at address {0}".format(addr)
-            gevent.sleep(I2C_CHILL_TIME)
+        except ImportError:
+            self.bme280SampleMethod = None
 
 
     #
@@ -628,16 +632,17 @@ class RHInterface(BaseHardwareInterface):
 
     def update_environmental_data(self):
         '''Updates environmental data.'''
-        for index, addr in enumerate(self.bme280_addrs):
-            try:
-                with self.semaphore:
-                    self.i2c_sleep()
-                    data = bme280.sample(self.i2c, addr)
-                    self.bme280_data[index] = data
+        if self.bme280SampleMethod:
+            for index, addr in enumerate(self.bme280_addrs):
+                try:
+                    with self.semaphore:
+                        self.i2c_sleep()
+                        data = self.bme280SampleMethod(self.i2c, addr)
+                        self.bme280_data[index] = data
+                        self.i2c_timestamp = self.milliseconds()
+                except IOError as err:
+                    self.log('BME280 Read Error: ' + str(err))
                     self.i2c_timestamp = self.milliseconds()
-            except IOError as err:
-                self.log('BME280 Read Error: ' + str(err))
-                self.i2c_timestamp = self.milliseconds()
 
         with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
             self.core_temp = float(f.read())/1000

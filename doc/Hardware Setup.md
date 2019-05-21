@@ -49,7 +49,7 @@ Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common groun
 The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under Software Setup.
 ![led wiring](img/GPIO.jpg)
 
-### BME280 Temperature support
+### BME280 Temperature support (optional)
 Attach to the I2C bus and 5V pins.
 
 -----------------------------

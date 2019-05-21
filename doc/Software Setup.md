@@ -99,7 +99,7 @@ cd python
 sudo python setup.py install
 ```
 
-### BME280 Temperature Support
+### BME280 Temperature Support (optional)
 The bme280 interface is provided by the following project:
 https://github.com/rm-hull/bme280
 
