@@ -32,7 +32,6 @@ import signal
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
-from BaseHardwareInterface import diff_milliseconds
 from RHInterface import get_hardware_interface
 from RHRace import get_race_state
 
@@ -110,13 +109,19 @@ except ValueError:
 INTERFACE = get_hardware_interface()
 RACE = get_race_state() # For storing race management variables
 
+def diff_milliseconds(t2, t1):
+    dt = t2 - t1
+    ms = round((dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0)
+    return ms
+
 EPOCH_START = datetime(1970, 1, 1)
-pre_program_start = monotonic()
 PROGRAM_START_TIMESTAMP = diff_milliseconds(datetime.now(), EPOCH_START)
-post_program_start = monotonic()
-# take the average to be as accurate as we can
-PROGRAM_START = (pre_program_start + post_program_start)/2
-PROGRAM_START_OFFSET = PROGRAM_START - PROGRAM_START_TIMESTAMP
+PROGRAM_START = monotonic()
+PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
+
+def monotonic_to_milliseconds(t):
+    return 1000.0*t - PROGRAM_START_MILLIS_OFFSET
+
 RACE_START = monotonic() # Updated on race start commands
 RACE_START_TOKEN = False # Check start thread matches correct stage sequence
 RACE_DURATION_MS = 0 # calculated when race is stopped
@@ -560,7 +565,11 @@ def on_get_version():
 
 @SOCKET_IO.on('get_timestamp')
 def on_get_timestamp():
-    return {'timestamp': monotonic() - PROGRAM_START_OFFSET}
+    if RACE.race_status == RACE_STATUS_STAGING:
+        now = RACE_START
+    else:
+        now = monotonic()
+    return {'timestamp': monotonic_to_milliseconds(now)}
 
 @SOCKET_IO.on('get_settings')
 def on_get_settings():
@@ -3040,7 +3049,7 @@ def pass_record_callback(node, ms_since_lap):
                     SOCKET_IO.emit('pass_record', {
                         'node': node.index,
                         'frequency': node.frequency,
-                        'timestamp': lap_time_stamp + (RACE_START - PROGRAM_START_OFFSET)
+                        'timestamp': lap_time_stamp + monotonic_to_milliseconds(RACE_START)
                     })
                     # Add the new lap to the database
                     DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
