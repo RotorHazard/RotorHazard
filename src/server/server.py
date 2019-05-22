@@ -550,6 +550,8 @@ def on_load_data(data):
     for load_type in load_types:
         if load_type == 'node_data':
             emit_node_data(nobroadcast=True)
+        elif load_type == 'environmental_data':
+            emit_environmental_data(nobroadcast=True)
         elif load_type == 'frequency_data':
             emit_frequency_data(nobroadcast=True)
         elif load_type == 'heat_data':
@@ -1666,6 +1668,19 @@ def emit_node_data(**params):
         emit('node_data', emit_payload)
     else:
         SOCKET_IO.emit('node_data', emit_payload)
+
+def emit_environmental_data(**params):
+    '''Emits environmental data.'''
+    emit_payload = {
+        'core_temperature': INTERFACE.core_temp,
+        'aux_temperature': [data.temperature for data in INTERFACE.bme280_data],
+        'aux_pressure': [data.pressure for data in INTERFACE.bme280_data],
+        'aux_humidity': [data.humidity for data in INTERFACE.bme280_data]
+    }
+    if ('nobroadcast' in params):
+        emit('environmental_data', emit_payload)
+    else:
+        SOCKET_IO.emit('environmental_data', emit_payload)
 
 def emit_enter_and_exit_at_levels(**params):
     '''Emits enter-at and exit-at levels for nodes.'''
@@ -2834,8 +2849,13 @@ def heartbeat_thread_function():
             emit_imdtabler_rating()
 
         # emit rest of node data, but less often:
-        if heartbeat_thread_function.iter_tracker % 20 == 0:
+        if (heartbeat_thread_function.iter_tracker % 20) == 0:
             emit_node_data()
+
+        # emit environment data less often:
+        if (heartbeat_thread_function.iter_tracker % 100) == 0:
+            INTERFACE.update_environmental_data()
+            emit_environmental_data()
 
         # check if race is to be started
         global RACE_SCHEDULED
