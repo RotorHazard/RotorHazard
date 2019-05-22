@@ -828,5 +828,12 @@
 			"Open Practice": "Pratique ouverte",
 			"FPV Race": "Course FPV"
 		}
+	},
+	"en-gb": {
+		"name": "English (UK)",
+		"values": {
+			"Place VTx 5-10 feet away and press \"Capture\" for EnterAt": "Place VTx 1.5-3 metres (5-10 feet) away and press \"Capture\" for EnterAt",
+			"Place VTx 20-30 feet away and press \"Capture\" for ExitAt": "Place VTx 6-9 metres (20-30 feet) away and press \"Capture\" for ExitAt"
+		}
 	}
 }
