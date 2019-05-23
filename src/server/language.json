@@ -205,7 +205,8 @@
 			"EnterAt must be greater than ExitAt: <strong>Passes WILL NOT register correctly</strong>.": "EnterAt muss größer sein als ExitAt: <strong>Durchflüge klnnen nicht richtig erkannt werden</strong>.",
 			"EnterAt is very near ExitAt: <strong>Passes may register too frequently</strong>.": "EnterAt sehr nah an ExitAt: <strong>Druchflüge können zu häufig erkannt werden</strong>.",
 			"ExitAt is lower than PassNadir: <strong>Passes may not complete</strong>.": "ExitAt ist kleiner als PassNadir: <strong>Durchflüge können unter Umständen nicht abgeschlossen werden</strong>.",
-			"ExitAt is very near PassNadir: <strong>Passes may not complete</strong>.": "ExitAt sehr nah an PassNadir: <strong>Durchflüge können unter Umständen nicht abgeschlossen werden</strong>."
+			"ExitAt is very near PassNadir: <strong>Passes may not complete</strong>.": "ExitAt sehr nah an PassNadir: <strong>Durchflüge können unter Umständen nicht abgeschlossen werden</strong>.",
+			"Next race begins in": "Rennen beginnt in"
 		}
 	},
 	"nl-be": {
@@ -406,7 +407,7 @@
 			"Open Practice": "Vrije training",
 			"FPV Race": "FPV Race",
 			"Send Message": "Melding sturen",
-			"EnterAt is higher than NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>": "EnterAt ligt hoger dan NodePeak: <strong>Laps worden misschien gemist</strong>. <em>Vlieg een lap voor je de instellingen van de ontvanger aanpast.</em>",			
+			"EnterAt is higher than NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>": "EnterAt ligt hoger dan NodePeak: <strong>Laps worden misschien gemist</strong>. <em>Vlieg een lap voor je de instellingen van de ontvanger aanpast.</em>",
 			"EnterAt is very near NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>": "EnterAt ligt heel dicht bij NodePeak: <strong>Laps worden misschien gemist</strong>. <em>Vlieg een lap voor je de instellingen van de ontvanger aanpast.</em>",
 			"ExitAt is lower than NodeNadir: <strong>Passes WILL NOT register</strong>.": "ExitAt ligt lager dan NodeNadir: <strong>Laps zullen NIET geregistreerd worden</strong>.",
 			"EnterAt must be greater than ExitAt: <strong>Passes WILL NOT register correctly</strong>.": "EnterAt moet hoger liggen dan ExitAt: <strong>Laps zullen NIET JUIST geregistreerd worden</strong>.",

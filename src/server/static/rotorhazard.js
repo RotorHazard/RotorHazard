@@ -866,22 +866,24 @@ rotorhazard.timer.deferred.callbacks.start = function(timer){
 }
 rotorhazard.timer.deferred.callbacks.step = function(timer){
 	if (rotorhazard.voice_race_timer) {
-		if (timer.time_s > 3600 && !(timer.time_s % 3600)) { // 2+ hour callout
-			var hours = timer.time_s / 3600;
+		if (timer.time_s < -3600 && !(timer.time_s % -3600)) { // 2+ hour callout
+			var hours = timer.time_s / -3600;
 			speak('<div>' + __l('Next race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
-		} else if (timer.time_s == 3600) {
+		} else if (timer.time_s == -3600) {
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
-		} else if (timer.time_s == 1800) {
+		} else if (timer.time_s == -1800) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_s > 60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
-			var minutes = timer.time_s / 60;
+		} else if (timer.time_s > -60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
+			var minutes = timer.time_s / -60;
 			speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_s == 60) {
+		} else if (timer.time_s == -60) {
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
-		} else if (timer.time_s == 30) {
+		} else if (timer.time_s == -30) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
-		} else if (timer.time_s == 10) {
+		} else if (timer.time_s == -10) {
 			speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
+		}else if (timer.time_s == -5) {
+			speak('<div>' + __l('Next race begins in') + ' 5 ' + __l('Seconds') + '</div>', true);
 		}
 	}
 
