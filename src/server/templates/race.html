@@ -134,6 +134,10 @@
 		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
 		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
+		$('#schedule_m').val(rotorhazard.schedule_m);
+		$('#schedule_s').val(rotorhazard.schedule_s);
+
+
 
 		// set up node local store
 		for (i = 0; i < {{ num_nodes }}; i++) {
@@ -713,6 +717,16 @@
 
 		$('#beep_on_first_pass_button').change(function (event) {
 			rotorhazard.beep_on_first_pass_button = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+
+		$('#schedule_m').change(function (event) {
+			rotorhazard.schedule_m = $(this).val();
+			rotorhazard.saveData();
+		});
+
+		$('#schedule_s').change(function (event) {
+			rotorhazard.schedule_s = $(this).val();
 			rotorhazard.saveData();
 		});
 
