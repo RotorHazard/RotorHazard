@@ -936,7 +936,7 @@
 <main class="page-race">
 
 <div class="panel">
-	<div class="panel-content">
+	<div class="panel-content full-width">
 		<div class="timer">
 			<div class="timing-clock">--:--</div>
 		</div>
@@ -1007,9 +1007,6 @@
 								<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
 							</div>
 						</div>
-
-						<div id="node_notice_{{ node }}"></div>
-
 						<table>
 							<tr class="datarow">
 								<td>{{ __('RSSI') }}</td>
@@ -1048,6 +1045,7 @@
 								</td>
 							</tr>
 						</table>
+						<div id="node_notice_{{ node }}"></div>
 					</div>
 				</div>
 			</div>

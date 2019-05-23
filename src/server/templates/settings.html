@@ -1229,7 +1229,7 @@
 	<div class="panel-header">
 		<h2>{{ __('Sensor Tuning') }}</h2>
 	</div>
-	<div class="panel-content">
+	<div class="panel-content full-width">
 		<ul class="graph-key">
 			<li><span style="background-color: hsl(214, 53%, 60%)"></span> {{ __('RSSI') }}</li>
 			<li><span style="background-color: hsl(8.2, 86.5%, 53.7%)"></span> {{ __('EnterAt') }}</li>
@@ -1263,7 +1263,6 @@
 						<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
 					</div>
 				</div>
-				<div id="node_notice_{{ node }}"></div>
 				<table>
 					<tr class="datarow">
 						<td>{{ __('RSSI') }}</td>
@@ -1302,6 +1301,7 @@
 						</td>
 					</tr>
 				</table>
+				<div id="node_notice_{{ node }}"></div>
 			</div>
 			{% endfor %}
 		</div>
