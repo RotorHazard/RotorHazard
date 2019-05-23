@@ -1,20 +1,16 @@
-from datetime import datetime
-from datetime import timedelta
-import time
+from monotonic import monotonic
 
 class BaseHardwareInterface(object):
     def __init__(self):
         self.calibration_threshold = 20
         self.calibration_offset = 10
         self.trigger_threshold = 20
-        self.start_time = datetime.now()
+        self.start_time = monotonic()
         self.filter_ratio = 50
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
-       dt = datetime.now() - self.start_time
-       ms = round((dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0)
-       return ms
+       return monotonic() - self.start_time
 
     #
     # Get Json Node Data Functions
