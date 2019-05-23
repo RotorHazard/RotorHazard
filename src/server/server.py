@@ -2,6 +2,7 @@
 RELEASE_VERSION = "2.0.0 (dev0)" # Public release version code
 SERVER_API = 15 # Server API version
 NODE_API_BEST = 17 # Most recent node API
+JSON_API = 1 # JSON API version
 
 import os
 import sys
@@ -197,14 +198,17 @@ def buildServerInfo():
     serverInfo['server_api'] = SERVER_API
     serverInfo['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
 
+    # Server API
+    serverInfo['json_api'] = JSON_API
+
     # Node API levels
     node_api_level = False
     serverInfo['node_api_match'] = True
+
     if len(INTERFACE.nodes):
         if INTERFACE.nodes[0].api_level:
             node_api_level = INTERFACE.nodes[0].api_level
             serverInfo['node_api_lowest'] = node_api_level
-
             serverInfo['node_api_levels'] = []
             for node in INTERFACE.nodes:
                 serverInfo['node_api_levels'].append(node.api_level)
@@ -252,9 +256,9 @@ def signal_handler(signal, frame):
 
 # LED one color ON/OFF
 def onoff(strip, color):
-	for i in range(strip.numPixels()):
-		strip.setPixelColor(i, color)
-	strip.show()
+    for i in range(strip.numPixels()):
+        strip.setPixelColor(i, color)
+    strip.show()
 
 def theaterChase(strip, color, wait_ms=50, iterations=5):
     """Movie theater light style chaser animation."""
@@ -554,6 +558,298 @@ def database():
         profiles=Profiles,
         race_format=RaceFormat,
         globalSettings=GlobalSettings)
+
+# JSON API
+
+from sqlalchemy.ext.declarative import DeclarativeMeta
+
+class AlchemyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj.__class__, DeclarativeMeta):
+            # an SQLAlchemy class
+            fields = {}
+            for field in [x for x in dir(obj) if not x.startswith('_') and x != 'metadata']:
+                data = obj.__getattribute__(field)
+                if field is not "query" \
+                    and field is not "query_class":
+                    try:
+                        json.dumps(data) # this will fail on non-encodable values, like other classes
+                        if field is "frequencies":
+                            fields[field] = json.loads(data)["f"]
+                        elif field is "enter_ats" or field is "exit_ats":
+                            fields[field] = json.loads(data)["v"]
+                        else:
+                            fields[field] = data
+                    except TypeError:
+                        fields[field] = None
+            # a json-encodable dict
+            return fields
+
+        return json.JSONEncoder.default(self, obj)
+
+@APP.route('/api/pilot/all')
+def api_pilot_all():
+    pilots = Pilot.query.all()
+    payload = []
+    for pilot in pilots:
+        payload.append(pilot)
+
+    response = APP.response_class(
+        response=json.dumps({"pilots": payload}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/pilot/<int:pilot_id>')
+def api_pilot(pilot_id):
+    pilot = Pilot.query.get(pilot_id)
+    response = APP.response_class(
+        response=json.dumps({"pilot": pilot}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/heat/all')
+def api_heat_all():
+    all_heats = {}
+    for heat in Heat.query.with_entities(Heat.heat_id).distinct():
+        heatdata = Heat.query.filter_by(heat_id=heat.heat_id, node_index=0).first()
+        pilots = []
+        for node in range(RACE.num_nodes):
+            pilot_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=node).first().pilot_id
+            pilots.append(pilot_id)
+        heat_id = heatdata.heat_id
+        note = heatdata.note
+        race_class = heatdata.class_id
+        has_race = SavedRace.query.filter_by(heat_id=heat.heat_id).first()
+        if has_race:
+            locked = True
+        else:
+            locked = False
+
+        all_heats[heat_id] = {'pilots': pilots,
+            'note': note,
+            'heat_id': heat_id,
+            'class_id': race_class,
+            'locked': locked}
+
+    response = APP.response_class(
+        response=json.dumps({"heats": all_heats}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/heat/<int:heat_id>')
+def api_heat(heat_id):
+    heatdata = Heat.query.filter_by(heat_id=heat_id, node_index=0).first()
+    if heatdata:
+        pilots = []
+        for node in range(RACE.num_nodes):
+            pilot_id = Heat.query.filter_by(heat_id=heat_id, node_index=node).first().pilot_id
+            pilots.append(pilot_id)
+        note = heatdata.note
+        race_class = heatdata.class_id
+        has_race = SavedRace.query.filter_by(heat_id=heat_id).first()
+        if has_race:
+            locked = True
+        else:
+            locked = False
+
+        heat = {'pilots': pilots,
+          'note': note,
+          'heat_id': heat_id,
+          'class_id': race_class,
+          'locked': locked}
+    else:
+        heat = None
+
+    payload = {
+        'setup': heat,
+        'leaderboard': calc_leaderboard(heat_id=heat_id)
+    }
+
+    response = APP.response_class(
+        response=json.dumps({"heat": payload}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/class/all')
+def api_class_all():
+    race_classes = RaceClass.query.all()
+    payload = []
+    for race_class in race_classes:
+        payload.append(race_class)
+
+    response = APP.response_class(
+        response=json.dumps({"classes": payload}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/class/<int:class_id>')
+def api_class(class_id):
+    race_class = RaceClass.query.get(class_id)
+    response = APP.response_class(
+        response=json.dumps({"class": race_class}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/format/all')
+def api_format_all():
+    formats = RaceFormat.query.all()
+    payload = []
+    for race_format in formats:
+        payload.append(race_format)
+
+    response = APP.response_class(
+        response=json.dumps({"formats": payload}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/format/<int:format_id>')
+def api_format(format_id):
+    raceformat = RaceFormat.query.get(format_id)
+    response = APP.response_class(
+        response=json.dumps({"format": raceformat}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/profile/all')
+def api_profile_all():
+    profiles = Profiles.query.all()
+    payload = []
+    for profile in profiles:
+        payload.append(profile)
+
+    response = APP.response_class(
+        response=json.dumps({"profiles": payload}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/profile/<int:profile_id>')
+def api_profile(profile_id):
+    profile = Profiles.query.get(profile_id)
+    response = APP.response_class(
+        response=json.dumps({"profile": profile}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/race/current')
+def api_race_current():
+    query = CurrentLap.query.all()
+    laps = []
+    for lap in query:
+        laps.append(lap)
+
+    payload = {
+        "raw_laps": laps,
+        "leaderboard": calc_leaderboard(current_race=True)
+    }
+
+    response = APP.response_class(
+        response=json.dumps({"race": payload}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/race/all')
+def api_race_all():
+    heats = []
+    for heat in SavedRace.query.with_entities(SavedRace.heat_id).distinct().order_by(SavedRace.heat_id):
+        max_rounds = DB.session.query(DB.func.max(SavedRace.round_id)).filter_by(heat_id=heat.heat_id).scalar()
+        heats.append({"rounds": max_rounds})
+
+    response = APP.response_class(
+        response=json.dumps({"heats": heats}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/race/<int:heat_id>/<int:round_id>')
+def api_race(heat_id, round_id):
+    query = SavedRace.query.filter_by(heat_id=heat_id, round_id=round_id).all()
+    laps = []
+    for lap in query:
+        laps.append(lap)
+
+    payload = {
+        "raw_laps": laps,
+        "leaderboard": calc_leaderboard(heat_id=heat_id, round_id=round_id)
+    }
+
+    response = APP.response_class(
+        response=json.dumps({"race": payload}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/status')
+def api_status():
+    data = {
+        "server_info": {
+            "server_api": serverInfo['server_api'],
+            "json_api": serverInfo['json_api'],
+            "node_api_best": serverInfo['node_api_best'],
+            "release_version": serverInfo['release_version'],
+            "node_api_match": serverInfo['node_api_match'],
+            "node_api_lowest": serverInfo['node_api_lowest'],
+            "node_api_levels": serverInfo['node_api_levels']
+        },
+        "state": {
+            "current_heat": RACE.current_heat,
+            "num_nodes": RACE.num_nodes,
+            "race_status": RACE.race_status,
+            "currentProfile": getOption('currentProfile'),
+            "currentFormat": getOption('currentFormat'),
+        },
+        "event": {
+            "leaderboard": calc_leaderboard()
+        }
+    }
+    response = APP.response_class(
+        response=json.dumps({"status": data}),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+@APP.route('/api/options')
+def api_options():
+    opt_query = GlobalSettings.query.all()
+    options = {}
+    if opt_query:
+        for opt in opt_query:
+            options[opt.option_name] = opt.option_value
+
+        payload = options
+    else:
+        payload = None
+
+    response = APP.response_class(
+        response=json.dumps({"options": payload}, cls=AlchemyEncoder),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 #
 # Socket IO Events
@@ -2303,10 +2599,10 @@ def emit_heat_data(**params):
             locked = False
 
         current_heats[heat_id] = {'pilots': pilots,
-                              'note': note,
-                              'heat_id': heat_id,
-                              'class_id': race_class,
-                              'locked': locked}
+            'note': note,
+            'heat_id': heat_id,
+            'class_id': race_class,
+            'locked': locked}
 
     current_classes = []
     for race_class in RaceClass.query.all():
@@ -3359,9 +3655,10 @@ def db_reset_race_formats():
 def db_reset_options_defaults():
     DB.session.query(GlobalSettings).delete()
     setOption("server_api", SERVER_API)
+    # group identifiers
     setOption("timerName", __("RotorHazard"))
     setOption("timerLogo", "")
-
+    # group colors
     setOption("hue_0", "212")
     setOption("sat_0", "55")
     setOption("lum_0_low", "29.2")
@@ -3375,17 +3672,18 @@ def db_reset_options_defaults():
     setOption("lum_1_high", "54.5")
     setOption("contrast_1_low", "#ffffff")
     setOption("contrast_1_high", "#000000")
-
+    # timer state
     setOption("currentLanguage", "")
     setOption("currentProfile", "1")
     setCurrentRaceFormat(RaceFormat.query.first())
+    # minimum lap
     setOption("MinLapSec", "10")
     setOption("MinLapBehavior", "0")
-
+    # pass catching settings
     setOption("HistoryExpireDuration", "10000")
     setOption("HistoryMaxOffset", "10")
     setOption("HistoryMinOffset", "10")
-
+    # event information
     setOption("eventName", __("FPV Race"))
     setOption("eventDescription", "")
 
