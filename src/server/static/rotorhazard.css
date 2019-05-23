@@ -296,6 +296,11 @@ ol.form li+li {
 	padding: 0 0 1em;
 }
 
+.panel-content.full-width {
+	padding: 0 1em 1em;
+	margin: 0 calc(50% - 50vw);
+}
+
 .control-set {
 	text-align: center;
 }

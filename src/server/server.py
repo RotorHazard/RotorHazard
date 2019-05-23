@@ -13,7 +13,7 @@ from datetime import datetime
 from functools import wraps
 from collections import OrderedDict
 
-from flask import Flask, render_template, request, Response
+from flask import Flask, render_template, request, Response, session
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
 
@@ -109,7 +109,19 @@ except ValueError:
 INTERFACE = get_hardware_interface()
 RACE = get_race_state() # For storing race management variables
 
+def diff_milliseconds(t2, t1):
+    dt = t2 - t1
+    ms = round((dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0)
+    return ms
+
+EPOCH_START = datetime(1970, 1, 1)
+PROGRAM_START_TIMESTAMP = diff_milliseconds(datetime.now(), EPOCH_START)
 PROGRAM_START = monotonic()
+PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
+
+def monotonic_to_milliseconds(t):
+    return 1000.0*t - PROGRAM_START_MILLIS_OFFSET
+
 RACE_START = monotonic() # Updated on race start commands
 RACE_START_TOKEN = False # Check start thread matches correct stage sequence
 RACE_DURATION_MS = 0 # calculated when race is stopped
@@ -416,6 +428,27 @@ def setOption(option, value):
         DB.session.add(GlobalSettings(option_name=option, option_value=value))
     DB.session.commit()
 
+def getCurrentRaceFormat():
+    if RACE.format is None:
+        val = getOption("currentFormat")
+        RACE.format = RaceFormat.query.get(val)
+    return RACE.format
+
+def setCurrentRaceFormat(race_format):
+    if race_format.id: # stored in DB, not internal race format
+        setOption("currentFormat", race_format.id)
+    RACE.format = race_format
+
+# internal slave race format for LiveTime
+SLAVE_RACE_FORMAT = RaceFormat(name=__("Slave"),
+                         race_mode=1,
+                         race_time_sec=0,
+                         start_delay_min=0,
+                         start_delay_max=0,
+                         number_laps_win=0,
+                         win_condition=WIN_CONDITION_NONE,
+                         team_racing_mode=False)
+
 #
 # Authentication
 #
@@ -543,6 +576,42 @@ def disconnect_handler():
     '''Emit disconnect event.'''
     server_log('Client disconnected')
 
+# LiveTime compatible events
+
+@SOCKET_IO.on('get_version')
+def on_get_version():
+    session['LiveTime'] = True
+    ver_parts = RELEASE_VERSION.split('.')
+    return {'major': ver_parts[0], 'minor': ver_parts[1]}
+
+@SOCKET_IO.on('get_timestamp')
+def on_get_timestamp():
+    if RACE.race_status == RACE_STATUS_STAGING:
+        now = RACE_START
+    else:
+        now = monotonic()
+    return {'timestamp': monotonic_to_milliseconds(now)}
+
+@SOCKET_IO.on('get_settings')
+def on_get_settings():
+    return {'nodes': [{
+        'frequency': node.frequency,
+        'trigger_rssi': node.enter_at_level
+        } for node in INTERFACE.nodes
+    ]}
+
+@SOCKET_IO.on('reset_auto_calibration')
+def on_reset_auto_calibration(data):
+    on_stop_race()
+    on_discard_laps()
+    setCurrentRaceFormat(SLAVE_RACE_FORMAT)
+    emit_race_format()
+    setOption("MinLapSec", "0")
+    setOption("MinLapBehavior", "0")
+    on_stage_race()
+
+# RotorHazard events
+
 @SOCKET_IO.on('load_data')
 def on_load_data(data):
     '''Allow pages to load needed data'''
@@ -550,6 +619,8 @@ def on_load_data(data):
     for load_type in load_types:
         if load_type == 'node_data':
             emit_node_data(nobroadcast=True)
+        elif load_type == 'environmental_data':
+            emit_environmental_data(nobroadcast=True)
         elif load_type == 'frequency_data':
             emit_frequency_data(nobroadcast=True)
         elif load_type == 'heat_data':
@@ -596,6 +667,8 @@ def on_broadcast_message(data):
 @SOCKET_IO.on('set_frequency')
 def on_set_frequency(data):
     '''Set node frequency.'''
+    if isinstance(data, basestring): # LiveTime compatibility
+        data = json.loads(data)
     node_index = data['node']
     frequency = data['frequency']
 
@@ -610,7 +683,10 @@ def on_set_frequency(data):
     '''Set node frequency.'''
     server_log('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
     INTERFACE.set_frequency(node_index, frequency)
-    emit_frequency_data()
+    if session.get('LiveTime', False):
+        emit('frequency_set', data)
+    else:
+        emit_frequency_data()
 
 @SOCKET_IO.on('set_frequency_preset')
 def on_set_frequency_preset(data):
@@ -1103,10 +1179,10 @@ def on_set_race_format(data):
         race_format_val = data['race_format']
         race_format = RaceFormat.query.get(race_format_val)
         DB.session.flush()
-        setOption("currentFormat", race_format_val)
+        setCurrentRaceFormat(race_format)
         DB.session.commit()
         emit_race_format()
-        server_log("set race format to '%s'" % race_format_val)
+        server_log("set race format to '%s' (%s)" % (race_format.name, race_format.id))
     else:
         emit_race_format()
         server_log("format change prevented by active race")
@@ -1114,8 +1190,7 @@ def on_set_race_format(data):
 @SOCKET_IO.on('add_race_format')
 def on_add_race_format():
     '''Adds new format in the database by duplicating an existing one.'''
-    source_format_id = getOption("currentFormat")
-    source_format = RaceFormat.query.get(source_format_id)
+    source_format = getCurrentRaceFormat()
     new_format = RaceFormat(name=__('Copy of %s') % source_format.name,
                              race_mode=source_format.race_mode,
                              race_time_sec=source_format.race_time_sec ,
@@ -1135,13 +1210,11 @@ def on_delete_race_format():
     '''Delete profile'''
     if RACE.race_status == RACE_STATUS_READY: # prevent format change if race running
         if (DB.session.query(RaceFormat).count() > 1): # keep one format
-            last_raceFormat = int(getOption("currentFormat"))
-            raceformat = RaceFormat.query.get(last_raceFormat)
+            raceformat = getCurrentRaceFormat()
             DB.session.delete(raceformat)
             DB.session.commit()
-            first_raceFormat_id = RaceFormat.query.first().id
-            setOption("currentFormat", first_raceFormat_id)
-            raceformat = RaceFormat.query.get(first_raceFormat_id)
+            first_raceFormat = RaceFormat.query.first()
+            setCurrentRaceFormat(first_raceFormat)
             emit_race_format()
     else:
         server_log("format change prevented by active race")
@@ -1161,8 +1234,7 @@ def on_set_race_format_name(data):
 @SOCKET_IO.on("set_race_mode")
 def on_set_race_mode(data):
     race_mode = data['race_mode']
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format = getCurrentRaceFormat()
     race_format.race_mode = race_mode
     DB.session.commit()
     server_log("set race mode to %s" % race_mode)
@@ -1170,8 +1242,7 @@ def on_set_race_mode(data):
 @SOCKET_IO.on("set_fix_race_time")
 def on_set_fix_race_time(data):
     race_time = data['race_time']
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format = getCurrentRaceFormat()
     race_format.race_time_sec = race_time
     DB.session.commit()
     server_log("set fixed time race to %s seconds" % race_time)
@@ -1179,8 +1250,7 @@ def on_set_fix_race_time(data):
 @SOCKET_IO.on("set_start_delay_min")
 def on_set_start_delay_min(data):
     start_delay_min = data['start_delay_min']
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format = getCurrentRaceFormat()
     race_format.start_delay_min = start_delay_min
     DB.session.commit()
     server_log("set start delay min to %s" % start_delay_min)
@@ -1188,8 +1258,7 @@ def on_set_start_delay_min(data):
 @SOCKET_IO.on("set_start_delay_max")
 def on_set_start_delay_max(data):
     start_delay_max = data['start_delay_max']
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format = getCurrentRaceFormat()
     race_format.start_delay_max = start_delay_max
     DB.session.commit()
     server_log("set start delay max to %s" % start_delay_max)
@@ -1197,8 +1266,7 @@ def on_set_start_delay_max(data):
 @SOCKET_IO.on("set_number_laps_win")
 def on_set_number_laps_win(data):
     number_laps_win = data['number_laps_win']
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format = getCurrentRaceFormat()
     race_format.number_laps_win = number_laps_win
     DB.session.commit()
     server_log("set number of laps to win to %s" % number_laps_win)
@@ -1206,8 +1274,7 @@ def on_set_number_laps_win(data):
 @SOCKET_IO.on("set_win_condition")
 def on_set_win_condition(data):
     win_condition = data['win_condition']
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format = getCurrentRaceFormat()
     race_format.win_condition = win_condition
     DB.session.commit()
     server_log("set laps wins mode to %s" % win_condition)
@@ -1215,8 +1282,7 @@ def on_set_win_condition(data):
 @SOCKET_IO.on("set_team_racing_mode")
 def on_set_team_racing_mode(data):
     team_racing_mode = data['team_racing_mode']
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format = getCurrentRaceFormat()
     race_format.team_racing_mode = (True if team_racing_mode else False)
     DB.session.commit()
     server_log("set team racing mode to %s" % team_racing_mode)
@@ -1276,8 +1342,7 @@ def on_stage_race():
         emit_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
 
-        last_raceFormat = int(getOption("currentFormat"))
-        race_format = RaceFormat.query.get(last_raceFormat)
+        race_format = getCurrentRaceFormat()
         if race_format.team_racing_mode:
             check_emit_team_racing_status()  # Show initial team-racing status info
         MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
@@ -1623,8 +1688,7 @@ def emit_priority_message(message, interrupt=False, **params):
 
 def emit_race_status(**params):
     '''Emits race status.'''
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format = getCurrentRaceFormat()
 
     emit_payload = {
             'race_status': RACE.race_status,
@@ -1666,6 +1730,19 @@ def emit_node_data(**params):
         emit('node_data', emit_payload)
     else:
         SOCKET_IO.emit('node_data', emit_payload)
+
+def emit_environmental_data(**params):
+    '''Emits environmental data.'''
+    emit_payload = {
+        'core_temperature': INTERFACE.core_temp,
+        'aux_temperature': [data.temperature for data in INTERFACE.bme280_data],
+        'aux_pressure': [data.pressure for data in INTERFACE.bme280_data],
+        'aux_humidity': [data.humidity for data in INTERFACE.bme280_data]
+    }
+    if ('nobroadcast' in params):
+        emit('environmental_data', emit_payload)
+    else:
+        SOCKET_IO.emit('environmental_data', emit_payload)
 
 def emit_enter_and_exit_at_levels(**params):
     '''Emits enter-at and exit-at levels for nodes.'''
@@ -1734,9 +1811,8 @@ def emit_min_lap(**params):
 
 def emit_race_format(**params):
     '''Emits race format values.'''
-    current_format = int(getOption("currentFormat"))
-    format_val = RaceFormat.query.get(current_format)
-    has_race = SavedRace.query.filter_by(format_id=current_format).first()
+    format_val = getCurrentRaceFormat()
+    has_race = SavedRace.query.filter_by(format_id=format_val.id).first()
     if has_race:
         locked = True
     else:
@@ -1745,7 +1821,7 @@ def emit_race_format(**params):
     emit_payload = {
         'format_ids': [raceformat.id for raceformat in RaceFormat.query.all()],
         'format_names': [raceformat.name for raceformat in RaceFormat.query.all()],
-        'current_format': current_format,
+        'current_format': format_val.id,
         'format_name': format_val.name,
         'race_mode': format_val.race_mode,
         'race_time_sec': format_val.race_time_sec,
@@ -1893,7 +1969,7 @@ def calc_leaderboard(**params):
         profile = Profiles.query.get(current_profile)
         profile_freqs = json.loads(profile.frequencies)
 
-        current_format = int(getOption("currentFormat"))
+        race_format = getCurrentRaceFormat()
     else:
         if USE_CLASS:
             current_format = RaceClass.query.get(USE_CLASS).format_id
@@ -1910,10 +1986,10 @@ def calc_leaderboard(**params):
         else:
             current_format = None
 
-    if current_format:
-        race_format = RaceFormat.query.get(current_format)
-    else:
-        race_format = None
+        if current_format:
+            race_format = RaceFormat.query.get(current_format)
+        else:
+            race_format = None
 
     # Get the pilot ids for all relevant data
     # Add pilot callsigns
@@ -2834,8 +2910,13 @@ def heartbeat_thread_function():
             emit_imdtabler_rating()
 
         # emit rest of node data, but less often:
-        if heartbeat_thread_function.iter_tracker % 20 == 0:
+        if (heartbeat_thread_function.iter_tracker % 20) == 0:
             emit_node_data()
+
+        # emit environment data less often:
+        if (heartbeat_thread_function.iter_tracker % 100) == 0:
+            INTERFACE.update_environmental_data()
+            emit_environmental_data()
 
         # check if race is to be started
         global RACE_SCHEDULED
@@ -2907,8 +2988,7 @@ def time_format_mmss(millis):
     return '{0:01d}:{1:02d}'.format(minutes, seconds)
 
 def check_race_time_expired():
-    last_raceFormat = int(getOption("currentFormat"))
-    race_format = RaceFormat.query.get(last_raceFormat)
+    race_format = getCurrentRaceFormat()
     if race_format and race_format.race_mode == 0: # count down
         if monotonic() >= RACE_START + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
@@ -2974,6 +3054,11 @@ def pass_record_callback(node, ms_since_lap):
                             lap_ok_flag = False
 
                 if lap_ok_flag:
+                    SOCKET_IO.emit('pass_record', {
+                        'node': node.index,
+                        'frequency': node.frequency,
+                        'timestamp': lap_time_stamp + monotonic_to_milliseconds(RACE_START)
+                    })
                     # Add the new lap to the database
                     DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
                         lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
@@ -3268,7 +3353,7 @@ def db_reset_race_formats():
                              win_condition=WIN_CONDITION_FIRST_TO_LAP_X,
                              team_racing_mode=True))
     DB.session.commit()
-    setOption("currentFormat", 1)
+    setCurrentRaceFormat(RaceFormat.query.first())
     server_log("Database reset race formats")
 
 def db_reset_options_defaults():
@@ -3293,7 +3378,7 @@ def db_reset_options_defaults():
 
     setOption("currentLanguage", "")
     setOption("currentProfile", "1")
-    setOption("currentFormat", "1")
+    setCurrentRaceFormat(RaceFormat.query.first())
     setOption("MinLapSec", "10")
     setOption("MinLapBehavior", "0")
 

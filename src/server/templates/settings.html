@@ -11,6 +11,7 @@
 			'all_languages',
 			'language',
 			'node_data',
+			'environmental_data',
 			'frequency_data',
 			'heat_data',
 			'class_data',
@@ -173,6 +174,22 @@
 						}
 					}
 				}
+			}
+		});
+		socket.on('environmental_data', function (msg) {
+			$('#core-temperature').html(Number(msg.core_temperature).toFixed(1))
+			if (msg.aux_temperature.length > 0) {
+				env_table_html = '<table>'
+				env_table_html += '<tr><th>'+__('Temperature (°C)')+'</th><th>'+__('Humidity (%rH)')+'</th><th>'+__('Pressure (hPa)')+'</th></tr>'
+				for (i=0; i < msg.aux_temperature.length; i++) {
+					env_table_html += '<tr>'
+					env_table_html += '<td>' + Number(msg.aux_temperature[i]).toFixed(1) + '</td>'
+					env_table_html += '<td>' + Number(msg.aux_humidity[i]).toFixed(1) + '</td>'
+					env_table_html += '<td>' + Number(msg.aux_pressure[i]).toFixed(1) + '</td>'
+					env_table_html += '</tr>'
+				}
+				env_table_html += '</table>'
+				$('#env-data-table').html(env_table_html)
 			}
 		});
 
@@ -1212,7 +1229,7 @@
 	<div class="panel-header">
 		<h2>{{ __('Sensor Tuning') }}</h2>
 	</div>
-	<div class="panel-content">
+	<div class="panel-content full-width">
 		<ul class="graph-key">
 			<li><span style="background-color: hsl(214, 53%, 60%)"></span> {{ __('RSSI') }}</li>
 			<li><span style="background-color: hsl(8.2, 86.5%, 53.7%)"></span> {{ __('EnterAt') }}</li>
@@ -1246,7 +1263,6 @@
 						<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
 					</div>
 				</div>
-				<div id="node_notice_{{ node }}"></div>
 				<table>
 					<tr class="datarow">
 						<td>{{ __('RSSI') }}</td>
@@ -1285,6 +1301,7 @@
 						</td>
 					</tr>
 				</table>
+				<div id="node_notice_{{ node }}"></div>
 			</div>
 			{% endfor %}
 		</div>
@@ -1664,6 +1681,13 @@
 		<h2>{{ __('System') }}</h2>
 	</div>
 	<div class="panel-content">
+		<div class="control-set">
+		{{ __('Core temperature:') }} <span id="core-temperature"></span>{{ __('°C') }}
+		</div>
+		<br />
+		<div id="env-data-table" class="control-set">
+		</div>
+		<br />
 		<div class="control-set">
 			<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
 			{% if Debug %}<a href="/hardwarelog" class="debug button-like">{{ __('Log') }}</a>{% endif %}

@@ -99,6 +99,21 @@ cd python
 sudo python setup.py install
 ```
 
+### BME280 Temperature Support (optional)
+The bme280 interface is provided by the following project:
+https://github.com/rm-hull/bme280
+
+Clone the repository onto the Pi:
+```
+cd ~
+sudo git clone https://github.com/rm-hull/bme280.git
+cd bme280
+```
+Install the Python library:
+```
+sudo python setup.py install
+```
+
 ### Java Support
 Java enables calculating of IMD scores. If you started with RASPBIAN STRETCH WITH DESKTOP, this step should not be necessary as Java is installed by default. Otherwise:
 ```

@@ -1,6 +1,8 @@
 '''RotorHazard hardware interface layer.'''
 
 import smbus # For i2c comms
+import io
+import importlib
 import gevent # For threads and timing
 from gevent.lock import BoundedSemaphore # To limit i2c calls
 from monotonic import monotonic # to capture read timing
@@ -127,6 +129,29 @@ class RHInterface(BaseHardwareInterface):
                 print "Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level)
             else:
                 print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
+
+        # Core temperature
+        with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+            self.core_temp = float(f.read())/1000
+
+        # Scan for BME280 devices
+        self.bme280_addrs = []
+        self.bme280_data = []
+        supported_bme280_addrs = [0x76, 0x77]
+        try:
+            self.bme280SampleMethod = getattr(importlib.import_module('bme280'), 'sample')
+            for index, addr in enumerate(supported_bme280_addrs):
+                try:
+                    data = self.bme280SampleMethod(self.i2c, addr)
+                    print "BME280 found at address {0}".format(addr)
+                    gevent.sleep(I2C_CHILL_TIME)
+                    self.bme280_addrs.append(addr)
+                    self.bme280_data.append(data)
+                except IOError as err:
+                    print "No BME280 at address {0}".format(addr)
+                gevent.sleep(I2C_CHILL_TIME)
+        except ImportError:
+            self.bme280SampleMethod = None
 
 
     #
@@ -604,6 +629,23 @@ class RHInterface(BaseHardwareInterface):
         node = self.nodes[node_index]
         if node.api_level >= 14:
             self.set_value_8(node, FORCE_END_CROSSING, 0)
+
+    def update_environmental_data(self):
+        '''Updates environmental data.'''
+        if self.bme280SampleMethod:
+            for index, addr in enumerate(self.bme280_addrs):
+                try:
+                    with self.semaphore:
+                        self.i2c_sleep()
+                        data = self.bme280SampleMethod(self.i2c, addr)
+                        self.bme280_data[index] = data
+                        self.i2c_timestamp = self.milliseconds()
+                except IOError as err:
+                    self.log('BME280 Read Error: ' + str(err))
+                    self.i2c_timestamp = self.milliseconds()
+
+        with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+            self.core_temp = float(f.read())/1000
 
 def get_hardware_interface():
     '''Returns the RotorHazard interface object.'''
