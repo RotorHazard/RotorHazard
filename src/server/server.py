@@ -491,14 +491,64 @@ def setOption(option, value):
 
 def getCurrentRaceFormat():
     if RACE.format is None:
-        val = getOption("currentFormat")
-        RACE.format = RaceFormat.query.get(val)
+        val = int(getOption('currentFormat'))
+        race_format = RaceFormat.query.get(val)
+        # create a shared instance
+        RACE.format = RHRaceFormat.copy(race_format)
+        RACE.format.id = race_format.id
     return RACE.format
 
+def getCurrentDbRaceFormat():
+    if RACE.format is None or RHRaceFormat.isDbBased(RACE.format):
+        val = int(getOption('currentFormat'))
+        return RaceFormat.query.get(val)
+    else:
+        return None
+
 def setCurrentRaceFormat(race_format):
-    if race_format.id: # stored in DB, not internal race format
-        setOption("currentFormat", race_format.id)
-    RACE.format = race_format
+    if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
+        setOption('currentFormat', race_format.id)
+        # create a shared instance
+        RACE.format = RHRaceFormat.copy(race_format)
+        RACE.format.id = race_format.id
+    else:
+        RACE.format = race_format
+
+# internal slave race format for LiveTime
+class RHRaceFormat():
+    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, number_laps_win, win_condition, team_racing_mode):
+        self.name = name
+        self.race_mode = race_mode
+        self.race_time_sec = race_time_sec
+        self.start_delay_min = start_delay_min
+        self.start_delay_max = start_delay_max
+        self.number_laps_win = number_laps_win
+        self.win_condition = win_condition
+        self.team_racing_mode = team_racing_mode
+
+    @classmethod
+    def copy(cls, race_format):
+        return RHRaceFormat(name=race_format.name,
+                            race_mode=race_format.race_mode,
+                            race_time_sec=race_format.race_time_sec,
+                            start_delay_min=race_format.start_delay_min,
+                            start_delay_max=race_format.start_delay_max,
+                            number_laps_win=race_format.number_laps_win,
+                            win_condition=race_format.win_condition,
+                            team_racing_mode=race_format.team_racing_mode)
+
+    @classmethod
+    def isDbBased(cls, race_format):
+        return hasattr(race_format, 'id')
+
+SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
+                         race_mode=1,
+                         race_time_sec=0,
+                         start_delay_min=0,
+                         start_delay_max=0,
+                         number_laps_win=0,
+                         win_condition=WIN_CONDITION_NONE,
+                         team_racing_mode=False)
 
 #
 # Authentication
@@ -1541,8 +1591,8 @@ def on_add_race_format():
 def on_delete_race_format():
     '''Delete profile'''
     if RACE.race_status == RACE_STATUS_READY: # prevent format change if race running
-        if (DB.session.query(RaceFormat).count() > 1): # keep one format
-            raceformat = getCurrentRaceFormat()
+        raceformat = getCurrentDbRaceFormat()
+        if raceformat and (DB.session.query(RaceFormat).count() > 1): # keep one format
             DB.session.delete(raceformat)
             DB.session.commit()
             first_raceFormat = RaceFormat.query.first()
@@ -1552,72 +1602,34 @@ def on_delete_race_format():
         server_log("format change prevented by active race")
 
 
-@SOCKET_IO.on('set_race_format_name')
-def on_set_race_format_name(data):
-    ''' update profile name '''
-    format_name = data['format_name']
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
-    race_format.name = format_name
-    DB.session.commit()
-    server_log('set format name %s' % (format_name))
-    emit_race_format()
-    emit_class_data()
-
-@SOCKET_IO.on("set_race_mode")
-def on_set_race_mode(data):
-    race_mode = data['race_mode']
-    race_format = getCurrentRaceFormat()
-    race_format.race_mode = race_mode
-    DB.session.commit()
-    server_log("set race mode to %s" % race_mode)
-
-@SOCKET_IO.on("set_fix_race_time")
-def on_set_fix_race_time(data):
-    race_time = data['race_time']
-    race_format = getCurrentRaceFormat()
-    race_format.race_time_sec = race_time
-    DB.session.commit()
-    server_log("set fixed time race to %s seconds" % race_time)
-
-@SOCKET_IO.on("set_start_delay_min")
-def on_set_start_delay_min(data):
-    start_delay_min = data['start_delay_min']
-    race_format = getCurrentRaceFormat()
-    race_format.start_delay_min = start_delay_min
-    DB.session.commit()
-    server_log("set start delay min to %s" % start_delay_min)
-
-@SOCKET_IO.on("set_start_delay_max")
-def on_set_start_delay_max(data):
-    start_delay_max = data['start_delay_max']
-    race_format = getCurrentRaceFormat()
-    race_format.start_delay_max = start_delay_max
-    DB.session.commit()
-    server_log("set start delay max to %s" % start_delay_max)
-
-@SOCKET_IO.on("set_number_laps_win")
-def on_set_number_laps_win(data):
-    number_laps_win = data['number_laps_win']
-    race_format = getCurrentRaceFormat()
-    race_format.number_laps_win = number_laps_win
-    DB.session.commit()
-    server_log("set number of laps to win to %s" % number_laps_win)
-
-@SOCKET_IO.on("set_win_condition")
-def on_set_win_condition(data):
-    win_condition = data['win_condition']
-    race_format = getCurrentRaceFormat()
-    race_format.win_condition = win_condition
-    DB.session.commit()
-    server_log("set laps wins mode to %s" % win_condition)
-
-@SOCKET_IO.on("set_team_racing_mode")
-def on_set_team_racing_mode(data):
-    team_racing_mode = data['team_racing_mode']
-    race_format = getCurrentRaceFormat()
-    race_format.team_racing_mode = (True if team_racing_mode else False)
-    DB.session.commit()
-    server_log("set team racing mode to %s" % team_racing_mode)
+@SOCKET_IO.on('alter_race_format')
+def on_alter_race_format(data):
+    ''' update race format '''
+    race_format = getCurrentDbRaceFormat()
+    if race_format:
+        emit = False
+        if 'format_name' in data:
+            race_format.name = data['format_name']
+            emit = True
+        if 'race_mode' in data:
+            race_format.race_mode = data['race_mode']
+        if 'race_time' in data:
+            race_format.race_time_sec = data['race_time']
+        if 'start_delay_min' in data:
+            race_format.start_delay_min = data['start_delay_min']
+        if 'start_delay_max' in data:
+            race_format.start_delay_max = data['start_delay_max']
+        if 'number_laps_win' in data:
+            race_format.number_laps_win = data['number_laps_win']
+        if 'win_condition' in data:
+            race_format.win_condition = data['win_condition']
+        if 'team_racing_mode' in data:
+            race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
+        DB.session.commit()
+        server_log('altered race format to %s' % (data))
+        if emit:
+            emit_race_format()
+            emit_class_data()
 
 # Race management socket io events
 
@@ -1761,6 +1773,7 @@ def on_save_laps():
     '''Save current laps data to the database.'''
     global EVENT_RESULTS_CACHE_VALID
     EVENT_RESULTS_CACHE_VALID = False
+    race_format = getCurrentRaceFormat()
     heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first()
     # Get the last saved round for the current heat
     max_round = DB.session.query(DB.func.max(SavedRaceMeta.round_id)) \
@@ -1865,7 +1878,7 @@ def on_discard_laps():
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         check_emit_team_racing_status()  # Show team-racing status info
     else:
@@ -1891,7 +1904,7 @@ def on_set_current_heat(data):
     server_log('Current heat set: Heat {0}'.format(new_heat_id))
     emit_current_heat() # Race page, to update heat selection button
     emit_leaderboard() # Race page, to update callsigns in leaderboard
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         check_emit_team_racing_status()  # Show initial team-racing status info
 
@@ -1996,7 +2009,7 @@ def on_delete_lap(data):
     server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_id))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         # update team-racing status info
         if race_format.win_condition != WIN_CONDITION_MOST_LAPS:  # if not Most Laps Wins race
@@ -2205,8 +2218,9 @@ def emit_min_lap(**params):
 
 def emit_race_format(**params):
     '''Emits race format values.'''
-    format_val = getCurrentRaceFormat()
-    has_race = SavedRaceMeta.query.filter_by(format_id=format_val.id).first()
+    race_format = getCurrentRaceFormat()
+    is_db_race_format = RHRaceFormat.isDbBased(race_format)
+    has_race = not is_db_race_format or SavedRaceMeta.query.filter_by(format_id=race_format.id).first()
     if has_race:
         locked = True
     else:
@@ -2215,15 +2229,15 @@ def emit_race_format(**params):
     emit_payload = {
         'format_ids': [raceformat.id for raceformat in RaceFormat.query.all()],
         'format_names': [raceformat.name for raceformat in RaceFormat.query.all()],
-        'current_format': format_val.id,
-        'format_name': format_val.name,
-        'race_mode': format_val.race_mode,
-        'race_time_sec': format_val.race_time_sec,
-        'start_delay_min': format_val.start_delay_min,
-        'start_delay_max': format_val.start_delay_max,
-        'number_laps_win': format_val.number_laps_win,
-        'win_condition': format_val.win_condition,
-        'team_racing_mode': 1 if format_val.team_racing_mode else 0,
+        'current_format': race_format.id if is_db_race_format else None,
+        'format_name': race_format.name,
+        'race_mode': race_format.race_mode,
+        'race_time_sec': race_format.race_time_sec,
+        'start_delay_min': race_format.start_delay_min,
+        'start_delay_max': race_format.start_delay_max,
+        'number_laps_win': race_format.number_laps_win,
+        'win_condition': race_format.win_condition,
+        'team_racing_mode': 1 if race_format.team_racing_mode else 0,
         'locked': locked
     }
     if ('nobroadcast' in params):
@@ -2939,7 +2953,7 @@ def check_emit_team_racing_status(t_laps_dict=None, **params):
 
 def emit_team_racing_stat_if_enb(**params):
     '''Emits team-racing status info if team racing is enabled.'''
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         check_emit_team_racing_status(**params)
     else:
@@ -3025,7 +3039,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
     '''Checks if pilot or team has most laps for a win.'''
     global Race_laps_winner_name
 
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode: # team racing mode enabled
 
              # if not passed in then determine number of laps for each team
@@ -3483,7 +3497,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         lap_time = lap_time_stamp - last_lap_time_stamp
                         lap_id = last_lap_id + 1
 
-                    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+                    race_format = getCurrentRaceFormat()
                     min_lap = int(getOption("MinLapSec"))
                     min_lap_behavior = int(getOption("MinLapBehavior"))
 

@@ -870,7 +870,7 @@
 			var data = {
 				team_racing_mode: parseInt($(this).val())  // 0=disabled, 1=enabled
 			};
-			socket.emit('set_team_racing_mode', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		socket.on('race_format', function (msg) {
@@ -880,6 +880,7 @@
 			}
 			$('#set_race_format').val(msg.current_format);
 			$('#set_format_name').val(msg.format_name);
+			$('#set_format_name').prop('disabled', msg.locked);
 			$('#set_race_mode').val(msg.race_mode);
 			$('#set_race_mode').prop('disabled', msg.locked);
 			$('#set_fix_race_time').val(msg.race_time_sec);
@@ -919,21 +920,21 @@
 			var data = {
 				format_name: $(this).val()
 			};
-			socket.emit('set_race_format_name', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_race_mode').change(function (event) {
 			var data = {
 				race_mode: parseInt($(this).val())
 			};
-			socket.emit('set_race_mode', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_fix_race_time').change(function (event) {
 			var data = {
 				race_time: parseInt($(this).val())
 			};
-			socket.emit('set_fix_race_time', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_hide_stage_timer').change(function (event) {
@@ -947,28 +948,28 @@
 			var data = {
 				start_delay_min: parseInt($(this).val())
 			};
-			socket.emit('set_start_delay_min', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_start_delay_max').change(function (event) {
 			var data = {
 				start_delay_max: parseInt($(this).val())
 			};
-			socket.emit('set_start_delay_max', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_number_laps_win').change(function (event) {
 			var data = {
 				number_laps_win: parseInt($(this).val())
 			};
-			socket.emit('set_number_laps_win', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_win_condition').change(function (event) {
 			var data = {
 				win_condition: parseInt($(this).val())
 			};
-			socket.emit('set_win_condition', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('button#backup_database').click(function (event) {
