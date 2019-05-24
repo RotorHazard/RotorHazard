@@ -494,15 +494,6 @@ def heats():
 @APP.route('/results')
 def results():
     '''Route to round summary page.'''
-    # A more generic and flexible way of viewing saved race data is needed
-    # - Individual round/race summaries
-    # - Heat summaries
-    # - Pilot summaries
-    # Make a new dynamic route for each? /pilotname /heatnumber /
-    # Three different summary pages?
-    # - One for all rounds, grouped by heats
-    # - One for all pilots, sorted by fastest lap and shows average and other stats
-    # - One for individual heats
     return render_template('rounds.html', serverInfo=serverInfo, getOption=getOption, __=__)
 
 @APP.route('/race')
@@ -519,6 +510,13 @@ def race():
 def racepublic():
     '''Route to race management page.'''
     return render_template('racepublic.html', serverInfo=serverInfo, getOption=getOption, __=__,
+        num_nodes=RACE.num_nodes)
+
+@APP.route('/marshal')
+@requires_auth
+def marshal():
+    '''Route to race management page.'''
+    return render_template('marshal.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/settings')
@@ -947,6 +945,8 @@ def on_load_data(data):
             emit_current_heat(nobroadcast=True)
         elif load_type == 'team_racing_stat_if_enb':
             emit_team_racing_stat_if_enb(nobroadcast=True)
+        elif load_type == 'race_list':
+            emit_race_list(nobroadcast=True)
         elif load_type == 'language':
             emit_language(nobroadcast=True)
         elif load_type == 'all_languages':
@@ -1963,6 +1963,10 @@ def get_race_elapsed():
         'scheduled_at': RACE_SCHEDULED_TIME
     })
 
+@SOCKET_IO.on('get_race_meta')
+def get_race_meta(data):
+    emit_race_meta(data['heat'], data['round'], data['node'])
+
 @SOCKET_IO.on('imdtabler_update_freqs')
 def imdtabler_update_freqs(data):
     ''' Update IMDTabler page with new frequencies list '''
@@ -2164,6 +2168,73 @@ def emit_current_laps(**params):
         emit('current_laps', emit_payload)
     else:
         SOCKET_IO.emit('current_laps', emit_payload)
+
+def emit_race_meta(heat_id, round_id, node, **params):
+    '''Emits race meta.'''
+    race = SavedRace.query.filter_by(heat_id=heat_id, round_id=round_id, node_index=node).first()
+
+    emit_payload = {
+        'race_history': json.loads(race.history_values),
+        'history_times': json.loads(race.history_times)
+    }
+    emit('race_meta', emit_payload) # never broadcast
+
+def emit_race_list(**params):
+    '''Emits race listing'''
+    heats = {}
+    for heat in SavedRace.query.with_entities(SavedRace.heat_id).distinct().order_by(SavedRace.heat_id):
+        heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
+
+        rounds = []
+        for round in SavedRace.query.with_entities(SavedRace.round_id).distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRace.round_id):
+            nodes = []
+            for node in range(RACE.num_nodes):
+                pilot_data = Pilot.query.filter_by( id=Heat.query.filter_by(heat_id=heat.heat_id,node_index=node).first().pilot_id ).first()
+                if pilot_data:
+                    nodepilot = pilot_data.callsign
+                    laps = []
+                    for lap in SavedRace.query.filter_by(heat_id=heat.heat_id, round_id=round.round_id, node_index=node).all():
+                        laps.append({
+                                'id': lap.lap_id,
+                            })
+                    nodes.append({
+                        'pilot': nodepilot,
+                        'id': node
+                    })
+            rounds.append({
+                'id': round.round_id,
+                'nodes': nodes,
+            })
+        heats[heat.heat_id] = {
+            'heat_id': heat.heat_id,
+            'note': heatnote,
+            'rounds': rounds,
+        }
+
+    heats_by_class = {}
+    heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
+    for race_class in RaceClass.query.all():
+        heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
+
+    current_classes = {}
+    for race_class in RaceClass.query.all():
+        current_class = {}
+        current_class['id'] = race_class.id
+        current_class['name'] = race_class.name
+        current_class['description'] = race_class.name
+        current_classes[race_class.id] = current_class
+
+    emit_payload = {
+        'heats': heats,
+        'heats_by_class': heats_by_class,
+        'classes': current_classes,
+    }
+
+    if ('nobroadcast' in params):
+        emit('race_list', emit_payload)
+    else:
+        SOCKET_IO.emit('race_list', emit_payload)
+
 
 def emit_round_data_notify(**params):
     '''Let clients know round data is updated so they can request it.'''
