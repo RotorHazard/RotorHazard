@@ -142,8 +142,7 @@ struct
     uint16_t volatile nadirTime;
     bool volatile nadirSend;
     
-    bool volatile isRising;
-    bool volatile isFalling;
+    int8_t volatile trend; // >0 for raising, <0 for falling
 } history;
 
 struct
@@ -417,16 +416,15 @@ void loop()
             }
           }
         
-          if (history.isFalling) {
+          if (history.trend < 0) { // is falling
             history.nadirTime = state.rssiTimestamp;
             history.nadirSend = true;
           }
         
-          history.isRising = true;
-          history.isFalling = false;
+          history.trend = +1; // raising
         
         } else if (state.rssiSmoothed < state.lastRssiSmoothed) { // RSSI is falling
-          if (history.isRising) {
+          if (history.trend > 0) { // is raising
             history.peakTime = (history.peakFirstTime + history.peakLastTime) / 2;
             history.peakSend = true;
           }
@@ -441,11 +439,10 @@ void loop()
             history.nadirRssi = state.rssiSmoothed;
           }
         
-          history.isRising = false;
-          history.isFalling = true;
+          history.trend = -1; // falling
           
         } else { // RSSI is equal
-          if (history.isRising) {
+          if (history.trend > 0) { // is raising
             history.peakLastTime = state.rssiTimestamp;
           }
         }
