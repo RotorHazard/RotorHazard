@@ -98,6 +98,9 @@ const int spiClockPin = 13;
 #define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
 #define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
 
+// semantic types
+typedef uint32_t mtime_t; // milliseconds
+typedef uint32_t utime_t; // micros
 typedef uint8_t rssi_t;
 
 #define MAX_RSSI 0xFF
@@ -118,12 +121,12 @@ struct
     bool volatile crossing = false; // True when the quad is going through the gate
     rssi_t volatile rssiSmoothed = 0; // Smoothed rssi value
     rssi_t volatile lastRssiSmoothed = 0;
-    uint32_t volatile rssiTimestamp = 0; // timestamp of the smoothed value
+    mtime_t volatile rssiTimestamp = 0; // timestamp of the smoothed value
 
     rssi_t volatile passRssiPeakRaw = 0; // peak raw rssi seen during current pass
     rssi_t volatile passRssiPeak = 0; // peak smoothed rssi seen during current pass
-    uint32_t volatile passRssiPeakRawTime = 0; // time of the first peak raw rssi for the current pass
-    uint32_t volatile passRssiPeakRawLastTime = 0; // time of the last peak raw rssi for the current pass
+    mtime_t volatile passRssiPeakRawTime = 0; // time of the first peak raw rssi for the current pass
+    mtime_t volatile passRssiPeakRawLastTime = 0; // time of the last peak raw rssi for the current pass
     rssi_t volatile passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
 
     rssi_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set
@@ -132,20 +135,20 @@ struct
     bool volatile rxFreqSetFlag = false; // Set true after initial WRITE_FREQUENCY command received
 
     // variables to track the loop time
-    uint32_t volatile loopTime = 0;
-    uint32_t volatile lastloopMicros = 0;
+    utime_t volatile loopTimeMicros = 0;
+    utime_t volatile lastloopMicros = 0;
 } state;
 
 struct
 {
     rssi_t volatile peakRssi;
-    uint32_t volatile peakFirstTime;
-    uint32_t volatile peakLastTime;
-    uint32_t volatile peakTime;
+    mtime_t volatile peakFirstTime;
+    mtime_t volatile peakLastTime;
+    mtime_t volatile peakTime;
     bool volatile peakSend;
 
     rssi_t volatile nadirRssi;
-    uint16_t volatile nadirTime;
+    mtime_t volatile nadirTime;
     bool volatile nadirSend;
     
     int8_t volatile trend; // >0 for raising, <0 for falling
@@ -155,7 +158,7 @@ struct
 {
     rssi_t volatile rssiPeakRaw;
     rssi_t volatile rssiPeak;
-    uint32_t volatile timeStamp;
+    mtime_t volatile timeStamp;
     rssi_t volatile rssiNadir;
     uint8_t volatile lap;
 } lastPass;
@@ -174,7 +177,7 @@ int ioBufferIndex = 0;
 FastRunningMedian<rssi_t, SmoothingSamples, 0> rssiMedian;
 
 #define SmoothingTimestampSize 97 // half median window, rounded up
-uint32_t volatile SmoothingTimestamps[SmoothingTimestampSize];
+mtime_t volatile SmoothingTimestamps[SmoothingTimestampSize];
 uint8_t SmoothingTimestampsIndex = 0;
 
 // Initialize program
@@ -387,14 +390,14 @@ rssi_t rssiRead()
     return toScaledRssi(raw);
 }
 
-uint32_t loopMillis = 0;
+mtime_t loopMillis = 0;
 
 // Main loop
 void loop()
 {
     state.lastRssiSmoothed = state.rssiSmoothed;
     
-    uint32_t loopMicros = micros();
+    utime_t loopMicros = micros();
     loopMillis = millis();
     
     // read raw RSSI close to taking timestamp
@@ -514,7 +517,7 @@ void loop()
     }
 
     // Calculate the time it takes to run the main loop
-    state.loopTime = loopMicros - state.lastloopMicros;
+    state.loopTimeMicros = loopMicros - state.lastloopMicros;
     state.lastloopMicros = loopMicros;
 
     // Status LED
@@ -770,19 +773,20 @@ void i2cTransmit()
             break;
 
         case READ_LAP_STATS:
+        	mtime_t now = millis();
             ioBufferWrite8(lastPass.lap);
-            ioBufferWrite32(millis() - lastPass.timeStamp);  // ms since lap
+            ioBufferWrite32(now - lastPass.timeStamp);  // ms since lap
             ioBufferWriteRssi(state.rssiSmoothed);
             ioBufferWriteRssi(state.nodeRssiPeak);
             ioBufferWriteRssi(lastPass.rssiPeak);  // RSSI peak for last lap pass
-            ioBufferWrite32(state.loopTime);
+            ioBufferWrite32(state.loopTimeMicros);
             ioBufferWrite8(state.crossing ? (uint8_t) 1 : (uint8_t) 0);  // 'crossing' status
             ioBufferWriteRssi(lastPass.rssiNadir);  // lowest rssi since end of last pass
             ioBufferWriteRssi(state.nodeRssiNadir);
 
             if (history.peakSend) {
                 ioBufferWriteRssi(history.peakRssi);
-                ioBufferWrite16(uint16_t(millis() - history.peakTime));
+                ioBufferWrite16(uint16_t(now - history.peakTime));
                 history.peakSend = false;
                 history.peakRssi = state.rssiSmoothed;
             } else {
@@ -792,7 +796,7 @@ void i2cTransmit()
             
             if (history.nadirSend) {
                 ioBufferWriteRssi(history.nadirRssi);
-                ioBufferWrite16(uint16_t(millis() - history.nadirTime));
+                ioBufferWrite16(uint16_t(now - history.nadirTime));
                 history.nadirSend = false;
                 history.nadirRssi = state.rssiSmoothed;
             } else {
