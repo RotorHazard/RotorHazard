@@ -79,13 +79,7 @@ Config['LED']['LED_DMA']        = 10      # DMA channel to use for generating si
 Config['LED']['LED_BRIGHTNESS'] = 255     # Set to 0 for darkest and 255 for brightest
 Config['LED']['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
 Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
-WS2811_STRIP_RGB = 0x00100800
-WS2811_STRIP_RBG = 0x00100008
-WS2811_STRIP_GRB = 0x00081000
-WS2811_STRIP_GBR = 0x00080010
-WS2811_STRIP_BRG = 0x00001008
-WS2811_STRIP_BGR = 0x00000810
-Config['LED']['LED_STRIP']      = WS2811_STRIP_GRB   # Strip type and colour ordering
+Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
 
 # other default configurations
 Config['GENERAL']['HTTP_PORT'] = 5000
@@ -323,11 +317,27 @@ try:
     pixelModule = importlib.import_module('neopixel')
     Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
     Color = getattr(pixelModule, 'Color')
+    led_strip_config = Config['LED']['LED_STRIP']
+    if led_strip_config == 'RGB':
+        led_strip = 0x00100800
+    elif led_strip_config == 'RBG':
+        led_strip = 0x00100008
+    elif led_strip_config == 'GRB':
+        led_strip = 0x00081000
+    elif led_strip_config == 'GBR':
+        led_strip = 0x00080010
+    elif led_strip_config == 'BRG':
+        led_strip = 0x00001008
+    elif led_strip_config == 'BGR':
+        led_strip = 0x00000810
+    else:
+        raise ValueError('Invalid LED_STRIP value: {0}'.format(led_strip_config))
 except ImportError:
     pixelModule = importlib.import_module('ANSIPixel')
     Pixel = getattr(pixelModule, 'ANSIPixel')
     Color = getattr(pixelModule, 'Color')
-strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], Config['LED']['LED_STRIP'])
+    led_strip = None
+strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
 # Intialize the library (must be called once before other functions).
 strip.begin()
 
