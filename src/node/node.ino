@@ -57,7 +57,7 @@
 int i2cSlaveAddress (6 + (NODE_NUMBER * 2));
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 17
+#define NODE_API_LEVEL 18
 
 const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 const int spiDataPin = 11;
@@ -684,8 +684,8 @@ void ioBufferWriteChecksum()
     ioBufferWrite8(checksum);
 }
 
-#define ioBufferReadRssi() (toScaledRssi(ioBufferRead16()))
-#define ioBufferWriteRssi(rssi) (ioBufferWrite16(fromScaledRssi(rssi)))
+#define ioBufferReadRssi() (ioBufferRead8())
+#define ioBufferWriteRssi(rssi) (ioBufferWrite8(rssi))
 
 // Function called by i2cReceive for writes TO this device, the I2C Master has sent data
 // using one of the SMBus write commands, if the MSB of 'command' is 0, master is sending only
@@ -775,7 +775,7 @@ void i2cTransmit()
         case READ_LAP_STATS:
         	mtime_t now = millis();
             ioBufferWrite8(lastPass.lap);
-            ioBufferWrite32(now - lastPass.timeStamp);  // ms since lap
+            ioBufferWrite16(uint16_t(now - lastPass.timeStamp));  // ms since lap
             ioBufferWriteRssi(state.rssiSmoothed);
             ioBufferWriteRssi(state.nodeRssiPeak);
             ioBufferWriteRssi(lastPass.rssiPeak);  // RSSI peak for last lap pass
