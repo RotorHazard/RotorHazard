@@ -3,6 +3,7 @@
 <script type="text/javascript" charset="utf-8">
 	var race_list = {};
 	var current_race_data = {};
+	var min_lap = {{ getOption('MinLapSec') }} * 1000;
 
 	$(document).ready(function () {
 		var graph_canvas = document.getElementById('race-graph');
@@ -10,6 +11,7 @@
 			responsive: true,
 			grid:{
 				strokeStyle:'rgba(255,255,255,0.25)',
+				// millisPerLine:1, // Smoothie thinks the timestamps are in seconds
 				sharpLines:true,
 				verticalSections:0,
 				borderVisible:false
@@ -130,10 +132,11 @@
 			var pilot = parseInt($('#selected_pilot').val());
 
 			// load current race data
-			current_race_data = race_list.heats[heat].rounds[round].pilotraces[pilot];
+			current_race_data = jQuery.extend(true, {}, race_list.heats[heat].rounds[round].pilotraces[pilot]);
 			// fill current data with race meta
 			current_race_data.round_id = round;
 			current_race_data.heat_id = heat;
+			current_race_data.race_id = race_list.heats[heat].rounds[round].race_id;
 			current_race_data.class_id = race_list.heats[heat].rounds[round].class_id;
 			current_race_data.format_id = race_list.heats[heat].rounds[round].format_id;
 			current_race_data.start_time = race_list.heats[heat].rounds[round].start_time;
@@ -195,11 +198,20 @@
 
 				if (lap.deleted) {
 					lapData.addClass('lap-deleted');
+				} else if (lap_index && lap.lap_time < min_lap) {
+					lapData.addClass('min-lap-warning');
 				}
 
-				lapData.append('<td>' + lap_index + '</td>');
-				lapData.append('<td>' + lap.lap_time_stamp + '</td>');
-				lapData.append('<td>' + lap.lap_time_formatted + '</td>');
+				if (!lap.deleted) {
+					lapData.append('<td>' + lap_index + '</td>');
+					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
+					lapData.append('<td>' + formatTimeMillis(lap.lap_time) + '</td>');
+					lap_index++;
+				} else {
+					lapData.append('<td>-</td>');
+					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
+					lapData.append('<td>' + __('Deleted') + '</td>');
+				}
 
 				switch (lap.source) {
 					case 0:
@@ -214,18 +226,18 @@
 				}
 
 				if (lap.deleted) {
-					lapData.append('<td><button class="undo_delete_lap" data-lapid="' + lap_i + '">+</button></td>');
+					lapData.append('<td><button class="restore_lap" data-lapid="' + lap_i + '">+</button></td>');
 				} else {
 					lapData.append('<td><button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
 				}
 				lapList.append(lapData);
-				lap_index++;
 			}
 		}
 
 		$('.recalc').click(function(){
 			var laps = recalc_rx_data();
 			calc_lap_times(laps);
+			current_race_data.laps = laps;
 			displayLaps(laps);
 			renderGraph();
 		});
@@ -233,6 +245,7 @@
 		$('#enterat').change(function(){
 			var laps = recalc_rx_data();
 			calc_lap_times(laps);
+			current_race_data.laps = laps;
 			displayLaps(laps);
 			renderGraph();
 		});
@@ -240,6 +253,7 @@
 		$('#exitat').change(function(){
 			var laps = recalc_rx_data();
 			calc_lap_times(laps);
+			current_race_data.laps = laps;
 			displayLaps(laps);
 			renderGraph();
 		});
@@ -273,8 +287,6 @@
 				if (crossing) {
 					if (rssi < exitat) {
 						laps.push({
-							raw_stamp: (peakLast + peakFirst) / 2,
-							lap_time: null,
 							lap_time_stamp: (((peakLast + peakFirst) / 2) - current_race_data.start_time) * 1000, // zero stamp within race
 							source: 2,
 							deleted: false
@@ -289,6 +301,10 @@
 		}
 
 		function calc_lap_times(laps_obj){
+			laps_obj.sort(function(a, b){
+				return a.lap_time_stamp-b.lap_time_stamp
+			})
+
 			var lap_index = 0;
 			for (lap_i in laps_obj) {
 				var lap = laps_obj[lap_i];
@@ -301,9 +317,50 @@
 					lap.lap_time_formatted = lap.lap_time / 1000; // ***
 					lap_index++;
 					var lastLap = lap;
+				} else {
+					lap.lap_time = '-';
+					lap.lap_time_formatted = '-';
 				}
 			}
 		}
+
+		$('#add-lap').click(function(){
+			current_race_data.laps.push({
+				lap_time_stamp: parseInt($('#manual-lap-time').val() * 1000),
+				source: 1,
+				deleted: false
+			});
+			calc_lap_times(current_race_data.laps)
+			displayLaps(current_race_data.laps);
+		});
+
+		$(document).on('click', '.delete_lap', function(){
+			var lap = $(this).data('lapid');
+			current_race_data.laps[lap].deleted = true;
+			calc_lap_times(current_race_data.laps)
+			displayLaps(current_race_data.laps);
+		});
+
+		$(document).on('click', '.restore_lap', function(){
+			var lap = $(this).data('lapid');
+			current_race_data.laps[lap].deleted = false;
+			calc_lap_times(current_race_data.laps)
+			displayLaps(current_race_data.laps);
+		});
+
+		$('#save-laps').click(function(){
+			var data = {
+				heat_id: current_race_data.heat_id,
+				round_id: current_race_data.round_id,
+				callsign: current_race_data.callsign,
+				race_id: current_race_data.race_id,
+				pilotrace_id: current_race_data.pilotrace_id,
+				node: current_race_data.node_index,
+				pilot_id: current_race_data.pilot_id,
+				laps: current_race_data.laps
+			}
+			socket.emit('resave_laps', data);
+		});
 	});
 </script>
 {% endblock %} {% block content %}
@@ -353,6 +410,13 @@
 				<input type="number" id="enterat" value="239" />
 				<input type="number" id="exitat" value="210" />
 				<button class="recalc">Recalc Race</button>
+			</div>
+			<div>
+				<input type="number" id="manual-lap-time" step="0.001" />
+				<button id="add-lap">Add Lap</button>
+			</div>
+			<div>
+				<button id="save-laps">Commit Changes</button>
 			</div>
 		</div>
 	</div>

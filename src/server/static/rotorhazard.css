@@ -1066,6 +1066,10 @@ main.page-home {
 	background: #eee;
 }
 
+.lap-deleted {
+	background: #eee;
+}
+
 .btn-danger {
 	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
 	background: hsl(8.2, 86.5%, 53.7%);
