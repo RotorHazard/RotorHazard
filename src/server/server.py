@@ -1271,43 +1271,26 @@ def on_add_race_class():
     emit_class_data()
     emit_heat_data() # Update class selections in heat displays
 
-@SOCKET_IO.on('set_race_class_name')
-def on_set_race_class_name(data):
-    '''Sets race class name.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
-
+@SOCKET_IO.on('alter_race_class')
+def on_alter_race_class(data):
+    '''Update race class.'''
     race_class = data['class_id']
-    race_class_name = data['class_name']
     db_update = RaceClass.query.get(race_class)
-    db_update.name = race_class_name
+    if 'class_name' in data:
+        global EVENT_RESULTS_CACHE_VALID
+        EVENT_RESULTS_CACHE_VALID = False
+        db_update.name = data['class_name']
+    if 'class_format' in data:
+        db_update.format_id = data['class_format']
+    if 'class_description' in data:
+        db_update.description = data['class_description']
     DB.session.commit()
-    server_log('Class {0} name: {1}'.format(race_class, race_class_name))
+    server_log('Altered race class {0} to {1}'.format(race_class, data))
     emit_class_data(noself=True)
-    emit_heat_data() # Update class names in heat displays
-
-@SOCKET_IO.on('set_race_class_format')
-def on_set_race_class_format(data):
-    '''Sets race class format.'''
-    race_class = data['class_id']
-    race_class_format = data['class_format']
-    db_update = RaceClass.query.get(race_class)
-    db_update.format_id = race_class_format
-    DB.session.commit()
-    server_log('Class {0} format: {1}'.format(race_class, race_class_format))
-    emit_class_data(noself=True)
-    emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
-
-@SOCKET_IO.on('set_race_class_description')
-def on_set_race_class_name(data):
-    '''Sets race class description.'''
-    race_class = data['class_id']
-    race_class_description = data['class_description']
-    db_update = RaceClass.query.get(race_class)
-    db_update.description = race_class_description
-    DB.session.commit()
-    server_log('Class {0} description: {1}'.format(race_class, race_class_description))
-    emit_class_data(noself=True)
+    if 'class_name' in data:
+        emit_heat_data() # Update class names in heat displays
+    if 'class_format' in data:
+        emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
 
 @SOCKET_IO.on('add_pilot')
 def on_add_pilot():

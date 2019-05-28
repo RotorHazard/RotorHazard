@@ -577,7 +577,7 @@
 				class_id: parseInt($(this).data('class_id')),
 				class_name: $(this).val(),
 			};
-			socket.emit('set_race_class_name', data);
+			socket.emit('alter_race_class', data);
 		});
 
 		$(document).on("change", '.set_race_class_format', function (event) {
@@ -585,7 +585,7 @@
 				class_id: parseInt($(this).data('class_id')),
 				class_format: $(this).val(),
 			};
-			socket.emit('set_race_class_format', data);
+			socket.emit('alter_race_class', data);
 		});
 
 		$(document).on("change", '.set_race_class_description', function (event) {
@@ -593,7 +593,7 @@
 				class_id: parseInt($(this).data('class_id')),
 				class_description: $(this).val(),
 			};
-			socket.emit('set_race_class_description', data);
+			socket.emit('alter_race_class', data);
 		});
 
 		$('button#add_race_class').click(function (event) {
