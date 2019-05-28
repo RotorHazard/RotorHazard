@@ -1310,58 +1310,29 @@ def on_add_pilot():
     server_log('Pilot added: Pilot {0}'.format(new_pilot.id))
     emit_pilot_data()
 
-@SOCKET_IO.on('set_pilot_callsign')
-def on_set_pilot_callsign(data):
-    '''Gets pilot callsign to update database.'''
+@SOCKET_IO.on('alter_pilot')
+def on_alter_pilot(data):
+    '''Update pilot.'''
     global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
-
     pilot_id = data['pilot_id']
-    callsign = data['callsign']
     db_update = Pilot.query.get(pilot_id)
-    db_update.callsign = callsign
+    if 'callsign' in data:
+        EVENT_RESULTS_CACHE_VALID = False
+        db_update.callsign = data['callsign']
+    if 'team_name' in data:
+        db_update.team = data['team_name']
+    if 'phonetic' in data:
+        db_update.phonetic = data['phonetic']
+    if 'name' in data:
+        EVENT_RESULTS_CACHE_VALID = False
+        db_update.name = data['name']
     DB.session.commit()
-    server_log('Pilot callsign set: Pilot {0} Callsign {1}'.format(pilot_id, callsign))
-    emit_pilot_data(noself=True) # Settings page, new pilot callsign
-    emit_heat_data() # Settings page, new pilot callsign in heats
-
-@SOCKET_IO.on('set_pilot_team')
-def on_set_pilot_team(data):
-    '''Gets pilot team name to update database.'''
-    pilot_id = data['pilot_id']
-    team_name = data['team_name']
-    db_update = Pilot.query.get(pilot_id)
-    db_update.team = team_name
-    DB.session.commit()
-    server_log('Pilot team set: Pilot {0} Team {1}'.format(pilot_id, team_name))
-    emit_pilot_data(noself=True) # Settings page, new pilot team
-    #emit_heat_data() # Settings page, new pilot team in heats
-
-@SOCKET_IO.on('set_pilot_phonetic')
-def on_set_pilot_phonetic(data):
-    '''Gets pilot phonetic to update database.'''
-    pilot_id = data['pilot_id']
-    phonetic = data['phonetic']
-    db_update = Pilot.query.get(pilot_id)
-    db_update.phonetic = phonetic
-    DB.session.commit()
-    server_log('Pilot phonetic set: Pilot {0} Phonetic {1}'.format(pilot_id, phonetic))
-    emit_pilot_data(noself=True) # Settings page, new pilot phonetic
-    emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
-
-@SOCKET_IO.on('set_pilot_name')
-def on_set_pilot_name(data):
-    '''Gets pilot name to update database.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
-
-    pilot_id = data['pilot_id']
-    name = data['name']
-    db_update = Pilot.query.get(pilot_id)
-    db_update.name = name
-    DB.session.commit()
-    server_log('Pilot name set: Pilot {0} Name {1}'.format(pilot_id, name))
-    emit_pilot_data(noself=True) # Settings page, new pilot name
+    server_log('Altered pilot {0} to {1}'.format(pilot_id, data))
+    emit_pilot_data(noself=True) # Settings page, new pilot settings
+    if 'callsign' in data:
+        emit_heat_data() # Settings page, new pilot callsign in heats
+    if 'phonetic' in data:
+        emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
@@ -4008,7 +3979,6 @@ if not db_inited_flag:
 expand_heats()
 
 # internal slave race format for LiveTime (needs to be created after initial DB setup)
-global SLAVE_RACE_FORMAT
 SLAVE_RACE_FORMAT = RaceFormat(name=__("Slave"),
                          race_mode=1,
                          race_time_sec=0,

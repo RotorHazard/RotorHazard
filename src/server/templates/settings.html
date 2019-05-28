@@ -648,7 +648,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				name: $(this).val()
 			};
-			socket.emit('set_pilot_name', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("focus", '.set_pilot_callsign', function(){
@@ -660,7 +660,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				callsign: $(this).val()
 			};
-			socket.emit('set_pilot_callsign', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("change", '.set_pilot_team', function (event) {
@@ -668,7 +668,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				team_name: $(this).val()
 			};
-			socket.emit('set_pilot_team', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("focus", '.set_pilot_phonetic', function(){
@@ -680,7 +680,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				phonetic: $(this).val()
 			};
-			socket.emit('set_pilot_phonetic', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("click", 'button.speak_pilot', function (event) {
