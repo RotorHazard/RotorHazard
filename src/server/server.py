@@ -470,16 +470,6 @@ def setCurrentRaceFormat(race_format):
         setOption("currentFormat", race_format.id)
     RACE.format = race_format
 
-# internal slave race format for LiveTime
-SLAVE_RACE_FORMAT = RaceFormat(name=__("Slave"),
-                         race_mode=1,
-                         race_time_sec=0,
-                         start_delay_min=0,
-                         start_delay_max=0,
-                         number_laps_win=0,
-                         win_condition=WIN_CONDITION_NONE,
-                         team_racing_mode=False)
-
 #
 # Authentication
 #
@@ -927,6 +917,7 @@ def on_get_settings():
 def on_reset_auto_calibration(data):
     on_stop_race()
     on_discard_laps()
+    global SLAVE_RACE_FORMAT
     setCurrentRaceFormat(SLAVE_RACE_FORMAT)
     emit_race_format()
     setOption("MinLapSec", "0")
@@ -3883,6 +3874,17 @@ if not db_inited_flag:
 
 # Expand heats (if number of nodes increases)
 expand_heats()
+
+# internal slave race format for LiveTime (needs to be created after initial DB setup)
+global SLAVE_RACE_FORMAT
+SLAVE_RACE_FORMAT = RaceFormat(name=__("Slave"),
+                         race_mode=1,
+                         race_time_sec=0,
+                         start_delay_min=0,
+                         start_delay_max=0,
+                         number_laps_win=0,
+                         win_condition=WIN_CONDITION_NONE,
+                         team_racing_mode=False)
 
 # Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
