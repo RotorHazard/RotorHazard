@@ -1,4 +1,4 @@
-{% extends "layout.html" %} {% block title %}Run{% endblock %}{% block head %}
+{% extends "layout.html" %} {% block title %}Marshal Race Data{% endblock %}{% block head %}
 
 <script type="text/javascript" charset="utf-8">
 	var race_list = {};
@@ -47,18 +47,29 @@
 			race_list = msg;
 
 			$('#selected_heat').empty();
-			$('#selected_heat').append('<option value="">' + __('Select Heat') + '</option>');
+			$('#selected_heat').append('<option value="--">' + __('Select Heat') + '</option>');
 			for (var heat_i in race_list.heats) {
 				var heat = race_list.heats[heat_i];
 
 				if (heat.note) {
 					var heat_name = heat.note;
 				} else {
-					var heat_name = __('Heat') + ' ' + heat.heat_id;
+					var heat_name = __('Heat') + ' ' + heat_i;
 				}
 
-				$('#selected_heat').append('<option value="' + heat.heat_id + '">' + heat_name + '</option>');
+				$('#selected_heat').append('<option value="' + heat_i + '">' + heat_name + '</option>');
 			}
+			$('#selected_heat').prop('disabled', false);
+
+			$('#selected_round').empty();
+			$('#selected_round').append('<option value="--">' + __('Select Round') + '</option>');
+			$('#selected_round').prop('disabled', true);
+
+			$('#selected_pilot').empty();
+			$('#selected_pilot').append('<option value="--">' + __('Select Pilot') + '</option>');
+			$('#selected_pilot').prop('disabled', true);
+
+			$('#load_race').prop('disabled', true);
 
 			// *** don't reload data if current race still exists
 		});
@@ -66,14 +77,20 @@
 		$('#selected_heat').change(function(){
 			$('#selected_round').empty();
 			$('#selected_round').append('<option value="--">' + __('Select Round') + '</option>');
+			$('#selected_round').prop('disabled', true);
+
+			$('#selected_pilot').empty();
+			$('#selected_pilot').append('<option value="--">' + __('Select Pilot') + '</option>');
+			$('#selected_pilot').prop('disabled', true);
+
+			$('#load_race').prop('disabled', true);
 
 			var heat = parseInt($(this).val());
-			if (heat != '--') {
+			if ($(this).val() != '--') {
 				for (var round_i in race_list.heats[heat].rounds) {
-					var round = race_list.heats[heat].rounds[round_i];
-
-					$('#selected_round').append('<option value="' + round_i + '">' + __('Round') + ' ' + round.id + '</option>');
+					$('#selected_round').append('<option value="' + round_i + '">' + __('Round') + ' ' + round_i + '</option>');
 				}
+				$('#selected_round').prop('disabled', false);
 
 				// *** don't reload data if current race still exists
 			}
@@ -82,58 +99,82 @@
 		$('#selected_round').change(function(){
 			$('#selected_pilot').empty();
 			$('#selected_pilot').append('<option value="--">' + __('Select Pilot') + '</option>');
+			$('#selected_pilot').prop('disabled', true);
+
+			$('#load_race').prop('disabled', true);
 
 			var heat = parseInt($('#selected_heat').val());
 			var round = parseInt($(this).val());
 
-			if (round != '--') {
-				for (var node_i in race_list.heats[heat].rounds[round].nodes) {
-					var node = race_list.heats[heat].rounds[round].nodes[node_i];
-
-					$('#selected_pilot').append('<option value="' + node_i + '">' + node.pilot + '</option>');
+			if ($(this).val() != '--') {
+				for (var pilot_i in race_list.heats[heat].rounds[round].pilotraces) {
+					var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot_i];
+					$('#selected_pilot').append('<option value="' + pilot_i + '">' + pilotrace.callsign + '</option>');
 				}
+				$('#selected_pilot').prop('disabled', false);
 
 				// *** don't reload data if current race still exists
 			}
 		});
 
+		$('#selected_pilot').change(function(){
+			if ($(this).val() != '--') {
+				$('#load_race').prop('disabled', false);
+			}
+		});
+
+
 		$('#load_race').click(function(){
 			var heat = parseInt($('#selected_heat').val());
 			var round = parseInt($('#selected_round').val());
-			var round_id = race_list.heats[heat].rounds[parseInt($('#selected_round').val())].id;
-			var node_id = race_list.heats[heat].rounds[round].nodes[parseInt($('#selected_pilot').val())].id;
+			var pilot = parseInt($('#selected_pilot').val());
 
-			var data = {
-				heat: heat,
-				round: round_id,
-				node: node_id
-			};
-			socket.emit('get_race_meta', data);
+			// load current race data
+			current_race_data = race_list.heats[heat].rounds[round].pilotraces[pilot];
+			// fill current data with race meta
+			current_race_data.round_id = round;
+			current_race_data.heat_id = heat;
+			current_race_data.class_id = race_list.heats[heat].rounds[round].class_id;
+			current_race_data.format_id = race_list.heats[heat].rounds[round].format_id;
+			current_race_data.start_time = race_list.heats[heat].rounds[round].start_time;
+			current_race_data.start_time_formatted = race_list.heats[heat].rounds[round].start_time_formatted;
+
+			// display graph
+			graph_series.data = [];
+			for (idx in current_race_data.history_times) {
+				var value = current_race_data.history_times[idx];
+				if (value == lastValue) {
+					graph_series.append(current_race_data.history_times[idx] + 0.001, current_race_data.history_values[idx]);
+				} else {
+					graph_series.append(current_race_data.history_times[idx], current_race_data.history_values[idx]);
+				}
+				var lastValue = value;
+			}
+
+			renderGraph();
+
+			// populate laps
+			displayLaps(current_race_data.laps);
+
 			return false;
 		});
 
 		function renderGraph() {
 			var graphWidth = graph_canvas.offsetWidth;
 
-			var startTime = current_race_data.history_times[0];
+			var startTime = current_race_data.start_time;
 			var endTime = current_race_data.history_times[current_race_data.history_times.length - 1];
 			var duration = endTime - startTime;
 			var span = duration / graphWidth;
 
 			graph.options.millisPerPixel = span;
+			graph.options.horizontalLines = [
+				{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: parseInt($('#enterat').val())}, // red
+				{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: parseInt($('#exitat').val())}, // orange
+			];
+
 			graph.render(graph_canvas, endTime);
 		}
-
-		socket.on('race_meta', function (msg) {
-			current_race_data = msg;
-
-			graph_series.data = [];
-			for (idx in current_race_data.history_times) {
-				graph_series.append(current_race_data.history_times[idx], current_race_data.race_history[idx])
-			}
-
-			renderGraph();
-		});
 
 		var resizeTimer;
 		$(window).on('resize', function(){
@@ -142,6 +183,127 @@
 				renderGraph();
 			}, 250);
 		});
+
+		function displayLaps(laps_obj) {
+			var lapList = $('#laps tbody');
+			lapList.empty();
+
+			var lap_index = 0;
+			for (var lap_i in laps_obj) {
+				var lap = laps_obj[lap_i];
+				var lapData = $('<tr>');
+
+				if (lap.deleted) {
+					lapData.addClass('lap-deleted');
+				}
+
+				lapData.append('<td>' + lap_index + '</td>');
+				lapData.append('<td>' + lap.lap_time_stamp + '</td>');
+				lapData.append('<td>' + lap.lap_time_formatted + '</td>');
+
+				switch (lap.source) {
+					case 0:
+						lapData.append('<td>Realtime</td>');
+						break;
+					case 1:
+						lapData.append('<td>Manual</td>');
+						break;
+					case 2:
+						lapData.append('<td>Recalc</td>');
+						break;
+				}
+
+				if (lap.deleted) {
+					lapData.append('<td><button class="undo_delete_lap" data-lapid="' + lap_i + '">+</button></td>');
+				} else {
+					lapData.append('<td><button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
+				}
+				lapList.append(lapData);
+				lap_index++;
+			}
+		}
+
+		$('.recalc').click(function(){
+			var laps = recalc_rx_data();
+			calc_lap_times(laps);
+			displayLaps(laps);
+			renderGraph();
+		});
+
+		$('#enterat').change(function(){
+			var laps = recalc_rx_data();
+			calc_lap_times(laps);
+			displayLaps(laps);
+			renderGraph();
+		});
+
+		$('#exitat').change(function(){
+			var laps = recalc_rx_data();
+			calc_lap_times(laps);
+			displayLaps(laps);
+			renderGraph();
+		});
+
+		function recalc_rx_data() {
+			var enterat = parseInt($('#enterat').val());
+			var exitat = parseInt($('#exitat').val());
+
+			var crossing = false;
+			var peakRssi = 0;
+			var peakFirst = 0;
+			var peakLast = 0;
+			var laps = [];
+
+			for(var idx in current_race_data.history_values) {
+				var rssi = current_race_data.history_values[idx];
+
+				if (!crossing && (rssi > enterat)) {
+					crossing = true;
+				}
+
+				if (rssi >= peakRssi) {
+					peakLast = current_race_data.history_times[idx];
+
+					if (rssi > peakRssi) {
+						peakFirst = current_race_data.history_times[idx];
+						peakRssi = rssi;
+					}
+				}
+
+				if (crossing) {
+					if (rssi < exitat) {
+						laps.push({
+							raw_stamp: (peakLast + peakFirst) / 2,
+							lap_time: null,
+							lap_time_stamp: (((peakLast + peakFirst) / 2) - current_race_data.start_time) * 1000, // zero stamp within race
+							source: 2,
+							deleted: false
+						});
+						crossing = false;
+						peakRssi = 0;
+					}
+				}
+			}
+
+			return laps;
+		}
+
+		function calc_lap_times(laps_obj){
+			var lap_index = 0;
+			for (lap_i in laps_obj) {
+				var lap = laps_obj[lap_i];
+				if (!lap.deleted) {
+					if (lap_index) {
+						lap.lap_time = lap.lap_time_stamp - lastLap.lap_time_stamp;
+					} else {
+						lap.lap_time = lap.lap_time_stamp;
+					}
+					lap.lap_time_formatted = lap.lap_time / 1000; // ***
+					lap_index++;
+					var lastLap = lap;
+				}
+			}
+		}
 	});
 </script>
 {% endblock %} {% block content %}
@@ -152,25 +314,46 @@
 
 		<div class="control-set">
 			<label for="selected_heat" class="screen-reader-text">{{ __('Heat') }}</label>
-			<select id="selected_heat">
-				<option value="">{{ __('Loading...') }}</option>
+			<select id="selected_heat" disabled>
+				<option value="--">{{ __('Loading...') }}</option>
 			</select>
 
 			<label for="selected_round" class="screen-reader-text">{{ __('Round') }}</label>
-			<select id="selected_round">
-				<option value="">{{ __('Loading...') }}</option>
+			<select id="selected_round" disabled>
+				<option value="--">{{ __('Loading...') }}</option>
 			</select>
 
 			<label for="selected_pilot" class="screen-reader-text">{{ __('Pilot') }}</label>
-			<select id="selected_pilot">
-				<option value="">{{ __('Loading...') }}</option>
+			<select id="selected_pilot" disabled>
+				<option value="--">{{ __('Loading...') }}</option>
 			</select>
 
-			<button id="load_race">{{ __('Load Race') }}</button>
+			<button id="load_race" disabled>{{ __('Load Race') }}</button>
 		</div>
 
 		<div class="race-view">
+			<div id="race-header"></div>
+
 			<canvas id="race-graph" style="width:100%; height:200px"></canvas>
+
+			<table id="laps">
+				<thead>
+					<tr>
+						<th>Lap</th>
+						<th>Timestamp</th>
+						<th>Lap Time</th>
+						<th>Source</th>
+						<th>Deleted</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+			</table>
+
+			<div>
+				<input type="number" id="enterat" value="239" />
+				<input type="number" id="exitat" value="210" />
+				<button class="recalc">Recalc Race</button>
+			</div>
 		</div>
 	</div>
 </div>
