@@ -511,7 +511,7 @@
 				heat: parseInt($(this).data('heat')),
 				note: $(this).val(),
 			};
-			socket.emit('set_heat_note', data);
+			socket.emit('alter_heat', data);
 		});
 
 		$(document).on("change", '.set_pilot_position', function (event) {
@@ -520,7 +520,7 @@
 				node: parseInt($(this).data('node')),
 				pilot: parseInt($(this).val())
 			};
-			socket.emit('set_pilot_position', data);
+			socket.emit('alter_heat', data);
 		});
 
 		$(document).on("change", '.set_heat_class', function (event) {
@@ -528,7 +528,7 @@
 				heat: parseInt($(this).data('heat')),
 				class: $(this).val(),
 			};
-			socket.emit('set_heat_class', data);
+			socket.emit('alter_heat', data);
 		});
 
 		$('button#add_heat').click(function (event) {

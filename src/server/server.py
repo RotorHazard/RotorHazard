@@ -1220,41 +1220,22 @@ def on_add_heat():
     server_log('Heat added: Heat {0}'.format(max_heat_id+1))
     emit_heat_data() # Settings page, new pilot position in heats
 
-@SOCKET_IO.on('set_pilot_position')
-def on_set_pilot_position(data):
-    '''Sets a new pilot in a heat.'''
+@SOCKET_IO.on('alter_heat')
+def on_alter_heat(data):
+    '''Update heat.'''
     heat = data['heat']
-    node_index = data['node']
-    pilot = data['pilot']
-    db_update = Heat.query.filter_by(heat_id=heat, node_index=node_index).first()
-    db_update.pilot_id = pilot
+    node_index = data['node'] if 'node' in data else 0
+    db_update = Heat.query.filter_by(heat_id=heat, node_index=node_index).one()
+    if 'pilot' in data:
+        db_update.pilot_id = data['pilot']
+    if 'note' in data:
+        global EVENT_RESULTS_CACHE_VALID
+        EVENT_RESULTS_CACHE_VALID = False
+        db_update.note = data['note']
+    if 'class' in data:
+        db_update.class_id = data['class']
     DB.session.commit()
-    server_log('Pilot position set: Heat {0} Node {1} Pilot {2}'.format(heat, node_index+1, pilot))
-    emit_heat_data(noself=True) # Settings page, new pilot position in heats
-
-@SOCKET_IO.on('set_heat_note')
-def on_set_heat_note(data):
-    '''Sets name of heat.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
-
-    heat = data['heat']
-    note = data['note']
-    db_update = Heat.query.filter_by(heat_id=heat, node_index=0).first()
-    db_update.note = note
-    DB.session.commit()
-    server_log('Heat note: Heat {0}'.format(heat))
-    emit_heat_data(noself=True) # Settings page, new pilot position in heats
-
-@SOCKET_IO.on('set_heat_class')
-def on_set_heat_class(data):
-    '''Sets a new pilot in a heat.'''
-    heat = data['heat']
-    class_id = data['class']
-    db_update = Heat.query.filter_by(heat_id=heat, node_index=0).first()
-    db_update.class_id = class_id
-    DB.session.commit()
-    server_log('Heat {0} set to class {1}'.format(heat, class_id))
+    server_log('Heat {0} Node {1} altered to {2}'.format(heat, node_index+1, data))
     emit_heat_data(noself=True) # Settings page, new pilot position in heats
 
 @SOCKET_IO.on('add_race_class')
