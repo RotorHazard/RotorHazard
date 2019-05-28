@@ -3157,7 +3157,7 @@ def emit_imdtabler_page(**params):
     if Use_imdtabler_jar_flag:
         try:                          # get IMDTabler version string
             imdtabler_ver = subprocess.check_output( \
-                                ['java', '-jar', IMDTABLER_JAR_NAME, '-v']).rstrip()
+                                'java -jar ' + IMDTABLER_JAR_NAME + ' -v', shell=True).rstrip()
             profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
             fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
             fs_list = []
@@ -3174,7 +3174,7 @@ def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
         imdtabler_data = None
         if len(fs_list) > 2:  # if 3+ then invoke jar; get response
             imdtabler_data = subprocess.check_output( \
-                        ['java', '-jar', IMDTABLER_JAR_NAME, '-t'] + fs_list)
+                        'java -jar ' + IMDTABLER_JAR_NAME + ' -t ' + ' '.join(fs_list), shell=True)
     except Exception as ex:
         imdtabler_data = None
         server_log('emit_imdtabler_data exception:  ' + str(ex))
@@ -3200,7 +3200,7 @@ def emit_imdtabler_rating():
                 fs_list.append(str(val))
         if len(fs_list) > 2:
             imd_val = subprocess.check_output(  # invoke jar; get response
-                        ['java', '-jar', IMDTABLER_JAR_NAME, '-r'] + fs_list).rstrip()
+                        'java -jar ' + IMDTABLER_JAR_NAME + ' -r ' + ' '.join(fs_list), shell=True).rstrip()
     except Exception as ex:
         imd_val = None
         server_log('emit_imdtabler_rating exception:  ' + str(ex))
@@ -3887,7 +3887,7 @@ expand_heats()
 # Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     try:
-        java_ver = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
+        java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True)
         server_log('Found installed:  ' + java_ver.split('\n')[0])
     except:
         java_ver = None
@@ -3896,8 +3896,8 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     if java_ver:
         try:
             imdtabler_ver = subprocess.check_output( \
-                        ['java', '-jar', IMDTABLER_JAR_NAME, '-v'], \
-                        stderr=subprocess.STDOUT).rstrip()
+                        'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
+                        stderr=subprocess.STDOUT, shell=True).rstrip()
             Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
             server_log('Found installed:  ' + imdtabler_ver)
         except Exception as ex:
