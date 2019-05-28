@@ -1413,27 +1413,17 @@ def on_delete_profile():
         setOption("currentProfile", first_profile_id)
         on_set_profile(data={ 'profile': first_profile_id })
 
-@SOCKET_IO.on('set_profile_name')
-def on_set_profile_name(data):
-    ''' update profile name '''
-    profile_name = data['profile_name']
+@SOCKET_IO.on('alter_profile')
+def on_alter_profile(data):
+    ''' update profile '''
     current_profile = int(getOption("currentProfile"))
     profile = Profiles.query.get(current_profile)
-    profile.name = profile_name
+    if 'profile_name' in data:
+        profile.name = data['profile_name']
+    if 'profile_description' in data:
+        profile.description = data['profile_description']
     DB.session.commit()
-    server_log('Set profile name %s' % (profile_name))
-    emit_node_tuning(noself=True)
-
-@SOCKET_IO.on('set_profile_description')
-def on_set_profile_description(data):
-    ''' update profile description '''
-    profile_description = data['profile_description']
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
-    profile.description = profile_description
-    DB.session.commit()
-    server_log('Set profile description %s for profile %s' %
-               (profile_name, profile.name))
+    server_log('Altered current profile to %s' % (data))
     emit_node_tuning(noself=True)
 
 @SOCKET_IO.on("set_profile")
@@ -1626,7 +1616,7 @@ def on_alter_race_format(data):
         if 'team_racing_mode' in data:
             race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
         DB.session.commit()
-        server_log('altered race format to %s' % (data))
+        server_log('Altered race format to %s' % (data))
         if emit:
             emit_race_format()
             emit_class_data()
