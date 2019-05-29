@@ -57,11 +57,12 @@
 int i2cSlaveAddress (6 + (NODE_NUMBER * 2));
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 17
+#define NODE_API_LEVEL 18 //RF was 17, now 18
 
 const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 const int spiDataPin = 11;
 const int spiClockPin = 13;
+const int voltageInputPin = 1; //RF voltage input
 
 #define READ_ADDRESS 0x00
 #define READ_FREQUENCY 0x03
@@ -77,6 +78,7 @@ const int spiClockPin = 13;
 #define READ_HISTORY_EXPIRE_DURATION 0x35
 #define READ_NODE_SYNC 0x36       // check node sync value
 #define READ_CLOCK_ERROR 0x37
+#define READ_VOLTAGE 0x38 //RF read node voltage
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_FILTER_RATIO 0x70   // API_level>=10 uses 16-bit value
@@ -375,6 +377,12 @@ void setRxModule(int frequency)
 int rssiRead()
 {
     return analogRead(0);
+}
+
+//RF: Read the voltage of the node battery voltage divider on A1
+int voltageRead()
+{
+  return analogRead(1);
 }
 
 uint32_t loopMillis = 0;
@@ -815,6 +823,10 @@ void i2cTransmit()
             ioBufferWrite32(millis());
             break;
 
+        case READ_VOLTAGE: // RF: READ_VOLTAGE will get the current node voltage from the defined analog pin
+            ioBufferWrite32(voltageRead()); 
+            break;
+
         default:  // If an invalid command is sent, write nothing back, master must react
             Serial.print(F("TX Fault command: "));
             Serial.println(ioCommand, HEX);
@@ -843,4 +855,3 @@ uint16_t readWordFromEeprom(int addr)
     const uint8_t hb = EEPROM.read(addr + 1);
     return (((uint16_t) hb) << 8) + lb;
 }
-
