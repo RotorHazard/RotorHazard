@@ -824,7 +824,7 @@ void i2cTransmit()
             break;
 
         case READ_VOLTAGE: // RF: READ_VOLTAGE will get the current node voltage from the defined analog pin
-            ioBufferWrite32(voltageRead()); 
+            ioBufferWrite16(voltageRead()); 
             break;
 
         default:  // If an invalid command is sent, write nothing back, master must react
