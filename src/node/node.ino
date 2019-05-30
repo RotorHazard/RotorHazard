@@ -135,13 +135,12 @@ struct
     uint16_t volatile peakRssi;
     uint32_t volatile peakFirstTime;
     uint32_t volatile peakLastTime;
-    uint32_t volatile peakTime;
     bool volatile peakSend;
 
     uint16_t volatile nadirRssi;
     uint16_t volatile nadirTime;
     bool volatile nadirSend;
-    
+
     bool volatile isRising;
     bool volatile isFalling;
 } history;
@@ -384,10 +383,10 @@ uint16_t lastRssi = 0;
 void loop()
 {
     state.lastRssiSmoothed = state.rssiSmoothed;
-    
+
     uint32_t loopMicros = micros();
     loopMillis = millis();
-    
+
     // read raw RSSI close to taking timestamp
     rssiMedian.addValue(rssiRead());
     state.rssiSmoothed = rssiMedian.getMedian(); // retrieve the median
@@ -409,41 +408,39 @@ void loop()
               history.peakSend = false;
             }
           }
-        
+
           if (!history.peakSend) {
             if (state.rssiSmoothed > history.peakRssi) {
               history.peakRssi = state.rssiSmoothed;
               history.peakFirstTime = history.peakLastTime = state.rssiTimestamp;
             }
           }
-        
+
           if (history.isFalling) {
-            history.nadirTime = state.rssiTimestamp;
             history.nadirSend = true;
           }
-        
+
           history.isRising = true;
           history.isFalling = false;
-        
+
         } else if (state.rssiSmoothed < state.lastRssiSmoothed) { // RSSI is falling
+
           if (history.isRising) {
-            history.peakTime = (history.peakFirstTime + history.peakLastTime) / 2;
             history.peakSend = true;
           }
-        
+
           if (history.nadirSend) {
             if (state.rssiSmoothed < history.nadirRssi) {
               history.nadirSend = false;
             }
           }
-        
-          if (!history.nadirSend) {
-            history.nadirRssi = state.rssiSmoothed;
-          }
-        
+
+          history.nadirTime = state.rssiTimestamp;
+          history.nadirRssi = state.rssiSmoothed;
+
           history.isRising = false;
           history.isFalling = true;
-          
+
         } else { // RSSI is equal
           if (history.isRising) {
             history.peakLastTime = state.rssiTimestamp;
@@ -772,14 +769,16 @@ void i2cTransmit()
 
             if (history.peakSend) {
                 ioBufferWrite16(history.peakRssi);
-                ioBufferWrite16(uint16_t(millis() - history.peakTime));
+                ioBufferWrite16(uint16_t(millis() - history.peakFirstTime));
+                ioBufferWrite16(uint16_t(millis() - history.peakLastTime));
                 history.peakSend = false;
                 history.peakRssi = state.rssiSmoothed;
             } else {
                 ioBufferWrite16(0);
                 ioBufferWrite16(0);
+                ioBufferWrite16(0);
             }
-            
+
             if (history.nadirSend) {
                 ioBufferWrite16(history.nadirRssi);
                 ioBufferWrite16(uint16_t(millis() - history.nadirTime));

@@ -191,7 +191,13 @@ class RHInterface(BaseHardwareInterface):
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
-                    if node.api_level >= 17:
+                    if node.api_level >= 18:
+                        data = self.read_block(node.i2c_addr, READ_LAP_STATS, 30)
+                        server_roundtrip = self.i2c_response - self.i2c_request
+                        server_oneway = server_roundtrip / 2
+                        readtime = self.i2c_response - server_oneway
+
+                    elif node.api_level >= 17:
                         data = self.read_block(node.i2c_addr, READ_LAP_STATS, 28)
                         server_roundtrip = self.i2c_response - self.i2c_request
                         server_oneway = server_roundtrip / 2
@@ -273,6 +279,61 @@ class RHInterface(BaseHardwareInterface):
                                     self.new_enter_or_exit_at_callback(node, False)
 
                         # get and process history data
+                        if node.api_level >= 18:
+                            peakRssi = unpack_16(data[20:])
+                            peakFirstTime = unpack_16(data[22:])
+                            peakLastTime = unpack_16(data[24:])
+                            nadirRssi = unpack_16(data[26:])
+                            nadirTime = unpack_16(data[28:])
+
+                            if peakRssi > 0:
+                                if nadirRssi > 0:
+                                    # both
+                                    if peakLastTime < nadirTime:
+                                        # process peak first
+                                        if peakFirstTime < peakLastTime: {
+                                            node.history_values.append(peakRssi)
+                                            node.history_times.append(readtime - (peakFirstTime / 1000))
+                                            node.history_values.append(peakRssi)
+                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                        } else {
+                                            node.history_values.append(peakRssi)
+                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                        }
+                                        node.history_values.append(nadirRssi)
+                                        node.history_times.append(readtime - (nadirTime / 1000))
+
+                                    else:
+                                        # process nadir first
+                                        node.history_values.append(nadirRssi)
+                                        node.history_times.append(readtime - (nadirTime / 1000))
+                                        if peakFirstTime < peakLastTime: {
+                                            node.history_values.append(peakRssi)
+                                            node.history_times.append(readtime - (peakFirstTime / 1000))
+                                            node.history_values.append(peakRssi)
+                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                        } else {
+                                            node.history_values.append(peakRssi)
+                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                        }
+                                else:
+                                    # peak, no nadir
+                                    # process peak only
+                                    if peakFirstTime < peakLastTime: {
+                                        node.history_values.append(peakRssi)
+                                        node.history_times.append(readtime - (peakFirstTime / 1000))
+                                        node.history_values.append(peakRssi)
+                                        node.history_times.append(readtime - (peakLastTime / 1000))
+                                    } else {
+                                        node.history_values.append(peakRssi)
+                                        node.history_times.append(readtime - (peakLastTime / 1000))
+                                    }
+                            elif nadirRssi > 0:
+                                # no peak, nadir
+                                # process nadir only
+                                node.history_values.append(nadirRssi)
+                                node.history_times.append(readtime - (nadirTime / 1000))
+
                         if node.api_level >= 17:
                             peakRssi = unpack_16(data[20:])
                             peakTime = unpack_16(data[22:])
