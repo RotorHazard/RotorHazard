@@ -1551,6 +1551,7 @@ def on_alter_race_format(data):
         if 'team_racing_mode' in data:
             race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
         DB.session.commit()
+        setCurrentRaceFormat(race_format)
         server_log('Altered race format to %s' % (data))
         if emit:
             emit_race_format()
