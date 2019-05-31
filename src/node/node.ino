@@ -135,7 +135,7 @@ struct
     bool volatile rxFreqSetFlag = false; // Set true after initial WRITE_FREQUENCY command received
 
     // variables to track the loop time
-    utime_t volatile loopTimeMicros = 0;
+    uint16_t volatile loopTimeMicros = 0; // max supported loop time 65ms
     utime_t volatile lastloopMicros = 0;
 } state;
 
@@ -517,7 +517,7 @@ void loop()
     }
 
     // Calculate the time it takes to run the main loop
-    state.loopTimeMicros = loopMicros - state.lastloopMicros;
+    state.loopTimeMicros = (uint16_t) (loopMicros - state.lastloopMicros);
     state.lastloopMicros = loopMicros;
 
     // Status LED
@@ -545,7 +545,7 @@ void end_crossing() {
     state.crossing = false;
     state.passRssiPeakRaw = 0;
     state.passRssiPeak = 0;
-    state.passRssiNadir = 999;
+    state.passRssiNadir = MAX_RSSI;
 }
 
 
@@ -712,14 +712,14 @@ byte i2cHandleRx(byte command)
                 {  // if RX frequency changed
                     writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
                     state.nodeRssiPeak = 0;  // restart rssi peak tracking for node
-                    state.nodeRssiNadir = 999;
+                    state.nodeRssiNadir = MAX_RSSI;
                     Serial.println(F("Set nodeRssiPeak = 0, nodeRssiNadir = 999"));
                 }
             }
             break;
 
         case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
-            if (readAndValidateIoBuffer(WRITE_ENTER_AT_LEVEL, 2))
+            if (readAndValidateIoBuffer(WRITE_ENTER_AT_LEVEL, 1))
             {
                 settings.enterAtLevel = ioBufferReadRssi();
                 writeWordToEeprom(EEPROM_ADRW_ENTERAT, fromScaledRssi(settings.enterAtLevel));
@@ -728,7 +728,7 @@ byte i2cHandleRx(byte command)
             break;
 
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-            if (readAndValidateIoBuffer(WRITE_EXIT_AT_LEVEL, 2))
+            if (readAndValidateIoBuffer(WRITE_EXIT_AT_LEVEL, 1))
             {
                 settings.exitAtLevel = ioBufferReadRssi();
                 writeWordToEeprom(EEPROM_ADRW_EXITAT, fromScaledRssi(settings.exitAtLevel));
@@ -762,6 +762,7 @@ void i2cTransmit()
 {
     ioBufferSize = 0;
 
+	mtime_t now;
     switch (ioCommand)
     {
         case READ_ADDRESS:
@@ -773,13 +774,13 @@ void i2cTransmit()
             break;
 
         case READ_LAP_STATS:
-        	mtime_t now = millis();
+        	now = millis();
             ioBufferWrite8(lastPass.lap);
             ioBufferWrite16(uint16_t(now - lastPass.timeStamp));  // ms since lap
             ioBufferWriteRssi(state.rssiSmoothed);
             ioBufferWriteRssi(state.nodeRssiPeak);
             ioBufferWriteRssi(lastPass.rssiPeak);  // RSSI peak for last lap pass
-            ioBufferWrite32(state.loopTimeMicros);
+            ioBufferWrite16(state.loopTimeMicros);
             ioBufferWrite8(state.crossing ? (uint8_t) 1 : (uint8_t) 0);  // 'crossing' status
             ioBufferWriteRssi(lastPass.rssiNadir);  // lowest rssi since end of last pass
             ioBufferWriteRssi(state.nodeRssiNadir);

@@ -87,9 +87,9 @@ def from_scaled_rssi(rssi):
 
 def unpack_rssi(node, data):
     if node.api_level >= 18:
-        unpack_8(data)
+        return unpack_8(data)
     else:
-        unpack_16(data)
+        return unpack_16(data)
 
 
 class RHInterface(BaseHardwareInterface):
@@ -201,7 +201,7 @@ class RHInterface(BaseHardwareInterface):
                 if node.api_valid_flag or node.api_level >= 5:
                     if node.api_level >= 17:
                         if node.api_level >= 18:
-                            data = self.read_block(node.i2c_addr, READ_LAP_STATS, 19)
+                            data = self.read_block(node.i2c_addr, READ_LAP_STATS, 17)
                         else:
                             data = self.read_block(node.i2c_addr, READ_LAP_STATS, 28)
                         server_roundtrip = self.i2c_response - self.i2c_request
@@ -221,16 +221,16 @@ class RHInterface(BaseHardwareInterface):
 
                     if node.api_level >= 18:
                         offset_rssi = 3
-                        offset_nodePeakRssi = 5
-                        offset_passReakRssi = 6
-                        offset_loopTime = 7
+                        offset_nodePeakRssi = 4
+                        offset_passReakRssi = 5
+                        offset_loopTime = 6
                         offset_crossing = 8
-                        offset_passNadirRssi = 12
-                        offset_nodeNadirRssi = 13
-                        offset_peakRssi = 14
-                        offset_peakTime = 15
-                        offset_nadirRssi = 17
-                        offset_nadirTime = 18
+                        offset_passNadirRssi = 9
+                        offset_nodeNadirRssi = 10
+                        offset_peakRssi = 11
+                        offset_peakTime = 12
+                        offset_nadirRssi = 14
+                        offset_nadirTime = 15
                     else:
                         offset_rssi = 5
                         offset_nodePeakRssi = 7
@@ -261,7 +261,7 @@ class RHInterface(BaseHardwareInterface):
                             node.node_peak_rssi = unpack_rssi(node, data[offset_nodePeakRssi:])
                             node.pass_peak_rssi = unpack_rssi(node, data[offset_passPeakRssi:])
                             node.loop_time = unpack_32(data[offset_loopTime:])
-                            if data[offset_corssing]:
+                            if data[offset_crossing]:
                                 cross_flag = True
                             else:
                                 cross_flag = False
@@ -578,7 +578,7 @@ class RHInterface(BaseHardwareInterface):
     def get_value_rssi(self, node, command):
         if node.api_level >= 18:
             return from_scaled_rssi(self.get_value_8(node, command))
-        else
+        else:
             return self.get_value_16(node, command)
 
     #
