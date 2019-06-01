@@ -83,6 +83,18 @@ def validate_checksum(data):
     checksum = sum(data[:-1]) & 0xFF
     return checksum == data[-1]
 
+def to_scaled_rssi(rssi):
+    return rssi >> 1
+
+def from_scaled_rssi(rssi):
+    return rssi << 1
+
+def unpack_rssi(node, data):
+    if node.api_level >= 18:
+        return unpack_8(data)
+    else:
+        return unpack_16(data)
+
 
 class RHInterface(BaseHardwareInterface):
     def __init__(self):
@@ -125,11 +137,11 @@ class RHInterface(BaseHardwareInterface):
                 node.api_level = 0  # if verify failed (fn not defined) then set API level to 0
             if node.api_level >= 10:
                 node.api_valid_flag = True  # set flag for newer API functions supported
-                node.node_peak_rssi = self.get_value_16(node, READ_NODE_RSSI_PEAK)
+                node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
                 if node.api_level >= 13:
-                    node.node_nadir_rssi = self.get_value_16(node, READ_NODE_RSSI_NADIR)
-                node.enter_at_level = self.get_value_16(node, READ_ENTER_AT_LEVEL)
-                node.exit_at_level = self.get_value_16(node, READ_EXIT_AT_LEVEL)
+                    node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
+                node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
+                node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
                 print "Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level)
             else:
                 print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
@@ -192,7 +204,7 @@ class RHInterface(BaseHardwareInterface):
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
                     if node.api_level >= 18:
-                        data = self.read_block(node.i2c_addr, READ_LAP_STATS, 30)
+                        data = self.read_block(node.i2c_addr, READ_LAP_STATS, 21)
                         server_roundtrip = self.i2c_response - self.i2c_request
                         server_oneway = server_roundtrip / 2
                         readtime = self.i2c_response - server_oneway
@@ -214,13 +226,39 @@ class RHInterface(BaseHardwareInterface):
                     lap_id = data[0]
                     lap_time_ms = 0
 
-                    rssi_val = unpack_16(data[5:])
+                    if node.api_level >= 18:
+                        offset_rssi = 3
+                        offset_nodePeakRssi = 4
+                        offset_passPeakRssi = 5
+                        offset_loopTime = 6
+                        offset_crossing = 10
+                        offset_passNadirRssi = 11
+                        offset_nodeNadirRssi = 12
+                        offset_peakRssi = 13
+                        offset_peakFirstTime = 14
+                        offset_peakLastTime = 16
+                        offset_nadirRssi = 18
+                        offset_nadirTime = 19
+                    else:
+                        offset_rssi = 5
+                        offset_nodePeakRssi = 7
+                        offset_passPeakRssi = 9
+                        offset_loopTime = 11
+                        offset_crossing = 15
+                        offset_passNadirRssi = 16
+                        offset_nodeNadirPassi = 18
+                        offset_peakRssi = 20
+                        offset_peakTime = 22
+                        offset_nadirRssi = 24
+                        offset_nadirTime = 26
+
+                    rssi_val = unpack_rssi(node, data[offset_rssi:])
                     if rssi_val >= MIN_RSSI_VALUE and rssi_val <= MAX_RSSI_VALUE:
                         node.current_rssi = rssi_val
 
                         if node.api_valid_flag:  # if newer API functions supported
-                            if node.api_level >= 17:
-                                lap_differential = unpack_32(data[1:])
+                            if node.api_level >= 18:
+                                lap_differential = unpack_16(data[1:])
                                 # lap_timestamp = readtime - lap_differential ***
                                 lap_time_ms = lap_differential + server_oneway
                             else:
@@ -228,10 +266,10 @@ class RHInterface(BaseHardwareInterface):
                                 if ms_val < 0 or ms_val > 9999999:
                                     ms_val = 0  # don't allow negative or too-large value
                                 node.lap_ms_since_start = ms_val
-                            node.node_peak_rssi = unpack_16(data[7:])
-                            node.pass_peak_rssi = unpack_16(data[9:])
-                            node.loop_time = unpack_32(data[11:])
-                            if data[15]:
+                            node.node_peak_rssi = unpack_rssi(node, data[offset_nodePeakRssi:])
+                            node.pass_peak_rssi = unpack_rssi(node, data[offset_passPeakRssi:])
+                            node.loop_time = unpack_32(data[offset_loopTime:])
+                            if data[offset_crossing]:
                                 cross_flag = True
                             else:
                                 cross_flag = False
@@ -239,14 +277,14 @@ class RHInterface(BaseHardwareInterface):
                                 node.crossing_flag = cross_flag
                                 if callable(self.node_crossing_callback):
                                     cross_list.append(node)
-                            node.pass_nadir_rssi = unpack_16(data[16:])
+                            unpack_rssi(node, data[offset_passNadirRssi:])
 
                             if node.api_level >= 13:
-                                node.node_nadir_rssi = unpack_16(data[18:])
+                                node.node_nadir_rssi = unpack_rssi(node, data[offset_nodeNadirRssi:])
 
                         else:  # if newer API functions not supported
                             lap_time_ms = unpack_32(data[1:])
-                            node.pass_peak_rssi = unpack_16(data[11:])
+                            node.pass_peak_rssi = unpack_rssi(node, data[11:])
                             node.loop_time = unpack_32(data[13:])
 
                         # if new lap detected for node then append item to updates list
@@ -280,11 +318,11 @@ class RHInterface(BaseHardwareInterface):
 
                         # get and process history data
                         if node.api_level >= 18:
-                            peakRssi = unpack_16(data[20:])
-                            peakFirstTime = unpack_16(data[22:])
-                            peakLastTime = unpack_16(data[24:])
-                            nadirRssi = unpack_16(data[26:])
-                            nadirTime = unpack_16(data[28:])
+                            peakRssi = unpack_rssi(node, data[offset_peakRssi:])
+                            peakFirstTime = unpack_16(data[offset_peakFirstTime:])
+                            peakLastTime = unpack_16(data[offset_peakLastTime:])
+                            nadirRssi = unpack_rssi(node, data[offset_nadirRssi:])
+                            nadirTime = unpack_16(data[offset_nadirTime:])
 
                             if peakRssi > 0:
                                 if nadirRssi > 0:
@@ -328,39 +366,6 @@ class RHInterface(BaseHardwareInterface):
                                         node.history_values.append(peakRssi)
                                         node.history_times.append(readtime - (peakLastTime / 1000))
 
-                            elif nadirRssi > 0:
-                                # no peak, nadir
-                                # process nadir only
-                                node.history_values.append(nadirRssi)
-                                node.history_times.append(readtime - (nadirTime / 1000))
-
-                        if node.api_level >= 17:
-                            peakRssi = unpack_16(data[20:])
-                            peakTime = unpack_16(data[22:])
-                            nadirRssi = unpack_16(data[24:])
-                            nadirTime = unpack_16(data[26:])
-
-                            if peakRssi > 0:
-                                if nadirRssi > 0:
-                                    # both
-                                    if peakTime < nadirTime:
-                                        # process peak first
-                                        node.history_values.append(peakRssi)
-                                        node.history_times.append(readtime - (peakTime / 1000))
-                                        node.history_values.append(nadirRssi)
-                                        node.history_times.append(readtime - (nadirTime / 1000))
-
-                                    else:
-                                        # process nadir first
-                                        node.history_values.append(nadirRssi)
-                                        node.history_times.append(readtime - (nadirTime / 1000))
-                                        node.history_values.append(peakRssi)
-                                        node.history_times.append(readtime - (peakTime / 1000))
-                                else:
-                                    # peak, no nadir
-                                    # process peak only
-                                    node.history_values.append(peakRssi)
-                                    node.history_times.append(readtime - (peakTime / 1000))
                             elif nadirRssi > 0:
                                 # no peak, nadir
                                 # process nadir only
@@ -594,6 +599,19 @@ class RHInterface(BaseHardwareInterface):
                 self.log('Value Not Set ({0}): {1}/{2}/broadcast'.format(retry_count, write_command, in_value))
         return success
 
+    def set_and_validate_value_rssi(self, node, write_command, read_command, in_value):
+        if node.api_level >= 18:
+            self.set_and_validate_value_8(node, write_command, read_command, in_value)
+        else:
+            self.set_and_validate_value_16(node, write_command, read_command, in_value)
+
+    def get_value_rssi(self, node, command):
+        if node.api_level >= 18:
+            return self.get_value_8(node, command)
+        else:
+            return self.get_value_16(node, command)
+
+
     #
     # External functions for setting data
     #
@@ -614,7 +632,7 @@ class RHInterface(BaseHardwareInterface):
             node.frequency = 0
 
     def transmit_enter_at_level(self, node, level):
-        return self.set_and_validate_value_16(node,
+        return self.set_and_validate_value_rssi(node,
             WRITE_ENTER_AT_LEVEL,
             READ_ENTER_AT_LEVEL,
             level)
@@ -625,7 +643,7 @@ class RHInterface(BaseHardwareInterface):
             node.enter_at_level = self.transmit_enter_at_level(node, level)
 
     def transmit_exit_at_level(self, node, level):
-        return self.set_and_validate_value_16(node,
+        return self.set_and_validate_value_rssi(node,
             WRITE_EXIT_AT_LEVEL,
             READ_EXIT_AT_LEVEL,
             level)
