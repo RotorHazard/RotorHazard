@@ -102,9 +102,9 @@ struct
 {
     uint16_t volatile vtxFreq = 5800;
     // lap pass begins when RSSI is at or above this level
-    rssi_t volatile enterAtLevel = toScaledRssi(192);
+    rssi_t volatile enterAtLevel = 96;
     // lap pass ends when RSSI goes below this level
-    rssi_t volatile exitAtLevel = toScaledRssi(160);
+    rssi_t volatile exitAtLevel = 80;
 } settings;
 
 struct
@@ -136,10 +136,15 @@ struct
     mtime_t volatile peakFirstTime;
     mtime_t volatile peakLastTime;
     bool volatile peakSend;
+    rssi_t volatile peakSendRssi;
+    mtime_t volatile peakSendFirstTime;
+    mtime_t volatile peakSendLastTime;
 
     rssi_t volatile nadirRssi;
     mtime_t volatile nadirTime;
     bool volatile nadirSend;
+    rssi_t volatile nadirSendRssi;
+    mtime_t volatile nadirSendTime;
 
     int8_t volatile trend; // >0 for raising, <0 for falling
 } history;
@@ -243,14 +248,14 @@ void setup()
     if (readWordFromEeprom(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
     {
         settings.vtxFreq = readWordFromEeprom(EEPROM_ADRW_RXFREQ);
-        settings.enterAtLevel = toScaledRssi(readWordFromEeprom(EEPROM_ADRW_ENTERAT));
-        settings.exitAtLevel = toScaledRssi(readWordFromEeprom(EEPROM_ADRW_EXITAT));
+        settings.enterAtLevel = readWordFromEeprom(EEPROM_ADRW_ENTERAT);
+        settings.exitAtLevel = readWordFromEeprom(EEPROM_ADRW_EXITAT);
     }
     else
     {    // if no match then initialize EEPROM values
         writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
-        writeWordToEeprom(EEPROM_ADRW_ENTERAT, fromScaledRssi(settings.enterAtLevel));
-        writeWordToEeprom(EEPROM_ADRW_EXITAT, fromScaledRssi(settings.exitAtLevel));
+        writeWordToEeprom(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
+        writeWordToEeprom(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
         writeWordToEeprom(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
     }
 
@@ -372,11 +377,11 @@ void setRxModule(int frequency)
 // Read the RSSI value for the current channel
 rssi_t rssiRead()
 {
-	// reads 5V value as 0-1023, RX5808 is 3.3V powered so RSSI pin will never output the full range
+  // reads 5V value as 0-1023, RX5808 is 3.3V powered so RSSI pin will never output the full range
     int raw = analogRead(0);
     // clamp upper range to fit scaling
     if (raw > 0x01FF)
-    	raw = 0x01FF;
+      raw = 0x01FF;
     return toScaledRssi(raw);
 }
 
@@ -406,42 +411,55 @@ void loop()
 
         // update history
         if (state.rssiSmoothed > state.lastRssiSmoothed) { // RSSI is rising
+          // if we're preparing to send a peak but the next reading is higher,
+          // ignore the prepared peak and start preparing the next one
+          // (this shouldn't happen...)
           if (history.peakSend) {
-            if (state.rssiSmoothed > history.peakRssi) {
+            if (state.rssiSmoothed > history.peakSendRssi) {
               history.peakSend = false;
             }
           }
 
-          if (!history.peakSend) {
-            if (state.rssiSmoothed > history.peakRssi) {
-              history.peakRssi = state.rssiSmoothed;
-              history.peakFirstTime = history.peakLastTime = state.rssiTimestamp;
-            }
-          }
+          history.peakRssi = state.rssiSmoothed;
+          history.peakFirstTime = history.peakLastTime = state.rssiTimestamp;
 
+          // if RSSI was falling, but it's rising now, we found a nadir
+          // copy the values to be sent in the next loop
           if (history.trend < 0) { // is falling
             history.nadirSend = true;
+            history.nadirSendRssi = history.nadirRssi;
+            history.nadirSendTime = history.nadirTime;
           }
 
-          history.trend = +1; // raising
+          history.trend = +1; // rising
 
         } else if (state.rssiSmoothed < state.lastRssiSmoothed) { // RSSI is falling
-          if (history.trend > 0) { // is rising
-            history.peakSend = true;
-          }
-
+          // if we're preparing to send a nadir but the next reading is lower,
+          // ignore the prepared nadir and start preparing the next one
+          // (this shouldn't happen...)
           if (history.nadirSend) {
-            if (state.rssiSmoothed < history.nadirRssi) {
+            if (state.rssiSmoothed < history.nadirSendRssi) {
               history.nadirSend = false;
             }
           }
 
-          history.nadirTime = state.rssiTimestamp;
+          // whenever history is falling, record the time and value as a nadir
           history.nadirRssi = state.rssiSmoothed;
+          history.nadirTime = state.rssiTimestamp;
+
+          // if RSSI was rising, but it's falling now, we found a peak
+          // copy the values to be sent in the next loop
+          if (history.trend > 0) { // is rising
+            history.peakSend = true;
+            history.peakSendRssi = history.peakRssi;
+            history.peakSendFirstTime = history.peakFirstTime;
+            history.peakSendLastTime = history.peakLastTime;
+          }
 
           history.trend = -1; // falling
 
         } else { // RSSI is equal
+          // we don't need to track first and last times if it's a nadir
           if (history.trend > 0) { // is rising
             history.peakLastTime = state.rssiTimestamp;
           }
@@ -706,19 +724,19 @@ byte i2cHandleRx(byte command)
             break;
 
         case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
-            if (readAndValidateIoBuffer(WRITE_ENTER_AT_LEVEL, 2))
+            if (readAndValidateIoBuffer(WRITE_ENTER_AT_LEVEL, 1))
             {
                 settings.enterAtLevel = ioBufferReadRssi();
-                writeWordToEeprom(EEPROM_ADRW_ENTERAT, fromScaledRssi(settings.enterAtLevel));
+                writeWordToEeprom(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
                 success = true;
             }
             break;
 
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-            if (readAndValidateIoBuffer(WRITE_EXIT_AT_LEVEL, 2))
+            if (readAndValidateIoBuffer(WRITE_EXIT_AT_LEVEL, 1))
             {
                 settings.exitAtLevel = ioBufferReadRssi();
-                writeWordToEeprom(EEPROM_ADRW_EXITAT, fromScaledRssi(settings.exitAtLevel));
+                writeWordToEeprom(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
                 success = true;
             }
             break;
@@ -761,34 +779,34 @@ void i2cTransmit()
 
         case READ_LAP_STATS:
             {
-          	  mtime_t now = millis();
+              mtime_t now = millis();
               ioBufferWrite8(lastPass.lap);
               ioBufferWrite16(uint16_t(now - lastPass.timeStamp));  // ms since lap
               ioBufferWriteRssi(state.rssiSmoothed);
               ioBufferWriteRssi(state.nodeRssiPeak);
               ioBufferWriteRssi(lastPass.rssiPeak);  // RSSI peak for last lap pass
-              ioBufferWrite32(state.loopTimeMicros);
+              ioBufferWrite16(uint16_t(state.loopTimeMicros));
               ioBufferWrite8(state.crossing ? (uint8_t) 1 : (uint8_t) 0);  // 'crossing' status
               ioBufferWriteRssi(lastPass.rssiNadir);  // lowest rssi since end of last pass
               ioBufferWriteRssi(state.nodeRssiNadir);
-  
+
               if (history.peakSend) {
-                  ioBufferWriteRssi(history.peakRssi);
-                  ioBufferWrite16(uint16_t(now - history.peakFirstTime));
-                  ioBufferWrite16(uint16_t(now - history.peakLastTime));
+                  // send peak and unset sent flag
+                  ioBufferWriteRssi(history.peakSendRssi);
+                  ioBufferWrite16(uint16_t(now - history.peakSendFirstTime));
+                  ioBufferWrite16(uint16_t(now - history.peakSendLastTime));
                   history.peakSend = false;
-                  history.peakRssi = state.rssiSmoothed;
               } else {
                   ioBufferWriteRssi(0);
                   ioBufferWrite16(0);
                   ioBufferWrite16(0);
               }
-  
+
               if (history.nadirSend) {
-                  ioBufferWriteRssi(history.nadirRssi);
-                  ioBufferWrite16(uint16_t(now - history.nadirTime));
+                  // send nadir and unset sent flag
+                  ioBufferWriteRssi(history.nadirSendRssi);
+                  ioBufferWrite16(uint16_t(now - history.nadirSendTime));
                   history.nadirSend = false;
-                  history.nadirRssi = state.rssiSmoothed;
               } else {
                   ioBufferWriteRssi(0);
                   ioBufferWrite16(0);
@@ -848,3 +866,4 @@ uint16_t readWordFromEeprom(int addr)
     const uint8_t hb = EEPROM.read(addr + 1);
     return (((uint16_t) hb) << 8) + lb;
 }
+
