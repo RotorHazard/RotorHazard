@@ -411,38 +411,23 @@ void loop()
 
         // update history
         if (state.rssiSmoothed > state.lastRssiSmoothed) { // RSSI is rising
-          // if we're preparing to send a peak but the next reading is higher,
-          // ignore the prepared peak and start preparing the next one
-          // (this shouldn't happen...)
-          if (history.peakSend) {
-            if (state.rssiSmoothed > history.peakSendRssi) {
-              history.peakSend = false;
-            }
-          }
-
           history.peakRssi = state.rssiSmoothed;
           history.peakFirstTime = history.peakLastTime = state.rssiTimestamp;
 
           // if RSSI was falling, but it's rising now, we found a nadir
           // copy the values to be sent in the next loop
           if (history.trend < 0) { // is falling
-            history.nadirSend = true;
-            history.nadirSendRssi = history.nadirRssi;
-            history.nadirSendTime = history.nadirTime;
+            // declare a new nadir if we don't have one or if the new one is lower
+            if (!history.nadirSend || history.nadirRssi < history.nadirSendRssi) {
+              history.nadirSend = true;
+              history.nadirSendRssi = history.nadirRssi;
+              history.nadirSendTime = history.nadirTime;
+            }
           }
 
           history.trend = +1; // rising
 
         } else if (state.rssiSmoothed < state.lastRssiSmoothed) { // RSSI is falling
-          // if we're preparing to send a nadir but the next reading is lower,
-          // ignore the prepared nadir and start preparing the next one
-          // (this shouldn't happen...)
-          if (history.nadirSend) {
-            if (state.rssiSmoothed < history.nadirSendRssi) {
-              history.nadirSend = false;
-            }
-          }
-
           // whenever history is falling, record the time and value as a nadir
           history.nadirRssi = state.rssiSmoothed;
           history.nadirTime = state.rssiTimestamp;
@@ -450,10 +435,13 @@ void loop()
           // if RSSI was rising, but it's falling now, we found a peak
           // copy the values to be sent in the next loop
           if (history.trend > 0) { // is rising
-            history.peakSend = true;
-            history.peakSendRssi = history.peakRssi;
-            history.peakSendFirstTime = history.peakFirstTime;
-            history.peakSendLastTime = history.peakLastTime;
+            // declare a new peak if we don't have one or if the new one is higher
+            if (!history.peakSend || history.peakRssi > history.peakSendRssi) {
+              history.peakSend = true;
+              history.peakSendRssi = history.peakRssi;
+              history.peakSendFirstTime = history.peakFirstTime;
+              history.peakSendLastTime = history.peakLastTime;
+            }
           }
 
           history.trend = -1; // falling
