@@ -204,7 +204,7 @@ class RHInterface(BaseHardwareInterface):
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
                     if node.api_level >= 18:
-                        data = self.read_block(node.i2c_addr, READ_LAP_STATS, 21)
+                        data = self.read_block(node.i2c_addr, READ_LAP_STATS, 19)
                         server_roundtrip = self.i2c_response - self.i2c_request
                         server_oneway = server_roundtrip / 2
                         readtime = self.i2c_response - server_oneway
@@ -231,14 +231,14 @@ class RHInterface(BaseHardwareInterface):
                         offset_nodePeakRssi = 4
                         offset_passPeakRssi = 5
                         offset_loopTime = 6
-                        offset_crossing = 10
-                        offset_passNadirRssi = 11
-                        offset_nodeNadirRssi = 12
-                        offset_peakRssi = 13
-                        offset_peakFirstTime = 14
-                        offset_peakLastTime = 16
-                        offset_nadirRssi = 18
-                        offset_nadirTime = 19
+                        offset_crossing = 8
+                        offset_passNadirRssi = 9
+                        offset_nodeNadirRssi = 10
+                        offset_peakRssi = 11
+                        offset_peakFirstTime = 12
+                        offset_peakLastTime = 14
+                        offset_nadirRssi = 16
+                        offset_nadirTime = 17
                     else:
                         offset_rssi = 5
                         offset_nodePeakRssi = 7
@@ -268,7 +268,7 @@ class RHInterface(BaseHardwareInterface):
                                 node.lap_ms_since_start = ms_val
                             node.node_peak_rssi = unpack_rssi(node, data[offset_nodePeakRssi:])
                             node.pass_peak_rssi = unpack_rssi(node, data[offset_passPeakRssi:])
-                            node.loop_time = unpack_32(data[offset_loopTime:])
+                            node.loop_time = unpack_16(data[offset_loopTime:])
                             if data[offset_crossing]:
                                 cross_flag = True
                             else:
