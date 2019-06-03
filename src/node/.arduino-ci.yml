@@ -1,0 +1,14 @@
+platforms:
+  nano:
+    board: arduino:avr:nano
+    package: arduino:avr
+    gcc:
+      features:
+      defines:
+        - __AVR_ATmega328__
+      warnings:
+      flags:
+
+unittest:
+  platforms:
+    - nano

@@ -27,7 +27,8 @@
 
 #include <Wire.h>
 #include <EEPROM.h>
-#include "FastRunningMedian.h"
+#include "rhtypes.h"
+#include "rssi.h"
 
 // ******************************************************************** //
 
@@ -89,74 +90,8 @@ const int spiClockPin = 13;
 #define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
 #define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
 
-// semantic types
-typedef uint32_t mtime_t; // milliseconds
-typedef uint32_t utime_t; // micros
-typedef uint8_t rssi_t;
-
-#define MAX_RSSI 0xFF
 #define toScaledRssi(x) ((rssi_t)((x)>>1))
 #define fromScaledRssi(x) (((uint16_t)(x))<<1)
-
-struct
-{
-    uint16_t volatile vtxFreq = 5800;
-    // lap pass begins when RSSI is at or above this level
-    rssi_t volatile enterAtLevel = 96;
-    // lap pass ends when RSSI goes below this level
-    rssi_t volatile exitAtLevel = 80;
-} settings;
-
-struct
-{
-    bool volatile crossing = false; // True when the quad is going through the gate
-    rssi_t volatile rssiSmoothed = 0; // Smoothed rssi value
-    rssi_t volatile lastRssiSmoothed = 0;
-    mtime_t volatile rssiTimestamp = 0; // timestamp of the smoothed value
-
-    rssi_t volatile passRssiPeakRaw = 0; // peak raw rssi seen during current pass
-    rssi_t volatile passRssiPeak = 0; // peak smoothed rssi seen during current pass
-    mtime_t volatile passRssiPeakRawTime = 0; // time of the first peak raw rssi for the current pass
-    mtime_t volatile passRssiPeakRawLastTime = 0; // time of the last peak raw rssi for the current pass
-    rssi_t volatile passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
-
-    rssi_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set
-    rssi_t volatile nodeRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since the node frequency was set
-
-    bool volatile rxFreqSetFlag = false; // Set true after initial WRITE_FREQUENCY command received
-
-    // variables to track the loop time
-    utime_t volatile loopTimeMicros = 0;
-    utime_t volatile lastloopMicros = 0;
-} state;
-
-struct
-{
-    rssi_t volatile peakRssi;
-    mtime_t volatile peakFirstTime;
-    mtime_t volatile peakLastTime;
-    bool volatile peakSend;
-    rssi_t volatile peakSendRssi;
-    mtime_t volatile peakSendFirstTime;
-    mtime_t volatile peakSendLastTime;
-
-    rssi_t volatile nadirRssi;
-    mtime_t volatile nadirTime;
-    bool volatile nadirSend;
-    rssi_t volatile nadirSendRssi;
-    mtime_t volatile nadirSendTime;
-
-    int8_t volatile trend; // >0 for raising, <0 for falling
-} history;
-
-struct
-{
-    rssi_t volatile rssiPeakRaw;
-    rssi_t volatile rssiPeak;
-    mtime_t volatile timeStamp;
-    rssi_t volatile rssiNadir;
-    uint8_t volatile lap;
-} lastPass;
 
 uint8_t volatile ioCommand;  // I2C code to identify messages
 uint8_t volatile ioBuffer[32];  // Data array for sending over i2c, up to 32 bytes per message
@@ -167,13 +102,6 @@ int ioBufferIndex = 0;
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
-
-#define SmoothingSamples 255
-FastRunningMedian<rssi_t, SmoothingSamples, 0> rssiMedian;
-
-#define SmoothingTimestampSize 127 // half median window, rounded up
-mtime_t volatile SmoothingTimestamps[SmoothingTimestampSize];
-uint8_t SmoothingTimestampsIndex = 0;
 
 // Initialize program
 void setup()
@@ -238,12 +166,6 @@ void setup()
     cbi(ADCSRA, ADPS1);
     cbi(ADCSRA, ADPS0);
 
-    // Initialize defaults
-    lastPass.rssiPeakRaw = 0;
-    lastPass.rssiPeak = 0;
-    lastPass.lap = 0;
-    lastPass.timeStamp = 0;
-
     // if EEPROM-check value matches then read stored values
     if (readWordFromEeprom(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
     {
@@ -260,6 +182,8 @@ void setup()
     }
 
     setRxModule(settings.vtxFreq);  // Setup rx module to default frequency
+
+	rssiInit();
 }
 
 // Functions for the rx5808 module
@@ -390,156 +314,12 @@ mtime_t loopMillis = 0;
 // Main loop
 void loop()
 {
-    if (millis() > loopMillis) {
-        state.lastRssiSmoothed = state.rssiSmoothed;
-
-        utime_t loopMicros = micros();
-        loopMillis = millis();
-
+    mtime_t millis = millis();
+    if (millis > loopMillis) {
+        loopMillis = millis;
         // read raw RSSI close to taking timestamp
-        rssiMedian.addValue(rssiRead());
-        state.rssiSmoothed = rssiMedian.getMedian(); // retrieve the median
-
-        SmoothingTimestamps[SmoothingTimestampsIndex] = loopMillis;
-        SmoothingTimestampsIndex++;
-        if (SmoothingTimestampsIndex >= SmoothingTimestampSize) {
-            SmoothingTimestampsIndex = 0;
-        }
-        state.rssiTimestamp = SmoothingTimestamps[SmoothingTimestampsIndex];
-
-        if (state.rxFreqSetFlag)
-        {  //don't start operations until after first WRITE_FREQUENCY command is received
-
-            // update history
-            if (state.rssiSmoothed > state.lastRssiSmoothed) { // RSSI is rising
-              history.peakRssi = state.rssiSmoothed;
-              history.peakFirstTime = history.peakLastTime = state.rssiTimestamp;
-
-              // if RSSI was falling, but it's rising now, we found a nadir
-              // copy the values to be sent in the next loop
-              if (history.trend < 0) { // is falling
-                // declare a new nadir if we don't have one or if the new one is lower
-                if (!history.nadirSend || history.nadirRssi < history.nadirSendRssi) {
-                  history.nadirSend = true;
-                  history.nadirSendRssi = history.nadirRssi;
-                  history.nadirSendTime = history.nadirTime;
-                }
-              }
-
-              history.trend = +1; // rising
-
-            } else if (state.rssiSmoothed < state.lastRssiSmoothed) { // RSSI is falling
-              // whenever history is falling, record the time and value as a nadir
-              history.nadirRssi = state.rssiSmoothed;
-              history.nadirTime = state.rssiTimestamp;
-
-              // if RSSI was rising, but it's falling now, we found a peak
-              // copy the values to be sent in the next loop
-              if (history.trend > 0) { // is rising
-                // declare a new peak if we don't have one or if the new one is higher
-                if (!history.peakSend || history.peakRssi > history.peakSendRssi) {
-                  history.peakSend = true;
-                  history.peakSendRssi = history.peakRssi;
-                  history.peakSendFirstTime = history.peakFirstTime;
-                  history.peakSendLastTime = history.peakLastTime;
-                }
-              }
-
-              history.trend = -1; // falling
-
-            } else { // RSSI is equal
-              // we don't need to track first and last times if it's a nadir
-              if (history.trend > 0) { // is rising
-                history.peakLastTime = state.rssiTimestamp;
-              }
-            }
-
-            // Keep track of peak (smoothed) rssi
-            if (state.rssiSmoothed > state.nodeRssiPeak)
-            {
-                state.nodeRssiPeak = state.rssiSmoothed;
-                Serial.print(F("New nodeRssiPeak = "));
-                Serial.println(state.nodeRssiPeak);
-            }
-
-            if (state.rssiSmoothed < state.nodeRssiNadir)
-            {
-                state.nodeRssiNadir = state.rssiSmoothed;
-                Serial.print(F("New nodeRssiNadir = "));
-                Serial.println(state.nodeRssiNadir);
-            }
-
-            if ((!state.crossing) && state.rssiSmoothed >= settings.enterAtLevel)
-            {
-                state.crossing = true;  // quad is going through the gate (lap pass starting)
-                Serial.println(F("Crossing = True"));
-            }
-
-            // Find the peak rssi and the time it occured during a crossing event
-            if (state.rssiSmoothed >= state.passRssiPeakRaw)
-            {
-                // if at max peak for more than one iteration then track first
-                //  and last timestamp so middle-timestamp value can be returned
-                state.passRssiPeakRawLastTime = state.rssiTimestamp;
-
-                if (state.rssiSmoothed > state.passRssiPeakRaw)
-                {
-                    // this is first time this peak-raw-RSSI value was seen, so save value and timestamp
-                    state.passRssiPeakRaw = state.rssiSmoothed;
-                    state.passRssiPeakRawTime = state.passRssiPeakRawLastTime;
-                }
-            }
-
-            // track lowest smoothed rssi seen since end of last pass
-            if (state.rssiSmoothed < state.passRssiNadir)
-                state.passRssiNadir = state.rssiSmoothed;
-
-            if (state.crossing)
-            {  //lap pass is in progress
-
-                // track RSSI peak for current lap pass
-                if (state.rssiSmoothed > state.passRssiPeak)
-                    state.passRssiPeak = state.rssiSmoothed;
-
-                // see if quad has left the gate
-                if (state.rssiSmoothed < settings.exitAtLevel)
-                {
-                    Serial.println(F("Crossing = False"));
-                    end_crossing();
-                }
-            }
-        }
-
-        // Calculate the time it takes to run the main loop
-        state.loopTimeMicros = loopMicros - state.lastloopMicros;
-        state.lastloopMicros = loopMicros;
-
-        // Status LED
-        if (state.crossing ||  // on while crossing
-            (loopMillis / 100) % 10 == 0 // blink
-          ) {
-          digitalWrite(LED_BUILTIN, HIGH);
-        } else {
-          digitalWrite(LED_BUILTIN, LOW);
-        }
+        rssiProcess(rssiRead(), millis);
     }
-}
-
-// Function called when crossing ends (by RSSI or I2C command)
-void end_crossing() {
-    // save values for lap pass
-    lastPass.rssiPeakRaw = state.passRssiPeakRaw;
-    lastPass.rssiPeak = state.passRssiPeak;
-    // lap timestamp is between first and last peak RSSI
-    lastPass.timeStamp = (state.passRssiPeakRawLastTime + state.passRssiPeakRawTime) / 2;
-    lastPass.rssiNadir = state.passRssiNadir;
-    lastPass.lap = lastPass.lap + 1;
-
-    // reset lap-pass variables
-    state.crossing = false;
-    state.passRssiPeakRaw = 0;
-    state.passRssiPeak = 0;
-    state.passRssiNadir = MAX_RSSI;
 }
 
 
@@ -705,8 +485,7 @@ byte i2cHandleRx(byte command)
                 if (settings.vtxFreq != u16val)
                 {  // if RX frequency changed
                     writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
-                    state.nodeRssiPeak = 0;  // restart rssi peak tracking for node
-                    state.nodeRssiNadir = MAX_RSSI;
+                    rssiStateReset();  // restart rssi peak tracking for node
                     Serial.println(F("Set nodeRssiPeak = 0, nodeRssiNadir = Max"));
                 }
             }
@@ -731,7 +510,7 @@ byte i2cHandleRx(byte command)
             break;
 
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
-            end_crossing();
+            rssiEndCrossing();
 
             if (readAndValidateIoBuffer(FORCE_END_CROSSING, 1))  // read byte value (not used)
                 success = true;
@@ -770,7 +549,7 @@ void i2cTransmit()
             {
               mtime_t now = millis();
               ioBufferWrite8(lastPass.lap);
-              ioBufferWrite16(uint16_t(now - lastPass.timeStamp));  // ms since lap
+              ioBufferWrite16(uint16_t(now - lastPass.timestamp));  // ms since lap
               ioBufferWriteRssi(state.rssiSmoothed);
               ioBufferWriteRssi(state.nodeRssiPeak);
               ioBufferWriteRssi(lastPass.rssiPeak);  // RSSI peak for last lap pass
@@ -855,4 +634,3 @@ uint16_t readWordFromEeprom(int addr)
     const uint8_t hb = EEPROM.read(addr + 1);
     return (((uint16_t) hb) << 8) + lb;
 }
-
