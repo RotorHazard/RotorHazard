@@ -550,7 +550,7 @@ void i2cTransmit()
               mtime_t now = millis();
               ioBufferWrite8(lastPass.lap);
               ioBufferWrite16(uint16_t(now - lastPass.timestamp));  // ms since lap
-              ioBufferWriteRssi(state.rssiSmoothed);
+              ioBufferWriteRssi(state.rssi);
               ioBufferWriteRssi(state.nodeRssiPeak);
               ioBufferWriteRssi(lastPass.rssiPeak);  // RSSI peak for last lap pass
               ioBufferWrite16(uint16_t(state.loopTimeMicros));

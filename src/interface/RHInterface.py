@@ -277,7 +277,7 @@ class RHInterface(BaseHardwareInterface):
                                 node.crossing_flag = cross_flag
                                 if callable(self.node_crossing_callback):
                                     cross_list.append(node)
-                            unpack_rssi(node, data[offset_passNadirRssi:])
+                            node.pass_nadir_rssi = unpack_rssi(node, data[offset_passNadirRssi:])
 
                             if node.api_level >= 13:
                                 node.node_nadir_rssi = unpack_rssi(node, data[offset_nodeNadirRssi:])

@@ -22,7 +22,7 @@ void rssiInit()
 
 bool rssiStateValid()
 {
-      return state.nodeRssiNadir <= state.rssiSmoothed && state.rssiSmoothed <= state.nodeRssiPeak;
+      return state.nodeRssiNadir <= state.rssi && state.rssi <= state.nodeRssiPeak;
 }
 
 void rssiStateReset()
@@ -44,14 +44,14 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
       if (rssiMedian.isFilled() && state.rxFreqSetFlag)
       {  //don't start operations until after first WRITE_FREQUENCY command is received
 
-	  state.lastRssiSmoothed = state.rssiSmoothed;
-	  state.rssiSmoothed = rssiMedian.getMedian(); // retrieve the median
+	  state.lastRssi = state.rssi;
+	  state.rssi = rssiMedian.getMedian(); // retrieve the median
 	  state.rssiTimestamp = SmoothingTimestamps[SmoothingTimestampsIndex];
 
-	  int rssiChange = state.rssiSmoothed - state.lastRssiSmoothed;
+	  int rssiChange = state.rssi - state.lastRssi;
 	  // update history
 	  if (rssiChange > 0) { // RSSI is rising
-	    history.peakRssi = state.rssiSmoothed;
+	    history.peakRssi = state.rssi;
 	    history.peakFirstTime = history.peakLastTime = state.rssiTimestamp;
 
 	    // if RSSI was falling, but it's rising now, we found a nadir
@@ -67,7 +67,7 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
 
 	  } else if (rssiChange < 0) { // RSSI is falling
 	    // whenever history is falling, record the time and value as a nadir
-	    history.nadirRssi = state.rssiSmoothed;
+	    history.nadirRssi = state.rssi;
 	    history.nadirTime = state.rssiTimestamp;
 
 	    // if RSSI was rising, but it's falling now, we found a peak
@@ -94,53 +94,53 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
 	      history.rssiChange = constrain(rssiChange, -127, 127);
 	  }
 
-	  // Keep track of peak (smoothed) rssi
-	  if (state.rssiSmoothed > state.nodeRssiPeak)
+	  // Keep track of peak rssi
+	  if (state.rssi > state.nodeRssiPeak)
 	  {
-	      state.nodeRssiPeak = state.rssiSmoothed;
+	      state.nodeRssiPeak = state.rssi;
 	      Serial.print(F("New nodeRssiPeak = "));
 	      Serial.println(state.nodeRssiPeak);
 	  }
 
-	  if (state.rssiSmoothed < state.nodeRssiNadir)
+	  if (state.rssi < state.nodeRssiNadir)
 	  {
-	      state.nodeRssiNadir = state.rssiSmoothed;
+	      state.nodeRssiNadir = state.rssi;
 	      Serial.print(F("New nodeRssiNadir = "));
 	      Serial.println(state.nodeRssiNadir);
 	  }
 
-	  if ((!state.crossing) && state.rssiSmoothed >= settings.enterAtLevel)
+	  if ((!state.crossing) && state.rssi >= settings.enterAtLevel)
 	  {
 	      state.crossing = true;  // quad is going through the gate (lap pass starting)
 	      Serial.println(F("Crossing = True"));
 	  }
 
 	  // Find the peak rssi and the time it occured during a crossing event
-	  if (state.rssiSmoothed >= state.passRssiPeakRaw)
+	  if (state.rssi >= state.passRssiPeak)
 	  {
 	      // if at max peak for more than one iteration then track first
 	      //  and last timestamp so middle-timestamp value can be returned
-	      state.passRssiPeakRawLastTime = state.rssiTimestamp;
+	      state.passRssiPeakLastTime = state.rssiTimestamp;
 
-	      if (state.rssiSmoothed > state.passRssiPeakRaw)
+	      if (state.rssi > state.passRssiPeak)
 	      {
-		  // this is first time this peak-raw-RSSI value was seen, so save value and timestamp
-		  state.passRssiPeakRaw = state.rssiSmoothed;
-		  state.passRssiPeakRawTime = state.passRssiPeakRawLastTime;
+		  // this is first time this peak RSSI value was seen, so save value and timestamp
+		  state.passRssiPeak = state.rssi;
+		  state.passRssiPeakFirstTime = state.passRssiPeakLastTime;
 	      }
 	  }
 
-	  // track lowest smoothed rssi seen since end of last pass
-	  state.passRssiNadir = min(state.rssiSmoothed, state.passRssiNadir);
+	  // track lowest  rssi seen since end of last pass
+	  state.passRssiNadir = min(state.rssi, state.passRssiNadir);
 
 	  if (state.crossing)
 	  {  //lap pass is in progress
 
 	      // track RSSI peak for current lap pass
-	      state.passRssiPeak = max(state.rssiSmoothed, state.passRssiPeak);
+	      state.passRssiPeak = max(state.rssi, state.passRssiPeak);
 
 	      // see if quad has left the gate
-	      if (state.rssiSmoothed < settings.exitAtLevel)
+	      if (state.rssi < settings.exitAtLevel)
 	      {
 		  Serial.println(F("Crossing = False"));
 		  rssiEndCrossing();
@@ -168,13 +168,12 @@ void rssiEndCrossing() {
     // save values for lap pass
     lastPass.rssiPeak = state.passRssiPeak;
     // lap timestamp is between first and last peak RSSI
-    lastPass.timestamp = (state.passRssiPeakRawLastTime + state.passRssiPeakRawTime) / 2;
+    lastPass.timestamp = (state.passRssiPeakLastTime + state.passRssiPeakFirstTime) / 2;
     lastPass.rssiNadir = state.passRssiNadir;
     lastPass.lap = lastPass.lap + 1;
 
     // reset lap-pass variables
     state.crossing = false;
-    state.passRssiPeakRaw = 0;
     state.passRssiPeak = 0;
     state.passRssiNadir = MAX_RSSI;
 }
