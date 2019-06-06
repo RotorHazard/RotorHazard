@@ -9,6 +9,7 @@ import sys
 import shutil
 import base64
 import subprocess
+import importlib
 from monotonic import monotonic
 from datetime import datetime
 from functools import wraps
@@ -27,13 +28,11 @@ import json
 
 # LED imports
 import time
-from neopixel import *
 import signal
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
-from RHInterface import get_hardware_interface
 from RHRace import get_race_state
 
 APP = Flask(__name__, static_url_path='/static')
@@ -80,7 +79,7 @@ Config['LED']['LED_DMA']        = 10      # DMA channel to use for generating si
 Config['LED']['LED_BRIGHTNESS'] = 255     # Set to 0 for darkest and 255 for brightest
 Config['LED']['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
 Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
-Config['LED']['LED_STRIP']      = ws.WS2811_STRIP_GRB   # Strip type and colour ordering
+Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
 
 # other default configurations
 Config['GENERAL']['HTTP_PORT'] = 5000
@@ -107,7 +106,11 @@ except ValueError:
     print 'Configuration file invalid, using defaults'
 
 
-INTERFACE = get_hardware_interface()
+try:
+    interfaceModule = importlib.import_module('RHInterface')
+except ImportError:
+    interfaceModule = importlib.import_module('MockInterface')
+INTERFACE = interfaceModule.get_hardware_interface()
 RACE = get_race_state() # For storing race management variables
 
 def diff_milliseconds(t2, t1):
@@ -310,7 +313,31 @@ def theaterChaseRainbow(strip, wait_ms=25):
                 strip.setPixelColor(i+q, 0)
 
 # Create NeoPixel object with appropriate configuration.
-strip = Adafruit_NeoPixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], Config['LED']['LED_STRIP'])
+try:
+    pixelModule = importlib.import_module('neopixel')
+    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
+    Color = getattr(pixelModule, 'Color')
+    led_strip_config = Config['LED']['LED_STRIP']
+    if led_strip_config == 'RGB':
+        led_strip = 0x00100800
+    elif led_strip_config == 'RBG':
+        led_strip = 0x00100008
+    elif led_strip_config == 'GRB':
+        led_strip = 0x00081000
+    elif led_strip_config == 'GBR':
+        led_strip = 0x00080010
+    elif led_strip_config == 'BRG':
+        led_strip = 0x00001008
+    elif led_strip_config == 'BGR':
+        led_strip = 0x00000810
+    else:
+        raise ValueError('Invalid LED_STRIP value: {0}'.format(led_strip_config))
+except ImportError:
+    pixelModule = importlib.import_module('ANSIPixel')
+    Pixel = getattr(pixelModule, 'ANSIPixel')
+    Color = getattr(pixelModule, 'Color')
+    led_strip = None
+strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
 # Intialize the library (must be called once before other functions).
 strip.begin()
 
@@ -469,16 +496,6 @@ def setCurrentRaceFormat(race_format):
     if race_format.id: # stored in DB, not internal race format
         setOption("currentFormat", race_format.id)
     RACE.format = race_format
-
-# internal slave race format for LiveTime
-SLAVE_RACE_FORMAT = RaceFormat(name=__("Slave"),
-                         race_mode=1,
-                         race_time_sec=0,
-                         start_delay_min=0,
-                         start_delay_max=0,
-                         number_laps_win=0,
-                         win_condition=WIN_CONDITION_NONE,
-                         team_racing_mode=False)
 
 #
 # Authentication
@@ -926,6 +943,7 @@ def on_get_settings():
 def on_reset_auto_calibration(data):
     on_stop_race()
     on_discard_laps()
+    global SLAVE_RACE_FORMAT
     setCurrentRaceFormat(SLAVE_RACE_FORMAT)
     emit_race_format()
     setOption("MinLapSec", "0")
@@ -3315,7 +3333,7 @@ def emit_imdtabler_page(**params):
     if Use_imdtabler_jar_flag:
         try:                          # get IMDTabler version string
             imdtabler_ver = subprocess.check_output( \
-                                ['java', '-jar', IMDTABLER_JAR_NAME, '-v']).rstrip()
+                                'java -jar ' + IMDTABLER_JAR_NAME + ' -v', shell=True).rstrip()
             profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
             fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
             fs_list = []
@@ -3332,7 +3350,7 @@ def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
         imdtabler_data = None
         if len(fs_list) > 2:  # if 3+ then invoke jar; get response
             imdtabler_data = subprocess.check_output( \
-                        ['java', '-jar', IMDTABLER_JAR_NAME, '-t'] + fs_list)
+                        'java -jar ' + IMDTABLER_JAR_NAME + ' -t ' + ' '.join(fs_list), shell=True)
     except Exception as ex:
         imdtabler_data = None
         server_log('emit_imdtabler_data exception:  ' + str(ex))
@@ -3358,7 +3376,7 @@ def emit_imdtabler_rating():
                 fs_list.append(str(val))
         if len(fs_list) > 2:
             imd_val = subprocess.check_output(  # invoke jar; get response
-                        ['java', '-jar', IMDTABLER_JAR_NAME, '-r'] + fs_list).rstrip()
+                        'java -jar ' + IMDTABLER_JAR_NAME + ' -r ' + ' '.join(fs_list), shell=True).rstrip()
     except Exception as ex:
         imd_val = None
         server_log('emit_imdtabler_rating exception:  ' + str(ex))
@@ -4038,10 +4056,21 @@ if not db_inited_flag:
 # Expand heats (if number of nodes increases)
 expand_heats()
 
+# internal slave race format for LiveTime (needs to be created after initial DB setup)
+global SLAVE_RACE_FORMAT
+SLAVE_RACE_FORMAT = RaceFormat(name=__("Slave"),
+                         race_mode=1,
+                         race_time_sec=0,
+                         start_delay_min=0,
+                         start_delay_max=0,
+                         number_laps_win=0,
+                         win_condition=WIN_CONDITION_NONE,
+                         team_racing_mode=False)
+
 # Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     try:
-        java_ver = subprocess.check_output(['java', '-version'], stderr=subprocess.STDOUT)
+        java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True)
         server_log('Found installed:  ' + java_ver.split('\n')[0])
     except:
         java_ver = None
@@ -4050,8 +4079,8 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     if java_ver:
         try:
             imdtabler_ver = subprocess.check_output( \
-                        ['java', '-jar', IMDTABLER_JAR_NAME, '-v'], \
-                        stderr=subprocess.STDOUT).rstrip()
+                        'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
+                        stderr=subprocess.STDOUT, shell=True).rstrip()
             Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
             server_log('Found installed:  ' + imdtabler_ver)
         except Exception as ex:

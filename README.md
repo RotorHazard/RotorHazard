@@ -32,6 +32,7 @@ RotorHazard uses the same hardware, but different code for the nodes. Re-flash y
 * Michael Niggel
 * Eric Thomas
 * Klaus Michael Schneider
+* Mark Hale
 * Scott Chin and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
 
 ### Supported by:
