@@ -1,6 +1,7 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "2.0.0 (dev 1)" # Public release version code
 SERVER_API = 15 # Server API version
+NODE_API_SUPPORTED = 17 # Most recent node API
 NODE_API_BEST = 17 # Most recent node API
 JSON_API = 1 # JSON API version
 
@@ -208,6 +209,9 @@ def buildServerInfo():
     node_api_level = False
     serverInfo['node_api_match'] = True
 
+    serverInfo['node_api_lowest'] = None
+    serverInfo['node_api_levels'] = [None]
+
     if len(INTERFACE.nodes):
         if INTERFACE.nodes[0].api_level:
             node_api_level = INTERFACE.nodes[0].api_level
@@ -221,9 +225,6 @@ def buildServerInfo():
 
                 if node.api_level < serverInfo['node_api_lowest']:
                     serverInfo['node_api_lowest'] = node.api_level
-    else:
-        serverInfo['node_api_lowest'] = None
-        serverInfo['node_api_levels'] = [None]
 
     serverInfo['about_html'] += "<li>" + __("Node API") + ": "
     if node_api_level:
@@ -3855,8 +3856,11 @@ serverInfo = buildServerInfo()
 server_log('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 if serverInfo['node_api_match'] is False:
     server_log('** WARNING: Node API mismatch **')
-if serverInfo['node_api_lowest'] < NODE_API_BEST:
-    server_log('** NOTICE: Node firmware update available **')
+
+if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
+    server_log('** WARNING: Node firmware is out of date and may not function properly **')
+elif serverInfo['node_api_lowest'] < NODE_API_BEST:
+    server_log('** NOTICE: Node firmware update is available **')
 
 if not db_inited_flag:
     if int(getOption('server_api')) < SERVER_API:
