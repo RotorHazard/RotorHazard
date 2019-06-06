@@ -19,14 +19,13 @@ struct Settings
 struct State
 {
     bool volatile crossing = false; // True when the quad is going through the gate
-    rssi_t volatile rssiSmoothed = 0; // Smoothed rssi value
-    rssi_t volatile lastRssiSmoothed = 0;
+    rssi_t volatile rssi = 0; // Smoothed rssi value
+    rssi_t volatile lastRssi = 0;
     mtime_t volatile rssiTimestamp = 0; // timestamp of the smoothed value
 
-    rssi_t volatile passRssiPeakRaw = 0; // peak raw rssi seen during current pass
     rssi_t volatile passRssiPeak = 0; // peak smoothed rssi seen during current pass
-    mtime_t volatile passRssiPeakRawTime = 0; // time of the first peak raw rssi for the current pass
-    mtime_t volatile passRssiPeakRawLastTime = 0; // time of the last peak raw rssi for the current pass
+    mtime_t volatile passRssiPeakFirstTime = 0; // time of the first peak rssi for the current pass
+    mtime_t volatile passRssiPeakLastTime = 0; // time of the last peak rssi for the current pass
     rssi_t volatile passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
 
     rssi_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set

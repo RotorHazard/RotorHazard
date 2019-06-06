@@ -27,26 +27,25 @@ unittest(crossing) {
   sendSignal(nano, 50);
   assertEqual(2*N_2*1000-1000, state.lastloopMicros);
   assertEqual(true, rssiStateValid());
-  assertEqual(50, (int)state.rssiSmoothed);
+  assertEqual(50, (int)state.rssi);
   assertEqual(timestamp(2), (int)state.rssiTimestamp);
-  assertEqual(50, (int)state.lastRssiSmoothed);
+  assertEqual(50, (int)state.lastRssi);
   assertEqual(50, (int)state.nodeRssiPeak);
   assertEqual(50, (int)state.nodeRssiNadir);
 
   // enter
   sendSignal(nano, 130);
-  assertEqual(130, (int)state.rssiSmoothed);
+  assertEqual(130, (int)state.rssi);
   assertEqual(timestamp(3), (int)state.rssiTimestamp);
-  assertEqual(50, (int)state.lastRssiSmoothed);
+  assertEqual(50, (int)state.lastRssi);
   assertEqual(130, (int)state.nodeRssiPeak);
   assertEqual(50, (int)state.nodeRssiNadir);
   assertEqual(80, history.rssiChange);
   assertEqual(true, state.crossing);
 
   assertEqual(130, (int)state.passRssiPeak);
-  assertEqual(130, (int)state.passRssiPeakRaw);
-  assertEqual(timestamp(3), (int)state.passRssiPeakRawTime);
-  assertEqual(timestamp(3), (int)state.passRssiPeakRawLastTime);
+  assertEqual(timestamp(3), (int)state.passRssiPeakFirstTime);
+  assertEqual(timestamp(3), (int)state.passRssiPeakLastTime);
   assertEqual(130, (int)history.peakRssi); // first upward trend
   assertEqual(0, (int)history.nadirRssi); // no downward trend yet
   assertEqual(timestamp(3), (int)history.peakFirstTime);
@@ -61,18 +60,17 @@ unittest(crossing) {
 
   // exit
   sendSignal(nano, 70);
-  assertEqual(70, (int)state.rssiSmoothed);
+  assertEqual(70, (int)state.rssi);
   assertEqual(timestamp(4), (int)state.rssiTimestamp);
-  assertEqual(130, (int)state.lastRssiSmoothed);
+  assertEqual(130, (int)state.lastRssi);
   assertEqual(130, (int)state.nodeRssiPeak);
   assertEqual(50, (int)state.nodeRssiNadir);
   assertEqual(-60, history.rssiChange);
   assertEqual(false, state.crossing);
 
   assertEqual(0, (int)state.passRssiPeak); // crossing/pass finished
-  assertEqual(0, (int)state.passRssiPeakRaw); // crossing/pass finished
-  assertEqual(timestamp(3), (int)state.passRssiPeakRawTime);
-  assertEqual(timestamp(4)-1, (int)state.passRssiPeakRawLastTime);
+  assertEqual(timestamp(3), (int)state.passRssiPeakFirstTime);
+  assertEqual(timestamp(4)-1, (int)state.passRssiPeakLastTime);
   assertEqual(130, (int)history.peakRssi);
   assertEqual(70, (int)history.nadirRssi); // first downward trend
 
@@ -90,18 +88,17 @@ unittest(crossing) {
 
   // small rise
   sendSignal(nano, 75);
-  assertEqual(75, (int)state.rssiSmoothed);
+  assertEqual(75, (int)state.rssi);
   assertEqual(timestamp(5), (int)state.rssiTimestamp);
-  assertEqual(70, (int)state.lastRssiSmoothed);
+  assertEqual(70, (int)state.lastRssi);
   assertEqual(130, (int)state.nodeRssiPeak);
   assertEqual(50, (int)state.nodeRssiNadir);
   assertEqual(5, history.rssiChange);
   assertEqual(false, state.crossing);
 
-  assertEqual(0, (int)state.passRssiPeak);
-  assertEqual(75, (int)state.passRssiPeakRaw);
-  assertEqual(timestamp(5), (int)state.passRssiPeakRawTime);
-  assertEqual(timestamp(5), (int)state.passRssiPeakRawLastTime);
+  assertEqual(75, (int)state.passRssiPeak);
+  assertEqual(timestamp(5), (int)state.passRssiPeakFirstTime);
+  assertEqual(timestamp(5), (int)state.passRssiPeakLastTime);
   assertEqual(75, (int)history.peakRssi);
   assertEqual(70, (int)history.nadirRssi);
 
