@@ -395,8 +395,8 @@ class SavedRaceMeta(DB.Model):
     heat_id = DB.Column(DB.Integer, nullable=False)
     class_id = DB.Column(DB.Integer, nullable=False)
     format_id = DB.Column(DB.Integer, nullable=False)
-    start_time = DB.Column(DB.Integer, nullable=False)
-    start_time_formatted = DB.Column(DB.String, nullable=False)
+    start_time = DB.Column(DB.Integer, nullable=False) # internal monotonic time
+    start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
 
     def __repr__(self):
         return '<SavedRaceMeta %r>' % self.id
@@ -410,6 +410,8 @@ class SavedPilotRace(DB.Model):
     history_times = DB.Column(DB.String, nullable=True)
     penalty_time = DB.Column(DB.Integer, nullable=True)
     penalty_desc = DB.Column(DB.String, nullable=True)
+    # enter_at
+    # exit_at
 
     def __repr__(self):
         return '<SavedPilotRace %r>' % self.id
@@ -422,7 +424,7 @@ class SavedRaceLap(DB.Model):
     pilot_id = DB.Column(DB.Integer, nullable=False)
     lap_time_stamp = DB.Column(DB.Integer, nullable=False)
     lap_time = DB.Column(DB.Integer, nullable=False)
-    lap_time_formatted = DB.Column(DB.Integer, nullable=False)
+    lap_time_formatted = DB.Column(DB.String, nullable=False)
     source = DB.Column(DB.Integer, nullable=False)
     deleted = DB.Column(DB.Boolean, nullable=False)
 
@@ -1830,6 +1832,9 @@ def on_save_laps():
 
 @SOCKET_IO.on('resave_laps')
 def on_resave_laps(data):
+    global EVENT_RESULTS_CACHE_VALID
+    EVENT_RESULTS_CACHE_VALID = False
+
     heat_id = data['heat_id']
     round_id = data['round_id']
     callsign = data['callsign']
@@ -1858,6 +1863,7 @@ def on_resave_laps(data):
     DB.session.commit()
     message = __('Race times adjusted for: Heat {0} Round {1} / {2}').format(heat_id, round_id, callsign)
     emit_priority_message(message, False)
+    emit_round_data_notify()
     server_log(message)
 
 @SOCKET_IO.on('discard_laps')
@@ -2445,7 +2451,7 @@ def calc_leaderboard(**params):
         USE_ROUND = None
         USE_HEAT = params['heat_id']
 
-    # Get meta
+    # Get profile (current), frequencies (current), race query (saved), and race format (all)
     if USE_CURRENT:
         current_profile = int(getOption("currentProfile"))
         profile = Profiles.query.get(current_profile)
@@ -2454,33 +2460,41 @@ def calc_leaderboard(**params):
         race_format = getCurrentRaceFormat()
     else:
         if USE_CLASS:
+            race_query = SavedRaceMeta.query.filter_by(class_id=USE_CLASS)
             current_format = RaceClass.query.get(USE_CLASS).format_id
-
         elif USE_HEAT:
             if USE_ROUND:
-                current_format = SavedRaceMeta.query.filter_by(heat_id=USE_HEAT, round_id=USE_ROUND).first().format_id
+                race_query = SavedRaceMeta.query.filter_by(heat_id=USE_HEAT, round_id=USE_ROUND)
+                current_format = race_query.first().format_id
             else:
-                heat_class = Heat.query.filter_by(heat_id=USE_HEAT).first().class_id
+                race_query = SavedRaceMeta.query.filter_by(heat_id=USE_HEAT)
+                heat_class = race_query.first().class_id
                 if heat_class:
                     current_format = RaceClass.query.get(heat_class).format_id
                 else:
                     current_format = None
         else:
+            race_query = SavedRaceMeta.query
             current_format = None
+
+        selected_races = race_query.all()
+        racelist = [r.id for r in selected_races]
 
         if current_format:
             race_format = RaceFormat.query.get(current_format)
         else:
             race_format = None
 
-    # Get the pilot ids for all relevant data
+    # Get the pilot ids for all relevant races
     # Add pilot callsigns
     # Add pilot team names
     # Get total laps for each pilot
+    # Get hole shot laps
     pilot_ids = []
     callsigns = []
     team_names = []
     max_laps = []
+    holeshots = []
 
     for pilot in Pilot.query.filter(Pilot.id != PILOT_ID_NONE):
         if USE_CURRENT:
@@ -2495,44 +2509,29 @@ def calc_leaderboard(**params):
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
         else:
-            if USE_CLASS:
-                result = SavedRaceMeta.query.with_entities(SavedRaceMeta.id) \
-                    .filter(SavedRaceMeta.class_id == USE_CLASS) \
-                        .all()
+            # find hole shots
+            holeshot_laps = []
+            for race in racelist:
+                pilotraces = SavedPilotRace.query \
+                    .filter(SavedPilotRace.pilot_id == pilot.id, \
+                    SavedPilotRace.race_id == race \
+                    ).all()
 
-                print(result)
-                races = [r for r, in result]
-                print(races)
+                for pilotrace in pilotraces:
+                    holeshot_lap = SavedRaceLap.query \
+                        .filter(SavedRaceLap.pilotrace_id == pilotrace.id, \
+                            SavedRaceLap.deleted != 1, \
+                            ).order_by(SavedRaceLap.lap_time_stamp).first()
 
-                stat_query = DB.session.query(DB.func.count(SavedRaceLap.id) \
-                    .filter(SavedRaceLap.race_id.in_(races)), \
-                    SavedRaceLap.pilot_id == pilot.id)
+                    if holeshot_lap:
+                        holeshot_laps.append(holeshot_lap.id)
 
-                print(stat_query)
-                print(stat_query.scalar())
-
-                '''
-                stat_query = DB.session.query(DB.func.count(SavedRace.lap_id)) \
-                    .filter(SavedRace.pilot_id == pilot.id, \
-                        SavedRace.class_id == USE_CLASS, \
-                        SavedRace.lap_id != 0)
-                '''
-            elif USE_HEAT:
-                if USE_ROUND:
-                    stat_query = DB.session.query(DB.func.count(SavedRace.lap_id)) \
-                        .filter(SavedRace.pilot_id == pilot.id, \
-                            SavedRace.heat_id == USE_HEAT, \
-                            SavedRace.round_id == USE_ROUND, \
-                            SavedRace.lap_id != 0)
-                else:
-                    stat_query = DB.session.query(DB.func.count(SavedRace.lap_id)) \
-                        .filter(SavedRace.pilot_id == pilot.id, \
-                            SavedRace.heat_id == USE_HEAT, \
-                            SavedRace.lap_id != 0)
-            else:
-                stat_query = DB.session.query(DB.func.count(SavedRace.lap_id)) \
-                    .filter(SavedRace.pilot_id == pilot.id, \
-                        SavedRace.lap_id != 0)
+            # get total laps
+            stat_query = DB.session.query(DB.func.count(SavedRaceLap.id)) \
+                .filter(SavedRaceLap.pilot_id == pilot.id, \
+                    SavedRaceLap.deleted != 1, \
+                    SavedRaceLap.race_id.in_(racelist), \
+                    ~SavedRaceLap.id.in_(holeshot_laps))
 
             max_lap = stat_query.scalar()
             if max_lap > 0:
@@ -2540,6 +2539,7 @@ def calc_leaderboard(**params):
                 callsigns.append(pilot.callsign)
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
+                holeshots.append(holeshot_laps)
 
     total_time = []
     last_lap = []
@@ -2556,24 +2556,10 @@ def calc_leaderboard(**params):
                 stat_query = DB.session.query(DB.func.sum(CurrentLap.lap_time)) \
                     .filter_by(pilot_id=pilot)
             else:
-                if USE_CLASS:
-                    stat_query = DB.session.query(DB.func.sum(SavedRace.lap_time)) \
-                        .filter_by(pilot_id=pilot, \
-                        class_id=USE_CLASS)
-                elif USE_HEAT:
-                    if USE_ROUND:
-                        stat_query = DB.session.query(DB.func.sum(SavedRace.lap_time)) \
-                            .filter_by(pilot_id=pilot, \
-                            round_id=USE_ROUND, \
-                            heat_id=USE_HEAT)
-                    else:
-                        stat_query = DB.session.query(DB.func.sum(SavedRace.lap_time)) \
-                            .filter_by(pilot_id=pilot, \
-                            heat_id=USE_HEAT)
-
-                else:
-                    stat_query = DB.session.query(DB.func.sum(SavedRace.lap_time)) \
-                        .filter_by(pilot_id=pilot)
+                stat_query = DB.session.query(DB.func.sum(SavedRaceLap.lap_time)) \
+                    .filter(SavedRaceLap.pilot_id == pilot, \
+                        SavedRaceLap.deleted != 1, \
+                        SavedRaceLap.race_id.in_(racelist))
 
             total_time.append(stat_query.scalar())
 
@@ -2597,26 +2583,11 @@ def calc_leaderboard(**params):
                 stat_query = DB.session.query(DB.func.avg(CurrentLap.lap_time)) \
                     .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0)
             else:
-                if USE_CLASS:
-                    stat_query = DB.session.query(DB.func.avg(SavedRace.lap_time)) \
-                        .filter(SavedRace.pilot_id == pilot, \
-                            SavedRace.lap_id != 0, \
-                            SavedRace.class_id == USE_CLASS)
-                elif USE_HEAT:
-                    if USE_ROUND:
-                        stat_query = DB.session.query(DB.func.avg(SavedRace.lap_time)) \
-                            .filter(SavedRace.pilot_id == pilot, \
-                                SavedRace.lap_id != 0, \
-                                SavedRace.round_id == USE_ROUND, \
-                                SavedRace.heat_id == USE_HEAT)
-                    else:
-                        stat_query = DB.session.query(DB.func.avg(SavedRace.lap_time)) \
-                            .filter(SavedRace.pilot_id == pilot, \
-                                SavedRace.lap_id != 0, \
-                                SavedRace.heat_id == USE_HEAT)
-                else:
-                    stat_query = DB.session.query(DB.func.avg(SavedRace.lap_time)) \
-                        .filter(SavedRace.pilot_id == pilot, SavedRace.lap_id != 0)
+                stat_query = DB.session.query(DB.func.avg(SavedRaceLap.lap_time)) \
+                    .filter(SavedRaceLap.pilot_id == pilot, \
+                        SavedRaceLap.deleted != 1, \
+                        SavedRaceLap.race_id.in_(racelist), \
+                        ~SavedRaceLap.id.in_(holeshots[i]))
 
             avg_lap = stat_query.scalar()
             average_lap.append(avg_lap)
@@ -2629,78 +2600,41 @@ def calc_leaderboard(**params):
                 stat_query = DB.session.query(DB.func.min(CurrentLap.lap_time)) \
                     .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0)
             else:
-                if USE_CLASS:
-                    stat_query = DB.session.query(DB.func.min(SavedRace.lap_time)) \
-                        .filter(SavedRace.pilot_id == pilot, SavedRace.lap_id != 0, \
-                            SavedRace.class_id == USE_CLASS)
-                elif USE_HEAT:
-                    if USE_ROUND:
-                        stat_query = DB.session.query(DB.func.min(SavedRace.lap_time)) \
-                            .filter(SavedRace.pilot_id == pilot, SavedRace.lap_id != 0, \
-                                SavedRace.round_id == USE_ROUND, \
-                                SavedRace.heat_id == USE_HEAT)
-                    else:
-                        stat_query = DB.session.query(DB.func.min(SavedRace.lap_time)) \
-                            .filter(SavedRace.pilot_id == pilot, SavedRace.lap_id != 0, \
-                                SavedRace.heat_id == USE_HEAT)
-                else:
-                    stat_query = DB.session.query(DB.func.min(SavedRace.lap_time)) \
-                        .filter(SavedRace.pilot_id == pilot, SavedRace.lap_id != 0)
+                stat_query = DB.session.query(DB.func.min(SavedRaceLap.lap_time)) \
+                    .filter(SavedRaceLap.pilot_id == pilot, \
+                        SavedRaceLap.deleted != 1, \
+                        SavedRaceLap.race_id.in_(racelist), \
+                        ~SavedRaceLap.id.in_(holeshots[i]))
 
             fast_lap = stat_query.scalar()
             fastest_lap.append(fast_lap)
 
         # find best consecutive 3 laps
-        races = []
-        if USE_CURRENT:
-            single_race = DB.session.query(CurrentLap.lap_time) \
-                .filter(CurrentLap.lap_id != 0, \
-                CurrentLap.pilot_id == pilot).all()
+        if max_laps[i] < 3:
+            consecutives.append(None)
         else:
-            if USE_CLASS:
-                races = SavedRace.query.with_entities(SavedRace.round_id, SavedRace.heat_id) \
-                    .filter(SavedRace.class_id == USE_CLASS) \
-                    .distinct().all()
-            elif USE_HEAT:
-                if USE_ROUND:
-                    single_race = DB.session.query(SavedRace.lap_time) \
-                        .filter(SavedRace.lap_id != 0, \
-                            SavedRace.round_id == USE_ROUND, \
-                            SavedRace.heat_id == USE_HEAT, \
-                            SavedRace.pilot_id == pilot).all()
-                else:
-                    races = SavedRace.query.with_entities(SavedRace.round_id, SavedRace.heat_id) \
-                        .filter(SavedRace.heat_id == USE_HEAT) \
-                        .distinct().all()
-            else:
-                races = SavedRace.query.with_entities(SavedRace.round_id, SavedRace.heat_id).distinct().all()
+            all_consecutives = []
 
-        all_consecutives = []
-        if races:
-            for race in races:
-                thisrace = DB.session.query(SavedRace.lap_time) \
-                    .filter(SavedRace.round_id == race.round_id, \
-                        SavedRace.heat_id == race.heat_id, \
-                        SavedRace.lap_id != 0, \
-                        SavedRace.pilot_id == pilot).all()
+            for race_id in racelist:
+                thisrace = DB.session.query(SavedRaceLap.lap_time) \
+                    .filter(SavedRaceLap.pilot_id == pilot, \
+                        SavedRaceLap.race_id == race_id, \
+                        SavedRaceLap.deleted != 1, \
+                        ~SavedRaceLap.id.in_(holeshots[i]) \
+                        ).all()
 
                 if len(thisrace) >= 3:
-                    for i in range(len(thisrace) - 2):
-                        all_consecutives.append(thisrace[i].lap_time + thisrace[i+1].lap_time + thisrace[i+2].lap_time)
+                    for j in range(len(thisrace) - 2):
+                        all_consecutives.append(thisrace[j].lap_time + thisrace[j+1].lap_time + thisrace[j+2].lap_time)
 
-        else:
-            if len(single_race) >= 3:
-                for i in range(len(single_race) - 2):
-                    all_consecutives.append(single_race[i].lap_time + single_race[i+1].lap_time + single_race[i+2].lap_time)
+            # Sort consecutives
+            all_consecutives = sorted(all_consecutives, key = lambda x: (x is None, x))
+            # Get lowest not-none value (if any)
 
-        # Sort consecutives
-        all_consecutives = sorted(all_consecutives, key = lambda x: (x is None, x))
-        # Get lowest not-none value (if any)
-
-        if all_consecutives:
-            consecutives.append(all_consecutives[0])
-        else:
-            consecutives.append(None)
+            if all_consecutives:
+                consecutives.append(all_consecutives[0])
+            else:
+                consecutives.append(None)
 
     # Combine for sorting
     leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives)
