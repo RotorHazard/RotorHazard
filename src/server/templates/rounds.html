@@ -150,14 +150,18 @@
 										var node = round.nodes[node_i];
 										var node_div = $('<div class="node">');
 
-										node_div.append('<h5>' + node.pilot + '</h5>')
+										node_div.append('<h5>' + node.callsign + '</h5>')
 
 										var table = $('<table class="laps">');
 										var tbody = $('<tbody>');
 
+										var lap_index = 0;
 										for (var lap_i in node.laps) {
 											var lap = node.laps[lap_i];
-											tbody.append('<tr><td>' + lap.id + '</td><td>' + lap.lap_time_formatted + '</td></tr>')
+											if (!lap.deleted) {
+												tbody.append('<tr><td>' + lap_index + '</td><td>' + formatTimeMillis(lap.lap_time) + '</td></tr>')
+												lap_index++;
+											}
 										}
 
 										table.append(tbody);
