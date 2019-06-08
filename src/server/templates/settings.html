@@ -177,19 +177,30 @@
 			}
 		});
 		socket.on('environmental_data', function (msg) {
-			$('#core-temperature').html(Number(msg.core_temperature).toFixed(1))
-			if (msg.aux_temperature.length > 0) {
-				env_table_html = '<table>'
-				env_table_html += '<tr><th>'+__('Temperature (°C)')+'</th><th>'+__('Humidity (%rH)')+'</th><th>'+__('Pressure (hPa)')+'</th></tr>'
-				for (i=0; i < msg.aux_temperature.length; i++) {
-					env_table_html += '<tr>'
-					env_table_html += '<td>' + Number(msg.aux_temperature[i]).toFixed(1) + '</td>'
-					env_table_html += '<td>' + Number(msg.aux_humidity[i]).toFixed(1) + '</td>'
-					env_table_html += '<td>' + Number(msg.aux_pressure[i]).toFixed(1) + '</td>'
-					env_table_html += '</tr>'
+			$('#core-temperature').html(Number(msg.core_temperature).toFixed(1));
+			env_table_html = '';
+			if (msg.aux_voltage.length > 0) {
+				env_table_html += '<tr><th>'+__('Voltage (V)')+'</th><th>'+__('Current (mA)')+'</th><th>'+__('Power (W)')+'</th></tr>';
+				for (i=0; i < msg.aux_voltage.length; i++) {
+					env_table_html += '<tr>';
+					env_table_html += '<td>' + Number(msg.aux_voltage[i]).toFixed(2) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_current[i]).toFixed(0) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_power[i]).toFixed(2) + '</td>';
+					env_table_html += '</tr>';
 				}
-				env_table_html += '</table>'
-				$('#env-data-table').html(env_table_html)
+			}
+			if (msg.aux_temperature.length > 0) {
+				env_table_html += '<tr><th>'+__('Temperature (°C)')+'</th><th>'+__('Humidity (%rH)')+'</th><th>'+__('Pressure (hPa)')+'</th></tr>';
+				for (i=0; i < msg.aux_temperature.length; i++) {
+					env_table_html += '<tr>';
+					env_table_html += '<td>' + Number(msg.aux_temperature[i]).toFixed(1) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_humidity[i]).toFixed(1) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_pressure[i]).toFixed(1) + '</td>';
+					env_table_html += '</tr>';
+				}
+			}
+			if (env_table_html) {
+				$('#env-data-table').html('<table>' + env_table_html + '</table>');
 			}
 		});
 

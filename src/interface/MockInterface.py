@@ -40,6 +40,10 @@ class MockInterface(BaseHardwareInterface):
         # Core temperature
         self.core_temp = 30
 
+        # Scan for INA219 devices
+        self.ina219_devices = []
+        self.ina219_data = []
+
         # Scan for BME280 devices
         self.bme280_addrs = []
         self.bme280_data = []
