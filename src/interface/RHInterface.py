@@ -336,46 +336,46 @@ class RHInterface(BaseHardwareInterface):
                                         # process peak first
                                         if peakFirstTime < peakLastTime:
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakFirstTime / 1000))
+                                            node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                            node.history_times.append(readtime - (peakLastTime / 1000.0))
                                         else:
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                            node.history_times.append(readtime - (peakLastTime / 1000.0))
 
                                         node.history_values.append(nadirRssi)
-                                        node.history_times.append(readtime - (nadirTime / 1000))
+                                        node.history_times.append(readtime - (nadirTime / 1000.0))
 
                                     else:
                                         # process nadir first
                                         node.history_values.append(nadirRssi)
-                                        node.history_times.append(readtime - (nadirTime / 1000))
+                                        node.history_times.append(readtime - (nadirTime / 1000.0))
                                         if peakFirstTime < peakLastTime:
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakFirstTime / 1000))
+                                            node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                            node.history_times.append(readtime - (peakLastTime / 1000.0))
                                         else:
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                            node.history_times.append(readtime - (peakLastTime / 1000.0))
 
                                 else:
                                     # peak, no nadir
                                     # process peak only
                                     if peakFirstTime < peakLastTime:
                                         node.history_values.append(peakRssi)
-                                        node.history_times.append(readtime - (peakFirstTime / 1000))
+                                        node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                         node.history_values.append(peakRssi)
-                                        node.history_times.append(readtime - (peakLastTime / 1000))
+                                        node.history_times.append(readtime - (peakLastTime / 1000.0))
                                     else:
                                         node.history_values.append(peakRssi)
-                                        node.history_times.append(readtime - (peakLastTime / 1000))
+                                        node.history_times.append(readtime - (peakLastTime / 1000.0))
 
                             elif nadirRssi > 0:
                                 # no peak, nadir
                                 # process nadir only
                                 node.history_values.append(nadirRssi)
-                                node.history_times.append(readtime - (nadirTime / 1000))
+                                node.history_times.append(readtime - (nadirTime / 1000.0))
 
 
                     else:
