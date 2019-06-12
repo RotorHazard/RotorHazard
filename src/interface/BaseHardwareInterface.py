@@ -10,7 +10,7 @@ class BaseHardwareInterface(object):
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
-       return monotonic() - self.start_time
+       return 1000*(monotonic() - self.start_time)
 
     #
     # Get Json Node Data Functions
