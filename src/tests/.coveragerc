@@ -1,0 +1,3 @@
+[run]
+source=../server
+data_file=../../.coverage

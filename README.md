@@ -1,5 +1,8 @@
 ![RotorHazard Logo](/src/server/static/image/RotorHazard%20Logo.svg)
 
+[![CI](https://api.travis-ci.org/pulquero/RotorHazard.svg?branch=ExtRotorHazard)](https://travis-ci.org/pulquero/RotorHazard)
+[![Coverage](https://codecov.io/github/pulquero/RotorHazard/coverage.svg?branch=ExtRotorHazard)](https://codecov.io/gh/pulquero/RotorHazard/)
+
 # RotorHazard
 FPV Race Timing and Event Management
 

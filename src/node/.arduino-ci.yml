@@ -8,6 +8,7 @@ platforms:
         - __AVR_ATmega328__
       warnings:
       flags:
+        - -coverage
 
 unittest:
   platforms:
