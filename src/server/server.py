@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.0.0 (dev 1)" # Public release version code
+RELEASE_VERSION = "2.0.0 (dev 2)" # Public release version code
 SERVER_API = 22 # Server API version
 NODE_API_BEST = 18 # Most recent node API
 JSON_API = 1 # JSON API version
@@ -2615,17 +2615,26 @@ def calc_leaderboard(**params):
         else:
             all_consecutives = []
 
-            for race_id in racelist:
-                thisrace = DB.session.query(SavedRaceLap.lap_time) \
-                    .filter(SavedRaceLap.pilot_id == pilot, \
-                        SavedRaceLap.race_id == race_id, \
-                        SavedRaceLap.deleted != 1, \
-                        ~SavedRaceLap.id.in_(holeshots[i]) \
-                        ).all()
+            if USE_CURRENT:
+                thisrace = DB.session.query(CurrentLap.lap_time) \
+                    .filter(CurrentLap.lap_id != 0, \
+                    CurrentLap.pilot_id == pilot).all()
 
-                if len(thisrace) >= 3:
-                    for j in range(len(thisrace) - 2):
-                        all_consecutives.append(thisrace[j].lap_time + thisrace[j+1].lap_time + thisrace[j+2].lap_time)
+                for j in range(len(thisrace) - 2):
+                    all_consecutives.append(thisrace[j].lap_time + thisrace[j+1].lap_time + thisrace[j+2].lap_time)
+
+            else:
+                for race_id in racelist:
+                    thisrace = DB.session.query(SavedRaceLap.lap_time) \
+                        .filter(SavedRaceLap.pilot_id == pilot, \
+                            SavedRaceLap.race_id == race_id, \
+                            SavedRaceLap.deleted != 1, \
+                            ~SavedRaceLap.id.in_(holeshots[i]) \
+                            ).all()
+
+                    if len(thisrace) >= 3:
+                        for j in range(len(thisrace) - 2):
+                            all_consecutives.append(thisrace[j].lap_time + thisrace[j+1].lap_time + thisrace[j+2].lap_time)
 
             # Sort consecutives
             all_consecutives = sorted(all_consecutives, key = lambda x: (x is None, x))
