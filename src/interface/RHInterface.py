@@ -1,5 +1,6 @@
 '''RotorHazard hardware interface layer.'''
 
+import os
 import smbus # For i2c comms
 import io
 import importlib
@@ -27,7 +28,7 @@ WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 
-UPDATE_SLEEP = 0.1 # Main update loop delay
+UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
 
 I2C_CHILL_TIME = 0.075 # Delay after i2c read/write
 I2C_RETRY_COUNT = 5 # Limit of i2c retries
@@ -83,12 +84,6 @@ def validate_checksum(data):
     checksum = sum(data[:-1]) & 0xFF
     return checksum == data[-1]
 
-def to_scaled_rssi(rssi):
-    return rssi >> 1
-
-def from_scaled_rssi(rssi):
-    return rssi << 1
-
 def unpack_rssi(node, data):
     if node.api_level >= 18:
         return unpack_8(data)
@@ -127,6 +122,7 @@ class RHInterface(BaseHardwareInterface):
                 print "No node at address {0}".format(addr)
             gevent.sleep(I2C_CHILL_TIME)
 
+        self.data_loggers = []
         for node in self.nodes:
             node.frequency = self.get_value_16(node, READ_FREQUENCY)
                    # read NODE_API_LEVEL and verification value:
@@ -143,6 +139,11 @@ class RHInterface(BaseHardwareInterface):
                 node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
                 node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
                 print "Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level)
+
+                if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
+                    self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
+                else:
+                    self.data_loggers.append(None)
             else:
                 print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
 
@@ -246,7 +247,7 @@ class RHInterface(BaseHardwareInterface):
                         offset_loopTime = 11
                         offset_crossing = 15
                         offset_passNadirRssi = 16
-                        offset_nodeNadirPassi = 18
+                        offset_nodeNadirRssi = 18
                         offset_peakRssi = 20
                         offset_peakTime = 22
                         offset_nadirRssi = 24
@@ -324,6 +325,10 @@ class RHInterface(BaseHardwareInterface):
                             nadirRssi = unpack_rssi(node, data[offset_nadirRssi:])
                             nadirTime = unpack_16(data[offset_nadirTime:])
 
+                            data_logger = self.data_loggers[node.index]
+                            if data_logger:
+                                data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format(readtime,lap_id, int(lap_time_ms), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, peakRssi, peakFirstTime, peakLastTime, nadirRssi, nadirTime))
+
                             if peakRssi > 0:
                                 if nadirRssi > 0:
                                     # both
@@ -331,46 +336,46 @@ class RHInterface(BaseHardwareInterface):
                                         # process peak first
                                         if peakFirstTime < peakLastTime:
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakFirstTime / 1000))
+                                            node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                            node.history_times.append(readtime - (peakLastTime / 1000.0))
                                         else:
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                            node.history_times.append(readtime - (peakLastTime / 1000.0))
 
                                         node.history_values.append(nadirRssi)
-                                        node.history_times.append(readtime - (nadirTime / 1000))
+                                        node.history_times.append(readtime - (nadirTime / 1000.0))
 
                                     else:
                                         # process nadir first
                                         node.history_values.append(nadirRssi)
-                                        node.history_times.append(readtime - (nadirTime / 1000))
+                                        node.history_times.append(readtime - (nadirTime / 1000.0))
                                         if peakFirstTime < peakLastTime:
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakFirstTime / 1000))
+                                            node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                            node.history_times.append(readtime - (peakLastTime / 1000.0))
                                         else:
                                             node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakLastTime / 1000))
+                                            node.history_times.append(readtime - (peakLastTime / 1000.0))
 
                                 else:
                                     # peak, no nadir
                                     # process peak only
                                     if peakFirstTime < peakLastTime:
                                         node.history_values.append(peakRssi)
-                                        node.history_times.append(readtime - (peakFirstTime / 1000))
+                                        node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                         node.history_values.append(peakRssi)
-                                        node.history_times.append(readtime - (peakLastTime / 1000))
+                                        node.history_times.append(readtime - (peakLastTime / 1000.0))
                                     else:
                                         node.history_values.append(peakRssi)
-                                        node.history_times.append(readtime - (peakLastTime / 1000))
+                                        node.history_times.append(readtime - (peakLastTime / 1000.0))
 
                             elif nadirRssi > 0:
                                 # no peak, nadir
                                 # process nadir only
                                 node.history_values.append(nadirRssi)
-                                node.history_times.append(readtime - (nadirTime / 1000))
+                                node.history_times.append(readtime - (nadirTime / 1000.0))
 
 
                     else:

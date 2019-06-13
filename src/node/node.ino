@@ -90,9 +90,6 @@ const int spiClockPin = 13;
 #define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
 #define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
 
-#define toScaledRssi(x) ((rssi_t)((x)>>1))
-#define fromScaledRssi(x) (((uint16_t)(x))<<1)
-
 uint8_t volatile ioCommand;  // I2C code to identify messages
 uint8_t volatile ioBuffer[32];  // Data array for sending over i2c, up to 32 bytes per message
 int ioBufferSize = 0;
@@ -306,7 +303,8 @@ rssi_t rssiRead()
     // clamp upper range to fit scaling
     if (raw > 0x01FF)
       raw = 0x01FF;
-    return toScaledRssi(raw);
+    // rescale to fit into a byte and remove some jitter
+    return raw>>1;
 }
 
 mtime_t loopMillis = 0;
@@ -314,11 +312,11 @@ mtime_t loopMillis = 0;
 // Main loop
 void loop()
 {
-    mtime_t millis = millis();
-    if (millis > loopMillis) {
-        loopMillis = millis;
+    mtime_t ms = millis();
+    if (ms > loopMillis) {
+        loopMillis = ms;
         // read raw RSSI close to taking timestamp
-        rssiProcess(rssiRead(), millis);
+        rssiProcess(rssiRead(), ms);
     }
 }
 
