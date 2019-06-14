@@ -454,6 +454,14 @@
 
 		/* Heats */
 		socket.on('heat_data', function (msg) {
+			msg.pilot_data.sort(function(a, b){
+				if (a.name < b.name)
+					return -1;
+				if (a.name > b.name)
+					return 1;
+				return 0;
+			});
+
 			$(".heats").empty();
 			for (var i in msg.heats) {
 				var heats = msg.heats[i];
@@ -473,8 +481,8 @@
 					// pilot selectors
 					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" >')
 					selectbox.append('<option value="0">None</option>')
-						for (var k in msg.pilot_data.pilot_id) {
-							selectbox.append('<option value="' + msg.pilot_data.pilot_id[k] + '">' + msg.pilot_data.callsign[k] + ' (' + msg.pilot_data.name[k] + ')</option>')
+						for (var k in msg.pilot_data) {
+							selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
 						}
 					selectbox.val(heatpilot);
 					selectbox.prop('disabled', heats.locked);
@@ -603,45 +611,37 @@
 		/* Pilots */
 		socket.on('pilot_data', function (msg) {
 			$(".pilots").empty();
-			for (var i in msg.pilot_id) {
-				if (msg.pilot_id[i] != 0) {
-					var el = $('<li data-id="' + msg.pilot_id[i] + '">');
-					el.append('<label for="name_' + msg.pilot_id[i] + '" class="screen-reader-text">' + __('Name') + '</label>');
-					el.append('<input type="text" class="set_pilot_name" id="name_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.name[i] + '" placeholder="' + __('Name') +'">');
-					el.append('<label for="callsign_' + msg.pilot_id[i] + '" class="screen-reader-text">' + __('Callsign') + '</label>');
-					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.callsign[i] + '" placeholder="' + __('Callsign') +'">');
-					el.append('<label for="phonetic_' + msg.pilot_id[i] + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
+			for (var i in msg.pilots) {
+				if (msg.pilots[i].pilot_id != 0) {
+					var el = $('<li data-id="' + msg.pilots[i].pilot_id + '">');
+					el.append('<label for="name_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
+					el.append('<input type="text" class="set_pilot_name" id="name_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].name + '" placeholder="' + __('Name') +'">');
+					el.append('<label for="callsign_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
+					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].callsign + '" placeholder="' + __('Callsign') +'">');
+					el.append('<label for="phonetic_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
 					var phonetic = $('<div class="phonetic">');
-					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.phonetic[i] + '" placeholder="' + __('Phonetic') + '">');
-					phonetic.append('<button class="speak_pilot" data-pilot_id="' + msg.pilot_id[i] + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].phonetic + '" placeholder="' + __('Phonetic') + '">');
+					phonetic.append('<button class="speak_pilot" data-pilot_id="' + msg.pilots[i].pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
-					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilot_id[i] + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '">' + msg.team_options[i] + '</select></div>');
+					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilots[i].pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '">' + msg.pilots[i].team_options + '</select></div>');
 
 					el.appendTo($('.pilots'));
 				}
 			}
 
+			msg.pilots.sort(function(a, b){
+				if (a.name < b.name)
+					return -1;
+				if (a.name > b.name)
+					return 1;
+				return 0;
+			});
+
 			$('.set_pilot_position').each(function(){
 				$(this).empty();
-				var pilots = []
-				for (i = 0; i < msg.callsign.length; i++) {
-					pilots.push({
-						id: msg.pilot_id[i],
-						name: msg.name[i],
-						callsign: msg.callsign[i]
-					})
-				}
 
-				pilots.sort(function(a, b){
-					if (a.name < b.name)
-						return -1;
-					if (a.name > b.name)
-						return 1;
-					return 0;
-				});
-
-				for (var i in pilots) {
-					$(this).append('<option value="'+ pilots[i].id + '">' + pilots[i].callsign + ' (' + pilots[i].name + ')</option>');
+				for (var i in msg.pilots) {
+					$(this).append('<option value="'+ msg.pilots[i].id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>');
 				}
 			});
 		});

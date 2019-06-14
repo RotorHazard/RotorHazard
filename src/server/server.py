@@ -2759,13 +2759,17 @@ def emit_heat_data(**params):
         current_class['description'] = race_class.description
         current_classes.append(current_class)
 
+    pilots = []
+    for pilot in Pilot.query.all():
+        pilots.append({
+            'pilot_id': pilot.id,
+            'callsign': pilot.callsign,
+            'name': pilot.name
+            })
+
     emit_payload = {
         'heats': current_heats,
-        'pilot_data': {
-            'pilot_id': [pilot.id for pilot in Pilot.query.all()],
-            'callsign': [pilot.callsign for pilot in Pilot.query.all()],
-            'name': [pilot.name for pilot in Pilot.query.all()]
-        },
+        'pilot_data': pilots,
         'classes': current_classes,
     }
     if ('nobroadcast' in params):
@@ -2813,23 +2817,26 @@ def emit_class_data(**params):
 
 def emit_pilot_data(**params):
     '''Emits pilot data.'''
-    team_options_list = []  # create team-options string for each pilot, with current team selected
+    pilots_list = []
     for pilot in Pilot.query.all():
-        opts_str = ''
+        opts_str = '' # create team-options string for each pilot, with current team selected
         for name in TEAM_NAMES_LIST:
             opts_str += '<option value="' + name + '"'
             if name == pilot.team:
                 opts_str += ' selected'
             opts_str += '>' + name + '</option>'
-        team_options_list.append(opts_str)
+
+        pilots_list.append({
+            'pilot_id': pilot.id,
+            'callsign': pilot.callsign,
+            'team': pilot.team,
+            'phonetic': pilot.phonetic,
+            'name': pilot.name,
+            'team_options': opts_str
+        })
 
     emit_payload = {
-        'pilot_id': [pilot.id for pilot in Pilot.query.all()],
-        'callsign': [pilot.callsign for pilot in Pilot.query.all()],
-        'team': [pilot.team for pilot in Pilot.query.all()],
-        'phonetic': [pilot.phonetic for pilot in Pilot.query.all()],
-        'name': [pilot.name for pilot in Pilot.query.all()],
-        'team_options': team_options_list
+        'pilots': pilots_list
     }
     if ('nobroadcast' in params):
         emit('pilot_data', emit_payload)
