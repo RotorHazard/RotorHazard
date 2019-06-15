@@ -14,6 +14,7 @@ uint8_t SmoothingTimestampsIndex = 0;
 
 void rssiInit()
 {
+      rssiMedian.init();
       lastPass.rssiPeak = 0;
       lastPass.lap = 0;
       lastPass.timestamp = 0;
