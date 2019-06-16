@@ -6,6 +6,8 @@
 #define MAX_RSSI 0xFF
 #define SmoothingSamples 255
 #define SmoothingTimestampSize 127 // half median window, rounded up
+#define isPeakValid(x) ((x) != 0)
+#define isNadirValid(x) ((x) != MAX_RSSI)
 
 struct Settings
 {
@@ -20,13 +22,13 @@ struct State
 {
     bool volatile crossing = false; // True when the quad is going through the gate
     rssi_t volatile rssi = 0; // Smoothed rssi value
-    rssi_t volatile lastRssi = 0;
-    mtime_t volatile rssiTimestamp = 0; // timestamp of the smoothed value
+    rssi_t lastRssi = 0;
+    mtime_t rssiTimestamp = 0; // timestamp of the smoothed value
 
-    rssi_t volatile passRssiPeak = 0; // peak smoothed rssi seen during current pass
-    mtime_t volatile passRssiPeakFirstTime = 0; // time of the first peak rssi for the current pass
-    mtime_t volatile passRssiPeakLastTime = 0; // time of the last peak rssi for the current pass
-    rssi_t volatile passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
+    rssi_t passRssiPeak = 0; // peak smoothed rssi seen during current pass
+    mtime_t passRssiPeakFirstTime = 0; // time of the first peak rssi for the current pass - only valid if passRssiPeak != 0
+    mtime_t passRssiPeakLastTime = 0; // time of the last peak rssi for the current pass - only valid if passRssiPeak != 0
+    rssi_t passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
 
     rssi_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set
     rssi_t volatile nodeRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since the node frequency was set
@@ -35,7 +37,7 @@ struct State
 
     // variables to track the loop time
     utime_t volatile loopTimeMicros = 0;
-    utime_t volatile lastloopMicros = 0;
+    utime_t lastloopMicros = 0;
 };
 
 struct History
@@ -43,18 +45,18 @@ struct History
     rssi_t volatile peakRssi;
     mtime_t volatile peakFirstTime;
     mtime_t volatile peakLastTime;
-    bool volatile peakSend;
-    rssi_t volatile peakSendRssi;
-    mtime_t volatile peakSendFirstTime;
-    mtime_t volatile peakSendLastTime;
+    bool volatile hasPendingPeak;
+    rssi_t volatile peakSendRssi = 0;
+    mtime_t volatile peakSendFirstTime; // only valid if peakSendRssi != 0
+    mtime_t volatile peakSendLastTime; // only valid if peakSendRssi != 0
 
     rssi_t volatile nadirRssi;
     mtime_t volatile nadirTime;
-    bool volatile nadirSend;
-    rssi_t volatile nadirSendRssi;
-    mtime_t volatile nadirSendTime;
+    bool volatile hasPendingNadir;
+    rssi_t volatile nadirSendRssi = MAX_RSSI;
+    mtime_t volatile nadirSendTime; // only valid if nadirSendRssi != MAX_RSSI
 
-    int8_t volatile rssiChange; // >0 for raising, <0 for falling
+    int8_t rssiChange; // >0 for raising, <0 for falling
 };
 
 struct LastPass
