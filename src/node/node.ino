@@ -25,6 +25,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <util/atomic.h>
 #include <Wire.h>
 #include <EEPROM.h>
 #include "rhtypes.h"
@@ -307,6 +308,11 @@ rssi_t rssiRead()
     return raw>>1;
 }
 
+#define FREQ_SET        0x01
+#define FREQ_CHANGED    0x02
+#define ENTERAT_CHANGED 0x04
+#define EXITAT_CHANGED  0x08
+uint8_t settingChangedFlags = 0;
 mtime_t loopMillis = 0;
 
 // Main loop
@@ -318,6 +324,37 @@ void loop()
         // read raw RSSI close to taking timestamp
         rssiProcess(rssiRead(), ms);
     }
+
+	/*** update settings ***/
+
+	if (settingChangedFlags & FREQ_SET) {
+		uint16_t newVtxFreq;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			newVtxFreq = settings.vtxFreq;
+		}
+        setRxModule(newVtxFreq);
+        state.rxFreqSetFlag = true;
+        Serial.print(F("Set RX freq = "));
+        Serial.println(newVtxFreq);
+		settingChangedFlags &= ~FREQ_SET;
+	}
+
+	if (settingChangedFlags & FREQ_CHANGED) {
+        writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
+        rssiStateReset();  // restart rssi peak tracking for node
+        Serial.println(F("Set nodeRssiPeak = 0, nodeRssiNadir = Max"));
+		settingChangedFlags &= ~FREQ_CHANGED;
+	}
+
+	if (settingChangedFlags & ENTERAT_CHANGED) {
+        writeWordToEeprom(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
+		settingChangedFlags &= ~ENTERAT_CHANGED;
+	}
+
+	if (settingChangedFlags & EXITAT_CHANGED) {
+        writeWordToEeprom(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
+		settingChangedFlags &= ~EXITAT_CHANGED;
+	}
 }
 
 
@@ -467,6 +504,7 @@ byte i2cHandleRx(byte command)
 {  // The first byte sent by the I2C master is the command
     bool success = false;
     uint16_t u16val;
+    rssi_t rssiVal;
 
     switch (command)
     {
@@ -475,25 +513,22 @@ byte i2cHandleRx(byte command)
             {
                 u16val = settings.vtxFreq;
                 settings.vtxFreq = ioBufferRead16();
-                setRxModule(settings.vtxFreq);  // Shouldn't do this in Interrupt Service Routine
-                success = true;
-                state.rxFreqSetFlag = true;
-                Serial.print(F("Set RX freq = "));
-                Serial.println(settings.vtxFreq);
-                if (settings.vtxFreq != u16val)
-                {  // if RX frequency changed
-                    writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
-                    rssiStateReset();  // restart rssi peak tracking for node
-                    Serial.println(F("Set nodeRssiPeak = 0, nodeRssiNadir = Max"));
+                settingChangedFlags |= FREQ_SET;
+                if (settings.vtxFreq != u16val) {
+                    settingChangedFlags |= FREQ_CHANGED;
                 }
+                success = true;
             }
             break;
 
         case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
             if (readAndValidateIoBuffer(WRITE_ENTER_AT_LEVEL, 1))
             {
+            	rssiVal = settings.enterAtLevel;
                 settings.enterAtLevel = ioBufferReadRssi();
-                writeWordToEeprom(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
+                if (settings.enterAtLevel != rssiVal) {
+	                settingChangedFlags |= ENTERAT_CHANGED;
+                }
                 success = true;
             }
             break;
@@ -501,8 +536,11 @@ byte i2cHandleRx(byte command)
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
             if (readAndValidateIoBuffer(WRITE_EXIT_AT_LEVEL, 1))
             {
+            	rssiVal = settings.exitAtLevel;
                 settings.exitAtLevel = ioBufferReadRssi();
-                writeWordToEeprom(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
+                if (settings.exitAtLevel != rssiVal) {
+	                settingChangedFlags |= EXITAT_CHANGED;
+                }
                 success = true;
             }
             break;
@@ -556,23 +594,23 @@ void i2cTransmit()
               ioBufferWriteRssi(lastPass.rssiNadir);  // lowest rssi since end of last pass
               ioBufferWriteRssi(state.nodeRssiNadir);
 
-              if (history.peakSend) {
-                  // send peak and unset sent flag
+              if (isPeakValid(history.peakSendRssi)) {
+                  // send peak and reset
                   ioBufferWriteRssi(history.peakSendRssi);
                   ioBufferWrite16(uint16_t(now - history.peakSendFirstTime));
                   ioBufferWrite16(uint16_t(now - history.peakSendLastTime));
-                  history.peakSend = false;
+                  history.peakSendRssi = 0;
               } else {
                   ioBufferWriteRssi(0);
                   ioBufferWrite16(0);
                   ioBufferWrite16(0);
               }
 
-              if (history.nadirSend) {
-                  // send nadir and unset sent flag
+              if (isNadirValid(history.nadirSendRssi)) {
+                  // send nadir and reset
                   ioBufferWriteRssi(history.nadirSendRssi);
                   ioBufferWrite16(uint16_t(now - history.nadirSendTime));
-                  history.nadirSend = false;
+                  history.nadirSendRssi = MAX_RSSI;
               } else {
                   ioBufferWriteRssi(0);
                   ioBufferWrite16(0);
