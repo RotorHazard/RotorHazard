@@ -18,6 +18,22 @@ function median(arr){
 	return (values[half - 1] + values[half]) / 2.0;
 }
 
+function formatTimeMillis(s) {
+	// Pad to 2 or 3 digits, default is 2
+	function pad(n, z) {
+	z = z || 2;
+		return ('00' + n).slice(-z);
+	}
+
+	s = Math.round(s);
+	var ms = s % 1000;
+	s = (s - ms) / 1000;
+	var secs = s % 60;
+	var mins = (s - secs) / 60;
+
+	return mins + ':' + pad(secs) + '.' + pad(ms, 3);
+}
+
 function convertColor(color) {
 	if(color.substring(0,1) == '#') {
 		color = color.substring(1);
@@ -742,6 +758,8 @@ var rotorhazard = {
 	beep_crossing_exited: false, // beep node crossing exited
 	beep_manual_lap_button: false, // beep when manual lap button bit
 	beep_on_first_pass_button: false, // beep during the first pass where not voice announcment is played
+	schedule_m: 0, //time in minutes for scheduled races
+	schedule_s: 10, //time in minutes for scheduled races
 	indicator_beep_volume: 0.5, // indicator beep volume
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
@@ -784,6 +802,8 @@ var rotorhazard = {
 		localStorage['rotorhazard.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
 		localStorage['rotorhazard.beep_manual_lap_button'] = JSON.stringify(this.beep_manual_lap_button);
 		localStorage['rotorhazard.beep_on_first_pass_button'] = JSON.stringify(this.beep_on_first_pass_button);
+		localStorage['rotorhazard.schedule_m'] = JSON.stringify(this.schedule_m);
+		localStorage['rotorhazard.schedule_s'] = JSON.stringify(this.schedule_s);
 		localStorage['rotorhazard.indicator_beep_volume'] = JSON.stringify(this.indicator_beep_volume);
 		localStorage['rotorhazard.min_lap'] = JSON.stringify(this.min_lap);
 		localStorage['rotorhazard.admin'] = JSON.stringify(this.admin);
@@ -839,6 +859,12 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.beep_on_first_pass_button']) {
 				this.beep_on_first_pass_button = JSON.parse(localStorage['rotorhazard.beep_on_first_pass_button']);
+			}
+			if (localStorage['rotorhazard.schedule_m']) {
+				this.schedule_m = JSON.parse(localStorage['rotorhazard.schedule_m']);
+			}
+			if (localStorage['rotorhazard.schedule_s']) {
+				this.schedule_s = JSON.parse(localStorage['rotorhazard.schedule_s']);
 			}
 			if (localStorage['rotorhazard.indicator_beep_volume']) {
 				this.indicator_beep_volume = JSON.parse(localStorage['rotorhazard.indicator_beep_volume']);

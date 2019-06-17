@@ -303,12 +303,20 @@
 		});
 
 		socket.on('pilot_data', function (msg) {
+			msg.pilots.sort(function(a, b){
+				if (a.name < b.name)
+					return -1;
+				if (a.name > b.name)
+					return 1;
+				return 0;
+			});
+
 			var voices = $("#voice-calls");
 			voices.empty();
 			voices.append('<option value="-1">' + __('None') + '</option>');
 			voices.append('<option value="0">' + __('All') + '</option>');
-			for (var i in msg.pilot_id) {
-				voices.append('<option value="' + msg.pilot_id[i] + '">' + msg.callsign[i] + ' (' + msg.name[i] + ')</option>')
+			for (var i in msg.pilots) {
+				voices.append('<option value="' + msg.pilots[i].pilot_id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>')
 			}
 			voices.val(rotorhazard.primaryPilot);
 		});
