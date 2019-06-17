@@ -271,7 +271,7 @@
 			for(var idx in current_race_data.history_values) {
 				var rssi = current_race_data.history_values[idx];
 
-				if (!crossing && (rssi > enterat)) {
+				if (!crossing && (rssi >= enterat)) {
 					crossing = true;
 				}
 
