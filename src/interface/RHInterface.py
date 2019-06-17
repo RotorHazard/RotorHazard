@@ -142,6 +142,7 @@ class RHInterface(BaseHardwareInterface):
 
                 if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
                     self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
+                    print "Data logging enabled for node {0}".format(node.index+1)
                 else:
                     self.data_loggers.append(None)
             else:
@@ -199,7 +200,7 @@ class RHInterface(BaseHardwareInterface):
             print "Update thread terminated by keyboard interrupt"
 
     def update(self):
-        upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_time_ms)
+        upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
         cross_list = []  # list of nodes with crossing-flag changes
         for node in self.nodes:
             if node.frequency:
@@ -225,7 +226,6 @@ class RHInterface(BaseHardwareInterface):
 
                 if data != None:
                     lap_id = data[0]
-                    lap_time_ms = 0
 
                     if node.api_level >= 18:
                         offset_rssi = 3
@@ -259,6 +259,12 @@ class RHInterface(BaseHardwareInterface):
 
                         if node.api_valid_flag:  # if newer API functions supported
                             if node.api_level >= 18:
+                                ms_val = unpack_16(data[1:])
+                            else:
+                                ms_val = unpack_32(data[1:])
+
+                            '''
+                            if node.api_level >= 18:
                                 lap_differential = unpack_16(data[1:])
                                 # lap_timestamp = readtime - lap_differential ***
                                 lap_time_ms = lap_differential + server_oneway
@@ -267,6 +273,8 @@ class RHInterface(BaseHardwareInterface):
                                 if ms_val < 0 or ms_val > 9999999:
                                     ms_val = 0  # don't allow negative or too-large value
                                 node.lap_ms_since_start = ms_val
+                            '''
+
                             node.node_peak_rssi = unpack_rssi(node, data[offset_nodePeakRssi:])
                             node.pass_peak_rssi = unpack_rssi(node, data[offset_passPeakRssi:])
                             node.loop_time = unpack_16(data[offset_loopTime:])
@@ -284,13 +292,20 @@ class RHInterface(BaseHardwareInterface):
                                 node.node_nadir_rssi = unpack_rssi(node, data[offset_nodeNadirRssi:])
 
                         else:  # if newer API functions not supported
-                            lap_time_ms = unpack_32(data[1:])
+                            ms_val = unpack_32(data[1:])
                             node.pass_peak_rssi = unpack_rssi(node, data[11:])
                             node.loop_time = unpack_32(data[13:])
 
+                        # calc lap timestamp
+                        if ms_val < 0 or ms_val > 9999999:
+                            ms_val = 0  # don't allow negative or too-large value
+                            node.lap_timestamp = 0
+                        else:
+                            node.lap_timestamp = readtime - (ms_val / 1000.0)
+
                         # if new lap detected for node then append item to updates list
                         if lap_id != node.last_lap_id:
-                            upd_list.append((node, lap_id, lap_time_ms))
+                            upd_list.append((node, lap_id, node.lap_timestamp))
 
                         # check if capturing enter-at level for node
                         if node.cap_enter_at_flag:
@@ -327,14 +342,14 @@ class RHInterface(BaseHardwareInterface):
 
                             data_logger = self.data_loggers[node.index]
                             if data_logger:
-                                data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format(readtime,lap_id, int(lap_time_ms), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, peakRssi, peakFirstTime, peakLastTime, nadirRssi, nadirTime))
+                                data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format(readtime,lap_id, int(ms_val), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, peakRssi, peakFirstTime, peakLastTime, nadirRssi, nadirTime))
 
                             if peakRssi > 0:
                                 if nadirRssi > 0:
                                     # both
-                                    if peakLastTime < nadirTime:
+                                    if peakLastTime > nadirTime:
                                         # process peak first
-                                        if peakFirstTime < peakLastTime:
+                                        if peakFirstTime > peakLastTime:
                                             node.history_values.append(peakRssi)
                                             node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                             node.history_values.append(peakRssi)
@@ -350,7 +365,7 @@ class RHInterface(BaseHardwareInterface):
                                         # process nadir first
                                         node.history_values.append(nadirRssi)
                                         node.history_times.append(readtime - (nadirTime / 1000.0))
-                                        if peakFirstTime < peakLastTime:
+                                        if peakFirstTime > peakLastTime:
                                             node.history_values.append(peakRssi)
                                             node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                             node.history_values.append(peakRssi)
@@ -362,7 +377,7 @@ class RHInterface(BaseHardwareInterface):
                                 else:
                                     # peak, no nadir
                                     # process peak only
-                                    if peakFirstTime < peakLastTime:
+                                    if peakFirstTime > peakLastTime:
                                         node.history_values.append(peakRssi)
                                         node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                         node.history_values.append(peakRssi)
@@ -392,15 +407,15 @@ class RHInterface(BaseHardwareInterface):
                 item = upd_list[0]
                 node = item[0]
                 if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                    self.pass_record_callback(node, item[2], LAP_SOURCE_REALTIME)  # (node, lap_time_ms)
+                    self.pass_record_callback(node, item[2], LAP_SOURCE_REALTIME)  # (node, lap_timestamp)
                 node.last_lap_id = item[1]  # new_lap_id
 
             else:  # list contains multiple items; sort so processed in order by lap time
-                upd_list.sort(key = lambda i: i[0].lap_ms_since_start)
+                upd_list.sort(key = lambda i: i[0].lap_timestamp)
                 for item in upd_list:
                     node = item[0]
                     if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                        self.pass_record_callback(node, item[2], LAP_SOURCE_REALTIME)  # (node, lap_time_ms)
+                        self.pass_record_callback(node, item[2], LAP_SOURCE_REALTIME)  # (node, lap_timestamp)
                     node.last_lap_id = item[1]  # new_lap_id
 
 
@@ -710,7 +725,8 @@ class RHInterface(BaseHardwareInterface):
 
     def intf_simulate_lap(self, node_index, ms_val):
         node = self.nodes[node_index]
-        node.lap_ms_since_start = ms_val
+        node.lap_timestamp = monotonic() - (ms_val / 1000)
+        # node.lap_ms_since_start = ms_val
         self.pass_record_callback(node, 100, LAP_SOURCE_MANUAL)
 
     def force_end_crossing(self, node_index):

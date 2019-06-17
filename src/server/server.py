@@ -3445,10 +3445,10 @@ def check_race_time_expired():
             if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
-def pass_record_callback(node, ms_since_lap, source):
+def pass_record_callback(node, lap_timestamp_absolute, source):
     '''Handles pass records from the nodes.'''
 
-    server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, ms_since_lap))
+    server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, lap_timestamp_absolute))
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
@@ -3457,8 +3457,8 @@ def pass_record_callback(node, ms_since_lap, source):
     if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end (RACE_DURATION_MS is invalid while race is in progress)
         if RACE.race_status is RACE_STATUS_RACING \
-            or (node.lap_ms_since_start >=0 and \
-                node.lap_ms_since_start < RACE_DURATION_MS):
+            or (node.lap_timestamp >=0 and \
+                node.lap_timestamp < RACE_DURATION_MS):
 
             # Get the current pilot id on the node
             pilot_id = Heat.query.filter_by( \
@@ -3466,7 +3466,7 @@ def pass_record_callback(node, ms_since_lap, source):
 
             if pilot_id != PILOT_ID_NONE:
 
-                lap_time_stamp = ms_from_race_start() - ms_since_lap
+                lap_time_stamp = (lap_timestamp_absolute - RACE_START) * 1000
 
                 # Get the last completed lap from the database
                 last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
