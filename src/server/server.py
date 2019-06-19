@@ -1778,7 +1778,7 @@ def on_save_laps():
         class_id=heat.class_id, \
         format_id=getOption('currentFormat'), \
         start_time = RACE_START, \
-        start_time_formatted = RACE.start_time
+        start_time_formatted = RACE.start_time.strftime("%Y-%m-%d %H:%M:%S")
     )
     DB.session.add(new_race)
     DB.session.flush()
@@ -2242,14 +2242,17 @@ def emit_current_laps(**params):
             node_laps = []
             node_lap_raw = []
             node_lap_times = []
+            node_lap_time_stamps = []
             for lap in CurrentLap.query.filter_by(node_index=node).all():
                 node_laps.append(lap.lap_id)
                 node_lap_raw.append(lap.lap_time)
                 node_lap_times.append(lap.lap_time_formatted)
+                node_lap_time_stamps.append(lap.lap_time_stamp)
             current_laps.append({
                 'lap_id': node_laps,
                 'lap_raw': node_lap_raw,
-                'lap_time': node_lap_times
+                'lap_time': node_lap_times,
+                'lap_time_stamp': node_lap_time_stamps
             })
         current_laps = {'node_index': current_laps}
         emit_payload = current_laps
@@ -2381,12 +2384,11 @@ def emit_round_data(**params):
                         'callsign': nodepilot,
                         'pilot_id': pilotrace.pilot_id,
                         'node_index': pilotrace.node_index,
-                        'history_values': pilotrace.history_values,
-                        'history_times': pilotrace.history_times,
                         'laps': laps
                     })
                 rounds.append({
                     'id': round.round_id,
+                    'start_time_formatted': round.start_time_formatted,
                     'nodes': pilotraces,
                     'leaderboard': calc_leaderboard(heat_id=heat.heat_id, round_id=round.round_id)
                 })
