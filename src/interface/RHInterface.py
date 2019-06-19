@@ -660,7 +660,8 @@ class RHInterface(BaseHardwareInterface):
     def set_enter_at_level(self, node_index, level):
         node = self.nodes[node_index]
         if node.api_valid_flag:
-            node.enter_at_level = self.transmit_enter_at_level(node, level)
+            if self.transmit_enter_at_level(node, level):
+                node.enter_at_level = level
 
     def transmit_exit_at_level(self, node, level):
         return self.set_and_validate_value_rssi(node,
@@ -671,7 +672,8 @@ class RHInterface(BaseHardwareInterface):
     def set_exit_at_level(self, node_index, level):
         node = self.nodes[node_index]
         if node.api_valid_flag:
-            node.exit_at_level = self.transmit_exit_at_level(node, level)
+            if self.transmit_exit_at_level(node, level):
+                node.exit_at_level = level
 
     def set_calibration_threshold_global(self, threshold):
         return threshold  # dummy function; no longer supported
@@ -726,8 +728,7 @@ class RHInterface(BaseHardwareInterface):
     def intf_simulate_lap(self, node_index, ms_val):
         node = self.nodes[node_index]
         node.lap_timestamp = monotonic() - (ms_val / 1000)
-        # node.lap_ms_since_start = ms_val
-        self.pass_record_callback(node, 100, LAP_SOURCE_MANUAL)
+        self.pass_record_callback(node, node.lap_timestamp, LAP_SOURCE_MANUAL)
 
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
