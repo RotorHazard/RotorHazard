@@ -3459,9 +3459,12 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
             pilot_id = Heat.query.filter_by( \
                 heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
 
-            if pilot_id != PILOT_ID_NONE:
+            # reject passes before race start and with disabled (no-pilot) nodes
+            if pilot_id != PILOT_ID_NONE \
+                and lap_timestamp_absolute < RACE_START:
 
-                lap_time_stamp = (lap_timestamp_absolute - RACE_START) * 1000
+                lap_time_stamp = (lap_timestamp_absolute - RACE_START)
+                lap_timestamp_absolute *= 1000 # store as milliseconds
 
                 # Get the last completed lap from the database
                 last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \

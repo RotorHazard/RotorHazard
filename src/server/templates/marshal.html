@@ -313,15 +313,29 @@
 
 				if (crossing) {
 					if (rssi < exitat) {
-						laps.push({
-							lap_time_stamp: (((peakLast + peakFirst) / 2) - current_race_data.start_time) * 1000, // zero stamp within race
-							source: 2,
-							deleted: false
-						});
+						var lap_time_stamp = (((peakLast + peakFirst) / 2) - current_race_data.start_time) * 1000, // zero stamp within race
+
+						if (lap_time_stamp < 0) { // reject passes before race start
+							laps.push({
+								lap_time_stamp: lap_time_stamp, // zero stamp within race
+								source: 2, // recalc
+								deleted: false
+							});
+						}
 						crossing = false;
 						peakRssi = 0;
 					}
 				}
+			}
+
+			if (crossing) { // check for crossing at data end
+					var lap_time_stamp = (((peakLast + peakFirst) / 2) - current_race_data.start_time) * 1000, // zero stamp within race
+
+					laps.push({
+						lap_time_stamp: lap_time_stamp, // zero stamp within race
+						source: 2, // recalc
+						deleted: false
+					});
 			}
 
 			return laps;
