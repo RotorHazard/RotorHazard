@@ -2,6 +2,7 @@
 
 <script type="text/javascript" charset="utf-8">
 	var race_list = {};
+	var race_list_loaded = false;
 	var current_race_data = {};
 	var min_lap = {{ getOption('MinLapSec') }} * 1000;
 
@@ -45,8 +46,12 @@
 			}
 		});
 
-		socket.on('race_list', function (msg) { // *** use a simplified round data socket so the leaderboards don't have to process
+		socket.on('race_list', function (msg) {
 			race_list = msg;
+
+			if (race_list_loaded) {
+				var prev_heat = $('#selected_heat').val();
+			}
 
 			$('#selected_heat').empty();
 			$('#selected_heat').append('<option value="--">' + __('Select Heat') + '</option>');
@@ -63,20 +68,26 @@
 			}
 			$('#selected_heat').prop('disabled', false);
 
-			$('#selected_round').empty();
-			$('#selected_round').append('<option value="--">' + __('Select Round') + '</option>');
-			$('#selected_round').prop('disabled', true);
+			if (race_list_loaded) {
+				$('#selected_heat').val(prev_heat);
+			} else {
+				$('#selected_round').empty();
+				$('#selected_round').append('<option value="--">' + __('Select Round') + '</option>');
+				$('#selected_round').prop('disabled', true);
 
-			$('#selected_pilot').empty();
-			$('#selected_pilot').append('<option value="--">' + __('Select Pilot') + '</option>');
-			$('#selected_pilot').prop('disabled', true);
+				$('#selected_pilot').empty();
+				$('#selected_pilot').append('<option value="--">' + __('Select Pilot') + '</option>');
+				$('#selected_pilot').prop('disabled', true);
 
-			$('#load_race').prop('disabled', true);
+				$('#load_race').prop('disabled', true);
 
-			// *** don't reload data if current race still exists
+				race_list_loaded = true;
+			}
 		});
 
 		$('#selected_heat').change(function(){
+			var prev_round = $('#selected_round').val();
+
 			$('#selected_round').empty();
 			$('#selected_round').append('<option value="--">' + __('Select Round') + '</option>');
 			$('#selected_round').prop('disabled', true);
@@ -91,14 +102,19 @@
 			if ($(this).val() != '--') {
 				for (var round_i in race_list.heats[heat].rounds) {
 					$('#selected_round').append('<option value="' + round_i + '">' + __('Round') + ' ' + round_i + '</option>');
+
+					if (round_i == prev_round) {
+						$('#selected_round').val(round_i);
+						$('#selected_round').trigger('change');
+					}
 				}
 				$('#selected_round').prop('disabled', false);
-
-				// *** don't reload data if current race still exists
 			}
 		});
 
 		$('#selected_round').change(function(){
+			var prev_pilot = $('#selected_pilot').val();
+
 			$('#selected_pilot').empty();
 			$('#selected_pilot').append('<option value="--">' + __('Select Pilot') + '</option>');
 			$('#selected_pilot').prop('disabled', true);
@@ -112,15 +128,24 @@
 				for (var pilot_i in race_list.heats[heat].rounds[round].pilotraces) {
 					var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot_i];
 					$('#selected_pilot').append('<option value="' + pilot_i + '">' + pilotrace.callsign + '</option>');
+
+					if (pilot_i == prev_pilot) {
+						$('#selected_pilot').val(pilot_i);
+						$('#load_race').prop('disabled', false);
+					}
 				}
 				$('#selected_pilot').prop('disabled', false);
-
-				// *** don't reload data if current race still exists
 			}
 		});
 
 		$('#selected_pilot').change(function(){
 			if ($(this).val() != '--') {
+				var heat = parseInt($('#selected_heat').val());
+				var round = parseInt($('#selected_round').val());
+				var pilot = parseInt($(this).val());
+				var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot];
+
+				$(this).data('pilot-id', pilotrace.pilot_id);
 				$('#load_race').prop('disabled', false);
 			}
 		});
@@ -376,6 +401,11 @@
 			if (!Number.isNaN(data.exit_at_level)) {
 				socket.emit('set_exit_at_level', data);
 			}
+
+			standard_message_queue.push(__('Enter/Exit points saved to active node'));
+			if (standard_message_queue.length == 1) {
+				get_standard_message()
+			}
 		});
 	});
 </script>
@@ -412,11 +442,11 @@
 			<table id="laps">
 				<thead>
 					<tr>
-						<th>Lap</th>
-						<th>Timestamp</th>
-						<th>Lap Time</th>
-						<th>Source</th>
-						<th>Deleted</th>
+						<th>{{ __('Lap') }}</th>
+						<th>{{ __('Timestamp') }}</th>
+						<th>{{ __('Lap Time') }}</th>
+						<th>{{ __('Source') }}</th>
+						<th>{{ __('Deleted') }}</th>
 					</tr>
 				</thead>
 				<tbody></tbody>
@@ -425,15 +455,15 @@
 			<div>
 				<input type="number" id="enterat" value="239" />
 				<input type="number" id="exitat" value="210" />
-				<button id="recalc">Recalc Race</button>
-				<button id="save-transitions">Save Enter/Exit to node</button>
+				<button id="recalc">{{ __('Recalc Race') }}</button>
+				<button id="save-transitions">{{ __('Save Enter/Exit to node') }}</button>
 			</div>
 			<div>
 				<input type="number" id="manual-lap-time" step="0.001" />
-				<button id="add-lap">Add Lap</button>
+				<button id="add-lap">{{ __('Add Lap') }}</button>
 			</div>
 			<div>
-				<button id="save-laps">Commit Changes</button>
+				<button id="save-laps">{{ __('Commit Changes') }}</button>
 			</div>
 		</div>
 	</div>
