@@ -363,6 +363,20 @@
 			}
 			socket.emit('resave_laps', data);
 		});
+
+		$('#save-transitions').click(function(){
+			var data = {
+				node: current_race_data.node_index,
+				enter_at_level: parseInt($('#enterat').val()),
+				exit_at_level: parseInt($('#exitat').val()),
+			};
+			if (!Number.isNaN(data.enter_at_level)) {
+				socket.emit('set_enter_at_level', data);
+			}
+			if (!Number.isNaN(data.exit_at_level)) {
+				socket.emit('set_exit_at_level', data);
+			}
+		});
 	});
 </script>
 {% endblock %} {% block content %}
@@ -412,6 +426,7 @@
 				<input type="number" id="enterat" value="239" />
 				<input type="number" id="exitat" value="210" />
 				<button id="recalc">Recalc Race</button>
+				<button id="save-transitions">Save Enter/Exit to node</button>
 			</div>
 			<div>
 				<input type="number" id="manual-lap-time" step="0.001" />
