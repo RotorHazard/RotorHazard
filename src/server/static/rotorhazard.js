@@ -758,19 +758,24 @@ var rotorhazard = {
 	voice_lap_time: true, // speak lap times
 	voice_race_timer: true, // speak race timer
 	voice_race_winner: true, // speak race winner
+
 	tone_volume: 1.0, // race stage/start tone volume
 	beep_crossing_entered: false, // beep node crossing entered
 	beep_crossing_exited: false, // beep node crossing exited
 	beep_manual_lap_button: false, // beep when manual lap button bit
 	beep_on_first_pass_button: false, // beep during the first pass where not voice announcment is played
+
 	schedule_m: 0, //time in minutes for scheduled races
 	schedule_s: 10, //time in minutes for scheduled races
 	indicator_beep_volume: 0.5, // indicator beep volume
+
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
 	graphing: false, // currently graphing RSSI
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array
+
+	panelstates: {}, // collapsible panel state
 
 	// all times in ms (decimal micros if available)
 	pi_time_request: false,
@@ -1098,14 +1103,22 @@ jQuery(document).ready(function($){
 	$('table').wrap('<div class="table-wrap">');
 
 	// Panel collapsing
+
 	$(document).on('click', '.collapsing .panel-header', function() {
 		var thisitem = $(this).parent();
+		var this_id = thisitem.attr('id')
 		if (thisitem.hasClass('open')) {
 			thisitem.removeClass('open');
 			thisitem.children('.panel-content').stop().slideUp();
+			if (this_id) {
+				rotorhazard.panelstates[this_id] = false;
+			}
 		} else {
 			thisitem.addClass('open');
 			thisitem.children('.panel-content').stop().slideDown();
+			if (this_id) {
+				rotorhazard.panelstates[this_id] = true;
+			}
 		}
 	});
 
@@ -1181,8 +1194,6 @@ jQuery(document).ready(function($){
 	};
 });
 }
-
-
 
 /* Leaderboards */
 function build_leaderboard(leaderboard, display_type, meta) {
