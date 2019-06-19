@@ -622,6 +622,7 @@ function timerModel() {
 			var drift = now - self.expected;
 			if (drift > self.interval) {
 				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
+				self.callbacks.self_resync();
 				self.start();
 			} else {
 				self.get_next_step(now);
@@ -990,6 +991,9 @@ rotorhazard.timer.race.callbacks.expire = function(timer){
 	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 	$('.timing-clock').html(timer.renderHTML());
 }
+rotorhazard.timer.race.callbacks.self_resync = function(timer){
+	// display resync warning
+}
 
 /* global page behaviors */
 var socket = false;
@@ -1162,8 +1166,23 @@ jQuery(document).ready(function($){
 			}
 		});
 	});
+
+	document.onkeyup = function(e) {
+		if (e.which == 27) {
+			if ($('#banner-msg').is(':visible')) {
+				$('#banner-msg').slideUp(400, function(){
+					standard_message_queue.shift()
+					if (standard_message_queue.length) {
+						get_standard_message()
+					}
+				});
+			}
+		}
+	};
 });
 }
+
+
 
 /* Leaderboards */
 function build_leaderboard(leaderboard, display_type, meta) {
