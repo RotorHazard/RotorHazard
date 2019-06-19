@@ -14,7 +14,7 @@ from BaseHardwareInterface import BaseHardwareInterface
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
 READ_LAP_STATS = 0x05
-READ_FILTER_RATIO = 0x20    # node API_level>=10 uses 16-bit value
+# READ_FILTER_RATIO = 0x20    # node API_level>=10 uses 16-bit value
 READ_REVISION_CODE = 0x22   # read NODE_API_LEVEL and verification value
 READ_NODE_RSSI_PEAK = 0x23  # read 'nodeRssiPeak' value
 READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
@@ -23,7 +23,7 @@ READ_EXIT_AT_LEVEL = 0x32
 READ_TIME_MILLIS = 0x33     # read current 'millis()' time value
 
 WRITE_FREQUENCY = 0x51      # Sets frequency (2 byte)
-WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
+# WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value

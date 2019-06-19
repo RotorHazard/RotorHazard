@@ -1386,19 +1386,6 @@ def on_set_profile_description(data):
                (profile_name, profile.name))
     emit_node_tuning(noself=True)
 
-@SOCKET_IO.on('set_filter_ratio')
-def on_set_filter_ratio(data):
-    '''Set Filter Ratio'''
-    filter_ratio = data['filter_ratio']
-    if filter_ratio >= 1 and filter_ratio <= 10000:
-        current_profile = int(getOption("currentProfile"))
-        profile = Profiles.query.get(current_profile)
-        profile.f_ratio = filter_ratio
-        DB.session.commit()
-        server_log('Set Filter ratio to: {0}'.format(filter_ratio))
-        emit_node_tuning()
-        INTERFACE.set_filter_ratio_global(filter_ratio)
-
 @SOCKET_IO.on("set_profile")
 def on_set_profile(data, emit_vals=True):
     ''' set current profile '''
@@ -2173,7 +2160,6 @@ def emit_node_tuning(**params):
         'profile_ids': [profile.id for profile in Profiles.query.all()],
         'profile_names': [profile.name for profile in Profiles.query.all()],
         'current_profile': current_profile,
-        'filter_ratio': tune_val.f_ratio,
         'profile_name': tune_val.name,
         'profile_description': tune_val.description
     }
