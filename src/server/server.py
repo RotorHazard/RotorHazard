@@ -3606,9 +3606,17 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
     if is_enter_at_flag:
         server_log('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
+        on_set_enter_at_level({
+            'node': node.index,
+            'enter_at_level': node.enter_at_level
+        })
         emit_enter_at_level(node)
     else:
         server_log('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.exit_at_level, node.cap_exit_at_count))
+        on_set_enter_at_level({
+            'node': node.index,
+            'exit_at_level': node.exit_at_level
+        })
         emit_exit_at_level(node)
 
 def node_crossing_callback(node):
