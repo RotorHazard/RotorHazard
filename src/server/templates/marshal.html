@@ -125,7 +125,6 @@
 			}
 		});
 
-
 		$('#load_race').click(function(){
 			var heat = parseInt($('#selected_heat').val());
 			var round = parseInt($('#selected_round').val());
@@ -158,6 +157,9 @@
 
 			// populate laps
 			displayLaps(current_race_data.laps);
+
+			$('#enterat').val(current_race_data.enter_at);
+			$('#exitat').val(current_race_data.exit_at);
 
 			return false;
 		});
@@ -234,7 +236,7 @@
 			}
 		}
 
-		$('.recalc').click(function(){
+		$('#recalc').click(function(){
 			var laps = recalc_rx_data();
 			calc_lap_times(laps);
 			current_race_data.laps = laps;
@@ -271,7 +273,7 @@
 			for(var idx in current_race_data.history_values) {
 				var rssi = current_race_data.history_values[idx];
 
-				if (!crossing && (rssi >= enterat)) {
+				if (!crossing && (rssi > enterat)) {
 					crossing = true;
 				}
 
@@ -409,7 +411,7 @@
 			<div>
 				<input type="number" id="enterat" value="239" />
 				<input type="number" id="exitat" value="210" />
-				<button class="recalc">Recalc Race</button>
+				<button id="recalc">Recalc Race</button>
 			</div>
 			<div>
 				<input type="number" id="manual-lap-time" step="0.001" />

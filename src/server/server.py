@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "2.0.0 (dev 2)" # Public release version code
-SERVER_API = 22 # Server API version
+SERVER_API = 23 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 18 # Most recent node API
 JSON_API = 1 # JSON API version
@@ -409,10 +409,10 @@ class SavedPilotRace(DB.Model):
     pilot_id = DB.Column(DB.Integer, nullable=False)
     history_values = DB.Column(DB.String, nullable=True)
     history_times = DB.Column(DB.String, nullable=True)
-    penalty_time = DB.Column(DB.Integer, nullable=True)
+    penalty_time = DB.Column(DB.Integer, nullable=False)
     penalty_desc = DB.Column(DB.String, nullable=True)
-    # enter_at
-    # exit_at
+    enter_at = DB.Column(DB.Integer, nullable=False)
+    exit_at = DB.Column(DB.Integer, nullable=False)
 
     def __repr__(self):
         return '<SavedPilotRace %r>' % self.id
@@ -1797,27 +1797,30 @@ def on_save_laps():
     DB.session.flush()
     DB.session.refresh(new_race)
 
-    for node in range(RACE.num_nodes):
-        if profile_freqs["f"][node] != FREQUENCY_ID_NONE:
-            pilot_id = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=node).first().pilot_id
+    for node_index in range(RACE.num_nodes):
+        if profile_freqs["f"][node_index] != FREQUENCY_ID_NONE:
+            pilot_id = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
 
             if pilot_id != PILOT_ID_NONE:
                 new_pilotrace = SavedPilotRace( \
                     race_id=new_race.id, \
-                    node_index=node, \
+                    node_index=node_index, \
                     pilot_id=pilot_id, \
-                    history_values=json.dumps(INTERFACE.nodes[node].history_values), \
-                    history_times=json.dumps(INTERFACE.nodes[node].history_times)
+                    history_values=json.dumps(INTERFACE.nodes[node_index].history_values), \
+                    history_times=json.dumps(INTERFACE.nodes[node_index].history_times), \
+                    penalty_time=0, \
+                    enter_at=INTERFACE.nodes[node_index].enter_at_level, \
+                    exit_at=INTERFACE.nodes[node_index].exit_at_level
                 )
                 DB.session.add(new_pilotrace)
                 DB.session.flush()
                 DB.session.refresh(new_pilotrace)
 
-                for lap in CurrentLap.query.filter_by(node_index=node).all():
+                for lap in CurrentLap.query.filter_by(node_index=node_index).all():
                     DB.session.add(SavedRaceLap( \
                         race_id=new_race.id, \
                         pilotrace_id=new_pilotrace.id, \
-                        node_index=node, \
+                        node_index=node_index, \
                         pilot_id=pilot_id, \
                         lap_time_stamp=lap.lap_time_stamp, \
                         lap_time=lap.lap_time, \
@@ -2306,6 +2309,8 @@ def emit_race_list(**params):
                     'history_values': json.loads(pilotrace.history_values),
                     'history_times': json.loads(pilotrace.history_times),
                     'laps': laps,
+                    'enter_at': pilotrace.enter_at,
+                    'exit_at': pilotrace.exit_at,
                 })
             rounds[round.round_id] = {
                 'race_id': round.id,
@@ -2321,6 +2326,7 @@ def emit_race_list(**params):
             'rounds': rounds,
         }
 
+    '''
     heats_by_class = {}
     heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
     for race_class in RaceClass.query.all():
@@ -2333,11 +2339,12 @@ def emit_race_list(**params):
         current_class['name'] = race_class.name
         current_class['description'] = race_class.name
         current_classes[race_class.id] = current_class
+    '''
 
     emit_payload = {
         'heats': heats,
-        'heats_by_class': heats_by_class,
-        'classes': current_classes,
+        # 'heats_by_class': heats_by_class,
+        # 'classes': current_classes,
     }
 
     if ('nobroadcast' in params):
