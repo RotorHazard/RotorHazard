@@ -2026,7 +2026,7 @@ def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
     server_log('Simulated lap: Node {0}'.format(node_index+1))
-    INTERFACE.intf_simulate_lap(node_index, ms_from_race_start())
+    INTERFACE.intf_simulate_lap(node_index, 0)
 
 @SOCKET_IO.on('LED_solid')
 def on_LED_solid(data):
