@@ -18,6 +18,22 @@ function median(arr){
 	return (values[half - 1] + values[half]) / 2.0;
 }
 
+function formatTimeMillis(s) {
+	// Pad to 2 or 3 digits, default is 2
+	function pad(n, z) {
+	z = z || 2;
+		return ('00' + n).slice(-z);
+	}
+
+	s = Math.round(s);
+	var ms = s % 1000;
+	s = (s - ms) / 1000;
+	var secs = s % 60;
+	var mins = (s - secs) / 60;
+
+	return mins + ':' + pad(secs) + '.' + pad(ms, 3);
+}
+
 function convertColor(color) {
 	if(color.substring(0,1) == '#') {
 		color = color.substring(1);
@@ -463,6 +479,10 @@ function nodeModel() {
 }
 nodeModel.prototype = {
 	checkValues: function(){
+		if (!this.frequency) {
+			return null;
+		}
+
 		var warnings = [];
 
 		if (this.node_nadir_rssi > 0 && this.node_nadir_rssi < this.node_peak_rssi - 40) {
@@ -602,6 +622,7 @@ function timerModel() {
 			var drift = now - self.expected;
 			if (drift > self.interval) {
 				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
+				self.callbacks.self_resync();
 				self.start();
 			} else {
 				self.get_next_step(now);
@@ -970,6 +991,9 @@ rotorhazard.timer.race.callbacks.expire = function(timer){
 	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 	$('.timing-clock').html(timer.renderHTML());
 }
+rotorhazard.timer.race.callbacks.self_resync = function(timer){
+	// display resync warning
+}
 
 /* global page behaviors */
 var socket = false;
@@ -1142,8 +1166,23 @@ jQuery(document).ready(function($){
 			}
 		});
 	});
+
+	document.onkeyup = function(e) {
+		if (e.which == 27) {
+			if ($('#banner-msg').is(':visible')) {
+				$('#banner-msg').slideUp(400, function(){
+					standard_message_queue.shift()
+					if (standard_message_queue.length) {
+						get_standard_message()
+					}
+				});
+			}
+		}
+	};
 });
 }
+
+
 
 /* Leaderboards */
 function build_leaderboard(leaderboard, display_type, meta) {
