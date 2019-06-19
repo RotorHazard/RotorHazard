@@ -479,6 +479,10 @@ function nodeModel() {
 }
 nodeModel.prototype = {
 	checkValues: function(){
+		if (!this.frequency) {
+			return null;
+		}
+
 		var warnings = [];
 
 		if (this.node_nadir_rssi > 0 && this.node_nadir_rssi < this.node_peak_rssi - 40) {
