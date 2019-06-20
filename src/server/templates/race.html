@@ -483,28 +483,41 @@
 		});
 
 		$('button#start_race').click(function (event) {
-			socket.emit('stage_race');
-			rotorhazard.timer.stopAll();
-			$('.timing-clock').html('--:--');
-			$('button#start_race').prop('disabled', true);
-			$('.set_current_heat').prop('disabled', true);
+			if(!$(this).prop('disabled')) {
+				socket.emit('stage_race');
+				rotorhazard.timer.stopAll();
+				$('.timing-clock').html('--:--');
+				$('button#start_race').prop('disabled', true);
+				$('#set_current_heat').prop('disabled', true);
+			}
 			return false;
 		});
 
 		$('button#stop_race').click(function (event) {
-			socket.emit('stop_race');
-			rotorhazard.timer.stopAll();
+			if(!$(this).prop('disabled')) {
+				socket.emit('stop_race');
+				rotorhazard.timer.stopAll();
+				$('button#stop_race').prop('disabled', true);
+			}
 			return false;
 		});
 
 		$('button#save_laps').click(function (event) {
-			socket.emit('save_laps');
+			if(!$(this).prop('disabled')) {
+				socket.emit('save_laps');
+				$('button#save_laps').prop('disabled', true);
+				$('button#discard_laps').prop('disabled', true);
+			}
 			return false;
 		});
 
 		$('button#discard_laps').click(function (event) {
-			socket.emit('discard_laps');
-			$('.timing-clock').html('--:--');
+			if(!$(this).prop('disabled')) {
+				socket.emit('discard_laps');
+				$('.timing-clock').html('--:--');
+				$('button#save_laps').prop('disabled', true);
+				$('button#discard_laps').prop('disabled', true);
+			}
 			return false;
 		});
 
@@ -585,19 +598,21 @@
 		});
 
 		$('button.simulate_lap').click(function (event) {
-			if (rotorhazard.beep_manual_lap_button) {
-				if( rotorhazard.use_mp3_tones){
-					sound_beep.play();
+			if(!$(this).prop('disabled')) {
+				if (rotorhazard.beep_manual_lap_button) {
+					if( rotorhazard.use_mp3_tones){
+						sound_beep.play();
+					}
+					else {
+						play_beep(35, node_tone[$(this).data('node')], rotorhazard.indicator_beep_volume, 'sawtooth');
+					}
 				}
-				else {
-					play_beep(35, node_tone[$(this).data('node')], rotorhazard.indicator_beep_volume, 'sawtooth');
-				}
-			}
 
-			var data = {
-				node: parseInt($(this).data('node')),
-			};
-			socket.emit('simulate_lap', data);
+				var data = {
+					node: parseInt($(this).data('node')),
+				};
+				socket.emit('simulate_lap', data);
+			}
 			return false;
 		});
 
@@ -919,6 +934,84 @@
 				}
 			}
 		});
+
+		$(document).on('keyup', function(e) {
+			// keyboard shortcuts
+			switch (e.which) {
+				case 90:
+					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+						// race start: z
+						$('#start_race').trigger('click');
+					}
+					break;
+				case 88:
+					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+						// race stop: x
+						$('#stop_race').trigger('click');
+					}
+					break;
+				case 67:
+					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+						// save laps: c
+						$('#save_laps').trigger('click');
+					}
+					break;
+				case 86:
+					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+						// discard laps: v
+						$('#discard_laps').trigger('click');
+					}
+					break;
+				case 49:
+					if (!e.ctrlKey && e.altKey && !e.metaKey) {
+						// manual lap node 1: alt+1
+						$('#manual_lap_0').trigger('click');
+					}
+					break;
+				case 50:
+					if (!e.ctrlKey && e.altKey && !e.metaKey) {
+						// manual lap node 2: alt+2
+						$('#manual_lap_1').trigger('click');
+					}
+					break;
+				case 51:
+					if (!e.ctrlKey && e.altKey && !e.metaKey) {
+						// manual lap node 3: alt+3
+						$('#manual_lap_2').trigger('click');
+					}
+					break;
+				case 52:
+					if (!e.ctrlKey && e.altKey && !e.metaKey) {
+						// manual lap node 4: alt+4
+						$('#manual_lap_3').trigger('click');
+					}
+					break;
+				case 53:
+					if (!e.ctrlKey && e.altKey && !e.metaKey) {
+						// manual lap node 5: alt+5
+						$('#manual_lap_4').trigger('click');
+					}
+					break;
+				case 54:
+					if (!e.ctrlKey && e.altKey && !e.metaKey) {
+						// manual lap node 6: alt+6
+						$('#manual_lap_5').trigger('click');
+					}
+					break;
+				case 55:
+					if (!e.ctrlKey && e.altKey && !e.metaKey) {
+						// manual lap node 7: alt+7
+						$('#manual_lap_6').trigger('click');
+					}
+					break;
+				case 56:
+					if (!e.ctrlKey && e.altKey && !e.metaKey) {
+						// manual lap node 8: alt+8
+						$('#manual_lap_7').trigger('click');
+					}
+					break;
+			}
+		});
 	});
 
 	function doSpeak(obj) {
@@ -969,7 +1062,7 @@
 				<div class="race-header">
 					<a href="#tuning-detail-{{node}}" data-node="{{ node }}" class="open-mfp-popup-tuning button-like btn-warning" title="{{ __('Tuning') }}">&#9888;</a>
 					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
-					<button class="simulate_lap" data-node="{{ node }}" title="{{ __('Manual') }}">+ {{ __('Lap') }}</button>
+					<button class="simulate_lap" id="manual_lap_{{ node }}" data-node="{{ node }}" title="{{ __('Manual') }}">+ {{ __('Lap') }}</button>
 				</div>
 				<div class="rssi-graph page" data-node="{{ node }}"><canvas id="rssi-graph-{{ node }}"></div>
 				<h4 class="callsign_{{ node }}">
