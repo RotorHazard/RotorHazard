@@ -363,8 +363,8 @@ class RHInterface(BaseHardwareInterface):
                         # get and process history data
                         if node.api_level >= 18:
                             peakRssi = unpack_rssi(node, data[offset_peakRssi:])
-                            peakFirstTime = unpack_16(data[offset_peakFirstTime:])
-                            peakLastTime = unpack_16(data[offset_peakLastTime:])
+                            peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
+                            peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
                             nadirRssi = unpack_rssi(node, data[offset_nadirRssi:])
                             nadirTime = unpack_16(data[offset_nadirTime:])
 
@@ -382,9 +382,11 @@ class RHInterface(BaseHardwareInterface):
                                             node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                             node.history_values.append(peakRssi)
                                             node.history_times.append(readtime - (peakLastTime / 1000.0))
-                                        else:
+                                        else if peakFirstTime == peakLastTime:
                                             node.history_values.append(peakRssi)
                                             node.history_times.append(readtime - (peakLastTime / 1000.0))
+                                        else:
+                                            self.log('Ignoring corrupted peak history times ({0} < {1})'.format(peakFirstTime, peakLastTime))
 
                                         node.history_values.append(nadirRssi)
                                         node.history_times.append(readtime - (nadirTime / 1000.0))
@@ -398,9 +400,11 @@ class RHInterface(BaseHardwareInterface):
                                             node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                             node.history_values.append(peakRssi)
                                             node.history_times.append(readtime - (peakLastTime / 1000.0))
-                                        else:
+                                        else if peakFirstTime == peakLastTime:
                                             node.history_values.append(peakRssi)
                                             node.history_times.append(readtime - (peakLastTime / 1000.0))
+                                        else:
+                                            self.log('Ignoring corrupted peak history times ({0} < {1})'.format(peakFirstTime, peakLastTime))
 
                                 else:
                                     # peak, no nadir
@@ -410,9 +414,11 @@ class RHInterface(BaseHardwareInterface):
                                         node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                         node.history_values.append(peakRssi)
                                         node.history_times.append(readtime - (peakLastTime / 1000.0))
-                                    else:
+                                    else if peakFirstTime == peakLastTime:
                                         node.history_values.append(peakRssi)
                                         node.history_times.append(readtime - (peakLastTime / 1000.0))
+                                    else:
+                                        self.log('Ignoring corrupted peak history times ({0} < {1})'.format(peakFirstTime, peakLastTime))
 
                             elif nadirRssi > 0:
                                 # no peak, nadir
