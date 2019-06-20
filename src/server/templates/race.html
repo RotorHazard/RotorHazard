@@ -2,8 +2,18 @@
 <script type="text/javascript" src="./static/Blob.js"></script>
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
 
+<audio id="sound_buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
+<audio id="sound_beep" src="./static/audio/beep.mp3" type="audio/mp3"></audio>
+<audio id="sound_stage" src="./static/audio/stage.mp3" type="audio/mp3"></audio>
+<audio id="sound_enter" src="./static/audio/enter.mp3" type="audio/mp3"></audio>
+<audio id="sound_exit" src="./static/audio/exit.mp3" type="audio/mp3"></audio>
+
 <script type="text/javascript" charset="utf-8">
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+
+	var sound_buzzer = $('#sound_buzzer')[0];
+	var sound_beep = $('#sound_beep')[0];
+	var sound_stage = $('#sound_stage')[0];
 
 	var request_time;
 	var request_pi_time;
@@ -131,6 +141,7 @@
 		$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
 		$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
 		$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
+		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
 		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
 		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
@@ -434,10 +445,15 @@
 
 		socket.on('first_pass_registered', function (msg) {
 			if (!rotorhazard.beep_crossing_exited && rotorhazard.beep_on_first_pass_button) {
-				play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
-				setTimeout(function(tone){
-					play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth', );
-				}, 70, msg.node_index);
+				if( rotorhazard.use_mp3_tones){
+					sound_beep.play();
+				}
+				else {
+					play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
+					setTimeout(function(tone){
+						play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth', );
+					}, 70, msg.node_index);
+				}
 			}
 		});
 
@@ -575,7 +591,12 @@
 
 		$('button.simulate_lap').click(function (event) {
 			if (rotorhazard.beep_manual_lap_button) {
-				play_beep(35, node_tone[$(this).data('node')], rotorhazard.indicator_beep_volume, 'sawtooth');
+				if( rotorhazard.use_mp3_tones){
+					sound_beep.play();
+				}
+				else {
+					play_beep(35, node_tone[$(this).data('node')], rotorhazard.indicator_beep_volume, 'sawtooth');
+				}
 			}
 
 			var data = {
@@ -715,6 +736,11 @@
 			rotorhazard.saveData();
 		});
 
+		$('#use_mp3_tones').change(function (event) {
+			rotorhazard.use_mp3_tones = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+
 		$('#beep_on_first_pass_button').change(function (event) {
 			rotorhazard.beep_on_first_pass_button = $(this).prop('checked');
 			rotorhazard.saveData();
@@ -810,14 +836,24 @@
 		socket.on('node_crossing_change', function (msg) {
 			if (msg.crossing_flag) {
 				if (rotorhazard.beep_crossing_entered)
-					play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
+					if( rotorhazard.use_mp3_tones){
+						sound_enter.play();
+					}
+					else {
+						play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
+					}
 			}
 			else {
 				if (rotorhazard.beep_crossing_exited) {
-					play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
-					setTimeout(function(tone){
-						play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth', );
-					}, 70, msg.node_index);
+						if( rotorhazard.use_mp3_tones){
+							sound_exit.play();
+						}
+						else {
+							play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
+							setTimeout(function(tone){
+								play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth', );
+							}, 70, msg.node_index);
+						}
 				}
 			}
 		});
@@ -1191,6 +1227,7 @@
 					<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
 					<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
 					<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
+					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
 				</ul>
 			</li>
 			<li>
