@@ -2127,6 +2127,9 @@ def emit_environmental_data(**params):
     '''Emits environmental data.'''
     emit_payload = {
         'core_temperature': INTERFACE.core_temp,
+        'aux_voltage': [data['voltage'] for data in INTERFACE.ina219_data],
+        'aux_current': [data['current'] for data in INTERFACE.ina219_data],
+        'aux_power': [data['power'] for data in INTERFACE.ina219_data],
         'aux_temperature': [data.temperature for data in INTERFACE.bme280_data],
         'aux_pressure': [data.pressure for data in INTERFACE.bme280_data],
         'aux_humidity': [data.humidity for data in INTERFACE.bme280_data]

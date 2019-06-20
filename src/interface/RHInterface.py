@@ -152,6 +152,34 @@ class RHInterface(BaseHardwareInterface):
         with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
             self.core_temp = float(f.read())/1000
 
+        self.environmental_data_update_tracker = 0
+
+        # Scan for INA219 devices
+        self.ina219_devices = []
+        self.ina219_data = []
+        supported_ina219_addrs = [0x40, 0x41, 0x44, 0x45]
+        try:
+            self.ina219Class = getattr(importlib.import_module('ina219'), 'INA219')
+            for index, addr in enumerate(supported_ina219_addrs):
+                try:
+                    device = self.ina219Class(0.1, address=addr)
+                    device.configure()
+                    data = {
+                        'voltage': device.voltage(),
+                        'current': device.current(),
+                        'power': device.power()
+                    }
+                    device.sleep()
+                    print "INA219 found at address {0}".format(addr)
+                    gevent.sleep(I2C_CHILL_TIME)
+                    self.ina219_devices.append(device)
+                    self.ina219_data.append(data)
+                except IOError as err:
+                    print "No INA219 at address {0}".format(addr)
+                gevent.sleep(I2C_CHILL_TIME)
+        except ImportError:
+            self.ina219Class = None
+
         # Scan for BME280 devices
         self.bme280_addrs = []
         self.bme280_data = []
@@ -737,7 +765,28 @@ class RHInterface(BaseHardwareInterface):
 
     def update_environmental_data(self):
         '''Updates environmental data.'''
-        if self.bme280SampleMethod:
+        self.environmental_data_update_tracker += 1
+
+        if self.ina219Class and (self.environmental_data_update_tracker % 2) == 0:
+            for index, device in enumerate(self.ina219_devices):
+                try:
+                    with self.semaphore:
+                        self.i2c_sleep()
+                        device = self.ina219_devices[index]
+                        device.wake()
+                        data = {
+                            'voltage': device.voltage(),
+                            'current': device.current(),
+                            'power': device.power()/1000
+                        }
+                        device.sleep()
+                        self.ina219_data[index] = data
+                        self.i2c_timestamp = self.milliseconds()
+                except IOError as err:
+                    self.log('INA219 Read Error: ' + str(err))
+                    self.i2c_timestamp = self.milliseconds()
+
+        if self.bme280SampleMethod and (self.environmental_data_update_tracker % 2) == 1:
             for index, addr in enumerate(self.bme280_addrs):
                 try:
                     with self.semaphore:
