@@ -201,7 +201,7 @@
 					else {
 						var $tr = $('<tr>').append(
 							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j])
+							$('<td>').text(node_index.lap_time[j]).prepend($('<span class="from_start">').text(formatTimeMillis(node_index.lap_time_stamp[j])))
 						).appendTo('#current_laps_' + i);
 					}
 				});

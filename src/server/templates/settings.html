@@ -213,10 +213,6 @@
 				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
 			}
 			$('#set_profile').val(msg.current_profile);
-			var pos = logsl.position(msg.filter_ratio / 10000);
-			$('#set_filter_ratio').val(12 - pos);
-			$('#filter_value').html((msg.filter_ratio / 10000).toFixed(4));
-			$('#set_filter_ratio').val( );
 			$('#set_profile_name').val( msg.profile_name);
 			$('#set_profile_description').val( msg.profile_description);
 		});
@@ -437,20 +433,6 @@
 			return false;
 		});
 
-
-		$('#set_filter_ratio').on('input', function (event) {
-			var val = logsl.value(12 - $(this).val());
-			$('#filter_value').html(val.toFixed(4));
-		});
-
-		$('#set_filter_ratio').change(function (event) {
-			var val = logsl.value(12 - $(this).val());
-			val = (val * 10000).toFixed(0);
-			var data = {
-				filter_ratio: parseInt(val),
-			}
-			socket.emit('set_filter_ratio', data);
-		});
 
 		/* Heats */
 		socket.on('heat_data', function (msg) {
@@ -1308,13 +1290,6 @@
 
 		<!--Edit system tuning values-->
 		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_filter_ratio">{{ __('RSSI Smoothing') }}</label>
-					<p class="desc">{{ __('Filter Ratio') }}: <span id="filter_value"></span></p>
-				</div>
-				<input type="range" id="set_filter_ratio" min="0" max="12" step="1">
-			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_recovery_max_offset">{{ __('Missed Lap Offset') }}</label>

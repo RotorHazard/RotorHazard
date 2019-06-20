@@ -377,7 +377,7 @@
 							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
 							$('<td colspan="2">').text(node_index.lap_time[j] + ' ').append(
 								$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '">&#215;</button>')
-							)
+							).prepend($('<span class="from_start">').text(formatTimeMillis(node_index.lap_time_stamp[j])))
 						)
 					}
 					if (j && node_index.lap_raw[j] < (rotorhazard.min_lap * 1000)) {

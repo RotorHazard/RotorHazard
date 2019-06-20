@@ -28,7 +28,7 @@
 			page.empty();
 
 			if (!$.isEmptyObject(msg.heats)) {
-				var panel = $('<div class="panel collapsing">');
+				var panel = $('<div id="event_leaderboard" class="panel collapsing">');
 
 				var panel_header = $('<div class="panel-header">');
 				panel_header.append('<h2><button class="no-style">' + __('Event Leaderboards') + '</button></h2>');
@@ -67,7 +67,7 @@
 					}
 
 					if (valid_heats) {
-						var class_panel = $('<div class="panel collapsing">');
+						var class_panel = $('<div id="class_' + class_id + '" class="panel collapsing">');
 						var class_panel_header = $('<div class="panel-header">');
 						var class_panel_content = $('<div class="panel-content" style="display: none">');
 
@@ -75,7 +75,7 @@
 						if (current_class) {
 							class_panel_header.append('<h2><button class="no-style">' + current_class.name + '</button></h2>');
 
-							var class_leaderboard = $('<div class="panel collapsing class-leaderboard">');
+							var class_leaderboard = $('<div id="class_' + class_id + '_leaderboard" class="panel collapsing class-leaderboard">');
 
 							var class_leaderboard_header = $('<div class="panel-header">');
 							class_leaderboard_header.append('<h3><button class="no-style">' + __('Class Summary') + '</button></h3>');
@@ -106,7 +106,7 @@
 							var heat = msg.heats[msg.heats_by_class[race_class][class_heat]]
 
 							if (heat) {
-								var panel = $('<div class="panel collapsing">');
+								var panel = $('<div id="class_' + class_id + '_heat_' + class_heat + '" class="panel collapsing">');
 
 								var panel_header = $('<div class="panel-header">');
 
@@ -121,7 +121,7 @@
 
 								// heat leaderboards
 								if (heat.rounds.length > 1) {
-									var heat_summary_panel = $('<div class="panel collapsing open">');
+									var heat_summary_panel = $('<div id="class_' + class_id + '_heat_' + class_heat + '_leaderboard" class="panel collapsing open">');
 									heat_summary_panel.append('<div class="panel-header"><h4><button class="no-style">' + __('Heat Summary') + '</button></h4></div>')
 									var heat_summary_panel_content = $('<div class="panel-content">');
 									var heat_leaderboard = $('<div class="leaderboard">');
@@ -134,9 +134,9 @@
 								// rounds
 								for (var round_i in heat.rounds) {
 									var round = heat.rounds[round_i];
-									var round_div = $('<div class="round panel collapsing open">');
+									var round_div = $('<div id="class_' + class_id + '_heat_' + class_heat + '_round_' + round.id + '" class="round panel collapsing open">');
 
-									round_div.append('<div class="panel-header"><h4><button class="no-style">' + __('Round') + ' ' + round.id + '</button></h4></div>')
+									round_div.append('<div class="panel-header"><h4><button class="no-style">' + __('Round') + ' ' + round.id + ' (' + round.start_time_formatted + ')</button></h4></div>')
 
 									var round_content = $('<div class="panel-content">');
 									// race leaderboards
@@ -159,7 +159,11 @@
 										for (var lap_i in node.laps) {
 											var lap = node.laps[lap_i];
 											if (!lap.deleted) {
-												tbody.append('<tr><td>' + lap_index + '</td><td>' + formatTimeMillis(lap.lap_time) + '</td></tr>')
+												if (lap_index) {
+													tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + formatTimeMillis(lap.lap_time_stamp) + '</span>' + formatTimeMillis(lap.lap_time) + '</td></tr>')
+												} else {
+													tbody.append('<tr class="lap_0"><td>0</td><td>' + formatTimeMillis(lap.lap_time) + '</td></tr>')
+												}
 												lap_index++;
 											}
 										}
@@ -184,7 +188,17 @@
 					}
 				}
 
-				for (var heat_i in msg.heats) {
+				for (var panel in rotorhazard.panelstates) {
+					var panel_obj = $('#' + panel);
+					var panelstate = rotorhazard.panelstates[panel];
+
+					if (panelstate) {
+						panel_obj.addClass('open');
+						panel_obj.children('.panel-content').stop().slideDown();
+					} else {
+						panel_obj.removeClass('open');
+						panel_obj.children('.panel-content').stop().slideUp();
+					}
 				}
 			} else {
 				page.append('<p>' + __('There is no saved race data available to view.') + '</p>');

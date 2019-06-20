@@ -14,7 +14,7 @@ from BaseHardwareInterface import BaseHardwareInterface
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
 READ_LAP_STATS = 0x05
-READ_FILTER_RATIO = 0x20    # node API_level>=10 uses 16-bit value
+# READ_FILTER_RATIO = 0x20    # node API_level>=10 uses 16-bit value
 READ_REVISION_CODE = 0x22   # read NODE_API_LEVEL and verification value
 READ_NODE_RSSI_PEAK = 0x23  # read 'nodeRssiPeak' value
 READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
@@ -23,7 +23,7 @@ READ_EXIT_AT_LEVEL = 0x32
 READ_TIME_MILLIS = 0x33     # read current 'millis()' time value
 
 WRITE_FREQUENCY = 0x51      # Sets frequency (2 byte)
-WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
+# WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
@@ -317,7 +317,7 @@ class RHInterface(BaseHardwareInterface):
                                       # if too close node peak then set a bit below node-peak RSSI value:
                                 if node.node_peak_rssi > 0 and node.node_peak_rssi - node.enter_at_level < ENTER_AT_PEAK_MARGIN:
                                     node.enter_at_level = node.node_peak_rssi - ENTER_AT_PEAK_MARGIN
-                                self.transmit_enter_at_level(node, node.enter_at_level)
+                                # self.transmit_enter_at_level(node, node.enter_at_level)
                                 if callable(self.new_enter_or_exit_at_callback):
                                     self.new_enter_or_exit_at_callback(node, True)
 
@@ -328,7 +328,7 @@ class RHInterface(BaseHardwareInterface):
                             if self.milliseconds() >= node.cap_exit_at_millis:
                                 node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
                                 node.cap_exit_at_flag = False
-                                self.transmit_exit_at_level(node, node.exit_at_level)
+                                # self.transmit_exit_at_level(node, node.exit_at_level)
                                 if callable(self.new_enter_or_exit_at_callback):
                                     self.new_enter_or_exit_at_callback(node, False)
 
@@ -660,7 +660,8 @@ class RHInterface(BaseHardwareInterface):
     def set_enter_at_level(self, node_index, level):
         node = self.nodes[node_index]
         if node.api_valid_flag:
-            node.enter_at_level = self.transmit_enter_at_level(node, level)
+            if self.transmit_enter_at_level(node, level):
+                node.enter_at_level = level
 
     def transmit_exit_at_level(self, node, level):
         return self.set_and_validate_value_rssi(node,
@@ -671,7 +672,8 @@ class RHInterface(BaseHardwareInterface):
     def set_exit_at_level(self, node_index, level):
         node = self.nodes[node_index]
         if node.api_valid_flag:
-            node.exit_at_level = self.transmit_exit_at_level(node, level)
+            if self.transmit_exit_at_level(node, level):
+                node.exit_at_level = level
 
     def set_calibration_threshold_global(self, threshold):
         return threshold  # dummy function; no longer supported
@@ -726,8 +728,7 @@ class RHInterface(BaseHardwareInterface):
     def intf_simulate_lap(self, node_index, ms_val):
         node = self.nodes[node_index]
         node.lap_timestamp = monotonic() - (ms_val / 1000)
-        # node.lap_ms_since_start = ms_val
-        self.pass_record_callback(node, 100, LAP_SOURCE_MANUAL)
+        self.pass_record_callback(node, node.lap_timestamp, LAP_SOURCE_MANUAL)
 
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
