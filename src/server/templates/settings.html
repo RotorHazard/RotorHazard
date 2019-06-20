@@ -177,19 +177,30 @@
 			}
 		});
 		socket.on('environmental_data', function (msg) {
-			$('#core-temperature').html(Number(msg.core_temperature).toFixed(1))
-			if (msg.aux_temperature.length > 0) {
-				env_table_html = '<table>'
-				env_table_html += '<tr><th>'+__('Temperature (°C)')+'</th><th>'+__('Humidity (%rH)')+'</th><th>'+__('Pressure (hPa)')+'</th></tr>'
-				for (i=0; i < msg.aux_temperature.length; i++) {
-					env_table_html += '<tr>'
-					env_table_html += '<td>' + Number(msg.aux_temperature[i]).toFixed(1) + '</td>'
-					env_table_html += '<td>' + Number(msg.aux_humidity[i]).toFixed(1) + '</td>'
-					env_table_html += '<td>' + Number(msg.aux_pressure[i]).toFixed(1) + '</td>'
-					env_table_html += '</tr>'
+			$('#core-temperature').html(Number(msg.core_temperature).toFixed(1));
+			env_table_html = '';
+			if (msg.aux_voltage.length > 0) {
+				env_table_html += '<tr><th>'+__('Voltage (V)')+'</th><th>'+__('Current (mA)')+'</th><th>'+__('Power (W)')+'</th></tr>';
+				for (i=0; i < msg.aux_voltage.length; i++) {
+					env_table_html += '<tr>';
+					env_table_html += '<td>' + Number(msg.aux_voltage[i]).toFixed(2) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_current[i]).toFixed(0) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_power[i]).toFixed(2) + '</td>';
+					env_table_html += '</tr>';
 				}
-				env_table_html += '</table>'
-				$('#env-data-table').html(env_table_html)
+			}
+			if (msg.aux_temperature.length > 0) {
+				env_table_html += '<tr><th>'+__('Temperature (°C)')+'</th><th>'+__('Humidity (%rH)')+'</th><th>'+__('Pressure (hPa)')+'</th></tr>';
+				for (i=0; i < msg.aux_temperature.length; i++) {
+					env_table_html += '<tr>';
+					env_table_html += '<td>' + Number(msg.aux_temperature[i]).toFixed(1) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_humidity[i]).toFixed(1) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_pressure[i]).toFixed(1) + '</td>';
+					env_table_html += '</tr>';
+				}
+			}
+			if (env_table_html) {
+				$('#env-data-table').html('<table>' + env_table_html + '</table>');
 			}
 		});
 
@@ -238,14 +249,14 @@
 			var data = {
 				profile_name: $(this).val()
 			};
-			socket.emit('set_profile_name', data);
+			socket.emit('alter_profile', data);
 		})
 
 		$('#set_profile_description').change(function (event) {
 			var data = {
 				profile_description: $(this).val()
 			};
-			socket.emit('set_profile_description', data);
+			socket.emit('alter_profile', data);
 		})
 
 		/* Frequency Setup */
@@ -500,7 +511,7 @@
 				heat: parseInt($(this).data('heat')),
 				note: $(this).val(),
 			};
-			socket.emit('set_heat_note', data);
+			socket.emit('alter_heat', data);
 		});
 
 		$(document).on("change", '.set_pilot_position', function (event) {
@@ -509,7 +520,7 @@
 				node: parseInt($(this).data('node')),
 				pilot: parseInt($(this).val())
 			};
-			socket.emit('set_pilot_position', data);
+			socket.emit('alter_heat', data);
 		});
 
 		$(document).on("change", '.set_heat_class', function (event) {
@@ -517,7 +528,7 @@
 				heat: parseInt($(this).data('heat')),
 				class: $(this).val(),
 			};
-			socket.emit('set_heat_class', data);
+			socket.emit('alter_heat', data);
 		});
 
 		$('button#add_heat').click(function (event) {
@@ -566,7 +577,7 @@
 				class_id: parseInt($(this).data('class_id')),
 				class_name: $(this).val(),
 			};
-			socket.emit('set_race_class_name', data);
+			socket.emit('alter_race_class', data);
 		});
 
 		$(document).on("change", '.set_race_class_format', function (event) {
@@ -574,7 +585,7 @@
 				class_id: parseInt($(this).data('class_id')),
 				class_format: $(this).val(),
 			};
-			socket.emit('set_race_class_format', data);
+			socket.emit('alter_race_class', data);
 		});
 
 		$(document).on("change", '.set_race_class_description', function (event) {
@@ -582,7 +593,7 @@
 				class_id: parseInt($(this).data('class_id')),
 				class_description: $(this).val(),
 			};
-			socket.emit('set_race_class_description', data);
+			socket.emit('alter_race_class', data);
 		});
 
 		$('button#add_race_class').click(function (event) {
@@ -637,7 +648,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				name: $(this).val()
 			};
-			socket.emit('set_pilot_name', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("focus", '.set_pilot_callsign', function(){
@@ -649,7 +660,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				callsign: $(this).val()
 			};
-			socket.emit('set_pilot_callsign', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("change", '.set_pilot_team', function (event) {
@@ -657,7 +668,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				team_name: $(this).val()
 			};
-			socket.emit('set_pilot_team', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("focus", '.set_pilot_phonetic', function(){
@@ -669,7 +680,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				phonetic: $(this).val()
 			};
-			socket.emit('set_pilot_phonetic', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("click", 'button.speak_pilot', function (event) {
@@ -859,7 +870,7 @@
 			var data = {
 				team_racing_mode: parseInt($(this).val())  // 0=disabled, 1=enabled
 			};
-			socket.emit('set_team_racing_mode', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		socket.on('race_format', function (msg) {
@@ -869,6 +880,7 @@
 			}
 			$('#set_race_format').val(msg.current_format);
 			$('#set_format_name').val(msg.format_name);
+			$('#set_format_name').prop('disabled', msg.locked);
 			$('#set_race_mode').val(msg.race_mode);
 			$('#set_race_mode').prop('disabled', msg.locked);
 			$('#set_fix_race_time').val(msg.race_time_sec);
@@ -908,21 +920,21 @@
 			var data = {
 				format_name: $(this).val()
 			};
-			socket.emit('set_race_format_name', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_race_mode').change(function (event) {
 			var data = {
 				race_mode: parseInt($(this).val())
 			};
-			socket.emit('set_race_mode', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_fix_race_time').change(function (event) {
 			var data = {
 				race_time: parseInt($(this).val())
 			};
-			socket.emit('set_fix_race_time', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_hide_stage_timer').change(function (event) {
@@ -936,28 +948,28 @@
 			var data = {
 				start_delay_min: parseInt($(this).val())
 			};
-			socket.emit('set_start_delay_min', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_start_delay_max').change(function (event) {
 			var data = {
 				start_delay_max: parseInt($(this).val())
 			};
-			socket.emit('set_start_delay_max', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_number_laps_win').change(function (event) {
 			var data = {
 				number_laps_win: parseInt($(this).val())
 			};
-			socket.emit('set_number_laps_win', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_win_condition').change(function (event) {
 			var data = {
 				win_condition: parseInt($(this).val())
 			};
-			socket.emit('set_win_condition', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('button#backup_database').click(function (event) {
