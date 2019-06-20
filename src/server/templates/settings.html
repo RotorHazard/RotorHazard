@@ -329,7 +329,7 @@
 			$('#set_enter_at_level_' + msg.node_index).val(msg.level);
 			rotorhazard.nodes[msg.node_index].enter_at_level = msg.level;
 
-			$('#node_notice_' + i).html(rotorhazard.nodes[i].checkValues());
+			$('#node_notice_' + i).html(rotorhazard.nodes[msg.node_index].checkValues());
 			rotorhazard.nodes[msg.node_index].updateThresholds();
 		});
 
@@ -337,7 +337,7 @@
 			$('#set_exit_at_level_' + msg.node_index).val(msg.level);
 			rotorhazard.nodes[msg.node_index].exit_at_level = msg.level;
 
-			$('#node_notice_' + i).html(rotorhazard.nodes[i].checkValues());
+			$('#node_notice_' + i).html(rotorhazard.nodes[msg.node_index].checkValues());
 			rotorhazard.nodes[msg.node_index].updateThresholds();
 		});
 

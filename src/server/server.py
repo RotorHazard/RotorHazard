@@ -3612,7 +3612,7 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
         emit_enter_at_level(node)
     else:
         server_log('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.exit_at_level, node.cap_exit_at_count))
-        on_set_enter_at_level({
+        on_set_exit_at_level({
             'node': node.index,
             'exit_at_level': node.exit_at_level
         })
