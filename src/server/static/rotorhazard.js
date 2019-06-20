@@ -786,7 +786,6 @@ var rotorhazard = {
 
 	timer: {
 		deferred: new timerModel(),
-		staging: new timerModel(),
 		race: new timerModel(),
 		stopAll: function() {
 			this.deferred.stop();
@@ -987,7 +986,7 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 						sound_stage.play();
 					}
 					else {
-						play_stage(100, 440, rotorhazard.tone_volume, 'triangle');
+						play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 					}
 				}
 			} else if (timer.time_s == 10) { // announce 10s only when counting down

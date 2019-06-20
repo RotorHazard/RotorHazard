@@ -19,11 +19,6 @@
 	var request_pi_time;
 	var resume_check = true;
 
-	var racedump = {
-		timestamp: new Date(),
-		timedata: [],
-	};
-
 	var speakObjsQueue = [];
 	var checkSpeakQueueFlag = true;
 
@@ -207,7 +202,7 @@
 					$('button#stop_race').prop('disabled', false);
 					$('button#save_laps').prop('disabled', true);
 					$('button#discard_laps').prop('disabled', true);
-					$('button.simulate_lap').prop('disabled', false);
+					$('button.simulate_lap').prop('disabled', true);
 					$('button#schedule_race').prop('disabled', true);
 					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
@@ -451,7 +446,7 @@
 				else {
 					play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
 					setTimeout(function(tone){
-						play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth', );
+						play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth');
 					}, 70, msg.node_index);
 				}
 			}
@@ -851,7 +846,7 @@
 						else {
 							play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
 							setTimeout(function(tone){
-								play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth', );
+								play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth');
 							}, 70, msg.node_index);
 						}
 				}
@@ -904,47 +899,6 @@
 		});
 
 		/* Other */
-		$('button#racedump').click(function (event) {
-			function formatdate(dateObj) {
-				var year = dateObj.getFullYear();
-				var month = dateObj.getMonth() + 1;
-				month = month < 10 ? '0'+month : month;
-				var day = dateObj.getDate();
-				day = day < 10 ? '0'+day : day;
-				return year + '-' + month + '-' + day;
-			}
-			function formattime(dateObj) {
-				var hours = dateObj.getHours();
-				var minutes = dateObj.getMinutes();
-				minutes = minutes < 10 ? '0'+minutes : minutes;
-				var seconds = dateObj.getSeconds();
-				seconds = seconds < 10 ? '0'+seconds : seconds;
-				var millis = dateObj.getMilliseconds();
-				millis = ('00' + millis).slice(-3);
-				return hours + ':' + minutes + ':' + seconds + '.' + millis;
-			}
-			var text = '';
-
-			text = text + __('Time');
-			for(var j in rotorhazard.nodes) {
-				text = text + ',' + $('.callsign_' + j).html().trim();
-			}
-			text = text + '\r\n';
-
-			for (var i in racedump.timedata) {
-				text = text + formattime(racedump.timedata[i].timestamp);
-				for(var j in racedump.timedata[i].nodes) {
-					text = text + ',' + racedump.timedata[i].nodes[j];
-				}
-				text = text + '\r\n';
-			}
-
-			var formatted = formatdate(racedump.timestamp) + '.' + formattime(racedump.timestamp);
-			var filename = 'rotorhazard-race-' + formatted;
-			var blob = new Blob([text], {type: "text/plain;charset=utf-8"});
-			saveAs(blob, filename+".csv");
-		});
-
 		$('.open-mfp-popup-tuning').magnificPopup({
 			type:'inline',
 			midClick: true,
@@ -1268,18 +1222,6 @@
 			<button class="LED-chase" data-rgb="#00ffff"><img src="../static/image/LED-chase-cyan.png"></button>
 			<button class="LED-chase" data-rgb="#00ff00"><img src="../static/image/LED-chase-green.png"></button>
 			<button class="LED-chase" data-rgb="#ff0000"><img src="../static/image/LED-chase-red.png"></button>
-		</div>
-	</div>
-</div>
-
-<!--History Export-->
-<div class="panel collapsing debug">
-	<div class="panel-header">
-		<h2>{{ __('History Export') }}</h2>
-	</div>
-	<div class="panel-content">
-		<div class="control-set">
-			<button id="racedump">{{ __('Export race to CSV') }}</button>
 		</div>
 	</div>
 </div>
