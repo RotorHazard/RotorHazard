@@ -1,19 +1,7 @@
 {% extends "layout.html" %} {% block title %}Run{% endblock %}{% block head %}
-<script type="text/javascript" src="./static/Blob.js"></script>
-<script type="text/javascript" src="./static/FileSaver.min.js"></script>
-
-<audio id="sound_buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
-<audio id="sound_beep" src="./static/audio/beep.mp3" type="audio/mp3"></audio>
-<audio id="sound_stage" src="./static/audio/stage.mp3" type="audio/mp3"></audio>
-<audio id="sound_enter" src="./static/audio/enter.mp3" type="audio/mp3"></audio>
-<audio id="sound_exit" src="./static/audio/exit.mp3" type="audio/mp3"></audio>
 
 <script type="text/javascript" charset="utf-8">
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
-
-	var sound_buzzer = $('#sound_buzzer')[0];
-	var sound_beep = $('#sound_beep')[0];
-	var sound_stage = $('#sound_stage')[0];
 
 	var request_time;
 	var request_pi_time;

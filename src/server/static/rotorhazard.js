@@ -1,3 +1,7 @@
+var sound_buzzer = $('#sound_buzzer')[0];
+var sound_beep = $('#sound_beep')[0];
+var sound_stage = $('#sound_stage')[0];
+
 /* global functions */
 function supportsLocalStorage() {
 	try {
