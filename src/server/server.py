@@ -491,14 +491,64 @@ def setOption(option, value):
 
 def getCurrentRaceFormat():
     if RACE.format is None:
-        val = getOption("currentFormat")
-        RACE.format = RaceFormat.query.get(val)
+        val = int(getOption('currentFormat'))
+        race_format = RaceFormat.query.get(val)
+        # create a shared instance
+        RACE.format = RHRaceFormat.copy(race_format)
+        RACE.format.id = race_format.id
     return RACE.format
 
+def getCurrentDbRaceFormat():
+    if RACE.format is None or RHRaceFormat.isDbBased(RACE.format):
+        val = int(getOption('currentFormat'))
+        return RaceFormat.query.get(val)
+    else:
+        return None
+
 def setCurrentRaceFormat(race_format):
-    if race_format.id: # stored in DB, not internal race format
-        setOption("currentFormat", race_format.id)
-    RACE.format = race_format
+    if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
+        setOption('currentFormat', race_format.id)
+        # create a shared instance
+        RACE.format = RHRaceFormat.copy(race_format)
+        RACE.format.id = race_format.id
+    else:
+        RACE.format = race_format
+
+# internal slave race format for LiveTime
+class RHRaceFormat():
+    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, number_laps_win, win_condition, team_racing_mode):
+        self.name = name
+        self.race_mode = race_mode
+        self.race_time_sec = race_time_sec
+        self.start_delay_min = start_delay_min
+        self.start_delay_max = start_delay_max
+        self.number_laps_win = number_laps_win
+        self.win_condition = win_condition
+        self.team_racing_mode = team_racing_mode
+
+    @classmethod
+    def copy(cls, race_format):
+        return RHRaceFormat(name=race_format.name,
+                            race_mode=race_format.race_mode,
+                            race_time_sec=race_format.race_time_sec,
+                            start_delay_min=race_format.start_delay_min,
+                            start_delay_max=race_format.start_delay_max,
+                            number_laps_win=race_format.number_laps_win,
+                            win_condition=race_format.win_condition,
+                            team_racing_mode=race_format.team_racing_mode)
+
+    @classmethod
+    def isDbBased(cls, race_format):
+        return hasattr(race_format, 'id')
+
+SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
+                         race_mode=1,
+                         race_time_sec=0,
+                         start_delay_min=0,
+                         start_delay_max=0,
+                         number_laps_win=0,
+                         win_condition=WIN_CONDITION_NONE,
+                         team_racing_mode=False)
 
 #
 # Authentication
@@ -1170,41 +1220,22 @@ def on_add_heat():
     server_log('Heat added: Heat {0}'.format(max_heat_id+1))
     emit_heat_data() # Settings page, new pilot position in heats
 
-@SOCKET_IO.on('set_pilot_position')
-def on_set_pilot_position(data):
-    '''Sets a new pilot in a heat.'''
+@SOCKET_IO.on('alter_heat')
+def on_alter_heat(data):
+    '''Update heat.'''
     heat = data['heat']
-    node_index = data['node']
-    pilot = data['pilot']
-    db_update = Heat.query.filter_by(heat_id=heat, node_index=node_index).first()
-    db_update.pilot_id = pilot
+    node_index = data['node'] if 'node' in data else 0
+    db_update = Heat.query.filter_by(heat_id=heat, node_index=node_index).one()
+    if 'pilot' in data:
+        db_update.pilot_id = data['pilot']
+    if 'note' in data:
+        global EVENT_RESULTS_CACHE_VALID
+        EVENT_RESULTS_CACHE_VALID = False
+        db_update.note = data['note']
+    if 'class' in data:
+        db_update.class_id = data['class']
     DB.session.commit()
-    server_log('Pilot position set: Heat {0} Node {1} Pilot {2}'.format(heat, node_index+1, pilot))
-    emit_heat_data(noself=True) # Settings page, new pilot position in heats
-
-@SOCKET_IO.on('set_heat_note')
-def on_set_heat_note(data):
-    '''Sets name of heat.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
-
-    heat = data['heat']
-    note = data['note']
-    db_update = Heat.query.filter_by(heat_id=heat, node_index=0).first()
-    db_update.note = note
-    DB.session.commit()
-    server_log('Heat note: Heat {0}'.format(heat))
-    emit_heat_data(noself=True) # Settings page, new pilot position in heats
-
-@SOCKET_IO.on('set_heat_class')
-def on_set_heat_class(data):
-    '''Sets a new pilot in a heat.'''
-    heat = data['heat']
-    class_id = data['class']
-    db_update = Heat.query.filter_by(heat_id=heat, node_index=0).first()
-    db_update.class_id = class_id
-    DB.session.commit()
-    server_log('Heat {0} set to class {1}'.format(heat, class_id))
+    server_log('Heat {0} Node {1} altered to {2}'.format(heat, node_index+1, data))
     emit_heat_data(noself=True) # Settings page, new pilot position in heats
 
 @SOCKET_IO.on('add_race_class')
@@ -1221,43 +1252,26 @@ def on_add_race_class():
     emit_class_data()
     emit_heat_data() # Update class selections in heat displays
 
-@SOCKET_IO.on('set_race_class_name')
-def on_set_race_class_name(data):
-    '''Sets race class name.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
-
+@SOCKET_IO.on('alter_race_class')
+def on_alter_race_class(data):
+    '''Update race class.'''
     race_class = data['class_id']
-    race_class_name = data['class_name']
     db_update = RaceClass.query.get(race_class)
-    db_update.name = race_class_name
+    if 'class_name' in data:
+        global EVENT_RESULTS_CACHE_VALID
+        EVENT_RESULTS_CACHE_VALID = False
+        db_update.name = data['class_name']
+    if 'class_format' in data:
+        db_update.format_id = data['class_format']
+    if 'class_description' in data:
+        db_update.description = data['class_description']
     DB.session.commit()
-    server_log('Class {0} name: {1}'.format(race_class, race_class_name))
+    server_log('Altered race class {0} to {1}'.format(race_class, data))
     emit_class_data(noself=True)
-    emit_heat_data() # Update class names in heat displays
-
-@SOCKET_IO.on('set_race_class_format')
-def on_set_race_class_format(data):
-    '''Sets race class format.'''
-    race_class = data['class_id']
-    race_class_format = data['class_format']
-    db_update = RaceClass.query.get(race_class)
-    db_update.format_id = race_class_format
-    DB.session.commit()
-    server_log('Class {0} format: {1}'.format(race_class, race_class_format))
-    emit_class_data(noself=True)
-    emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
-
-@SOCKET_IO.on('set_race_class_description')
-def on_set_race_class_name(data):
-    '''Sets race class description.'''
-    race_class = data['class_id']
-    race_class_description = data['class_description']
-    db_update = RaceClass.query.get(race_class)
-    db_update.description = race_class_description
-    DB.session.commit()
-    server_log('Class {0} description: {1}'.format(race_class, race_class_description))
-    emit_class_data(noself=True)
+    if 'class_name' in data:
+        emit_heat_data() # Update class names in heat displays
+    if 'class_format' in data:
+        emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
 
 @SOCKET_IO.on('add_pilot')
 def on_add_pilot():
@@ -1277,58 +1291,29 @@ def on_add_pilot():
     server_log('Pilot added: Pilot {0}'.format(new_pilot.id))
     emit_pilot_data()
 
-@SOCKET_IO.on('set_pilot_callsign')
-def on_set_pilot_callsign(data):
-    '''Gets pilot callsign to update database.'''
+@SOCKET_IO.on('alter_pilot')
+def on_alter_pilot(data):
+    '''Update pilot.'''
     global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
-
     pilot_id = data['pilot_id']
-    callsign = data['callsign']
     db_update = Pilot.query.get(pilot_id)
-    db_update.callsign = callsign
+    if 'callsign' in data:
+        EVENT_RESULTS_CACHE_VALID = False
+        db_update.callsign = data['callsign']
+    if 'team_name' in data:
+        db_update.team = data['team_name']
+    if 'phonetic' in data:
+        db_update.phonetic = data['phonetic']
+    if 'name' in data:
+        EVENT_RESULTS_CACHE_VALID = False
+        db_update.name = data['name']
     DB.session.commit()
-    server_log('Pilot callsign set: Pilot {0} Callsign {1}'.format(pilot_id, callsign))
-    emit_pilot_data(noself=True) # Settings page, new pilot callsign
-    emit_heat_data() # Settings page, new pilot callsign in heats
-
-@SOCKET_IO.on('set_pilot_team')
-def on_set_pilot_team(data):
-    '''Gets pilot team name to update database.'''
-    pilot_id = data['pilot_id']
-    team_name = data['team_name']
-    db_update = Pilot.query.get(pilot_id)
-    db_update.team = team_name
-    DB.session.commit()
-    server_log('Pilot team set: Pilot {0} Team {1}'.format(pilot_id, team_name))
-    emit_pilot_data(noself=True) # Settings page, new pilot team
-    #emit_heat_data() # Settings page, new pilot team in heats
-
-@SOCKET_IO.on('set_pilot_phonetic')
-def on_set_pilot_phonetic(data):
-    '''Gets pilot phonetic to update database.'''
-    pilot_id = data['pilot_id']
-    phonetic = data['phonetic']
-    db_update = Pilot.query.get(pilot_id)
-    db_update.phonetic = phonetic
-    DB.session.commit()
-    server_log('Pilot phonetic set: Pilot {0} Phonetic {1}'.format(pilot_id, phonetic))
-    emit_pilot_data(noself=True) # Settings page, new pilot phonetic
-    emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
-
-@SOCKET_IO.on('set_pilot_name')
-def on_set_pilot_name(data):
-    '''Gets pilot name to update database.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
-
-    pilot_id = data['pilot_id']
-    name = data['name']
-    db_update = Pilot.query.get(pilot_id)
-    db_update.name = name
-    DB.session.commit()
-    server_log('Pilot name set: Pilot {0} Name {1}'.format(pilot_id, name))
-    emit_pilot_data(noself=True) # Settings page, new pilot name
+    server_log('Altered pilot {0} to {1}'.format(pilot_id, data))
+    emit_pilot_data(noself=True) # Settings page, new pilot settings
+    if 'callsign' in data:
+        emit_heat_data() # Settings page, new pilot callsign in heats
+    if 'phonetic' in data:
+        emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
@@ -1363,27 +1348,17 @@ def on_delete_profile():
         setOption("currentProfile", first_profile_id)
         on_set_profile(data={ 'profile': first_profile_id })
 
-@SOCKET_IO.on('set_profile_name')
-def on_set_profile_name(data):
-    ''' update profile name '''
-    profile_name = data['profile_name']
+@SOCKET_IO.on('alter_profile')
+def on_alter_profile(data):
+    ''' update profile '''
     current_profile = int(getOption("currentProfile"))
     profile = Profiles.query.get(current_profile)
-    profile.name = profile_name
+    if 'profile_name' in data:
+        profile.name = data['profile_name']
+    if 'profile_description' in data:
+        profile.description = data['profile_description']
     DB.session.commit()
-    server_log('Set profile name %s' % (profile_name))
-    emit_node_tuning(noself=True)
-
-@SOCKET_IO.on('set_profile_description')
-def on_set_profile_description(data):
-    ''' update profile description '''
-    profile_description = data['profile_description']
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
-    profile.description = profile_description
-    DB.session.commit()
-    server_log('Set profile description %s for profile %s' %
-               (profile_name, profile.name))
+    server_log('Altered current profile to %s' % (data))
     emit_node_tuning(noself=True)
 
 @SOCKET_IO.on("set_profile")
@@ -1541,8 +1516,8 @@ def on_add_race_format():
 def on_delete_race_format():
     '''Delete profile'''
     if RACE.race_status == RACE_STATUS_READY: # prevent format change if race running
-        if (DB.session.query(RaceFormat).count() > 1): # keep one format
-            raceformat = getCurrentRaceFormat()
+        raceformat = getCurrentDbRaceFormat()
+        if raceformat and (DB.session.query(RaceFormat).count() > 1): # keep one format
             DB.session.delete(raceformat)
             DB.session.commit()
             first_raceFormat = RaceFormat.query.first()
@@ -1552,72 +1527,35 @@ def on_delete_race_format():
         server_log("format change prevented by active race")
 
 
-@SOCKET_IO.on('set_race_format_name')
-def on_set_race_format_name(data):
-    ''' update profile name '''
-    format_name = data['format_name']
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
-    race_format.name = format_name
-    DB.session.commit()
-    server_log('set format name %s' % (format_name))
-    emit_race_format()
-    emit_class_data()
-
-@SOCKET_IO.on("set_race_mode")
-def on_set_race_mode(data):
-    race_mode = data['race_mode']
-    race_format = getCurrentRaceFormat()
-    race_format.race_mode = race_mode
-    DB.session.commit()
-    server_log("set race mode to %s" % race_mode)
-
-@SOCKET_IO.on("set_fix_race_time")
-def on_set_fix_race_time(data):
-    race_time = data['race_time']
-    race_format = getCurrentRaceFormat()
-    race_format.race_time_sec = race_time
-    DB.session.commit()
-    server_log("set fixed time race to %s seconds" % race_time)
-
-@SOCKET_IO.on("set_start_delay_min")
-def on_set_start_delay_min(data):
-    start_delay_min = data['start_delay_min']
-    race_format = getCurrentRaceFormat()
-    race_format.start_delay_min = start_delay_min
-    DB.session.commit()
-    server_log("set start delay min to %s" % start_delay_min)
-
-@SOCKET_IO.on("set_start_delay_max")
-def on_set_start_delay_max(data):
-    start_delay_max = data['start_delay_max']
-    race_format = getCurrentRaceFormat()
-    race_format.start_delay_max = start_delay_max
-    DB.session.commit()
-    server_log("set start delay max to %s" % start_delay_max)
-
-@SOCKET_IO.on("set_number_laps_win")
-def on_set_number_laps_win(data):
-    number_laps_win = data['number_laps_win']
-    race_format = getCurrentRaceFormat()
-    race_format.number_laps_win = number_laps_win
-    DB.session.commit()
-    server_log("set number of laps to win to %s" % number_laps_win)
-
-@SOCKET_IO.on("set_win_condition")
-def on_set_win_condition(data):
-    win_condition = data['win_condition']
-    race_format = getCurrentRaceFormat()
-    race_format.win_condition = win_condition
-    DB.session.commit()
-    server_log("set laps wins mode to %s" % win_condition)
-
-@SOCKET_IO.on("set_team_racing_mode")
-def on_set_team_racing_mode(data):
-    team_racing_mode = data['team_racing_mode']
-    race_format = getCurrentRaceFormat()
-    race_format.team_racing_mode = (True if team_racing_mode else False)
-    DB.session.commit()
-    server_log("set team racing mode to %s" % team_racing_mode)
+@SOCKET_IO.on('alter_race_format')
+def on_alter_race_format(data):
+    ''' update race format '''
+    race_format = getCurrentDbRaceFormat()
+    if race_format:
+        emit = False
+        if 'format_name' in data:
+            race_format.name = data['format_name']
+            emit = True
+        if 'race_mode' in data:
+            race_format.race_mode = data['race_mode']
+        if 'race_time' in data:
+            race_format.race_time_sec = data['race_time']
+        if 'start_delay_min' in data:
+            race_format.start_delay_min = data['start_delay_min']
+        if 'start_delay_max' in data:
+            race_format.start_delay_max = data['start_delay_max']
+        if 'number_laps_win' in data:
+            race_format.number_laps_win = data['number_laps_win']
+        if 'win_condition' in data:
+            race_format.win_condition = data['win_condition']
+        if 'team_racing_mode' in data:
+            race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
+        DB.session.commit()
+        setCurrentRaceFormat(race_format)
+        server_log('Altered race format to %s' % (data))
+        if emit:
+            emit_race_format()
+            emit_class_data()
 
 # Race management socket io events
 
@@ -1761,6 +1699,7 @@ def on_save_laps():
     '''Save current laps data to the database.'''
     global EVENT_RESULTS_CACHE_VALID
     EVENT_RESULTS_CACHE_VALID = False
+    race_format = getCurrentRaceFormat()
     heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first()
     # Get the last saved round for the current heat
     max_round = DB.session.query(DB.func.max(SavedRaceMeta.round_id)) \
@@ -1865,7 +1804,7 @@ def on_discard_laps():
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         check_emit_team_racing_status()  # Show team-racing status info
     else:
@@ -1891,7 +1830,7 @@ def on_set_current_heat(data):
     server_log('Current heat set: Heat {0}'.format(new_heat_id))
     emit_current_heat() # Race page, to update heat selection button
     emit_leaderboard() # Race page, to update callsigns in leaderboard
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         check_emit_team_racing_status()  # Show initial team-racing status info
 
@@ -1996,7 +1935,7 @@ def on_delete_lap(data):
     server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_id))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         # update team-racing status info
         if race_format.win_condition != WIN_CONDITION_MOST_LAPS:  # if not Most Laps Wins race
@@ -2205,8 +2144,9 @@ def emit_min_lap(**params):
 
 def emit_race_format(**params):
     '''Emits race format values.'''
-    format_val = getCurrentRaceFormat()
-    has_race = SavedRaceMeta.query.filter_by(format_id=format_val.id).first()
+    race_format = getCurrentRaceFormat()
+    is_db_race_format = RHRaceFormat.isDbBased(race_format)
+    has_race = not is_db_race_format or SavedRaceMeta.query.filter_by(format_id=race_format.id).first()
     if has_race:
         locked = True
     else:
@@ -2215,15 +2155,15 @@ def emit_race_format(**params):
     emit_payload = {
         'format_ids': [raceformat.id for raceformat in RaceFormat.query.all()],
         'format_names': [raceformat.name for raceformat in RaceFormat.query.all()],
-        'current_format': format_val.id,
-        'format_name': format_val.name,
-        'race_mode': format_val.race_mode,
-        'race_time_sec': format_val.race_time_sec,
-        'start_delay_min': format_val.start_delay_min,
-        'start_delay_max': format_val.start_delay_max,
-        'number_laps_win': format_val.number_laps_win,
-        'win_condition': format_val.win_condition,
-        'team_racing_mode': 1 if format_val.team_racing_mode else 0,
+        'current_format': race_format.id if is_db_race_format else None,
+        'format_name': race_format.name,
+        'race_mode': race_format.race_mode,
+        'race_time_sec': race_format.race_time_sec,
+        'start_delay_min': race_format.start_delay_min,
+        'start_delay_max': race_format.start_delay_max,
+        'number_laps_win': race_format.number_laps_win,
+        'win_condition': race_format.win_condition,
+        'team_racing_mode': 1 if race_format.team_racing_mode else 0,
         'locked': locked
     }
     if ('nobroadcast' in params):
@@ -2939,7 +2879,7 @@ def check_emit_team_racing_status(t_laps_dict=None, **params):
 
 def emit_team_racing_stat_if_enb(**params):
     '''Emits team-racing status info if team racing is enabled.'''
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         check_emit_team_racing_status(**params)
     else:
@@ -3025,7 +2965,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
     '''Checks if pilot or team has most laps for a win.'''
     global Race_laps_winner_name
 
-    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+    race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode: # team racing mode enabled
 
              # if not passed in then determine number of laps for each team
@@ -3483,7 +3423,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         lap_time = lap_time_stamp - last_lap_time_stamp
                         lap_id = last_lap_id + 1
 
-                    race_format = RaceFormat.query.get(int(getOption('currentFormat')))
+                    race_format = getCurrentRaceFormat()
                     min_lap = int(getOption("MinLapSec"))
                     min_lap_behavior = int(getOption("MinLapBehavior"))
 
@@ -4021,7 +3961,6 @@ if not db_inited_flag:
 expand_heats()
 
 # internal slave race format for LiveTime (needs to be created after initial DB setup)
-global SLAVE_RACE_FORMAT
 SLAVE_RACE_FORMAT = RaceFormat(name=__("Slave"),
                          race_mode=1,
                          race_time_sec=0,
