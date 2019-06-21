@@ -114,6 +114,9 @@
 		$().articulate('pitch', rotorhazard.voice_pitch);
 		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
 		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
+		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
+		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
+		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
 
 		socket.on('race_scheduled', function (msg) {
 			if (msg.scheduled) {
@@ -192,18 +195,59 @@
 			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json array
 				$('#current_laps_' + i + ' tbody > tr').remove();
 				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
+					var $tr = '';
 					if (node_index.lap_id[j] == 0) {
-						var $tr = $('<tr class="lap_0">').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j])
-						).appendTo('#current_laps_' + i);
+						local_colspan = 2;
+						$tr = $('<tr class="lap_0">');
+						if(rotorhazard.display_lap_id)
+						{
+							local_colspan = 1;
+							$tr.append(
+									$('<td class="display_lap_id">').text(node_index.lap_id[j])
+							);
+						}
+						$tr.append($('<td colspan="'+local_colspan+'">').text(node_index.lap_time[j]));
 					}
 					else {
-						var $tr = $('<tr>').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j]).prepend($('<span class="from_start">').text(formatTimeMillis(node_index.lap_time_stamp[j])))
-						).appendTo('#current_laps_' + i);
+						$tr = $('<tr>')
+						local_colspan = 2;
+						if(rotorhazard.display_lap_id)
+						{
+							local_colspan = 1;
+							$tr.append(
+									$('<td class="display_lap_id">').text(node_index.lap_id[j])
+							);
+						}
+						$time_td =$('<td colspan="'+local_colspan+'">').text(node_index.lap_time[j] + ' ');
+						$local_prepend = $('<span class="from_start">')
+						if(rotorhazard.display_time_first_pass){
+								$local_prepend.text(formatTimeMillis(node_index.lap_time_stamp[j] - node_index.lap_time_stamp[0]));
+								if(rotorhazard.display_time_start){
+									$local_prepend.append("  ");
+								}
+						}
+						if(rotorhazard.display_time_start){
+							$local_prepend.append(formatTimeMillis(node_index.lap_time_stamp[j]));
+						}
+						$time_td.prepend($local_prepend);
+						$tr.append($time_td);
 					}
+					if (j && node_index.lap_raw[j] < (rotorhazard.min_lap * 1000)) {
+						$tr.addClass('min-lap-warning');
+					}
+					$tr.appendTo('#current_laps_' + i);
+					// if (node_index.lap_id[j] == 0) {
+					// 	var $tr = $('<tr class="lap_0">').append(
+					// 		$('<td>').text(node_index.lap_id[j]),
+					// 		$('<td>').text(node_index.lap_time[j])
+					// 	).appendTo('#current_laps_' + i);
+					// }
+					// else {
+					// 	var $tr = $('<tr>').append(
+					// 		$('<td>').text(node_index.lap_id[j]),
+					// 		$('<td>').text(node_index.lap_time[j]).prepend($('<span class="from_start">').text(formatTimeMillis(node_index.lap_time_stamp[j])))
+					// 	).appendTo('#current_laps_' + i);
+					// }
 				});
 			});
 		});
@@ -404,6 +448,21 @@
 			rotorhazard.voice_pitch = parseFloat($(this).val());
 			rotorhazard.saveData();
 		});
+		
+		$('#display_lap_id').change(function (event) {
+			rotorhazard.display_lap_id = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+
+		$('#display_time_start').change(function (event) {
+			rotorhazard.display_time_start = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+
+		$('#display_time_first_pass').change(function (event) {
+			rotorhazard.display_time_first_pass = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
 	});
 
 	function doSpeak(obj) {
@@ -517,6 +576,30 @@
 				</div>
 				<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
 			</li>
+		</ol>
+	</div>
+</div>
+
+<!--Display Settings-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Display Settings') }}</h2>
+	</div>
+	<div class="panel-content">
+		<p class="form-note">{{ __('Display settings apply to this device only.') }}</p>
+		<ol class="form">
+
+			<li>
+				<div class="label-block">
+					{{ __('Lap Information') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="display_lap_id"> {{ __('show Lap ID') }}</label></li>
+					<li><label><input type="checkbox" id="display_time_start"> {{ __('show time since start') }}</label></li>
+					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('show time since first pass') }}</label></li>
+				</ul>
+			</li>
+
 		</ol>
 	</div>
 </div>
