@@ -11,6 +11,7 @@
 			'all_languages',
 			'language',
 			'node_data',
+			'environmental_data',
 			'frequency_data',
 			'heat_data',
 			'class_data',
@@ -175,6 +176,33 @@
 				}
 			}
 		});
+		socket.on('environmental_data', function (msg) {
+			$('#core-temperature').html(Number(msg.core_temperature).toFixed(1));
+			env_table_html = '';
+			if (msg.aux_voltage.length > 0) {
+				env_table_html += '<tr><th>'+__('Voltage (V)')+'</th><th>'+__('Current (mA)')+'</th><th>'+__('Power (W)')+'</th></tr>';
+				for (i=0; i < msg.aux_voltage.length; i++) {
+					env_table_html += '<tr>';
+					env_table_html += '<td>' + Number(msg.aux_voltage[i]).toFixed(2) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_current[i]).toFixed(0) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_power[i]).toFixed(2) + '</td>';
+					env_table_html += '</tr>';
+				}
+			}
+			if (msg.aux_temperature.length > 0) {
+				env_table_html += '<tr><th>'+__('Temperature (°C)')+'</th><th>'+__('Humidity (%rH)')+'</th><th>'+__('Pressure (hPa)')+'</th></tr>';
+				for (i=0; i < msg.aux_temperature.length; i++) {
+					env_table_html += '<tr>';
+					env_table_html += '<td>' + Number(msg.aux_temperature[i]).toFixed(1) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_humidity[i]).toFixed(1) + '</td>';
+					env_table_html += '<td>' + Number(msg.aux_pressure[i]).toFixed(1) + '</td>';
+					env_table_html += '</tr>';
+				}
+			}
+			if (env_table_html) {
+				$('#env-data-table').html('<table>' + env_table_html + '</table>');
+			}
+		});
 
 		/* Send Message */
 		$('button#send_message').click(function (event) {
@@ -196,10 +224,6 @@
 				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
 			}
 			$('#set_profile').val(msg.current_profile);
-			var pos = logsl.position(msg.filter_ratio / 10000);
-			$('#set_filter_ratio').val(12 - pos);
-			$('#filter_value').html((msg.filter_ratio / 10000).toFixed(4));
-			$('#set_filter_ratio').val( );
 			$('#set_profile_name').val( msg.profile_name);
 			$('#set_profile_description').val( msg.profile_description);
 		});
@@ -225,14 +249,14 @@
 			var data = {
 				profile_name: $(this).val()
 			};
-			socket.emit('set_profile_name', data);
+			socket.emit('alter_profile', data);
 		})
 
 		$('#set_profile_description').change(function (event) {
 			var data = {
 				profile_description: $(this).val()
 			};
-			socket.emit('set_profile_description', data);
+			socket.emit('alter_profile', data);
 		})
 
 		/* Frequency Setup */
@@ -316,7 +340,7 @@
 			$('#set_enter_at_level_' + msg.node_index).val(msg.level);
 			rotorhazard.nodes[msg.node_index].enter_at_level = msg.level;
 
-			$('#node_notice_' + i).html(rotorhazard.nodes[i].checkValues());
+			$('#node_notice_' + i).html(rotorhazard.nodes[msg.node_index].checkValues());
 			rotorhazard.nodes[msg.node_index].updateThresholds();
 		});
 
@@ -324,7 +348,7 @@
 			$('#set_exit_at_level_' + msg.node_index).val(msg.level);
 			rotorhazard.nodes[msg.node_index].exit_at_level = msg.level;
 
-			$('#node_notice_' + i).html(rotorhazard.nodes[i].checkValues());
+			$('#node_notice_' + i).html(rotorhazard.nodes[msg.node_index].checkValues());
 			rotorhazard.nodes[msg.node_index].updateThresholds();
 		});
 
@@ -421,22 +445,16 @@
 		});
 
 
-		$('#set_filter_ratio').on('input', function (event) {
-			var val = logsl.value(12 - $(this).val());
-			$('#filter_value').html(val.toFixed(4));
-		});
-
-		$('#set_filter_ratio').change(function (event) {
-			var val = logsl.value(12 - $(this).val());
-			val = (val * 10000).toFixed(0);
-			var data = {
-				filter_ratio: parseInt(val),
-			}
-			socket.emit('set_filter_ratio', data);
-		});
-
 		/* Heats */
 		socket.on('heat_data', function (msg) {
+			msg.pilot_data.sort(function(a, b){
+				if (a.name < b.name)
+					return -1;
+				if (a.name > b.name)
+					return 1;
+				return 0;
+			});
+
 			$(".heats").empty();
 			for (var i in msg.heats) {
 				var heats = msg.heats[i];
@@ -456,8 +474,8 @@
 					// pilot selectors
 					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" >')
 					selectbox.append('<option value="0">None</option>')
-						for (var k in msg.pilot_data.pilot_id) {
-							selectbox.append('<option value="' + msg.pilot_data.pilot_id[k] + '">' + msg.pilot_data.callsign[k] + ' (' + msg.pilot_data.name[k] + ')</option>')
+						for (var k in msg.pilot_data) {
+							selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
 						}
 					selectbox.val(heatpilot);
 					selectbox.prop('disabled', heats.locked);
@@ -493,7 +511,7 @@
 				heat: parseInt($(this).data('heat')),
 				note: $(this).val(),
 			};
-			socket.emit('set_heat_note', data);
+			socket.emit('alter_heat', data);
 		});
 
 		$(document).on("change", '.set_pilot_position', function (event) {
@@ -502,7 +520,7 @@
 				node: parseInt($(this).data('node')),
 				pilot: parseInt($(this).val())
 			};
-			socket.emit('set_pilot_position', data);
+			socket.emit('alter_heat', data);
 		});
 
 		$(document).on("change", '.set_heat_class', function (event) {
@@ -510,7 +528,7 @@
 				heat: parseInt($(this).data('heat')),
 				class: $(this).val(),
 			};
-			socket.emit('set_heat_class', data);
+			socket.emit('alter_heat', data);
 		});
 
 		$('button#add_heat').click(function (event) {
@@ -559,7 +577,7 @@
 				class_id: parseInt($(this).data('class_id')),
 				class_name: $(this).val(),
 			};
-			socket.emit('set_race_class_name', data);
+			socket.emit('alter_race_class', data);
 		});
 
 		$(document).on("change", '.set_race_class_format', function (event) {
@@ -567,7 +585,7 @@
 				class_id: parseInt($(this).data('class_id')),
 				class_format: $(this).val(),
 			};
-			socket.emit('set_race_class_format', data);
+			socket.emit('alter_race_class', data);
 		});
 
 		$(document).on("change", '.set_race_class_description', function (event) {
@@ -575,7 +593,7 @@
 				class_id: parseInt($(this).data('class_id')),
 				class_description: $(this).val(),
 			};
-			socket.emit('set_race_class_description', data);
+			socket.emit('alter_race_class', data);
 		});
 
 		$('button#add_race_class').click(function (event) {
@@ -586,45 +604,37 @@
 		/* Pilots */
 		socket.on('pilot_data', function (msg) {
 			$(".pilots").empty();
-			for (var i in msg.pilot_id) {
-				if (msg.pilot_id[i] != 0) {
-					var el = $('<li data-id="' + msg.pilot_id[i] + '">');
-					el.append('<label for="name_' + msg.pilot_id[i] + '" class="screen-reader-text">' + __('Name') + '</label>');
-					el.append('<input type="text" class="set_pilot_name" id="name_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.name[i] + '" placeholder="' + __('Name') +'">');
-					el.append('<label for="callsign_' + msg.pilot_id[i] + '" class="screen-reader-text">' + __('Callsign') + '</label>');
-					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.callsign[i] + '" placeholder="' + __('Callsign') +'">');
-					el.append('<label for="phonetic_' + msg.pilot_id[i] + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
+			for (var i in msg.pilots) {
+				if (msg.pilots[i].pilot_id != 0) {
+					var el = $('<li data-id="' + msg.pilots[i].pilot_id + '">');
+					el.append('<label for="name_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
+					el.append('<input type="text" class="set_pilot_name" id="name_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].name + '" placeholder="' + __('Name') +'">');
+					el.append('<label for="callsign_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
+					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].callsign + '" placeholder="' + __('Callsign') +'">');
+					el.append('<label for="phonetic_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
 					var phonetic = $('<div class="phonetic">');
-					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '" value="' + msg.phonetic[i] + '" placeholder="' + __('Phonetic') + '">');
-					phonetic.append('<button class="speak_pilot" data-pilot_id="' + msg.pilot_id[i] + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].phonetic + '" placeholder="' + __('Phonetic') + '">');
+					phonetic.append('<button class="speak_pilot" data-pilot_id="' + msg.pilots[i].pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
-					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilot_id[i] + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilot_id[i] + '" data-pilot_id="' + msg.pilot_id[i] + '">' + msg.team_options[i] + '</select></div>');
+					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilots[i].pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '">' + msg.pilots[i].team_options + '</select></div>');
 
 					el.appendTo($('.pilots'));
 				}
 			}
 
+			msg.pilots.sort(function(a, b){
+				if (a.name < b.name)
+					return -1;
+				if (a.name > b.name)
+					return 1;
+				return 0;
+			});
+
 			$('.set_pilot_position').each(function(){
 				$(this).empty();
-				var pilots = []
-				for (i = 0; i < msg.callsign.length; i++) {
-					pilots.push({
-						id: msg.pilot_id[i],
-						name: msg.name[i],
-						callsign: msg.callsign[i]
-					})
-				}
 
-				pilots.sort(function(a, b){
-					if (a.name < b.name)
-						return -1;
-					if (a.name > b.name)
-						return 1;
-					return 0;
-				});
-
-				for (var i in pilots) {
-					$(this).append('<option value="'+ pilots[i].id + '">' + pilots[i].callsign + ' (' + pilots[i].name + ')</option>');
+				for (var i in msg.pilots) {
+					$(this).append('<option value="'+ msg.pilots[i].id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>');
 				}
 			});
 		});
@@ -638,7 +648,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				name: $(this).val()
 			};
-			socket.emit('set_pilot_name', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("focus", '.set_pilot_callsign', function(){
@@ -650,7 +660,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				callsign: $(this).val()
 			};
-			socket.emit('set_pilot_callsign', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("change", '.set_pilot_team', function (event) {
@@ -658,7 +668,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				team_name: $(this).val()
 			};
-			socket.emit('set_pilot_team', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("focus", '.set_pilot_phonetic', function(){
@@ -670,7 +680,7 @@
 				pilot_id: parseInt($(this).data('pilot_id')),
 				phonetic: $(this).val()
 			};
-			socket.emit('set_pilot_phonetic', data);
+			socket.emit('alter_pilot', data);
 		})
 
 		$(document).on("click", 'button.speak_pilot', function (event) {
@@ -860,7 +870,7 @@
 			var data = {
 				team_racing_mode: parseInt($(this).val())  // 0=disabled, 1=enabled
 			};
-			socket.emit('set_team_racing_mode', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		socket.on('race_format', function (msg) {
@@ -870,6 +880,7 @@
 			}
 			$('#set_race_format').val(msg.current_format);
 			$('#set_format_name').val(msg.format_name);
+			$('#set_format_name').prop('disabled', msg.locked);
 			$('#set_race_mode').val(msg.race_mode);
 			$('#set_race_mode').prop('disabled', msg.locked);
 			$('#set_fix_race_time').val(msg.race_time_sec);
@@ -909,21 +920,21 @@
 			var data = {
 				format_name: $(this).val()
 			};
-			socket.emit('set_race_format_name', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_race_mode').change(function (event) {
 			var data = {
 				race_mode: parseInt($(this).val())
 			};
-			socket.emit('set_race_mode', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_fix_race_time').change(function (event) {
 			var data = {
 				race_time: parseInt($(this).val())
 			};
-			socket.emit('set_fix_race_time', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_hide_stage_timer').change(function (event) {
@@ -937,28 +948,28 @@
 			var data = {
 				start_delay_min: parseInt($(this).val())
 			};
-			socket.emit('set_start_delay_min', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_start_delay_max').change(function (event) {
 			var data = {
 				start_delay_max: parseInt($(this).val())
 			};
-			socket.emit('set_start_delay_max', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_number_laps_win').change(function (event) {
 			var data = {
 				number_laps_win: parseInt($(this).val())
 			};
-			socket.emit('set_number_laps_win', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_win_condition').change(function (event) {
 			var data = {
 				win_condition: parseInt($(this).val())
 			};
-			socket.emit('set_win_condition', data);
+			socket.emit('alter_race_format', data);
 		})
 
 		$('button#backup_database').click(function (event) {
@@ -1212,7 +1223,7 @@
 	<div class="panel-header">
 		<h2>{{ __('Sensor Tuning') }}</h2>
 	</div>
-	<div class="panel-content">
+	<div class="panel-content full-width">
 		<ul class="graph-key">
 			<li><span style="background-color: hsl(214, 53%, 60%)"></span> {{ __('RSSI') }}</li>
 			<li><span style="background-color: hsl(8.2, 86.5%, 53.7%)"></span> {{ __('EnterAt') }}</li>
@@ -1246,7 +1257,6 @@
 						<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
 					</div>
 				</div>
-				<div id="node_notice_{{ node }}"></div>
 				<table>
 					<tr class="datarow">
 						<td>{{ __('RSSI') }}</td>
@@ -1285,19 +1295,13 @@
 						</td>
 					</tr>
 				</table>
+				<div id="node_notice_{{ node }}"></div>
 			</div>
 			{% endfor %}
 		</div>
 
 		<!--Edit system tuning values-->
 		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_filter_ratio">{{ __('RSSI Smoothing') }}</label>
-					<p class="desc">{{ __('Filter Ratio') }}: <span id="filter_value"></span></p>
-				</div>
-				<input type="range" id="set_filter_ratio" min="0" max="12" step="1">
-			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_recovery_max_offset">{{ __('Missed Lap Offset') }}</label>
@@ -1664,6 +1668,13 @@
 		<h2>{{ __('System') }}</h2>
 	</div>
 	<div class="panel-content">
+		<div class="control-set">
+		{{ __('Core temperature:') }} <span id="core-temperature"></span>{{ __('°C') }}
+		</div>
+		<br />
+		<div id="env-data-table" class="control-set">
+		</div>
+		<br />
 		<div class="control-set">
 			<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
 			{% if Debug %}<a href="/hardwarelog" class="debug button-like">{{ __('Log') }}</a>{% endif %}

@@ -1,3 +1,7 @@
+var sound_buzzer = $('#sound_buzzer')[0];
+var sound_beep = $('#sound_beep')[0];
+var sound_stage = $('#sound_stage')[0];
+
 /* global functions */
 function supportsLocalStorage() {
 	try {
@@ -16,6 +20,22 @@ function median(arr){
 	var half = Math.floor(values.length / 2);
 	if (values.length % 2) return values[half];
 	return (values[half - 1] + values[half]) / 2.0;
+}
+
+function formatTimeMillis(s) {
+	// Pad to 2 or 3 digits, default is 2
+	function pad(n, z) {
+	z = z || 2;
+		return ('00' + n).slice(-z);
+	}
+
+	s = Math.round(s);
+	var ms = s % 1000;
+	s = (s - ms) / 1000;
+	var secs = s % 60;
+	var mins = (s - secs) / 60;
+
+	return mins + ':' + pad(secs) + '.' + pad(ms, 3);
 }
 
 function convertColor(color) {
@@ -463,6 +483,10 @@ function nodeModel() {
 }
 nodeModel.prototype = {
 	checkValues: function(){
+		if (!this.frequency) {
+			return null;
+		}
+
 		var warnings = [];
 
 		if (this.node_nadir_rssi > 0 && this.node_nadir_rssi < this.node_peak_rssi - 40) {
@@ -602,6 +626,7 @@ function timerModel() {
 			var drift = now - self.expected;
 			if (drift > self.interval) {
 				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
+				self.callbacks.self_resync();
 				self.start();
 			} else {
 				self.get_next_step(now);
@@ -737,17 +762,25 @@ var rotorhazard = {
 	voice_lap_time: true, // speak lap times
 	voice_race_timer: true, // speak race timer
 	voice_race_winner: true, // speak race winner
+
 	tone_volume: 1.0, // race stage/start tone volume
 	beep_crossing_entered: false, // beep node crossing entered
 	beep_crossing_exited: false, // beep node crossing exited
 	beep_manual_lap_button: false, // beep when manual lap button bit
+	use_mp3_tones: false, //use mp3 tones instead of synthetic tones during Races
 	beep_on_first_pass_button: false, // beep during the first pass where not voice announcment is played
+
+	schedule_m: 0, //time in minutes for scheduled races
+	schedule_s: 10, //time in minutes for scheduled races
 	indicator_beep_volume: 0.5, // indicator beep volume
+
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
 	graphing: false, // currently graphing RSSI
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array
+
+	panelstates: {}, // collapsible panel state
 
 	// all times in ms (decimal micros if available)
 	pi_time_request: false,
@@ -757,7 +790,6 @@ var rotorhazard = {
 
 	timer: {
 		deferred: new timerModel(),
-		staging: new timerModel(),
 		race: new timerModel(),
 		stopAll: function() {
 			this.deferred.stop();
@@ -783,7 +815,10 @@ var rotorhazard = {
 		localStorage['rotorhazard.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
 		localStorage['rotorhazard.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
 		localStorage['rotorhazard.beep_manual_lap_button'] = JSON.stringify(this.beep_manual_lap_button);
+		localStorage['rotorhazard.use_mp3_tones'] = JSON.stringify(this.use_mp3_tones);
 		localStorage['rotorhazard.beep_on_first_pass_button'] = JSON.stringify(this.beep_on_first_pass_button);
+		localStorage['rotorhazard.schedule_m'] = JSON.stringify(this.schedule_m);
+		localStorage['rotorhazard.schedule_s'] = JSON.stringify(this.schedule_s);
 		localStorage['rotorhazard.indicator_beep_volume'] = JSON.stringify(this.indicator_beep_volume);
 		localStorage['rotorhazard.min_lap'] = JSON.stringify(this.min_lap);
 		localStorage['rotorhazard.admin'] = JSON.stringify(this.admin);
@@ -837,8 +872,17 @@ var rotorhazard = {
 			if (localStorage['rotorhazard.beep_manual_lap_button']) {
 				this.beep_manual_lap_button = JSON.parse(localStorage['rotorhazard.beep_manual_lap_button']);
 			}
+			if (localStorage['rotorhazard.use_mp3_tones']) {
+				this.use_mp3_tones = JSON.parse(localStorage['rotorhazard.use_mp3_tones']);
+			}
 			if (localStorage['rotorhazard.beep_on_first_pass_button']) {
 				this.beep_on_first_pass_button = JSON.parse(localStorage['rotorhazard.beep_on_first_pass_button']);
+			}
+			if (localStorage['rotorhazard.schedule_m']) {
+				this.schedule_m = JSON.parse(localStorage['rotorhazard.schedule_m']);
+			}
+			if (localStorage['rotorhazard.schedule_s']) {
+				this.schedule_s = JSON.parse(localStorage['rotorhazard.schedule_s']);
 			}
 			if (localStorage['rotorhazard.indicator_beep_volume']) {
 				this.indicator_beep_volume = JSON.parse(localStorage['rotorhazard.indicator_beep_volume']);
@@ -866,22 +910,24 @@ rotorhazard.timer.deferred.callbacks.start = function(timer){
 }
 rotorhazard.timer.deferred.callbacks.step = function(timer){
 	if (rotorhazard.voice_race_timer) {
-		if (timer.time_s > 3600 && !(timer.time_s % 3600)) { // 2+ hour callout
-			var hours = timer.time_s / 3600;
+		if (timer.time_s < -3600 && !(timer.time_s % -3600)) { // 2+ hour callout
+			var hours = timer.time_s / -3600;
 			speak('<div>' + __l('Next race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
-		} else if (timer.time_s == 3600) {
+		} else if (timer.time_s == -3600) {
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Hour') + '</div>', true);
-		} else if (timer.time_s == 1800) {
+		} else if (timer.time_s == -1800) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_s > 60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
-			var minutes = timer.time_s / 60;
+		} else if (timer.time_s > -60 && timer.time_s <= 300 && !(timer.time_s % 60)) { // 2–5 min callout
+			var minutes = timer.time_s / -60;
 			speak('<div>' + __l('Next race begins in') + ' ' + minutes + ' ' + __l('Minutes') + '</div>', true);
-		} else if (timer.time_s == 60) {
+		} else if (timer.time_s == -60) {
 			speak('<div>' + __l('Next race begins in') + ' 1 ' + __l('Minute') + '</div>', true);
-		} else if (timer.time_s == 30) {
+		} else if (timer.time_s == -30) {
 			speak('<div>' + __l('Next race begins in') + ' 30 ' + __l('Seconds') + '</div>', true);
-		} else if (timer.time_s == 10) {
+		} else if (timer.time_s == -10) {
 			speak('<div>' + __l('Next race begins in') + ' 10 ' + __l('Seconds') + '</div>', true);
+		}else if (timer.time_s == -5) {
+			speak('<div>' + __l('Next race begins in') + ' 5 ' + __l('Seconds') + '</div>', true);
 		}
 	}
 
@@ -904,7 +950,12 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 		if (timer.hidden_staging) {
 			// beep every second during staging if timer is hidden
 			if (timer.time_s * 10 % 10 == 0) {
-				play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+				if( rotorhazard.use_mp3_tones){
+					sound_stage.play();
+				}
+				else {
+					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+				}
 			}
 		} else if (timer.time_s == 30
 			|| timer.time_s == 20
@@ -913,19 +964,34 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 		} else if (timer.time_s <= 5) {
 			// staging beep for last 5 seconds before start
 			if (timer.time_s * 10 % 10 == 0) {
-				play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+				if( rotorhazard.use_mp3_tones){
+					sound_stage.play();
+				}
+				else {
+					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+				}
 			}
 		}
 	} else if (timer.time_s == 0 ||
 		(!timer.count_up && timer.time_s == timer.duration)
 		) {
 		// play start tone
-		play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+		if( rotorhazard.use_mp3_tones){
+			sound_buzzer.play();
+		}
+		else {
+			play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+		}
 	} else {
 		if (!timer.count_up) {
 			if (timer.time_s <= 5) { // Final seconds
 				if (timer.time_s * 10 % 10 == 0) {
-					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+					if( rotorhazard.use_mp3_tones){
+						sound_stage.play();
+					}
+					else {
+						play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+					}
 				}
 			} else if (timer.time_s == 10) { // announce 10s only when counting down
 				if (rotorhazard.voice_race_timer)
@@ -955,8 +1021,16 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 }
 rotorhazard.timer.race.callbacks.expire = function(timer){
 	// play expired tone
-	play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+	if( rotorhazard.use_mp3_tones){
+		sound_buzzer.play();
+	}
+	else {
+		play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
+	}
 	$('.timing-clock').html(timer.renderHTML());
+}
+rotorhazard.timer.race.callbacks.self_resync = function(timer){
+	// display resync warning
 }
 
 /* global page behaviors */
@@ -1062,14 +1136,22 @@ jQuery(document).ready(function($){
 	$('table').wrap('<div class="table-wrap">');
 
 	// Panel collapsing
+
 	$(document).on('click', '.collapsing .panel-header', function() {
 		var thisitem = $(this).parent();
+		var this_id = thisitem.attr('id')
 		if (thisitem.hasClass('open')) {
 			thisitem.removeClass('open');
 			thisitem.children('.panel-content').stop().slideUp();
+			if (this_id) {
+				rotorhazard.panelstates[this_id] = false;
+			}
 		} else {
 			thisitem.addClass('open');
 			thisitem.children('.panel-content').stop().slideDown();
+			if (this_id) {
+				rotorhazard.panelstates[this_id] = true;
+			}
 		}
 	});
 
@@ -1130,6 +1212,19 @@ jQuery(document).ready(function($){
 			}
 		});
 	});
+
+	document.onkeyup = function(e) {
+		if (e.which == 27) {
+			if ($('#banner-msg').is(':visible')) {
+				$('#banner-msg').slideUp(400, function(){
+					standard_message_queue.shift()
+					if (standard_message_queue.length) {
+						get_standard_message()
+					}
+				});
+			}
+		}
+	};
 });
 }
 

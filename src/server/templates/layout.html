@@ -20,6 +20,12 @@
 	<meta name="msapplication-config" content="/static/image/browserconfig.xml">
 	<meta name="theme-color" content="#224873">
 
+	<audio id="sound_buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
+	<audio id="sound_beep" src="./static/audio/beep.mp3" type="audio/mp3"></audio>
+	<audio id="sound_stage" src="./static/audio/stage.mp3" type="audio/mp3"></audio>
+	<audio id="sound_enter" src="./static/audio/enter.mp3" type="audio/mp3"></audio>
+	<audio id="sound_exit" src="./static/audio/exit.mp3" type="audio/mp3"></audio>
+
 	<!-- Scripts -->
 	<script type="text/javascript" src="./static/jquery-3.2.1/jquery.min.js"></script>
 	<script type="text/javascript" src="./static/articulate/articulate.min.js"></script>
@@ -69,6 +75,7 @@
 				<li><a href="/laps">{{ __("Lap Statistics") }}</a></li>
 				<li><a href="/current">{{ __("Current") }}</a></li>
 				<li class="admin-hide"><a href="/race">{{ __("Run") }}</a></li>
+				<li class="admin-hide"><a href="/marshal">{{ __("Marshal") }}</a></li>
 				<li class="admin-hide"><a href="/settings">{{ __("Settings") }}</a></li>
 				<li class="extra">
 					<a href="#">...</a>

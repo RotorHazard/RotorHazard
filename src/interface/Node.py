@@ -12,7 +12,8 @@ class Node:
         self.pass_peak_rssi = 0
         self.pass_nadir_rssi = 0
         self.last_lap_id = -1
-        self.lap_ms_since_start = -1
+        # self.lap_ms_since_start = -1
+        self.lap_timestamp = -1
         self.loop_time = 10
         self.crossing_flag = False
         self.debug_pass_count = 0
