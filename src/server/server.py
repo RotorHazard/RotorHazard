@@ -3299,7 +3299,7 @@ def emit_laps_statistic_data(**params):
     pilot_details_array = []
 
     #get the 10 fastes laps from the database, ignore all laps with lap id 0 because those are the initial passes
-    for lap in SavedRace.query.filter(SavedRace.lap_id!=0).order_by(SavedRace.lap_time):
+    for lap in SavedRaceLap.query.filter(SavedRaceLap.id!=0).order_by(SavedRaceLap.lap_time):
         tmp_row = []
         tmp_row.append(Pilot.query.filter(Pilot.id==lap.pilot_id)[0].name)
         tmp_row.append(lap.lap_time_formatted)
@@ -3311,7 +3311,7 @@ def emit_laps_statistic_data(**params):
     #loop thouh all plilots to gets statistics for each one of them
     for pilot in Pilot.query:
         #get the number of laps for the current pilot
-         laps_current_pilot = SavedRace.query.filter(SavedRace.lap_id!=0, SavedRace.pilot_id==pilot.id).count()
+         laps_current_pilot = SavedRaceLap.query.filter(SavedRaceLap.id!=0, SavedRaceLap.pilot_id==pilot.id).count()
          laps_per_pilot[pilot.id] = laps_current_pilot
          pilot_details = []
          pilot_details.append(pilot.name)
@@ -3323,7 +3323,7 @@ def emit_laps_statistic_data(**params):
          fastes_lap = 0
          pilot_all_laps =[]
          #query all laps for the pilot orderd by laptime
-         for lap in SavedRace.query.filter(SavedRace.lap_id!=0,SavedRace.pilot_id==pilot.id).order_by(SavedRace.lap_time):
+         for lap in SavedRaceLap.query.filter(SavedRaceLap.id!=0,SavedRaceLap.pilot_id==pilot.id).order_by(SavedRaceLap.lap_time):
              lapcount = lapcount +1
              pilot_all_laps.append(lap.lap_time_formatted)
              if lapcount == 1 :
@@ -4149,4 +4149,3 @@ if __name__ == '__main__':
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
-
