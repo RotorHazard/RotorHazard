@@ -382,7 +382,7 @@ class RHInterface(BaseHardwareInterface):
                                             node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                             node.history_values.append(peakRssi)
                                             node.history_times.append(readtime - (peakLastTime / 1000.0))
-                                        else if peakFirstTime == peakLastTime:
+                                        elif peakFirstTime == peakLastTime:
                                             node.history_values.append(peakRssi)
                                             node.history_times.append(readtime - (peakLastTime / 1000.0))
                                         else:
@@ -400,7 +400,7 @@ class RHInterface(BaseHardwareInterface):
                                             node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                             node.history_values.append(peakRssi)
                                             node.history_times.append(readtime - (peakLastTime / 1000.0))
-                                        else if peakFirstTime == peakLastTime:
+                                        elif peakFirstTime == peakLastTime:
                                             node.history_values.append(peakRssi)
                                             node.history_times.append(readtime - (peakLastTime / 1000.0))
                                         else:
@@ -414,7 +414,7 @@ class RHInterface(BaseHardwareInterface):
                                         node.history_times.append(readtime - (peakFirstTime / 1000.0))
                                         node.history_values.append(peakRssi)
                                         node.history_times.append(readtime - (peakLastTime / 1000.0))
-                                    else if peakFirstTime == peakLastTime:
+                                    elif peakFirstTime == peakLastTime:
                                         node.history_values.append(peakRssi)
                                         node.history_times.append(readtime - (peakLastTime / 1000.0))
                                     else:
