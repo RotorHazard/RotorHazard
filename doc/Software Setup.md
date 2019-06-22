@@ -81,7 +81,7 @@ cd /home/pi/RotorHazard/src
 sudo chmod 777 server
 ```
 
-### WS2812b LED Support
+### WS2812b LED Support (mandatory)
 The ws2812b controls are provided by the following project:
 https://github.com/jgarff/rpi_ws281x
 
