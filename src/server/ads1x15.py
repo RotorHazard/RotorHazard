@@ -269,7 +269,7 @@ if __name__ == "__main__":
 		gains = [1,], 				
 		R1_Values = [22,], 			
 		R2_Values =  [3.3,],		
-		address = 0x49,					
+		address = 0x48,					
 		correction_factors = [1.01045,]
 	)
 	
