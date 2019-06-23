@@ -201,7 +201,7 @@
 					else {
 						var $tr = $('<tr>').append(
 							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j])
+							$('<td>').text(node_index.lap_time[j]).prepend($('<span class="from_start">').text(formatTimeMillis(node_index.lap_time_stamp[j])))
 						).appendTo('#current_laps_' + i);
 					}
 				});
@@ -303,12 +303,20 @@
 		});
 
 		socket.on('pilot_data', function (msg) {
+			msg.pilots.sort(function(a, b){
+				if (a.name < b.name)
+					return -1;
+				if (a.name > b.name)
+					return 1;
+				return 0;
+			});
+
 			var voices = $("#voice-calls");
 			voices.empty();
 			voices.append('<option value="-1">' + __('None') + '</option>');
 			voices.append('<option value="0">' + __('All') + '</option>');
-			for (var i in msg.pilot_id) {
-				voices.append('<option value="' + msg.pilot_id[i] + '">' + msg.callsign[i] + ' (' + msg.name[i] + ')</option>')
+			for (var i in msg.pilots) {
+				voices.append('<option value="' + msg.pilots[i].pilot_id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>')
 			}
 			voices.val(rotorhazard.primaryPilot);
 		});
@@ -420,7 +428,7 @@
 <div class="panel">
 	<div class="panel-content">
 		<div class="timer">
-			<div class="timing-clock">--:--</div>
+			<div class="timing-clock"><div class="warning" title="{{ __('Browser Sync Loss') }}">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
 		</div>
 
 		<h2 class="current_heat">{{ __('Loading...') }}</h2>

@@ -11,7 +11,14 @@ body {
 	font-family: sans-serif;
 	margin: 0;
 	padding: 0;
-	overflow-x: hidden;
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+}
+
+body>* {
+	width: 100%;
+	box-sizing: border-box;
 }
 
 a {
@@ -77,6 +84,10 @@ table {
 	border-collapse: collapse;
 	min-width: 100%;
 	border: solid 1px #d1d3d4;
+}
+
+th {
+	white-space: nowrap;
 }
 
 th, td {
@@ -293,7 +304,11 @@ ol.form li+li {
 }
 
 .panel-content {
-	padding: 0 0 1em;
+	padding: 1em 0 1em;
+}
+
+.panel-header + .panel-content {
+	padding-top: 0;
 }
 
 .panel-content.full-width {
@@ -633,6 +648,7 @@ main.page-home {
 	font-family: monospace;
 	font-weight: bold;
 	margin: 0.5rem 0;
+	position: relative;
 }
 
 .race-running .timing-clock {
@@ -646,6 +662,12 @@ main.page-home {
 .timing-clock.staging {
 	background: hsl(25, 85%, 55%);
 	color: #000;
+}
+
+.timing-clock .warning {
+	position: absolute;
+	left: 0.25em;
+	line-height: 1.3;
 }
 
 .round {
@@ -1066,6 +1088,15 @@ main.page-home {
 	background: #eee;
 }
 
+.from_start {
+	display: block;
+	font-size: 0.75em;
+}
+
+.lap-deleted {
+	background: #eee;
+}
+
 .btn-danger {
 	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
 	background: hsl(8.2, 86.5%, 53.7%);
@@ -1310,7 +1341,68 @@ button .wide {
 	}
 }
 
+/* Marshaling */
+
+#race-graph {
+	background: #333;
+}
+
+#race-display {
+	display: flex;
+	flex-wrap: wrap;
+	margin: 0 -0.5em;
+}
+
+#race-header {
+	width: 100%;
+	margin: 0 0.5em;
+}
+
+#race-view {
+	flex: 1 1 24em;
+	margin: 0 0.5em 1em;
+}
+
+.sidebar-controls {
+	flex: 0 1 11em;
+	margin: 0 0.5em;
+}
+
+.control-block {
+	margin: 0 0 1em;
+}
+
+.control-block h3 {
+	margin: 0 0 0.5em;
+	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_low));
+	color: var(--contrast_1_low);
+}
+
+.control-block button {
+	margin-top: 0.5em;
+	display: inline-block;
+}
+
+@media (max-width: 48em) {
+	.sidebar-controls {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-start;
+		align-items: flex-start;
+		flex: 1 1 auto;
+		margin: 0 0.25em;
+		display: flex;
+		flex-wrap: wrap;
+	}
+
+	.control-block {
+		flex: 0 1 11em;
+		margin: 0 0.25em 1em;
+	}
+}
+
 footer {
+	margin-top: auto;
 	text-align: center;
 	font-size: 0.75em;
 }

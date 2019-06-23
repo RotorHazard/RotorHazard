@@ -99,6 +99,21 @@ cd python
 sudo python setup.py install
 ```
 
+### INA219 Voltage/Current Support (optional)
+The ina219 interface is provided by the following project:
+https://github.com/chrisb2/pi_ina219
+
+Clone the repository onto the Pi:
+```
+cd ~
+sudo git clone https://github.com/chrisb2/pi_ina219.git
+cd pi_ina219
+```
+Install the Python library:
+```
+sudo python setup.py install
+```
+
 ### BME280 Temperature Support (optional)
 The bme280 interface is provided by the following project:
 https://github.com/rm-hull/bme280

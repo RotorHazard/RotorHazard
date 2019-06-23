@@ -31,17 +31,21 @@ template <typename T, uint8_t N, T default_value> class FastRunningMedian {
 public:
 	FastRunningMedian() {
 		_buffer_ptr = N;
-		_window_size = N;
 		_median_ptr = N/2;
+		_unfilled = N;
 
 		// Init buffers
-		uint8_t i = _window_size;
+		uint8_t i = N;
 		while( i > 0 ) {
 			i--;
 			_inbuffer[i] = default_value;
 			_sortbuffer[i] = default_value;
 		}
 	};
+
+	bool isFilled() {
+		return _unfilled == 0;
+	}
 
 	T getMedian() {
 		// buffers are always sorted.
@@ -50,9 +54,12 @@ public:
 
 
 	void addValue(T new_value) {
+		if (_unfilled != 0)
+			_unfilled--;
+
 		// comparision with 0 is fast, so we decrement _buffer_ptr
 		if (_buffer_ptr == 0)
-			_buffer_ptr = _window_size;
+			_buffer_ptr = N;
 
 		_buffer_ptr--;
 
@@ -63,7 +70,7 @@ public:
 		_inbuffer[_buffer_ptr] = new_value;  // fill the new value in the cyclic buffer
 
 		// search the old_value in the sorted buffer
-		uint8_t i = _window_size;
+		uint8_t i = N;
 		while(i > 0) {
 			i--;
 			if (old_value == _sortbuffer[i])
@@ -76,7 +83,7 @@ public:
 		// the sortbuffer is always sorted, except the [i]-element..
 		if (new_value > old_value) {
 			//  if the new value is bigger than the old one, make a bubble sort upwards
-			for(uint8_t p=i, q=i+1; q < _window_size; p++, q++) {
+			for(uint8_t p=i, q=i+1; q < N; p++, q++) {
 				// bubble sort step
 				if (_sortbuffer[p] > _sortbuffer[q]) {
 					T tmp = _sortbuffer[p];
@@ -105,10 +112,10 @@ public:
 private:
 	// Pointer to the last added element in _inbuffer
 	uint8_t _buffer_ptr;
-	// sliding window size
-	uint8_t _window_size;
 	// position of the median value in _sortbuffer
 	uint8_t _median_ptr;
+	// number of unfilled entries in the buffer
+	uint8_t _unfilled;
 
 	// cyclic buffer for incoming values
 	T _inbuffer[N];

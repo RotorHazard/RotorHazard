@@ -5,12 +5,12 @@ class BaseHardwareInterface(object):
         self.calibration_threshold = 20
         self.calibration_offset = 10
         self.trigger_threshold = 20
-        self.start_time = monotonic()
+        self.start_time = 1000*monotonic() # millis
         self.filter_ratio = 50
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
-       return monotonic() - self.start_time
+       return 1000*(monotonic() - self.start_time)
 
     #
     # Get Json Node Data Functions
