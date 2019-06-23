@@ -11,6 +11,7 @@ from monotonic import monotonic # to capture read timing, pip install monotonic 
 from Node import Node
 from BaseHardwareInterface import BaseHardwareInterface
 
+
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
 READ_LAP_STATS = 0x05
@@ -196,8 +197,8 @@ class RHInterface(BaseHardwareInterface):
                         R1_Values = [22,22,22,22], 	#todo get these from a RH config file		
                         R2_Values =  [3.3,3.3,3.3,3.3],	#todo get these from a RH config file	
                         address = addr,					
-                        correction_factors = [1.00,1.00,1.00,1.00] #todo get these from a RH config file
-                        debug_print = True
+                        correction_factors = [1.00,1.00,1.00,1.00], #todo get these from a RH config file
+                        debug_print = False,
                     )
                     if device.found_device == False:
                         raise IOError
@@ -217,6 +218,7 @@ class RHInterface(BaseHardwareInterface):
                     print "No ADS1115 at address {0}".format(addr)
                 gevent.sleep(I2C_CHILL_TIME)
         except ImportError:
+            print("Error: Unable to import ads1x15 in RHInterface.")
             self.ads1x15Class = None
 
         # Scan for BME280 devices
