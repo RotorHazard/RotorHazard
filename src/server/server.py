@@ -2075,6 +2075,10 @@ def emit_environmental_data(**params):
         'aux_voltage': [data['voltage'] for data in INTERFACE.ina219_data],
         'aux_current': [data['current'] for data in INTERFACE.ina219_data],
         'aux_power': [data['power'] for data in INTERFACE.ina219_data],
+        'aux_voltage0' : [data['voltage0'] for data in INTERFACE.ads1x15_data],
+        'aux_voltage1' : [data['voltage1'] for data in INTERFACE.ads1x15_data],
+        'aux_voltage2' : [data['voltage2'] for data in INTERFACE.ads1x15_data],
+        'aux_voltage3' : [data['voltage3'] for data in INTERFACE.ads1x15_data],
         'aux_temperature': [data.temperature for data in INTERFACE.bme280_data],
         'aux_pressure': [data.pressure for data in INTERFACE.bme280_data],
         'aux_humidity': [data.humidity for data in INTERFACE.bme280_data]
