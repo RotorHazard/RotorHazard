@@ -15,5 +15,13 @@
 		"LED_BRIGHTNESS": 255,
 		"LED_INVERT": false,
 		"LED_CHANNEL": 0
+	},
+	"ADS1X15": {
+		"HARDWARE_NAME": "ADS1115",
+		"CONNECTED_CHANNELS": [0,1],
+		"GAINS": [1,1],
+		"R1_VALUES": [22,22],
+		"R2_VALUES": [3.3,3.3],
+		"CORRECTION_FACTORS": [1.00,1.00]
 	}
 }
