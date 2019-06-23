@@ -93,7 +93,7 @@ def unpack_rssi(node, data):
 
 
 class RHInterface(BaseHardwareInterface):
-    def __init__(self):
+    def __init__(self,**kwargs):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
         self.pass_record_callback = None # Function added in server.py
@@ -186,34 +186,44 @@ class RHInterface(BaseHardwareInterface):
         self.ads1x15_devices = []
         self.ads1x15_data = []
         supported_ads1x15_addrs = [0x48, 0x49, 0x4A, 0x4B]
+
         try:
             self.ads1x15Class = getattr(importlib.import_module('ads1x15'), 'ADS1X15')
+            if 'config' in kwargs and 'ADS1X15' in kwargs['config']:  #get config data from server/CONFIG_FILE_NAME json file or defaults if invalid
+                ADS_config_data = kwargs['config']['ADS1X15']
+                hardware_name = ADS_config_data['HARDWARE_NAME']
+                connected_channels = ADS_config_data['CONNECTED_CHANNELS']
+                gains = ADS_config_data['GAINS']
+                R1_Values = ADS_config_data['R1_VALUES']
+                R2_Values = ADS_config_data['R2_VALUES']
+                correction_factors = ADS_config_data['CORRECTION_FACTORS']
             for index, addr in enumerate(supported_ads1x15_addrs):
                 try:                            #Configure all 4 ports
                     device = self.ads1x15Class(
-                        hardware_name = "ADS1115",		#TODO get this from RH config file
-                        connected_channels = [0,1,2,3], 	
-                        gains = [1,1,1,1], 			#todo get these from a RH config file	
-                        R1_Values = [22,22,22,22], 	#todo get these from a RH config file		
-                        R2_Values =  [3.3,3.3,3.3,3.3],	#todo get these from a RH config file	
+                        hardware_name = hardware_name,		
+                        connected_channels = connected_channels, 	
+                        gains = gains, 				
+                        R1_Values = R1_Values, 			
+                        R2_Values =  R2_Values,		
                         address = addr,					
-                        correction_factors = [1.00,1.00,1.00,1.00], #todo get these from a RH config file
+                        correction_factors = correction_factors, 
                         debug_print = False,
                     )
                     if device.found_device == False:
                         raise IOError
-                    voltages = device.get_input_voltages()
+                    voltages = device.get_input_voltages()  #If the ports are not enabled, return False for the data
                     data = {
-                        'voltage0': voltages[0],
-                        'voltage1': voltages[1],
-                        'voltage2': voltages[2],
-                        'voltage3': voltages[3],
+                        'voltage0': voltages.get(0,False),
+                        'voltage1': voltages.get(1,False),
+                        'voltage2': voltages.get(2,False),
+                        'voltage3': voltages.get(3,False),
                     }
                     # device.sleep() #TODO sleep isn't implemented with the ADS1X15 class yet but can be added
                     print "ADS1115 found at address {0}".format(addr)
                     gevent.sleep(I2C_CHILL_TIME)
                     self.ads1x15_devices.append(device)
                     self.ads1x15_data.append(data)
+
                 except IOError as err:
                     print "No ADS1115 at address {0}".format(addr)
                 gevent.sleep(I2C_CHILL_TIME)
@@ -842,10 +852,10 @@ class RHInterface(BaseHardwareInterface):
                         #device.wake() #todo not implemented in ads1x15.py
                         voltages = device.get_input_voltages()
                         data = {
-                            'voltage0': voltages[0],
-                            'voltage1': voltages[1],
-                            'voltage2': voltages[2],
-                            'voltage3': voltages[3],
+                            'voltage0': voltages.get(0,False),
+                            'voltage1': voltages.get(1,False),
+                            'voltage2': voltages.get(2,False),
+                            'voltage3': voltages.get(3,False),
                         }
                         #device.sleep() todo not implemented
                         self.ads1x15_data[index] = data
@@ -869,6 +879,6 @@ class RHInterface(BaseHardwareInterface):
         with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
             self.core_temp = float(f.read())/1000
 
-def get_hardware_interface():
+def get_hardware_interface(**kwargs):
     '''Returns the RotorHazard interface object.'''
-    return RHInterface()
+    return RHInterface(**kwargs)

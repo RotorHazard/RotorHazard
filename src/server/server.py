@@ -73,6 +73,7 @@ DB = SQLAlchemy(APP)
 Config = {}
 Config['GENERAL'] = {}
 Config['LED'] = {}
+Config['ADS1X15'] = {}
 
 # LED strip configuration:
 Config['LED']['LED_COUNT']      = 150      # Number of LED pixels.
@@ -83,6 +84,15 @@ Config['LED']['LED_BRIGHTNESS'] = 255     # Set to 0 for darkest and 255 for bri
 Config['LED']['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
 Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
+
+# ADS1X15 Configuration:
+Config['ADS1X15']['HARDWARE_NAME']      = 'ADS1115'   # Either ADS1115 or ADS1015
+Config['ADS1X15']['CONNECTED_CHANNELS'] = [0,1,]      # Which connected channels to use, pick any from 0,1,2,3  that are soldered up
+Config['ADS1X15']['GAINS']              = [1,1,]      # Internal gain to use
+Config['ADS1X15']['R1_VALUES']          = [22,22,]    # R1 values for an external voltage divider
+Config['ADS1X15']['R2_VALUES']          = [3.3,3.3,]  # R2 values for an external voltage divider
+Config['ADS1X15']['CORRECTION_FACTORS'] = [1.00,1.00,]# Resistor offsets for resistance variance correction
+#Config['ADS1X15_VOLTAGE']['ADDRESS']            = 0x48        #Hex address - not needed because dynamic sensor adding is used.
 
 # other default configurations
 Config['GENERAL']['HTTP_PORT'] = 5000
@@ -98,6 +108,7 @@ try:
         ExternalConfig = json.load(f)
     Config['GENERAL'].update(ExternalConfig['GENERAL'])
     Config['LED'].update(ExternalConfig['LED'])
+    Config['ADS1X15'].update(ExternalConfig['ADS1X15'])
     Config['GENERAL']['configFile'] = 1
     print 'Configuration file imported'
     APP.config['SECRET_KEY'] = Config['GENERAL']['SECRET_KEY']
@@ -113,7 +124,7 @@ try:
     interfaceModule = importlib.import_module('RHInterface')
 except ImportError:
     interfaceModule = importlib.import_module('MockInterface')
-INTERFACE = interfaceModule.get_hardware_interface()
+INTERFACE = interfaceModule.get_hardware_interface(config = Config) #Need to pass in config to setup ADS1X15 hardware
 RACE = get_race_state() # For storing race management variables
 
 def diff_milliseconds(t2, t1):
