@@ -55,6 +55,10 @@ class MockInterface(BaseHardwareInterface):
         # Scan for INA219 devices
         self.ina219_devices = []
         self.ina219_data = []
+        
+        # Scan for ADS11X5 devices
+        self.ads11x5_devices = []
+        self.ads11x5_data = []
 
         # Scan for BME280 devices
         self.bme280_addrs = []

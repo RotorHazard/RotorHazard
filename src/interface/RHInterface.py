@@ -6,7 +6,7 @@ import io
 import importlib
 import gevent # For threads and timing
 from gevent.lock import BoundedSemaphore # To limit i2c calls
-from monotonic import monotonic # to capture read timing
+from monotonic import monotonic # to capture read timing, pip install monotonic if there's an import error
 
 from Node import Node
 from BaseHardwareInterface import BaseHardwareInterface
@@ -179,6 +179,45 @@ class RHInterface(BaseHardwareInterface):
                 gevent.sleep(I2C_CHILL_TIME)
         except ImportError:
             self.ina219Class = None
+            
+        
+        # Scan for ADS11X5 devices
+        self.ads1x15_devices = []
+        self.ads1x15_data = []
+        supported_ads1x15_addrs = [0x48, 0x49, 0x4A, 0x4B]
+        try:
+            self.ads1x15Class = getattr(importlib.import_module('ads1x15'), 'ADS1X15')
+            for index, addr in enumerate(supported_ads1x15_addrs):
+                try:                            #Configure all 4 ports
+                    device = self.ads1x15Class(
+                        hardware_name = "ADS1115",		#TODO get this from RH config file
+                        connected_channels = [0,1,2,3], 	
+                        gains = [1,1,1,1], 			#todo get these from a RH config file	
+                        R1_Values = [22,22,22,22], 	#todo get these from a RH config file		
+                        R2_Values =  [3.3,3.3,3.3,3.3],	#todo get these from a RH config file	
+                        address = addr,					
+                        correction_factors = [1.00,1.00,1.00,1.00] #todo get these from a RH config file
+                        debug_print = True
+                    )
+                    if device.found_device == False:
+                        raise IOError
+                    voltages = device.get_input_voltages()
+                    data = {
+                        'voltage0': voltages[0],
+                        'voltage1': voltages[1],
+                        'voltage2': voltages[2],
+                        'voltage3': voltages[3],
+                    }
+                    # device.sleep() #TODO sleep isn't implemented with the ADS1X15 class yet but can be added
+                    print "ADS1115 found at address {0}".format(addr)
+                    gevent.sleep(I2C_CHILL_TIME)
+                    self.ads1x15_devices.append(device)
+                    self.ads1x15_data.append(data)
+                except IOError as err:
+                    print "No ADS1115 at address {0}".format(addr)
+                gevent.sleep(I2C_CHILL_TIME)
+        except ImportError:
+            self.ads1x15Class = None
 
         # Scan for BME280 devices
         self.bme280_addrs = []
@@ -773,7 +812,7 @@ class RHInterface(BaseHardwareInterface):
         '''Updates environmental data.'''
         self.environmental_data_update_tracker += 1
 
-        if self.ina219Class and (self.environmental_data_update_tracker % 2) == 0:
+        if self.ina219Class and (self.environmental_data_update_tracker % 3) == 0:
             for index, device in enumerate(self.ina219_devices):
                 try:
                     with self.semaphore:
@@ -791,8 +830,29 @@ class RHInterface(BaseHardwareInterface):
                 except IOError as err:
                     self.log('INA219 Read Error: ' + str(err))
                     self.i2c_timestamp = self.milliseconds()
+                    
+        if self.ads1x15Class and (self.environmental_data_update_tracker % 3) == 0:
+            for index, device in enumerate(self.ads1x15_devices):
+                try:
+                    with self.semaphore:
+                        self.i2c_sleep()
+                        device = self.ads1x15_devices[index]
+                        #device.wake() #todo not implemented in ads1x15.py
+                        voltages = device.get_input_voltages()
+                        data = {
+                            'voltage0': voltages[0],
+                            'voltage1': voltages[1],
+                            'voltage2': voltages[2],
+                            'voltage3': voltages[3],
+                        }
+                        #device.sleep() todo not implemented
+                        self.ads1x15_data[index] = data
+                        self.i2c_timestamp = self.milliseconds()
+                except IOError as err:
+                    self.log('ads1x15 Read Error: ' + str(err))
+                    self.i2c_timestamp = self.milliseconds()
 
-        if self.bme280SampleMethod and (self.environmental_data_update_tracker % 2) == 1:
+        if self.bme280SampleMethod and (self.environmental_data_update_tracker % 3) == 1:
             for index, addr in enumerate(self.bme280_addrs):
                 try:
                     with self.semaphore:

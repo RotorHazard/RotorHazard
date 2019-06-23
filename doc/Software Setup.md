@@ -114,6 +114,13 @@ Install the Python library:
 sudo python setup.py install
 ```
 
+### ADS1105/1115 Voltage Support (optional)
+The ADS11X5 interface is included from:
+https://github.com/Ryanf55/ads1x15
+
+ads1x15.py is included by RotorHazard automatically.
+
+
 ### BME280 Temperature Support (optional)
 The bme280 interface is provided by the following project:
 https://github.com/rm-hull/bme280
