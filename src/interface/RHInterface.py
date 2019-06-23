@@ -831,7 +831,7 @@ class RHInterface(BaseHardwareInterface):
                     self.log('INA219 Read Error: ' + str(err))
                     self.i2c_timestamp = self.milliseconds()
                     
-        if self.ads1x15Class and (self.environmental_data_update_tracker % 3) == 0:
+        if self.ads1x15Class and (self.environmental_data_update_tracker % 3) == 1:
             for index, device in enumerate(self.ads1x15_devices):
                 try:
                     with self.semaphore:
@@ -852,7 +852,7 @@ class RHInterface(BaseHardwareInterface):
                     self.log('ads1x15 Read Error: ' + str(err))
                     self.i2c_timestamp = self.milliseconds()
 
-        if self.bme280SampleMethod and (self.environmental_data_update_tracker % 3) == 1:
+        if self.bme280SampleMethod and (self.environmental_data_update_tracker % 3) == 2:
             for index, addr in enumerate(self.bme280_addrs):
                 try:
                     with self.semaphore:
