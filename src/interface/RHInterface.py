@@ -197,6 +197,8 @@ class RHInterface(BaseHardwareInterface):
                 R1_Values = ADS_config_data['R1_VALUES']
                 R2_Values = ADS_config_data['R2_VALUES']
                 correction_factors = ADS_config_data['CORRECTION_FACTORS']
+            else:
+                raise KeyError  #protect against bad keys
             for index, addr in enumerate(supported_ads1x15_addrs):
                 try:                            #Configure all 4 ports
                     device = self.ads1x15Class(
@@ -230,6 +232,10 @@ class RHInterface(BaseHardwareInterface):
         except ImportError:
             print("Error: Unable to import ads1x15 in RHInterface.")
             self.ads1x15Class = None
+        except KeyError:
+            print 'ADS1X15 config key invalid'
+            self.ads1x15Class = None
+            
 
         # Scan for BME280 devices
         self.bme280_addrs = []
@@ -879,6 +885,6 @@ class RHInterface(BaseHardwareInterface):
         with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
             self.core_temp = float(f.read())/1000
 
-def get_hardware_interface(**kwargs):
+def get_hardware_interface(cfg_file):
     '''Returns the RotorHazard interface object.'''
-    return RHInterface(**kwargs)
+    return RHInterface(config=cfg_file)

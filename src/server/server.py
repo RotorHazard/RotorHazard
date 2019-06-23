@@ -124,7 +124,7 @@ try:
     interfaceModule = importlib.import_module('RHInterface')
 except ImportError:
     interfaceModule = importlib.import_module('MockInterface')
-INTERFACE = interfaceModule.get_hardware_interface(config = Config) #Need to pass in config to setup ADS1X15 hardware
+INTERFACE = interfaceModule.get_hardware_interface(Config) #Need to pass in config to setup ADS1X15 hardware
 RACE = get_race_state() # For storing race management variables
 
 def diff_milliseconds(t2, t1):
