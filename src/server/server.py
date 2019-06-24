@@ -1491,8 +1491,9 @@ def on_set_race_format(data):
         emit_race_format()
         server_log("set race format to '%s' (%s)" % (race_format.name, race_format.id))
     else:
+        emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+        server_log("Format change prevented by active race")
         emit_race_format()
-        server_log("format change prevented by active race")
 
 @SOCKET_IO.on('add_race_format')
 def on_add_race_format():
@@ -1524,8 +1525,8 @@ def on_delete_race_format():
             setCurrentRaceFormat(first_raceFormat)
             emit_race_format()
     else:
-        server_log("format change prevented by active race")
-
+        emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+        server_log("Format change prevented by active race")
 
 @SOCKET_IO.on('alter_race_format')
 def on_alter_race_format(data):
