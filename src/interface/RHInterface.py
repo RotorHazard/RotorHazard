@@ -6,7 +6,7 @@ import io
 import importlib
 import gevent # For threads and timing
 from gevent.lock import BoundedSemaphore # To limit i2c calls
-from monotonic import monotonic # to capture read timing, pip install monotonic if there's an import error
+from monotonic import monotonic # to capture read timing
 
 from Node import Node
 from BaseHardwareInterface import BaseHardwareInterface
@@ -93,7 +93,7 @@ def unpack_rssi(node, data):
 
 
 class RHInterface(BaseHardwareInterface):
-    def __init__(self,**kwargs):
+    def __init__(self,config_file):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
         self.pass_record_callback = None # Function added in server.py
@@ -189,8 +189,8 @@ class RHInterface(BaseHardwareInterface):
 
         try:
             self.ads1x15Class = getattr(importlib.import_module('ads1x15'), 'ADS1X15')
-            if 'config' in kwargs and 'ADS1X15' in kwargs['config']:  #get config data from server/CONFIG_FILE_NAME json file or defaults if invalid
-                ADS_config_data = kwargs['config']['ADS1X15']
+            if 'ADS1X15' in config_file:  #get config data from server/CONFIG_FILE_NAME json file or defaults if invalid
+                ADS_config_data = config_file['ADS1X15']
                 hardware_name = ADS_config_data['HARDWARE_NAME']
                 connected_channels = ADS_config_data['CONNECTED_CHANNELS']
                 gains = ADS_config_data['GAINS']
@@ -885,6 +885,6 @@ class RHInterface(BaseHardwareInterface):
         with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
             self.core_temp = float(f.read())/1000
 
-def get_hardware_interface(cfg_file):
+def get_hardware_interface(configuration_file):
     '''Returns the RotorHazard interface object.'''
-    return RHInterface(config=cfg_file)
+    return RHInterface(configuration_file)

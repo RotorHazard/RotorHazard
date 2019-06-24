@@ -86,13 +86,14 @@ Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 
 Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
 
 # ADS1X15 Configuration:
-Config['ADS1X15']['HARDWARE_NAME']      = 'ADS1115'   # Either ADS1115 or ADS1015
-Config['ADS1X15']['CONNECTED_CHANNELS'] = [0,1,]      # Which connected channels to use, pick any from 0,1,2,3  that are soldered up
-Config['ADS1X15']['GAINS']              = [1,1,]      # Internal gain to use
-Config['ADS1X15']['R1_VALUES']          = [22,22,]    # R1 values for an external voltage divider
-Config['ADS1X15']['R2_VALUES']          = [3.3,3.3,]  # R2 values for an external voltage divider
-Config['ADS1X15']['CORRECTION_FACTORS'] = [1.00,1.00,]# Resistor offsets for resistance variance correction
-#Config['ADS1X15_VOLTAGE']['ADDRESS']            = 0x48        #Hex address - not needed because dynamic sensor adding is used.
+Config['ADS1X15']['HARDWARE_NAME']      = 'ADS1115'             # Either ADS1115 or ADS1015
+Config['ADS1X15']['CONNECTED_CHANNELS'] = [0,1,]                # Which connected channels to use, pick any from 0,1,2,3  that are soldered up
+Config['ADS1X15']['GAINS']              = [1,1,]                # Internal gain to use
+Config['ADS1X15']['R1_VALUES']          = [22,22,]              # R1 values for an external voltage divider
+Config['ADS1X15']['R2_VALUES']          = [3.3,3.3,]            # R2 values for an external voltage divider
+Config['ADS1X15']['CORRECTION_FACTORS'] = [1.00,1.00,]          # Resistor offsets for resistance variance correction
+Config['ADS1X15']['GUI_LABELS']         = ['ADS_A0','ADS_A1',]  # Labels that show up in web interface
+#Config['ADS1X15_VOLTAGE']['ADDRESS']   = 0x48                  # Hex address - not needed because dynamic sensor detecting is used.
 
 # other default configurations
 Config['GENERAL']['HTTP_PORT'] = 5000

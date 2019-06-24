@@ -265,12 +265,12 @@ if __name__ == "__main__":
 
  	ads_custom = ADS1X15( # Here's an example with all the settings configured. 
 		hardware_name = "ADS1115",		
-		connected_channels = [0,], 	
-		gains = [1,], 				
-		R1_Values = [22,], 			
-		R2_Values =  [3.3,],		
+		connected_channels = [0 , 1 , 2 , 3], 	
+		gains = [1 , 1 , 1 , 1], 				
+		R1_Values = [22 , 22 , 22 , 22], 			
+		R2_Values = [3.3 , 3.3 , 3.3 , 3.3],		
 		address = 0x48,					
-		correction_factors = [1.0104,],
+		correction_factors = [1.0065 , 1.0127175 , 1.02739 , 1.0],
 		debug_print = True
 	)
 
