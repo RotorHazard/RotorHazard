@@ -3940,12 +3940,14 @@ if not os.path.exists(DB_FILE_NAME):
 serverInfo = buildServerInfo()
 server_log('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 if serverInfo['node_api_match'] is False:
-    server_log('** WARNING: Node API mismatch **')
+    server_log('** WARNING: Node API mismatch. **')
 
 if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
     server_log('** WARNING: Node firmware is out of date and may not function properly **')
 elif serverInfo['node_api_lowest'] < NODE_API_BEST:
     server_log('** NOTICE: Node firmware update is available **')
+elif serverInfo['node_api_lowest'] > NODE_API_BEST:
+    server_log('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
     if int(getOption('server_api')) < SERVER_API:
