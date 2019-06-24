@@ -366,6 +366,15 @@ class RHInterface(BaseHardwareInterface):
                                 if callable(self.new_enter_or_exit_at_callback):
                                     self.new_enter_or_exit_at_callback(node, False)
 
+                        # prune history data if race is not running (keep last 60s)
+                        if self.race_status != RACE_STATUS_RACING:
+                            if len(node.history_times):
+                                while node.history_times[0] < (monotonic() - 60):
+                                    node.history_values.pop(0)
+                                    node.history_times.pop(0)
+                                    if not len(node.history_times): #prevent while from destroying itself
+                                        break
+
                         # get and process history data
                         if node.api_level >= 18:
                             peakRssi = unpack_rssi(node, data[offset_peakRssi:])
