@@ -42,6 +42,11 @@ LAP_SOURCE_REALTIME = 0
 LAP_SOURCE_MANUAL = 1
 LAP_SOURCE_RECALC = 2
 
+RACE_STATUS_READY = 0
+RACE_STATUS_STAGING = 3
+RACE_STATUS_RACING = 1
+RACE_STATUS_DONE = 2
+
 def unpack_8(data):
     return data[0]
 
@@ -99,6 +104,7 @@ class RHInterface(BaseHardwareInterface):
         self.hardware_log_callback = None # Function added in server.py
         self.new_enter_or_exit_at_callback = None # Function added in server.py
         self.node_crossing_callback = None # Function added in server.py
+        self.race_status = RACE_STATUS_READY
 
         self.i2c = smbus.SMBus(1) # Start i2c bus
         self.semaphore = BoundedSemaphore(1) # Limits i2c to 1 read/write at a time
@@ -669,6 +675,9 @@ class RHInterface(BaseHardwareInterface):
     #
     # External functions for setting data
     #
+
+    def set_race_status(self, race_status):
+        self.race_status = race_status
 
     def set_frequency(self, node_index, frequency):
         node = self.nodes[node_index]

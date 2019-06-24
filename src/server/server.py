@@ -1609,6 +1609,7 @@ def on_stage_race():
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
         RACE.timer_running = 0 # indicate race timer not running
         RACE.race_status = RACE_STATUS_STAGING
+        INTERFACE.set_race_status(RACE_STATUS_STAGING)
         emit_current_laps() # Race page, blank laps to the web client
         emit_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
@@ -1659,6 +1660,7 @@ def race_start_thread(start_token):
             node.under_min_lap_count = 0
 
         RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
+        INTERFACE.set_race_status(RACE_STATUS_RACING)
         RACE.timer_running = 1 # indicate race timer is running
         Race_laps_winner_name = None  # name of winner in first-to-X-laps race
         emit_race_status() # Race page, to set race button states
@@ -1684,9 +1686,11 @@ def on_stop_race():
             server_log('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
         RACE.race_status = RACE_STATUS_DONE # To stop registering passed laps, waiting for laps to be cleared
+        INTERFACE.set_race_status(RACE_STATUS_DONE)
     else:
         server_log('No active race to stop')
         RACE.race_status = RACE_STATUS_READY # Go back to ready state
+        INTERFACE.set_race_status(RACE_STATUS_READY)
 
     RACE.timer_running = 0 # indicate race timer not running
     RACE_SCHEDULED = False # also stop any deferred start
@@ -1802,6 +1806,7 @@ def on_discard_laps():
     '''Clear the current laps without saving.'''
     clear_laps()
     RACE.race_status = RACE_STATUS_READY # Flag status as ready to start next race
+    INTERFACE.set_race_status(RACE_STATUS_READY)
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
