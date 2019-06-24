@@ -297,18 +297,6 @@ class RHInterface(BaseHardwareInterface):
                             else:
                                 ms_val = unpack_32(data[1:])
 
-                            '''
-                            if node.api_level >= 18:
-                                lap_differential = unpack_16(data[1:])
-                                # lap_timestamp = readtime - lap_differential ***
-                                lap_time_ms = lap_differential + server_oneway
-                            else:
-                                ms_val = unpack_32(data[1:])
-                                if ms_val < 0 or ms_val > 9999999:
-                                    ms_val = 0  # don't allow negative or too-large value
-                                node.lap_ms_since_start = ms_val
-                            '''
-
                             node.node_peak_rssi = unpack_rssi(node, data[offset_nodePeakRssi:])
                             node.pass_peak_rssi = unpack_rssi(node, data[offset_passPeakRssi:])
                             node.loop_time = unpack_16(data[offset_loopTime:])
