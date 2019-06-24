@@ -3397,8 +3397,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
     if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end (RACE_DURATION_MS is invalid while race is in progress)
         if RACE.race_status is RACE_STATUS_RACING \
-            or (node.lap_timestamp >=0 and \
-                node.lap_timestamp < RACE_DURATION_MS):
+            or (RACE.race_status is RACE_STATUS_DONE and \
+                lap_timestamp_absolute < RACE_END):
 
             # Get the current pilot id on the node
             pilot_id = Heat.query.filter_by( \
