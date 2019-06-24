@@ -123,8 +123,8 @@ During the race, there is an "×" next to each counted lap. This will discard th
 
 A "+ Lap" button is provided to force lap pass for that node to be immediately recorded.
 
-When a race is over, use the "Stop Race" button (Hotkey: <kbd>x/kbd>) to discontinue counting laps. You need to do this  even if the timer reaches zero in a "Count Down" format—a popular race format allows pilots to finish the lap they are on when time expires. For best results, clear the timing gate and allow all valid crossings to end before stopping the race.
+When a race is over, use the "Stop Race" button (Hotkey: <kbd>x</kbd>) to discontinue counting laps. You need to do this  even if the timer reaches zero in a "Count Down" format—a popular race format allows pilots to finish the lap they are on when time expires. For best results, clear the timing gate and allow all valid crossings to end before stopping the race.
 
-Once a race has concluded, you must choose "Save Laps" or "Clear Laps" before starting another race. "Save Laps" (Hotkey: <kbd>c/kbd>) will store race results to the database and display them on the "Results" page. "Clear Laps" (Hotkey: <kbd>v/kbd>) will discard the race results.
+Once a race has concluded, you must choose "Save Laps" or "Clear Laps" before starting another race. "Save Laps" (Hotkey: <kbd>c</kbd>) will store race results to the database and display them on the "Results" page. "Clear Laps" (Hotkey: <kbd>v</kbd>) will discard the race results.
 
 The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. Audio Control and LED Contral are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race.
