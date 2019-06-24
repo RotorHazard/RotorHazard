@@ -355,7 +355,7 @@ class RHInterface(BaseHardwareInterface):
                                     self.new_enter_or_exit_at_callback(node, False)
 
                         # prune history data if race is not running (keep last 60s)
-                        if self.race_status != RACE_STATUS_RACING:
+                        if self.race_status is RACE_STATUS_READY:
                             if len(node.history_times):
                                 while node.history_times[0] < (monotonic() - 60):
                                     node.history_values.pop(0)
@@ -363,23 +363,56 @@ class RHInterface(BaseHardwareInterface):
                                     if not len(node.history_times): #prevent while from destroying itself
                                         break
 
-                        # get and process history data
-                        if node.api_level >= 18:
-                            peakRssi = unpack_rssi(node, data[offset_peakRssi:])
-                            peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
-                            peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
-                            nadirRssi = unpack_rssi(node, data[offset_nadirRssi:])
-                            nadirTime = unpack_16(data[offset_nadirTime:])
+                        if self.race_status != RACE_STATUS_DONE:
+                            # get and process history data (except when race is over)
+                            if node.api_level >= 18:
+                                peakRssi = unpack_rssi(node, data[offset_peakRssi:])
+                                peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
+                                peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
+                                nadirRssi = unpack_rssi(node, data[offset_nadirRssi:])
+                                nadirTime = unpack_16(data[offset_nadirTime:])
 
-                            data_logger = self.data_loggers[node.index]
-                            if data_logger:
-                                data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format(readtime,lap_id, int(lap_time_ms), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, peakRssi, peakFirstTime, peakLastTime, nadirRssi, nadirTime))
+                                data_logger = self.data_loggers[node.index]
+                                if data_logger:
+                                    data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format(readtime,lap_id, int(lap_time_ms), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, peakRssi, peakFirstTime, peakLastTime, nadirRssi, nadirTime))
 
-                            if peakRssi > 0:
-                                if nadirRssi > 0:
-                                    # both
-                                    if peakLastTime > nadirTime:
-                                        # process peak first
+                                if peakRssi > 0:
+                                    if nadirRssi > 0:
+                                        # both
+                                        if peakLastTime > nadirTime:
+                                            # process peak first
+                                            if peakFirstTime > peakLastTime:
+                                                node.history_values.append(peakRssi)
+                                                node.history_times.append(readtime - (peakFirstTime / 1000.0))
+                                                node.history_values.append(peakRssi)
+                                                node.history_times.append(readtime - (peakLastTime / 1000.0))
+                                            elif peakFirstTime == peakLastTime:
+                                                node.history_values.append(peakRssi)
+                                                node.history_times.append(readtime - (peakLastTime / 1000.0))
+                                            else:
+                                                self.log('Ignoring corrupted peak history times ({0} < {1})'.format(peakFirstTime, peakLastTime))
+
+                                            node.history_values.append(nadirRssi)
+                                            node.history_times.append(readtime - (nadirTime / 1000.0))
+
+                                        else:
+                                            # process nadir first
+                                            node.history_values.append(nadirRssi)
+                                            node.history_times.append(readtime - (nadirTime / 1000.0))
+                                            if peakFirstTime > peakLastTime:
+                                                node.history_values.append(peakRssi)
+                                                node.history_times.append(readtime - (peakFirstTime / 1000.0))
+                                                node.history_values.append(peakRssi)
+                                                node.history_times.append(readtime - (peakLastTime / 1000.0))
+                                            elif peakFirstTime == peakLastTime:
+                                                node.history_values.append(peakRssi)
+                                                node.history_times.append(readtime - (peakLastTime / 1000.0))
+                                            else:
+                                                self.log('Ignoring corrupted peak history times ({0} < {1})'.format(peakFirstTime, peakLastTime))
+
+                                    else:
+                                        # peak, no nadir
+                                        # process peak only
                                         if peakFirstTime > peakLastTime:
                                             node.history_values.append(peakRssi)
                                             node.history_times.append(readtime - (peakFirstTime / 1000.0))
@@ -391,43 +424,11 @@ class RHInterface(BaseHardwareInterface):
                                         else:
                                             self.log('Ignoring corrupted peak history times ({0} < {1})'.format(peakFirstTime, peakLastTime))
 
-                                        node.history_values.append(nadirRssi)
-                                        node.history_times.append(readtime - (nadirTime / 1000.0))
-
-                                    else:
-                                        # process nadir first
-                                        node.history_values.append(nadirRssi)
-                                        node.history_times.append(readtime - (nadirTime / 1000.0))
-                                        if peakFirstTime > peakLastTime:
-                                            node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakFirstTime / 1000.0))
-                                            node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakLastTime / 1000.0))
-                                        elif peakFirstTime == peakLastTime:
-                                            node.history_values.append(peakRssi)
-                                            node.history_times.append(readtime - (peakLastTime / 1000.0))
-                                        else:
-                                            self.log('Ignoring corrupted peak history times ({0} < {1})'.format(peakFirstTime, peakLastTime))
-
-                                else:
-                                    # peak, no nadir
-                                    # process peak only
-                                    if peakFirstTime > peakLastTime:
-                                        node.history_values.append(peakRssi)
-                                        node.history_times.append(readtime - (peakFirstTime / 1000.0))
-                                        node.history_values.append(peakRssi)
-                                        node.history_times.append(readtime - (peakLastTime / 1000.0))
-                                    elif peakFirstTime == peakLastTime:
-                                        node.history_values.append(peakRssi)
-                                        node.history_times.append(readtime - (peakLastTime / 1000.0))
-                                    else:
-                                        self.log('Ignoring corrupted peak history times ({0} < {1})'.format(peakFirstTime, peakLastTime))
-
-                            elif nadirRssi > 0:
-                                # no peak, nadir
-                                # process nadir only
-                                node.history_values.append(nadirRssi)
-                                node.history_times.append(readtime - (nadirTime / 1000.0))
+                                elif nadirRssi > 0:
+                                    # no peak, nadir
+                                    # process nadir only
+                                    node.history_values.append(nadirRssi)
+                                    node.history_times.append(readtime - (nadirTime / 1000.0))
 
 
                     else:
