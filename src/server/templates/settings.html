@@ -1040,15 +1040,26 @@
 
 		socket.on('node_crossing_change', function (msg) {
 			if (msg.crossing_flag) {
-				if (rotorhazard.beep_crossing_entered)
-					play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
+				if (rotorhazard.beep_crossing_entered) {
+					if( rotorhazard.use_mp3_tones){
+						sound_enter.play();
+					}
+					else {
+						play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
+					}
+				}
 			}
 			else {
 				if (rotorhazard.beep_crossing_exited) {
-					play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
-					setTimeout(function(tone){
-						play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth', );
-					}, 70, msg.node_index);
+					if( rotorhazard.use_mp3_tones){
+						sound_exit.play();
+					}
+					else {
+						play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
+						setTimeout(function(tone){
+							play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth');
+						}, 70, msg.node_index);
+					}
 				}
 			}
 		});
