@@ -79,6 +79,7 @@
 		$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
 		$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
 		$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
+		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
 		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
 		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
@@ -815,6 +816,11 @@
 			rotorhazard.saveData();
 		});
 
+		$('#use_mp3_tones').change(function (event) {
+			rotorhazard.use_mp3_tones = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+
 		$('#beep_on_first_pass_button').change(function (event) {
 			rotorhazard.beep_on_first_pass_button = $(this).prop('checked');
 			rotorhazard.saveData();
@@ -1483,6 +1489,7 @@
 					<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
 					<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
 					<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
+					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
 				</ul>
 			</li>
 			<li>
