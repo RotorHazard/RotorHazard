@@ -42,6 +42,7 @@ The shield should be soldered back in place after removing the resistor.
 Complete wiring connections between each Arduino and RX5808.
 ![receiver node wiring](img/Receivernode.png)
 
+
 ### System Assembly
 Complete wiring connections between each Arduino and the Raspberry Pi.
 
@@ -61,6 +62,17 @@ The pins in the green box is what were already used by the timer. The pins in th
 ### BME280 Temperature support (optional)
 Attach to the I2C bus and 5V pins.
 
+### ADS1115/ADS1015 (optional)
+The ADS11X5 sensors provide four separate analog inputs for voltage measurement. The ADS1115 has 12 bits of resolution making for very precise voltage measurements. 
+Connect VDD and GND of the sensor to the race timer 5V and GND. Wire SDA and SCL of the sensor to SDA and SCL of the timer. 
+A combination of resistor dividers and gain options in config.json can be used. To support up to a 6s battery, use a 22k and 3.3k resistor divider with a configured gain of 1. 
+Other combinations of resistors and gains may be more suited for your application; just be sure not to surpass the voltage limit for the selected gain.
+
+### A913 Schottky diode for reduntant/hot swappable batteries (optional)
+This addition to the RH timer is [based on an RCGroups bus tie circuit.]( https://www.rcgroups.com/forums/showthread.php?1854050-Simple-Bus-Tie-Circuit-using-Schottky-Diodes"RCGroups Bus Tie Circuit")
+It allows two batteries to run the timer redundantly. When the batteries are getting low, replace one battery at a time. This hot swapping allows racing to run uninterrupted all day. 
+The diode forces the more charged battery to provide the power for the timer. Use the same battery cell count.
+This modification works well with the ADS1X15 sensor because both batteries can be monitored at the same time. 
 -----------------------------
 
 See Also:  
