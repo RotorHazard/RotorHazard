@@ -668,6 +668,7 @@ main.page-home {
 	position: absolute;
 	left: 0.25em;
 	line-height: 1.3;
+	display: none;
 }
 
 .round {
