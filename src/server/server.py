@@ -3,7 +3,7 @@ RELEASE_VERSION = "2.0.0 (dev 3)" # Public release version code
 SERVER_API = 23 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 18 # Most recent node API
-JSON_API = 1 # JSON API version
+JSON_API = 2 # JSON API version
 
 import os
 import sys
@@ -691,22 +691,13 @@ def api_pilot_all():
     for pilot in pilots:
         payload.append(pilot)
 
-    response = APP.response_class(
-        response=json.dumps({"pilots": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"pilots": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/pilot/<int:pilot_id>')
 def api_pilot(pilot_id):
     pilot = Pilot.query.get(pilot_id)
-    response = APP.response_class(
-        response=json.dumps({"pilot": pilot}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+
+    return json.dumps({"pilot": pilot}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/heat/all')
 def api_heat_all():
@@ -732,12 +723,7 @@ def api_heat_all():
             'class_id': race_class,
             'locked': locked}
 
-    response = APP.response_class(
-        response=json.dumps({"heats": all_heats}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"heats": all_heats}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/heat/<int:heat_id>')
 def api_heat(heat_id):
@@ -768,12 +754,7 @@ def api_heat(heat_id):
         'leaderboard': calc_leaderboard(heat_id=heat_id)
     }
 
-    response = APP.response_class(
-        response=json.dumps({"heat": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"heat": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/class/all')
 def api_class_all():
@@ -782,22 +763,13 @@ def api_class_all():
     for race_class in race_classes:
         payload.append(race_class)
 
-    response = APP.response_class(
-        response=json.dumps({"classes": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"classes": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/class/<int:class_id>')
 def api_class(class_id):
     race_class = RaceClass.query.get(class_id)
-    response = APP.response_class(
-        response=json.dumps({"class": race_class}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+
+    return json.dumps({"class": race_class}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/format/all')
 def api_format_all():
@@ -806,22 +778,13 @@ def api_format_all():
     for race_format in formats:
         payload.append(race_format)
 
-    response = APP.response_class(
-        response=json.dumps({"formats": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"formats": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/format/<int:format_id>')
 def api_format(format_id):
     raceformat = RaceFormat.query.get(format_id)
-    response = APP.response_class(
-        response=json.dumps({"format": raceformat}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+
+    return json.dumps({"format": raceformat}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/profile/all')
 def api_profile_all():
@@ -830,22 +793,13 @@ def api_profile_all():
     for profile in profiles:
         payload.append(profile)
 
-    response = APP.response_class(
-        response=json.dumps({"profiles": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"profiles": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/profile/<int:profile_id>')
 def api_profile(profile_id):
     profile = Profiles.query.get(profile_id)
-    response = APP.response_class(
-        response=json.dumps({"profile": profile}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+
+    return json.dumps({"profile": profile}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/race/current')
 def api_race_current():
@@ -859,45 +813,61 @@ def api_race_current():
         "leaderboard": calc_leaderboard(current_race=True)
     }
 
-    response = APP.response_class(
-        response=json.dumps({"race": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/race/all')
 def api_race_all():
     heats = []
     for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
         max_rounds = DB.session.query(DB.func.max(SavedRaceMeta.round_id)).filter_by(heat_id=heat.heat_id).scalar()
-        heats.append({"rounds": max_rounds})
+        heats.append({
+            "id": heat.heat_id,
+            "rounds": max_rounds
+        })
 
-    response = APP.response_class(
-        response=json.dumps({"heats": heats}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    payload = {
+        "heats": heats,
+        "leaderboard": calc_leaderboard()
+    }
+
+    return json.dumps({"races": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/race/<int:heat_id>/<int:round_id>')
 def api_race(heat_id, round_id):
-    query = SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).all()
-    laps = []
-    for lap in query:
-        laps.append(lap)
+    race = SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).one()
 
+    pilotraces = []
+    for pilotrace in SavedPilotRace.query.filter_by(race_id=race.id).all():
+        laps = []
+        for lap in SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
+            laps.append({
+                    'id': lap.id,
+                    'lap_time_stamp': lap.lap_time_stamp,
+                    'lap_time': lap.lap_time,
+                    'lap_time_formatted': lap.lap_time_formatted,
+                    'source': lap.source,
+                    'deleted': lap.deleted
+                })
+
+        pilot_data = Pilot.query.filter_by(id=pilotrace.pilot_id).first()
+        if pilot_data:
+            nodepilot = pilot_data.callsign
+        else:
+            nodepilot = None
+
+        pilotraces.append({
+            'callsign': nodepilot,
+            'pilot_id': pilotrace.pilot_id,
+            'node_index': pilotrace.node_index,
+            'laps': laps
+        })
     payload = {
-        "raw_laps": laps,
-        "leaderboard": calc_leaderboard(heat_id=heat_id, round_id=round_id)
+        'start_time_formatted': race.start_time_formatted,
+        'nodes': pilotraces,
+        'leaderboard': calc_leaderboard(heat_id=heat_id, round_id=round_id)
     }
 
-    response = APP.response_class(
-        response=json.dumps({"race": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/status')
 def api_status():
@@ -917,17 +887,10 @@ def api_status():
             "race_status": RACE.race_status,
             "currentProfile": getOption('currentProfile'),
             "currentFormat": getOption('currentFormat'),
-        },
-        "event": {
-            "leaderboard": calc_leaderboard()
         }
     }
-    response = APP.response_class(
-        response=json.dumps({"status": data}),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+
+    return json.dumps({"status": data}), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/options')
 def api_options():
@@ -941,12 +904,7 @@ def api_options():
     else:
         payload = None
 
-    response = APP.response_class(
-        response=json.dumps({"options": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"options": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 #
 # Socket IO Events
