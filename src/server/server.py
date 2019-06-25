@@ -130,7 +130,8 @@ def monotonic_to_milliseconds(t):
 
 RACE_START = monotonic() # Updated on race start commands
 RACE_START_TOKEN = False # Check start thread matches correct stage sequence
-RACE_DURATION_MS = 0 # calculated when race is stopped
+RACE_DURATION_MS = 0 # Calculated when race is stopped
+RACE_END = 0 # Updated when race is stopped
 
 RACE_SCHEDULED = False # Whether to start a race when time
 RACE_SCHEDULED_TIME = 0 # Start race when time reaches this value
@@ -1628,6 +1629,8 @@ def race_start_thread(start_token):
 @SOCKET_IO.on('stop_race')
 def on_stop_race():
     '''Stops the race and stops registering laps.'''
+    global RACE_END
+
     if RACE.race_status == RACE_STATUS_RACING:
         global RACE_DURATION_MS # To redefine main program variable
         RACE_END = monotonic() # Update the race end time stamp
