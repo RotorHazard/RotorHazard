@@ -36,6 +36,14 @@ class Node:
         self.history_times = []
 
 
+    def init(self):
+        if self.api_level >= 10:
+            self.api_valid_flag = True  # set flag for newer API functions supported
+        if self.api_valid_flag and self.api_level >= 18:
+            self.max_rssi_value = 255
+        else:
+            self.max_rssi_value = 999
+
     def get_settings_json(self):
         return {
             'frequency': self.frequency,
@@ -51,3 +59,6 @@ class Node:
             'pass_peak_rssi': self.pass_peak_rssi,
             'pass_nadir_rssi': self.pass_nadir_rssi
         }
+
+    def is_valid_rssi(self, value):
+        return value >= 1 and value <= self.max_rssi_value
