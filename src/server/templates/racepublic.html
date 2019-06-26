@@ -114,6 +114,7 @@
 		$().articulate('pitch', rotorhazard.voice_pitch);
 		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
 		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
+		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
 
 		socket.on('race_scheduled', function (msg) {
 			if (msg.scheduled) {
@@ -404,6 +405,11 @@
 			rotorhazard.voice_pitch = parseFloat($(this).val());
 			rotorhazard.saveData();
 		});
+
+		$('#use_mp3_tones').change(function (event) {
+			rotorhazard.use_mp3_tones = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
 	});
 
 	function doSpeak(obj) {
@@ -428,7 +434,7 @@
 <div class="panel">
 	<div class="panel-content">
 		<div class="timer">
-			<div class="timing-clock">--:--</div>
+			<div class="timing-clock"><div class="warning" title="{{ __('Browser Sync Loss') }}">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
 		</div>
 
 		<h2 class="current_heat">{{ __('Loading...') }}</h2>
@@ -516,6 +522,14 @@
 					<p class="desc">{{ __('Pitch') }}: <span id="voice_pitch_value"></span></p>
 				</div>
 				<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					{{ __('Indicator Beeps') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
+				</ul>
 			</li>
 		</ol>
 	</div>

@@ -474,7 +474,7 @@
 			if(!$(this).prop('disabled')) {
 				socket.emit('stage_race');
 				rotorhazard.timer.stopAll();
-				$('.timing-clock').html('--:--');
+				$('.time-display').html('--:--');
 				$('button#start_race').prop('disabled', true);
 				$('#set_current_heat').prop('disabled', true);
 			}
@@ -502,7 +502,7 @@
 		$('button#discard_laps').click(function (event) {
 			if(!$(this).prop('disabled')) {
 				socket.emit('discard_laps');
-				$('.timing-clock').html('--:--');
+				$('.time-display').html('--:--');
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
 			}
@@ -586,7 +586,7 @@
 		});
 
 		$('button.simulate_lap').click(function (event) {
-			if(!$(this).prop('disabled')) {
+			// if(!$(this).prop('disabled')) {
 				if (rotorhazard.beep_manual_lap_button) {
 					if( rotorhazard.use_mp3_tones){
 						sound_beep.play();
@@ -600,7 +600,7 @@
 					node: parseInt($(this).data('node')),
 				};
 				socket.emit('simulate_lap', data);
-			}
+			// }
 			return false;
 		});
 
@@ -1023,7 +1023,7 @@
 <div class="panel">
 	<div class="panel-content full-width">
 		<div class="timer">
-			<div class="timing-clock">--:--</div>
+			<div class="timing-clock"><div class="warning" title="Browser Sync Loss">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
 		</div>
 
 		<!--Buttons for controlling the race-->
@@ -1048,7 +1048,7 @@
 			{% for node in range(num_nodes) %}
 			<div class="node">
 				<div class="race-header">
-					<a href="#tuning-detail-{{node}}" data-node="{{ node }}" class="open-mfp-popup-tuning button-like btn-warning" title="{{ __('Tuning') }}">&#9888;</a>
+					<a href="#tuning-detail-{{node}}" data-node="{{ node }}" class="open-mfp-popup-tuning button-like btn-warning" title="{{ __('Tuning') }}">&#9888;&#xFE0E;</a>
 					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
 					<button class="simulate_lap" id="manual_lap_{{ node }}" data-node="{{ node }}" title="{{ __('Manual') }}">+ {{ __('Lap') }}</button>
 				</div>
@@ -1088,7 +1088,7 @@
 							</div>
 
 							<div class="catch-passes">
-								<!-- <button class="catch-pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button> -->
+								<button class="catch-pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
 								<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
 							</div>
 						</div>
