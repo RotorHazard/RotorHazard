@@ -571,6 +571,8 @@ function timerModel() {
 	this.drift_history_samples = 10;
 	this.drift_correction = 0;
 
+	this.warn_until = 0;
+
 	var self = this;
 
 	function step() { // timer control
@@ -626,7 +628,7 @@ function timerModel() {
 			var drift = now - self.expected;
 			if (drift > self.interval) {
 				// self-resync if timer is interrupted (tab change, device goes to sleep, etc.)
-				self.callbacks.self_resync();
+				self.callbacks.self_resync(self);
 				self.start();
 			} else {
 				self.get_next_step(now);
@@ -931,21 +933,24 @@ rotorhazard.timer.deferred.callbacks.step = function(timer){
 		}
 	}
 
-	$('.timing-clock').html(timer.renderHTML());
+	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.deferred.callbacks.stop = function(timer){
-	$('.timing-clock').html(timer.renderHTML());
+	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.deferred.callbacks.expire = function(timer){
-	$('.timing-clock').html(__('Wait'));
+	$('.time-display').html(__('Wait'));
 }
 
 // race/staging timer callbacks
 rotorhazard.timer.race.callbacks.start = function(timer){
-	$('.timing-clock').html(timer.renderHTML());
+	$('.time-display').html(timer.renderHTML());
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
 }
 rotorhazard.timer.race.callbacks.step = function(timer){
+	if (timer.warn_until < window.performance.now()) {
+		$('.timing-clock .warning').hide();
+	}
 	if (timer.time_s < 0) {
 		if (timer.hidden_staging) {
 			// beep every second during staging if timer is hidden
@@ -1017,7 +1022,7 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 			}
 		}
 	}
-	$('.timing-clock').html(timer.renderHTML());
+	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.race.callbacks.expire = function(timer){
 	// play expired tone
@@ -1027,10 +1032,12 @@ rotorhazard.timer.race.callbacks.expire = function(timer){
 	else {
 		play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
 	}
-	$('.timing-clock').html(timer.renderHTML());
+	$('.time-display').html(timer.renderHTML());
 }
 rotorhazard.timer.race.callbacks.self_resync = function(timer){
 	// display resync warning
+	timer.warn_until = window.performance.now() + 3000;
+	$('.timing-clock .warning').show();
 }
 
 /* global page behaviors */
