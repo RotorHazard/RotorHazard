@@ -1,9 +1,9 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.0.0 (dev 3)" # Public release version code
+RELEASE_VERSION = "2.0.0 (dev 4)" # Public release version code
 SERVER_API = 23 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 18 # Most recent node API
-JSON_API = 1 # JSON API version
+JSON_API = 2 # JSON API version
 
 import os
 import sys
@@ -11,6 +11,7 @@ import shutil
 import base64
 import subprocess
 import importlib
+import bisect
 from monotonic import monotonic
 from datetime import datetime
 from functools import wraps
@@ -129,7 +130,8 @@ def monotonic_to_milliseconds(t):
 
 RACE_START = monotonic() # Updated on race start commands
 RACE_START_TOKEN = False # Check start thread matches correct stage sequence
-RACE_DURATION_MS = 0 # calculated when race is stopped
+RACE_DURATION_MS = 0 # Calculated when race is stopped
+RACE_END = 0 # Updated when race is stopped
 
 RACE_SCHEDULED = False # Whether to start a race when time
 RACE_SCHEDULED_TIME = 0 # Start race when time reaches this value
@@ -690,22 +692,13 @@ def api_pilot_all():
     for pilot in pilots:
         payload.append(pilot)
 
-    response = APP.response_class(
-        response=json.dumps({"pilots": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"pilots": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/pilot/<int:pilot_id>')
 def api_pilot(pilot_id):
     pilot = Pilot.query.get(pilot_id)
-    response = APP.response_class(
-        response=json.dumps({"pilot": pilot}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+
+    return json.dumps({"pilot": pilot}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/heat/all')
 def api_heat_all():
@@ -731,12 +724,7 @@ def api_heat_all():
             'class_id': race_class,
             'locked': locked}
 
-    response = APP.response_class(
-        response=json.dumps({"heats": all_heats}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"heats": all_heats}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/heat/<int:heat_id>')
 def api_heat(heat_id):
@@ -767,12 +755,7 @@ def api_heat(heat_id):
         'leaderboard': calc_leaderboard(heat_id=heat_id)
     }
 
-    response = APP.response_class(
-        response=json.dumps({"heat": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"heat": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/class/all')
 def api_class_all():
@@ -781,22 +764,13 @@ def api_class_all():
     for race_class in race_classes:
         payload.append(race_class)
 
-    response = APP.response_class(
-        response=json.dumps({"classes": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"classes": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/class/<int:class_id>')
 def api_class(class_id):
     race_class = RaceClass.query.get(class_id)
-    response = APP.response_class(
-        response=json.dumps({"class": race_class}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+
+    return json.dumps({"class": race_class}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/format/all')
 def api_format_all():
@@ -805,22 +779,13 @@ def api_format_all():
     for race_format in formats:
         payload.append(race_format)
 
-    response = APP.response_class(
-        response=json.dumps({"formats": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"formats": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/format/<int:format_id>')
 def api_format(format_id):
     raceformat = RaceFormat.query.get(format_id)
-    response = APP.response_class(
-        response=json.dumps({"format": raceformat}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+
+    return json.dumps({"format": raceformat}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/profile/all')
 def api_profile_all():
@@ -829,22 +794,13 @@ def api_profile_all():
     for profile in profiles:
         payload.append(profile)
 
-    response = APP.response_class(
-        response=json.dumps({"profiles": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"profiles": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/profile/<int:profile_id>')
 def api_profile(profile_id):
     profile = Profiles.query.get(profile_id)
-    response = APP.response_class(
-        response=json.dumps({"profile": profile}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+
+    return json.dumps({"profile": profile}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/race/current')
 def api_race_current():
@@ -858,45 +814,61 @@ def api_race_current():
         "leaderboard": calc_leaderboard(current_race=True)
     }
 
-    response = APP.response_class(
-        response=json.dumps({"race": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/race/all')
 def api_race_all():
     heats = []
     for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
         max_rounds = DB.session.query(DB.func.max(SavedRaceMeta.round_id)).filter_by(heat_id=heat.heat_id).scalar()
-        heats.append({"rounds": max_rounds})
+        heats.append({
+            "id": heat.heat_id,
+            "rounds": max_rounds
+        })
 
-    response = APP.response_class(
-        response=json.dumps({"heats": heats}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    payload = {
+        "heats": heats,
+        "leaderboard": calc_leaderboard()
+    }
+
+    return json.dumps({"races": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/race/<int:heat_id>/<int:round_id>')
 def api_race(heat_id, round_id):
-    query = SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).all()
-    laps = []
-    for lap in query:
-        laps.append(lap)
+    race = SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).one()
 
+    pilotraces = []
+    for pilotrace in SavedPilotRace.query.filter_by(race_id=race.id).all():
+        laps = []
+        for lap in SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
+            laps.append({
+                    'id': lap.id,
+                    'lap_time_stamp': lap.lap_time_stamp,
+                    'lap_time': lap.lap_time,
+                    'lap_time_formatted': lap.lap_time_formatted,
+                    'source': lap.source,
+                    'deleted': lap.deleted
+                })
+
+        pilot_data = Pilot.query.filter_by(id=pilotrace.pilot_id).first()
+        if pilot_data:
+            nodepilot = pilot_data.callsign
+        else:
+            nodepilot = None
+
+        pilotraces.append({
+            'callsign': nodepilot,
+            'pilot_id': pilotrace.pilot_id,
+            'node_index': pilotrace.node_index,
+            'laps': laps
+        })
     payload = {
-        "raw_laps": laps,
-        "leaderboard": calc_leaderboard(heat_id=heat_id, round_id=round_id)
+        'start_time_formatted': race.start_time_formatted,
+        'nodes': pilotraces,
+        'leaderboard': calc_leaderboard(heat_id=heat_id, round_id=round_id)
     }
 
-    response = APP.response_class(
-        response=json.dumps({"race": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/status')
 def api_status():
@@ -916,17 +888,10 @@ def api_status():
             "race_status": RACE.race_status,
             "currentProfile": getOption('currentProfile'),
             "currentFormat": getOption('currentFormat'),
-        },
-        "event": {
-            "leaderboard": calc_leaderboard()
         }
     }
-    response = APP.response_class(
-        response=json.dumps({"status": data}),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+
+    return json.dumps({"status": data}), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/options')
 def api_options():
@@ -940,12 +905,7 @@ def api_options():
     else:
         payload = None
 
-    response = APP.response_class(
-        response=json.dumps({"options": payload}, cls=AlchemyEncoder),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+    return json.dumps({"options": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 #
 # Socket IO Events
@@ -1491,8 +1451,9 @@ def on_set_race_format(data):
         emit_race_format()
         server_log("set race format to '%s' (%s)" % (race_format.name, race_format.id))
     else:
+        emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+        server_log("Format change prevented by active race")
         emit_race_format()
-        server_log("format change prevented by active race")
 
 @SOCKET_IO.on('add_race_format')
 def on_add_race_format():
@@ -1524,8 +1485,8 @@ def on_delete_race_format():
             setCurrentRaceFormat(first_raceFormat)
             emit_race_format()
     else:
-        server_log("format change prevented by active race")
-
+        emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+        server_log("Format change prevented by active race")
 
 @SOCKET_IO.on('alter_race_format')
 def on_alter_race_format(data):
@@ -1608,6 +1569,7 @@ def on_stage_race():
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
         RACE.timer_running = 0 # indicate race timer not running
         RACE.race_status = RACE_STATUS_STAGING
+        INTERFACE.set_race_status(RACE_STATUS_STAGING)
         emit_current_laps() # Race page, blank laps to the web client
         emit_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
@@ -1658,6 +1620,7 @@ def race_start_thread(start_token):
             node.under_min_lap_count = 0
 
         RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
+        INTERFACE.set_race_status(RACE_STATUS_RACING)
         RACE.timer_running = 1 # indicate race timer is running
         Race_laps_winner_name = None  # name of winner in first-to-X-laps race
         emit_race_status() # Race page, to set race button states
@@ -1666,6 +1629,8 @@ def race_start_thread(start_token):
 @SOCKET_IO.on('stop_race')
 def on_stop_race():
     '''Stops the race and stops registering laps.'''
+    global RACE_END
+
     if RACE.race_status == RACE_STATUS_RACING:
         global RACE_DURATION_MS # To redefine main program variable
         RACE_END = monotonic() # Update the race end time stamp
@@ -1683,9 +1648,11 @@ def on_stop_race():
             server_log('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
         RACE.race_status = RACE_STATUS_DONE # To stop registering passed laps, waiting for laps to be cleared
+        INTERFACE.set_race_status(RACE_STATUS_DONE)
     else:
         server_log('No active race to stop')
         RACE.race_status = RACE_STATUS_READY # Go back to ready state
+        INTERFACE.set_race_status(RACE_STATUS_READY)
 
     RACE.timer_running = 0 # indicate race timer not running
     RACE_SCHEDULED = False # also stop any deferred start
@@ -1801,6 +1768,7 @@ def on_discard_laps():
     '''Clear the current laps without saving.'''
     clear_laps()
     RACE.race_status = RACE_STATUS_READY # Flag status as ready to start next race
+    INTERFACE.set_race_status(RACE_STATUS_READY)
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
@@ -1837,81 +1805,103 @@ def on_set_current_heat(data):
 @SOCKET_IO.on('recover_pass')
 def on_recover_pass(data):
     node_index = data['node']
-    # catch_history = INTERFACE.get_catch_history(node_index)
 
-    if data['method'] == 'max': # catch missed pass
-        '''
-        server_log('Recovering pass: Node {0} / Pass {1}'.format(node_index + 1, catch_history['pass_ms']))
+    # define catch window
+    start_time = monotonic() - int(getOption('MinLapSec'))
 
-        # get best lap possible regardless of data validity (client asked for one)
-        INTERFACE.intf_simulate_lap(node_index, catch_history['pass_ms'])
+    history_values = INTERFACE.nodes[node_index].history_values
+    history_times = INTERFACE.nodes[node_index].history_times
 
-        new_enterat = catch_history['rssi_max'] - int(getOption("HistoryMaxOffset"))
+    if len(history_values):
+        start_index = bisect.bisect_left(history_times, start_time)
 
-        if new_enterat > INTERFACE.nodes[node_index].node_nadir_rssi:
-            if new_enterat < INTERFACE.nodes[node_index].node_peak_rssi:
-                if new_enterat >= INTERFACE.nodes[node_index].exit_at_level + int(getOption("HistoryMinOffset")):
-                    on_set_enter_at_level({
-                        'node': node_index,
-                        'enter_at_level': new_enterat
-                    })
-                else:
-                    emit_priority_message(__('No tuning adjustment made on node {0}: Requested Enterat of {1} is too close or below ExitAt.').format(node_index + 1, new_enterat), False, nobroadcast=True)
-                    server_log('Skipping EnterAt adjustment: RSSI of {0} too close to ExitAt {1}' \
-                        .format(catch_history['rssi_max'], INTERFACE.nodes[node_index].exit_at_level))
+        if start_index <= len(history_values):
+            if data['method'] == 'max': # catch missed pass
+                max_idx_local = max(xrange(len(history_values[start_index:])), key=history_values[start_index:].__getitem__)
+                max_idx = start_index + max_idx_local
+                max_rssi = history_values[max_idx]
+                max_rssi_time = history_times[max_idx]
 
-            else:
-                emit_priority_message(__('Tuning adjust failed on node {0}: Bad RSSI value ').format(node_index + 1), False, nobroadcast=True)
-                server_log('Skipping EnterAt adjustment: RSSI of {0} below Node Peak {1}' \
-                    .format(catch_history['rssi_max'], INTERFACE.nodes[node_index].node_peak_rssi))
-        else:
-            emit_priority_message(__('Tuning adjust failed on node {0}: Bad RSSI value').format(node_index + 1), False, nobroadcast=True)
-            server_log('Skipping EnterAt adjustment: RSSI of {0} above Node Nadir {1}' \
-                .format(catch_history['rssi_max'], INTERFACE.nodes[node_index].node_nadir_rssi))
-        '''
+                server_log('Recovering pass: Node {0} / Pass {1}'.format(node_index + 1, max_rssi_time))
 
-    if data['method'] == 'min': # force end crossing
-        server_log('Force end crossing: Node {0}'.format(node_index + 1))
+                # record best lap possible regardless of data validity (client asked for one)
+                INTERFACE.intf_simulate_lap(node_index, max_rssi_time)
 
-        # end crossing now
-        if INTERFACE.nodes[node_index].crossing_flag:
-            INTERFACE.force_end_crossing(node_index)
+                new_enterat = max_rssi - int(getOption("HistoryMaxOffset"))
 
-            # new_exitat = catch_history['rssi_min'] + int(getOption("HistoryMinOffset"))
-
-            '''
-            if new_exitat > INTERFACE.nodes[node_index].node_nadir_rssi:
-                if new_exitat < INTERFACE.nodes[node_index].node_peak_rssi:
-                    if new_exitat >= INTERFACE.nodes[node_index].enter_at_level:
-                        if new_exitat + int(getOption("HistoryMaxOffset")) < INTERFACE.nodes[node_index].node_peak_rssi:
+                if new_enterat > INTERFACE.nodes[node_index].node_nadir_rssi:
+                    if new_enterat < INTERFACE.nodes[node_index].node_peak_rssi:
+                        if new_enterat >= INTERFACE.nodes[node_index].exit_at_level + int(getOption("HistoryMinOffset")):
                             on_set_enter_at_level({
                                 'node': node_index,
-                                'enter_at_level': new_exitat + int(getOption("HistoryMaxOffset"))
+                                'enter_at_level': new_enterat
                             })
-                            emit_priority_message(__('WARNING: Force end on node {0} required increase of EnterAt. EnterAt may be improperly calibrated.').format(node_index + 1), False, nobroadcast=True)
-                            server_log('Forced end required EnterAt adjustment')
                         else:
-                            emit_priority_message(__('WARNING: Force end adjustment on node {0} failed: insufficient RSSI range.').format(node_index + 1), False, nobroadcast=True)
-                            server_log('Skipping EnterAt adjustment: adjustment required, but would have set above NodePeak')
+                            emit_priority_message(__('No tuning adjustment made on node {0}: Requested Enterat of {1} is too close or below ExitAt.').format(node_index + 1, new_enterat), False, nobroadcast=True)
+                            server_log('Skipping EnterAt adjustment: new RSSI of {0} too close to ExitAt {1}' \
+                                .format(new_enterat, INTERFACE.nodes[node_index].exit_at_level))
+
                     else:
-                        emit_priority_message(__('Force end failed on node {0}: Bad RSSI value.').format(node_index + 1), False, nobroadcast=True)
-                        server_log('Skipping ExitAt adjustment: RSSI of {0} under Node Peak {1}' \
-                            .format(catch_history['rssi_min'], INTERFACE.nodes[node_index].node_peak_rssi))
+                        emit_priority_message(__('Tuning adjust failed on node {0}: Bad RSSI value ').format(node_index + 1), False, nobroadcast=True)
+                        server_log('Skipping EnterAt adjustment: new RSSI of {0} not below Node Peak {1}' \
+                            .format(new_enterat, INTERFACE.nodes[node_index].node_peak_rssi))
+                else:
+                    emit_priority_message(__('Tuning adjust failed on node {0}: Bad RSSI value').format(node_index + 1), False, nobroadcast=True)
+                    server_log('Skipping EnterAt adjustment: new RSSI of {0} not above Node Nadir {1}' \
+                        .format(new_enterat, INTERFACE.nodes[node_index].node_nadir_rssi))
 
-                on_set_exit_at_level({
-                    'node': node_index,
-                    'exit_at_level': new_exitat
-                })
-            else:
-                emit_priority_message(__('Force end failed on node {0}: Bad RSSI value').format(node_index + 1), False, nobroadcast=True)
-                server_log('Skipping ExitAt adjustment: RSSI of {0} above Node Nadir {1}' \
-                    .format(catch_history['rssi_min'], INTERFACE.nodes[node_index].node_nadir_rssi))
-            '''
+            elif data['method'] == 'min': # force end crossing
+                server_log('Force end crossing: Node {0}'.format(node_index + 1))
+
+                # end crossing now
+                if INTERFACE.nodes[node_index].crossing_flag:
+                    INTERFACE.force_end_crossing(node_index)
+
+                    min_idx_local = min(xrange(len(history_values[start_index:])), key=history_values[start_index:].__getitem__)
+                    min_idx = start_index + min_idx_local
+                    min_rssi = history_values[min_idx]
+                    min_rssi_time = history_times[min_idx]
+
+                    new_exitat = min_rssi + int(getOption("HistoryMinOffset"))
+
+                    if new_exitat > INTERFACE.nodes[node_index].node_nadir_rssi:
+                        if new_exitat < INTERFACE.nodes[node_index].node_peak_rssi:
+                            if new_exitat >= INTERFACE.nodes[node_index].enter_at_level:
+                                if new_exitat + int(getOption("HistoryMaxOffset")) < INTERFACE.nodes[node_index].node_peak_rssi:
+                                    on_set_enter_at_level({
+                                        'node': node_index,
+                                        'enter_at_level': new_exitat + int(getOption("HistoryMaxOffset"))
+                                    })
+                                    emit_priority_message(__('WARNING: Force end on node {0} required increase of EnterAt. EnterAt may be improperly calibrated.').format(node_index + 1), False, nobroadcast=True)
+                                    server_log('Forced end required EnterAt adjustment')
+                                else:
+                                    emit_priority_message(__('WARNING: Force end adjustment on node {0} failed: insufficient RSSI range.').format(node_index + 1), False, nobroadcast=True)
+                                    server_log('Skipping EnterAt adjustment: adjustment required, but would have set above NodePeak')
+                            else:
+                                emit_priority_message(__('Force end failed on node {0}: Bad RSSI value.').format(node_index + 1), False, nobroadcast=True)
+                                server_log('Skipping ExitAt adjustment: RSSI of {0} under Node Peak {1}' \
+                                    .format(min_rssi, INTERFACE.nodes[node_index].node_peak_rssi))
+
+                        on_set_exit_at_level({
+                            'node': node_index,
+                            'exit_at_level': new_exitat
+                        })
+                    else:
+                        emit_priority_message(__('Force end failed on node {0}: Bad RSSI value').format(node_index + 1), False, nobroadcast=True)
+                        server_log('Skipping ExitAt adjustment: RSSI of {0} above Node Nadir {1}' \
+                            .format(min_rssi, INTERFACE.nodes[node_index].node_nadir_rssi))
+                else:
+                    emit_priority_message(__('Cannot force end: Node {0} is not crossing').format(node_index + 1), False, nobroadcast=True)
+                    server_log('Skipping ExitAt adjustment: Node {0} is not crossing'.format(node_index + 1))
+
+            emit_enter_and_exit_at_levels()
         else:
-            emit_priority_message(__('Cannot force end: Node {0} is not crossing').format(node_index + 1), False, nobroadcast=True)
-            server_log('Skipping ExitAt adjustment: Node {0} is not crossing'.format(node_index + 1))
+            emit_priority_message(__('Cannot perform operation on Node {0}: Not enough history').format(node_index + 1), False, nobroadcast=True)
+            server_log('Cannot perform operation on Node {0}: Not enough history'.format(node_index + 1))
+    else:
+        emit_priority_message(__('Cannot perform operation on Node {0}: Not enough history').format(node_index + 1), False, nobroadcast=True)
+        server_log('Cannot perform operation on Node {0}: Not enough history'.format(node_index + 1))
 
-    emit_enter_and_exit_at_levels()
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -3397,8 +3387,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
     if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end (RACE_DURATION_MS is invalid while race is in progress)
         if RACE.race_status is RACE_STATUS_RACING \
-            or (node.lap_timestamp >=0 and \
-                node.lap_timestamp < RACE_DURATION_MS):
+            or (RACE.race_status is RACE_STATUS_DONE and \
+                lap_timestamp_absolute < RACE_END):
 
             # Get the current pilot id on the node
             pilot_id = Heat.query.filter_by( \
@@ -3940,12 +3930,14 @@ if not os.path.exists(DB_FILE_NAME):
 serverInfo = buildServerInfo()
 server_log('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 if serverInfo['node_api_match'] is False:
-    server_log('** WARNING: Node API mismatch **')
+    server_log('** WARNING: Node API mismatch. **')
 
 if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
     server_log('** WARNING: Node firmware is out of date and may not function properly **')
 elif serverInfo['node_api_lowest'] < NODE_API_BEST:
     server_log('** NOTICE: Node firmware update is available **')
+elif serverInfo['node_api_lowest'] > NODE_API_BEST:
+    server_log('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
     if int(getOption('server_api')) < SERVER_API:
