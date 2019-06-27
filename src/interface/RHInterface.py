@@ -187,54 +187,64 @@ class RHInterface(BaseHardwareInterface):
         self.ads1x15_data = []
         supported_ads1x15_addrs = [0x48, 0x49, 0x4A, 0x4B]
 
-        try:
-            self.ads1x15Class = getattr(importlib.import_module('ads1x15'), 'ADS1X15')
-            if 'ADS1X15' in config_file:  #get config data from server/CONFIG_FILE_NAME json file or defaults if invalid
-                ADS_config_data = config_file['ADS1X15']
-                hardware_name = ADS_config_data['HARDWARE_NAME']
-                connected_channels = ADS_config_data['CONNECTED_CHANNELS']
-                gains = ADS_config_data['GAINS']
-                R1_Values = ADS_config_data['R1_VALUES']
-                R2_Values = ADS_config_data['R2_VALUES']
-                correction_factors = ADS_config_data['CORRECTION_FACTORS']
-            else:
-                raise KeyError  #protect against bad keys
-            for index, addr in enumerate(supported_ads1x15_addrs):
-                try:                            #Configure all 4 ports
-                    device = self.ads1x15Class(
-                        hardware_name = hardware_name,		
-                        connected_channels = connected_channels, 	
-                        gains = gains, 				
-                        R1_Values = R1_Values, 			
-                        R2_Values =  R2_Values,		
-                        address = addr,					
-                        correction_factors = correction_factors, 
-                        debug_print = False,
-                    )
-                    if device.found_device == False:
-                        raise IOError
-                    voltages = device.get_input_voltages()  #If the ports are not enabled, return False for the data
-                    data = {
-                        'voltage0': voltages.get(0,False),
-                        'voltage1': voltages.get(1,False),
-                        'voltage2': voltages.get(2,False),
-                        'voltage3': voltages.get(3,False),
-                    }
-                    # device.sleep() #TODO sleep isn't implemented with the ADS1X15 class yet but can be added
-                    print "ADS1115 found at address {0}".format(addr)
-                    gevent.sleep(I2C_CHILL_TIME)
-                    self.ads1x15_devices.append(device)
-                    self.ads1x15_data.append(data)
+        #try:
+        self.ads1x15Class = getattr(importlib.import_module('ads1x15'), 'ADS1X15')
+        sensor_config_data = config_file['SENSORS']
+        sensor_config_keys = [k.lower() for k in sensor_config_data]
+        """
+        hardware_name = ADS_config_data['HARDWARE_NAME']
+        connected_channels = ADS_config_data['CONNECTED_CHANNELS']
+        gains = ADS_config_data['GAINS']
+        R1_Values = ADS_config_data['R1_VALUES']
+        R2_Values = ADS_config_data['R2_VALUES']
+        correction_factors = ADS_config_data['CORRECTION_FACTORS']
+        """
+        
+        for index, addr in enumerate(supported_ads1x15_addrs):
+            try:                           # Configure all 4 ports
+                hex_addr = hex(addr)
+                device = self.ads1x15Class(
+                    hardware_name = sensor_config_data[hex_addr]['HARDWARE_NAME'],
+                    connected_channels = sensor_config_data[hex_addr]['CONNECTED_CHANNELS'],
+                    gains = sensor_config_data[hex_addr]['GAINS'],
+                    R1_Values =sensor_config_data[hex_addr]['R1_VALUES'],
+                    R2_Values =sensor_config_data[hex_addr]['R1_VALUES'],
+                    address = int(hex_addr,16),
+                    correction_factors = sensor_config_data[hex_addr]['CORRECTION_FACTORS'],                    
+                )
 
-                except IOError as err:
-                    print "No ADS1115 at address {0}".format(addr)
+                device.labels = sensor_config_data[hex_addr]['LABELS']
+                
+
+                if device.found_device == False:
+                    raise IOError
+                voltages = device.get_input_voltages()  #If the ports are not enabled, return False for the data
+                data = {}
+                for i in range(4):
+                    try:
+                        data[device.labels[i]] = voltages.get(i,False)
+                    except IndexError: #No label exists for that data in config
+                        label = "ADS1X15_" + str(hex_addr) + "_Port#" + str(i)
+                        data[label] = voltages.get(i,False)
+                    
+                
+                # device.sleep() #TODO sleep isn't implemented with the ADS1X15 class yet but can be added
+                print "ADS1115 found at address {0}".format(addr)
                 gevent.sleep(I2C_CHILL_TIME)
+                self.ads1x15_devices.append(device)
+                self.ads1x15_data.append(data)
+
+            except IOError as err:
+                print "No ADS1115 at address {0}".format(addr)
+            gevent.sleep(I2C_CHILL_TIME)
+        """
         except ImportError:
             print("Error: Unable to import ads1x15 in RHInterface.")
             self.ads1x15Class = None
         except KeyError:
             print 'ADS1X15 config key invalid'
             self.ads1x15Class = None
+        """
             
 
         # Scan for BME280 devices
@@ -857,12 +867,17 @@ class RHInterface(BaseHardwareInterface):
                         device = self.ads1x15_devices[index]
                         #device.wake() #todo not implemented in ads1x15.py
                         voltages = device.get_input_voltages()
-                        data = {
-                            'voltage0': voltages.get(0,False),
-                            'voltage1': voltages.get(1,False),
-                            'voltage2': voltages.get(2,False),
-                            'voltage3': voltages.get(3,False),
-                        }
+                        
+
+                        data = {}
+                        for i in range(4):
+                            try:
+                                data[device.labels[i]] = voltages.get(i,False)
+                            except IndexError: #No label exists for that data in config
+                                label = "ADS1X15_" + str(hex_addr) + "_Port#" + str(i)
+                                data[label] = voltages.get(i,False)
+                        print(data)
+                        
                         #device.sleep() todo not implemented
                         self.ads1x15_data[index] = data
                         self.i2c_timestamp = self.milliseconds()
