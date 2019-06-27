@@ -70,52 +70,139 @@ APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 DB = SQLAlchemy(APP)
 
-Config = {}
-Config['GENERAL'] = {}
-Config['LED'] = {}
-Config['ADS1X15'] = {}
+Config = {
+    'GENERAL' : {
+        'HTTP_PORT' : 5000,
+        'SECRET_KEY': 'secret!',
+        'ADMIN_USERNAME' : 'admin',
+        'ADMIN_PASSWORD' : 'rotorhazard',
+        'DEBUG' : False,
+        'NODE_DRIFT_CALC_TIME' : 10,
+    },
+    
+    'LED' : {
+        'LED_COUNT'      : 150,     # Number of LED pixels.
+        'LED_PIN'        : 10,      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
+        'LED_FREQ_HZ'    : 800000,  # LED signal frequency in hertz (usually 800khz)
+        'LED_DMA'        : 10,      # DMA channel to use for generating signal (try 10)
+        'LED_BRIGHTNESS' : 255,     # Set to 0 for darkest and 255 for brightest
+        'LED_INVERT'     : False,   # True to invert the signal (when using NPN transistor level shift)
+        'LED_CHANNEL'    : 0,       # set to '1' for GPIOs 13, 19, 41, 45 or 53
+        'LED_STRIP'      : 'GRB',   # Strip type and colour ordering
+    },
+    
+    'SENSORS' : {
+        "0x48"   : {
+			"HARDWARE_NAME": "ADS1115",                                 # Either ADS1115 or ADS1015
+			"CONNECTED_CHANNELS": [0,1,2],                              # Which connected channels to use, pick any from 0,1,2,3  that are soldered up
+			"GAINS": [1,1,1],                                           # Internal gain to use
+			"R1_VALUES": [22,22,22],                                    # R1 values for an external voltage divider
+			"R2_VALUES": [3.3,3.3,3.3],                                 # R2 values for an external voltage divider
+			"CORRECTION_FACTORS": [1.0065,1.0127175 , 1.02739],         # Resistor offsets for resistance variance correction
+			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],   # Labels that show up in web interface
+			"ADDRESS": 72,                                              # Hex address, in decimal format https://www.rapidtables.com/convert/number/hex-to-decimal.html
+		},
+		"0x49": {
+			"HARDWARE_NAME": "ADS1115",
+			"CONNECTED_CHANNELS": [0,1,2],
+			"GAINS": [1,1,1],
+			"R1_VALUES": [22,22,22],
+			"R2_VALUES": [3.3,3.3,3.3],
+			"CORRECTION_FACTORS": [1.0065,1.0127175 , 1.02739],
+			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],
+			"ADDRESS": 73
+		},
+		"0x4a": {
+			"HARDWARE_NAME": "ADS1115",
+			"CONNECTED_CHANNELS": [0,1,2],
+			"GAINS": [1,1,1],
+			"R1_VALUES": [22,22,22],
+			"R2_VALUES": [3.3,3.3,3.3],
+			"CORRECTION_FACTORS": [1.0065,1.0127175 , 1.02739],
+			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],
+			"ADDRESS": 74,
+		},
+		"0x4b": {
+			"HARDWARE_NAME": "ADS1115",
+			"CONNECTED_CHANNELS": [0,1,2],
+			"GAINS": [1,1,1],
+			"R1_VALUES": [22,22,22],
+			"R2_VALUES": [3.3,3.3,3.3],
+			"CORRECTION_FACTORS": [1.0065,1.0127175 , 1.02739],
+			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],
+			"ADDRESS": 75,
+		},
+		"0x40": {
+			"VOLTAGE_LABEL": "Voltage",
+			"CURRENT_LABEL": "Current",
+			"POWER_LABEL": "Power",
+			"ADDRESS": 64,
+		},
+		"0x41": {
+			"VOLTAGE_LABEL": "Voltage",
+			"CURRENT_LABEL": "Current",
+			"POWER_LABEL": "Power",
+			"ADDRESS": 65,
+		},
+		"0x44": {
+			"VOLTAGE_LABEL": "Voltage",
+			"CURRENT_LABEL": "Current",
+			"POWER_LABEL": "Power",
+			"ADDRESS": 68,
+		},
+		"0x45": {
+			"VOLTAGE_LABEL": "Voltage",
+			"CURRENT_LABEL": "Current",
+			"POWER_LABEL": "Power",
+			"ADDRESS": 69,
+		},
+		"0x76": {
+			"TEMPERATURE_LABEL": "Temperature C",
+			"HUMIDITY_LABEL": "Humidity %",
+			"PRESSURE_LABEL": "Pressure",
+			"ADDRESS": 118,
+		},
+		"0x77": {
+			"TEMPERATURE_LABEL": "Temperature C",
+			"HUMIDITY_LABEL": "Humidity %",
+			"PRESSURE_LABEL": "Pressure",
+			"ADDRESS": 119,
+		},
+    },
+}
 
-# LED strip configuration:
-Config['LED']['LED_COUNT']      = 150      # Number of LED pixels.
-Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
-Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
-Config['LED']['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
-Config['LED']['LED_BRIGHTNESS'] = 255     # Set to 0 for darkest and 255 for brightest
-Config['LED']['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
-Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
-Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
+#Import a config file while checking for missing or extra keys
+def safe_update_config(external_config,default_config): #TODO make this recursively deep
+    keys_used = []
+    
+    #check if a key exists externally otherwise use defaults and warn that key is missing externally
+    for k in default_config:
+        if k in external_config:        
+            default_config[k] = external_config[k] #TODO check its a dict. If so, make recursive call
+            keys_used.append(k)
+        else:
+            print ("Error: External Configuration is missing key of " ,k , "in", CONFIG_FILE_NAME)
+    #Check for extra keys in the config file.
+    for k in external_config:
+        if not (k in keys_used):
+            print("Error: Configuration has extra key of ",k , "in", CONFIG_FILE_NAME)
+    #note: No need to check for duplicates because JSON will not allow that
 
-# ADS1X15 Configuration:
-Config['ADS1X15']['HARDWARE_NAME']      = 'ADS1115'             # Either ADS1115 or ADS1015
-Config['ADS1X15']['CONNECTED_CHANNELS'] = [0,1,]                # Which connected channels to use, pick any from 0,1,2,3  that are soldered up
-Config['ADS1X15']['GAINS']              = [1,1,]                # Internal gain to use
-Config['ADS1X15']['R1_VALUES']          = [22,22,]              # R1 values for an external voltage divider
-Config['ADS1X15']['R2_VALUES']          = [3.3,3.3,]            # R2 values for an external voltage divider
-Config['ADS1X15']['CORRECTION_FACTORS'] = [1.00,1.00,]          # Resistor offsets for resistance variance correction
-Config['ADS1X15']['GUI_LABELS']         = ['ADS_A0','ADS_A1',]  # Labels that show up in web interface
-#Config['ADS1X15_VOLTAGE']['ADDRESS']   = 0x48                  # Hex address - not needed because dynamic sensor detecting is used.
 
-# other default configurations
-Config['GENERAL']['HTTP_PORT'] = 5000
-Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
-Config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
-Config['GENERAL']['DEBUG'] = False
-
-Config['GENERAL']['NODE_DRIFT_CALC_TIME'] = 10
 
 # override defaults above with config from file
 try:
     with open(CONFIG_FILE_NAME, 'r') as f:
         ExternalConfig = json.load(f)
-    Config['GENERAL'].update(ExternalConfig['GENERAL'])
-    Config['LED'].update(ExternalConfig['LED'])
-    Config['ADS1X15'].update(ExternalConfig['ADS1X15'])
+    safe_update_config(ExternalConfig['GENERAL'],Config['GENERAL'])
+    safe_update_config(ExternalConfig['LED'],Config['LED'])
+    safe_update_config(ExternalConfig['SENSORS'],Config['SENSORS'])
     Config['GENERAL']['configFile'] = 1
     print 'Configuration file imported'
     APP.config['SECRET_KEY'] = Config['GENERAL']['SECRET_KEY']
 except IOError:
     Config['GENERAL']['configFile'] = 0
-    print 'No configuration file found, using defaults'
+    print 'No configuration file found, using defaults. Check it with JSONLint'
 except ValueError:
     Config['GENERAL']['configFile'] = -1
     print 'Configuration file invalid, using defaults'
@@ -2082,12 +2169,30 @@ def emit_node_data(**params):
 
 def emit_environmental_data(**params):
     '''Emits environmental data.'''
+    # Attempt to standardize the message types by storing the label with it.
+    # The data must be sent as a dictionary with keys:
+    #   label
+    #   value
+    #   unit
+    
+    # First, try creating a dictionary with all the ina219 and bme and ads data
+    for sensor_index,sensor_data in enumerate(INTERFACE.ads1x15_data):
+        v0_val = {
+            "label" : Config["ADS1X15"]["GUI_LABELS"].get(0,"Port 0"), #can't use get on a list. Use 
+            "value" : sensor_data["voltage0"], 
+            "unit" : "V"
+        }
+        print(one_sensors_data["voltage0"])
+        print("X")
+
+    #emit_payload = {}
+    #emit_payload[0] = json.dumps({
     emit_payload = {
         'core_temperature': INTERFACE.core_temp,
         'aux_voltage': [data['voltage'] for data in INTERFACE.ina219_data],
         'aux_current': [data['current'] for data in INTERFACE.ina219_data],
         'aux_power': [data['power'] for data in INTERFACE.ina219_data],
-        'aux_voltage0' : [data['voltage0'] for data in INTERFACE.ads1x15_data],
+        'voltage_list' : [data['voltage0'] for data in INTERFACE.ads1x15_data],
         'aux_voltage1' : [data['voltage1'] for data in INTERFACE.ads1x15_data],
         'aux_voltage2' : [data['voltage2'] for data in INTERFACE.ads1x15_data],
         'aux_voltage3' : [data['voltage3'] for data in INTERFACE.ads1x15_data],
@@ -3322,7 +3427,7 @@ def heartbeat_thread_function():
             emit_node_data()
 
         # emit environment data less often:
-        if (heartbeat_thread_function.iter_tracker % 100) == 0:
+        if (heartbeat_thread_function.iter_tracker % 10) == 0:
             INTERFACE.update_environmental_data()
             emit_environmental_data()
 
