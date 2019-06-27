@@ -74,7 +74,7 @@ class ADS1X15():
 		if hardware_name in VALID_HARDWARE_NAMES:
 			self.hardware_name = hardware_name
 		else:
-			print ("Error: Invalid ADS hardware name.")
+			print ("Error: Invalid ADS hardware name of ",hardware_name)
 			self.exit_action()
 
 
@@ -155,7 +155,8 @@ class ADS1X15():
  		if address in VALID_I2C_ADDRESSES:
 			self.address = address
 		else:
-			print ("Error: The ADC hex address is not valid.")
+			print ("Error: The ADC hex address is not valid:",address)
+			print(VALID_I2C_ADDRESSES)
 			self.exit_action()
 
  		#Create the ADS1x15 object	
