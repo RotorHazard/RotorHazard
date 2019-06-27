@@ -16,12 +16,82 @@
 		"LED_INVERT": false,
 		"LED_CHANNEL": 0
 	},
-	"ADS1X15": {
-		"HARDWARE_NAME": "ADS1115",
-		"CONNECTED_CHANNELS": [0,1],
-		"GAINS": [1,1],
-		"R1_VALUES": [22,22],
-		"R2_VALUES": [3.3,3.3],
-		"CORRECTION_FACTORS": [1.00,1.00]
+	"SENSORS": {
+		"ADS1X15/0x48": {
+			"HARDWARE_NAME": "ADS1115",
+			"CONNECTED_CHANNELS": [0,1,2],
+			"GAINS": [1,1,1],
+			"R1_VALUES": [22,22,22],
+			"R2_VALUES": [3.3,3.3,3.3],
+			"CORRECTION_FACTORS": [1.0065,1.0127175 , 1.02739],
+			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],
+			"ADDRESS": 72
+		},
+		"ADS1X15/0x49": {
+			"HARDWARE_NAME": "ADS1115",
+			"CONNECTED_CHANNELS": [0,1,2],
+			"GAINS": [1,1,1],
+			"R1_VALUES": [22,22,22],
+			"R2_VALUES": [3.3,3.3,3.3],
+			"CORRECTION_FACTORS": [1.0065,1.0127175 , 1.02739],
+			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],
+			"ADDRESS": 73
+		},
+		"ADS1X15/0x4A": {
+			"HARDWARE_NAME": "ADS1115",
+			"CONNECTED_CHANNELS": [0,1,2],
+			"GAINS": [1,1,1],
+			"R1_VALUES": [22,22,22],
+			"R2_VALUES": [3.3,3.3,3.3],
+			"CORRECTION_FACTORS": [1.0065,1.0127175 , 1.02739],
+			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],
+			"ADDRESS": 74
+		},
+		"ADS1X15/0x4B": {
+			"HARDWARE_NAME": "ADS1115",
+			"CONNECTED_CHANNELS": [0,1,2],
+			"GAINS": [1,1,1],
+			"R1_VALUES": [22,22,22],
+			"R2_VALUES": [3.3,3.3,3.3],
+			"CORRECTION_FACTORS": [1.0065,1.0127175 , 1.02739],
+			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],
+			"ADDRESS": 75
+		},
+		"INA219/0x40": {
+			"VOLTAGE_LABEL": "Voltage",
+			"CURRENT_LABEL": "Current",
+			"POWER_LABEL": "Power",
+			"ADDRESS": 64
+		},
+		"INA219/0x41": {
+			"VOLTAGE_LABEL": "Voltage",
+			"CURRENT_LABEL": "Current",
+			"POWER_LABEL": "Power",
+			"ADDRESS": 65
+		},
+		"INA219/0x44": {
+			"VOLTAGE_LABEL": "Voltage",
+			"CURRENT_LABEL": "Current",
+			"POWER_LABEL": "Power",
+			"ADDRESS": 68
+		},
+		"INA219/0x45": {
+			"VOLTAGE_LABEL": "Voltage",
+			"CURRENT_LABEL": "Current",
+			"POWER_LABEL": "Power",
+			"ADDRESS": 69
+		},
+		"BME280/0x76": {
+			"TEMPERATURE_LABEL": "Temperature C",
+			"HUMIDITY_LABEL": "Humidity %",
+			"PRESSURE_LABEL": "Pressure",
+			"ADDRESS": 118
+		},
+		"BME280/0x77": {
+			"TEMPERATURE_LABEL": "Temperature C",
+			"HUMIDITY_LABEL": "Humidity %",
+			"PRESSURE_LABEL": "Pressure",
+			"ADDRESS": 119
+		}
 	}
 }
