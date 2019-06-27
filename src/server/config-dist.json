@@ -17,7 +17,7 @@
 		"LED_CHANNEL": 0
 	},
 	"SENSORS": {
-		"ADS1X15/0x48": {
+		"0x48": {
 			"HARDWARE_NAME": "ADS1115",
 			"CONNECTED_CHANNELS": [0,1,2],
 			"GAINS": [1,1,1],
@@ -27,7 +27,7 @@
 			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],
 			"ADDRESS": 72
 		},
-		"ADS1X15/0x49": {
+		"0x49": {
 			"HARDWARE_NAME": "ADS1115",
 			"CONNECTED_CHANNELS": [0,1,2],
 			"GAINS": [1,1,1],
@@ -37,7 +37,7 @@
 			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],
 			"ADDRESS": 73
 		},
-		"ADS1X15/0x4A": {
+		"0x4A": {
 			"HARDWARE_NAME": "ADS1115",
 			"CONNECTED_CHANNELS": [0,1,2],
 			"GAINS": [1,1,1],
@@ -47,7 +47,7 @@
 			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],
 			"ADDRESS": 74
 		},
-		"ADS1X15/0x4B": {
+		"0x4B": {
 			"HARDWARE_NAME": "ADS1115",
 			"CONNECTED_CHANNELS": [0,1,2],
 			"GAINS": [1,1,1],
@@ -57,37 +57,37 @@
 			"LABELS": ["Supply [v]","Battery 1 [v]","Battery 2 [v]"],
 			"ADDRESS": 75
 		},
-		"INA219/0x40": {
+		"0x40": {
 			"VOLTAGE_LABEL": "Voltage",
 			"CURRENT_LABEL": "Current",
 			"POWER_LABEL": "Power",
 			"ADDRESS": 64
 		},
-		"INA219/0x41": {
+		"0x41": {
 			"VOLTAGE_LABEL": "Voltage",
 			"CURRENT_LABEL": "Current",
 			"POWER_LABEL": "Power",
 			"ADDRESS": 65
 		},
-		"INA219/0x44": {
+		"0x44": {
 			"VOLTAGE_LABEL": "Voltage",
 			"CURRENT_LABEL": "Current",
 			"POWER_LABEL": "Power",
 			"ADDRESS": 68
 		},
-		"INA219/0x45": {
+		"0x45": {
 			"VOLTAGE_LABEL": "Voltage",
 			"CURRENT_LABEL": "Current",
 			"POWER_LABEL": "Power",
 			"ADDRESS": 69
 		},
-		"BME280/0x76": {
+		"0x76": {
 			"TEMPERATURE_LABEL": "Temperature C",
 			"HUMIDITY_LABEL": "Humidity %",
 			"PRESSURE_LABEL": "Pressure",
 			"ADDRESS": 118
 		},
-		"BME280/0x77": {
+		"0x77": {
 			"TEMPERATURE_LABEL": "Temperature C",
 			"HUMIDITY_LABEL": "Humidity %",
 			"PRESSURE_LABEL": "Pressure",
