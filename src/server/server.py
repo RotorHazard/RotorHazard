@@ -1745,6 +1745,9 @@ def on_resave_laps(data):
     SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).delete()
 
     for lap in laps:
+        tmp_lap_time_formatted = lap['lap_time']
+        if isinstance(tmp_lap_time_formatted, float):
+            tmp_lap_time_formatted = time_format(lap['lap_time'])
         DB.session.add(SavedRaceLap( \
             race_id=race_id, \
             pilotrace_id=pilotrace_id, \
@@ -1752,7 +1755,7 @@ def on_resave_laps(data):
             pilot_id=pilot_id, \
             lap_time_stamp=lap['lap_time_stamp'], \
             lap_time=lap['lap_time'], \
-            lap_time_formatted=lap['lap_time_formatted'], \
+            lap_time_formatted=tmp_lap_time_formatted,\
             source = lap['source'], \
             deleted = lap['deleted']
         ))
@@ -4010,4 +4013,3 @@ if __name__ == '__main__':
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
-
