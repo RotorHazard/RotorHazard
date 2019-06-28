@@ -23,7 +23,7 @@ A POE DC jack is provided so that the timer can be powered at the other end of t
 **XT60 connector** to power timer by lipo (Slot for securing zip tie provided, but I recommend a dab of hot glue to really hold it)
 http://tiny.cc/12ri8y
 
-**JST connector** for WS2812b LED panel output from Raspberry Pi pins 19,20 (Slot for securing zip tie provided, but I recommend a dab of hot glue to really hold it)
+**JST connector** for WS2812b LED panel output from Raspberry Pi pins 19-GPIO10,20-GND (Slot for securing zip tie provided, but I recommend a dab of hot glue to really hold it)
 http://tiny.cc/e7ri8y
 
 **5.5mm 3 pin DC Jack** for POE
