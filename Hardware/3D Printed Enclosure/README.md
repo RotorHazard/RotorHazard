@@ -1,5 +1,5 @@
 # 3D Printed Enclosure
-![alt text](https://github.com/Cerberus74/RotorHazard/raw/master/Hardware/3D%20Printed%20Enclosure/Images/RH%20Case.png)
+![alt text](https://github.com/Cerberus74/RotorHazard/raw/master/Hardware/3D%20Printed%20Enclosure/Images/FinalRender8Node.png)
 
 ## **Four and Eight Node Printable Enclosures**
 This is pretty much a ground up rework of FreeFormFPV's excellent original work. Not much of the original remains. I've expanded heavily on the original design and hopefully improved it.
