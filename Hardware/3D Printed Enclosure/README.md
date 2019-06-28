@@ -12,12 +12,12 @@ A POE DC jack is provided so that the timer can be powered at the other end of t
 
 ![alt text](https://github.com/Cerberus74/RotorHazard/raw/master/Hardware/3D%20Printed%20Enclosure/Images/ExplodedView.png)
 ## **Printable Parts:**
-8 Node Enclosure
-4 Node Enclosure
-PCB Tray
-RotorHazard Branded Lid
-RotorHazard Branded Fan Grille
-Three Plain Style Fan Grilles
+*8 Node Enclosure
+*4 Node Enclosure
+*PCB Tray
+*RotorHazard Branded Lid
+*RotorHazard Branded Fan Grille
+*Three Plain Style Fan Grilles
 
 ## **Parts Needed:**
 RotorHazard timer, Built using the D5 PCB V2.0 (https://flyingrobot.co/products/delta5-pcb)
