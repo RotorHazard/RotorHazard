@@ -41,3 +41,5 @@ http://tiny.cc/rsti8y
 http://tiny.cc/o7ti8y
 (Secured by two M2 fasteners. Or a couple of dabs of hot glue)
 
+**4 x countersunk M3x20 Machine Screw** To fasten lid
+http://tinyurl.com/y3g2hqaf
