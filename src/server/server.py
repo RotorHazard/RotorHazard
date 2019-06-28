@@ -3874,6 +3874,10 @@ def recover_database():
             if val is not None:
                 carryOver[opt] = val
 
+        for profile in profiles_query_data:
+            profile.enter_ats /= 2
+            profile.exit_ats /= 2
+
     except Exception as ex:
         server_log('Error reading data from previous database:  ' + str(ex))
 
@@ -3958,16 +3962,6 @@ if not db_inited_flag:
 
 # Expand heats (if number of nodes increases)
 expand_heats()
-
-# internal slave race format for LiveTime (needs to be created after initial DB setup)
-SLAVE_RACE_FORMAT = RaceFormat(name=__("Slave"),
-                         race_mode=1,
-                         race_time_sec=0,
-                         start_delay_min=0,
-                         start_delay_max=0,
-                         number_laps_win=0,
-                         win_condition=WIN_CONDITION_NONE,
-                         team_racing_mode=False)
 
 # Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
