@@ -6,7 +6,7 @@ This is pretty much a ground up rework of FreeFormFPV's excellent original work.
 
 There are two enclosures. One for four node timers and one for eight node timers. The lid and PCB tray fit either.
 
-The Original Delta5 100x100mm V2.0 PCB is a 'click fit' into the new PCB Trays. No fasteners needed. the trays then stack in place in the enclosure and are secured in place by the lid. Which secures with four countersunk M3 fasteners. The planned updated RotorHazard PCB will be compatible with the PCB tray.
+The Original D5 100x100mm V2.0 PCB is a 'click fit' into the new PCB Trays. No fasteners needed. the trays then stack in place in the enclosure and are secured in place by the lid. Which secures with four countersunk M3 fasteners. The planned updated RotorHazard PCB will be compatible with the PCB tray.
 
 A POE DC jack is provided so that the timer can be powered at the other end of the network cable (POE injector needed). Be sure to use a THREE PIN DC jack wired properly to disconnect the XT60 socket when in use. Failure to do this may result in the release of magical smoke. The timer may thus be powered either locally by a lipo or remotely over POE.
 
@@ -20,8 +20,6 @@ A POE DC jack is provided so that the timer can be powered at the other end of t
 * Three Plain Style Fan Grilles
 
 ## **Parts Needed:**
-RotorHazard timer, Built using the D5 PCB V2.0 (https://flyingrobot.co/products/delta5-pcb)
-
 **XT60 connector** to power timer by lipo (Slot for securing zip tie provided, but I recommend a dab of hot glue to really hold it)
 http://tiny.cc/12ri8y
 
