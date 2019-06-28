@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.0.0 (dev 4)" # Public release version code
+RELEASE_VERSION = "2.0.0 (dev 5)" # Public release version code
 SERVER_API = 23 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 18 # Most recent node API
@@ -3874,9 +3874,11 @@ def recover_database():
             if val is not None:
                 carryOver[opt] = val
 
-        for profile in profiles_query_data:
-            profile.enter_ats /= 2
-            profile.exit_ats /= 2
+        # RSSI reduced by half for 2.0.0
+        if int(getOption('server_api')) < 23:
+            for profile in profiles_query_data:
+                profile.enter_ats /= 2
+                profile.exit_ats /= 2
 
     except Exception as ex:
         server_log('Error reading data from previous database:  ' + str(ex))
