@@ -1,4 +1,4 @@
-#3D Printed Enclosure
+# 3D Printed Enclosure
 ![alt text](https://github.com/Cerberus74/RotorHazard/raw/master/Hardware/3D%20Printed%20Enclosure/Images/RH%20Case.png)
 
 ##**Delta5 / RotorHazard Lap Timer, Enclosure**
