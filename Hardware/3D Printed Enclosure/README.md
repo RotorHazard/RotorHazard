@@ -30,7 +30,6 @@ http://tiny.cc/e7ri8y
 
 **5.5mm 3 pin DC Jack** for POE
 http://tiny.cc/wbsi8y
-
 [Wiring 3 pin DC jack](https://github.com/Cerberus74/RotorHazard/raw/master/Hardware/3D%20Printed%20Enclosure/Images/WireBarrelJack.png")
 
 **POE injector/adapter** (optional)
