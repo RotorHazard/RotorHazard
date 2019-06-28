@@ -33,13 +33,11 @@ Voltage Meter
 http://tiny.cc/o7ti8y
 (Secured by two M2 fasteners. Or a couple of dabs of hot glue)
 
-Printable Parts:
+[b]Printable Parts:[/b]
 8 Node Enclosure
 4 Node Enclosure
 PCB Tray
-KillaKwads Branded Lid - https://www.facebook.com/groups/killakwads
 RotorHazard Branded Lid
-Plain Lid
 RotorHazard Branded Fan Grille
 Three Plain Style Fan Grilles
 
