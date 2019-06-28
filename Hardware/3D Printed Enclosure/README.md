@@ -10,6 +10,7 @@ The Delta5 V2.0 PCB is a 'click fit' into the new PCB Trays. No fasteners needed
 
 A POE DC jack is provided so that the timer can be powered at the other end of the network cable (POE injector needed). Be sure to use a THREE PIN DC jack wired properly to disconnect the XT60 socket when in use. Failure to do this may result in the release of magical smoke (see image above for wiring help). The timer may thus be powered either locally by a lipo or remotely over POE.
 
+![alt text](https://github.com/Cerberus74/RotorHazard/raw/master/Hardware/3D%20Printed%20Enclosure/Images/ExplodedView.png)
 Parts Needed:
 Raspberry Pi, Delta5/RotorHazard timer, Built using the D5 PCB V2.0 (https://flyingrobot.co/products/delta5-pcb)
 
