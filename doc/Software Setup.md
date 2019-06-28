@@ -11,15 +11,15 @@ Configure the '#define NODE_NUMBER' line of the .ino for each node before upload
 #define NODE_NUMBER 1
 ```
 
-Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:  
-node #1: ground pin 5  
-node #2: ground pin 6  
-node #3: ground pin 7  
-node #4: ground pin 8  
-node #5: ground pin 5 and pin 4  
-node #6: ground pin 6 and pin 4  
-node #7: ground pin 7 and pin 4  
-node #8: ground pin 8 and pin 4
+Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:
+node #1: ground pin D5
+node #2: ground pin D6
+node #3: ground pin D7
+node #4: ground pin D8
+node #5: ground pin D5 and pin D4
+node #6: ground pin D6 and pin D4
+node #7: ground pin D7 and pin D4
+node #8: ground pin D8 and pin D4
 
 ## System (Raspberry Pi)
 Note: Many of the setup commands below require that the Rasperry Pi has internet access.
@@ -193,6 +193,6 @@ sudo shutdown now
 
 -----------------------------
 
-See Also:  
-[doc/Hardware Setup.md](Hardware%20Setup.md)  
+See Also:
+[doc/Hardware Setup.md](Hardware%20Setup.md)
 [doc/User Guide.md](User%20Guide.md)
