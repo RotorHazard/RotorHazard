@@ -26,6 +26,20 @@ On all timers:
 	sudo systemctl disable systemd-timesyncd
 	sudo ​/etc/init.d/ntp restart
 
+### Random number generator
+
+Activate hardware RNG to improve available entropy.
+
+	sudo apt-get install rng-tools
+
+Edit /etc/default/rng-tools and uncomment the line:
+
+    HRNGDEVICE=/dev/hwrng
+
+Then, restart rng-tools with
+
+    sudo service rng-tools restart
+
 ### Config
 
 In config.json, under "GENERAL", add a "SLAVES" setting with
