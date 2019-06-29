@@ -3871,9 +3871,10 @@ def recover_database():
             if val is not None:
                 carryOver[opt] = val
 
-        for profile in profiles_query_data:
-            profile.enter_ats /= 2
-            profile.exit_ats /= 2
+        if int(getOption('server_api')) < 23:
+            for profile in profiles_query_data:
+                profile.enter_ats /= 2
+                profile.exit_ats /= 2
 
     except Exception as ex:
         server_log('Error reading data from previous database:  ' + str(ex))
