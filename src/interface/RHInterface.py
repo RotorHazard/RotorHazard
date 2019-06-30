@@ -149,6 +149,8 @@ class RHInterface(BaseHardwareInterface):
             else:
                 print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
 
+        
+        sensor_config_data = config_file['SENSORS']
         # Core temperature
         with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
             self.core_temp = float(f.read())/1000
@@ -165,7 +167,7 @@ class RHInterface(BaseHardwareInterface):
                 try:
                     device = self.ina219Class(0.1, address=addr)
                     device.configure()
-                    data = {
+                    device_data = {
                         'voltage': device.voltage(),
                         'current': device.current(),
                         'power': device.power()
@@ -173,8 +175,19 @@ class RHInterface(BaseHardwareInterface):
                     device.sleep()
                     print "INA219 found at address {0}".format(addr)
                     gevent.sleep(I2C_CHILL_TIME)
+                    device.labels = {
+                        'voltage' : sensor_config_data[hex_addr]['VOLTAGE_LABEL'],
+                        'current' : sensor_config_data[hex_addr]['CURRENT_LABEL'],
+                        'power'   : sensor_config_data[hex_addr]['POWER_LABEL'],
+                    }
+                    data = {
+                        device.labels['voltage'] : device_data['voltage'],
+                        device.labels['current'] : device_data['current'],
+                        device.labels['power'] : device_data['power'],
+                    }
                     self.ina219_devices.append(device)
                     self.ina219_data.append(data)
+                    device.labels = sensor_config_data[hex_addr]['LABELS']
                 except IOError as err:
                     print "No INA219 at address {0}".format(addr)
                 gevent.sleep(I2C_CHILL_TIME)
@@ -189,16 +202,7 @@ class RHInterface(BaseHardwareInterface):
 
         #try:
         self.ads1x15Class = getattr(importlib.import_module('ads1x15'), 'ADS1X15')
-        sensor_config_data = config_file['SENSORS']
-        sensor_config_keys = [k.lower() for k in sensor_config_data]
-        """
-        hardware_name = ADS_config_data['HARDWARE_NAME']
-        connected_channels = ADS_config_data['CONNECTED_CHANNELS']
-        gains = ADS_config_data['GAINS']
-        R1_Values = ADS_config_data['R1_VALUES']
-        R2_Values = ADS_config_data['R2_VALUES']
-        correction_factors = ADS_config_data['CORRECTION_FACTORS']
-        """
+
         
         for index, addr in enumerate(supported_ads1x15_addrs):
             try:                           # Configure all 4 ports
@@ -847,12 +851,18 @@ class RHInterface(BaseHardwareInterface):
                         self.i2c_sleep()
                         device = self.ina219_devices[index]
                         device.wake()
-                        data = {
+                        device_data = {
                             'voltage': device.voltage(),
                             'current': device.current(),
                             'power': device.power()/1000
                         }
                         device.sleep()
+                        data = {
+                            device.labels['voltage'] : device_data['voltage'],
+                            device.labels['current'] : device_data['current'],
+                            device.labels['power'] : device_data['power'],
+                        }
+                        
                         self.ina219_data[index] = data
                         self.i2c_timestamp = self.milliseconds()
                 except IOError as err:
@@ -867,14 +877,13 @@ class RHInterface(BaseHardwareInterface):
                         device = self.ads1x15_devices[index]
                         #device.wake() #todo not implemented in ads1x15.py
                         voltages = device.get_input_voltages()
-                        
 
                         data = {}
                         for i in range(4):
                             try:
                                 data[device.labels[i]] = voltages.get(i,False)
                             except IndexError: #No label exists for that data in config
-                                label = "ADS1X15_" + str(hex_addr) + "_Port#" + str(i)
+                                label = "ADS1X15_" + str(index) + "_Port#" + str(i)
                                 data[label] = voltages.get(i,False)
                         print(data)
                         

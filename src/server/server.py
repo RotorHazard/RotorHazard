@@ -2168,38 +2168,16 @@ def emit_node_data(**params):
         SOCKET_IO.emit('node_data', emit_payload)
 
 def emit_environmental_data(**params):
-    '''Emits environmental data.'''
-    # Attempt to standardize the message types by storing the label with it.
-    # The data must be sent as a dictionary with keys:
-    #   label
-    #   value
-    #   unit
+    '''Emits environmental data.'''    
+    emit_payload = {'core_temperature': INTERFACE.core_temp}
     
-    # First, try creating a dictionary with all the ina219 and bme and ads data
+    for sensor_index,sensor_data in enumerate(INTERFACE.ina219_data):
+        emit_payload.update(sensor_data)
     for sensor_index,sensor_data in enumerate(INTERFACE.ads1x15_data):
-        v0_val = {
-            "label" : Config["ADS1X15"]["GUI_LABELS"].get(0,"Port 0"), #can't use get on a list. Use 
-            "value" : sensor_data["voltage0"], 
-            "unit" : "V"
-        }
-        print(one_sensors_data["voltage0"])
-        print("X")
-
-    #emit_payload = {}
-    #emit_payload[0] = json.dumps({
-    emit_payload = {
-        'core_temperature': INTERFACE.core_temp,
-        'aux_voltage': [data['voltage'] for data in INTERFACE.ina219_data],
-        'aux_current': [data['current'] for data in INTERFACE.ina219_data],
-        'aux_power': [data['power'] for data in INTERFACE.ina219_data],
-        'voltage_list' : [data['voltage0'] for data in INTERFACE.ads1x15_data],
-        'aux_voltage1' : [data['voltage1'] for data in INTERFACE.ads1x15_data],
-        'aux_voltage2' : [data['voltage2'] for data in INTERFACE.ads1x15_data],
-        'aux_voltage3' : [data['voltage3'] for data in INTERFACE.ads1x15_data],
-        'aux_temperature': [data.temperature for data in INTERFACE.bme280_data],
-        'aux_pressure': [data.pressure for data in INTERFACE.bme280_data],
-        'aux_humidity': [data.humidity for data in INTERFACE.bme280_data]
-    }
+        emit_payload.update(sensor_data)
+    for sensor_index,sensor_data in enumerate(INTERFACE.bme280_data):
+        emit_payload.update(sensor_data)
+        
     if ('nobroadcast' in params):
         emit('environmental_data', emit_payload)
     else:
@@ -3428,8 +3406,10 @@ def heartbeat_thread_function():
 
         # emit environment data less often:
         if (heartbeat_thread_function.iter_tracker % 10) == 0:
+            print("Enviro Data")
             INTERFACE.update_environmental_data()
             emit_environmental_data()
+            
 
         # check if race is to be started
         global RACE_SCHEDULED
