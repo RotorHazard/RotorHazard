@@ -37,15 +37,6 @@ MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
 ENTER_AT_PEAK_MARGIN = 5         # closest that captured enter-at level can be to node peak RSSI
 
-LAP_SOURCE_REALTIME = 0
-LAP_SOURCE_MANUAL = 1
-LAP_SOURCE_RECALC = 2
-
-RACE_STATUS_READY = 0
-RACE_STATUS_STAGING = 3
-RACE_STATUS_RACING = 1
-RACE_STATUS_DONE = 2
-
 def unpack_8(data):
     return data[0]
 
@@ -103,7 +94,6 @@ class RHInterface(BaseHardwareInterface):
         self.hardware_log_callback = None # Function added in server.py
         self.new_enter_or_exit_at_callback = None # Function added in server.py
         self.node_crossing_callback = None # Function added in server.py
-        self.race_status = RACE_STATUS_READY
 
         self.i2c = smbus.SMBus(1) # Start i2c bus
         self.semaphore = BoundedSemaphore(1) # Limits i2c to 1 read/write at a time
@@ -354,7 +344,7 @@ class RHInterface(BaseHardwareInterface):
                                     self.new_enter_or_exit_at_callback(node, False)
 
                         # prune history data if race is not running (keep last 60s)
-                        if self.race_status is RACE_STATUS_READY:
+                        if self.race_status is BaseHardwareInterface.RACE_STATUS_READY:
                             if len(node.history_times):
                                 while node.history_times[0] < (monotonic() - 60):
                                     node.history_values.pop(0)
@@ -362,7 +352,7 @@ class RHInterface(BaseHardwareInterface):
                                     if not len(node.history_times): #prevent while from destroying itself
                                         break
 
-                        if self.race_status != RACE_STATUS_DONE:
+                        if self.race_status != BaseHardwareInterface.RACE_STATUS_DONE:
                             # get and process history data (except when race is over)
                             if node.api_level >= 18:
                                 peakRssi = unpack_rssi(node, data[offset_peakRssi:])
@@ -444,7 +434,7 @@ class RHInterface(BaseHardwareInterface):
                 item = upd_list[0]
                 node = item[0]
                 if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                    self.pass_record_callback(node, item[2], LAP_SOURCE_REALTIME)  # (node, lap_timestamp)
+                    self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_timestamp)
                 node.last_lap_id = item[1]  # new_lap_id
 
             else:  # list contains multiple items; sort so processed in order by lap time
@@ -452,7 +442,7 @@ class RHInterface(BaseHardwareInterface):
                 for item in upd_list:
                     node = item[0]
                     if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                        self.pass_record_callback(node, item[2], LAP_SOURCE_REALTIME)  # (node, lap_timestamp)
+                        self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_timestamp)
                     node.last_lap_id = item[1]  # new_lap_id
 
 
@@ -673,9 +663,6 @@ class RHInterface(BaseHardwareInterface):
     # External functions for setting data
     #
 
-    def set_race_status(self, race_status):
-        self.race_status = race_status
-
     def set_frequency(self, node_index, frequency):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
@@ -765,11 +752,6 @@ class RHInterface(BaseHardwareInterface):
             return True
         return False
 
-    def intf_simulate_lap(self, node_index, ms_val):
-        node = self.nodes[node_index]
-        node.lap_timestamp = monotonic() - (ms_val / 1000)
-        self.pass_record_callback(node, node.lap_timestamp, LAP_SOURCE_MANUAL)
-
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
         if node.api_level >= 14:
@@ -789,7 +771,7 @@ class RHInterface(BaseHardwareInterface):
                         data = {
                             'voltage': device.voltage(),
                             'current': device.current(),
-                            'power': device.power()/1000
+                            'power': device.power()/1000.0
                         }
                         device.sleep()
                         self.ina219_data[index] = data

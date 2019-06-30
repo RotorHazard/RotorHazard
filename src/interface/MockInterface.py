@@ -16,10 +16,6 @@ MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
 ENTER_AT_PEAK_MARGIN = 5         # closest that captured enter-at level can be to node peak RSSI
 
-LAP_SOURCE_REALTIME = 0
-LAP_SOURCE_MANUAL = 1
-LAP_SOURCE_RECALC = 2
-
 class MockInterface(BaseHardwareInterface):
     def __init__(self):
         BaseHardwareInterface.__init__(self)
@@ -213,7 +209,7 @@ class MockInterface(BaseHardwareInterface):
                 item = upd_list[0]
                 node = item[0]
                 if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                    self.pass_record_callback(node, item[2], LAP_SOURCE_REALTIME)  # (node, lap_time_ms)
+                    self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
                 node.last_lap_id = item[1]  # new_lap_id
 
             else:  # list contains multiple items; sort so processed in order by lap time
@@ -221,7 +217,7 @@ class MockInterface(BaseHardwareInterface):
                 for item in upd_list:
                     node = item[0]
                     if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                        self.pass_record_callback(node, item[2], LAP_SOURCE_REALTIME)  # (node, lap_time_ms)
+                        self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
                     node.last_lap_id = item[1]  # new_lap_id
 
 
@@ -294,11 +290,6 @@ class MockInterface(BaseHardwareInterface):
             node.cap_exit_at_flag = True
             return True
         return False
-
-    def intf_simulate_lap(self, node_index, ms_val):
-        node = self.nodes[node_index]
-        node.lap_ms_since_start = ms_val
-        self.pass_record_callback(node, 100)
 
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
