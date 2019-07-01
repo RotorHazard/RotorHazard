@@ -34,7 +34,6 @@ I2C_CHILL_TIME = 0.075 # Delay after i2c read/write
 I2C_RETRY_COUNT = 5 # Limit of i2c retries
 
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
-MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
 ENTER_AT_PEAK_MARGIN = 5         # closest that captured enter-at level can be to node peak RSSI
 
@@ -51,7 +50,7 @@ def unpack_8(data):
     return data[0]
 
 def pack_8(data):
-    return [data]
+    return [int(data & 0xFF)]
 
 def unpack_16(data):
     '''Returns the full variable from 2 bytes input.'''
@@ -137,8 +136,8 @@ class RHInterface(BaseHardwareInterface):
                 node.api_level = rev_val & 0xFF
             else:
                 node.api_level = 0  # if verify failed (fn not defined) then set API level to 0
+            node.init()
             if node.api_level >= 10:
-                node.api_valid_flag = True  # set flag for newer API functions supported
                 node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
                 if node.api_level >= 13:
                     node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
@@ -288,7 +287,7 @@ class RHInterface(BaseHardwareInterface):
                         offset_nadirTime = 26
 
                     rssi_val = unpack_rssi(node, data[offset_rssi:])
-                    if rssi_val >= MIN_RSSI_VALUE and rssi_val <= MAX_RSSI_VALUE:
+                    if node.is_valid_rssi(rssi_val):
                         node.current_rssi = rssi_val
 
                         if node.api_valid_flag:  # if newer API functions supported
@@ -700,7 +699,7 @@ class RHInterface(BaseHardwareInterface):
 
     def set_enter_at_level(self, node_index, level):
         node = self.nodes[node_index]
-        if node.api_valid_flag:
+        if node.api_valid_flag and node.is_valid_rssi(level):
             if self.transmit_enter_at_level(node, level):
                 node.enter_at_level = level
 
@@ -712,7 +711,7 @@ class RHInterface(BaseHardwareInterface):
 
     def set_exit_at_level(self, node_index, level):
         node = self.nodes[node_index]
-        if node.api_valid_flag:
+        if node.api_valid_flag and node.is_valid_rssi(level):
             if self.transmit_exit_at_level(node, level):
                 node.exit_at_level = level
 
