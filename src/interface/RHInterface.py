@@ -658,9 +658,9 @@ class RHInterface(BaseHardwareInterface):
 
     def set_and_validate_value_rssi(self, node, write_command, read_command, in_value):
         if node.api_level >= 18:
-            self.set_and_validate_value_8(node, write_command, read_command, in_value)
+            return self.set_and_validate_value_8(node, write_command, read_command, in_value)
         else:
-            self.set_and_validate_value_16(node, write_command, read_command, in_value)
+            return self.set_and_validate_value_16(node, write_command, read_command, in_value)
 
     def get_value_rssi(self, node, command):
         if node.api_level >= 18:
