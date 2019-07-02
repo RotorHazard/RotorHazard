@@ -65,7 +65,7 @@ IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 DEF_TEAM_NAME = 'A'  # default team
 
-BASEDIR = os.path.abspath(os.path.dirname(__file__))
+BASEDIR = os.getcwd()
 APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 DB = SQLAlchemy(APP)
@@ -158,18 +158,22 @@ class Slave:
     def __init__(self, id, info):
         self.id = id
         self.info = info
-        self.sio = socketio.Client()
-        self.sio.on('pass_record', self.on_pass_record)
         addr = info['address']
         if not '://' in addr:
             addr = 'http://'+addr
-        self.sio.connect(addr)
-        self.emit('join_cluster')
+        self.address = addr
+        self.sio = socketio.Client()
+        self.sio.on('pass_record', self.on_pass_record)
+
+    def connect(self):
+        self.sio.connect(self.address)
 
     def emit(self, event, data = None):
         self.sio.emit(event, data)
+        self.lastContact = monotonic()
 
     def on_pass_record(self, data):
+        self.lastContact = monotonic()
         node_index = data['node']
         pilot_id = Heat.query.filter_by( \
             heat_id=RACE.current_heat, node_index=node_index).one_or_none().pilot_id
@@ -217,8 +221,9 @@ class Cluster:
     def __init__(self):
         self.slaves = []
 
-    def add_slave(self, id, info):
-        self.slaves.append(Slave(id, info))
+    def add_slave(self, slave):
+        slave.emit('join_cluster')
+        self.slaves.append(slave)
 
     def emit(self, event, data = None):
         for slave in self.slaves:
@@ -229,22 +234,25 @@ class Cluster:
             if slave.info['mode'] == 'mirror':
                 gevent.spawn(slave.emit, event, data)
 
+    def emit_status(self):
+        now = monotonic()
+        SOCKET_IO.emit('cluster_status', {'slaves': [{'address': slave.address, 'last_contact': int(now-slave.lastContact)}] for slave in self.slaves})
+
 CLUSTER = Cluster()
 for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
+    if isinstance(slave_info, basestring):
+        slave_info = {'address': slave_info, 'mode': 'timer'}
+    slave = Slave(index, slave_info)
     startConnectTime = monotonic()
     while monotonic() < startConnectTime + Config['GENERAL']['SLAVE_TIMEOUT']:
-        if isinstance(slave_info, basestring):
-            slave_addr = slave_info
-            slave_info = {'address': slave_addr, 'mode': 'timer'}
-        else:
-            slave_addr = slave_info['address']
-        print "Slave {0}: connecting to {1}...".format(index+1, slave_addr)
+        print "Slave {0}: connecting to {1}...".format(index+1, slave.address)
         try:
-            CLUSTER.add_slave(index, slave_info)
-            print "Slave {0}: connected to {1}".format(index+1, slave_addr)
+            slave.connect()
+            print "Slave {0}: connected to {1}".format(index+1, slave.address)
             break
         except socketio.exceptions.ConnectionError:
-            print "Slave {0}: connection to {1} failed!".format(index+1, slave_addr)
+            print "Slave {0}: connection to {1} failed!".format(index+1, slave.address)
+    CLUSTER.add_slave(slave)
 
 #
 # Translation functions
@@ -1133,6 +1141,8 @@ def on_load_data(data):
             emit_all_languages(nobroadcast=True)
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
+        elif load_type == 'cluster_status':
+            CLUSTER.emit_status()
 
 @SOCKET_IO.on('broadcast_message')
 def on_broadcast_message(data):
@@ -3471,6 +3481,10 @@ def heartbeat_thread_function():
         if (heartbeat_thread_function.iter_tracker % 20) == 0:
             emit_node_data()
 
+        # emit cluster status less often:
+        if (heartbeat_thread_function.iter_tracker % 20) == 10:
+            CLUSTER.emit_status()
+
         # emit environment data less often:
         if (heartbeat_thread_function.iter_tracker % 100) == 0:
             INTERFACE.update_environmental_data()
@@ -4174,9 +4188,7 @@ on_set_profile({'profile': current_profile}, False)
 if Heat.query.first():
     RACE.current_heat = Heat.query.first().heat_id
 
-# Start HTTP server
-if __name__ == '__main__':
-    port_val = Config['GENERAL']['HTTP_PORT']
+def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)
     try:
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
@@ -4184,3 +4196,7 @@ if __name__ == '__main__':
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
+
+# Start HTTP server
+if __name__ == '__main__':
+    start()
