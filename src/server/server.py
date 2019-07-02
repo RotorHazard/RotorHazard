@@ -301,18 +301,22 @@ class Slave:
     def __init__(self, id, info):
         self.id = id
         self.info = info
-        self.sio = socketio.Client()
-        self.sio.on('pass_record', self.on_pass_record)
         addr = info['address']
         if not '://' in addr:
             addr = 'http://'+addr
-        self.sio.connect(addr)
-        self.emit('join_cluster')
+        self.address = addr
+        self.sio = socketio.Client()
+        self.sio.on('pass_record', self.on_pass_record)
+
+    def connect(self):
+        self.sio.connect(self.address)
 
     def emit(self, event, data = None):
         self.sio.emit(event, data)
+        self.lastContact = monotonic()
 
     def on_pass_record(self, data):
+        self.lastContact = monotonic()
         node_index = data['node']
         pilot_id = Heat.query.filter_by( \
             heat_id=RACE.current_heat, node_index=node_index).one_or_none().pilot_id
@@ -360,8 +364,9 @@ class Cluster:
     def __init__(self):
         self.slaves = []
 
-    def add_slave(self, id, info):
-        self.slaves.append(Slave(id, info))
+    def add_slave(self, slave):
+        slave.emit('join_cluster')
+        self.slaves.append(slave)
 
     def emit(self, event, data = None):
         for slave in self.slaves:
@@ -372,22 +377,25 @@ class Cluster:
             if slave.info['mode'] == 'mirror':
                 gevent.spawn(slave.emit, event, data)
 
+    def emit_status(self):
+        now = monotonic()
+        SOCKET_IO.emit('cluster_status', {'slaves': [{'address': slave.address, 'last_contact': int(now-slave.lastContact)}] for slave in self.slaves})
+
 CLUSTER = Cluster()
 for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
+    if isinstance(slave_info, basestring):
+        slave_info = {'address': slave_info, 'mode': 'timer'}
+    slave = Slave(index, slave_info)
     startConnectTime = monotonic()
     while monotonic() < startConnectTime + Config['GENERAL']['SLAVE_TIMEOUT']:
-        if isinstance(slave_info, basestring):
-            slave_addr = slave_info
-            slave_info = {'address': slave_addr, 'mode': 'timer'}
-        else:
-            slave_addr = slave_info['address']
-        print "Slave {0}: connecting to {1}...".format(index+1, slave_addr)
+        print "Slave {0}: connecting to {1}...".format(index+1, slave.address)
         try:
-            CLUSTER.add_slave(index, slave_info)
-            print "Slave {0}: connected to {1}".format(index+1, slave_addr)
+            slave.connect()
+            print "Slave {0}: connected to {1}".format(index+1, slave.address)
             break
         except socketio.exceptions.ConnectionError:
-            print "Slave {0}: connection to {1} failed!".format(index+1, slave_addr)
+            print "Slave {0}: connection to {1} failed!".format(index+1, slave.address)
+    CLUSTER.add_slave(slave)
 
 #
 # Translation functions
