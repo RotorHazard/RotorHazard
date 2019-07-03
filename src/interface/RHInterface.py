@@ -35,7 +35,6 @@ I2C_RETRY_COUNT = 5 # Limit of i2c retries
 
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
-ENTER_AT_PEAK_MARGIN = 5         # closest that captured enter-at level can be to node peak RSSI
 
 def unpack_8(data):
     return data[0]

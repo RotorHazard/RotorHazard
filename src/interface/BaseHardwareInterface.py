@@ -1,5 +1,7 @@
 from monotonic import monotonic
 
+ENTER_AT_PEAK_MARGIN = 5 # closest that captured enter-at level can be to node peak RSSI
+
 class BaseHardwareInterface(object):
 
     LAP_SOURCE_REALTIME = 0
