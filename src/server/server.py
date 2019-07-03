@@ -1738,9 +1738,15 @@ def on_resave_laps(data):
 
     race_id = data['race_id']
     pilotrace_id = data['pilotrace_id']
-    node = data['node'] #***
-    pilot_id = data['pilot_id'] #***
+    node = data['node']
+    pilot_id = data['pilot_id']
     laps = data['laps']
+    enter_at = data['enter_at']
+    exit_at = data['exit_at']
+
+    Pilotrace = SavedPilotRace.query.filter_by(id=pilotrace_id).one()
+    Pilotrace.enter_at = enter_at
+    Pilotrace.exit_at = exit_at
 
     SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).delete()
 
