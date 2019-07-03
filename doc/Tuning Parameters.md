@@ -5,16 +5,13 @@ The RotorHazard timing system allows you to calibrate each node individually, so
 Each node keeps track of the signal strength (RSSI) on a provided frequency, and uses the relative strength to determine its position relative to the start/finish gate. A node can be *crossing* or *clear*. If a node is *clear*, the system believes the quad is not near the start/finish gate. If it is *crossing*, the system believes the quad is passing by the start/finish gate and a lap pass will be recorded once the *crossing* is finished.
 
 ## Parameters
-Parameters that affect the *crossing* status are *EnterAt*, *ExitAt*, and *RSSI Smoothing*.
+Parameters that affect the *crossing* status are *EnterAt* and *ExitAt*.
 
 ### EnterAt
 The system will consider a quad to be *crossing* once the RSSI raises to or above this level.
 
 ### ExitAt
 The system will consider a quad to have finished *crossing* once the RSSI value drops below this level.
-
-### RSSI Smoothing
-Adjusts the filtering on the RSSI value, to reduce noise. Less noise creates cleaner data that triggers more easily, but delays the response time of a node. Too much smoothing could prevent high-speed passes from being recorded. Apply higher smoothing indoors.
 
 ## Tuning
 Before during any of the other tuning procedures:
@@ -44,6 +41,10 @@ If crossings are still erratic, increase *RSSI Smoothing* to reduce noise. (A sm
 ### Sample RSSI Graph:
 
 ![Sample RSSI Graph](img/Sample%20RSSI%20Graph.svg)
+
+## Alternate Tuning Method
+
+You can use Marshaling to tune values visually. Run a race with a pilot on each channel, then save it. Open the Marshal page and view the race date, adjusting enter and exit points until the number of laps is correct. Save the enter/exit points to each node and use this as calibration for future races.
 
 ## Notes
 * Try to keep *EnterAt* and *ExitAt* further apart than the size of noise spikes/dips.
