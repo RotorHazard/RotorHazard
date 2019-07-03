@@ -7,7 +7,7 @@ from gevent.lock import BoundedSemaphore # To limit i2c calls
 from monotonic import monotonic # to capture read timing
 
 from Node import Node
-from BaseHardwareInterface import BaseHardwareInterface
+from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
 UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.5')) # Main update loop delay
 
@@ -15,10 +15,6 @@ MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
 ENTER_AT_PEAK_MARGIN = 5         # closest that captured enter-at level can be to node peak RSSI
-
-LAP_SOURCE_REALTIME = 0
-LAP_SOURCE_MANUAL = 1
-LAP_SOURCE_RECALC = 2
 
 class MockInterface(BaseHardwareInterface):
     def __init__(self):
@@ -93,7 +89,7 @@ class MockInterface(BaseHardwareInterface):
             print "Update thread terminated by keyboard interrupt"
 
     def update(self):
-        upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_time_ms)
+        upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
         cross_list = []  # list of nodes with crossing-flag changes
         for index, node in enumerate(self.nodes):
             if node.frequency:
@@ -109,125 +105,32 @@ class MockInterface(BaseHardwareInterface):
                     data_line = node_data.readline()
                 data_columns = data_line.split(',')
                 lap_id = int(data_columns[1])
-                lap_time_ms = int(data_columns[2])
-                node.current_rssi = int(data_columns[3])
+                ms_val = int(data_columns[2])
+                rssi_val = int(data_columns[3])
                 node.node_peak_rssi = int(data_columns[4])
                 node.pass_peak_rssi = int(data_columns[5])
                 node.loop_time = int(data_columns[6])
                 cross_flag = True if data_columns[7]=='T' else False
                 node.pass_nadir_rssi = int(data_columns[8])
                 node.node_nadir_rssi = int(data_columns[9])
-                peakRssi = int(data_columns[10])
-                peakFirstTime = int(data_columns[11])
-                peakLastTime = int(data_columns[12])
-                nadirRssi = int(data_columns[13])
-                nadirTime = int(data_columns[14])
+                pn_history = PeakNadirHistory()
+                pn_history.peakRssi = int(data_columns[10])
+                pn_history.peakFirstTime = int(data_columns[11])
+                pn_history.peakLastTime = int(data_columns[12])
+                pn_history.nadirRssi = int(data_columns[13])
+                pn_history.nadirTime = int(data_columns[14])
 
-                if cross_flag != node.crossing_flag:  # if 'crossing' status changed
-                    node.crossing_flag = cross_flag
-                    if callable(self.node_crossing_callback):
-                        cross_list.append(node)
-
-                # if new lap detected for node then append item to updates list
-                if lap_id != node.last_lap_id:
-                    upd_list.append((node, lap_id, lap_time_ms))
-
-                # check if capturing enter-at level for node
-                if node.cap_enter_at_flag:
-                    node.cap_enter_at_total += node.current_rssi
-                    node.cap_enter_at_count += 1
-                    if self.milliseconds() >= node.cap_enter_at_millis:
-                        node.enter_at_level = int(round(node.cap_enter_at_total / node.cap_enter_at_count))
-                        node.cap_enter_at_flag = False
-                              # if too close node peak then set a bit below node-peak RSSI value:
-                        if node.node_peak_rssi > 0 and node.node_peak_rssi - node.enter_at_level < ENTER_AT_PEAK_MARGIN:
-                            node.enter_at_level = node.node_peak_rssi - ENTER_AT_PEAK_MARGIN
-                        self.transmit_enter_at_level(node, node.enter_at_level)
-                        if callable(self.new_enter_or_exit_at_callback):
-                            self.new_enter_or_exit_at_callback(node, True)
-
-                # check if capturing exit-at level for node
-                if node.cap_exit_at_flag:
-                    node.cap_exit_at_total += node.current_rssi
-                    node.cap_exit_at_count += 1
-                    if self.milliseconds() >= node.cap_exit_at_millis:
-                        node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
-                        node.cap_exit_at_flag = False
-                        self.transmit_exit_at_level(node, node.exit_at_level)
-                        if callable(self.new_enter_or_exit_at_callback):
-                            self.new_enter_or_exit_at_callback(node, False)
-
-                # process history data
-                if peakRssi > 0:
-                    if nadirRssi > 0:
-                        # both
-                        if peakLastTime < nadirTime:
-                            # process peak first
-                            if peakFirstTime < peakLastTime:
-                                node.history_values.append(peakRssi)
-                                node.history_times.append(readtime - (peakFirstTime / 1000.0))
-                                node.history_values.append(peakRssi)
-                                node.history_times.append(readtime - (peakLastTime / 1000.0))
-                            else:
-                                node.history_values.append(peakRssi)
-                                node.history_times.append(readtime - (peakLastTime / 1000.0))
-
-                            node.history_values.append(nadirRssi)
-                            node.history_times.append(readtime - (nadirTime / 1000.0))
-
-                        else:
-                            # process nadir first
-                            node.history_values.append(nadirRssi)
-                            node.history_times.append(readtime - (nadirTime / 1000.0))
-                            if peakFirstTime < peakLastTime:
-                                node.history_values.append(peakRssi)
-                                node.history_times.append(readtime - (peakFirstTime / 1000.0))
-                                node.history_values.append(peakRssi)
-                                node.history_times.append(readtime - (peakLastTime / 1000.0))
-                            else:
-                                node.history_values.append(peakRssi)
-                                node.history_times.append(readtime - (peakLastTime / 1000.0))
-
-                    else:
-                        # peak, no nadir
-                        # process peak only
-                        if peakFirstTime < peakLastTime:
-                            node.history_values.append(peakRssi)
-                            node.history_times.append(readtime - (peakFirstTime / 1000.0))
-                            node.history_values.append(peakRssi)
-                            node.history_times.append(readtime - (peakLastTime / 1000.0))
-                        else:
-                            node.history_values.append(peakRssi)
-                            node.history_times.append(readtime - (peakLastTime / 1000.0))
-
-                elif nadirRssi > 0:
-                    # no peak, nadir
-                    # process nadir only
-                    node.history_values.append(nadirRssi)
-                    node.history_times.append(readtime - (nadirTime / 1000.0))
+                if node.is_valid_rssi(rssi_val):
+                    node.current_rssi = rssi_val
+                    self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list)
+                else:
+                    self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
 
         # process any nodes with crossing-flag changes
-        if len(cross_list) > 0:
-            for node in cross_list:
-                self.node_crossing_callback(node)
+        self.process_crossings(cross_list)
 
         # process any nodes with new laps detected
-        if len(upd_list) > 0:
-            if len(upd_list) == 1:  # list contains single item
-                item = upd_list[0]
-                node = item[0]
-                if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                    self.pass_record_callback(node, item[2], LAP_SOURCE_REALTIME)  # (node, lap_time_ms)
-                node.last_lap_id = item[1]  # new_lap_id
-
-            else:  # list contains multiple items; sort so processed in order by lap time
-                upd_list.sort(key = lambda i: i[0].lap_ms_since_start)
-                for item in upd_list:
-                    node = item[0]
-                    if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                        self.pass_record_callback(node, item[2], LAP_SOURCE_REALTIME)  # (node, lap_time_ms)
-                    node.last_lap_id = item[1]  # new_lap_id
-
+        self.process_updates(upd_list)
 
 
     #
@@ -298,11 +201,6 @@ class MockInterface(BaseHardwareInterface):
             node.cap_exit_at_flag = True
             return True
         return False
-
-    def intf_simulate_lap(self, node_index, ms_val):
-        node = self.nodes[node_index]
-        node.lap_ms_since_start = ms_val
-        self.pass_record_callback(node, 100)
 
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
