@@ -30,7 +30,7 @@ class BaseHardwareInterface(object):
             self.hardware_log_callback(string)
 
     def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list):
-        if cross_flag and cross_flag != node.crossing_flag:  # if 'crossing' status changed
+        if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
             node.crossing_flag = cross_flag
             if callable(self.node_crossing_callback):
                 cross_list.append(node)
