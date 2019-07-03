@@ -44,7 +44,7 @@ If crossings are still erratic, increase *RSSI Smoothing* to reduce noise. (A sm
 
 ## Alternate Tuning Method
 
-You can use Marshaling to tune values visually. Run a race with a pilot on each channel, then save it. Open the Marshal page and view the race date, adjusting enter and exit points until the number of laps is correct. Save the enter/exit points to each node and use this as calibration for future races.
+You can use Marshaling to tune values visually. Run a race with a pilot on each channel, then save it. Open the Marshal page and view the race data, adjusting Enter and Exit points until the number of laps is correct. Save the Enter/Exit points to each node to use as calibration for future races.
 
 ## Notes
 * Try to keep *EnterAt* and *ExitAt* further apart than the size of noise spikes/dips.
