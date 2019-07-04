@@ -61,8 +61,11 @@ The pins in the green box is what were already used by the timer. The pins in th
 ### BME280 Temperature support (optional)
 Attach to the I2C bus and 5V pins.
 
------------------------------
+### DS3231 I2C Real Time Clock rtc  (optional)
+Attach to the I2C bus and 3.3V pins.
 
+
+-----------------------------
 See Also:  
 [doc/Software Setup.md](Software%20Setup.md)  
 [doc/User Guide.md](User%20Guide.md)
