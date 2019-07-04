@@ -2451,22 +2451,17 @@ def calc_leaderboard(**params):
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
         else:
-            # find hole shots
-            holeshot_laps = []
-            for race in racelist:
-                pilotraces = SavedPilotRace.query \
-                    .filter(SavedPilotRace.pilot_id == pilot.id, \
-                    SavedPilotRace.race_id == race \
-                    ).all()
-
-                for pilotrace in pilotraces:
-                    holeshot_lap = SavedRaceLap.query \
-                        .filter(SavedRaceLap.pilotrace_id == pilotrace.id, \
-                            SavedRaceLap.deleted != 1, \
-                            ).order_by(SavedRaceLap.lap_time_stamp).first()
-
-                    if holeshot_lap:
-                        holeshot_laps.append(holeshot_lap.id)
+            # find hole shots for each pilotrace_id
+            holeshot_query = SavedRaceLap.query.with_entities(SavedRaceLap.pilotrace_id, DB.func.min(SavedRaceLap.lap_time_stamp).label('holeshot_ts')) \
+                .filter(SavedRaceLap.pilot_id == pilot.id, \
+                    SavedRaceLap.race_id.in_(racelist), \
+                    SavedRaceLap.deleted != 1, \
+                    ).group_by(SavedRaceLap.pilotrace_id) \
+                    .subquery()
+            # get IDs for hole shots
+            holeshot_laps = SavedRaceLap.query.with_entities(SavedRaceLap.id) \
+                .join(holeshot_query, SavedRaceLap.pilotrace_id==holeshot_query.c.pilotrace_id and SavedRaceLap.lap_time_stamp == holeshot_query.c.holeshot_ts) \
+                .all()
 
             # get total laps
             stat_query = DB.session.query(DB.func.count(SavedRaceLap.id)) \

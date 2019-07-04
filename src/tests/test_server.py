@@ -134,3 +134,9 @@ class ServerTest(unittest.TestCase):
         self.assertEquals(resp['heats'][1]['pilots'][0], data['pilot'])
         self.assertEquals(resp['heats'][1]['note'], data['note'])
         self.assertEquals(resp['heats'][1]['class_id'], data['class'])
+
+    def test_race(self):
+        self.client.emit('stage_race')
+        self.client.emit('stop_race')
+        self.client.emit('load_data', {'load_types': ['round_data']})
+        resp = self.get_response('round_data')
