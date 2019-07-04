@@ -311,6 +311,9 @@ class Slave:
     def connect(self):
         self.sio.connect(self.address)
 
+    def disconnect(self):
+        self.sio.disconnect();
+
     def emit(self, event, data = None):
         self.sio.emit(event, data)
         self.lastContact = monotonic()
@@ -364,7 +367,7 @@ class Cluster:
     def __init__(self):
         self.slaves = []
 
-    def add_slave(self, slave):
+    def addSlave(self, slave):
         slave.emit('join_cluster')
         self.slaves.append(slave)
 
@@ -377,7 +380,7 @@ class Cluster:
             if slave.info['mode'] == 'mirror':
                 gevent.spawn(slave.emit, event, data)
 
-    def emit_status(self):
+    def emitStatus(self):
         now = monotonic()
         SOCKET_IO.emit('cluster_status', {'slaves': [{'address': slave.address, 'last_contact': int(now-slave.lastContact)}] for slave in self.slaves})
 
@@ -395,7 +398,7 @@ for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
             break
         except socketio.exceptions.ConnectionError:
             print "Slave {0}: connection to {1} failed!".format(index+1, slave.address)
-    CLUSTER.add_slave(slave)
+    CLUSTER.addSlave(slave)
 
 #
 # Translation functions
