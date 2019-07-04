@@ -168,6 +168,9 @@ class Slave:
     def connect(self):
         self.sio.connect(self.address)
 
+    def disconnect(self):
+        self.sio.disconnect();
+
     def emit(self, event, data = None):
         self.sio.emit(event, data)
         self.lastContact = monotonic()
@@ -221,7 +224,7 @@ class Cluster:
     def __init__(self):
         self.slaves = []
 
-    def add_slave(self, slave):
+    def addSlave(self, slave):
         slave.emit('join_cluster')
         self.slaves.append(slave)
 
@@ -234,7 +237,7 @@ class Cluster:
             if slave.info['mode'] == 'mirror':
                 gevent.spawn(slave.emit, event, data)
 
-    def emit_status(self):
+    def emitStatus(self):
         now = monotonic()
         SOCKET_IO.emit('cluster_status', {'slaves': [{'address': slave.address, 'last_contact': int(now-slave.lastContact)}] for slave in self.slaves})
 
@@ -252,7 +255,7 @@ for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
             break
         except socketio.exceptions.ConnectionError:
             print "Slave {0}: connection to {1} failed!".format(index+1, slave.address)
-    CLUSTER.add_slave(slave)
+    CLUSTER.addSlave(slave)
 
 #
 # Translation functions
@@ -1142,7 +1145,7 @@ def on_load_data(data):
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
         elif load_type == 'cluster_status':
-            CLUSTER.emit_status()
+            CLUSTER.emitStatus()
 
 @SOCKET_IO.on('broadcast_message')
 def on_broadcast_message(data):
@@ -3460,6 +3463,9 @@ def emit_imdtabler_rating():
 #
 
 def heartbeat_thread_function():
+    '''Allow time for connection handshake to terminate before emitting data'''
+    gevent.sleep(0.010)
+
     '''Emits current rssi data.'''
     while True:
         node_data = INTERFACE.get_heartbeat_json()
@@ -3483,7 +3489,7 @@ def heartbeat_thread_function():
 
         # emit cluster status less often:
         if (heartbeat_thread_function.iter_tracker % 20) == 10:
-            CLUSTER.emit_status()
+            CLUSTER.emitStatus()
 
         # emit environment data less often:
         if (heartbeat_thread_function.iter_tracker % 100) == 0:
