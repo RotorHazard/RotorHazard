@@ -139,11 +139,12 @@ add the line
 i2c-bcm2708
 ```
 to /etc/modules and reboot.
+
 run 
 ```
 sudo i2cdetect -y 1
 ```
-to check if you have a new device at adress 68 
+to check if you have a new device at Address 68 
 the ouput should look similar to this
 ```
 sudo i2cdetect -y 1
@@ -157,6 +158,7 @@ sudo i2cdetect -y 1
 60: -- -- -- -- -- -- -- -- 68 -- -- -- -- -- -- --
 70: -- -- -- -- -- -- -- --
 ```
+
 run
 ```
 echo ds3231 0x68 | sudo tee /sys/class/i2c-adapter/i2c-1/new_device
@@ -184,7 +186,7 @@ done
    echo "Successfully synced RTC to local time"
 ```
 
-disbale to the usage of the fake-hwclock by executing
+disable to the usage of the fake-hwclock by executing
 ```
 sudo update-rc.d fake-hwclock disable
 ```
