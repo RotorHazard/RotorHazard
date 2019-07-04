@@ -133,6 +133,62 @@ Install the Python library:
 sudo python setup.py install
 ```
 
+### DS3231 I2C Real Time Clock rtc
+add the line
+```
+i2c-bcm2708
+```
+to /etc/modules and reboot.
+run 
+```
+sudo i2cdetect -y 1
+```
+to check if you have a new device at adress 68 
+the ouput should look similar to this
+```
+sudo i2cdetect -y 1
+     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:          -- -- -- -- -- 08 -- 0a -- 0c -- 0e --
+10: 10 -- 12 -- 14 -- 16 -- -- -- -- -- -- -- -- --
+20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+60: -- -- -- -- -- -- -- -- 68 -- -- -- -- -- -- --
+70: -- -- -- -- -- -- -- --
+```
+run
+```
+echo ds3231 0x68 | sudo tee /sys/class/i2c-adapter/i2c-1/new_device
+```
+check the time of the RTC with
+```
+sudo hwclock
+```
+if the device was never used its most likely in the past. 
+Check if your current system time is correct by running
+```
+date
+```
+if the system time is OK write it to the RTC with
+```
+sudo hwclock -w
+```
+to enable the automatic time synconisation during every system start add the following lines to the file /etc/rc.local before the line exit 0
+```
+echo ds3231 0x68 > /sys/class/i2c-adapter/i2c-1/new_device
+while ! hwclock -s
+do
+   echo "Failed to sync RTC to local time."
+done
+   echo "Successfully synced RTC to local time"
+```
+
+disbale to the usage of the fake-hwclock by executing
+```
+sudo update-rc.d fake-hwclock disable
+```
+
 ### Java Support
 Java enables calculating of IMD scores. If you started with RASPBIAN WITH DESKTOP, this step should not be necessary as Java is installed by default. Otherwise:
 ```
