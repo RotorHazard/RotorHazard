@@ -186,7 +186,7 @@ done
    echo "Successfully synced RTC to local time"
 ```
 
-disable to the usage of the fake-hwclock by executing
+disable fake-hwclock by executing
 ```
 sudo update-rc.d fake-hwclock disable
 ```
