@@ -50,14 +50,22 @@ an array of IP addresses of the slave timers in track order.
 	"GENERAL": {
 
 		"SLAVES": ["192.168.1.2:5000", "192.168.1.3:5000"]
-
 	}
-
 }
 
 ```
 
-Start the slave timers, then start the master.
+Additional config options:
+
+```
+{
+	"GENERAL": {
+
+		"SLAVES": [{"address": "192.168.1.2:5000", "mode": "timer", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
+		"SLAVE_TIMEOUT": 10
+	}
+}
+```
 
 ## Notes
 

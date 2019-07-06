@@ -1,4 +1,5 @@
 '''RotorHazard server script'''
+from __builtin__ import True
 RELEASE_VERSION = "2.0.0" # Public release version code
 SERVER_API = 23 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
@@ -125,6 +126,7 @@ def diff_milliseconds(t2, t1):
 
 EPOCH_START = datetime(1970, 1, 1)
 PROGRAM_START_TIMESTAMP = diff_milliseconds(datetime.now(), EPOCH_START)
+print 'Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP)
 PROGRAM_START = monotonic()
 PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
 
@@ -155,6 +157,10 @@ Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 #
 
 class Slave:
+
+    TIMER_MODE = 'timer'
+    MIRROR_MODE = 'mirror'
+
     def __init__(self, id, info):
         self.id = id
         self.info = info
@@ -200,39 +206,41 @@ class Slave:
 
         if pilot_id != PILOT_ID_NONE:
 
-	        split_ts = data['timestamp'] + (PROGRAM_START_MILLIS_OFFSET - 1000.0*RACE_START)
-	        last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)).filter_by(node_index=node_index).scalar()
-	        if last_lap_id is None: # first lap
-	            current_lap_id = 0
-	            last_lap_ts = 0
-	        else:
-	            current_lap_id = last_lap_id + 1
-	            last_lap_ts = CurrentLap.query.filter_by(node_index=node_index, lap_id=last_lap_id).one().lap_time_stamp
+            split_ts = data['timestamp'] + (PROGRAM_START_MILLIS_OFFSET - 1000.0*RACE_START)
+            last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)).filter_by(node_index=node_index).scalar()
+            if last_lap_id is None: # first lap
+                current_lap_id = 0
+                last_lap_ts = 0
+            else:
+                current_lap_id = last_lap_id + 1
+                last_lap_ts = CurrentLap.query.filter_by(node_index=node_index, lap_id=last_lap_id).one().lap_time_stamp
 
-	        split_id = self.id
-	        last_split_id = DB.session.query(DB.func.max(LapSplit.split_id)).filter_by(node_index=node_index, lap_id=current_lap_id).scalar()
-	        if last_split_id is None: # first split for this lap
-	            if split_id > 0:
-	                server_log('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
-	            last_split_ts = last_lap_ts
-	        else:
-	            if split_id > last_split_id:
-	                if split_id > last_split_id + 1:
-	                    server_log('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
-	                last_split_ts = LapSplit.query.filter_by(node_index=node_index, lap_id=current_lap_id, split_id=last_split_id).one().split_time_stamp
-	            else:
-	                server_log('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
-	                last_split_ts = None
+            split_id = self.id
+            last_split_id = DB.session.query(DB.func.max(LapSplit.split_id)).filter_by(node_index=node_index, lap_id=current_lap_id).scalar()
+            if last_split_id is None: # first split for this lap
+                if split_id > 0:
+                    server_log('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
+                last_split_ts = last_lap_ts
+            else:
+                if split_id > last_split_id:
+                    if split_id > last_split_id + 1:
+                        server_log('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
+                    last_split_ts = LapSplit.query.filter_by(node_index=node_index, lap_id=current_lap_id, split_id=last_split_id).one().split_time_stamp
+                else:
+                    server_log('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
+                    last_split_ts = None
 
-	        if last_split_ts is not None:
-	            split_time = split_ts - last_split_ts
-	            server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}' \
-	                .format(node_index+1, current_lap_id+1, time_format(split_time)))
-	
-	            DB.session.add(LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=current_lap_id, split_id=split_id, \
-	                split_time_stamp=split_ts, split_time=split_time, split_time_formatted=time_format(split_time)))
-	            DB.session.commit()
-	            emit_current_laps() # update all laps on the race page
+            if last_split_ts is not None:
+                split_time = split_ts - last_split_ts
+                split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
+                server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3:.2f}' \
+                    .format(node_index+1, current_lap_id+1, time_format(split_time), split_speed))
+
+                DB.session.add(LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=current_lap_id, split_id=split_id, \
+                    split_time_stamp=split_ts, split_time=split_time, split_time_formatted=time_format(split_time), \
+                    split_speed=split_speed))
+                DB.session.commit()
+                emit_current_laps() # update all laps on the race page
         else:
             server_log('Split pass record dismissed: Node: {0}, Frequency not defined' \
                 .format(node_index+1))
@@ -251,7 +259,7 @@ class Cluster:
 
     def emitToMirrors(self, event, data = None):
         for slave in self.slaves:
-            if slave.info['mode'] == 'mirror':
+            if slave.info['mode'] == Slave.MIRROR_MODE:
                 gevent.spawn(slave.emit, event, data)
 
     def emitStatus(self):
@@ -262,11 +270,18 @@ class Cluster:
             }] for slave in self.slaves})
 
 CLUSTER = Cluster()
+hasMirrors = False
 for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
     if isinstance(slave_info, basestring):
-        slave_info = {'address': slave_info, 'mode': 'timer'}
+        slave_info = {'address': slave_info, 'mode': Slave.TIMER_MODE}
     if 'timeout' not in slave_info:
         slave_info['timeout'] = Config['GENERAL']['SLAVE_TIMEOUT']
+    isMirror = (slave_info['mode'] == Slave.MIRROR_MODE)
+    if isMirror:
+        hasMirrors = True
+    elif hasMirrors:
+        print '** Mirror slaves must be last - ignoring remaining slave config **'
+        break
     slave = Slave(index, slave_info)
     CLUSTER.addSlave(slave)
 
@@ -524,6 +539,7 @@ class LapSplit(DB.Model):
     split_time_stamp = DB.Column(DB.Integer, nullable=False)
     split_time = DB.Column(DB.Integer, nullable=False)
     split_time_formatted = DB.Column(DB.Integer, nullable=False)
+    split_speed = DB.Column(DB.Float, nullable=True)
 
     def __repr__(self):
         return '<LapSplit %r>' % self.pilot_id
@@ -2351,59 +2367,62 @@ def emit_current_laps(**params):
     if 'use_cache' in params and LAST_RACE_CACHE_VALID:
         emit_payload = LAST_RACE_LAPS_CACHE
     else:
-	    current_laps = []
-	    # for node in DB.session.query(CurrentLap.node_index).distinct():
-	    for node in range(RACE.num_nodes):
-	        node_laps = []
-	        last_lap_id = -1
-	        for lap in CurrentLap.query.filter_by(node_index=node).order_by(CurrentLap.lap_id).all():
-	            splits = get_splits(node, lap.lap_id, True)
-	            node_laps.append({
-	                'lap_id': lap.lap_id,
-	                'lap_raw': lap.lap_time,
-	                'lap_time': lap.lap_time_formatted,
-	                'lap_time_stamp': lap.lap_time_stamp,
-	                'splits': splits
-	            })
-	            last_lap_id = lap.lap_id
-	        splits = get_splits(node, last_lap_id+1, False)
-	        if splits:
-	            node_laps.append({
-	                'lap_id': last_lap_id+1,
-	                'lap_time': '',
-	                'lap_time_stamp': 0,
-	                'splits': splits
-	            })
-	        current_laps.append({
-	            'laps': node_laps
-	        })
-	    current_laps = {'node_index': current_laps}
-	    emit_payload = current_laps
-	    LAST_RACE_LAPS_CACHE = current_laps
+        current_laps = []
+        # for node in DB.session.query(CurrentLap.node_index).distinct():
+        for node in range(RACE.num_nodes):
+            node_laps = []
+            last_lap_id = -1
+            for lap in CurrentLap.query.filter_by(node_index=node).order_by(CurrentLap.lap_id).all():
+                splits = get_splits(node, lap.lap_id, True)
+                node_laps.append({
+                    'lap_id': lap.lap_id,
+                    'lap_raw': lap.lap_time,
+                    'lap_time': lap.lap_time_formatted,
+                    'lap_time_stamp': lap.lap_time_stamp,
+                    'splits': splits
+                })
+                last_lap_id = lap.lap_id
+            splits = get_splits(node, last_lap_id+1, False)
+            if splits:
+                node_laps.append({
+                    'lap_id': last_lap_id+1,
+                    'lap_time': '',
+                    'lap_time_stamp': 0,
+                    'splits': splits
+                })
+            current_laps.append({
+                'laps': node_laps
+            })
+        current_laps = {'node_index': current_laps}
+        emit_payload = current_laps
+        LAST_RACE_LAPS_CACHE = current_laps
 
     if ('nobroadcast' in params):
         emit('current_laps', emit_payload)
     else:
         SOCKET_IO.emit('current_laps', emit_payload)
 
-def get_splits(node, lap_id, completed):
-	splits = []
-	for slave_index in range(len(CLUSTER.slaves)):
-	    split = LapSplit.query.filter_by(node_index=node,lap_id=lap_id,split_id=slave_index).one_or_none()
-	    if split:
-	        split_raw = split.split_time
-	        split_time = split.split_time_formatted
-	    elif completed:
-	        split_raw = None
-	        split_time = '-'
-	    else:
-	        break
-	    splits.append({
-	        'split_id': slave_index,
-	        'split_raw': split_raw,
-	        'split_time': split_time
-	    })
-	return splits
+def get_splits(node, lap_id, lapCompleted):
+    splits = []
+    for slave_index in range(len(CLUSTER.slaves)):
+        split = LapSplit.query.filter_by(node_index=node,lap_id=lap_id,split_id=slave_index).one_or_none()
+        if split:
+            split_payload = {
+                'split_id': slave_index,
+                'split_raw': split.split_time,
+                'split_time': split.split_time_formatted,
+                'split_speed': '{0:.2f}'.format(split.split_speed)
+            }
+        elif lapCompleted:
+            split_payload = {
+                'split_id': slave_index,
+                'split_time': '-'
+            }
+        else:
+            break
+        splits.append(split_payload)
+
+    return splits
 
 def emit_race_list(**params):
     '''Emits race listing'''
@@ -3623,7 +3642,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     else: # This is a normal completed lap
                         # Find the time stamp of the last lap completed
                         last_lap_time_stamp = CurrentLap.query.filter_by( \
-	                        node_index=node.index, lap_id=last_lap_id).one().lap_time_stamp
+                            node_index=node.index, lap_id=last_lap_id).one().lap_time_stamp
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
                         lap_id = last_lap_id + 1
