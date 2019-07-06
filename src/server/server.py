@@ -162,18 +162,35 @@ class Slave:
         if not '://' in addr:
             addr = 'http://'+addr
         self.address = addr
+        self.lastContact = -1
         self.sio = socketio.Client()
+        self.sio.on('connect', self.on_connect)
+        self.sio.on('disconnect', self.on_disconnect)
         self.sio.on('pass_record', self.on_pass_record)
 
-    def connect(self):
-        self.sio.connect(self.address)
-
-    def disconnect(self):
-        self.sio.disconnect();
+    def reconnect(self):
+        if self.lastContact == -1:
+            startConnectTime = monotonic()
+            print "Slave {0}: connecting to {1}...".format(self.id+1, self.address)
+            while monotonic() < startConnectTime + self.info['timeout']:
+                try:
+                    self.sio.connect(self.address)
+                    print "Slave {0}: connected to {1}".format(self.id+1, self.address)
+                    return
+                except socketio.exceptions.ConnectionError:
+                    gevent.sleep(0.1)
+            print "Slave {0}: connection to {1} failed!".format(self.id+1, self.address)
 
     def emit(self, event, data = None):
+        self.reconnect()
         self.sio.emit(event, data)
         self.lastContact = monotonic()
+
+    def on_connect(self):
+        self.lastContact = monotonic()
+
+    def on_disconnect(self):
+        self.lastContact = -1
 
     def on_pass_record(self, data):
         self.lastContact = monotonic()
@@ -239,22 +256,18 @@ class Cluster:
 
     def emitStatus(self):
         now = monotonic()
-        SOCKET_IO.emit('cluster_status', {'slaves': [{'address': slave.address, 'last_contact': int(now-slave.lastContact)}] for slave in self.slaves})
+        SOCKET_IO.emit('cluster_status', {'slaves': [ \
+            {'address': slave.address, \
+            'last_contact': int(now-slave.lastContact) if slave.lastContact >= 0 else 'connection lost' \
+            }] for slave in self.slaves})
 
 CLUSTER = Cluster()
 for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
     if isinstance(slave_info, basestring):
         slave_info = {'address': slave_info, 'mode': 'timer'}
+    if 'timeout' not in slave_info:
+        slave_info['timeout'] = Config['GENERAL']['SLAVE_TIMEOUT']
     slave = Slave(index, slave_info)
-    startConnectTime = monotonic()
-    while monotonic() < startConnectTime + Config['GENERAL']['SLAVE_TIMEOUT']:
-        print "Slave {0}: connecting to {1}...".format(index+1, slave.address)
-        try:
-            slave.connect()
-            print "Slave {0}: connected to {1}".format(index+1, slave.address)
-            break
-        except socketio.exceptions.ConnectionError:
-            print "Slave {0}: connection to {1} failed!".format(index+1, slave.address)
     CLUSTER.addSlave(slave)
 
 #
