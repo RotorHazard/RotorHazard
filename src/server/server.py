@@ -317,7 +317,7 @@ def theaterChaseRainbow(strip, wait_ms=25):
 
 # Create NeoPixel object with appropriate configuration.
 try:
-    pixelModule = importlib.import_module('neopixel')
+    pixelModule = importlib.import_module('rpi_ws281x')
     Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
     Color = getattr(pixelModule, 'Color')
     led_strip_config = Config['LED']['LED_STRIP']
