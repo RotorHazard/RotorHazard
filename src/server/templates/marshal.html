@@ -1,0 +1,617 @@
+{% extends "layout.html" %} {% block title %}Marshal Race Data{% endblock %}{% block head %}
+
+<script type="text/javascript" charset="utf-8">
+	// set admin flag
+	rotorhazard.admin = true;
+	rotorhazard.saveData();
+	$('nav li').removeClass('admin-hide');
+
+	var race_list = {};
+	var race_list_loaded = false;
+	var race_loaded = false;
+	var current_race_data = {};
+	var min_lap = {{ getOption('MinLapSec') }} * 1000;
+
+	$(document).ready(function () {
+		var graph_canvas = document.getElementById('race-graph');
+		var context = graph_canvas.getContext('2d');
+		var graph = new SmoothieChart({
+			responsive: true,
+			grid:{
+				strokeStyle:'rgba(255,255,255,0.25)',
+				// millisPerLine:1, // Smoothie thinks the timestamps are in seconds
+				sharpLines:true,
+				verticalSections:0,
+				borderVisible:false
+			},
+			labels:{
+				precision: 0
+			},
+			scaleSmoothing: 1
+		});
+		var graph_series = new TimeSeries();
+		graph.addTimeSeries(graph_series, {lineWidth:1.7,
+			strokeStyle:'hsl(214, 53%, 60%)',
+			fillStyle:'hsla(214, 53%, 60%, 0.4)'
+		});
+		graph.streamTo(graph_canvas, 1);
+		graph.stop();
+
+		socket.emit('load_data', {'load_types': [
+			'all_languages',
+			'language',
+			'enter_and_exit_at_levels',
+			'race_list',
+		]});
+
+		socket.on('all_languages', function (msg) {
+			rotorhazard.language_strings = msg.languages;
+		});
+
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				rotorhazard.interface_language = msg.language;
+			}
+		});
+
+		socket.on('enter_and_exit_at_levels', function (msg) {
+			for (var i = 0; i < msg.enter_at_levels.length; i++) {
+				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
+				rotorhazard.nodes[i].exit_at_level = msg.exit_at_levels[i];
+			}
+		});
+
+		socket.on('race_list', function (msg) {
+			race_list = msg;
+
+			if (race_list_loaded) {
+				var prev_heat = $('#selected_heat').val();
+			}
+
+			$('#selected_heat').empty();
+			for (var heat_i in race_list.heats) {
+				var heat = race_list.heats[heat_i];
+
+				if (heat.note) {
+					var heat_name = heat.note;
+				} else {
+					var heat_name = __('Heat') + ' ' + heat_i;
+				}
+
+				$('#selected_heat').append('<option value="' + heat_i + '">' + heat_name + '</option>');
+			}
+			$('#selected_heat').val(heat_i);
+
+			if (race_list_loaded) {
+				$('#selected_heat').val(prev_heat);
+			} else {
+				race_list_loaded = true;
+				$('#selected_heat').prop('disabled', false);
+				$('#selected_round').prop('disabled', false);
+				$('#selected_pilot').prop('disabled', false);
+				$('#load_race').prop('disabled', false);
+			}
+
+			$('#selected_heat').trigger('change');
+		});
+
+		// set up node local store
+		for (i = 0; i < {{ num_nodes }}; i++) {
+			rotorhazard.nodes[i] = new nodeModel();
+		}
+
+		$('#selected_heat').change(function(){
+			var prev_round = $('#selected_round').val();
+
+			$('#selected_round').empty();
+
+			var heat = parseInt($(this).val());
+
+			for (var round_i in race_list.heats[heat].rounds) {
+				$('#selected_round').append('<option value="' + round_i + '">' + __('Round') + ' ' + round_i + '</option>');
+			}
+
+			$('#selected_round').val(round_i);
+			$('#selected_round option').each(function(){
+				if (this.value == prev_round) {
+					$('#selected_round').val(prev_round);
+					return false;
+				}
+			});
+
+			disableUI();
+
+			$('#selected_round').trigger('change');
+		});
+
+		$('#selected_round').change(function(){
+			var prev_pilot = $('#selected_pilot').data('pilot-id');
+
+			$('#selected_pilot').empty();
+
+			var heat = parseInt($('#selected_heat').val());
+			var round = parseInt($(this).val());
+
+			for (var pilot_i in race_list.heats[heat].rounds[round].pilotraces) {
+				var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot_i];
+				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' + pilotrace.pilot_id + '">' + pilotrace.callsign + '</option>');
+			}
+
+			$('#selected_pilot option').each(function(){
+				if ($(this).data('pilot-id') == prev_pilot) {
+					$('#selected_pilot').val($(this).val());
+					return false;
+				}
+			});
+
+			disableUI();
+
+			$('#selected_pilot').trigger('change');
+		});
+
+		$('#selected_pilot').change(function(){
+			var heat = parseInt($('#selected_heat').val());
+			var round = parseInt($('#selected_round').val());
+			var pilot = parseInt($(this).val());
+			var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot];
+
+			$(this).data('pilot-id', pilotrace.pilot_id);
+
+			load_race();
+		});
+
+		function load_race() {
+			race_loaded = true;
+
+			var heat = parseInt($('#selected_heat').val());
+			var round = parseInt($('#selected_round').val());
+			var pilot = parseInt($('#selected_pilot').val());
+
+			// load current race data
+			current_race_data = jQuery.extend(true, {}, race_list.heats[heat].rounds[round].pilotraces[pilot]);
+			// fill current data with race meta
+			current_race_data.round_id = round;
+			current_race_data.heat_id = heat;
+			current_race_data.race_id = race_list.heats[heat].rounds[round].race_id;
+			current_race_data.class_id = race_list.heats[heat].rounds[round].class_id;
+			current_race_data.format_id = race_list.heats[heat].rounds[round].format_id;
+			current_race_data.start_time = race_list.heats[heat].rounds[round].start_time;
+			current_race_data.start_time_formatted = race_list.heats[heat].rounds[round].start_time_formatted;
+
+			// update header
+			var header = $( "#selected_heat option:selected" ).text() + ' / ' +
+			$( "#selected_round option:selected" ).text() + ' / ' +
+			$( "#selected_pilot option:selected" ).text();
+			$('#race-title').html(header);
+
+			// fill enter/exit values
+			$('#enterat').val(current_race_data.enter_at);
+			$('#exitat').val(current_race_data.exit_at);
+
+			// display graph
+			graph_series.data = [];
+			for (idx in current_race_data.history_times) {
+				var value = current_race_data.history_times[idx];
+				if (value == lastValue) {
+					graph_series.append(current_race_data.history_times[idx] + 0.001, current_race_data.history_values[idx]);
+				} else {
+					graph_series.append(current_race_data.history_times[idx], current_race_data.history_values[idx]);
+				}
+				var lastValue = value;
+			}
+
+			renderGraph();
+
+			// populate laps
+			displayLaps(current_race_data.laps);
+
+			enableUI();
+			return false;
+		}
+
+		function disableUI() {
+			$('#enterat').prop('disabled', true);
+			$('#exitat').prop('disabled', true);
+			$('#recalc').prop('disabled', true);
+			$('#load-transitions').prop('disabled', true);
+			$('#save-transitions').prop('disabled', true);
+			$('#manual-lap-time').prop('disabled', true);
+			$('#add-lap').prop('disabled', true);
+			$('#clean-laps').prop('disabled', true);
+			$('#save-laps').prop('disabled', true);
+
+			$('#race-title').html(__('Select Race'));
+			context.clearRect(0, 0, graph_canvas.width, graph_canvas.height);
+			$('#enterat').val('');
+			$('#exitat').val('');
+		}
+
+		function enableUI() {
+			$('#enterat').prop('disabled', false);
+			$('#exitat').prop('disabled', false);
+			$('#recalc').prop('disabled', false);
+			$('#load-transitions').prop('disabled', false);
+			$('#save-transitions').prop('disabled', false);
+			$('#manual-lap-time').prop('disabled', false);
+			$('#add-lap').prop('disabled', false);
+			$('#clean-laps').prop('disabled', false);
+			$('#save-laps').prop('disabled', false);
+		}
+
+		function renderGraph() {
+			var graphWidth = graph_canvas.offsetWidth;
+
+			var startTime = current_race_data.start_time;
+			var endTime = current_race_data.history_times[current_race_data.history_times.length - 1];
+			var duration = endTime - startTime;
+			var span = duration / graphWidth;
+
+			graph.options.millisPerPixel = span;
+			graph.options.horizontalLines = [
+				{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: parseInt($('#enterat').val())}, // red
+				{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: parseInt($('#exitat').val())}, // orange
+			];
+
+			graph.render(graph_canvas, endTime);
+		}
+
+		var resizeTimer;
+		$(window).on('resize', function(){
+			if (race_loaded) {
+				clearTimeout(resizeTimer);
+				resizeTimer = setTimeout(function() {
+					renderGraph();
+				}, 250);
+			}
+		});
+
+		function displayLaps(laps_obj) {
+			var lapList = $('#laps tbody');
+			lapList.empty();
+
+			var lap_index = 0;
+			for (var lap_i in laps_obj) {
+				var lap = laps_obj[lap_i];
+				var lapData = $('<tr>');
+
+				if (lap.deleted) {
+					lapData.addClass('lap-deleted');
+				} else if (lap_index && lap.lap_time < min_lap) {
+					lapData.addClass('min-lap-warning');
+				}
+
+				if (!lap.deleted) {
+					lapData.append('<td>' + lap_index + '</td>');
+					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
+					lapData.append('<td>' + formatTimeMillis(lap.lap_time) + '</td>');
+					lap_index++;
+				} else {
+					lapData.append('<td>-</td>');
+					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
+					lapData.append('<td>' + __('Deleted') + '</td>');
+				}
+
+				switch (lap.source) {
+					case 0:
+						lapData.append('<td>Realtime</td>');
+						break;
+					case 1:
+						lapData.append('<td>Manual</td>');
+						break;
+					case 2:
+						lapData.append('<td>Recalc</td>');
+						break;
+				}
+
+				if (lap.deleted) {
+					lapData.append('<td><button class="restore_lap" data-lapid="' + lap_i + '">+</button></td>');
+				} else {
+					lapData.append('<td><button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
+				}
+				lapList.append(lapData);
+			}
+		}
+
+		$('#recalc').click(function(){
+			if (race_loaded) {
+				var laps = recalc_rx_data();
+				for (var lap_i in current_race_data.laps) {
+					var lap = current_race_data.laps[lap_i];
+					if (lap.source == 1) {
+						laps.push(lap);
+					}
+				}
+				calc_lap_times(laps);
+				current_race_data.laps = laps;
+				displayLaps(laps);
+				renderGraph();
+			} else {
+				standard_message_queue.push(__('No race loaded'));
+				if (standard_message_queue.length == 1) {
+					get_standard_message()
+				}
+			}
+		});
+
+		$('#enterat').change(function(){
+			renderGraph();
+		});
+
+		$('#exitat').change(function(){
+			renderGraph();
+		});
+
+		function recalc_rx_data() {
+			var enterat = parseInt($('#enterat').val());
+			var exitat = parseInt($('#exitat').val());
+
+			current_race_data.enter_at = enterat;
+			current_race_data.exit_at = exitat;
+
+			var crossing = false;
+			var peakRssi = 0;
+			var peakFirst = 0;
+			var peakLast = 0;
+			var laps = [];
+
+			for(var idx in current_race_data.history_values) {
+				var rssi = current_race_data.history_values[idx];
+
+				if (!crossing && (rssi > enterat)) {
+					crossing = true;
+				}
+
+				if (rssi >= peakRssi) {
+					peakLast = current_race_data.history_times[idx];
+
+					if (rssi > peakRssi) {
+						peakFirst = current_race_data.history_times[idx];
+						peakRssi = rssi;
+					}
+				}
+
+				if (crossing) {
+					if (rssi < exitat) {
+						var lap_time_stamp = (((peakLast + peakFirst) / 2) - current_race_data.start_time) * 1000; // zero stamp within race
+
+						if (lap_time_stamp > 0) { // reject passes before race start
+							laps.push({
+								lap_time_stamp: lap_time_stamp, // zero stamp within race
+								source: 2, // recalc
+								deleted: false
+							});
+						}
+						crossing = false;
+						peakRssi = 0;
+					}
+				}
+			}
+
+			if (crossing) { // check for crossing at data end
+					var lap_time_stamp = (((peakLast + peakFirst) / 2) - current_race_data.start_time) * 1000; // zero stamp within race
+
+					laps.push({
+						lap_time_stamp: lap_time_stamp, // zero stamp within race
+						source: 2, // recalc
+						deleted: false
+					});
+			}
+
+			return laps;
+		}
+
+		function calc_lap_times(laps_obj){
+			laps_obj.sort(function(a, b){
+				return a.lap_time_stamp-b.lap_time_stamp
+			})
+
+			var lap_index = 0;
+			for (lap_i in laps_obj) {
+				var lap = laps_obj[lap_i];
+				if (!lap.deleted) {
+					if (lap_index) {
+						lap.lap_time = lap.lap_time_stamp - lastLap.lap_time_stamp;
+					} else {
+						lap.lap_time = lap.lap_time_stamp;
+					}
+					lap.lap_time_formatted = lap.lap_time / 1000; // ***
+					lap_index++;
+					var lastLap = lap;
+				} else {
+					lap.lap_time = '-';
+					lap.lap_time_formatted = '-';
+				}
+			}
+		}
+
+		$('#add-lap').click(function(){
+			if (race_loaded) {
+				current_race_data.laps.push({
+					lap_time_stamp: parseInt($('#manual-lap-time').val() * 1000),
+					source: 1,
+					deleted: false
+				});
+				calc_lap_times(current_race_data.laps)
+				displayLaps(current_race_data.laps);
+			} else {
+				standard_message_queue.push(__('No race loaded'));
+				if (standard_message_queue.length == 1) {
+					get_standard_message()
+				}
+			}
+		});
+
+		$('#clean-laps').click(function(){
+			if (race_loaded) {
+				var laps = [];
+
+				for (var lap_i in current_race_data.laps) {
+					var lap = current_race_data.laps[lap_i];
+					if (!lap.deleted) {
+						laps.push(lap);
+					}
+				}
+
+				current_race_data.laps = laps;
+				displayLaps(laps);
+			} else {
+				standard_message_queue.push(__('No race loaded'));
+				if (standard_message_queue.length == 1) {
+					get_standard_message()
+				}
+			}
+		});
+
+		$(document).on('click', '.delete_lap', function(){
+			var lap = $(this).data('lapid');
+			current_race_data.laps[lap].deleted = true;
+			calc_lap_times(current_race_data.laps)
+			displayLaps(current_race_data.laps);
+		});
+
+		$(document).on('click', '.restore_lap', function(){
+			var lap = $(this).data('lapid');
+			current_race_data.laps[lap].deleted = false;
+			calc_lap_times(current_race_data.laps)
+			displayLaps(current_race_data.laps);
+		});
+
+		$('#save-laps').click(function(){
+			if (race_loaded) {
+				var data = {
+					heat_id: current_race_data.heat_id,
+					round_id: current_race_data.round_id,
+					callsign: current_race_data.callsign,
+					race_id: current_race_data.race_id,
+					pilotrace_id: current_race_data.pilotrace_id,
+					node: current_race_data.node_index,
+					pilot_id: current_race_data.pilot_id,
+					laps: current_race_data.laps,
+					enter_at: current_race_data.enter_at,
+					exit_at: current_race_data.exit_at,
+				}
+				socket.emit('resave_laps', data);
+			} else {
+				standard_message_queue.push(__('No race loaded'));
+				if (standard_message_queue.length == 1) {
+					get_standard_message()
+				}
+			}
+		});
+
+		$('#load-transitions').click(function(){
+			if (race_loaded) {
+				var node = current_race_data.node_index;
+				$('#enterat').val(rotorhazard.nodes[node].enter_at_level);
+				$('#exitat').val(rotorhazard.nodes[node].exit_at_level);
+				renderGraph();
+			} else {
+				standard_message_queue.push(__('No race loaded'));
+				if (standard_message_queue.length == 1) {
+					get_standard_message()
+				}
+			}
+		});
+
+		$('#save-transitions').click(function(){
+			if (race_loaded) {
+				var data = {
+					node: current_race_data.node_index,
+					enter_at_level: parseInt($('#enterat').val()),
+					exit_at_level: parseInt($('#exitat').val()),
+				};
+				if (!Number.isNaN(data.enter_at_level)) {
+					socket.emit('set_enter_at_level', data);
+				}
+				if (!Number.isNaN(data.exit_at_level)) {
+					socket.emit('set_exit_at_level', data);
+				}
+
+				standard_message_queue.push(__('Enter/Exit points saved to active node'));
+				if (standard_message_queue.length == 1) {
+					get_standard_message()
+				}
+			} else {
+				standard_message_queue.push(__('No race loaded'));
+				if (standard_message_queue.length == 1) {
+					get_standard_message()
+				}
+			}
+		});
+	});
+</script>
+{% endblock %} {% block content %}
+<main class="page-marshal">
+
+<div class="panel">
+	<div class="panel-content">
+
+		<div class="control-set">
+			<label for="selected_heat" class="screen-reader-text">{{ __('Heat') }}</label>
+			<select id="selected_heat" disabled>
+				<option value="--">{{ __('Loading...') }}</option>
+			</select>
+
+			<label for="selected_round" class="screen-reader-text">{{ __('Round') }}</label>
+			<select id="selected_round" disabled>
+				<option value="--">{{ __('Loading...') }}</option>
+			</select>
+
+			<label for="selected_pilot" class="screen-reader-text">{{ __('Pilot') }}</label>
+			<select id="selected_pilot" disabled>
+				<option value="--">{{ __('Loading...') }}</option>
+			</select>
+		</div>
+
+		<div id="race-display">
+			<div id="race-header">
+				<h2 id="race-title">{{ __('Select Race') }}</h2>
+				<div id="race-meta"></div>
+			</div>
+
+			<div id="race-view">
+				<canvas id="race-graph" style="width:100%; height:200px"></canvas>
+
+				<table id="laps">
+				<thead>
+					<tr>
+						<th>{{ __('Lap') }}</th>
+						<th>{{ __('Timestamp') }}</th>
+						<th>{{ __('Lap Time') }}</th>
+						<th>{{ __('Source') }}</th>
+						<th>{{ __('Deleted') }}</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+				</table>
+			</div>
+
+			<div class="sidebar-controls">
+				<div class="control-block">
+					<h3>{{ __('Recalculate') }}</h3>
+					<label for="enterat" class="screen-reader-text">{{ __('EnterAt') }}</label>
+					<input type="number" id="enterat" value="" placeholder="{{ __('EnterAt') }}" disabled />
+					<label for="exitat" class="screen-reader-text">{{ __('ExitAt') }}</label>
+					<input type="number" id="exitat" value="" placeholder="{{ __('ExitAt') }}" disabled />
+					<button id="recalc" disabled>{{ __('Recalculate Race') }}</button>
+					<button id="load-transitions" disabled>{{ __('Load from Node') }}</button>
+					<button id="save-transitions" disabled>{{ __('Save to Node') }}</button>
+				</div>
+				<div class="control-block">
+					<h3>{{ __('Modify') }}</h3>
+					<label for="manual-lap-time" class="screen-reader-text">{{ __('Manual Lap Time') }}</label>
+					<input type="number" id="manual-lap-time" step="0.001" placeholder="{{ __('Manual Lap Time') }}" disabled />
+					<button id="add-lap" disabled>{{ __('Add Lap') }}</button>
+					<button id="clean-laps" disabled>{{ __('Clean Deleted Laps') }}</button>
+				</div>
+				<div class="control-block">
+					<h3>{{ __('Confirm') }}</h3>
+					<button id="save-laps" disabled>{{ __('Commit Changes') }}</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+</main>
+{% endblock %}

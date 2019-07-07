@@ -3,25 +3,66 @@
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 
 	var request_time;
+	var request_pi_time;
 	var resume_check = true;
-	var buzzer = false;
-	var stagebuzzer = false;
 
 	var speakObjsQueue = [];
 	var checkSpeakQueueFlag = true;
 
+	function race_kickoff(msg) {
+		rotorhazard.timer.stopAll();
+
+		rotorhazard.race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
+
+		rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
+		rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
+		rotorhazard.timer.race.duration = msg.race_time_sec;
+
+		rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
+	}
+
 	$(document).ready(function () {
+		// get pi time
+		rotorhazard.pi_time_request = window.performance.now();
+		socket.emit('get_pi_time');
+
 		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',
 			'frequency_data',
 			'pilot_data',
-			'leaderboard',
+			'leaderboard_cache',
 			'current_laps',
 			'race_status',
 			'current_heat',
 			'team_racing_stat_if_enb'
 		]});
+
+		socket.on('pi_time', function (msg) {
+			var response_time = window.performance.now();
+			var server_delay = response_time - rotorhazard.pi_time_request;
+			var server_oneway = server_delay ? server_delay / 2 : server_delay;
+
+			var pi_time_diff = (msg.pi_time_s * 1000) - response_time - server_oneway; // convert seconds (pi) to millis (JS)
+			pi_sync_change = pi_time_diff - rotorhazard.pi_time_diff;
+
+			// store sync sample
+			rotorhazard.pi_time_diff_samples.push(pi_time_diff);
+
+			// get filtered value
+			rotorhazard.pi_time_diff = median(rotorhazard.pi_time_diff_samples);
+
+			// pass current sync to timer
+			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
+
+			// continue sampling for sync to improve accuracy
+			if (rotorhazard.pi_time_diff_samples.length < 10) {
+				setTimeout(function(){
+					rotorhazard.pi_time_request = window.performance.now();
+					socket.emit('get_pi_time');
+				}, (Math.random() * 250) + 250); // 0.25 to 0.5s delay
+			}
+		});
 
 		socket.on('all_languages', function (msg) {
 			rotorhazard.language_strings = msg.languages;
@@ -73,31 +114,14 @@
 		$().articulate('pitch', rotorhazard.voice_pitch);
 		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
 		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
+		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
 
-		socket.on('race_elapsed', function (msg) {
-			var response_time = new Date();
-			var server_delay = ((response_time - request_time) / 2);
-			if (timer.getStatus() == 1) {
-				var elapsed = msg.elapsed + server_delay;
-				setTimeout(function(){
-					if (timer.getMode()) {
-						// Count up mode
-						timer.stop();
-						timer.reset(Math.floor(elapsed / 1000) + 1);
-						timer.continue(); // Start clock without fanfare
-					} else {
-						// Count down mode
-						var remaining = timer.getRaceDuration() - Math.floor(elapsed / 1000);
-
-						if (remaining > 1) { // don't attempt to sync very late
-							timer.stop();
-							timer.reset(timer.getRaceDuration() - Math.floor(elapsed / 1000));
-							timer.continue(); // Start clock without fanfare
-						} else {
-							timer.reset(0);
-						}
-					}
-				}, 1000 - (elapsed % 1000));
+		socket.on('race_scheduled', function (msg) {
+			if (msg.scheduled) {
+				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
+				rotorhazard.timer.deferred.start(deferred_start, rotorhazard.pi_time_diff);
+			} else {
+				rotorhazard.timer.deferred.stop();
 			}
 		});
 
@@ -107,30 +131,38 @@
 					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
+					$('.timing-clock').removeClass('staging');
 					if (resume_check) {
-						timer.reset(0);
-						timer.continue();
+						race_kickoff(msg);
 					}
 					break;
 				case 2: // Race stopped, clear or save laps
-					$('body').addClass('race-stopped');
 					$('body').removeClass('race-running');
+					$('body').addClass('race-stopped');
 					$('body').removeClass('race-new');
+					$('.timing-clock').removeClass('staging');
+					break;
+				case 3: // staging
+					$('body').removeClass('race-stopped');
+					$('body').addClass('race-running');
+					$('body').removeClass('race-new');
+					$('.timing-clock').addClass('staging');
+					if (resume_check) {
+						race_kickoff(msg);
+					}
 					break;
 				default: // Waiting to start new race
-					$('body').addClass('race-new');
 					$('body').removeClass('race-running');
 					$('body').removeClass('race-stopped');
+					$('body').addClass('race-new');
+					$('.timing-clock').removeClass('staging');
+					if (resume_check) {
+						socket.emit('get_race_scheduled');
+					}
+					break;
 			}
-			timer.mode(msg.race_mode);
-			timer.setRaceDuration(msg.race_time_sec);
 
-			// resume race if needed
-			if (resume_check) {
-				resume_check = false;
-				request_time = new Date();
-				socket.emit('get_race_elapsed');
-			}
+			resume_check = false;
 		});
 
 		socket.on('heartbeat', function (msg) {
@@ -170,7 +202,7 @@
 					else {
 						var $tr = $('<tr>').append(
 							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j])
+							$('<td>').text(node_index.lap_time[j]).prepend($('<span class="from_start">').text(formatTimeMillis(node_index.lap_time_stamp[j])))
 						).appendTo('#current_laps_' + i);
 					}
 				});
@@ -264,16 +296,28 @@
 		});
 
 		socket.on('stop_timer', function (msg) {
-			timer.stop();
+			rotorhazard.timer.stopAll();
+		});
+
+		socket.on('stage_ready', function (msg) {
+			race_kickoff(msg);
 		});
 
 		socket.on('pilot_data', function (msg) {
+			msg.pilots.sort(function(a, b){
+				if (a.name < b.name)
+					return -1;
+				if (a.name > b.name)
+					return 1;
+				return 0;
+			});
+
 			var voices = $("#voice-calls");
 			voices.empty();
 			voices.append('<option value="-1">' + __('None') + '</option>');
 			voices.append('<option value="0">' + __('All') + '</option>');
-			for (var i in msg.pilot_id) {
-				voices.append('<option value="' + msg.pilot_id[i] + '">' + msg.callsign[i] + ' (' + msg.name[i] + ')</option>')
+			for (var i in msg.pilots) {
+				voices.append('<option value="' + msg.pilots[i].pilot_id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>')
 			}
 			voices.val(rotorhazard.primaryPilot);
 		});
@@ -361,6 +405,11 @@
 			rotorhazard.voice_pitch = parseFloat($(this).val());
 			rotorhazard.saveData();
 		});
+
+		$('#use_mp3_tones').change(function (event) {
+			rotorhazard.use_mp3_tones = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
 	});
 
 	function doSpeak(obj) {
@@ -384,8 +433,9 @@
 
 <div class="panel">
 	<div class="panel-content">
-		<!--Buttons for controlling the race-->
-		<p>{% include "build_timer.html" %}</p>
+		<div class="timer">
+			<div class="timing-clock"><div class="warning" title="{{ __('Browser Sync Loss') }}">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
+		</div>
 
 		<h2 class="current_heat">{{ __('Loading...') }}</h2>
 
@@ -472,6 +522,14 @@
 					<p class="desc">{{ __('Pitch') }}: <span id="voice_pitch_value"></span></p>
 				</div>
 				<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					{{ __('Indicator Beeps') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
+				</ul>
 			</li>
 		</ol>
 	</div>

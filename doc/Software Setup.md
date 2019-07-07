@@ -1,30 +1,9 @@
 # Software Setup Instructions
 
-## Receiver Nodes (Arduinos)
-Note: The latest Arduino IDE (1.8+) is required from https://www.arduino.cc/en/Main/Software
-
-Open 'RotorHazard/src/node/node.ino' in the Arduino IDE.
-
-Configure the '#define NODE_NUMBER' line of the .ino for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
-```
-// Node Setup -- Set node number here (1 - 8)
-#define NODE_NUMBER 1
-```
-
-Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:  
-node #1: ground pin 5  
-node #2: ground pin 6  
-node #3: ground pin 7  
-node #4: ground pin 8  
-node #5: ground pin 5 and pin 4  
-node #6: ground pin 6 and pin 4  
-node #7: ground pin 7 and pin 4  
-node #8: ground pin 8 and pin 4
-
-## System (Raspberry Pi)
+## Install System (Raspberry Pi)
 Note: Many of the setup commands below require that the Rasperry Pi has internet access.
 
-Start by installing Raspbian, follow the official instructions here: https://www.raspberrypi.org/downloads/raspbian/, use 'RASPBIAN STRETCH WITH DESKTOP'
+Start by installing Raspbian, following the official instructions here: https://www.raspberrypi.org/downloads/raspbian/. You may use either Desktop or Lite.
 
 Configure the interface options on the Raspberry Pi.
 Open a Terminal window and enter the following command:
@@ -59,16 +38,17 @@ core_freq=250
 ```
 Save and exit the file with Ctrl-X
 
-Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.0.0" with the current version code, and enter the commands:
+Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.1.0" with the current version code, and enter the commands:
 ```
 cd ~
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.0.0 -O temp.zip
+wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.1.0 -O temp.zip
 unzip temp.zip
-mv RotorHazard-1.0.0 RotorHazard
+mv RotorHazard-1.1.0 RotorHazard
 rm temp.zip
 ```
 
 Install web server dependencies:
+Be patient, this command may take a few minutes.
 ```
 cd /home/pi/RotorHazard/src/server
 sudo pip install -r requirements.txt
@@ -81,6 +61,30 @@ cd /home/pi/RotorHazard/src
 sudo chmod 777 server
 ```
 
+## Install Receiver Node Code (Arduinos)
+Arduino 1.8+ is required. Download from https://www.arduino.cc/en/Main/Software
+
+*The node code and the server version must match. Use the file included with the server code you downloaded earlier; do not download a different file directly from GitHub.*
+
+Open 'RotorHazard/src/node/node.ino' in the Arduino IDE.
+
+Configure the '#define NODE_NUMBER' line of the .ino for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
+```
+// Node Setup -- Set node number here (1 - 8)
+#define NODE_NUMBER 1
+```
+
+Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:
+node #1: ground pin D5
+node #2: ground pin D6
+node #3: ground pin D7
+node #4: ground pin D8
+node #5: ground pin D5 and pin D4
+node #6: ground pin D6 and pin D4
+node #7: ground pin D7 and pin D4
+node #8: ground pin D8 and pin D4
+
+## Install Optional Components
 ### WS2812b LED Support
 The ws2812b controls are provided by the following project:
 https://github.com/jgarff/rpi_ws281x
@@ -99,12 +103,43 @@ cd python
 sudo python setup.py install
 ```
 
+### INA219 Voltage/Current Support
+The ina219 interface is provided by the following project:
+https://github.com/chrisb2/pi_ina219
+
+Clone the repository onto the Pi:
+```
+cd ~
+sudo git clone https://github.com/chrisb2/pi_ina219.git
+cd pi_ina219
+```
+Install the Python library:
+```
+sudo python setup.py install
+```
+
+### BME280 Temperature Support
+The bme280 interface is provided by the following project:
+https://github.com/rm-hull/bme280
+
+Clone the repository onto the Pi:
+```
+cd ~
+sudo git clone https://github.com/rm-hull/bme280.git
+cd bme280
+```
+Install the Python library:
+```
+sudo python setup.py install
+```
+
 ### Java Support
-Java enables calculating of IMD scores. If you started with RASPBIAN STRETCH WITH DESKTOP, this step should not be necessary as Java is installed by default. Otherwise:
+Java enables calculating of IMD scores. If you started with RASPBIAN WITH DESKTOP, this step should not be necessary as Java is installed by default. Otherwise:
 ```
 sudo apt-get install oracle-java8-jdk
 ```
 
+## Prepare System
 ### Reboot System
 After the above setup steps are performed, the system should be rebooted by entering the following:
 ```
@@ -163,6 +198,6 @@ sudo shutdown now
 
 -----------------------------
 
-See Also:  
-[doc/Hardware Setup.md](Hardware%20Setup.md)  
+See Also:
+[doc/Hardware Setup.md](Hardware%20Setup.md)
 [doc/User Guide.md](User%20Guide.md)

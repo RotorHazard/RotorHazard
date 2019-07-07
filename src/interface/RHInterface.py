@@ -1,48 +1,46 @@
 '''RotorHazard hardware interface layer.'''
 
+import os
 import smbus # For i2c comms
+import io
+import importlib
 import gevent # For threads and timing
 from gevent.lock import BoundedSemaphore # To limit i2c calls
+from monotonic import monotonic # to capture read timing
 
 from Node import Node
-from BaseHardwareInterface import BaseHardwareInterface
+from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
 READ_LAP_STATS = 0x05
-READ_FILTER_RATIO = 0x20    # node API_level>=10 uses 16-bit value
+# READ_FILTER_RATIO = 0x20    # node API_level>=10 uses 16-bit value
 READ_REVISION_CODE = 0x22   # read NODE_API_LEVEL and verification value
 READ_NODE_RSSI_PEAK = 0x23  # read 'nodeRssiPeak' value
 READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
-READ_HISTORY_EXPIRE_DURATION = 0x35
 READ_TIME_MILLIS = 0x33     # read current 'millis()' time value
-READ_CATCH_HISTORY = 0x34   # get lap catch history data
 
 WRITE_FREQUENCY = 0x51      # Sets frequency (2 byte)
-WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
+# WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
-WRITE_HISTORY_EXPIRE_DURATION = 0x73
-MARK_START_TIME = 0x77      # mark base time for returned lap-ms-since-start values
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 
-UPDATE_SLEEP = 0.1 # Main update loop delay
+UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
 
 I2C_CHILL_TIME = 0.075 # Delay after i2c read/write
 I2C_RETRY_COUNT = 5 # Limit of i2c retries
 
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
-MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
-ENTER_AT_PEAK_MARGIN = 5         # closest that captured enter-at level can be to node peak RSSI
 
 def unpack_8(data):
     return data[0]
 
 def pack_8(data):
-    return [data]
+    return [int(data & 0xFF)]
 
 def unpack_16(data):
     '''Returns the full variable from 2 bytes input.'''
@@ -54,7 +52,7 @@ def pack_16(data):
     '''Returns a 2 part array from the full variable.'''
     part_a = (data >> 8)
     part_b = (data & 0xFF)
-    return [part_a, part_b]
+    return [int(part_a), int(part_b)]
 
 def unpack_32(data):
     '''Returns the full variable from 4 bytes input.'''
@@ -64,12 +62,27 @@ def unpack_32(data):
     result = (result << 8) | data[3]
     return result
 
+def pack_32(data):
+    '''Returns a 4 part array from the full variable.'''
+    part_a = (data >> 24)
+    part_b = (data >> 16) & 0xFF
+    part_c = (data >> 8) & 0xFF
+    part_d = (data & 0xFF)
+    return [int(part_a), int(part_b), int(part_c), int(part_d)]
+
+
 def validate_checksum(data):
     '''Returns True if the checksum matches the data.'''
     if data is None:
         return False
     checksum = sum(data[:-1]) & 0xFF
     return checksum == data[-1]
+
+def unpack_rssi(node, data):
+    if node.api_level >= 18:
+        return unpack_8(data)
+    else:
+        return unpack_16(data)
 
 
 class RHInterface(BaseHardwareInterface):
@@ -84,6 +97,8 @@ class RHInterface(BaseHardwareInterface):
         self.i2c = smbus.SMBus(1) # Start i2c bus
         self.semaphore = BoundedSemaphore(1) # Limits i2c to 1 read/write at a time
         self.i2c_timestamp = -1
+        self.i2c_request = None # request time of last I2C read
+        self.i2c_response = None # response time of last I2C read
 
         # Scans all i2c_addrs to populate nodes array
         self.nodes = [] # Array to hold each node object
@@ -101,6 +116,7 @@ class RHInterface(BaseHardwareInterface):
                 print "No node at address {0}".format(addr)
             gevent.sleep(I2C_CHILL_TIME)
 
+        self.data_loggers = []
         for node in self.nodes:
             node.frequency = self.get_value_16(node, READ_FREQUENCY)
                    # read NODE_API_LEVEL and verification value:
@@ -109,34 +125,74 @@ class RHInterface(BaseHardwareInterface):
                 node.api_level = rev_val & 0xFF
             else:
                 node.api_level = 0  # if verify failed (fn not defined) then set API level to 0
+            node.init()
             if node.api_level >= 10:
-                node.api_valid_flag = True  # set flag for newer API functions supported
-                node.node_peak_rssi = self.get_value_16(node, READ_NODE_RSSI_PEAK)
+                node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
                 if node.api_level >= 13:
-                    node.node_nadir_rssi = self.get_value_16(node, READ_NODE_RSSI_NADIR)
-                node.enter_at_level = self.get_value_16(node, READ_ENTER_AT_LEVEL)
-                node.exit_at_level = self.get_value_16(node, READ_EXIT_AT_LEVEL)
+                    node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
+                node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
+                node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
                 print "Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level)
+
+                if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
+                    self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
+                    print "Data logging enabled for node {0}".format(node.index+1)
+                else:
+                    self.data_loggers.append(None)
             else:
                 print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
-            if node.index == 0:
-                if node.api_valid_flag:
-                    self.filter_ratio = self.get_value_16(node, READ_FILTER_RATIO)
-                else:
-                    self.filter_ratio = 10
-            else:
-                self.set_filter_ratio(node.index, self.filter_ratio)
 
+        # Core temperature
+        with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+            self.core_temp = float(f.read())/1000
 
-    #
-    # Class Functions
-    #
+        self.environmental_data_update_tracker = 0
 
-    def log(self, message):
-        '''Hardware log of messages.'''
-        if callable(self.hardware_log_callback):
-            string = 'Interface: {0}'.format(message)
-            self.hardware_log_callback(string)
+        # Scan for INA219 devices
+        self.ina219_devices = []
+        self.ina219_data = []
+        supported_ina219_addrs = [0x40, 0x41, 0x44, 0x45]
+        try:
+            self.ina219Class = getattr(importlib.import_module('ina219'), 'INA219')
+            for index, addr in enumerate(supported_ina219_addrs):
+                try:
+                    device = self.ina219Class(0.1, address=addr)
+                    device.configure()
+                    data = {
+                        'voltage': device.voltage(),
+                        'current': device.current(),
+                        'power': device.power()
+                    }
+                    device.sleep()
+                    print "INA219 found at address {0}".format(addr)
+                    gevent.sleep(I2C_CHILL_TIME)
+                    self.ina219_devices.append(device)
+                    self.ina219_data.append(data)
+                except IOError as err:
+                    print "No INA219 at address {0}".format(addr)
+                gevent.sleep(I2C_CHILL_TIME)
+        except ImportError:
+            self.ina219Class = None
+
+        # Scan for BME280 devices
+        self.bme280_addrs = []
+        self.bme280_data = []
+        supported_bme280_addrs = [0x76, 0x77]
+        try:
+            self.bme280SampleMethod = getattr(importlib.import_module('bme280'), 'sample')
+            for index, addr in enumerate(supported_bme280_addrs):
+                try:
+                    data = self.bme280SampleMethod(self.i2c, addr)
+                    print "BME280 found at address {0}".format(addr)
+                    gevent.sleep(I2C_CHILL_TIME)
+                    self.bme280_addrs.append(addr)
+                    self.bme280_data.append(data)
+                except IOError as err:
+                    print "No BME280 at address {0}".format(addr)
+                gevent.sleep(I2C_CHILL_TIME)
+        except ImportError:
+            self.bme280SampleMethod = None
+
 
     #
     # Update Loop
@@ -156,12 +212,24 @@ class RHInterface(BaseHardwareInterface):
             print "Update thread terminated by keyboard interrupt"
 
     def update(self):
-        upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_time_ms)
+        upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
         cross_list = []  # list of nodes with crossing-flag changes
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
-                    if node.api_level >= 13:
+                    if node.api_level >= 18:
+                        data = self.read_block(node.i2c_addr, READ_LAP_STATS, 19)
+                        server_roundtrip = self.i2c_response - self.i2c_request
+                        server_oneway = server_roundtrip / 2
+                        readtime = self.i2c_response - server_oneway
+
+                    elif node.api_level >= 17:
+                        data = self.read_block(node.i2c_addr, READ_LAP_STATS, 28)
+                        server_roundtrip = self.i2c_response - self.i2c_request
+                        server_oneway = server_roundtrip / 2
+                        readtime = self.i2c_response - server_oneway
+
+                    elif node.api_level >= 13:
                         data = self.read_block(node.i2c_addr, READ_LAP_STATS, 20)
                     else:
                         data = self.read_block(node.i2c_addr, READ_LAP_STATS, 18)
@@ -170,90 +238,83 @@ class RHInterface(BaseHardwareInterface):
 
                 if data != None:
                     lap_id = data[0]
-                    lap_time_ms = 0
 
-                    rssi_val = unpack_16(data[5:])
-                    if rssi_val >= MIN_RSSI_VALUE and rssi_val <= MAX_RSSI_VALUE:
+                    if node.api_level >= 18:
+                        offset_rssi = 3
+                        offset_nodePeakRssi = 4
+                        offset_passPeakRssi = 5
+                        offset_loopTime = 6
+                        offset_crossing = 8
+                        offset_passNadirRssi = 9
+                        offset_nodeNadirRssi = 10
+                        offset_peakRssi = 11
+                        offset_peakFirstTime = 12
+                        offset_peakLastTime = 14
+                        offset_nadirRssi = 16
+                        offset_nadirTime = 17
+                    else:
+                        offset_rssi = 5
+                        offset_nodePeakRssi = 7
+                        offset_passPeakRssi = 9
+                        offset_loopTime = 11
+                        offset_crossing = 15
+                        offset_passNadirRssi = 16
+                        offset_nodeNadirRssi = 18
+                        offset_peakRssi = 20
+                        offset_peakTime = 22
+                        offset_nadirRssi = 24
+                        offset_nadirTime = 26
+
+                    rssi_val = unpack_rssi(node, data[offset_rssi:])
+                    if node.is_valid_rssi(rssi_val):
                         node.current_rssi = rssi_val
 
+                        cross_flag = None
+                        pn_history = None
                         if node.api_valid_flag:  # if newer API functions supported
-                            ms_val = unpack_32(data[1:])
-                            if ms_val < 0 or ms_val > 9999999:
-                                ms_val = 0  # don't allow negative or too-large value
-                            node.lap_ms_since_start = ms_val
-                            node.node_peak_rssi = unpack_16(data[7:])
-                            node.pass_peak_rssi = unpack_16(data[9:])
-                            node.loop_time = unpack_32(data[11:])
-                            if data[15]:
+                            if node.api_level >= 18:
+                                ms_val = unpack_16(data[1:])
+                                pn_history = PeakNadirHistory()
+                                pn_history.peakRssi = unpack_rssi(node, data[offset_peakRssi:])
+                                pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
+                                pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
+                                pn_history.nadirRssi = unpack_rssi(node, data[offset_nadirRssi:])
+                                pn_history.nadirTime = unpack_16(data[offset_nadirTime:])
+                            else:
+                                ms_val = unpack_32(data[1:])
+
+                            node.node_peak_rssi = unpack_rssi(node, data[offset_nodePeakRssi:])
+                            node.pass_peak_rssi = unpack_rssi(node, data[offset_passPeakRssi:])
+                            node.loop_time = unpack_16(data[offset_loopTime:])
+                            if data[offset_crossing]:
                                 cross_flag = True
                             else:
                                 cross_flag = False
-                            if cross_flag != node.crossing_flag:  # if 'crossing' status changed
-                                node.crossing_flag = cross_flag
-                                if callable(self.node_crossing_callback):
-                                    cross_list.append(node)
-                            node.pass_nadir_rssi = unpack_16(data[16:])
+                            node.pass_nadir_rssi = unpack_rssi(node, data[offset_passNadirRssi:])
 
                             if node.api_level >= 13:
-                                node.node_nadir_rssi = unpack_16(data[18:])
+                                node.node_nadir_rssi = unpack_rssi(node, data[offset_nodeNadirRssi:])
+
+                            if node.api_level >= 18:
+                                data_logger = self.data_loggers[node.index]
+                                if data_logger:
+                                    data_logger.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format(readtime,lap_id, int(ms_val), node.current_rssi, node.node_peak_rssi, node.pass_peak_rssi, node.loop_time, 'T' if cross_flag else 'F', node.pass_nadir_rssi, node.node_nadir_rssi, peakRssi, peakFirstTime, peakLastTime, nadirRssi, nadirTime))
 
                         else:  # if newer API functions not supported
-                            lap_time_ms = unpack_32(data[1:])
-                            node.pass_peak_rssi = unpack_16(data[11:])
+                            ms_val = unpack_32(data[1:])
+                            node.pass_peak_rssi = unpack_rssi(node, data[11:])
                             node.loop_time = unpack_32(data[13:])
 
-                        # if new lap detected for node then append item to updates list
-                        if lap_id != node.last_lap_id:
-                            upd_list.append((node, lap_id, lap_time_ms))
+                        self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list)
 
-                        # check if capturing enter-at level for node
-                        if node.cap_enter_at_flag:
-                            node.cap_enter_at_total += node.current_rssi
-                            node.cap_enter_at_count += 1
-                            if self.milliseconds() >= node.cap_enter_at_millis:
-                                node.enter_at_level = int(round(node.cap_enter_at_total / node.cap_enter_at_count))
-                                node.cap_enter_at_flag = False
-                                      # if too close node peak then set a bit below node-peak RSSI value:
-                                if node.node_peak_rssi > 0 and node.node_peak_rssi - node.enter_at_level < ENTER_AT_PEAK_MARGIN:
-                                    node.enter_at_level = node.node_peak_rssi - ENTER_AT_PEAK_MARGIN
-                                self.transmit_enter_at_level(node, node.enter_at_level)
-                                if callable(self.new_enter_or_exit_at_callback):
-                                    self.new_enter_or_exit_at_callback(node, True)
-
-                        # check if capturing exit-at level for node
-                        if node.cap_exit_at_flag:
-                            node.cap_exit_at_total += node.current_rssi
-                            node.cap_exit_at_count += 1
-                            if self.milliseconds() >= node.cap_exit_at_millis:
-                                node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
-                                node.cap_exit_at_flag = False
-                                self.transmit_exit_at_level(node, node.exit_at_level)
-                                if callable(self.new_enter_or_exit_at_callback):
-                                    self.new_enter_or_exit_at_callback(node, False)
                     else:
                         self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
 
         # process any nodes with crossing-flag changes
-        if len(cross_list) > 0:
-            for node in cross_list:
-                self.node_crossing_callback(node)
+        self.process_crossings(cross_list)
 
         # process any nodes with new laps detected
-        if len(upd_list) > 0:
-            if len(upd_list) == 1:  # list contains single item
-                item = upd_list[0]
-                node = item[0]
-                if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                    self.pass_record_callback(node, item[2])  # (node, lap_time_ms)
-                node.last_lap_id = item[1]  # new_lap_id
-
-            else:  # list contains multiple items; sort so processed in order by lap time
-                upd_list.sort(key = lambda i: i[0].lap_ms_since_start)
-                for item in upd_list:
-                    node = item[0]
-                    if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                        self.pass_record_callback(node, item[2])  # (node, lap_time_ms)
-                    node.last_lap_id = item[1]  # new_lap_id
+        self.process_updates(upd_list)
 
 
     #
@@ -278,7 +339,9 @@ class RHInterface(BaseHardwareInterface):
             try:
                 with self.semaphore: # Wait if i2c comms is already in progress
                     self.i2c_sleep()
+                    self.i2c_request = monotonic()
                     data = self.i2c.read_i2c_block_data(addr, offset, size + 1)
+                    self.i2c_response = monotonic()
                     self.i2c_timestamp = self.milliseconds()
                     if validate_checksum(data):
                         success = True
@@ -308,12 +371,14 @@ class RHInterface(BaseHardwareInterface):
         retry_count = 0
         data_with_checksum = data
         data_with_checksum.append(offset)
-        data_with_checksum.append(sum(data_with_checksum) & 0xFF)
+        data_with_checksum.append(int(sum(data_with_checksum) & 0xFF))
         while success is False and retry_count < I2C_RETRY_COUNT:
             try:
                 with self.semaphore: # Wait if i2c comms is already in progress
                     self.i2c_sleep()
+                    # self.i2c_request = monotonic()
                     self.i2c.write_i2c_block_data(addr, offset, data_with_checksum)
+                    # self.i2c_response = monotonic()
                     self.i2c_timestamp = self.milliseconds()
                     success = True
             except IOError as err:
@@ -342,6 +407,13 @@ class RHInterface(BaseHardwareInterface):
         result = None
         if data != None:
             result = unpack_16(data)
+        return result
+
+    def get_value_32(self, node, command):
+        data = self.read_block(node.i2c_addr, command, 4)
+        result = None
+        if data != None:
+            result = unpack_32(data)
         return result
 
     def set_and_validate_value_8(self, node, write_command, read_command, in_value):
@@ -379,6 +451,24 @@ class RHInterface(BaseHardwareInterface):
             out_value = in_value
         return out_value
 
+    def set_and_validate_value_32(self, node, write_command, read_command, in_value):
+        success = False
+        retry_count = 0
+        out_value = None
+        while success is False and retry_count < I2C_RETRY_COUNT:
+            self.write_block(node.i2c_addr, write_command, pack_32(in_value))
+            out_value = self.get_value_32(node, read_command)
+                   # confirm same value (also handle negative value)
+            if out_value == in_value or out_value == in_value + (1 << 32):
+                success = True
+            else:
+                retry_count = retry_count + 1
+                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node))
+
+        if out_value == None:
+            out_value = in_value
+        return out_value
+
     def set_value_8(self, node, write_command, in_value):
         success = False
         retry_count = 0
@@ -390,6 +480,55 @@ class RHInterface(BaseHardwareInterface):
                 retry_count = retry_count + 1
                 self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node))
         return success
+
+    def set_value_32(self, node, write_command, in_value):
+        success = False
+        retry_count = 0
+        out_value = None
+        while success is False and retry_count < I2C_RETRY_COUNT:
+            if self.write_block(node.i2c_addr, write_command, pack_32(in_value)):
+                success = True
+            else:
+                retry_count = retry_count + 1
+                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node))
+        return success
+
+    def broadcast_value_8(self, write_command, in_value):
+        success = False
+        retry_count = 0
+        out_value = None
+        while success is False and retry_count < I2C_RETRY_COUNT:
+            if self.write_block(0x00, write_command, pack_8(in_value)):
+                success = True
+            else:
+                retry_count = retry_count + 1
+                self.log('Value Not Set ({0}): {1}/{2}/broadcast'.format(retry_count, write_command, in_value))
+        return success
+
+    def broadcast_value_32(self, write_command, in_value):
+        success = False
+        retry_count = 0
+        out_value = None
+        while success is False and retry_count < I2C_RETRY_COUNT:
+            if self.write_block(0x00, write_command, pack_32(in_value)):
+                success = True
+            else:
+                retry_count = retry_count + 1
+                self.log('Value Not Set ({0}): {1}/{2}/broadcast'.format(retry_count, write_command, in_value))
+        return success
+
+    def set_and_validate_value_rssi(self, node, write_command, read_command, in_value):
+        if node.api_level >= 18:
+            return self.set_and_validate_value_8(node, write_command, read_command, in_value)
+        else:
+            return self.set_and_validate_value_16(node, write_command, read_command, in_value)
+
+    def get_value_rssi(self, node, command):
+        if node.api_level >= 18:
+            return self.get_value_8(node, command)
+        else:
+            return self.get_value_16(node, command)
+
 
     #
     # External functions for setting data
@@ -411,26 +550,28 @@ class RHInterface(BaseHardwareInterface):
             node.frequency = 0
 
     def transmit_enter_at_level(self, node, level):
-        return self.set_and_validate_value_16(node,
+        return self.set_and_validate_value_rssi(node,
             WRITE_ENTER_AT_LEVEL,
             READ_ENTER_AT_LEVEL,
             level)
 
     def set_enter_at_level(self, node_index, level):
         node = self.nodes[node_index]
-        if node.api_valid_flag:
-            node.enter_at_level = self.transmit_enter_at_level(node, level)
+        if node.api_valid_flag and node.is_valid_rssi(level):
+            if self.transmit_enter_at_level(node, level):
+                node.enter_at_level = level
 
     def transmit_exit_at_level(self, node, level):
-        return self.set_and_validate_value_16(node,
+        return self.set_and_validate_value_rssi(node,
             WRITE_EXIT_AT_LEVEL,
             READ_EXIT_AT_LEVEL,
             level)
 
     def set_exit_at_level(self, node_index, level):
         node = self.nodes[node_index]
-        if node.api_valid_flag:
-            node.exit_at_level = self.transmit_exit_at_level(node, level)
+        if node.api_valid_flag and node.is_valid_rssi(level):
+            if self.transmit_exit_at_level(node, level):
+                node.exit_at_level = level
 
     def set_calibration_threshold_global(self, threshold):
         return threshold  # dummy function; no longer supported
@@ -444,40 +585,21 @@ class RHInterface(BaseHardwareInterface):
     def set_trigger_threshold_global(self, threshold):
         return threshold  # dummy function; no longer supported
 
-    def set_filter_ratio(self, node_index, filter_ratio):
+    def mark_start_time(self, node_index, start_time):
         node = self.nodes[node_index]
         if node.api_valid_flag:
-            node.filter_ratio = self.set_and_validate_value_16(node,
-                WRITE_FILTER_RATIO,
-                READ_FILTER_RATIO,
-                filter_ratio)
+            self.set_value_32(node, MARK_START_TIME, start_time)
 
-    def set_filter_ratio_global(self, filter_ratio):
-        self.filter_ratio = filter_ratio
+    def mark_start_time_global(self, pi_time):
+        bcast_flag = False
+        start_time = int(round(pi_time * 1000)) # convert to ms
         for node in self.nodes:
-            self.set_filter_ratio(node.index, filter_ratio)
-        return self.filter_ratio
-
-    def set_history_expire(self, node_index, history_expire_duration):
-        node = self.nodes[node_index]
-        if node.api_level >= 12:
-            node.history_expire_duration = self.set_and_validate_value_16(node,
-                WRITE_HISTORY_EXPIRE_DURATION,
-                READ_HISTORY_EXPIRE_DURATION,
-                history_expire_duration)
-
-    def set_history_expire_global(self, history_expire_duration):
-        for node in self.nodes:
-            self.set_history_expire(node.index, history_expire_duration)
-
-    def mark_start_time(self, node_index):
-        node = self.nodes[node_index]
-        if node.api_valid_flag:
-            self.set_value_8(node, MARK_START_TIME, 0)
-
-    def mark_start_time_global(self):
-        for node in self.nodes:
-            self.mark_start_time(node.index)
+            if self.nodes[0].api_level >= 15:
+                if bcast_flag is False:
+                    bcast_flag = True  # only send broadcast once
+                    self.broadcast_value_32(MARK_START_TIME, start_time)
+            else:
+                self.mark_start_time(node.index, start_time)  # if older API node
 
     def start_capture_enter_at_level(self, node_index):
         node = self.nodes[node_index]
@@ -501,27 +623,48 @@ class RHInterface(BaseHardwareInterface):
             return True
         return False
 
-    def intf_simulate_lap(self, node_index, ms_val):
-        node = self.nodes[node_index]
-        node.lap_ms_since_start = ms_val
-        self.pass_record_callback(node, 100)
-
-    def get_catch_history(self, node_index):
-        node = self.nodes[node_index]
-        if node.api_level >= 12:
-            data = self.read_block(node.i2c_addr, READ_CATCH_HISTORY, 8)
-            return {
-                'rssi_min': unpack_16(data[0:]),
-                'rssi_max': unpack_16(data[2:]),
-                'pass_ms': unpack_32(data[4:])
-            }
-        return None
-
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
         if node.api_level >= 14:
             self.set_value_8(node, FORCE_END_CROSSING, 0)
 
+    def update_environmental_data(self):
+        '''Updates environmental data.'''
+        self.environmental_data_update_tracker += 1
+
+        if self.ina219Class and (self.environmental_data_update_tracker % 2) == 0:
+            for index, device in enumerate(self.ina219_devices):
+                try:
+                    with self.semaphore:
+                        self.i2c_sleep()
+                        device = self.ina219_devices[index]
+                        device.wake()
+                        data = {
+                            'voltage': device.voltage(),
+                            'current': device.current(),
+                            'power': device.power()/1000.0
+                        }
+                        device.sleep()
+                        self.ina219_data[index] = data
+                        self.i2c_timestamp = self.milliseconds()
+                except IOError as err:
+                    self.log('INA219 Read Error: ' + str(err))
+                    self.i2c_timestamp = self.milliseconds()
+
+        if self.bme280SampleMethod and (self.environmental_data_update_tracker % 2) == 1:
+            for index, addr in enumerate(self.bme280_addrs):
+                try:
+                    with self.semaphore:
+                        self.i2c_sleep()
+                        data = self.bme280SampleMethod(self.i2c, addr)
+                        self.bme280_data[index] = data
+                        self.i2c_timestamp = self.milliseconds()
+                except IOError as err:
+                    self.log('BME280 Read Error: ' + str(err))
+                    self.i2c_timestamp = self.milliseconds()
+
+        with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+            self.core_temp = float(f.read())/1000
 
 def get_hardware_interface():
     '''Returns the RotorHazard interface object.'''

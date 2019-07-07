@@ -53,6 +53,8 @@ In the Audio Control section, the user can select whether any one pilot, all pil
 
 ### Settings
 
+This page allows changing the timer's optional settings and event setup.
+
 #### Profiles
 Profiles contain settings for various circumstances or environments, such as outdoor and indoor areas. Settings saved into the profile are frequencies, node tuning values, and RSSI smoothing. Choose an active profile. Settings that you adjust will be saved to the currently active profile.
 
@@ -113,9 +115,11 @@ Choose the interface language, and change parameters that affect the appearance 
 
 ### Run
 
+This page allows you to control the timer and run races.
+
 Select the Heat for the race which is to be run next.
 
-Start the race when ready. The timer will do a quick communication to the server to  compensate for client/server response time, then begin the staging procedure defined by the current race format.
+Start the race when ready. (Hotkey: <kbd>z</kbd>) The timer will do a quick communication to the server to  compensate for client/server response time, then begin the staging procedure defined by the current race format.
 
 Tuning parameters can be adjusted here via the "⚠" button. See [doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
 
@@ -123,8 +127,20 @@ During the race, there is an "×" next to each counted lap. This will discard th
 
 A "+ Lap" button is provided to force lap pass for that node to be immediately recorded.
 
-You must use the "Stop Race" button to discontinue counting laps. This is true even if the timer reaches zero in a "Count Down" format—a popular race format allows pilots to finish the lap they are on when time expires.
+When a race is over, use the "Stop Race" button (Hotkey: <kbd>x</kbd>) to discontinue counting laps. You need to do this  even if the timer reaches zero in a "Count Down" format—a popular race format allows pilots to finish the lap they are on when time expires. For best results, clear the timing gate and allow all valid crossings to end before stopping the race.
 
-Once a race has concluded, you must choose "Save Laps" or "Clear Laps" before starting another race. "Save Laps" will store race results to the database and display them on the "Results" page. "Clear Laps" will discard the race results.
+Once a race has concluded, you must choose "Save Laps" or "Clear Laps" before starting another race. "Save Laps" (Hotkey: <kbd>c</kbd>) will store race results to the database and display them on the "Results" page. "Clear Laps" (Hotkey: <kbd>v</kbd>) will discard the race results.
 
-The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. Audio Control and LED Contral are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race.
+The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. Audio Control and LED Contral are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race. "Time Until Race Start" will schedule a race to be run at a future time. Operators may use this to set a hard limit on the amount of time allowed for pilots to prepare, or to start the timer and then participate in the race themselves.
+
+### Marshal
+
+Adjust results of saved races.
+
+Select the round, heat, and pilot to adjust. Enter and Exit points are automatically loaded from the saved race data. Adjust the Enter and Exit points to recalibrate the race after the fact. "Load from Node" to copy current live calibration data over the active values. "Save to Node" to copy the active values over the current live values. "Recalculate Race" to use the active Enter/Exit values as calibration points for a "re-run" of the race. This will erase current laps and replace them with the recalculated information. Manually entered laps are preserved.
+
+Add laps by entering the crossing time in seconds from the beginning of the race, then pressing the "Add Lap" button. 
+
+Delete laps with the "×" button on the unwanted lap. Deleted laps are removed from calculations but remain present in the data for later reference. "Clear laps" to permanently remove the data from the database.
+
+"Commit changes" when you are finished adjusting the race data to save it to the database and update the race results.
