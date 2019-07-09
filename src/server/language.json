@@ -585,7 +585,7 @@
 			"Win Condition": "Condición para Ganar"
 		}
 	},
-		"fr-be": {
+	"fr-be": {
 		"name": "Français",
 		"values": {
 			"3 Consecutive": "3 consécutives",
@@ -641,7 +641,7 @@
 			"Duplicate Format": "Format en double",
 			"End Crossing Offset": "Décalage de fin de croisement",
 			"Enter frequencies": "Entrer les fréquences",
-			"Enter/Exit points saved to active node": "Entrer/Quitter les points enregistrés dans la nodule active",
+			"Enter/Exit points saved to active node": "Points d'entrée et de sortie enregistrés dans la nodule active",
 			"EnterAt": "EnterAt",
 			"Event and Classes": "Événements et Classes",
 			"Event Description": "Description de l'événement",
@@ -748,7 +748,7 @@
 			"Open Practice": "Pratique ouverte",
 			"Option": "Option",
 			"Outdoor": "Extérieur",
-			"Pass VTx very near the timer to establish peak RSSI for node": "Passez le VTx très près du timer pour établir le RSSI de pointe pour le noeud",			"PassCount": "PassCount",
+			"Pass VTx very near the timer to establish peak RSSI for node": "Passez le VTx très près du timer pour établir le RSSI de pointe pour la nodule",
 			"PassCount": "PassCount",
 			"PassNadir": "PassNadir",
 			"PassPeak": "PassPeak",
@@ -764,7 +764,7 @@
 			"Play": "Play",
 			"Pop-up Alert": "Alerte Pop-up",
 			"Pos.": "Pos.",
-			"Power on a VTx at the same frequency as the node": "Mise sous tension d'un VTx à la même fréquence que le nœud",
+			"Power on a VTx at the same frequency as the node": "Allumer un VTx à la même fréquence que la nodule",
 			"Preset": "Préréglage",
 			"Primary Color": "Couleur primaire",
 			"Primary Hue": "Teinte primaire*",
@@ -852,7 +852,7 @@
 			"Total": "Total",
 			"Troubleshooting": "Diagnostic des problèmes",
 			"Tuning adjust failed on node {0}: Bad RSSI value ":"L'ajustement de Tuning a échoué sur la nodule {0} : Mauvaise valeur RSSI ",
-			"Tuning adjust failed on node {0}: Bad RSSI value": "L'ajustement de Tuning a échoué sur le noeud {0} : Mauvaise valeur RSSI ",
+			"Tuning adjust failed on node {0}: Bad RSSI value": "L'ajustement de Tuning a échoué sur la nodule {0} : Mauvaise valeur RSSI ",
 			"Tuning": "Tuning",
 			"Unclassified": "Non classifié",
 			"Use MP3 Tones instead of synthetic tones": "Utilisez des tonalités MP3 au lieu de tonalités synthétiques",
@@ -878,15 +878,15 @@
 			"Win Condition": "Condition Gagnant"
 			"Current Event": "Événement actuel",
 			"Current": "Actuel",
-			"EnterAt is higher than NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>": "...",
-			"EnterAt is very near ExitAt: <strong>Passes may register too frequently</strong>.": "...",
-			"EnterAt is very near NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>": "...",
-			"EnterAt must be greater than ExitAt: <strong>Passes WILL NOT register correctly</strong>.": "...",
+			"EnterAt is higher than NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>": "EnterAt est supérieur à NodePeak : <strong>Les passages ne sont peut-être pas enregistrés </strong>. <em>Terminer un lap pass avant d'ajuster les valeurs des nodules.</em>.",
+			"EnterAt is very near ExitAt: <strong>Passes may register too frequently</strong>.": "EnterAt est très proche de ExitAt : <strong>Les passages peuvent être enregistrés trop fréquemment </strong>.",
+			"EnterAt is very near NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>": ""EnterAt est près de NodePeak : <strong>Les passages ne sont peut-être pas enregistrés </strong>. <em>Terminer un lap pass avant d'ajuster les valeurs des nodules.</em>"",
+			"EnterAt must be greater than ExitAt: <strong>Passes WILL NOT register correctly</strong>.": "EnterAt doit être supérieur à ExitAt : <strong> Passages NE SERONT PAS enregistrés correctement </strong>.",
 			"Event Heats and Classes": "Événements Manches et Classes",
 			"Event": "Événements",
-			"ExitAt is lower than NodeNadir: <strong>Passes WILL NOT register</strong>.": "...",
-			"ExitAt is lower than PassNadir: <strong>Passes may not complete</strong>.": "...",
-			"ExitAt is very near PassNadir: <strong>Passes may not complete</strong>.": "...",
+			"ExitAt is lower than NodeNadir: <strong>Passes WILL NOT register</strong>.": "ExitAt est plus petite que NodeNadir : <fort>Les passages NE SERONT PAS enregistrés </fort>.",
+			"ExitAt is lower than PassNadir: <strong>Passes may not complete</strong>.": "ExitAt est plus basse que le PassNadir : <strong>Les passages ne seront pas forcément complets</strong>.",
+			"ExitAt is very near PassNadir: <strong>Passes may not complete</strong>.": "ExitAt est tout près de PassNadir : <strong>Les passages ne seront pas forcément complets</strong>." : "...",",
 			"FPV Race": "Course FPV",
 			"Export race to CSV": "Exporter la course vers CSV",
 			"Fastest": "LE plus vite",
@@ -895,9 +895,9 @@
 			"History Export": "Historique Exportation",
 			"Hour": "Heure",
 			"Hours": "Des Heures"
+
 		}
 	},
-	
 	"nl-be": {
 		"name": "Nederlands",
 		"values": {
