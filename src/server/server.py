@@ -323,15 +323,16 @@ class Slave:
                 try:
                     self.sio.connect(self.address)
                     print "Slave {0}: connected to {1}".format(self.id+1, self.address)
-                    return
+                    return True
                 except socketio.exceptions.ConnectionError:
                     gevent.sleep(0.1)
             print "Slave {0}: connection to {1} failed!".format(self.id+1, self.address)
+            return False
 
     def emit(self, event, data = None):
-        self.reconnect()
-        self.sio.emit(event, data)
-        self.lastContact = monotonic()
+        if self.reconnect():
+            self.sio.emit(event, data)
+            self.lastContact = monotonic()
 
     def on_connect(self):
         self.lastContact = monotonic()
