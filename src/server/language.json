@@ -887,7 +887,7 @@
 			"Frequency Setup": "Instellen kanalen",
 			"Global Settings": "Algemene instellingen",
 			"Hardware Log": "Hardware logboek",
-			"Heat": "Heat:,
+			"Heat": "Heat",
 			"Heat ID": "Heat ID",
 			"Heat Summary": "Samenvatting heat",
 			"Heats": "Heats",
@@ -939,7 +939,7 @@
 			"Minimum Lap Time": "Minimale laptijd",
 			"Minimum Start Delay": "Minimum uitstel voor start",
 			"Minimum time before race begins": "Minimum tijd voor een race start",
-			"Missed Lap Offset": "Compensatie bij lap gemist"
+			"Missed Lap Offset": "Compensatie bij lap gemist",
 			"Mode": "Modus",
 			"Modify": "Aanpassen",
 			"Most Laps": "Meeste laps",
@@ -952,7 +952,7 @@
 			"No configuration file was loaded. Falling back to default configuration.": "Er is geen bestand voor instellingen geladen. Terugvallen naar de standaard instellingen",
 			"No race loaded": "Geen race geladen",
 			"No tuning adjustment made on node {0}: Requested Enterat of {1} is too close or below ExitAt.": "Er is geen afstelling gebeurd van ontvanger {0}: gevraagde EnterAt van {1} is dichtbij of lager dan ExitAt",
-			"Node": "Ontvanger,
+			"Node": "Ontvanger",
 			"Node API": "Ontvanger API",
 			"Node Index": "Register ontvanger",
 			"Node Update Available": "Update voor ontvanger beschikbaar",
@@ -979,7 +979,7 @@
 			"Place VTx 20-30 feet away and press \"Capture\" for ExitAt": "Plaats de VTx 6-9 meter weg van de timer en klik op \"Vastleggen\" voor ExitAt",
 			"Place VTx 5-10 feet away and press \"Capture\" for EnterAt": "Plaats de VTx 1,5-3 meter weg van de timer en klik op \"Vastleggen\" voor EnterAt",
 			"Play": "Afspelen",
-			"Pop-up Alert", "Pop-up melding",
+			"Pop-up Alert": "Pop-up melding",
 			"Pos.": "Pos.",
 			"Power (W)": "Vermogen (W)",
 			"Power on a VTx at the same frequency as the node": "Plug een VTx in op het zelfde kanaal als de node",
@@ -1019,16 +1019,16 @@
 			"RSSI": "RSSI",
 			"Run": "Racen",
 			"Save Laps": "Laps opslaan",
-			"Save to Node": "Naar ontvanger opslaan":
+			"Save to Node": "Naar ontvanger opslaan",
 			"Saved Races": "Opgeslagen races",
 			"Scheduled race cancelled": "Geplande race geannuleerd",
 			"Secondary Color": "Secundaire kleur",
 			"Secondary Hue": "Tint secundaire kleur",
 			"Secondary Saturation": "Verzadiging secundaire kleur",			
-			"Select Heat" "Heat selecteren",
+			"Select Heat": "Heat selecteren",
 			"Select Pilot": "Piloot selecteren",
 			"Select Race": "Race selecteren",
-			"Select Round": "Ronde selecteren"
+			"Select Round": "Ronde selecteren",
 			"Selections cannot be modified for classes with saved races. (Clear races to release.)": "Instellingen van klasses met opgeslagen races, kunnen niet aangepast worden. (Verwijder gegevens van races om vrij te maken)",
 			"Selections cannot be modified for heats with saved races. (Clear races to release.)": "Instellingen van heats met opgeslagen races, kunnen niet aangepast worden. (Verwijder gegevens van races om vrij te maken)",
 			"Send Message": "Melding sturen",
@@ -1080,7 +1080,7 @@
 			"Value": "Waarde",
 			"Version": "Versie",
 			"View": "Kijken",
-			"View Database": "Database bekijken":
+			"View Database": "Database bekijken",
 			"View Race Results": "Bekijk resultaten van races",
 			"Voice Calls": "Gesproken aankondigingen",
 			"Voice Language": "Taal spraak",
@@ -1091,12 +1091,11 @@
 			"Voice Test": "Test spraak",
 			"Voice Volume": "Volume spraak",
 			"Volume": "Volume",
-			"Wait": "Wacht"
+			"Wait": "Wacht",
 			"WARNING: Force end adjustment on node {0} failed: insufficient RSSI range.": "WAARSCHUWING: aanpassen na registratie forceren van ontvanger {0} is mislukt: te weinig RSSI range",
 			"WARNING: Force end on node {0} required increase of EnterAt. EnterAt may be improperly calibrated.": "WAARSCHUWING: registratie forceren van ontvanger {0} vereist verhogen van EnterAt. EnterAt is mogelijks niet goed afgesteld",
 			"Whoop Sprint": "Whoop sprint",
-			"Win Condition": "Voorwaarde om te winnen"
-			"°C": "°C",
+			"Win Condition": "Voorwaarde om te winnen",
 		}
 	}
 }
