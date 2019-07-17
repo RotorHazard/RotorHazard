@@ -5,7 +5,7 @@
 
 #define MAX_RSSI 0xFF
 #define SmoothingSamples 255
-#define SmoothingTimestampSize 127 // half median window, rounded up
+#define SmoothingTimestampSize 128 // half median window, rounded up
 #define isPeakValid(x) ((x) != 0)
 #define isNadirValid(x) ((x) != MAX_RSSI)
 
