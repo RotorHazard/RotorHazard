@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.0.0 (dev 4)" # Public release version code
+RELEASE_VERSION = "2.0.0" # Public release version code
 SERVER_API = 23 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 18 # Most recent node API
@@ -317,7 +317,7 @@ def theaterChaseRainbow(strip, wait_ms=25):
 
 # Create NeoPixel object with appropriate configuration.
 try:
-    pixelModule = importlib.import_module('neopixel')
+    pixelModule = importlib.import_module('rpi_ws281x')
     Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
     Color = getattr(pixelModule, 'Color')
     led_strip_config = Config['LED']['LED_STRIP']
@@ -1746,13 +1746,22 @@ def on_resave_laps(data):
 
     race_id = data['race_id']
     pilotrace_id = data['pilotrace_id']
-    node = data['node'] #***
-    pilot_id = data['pilot_id'] #***
+    node = data['node']
+    pilot_id = data['pilot_id']
     laps = data['laps']
+    enter_at = data['enter_at']
+    exit_at = data['exit_at']
+
+    Pilotrace = SavedPilotRace.query.filter_by(id=pilotrace_id).one()
+    Pilotrace.enter_at = enter_at
+    Pilotrace.exit_at = exit_at
 
     SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).delete()
 
     for lap in laps:
+        tmp_lap_time_formatted = lap['lap_time']
+        if isinstance(tmp_lap_time_formatted, float):
+            tmp_lap_time_formatted = time_format(lap['lap_time'])
         DB.session.add(SavedRaceLap( \
             race_id=race_id, \
             pilotrace_id=pilotrace_id, \
@@ -1760,7 +1769,7 @@ def on_resave_laps(data):
             pilot_id=pilot_id, \
             lap_time_stamp=lap['lap_time_stamp'], \
             lap_time=lap['lap_time'], \
-            lap_time_formatted=lap['lap_time_formatted'], \
+            lap_time_formatted=tmp_lap_time_formatted,\
             source = lap['source'], \
             deleted = lap['deleted']
         ))
@@ -4002,6 +4011,12 @@ def recover_database():
             if val is not None:
                 carryOver[opt] = val
 
+        # RSSI reduced by half for 2.0.0
+        if int(getOption('server_api')) < 23:
+            for profile in profiles_query_data:
+                profile.enter_ats /= 2
+                profile.exit_ats /= 2
+
     except Exception as ex:
         server_log('Error reading data from previous database:  ' + str(ex))
 
@@ -4086,16 +4101,6 @@ if not db_inited_flag:
 
 # Expand heats (if number of nodes increases)
 expand_heats()
-
-# internal slave race format for LiveTime (needs to be created after initial DB setup)
-SLAVE_RACE_FORMAT = RaceFormat(name=__("Slave"),
-                         race_mode=1,
-                         race_time_sec=0,
-                         start_delay_min=0,
-                         start_delay_max=0,
-                         number_laps_win=0,
-                         win_condition=WIN_CONDITION_NONE,
-                         team_racing_mode=False)
 
 # Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available

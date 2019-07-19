@@ -38,11 +38,11 @@
 // Set to 1–8 for manual selection.
 // Leave at 0 for automatic selection via hardware pin.
 // For automatic selection, ground pins for each node:
-//                pin 4 open    pin 4 grounded
-// ground pin 5   node 1        node 5
-// ground pin 6   node 2        node 6
-// ground pin 7   node 3        node 7
-// ground pin 8   node 4        node 8
+//                pin D4 open   pin D4 grounded
+// ground pin D5  node 1        node 5
+// ground pin D6  node 2        node 6
+// ground pin D7  node 3        node 7
+// ground pin D8  node 4        node 8
 
 // See https://github.com/RotorHazard/RotorHazard/blob/master/doc/Software%20Setup.md#receiver-nodes-arduinos
 
