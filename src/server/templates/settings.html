@@ -178,30 +178,39 @@
 			}
 		});
 		socket.on('environmental_data', function (msg) {
-			$('#core-temperature').html(Number(msg.core_temperature).toFixed(1));
 			env_table_html = '';
-			if (msg.aux_voltage.length > 0) {
-				env_table_html += '<tr><th>'+__('Voltage (V)')+'</th><th>'+__('Current (mA)')+'</th><th>'+__('Power (W)')+'</th></tr>';
-				for (i=0; i < msg.aux_voltage.length; i++) {
-					env_table_html += '<tr>';
-					env_table_html += '<td>' + Number(msg.aux_voltage[i]).toFixed(2) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_current[i]).toFixed(0) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_power[i]).toFixed(2) + '</td>';
-					env_table_html += '</tr>';
+			for (i=0; i<msg.length; i++) {
+				var sensor = msg[i];
+				var name = Object.keys(sensor)[0];
+				var data = sensor[name];
+				var values = '';
+				var br = '';
+				for (var v in data) {
+					values += br;
+					if (v == 'voltage') {
+						values += __('Voltage: ') + Number(data[v]).toFixed(2)+'V';
+					} else if(v == 'current') {
+						values += __('Current: ') + Number(data[v]).toFixed(0)+'mA';
+					} else if(v == 'power') {
+						values += __('Power: ') + Number(data[v]).toFixed(2)+'W';
+					} else if(v == 'temperature') {
+						values += __('Temperature: ') + Number(data[v]).toFixed(1)+'°C';
+					} else if(v == 'humidity') {
+						values += __('Humidity: ') + Number(data[v]).toFixed(1)+'%rH';
+					} else if(v == 'pressure') {
+						values += __('Pressure: ') + Number(data[v]).toFixed(1)+'hPa';
+					} else {
+						values += __('Unknown: ') + data[v];
+					}
+					br = '<br/>';
 				}
-			}
-			if (msg.aux_temperature.length > 0) {
-				env_table_html += '<tr><th>'+__('Temperature (°C)')+'</th><th>'+__('Humidity (%rH)')+'</th><th>'+__('Pressure (hPa)')+'</th></tr>';
-				for (i=0; i < msg.aux_temperature.length; i++) {
-					env_table_html += '<tr>';
-					env_table_html += '<td>' + Number(msg.aux_temperature[i]).toFixed(1) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_humidity[i]).toFixed(1) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_pressure[i]).toFixed(1) + '</td>';
-					env_table_html += '</tr>';
-				}
+				env_table_html += '<tr>';
+				env_table_html += '<td>' + name + '</td>';
+				env_table_html += '<td>' + values + '</td>';
+				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<table>' + env_table_html + '</table>');
+				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Values')+'</th></tr>' + env_table_html + '</table>');
 			}
 		});
 
@@ -1686,10 +1695,6 @@
 		<h2>{{ __('System') }}</h2>
 	</div>
 	<div class="panel-content">
-		<div class="control-set">
-		{{ __('Core temperature:') }} <span id="core-temperature"></span>{{ __('°C') }}
-		</div>
-		<br />
 		<div id="env-data-table" class="control-set">
 		</div>
 		<br />
