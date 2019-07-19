@@ -776,11 +776,6 @@ var rotorhazard = {
 	schedule_s: 10, //time in minutes for scheduled races
 	indicator_beep_volume: 0.5, // indicator beep volume
 
-	//display options
-	display_lap_id: true, //enables the display of the lap id
-	display_time_start: true, //shows the timestamp of the lap since the race was started
-	display_time_first_pass: true, //shows the timestamp of the lap since the first pass was recorded
-
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
 	graphing: false, // currently graphing RSSI
@@ -830,9 +825,6 @@ var rotorhazard = {
 		localStorage['rotorhazard.min_lap'] = JSON.stringify(this.min_lap);
 		localStorage['rotorhazard.admin'] = JSON.stringify(this.admin);
 		localStorage['rotorhazard.primaryPilot'] = JSON.stringify(this.primaryPilot);
-		localStorage['rotorhazard.display_lap_id'] = JSON.stringify(this.display_lap_id);
-		localStorage['rotorhazard.display_time_start'] = JSON.stringify(this.display_time_start);
-		localStorage['rotorhazard.display_time_first_pass'] = JSON.stringify(this.display_time_first_pass);
 		return true;
 	},
 	restoreData: function(dataType) {
@@ -905,15 +897,6 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.primaryPilot']) {
 				this.primaryPilot = JSON.parse(localStorage['rotorhazard.primaryPilot']);
-			}
-			if (localStorage['rotorhazard.display_lap_id']) {
-				this.display_lap_id = JSON.parse(localStorage['rotorhazard.display_lap_id']);
-			}
-			if (localStorage['rotorhazard.display_time_start']) {
-				this.display_time_start = JSON.parse(localStorage['rotorhazard.display_time_start']);
-			}
-			if (localStorage['rotorhazard.display_time_first_pass']) {
-				this.display_time_first_pass = JSON.parse(localStorage['rotorhazard.display_time_first_pass']);
 			}
 			return true;
 		}
