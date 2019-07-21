@@ -27,3 +27,15 @@ class INA219Sensor(I2CSensor):
     @Reading(units='mW')
     def power(self):
         return self._power
+
+
+def discover(*args, **kwargs):
+    sensors = []
+    supported_ina219_addrs = [0x40, 0x41, 0x44, 0x45]
+    for addr in supported_ina219_addrs:
+        try:
+            sensors.append(INA219Sensor(hex(addr), addr, kwargs['i2c_helper']))
+            print "INA219 found at address {0}".format(addr)
+        except IOError:
+            print "No INA219 at address {0}".format(addr)
+    return sensors
