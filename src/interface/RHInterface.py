@@ -3,7 +3,6 @@
 import os
 import smbus # For i2c comms
 import io
-import importlib
 import gevent # For threads and timing
 from gevent.lock import BoundedSemaphore # To limit i2c calls
 from monotonic import monotonic # to capture read timing
@@ -142,35 +141,7 @@ class RHInterface(BaseHardwareInterface):
             else:
                 print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
 
-        # Core temperature
-        pi_sensor = importlib.import_module('pi_sensor')
-        self.sensors.append(pi_sensor.PiSensor('Core'))
-
-        # Scan for INA219 devices
-        supported_ina219_addrs = [0x40, 0x41, 0x44, 0x45]
-        try:
-            ina219_sensor = importlib.import_module('ina219_sensor')
-            for addr in supported_ina219_addrs:
-                try:
-                    self.sensors.append(ina219_sensor.INA219Sensor(hex(addr), addr, self))
-                    print "INA219 found at address {0}".format(addr)
-                except IOError as err:
-                    print "No INA219 at address {0}".format(addr)
-        except ImportError:
-            pass
-
-        # Scan for BME280 devices
-        supported_bme280_addrs = [0x76, 0x77]
-        try:
-            bme280_sensor = importlib.import_module('bme280_sensor')
-            for addr in supported_bme280_addrs:
-                try:
-                    self.sensors.append(bme280_sensor.BME280Sensor(hex(addr), addr, self))
-                    print "BME280 found at address {0}".format(addr)
-                except IOError as err:
-                    print "No BME280 at address {0}".format(addr)
-        except ImportError:
-            pass
+        self.discover_sensors(i2c_helper=self)
 
 
     #

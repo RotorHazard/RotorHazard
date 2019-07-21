@@ -23,3 +23,15 @@ class BME280Sensor(I2CSensor):
     @Reading(units='%rH')
     def humidity(self):
         return self.data.humidity
+
+
+def discover(*args, **kwargs):
+    sensors = []
+    supported_bme280_addrs = [0x76, 0x77]
+    for addr in supported_bme280_addrs:
+        try:
+            sensors.append(BME280Sensor(hex(addr), addr, kwargs['i2c_helper']))
+            print "BME280 found at address {0}".format(addr)
+        except IOError:
+            print "No BME280 at address {0}".format(addr)
+    return sensors

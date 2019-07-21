@@ -14,3 +14,13 @@ class PiSensor(Sensor):
     @Reading(units='°C')
     def temperature(self):
         return self.core_temperature
+
+
+def discover(*args, **kwargs):
+    sensors = []
+    try:
+        with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+            sensors.append(PiSensor('Core'))
+    except IOError:
+        pass
+    return sensors
