@@ -186,22 +186,24 @@
 				var data = sensor[name];
 				var values = '';
 				var br = '';
-				for (var v in data) {
+				for (var reading in data) {
+					var value = data[reading].value;
+					var units = data[reading].units;
 					values += br;
-					if (v == 'voltage') {
-						values += __('Voltage: ') + Number(data[v]).toFixed(2)+'V';
-					} else if(v == 'current') {
-						values += __('Current: ') + Number(data[v]).toFixed(0)+'mA';
-					} else if(v == 'power') {
-						values += __('Power: ') + Number(data[v]).toFixed(0)+'mW';
-					} else if(v == 'temperature') {
-						values += __('Temperature: ') + Number(data[v]).toFixed(1)+'°C';
-					} else if(v == 'humidity') {
-						values += __('Humidity: ') + Number(data[v]).toFixed(1)+'%rH';
-					} else if(v == 'pressure') {
-						values += __('Pressure: ') + Number(data[v]).toFixed(1)+'hPa';
+					if (reading == 'voltage') {
+						values += __('Voltage: ') + Number(value).toFixed(2)+units;
+					} else if(reading == 'current') {
+						values += __('Current: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'power') {
+						values += __('Power: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'temperature') {
+						values += __('Temperature: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'humidity') {
+						values += __('Humidity: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'pressure') {
+						values += __('Pressure: ') + Number(value).toFixed(1)+units;
 					} else {
-						values += __('Unknown: ') + data[v];
+						values += __('Unknown: ') + value;
 					}
 					br = '<br/>';
 				}
@@ -211,7 +213,7 @@
 				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Values')+'</th></tr>' + env_table_html + '</table>');
+				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table>');
 			}
 		});
 		socket.on('cluster_status', function (msg) {
