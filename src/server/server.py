@@ -3883,8 +3883,14 @@ def recover_database():
         # RSSI reduced by half for 2.0.0
         if int(getOption('server_api')) < 23:
             for profile in profiles_query_data:
-                profile.enter_ats /= 2
-                profile.exit_ats /= 2
+                if profile.enter_ats:
+                    enter_ats = json.loads(profile.enter_ats)
+                    enter_ats["v"] = [val/2 for val in enter_ats["v"]]
+                    profile.enter_ats = json.dumps(enter_ats)
+                if profile.exit_ats:
+                    exit_ats = json.loads(profile.exit_ats)
+                    exit_ats["v"] = [val/2 for val in exit_ats["v"]]
+                    profile.exit_ats = json.dumps(exit_ats)
 
     except Exception as ex:
         server_log('Error reading data from previous database:  ' + str(ex))
