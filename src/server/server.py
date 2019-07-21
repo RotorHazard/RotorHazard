@@ -2069,7 +2069,7 @@ def emit_environmental_data(**params):
     '''Emits environmental data.'''
     emit_payload = []
     for sensor in INTERFACE.sensors:
-        emit_payload.append({sensor.name: sensor.getData()})
+        emit_payload.append({sensor.name: sensor.getReadings()})
 
     if ('nobroadcast' in params):
         emit('environmental_data', emit_payload)
