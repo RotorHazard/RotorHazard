@@ -2068,24 +2068,8 @@ def emit_node_data(**params):
 def emit_environmental_data(**params):
     '''Emits environmental data.'''
     emit_payload = []
-    emit_payload.append({'core': {
-            'temperature': INTERFACE.core_temp
-        }
-    })
-
-    for i, data in enumerate(INTERFACE.ina219_data):
-        emit_payload.append({hex(INTERFACE.ina219_devices[i]._i2c._address): {
-            'voltage': data['voltage'],
-            'current': data['current'],
-            'power': data['power']
-        }})
-
-    for i, data in enumerate(INTERFACE.bme280_data):
-        emit_payload.append({hex(INTERFACE.bme280_addrs[i]): {
-            'temperature': data.temperature,
-            'pressure': data.pressure,
-            'humidity': data.humidity
-        }})
+    for sensor in INTERFACE.sensors:
+        emit_payload.append({sensor.name: sensor.getData()})
 
     if ('nobroadcast' in params):
         emit('environmental_data', emit_payload)

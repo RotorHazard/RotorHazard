@@ -19,6 +19,8 @@ class BaseHardwareInterface(object):
         self.trigger_threshold = 20
         self.start_time = 1000*monotonic() # millis
         self.filter_ratio = 50
+        self.sensors = []
+        self.environmental_data_update_tracker = 0
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
 
     # returns the elapsed milliseconds since the start of the program
@@ -117,6 +119,15 @@ class BaseHardwareInterface(object):
 
     def set_race_status(self, race_status):
         self.race_status = race_status
+
+    def update_environmental_data(self):
+        '''Updates environmental data.'''
+        self.environmental_data_update_tracker += 1
+
+        partition = (self.environmental_data_update_tracker % 2)
+        for index, sensor in enumerate(self.sensors):
+            if (index % 2) == partition:
+                sensor.update()
 
     #
     # Get Json Node Data Functions
