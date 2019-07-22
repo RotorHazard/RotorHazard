@@ -22,6 +22,10 @@ class Sensor:
         pass
 
 class I2CSensor(Sensor):
+    @staticmethod
+    def url(addr):
+        return 'i2c:' + hex(addr)
+
     def __init__(self, name, i2c_helper):
         Sensor.__init__(self, name)
         self.i2c_helper = i2c_helper

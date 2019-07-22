@@ -73,6 +73,7 @@ DB = SQLAlchemy(APP)
 
 Config = {}
 Config['GENERAL'] = {}
+Config['SENSORS'] = {}
 Config['LED'] = {}
 
 # LED strip configuration:
@@ -100,6 +101,7 @@ try:
     with open(CONFIG_FILE_NAME, 'r') as f:
         ExternalConfig = json.load(f)
     Config['GENERAL'].update(ExternalConfig['GENERAL'])
+    Config['SENSORS'].update(ExternalConfig['SENSORS'])
     Config['LED'].update(ExternalConfig['LED'])
     Config['GENERAL']['configFile'] = 1
     print 'Configuration file imported'
@@ -116,7 +118,7 @@ try:
     interfaceModule = importlib.import_module('RHInterface')
 except ImportError:
     interfaceModule = importlib.import_module('MockInterface')
-INTERFACE = interfaceModule.get_hardware_interface()
+INTERFACE = interfaceModule.get_hardware_interface(config=Config)
 RACE = get_race_state() # For storing race management variables
 
 def diff_milliseconds(t2, t1):
