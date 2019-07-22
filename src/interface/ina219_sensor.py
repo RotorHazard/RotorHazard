@@ -2,9 +2,10 @@ from sensor import I2CSensor, Reading
 import ina219
 
 class INA219Sensor(I2CSensor):
-    def __init__(self, name, addr, i2c_helper):
+    def __init__(self, name, addr, i2c_helper, config={}):
         I2CSensor.__init__(self, name, i2c_helper)
-        self.device = ina219.INA219(0.1, address=addr)
+        max_current = float(config['max_current']) if 'max_current' in config else None
+        self.device = ina219.INA219(0.1, address=addr, max_expected_amps=max_current)
         self.device.configure()
         self.device.sleep()
         self.readData()
@@ -31,10 +32,14 @@ class INA219Sensor(I2CSensor):
 
 def discover(*args, **kwargs):
     sensors = []
+    config = kwargs['config']
     supported_ina219_addrs = [0x40, 0x41, 0x44, 0x45]
     for addr in supported_ina219_addrs:
+        url = I2CSensor.url(addr)
+        sensor_config = config.get(url, {})
+        name = sensor_config.get('name', url)
         try:
-            sensors.append(INA219Sensor(hex(addr), addr, kwargs['i2c_helper']))
+            sensors.append(INA219Sensor(name, addr, kwargs['i2c_helper'], sensor_config))
             print "INA219 found at address {0}".format(addr)
         except IOError:
             print "No INA219 at address {0}".format(addr)

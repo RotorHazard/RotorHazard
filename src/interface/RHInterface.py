@@ -85,7 +85,7 @@ def unpack_rssi(node, data):
 
 
 class RHInterface(BaseHardwareInterface):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
         self.pass_record_callback = None # Function added in server.py
@@ -141,7 +141,7 @@ class RHInterface(BaseHardwareInterface):
             else:
                 print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
 
-        self.discover_sensors(i2c_helper=self)
+        self.discover_sensors(config=kwargs['config'].get('SENSORS', {}), i2c_helper=self)
 
 
     #
@@ -592,6 +592,6 @@ class RHInterface(BaseHardwareInterface):
             self.set_value_8(node, FORCE_END_CROSSING, 0)
 
 
-def get_hardware_interface():
+def get_hardware_interface(*args, **kwargs):
     '''Returns the RotorHazard interface object.'''
-    return RHInterface()
+    return RHInterface(*args, **kwargs)

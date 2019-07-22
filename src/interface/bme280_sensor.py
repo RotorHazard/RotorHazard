@@ -27,10 +27,14 @@ class BME280Sensor(I2CSensor):
 
 def discover(*args, **kwargs):
     sensors = []
+    config = kwargs['config']
     supported_bme280_addrs = [0x76, 0x77]
     for addr in supported_bme280_addrs:
+        url = I2CSensor.url(addr)
+        sensor_config = config.get(url, {})
+        name = sensor_config.get('name', url)
         try:
-            sensors.append(BME280Sensor(hex(addr), addr, kwargs['i2c_helper']))
+            sensors.append(BME280Sensor(name, addr, kwargs['i2c_helper']))
             print "BME280 found at address {0}".format(addr)
         except IOError:
             print "No BME280 at address {0}".format(addr)
