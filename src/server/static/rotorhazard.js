@@ -1073,12 +1073,12 @@ function get_interrupt_message() {
 	});
 }
 
+// restore local settings
+rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
+rotorhazard.restoreData();
+
 if (typeof jQuery != 'undefined') {
 jQuery(document).ready(function($){
-	// restore local settings
-	rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
-	rotorhazard.restoreData();
-
 	if (rotorhazard.admin) {
 		$('*').removeClass('admin-hide');
 	}
