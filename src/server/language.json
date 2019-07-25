@@ -1224,7 +1224,7 @@
 			"WARNING: Force end adjustment on node {0} failed: insufficient RSSI range.": "WAARSCHUWING: aanpassen na registratie forceren van ontvanger {0} is mislukt: te weinig RSSI range",
 			"WARNING: Force end on node {0} required increase of EnterAt. EnterAt may be improperly calibrated.": "WAARSCHUWING: registratie forceren van ontvanger {0} vereist verhogen van EnterAt. EnterAt is mogelijks niet goed afgesteld",
 			"Whoop Sprint": "Whoop sprint",
-			"Win Condition": "Voorwaarde om te winnen",
+			"Win Condition": "Voorwaarde om te winnen"
 		}
 	}
 }
