@@ -153,8 +153,6 @@ void setup()
     while (!Serial)
     {
     };  // Wait for the Serial port to initialise
-    Serial.print(F("Ready: "));
-    Serial.println(i2cSlaveAddress);
 
     Wire.begin(i2cSlaveAddress);  // I2C slave address setup
     Wire.onReceive(i2cReceive);  // Trigger 'i2cReceive' function on incoming data
@@ -676,4 +674,3 @@ uint16_t readWordFromEeprom(int addr)
     const uint8_t hb = EEPROM.read(addr + 1);
     return (((uint16_t) hb) << 8) + lb;
 }
-
