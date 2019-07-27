@@ -458,7 +458,7 @@ def theaterChaseRainbow(strip, wait_ms=25):
 
 # Create NeoPixel object with appropriate configuration.
 try:
-    pixelModule = importlib.import_module('neopixel')
+    pixelModule = importlib.import_module('rpi_ws281x')
     Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
     Color = getattr(pixelModule, 'Color')
     led_strip_config = Config['LED']['LED_STRIP']
@@ -671,7 +671,6 @@ def setCurrentRaceFormat(race_format):
     else:
         RACE.format = race_format
 
-# internal slave race format for LiveTime
 class RHRaceFormat():
     def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, number_laps_win, win_condition, team_racing_mode):
         self.name = name
@@ -697,15 +696,6 @@ class RHRaceFormat():
     @classmethod
     def isDbBased(cls, race_format):
         return hasattr(race_format, 'id')
-
-SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
-                         race_mode=1,
-                         race_time_sec=0,
-                         start_delay_min=0,
-                         start_delay_max=0,
-                         number_laps_win=0,
-                         win_condition=WIN_CONDITION_NONE,
-                         team_racing_mode=False)
 
 #
 # Authentication
@@ -4102,8 +4092,14 @@ def recover_database():
         # RSSI reduced by half for 2.0.0
         if int(getOption('server_api')) < 23:
             for profile in profiles_query_data:
-                profile.enter_ats /= 2
-                profile.exit_ats /= 2
+                if profile.enter_ats:
+                    enter_ats = json.loads(profile.enter_ats)
+                    enter_ats["v"] = [val/2 for val in enter_ats["v"]]
+                    profile.enter_ats = json.dumps(enter_ats)
+                if profile.exit_ats:
+                    exit_ats = json.loads(profile.exit_ats)
+                    exit_ats["v"] = [val/2 for val in exit_ats["v"]]
+                    profile.exit_ats = json.dumps(exit_ats)
 
     except Exception as ex:
         server_log('Error reading data from previous database:  ' + str(ex))
@@ -4189,6 +4185,17 @@ if not db_inited_flag:
 
 # Expand heats (if number of nodes increases)
 expand_heats()
+
+# internal slave race format for LiveTime (needs to be created after initial DB setup)
+global SLAVE_RACE_FORMAT
+SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
+                         race_mode=1,
+                         race_time_sec=0,
+                         start_delay_min=0,
+                         start_delay_max=0,
+                         number_laps_win=0,
+                         win_condition=WIN_CONDITION_NONE,
+                         team_racing_mode=False)
 
 # Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
