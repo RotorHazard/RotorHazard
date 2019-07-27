@@ -892,6 +892,13 @@ def settings():
         ConfigFile=Config['GENERAL']['configFile'],
         Debug=Config['GENERAL']['DEBUG'])
 
+@APP.route('/scanner')
+def scanner():
+    '''Route to scanner page.'''
+
+    return render_template('scanner.html', serverInfo=serverInfo, getOption=getOption, __=__,
+        num_nodes=RACE.num_nodes)
+
 @APP.route('/imdtabler')
 def imdtabler():
     '''Route to IMDTabler page.'''
@@ -1446,6 +1453,11 @@ def on_cap_exit_at_btn(data):
     node_index = data['node_index']
     if INTERFACE.start_capture_exit_at_level(node_index):
         server_log('Starting capture of exit-at level for node {0}'.format(node_index+1))
+
+@SOCKET_IO.on('set_scan')
+def on_set_scan(data):
+    node_index = data['node']
+    INTERFACE.nodes[node_index].is_scanning = data['scan']
 
 @SOCKET_IO.on('add_heat')
 def on_add_heat():

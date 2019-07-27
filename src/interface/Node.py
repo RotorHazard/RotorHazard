@@ -35,6 +35,8 @@ class Node:
         self.history_values = []
         self.history_times = []
 
+        self.is_scanning = False
+
 
     def init(self):
         if self.api_level >= 10:
