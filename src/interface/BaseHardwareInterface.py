@@ -20,7 +20,6 @@ class BaseHardwareInterface(object):
         self.calibration_offset = 10
         self.trigger_threshold = 20
         self.start_time = 1000*monotonic() # millis
-        self.filter_ratio = 50
         self.sensors = []
         self.environmental_data_update_tracker = 0
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
@@ -149,8 +148,7 @@ class BaseHardwareInterface(object):
             'nodes': [node.get_settings_json() for node in self.nodes],
             'calibration_threshold': self.calibration_threshold,
             'calibration_offset': self.calibration_offset,
-            'trigger_threshold': self.trigger_threshold,
-            'filter_ratio': self.filter_ratio
+            'trigger_threshold': self.trigger_threshold
         }
 
     def get_heartbeat_json(self):
@@ -173,11 +171,6 @@ class BaseHardwareInterface(object):
     def get_trigger_threshold_json(self):
         return {
             'trigger_threshold': self.trigger_threshold
-        }
-
-    def get_filter_ratio_json(self):
-        return {
-            'filter_ratio': self.filter_ratio
         }
 
     def get_frequency_json(self, node_index):
