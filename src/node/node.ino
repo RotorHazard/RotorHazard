@@ -509,7 +509,7 @@ byte i2cHandleRx(byte command)
     switch (command)
     {
         case WRITE_FREQUENCY:
-            if (readAndValidateIoBuffer(0x51, 2))
+            if (readAndValidateIoBuffer(WRITE_FREQUENCY, 2))
             {
                 u16val = settings.vtxFreq;
                 settings.vtxFreq = ioBufferRead16();
