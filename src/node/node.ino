@@ -676,3 +676,4 @@ uint16_t readWordFromEeprom(int addr)
     const uint8_t hb = EEPROM.read(addr + 1);
     return (((uint16_t) hb) << 8) + lb;
 }
+
