@@ -123,25 +123,19 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
 
       if (state.rssi > state.nodeRssiPeak) {
 	  state.nodeRssiPeak = state.rssi;
-	  Serial.print(F("New nodeRssiPeak = "));
-	  Serial.println(state.nodeRssiPeak);
       }
 
       if (state.rssi < state.nodeRssiNadir) {
 	  state.nodeRssiNadir = state.rssi;
-	  Serial.print(F("New nodeRssiNadir = "));
-	  Serial.println(state.nodeRssiNadir);
       }
 
       /*** crossing transition ***/
 
       if ((!state.crossing) && state.rssi >= settings.enterAtLevel) {
 	  state.crossing = true;  // quad is going through the gate (lap pass starting)
-	  Serial.println(F("Crossing = True"));
       } else if (state.crossing && state.rssi < settings.exitAtLevel) {
 	  // quad has left the gate
 	  rssiEndCrossing();
-	  Serial.println(F("Crossing = False"));
       }
 
       /*** pass processing **/

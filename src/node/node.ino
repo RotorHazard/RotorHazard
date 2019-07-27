@@ -91,6 +91,9 @@ const int spiClockPin = 13;
 #define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
 #define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
 
+// dummy macro
+#define LOG_ERROR(...)
+
 uint8_t volatile ioCommand;  // I2C code to identify messages
 uint8_t volatile ioBuffer[32];  // Data array for sending over i2c, up to 32 bytes per message
 int ioBufferSize = 0;
@@ -150,8 +153,6 @@ void setup()
     while (!Serial)
     {
     };  // Wait for the Serial port to initialise
-    Serial.print(F("Ready: "));
-    Serial.println(i2cSlaveAddress);
 
     Wire.begin(i2cSlaveAddress);  // I2C slave address setup
     Wire.onReceive(i2cReceive);  // Trigger 'i2cReceive' function on incoming data
@@ -334,15 +335,12 @@ void loop()
 		}
         setRxModule(newVtxFreq);
         state.rxFreqSetFlag = true;
-        Serial.print(F("Set RX freq = "));
-        Serial.println(newVtxFreq);
 		settingChangedFlags &= ~FREQ_SET;
 	}
 
 	if (settingChangedFlags & FREQ_CHANGED) {
         writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
         rssiStateReset();  // restart rssi peak tracking for node
-        Serial.println(F("Set nodeRssiPeak = 0, nodeRssiNadir = Max"));
 		settingChangedFlags &= ~FREQ_CHANGED;
 	}
 
@@ -365,13 +363,13 @@ void i2cReceive(int byteCount)
    // If byteCount is zero, the master only checked for presence of the slave device, no response necessary
     if (byteCount == 0)
     {
-        Serial.println(F("Error: no bytes for a receive?"));
+        LOG_ERROR("no bytes to receive?");
         return;
     }
 
     if (byteCount != Wire.available())
     {
-        Serial.println(F("Error: rx byte count and wire available don't agree"));
+        LOG_ERROR("rx byte count and wire available don't agree");
     }
 
     ioCommand = Wire.read();  // The first byte sent is a command byte
@@ -384,8 +382,7 @@ void i2cReceive(int byteCount)
     {  // Otherwise this is a request FROM this device
         if (Wire.available())
         {  // There shouldn't be any data present on the line for a read request
-            Serial.print(F("Error: Wire.available() on a read request."));
-            Serial.println(ioCommand, HEX);
+            LOG_ERROR("Wire.available() on a read request.", ioCommand, HEX);
             while (Wire.available())
             {
                 Wire.read();
@@ -402,13 +399,13 @@ bool readAndValidateIoBuffer(byte command, int expectedSize)
 
     if (expectedSize == 0)
     {
-        Serial.println(F("No Expected Size"));
+        LOG_ERROR("No Expected Size");
         return true;
     }
 
     if (!Wire.available())
     {
-        Serial.println(F("Nothing Avialable"));
+        LOG_ERROR("Nothing Avialable");
         return false;
     }
 
@@ -424,17 +421,13 @@ bool readAndValidateIoBuffer(byte command, int expectedSize)
     if (checksum != ioBuffer[ioBufferSize - 1]
             || ioBufferSize - 2 != expectedSize)
     {
-        Serial.println(F("invalid checksum"));
-        Serial.println(checksum);
-        Serial.println(ioBuffer[ioBufferSize - 1]);
-        Serial.println(ioBufferSize - 2);
-        Serial.println(expectedSize);
+        LOG_ERROR("Invalid checksum", checksum);
         return false;
     }
 
     if (command != ioBuffer[ioBufferSize - 2])
     {
-        Serial.println(F("command does not match"));
+        LOG_ERROR("Command does not match");
         return false;
     }
     return true;
@@ -558,8 +551,7 @@ byte i2cHandleRx(byte command)
 
     if (!success)
     {  // Set control to rxFault if 0xFF result
-        Serial.print(F("RX Fault command: "));
-        Serial.println(command, HEX);
+        LOG_ERROR("RX Fault command: ", command, HEX);
     }
     return success;
 }
@@ -643,8 +635,7 @@ void i2cTransmit()
             break;
 
         default:  // If an invalid command is sent, write nothing back, master must react
-            Serial.print(F("TX Fault command: "));
-            Serial.println(ioCommand, HEX);
+            LOG_ERROR("TX Fault command: ", ioCommand, HEX);
     }
 
     ioCommand = 0;  // Clear previous command
