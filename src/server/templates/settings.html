@@ -218,7 +218,7 @@
 		});
 		socket.on('cluster_status', function (msg) {
 			cluster_table_html = '';
-			if (msg.slaves.length > 0) {
+			if (msg.slaves && msg.slaves.length > 0) {
 				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Time since last contact (s)')+'</th></tr>';
 				for (i=0; i < msg.slaves.length; i++) {
 					cluster_table_html += '<tr>';
