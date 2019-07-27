@@ -56,14 +56,17 @@
 // i2c address for node
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
-int i2cSlaveAddress (6 + (NODE_NUMBER * 2));
+static int i2cSlaveAddress = (6 + (NODE_NUMBER * 2));
 
 // API level for read/write commands; increment when commands are modified
 #define NODE_API_LEVEL 18
 
-const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
-const int spiDataPin = 11;
-const int spiClockPin = 13;
+static const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
+static const int spiDataPin = 11;
+static const int spiClockPin = 13;
+
+#define MIN_FREQ 5645
+#define MAX_FREQ 5945
 
 #define READ_ADDRESS 0x00
 #define READ_FREQUENCY 0x03
@@ -94,10 +97,10 @@ const int spiClockPin = 13;
 // dummy macro
 #define LOG_ERROR(...)
 
-uint8_t volatile ioCommand;  // I2C code to identify messages
-uint8_t volatile ioBuffer[32];  // Data array for sending over i2c, up to 32 bytes per message
-int8_t ioBufferSize = 0;
-int8_t ioBufferIndex = 0;
+static uint8_t volatile ioCommand;  // I2C code to identify messages
+static uint8_t volatile ioBuffer[32];  // Data array for sending over i2c, up to 32 bytes per message
+static int8_t ioBufferSize = 0;
+static int8_t ioBufferIndex = 0;
 
 // Defines for fast ADC reads
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
@@ -143,7 +146,7 @@ void setup()
       }
     }
 
-    Serial.begin(115200);  // Start serial for output/debugging
+    Serial.begin(115200);  // Start serial interface
 
     pinMode(slaveSelectPin, OUTPUT);  // RX5808 comms
     pinMode(spiDataPin, OUTPUT);
@@ -182,7 +185,7 @@ void setup()
 
     setRxModule(settings.vtxFreq);  // Setup rx module to default frequency
 
-	rssiInit();
+    rssiInit();
 }
 
 // Functions for the rx5808 module
@@ -313,8 +316,8 @@ rssi_t rssiRead()
 #define FREQ_CHANGED    0x02
 #define ENTERAT_CHANGED 0x04
 #define EXITAT_CHANGED  0x08
-uint8_t settingChangedFlags = 0;
-mtime_t loopMillis = 0;
+static uint8_t settingChangedFlags = 0;
+static mtime_t loopMillis = 0;
 
 // Main loop
 void loop()
@@ -326,33 +329,34 @@ void loop()
         rssiProcess(rssiRead(), ms);
     }
 
-	/*** update settings ***/
+    /*** update settings ***/
 
-	if (settingChangedFlags & FREQ_SET) {
-		uint16_t newVtxFreq;
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			newVtxFreq = settings.vtxFreq;
-		}
+    uint8_t changeFlags;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        changeFlags = settingChangedFlags;
+        settingChangedFlags = 0;
+    }
+    if (changeFlags & FREQ_SET) {
+        uint16_t newVtxFreq;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+            newVtxFreq = settings.vtxFreq;
+        }
         setRxModule(newVtxFreq);
         state.rxFreqSetFlag = true;
-		settingChangedFlags &= ~FREQ_SET;
-	}
 
-	if (settingChangedFlags & FREQ_CHANGED) {
-        writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
-        rssiStateReset();  // restart rssi peak tracking for node
-		settingChangedFlags &= ~FREQ_CHANGED;
-	}
+        if (changeFlags & FREQ_CHANGED) {
+            writeWordToEeprom(EEPROM_ADRW_RXFREQ, newVtxFreq);
+            rssiStateReset();  // restart rssi peak tracking for node
+        }
+    }
 
-	if (settingChangedFlags & ENTERAT_CHANGED) {
+    if (changeFlags & ENTERAT_CHANGED) {
         writeWordToEeprom(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
-		settingChangedFlags &= ~ENTERAT_CHANGED;
-	}
+    }
 
-	if (settingChangedFlags & EXITAT_CHANGED) {
+    if (changeFlags & EXITAT_CHANGED) {
         writeWordToEeprom(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
-		settingChangedFlags &= ~EXITAT_CHANGED;
-	}
+    }
 }
 
 
@@ -404,7 +408,7 @@ bool i2cReadAndValidateIoBuffer(byte command, int8_t expectedSize)
 
     if (!Wire.available())
     {
-        LOG_ERROR("Nothing Avialable");
+        LOG_ERROR("Nothing Available");
         return false;
     }
 
@@ -493,9 +497,9 @@ void ioBufferWriteChecksum()
 void i2cHandleRx(byte command)
 {
     int8_t expectedSize = getPayloadSize(command);
-	if (expectedSize >= 0 && i2cReadAndValidateIoBuffer(command, expectedSize)) {
-		handleWriteCommand(command);
-	}
+    if (expectedSize >= 0 && i2cReadAndValidateIoBuffer(command, expectedSize)) {
+        handleWriteCommand(command);
+    }
 }
 
 // Function called by twi interrupt service when the Master wants to get data from the Slave
@@ -539,7 +543,7 @@ bool serialReadAndValidateIoBuffer(byte command, int8_t expectedSize)
 
     if (!Serial.available())
     {
-        LOG_ERROR("Nothing Avialable");
+        LOG_ERROR("Nothing Available");
         return false;
     }
 
@@ -569,22 +573,22 @@ bool serialReadAndValidateIoBuffer(byte command, int8_t expectedSize)
 
 void serialEvent()
 {
-	ioCommand = Serial.read();
+    ioCommand = Serial.read();
     if (ioCommand > 0x50)
     {  // Commands > 0x50 are writes TO this slave
-	    int8_t expectedSize = getPayloadSize(ioCommand);
-		if (expectedSize >= 0 && serialReadAndValidateIoBuffer(ioCommand, expectedSize)) {
-			handleWriteCommand(ioCommand);
-		}
+        int8_t expectedSize = getPayloadSize(ioCommand);
+        if (expectedSize >= 0 && serialReadAndValidateIoBuffer(ioCommand, expectedSize)) {
+            handleWriteCommand(ioCommand);
+        }
     }
     else
     {
-    	handleReadCommand(ioCommand);
+        handleReadCommand(ioCommand);
 
-	    if (ioBufferSize > 0)
-	    {  // If there is pending data, send it
-	        Serial.write((byte *) &ioBuffer, ioBufferSize);
-	    }
+        if (ioBufferSize > 0)
+        {  // If there is pending data, send it
+            Serial.write((byte *) &ioBuffer, ioBufferSize);
+        }
     }
 }
 
@@ -594,24 +598,24 @@ int8_t getPayloadSize(byte command)
     switch (command)
     {
         case WRITE_FREQUENCY:
-        	size = 2;
+            size = 2;
             break;
 
         case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
-        	size = 1;
+            size = 1;
             break;
 
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-        	size = 1;
+            size = 1;
             break;
 
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
-        	size = 1;
+            size = 1;
             break;
 
-		default:  // invalid command
+        default:  // invalid command
             LOG_ERROR("Invalid write command: ", command, HEX);
-			size = -1;
+            size = -1;
     }
     return size;
 }
@@ -625,26 +629,28 @@ void handleWriteCommand(byte command)
     switch (command)
     {
         case WRITE_FREQUENCY:
-            u16val = settings.vtxFreq;
-            settings.vtxFreq = ioBufferRead16();
-            settingChangedFlags |= FREQ_SET;
-            if (settings.vtxFreq != u16val) {
-                settingChangedFlags |= FREQ_CHANGED;
+            u16val = ioBufferRead16();
+            if (u16val >= MIN_FREQ && u16val <= MAX_FREQ) {
+                if (u16val != settings.vtxFreq) {
+                    settings.vtxFreq = u16val;
+                    settingChangedFlags |= FREQ_CHANGED;
+                }
+                settingChangedFlags |= FREQ_SET;
             }
             break;
 
         case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
-        	rssiVal = settings.enterAtLevel;
-            settings.enterAtLevel = ioBufferReadRssi();
-            if (settings.enterAtLevel != rssiVal) {
+            rssiVal = ioBufferReadRssi();
+            if (rssiVal != settings.enterAtLevel) {
+                settings.enterAtLevel = rssiVal;
                 settingChangedFlags |= ENTERAT_CHANGED;
             }
             break;
 
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-        	rssiVal = settings.exitAtLevel;
-            settings.exitAtLevel = ioBufferReadRssi();
-            if (settings.exitAtLevel != rssiVal) {
+            rssiVal = ioBufferReadRssi();
+            if (rssiVal != settings.exitAtLevel) {
+                settings.exitAtLevel = rssiVal;
                 settingChangedFlags |= EXITAT_CHANGED;
             }
             break;
