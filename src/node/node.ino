@@ -484,13 +484,19 @@ void ioBufferWrite32(uint32_t data)
     ioBuffer[ioBufferSize++] = (uint32_t)(data & 0xFF);
 }
 
-void ioBufferWriteChecksum()
+uint8_t calculateChecksum(uint8_t *buf, int8_t size)
 {
     uint8_t checksum = 0;
-    for (int i = 0; i < ioBufferSize; i++)
+    for (int i = 0; i < size; i++)
     {
-        checksum += ioBuffer[i];
+        checksum += buf[i];
     }
+    return checksum;
+}
+
+void ioBufferWriteChecksum()
+{
+    uint8_t checksum = calculateChecksum(ioBuffer, ioBufferSize);
 
     ioBufferWrite8(checksum);
 }
@@ -651,13 +657,13 @@ void i2cTransmit()
             Serial.println(ioCommand, HEX);
     }
 
-    ioCommand = 0;  // Clear previous command
-
     if (ioBufferSize > 0)
     {  // If there is pending data, send it
         ioBufferWriteChecksum();
         Wire.write((byte *) &ioBuffer, ioBufferSize);
     }
+
+    ioCommand = 0;  // Clear previous command
 }
 
 //Writes 2-byte word to EEPROM at address.
