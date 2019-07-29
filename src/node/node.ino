@@ -97,8 +97,8 @@ static const int spiClockPin = 13;
 // dummy macro
 #define LOG_ERROR(...)
 
-static uint8_t volatile ioCommand;  // I2C code to identify messages
-static uint8_t volatile ioBuffer[32];  // Data array for sending over i2c, up to 32 bytes per message
+static uint8_t volatile ioCommand;  // code to identify messages
+static uint8_t volatile ioBuffer[32];  // Data array for I/O, up to 32 bytes per message
 static int8_t ioBufferSize = 0;
 static int8_t ioBufferIndex = 0;
 
@@ -401,11 +401,6 @@ bool i2cReadAndValidateIoBuffer(byte command, int8_t expectedSize)
     ioBufferSize = 0;
     ioBufferIndex = 0;
 
-    if (expectedSize == 0)
-    {
-        return true;
-    }
-
     if (!Wire.available())
     {
         LOG_ERROR("Nothing Available");
@@ -478,13 +473,19 @@ void ioBufferWrite32(uint32_t data)
     ioBuffer[ioBufferSize++] = (uint32_t)(data & 0xFF);
 }
 
-void ioBufferWriteChecksum()
+uint8_t calculateChecksum(uint8_t *buf, int8_t size)
 {
     uint8_t checksum = 0;
-    for (int i = 0; i < ioBufferSize; i++)
+    for (int i = 0; i < size; i++)
     {
-        checksum += ioBuffer[i];
+        checksum += buf[i];
     }
+    return checksum;
+}
+
+void ioBufferWriteChecksum()
+{
+    uint8_t checksum = calculateChecksum(ioBuffer, ioBufferSize);
 
     ioBufferWrite8(checksum);
 }
@@ -497,7 +498,7 @@ void ioBufferWriteChecksum()
 void i2cHandleRx(byte command)
 {
     int8_t expectedSize = getPayloadSize(command);
-    if (expectedSize >= 0 && i2cReadAndValidateIoBuffer(command, expectedSize)) {
+    if (expectedSize > 0 && i2cReadAndValidateIoBuffer(command, expectedSize)) {
         handleWriteCommand(command);
     }
 }
@@ -530,64 +531,42 @@ uint16_t readWordFromEeprom(int addr)
     return (((uint16_t) hb) << 8) + lb;
 }
 
-bool serialReadAndValidateIoBuffer(byte command, int8_t expectedSize)
-{
-    uint8_t checksum = 0;
-    ioBufferSize = 0;
-    ioBufferIndex = 0;
-
-    if (expectedSize == 0)
-    {
-        return true;
-    }
-
-    if (!Serial.available())
-    {
-        LOG_ERROR("Nothing Available");
-        return false;
-    }
-
-    while (Serial.available())
-    {
-        ioBuffer[ioBufferSize++] = Serial.read();
-        if (expectedSize + 1 < ioBufferSize)
-        {
-            checksum += ioBuffer[ioBufferSize - 1];
-        }
-    }
-
-    if (checksum != ioBuffer[ioBufferSize - 1]
-            || ioBufferSize - 2 != expectedSize)
-    {
-        LOG_ERROR("Invalid checksum", checksum);
-        return false;
-    }
-
-    if (command != ioBuffer[ioBufferSize - 2])
-    {
-        LOG_ERROR("Command does not match");
-        return false;
-    }
-    return true;
-}
-
 void serialEvent()
 {
-    ioCommand = Serial.read();
-    if (ioCommand > 0x50)
-    {  // Commands > 0x50 are writes TO this slave
-        int8_t expectedSize = getPayloadSize(ioCommand);
-        if (expectedSize >= 0 && serialReadAndValidateIoBuffer(ioCommand, expectedSize)) {
-            handleWriteCommand(ioCommand);
-        }
+	uint8_t nextByte = Serial.read();
+	if (ioBufferSize == 0) {
+		// new command
+	    ioCommand = nextByte;
+	    if (ioCommand > 0x50)
+	    {  // Commands > 0x50 are writes TO this slave
+	        int8_t expectedSize = getPayloadSize(ioCommand);
+	        if (expectedSize > 0) {
+	        	ioBufferIndex = 0;
+	        	ioBufferSize = expectedSize + 1; // include checksum byte
+	        }
+	    }
+	    else
+	    {
+	        handleReadCommand(ioCommand);
+	
+	        if (ioBufferSize > 0)
+	        {  // If there is pending data, send it
+	            Serial.write((byte *) &ioBuffer, ioBufferSize);
+	            ioBufferSize = 0;
+	        }
+	    }
     }
     else
     {
-        handleReadCommand(ioCommand);
-
-        if (ioBufferSize > 0)
-        {  // If there is pending data, send it
-            Serial.write((byte *) &ioBuffer, ioBufferSize);
+    	// existing command
+    	ioBuffer[ioBufferIndex++] = nextByte;
+    	if (ioBufferIndex == ioBufferSize) {
+    		ioBufferIndex = 0;
+    		uint8_t checksum = calculateChecksum(ioBuffer, ioBufferSize-1);
+    	    if (ioBuffer[ioBufferSize-1] == checksum) {
+	            handleWriteCommand(ioCommand);
+	        }
+            ioBufferSize = 0;
         }
     }
 }
@@ -746,10 +725,10 @@ void handleReadCommand(byte command)
             LOG_ERROR("Invalid read command: ", command, HEX);
     }
 
-    ioCommand = 0;  // Clear previous command
-
     if (ioBufferSize > 0)
     {
         ioBufferWriteChecksum();
     }
+
+    ioCommand = 0;  // Clear previous command
 }
