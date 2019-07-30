@@ -27,9 +27,10 @@
 
 #include <util/atomic.h>
 #include <Wire.h>
-#include <EEPROM.h>
 #include "rhtypes.h"
 #include "rssi.h"
+#include "commands.h"
+#include "eeprom.h"
 
 // ******************************************************************** //
 
@@ -56,36 +57,11 @@
 // i2c address for node
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
-static int i2cSlaveAddress = (6 + (NODE_NUMBER * 2));
-
-// API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 18
+uint8_t i2cSlaveAddress = (6 + (NODE_NUMBER * 2));
 
 static const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 static const int spiDataPin = 11;
 static const int spiClockPin = 13;
-
-#define MIN_FREQ 5645
-#define MAX_FREQ 5945
-
-#define READ_ADDRESS 0x00
-#define READ_FREQUENCY 0x03
-#define READ_LAP_STATS 0x05
-#define READ_FILTER_RATIO 0x20    // API_level>=10 uses 16-bit value
-#define READ_REVISION_CODE 0x22   // read NODE_API_LEVEL and verification value
-#define READ_NODE_RSSI_PEAK 0x23  // read 'state.nodeRssiPeak' value
-#define READ_NODE_RSSI_NADIR 0x24  // read 'state.nodeRssiNadir' value
-#define READ_ENTER_AT_LEVEL 0x31
-#define READ_EXIT_AT_LEVEL 0x32
-#define READ_TIME_MILLIS 0x33     // read current 'millis()' value
-
-#define WRITE_FREQUENCY 0x51
-#define WRITE_FILTER_RATIO 0x70   // API_level>=10 uses 16-bit value
-#define WRITE_ENTER_AT_LEVEL 0x71
-#define WRITE_EXIT_AT_LEVEL 0x72
-
-#define MARK_START_TIME 0x77  // mark base time for returned lap-ms-since-start values
-#define FORCE_END_CROSSING 0x78  // kill current crossing flag regardless of RSSI value
 
 #define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
 #define EEPROM_ADRW_ENTERAT 2      //address for stored 'enterAtLevel'
@@ -97,10 +73,8 @@ static const int spiClockPin = 13;
 // dummy macro
 #define LOG_ERROR(...)
 
-static uint8_t volatile ioCommand;  // code to identify messages
-static uint8_t volatile ioBuffer[32];  // Data array for I/O, up to 32 bytes per message
-static int8_t ioBufferSize = 0;
-static int8_t ioBufferIndex = 0;
+
+static Message_t i2cMessage, serialMessage;
 
 // Defines for fast ADC reads
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
@@ -169,18 +143,18 @@ void setup()
     cbi(ADCSRA, ADPS0);
 
     // if EEPROM-check value matches then read stored values
-    if (readWordFromEeprom(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
+    if (eepromReadWord(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
     {
-        settings.vtxFreq = readWordFromEeprom(EEPROM_ADRW_RXFREQ);
-        settings.enterAtLevel = readWordFromEeprom(EEPROM_ADRW_ENTERAT);
-        settings.exitAtLevel = readWordFromEeprom(EEPROM_ADRW_EXITAT);
+        settings.vtxFreq = eepromReadWord(EEPROM_ADRW_RXFREQ);
+        settings.enterAtLevel = eepromReadWord(EEPROM_ADRW_ENTERAT);
+        settings.exitAtLevel = eepromReadWord(EEPROM_ADRW_EXITAT);
     }
     else
     {    // if no match then initialize EEPROM values
-        writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
-        writeWordToEeprom(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
-        writeWordToEeprom(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
-        writeWordToEeprom(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
+        eepromWriteWord(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
+        eepromWriteWord(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
+        eepromWriteWord(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
+        eepromWriteWord(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
     }
 
     setRxModule(settings.vtxFreq);  // Setup rx module to default frequency
@@ -312,11 +286,6 @@ rssi_t rssiRead()
     return raw>>1;
 }
 
-#define FREQ_SET        0x01
-#define FREQ_CHANGED    0x02
-#define ENTERAT_CHANGED 0x04
-#define EXITAT_CHANGED  0x08
-static uint8_t settingChangedFlags = 0;
 static mtime_t loopMillis = 0;
 
 // Main loop
@@ -345,20 +314,19 @@ void loop()
         state.rxFreqSetFlag = true;
 
         if (changeFlags & FREQ_CHANGED) {
-            writeWordToEeprom(EEPROM_ADRW_RXFREQ, newVtxFreq);
+            eepromWriteWord(EEPROM_ADRW_RXFREQ, newVtxFreq);
             rssiStateReset();  // restart rssi peak tracking for node
         }
     }
 
     if (changeFlags & ENTERAT_CHANGED) {
-        writeWordToEeprom(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
+        eepromWriteWord(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
     }
 
     if (changeFlags & EXITAT_CHANGED) {
-        writeWordToEeprom(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
+        eepromWriteWord(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
     }
 }
-
 
 // Function called by twi interrupt service when master sends information to the slave
 // or when master sets up a specific read request
@@ -376,11 +344,15 @@ void i2cReceive(int byteCount)
         LOG_ERROR("rx byte count and wire available don't agree");
     }
 
-    ioCommand = Wire.read();  // The first byte sent is a command byte
+    i2cMessage.command = Wire.read();  // The first byte sent is a command byte
 
-    if (ioCommand > 0x50)
+    if (i2cMessage.command > 0x50)
     {  // Commands > 0x50 are writes TO this slave
-        i2cHandleRx(ioCommand);
+        byte expectedSize = getPayloadSize(i2cMessage.command);
+        if (expectedSize > 0 && i2cReadAndValidateIoBuffer(i2cMessage.command, expectedSize)) {
+            handleWriteCommand(&i2cMessage);
+        }
+        i2cMessage.buffer.size = 0;
     }
     else
     {  // Otherwise this is a request FROM this device
@@ -395,11 +367,10 @@ void i2cReceive(int byteCount)
     }
 }
 
-bool i2cReadAndValidateIoBuffer(byte command, int8_t expectedSize)
+bool i2cReadAndValidateIoBuffer(uint8_t command, byte expectedSize)
 {
     uint8_t checksum = 0;
-    ioBufferSize = 0;
-    ioBufferIndex = 0;
+    i2cMessage.buffer.size = 0;
 
     if (!Wire.available())
     {
@@ -409,21 +380,21 @@ bool i2cReadAndValidateIoBuffer(byte command, int8_t expectedSize)
 
     while (Wire.available())
     {
-        ioBuffer[ioBufferSize++] = Wire.read();
-        if (expectedSize + 1 < ioBufferSize)
+        i2cMessage.buffer.data[i2cMessage.buffer.size++] = Wire.read();
+        if (expectedSize + 1 < i2cMessage.buffer.size)
         {
-            checksum += ioBuffer[ioBufferSize - 1];
+            checksum += i2cMessage.buffer.data[i2cMessage.buffer.size - 1];
         }
     }
 
-    if (checksum != ioBuffer[ioBufferSize - 1]
-            || ioBufferSize - 2 != expectedSize)
+    if (checksum != i2cMessage.buffer.data[i2cMessage.buffer.size - 1]
+            || i2cMessage.buffer.size - 2 != expectedSize)
     {
         LOG_ERROR("Invalid checksum", checksum);
         return false;
     }
 
-    if (command != ioBuffer[ioBufferSize - 2])
+    if (command != i2cMessage.buffer.data[i2cMessage.buffer.size - 2])
     {
         LOG_ERROR("Command does not match");
         return false;
@@ -431,304 +402,55 @@ bool i2cReadAndValidateIoBuffer(byte command, int8_t expectedSize)
     return true;
 }
 
-uint8_t ioBufferRead8()
-{
-    return ioBuffer[ioBufferIndex++];
-}
-
-uint16_t ioBufferRead16()
-{
-    uint16_t result;
-    result = ioBuffer[ioBufferIndex++];
-    result = (result << 8) | ioBuffer[ioBufferIndex++];
-    return result;
-}
-
-uint32_t ioBufferRead32()
-{
-    uint32_t result;
-    result = ioBuffer[ioBufferIndex++];
-    result = (result << 8) | ioBuffer[ioBufferIndex++];
-    result = (result << 8) | ioBuffer[ioBufferIndex++];
-    result = (result << 8) | ioBuffer[ioBufferIndex++];
-    return result;
-}
-
-void ioBufferWrite8(uint8_t data)
-{
-    ioBuffer[ioBufferSize++] = data;
-}
-
-void ioBufferWrite16(uint16_t data)
-{
-    ioBuffer[ioBufferSize++] = (uint16_t)(data >> 8);
-    ioBuffer[ioBufferSize++] = (uint16_t)(data & 0xFF);
-}
-
-void ioBufferWrite32(uint32_t data)
-{
-    ioBuffer[ioBufferSize++] = (uint32_t)(data >> 24);
-    ioBuffer[ioBufferSize++] = (uint32_t)(data >> 16);
-    ioBuffer[ioBufferSize++] = (uint32_t)(data >> 8);
-    ioBuffer[ioBufferSize++] = (uint32_t)(data & 0xFF);
-}
-
-uint8_t calculateChecksum(uint8_t *buf, int8_t size)
-{
-    uint8_t checksum = 0;
-    for (int i = 0; i < size; i++)
-    {
-        checksum += buf[i];
-    }
-    return checksum;
-}
-
-void ioBufferWriteChecksum()
-{
-    uint8_t checksum = calculateChecksum(ioBuffer, ioBufferSize);
-
-    ioBufferWrite8(checksum);
-}
-
-#define ioBufferReadRssi() (ioBufferRead8())
-#define ioBufferWriteRssi(rssi) (ioBufferWrite8(rssi))
-
-// Function called by i2cReceive for writes TO this device, the I2C Master has sent data
-// using one of the SMBus write commands, if the MSB of 'command' is 0, master is sending only
-void i2cHandleRx(byte command)
-{
-    int8_t expectedSize = getPayloadSize(command);
-    if (expectedSize > 0 && i2cReadAndValidateIoBuffer(command, expectedSize)) {
-        handleWriteCommand(command);
-    }
-}
-
 // Function called by twi interrupt service when the Master wants to get data from the Slave
 // No parameters and no returns
 // A transmit buffer (ioBuffer) is populated with the data before sending.
 void i2cTransmit()
 {
-    handleReadCommand(ioCommand);
+    handleReadCommand(&i2cMessage);
 
-    if (ioBufferSize > 0)
+    if (i2cMessage.buffer.size > 0)
     {  // If there is pending data, send it
-        Wire.write((byte *) &ioBuffer, ioBufferSize);
+        Wire.write((byte *) i2cMessage.buffer.data, i2cMessage.buffer.size);
+        i2cMessage.buffer.size = 0;
     }
-}
-
-//Writes 2-byte word to EEPROM at address.
-void writeWordToEeprom(int addr, uint16_t val)
-{
-    EEPROM.write(addr, lowByte(val));
-    EEPROM.write(addr + 1, highByte(val));
-}
-
-//Reads 2-byte word at address from EEPROM.
-uint16_t readWordFromEeprom(int addr)
-{
-    const uint8_t lb = EEPROM.read(addr);
-    const uint8_t hb = EEPROM.read(addr + 1);
-    return (((uint16_t) hb) << 8) + lb;
 }
 
 void serialEvent()
 {
 	uint8_t nextByte = Serial.read();
-	if (ioBufferSize == 0) {
+	if (serialMessage.buffer.size == 0) {
 		// new command
-	    ioCommand = nextByte;
-	    if (ioCommand > 0x50)
+	    serialMessage.command = nextByte;
+	    if (serialMessage.command > 0x50)
 	    {  // Commands > 0x50 are writes TO this slave
-	        int8_t expectedSize = getPayloadSize(ioCommand);
+	        byte expectedSize = getPayloadSize(serialMessage.command);
 	        if (expectedSize > 0) {
-	        	ioBufferIndex = 0;
-	        	ioBufferSize = expectedSize + 1; // include checksum byte
+	        	serialMessage.buffer.index = 0;
+	        	serialMessage.buffer.size = expectedSize + 1; // include checksum byte
 	        }
 	    }
 	    else
 	    {
-	        handleReadCommand(ioCommand);
+	        handleReadCommand(&serialMessage);
 	
-	        if (ioBufferSize > 0)
+	        if (serialMessage.buffer.size > 0)
 	        {  // If there is pending data, send it
-	            Serial.write((byte *) &ioBuffer, ioBufferSize);
-	            ioBufferSize = 0;
+	            Serial.write((byte *) serialMessage.buffer.data, serialMessage.buffer.size);
+	            serialMessage.buffer.size = 0;
 	        }
 	    }
     }
     else
     {
     	// existing command
-    	ioBuffer[ioBufferIndex++] = nextByte;
-    	if (ioBufferIndex == ioBufferSize) {
-    		ioBufferIndex = 0;
-    		uint8_t checksum = calculateChecksum(ioBuffer, ioBufferSize-1);
-    	    if (ioBuffer[ioBufferSize-1] == checksum) {
-	            handleWriteCommand(ioCommand);
+    	serialMessage.buffer.data[serialMessage.buffer.index++] = nextByte;
+    	if (serialMessage.buffer.index == serialMessage.buffer.size) {
+    		uint8_t checksum = ioCalculateChecksum(serialMessage.buffer.data, serialMessage.buffer.size-1);
+    	    if (serialMessage.buffer.data[serialMessage.buffer.size-1] == checksum) {
+	            handleWriteCommand(&serialMessage);
 	        }
-            ioBufferSize = 0;
+            serialMessage.buffer.size = 0;
         }
     }
-}
-
-int8_t getPayloadSize(byte command)
-{
-    int8_t size;
-    switch (command)
-    {
-        case WRITE_FREQUENCY:
-            size = 2;
-            break;
-
-        case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
-            size = 1;
-            break;
-
-        case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-            size = 1;
-            break;
-
-        case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
-            size = 1;
-            break;
-
-        default:  // invalid command
-            LOG_ERROR("Invalid write command: ", command, HEX);
-            size = -1;
-    }
-    return size;
-}
-
-// Generic IO write command handler
-void handleWriteCommand(byte command)
-{
-    uint16_t u16val;
-    rssi_t rssiVal;
-
-    switch (command)
-    {
-        case WRITE_FREQUENCY:
-            u16val = ioBufferRead16();
-            if (u16val >= MIN_FREQ && u16val <= MAX_FREQ) {
-                if (u16val != settings.vtxFreq) {
-                    settings.vtxFreq = u16val;
-                    settingChangedFlags |= FREQ_CHANGED;
-                }
-                settingChangedFlags |= FREQ_SET;
-            }
-            break;
-
-        case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
-            rssiVal = ioBufferReadRssi();
-            if (rssiVal != settings.enterAtLevel) {
-                settings.enterAtLevel = rssiVal;
-                settingChangedFlags |= ENTERAT_CHANGED;
-            }
-            break;
-
-        case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-            rssiVal = ioBufferReadRssi();
-            if (rssiVal != settings.exitAtLevel) {
-                settings.exitAtLevel = rssiVal;
-                settingChangedFlags |= EXITAT_CHANGED;
-            }
-            break;
-
-        case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
-            rssiEndCrossing();
-            break;
-
-        default:
-            LOG_ERROR("Invalid write command: ", command, HEX);
-    }
-
-    ioCommand = 0;  // Clear previous command
-}
-
-// Generic IO read command handler
-void handleReadCommand(byte command)
-{
-    ioBufferSize = 0;
-
-    switch (command)
-    {
-        case READ_ADDRESS:
-            ioBufferWrite8(i2cSlaveAddress);
-            break;
-
-        case READ_FREQUENCY:
-            ioBufferWrite16(settings.vtxFreq);
-            break;
-
-        case READ_LAP_STATS:
-            {
-              mtime_t now = millis();
-              ioBufferWrite8(lastPass.lap);
-              ioBufferWrite16(uint16_t(now - lastPass.timestamp));  // ms since lap
-              ioBufferWriteRssi(state.rssi);
-              ioBufferWriteRssi(state.nodeRssiPeak);
-              ioBufferWriteRssi(lastPass.rssiPeak);  // RSSI peak for last lap pass
-              ioBufferWrite16(uint16_t(state.loopTimeMicros));
-              ioBufferWrite8(state.crossing ? (uint8_t) 1 : (uint8_t) 0);  // 'crossing' status
-              ioBufferWriteRssi(lastPass.rssiNadir);  // lowest rssi since end of last pass
-              ioBufferWriteRssi(state.nodeRssiNadir);
-
-              if (isPeakValid(history.peakSendRssi)) {
-                  // send peak and reset
-                  ioBufferWriteRssi(history.peakSendRssi);
-                  ioBufferWrite16(uint16_t(now - history.peakSendFirstTime));
-                  ioBufferWrite16(uint16_t(now - history.peakSendLastTime));
-                  history.peakSendRssi = 0;
-              } else {
-                  ioBufferWriteRssi(0);
-                  ioBufferWrite16(0);
-                  ioBufferWrite16(0);
-              }
-
-              if (isNadirValid(history.nadirSendRssi)) {
-                  // send nadir and reset
-                  ioBufferWriteRssi(history.nadirSendRssi);
-                  ioBufferWrite16(uint16_t(now - history.nadirSendTime));
-                  history.nadirSendRssi = MAX_RSSI;
-              } else {
-                  ioBufferWriteRssi(0);
-                  ioBufferWrite16(0);
-              }
-            }
-            break;
-
-        case READ_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
-            ioBufferWriteRssi(settings.enterAtLevel);
-            break;
-
-        case READ_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-            ioBufferWriteRssi(settings.exitAtLevel);
-            break;
-
-        case READ_REVISION_CODE:  // reply with NODE_API_LEVEL and verification value
-            ioBufferWrite16((0x25 << 8) + NODE_API_LEVEL);
-            break;
-
-        case READ_NODE_RSSI_PEAK:
-            ioBufferWriteRssi(state.nodeRssiPeak);
-            break;
-
-        case READ_NODE_RSSI_NADIR:
-            ioBufferWriteRssi(state.nodeRssiNadir);
-            break;
-
-        case READ_TIME_MILLIS:
-            ioBufferWrite32(millis());
-            break;
-
-        default:  // If an invalid command is sent, write nothing back, master must react
-            LOG_ERROR("Invalid read command: ", command, HEX);
-    }
-
-    if (ioBufferSize > 0)
-    {
-        ioBufferWriteChecksum();
-    }
-
-    ioCommand = 0;  // Clear previous command
 }

@@ -116,11 +116,11 @@ class BaseRHInterface(BaseHardwareInterface):
 
                 if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
                     self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
-                    print "Data logging enabled for node {0}".format(node.index+1)
+                    print("Data logging enabled for node {0}".format(node.index+1))
                 else:
                     self.data_loggers.append(None)
             else:
-                print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
+                print("Node {0}: API_level={1}".format(node.index+1, node.api_level))
 
 
     #
@@ -138,7 +138,7 @@ class BaseRHInterface(BaseHardwareInterface):
                 self.update()
                 gevent.sleep(UPDATE_SLEEP)
         except KeyboardInterrupt:
-            print "Update thread terminated by keyboard interrupt"
+            print("Update thread terminated by keyboard interrupt")
 
     def update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
