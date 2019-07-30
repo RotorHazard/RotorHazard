@@ -27,9 +27,10 @@
 
 #include <util/atomic.h>
 #include <Wire.h>
-#include <EEPROM.h>
 #include "rhtypes.h"
 #include "rssi.h"
+#include "commands.h"
+#include "eeprom.h"
 
 // ******************************************************************** //
 
@@ -166,18 +167,18 @@ void setup()
     cbi(ADCSRA, ADPS0);
 
     // if EEPROM-check value matches then read stored values
-    if (readWordFromEeprom(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
+    if (eepromReadWord(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
     {
-        settings.vtxFreq = readWordFromEeprom(EEPROM_ADRW_RXFREQ);
-        settings.enterAtLevel = readWordFromEeprom(EEPROM_ADRW_ENTERAT);
-        settings.exitAtLevel = readWordFromEeprom(EEPROM_ADRW_EXITAT);
+        settings.vtxFreq = eepromReadWord(EEPROM_ADRW_RXFREQ);
+        settings.enterAtLevel = eepromReadWord(EEPROM_ADRW_ENTERAT);
+        settings.exitAtLevel = eepromReadWord(EEPROM_ADRW_EXITAT);
     }
     else
     {    // if no match then initialize EEPROM values
-        writeWordToEeprom(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
-        writeWordToEeprom(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
-        writeWordToEeprom(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
-        writeWordToEeprom(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
+        eepromWriteWord(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
+        eepromWriteWord(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
+        eepromWriteWord(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
+        eepromWriteWord(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
     }
 
     setRxModule(settings.vtxFreq);  // Setup rx module to default frequency
@@ -309,11 +310,6 @@ rssi_t rssiRead()
     return raw>>1;
 }
 
-#define FREQ_SET        0x01
-#define FREQ_CHANGED    0x02
-#define ENTERAT_CHANGED 0x04
-#define EXITAT_CHANGED  0x08
-static uint8_t settingChangedFlags = 0;
 static mtime_t loopMillis = 0;
 
 // Main loop
@@ -359,7 +355,6 @@ void loop()
 	}
 }
 
-
 // Function called by twi interrupt service when master sends information to the slave
 // or when master sets up a specific read request
 void i2cReceive(int byteCount)
@@ -376,11 +371,15 @@ void i2cReceive(int byteCount)
         Serial.println(F("Error: rx byte count and wire available don't agree"));
     }
 
-    ioCommand = Wire.read();  // The first byte sent is a command byte
+    i2cMessage.command = Wire.read();  // The first byte sent is a command byte
 
-    if (ioCommand > 0x50)
+    if (i2cMessage.command > 0x50)
     {  // Commands > 0x50 are writes TO this slave
-        i2cHandleRx(ioCommand);
+        byte expectedSize = getPayloadSize(i2cMessage.command);
+        if (expectedSize > 0 && i2cReadAndValidateIoBuffer(i2cMessage.command, expectedSize)) {
+            handleWriteCommand(&i2cMessage);
+        }
+        i2cMessage.buffer.size = 0;
     }
     else
     {  // Otherwise this is a request FROM this device
@@ -399,8 +398,7 @@ void i2cReceive(int byteCount)
 bool readAndValidateIoBuffer(byte command, int expectedSize)
 {
     uint8_t checksum = 0;
-    ioBufferSize = 0;
-    ioBufferIndex = 0;
+    i2cMessage.buffer.size = 0;
 
     if (expectedSize == 0)
     {
@@ -416,15 +414,15 @@ bool readAndValidateIoBuffer(byte command, int expectedSize)
 
     while (Wire.available())
     {
-        ioBuffer[ioBufferSize++] = Wire.read();
-        if (expectedSize + 1 < ioBufferSize)
+        i2cMessage.buffer.data[i2cMessage.buffer.size++] = Wire.read();
+        if (expectedSize + 1 < i2cMessage.buffer.size)
         {
-            checksum += ioBuffer[ioBufferSize - 1];
+            checksum += i2cMessage.buffer.data[i2cMessage.buffer.size - 1];
         }
     }
 
-    if (checksum != ioBuffer[ioBufferSize - 1]
-            || ioBufferSize - 2 != expectedSize)
+    if (checksum != i2cMessage.buffer.data[i2cMessage.buffer.size - 1]
+            || i2cMessage.buffer.size - 2 != expectedSize)
     {
         Serial.println(F("invalid checksum"));
         Serial.println(checksum);
@@ -434,7 +432,7 @@ bool readAndValidateIoBuffer(byte command, int expectedSize)
         return false;
     }
 
-    if (command != ioBuffer[ioBufferSize - 2])
+    if (command != i2cMessage.buffer.data[i2cMessage.buffer.size - 2])
     {
         Serial.println(F("command does not match"));
         return false;
