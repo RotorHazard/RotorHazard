@@ -1,11 +1,12 @@
 '''RotorHazard hardware interface layer.'''
 
 import smbus # For i2c comms
+import gevent
 from gevent.lock import BoundedSemaphore # To limit i2c calls
 from monotonic import monotonic
 
 from Node import Node
-from BaseRHInterface import BaseRHInterface, RETRY_COUNT, validate_checksum
+from BaseRHInterface import BaseRHInterface, READ_ADDRESS, RETRY_COUNT, validate_checksum
 
 I2C_CHILL_TIME = 0.075 # Delay after i2c read/write
 
@@ -98,7 +99,8 @@ class RHInterface(BaseRHInterface):
         addr = node.i2c_addr if node else 0x00
         retry_count = 0
         data_with_checksum = data
-        data_with_checksum.append(command)
+        if node.api_level <= 18:
+            data_with_checksum.append(command)
         data_with_checksum.append(int(sum(data_with_checksum) & 0xFF))
         while success is False and retry_count < RETRY_COUNT:
             try:

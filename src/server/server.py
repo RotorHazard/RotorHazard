@@ -3,7 +3,7 @@ from __builtin__ import True
 RELEASE_VERSION = "2.0.0" # Public release version code
 SERVER_API = 23 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 18 # Most recent node API
+NODE_API_BEST = 19 # Most recent node API
 JSON_API = 2 # JSON API version
 
 import os

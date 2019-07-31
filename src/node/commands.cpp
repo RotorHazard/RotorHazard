@@ -8,9 +8,6 @@
   extern uint8_t i2cSlaveAddress;
 #endif
 
-// API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 18
-
 uint8_t settingChangedFlags = 0;
 
 byte getPayloadSize(uint8_t command)

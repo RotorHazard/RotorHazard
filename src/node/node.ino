@@ -349,7 +349,7 @@ void i2cReceive(int byteCount)
     if (i2cMessage.command > 0x50)
     {  // Commands > 0x50 are writes TO this slave
         byte expectedSize = getPayloadSize(i2cMessage.command);
-        if (expectedSize > 0 && i2cReadAndValidateIoBuffer(i2cMessage.command, expectedSize)) {
+        if (expectedSize > 0 && i2cReadAndValidateIoBuffer(expectedSize)) {
             handleWriteCommand(&i2cMessage);
         }
         i2cMessage.buffer.size = 0;
@@ -367,39 +367,25 @@ void i2cReceive(int byteCount)
     }
 }
 
-bool i2cReadAndValidateIoBuffer(uint8_t command, byte expectedSize)
+bool i2cReadAndValidateIoBuffer(byte expectedSize)
 {
-    uint8_t checksum = 0;
-    i2cMessage.buffer.size = 0;
+    uint8_t checksum;
 
-    if (!Wire.available())
-    {
-        LOG_ERROR("Nothing Available");
-        return false;
-    }
-
-    while (Wire.available())
-    {
-        i2cMessage.buffer.data[i2cMessage.buffer.size++] = Wire.read();
-        if (expectedSize + 1 < i2cMessage.buffer.size)
-        {
-            checksum += i2cMessage.buffer.data[i2cMessage.buffer.size - 1];
+    for (i2cMessage.buffer.size = 0; i2cMessage.buffer.size < expectedSize + 1; i2cMessage.buffer.size++) {
+        if (!Wire.available()) {
+            return false;
         }
+        i2cMessage.buffer.data[i2cMessage.buffer.size] = Wire.read();
     }
 
-    if (checksum != i2cMessage.buffer.data[i2cMessage.buffer.size - 1]
-            || i2cMessage.buffer.size - 2 != expectedSize)
-    {
+    checksum = ioCalculateChecksum(i2cMessage.buffer.data, expectedSize);
+
+    if (i2cMessage.buffer.data[i2cMessage.buffer.size-1] == checksum) {
+        return true;
+    } else {
         LOG_ERROR("Invalid checksum", checksum);
         return false;
     }
-
-    if (command != i2cMessage.buffer.data[i2cMessage.buffer.size - 2])
-    {
-        LOG_ERROR("Command does not match");
-        return false;
-    }
-    return true;
 }
 
 // Function called by twi interrupt service when the Master wants to get data from the Slave
@@ -449,6 +435,8 @@ void serialEvent()
     		uint8_t checksum = ioCalculateChecksum(serialMessage.buffer.data, serialMessage.buffer.size-1);
     	    if (serialMessage.buffer.data[serialMessage.buffer.size-1] == checksum) {
 	            handleWriteCommand(&serialMessage);
+	        } else {
+                LOG_ERROR("Invalid checksum", checksum);
 	        }
             serialMessage.buffer.size = 0;
         }
