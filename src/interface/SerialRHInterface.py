@@ -18,9 +18,8 @@ class SerialRHInterface(BaseRHInterface):
         for index, comm in enumerate(config['SERIAL_PORTS']):
             node = Node()
             node.index = index
-            node.serial_port = comm
             node.serial = serial.Serial(port=comm, baudrate=115200, timeout=0.1)
-            print("Node {0} found at port {1}".format(index+1, comm))
+            print("Node {0} found at port {1}".format(index+1, node.serial.name))
             self.nodes.append(node)
 
         gevent.sleep(BOOTLOADER_CHILL_TIME)

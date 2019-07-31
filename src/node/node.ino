@@ -376,7 +376,7 @@ void i2cReceive(int byteCount)
     if (i2cMessage.command > 0x50)
     {  // Commands > 0x50 are writes TO this slave
         byte expectedSize = getPayloadSize(i2cMessage.command);
-        if (expectedSize > 0 && i2cReadAndValidateIoBuffer(i2cMessage.command, expectedSize)) {
+        if (expectedSize > 0 && i2cReadAndValidateIoBuffer(expectedSize)) {
             handleWriteCommand(&i2cMessage);
         }
         i2cMessage.buffer.size = 0;
@@ -397,8 +397,7 @@ void i2cReceive(int byteCount)
 
 bool readAndValidateIoBuffer(byte command, int expectedSize)
 {
-    uint8_t checksum = 0;
-    i2cMessage.buffer.size = 0;
+    uint8_t checksum;
 
     if (expectedSize == 0)
     {
@@ -419,6 +418,7 @@ bool readAndValidateIoBuffer(byte command, int expectedSize)
         {
             checksum += i2cMessage.buffer.data[i2cMessage.buffer.size - 1];
         }
+        i2cMessage.buffer.data[i2cMessage.buffer.size] = Wire.read();
     }
 
     if (checksum != i2cMessage.buffer.data[i2cMessage.buffer.size - 1]
@@ -437,7 +437,6 @@ bool readAndValidateIoBuffer(byte command, int expectedSize)
         Serial.println(F("command does not match"));
         return false;
     }
-    return true;
 }
 
 uint8_t ioBufferRead8()

@@ -35,7 +35,7 @@ class BaseHardwareInterface(object):
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
-        return 1000*(monotonic() - self.start_time)
+        return 1000*monotonic() - self.start_time
 
     def log(self, message):
         '''Hardware log of messages.'''

@@ -3,6 +3,9 @@
 
 #include "io.h"
 
+// API level for read/write commands; increment when commands are modified
+#define NODE_API_LEVEL 19
+
 struct Message_s
 {
     uint8_t command;  // code to identify messages
