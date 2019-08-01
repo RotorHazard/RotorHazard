@@ -92,16 +92,16 @@ Follow the software instructions on [https://github.com/RotorHazard/RotorHazard/
 
 To get from the 4-node to the 8-node system, repeat all the steps (except the polulus) on a second PCB. Then connect the six pin headers on the side of the first PCB to the corresponding pin headers on the second PCB.
 
-*Add a Directional RF Shield*
+### Add a Directional RF Shield
 A directional RF shield significantly improves the system's ability to reject false passes. This allows operators to increase its sensitivity or build courses that pass more closesly to the timing gate. Construct a directional shield that leaves a line of sight open between the timer and the timing gate, but blocks or attenuates RF signals from other directions. The most popular options to accomplish this are:
 * Place the system inside a metal box with one side open, such as an ammo can, paint can, metal bucket, or computer case. It is recommended to attach this case to an electrical ground on the timer.
 * Dig a hole into the ground and place your case within it
 * Line your system case with copper tape
 
-*WS2812b LED Support (optional)*
+### WS2812b LED Support (optional)
 The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under Software Setup.
 ![led wiring](img/GPIO.jpg)
 
-*BME280 Temperature support (optional)*
+### BME280 Temperature support (optional)
 Attach to the I2C bus and 5V pins.
 
