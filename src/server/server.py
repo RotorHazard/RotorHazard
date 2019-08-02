@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.0.0" # Public release version code
+RELEASE_VERSION = "2.0.1" # Public release version code
 SERVER_API = 23 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 18 # Most recent node API
