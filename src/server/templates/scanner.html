@@ -1,101 +1,29 @@
 {% extends "layout.html" %} {% block title %}Scan{% endblock %} {% block head %}
 
 <script type="text/javascript" src="./static/chart/Chart.min.js"></script>
+<script type="text/javascript" src="./static/scanner.js"></script>
 <link rel="stylesheet" href="./static/chart/Chart.min.css"></link>
 <script type="text/javascript" charset="utf-8">
 	$(document).ready(function () {
-		var heartbeatCounter = 0;
-
-		var nodes = [];
+		var scanners = [];
 
 		// set up node local store
 		for (let i = 0; i < {{ num_nodes }}; i++) {
-			let canvas = document.getElementById('freq-graph-' + i);
-			let chart = new Chart(canvas, {
-				type: 'line',
-				data: {
-					datasets: [{
-						label: '',
-						pointRadius: 0,
-						data: []
-					}]
-				},
-				options: {
-					scales: {
-						xAxes: [{
-							type: 'linear',
-							ticks: {
-								suggestedMin: 5645,
-								suggestedMax: 5945
-							}	
-						}],
-						yAxes: [{
-							type: 'linear',
-							ticks: {
-								min: 0,
-								max: 100
-							}
-						}]
-					},
-					legend: {
-						display: false
-					},
-					tooltips: {
-						enabled: false
-					}
-				}
-			});
-			nodes.push(chart);
+			let scanner = createBandScanner('freq-graph-' + i);
+			scanners.push(scanner);
 		}
 
-		socket.on('heartbeat', function (msg) {
-			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
-				heartbeatCounter = 0;
-				for (let i = 0; i < msg.current_rssi.length; i++) {
-					let rssiValue = msg.current_rssi[i];
-					let freq = msg.frequency[i];
-
-					if (freq > 0 && nodes[i].isScanning) {
-						nodes[i].chart.options.scales.yAxes[0].ticks.max = Math.max(
-							rssiValue + 10,
-							nodes[i].chart.options.scales.yAxes[0].ticks.max
-						);
-
-						let data = nodes[i].chart.data.datasets[0].data;
-						let idx;
-						for (idx = 0; idx < data.length; idx++) {
-							if (freq === data[idx].x) {
-								break;
-							} else if (freq < data[idx].x) {
-								idx = -idx - 1;
-								break;
-							}
-						}
-
-						if(idx >= 0 && idx < data.length) {
-							data[idx].y = rssiValue;
-						} else if (idx >= data.length) {
-							data.push({x: freq, y: rssiValue});
-						} else {
-							idx = -idx - 1;
-							data.splice(idx, 0, {x: freq, y: rssiValue});
-						}
-						nodes[i].chart.update();
-					}
-				}
-			}
-		});
+		registerMessageHandlers(socket, scanners);
 
 		$('.set_scan').change(function (event) {
 			let nodeIndex = parseInt($(this).data('node'));
-			nodes[nodeIndex].isScanning = $(this).is(':checked');
+			scanners[nodeIndex].isEnabled = $(this).is(':checked');
 			let data = {
 				node: nodeIndex,
-				scan: nodes[nodeIndex].isScanning,
+				scan: scanners[nodeIndex].isEnabled,
 			};
 			socket.emit('set_scan', data);
-			nodes[nodeIndex].chart.data.datasets[0].data = [];
-			nodes[nodeIndex].chart.update();
+			scanners[nodeIndex].clear();
 		});
 
 	});
