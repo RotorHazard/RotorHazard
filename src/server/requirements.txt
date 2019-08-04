@@ -11,3 +11,4 @@ gevent
 gevent-websocket
 flask_sqlalchemy
 monotonic
+colorama
