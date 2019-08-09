@@ -37,6 +37,9 @@ class Node:
 
         self.is_scanning = False
 
+        self.io_request = None # request time of last I/O read
+        self.io_response = None # response time of last I/O read
+
 
     def init(self):
         if self.api_level >= 10:

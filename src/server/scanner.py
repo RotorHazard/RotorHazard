@@ -10,9 +10,9 @@ gevent.monkey.patch_all()
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
-import SerialRHInterface
+import RHInterface
 
-INTERFACE = SerialRHInterface.get_hardware_interface(
+INTERFACE = RHInterface.get_hardware_interface(
 	config={
 		'SERIAL_PORTS': ['COM12']
 	}

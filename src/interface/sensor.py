@@ -31,4 +31,4 @@ class I2CSensor(Sensor):
         self.i2c_helper = i2c_helper
 
     def update(self):
-        self.i2c_helper.with_i2c(self.readData)
+        self.i2c_helper.with_i2c_quietly(self.readData)
