@@ -75,6 +75,7 @@ Config = {}
 Config['GENERAL'] = {}
 Config['SENSORS'] = {}
 Config['LED'] = {}
+Config['SERIAL_PORTS'] = []
 
 # LED strip configuration:
 Config['LED']['LED_COUNT']      = 150      # Number of LED pixels.
@@ -104,6 +105,8 @@ try:
     Config['LED'].update(ExternalConfig['LED'])
     if 'SENSORS' in ExternalConfig:
         Config['SENSORS'].update(ExternalConfig['SENSORS'])
+    if 'SERIAL_PORTS' in ExternalConfig:
+        Config['SERIAL_PORTS'].extend(ExternalConfig['SERIAL_PORTS'])
     Config['GENERAL']['configFile'] = 1
     print 'Configuration file imported'
     APP.config['SECRET_KEY'] = Config['GENERAL']['SECRET_KEY']
@@ -115,8 +118,9 @@ except ValueError:
     print 'Configuration file invalid, using defaults'
 
 
+interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
-    interfaceModule = importlib.import_module('RHInterface')
+    interfaceModule = importlib.import_module(interface_type + 'Interface')
 except ImportError:
     interfaceModule = importlib.import_module('MockInterface')
 INTERFACE = interfaceModule.get_hardware_interface(config=Config)
@@ -4175,12 +4179,13 @@ server_log('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEAS
 if serverInfo['node_api_match'] is False:
     server_log('** WARNING: Node API mismatch. **')
 
-if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
-    server_log('** WARNING: Node firmware is out of date and may not function properly **')
-elif serverInfo['node_api_lowest'] < NODE_API_BEST:
-    server_log('** NOTICE: Node firmware update is available **')
-elif serverInfo['node_api_lowest'] > NODE_API_BEST:
-    server_log('** WARNING: Node firmware is newer than this server version supports **')
+if RACE.num_nodes > 0:
+    if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
+        server_log('** WARNING: Node firmware is out of date and may not function properly **')
+    elif serverInfo['node_api_lowest'] < NODE_API_BEST:
+        server_log('** NOTICE: Node firmware update is available **')
+    elif serverInfo['node_api_lowest'] > NODE_API_BEST:
+        server_log('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
     if int(getOption('server_api')) < SERVER_API:

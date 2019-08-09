@@ -7,6 +7,9 @@
 		"DEBUG": false,
 		"NODE_RESYNC_INTERVAL": 60
 	},
+	"SENSORS": {
+	},
+	"SERIAL_PORTS": [],
 	"LED": {
 		"LED_COUNT": 150,
 		"LED_PIN": 10,

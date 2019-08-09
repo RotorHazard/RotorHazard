@@ -1,4 +1,5 @@
 '''python -m unittest discover'''
+import os
 import sys
 import unittest
 import socketio
@@ -7,6 +8,8 @@ from datetime import datetime
 
 sys.path.append('../server')
 sys.path.append('../interface')
+
+os.environ['RH_INTERFACE'] = 'Mock'
 
 import server
 from Node import Node

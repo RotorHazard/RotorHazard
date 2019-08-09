@@ -4,6 +4,30 @@ from monotonic import monotonic
 
 ENTER_AT_PEAK_MARGIN = 5 # closest that captured enter-at level can be to node peak RSSI
 
+
+def discover_modules(type):
+    plugin_modules = []
+    for loader, name, ispkg in pkgutil.iter_modules():
+        if name.endswith('_'+type):
+            try:
+                plugin_module = importlib.import_module(name)
+                plugin_modules.append(plugin_module)
+                print('Loaded module {0}'.format(name))
+            except ImportError:
+                pass
+    return plugin_modules
+
+def discover_plugins(type, *args, **kwargs):
+    plugins = []
+    for plugin_module in discover_modules(type):
+        try:
+            plugins.extend(plugin_module.discover(*args, **kwargs))
+        except AttributeError as err:
+            print('Error loading plugin {0}: {1}'.format(plugin_module.__name__, err))
+            pass
+    return plugins
+
+
 class BaseHardwareInterface(object):
 
     LAP_SOURCE_REALTIME = 0
@@ -25,13 +49,7 @@ class BaseHardwareInterface(object):
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
 
     def discover_sensors(self, *args, **kwargs):
-        for loader, name, ispkg in pkgutil.iter_modules():
-            if name.endswith('_sensor'):
-                try:
-                    sensor_module = importlib.import_module(name)
-                    self.sensors.extend(sensor_module.discover(*args, **kwargs))
-                except ImportError:
-                    pass
+        self.sensors.extend(discover_plugins('sensor', *args, **kwargs))
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
@@ -130,6 +148,40 @@ class BaseHardwareInterface(object):
 
     def set_race_status(self, race_status):
         self.race_status = race_status
+
+    def set_calibration_threshold_global(self, threshold):
+        return threshold  # dummy function; no longer supported
+
+    def enable_calibration_mode(self):
+        pass  # dummy function; no longer supported
+
+    def set_calibration_offset_global(self, offset):
+        return offset  # dummy function; no longer supported
+
+    def set_trigger_threshold_global(self, threshold):
+        return threshold  # dummy function; no longer supported
+
+    def start_capture_enter_at_level(self, node_index):
+        node = self.nodes[node_index]
+        if node.cap_enter_at_flag is False and node.api_valid_flag:
+            node.cap_enter_at_total = 0
+            node.cap_enter_at_count = 0
+                   # set end time for capture of RSSI level:
+            node.cap_enter_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
+            node.cap_enter_at_flag = True
+            return True
+        return False
+
+    def start_capture_exit_at_level(self, node_index):
+        node = self.nodes[node_index]
+        if node.cap_exit_at_flag is False and node.api_valid_flag:
+            node.cap_exit_at_total = 0
+            node.cap_exit_at_count = 0
+                   # set end time for capture of RSSI level:
+            node.cap_exit_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
+            node.cap_exit_at_flag = True
+            return True
+        return False
 
     def update_environmental_data(self):
         '''Updates environmental data.'''
