@@ -100,7 +100,6 @@ try:
     with open(CONFIG_FILE_NAME, 'r') as f:
         ExternalConfig = json.load(f)
     Config['GENERAL'].update(ExternalConfig['GENERAL'])
-    Config['SENSORS'].update(ExternalConfig['SENSORS'])
     Config['LED'].update(ExternalConfig['LED'])
     if 'SENSORS' in ExternalConfig:
         Config['SENSORS'].update(ExternalConfig['SENSORS'])
