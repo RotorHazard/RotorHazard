@@ -1,39 +1,33 @@
 function createBandScanner(elementId) {
 	let canvas = document.getElementById(elementId);
 	let chart = new Chart(canvas, {
-		type: 'line',
+		type: 'bar',
 		data: {
+			labels: [],
 			datasets: [{
-				label: '',
-				pointRadius: 0,
-				borderColor: '#0000ff',
-				borderWidth: 2,
-				fill: false,
-				data: []
-			}, {
-				label: '',
-				pointRadius: 0,
-				borderWidth: 2,
-				fill: false,
-				data: []
-			}, {
+				type: 'line',
 				label: '',
 				pointRadius: 0,
 				borderColor: '#ff0000',
-				borderWidth: 2,
+				borderWidth: 1,
 				fill: false,
+				data: []
+			}, {
+				type: 'line',
+				label: '',
+				pointRadius: 0,
+				borderColor: '#222222',
+				borderWidth: 1,
+				fill: false,
+				data: []
+			}, {
+				label: '',
+				backgroundColor: '#0000ff',
 				data: []
 			}]
 		},
 		options: {
 			scales: {
-				xAxes: [{
-					type: 'linear',
-					ticks: {
-						suggestedMin: 5645,
-						suggestedMax: 5945
-					}	
-				}],
 				yAxes: [{
 					type: 'linear',
 					ticks: {
@@ -52,31 +46,42 @@ function createBandScanner(elementId) {
 	});
 	let scanner = {
 		chart: chart.chart,
-		update: function(datasetIndex, freq, rssiValue, merger) {
+		update: function(freq, rssiValue) {
 			if (freq > 0) {
 				this.chart.options.scales.yAxes[0].ticks.max = Math.max(
 					rssiValue + 10,
 					this.chart.options.scales.yAxes[0].ticks.max
 				);
 
-				let data = this.chart.data.datasets[datasetIndex].data;
 				let idx;
-				for (idx = 0; idx < data.length; idx++) {
-					if (freq === data[idx].x) {
+				let labels = this.chart.data.labels;
+				for (idx = 0; idx < labels.length; idx++) {
+					if (freq === labels[idx]) {
 						break;
-					} else if (freq < data[idx].x) {
+					} else if (freq < labels[idx]) {
 						idx = -idx - 1;
 						break;
 					}
 				}
 
-				if(idx >= 0 && idx < data.length) {
-					data[idx].y = merger(data[idx].y, rssiValue);
-				} else if (idx >= data.length) {
-					data.push({x: freq, y: rssiValue});
+				let max_data = this.chart.data.datasets[0].data;
+				let min_data = this.chart.data.datasets[1].data;
+				let current_data = this.chart.data.datasets[2].data;
+				if(idx >= 0 && idx < labels.length) {
+					current_data[idx] = rssiValue;
+					min_data[idx] = (rssiValue > 0 && rssiValue < min_data[idx]) ? rssiValue : min_data[idx];
+					max_data[idx] = Math.max(rssiValue, max_data[idx]);
+				} else if (idx >= labels.length) {
+					labels.push(freq);
+					current_data.push(rssiValue);
+					min_data.push(rssiValue);
+					max_data.push(rssiValue);
 				} else {
 					idx = -idx - 1;
-					data.splice(idx, 0, {x: freq, y: rssiValue});
+					labels.splice(idx, 0, freq);
+					current_data.splice(idx, 0, rssiValue);
+					min_data.splice(idx, 0, rssiValue);
+					max_data.splice(idx, 0, rssiValue);
 				}
 				this.chart.update();
 			}
@@ -92,25 +97,13 @@ function createBandScanner(elementId) {
 }
 
 function registerMessageHandlers(socket, scanners) {
-	var latestMerger = function(oldRssi, newRssi) {
-		return newRssi;
-	}
-	var maxMerger = function(oldRssi, newRssi) {
-		return Math.max(oldRssi, newRssi);
-	}
-	var minMerger = function(oldRssi, newRssi) {
-		return (newRssi > 0 && newRssi < oldRssi) ? newRssi : oldRssi;
-	}
-
 	socket.on('heartbeat', function (msg) {
 		for (let i = 0; i < msg.current_rssi.length; i++) {
 			let scanner = scanners[i];
 			if (scanner && scanner.isEnabled) {
 				let rssiValue = msg.current_rssi[i];
 				let freq = msg.frequency[i];
-				scanner.update(0, freq, rssiValue, latestMerger);
-				scanner.update(1, freq, rssiValue, minMerger);
-				scanner.update(2, freq, rssiValue, maxMerger);
+				scanner.update(freq, rssiValue);
 			}
 		}
 	});
