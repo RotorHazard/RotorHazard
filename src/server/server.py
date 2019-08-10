@@ -101,8 +101,9 @@ try:
     with open(CONFIG_FILE_NAME, 'r') as f:
         ExternalConfig = json.load(f)
     Config['GENERAL'].update(ExternalConfig['GENERAL'])
-    Config['SENSORS'].update(ExternalConfig['SENSORS'])
     Config['LED'].update(ExternalConfig['LED'])
+    if 'SENSORS' in ExternalConfig:
+        Config['SENSORS'].update(ExternalConfig['SENSORS'])
     Config['GENERAL']['configFile'] = 1
     print 'Configuration file imported'
     APP.config['SECRET_KEY'] = Config['GENERAL']['SECRET_KEY']
