@@ -12,9 +12,13 @@ sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startu
 
 import RHInterface
 
+if len(sys.argv) < 2:
+    print('Please specify serial port, e.g. COM12.')
+    exit()
+
 INTERFACE = RHInterface.get_hardware_interface(
 	config={
-		'SERIAL_PORTS': ['COM12']
+		'SERIAL_PORTS': [sys.argv[1]]
 	}
 )
 
