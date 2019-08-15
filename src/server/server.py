@@ -252,94 +252,6 @@ def buildServerInfo():
     return serverInfo
 
 
-#
-# LED Code
-#
-
-def signal_handler(signal, frame):
-        colorWipe(strip, Color(0,0,0))
-        sys.exit(0)
-
-# LED one color ON/OFF
-def onoff(strip, color):
-    for i in range(strip.numPixels()):
-        strip.setPixelColor(i, color)
-    strip.show()
-
-def theaterChase(strip, color, wait_ms=50, iterations=5):
-    """Movie theater light style chaser animation."""
-    for j in range(iterations):
-        for q in range(3):
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, color)
-            strip.show()
-            time.sleep(wait_ms/1000.0)
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, 0)
-
-def wheel(pos):
-    """Generate rainbow colors across 0-255 positions."""
-    if pos < 85:
-        return Color(pos * 3, 255 - pos * 3, 0)
-    elif pos < 170:
-        pos -= 85
-        return Color(255 - pos * 3, 0, pos * 3)
-    else:
-        pos -= 170
-        return Color(0, pos * 3, 255 - pos * 3)
-
-def rainbow(strip, wait_ms=2, iterations=1):
-    """Draw rainbow that fades across all pixels at once."""
-    for j in range(256*iterations):
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(i, wheel((i+j) & 255))
-        strip.show()
-        time.sleep(wait_ms/1000.0)
-
-def rainbowCycle(strip, wait_ms=2, iterations=1):
-    """Draw rainbow that uniformly distributes itself across all pixels."""
-    for j in range(256*iterations):
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
-        strip.show()
-        time.sleep(wait_ms/1000.0)
-
-def theaterChaseRainbow(strip, wait_ms=25):
-    """Rainbow movie theater light style chaser animation."""
-    for j in range(256):
-        for q in range(3):
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, wheel((i+j) % 255))
-            strip.show()
-            time.sleep(wait_ms/1000.0)
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, 0)
-
-# Create NeoPixel object with appropriate configuration.
-try:
-    pixelModule = importlib.import_module('rpi_ws281x')
-    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-    Color = getattr(pixelModule, 'Color')
-    led_strip_config = Config['LED']['LED_STRIP']
-    if led_strip_config == 'RGB':
-        led_strip = 0x00100800
-    elif led_strip_config == 'RBG':
-        led_strip = 0x00100008
-    elif led_strip_config == 'GRB':
-        led_strip = 0x00081000
-    elif led_strip_config == 'GBR':
-        led_strip = 0x00080010
-    elif led_strip_config == 'BRG':
-        led_strip = 0x00001008
-    elif led_strip_config == 'BGR':
-        led_strip = 0x00000810
-    else:
-        raise ValueError('Invalid LED_STRIP value: {0}'.format(led_strip_config))
-except ImportError:
-    pixelModule = importlib.import_module('ANSIPixel')
-    Pixel = getattr(pixelModule, 'ANSIPixel')
-    Color = getattr(pixelModule, 'Color')
-    led_strip = None
 strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
 # Intialize the library (must be called once before other functions).
 strip.begin()
@@ -542,6 +454,111 @@ class RHRaceFormat():
     def isDbBased(cls, race_format):
         return hasattr(race_format, 'id')
 
+#
+# LED Code
+#
+
+def signal_handler(signal, frame):
+    if LED_ENABLED:
+        colorWipe(strip, Color(0,0,0))
+        sys.exit(0)
+
+# LED one color ON/OFF
+def onoff(strip, color):
+    if LED_ENABLED:
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, color)
+        strip.show()
+
+def theaterChase(strip, color, wait_ms=50, iterations=5):
+    """Movie theater light style chaser animation."""
+    if LED_ENABLED:
+        for j in range(iterations):
+            for q in range(3):
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, color)
+                strip.show()
+                time.sleep(wait_ms/1000.0)
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, 0)
+
+def wheel(pos):
+    """Generate rainbow colors across 0-255 positions."""
+    if LED_ENABLED:
+        if pos < 85:
+            return Color(pos * 3, 255 - pos * 3, 0)
+        elif pos < 170:
+            pos -= 85
+            return Color(255 - pos * 3, 0, pos * 3)
+        else:
+            pos -= 170
+            return Color(0, pos * 3, 255 - pos * 3)
+
+def rainbow(strip, wait_ms=2, iterations=1):
+    """Draw rainbow that fades across all pixels at once."""
+    if LED_ENABLED:
+        for j in range(256*iterations):
+            for i in range(strip.numPixels()):
+                strip.setPixelColor(i, wheel((i+j) & 255))
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+
+def rainbowCycle(strip, wait_ms=2, iterations=1):
+    """Draw rainbow that uniformly distributes itself across all pixels."""
+    if LED_ENABLED:
+        for j in range(256*iterations):
+            for i in range(strip.numPixels()):
+                strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+
+def theaterChaseRainbow(strip, wait_ms=25):
+    """Rainbow movie theater light style chaser animation."""
+    if LED_ENABLED:
+        for j in range(256):
+            for q in range(3):
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, wheel((i+j) % 255))
+                strip.show()
+                time.sleep(wait_ms/1000.0)
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, 0)
+
+# Create LED object with appropriate configuration.
+LED_ENABLED = True
+try:
+    pixelModule = importlib.import_module('__rpi_ws281x')
+    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
+    Color = getattr(pixelModule, 'Color')
+    led_strip_config = Config['LED']['LED_STRIP']
+    if led_strip_config == 'RGB':
+        led_strip = 0x00100800
+    elif led_strip_config == 'RBG':
+        led_strip = 0x00100008
+    elif led_strip_config == 'GRB':
+        led_strip = 0x00081000
+    elif led_strip_config == 'GBR':
+        led_strip = 0x00080010
+    elif led_strip_config == 'BRG':
+        led_strip = 0x00001008
+    elif led_strip_config == 'BGR':
+        led_strip = 0x00000810
+    else:
+        raise ValueError('Invalid LED_STRIP value: {0}'.format(led_strip_config))
+        LED_ENABLED = False
+except ImportError:
+    try:
+        pixelModule = importlib.import_module('ANSIPixel')
+        Pixel = getattr(pixelModule, 'ANSIPixel')
+        Color = getattr(pixelModule, 'Color')
+        led_strip = None
+    except ImportError:
+        LED_ENABLED = False
+
+if LED_ENABLED:
+    strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
+    # Intialize the library (must be called once before other functions).
+    strip.begin()
 #
 # Authentication
 #
