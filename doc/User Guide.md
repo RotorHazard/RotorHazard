@@ -3,8 +3,8 @@
 ## Initial Setup
 
 ### Hardware and Software Setup
-Follow the instructions here if not done already:  
-[doc/Hardware Setup.md](Hardware%20Setup.md)  
+Follow the instructions here if not done already:
+[doc/Hardware Setup.md](Hardware%20Setup.md)
 [doc/Software Setup.md](Software%20Setup.md)
 
 ### Set up Config File
@@ -56,7 +56,7 @@ In the Audio Control section, the user can select whether any one pilot, all pil
 This page allows changing the timer's optional settings and event setup.
 
 #### Profiles
-Profiles contain settings for various circumstances or environments, such as outdoor and indoor areas. Settings saved into the profile are frequencies, node tuning values, and RSSI smoothing. Choose an active profile. Settings that you adjust will be saved to the currently active profile.
+Profiles contain settings for various circumstances or environments, such as outdoor and indoor areas. Settings saved into the profile are frequencies and node tuning values. Changing this list immediately activates the selected profile. Other settings that you adjust will be saved to the currently active profile.
 
 #### Frequency Setup
 Choose a preset or manually select frequencies for each node. Arbitrary frequency selection is possible, as is disabling a node. The IMD score for currently selected frequencies is calculated and displayed at the bottom of the panel.
@@ -139,7 +139,7 @@ Adjust results of saved races.
 
 Select the round, heat, and pilot to adjust. Enter and Exit points are automatically loaded from the saved race data. Adjust the Enter and Exit points to recalibrate the race after the fact. "Load from Node" to copy current live calibration data over the active values. "Save to Node" to copy the active values over the current live values. "Recalculate Race" to use the active Enter/Exit values as calibration points for a "re-run" of the race. This will erase current laps and replace them with the recalculated information. Manually entered laps are preserved.
 
-Add laps by entering the crossing time in seconds from the beginning of the race, then pressing the "Add Lap" button. 
+Add laps by entering the crossing time in seconds from the beginning of the race, then pressing the "Add Lap" button.
 
 Delete laps with the "×" button on the unwanted lap. Deleted laps are removed from calculations but remain present in the data for later reference. "Clear laps" to permanently remove the data from the database.
 
