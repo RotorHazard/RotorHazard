@@ -251,12 +251,6 @@ def buildServerInfo():
 
     return serverInfo
 
-
-strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
-# Intialize the library (must be called once before other functions).
-strip.begin()
-
-
 #
 # Database Models
 #
@@ -458,21 +452,24 @@ class RHRaceFormat():
 # LED Code
 #
 
+def isLedEnabled():
+    return Pixel is not None
+
 def signal_handler(signal, frame):
-    if LED_ENABLED:
+    if isLedEnabled():
         colorWipe(strip, Color(0,0,0))
         sys.exit(0)
 
 # LED one color ON/OFF
 def onoff(strip, color):
-    if LED_ENABLED:
+    if isLedEnabled():
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, color)
         strip.show()
 
 def theaterChase(strip, color, wait_ms=50, iterations=5):
     """Movie theater light style chaser animation."""
-    if LED_ENABLED:
+    if isLedEnabled():
         for j in range(iterations):
             for q in range(3):
                 for i in range(0, strip.numPixels(), 3):
@@ -484,7 +481,7 @@ def theaterChase(strip, color, wait_ms=50, iterations=5):
 
 def wheel(pos):
     """Generate rainbow colors across 0-255 positions."""
-    if LED_ENABLED:
+    if isLedEnabled():
         if pos < 85:
             return Color(pos * 3, 255 - pos * 3, 0)
         elif pos < 170:
@@ -496,7 +493,7 @@ def wheel(pos):
 
 def rainbow(strip, wait_ms=2, iterations=1):
     """Draw rainbow that fades across all pixels at once."""
-    if LED_ENABLED:
+    if isLedEnabled():
         for j in range(256*iterations):
             for i in range(strip.numPixels()):
                 strip.setPixelColor(i, wheel((i+j) & 255))
@@ -505,7 +502,7 @@ def rainbow(strip, wait_ms=2, iterations=1):
 
 def rainbowCycle(strip, wait_ms=2, iterations=1):
     """Draw rainbow that uniformly distributes itself across all pixels."""
-    if LED_ENABLED:
+    if isLedEnabled():
         for j in range(256*iterations):
             for i in range(strip.numPixels()):
                 strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
@@ -514,7 +511,7 @@ def rainbowCycle(strip, wait_ms=2, iterations=1):
 
 def theaterChaseRainbow(strip, wait_ms=25):
     """Rainbow movie theater light style chaser animation."""
-    if LED_ENABLED:
+    if isLedEnabled():
         for j in range(256):
             for q in range(3):
                 for i in range(0, strip.numPixels(), 3):
@@ -525,9 +522,8 @@ def theaterChaseRainbow(strip, wait_ms=25):
                     strip.setPixelColor(i+q, 0)
 
 # Create LED object with appropriate configuration.
-LED_ENABLED = True
 try:
-    pixelModule = importlib.import_module('__rpi_ws281x')
+    pixelModule = importlib.import_module('rpi_ws281x')
     Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
     Color = getattr(pixelModule, 'Color')
     led_strip_config = Config['LED']['LED_STRIP']
@@ -544,21 +540,25 @@ try:
     elif led_strip_config == 'BGR':
         led_strip = 0x00000810
     else:
-        raise ValueError('Invalid LED_STRIP value: {0}'.format(led_strip_config))
-        LED_ENABLED = False
+        print 'LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config)
+        Pixel = None
+    print 'LED: hardware GPIO enabled'
 except ImportError:
     try:
         pixelModule = importlib.import_module('ANSIPixel')
         Pixel = getattr(pixelModule, 'ANSIPixel')
         Color = getattr(pixelModule, 'Color')
         led_strip = None
+        print 'LED: locally enabled via ANSIPixel'
     except ImportError:
-        LED_ENABLED = False
+        Pixel = None
+        print 'LED: disabled (no modules available)'
 
-if LED_ENABLED:
+if isLedEnabled():
     strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
     # Intialize the library (must be called once before other functions).
     strip.begin()
+
 #
 # Authentication
 #
