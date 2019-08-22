@@ -1074,7 +1074,9 @@ function get_interrupt_message() {
 }
 
 // restore local settings
-rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
+if ($() && $().articulate('getVoices')[0] && $().articulate('getVoices')[0].name) {
+	rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
+}
 rotorhazard.restoreData();
 
 if (typeof jQuery != 'undefined') {
