@@ -257,7 +257,7 @@ def buildServerInfo():
 
 class Pilot(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
-    callsign = DB.Column(DB.String(80), unique=True, nullable=False)
+    callsign = DB.Column(DB.String(80), nullable=False)
     team = DB.Column(DB.String(80), nullable=False, default=DEF_TEAM_NAME)
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
@@ -346,7 +346,7 @@ LAP_SOURCE_RECALC = 2
 
 class Profiles(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), unique=True, nullable=False)
+    name = DB.Column(DB.String(80), nullable=False)
     description = DB.Column(DB.String(256), nullable=True)
     frequencies = DB.Column(DB.String(80), nullable=False)
     enter_ats = DB.Column(DB.String(80), nullable=True)
@@ -355,7 +355,7 @@ class Profiles(DB.Model):
 
 class RaceFormat(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), unique=True, nullable=False)
+    name = DB.Column(DB.String(80), nullable=False)
     race_mode = DB.Column(DB.Integer, nullable=False)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
     start_delay_min = DB.Column(DB.Integer, nullable=False)
