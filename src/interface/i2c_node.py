@@ -40,18 +40,18 @@ class I2CNode(Node):
                     retry_count = retry_count + 1
                     if retry_count < RETRY_COUNT:
                         if retry_count > 1:  # don't log the occasional single retry
-                            interface.log('Retry (checksum) in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_timestamp))
+                            interface.log('Retry (checksum) in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
                     else:
-                        interface.log('Retry (checksum) limit reached in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_timestamp))
+                        interface.log('Retry (checksum) limit reached in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
             except IOError as err:
                 interface.log('Read Error: ' + str(err))
                 self.i2c_helper.i2c_end()
                 retry_count = retry_count + 1
                 if retry_count < RETRY_COUNT:
                     if retry_count > 1:  # don't log the occasional single retry
-                        interface.log('Retry (IOError) in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_timestamp))
+                        interface.log('Retry (IOError) in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
                 else:
-                    interface.log('Retry (IOError) limit reached in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_timestamp))
+                    interface.log('Retry (IOError) limit reached in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
         return data
 
     def write_block(self, interface, command, data):
@@ -79,9 +79,9 @@ class I2CNode(Node):
                 self.i2c_helper.i2c_end()
                 retry_count = retry_count + 1
                 if retry_count < RETRY_COUNT:
-                    interface.log('Retry (IOError) in write_block:  addr={0} cmd={1} data={2} retry={3} ts={4}'.format(self.i2c_addr, command, data, retry_count, self.i2c_timestamp))
+                    interface.log('Retry (IOError) in write_block:  addr={0} cmd={1} data={2} retry={3} ts={4}'.format(self.i2c_addr, command, data, retry_count, self.i2c_helper.i2c_timestamp))
                 else:
-                    interface.log('Retry (IOError) limit reached in write_block:  addr={0} cmd={1} data={2} retry={3} ts={4}'.format(self.i2c_addr, command, data, retry_count, self.i2c_timestamp))
+                    interface.log('Retry (IOError) limit reached in write_block:  addr={0} cmd={1} data={2} retry={3} ts={4}'.format(self.i2c_addr, command, data, retry_count, self.i2c_helper.i2c_timestamp))
         return success
 
 
