@@ -39,7 +39,6 @@ from RHRace import get_race_state
 
 APP = Flask(__name__, static_url_path='/static')
 APP.config['SECRET_KEY'] = 'secret!'
-SOCKET_IO = SocketIO(APP, async_mode='gevent')
 
 HEARTBEAT_THREAD = None
 
@@ -88,6 +87,7 @@ Config['GENERAL']['HTTP_PORT'] = 5000
 Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
 Config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
 Config['GENERAL']['DEBUG'] = False
+Config['GENERAL']['CORS_ALLOWED_HOSTS'] = '*'
 
 Config['GENERAL']['NODE_DRIFT_CALC_TIME'] = 10
 
@@ -107,6 +107,8 @@ except ValueError:
     Config['GENERAL']['configFile'] = -1
     print 'Configuration file invalid, using defaults'
 
+# start SocketIO service
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENERAL']['CORS_ALLOWED_HOSTS'])
 
 try:
     interfaceModule = importlib.import_module('RHInterface')
