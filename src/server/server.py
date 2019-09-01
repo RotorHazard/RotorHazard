@@ -452,44 +452,62 @@ class RHRaceFormat():
 # LED Code
 #
 
+def Color(red, green, blue):
+    """Convert the provided red, green, blue color to a 24-bit color value.
+    Each color component should be a value 0-255 where 0 is the lowest intensity
+    and 255 is the highest intensity.
+    """
+    return (red << 16) | (green << 8) | blue
+
+COLOR_NONE = Color(0,0,0)
+COLOR_BLUE = Color(0,0,255)
+COLOR_CYAN = Color(0,255,255)
+COLOR_DARK_ORANGE = Color(255,50,0)
+COLOR_GREEN = Color(0,255,0)
+COLOR_ORANGE = Color(255,128,0)
+COLOR_PINK = Color(255,0,60)
+COLOR_PURPLE = Color(150,0,255)
+COLOR_RED = Color(255,0,0)
+COLOR_YELLOW = Color(250,210,0)
+
 def isLedEnabled():
-    return Pixel is not None
+    return strip is not None
 
 def signal_handler(signal, frame):
     if isLedEnabled():
-        colorWipe(strip, Color(0,0,0))
+        colorWipe(strip, COLOR_NONE)
         sys.exit(0)
 
 def led_staging():
     if isLedEnabled():
-        onoff(strip, Color(255,128,0)) #ORANGE for STAGING
+        onoff(strip, COLOR_ORANGE)
 
 def led_start():
     if isLedEnabled():
-        onoff(strip, Color(0,255,0)) #GREEN for GO
+        onoff(strip, COLOR_GREEN)
 
 def led_pass_record(node):
     if isLedEnabled():
         if node.index==0:
-            onoff(strip, Color(0,0,255))  #BLUE
+            onoff(strip, COLOR_BLUE)
         elif node.index==1:
-            onoff(strip, Color(255,50,0)) #ORANGE
+            onoff(strip, COLOR_DARK_ORANGE)
         elif node.index==2:
-            onoff(strip, Color(255,0,60)) #PINK
+            onoff(strip, COLOR_PINK)
         elif node.index==3:
-            onoff(strip, Color(150,0,255)) #PURPLE
+            onoff(strip, COLOR_PURPLE)
         elif node.index==4:
-            onoff(strip, Color(250,210,0)) #YELLOW
+            onoff(strip, COLOR_YELLOW)
         elif node.index==5:
-            onoff(strip, Color(0,255,255)) #CYAN
+            onoff(strip, COLOR_CYAN)
         elif node.index==6:
-            onoff(strip, Color(0,255,0)) #GREEN
+            onoff(strip, COLOR_GREEN)
         elif node.index==7:
-            onoff(strip, Color(255,0,0)) #RED
+            onoff(strip, COLOR_RED)
 
 def led_stop():
     if isLedEnabled():
-        onoff(strip, Color(255,0,0)) #RED ON
+        onoff(strip, COLOR_RED)
 
 # LED one color ON/OFF
 def onoff(strip, color):
@@ -553,41 +571,23 @@ def theaterChaseRainbow(strip, wait_ms=25):
                     strip.setPixelColor(i+q, 0)
 
 # Create LED object with appropriate configuration.
+led_type = os.environ.get('RH_LEDS', 'ws281x')
 try:
-    pixelModule = importlib.import_module('rpi_ws281x')
-    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-    Color = getattr(pixelModule, 'Color')
-    led_strip_config = Config['LED']['LED_STRIP']
-    if led_strip_config == 'RGB':
-        led_strip = 0x00100800
-    elif led_strip_config == 'RBG':
-        led_strip = 0x00100008
-    elif led_strip_config == 'GRB':
-        led_strip = 0x00081000
-    elif led_strip_config == 'GBR':
-        led_strip = 0x00080010
-    elif led_strip_config == 'BRG':
-        led_strip = 0x00001008
-    elif led_strip_config == 'BGR':
-        led_strip = 0x00000810
-    else:
-        print 'LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config)
-        Pixel = None
-    print 'LED: hardware GPIO enabled'
+    ledModule = importlib.import_module(led_type + '_leds')
 except ImportError:
     try:
-        pixelModule = importlib.import_module('ANSIPixel')
-        Pixel = getattr(pixelModule, 'ANSIPixel')
-        Color = getattr(pixelModule, 'Color')
-        led_strip = None
-        print 'LED: locally enabled via ANSIPixel'
+        ledModule = importlib.import_module('ANSI_leds')
     except ImportError:
-        Pixel = None
+        ledModule = None
         print 'LED: disabled (no modules available)'
 
+if ledModule:
+    strip = ledModule.get_pixel_interface(config=Config['LED'])
+else:
+    strip = None
+    
 if isLedEnabled():
-    strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
-    # Intialize the library (must be called once before other functions).
+    # Initialize the library (must be called once before other functions).
     strip.begin()
 
 #
