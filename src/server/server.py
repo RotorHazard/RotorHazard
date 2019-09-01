@@ -460,6 +460,37 @@ def signal_handler(signal, frame):
         colorWipe(strip, Color(0,0,0))
         sys.exit(0)
 
+def led_staging():
+    if isLedEnabled():
+        onoff(strip, Color(255,128,0)) #ORANGE for STAGING
+
+def led_start():
+    if isLedEnabled():
+        onoff(strip, Color(0,255,0)) #GREEN for GO
+
+def led_pass_record(node):
+    if isLedEnabled():
+        if node.index==0:
+            onoff(strip, Color(0,0,255))  #BLUE
+        elif node.index==1:
+            onoff(strip, Color(255,50,0)) #ORANGE
+        elif node.index==2:
+            onoff(strip, Color(255,0,60)) #PINK
+        elif node.index==3:
+            onoff(strip, Color(150,0,255)) #PURPLE
+        elif node.index==4:
+            onoff(strip, Color(250,210,0)) #YELLOW
+        elif node.index==5:
+            onoff(strip, Color(0,255,255)) #CYAN
+        elif node.index==6:
+            onoff(strip, Color(0,255,0)) #GREEN
+        elif node.index==7:
+            onoff(strip, Color(255,0,0)) #RED
+
+def led_stop():
+    if isLedEnabled():
+        onoff(strip, Color(255,0,0)) #RED ON
+
 # LED one color ON/OFF
 def onoff(strip, color):
     if isLedEnabled():
@@ -1571,7 +1602,7 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        onoff(strip, Color(255,128,0)) #ORANGE for STAGING
+        led_staging()
         clear_laps() # Clear laps before race start
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
         RACE.timer_running = 0 # indicate race timer not running
@@ -1616,7 +1647,7 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        onoff(strip, Color(0,255,0)) #GREEN for GO
+        led_start()
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now()
@@ -1666,7 +1697,7 @@ def on_stop_race():
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    onoff(strip, Color(255,0,0)) #RED ON
+    led_stop()
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -3529,22 +3560,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             elif lap_id == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
 
-                        if node.index==0:
-                            onoff(strip, Color(0,0,255))  #BLUE
-                        elif node.index==1:
-                            onoff(strip, Color(255,50,0)) #ORANGE
-                        elif node.index==2:
-                            onoff(strip, Color(255,0,60)) #PINK
-                        elif node.index==3:
-                            onoff(strip, Color(150,0,255)) #PURPLE
-                        elif node.index==4:
-                            onoff(strip, Color(250,210,0)) #YELLOW
-                        elif node.index==5:
-                            onoff(strip, Color(0,255,255)) #CYAN
-                        elif node.index==6:
-                            onoff(strip, Color(0,255,0)) #GREEN
-                        elif node.index==7:
-                            onoff(strip, Color(255,0,0)) #RED
+                        led_pass_record(node)
                 else:
                     server_log('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
