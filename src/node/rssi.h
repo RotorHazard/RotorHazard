@@ -4,6 +4,7 @@
 #include "rhtypes.h"
 
 #define MAX_RSSI 0xFF
+#define MAX_DURATION 0xFFFF
 #define SmoothingSamples 255
 #define SmoothingTimestampSize 128 // half median window, rounded up
 #define isPeakValid(x) ((x) != 0)
@@ -27,7 +28,7 @@ struct State
 
     rssi_t passRssiPeak = 0; // peak smoothed rssi seen during current pass
     mtime_t passRssiPeakFirstTime = 0; // time of the first peak rssi for the current pass - only valid if passRssiPeak != 0
-    mtime_t passRssiPeakLastTime = 0; // time of the last peak rssi for the current pass - only valid if passRssiPeak != 0
+    uint16_t passRssiPeakDuration = 0; // duration of the peak rssi for the current pass - only valid if passRssiPeak != 0
     rssi_t passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
 
     rssi_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set
@@ -44,17 +45,19 @@ struct History
 {
     rssi_t volatile peakRssi = 0;
     mtime_t volatile peakFirstTime = 0;
-    mtime_t volatile peakLastTime = 0;
+    uint16_t volatile peakDuration = 0;
     bool volatile hasPendingPeak = false;
     rssi_t volatile peakSendRssi = 0;
     mtime_t volatile peakSendFirstTime = 0; // only valid if peakSendRssi != 0
-    mtime_t volatile peakSendLastTime = 0; // only valid if peakSendRssi != 0
+    uint16_t volatile peakSendDuration = 0; // only valid if peakSendRssi != 0
 
     rssi_t volatile nadirRssi = MAX_RSSI;
-    mtime_t volatile nadirTime = 0;
+    mtime_t volatile nadirFirstTime = 0;
+    uint16_t volatile nadirDuration = 0;
     bool volatile hasPendingNadir = false;
     rssi_t volatile nadirSendRssi = MAX_RSSI;
-    mtime_t volatile nadirSendTime = 0; // only valid if nadirSendRssi != MAX_RSSI
+    mtime_t volatile nadirSendFirstTime = 0; // only valid if nadirSendRssi != MAX_RSSI
+    uint16_t volatile nadirSendDuration = 0; // only valid if nadirSendRssi != MAX_RSSI
 
     int8_t rssiChange = 0; // >0 for raising, <0 for falling
 };

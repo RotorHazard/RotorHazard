@@ -38,7 +38,7 @@ unittest(slowCrossing) {
 
   assertEqual(130, (int)state.passRssiPeak);
   assertEqual(timestamp(3), (int)state.passRssiPeakFirstTime);
-  assertEqual(timestamp(3+duration), (int)state.passRssiPeakLastTime);
+  assertEqual(time(duration), (int)state.passRssiPeakDuration);
   assertEqual(50, (int)state.passRssiNadir);
 
   if (duration > 0) {
@@ -48,9 +48,10 @@ unittest(slowCrossing) {
   }
   assertEqual(130, (int)history.peakRssi); // first upward trend
   assertEqual(timestamp(3), (int)history.peakFirstTime);
-  assertEqual(timestamp(3+duration), (int)history.peakLastTime);
+  assertEqual(time(duration), (int)history.peakDuration);
   assertEqual(0, (int)history.nadirRssi); // no downward trend yet
-  assertEqual(0, (int)history.nadirTime);
+  assertEqual(0, (int)history.nadirFirstTime);
+  assertEqual(0, (int)history.nadirDuration);
 
   assertFalse(isPeakValid(history.peakSendRssi));
   assertEqual(0, (int)history.nadirSendRssi);
@@ -70,13 +71,14 @@ unittest(slowCrossing) {
   assertEqual(-30, history.rssiChange);
   assertEqual(130, (int)history.peakRssi);
   assertEqual(timestamp(3), (int)history.peakFirstTime);
-  assertEqual(timestamp(4+duration)-1, (int)history.peakLastTime);
+  assertEqual(time(1+duration)-1, (int)history.peakDuration);
   assertEqual(70, (int)history.nadirRssi); // first downward trend
-  assertEqual(timestamp(4+duration), (int)history.nadirTime);
+  assertEqual(timestamp(4+duration), (int)history.nadirFirstTime);
+  assertEqual(0, (int)history.nadirDuration);
 
   assertEqual(130, (int)history.peakSendRssi);
   assertEqual(timestamp(3), (int)history.peakSendFirstTime);
-  assertEqual(timestamp(4+duration)-1, (int)history.peakSendLastTime);
+  assertEqual(time(1+duration)-1, (int)history.peakSendDuration);
   assertEqual(0, (int)history.nadirSendRssi);
 
   assertEqual(130, (int)lastPass.rssiPeak);

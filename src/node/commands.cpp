@@ -118,7 +118,7 @@ void handleReadCommand(Message_t *msg)
                   // send peak and reset
                   ioBufferWriteRssi(&(msg->buffer), history.peakSendRssi);
                   ioBufferWrite16(&(msg->buffer), uint16_t(now - history.peakSendFirstTime));
-                  ioBufferWrite16(&(msg->buffer), uint16_t(now - history.peakSendLastTime));
+                  ioBufferWrite16(&(msg->buffer), uint16_t(now - history.peakSendFirstTime - history.peakSendDuration));
                   history.peakSendRssi = 0;
               } else {
                   ioBufferWriteRssi(&(msg->buffer), 0);
@@ -129,10 +129,12 @@ void handleReadCommand(Message_t *msg)
               if (isNadirValid(history.nadirSendRssi)) {
                   // send nadir and reset
                   ioBufferWriteRssi(&(msg->buffer), history.nadirSendRssi);
-                  ioBufferWrite16(&(msg->buffer), uint16_t(now - history.nadirSendTime));
+                  ioBufferWrite16(&(msg->buffer), uint16_t(now - history.nadirSendFirstTime));
+                  ioBufferWrite16(&(msg->buffer), uint16_t(now - history.nadirSendFirstTime - history.nadirSendDuration));
                   history.nadirSendRssi = MAX_RSSI;
               } else {
                   ioBufferWriteRssi(&(msg->buffer), 0);
+                  ioBufferWrite16(&(msg->buffer), 0);
                   ioBufferWrite16(&(msg->buffer), 0);
               }
             }

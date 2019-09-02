@@ -40,7 +40,7 @@ static void bufferHistoricPeak(bool force) {
       ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 	history.peakSendRssi = history.peakRssi;
 	history.peakSendFirstTime = history.peakFirstTime;
-	history.peakSendLastTime = history.peakLastTime;
+	history.peakSendDuration = history.peakDuration;
       }
       history.hasPendingPeak = false;
   }
@@ -50,7 +50,8 @@ static void bufferHistoricNadir(bool force) {
   if (history.hasPendingNadir && (!isNadirValid(history.nadirSendRssi) || force)) {
       ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 	history.nadirSendRssi = history.nadirRssi;
-	history.nadirSendTime = history.nadirTime;
+	history.nadirSendFirstTime = history.nadirFirstTime;
+	history.nadirSendDuration = history.nadirDuration;
       }
       history.hasPendingNadir = false;
   }
@@ -81,7 +82,8 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
 	  bufferHistoricPeak(true);
 
 	  history.peakRssi = state.rssi;
-	  history.peakFirstTime = history.peakLastTime = state.rssiTimestamp;
+	  history.peakFirstTime = state.rssiTimestamp;
+	  history.peakDuration = 0;
 
 	  // if RSSI was falling or unchanged, but it's rising now, we found a nadir
 	  // copy the values to be sent in the next loop
@@ -96,7 +98,8 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
 
 	  // whenever history is falling, record the time and value as a nadir
 	  history.nadirRssi = state.rssi;
-	  history.nadirTime = state.rssiTimestamp;
+	  history.nadirFirstTime = state.rssiTimestamp;
+	  history.nadirDuration = 0;
 
 	  // if RSSI was rising or unchanged, but it's falling now, we found a peak
 	  // copy the values to be sent in the next loop
@@ -106,9 +109,10 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
 	  }
 
       } else { // RSSI is equal
-	  // we don't need to track first and last times if it's a nadir
 	  if (state.rssi == history.peakRssi) { // is peak
-	      history.peakLastTime = state.rssiTimestamp;
+	      history.peakDuration = constrain(state.rssiTimestamp - history.peakFirstTime, 0, MAX_DURATION);
+	  } else if (state.rssi == history.nadirRssi) { // is nadir
+	      history.nadirDuration = constrain(state.rssiTimestamp - history.nadirFirstTime, 0, MAX_DURATION);
 	  }
       }
 
@@ -145,11 +149,12 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
 	  if (state.rssi > state.passRssiPeak) {
 	      // this is first time this peak RSSI value was seen, so save value and timestamp
 	      state.passRssiPeak = state.rssi;
-	      state.passRssiPeakFirstTime = state.passRssiPeakLastTime = state.rssiTimestamp;
+	      state.passRssiPeakFirstTime = state.rssiTimestamp;
+	      state.passRssiPeakDuration = 0;
 	  } else if (state.rssi == state.passRssiPeak) {
-	      // if at max peak for more than one iteration then track first
-	      //  and last timestamp so middle-timestamp value can be returned
-	      state.passRssiPeakLastTime = state.rssiTimestamp;
+	      // if at max peak for more than one iteration then track duration
+	      // so middle-timestamp value can be returned
+	      state.passRssiPeakDuration = constrain(state.rssiTimestamp - state.passRssiPeakFirstTime, 0, MAX_DURATION);
 	  }
       } else {
 	  // track lowest rssi seen since end of last pass
@@ -178,7 +183,7 @@ void rssiEndCrossing() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     lastPass.rssiPeak = state.passRssiPeak;
     // lap timestamp is between first and last peak RSSI
-    lastPass.timestamp = (state.passRssiPeakLastTime + state.passRssiPeakFirstTime) / 2;
+    lastPass.timestamp = state.passRssiPeakFirstTime + state.passRssiPeakDuration / 2;
     lastPass.rssiNadir = state.passRssiNadir;
     lastPass.lap = lastPass.lap + 1;
   }

@@ -89,7 +89,8 @@ class MockInterface(BaseHardwareInterface):
                 pn_history.peakFirstTime = int(data_columns[11])
                 pn_history.peakLastTime = int(data_columns[12])
                 pn_history.nadirRssi = int(data_columns[13])
-                pn_history.nadirTime = int(data_columns[14])
+                pn_history.nadirFirstTime = int(data_columns[14])
+                pn_history.nadirLastTime = int(data_columns[15])
 
                 if node.is_valid_rssi(rssi_val):
                     node.current_rssi = rssi_val

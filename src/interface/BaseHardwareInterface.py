@@ -253,7 +253,7 @@ class PeakNadirHistory:
         if self.peakRssi > 0:
             if self.nadirRssi > 0:
                 # both
-                if self.peakLastTime > self.nadirTime:
+                if self.peakLastTime > self.nadirFirstTime:
                     # process peak first
                     if self.peakFirstTime > self.peakLastTime:
                         history_values.append(self.peakRssi)
@@ -267,12 +267,16 @@ class PeakNadirHistory:
                         interface.log('Ignoring corrupted peak history times ({0} < {1})'.format(self.peakFirstTime, self.peakLastTime))
 
                     history_values.append(self.nadirRssi)
-                    history_times.append(readtime - (self.nadirTime / 1000.0))
+                    history_times.append(readtime - (self.nadirFirstTime / 1000.0))
+                    history_values.append(self.nadirRssi)
+                    history_times.append(readtime - (self.nadirLastTime / 1000.0))
 
                 else:
                     # process nadir first
                     history_values.append(self.nadirRssi)
-                    history_times.append(readtime - (self.nadirTime / 1000.0))
+                    history_times.append(readtime - (self.nadirFirstTime / 1000.0))
+                    history_values.append(self.nadirRssi)
+                    history_times.append(readtime - (self.nadirLastTime / 1000.0))
                     if self.peakFirstTime > self.peakLastTime:
                         history_values.append(self.peakRssi)
                         history_times.append(readtime - (self.peakFirstTime / 1000.0))
@@ -302,4 +306,6 @@ class PeakNadirHistory:
             # no peak, nadir
             # process nadir only
             history_values.append(self.nadirRssi)
-            history_times.append(readtime - (self.nadirTime / 1000.0))
+            history_times.append(readtime - (self.nadirFirstTime / 1000.0))
+            history_values.append(self.nadirRssi)
+            history_times.append(readtime - (self.nadirLastTime / 1000.0))
