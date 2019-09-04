@@ -1,6 +1,6 @@
 '''Standard LED strip handler.'''
 from led_handler import LEDHandler, Color, led_on, led_off
-import time
+import gevent
 
 def led_theaterChase(strip, color, wait_ms=50, iterations=5):
     """Movie theater light style chaser animation."""
@@ -9,7 +9,7 @@ def led_theaterChase(strip, color, wait_ms=50, iterations=5):
             for i in range(0, strip.numPixels(), 3):
                 strip.setPixelColor(i+q, color)
             strip.show()
-            time.sleep(wait_ms/1000.0)
+            gevent.sleep(wait_ms/1000.0)
             for i in range(0, strip.numPixels(), 3):
                 strip.setPixelColor(i+q, 0)
 
@@ -30,7 +30,7 @@ def led_rainbow(strip, wait_ms=2, iterations=1):
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, color_wheel((i+j) & 255))
         strip.show()
-        time.sleep(wait_ms/1000.0)
+        gevent.sleep(wait_ms/1000.0)
 
 def led_rainbowCycle(strip, wait_ms=2, iterations=1):
     """Draw rainbow that uniformly distributes itself across all pixels."""
@@ -38,7 +38,7 @@ def led_rainbowCycle(strip, wait_ms=2, iterations=1):
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
         strip.show()
-        time.sleep(wait_ms/1000.0)
+        gevent.sleep(wait_ms/1000.0)
 
 def led_theaterChaseRainbow(strip, wait_ms=25):
     """Rainbow movie theater light style chaser animation."""
@@ -47,7 +47,7 @@ def led_theaterChaseRainbow(strip, wait_ms=25):
             for i in range(0, strip.numPixels(), 3):
                 strip.setPixelColor(i+q, color_wheel((i+j) % 255))
             strip.show()
-            time.sleep(wait_ms/1000.0)
+            gevent.sleep(wait_ms/1000.0)
             for i in range(0, strip.numPixels(), 3):
                 strip.setPixelColor(i+q, 0)
 

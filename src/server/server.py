@@ -5,6 +5,10 @@ NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 18 # Most recent node API
 JSON_API = 2 # JSON API version
 
+import gevent
+import gevent.monkey
+gevent.monkey.patch_all()
+
 import os
 import sys
 import shutil
@@ -20,10 +24,6 @@ from collections import OrderedDict
 from flask import Flask, render_template, request, Response, session
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
-
-import gevent
-import gevent.monkey
-gevent.monkey.patch_all()
 
 import random
 import json
@@ -1491,7 +1491,7 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        led_handler.staging()
+        gevent.spawn(led_handler.staging)
         clear_laps() # Clear laps before race start
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
         RACE.timer_running = 0 # indicate race timer not running
@@ -1536,7 +1536,7 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        led_handler.start()
+        gevent.spawn(led_handler.start)
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now()
@@ -1586,7 +1586,7 @@ def on_stop_race():
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    led_handler.stop()
+    gevent.spawn(led_handler.stop)
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -3454,7 +3454,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             elif lap_id == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
 
-                        led_handler.pass_record(node)
+                        gevent.spawn(led_handler.pass_record, node)
                 else:
                     server_log('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
