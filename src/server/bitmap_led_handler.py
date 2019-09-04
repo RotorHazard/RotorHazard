@@ -39,7 +39,7 @@ class BitmapLEDHandler:
                 if pos == self.strip.numPixels():
                     return
                 self.strip.setPixelColor(pos, Color(img[i][j][2], img[i][j][1], img[i][j][0]))
-                pos = pos + 1
+                pos += 1
 
 def get_led_handler(strip, config, *args, **kwargs):
     return BitmapLEDHandler(strip, config['BITMAPS'])

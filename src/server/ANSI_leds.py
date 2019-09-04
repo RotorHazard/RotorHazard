@@ -3,9 +3,10 @@
 from colorama import init, Fore, Cursor
 
 class ANSIPixel:
-	def __init__(self, count):
+	def __init__(self, count, rows=1):
 		'''Constructor'''
 		self.pixels = [0 for i in range(count)]
+		self.width = count/rows
 
 	def begin(self):
 		init(autoreset=True)
@@ -50,9 +51,15 @@ class ANSIPixel:
 		self.pixels[i] = c
 
 	def show(self):
-		print Cursor.POS() + ''.join(p+'*' for p in self.pixels)
+		start = 0
+		row = 1
+		while start < len(self.pixels):
+			end = start + self.width
+			print Cursor.POS(1, row) + ''.join(p+'*' for p in self.pixels[start:end])
+			start = end
+			row += 1
 
 def get_pixel_interface(config, *args, **kwargs):
     '''Returns the pixel interface.'''
     print('LED: locally enabled via ANSIPixel')
-    return ANSIPixel(config['LED_COUNT'])
+    return ANSIPixel(config['LED_COUNT'], config.get('LED_ROWS', 1))
