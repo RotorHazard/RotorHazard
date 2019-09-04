@@ -46,7 +46,7 @@ class ANSIPixel:
 		elif r == 0 and g > 0 and b > 0:
 			c = Fore.CYAN
 		else:
-			return
+			c = Fore.BLACK
 		self.pixels[i] = c
 
 	def show(self):
