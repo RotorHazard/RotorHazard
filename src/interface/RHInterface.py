@@ -86,10 +86,6 @@ class RHInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
-        self.pass_record_callback = None # Function added in server.py
-        self.hardware_log_callback = None # Function added in server.py
-        self.new_enter_or_exit_at_callback = None # Function added in server.py
-        self.node_crossing_callback = None # Function added in server.py
 
         extKwargs = {}
         for helper in discover_modules('helper'):
