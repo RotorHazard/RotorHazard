@@ -249,6 +249,14 @@ class BaseHardwareInterface(object):
 
 
 class PeakNadirHistory:
+    def __init__(self):
+        self.peakRssi = 0
+        self.peakFirstTime = 0
+        self.peakLastTime = 0
+        self.nadirRssi = 0
+        self.nadirFirstTime = 0
+        self.nadirLastTime = 0
+
     def addTo(self, readtime, history_values, history_times, interface):
         if self.peakRssi > 0:
             if self.nadirRssi > 0:

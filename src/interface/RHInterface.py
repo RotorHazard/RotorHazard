@@ -155,7 +155,7 @@ class RHInterface(BaseHardwareInterface):
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
                     if node.api_level >= 20:
-                        data = node.read_block(self, READ_LAP_STATS, 21)
+                        data = node.read_block(self, READ_LAP_STATS, 16)
                     elif node.api_level >= 18:
                         data = node.read_block(self, READ_LAP_STATS, 19)
                     elif node.api_level >= 17:
@@ -181,13 +181,19 @@ class RHInterface(BaseHardwareInterface):
                         offset_crossing = 8
                         offset_passNadirRssi = 9
                         offset_nodeNadirRssi = 10
-                        offset_peakRssi = 11
-                        offset_peakFirstTime = 12
-                        offset_peakLastTime = 14
-                        offset_nadirRssi = 16
-                        offset_nadirFirstTime = 17
                         if node.api_level >= 20:
-                            offset_nadirLastTime = 19
+                            offset_peakRssi = 11
+                            offset_peakFirstTime = 12
+                            offset_peakLastTime = 14
+                            offset_nadirRssi = 11
+                            offset_nadirFirstTime = 12
+                            offset_nadirLastTime = 14
+                        else:
+                            offset_peakRssi = 11
+                            offset_peakFirstTime = 12
+                            offset_peakLastTime = 14
+                            offset_nadirRssi = 16
+                            offset_nadirFirstTime = 17
                     else:
                         offset_rssi = 5
                         offset_nodePeakRssi = 7
@@ -211,14 +217,21 @@ class RHInterface(BaseHardwareInterface):
                             if node.api_level >= 18:
                                 ms_val = unpack_16(data[1:])
                                 pn_history = PeakNadirHistory()
-                                pn_history.peakRssi = unpack_rssi(node, data[offset_peakRssi:])
-                                pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
-                                pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
-                                pn_history.nadirRssi = unpack_rssi(node, data[offset_nadirRssi:])
-                                pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
                                 if node.api_level >= 20:
-                                    pn_history.nadirLastTime = unpack_16(data[offset_nadirLastTime:])
+                                    if data[offset_crossing] & 0x02:
+                                        pn_history.peakRssi = unpack_rssi(node, data[offset_peakRssi:])
+                                        pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
+                                        pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
+                                    else:
+                                        pn_history.nadirRssi = unpack_rssi(node, data[offset_nadirRssi:])
+                                        pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
+                                        pn_history.nadirLastTime = unpack_16(data[offset_nadirLastTime:])
                                 else:
+                                    pn_history.peakRssi = unpack_rssi(node, data[offset_peakRssi:])
+                                    pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
+                                    pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
+                                    pn_history.nadirRssi = unpack_rssi(node, data[offset_nadirRssi:])
+                                    pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
                                     pn_history.nadirLastTime = pn_history.nadirFirstTime
                             else:
                                 ms_val = unpack_32(data[1:])
@@ -226,7 +239,7 @@ class RHInterface(BaseHardwareInterface):
                             node.node_peak_rssi = unpack_rssi(node, data[offset_nodePeakRssi:])
                             node.pass_peak_rssi = unpack_rssi(node, data[offset_passPeakRssi:])
                             node.loop_time = unpack_16(data[offset_loopTime:])
-                            if data[offset_crossing]:
+                            if data[offset_crossing] & 0x01:
                                 cross_flag = True
                             else:
                                 cross_flag = False
