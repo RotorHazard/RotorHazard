@@ -1074,7 +1074,9 @@ function get_interrupt_message() {
 }
 
 // restore local settings
-rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
+if ($() && $().articulate('getVoices')[0] && $().articulate('getVoices')[0].name) {
+	rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
+}
 rotorhazard.restoreData();
 
 if (typeof jQuery != 'undefined') {
@@ -1393,6 +1395,14 @@ var freq = {
 		U7: 5438,
 		U8: 5456,
 		U9: 5985,
+		D1: 5660,
+		D2: 5695,
+		D3: 5735,
+		D4: 5770,
+		D5: 5805,
+		D6: 5878,
+		D7: 5914,
+		D8: 5839,
 		'N/A': 'n/a'
 	},
 	findByFreq: function(frequency) {
