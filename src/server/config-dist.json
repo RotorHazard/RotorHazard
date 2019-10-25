@@ -5,7 +5,8 @@
 		"ADMIN_USERNAME": "admin",
 		"ADMIN_PASSWORD": "rotorhazard",
 		"DEBUG": false,
-		"NODE_RESYNC_INTERVAL": 60
+		"NODE_RESYNC_INTERVAL": 60,
+		"CORS_ALLOWED_HOSTS": "*"
 	},
 	"LED": {
 		"LED_COUNT": 150,
