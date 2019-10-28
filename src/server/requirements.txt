@@ -1,6 +1,6 @@
 Flask==1.1.1
 Flask_SocketIO==4.2.1
-itsdangerous==1.1.1
+itsdangerous==1.1.0
 Jinja2==2.10.3
 MarkupSafe==1.1.1
 python-engineio==3.10.0
@@ -11,5 +11,3 @@ gevent==1.4.0
 gevent-websocket==0.10.1
 flask_sqlalchemy==2.4.1
 monotonic==1.5
-
-
