@@ -8,14 +8,19 @@ A multi-node radio frequency race timing system for FPV drone racing, with event
 RotorHazard builds on the [Delta5 Race Timer](https://github.com/scottgchin/delta5_race_timer), and supports up to 8 nodes.
 
 ## Major Features
-* Timing and event management on the same hardware
-* Modern, mobile-friendly, and highly responsive user interface
-* Manage pilots, heats, race classes, race formats, and tuning profiles
+* Timing and event management on local server hardware
+* Modern, mobile-friendly, and responsive
+* Confidently calibrate in seconds with visual interface
+* Fix calibration issues retroactively after race is complete
+* Never miss a lap; recover laps with full accuracy by reviewing RSSI history
+* Improved filtering works both indoors and outdoors without adjustment, even in difficult multipathing environments
+* Improved synchronization and timing accuracy
+* Manage pilots, heats, classes, and race formats
+* Full manual control of results for race organizer
+* Statistics broken out by event, class, heat, and round
+* Sends realtime lap data to livetime
 * LED and audio support to indicate race staging, starts, and other events
-* Real-time statistics and race history
-* Fine control of filtering and calibration allows indoor and outdoor use, even in difficult multipathing environments
-* Supports all frequencies in the 5.8GHz band
-* Includes basic support for Team racing and most-laps-wins races
+* JSON API to retrieve timing data from other systems
 
 ## Hardware and Software Setup
 To build and configure the system, follow the instructions here:  
@@ -33,6 +38,7 @@ RotorHazard uses the same hardware, but different code for the nodes. Re-flash y
 * Eric Thomas
 * Klaus Michael Schneider
 * Mark Hale
+* Cerberus Velvet
 * Scott Chin and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
 
 ### Supported by:

@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.0.0 (dev 4)" # Public release version code
+RELEASE_VERSION = "2.0.2" # Public release version code
 SERVER_API = 23 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 18 # Most recent node API
@@ -39,7 +39,6 @@ from RHRace import get_race_state
 
 APP = Flask(__name__, static_url_path='/static')
 APP.config['SECRET_KEY'] = 'secret!'
-SOCKET_IO = SocketIO(APP, async_mode='gevent')
 
 HEARTBEAT_THREAD = None
 
@@ -88,6 +87,7 @@ Config['GENERAL']['HTTP_PORT'] = 5000
 Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
 Config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
 Config['GENERAL']['DEBUG'] = False
+Config['GENERAL']['CORS_ALLOWED_HOSTS'] = '*'
 
 Config['GENERAL']['NODE_DRIFT_CALC_TIME'] = 10
 
@@ -107,6 +107,8 @@ except ValueError:
     Config['GENERAL']['configFile'] = -1
     print 'Configuration file invalid, using defaults'
 
+# start SocketIO service
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENERAL']['CORS_ALLOWED_HOSTS'])
 
 try:
     interfaceModule = importlib.import_module('RHInterface')
@@ -251,107 +253,13 @@ def buildServerInfo():
 
     return serverInfo
 
-
-#
-# LED Code
-#
-
-def signal_handler(signal, frame):
-        colorWipe(strip, Color(0,0,0))
-        sys.exit(0)
-
-# LED one color ON/OFF
-def onoff(strip, color):
-    for i in range(strip.numPixels()):
-        strip.setPixelColor(i, color)
-    strip.show()
-
-def theaterChase(strip, color, wait_ms=50, iterations=5):
-    """Movie theater light style chaser animation."""
-    for j in range(iterations):
-        for q in range(3):
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, color)
-            strip.show()
-            time.sleep(wait_ms/1000.0)
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, 0)
-
-def wheel(pos):
-    """Generate rainbow colors across 0-255 positions."""
-    if pos < 85:
-        return Color(pos * 3, 255 - pos * 3, 0)
-    elif pos < 170:
-        pos -= 85
-        return Color(255 - pos * 3, 0, pos * 3)
-    else:
-        pos -= 170
-        return Color(0, pos * 3, 255 - pos * 3)
-
-def rainbow(strip, wait_ms=2, iterations=1):
-    """Draw rainbow that fades across all pixels at once."""
-    for j in range(256*iterations):
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(i, wheel((i+j) & 255))
-        strip.show()
-        time.sleep(wait_ms/1000.0)
-
-def rainbowCycle(strip, wait_ms=2, iterations=1):
-    """Draw rainbow that uniformly distributes itself across all pixels."""
-    for j in range(256*iterations):
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
-        strip.show()
-        time.sleep(wait_ms/1000.0)
-
-def theaterChaseRainbow(strip, wait_ms=25):
-    """Rainbow movie theater light style chaser animation."""
-    for j in range(256):
-        for q in range(3):
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, wheel((i+j) % 255))
-            strip.show()
-            time.sleep(wait_ms/1000.0)
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, 0)
-
-# Create NeoPixel object with appropriate configuration.
-try:
-    pixelModule = importlib.import_module('neopixel')
-    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-    Color = getattr(pixelModule, 'Color')
-    led_strip_config = Config['LED']['LED_STRIP']
-    if led_strip_config == 'RGB':
-        led_strip = 0x00100800
-    elif led_strip_config == 'RBG':
-        led_strip = 0x00100008
-    elif led_strip_config == 'GRB':
-        led_strip = 0x00081000
-    elif led_strip_config == 'GBR':
-        led_strip = 0x00080010
-    elif led_strip_config == 'BRG':
-        led_strip = 0x00001008
-    elif led_strip_config == 'BGR':
-        led_strip = 0x00000810
-    else:
-        raise ValueError('Invalid LED_STRIP value: {0}'.format(led_strip_config))
-except ImportError:
-    pixelModule = importlib.import_module('ANSIPixel')
-    Pixel = getattr(pixelModule, 'ANSIPixel')
-    Color = getattr(pixelModule, 'Color')
-    led_strip = None
-strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
-# Intialize the library (must be called once before other functions).
-strip.begin()
-
-
 #
 # Database Models
 #
 
 class Pilot(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
-    callsign = DB.Column(DB.String(80), unique=True, nullable=False)
+    callsign = DB.Column(DB.String(80), nullable=False)
     team = DB.Column(DB.String(80), nullable=False, default=DEF_TEAM_NAME)
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
@@ -440,7 +348,7 @@ LAP_SOURCE_RECALC = 2
 
 class Profiles(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), unique=True, nullable=False)
+    name = DB.Column(DB.String(80), nullable=False)
     description = DB.Column(DB.String(256), nullable=True)
     frequencies = DB.Column(DB.String(80), nullable=False)
     enter_ats = DB.Column(DB.String(80), nullable=True)
@@ -449,7 +357,7 @@ class Profiles(DB.Model):
 
 class RaceFormat(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), unique=True, nullable=False)
+    name = DB.Column(DB.String(80), nullable=False)
     race_mode = DB.Column(DB.Integer, nullable=False)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
     start_delay_min = DB.Column(DB.Integer, nullable=False)
@@ -516,7 +424,6 @@ def setCurrentRaceFormat(race_format):
     else:
         RACE.format = race_format
 
-# internal slave race format for LiveTime
 class RHRaceFormat():
     def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, number_laps_win, win_condition, team_racing_mode):
         self.name = name
@@ -543,14 +450,129 @@ class RHRaceFormat():
     def isDbBased(cls, race_format):
         return hasattr(race_format, 'id')
 
-SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
-                         race_mode=1,
-                         race_time_sec=0,
-                         start_delay_min=0,
-                         start_delay_max=0,
-                         number_laps_win=0,
-                         win_condition=WIN_CONDITION_NONE,
-                         team_racing_mode=False)
+#
+# LED Code
+#
+
+def isLedEnabled():
+    return Pixel is not None
+
+def signal_handler(signal, frame):
+    if isLedEnabled():
+        colorWipe(strip, Color(0,0,0))
+        sys.exit(0)
+
+# LED one color ON/OFF
+def onoff(strip, color):
+    if isLedEnabled():
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, color)
+        strip.show()
+
+def theaterChase(strip, color, wait_ms=50, iterations=5):
+    """Movie theater light style chaser animation."""
+    if isLedEnabled():
+        for j in range(iterations):
+            for q in range(3):
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, color)
+                strip.show()
+                time.sleep(wait_ms/1000.0)
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, 0)
+
+def wheel(pos):
+    """Generate rainbow colors across 0-255 positions."""
+    if isLedEnabled():
+        if pos < 85:
+            return Color(pos * 3, 255 - pos * 3, 0)
+        elif pos < 170:
+            pos -= 85
+            return Color(255 - pos * 3, 0, pos * 3)
+        else:
+            pos -= 170
+            return Color(0, pos * 3, 255 - pos * 3)
+
+def rainbow(strip, wait_ms=2, iterations=1):
+    """Draw rainbow that fades across all pixels at once."""
+    if isLedEnabled():
+        for j in range(256*iterations):
+            for i in range(strip.numPixels()):
+                strip.setPixelColor(i, wheel((i+j) & 255))
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+
+def rainbowCycle(strip, wait_ms=2, iterations=1):
+    """Draw rainbow that uniformly distributes itself across all pixels."""
+    if isLedEnabled():
+        for j in range(256*iterations):
+            for i in range(strip.numPixels()):
+                strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+
+def theaterChaseRainbow(strip, wait_ms=25):
+    """Rainbow movie theater light style chaser animation."""
+    if isLedEnabled():
+        for j in range(256):
+            for q in range(3):
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, wheel((i+j) % 255))
+                strip.show()
+                time.sleep(wait_ms/1000.0)
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, 0)
+
+# Create LED object with appropriate configuration.
+Pixel = None
+
+try:
+    pixelModule = importlib.import_module('rpi_ws281x')
+    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
+    print 'LED: selecting library "rpi_ws2812x"'
+except ImportError:
+    pass
+
+try:
+    pixelModule = importlib.import_module('neopixel')
+    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
+    print 'LED: selecting library "neopixel" (older)'
+except ImportError:
+    pass
+
+if Pixel != None:
+    Color = getattr(pixelModule, 'Color')
+    led_strip_config = Config['LED']['LED_STRIP']
+    if led_strip_config == 'RGB':
+        led_strip = 0x00100800
+    elif led_strip_config == 'RBG':
+        led_strip = 0x00100008
+    elif led_strip_config == 'GRB':
+        led_strip = 0x00081000
+    elif led_strip_config == 'GBR':
+        led_strip = 0x00080010
+    elif led_strip_config == 'BRG':
+        led_strip = 0x00001008
+    elif led_strip_config == 'BGR':
+        led_strip = 0x00000810
+    else:
+        print 'LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config)
+        Pixel = None
+    print 'LED: hardware GPIO enabled'
+else:
+    try:
+        pixelModule = importlib.import_module('ANSIPixel')
+        Pixel = getattr(pixelModule, 'ANSIPixel')
+        Color = getattr(pixelModule, 'Color')
+        led_strip = None
+        print 'LED: simulated via ANSIPixel (no physical LED support enabled)'
+    except ImportError:
+        print 'LED: disabled (no modules available)'
+
+if isLedEnabled():
+    strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
+    # Intialize the library (must be called once before other functions).
+    strip.begin()
 
 #
 # Authentication
@@ -1738,13 +1760,22 @@ def on_resave_laps(data):
 
     race_id = data['race_id']
     pilotrace_id = data['pilotrace_id']
-    node = data['node'] #***
-    pilot_id = data['pilot_id'] #***
+    node = data['node']
+    pilot_id = data['pilot_id']
     laps = data['laps']
+    enter_at = data['enter_at']
+    exit_at = data['exit_at']
+
+    Pilotrace = SavedPilotRace.query.filter_by(id=pilotrace_id).one()
+    Pilotrace.enter_at = enter_at
+    Pilotrace.exit_at = exit_at
 
     SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).delete()
 
     for lap in laps:
+        tmp_lap_time_formatted = lap['lap_time']
+        if isinstance(tmp_lap_time_formatted, float):
+            tmp_lap_time_formatted = time_format(lap['lap_time'])
         DB.session.add(SavedRaceLap( \
             race_id=race_id, \
             pilotrace_id=pilotrace_id, \
@@ -1752,7 +1783,7 @@ def on_resave_laps(data):
             pilot_id=pilot_id, \
             lap_time_stamp=lap['lap_time_stamp'], \
             lap_time=lap['lap_time'], \
-            lap_time_formatted=lap['lap_time_formatted'], \
+            lap_time_formatted=tmp_lap_time_formatted,\
             source = lap['source'], \
             deleted = lap['deleted']
         ))
@@ -3871,6 +3902,18 @@ def recover_database():
             if val is not None:
                 carryOver[opt] = val
 
+        # RSSI reduced by half for 2.0.0
+        if int(getOption('server_api')) < 23:
+            for profile in profiles_query_data:
+                if profile.enter_ats:
+                    enter_ats = json.loads(profile.enter_ats)
+                    enter_ats["v"] = [val/2 for val in enter_ats["v"]]
+                    profile.enter_ats = json.dumps(enter_ats)
+                if profile.exit_ats:
+                    exit_ats = json.loads(profile.exit_ats)
+                    exit_ats["v"] = [val/2 for val in exit_ats["v"]]
+                    profile.exit_ats = json.dumps(exit_ats)
+
     except Exception as ex:
         server_log('Error reading data from previous database:  ' + str(ex))
 
@@ -3957,7 +4000,8 @@ if not db_inited_flag:
 expand_heats()
 
 # internal slave race format for LiveTime (needs to be created after initial DB setup)
-SLAVE_RACE_FORMAT = RaceFormat(name=__("Slave"),
+global SLAVE_RACE_FORMAT
+SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
                          race_mode=1,
                          race_time_sec=0,
                          start_delay_min=0,
@@ -4010,4 +4054,3 @@ if __name__ == '__main__':
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
-

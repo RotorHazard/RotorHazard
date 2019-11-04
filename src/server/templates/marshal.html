@@ -1,6 +1,11 @@
 {% extends "layout.html" %} {% block title %}Marshal Race Data{% endblock %}{% block head %}
 
 <script type="text/javascript" charset="utf-8">
+	// set admin flag
+	rotorhazard.admin = true;
+	rotorhazard.saveData();
+	$('nav li').removeClass('admin-hide');
+
 	var race_list = {};
 	var race_list_loaded = false;
 	var race_loaded = false;
@@ -9,6 +14,7 @@
 
 	$(document).ready(function () {
 		var graph_canvas = document.getElementById('race-graph');
+		var context = graph_canvas.getContext('2d');
 		var graph = new SmoothieChart({
 			responsive: true,
 			grid:{
@@ -34,6 +40,7 @@
 		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',
+			'enter_and_exit_at_levels',
 			'race_list',
 		]});
 
@@ -47,6 +54,13 @@
 			}
 		});
 
+		socket.on('enter_and_exit_at_levels', function (msg) {
+			for (var i = 0; i < msg.enter_at_levels.length; i++) {
+				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
+				rotorhazard.nodes[i].exit_at_level = msg.exit_at_levels[i];
+			}
+		});
+
 		socket.on('race_list', function (msg) {
 			race_list = msg;
 
@@ -55,7 +69,6 @@
 			}
 
 			$('#selected_heat').empty();
-			$('#selected_heat').append('<option value="--">' + __('Select Heat') + '</option>');
 			for (var heat_i in race_list.heats) {
 				var heat = race_list.heats[heat_i];
 
@@ -67,91 +80,87 @@
 
 				$('#selected_heat').append('<option value="' + heat_i + '">' + heat_name + '</option>');
 			}
-			$('#selected_heat').prop('disabled', false);
+			$('#selected_heat').val(heat_i);
 
 			if (race_list_loaded) {
 				$('#selected_heat').val(prev_heat);
 			} else {
-				$('#selected_round').empty();
-				$('#selected_round').append('<option value="--">' + __('Select Round') + '</option>');
-				$('#selected_round').prop('disabled', true);
-
-				$('#selected_pilot').empty();
-				$('#selected_pilot').append('<option value="--">' + __('Select Pilot') + '</option>');
-				$('#selected_pilot').prop('disabled', true);
-
-				$('#load_race').prop('disabled', true);
-
 				race_list_loaded = true;
+				$('#selected_heat').prop('disabled', false);
+				$('#selected_round').prop('disabled', false);
+				$('#selected_pilot').prop('disabled', false);
+				$('#load_race').prop('disabled', false);
 			}
+
+			$('#selected_heat').trigger('change');
 		});
+
+		// set up node local store
+		for (i = 0; i < {{ num_nodes }}; i++) {
+			rotorhazard.nodes[i] = new nodeModel();
+		}
 
 		$('#selected_heat').change(function(){
 			var prev_round = $('#selected_round').val();
 
 			$('#selected_round').empty();
-			$('#selected_round').append('<option value="--">' + __('Select Round') + '</option>');
-			$('#selected_round').prop('disabled', true);
-
-			$('#selected_pilot').empty();
-			$('#selected_pilot').append('<option value="--">' + __('Select Pilot') + '</option>');
-			$('#selected_pilot').prop('disabled', true);
-
-			$('#load_race').prop('disabled', true);
 
 			var heat = parseInt($(this).val());
-			if ($(this).val() != '--') {
-				for (var round_i in race_list.heats[heat].rounds) {
-					$('#selected_round').append('<option value="' + round_i + '">' + __('Round') + ' ' + round_i + '</option>');
 
-					if (round_i == prev_round) {
-						$('#selected_round').val(round_i);
-						$('#selected_round').trigger('change');
-					}
-				}
-				$('#selected_round').prop('disabled', false);
+			for (var round_i in race_list.heats[heat].rounds) {
+				$('#selected_round').append('<option value="' + round_i + '">' + __('Round') + ' ' + round_i + '</option>');
 			}
+
+			$('#selected_round').val(round_i);
+			$('#selected_round option').each(function(){
+				if (this.value == prev_round) {
+					$('#selected_round').val(prev_round);
+					return false;
+				}
+			});
+
+			disableUI();
+
+			$('#selected_round').trigger('change');
 		});
 
 		$('#selected_round').change(function(){
-			var prev_pilot = $('#selected_pilot').val();
+			var prev_pilot = $('#selected_pilot').data('pilot-id');
 
 			$('#selected_pilot').empty();
-			$('#selected_pilot').append('<option value="--">' + __('Select Pilot') + '</option>');
-			$('#selected_pilot').prop('disabled', true);
-
-			$('#load_race').prop('disabled', true);
 
 			var heat = parseInt($('#selected_heat').val());
 			var round = parseInt($(this).val());
 
-			if ($(this).val() != '--') {
-				for (var pilot_i in race_list.heats[heat].rounds[round].pilotraces) {
-					var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot_i];
-					$('#selected_pilot').append('<option value="' + pilot_i + '">' + pilotrace.callsign + '</option>');
-
-					if (pilot_i == prev_pilot) {
-						$('#selected_pilot').val(pilot_i);
-						$('#load_race').prop('disabled', false);
-					}
-				}
-				$('#selected_pilot').prop('disabled', false);
+			for (var pilot_i in race_list.heats[heat].rounds[round].pilotraces) {
+				var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot_i];
+				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' + pilotrace.pilot_id + '">' + pilotrace.callsign + '</option>');
 			}
+
+			$('#selected_pilot option').each(function(){
+				if ($(this).data('pilot-id') == prev_pilot) {
+					$('#selected_pilot').val($(this).val());
+					return false;
+				}
+			});
+
+			disableUI();
+
+			$('#selected_pilot').trigger('change');
 		});
 
 		$('#selected_pilot').change(function(){
-			if ($(this).val() != '--') {
-				var heat = parseInt($('#selected_heat').val());
-				var round = parseInt($('#selected_round').val());
-				var pilot = parseInt($(this).val());
-				var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot];
+			var heat = parseInt($('#selected_heat').val());
+			var round = parseInt($('#selected_round').val());
+			var pilot = parseInt($(this).val());
+			var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot];
 
-				$(this).data('pilot-id', pilotrace.pilot_id);
-				$('#load_race').prop('disabled', false);
-			}
+			$(this).data('pilot-id', pilotrace.pilot_id);
+
+			load_race();
 		});
 
-		$('#load_race').click(function(){
+		function load_race() {
 			race_loaded = true;
 
 			var heat = parseInt($('#selected_heat').val());
@@ -196,8 +205,38 @@
 			// populate laps
 			displayLaps(current_race_data.laps);
 
+			enableUI();
 			return false;
-		});
+		}
+
+		function disableUI() {
+			$('#enterat').prop('disabled', true);
+			$('#exitat').prop('disabled', true);
+			$('#recalc').prop('disabled', true);
+			$('#load-transitions').prop('disabled', true);
+			$('#save-transitions').prop('disabled', true);
+			$('#manual-lap-time').prop('disabled', true);
+			$('#add-lap').prop('disabled', true);
+			$('#clean-laps').prop('disabled', true);
+			$('#save-laps').prop('disabled', true);
+
+			$('#race-title').html(__('Select Race'));
+			context.clearRect(0, 0, graph_canvas.width, graph_canvas.height);
+			$('#enterat').val('');
+			$('#exitat').val('');
+		}
+
+		function enableUI() {
+			$('#enterat').prop('disabled', false);
+			$('#exitat').prop('disabled', false);
+			$('#recalc').prop('disabled', false);
+			$('#load-transitions').prop('disabled', false);
+			$('#save-transitions').prop('disabled', false);
+			$('#manual-lap-time').prop('disabled', false);
+			$('#add-lap').prop('disabled', false);
+			$('#clean-laps').prop('disabled', false);
+			$('#save-laps').prop('disabled', false);
+		}
 
 		function renderGraph() {
 			var graphWidth = graph_canvas.offsetWidth;
@@ -294,18 +333,20 @@
 			}
 		});
 
-/*
 		$('#enterat').change(function(){
-			$('#recalc').trigger('click');
+			renderGraph();
 		});
 
 		$('#exitat').change(function(){
-			$('#recalc').trigger('click');
+			renderGraph();
 		});
-*/
+
 		function recalc_rx_data() {
 			var enterat = parseInt($('#enterat').val());
 			var exitat = parseInt($('#exitat').val());
+
+			current_race_data.enter_at = enterat;
+			current_race_data.exit_at = exitat;
 
 			var crossing = false;
 			var peakRssi = 0;
@@ -445,9 +486,25 @@
 					pilotrace_id: current_race_data.pilotrace_id,
 					node: current_race_data.node_index,
 					pilot_id: current_race_data.pilot_id,
-					laps: current_race_data.laps
+					laps: current_race_data.laps,
+					enter_at: current_race_data.enter_at,
+					exit_at: current_race_data.exit_at,
 				}
 				socket.emit('resave_laps', data);
+			} else {
+				standard_message_queue.push(__('No race loaded'));
+				if (standard_message_queue.length == 1) {
+					get_standard_message()
+				}
+			}
+		});
+
+		$('#load-transitions').click(function(){
+			if (race_loaded) {
+				var node = current_race_data.node_index;
+				$('#enterat').val(rotorhazard.nodes[node].enter_at_level);
+				$('#exitat').val(rotorhazard.nodes[node].exit_at_level);
+				renderGraph();
 			} else {
 				standard_message_queue.push(__('No race loaded'));
 				if (standard_message_queue.length == 1) {
@@ -504,8 +561,6 @@
 			<select id="selected_pilot" disabled>
 				<option value="--">{{ __('Loading...') }}</option>
 			</select>
-
-			<button id="load_race" disabled>{{ __('Load Race') }}</button>
 		</div>
 
 		<div id="race-display">
@@ -535,22 +590,23 @@
 				<div class="control-block">
 					<h3>{{ __('Recalculate') }}</h3>
 					<label for="enterat" class="screen-reader-text">{{ __('EnterAt') }}</label>
-					<input type="number" id="enterat" value="" placeholder="{{ __('EnterAt') }}"/>
+					<input type="number" id="enterat" value="" placeholder="{{ __('EnterAt') }}" disabled />
 					<label for="exitat" class="screen-reader-text">{{ __('ExitAt') }}</label>
-					<input type="number" id="exitat" value="" placeholder="{{ __('ExitAt') }}"/>
-					<button id="recalc">{{ __('Recalculate Race') }}</button>
-					<button id="save-transitions">{{ __('Save to Node') }}</button>
+					<input type="number" id="exitat" value="" placeholder="{{ __('ExitAt') }}" disabled />
+					<button id="recalc" disabled>{{ __('Recalculate Race') }}</button>
+					<button id="load-transitions" disabled>{{ __('Load from Node') }}</button>
+					<button id="save-transitions" disabled>{{ __('Save to Node') }}</button>
 				</div>
 				<div class="control-block">
 					<h3>{{ __('Modify') }}</h3>
 					<label for="manual-lap-time" class="screen-reader-text">{{ __('Manual Lap Time') }}</label>
-					<input type="number" id="manual-lap-time" step="0.001" placeholder="{{ __('Manual Lap Time') }}" />
-					<button id="add-lap">{{ __('Add Lap') }}</button>
-					<button id="clean-laps">{{ __('Clean Deleted Laps') }}</button>
+					<input type="number" id="manual-lap-time" step="0.001" placeholder="{{ __('Manual Lap Time') }}" disabled />
+					<button id="add-lap" disabled>{{ __('Add Lap') }}</button>
+					<button id="clean-laps" disabled>{{ __('Clean Deleted Laps') }}</button>
 				</div>
 				<div class="control-block">
 					<h3>{{ __('Confirm') }}</h3>
-					<button id="save-laps">{{ __('Commit Changes') }}</button>
+					<button id="save-laps" disabled>{{ __('Commit Changes') }}</button>
 				</div>
 			</div>
 		</div>
