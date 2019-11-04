@@ -82,7 +82,7 @@ def unpack_rssi(node, data):
     if node.api_level >= 18:
         return unpack_8(data)
     else:
-        return unpack_16(data)
+        return unpack_16(data) / 2
 
 
 class RHInterface(BaseHardwareInterface):
@@ -219,20 +219,15 @@ class RHInterface(BaseHardwareInterface):
                 if node.api_valid_flag or node.api_level >= 5:
                     if node.api_level >= 18:
                         data = self.read_block(node.i2c_addr, READ_LAP_STATS, 19)
-                        server_roundtrip = self.i2c_response - self.i2c_request
-                        server_oneway = server_roundtrip / 2
-                        readtime = self.i2c_response - server_oneway
-
                     elif node.api_level >= 17:
                         data = self.read_block(node.i2c_addr, READ_LAP_STATS, 28)
-                        server_roundtrip = self.i2c_response - self.i2c_request
-                        server_oneway = server_roundtrip / 2
-                        readtime = self.i2c_response - server_oneway
-
                     elif node.api_level >= 13:
                         data = self.read_block(node.i2c_addr, READ_LAP_STATS, 20)
                     else:
                         data = self.read_block(node.i2c_addr, READ_LAP_STATS, 18)
+                    server_roundtrip = self.i2c_response - self.i2c_request
+                    server_oneway = server_roundtrip / 2
+                    readtime = self.i2c_response - server_oneway
                 else:
                     data = self.read_block(node.i2c_addr, READ_LAP_STATS, 17)
 
