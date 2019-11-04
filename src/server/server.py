@@ -79,7 +79,6 @@ Config['LED']['LED_COUNT']      = 150      # Number of LED pixels.
 Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
 Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
 Config['LED']['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
-Config['LED']['LED_BRIGHTNESS'] = 255     # Set to 0 for darkest and 255 for brightest
 Config['LED']['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
 Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
@@ -723,7 +722,7 @@ else:
         print 'LED: disabled (no modules available)'
 
 if isLedEnabled():
-    strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
+    strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], int(getOption("ledBrightness")), Config['LED']['LED_CHANNEL'], led_strip)
     # Intialize the library (must be called once before other functions).
     strip.begin()
 
@@ -2195,6 +2194,14 @@ def on_LED_RBCYCLE():
 @SOCKET_IO.on('LED_RBCHASE')
 def on_LED_RBCHASE():
     theaterChaseRainbow(strip) #Rainbow Chase
+
+@SOCKET_IO.on('LED_brightness')
+def on_LED_brightness(data):
+    '''Change LED Brightness'''
+    brightness = data['brightness']
+    strip.setBrightness(brightness)
+    strip.show()
+    setOption("ledBrightness", brightness)
 
 @SOCKET_IO.on('set_option')
 def on_set_option(data):
@@ -3766,22 +3773,6 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             elif lap_id == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
 
-                        if node.index==0:
-                            onoff(strip, Color(0,0,255))  #BLUE
-                        elif node.index==1:
-                            onoff(strip, Color(255,50,0)) #ORANGE
-                        elif node.index==2:
-                            onoff(strip, Color(255,0,60)) #PINK
-                        elif node.index==3:
-                            onoff(strip, Color(150,0,255)) #PURPLE
-                        elif node.index==4:
-                            onoff(strip, Color(250,210,0)) #YELLOW
-                        elif node.index==5:
-                            onoff(strip, Color(0,255,255)) #CYAN
-                        elif node.index==6:
-                            onoff(strip, Color(0,255,0)) #GREEN
-                        elif node.index==7:
-                            onoff(strip, Color(255,0,0)) #RED
                 else:
                     server_log('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
@@ -3809,6 +3800,23 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
         emit_exit_at_level(node)
 
 def node_crossing_callback(node):
+    if node.crossing_flag:
+        if node.index==0:
+            onoff(strip, Color(0,31,255)) # Blue
+        elif node.index==1:
+            onoff(strip, Color(255,63,0)) # Orange
+        elif node.index==2:
+            onoff(strip, Color(127,255,0)) # Light Green
+        elif node.index==3:
+            onoff(strip, Color(255,255,0)) # Yellow
+        elif node.index==4:
+            onoff(strip, Color(127,0,255)) # Purple
+        elif node.index==5:
+            onoff(strip, Color(255,0,127)) # Pink
+        elif node.index==6:
+            onoff(strip, Color(63,255,63)) # Mint
+        elif node.index==7:
+            onoff(strip, Color(0,191,255)) # Sky
     emit_node_crossing_change(node)
 
 # set callback functions invoked by interface module
@@ -4033,6 +4041,8 @@ def db_reset_options_defaults():
     # event information
     setOption("eventName", __("FPV Race"))
     setOption("eventDescription", "")
+    # LED settings
+    setOption("ledBrightness", "32")
 
     server_log("Reset global settings")
 
