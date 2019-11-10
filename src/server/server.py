@@ -611,7 +611,7 @@ def isLedEnabled():
 
 def signal_handler(signal, frame):
     if isLedEnabled():
-        colorWipe(strip, Color(0,0,0))
+        onoff(strip, Color(0,0,0))
         sys.exit(0)
 
 # LED one color ON/OFF
