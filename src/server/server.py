@@ -153,6 +153,8 @@ RACE_STATUS_CROSSING = 'Waiting for cross'  # indicator for Most Laps Wins race
 
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 
+Pixel = None
+
 #
 # Slaves
 #
@@ -674,57 +676,6 @@ def theaterChaseRainbow(strip, wait_ms=25):
                 time.sleep(wait_ms/1000.0)
                 for i in range(0, strip.numPixels(), 3):
                     strip.setPixelColor(i+q, 0)
-
-# Create LED object with appropriate configuration.
-Pixel = None
-
-try:
-    pixelModule = importlib.import_module('rpi_ws281x')
-    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-    print 'LED: selecting library "rpi_ws2812x"'
-except ImportError:
-    pass
-
-try:
-    pixelModule = importlib.import_module('neopixel')
-    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-    print 'LED: selecting library "neopixel" (older)'
-except ImportError:
-    pass
-
-if Pixel != None:
-    Color = getattr(pixelModule, 'Color')
-    led_strip_config = Config['LED']['LED_STRIP']
-    if led_strip_config == 'RGB':
-        led_strip = 0x00100800
-    elif led_strip_config == 'RBG':
-        led_strip = 0x00100008
-    elif led_strip_config == 'GRB':
-        led_strip = 0x00081000
-    elif led_strip_config == 'GBR':
-        led_strip = 0x00080010
-    elif led_strip_config == 'BRG':
-        led_strip = 0x00001008
-    elif led_strip_config == 'BGR':
-        led_strip = 0x00000810
-    else:
-        print 'LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config)
-        Pixel = None
-    print 'LED: hardware GPIO enabled'
-else:
-    try:
-        pixelModule = importlib.import_module('ANSIPixel')
-        Pixel = getattr(pixelModule, 'ANSIPixel')
-        Color = getattr(pixelModule, 'Color')
-        led_strip = None
-        print 'LED: simulated via ANSIPixel (no physical LED support enabled)'
-    except ImportError:
-        print 'LED: disabled (no modules available)'
-
-if isLedEnabled():
-    strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], int(getOption("ledBrightness")), Config['LED']['LED_CHANNEL'], led_strip)
-    # Intialize the library (must be called once before other functions).
-    strip.begin()
 
 #
 # Authentication
@@ -4275,6 +4226,57 @@ on_set_profile({'profile': current_profile}, False)
 # Set current heat on startup
 if Heat.query.first():
     RACE.current_heat = Heat.query.first().heat_id
+
+# Create LED object with appropriate configuration.
+try:
+    pixelModule = importlib.import_module('rpi_ws281x')
+    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
+    print 'LED: selecting library "rpi_ws2812x"'
+except ImportError:
+    pass
+
+try:
+    pixelModule = importlib.import_module('neopixel')
+    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
+    print 'LED: selecting library "neopixel" (older)'
+except ImportError:
+    pass
+
+if Pixel != None:
+    Color = getattr(pixelModule, 'Color')
+    led_strip_config = Config['LED']['LED_STRIP']
+    if led_strip_config == 'RGB':
+        led_strip = 0x00100800
+    elif led_strip_config == 'RBG':
+        led_strip = 0x00100008
+    elif led_strip_config == 'GRB':
+        led_strip = 0x00081000
+    elif led_strip_config == 'GBR':
+        led_strip = 0x00080010
+    elif led_strip_config == 'BRG':
+        led_strip = 0x00001008
+    elif led_strip_config == 'BGR':
+        led_strip = 0x00000810
+    else:
+        print 'LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config)
+        Pixel = None
+    print 'LED: hardware GPIO enabled'
+else:
+    try:
+        pixelModule = importlib.import_module('ANSIPixel')
+        Pixel = getattr(pixelModule, 'ANSIPixel')
+        Color = getattr(pixelModule, 'Color')
+        led_strip = None
+        print 'LED: simulated via ANSIPixel (no physical LED support enabled)'
+    except ImportError:
+        print 'LED: disabled (no modules available)'
+
+if isLedEnabled():
+    # note: any calls to 'getOption()' need to happen after the DB initialization,
+    #       otherwise it causes problems when run with no existing DB file
+    strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], int(getOption("ledBrightness")), Config['LED']['LED_CHANNEL'], led_strip)
+    # Intialize the library (must be called once before other functions).
+    strip.begin()
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)
