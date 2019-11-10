@@ -1726,7 +1726,7 @@ def on_schedule_race(data):
     emit_priority_message(__("Next race begins in {0:01d}:{1:02d}".format(data['m'], data['s'])), True)
 
 @SOCKET_IO.on('cancel_schedule_race')
-def on_schedule_race():
+def cancel_schedule_race():
     global RACE_SCHEDULED
 
     RACE_SCHEDULED = False
