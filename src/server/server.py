@@ -237,8 +237,9 @@ class Slave:
             if last_split_ts is not None:
                 split_time = split_ts - last_split_ts
                 split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
-                server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3:.2f}' \
-                    .format(node_index+1, current_lap_id+1, time_format(split_time), split_speed))
+                server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
+                    .format(node_index+1, current_lap_id+1, time_format(split_time), \
+                    ('{0:.2f}'.format(split_speed) if split_speed <> None else 'None')))
 
                 DB.session.add(LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=current_lap_id, split_id=split_id, \
                     split_time_stamp=split_ts, split_time=split_time, split_time_formatted=time_format(split_time), \
@@ -2392,7 +2393,7 @@ def get_splits(node, lap_id, lapCompleted):
                 'split_id': slave_index,
                 'split_raw': split.split_time,
                 'split_time': split.split_time_formatted,
-                'split_speed': '{0:.2f}'.format(split.split_speed)
+                'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed <> None else '-'
             }
         elif lapCompleted:
             split_payload = {
