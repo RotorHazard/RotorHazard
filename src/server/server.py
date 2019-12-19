@@ -4270,6 +4270,9 @@ else:
         led_strip = None
         print 'LED: simulated via ANSIPixel (no physical LED support enabled)'
     except ImportError:
+        strip = None
+        Color = lambda r, g, b:None
+        led_strip = None
         print 'LED: disabled (no modules available)'
 
 if isLedEnabled():
