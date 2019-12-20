@@ -2,6 +2,7 @@
 import sys
 import unittest
 import socketio
+from datetime import datetime
 
 sys.path.append('../server')
 
@@ -10,6 +11,9 @@ import server
 class ServerTest(unittest.TestCase):
     def setUp(self):
         self.client = server.SOCKET_IO.test_client(server.APP)
+
+    def tearDown(self):
+        self.client.disconnect()
 
     def get_response(self, event):
         responses = self.client.get_received()
@@ -52,7 +56,7 @@ class ServerTest(unittest.TestCase):
 
     def test_alter_profile(self):
         data = {
-        	'profile_name': 'Test',
+        	'profile_name': 'Test ' + str(datetime.now()),
         	'profile_description': 'Testing'
         }
         self.client.emit('alter_profile', data)
@@ -70,7 +74,7 @@ class ServerTest(unittest.TestCase):
 
     def test_alter_race_format(self):
         data = {
-        	'format_name': 'Test',
+        	'format_name': 'Test ' + str(datetime.now()),
         	'race_mode': 0,
         	'race_time': 30,
         	'start_delay_min': 1,
