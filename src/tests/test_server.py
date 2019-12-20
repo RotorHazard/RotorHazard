@@ -2,11 +2,14 @@
 import sys
 import unittest
 import socketio
+import gevent
 from datetime import datetime
 
 sys.path.append('../server')
+sys.path.append('../interface')
 
 import server
+from Node import Node
 
 class ServerTest(unittest.TestCase):
     def setUp(self):
@@ -138,3 +141,73 @@ class ServerTest(unittest.TestCase):
         self.assertEquals(resp['heats'][1]['pilots'][0], data['pilot'])
         self.assertEquals(resp['heats'][1]['note'], data['note'])
         self.assertEquals(resp['heats'][1]['class_id'], data['class'])
+
+# verify LiveTime compatibility
+
+    def test_livetime_get_version(self):
+        resp = self.client.emit('get_version', callback=True)
+        self.assertIn('major', resp)
+        self.assertIn('minor', resp)
+
+    def test_livetime_get_timestamp(self):
+        resp = self.client.emit('get_timestamp', callback=True)
+        self.assertIn('timestamp', resp)
+
+    def test_livetime_get_settings(self):
+        resp = self.client.emit('get_settings', callback=True)
+        self.assertIn('nodes', resp)
+        for n in resp['nodes']:
+            self.assertTrue('frequency' in n)
+            self.assertTrue('trigger_rssi' in n)
+
+    def test_livetime_set_calibration_threshold(self):
+        self.client.emit('set_calibration_threshold', {
+            'calibration_threshold': 0
+        })
+
+    def test_livetime_set_calibration_offset(self):
+        self.client.emit('set_calibration_offset', {
+            'calibration_offset': 0
+        })
+
+    def test_livetime_set_trigger_threshold(self):
+        self.client.emit('set_trigger_threshold', {
+            'trigger_threshold': 0
+        })
+
+    def test_livetime_set_frequency(self):
+        data = {
+            'node': 0,
+            'frequency': 5800
+        }
+        # trigger livetime client mode
+        self.client.emit('get_version')
+        self.client.emit('set_frequency', data)
+        actual = self.get_response('frequency_set')
+        self.assertEquals(actual, data)
+
+    def test_livetime_reset_auto_calibration(self):
+        self.client.emit('reset_auto_calibration', {
+            'node': -1
+        })
+
+    def test_livetime_heartbeat(self):
+        # trigger livetime client mode
+        self.client.emit('get_version')
+        gevent.sleep(0.5)
+        resp = self.get_response('heartbeat')
+        self.assertIn('current_rssi', resp)
+        self.assertTrue(len(resp['current_rssi']) > 0)
+
+    def test_livetime_pass_record(self):
+        # trigger livetime client mode
+        self.client.emit('get_version')
+        server.RACE.race_status = 1
+        node = Node()
+        node.index = 0
+        server.pass_record_callback(node, server.RACE_START + 19.8, 0)
+        resp = self.get_response('pass_record')
+        self.assertIn('node', resp)
+        self.assertIn('frequency', resp)
+        self.assertIn('timestamp', resp)
+        self.assertEqual(resp['timestamp'], server.monotonic_to_milliseconds(server.RACE_START) + 19800)
