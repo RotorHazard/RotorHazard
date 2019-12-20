@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 from __builtin__ import True
-RELEASE_VERSION = "2.0.2" # Public release version code
-SERVER_API = 23 # Server API version
+RELEASE_VERSION = "2.1.0 (dev 0)" # Public release version code
+SERVER_API = 24 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 18 # Most recent node API
 JSON_API = 2 # JSON API version
@@ -79,7 +79,6 @@ Config['LED']['LED_COUNT']      = 150      # Number of LED pixels.
 Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
 Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
 Config['LED']['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
-Config['LED']['LED_BRIGHTNESS'] = 255     # Set to 0 for darkest and 255 for brightest
 Config['LED']['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
 Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
@@ -153,6 +152,8 @@ RACE_STATUS_TIED_STR = 'Race is tied; continuing'  # shown when Most Laps Wins r
 RACE_STATUS_CROSSING = 'Waiting for cross'  # indicator for Most Laps Wins race
 
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
+
+Pixel = None
 
 #
 # Slaves
@@ -236,8 +237,9 @@ class Slave:
             if last_split_ts is not None:
                 split_time = split_ts - last_split_ts
                 split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
-                server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3:.2f}' \
-                    .format(node_index+1, current_lap_id+1, time_format(split_time), split_speed))
+                server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
+                    .format(node_index+1, current_lap_id+1, time_format(split_time), \
+                    ('{0:.2f}'.format(split_speed) if split_speed <> None else 'None')))
 
                 DB.session.add(LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=current_lap_id, split_id=split_id, \
                     split_time_stamp=split_ts, split_time=split_time, split_time_formatted=time_format(split_time), \
@@ -612,7 +614,7 @@ def isLedEnabled():
 
 def signal_handler(signal, frame):
     if isLedEnabled():
-        colorWipe(strip, Color(0,0,0))
+        onoff(strip, Color(0,0,0))
         sys.exit(0)
 
 # LED one color ON/OFF
@@ -675,57 +677,6 @@ def theaterChaseRainbow(strip, wait_ms=25):
                 time.sleep(wait_ms/1000.0)
                 for i in range(0, strip.numPixels(), 3):
                     strip.setPixelColor(i+q, 0)
-
-# Create LED object with appropriate configuration.
-Pixel = None
-
-try:
-    pixelModule = importlib.import_module('rpi_ws281x')
-    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-    print 'LED: selecting library "rpi_ws2812x"'
-except ImportError:
-    pass
-
-try:
-    pixelModule = importlib.import_module('neopixel')
-    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-    print 'LED: selecting library "neopixel" (older)'
-except ImportError:
-    pass
-
-if Pixel != None:
-    Color = getattr(pixelModule, 'Color')
-    led_strip_config = Config['LED']['LED_STRIP']
-    if led_strip_config == 'RGB':
-        led_strip = 0x00100800
-    elif led_strip_config == 'RBG':
-        led_strip = 0x00100008
-    elif led_strip_config == 'GRB':
-        led_strip = 0x00081000
-    elif led_strip_config == 'GBR':
-        led_strip = 0x00080010
-    elif led_strip_config == 'BRG':
-        led_strip = 0x00001008
-    elif led_strip_config == 'BGR':
-        led_strip = 0x00000810
-    else:
-        print 'LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config)
-        Pixel = None
-    print 'LED: hardware GPIO enabled'
-else:
-    try:
-        pixelModule = importlib.import_module('ANSIPixel')
-        Pixel = getattr(pixelModule, 'ANSIPixel')
-        Color = getattr(pixelModule, 'Color')
-        led_strip = None
-        print 'LED: simulated via ANSIPixel (no physical LED support enabled)'
-    except ImportError:
-        print 'LED: disabled (no modules available)'
-
-if isLedEnabled():
-    strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
-    # Intialize the library (must be called once before other functions).
-    strip.begin()
 
 #
 # Authentication
@@ -1727,7 +1678,7 @@ def on_schedule_race(data):
     emit_priority_message(__("Next race begins in {0:01d}:{1:02d}".format(data['m'], data['s'])), True)
 
 @SOCKET_IO.on('cancel_schedule_race')
-def on_schedule_race():
+def cancel_schedule_race():
     global RACE_SCHEDULED
 
     RACE_SCHEDULED = False
@@ -2196,6 +2147,14 @@ def on_LED_RBCYCLE():
 def on_LED_RBCHASE():
     theaterChaseRainbow(strip) #Rainbow Chase
 
+@SOCKET_IO.on('LED_brightness')
+def on_LED_brightness(data):
+    '''Change LED Brightness'''
+    brightness = data['brightness']
+    strip.setBrightness(brightness)
+    strip.show()
+    setOption("ledBrightness", brightness)
+
 @SOCKET_IO.on('set_option')
 def on_set_option(data):
     setOption(data['option'], data['value'])
@@ -2434,7 +2393,7 @@ def get_splits(node, lap_id, lapCompleted):
                 'split_id': slave_index,
                 'split_raw': split.split_time,
                 'split_time': split.split_time_formatted,
-                'split_speed': '{0:.2f}'.format(split.split_speed)
+                'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed <> None else '-'
             }
         elif lapCompleted:
             split_payload = {
@@ -3766,22 +3725,6 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             elif lap_id == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
 
-                        if node.index==0:
-                            onoff(strip, Color(0,0,255))  #BLUE
-                        elif node.index==1:
-                            onoff(strip, Color(255,50,0)) #ORANGE
-                        elif node.index==2:
-                            onoff(strip, Color(255,0,60)) #PINK
-                        elif node.index==3:
-                            onoff(strip, Color(150,0,255)) #PURPLE
-                        elif node.index==4:
-                            onoff(strip, Color(250,210,0)) #YELLOW
-                        elif node.index==5:
-                            onoff(strip, Color(0,255,255)) #CYAN
-                        elif node.index==6:
-                            onoff(strip, Color(0,255,0)) #GREEN
-                        elif node.index==7:
-                            onoff(strip, Color(255,0,0)) #RED
                 else:
                     server_log('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
@@ -3809,6 +3752,23 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
         emit_exit_at_level(node)
 
 def node_crossing_callback(node):
+    if node.crossing_flag:
+        if node.index==0:
+            onoff(strip, Color(0,31,255)) # Blue
+        elif node.index==1:
+            onoff(strip, Color(255,63,0)) # Orange
+        elif node.index==2:
+            onoff(strip, Color(127,255,0)) # Light Green
+        elif node.index==3:
+            onoff(strip, Color(255,255,0)) # Yellow
+        elif node.index==4:
+            onoff(strip, Color(127,0,255)) # Purple
+        elif node.index==5:
+            onoff(strip, Color(255,0,127)) # Pink
+        elif node.index==6:
+            onoff(strip, Color(63,255,63)) # Mint
+        elif node.index==7:
+            onoff(strip, Color(0,191,255)) # Sky
     emit_node_crossing_change(node)
 
 # set callback functions invoked by interface module
@@ -4033,6 +3993,8 @@ def db_reset_options_defaults():
     # event information
     setOption("eventName", __("FPV Race"))
     setOption("eventDescription", "")
+    # LED settings
+    setOption("ledBrightness", "32")
 
     server_log("Reset global settings")
 
@@ -4265,6 +4227,60 @@ on_set_profile({'profile': current_profile}, False)
 # Set current heat on startup
 if Heat.query.first():
     RACE.current_heat = Heat.query.first().heat_id
+
+# Create LED object with appropriate configuration.
+try:
+    pixelModule = importlib.import_module('rpi_ws281x')
+    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
+    print 'LED: selecting library "rpi_ws2812x"'
+except ImportError:
+    pass
+
+try:
+    pixelModule = importlib.import_module('neopixel')
+    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
+    print 'LED: selecting library "neopixel" (older)'
+except ImportError:
+    pass
+
+if Pixel != None:
+    Color = getattr(pixelModule, 'Color')
+    led_strip_config = Config['LED']['LED_STRIP']
+    if led_strip_config == 'RGB':
+        led_strip = 0x00100800
+    elif led_strip_config == 'RBG':
+        led_strip = 0x00100008
+    elif led_strip_config == 'GRB':
+        led_strip = 0x00081000
+    elif led_strip_config == 'GBR':
+        led_strip = 0x00080010
+    elif led_strip_config == 'BRG':
+        led_strip = 0x00001008
+    elif led_strip_config == 'BGR':
+        led_strip = 0x00000810
+    else:
+        print 'LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config)
+        Pixel = None
+    print 'LED: hardware GPIO enabled'
+else:
+    try:
+        pixelModule = importlib.import_module('ANSIPixel')
+        Pixel = getattr(pixelModule, 'ANSIPixel')
+        Color = getattr(pixelModule, 'Color')
+        led_strip = None
+        print 'LED: simulated via ANSIPixel (no physical LED support enabled)'
+    except ImportError:
+        strip = None
+        Color = lambda r, g, b:None
+        led_strip = None
+        print 'LED: disabled (no modules available)'
+
+if isLedEnabled():
+    # note: any calls to 'getOption()' need to happen after the DB initialization,
+    #       otherwise it causes problems when run with no existing DB file
+    strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], int(getOption("ledBrightness")), Config['LED']['LED_CHANNEL'], led_strip)
+    # Intialize the library (must be called once before other functions).
+    strip.begin()
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)

@@ -2,6 +2,7 @@
 
 <script type="text/javascript" charset="utf-8">
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	var request_time;
 	var request_pi_time;
@@ -48,14 +49,33 @@
 			var server_delay = response_time - rotorhazard.pi_time_request;
 			var server_oneway = server_delay ? server_delay / 2 : server_delay;
 
-			var pi_time_diff = (msg.pi_time_s * 1000) - response_time - server_oneway; // convert seconds (pi) to millis (JS)
-			pi_sync_change = pi_time_diff - rotorhazard.pi_time_diff;
+			var pi_time_diff = {
+				'differential': (msg.pi_time_s * 1000) - response_time - server_oneway, // convert seconds (pi) to millis (JS)
+				'response': parseFloat(server_delay)
+			}
 
 			// store sync sample
 			rotorhazard.pi_time_diff_samples.push(pi_time_diff);
 
+			// sort stored samples
+			rotorhazard.pi_time_diff_samples.sort(function(a, b){
+				return a.response - b.response;
+			})
+
+			// remove unusable samples
+			var diff_min = rotorhazard.pi_time_diff_samples[0].differential - rotorhazard.pi_time_diff_samples[0].response
+			var diff_max = rotorhazard.pi_time_diff_samples[0].differential + rotorhazard.pi_time_diff_samples[0].response
+
+			rotorhazard.pi_time_diff_samples = rotorhazard.pi_time_diff_samples.filter(function(value, index, array) {
+				return value.differential > diff_min && value.differential < diff_max;
+			});
+
 			// get filtered value
-			rotorhazard.pi_time_diff = median(rotorhazard.pi_time_diff_samples);
+			var a = [];
+			for (var i in rotorhazard.pi_time_diff_samples) {
+				a.push(rotorhazard.pi_time_diff_samples[i].differential);
+			}
+			rotorhazard.pi_time_diff = median(a);
 
 			// pass current sync to timer
 			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
@@ -131,7 +151,8 @@
 		$('#schedule_m').val(rotorhazard.schedule_m);
 		$('#schedule_s').val(rotorhazard.schedule_s);
 
-
+		$('#set_led_brightness').val(brightness_logsl.position(rotorhazard.led_brightness));
+		$('#led_brightness_value').html($('#set_led_brightness').val());
 
 		// set up node local store
 		for (i = 0; i < {{ num_nodes }}; i++) {
@@ -156,6 +177,7 @@
 
 			switch (msg.race_status) {
 				case 1: // Race running
+					rotorhazard.race_status_go_time = window.performance.now();
 					$('#set_current_heat').prop('disabled', true);
 					$('button#start_race').prop('disabled', true);
 					$('button#stop_race').prop('disabled', false);
@@ -917,6 +939,31 @@
 			return false;
 		});
 
+		$('#set_led_brightness').on('input', function (event) {
+			var val = brightness_logsl.value($(this).val());
+			$('#led_brightness_value').html($(this).val());
+		});
+
+		$('#set_led_brightness').change(function (event) {
+			var val = brightness_logsl.value($(this).val());
+			// emit data
+			var data = {
+				brightness: Math.round(val),
+			};
+			socket.emit('LED_brightness', data);
+		});
+
+		$('#set_led_color').change(function (event) {
+				var colors = convertColor($(this).val());
+				var data = {
+					red: colors.r,
+					green: colors.g,
+					blue: colors.b,
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
 		/* Other */
 		$('.open-mfp-popup-tuning').magnificPopup({
 			type:'inline',
@@ -1320,6 +1367,21 @@
 			<button class="LED-chase" data-rgb="#00ff00"><img src="../static/image/LED-chase-green.png"></button>
 			<button class="LED-chase" data-rgb="#ff0000"><img src="../static/image/LED-chase-red.png"></button>
 		</div>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_led_brightness">{{ __('LED Brightness') }}</label>
+					<p class="desc">{{ __('Level') }}: <span id="led_brightness_value"></span></p>
+				</div>
+				<input type="range" id="set_led_brightness" min="1" max="25">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_led_color">{{ __('LED Color') }}</label>
+				</div>
+				<input type="color" id="set_led_color" />
+			</li>
+		</ol>
 	</div>
 </div>
 

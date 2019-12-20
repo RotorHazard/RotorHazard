@@ -43,14 +43,33 @@
 			var server_delay = response_time - rotorhazard.pi_time_request;
 			var server_oneway = server_delay ? server_delay / 2 : server_delay;
 
-			var pi_time_diff = (msg.pi_time_s * 1000) - response_time - server_oneway; // convert seconds (pi) to millis (JS)
-			pi_sync_change = pi_time_diff - rotorhazard.pi_time_diff;
+			var pi_time_diff = {
+				'differential': (msg.pi_time_s * 1000) - response_time - server_oneway, // convert seconds (pi) to millis (JS)
+				'response': parseFloat(server_delay)
+			}
 
 			// store sync sample
 			rotorhazard.pi_time_diff_samples.push(pi_time_diff);
 
+			// sort stored samples
+			rotorhazard.pi_time_diff_samples.sort(function(a, b){
+				return a.response - b.response;
+			})
+
+			// remove unusable samples
+			var diff_min = rotorhazard.pi_time_diff_samples[0].differential - rotorhazard.pi_time_diff_samples[0].response
+			var diff_max = rotorhazard.pi_time_diff_samples[0].differential + rotorhazard.pi_time_diff_samples[0].response
+
+			rotorhazard.pi_time_diff_samples = rotorhazard.pi_time_diff_samples.filter(function(value, index, array) {
+				return value.differential > diff_min && value.differential < diff_max;
+			});
+
 			// get filtered value
-			rotorhazard.pi_time_diff = median(rotorhazard.pi_time_diff_samples);
+			var a = [];
+			for (var i in rotorhazard.pi_time_diff_samples) {
+				a.push(rotorhazard.pi_time_diff_samples[i].differential);
+			}
+			rotorhazard.pi_time_diff = median(a);
 
 			// pass current sync to timer
 			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
@@ -60,7 +79,7 @@
 				setTimeout(function(){
 					rotorhazard.pi_time_request = window.performance.now();
 					socket.emit('get_pi_time');
-				}, (Math.random() * 250) + 250); // 0.25 to 0.5s delay
+				}, (Math.random() * 500) + 250); // 0.25 to 0.75s delay
 			}
 		});
 
@@ -128,6 +147,7 @@
 		socket.on('race_status', function (msg) {
 			switch (msg.race_status) {
 				case 1: // Race running
+					rotorhazard.race_status_go_time = window.performance.now();
 					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
