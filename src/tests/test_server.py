@@ -31,7 +31,7 @@ class ServerTest(unittest.TestCase):
         self.assertEquals(len(resp['pilots']), num_pilots+1)
 
     def test_alter_pilot(self):
-        for i in range(1, 9):
+        for i in range(1, len(server.INTERFACE.nodes)):
 	        data = {
 	        	'pilot_id': i,
 	        	'callsign': 'Test '+str(i),
