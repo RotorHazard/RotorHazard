@@ -45,7 +45,7 @@
 
 			var pi_time_diff = {
 				'differential': (msg.pi_time_s * 1000) - response_time - server_oneway, // convert seconds (pi) to millis (JS)
-				'response': server_delay
+				'response': parseFloat(server_delay)
 			}
 
 			// store sync sample
@@ -56,15 +56,20 @@
 				return a.response - b.response;
 			})
 
-			var a = 0;
-			for (var i in rotorhazard.pi_time_diff_samples) {
-				if (i >= 3) break; // use only best 3 samples
+			// remove unusable samples
+			var diff_min = rotorhazard.pi_time_diff_samples[0].differential - rotorhazard.pi_time_diff_samples[0].response
+			var diff_max = rotorhazard.pi_time_diff_samples[0].differential + rotorhazard.pi_time_diff_samples[0].response
 
-				a += rotorhazard.pi_time_diff_samples[i].differential;
-			}
+			rotorhazard.pi_time_diff_samples = rotorhazard.pi_time_diff_samples.filter(function(value, index, array) {
+				return value.differential > diff_min && value.differential < diff_max;
+			});
 
 			// get filtered value
-			rotorhazard.pi_time_diff = a / i;
+			var a = [];
+			for (var i in rotorhazard.pi_time_diff_samples) {
+				a.push(rotorhazard.pi_time_diff_samples[i].differential);
+			}
+			rotorhazard.pi_time_diff = median(a);
 
 			// pass current sync to timer
 			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
@@ -142,6 +147,7 @@
 		socket.on('race_status', function (msg) {
 			switch (msg.race_status) {
 				case 1: // Race running
+					rotorhazard.race_status_go_time = window.performance.now();
 					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
