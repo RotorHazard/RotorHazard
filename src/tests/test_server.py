@@ -15,6 +15,9 @@ class ServerTest(unittest.TestCase):
     def setUp(self):
         self.client = server.SOCKET_IO.test_client(server.APP)
 
+    def tearDown(self):
+        self.client.disconnect()
+
     def get_response(self, event):
         responses = self.client.get_received()
         for resp in responses:
@@ -31,7 +34,7 @@ class ServerTest(unittest.TestCase):
         self.assertEquals(len(resp['pilots']), num_pilots+1)
 
     def test_alter_pilot(self):
-        for i in range(1, 9):
+        for i in range(1, len(server.INTERFACE.nodes)):
 	        data = {
 	        	'pilot_id': i,
 	        	'callsign': 'Test '+str(i),
@@ -56,7 +59,7 @@ class ServerTest(unittest.TestCase):
 
     def test_alter_profile(self):
         data = {
-        	'profile_name': 'Test',
+        	'profile_name': 'Test ' + str(datetime.now()),
         	'profile_description': 'Testing'
         }
         self.client.emit('alter_profile', data)
@@ -74,7 +77,7 @@ class ServerTest(unittest.TestCase):
 
     def test_alter_race_format(self):
         data = {
-        	'format_name': 'Test',
+        	'format_name': 'Test ' + str(datetime.now()),
         	'race_mode': 0,
         	'race_time': 30,
         	'start_delay_min': 1,

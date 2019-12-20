@@ -1,5 +1,6 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.0.0" # Public release version code
+from __builtin__ import True
+RELEASE_VERSION = "2.0.2" # Public release version code
 SERVER_API = 23 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 18 # Most recent node API
@@ -12,6 +13,7 @@ import base64
 import subprocess
 import importlib
 import bisect
+import socketio
 from monotonic import monotonic
 from datetime import datetime
 from functools import wraps
@@ -39,7 +41,6 @@ from RHRace import get_race_state
 
 APP = Flask(__name__, static_url_path='/static')
 APP.config['SECRET_KEY'] = 'secret!'
-SOCKET_IO = SocketIO(APP, async_mode='gevent')
 
 HEARTBEAT_THREAD = None
 
@@ -64,7 +65,7 @@ IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 DEF_TEAM_NAME = 'A'  # default team
 
-BASEDIR = os.path.abspath(os.path.dirname(__file__))
+BASEDIR = os.getcwd()
 APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 DB = SQLAlchemy(APP)
@@ -87,7 +88,10 @@ Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
 Config['GENERAL']['HTTP_PORT'] = 5000
 Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
 Config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
+Config['GENERAL']['SLAVES'] = []
+Config['GENERAL']['SLAVE_TIMEOUT'] = 300 # seconds
 Config['GENERAL']['DEBUG'] = False
+Config['GENERAL']['CORS_ALLOWED_HOSTS'] = '*'
 
 Config['GENERAL']['NODE_DRIFT_CALC_TIME'] = 10
 
@@ -107,6 +111,8 @@ except ValueError:
     Config['GENERAL']['configFile'] = -1
     print 'Configuration file invalid, using defaults'
 
+# start SocketIO service
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENERAL']['CORS_ALLOWED_HOSTS'])
 
 try:
     interfaceModule = importlib.import_module('RHInterface')
@@ -122,11 +128,12 @@ def diff_milliseconds(t2, t1):
 
 EPOCH_START = datetime(1970, 1, 1)
 PROGRAM_START_TIMESTAMP = diff_milliseconds(datetime.now(), EPOCH_START)
+print 'Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP)
 PROGRAM_START = monotonic()
 PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
 
-def monotonic_to_milliseconds(t):
-    return 1000.0*t - PROGRAM_START_MILLIS_OFFSET
+def monotonic_to_milliseconds(secs):
+    return 1000.0*secs - PROGRAM_START_MILLIS_OFFSET
 
 RACE_START = monotonic() # Updated on race start commands
 RACE_START_TOKEN = False # Check start thread matches correct stage sequence
@@ -146,6 +153,140 @@ RACE_STATUS_TIED_STR = 'Race is tied; continuing'  # shown when Most Laps Wins r
 RACE_STATUS_CROSSING = 'Waiting for cross'  # indicator for Most Laps Wins race
 
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
+
+#
+# Slaves
+#
+
+class Slave:
+
+    TIMER_MODE = 'timer'
+    MIRROR_MODE = 'mirror'
+
+    def __init__(self, id, info):
+        self.id = id
+        self.info = info
+        addr = info['address']
+        if not '://' in addr:
+            addr = 'http://'+addr
+        self.address = addr
+        self.lastContact = -1
+        self.sio = socketio.Client()
+        self.sio.on('connect', self.on_connect)
+        self.sio.on('disconnect', self.on_disconnect)
+        self.sio.on('pass_record', self.on_pass_record)
+
+    def reconnect(self):
+        if self.lastContact == -1:
+            startConnectTime = monotonic()
+            print "Slave {0}: connecting to {1}...".format(self.id+1, self.address)
+            while monotonic() < startConnectTime + self.info['timeout']:
+                try:
+                    self.sio.connect(self.address)
+                    print "Slave {0}: connected to {1}".format(self.id+1, self.address)
+                    return True
+                except socketio.exceptions.ConnectionError:
+                    gevent.sleep(0.1)
+            print "Slave {0}: connection to {1} failed!".format(self.id+1, self.address)
+            return False
+
+    def emit(self, event, data = None):
+        if self.reconnect():
+            self.sio.emit(event, data)
+            self.lastContact = monotonic()
+
+    def on_connect(self):
+        self.lastContact = monotonic()
+
+    def on_disconnect(self):
+        self.lastContact = -1
+
+    def on_pass_record(self, data):
+        self.lastContact = monotonic()
+        node_index = data['node']
+        pilot_id = Heat.query.filter_by( \
+            heat_id=RACE.current_heat, node_index=node_index).one_or_none().pilot_id
+
+        if pilot_id != PILOT_ID_NONE:
+
+            split_ts = data['timestamp'] + (PROGRAM_START_MILLIS_OFFSET - 1000.0*RACE_START)
+            last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)).filter_by(node_index=node_index).scalar()
+            if last_lap_id is None: # first lap
+                current_lap_id = 0
+                last_lap_ts = 0
+            else:
+                current_lap_id = last_lap_id + 1
+                last_lap_ts = CurrentLap.query.filter_by(node_index=node_index, lap_id=last_lap_id).one().lap_time_stamp
+
+            split_id = self.id
+            last_split_id = DB.session.query(DB.func.max(LapSplit.split_id)).filter_by(node_index=node_index, lap_id=current_lap_id).scalar()
+            if last_split_id is None: # first split for this lap
+                if split_id > 0:
+                    server_log('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
+                last_split_ts = last_lap_ts
+            else:
+                if split_id > last_split_id:
+                    if split_id > last_split_id + 1:
+                        server_log('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
+                    last_split_ts = LapSplit.query.filter_by(node_index=node_index, lap_id=current_lap_id, split_id=last_split_id).one().split_time_stamp
+                else:
+                    server_log('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
+                    last_split_ts = None
+
+            if last_split_ts is not None:
+                split_time = split_ts - last_split_ts
+                split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
+                server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3:.2f}' \
+                    .format(node_index+1, current_lap_id+1, time_format(split_time), split_speed))
+
+                DB.session.add(LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=current_lap_id, split_id=split_id, \
+                    split_time_stamp=split_ts, split_time=split_time, split_time_formatted=time_format(split_time), \
+                    split_speed=split_speed))
+                DB.session.commit()
+                emit_current_laps() # update all laps on the race page
+        else:
+            server_log('Split pass record dismissed: Node: {0}, Frequency not defined' \
+                .format(node_index+1))
+
+class Cluster:
+    def __init__(self):
+        self.slaves = []
+
+    def addSlave(self, slave):
+        slave.emit('join_cluster')
+        self.slaves.append(slave)
+
+    def emit(self, event, data = None):
+        for slave in self.slaves:
+            gevent.spawn(slave.emit, event, data)
+
+    def emitToMirrors(self, event, data = None):
+        for slave in self.slaves:
+            if slave.info['mode'] == Slave.MIRROR_MODE:
+                gevent.spawn(slave.emit, event, data)
+
+    def emitStatus(self):
+        now = monotonic()
+        SOCKET_IO.emit('cluster_status', {'slaves': [ \
+            {'address': slave.address, \
+            'last_contact': int(now-slave.lastContact) if slave.lastContact >= 0 else 'connection lost' \
+            }] for slave in self.slaves})
+
+CLUSTER = Cluster()
+hasMirrors = False
+for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
+    if isinstance(slave_info, basestring):
+        slave_info = {'address': slave_info, 'mode': Slave.TIMER_MODE}
+    if 'timeout' not in slave_info:
+        slave_info['timeout'] = Config['GENERAL']['SLAVE_TIMEOUT']
+    isMirror = (slave_info['mode'] == Slave.MIRROR_MODE)
+    if isMirror:
+        hasMirrors = True
+    elif hasMirrors:
+        print '** Mirror slaves must be last - ignoring remaining slave config **'
+        break
+    slave = Slave(index, slave_info)
+    CLUSTER.addSlave(slave)
 
 #
 # Translation functions
@@ -251,107 +392,13 @@ def buildServerInfo():
 
     return serverInfo
 
-
-#
-# LED Code
-#
-
-def signal_handler(signal, frame):
-        colorWipe(strip, Color(0,0,0))
-        sys.exit(0)
-
-# LED one color ON/OFF
-def onoff(strip, color):
-    for i in range(strip.numPixels()):
-        strip.setPixelColor(i, color)
-    strip.show()
-
-def theaterChase(strip, color, wait_ms=50, iterations=5):
-    """Movie theater light style chaser animation."""
-    for j in range(iterations):
-        for q in range(3):
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, color)
-            strip.show()
-            time.sleep(wait_ms/1000.0)
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, 0)
-
-def wheel(pos):
-    """Generate rainbow colors across 0-255 positions."""
-    if pos < 85:
-        return Color(pos * 3, 255 - pos * 3, 0)
-    elif pos < 170:
-        pos -= 85
-        return Color(255 - pos * 3, 0, pos * 3)
-    else:
-        pos -= 170
-        return Color(0, pos * 3, 255 - pos * 3)
-
-def rainbow(strip, wait_ms=2, iterations=1):
-    """Draw rainbow that fades across all pixels at once."""
-    for j in range(256*iterations):
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(i, wheel((i+j) & 255))
-        strip.show()
-        time.sleep(wait_ms/1000.0)
-
-def rainbowCycle(strip, wait_ms=2, iterations=1):
-    """Draw rainbow that uniformly distributes itself across all pixels."""
-    for j in range(256*iterations):
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
-        strip.show()
-        time.sleep(wait_ms/1000.0)
-
-def theaterChaseRainbow(strip, wait_ms=25):
-    """Rainbow movie theater light style chaser animation."""
-    for j in range(256):
-        for q in range(3):
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, wheel((i+j) % 255))
-            strip.show()
-            time.sleep(wait_ms/1000.0)
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i+q, 0)
-
-# Create NeoPixel object with appropriate configuration.
-try:
-    pixelModule = importlib.import_module('rpi_ws281x')
-    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-    Color = getattr(pixelModule, 'Color')
-    led_strip_config = Config['LED']['LED_STRIP']
-    if led_strip_config == 'RGB':
-        led_strip = 0x00100800
-    elif led_strip_config == 'RBG':
-        led_strip = 0x00100008
-    elif led_strip_config == 'GRB':
-        led_strip = 0x00081000
-    elif led_strip_config == 'GBR':
-        led_strip = 0x00080010
-    elif led_strip_config == 'BRG':
-        led_strip = 0x00001008
-    elif led_strip_config == 'BGR':
-        led_strip = 0x00000810
-    else:
-        raise ValueError('Invalid LED_STRIP value: {0}'.format(led_strip_config))
-except ImportError:
-    pixelModule = importlib.import_module('ANSIPixel')
-    Pixel = getattr(pixelModule, 'ANSIPixel')
-    Color = getattr(pixelModule, 'Color')
-    led_strip = None
-strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
-# Intialize the library (must be called once before other functions).
-strip.begin()
-
-
 #
 # Database Models
 #
 
 class Pilot(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
-    callsign = DB.Column(DB.String(80), unique=True, nullable=False)
+    callsign = DB.Column(DB.String(80), nullable=False)
     team = DB.Column(DB.String(80), nullable=False, default=DEF_TEAM_NAME)
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
@@ -391,6 +438,20 @@ class CurrentLap(DB.Model):
 
     def __repr__(self):
         return '<CurrentLap %r>' % self.pilot_id
+
+class LapSplit(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    node_index = DB.Column(DB.Integer, nullable=False)
+    pilot_id = DB.Column(DB.Integer, nullable=False)
+    lap_id = DB.Column(DB.Integer, nullable=False)
+    split_id = DB.Column(DB.Integer, nullable=False)
+    split_time_stamp = DB.Column(DB.Integer, nullable=False)
+    split_time = DB.Column(DB.Integer, nullable=False)
+    split_time_formatted = DB.Column(DB.Integer, nullable=False)
+    split_speed = DB.Column(DB.Float, nullable=True)
+
+    def __repr__(self):
+        return '<LapSplit %r>' % self.pilot_id
 
 class SavedRaceMeta(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
@@ -440,7 +501,7 @@ LAP_SOURCE_RECALC = 2
 
 class Profiles(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), unique=True, nullable=False)
+    name = DB.Column(DB.String(80), nullable=False)
     description = DB.Column(DB.String(256), nullable=True)
     frequencies = DB.Column(DB.String(80), nullable=False)
     enter_ats = DB.Column(DB.String(80), nullable=True)
@@ -449,7 +510,7 @@ class Profiles(DB.Model):
 
 class RaceFormat(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), unique=True, nullable=False)
+    name = DB.Column(DB.String(80), nullable=False)
     race_mode = DB.Column(DB.Integer, nullable=False)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
     start_delay_min = DB.Column(DB.Integer, nullable=False)
@@ -475,7 +536,7 @@ class GlobalSettings(DB.Model):
 
 def getOption(option, default_value=False):
     try:
-        settings = GlobalSettings.query.filter_by(option_name=option).first()
+        settings = GlobalSettings.query.filter_by(option_name=option).one_or_none()
         if settings:
             return settings.option_value
         else:
@@ -484,7 +545,7 @@ def getOption(option, default_value=False):
         return default_value
 
 def setOption(option, value):
-    settings = GlobalSettings.query.filter_by(option_name=option).first()
+    settings = GlobalSettings.query.filter_by(option_name=option).one_or_none()
     if settings:
         settings.option_value = value
     else:
@@ -541,6 +602,130 @@ class RHRaceFormat():
     @classmethod
     def isDbBased(cls, race_format):
         return hasattr(race_format, 'id')
+
+#
+# LED Code
+#
+
+def isLedEnabled():
+    return Pixel is not None
+
+def signal_handler(signal, frame):
+    if isLedEnabled():
+        colorWipe(strip, Color(0,0,0))
+        sys.exit(0)
+
+# LED one color ON/OFF
+def onoff(strip, color):
+    if isLedEnabled():
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, color)
+        strip.show()
+
+def theaterChase(strip, color, wait_ms=50, iterations=5):
+    """Movie theater light style chaser animation."""
+    if isLedEnabled():
+        for j in range(iterations):
+            for q in range(3):
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, color)
+                strip.show()
+                time.sleep(wait_ms/1000.0)
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, 0)
+
+def wheel(pos):
+    """Generate rainbow colors across 0-255 positions."""
+    if isLedEnabled():
+        if pos < 85:
+            return Color(pos * 3, 255 - pos * 3, 0)
+        elif pos < 170:
+            pos -= 85
+            return Color(255 - pos * 3, 0, pos * 3)
+        else:
+            pos -= 170
+            return Color(0, pos * 3, 255 - pos * 3)
+
+def rainbow(strip, wait_ms=2, iterations=1):
+    """Draw rainbow that fades across all pixels at once."""
+    if isLedEnabled():
+        for j in range(256*iterations):
+            for i in range(strip.numPixels()):
+                strip.setPixelColor(i, wheel((i+j) & 255))
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+
+def rainbowCycle(strip, wait_ms=2, iterations=1):
+    """Draw rainbow that uniformly distributes itself across all pixels."""
+    if isLedEnabled():
+        for j in range(256*iterations):
+            for i in range(strip.numPixels()):
+                strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
+            strip.show()
+            time.sleep(wait_ms/1000.0)
+
+def theaterChaseRainbow(strip, wait_ms=25):
+    """Rainbow movie theater light style chaser animation."""
+    if isLedEnabled():
+        for j in range(256):
+            for q in range(3):
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, wheel((i+j) % 255))
+                strip.show()
+                time.sleep(wait_ms/1000.0)
+                for i in range(0, strip.numPixels(), 3):
+                    strip.setPixelColor(i+q, 0)
+
+# Create LED object with appropriate configuration.
+Pixel = None
+
+try:
+    pixelModule = importlib.import_module('rpi_ws281x')
+    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
+    print 'LED: selecting library "rpi_ws2812x"'
+except ImportError:
+    pass
+
+try:
+    pixelModule = importlib.import_module('neopixel')
+    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
+    print 'LED: selecting library "neopixel" (older)'
+except ImportError:
+    pass
+
+if Pixel != None:
+    Color = getattr(pixelModule, 'Color')
+    led_strip_config = Config['LED']['LED_STRIP']
+    if led_strip_config == 'RGB':
+        led_strip = 0x00100800
+    elif led_strip_config == 'RBG':
+        led_strip = 0x00100008
+    elif led_strip_config == 'GRB':
+        led_strip = 0x00081000
+    elif led_strip_config == 'GBR':
+        led_strip = 0x00080010
+    elif led_strip_config == 'BRG':
+        led_strip = 0x00001008
+    elif led_strip_config == 'BGR':
+        led_strip = 0x00000810
+    else:
+        print 'LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config)
+        Pixel = None
+    print 'LED: hardware GPIO enabled'
+else:
+    try:
+        pixelModule = importlib.import_module('ANSIPixel')
+        Pixel = getattr(pixelModule, 'ANSIPixel')
+        Color = getattr(pixelModule, 'Color')
+        led_strip = None
+        print 'LED: simulated via ANSIPixel (no physical LED support enabled)'
+    except ImportError:
+        print 'LED: disabled (no modules available)'
+
+if isLedEnabled():
+    strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], Config['LED']['LED_BRIGHTNESS'], Config['LED']['LED_CHANNEL'], led_strip)
+    # Intialize the library (must be called once before other functions).
+    strip.begin()
 
 #
 # Authentication
@@ -946,12 +1131,21 @@ def on_get_settings():
 def on_reset_auto_calibration(data):
     on_stop_race()
     on_discard_laps()
-    global SLAVE_RACE_FORMAT
     setCurrentRaceFormat(SLAVE_RACE_FORMAT)
     emit_race_format()
     setOption("MinLapSec", "0")
     setOption("MinLapBehavior", "0")
     on_stage_race()
+
+# Cluster events
+
+@SOCKET_IO.on('join_cluster')
+def on_join_cluster():
+    setCurrentRaceFormat(SLAVE_RACE_FORMAT)
+    emit_race_format()
+    setOption("MinLapSec", "0")
+    setOption("MinLapBehavior", "0")
+    server_log('Joined cluster')
 
 # RotorHazard events
 
@@ -1002,6 +1196,8 @@ def on_load_data(data):
             emit_all_languages(nobroadcast=True)
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
+        elif load_type == 'cluster_status':
+            CLUSTER.emitStatus()
 
 @SOCKET_IO.on('broadcast_message')
 def on_broadcast_message(data):
@@ -1012,6 +1208,7 @@ def on_broadcast_message(data):
 @SOCKET_IO.on('set_frequency')
 def on_set_frequency(data):
     '''Set node frequency.'''
+    CLUSTER.emit('set_frequency', data)
     if isinstance(data, basestring): # LiveTime compatibility
         data = json.loads(data)
     node_index = data['node']
@@ -1036,6 +1233,7 @@ def on_set_frequency(data):
 @SOCKET_IO.on('set_frequency_preset')
 def on_set_frequency_preset(data):
     ''' Apply preset frequencies '''
+    CLUSTER.emit('set_frequency_preset', data)
     freqs = []
     if data['preset'] == 'All-N1':
         current_profile = int(getOption("currentProfile"))
@@ -1314,6 +1512,7 @@ def on_alter_profile(data):
 @SOCKET_IO.on("set_profile")
 def on_set_profile(data, emit_vals=True):
     ''' set current profile '''
+    CLUSTER.emit('set_profile', data)
     profile_val = int(data['profile'])
     profile = Profiles.query.get(profile_val)
     if profile:
@@ -1410,6 +1609,7 @@ def on_reset_database(data):
 @SOCKET_IO.on('shutdown_pi')
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
+    CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
     server_log('Shutdown pi')
     time.sleep(1);
@@ -1440,6 +1640,7 @@ def on_set_race_format(data):
         DB.session.commit()
         emit_race_format()
         server_log("set race format to '%s' (%s)" % (race_format.name, race_format.id))
+        CLUSTER.emitToMirrors('set_race_format', data)
     else:
         emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
         server_log("Format change prevented by active race")
@@ -1547,6 +1748,7 @@ def on_get_pi_time():
 
 @SOCKET_IO.on('stage_race')
 def on_stage_race():
+    CLUSTER.emit('stage_race')
     if RACE.race_status == RACE_STATUS_READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
         global RACE_START
@@ -1614,13 +1816,14 @@ def race_start_thread(start_token):
         RACE.timer_running = 1 # indicate race timer is running
         Race_laps_winner_name = None  # name of winner in first-to-X-laps race
         emit_race_status() # Race page, to set race button states
-        server_log('Race started at {0}'.format(RACE_START))
+        server_log('Race started at {0} ({1:13f})'.format(RACE_START, monotonic_to_milliseconds(RACE_START)))
 
 @SOCKET_IO.on('stop_race')
 def on_stop_race():
     '''Stops the race and stops registering laps.'''
     global RACE_END
 
+    CLUSTER.emit('stop_race')
     if RACE.race_status == RACE_STATUS_RACING:
         global RACE_DURATION_MS # To redefine main program variable
         RACE_END = monotonic() # Update the race end time stamp
@@ -1628,7 +1831,7 @@ def on_stop_race():
         milli_sec = delta_time * 1000.0
         RACE_DURATION_MS = milli_sec
 
-        server_log('Race stopped at {0} ({1})'.format(RACE_END, RACE_DURATION_MS))
+        server_log('Race stopped at {0} ({1:13f}), duration {2}ms'.format(RACE_END, monotonic_to_milliseconds(RACE_END), RACE_DURATION_MS))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
@@ -1657,7 +1860,7 @@ def on_save_laps():
     global EVENT_RESULTS_CACHE_VALID
     EVENT_RESULTS_CACHE_VALID = False
     race_format = getCurrentRaceFormat()
-    heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first()
+    heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).one()
     # Get the last saved round for the current heat
     max_round = DB.session.query(DB.func.max(SavedRaceMeta.round_id)) \
             .filter_by(heat_id=RACE.current_heat).scalar()
@@ -1765,6 +1968,7 @@ def on_resave_laps(data):
 @SOCKET_IO.on('discard_laps')
 def on_discard_laps():
     '''Clear the current laps without saving.'''
+    CLUSTER.emit('discard_laps')
     clear_laps()
     RACE.race_status = RACE_STATUS_READY # Flag status as ready to start next race
     INTERFACE.set_race_status(RACE_STATUS_READY)
@@ -1786,6 +1990,7 @@ def clear_laps():
     LAST_RACE_CACHE_VALID = True
     Race_laps_winner_name = None  # clear winner in first-to-X-laps race
     DB.session.query(CurrentLap).delete() # Clear out the current laps table
+    DB.session.query(LapSplit).delete()
     DB.session.commit()
     server_log('Current laps cleared')
 
@@ -1911,19 +2116,32 @@ def on_delete_lap(data):
         .filter_by(node_index=node_index).scalar()
     if lap_id is not max_lap:
         # Update the lap_time for the next lap
-        previous_lap = CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id-1).first()
-        next_lap = CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id+1).first()
+        previous_lap = CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id-1).one()
+        next_lap = CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id+1).one()
         next_lap.lap_time = next_lap.lap_time_stamp - previous_lap.lap_time_stamp
         next_lap.lap_time_formatted = time_format(next_lap.lap_time)
         # Delete the false lap
         CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id).delete()
         # Update lap numbers
-        for lap in CurrentLap.query.filter_by(node_index=node_index).all():
-            if lap.lap_id > lap_id:
-                lap.lap_id = lap.lap_id - 1
+        for lap in CurrentLap.query.filter(CurrentLap.node_index==node_index, CurrentLap.lap_id>lap_id).all():
+            lap.lap_id = lap.lap_id - 1
+        # Update splits
+        last_split_id = DB.session.query(DB.func.max(LapSplit.split_id)).filter_by(lap_id=lap_id-1).scalar()
+        if last_split_id:
+            LapSplit.query.filter(LapSplit.node_index==node_index, LapSplit.lap_id==lap_id, LapSplit.split_id<=last_split_id).delete()
+            for split in LapSplit.query.filter(LapSplit.node_index==node_index, LapSplit.lap_id==lap_id, LapSplit.split_id>last_split_id).all():
+                split.lap_id = split.lap_id - 1
+            for split in LapSplit.query.filter(LapSplit.node_index==node_index, LapSplit.lap_id>lap_id).all():
+                split.lap_id = split.lap_id - 1
     else:
         # Delete the false lap
-        CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id).delete()
+        CurrentLap.query.filter(CurrentLap.node_index==node_index, CurrentLap.lap_id==lap_id).delete()
+        # Merge splits
+        last_split_id = DB.session.query(DB.func.max(LapSplit.split_id)).filter_by(lap_id=lap_id-1).scalar()
+        if last_split_id:
+            LapSplit.query.filter(LapSplit.node_index==node_index, LapSplit.lap_id==lap_id, LapSplit.split_id<=last_split_id).delete()
+            for split in LapSplit.query.filter(LapSplit.node_index==node_index, LapSplit.lap_id==lap_id, LapSplit.split_id>last_split_id).all():
+                split.lap_id = split.lap_id - 1
     DB.session.commit()
     server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_id))
     emit_current_laps() # Race page, update web client
@@ -2036,8 +2254,8 @@ def emit_frequency_data(**params):
         emit('frequency_data', emit_payload)
     else:
         SOCKET_IO.emit('frequency_data', emit_payload)
-              # if IMDTabler.java available then trigger call to
-              #  'emit_imdtabler_rating' via heartbeat function:
+    # if IMDTabler.java available then trigger call to
+    #  'emit_imdtabler_rating' via heartbeat function:
     if Use_imdtabler_jar_flag:
         heartbeat_thread_function.imdtabler_flag = True
 
@@ -2176,19 +2394,27 @@ def emit_current_laps(**params):
         # for node in DB.session.query(CurrentLap.node_index).distinct():
         for node in range(RACE.num_nodes):
             node_laps = []
-            node_lap_raw = []
-            node_lap_times = []
-            node_lap_time_stamps = []
-            for lap in CurrentLap.query.filter_by(node_index=node).all():
-                node_laps.append(lap.lap_id)
-                node_lap_raw.append(lap.lap_time)
-                node_lap_times.append(lap.lap_time_formatted)
-                node_lap_time_stamps.append(lap.lap_time_stamp)
+            last_lap_id = -1
+            for lap in CurrentLap.query.filter_by(node_index=node).order_by(CurrentLap.lap_id).all():
+                splits = get_splits(node, lap.lap_id, True)
+                node_laps.append({
+                    'lap_id': lap.lap_id,
+                    'lap_raw': lap.lap_time,
+                    'lap_time': lap.lap_time_formatted,
+                    'lap_time_stamp': lap.lap_time_stamp,
+                    'splits': splits
+                })
+                last_lap_id = lap.lap_id
+            splits = get_splits(node, last_lap_id+1, False)
+            if splits:
+                node_laps.append({
+                    'lap_id': last_lap_id+1,
+                    'lap_time': '',
+                    'lap_time_stamp': 0,
+                    'splits': splits
+                })
             current_laps.append({
-                'lap_id': node_laps,
-                'lap_raw': node_lap_raw,
-                'lap_time': node_lap_times,
-                'lap_time_stamp': node_lap_time_stamps
+                'laps': node_laps
             })
         current_laps = {'node_index': current_laps}
         emit_payload = current_laps
@@ -2198,6 +2424,28 @@ def emit_current_laps(**params):
         emit('current_laps', emit_payload)
     else:
         SOCKET_IO.emit('current_laps', emit_payload)
+
+def get_splits(node, lap_id, lapCompleted):
+    splits = []
+    for slave_index in range(len(CLUSTER.slaves)):
+        split = LapSplit.query.filter_by(node_index=node,lap_id=lap_id,split_id=slave_index).one_or_none()
+        if split:
+            split_payload = {
+                'split_id': slave_index,
+                'split_raw': split.split_time,
+                'split_time': split.split_time_formatted,
+                'split_speed': '{0:.2f}'.format(split.split_speed)
+            }
+        elif lapCompleted:
+            split_payload = {
+                'split_id': slave_index,
+                'split_time': '-'
+            }
+        else:
+            break
+        splits.append(split_payload)
+
+    return splits
 
 def emit_race_list(**params):
     '''Emits race listing'''
@@ -2276,7 +2524,6 @@ def emit_race_list(**params):
         emit('race_list', emit_payload)
     else:
         SOCKET_IO.emit('race_list', emit_payload)
-
 
 def emit_round_data_notify(**params):
     '''Let clients know round data is updated so they can request it.'''
@@ -2662,10 +2909,10 @@ def emit_heat_data(**params):
     '''Emits heat data.'''
     current_heats = {}
     for heat in Heat.query.with_entities(Heat.heat_id).distinct():
-        heatdata = Heat.query.filter_by(heat_id=heat.heat_id, node_index=0).first()
+        heatdata = Heat.query.filter_by(heat_id=heat.heat_id, node_index=0).one()
         pilots = []
         for node in range(RACE.num_nodes):
-            pilot_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=node).first().pilot_id
+            pilot_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=node).one().pilot_id
             pilots.append(pilot_id)
         heat_id = heatdata.heat_id
         note = heatdata.note
@@ -2720,7 +2967,7 @@ def emit_class_data(**params):
         current_class['description'] = race_class.description
         current_class['format'] = race_class.format_id
 
-        has_race = SavedRaceMeta.query.filter_by(class_id=race_class.id).first()
+        has_race = SavedRaceMeta.query.filter_by(class_id=race_class.id).one_or_none()
         if has_race:
             current_class['locked'] = True
         else:
@@ -2795,7 +3042,7 @@ def emit_current_heat(**params):
         else:
             callsigns.append(None)
 
-    heat_data = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first()
+    heat_data = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).one()
 
     heat_note = heat_data.note
 
@@ -2826,7 +3073,7 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
             if pilot_id:
-                pilot_team_dict[pilot_id] = Pilot.query.filter_by(id=pilot_id).first().team
+                pilot_team_dict[pilot_id] = Pilot.query.filter_by(id=pilot_id).one().team
     #server_log('DEBUG get_team_laps_info pilot_team_dict: {0}'.format(pilot_team_dict))
 
     t_laps_dict = {}  # create dictionary (key=team_name, value=[lapCount,timestamp]) with initial zero laps
@@ -2908,7 +3155,7 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
                     server_log('check_pilot_laps_win waiting for crossing, Node {0}'.format(node.index+1))
                     return -1
                 if lap_id >= num_laps_win:
-                    lap_data = CurrentLap.query.filter_by(node_index=node.index, lap_id=num_laps_win).first()
+                    lap_data = CurrentLap.query.filter_by(node_index=node.index, lap_id=num_laps_win).one()
                     #server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
                              # save pilot_id for earliest lap time:
                     if win_pilot_id < 0 or lap_data.lap_time_stamp < win_lap_tstamp:
@@ -3057,7 +3304,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                     lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
                             .filter_by(node_index=node.index).scalar()
                     if lap_id > 0:
-                        lap_data = CurrentLap.query.filter_by(node_index=node.index, lap_id=lap_id).first()
+                        lap_data = CurrentLap.query.filter_by(node_index=node.index, lap_id=lap_id).one_or_none()
                         if lap_data:
                             pilots_list.append((lap_id, lap_data.lap_time_stamp, pilot_id, node))
                             if lap_id > max_lap_id:
@@ -3122,10 +3369,10 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         #server_log('DEBUG check_most_laps_win win_pilot_id={0}'.format(win_pilot_id))
 
         if win_pilot_id >= 0:
-            win_callsign = Pilot.query.filter_by(id=win_pilot_id).first().callsign
+            win_callsign = Pilot.query.filter_by(id=win_pilot_id).one().callsign
             Race_laps_winner_name = win_callsign  # indicate a pilot has won
             emit_team_racing_status('Winner is ' + Race_laps_winner_name)
-            win_phon_name = Pilot.query.filter_by(id=win_pilot_id).first().phonetic
+            win_phon_name = Pilot.query.filter_by(id=win_pilot_id).one().phonetic
             if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                 win_phon_name = win_callsign
             emit_phonetic_text('Race done, winner is ' + win_phon_name, 'race_winner')
@@ -3271,6 +3518,9 @@ def emit_imdtabler_rating():
 #
 
 def heartbeat_thread_function():
+    '''Allow time for connection handshake to terminate before emitting data'''
+    gevent.sleep(0.010)
+
     '''Emits current rssi data.'''
     while True:
         node_data = INTERFACE.get_heartbeat_json()
@@ -3291,6 +3541,10 @@ def heartbeat_thread_function():
         # emit rest of node data, but less often:
         if (heartbeat_thread_function.iter_tracker % 20) == 0:
             emit_node_data()
+
+        # emit cluster status less often:
+        if (heartbeat_thread_function.iter_tracker % 20) == 10:
+            CLUSTER.emitStatus()
 
         # emit environment data less often:
         if (heartbeat_thread_function.iter_tracker % 100) == 0:
@@ -3391,7 +3645,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
             # Get the current pilot id on the node
             pilot_id = Heat.query.filter_by( \
-                heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
+                heat_id=RACE.current_heat, node_index=node.index).one().pilot_id
 
             # reject passes before race start and with disabled (no-pilot) nodes
             if pilot_id != PILOT_ID_NONE:
@@ -3411,7 +3665,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     else: # This is a normal completed lap
                         # Find the time stamp of the last lap completed
                         last_lap_time_stamp = CurrentLap.query.filter_by( \
-                            node_index=node.index, lap_id=last_lap_id).first().lap_time_stamp
+                            node_index=node.index, lap_id=last_lap_id).one().lap_time_stamp
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
                         lap_id = last_lap_id + 1
@@ -4012,9 +4266,7 @@ on_set_profile({'profile': current_profile}, False)
 if Heat.query.first():
     RACE.current_heat = Heat.query.first().heat_id
 
-# Start HTTP server
-if __name__ == '__main__':
-    port_val = Config['GENERAL']['HTTP_PORT']
+def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)
     try:
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
@@ -4022,3 +4274,7 @@ if __name__ == '__main__':
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
+
+# Start HTTP server
+if __name__ == '__main__':
+    start()
