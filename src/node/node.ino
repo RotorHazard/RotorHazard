@@ -59,7 +59,7 @@
 static int i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 18
+#define NODE_API_LEVEL 19
 
 static const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 static const int spiDataPin = 11;
