@@ -75,7 +75,7 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
 
       /*** update history ***/
 
-      int rssiChange = (state.rssi - state.lastRssi)/2; // rescale to remove some jitter
+      int rssiChange = state.rssi - state.lastRssi;
       if (rssiChange > 0) { // RSSI is rising
 	  // must buffer latest peak to prevent losing it (overwriting any unsent peak)
 	  bufferHistoricPeak(true);

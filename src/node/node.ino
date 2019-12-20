@@ -65,8 +65,8 @@ static const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 static const int spiDataPin = 11;
 static const int spiClockPin = 13;
 
-#define MIN_FREQ 5645
-#define MAX_FREQ 5945
+#define MIN_FREQ 100
+#define MAX_FREQ 9999
 
 #define READ_ADDRESS 0x00
 #define READ_FREQUENCY 0x03

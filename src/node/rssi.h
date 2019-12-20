@@ -42,29 +42,29 @@ struct State
 
 struct History
 {
-    rssi_t volatile peakRssi;
-    mtime_t volatile peakFirstTime;
-    mtime_t volatile peakLastTime;
-    bool volatile hasPendingPeak;
+    rssi_t volatile peakRssi = 0;
+    mtime_t volatile peakFirstTime = 0;
+    mtime_t volatile peakLastTime = 0;
+    bool volatile hasPendingPeak = false;
     rssi_t volatile peakSendRssi = 0;
-    mtime_t volatile peakSendFirstTime; // only valid if peakSendRssi != 0
-    mtime_t volatile peakSendLastTime; // only valid if peakSendRssi != 0
+    mtime_t volatile peakSendFirstTime = 0; // only valid if peakSendRssi != 0
+    mtime_t volatile peakSendLastTime = 0; // only valid if peakSendRssi != 0
 
-    rssi_t volatile nadirRssi;
-    mtime_t volatile nadirTime;
-    bool volatile hasPendingNadir;
+    rssi_t volatile nadirRssi = MAX_RSSI;
+    mtime_t volatile nadirTime = 0;
+    bool volatile hasPendingNadir = false;
     rssi_t volatile nadirSendRssi = MAX_RSSI;
-    mtime_t volatile nadirSendTime; // only valid if nadirSendRssi != MAX_RSSI
+    mtime_t volatile nadirSendTime = 0; // only valid if nadirSendRssi != MAX_RSSI
 
-    int8_t rssiChange; // >0 for raising, <0 for falling
+    int8_t rssiChange = 0; // >0 for raising, <0 for falling
 };
 
 struct LastPass
 {
-    rssi_t volatile rssiPeak;
-    mtime_t volatile timestamp;
-    rssi_t volatile rssiNadir;
-    uint8_t volatile lap;
+    rssi_t volatile rssiPeak = 0;
+    mtime_t volatile timestamp = 0;
+    rssi_t volatile rssiNadir = MAX_RSSI;
+    uint8_t volatile lap = 0;
 };
 
 extern struct Settings settings;
