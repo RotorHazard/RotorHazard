@@ -1733,6 +1733,7 @@ def on_stage_race():
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,
+            'silent_countdown': MAX == 0,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'pi_starts_at_s': RACE_START
@@ -2199,6 +2200,7 @@ def emit_race_status(**params):
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'hide_stage_timer': race_format.start_delay_min != race_format.start_delay_max,
+            'silent_countdown': race_format.start_delay_max == 0,
             'pi_starts_at_s': RACE_START
         }
     if ('nobroadcast' in params):
