@@ -1271,10 +1271,6 @@ function build_leaderboard(leaderboard, display_type, meta) {
 		display_type == 'current') {
 		header_row.append('<th class="fast">' + __('Fastest') + '</th>');
 	}
-	if (display_type == 'by_fastest_lap') { 
-		header_row.append('<th class="fast">' + __('Heat') + '</th>');
-		header_row.append('<th class="fast">' + __('Round') + '</th>');
-	}
 	if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
 		display_type == 'round' ||
@@ -1321,12 +1317,6 @@ function build_leaderboard(leaderboard, display_type, meta) {
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			row.append('<td class="fast">'+ lap +'</td>');
-		}
-		if (display_type == 'by_fastest_lap') {
-			var lapround = leaderboard[i].fastest_lap_round;
-			var lapheat = leaderboard[i].fastest_lap_heat;
-			row.append('<td class="fast">'+ lapheat +'</td>');
-			row.append('<td class="fast">'+ lapround +'</td>');
 		}
 		if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||

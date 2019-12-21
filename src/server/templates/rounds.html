@@ -1,17 +1,10 @@
 {% extends "layout.html" %} {% block title %}Rounds{% endblock %} {% block head %} {% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
-
-	var race_list = {};
-	var race_list_loaded = false;
-	var race_loaded = false;
-	var current_race_data = {};
-	var min_lap = {{ getOption('MinLapSec') }} * 1000;
-        
 	$(document).ready(function () {
 		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',
-			'class_data',
+			'round_data',
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -26,67 +19,15 @@
 
 		socket.on('round_data_notify', function () {
 			socket.emit('load_data', {'load_types': [
-				'class_round_data',
+				'round_data',
 			]});
 		});
 
-              socket.on('class_data', function (msg) {
-                        $('#set_current_class').empty();
-                        if (msg.classes.length) {
-                            for (var i in msg.classes) {
-                                    var raceclass = msg.classes[i];
-                                    var opt = $('<option value="' + raceclass.id + '">' + raceclass.name + '</option>');
-
-                                    $('#set_current_class').append(opt);
-                            }
-                        }
-
-                });
-
-
-                socket.on('race_list', function (msg) {
-                        race_list = msg;
-
-                        $('button#load_pilot_results').prop('disabled', false);
-                        if (race_list_loaded) {
-                                var prev_heat = $('#selected_heat').val();
-                        }
-
-                        $('#selected_heat').empty();
-                        for (var heat_i in race_list.heats) {
-                                var heat = race_list.heats[heat_i];
-
-                                if (heat.note) {
-                                        var heat_name = heat.note;
-                                } else {
-                                        var heat_name = __('Heat') + ' ' + heat_i;
-                                }
-
-                                $('#selected_heat').append('<option value="' + heat_i + '">' + heat_name + '</option>');
-                        }
-                        $('#selected_heat').val(heat_i);
-
-                        if (race_list_loaded) {
-                                $('#selected_heat').val(prev_heat);
-                        } else {
-                                race_list_loaded = true;
-                                $('#selected_heat').prop('disabled', false);
-                                $('#selected_round').prop('disabled', false);
-                                $('#selected_pilot').prop('disabled', false);
-                                $('#load_race').prop('disabled', false);
-                        }
-
-                        $('#selected_heat').trigger('change');
-                });
-
-
 		socket.on('round_data', function (msg) {
-			var page = $('.results_display')
+			var page = $('.page-rounds')
 			page.empty();
-                        $('button#load_all_results').prop('disabled', false);
 
 			if (!$.isEmptyObject(msg.heats)) {
-			    if (!$.isEmptyObject(msg.event_leaderboard)) {
 				var panel = $('<div id="event_leaderboard" class="panel collapsing">');
 
 				var panel_header = $('<div class="panel-header">');
@@ -106,7 +47,6 @@
 				panel.append(panel_content);
 
 				page.append(panel)
-                            }
 
 				// heats
 
@@ -264,265 +204,11 @@
 				page.append('<p>' + __('There is no saved race data available to view.') + '</p>');
 			}
 		});
+	});
+</script>
+<main class="page-rounds">
 
-		socket.on('class_round_data', function (msg) {
-			var page = $('.results_display')
-			page.empty();
+<p>Loading...</p>
 
-                        $('button#load_class_results').prop('disabled', false);
-
-			if (!$.isEmptyObject(msg.classes)) {
-
-				for (var class_id in msg.classes) {
-
-					var class_panel = $('<div id="class_' + class_id + '" class="panel collapsing">');
-					var class_panel_header = $('<div class="panel-header">');
-					var class_panel_content = $('<div class="panel-content" style="display: none">');
-
-					var current_class = msg.classes[class_id];
-					if (current_class) {
-						class_panel_header.append('<h2><button class="no-style">' + current_class.name + '</button></h2>');
-
-						var class_leaderboard = $('<div id="class_' + class_id + '_leaderboard" class="panel collapsing class-leaderboard">');
-
-						var class_leaderboard_header = $('<div class="panel-header">');
-						class_leaderboard_header.append('<h3><button class="no-style">' + __('Class Summary') + '</button></h3>');
-						class_leaderboard.append(class_leaderboard_header);
-
-						var class_leaderboard_content = $('<div class="panel-content" style="display: none">');
-
-						class_leaderboard_content.append('<h4>' + __('Race Totals') + '</h4>');
-						class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_race_time, 'by_race_time', msg.meta));
-						class_leaderboard_content.append('<h4>' + __('Fastest Laps') + '</h4>');
-						class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_fastest_lap, 'by_fastest_lap', msg.meta));
-						class_leaderboard_content.append('<h4>' + __('Fastest 3 Consecutive Laps') + '</h4>');
-						class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_consecutives, 'by_consecutives', msg.meta));
-
-						class_leaderboard.append(class_leaderboard_content);
-						class_panel_content.append(class_leaderboard);
-					} else {
-						if ($.isEmptyObject(msg.classes)) {
-							class_panel_header.append('<h2><button class="no-style">' + __('Heats') + '</button></h2>')
-						} else {
-							class_panel_header.append('<h2><button class="no-style">' + __('Unclassified') + '</button></h2>')
-						}
-					}
-
-					class_panel.append(class_panel_header);
-
-					class_panel.append(class_panel_content);
-					page.append(class_panel);
-				}
-
-				for (var panel in rotorhazard.panelstates) {
-					var panel_obj = $('#' + panel);
-					var panelstate = rotorhazard.panelstates[panel];
-
-					if (panelstate) {
-						panel_obj.addClass('open');
-						panel_obj.children('.panel-content').stop().slideDown();
-					} else {
-						panel_obj.removeClass('open');
-						panel_obj.children('.panel-content').stop().slideUp();
-					}
-				}
-			} else {
-				page.append('<p>' + __('There is no saved race data available to view.') + '</p>');
-			}
-		});
-
-               $('button#load_class_results').click(function (event) {
-
-                        if(!$(this).prop('disabled')) {
-			        $('.results_display').empty()
-			        $('.results_display').html('<p> {{ __('Loading...') }} </p>')
-                                $(this).prop('disabled', true);
-                                socket.emit('load_data', {'load_types': [ 'class_round_data', ], 'specific_class' : $('#set_current_class').val() } );
-                        }
-                        return false;
-                });
-               $('button#load_all_results').click(function (event) {
-
-                        if(!$(this).prop('disabled')) {
-			        $('.results_display').empty()
-			        $('.results_display').html('<p> {{ __('Loading...') }} </p>')
-                                $(this).prop('disabled', true);
-                                socket.emit('load_data', {'load_types': [ 'round_data', ],  } );
-                        }
-                        return false;
-                });
-
-               $('button#load_pilot_results').click(function (event) {
-
-                        if(!$(this).prop('disabled')) {
-			        $('.race-view').html(' {{ __('Loading...') }}  <table id="laps"> </table>')
-                                $(this).prop('disabled', true);
-                                socket.emit('load_data', {'load_types': [ 'race_list', ],  } );
-                        }
-                        return false;
-                });
-
-		$('#selected_heat').change(function(){
-			var prev_round = $('#selected_round').val();
-
-			$('#selected_round').empty();
-
-			var heat = parseInt($(this).val());
-
-			for (var round_i in race_list.heats[heat].rounds) {
-				$('#selected_round').append('<option value="' + round_i + '">' + __('Round') + ' ' + round_i + '</option>');
-			}
-
-			$('#selected_round').val(round_i);
-			$('#selected_round option').each(function(){
-				if (this.value == prev_round) {
-					$('#selected_round').val(prev_round);
-					return false;
-				}
-			});
-
-
-			$('#selected_round').trigger('change');
-		});
-
-		$('#selected_round').change(function(){
-			var prev_pilot = $('#selected_pilot').data('pilot-id');
-
-			$('#selected_pilot').empty();
-
-			var heat = parseInt($('#selected_heat').val());
-			var round = parseInt($(this).val());
-
-			for (var pilot_i in race_list.heats[heat].rounds[round].pilotraces) {
-				var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot_i];
-				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' + pilotrace.pilot_id + '">' + pilotrace.callsign + '</option>');
-			}
-
-			$('#selected_pilot option').each(function(){
-				if ($(this).data('pilot-id') == prev_pilot) {
-					$('#selected_pilot').val($(this).val());
-					return false;
-				}
-			});
-
-
-			$('#selected_pilot').trigger('change');
-		});
-
-		$('#selected_pilot').change(function(){
-			var heat = parseInt($('#selected_heat').val());
-			var round = parseInt($('#selected_round').val());
-			var pilot = parseInt($(this).val());
-			var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot];
-
-			$(this).data('pilot-id', pilotrace.pilot_id);
-
-			load_race();
-		});
-
-		function load_race() {
-                        table_html='<thead> <tr> <th>{{ __('Lap') }}</th> <th>{{ __('Timestamp') }}</th> <th>{{ __('Lap Time') }}</th> </tr> </thead> <tbody></tbody>'
-			$('.race-view').html(' <table id="laps"> ' + table_html + '</table>')
-
-			var lapList = $('#laps tbody');
-			lapList.empty();
-
-			race_loaded = true;
-
-			var heat = parseInt($('#selected_heat').val());
-			var round = parseInt($('#selected_round').val());
-			var pilot = parseInt($('#selected_pilot').val());
-
-
-			// load current race data
-			current_race_data = jQuery.extend(true, {}, race_list.heats[heat].rounds[round].pilotraces[pilot]);
-			// fill current data with race meta
-			current_race_data.round_id = round;
-			current_race_data.heat_id = heat;
-			current_race_data.race_id = race_list.heats[heat].rounds[round].race_id;
-			current_race_data.class_id = race_list.heats[heat].rounds[round].class_id;
-			current_race_data.format_id = race_list.heats[heat].rounds[round].format_id;
-			current_race_data.start_time = race_list.heats[heat].rounds[round].start_time;
-			current_race_data.start_time_formatted = race_list.heats[heat].rounds[round].start_time_formatted;
-
-			// populate laps
-			displayLaps(current_race_data.laps);
-
-			return false;
-		}
-
-
-			function displayLaps(laps_obj) {
-				var lapList = $('#laps tbody');
-				var lap_index = 0;
-				for (var lap_i in laps_obj) {
-					var lap = laps_obj[lap_i];
-					var lapData = $('<tr>');
-
-					if (lap.deleted) {
-						lapData.addClass('lap-deleted');
-					} else if (lap_index && lap.lap_time < min_lap) {
-						lapData.addClass('min-lap-warning');
-					}
-
-					if (!lap.deleted) {
-						lapData.append('<td>' + lap_index + '</td>');
-						lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
-						lapData.append('<td>' + formatTimeMillis(lap.lap_time) + '</td>');
-						lap_index++;
-					} else {
-						lapData.append('<td>-</td>');
-						lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
-						lapData.append('<td>' + __('Deleted') + '</td>');
-					}
-
-					lapList.append(lapData);
-				}
-			}
-
-		});
-	</script>
-	<main class="page-rounds">
-
-			<div class="control-set">
-				<label for="selected_heat" class="screen-reader-text">{{ __('Heat') }}</label>
-				<select id="selected_heat" disabled>
-					<option value="--">{{ __('Not Loaded') }}</option>
-				</select>
-
-				<label for="selected_round" class="screen-reader-text">{{ __('Round') }}</label>
-				<select id="selected_round" disabled>
-					<option value="--">{{ __('Not Loaded') }}</option>
-				</select>
-
-				<label for="selected_pilot" class="screen-reader-text">{{ __('Pilot') }}</label>
-				<select id="selected_pilot" disabled>
-					<option value="--">{{ __('Not Loaded') }}</option>
-				</select>
-				<button id="load_pilot_results"><span class="narrow">{{ __('Get') }}</span><span class="wide">{{ __('Load Race') }}</span></button>
-
-			</div>
-
-			<div id="race-display">
-
-				<div id="race-view" class="race-view">
-				</div>
-
-			</div>
-			<div class="control-set">
-				<label for="set_current_class" class="screen-reader-text">{{ __('Current Class') }}</label>
-				<select id="set_current_class">
-					<option value="">{{ __('Loading...') }}</option>
-				</select>
-				<button id="load_class_results"><span class="narrow">{{ __('Get') }}</span><span class="wide">{{ __('Class Summary') }}</span></button>
-				 <!-- change line below to <p class="admin-hide"> if you only want admins to see this button  -->
-				<p><button id="load_all_results"><span class="narrow">{{ __('GetSummary') }}</span><span class="wide">{{ __('All') }} {{ __('Results') }}</span></button> </p>
-			</div>
-
-			<div id="id=results_display" class="results_display">
-			   <p>Select class and press {{__('Class Summary')}} button</p>
-			</div>
-
-
-	</main>
+</main>
 {% endblock %}

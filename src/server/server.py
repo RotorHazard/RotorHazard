@@ -1006,9 +1006,6 @@ def on_load_data(data):
             emit_pilot_data(nobroadcast=True)
         elif load_type == 'round_data':
             emit_round_data(nobroadcast=True)
-        elif load_type == 'class_round_data':
-            specific_class = data['specific_class']
-            emit_specific_class_round_data(nobroadcast=True,specific_class=specific_class)
         elif load_type == 'race_format':
             emit_race_format(nobroadcast=True)
         elif load_type == 'node_tuning':
@@ -2401,81 +2398,6 @@ def emit_round_data(**params):
     else:
         SOCKET_IO.emit('round_data', emit_payload)
 
-def emit_specific_class_round_data(**params):
-    '''Emits saved races to rounds page.'''
-    global EVENT_RESULTS_CACHE
-    global EVENT_RESULTS_CACHE_VALID
-   
-    if ('specific_class' in params):
-        specific_class = params['specific_class']
-    else:
-        specific_class = CLASS_ID_NONE
-
-    heats = {}
-    for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().filter_by(class_id=specific_class).order_by(SavedRaceMeta.heat_id):
-        heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
-
-        rounds = []
-        for round in SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id,class_id=specific_class).order_by(SavedRaceMeta.round_id):
-            pilotraces = []
-            for pilotrace in SavedPilotRace.query.filter_by(race_id=round.id).all():
-                laps = []
-                for lap in SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
-                    laps.append({
-                                'id': lap.id,
-                                'lap_time_stamp': lap.lap_time_stamp,
-                                'lap_time': lap.lap_time,
-                                'lap_time_formatted': lap.lap_time_formatted,
-                                'source': lap.source,
-                                'deleted': lap.deleted
-                        })
-
-                pilot_data = Pilot.query.filter_by(id=pilotrace.pilot_id).first()
-                if pilot_data:
-                        nodepilot = pilot_data.callsign
-                else:
-                        nodepilot = None
-
-                pilotraces.append({
-                        'callsign': nodepilot,
-                        'pilot_id': pilotrace.pilot_id,
-                        'node_index': pilotrace.node_index,
-                        'laps': laps
-                })
-            rounds.append({
-                'id': round.round_id,
-                'start_time_formatted': round.start_time_formatted,
-                'nodes': pilotraces
-            })
-        heats[heat.heat_id] = {
-            'heat_id': heat.heat_id,
-            'note': heatnote,
-            'rounds': rounds
-        }
-
-    heats_by_class = {}
-    heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
-    for race_class in RaceClass.query.filter_by(id=specific_class).all():
-        heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
-
-    current_classes = {}
-    for race_class in RaceClass.query.filter_by(id=specific_class).all():
-        current_class = {}
-        current_class['id'] = race_class.id
-        current_class['name'] = race_class.name
-        current_class['description'] = race_class.name
-        current_class['leaderboard'] = calc_leaderboard(class_id=race_class.id)
-        current_classes[race_class.id] = current_class
-
-    emit_payload = {
-        'classes': current_classes
-    }
-
-    if ('nobroadcast' in params):
-        emit('class_round_data', emit_payload)
-    else:
-        SOCKET_IO.emit('class_round_data', emit_payload)
-
 def calc_leaderboard(**params):
     ''' Generates leaderboards '''
     USE_CURRENT = False
@@ -2590,8 +2512,6 @@ def calc_leaderboard(**params):
     average_lap = []
     fastest_lap = []
     consecutives = []
-    fastest_lap_round = []
-    fastest_lap_heat = []
 
     for i, pilot in enumerate(pilot_ids):
         # Get the total race time for each pilot
@@ -2641,26 +2561,19 @@ def calc_leaderboard(**params):
         # Get the fastest lap time for each pilot
         if max_laps[i] is 0:
             fastest_lap.append(0) # Add zero if no laps completed
-            fastest_lap_round.append(0) # Add zero if no laps completed
-            fastest_lap_heat.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
                 stat_query = DB.session.query(DB.func.min(CurrentLap.lap_time)) \
                     .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0)
             else:
-                stat_query = DB.session.query(DB.func.min(SavedRaceLap.lap_time),SavedRaceLap.lap_time,SavedRaceLap.race_id) \
+                stat_query = DB.session.query(DB.func.min(SavedRaceLap.lap_time)) \
                     .filter(SavedRaceLap.pilot_id == pilot, \
                         SavedRaceLap.deleted != 1, \
                         SavedRaceLap.race_id.in_(racelist), \
-                        ~SavedRaceLap.id.in_(holeshots[i])).one()
+                        ~SavedRaceLap.id.in_(holeshots[i]))
 
-            fround = DB.session.query(SavedRaceMeta.round_id,SavedRaceMeta.heat_id).filter(SavedRaceMeta.id==stat_query.race_id).first()
-            fheat = DB.session.query( Heat.note).filter_by(heat_id=fround.heat_id).first()
-
-            fastest_lap_round.append(fround.round_id)
-            fastest_lap_heat.append(fheat.note)
-
-            fastest_lap.append(stat_query.lap_time)
+            fast_lap = stat_query.scalar()
+            fastest_lap.append(fast_lap)
 
         # find best consecutive 3 laps
         if max_laps[i] < 3:
@@ -2699,7 +2612,7 @@ def calc_leaderboard(**params):
                 consecutives.append(None)
 
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_round, fastest_lap_heat)
+    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives)
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
@@ -2731,8 +2644,6 @@ def calc_leaderboard(**params):
             'fastest_lap': time_format(row[4]),
             'team_name': row[5],
             'consecutives': time_format(row[6]),
-            'fastest_lap_round': row[7],
-            'fastest_lap_heat': row[8],
         })
 
     # Sort consecutives x[6]
