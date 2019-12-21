@@ -953,7 +953,7 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 	if (timer.warn_until < window.performance.now()) {
 		$('.timing-clock .warning').hide();
 	}
-	if (timer.time_s < 0) {
+	if (timer.time_s < 0 && !timer.silent_countdown) {
 		if (timer.hidden_staging) {
 			// beep every second during staging if timer is hidden
 			if (timer.time_s * 10 % 10 == 0) {
