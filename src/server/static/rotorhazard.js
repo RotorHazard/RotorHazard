@@ -566,7 +566,6 @@ function timerModel() {
 	this.time_s = false; // simplified relative time in seconds
 	this.count_up = false; // use fixed-length timer
 	this.duration = 0; // fixed-length duration, in seconds
-	this.silent_countdown = false; // eliminate countdown tones 
 
 	this.drift_history = [];
 	this.drift_history_samples = 10;
@@ -792,7 +791,6 @@ var rotorhazard = {
 	pi_time_diff_samples: [], // stored previously acquired offsets
 
 	timer: {
-		suppress_countdown_beep: false,
 		deferred: new timerModel(),
 		race: new timerModel(),
 		stopAll: function() {
