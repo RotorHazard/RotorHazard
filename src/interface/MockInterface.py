@@ -17,7 +17,7 @@ CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at lev
 ENTER_AT_PEAK_MARGIN = 5         # closest that captured enter-at level can be to node peak RSSI
 
 class MockInterface(BaseHardwareInterface):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
         self.pass_record_callback = None # Function added in server.py
@@ -45,16 +45,7 @@ class MockInterface(BaseHardwareInterface):
                 f = None
             self.data.append(f)
 
-        # Core temperature
-        self.core_temp = 30
-
-        # Scan for INA219 devices
-        self.ina219_devices = []
-        self.ina219_data = []
-
-        # Scan for BME280 devices
-        self.bme280_addrs = []
-        self.bme280_data = []
+        self.discover_sensors()
 
 
     #
@@ -201,9 +192,6 @@ class MockInterface(BaseHardwareInterface):
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
 
-    def update_environmental_data(self):
-        '''Updates environmental data.'''
-
-def get_hardware_interface():
+def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''
-    return MockInterface()
+    return MockInterface(*args, **kwargs)

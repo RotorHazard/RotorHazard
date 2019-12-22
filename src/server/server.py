@@ -72,6 +72,7 @@ DB = SQLAlchemy(APP)
 
 Config = {}
 Config['GENERAL'] = {}
+Config['SENSORS'] = {}
 Config['LED'] = {}
 
 # LED strip configuration:
@@ -100,6 +101,8 @@ try:
         ExternalConfig = json.load(f)
     Config['GENERAL'].update(ExternalConfig['GENERAL'])
     Config['LED'].update(ExternalConfig['LED'])
+    if 'SENSORS' in ExternalConfig:
+        Config['SENSORS'].update(ExternalConfig['SENSORS'])
     Config['GENERAL']['configFile'] = 1
     print 'Configuration file imported'
     APP.config['SECRET_KEY'] = Config['GENERAL']['SECRET_KEY']
@@ -117,7 +120,7 @@ try:
     interfaceModule = importlib.import_module('RHInterface')
 except ImportError:
     interfaceModule = importlib.import_module('MockInterface')
-INTERFACE = interfaceModule.get_hardware_interface()
+INTERFACE = interfaceModule.get_hardware_interface(config=Config)
 RACE = get_race_state() # For storing race management variables
 
 def diff_milliseconds(t2, t1):
@@ -2234,15 +2237,10 @@ def emit_node_data(**params):
 
 def emit_environmental_data(**params):
     '''Emits environmental data.'''
-    emit_payload = {
-        'core_temperature': INTERFACE.core_temp,
-        'aux_voltage': [data['voltage'] for data in INTERFACE.ina219_data],
-        'aux_current': [data['current'] for data in INTERFACE.ina219_data],
-        'aux_power': [data['power'] for data in INTERFACE.ina219_data],
-        'aux_temperature': [data.temperature for data in INTERFACE.bme280_data],
-        'aux_pressure': [data.pressure for data in INTERFACE.bme280_data],
-        'aux_humidity': [data.humidity for data in INTERFACE.bme280_data]
-    }
+    emit_payload = []
+    for sensor in INTERFACE.sensors:
+        emit_payload.append({sensor.name: sensor.getReadings()})
+
     if ('nobroadcast' in params):
         emit('environmental_data', emit_payload)
     else:

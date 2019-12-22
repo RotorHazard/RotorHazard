@@ -1,3 +1,5 @@
+import importlib
+import pkgutil
 from monotonic import monotonic
 
 ENTER_AT_PEAK_MARGIN = 5 # closest that captured enter-at level can be to node peak RSSI
@@ -19,7 +21,18 @@ class BaseHardwareInterface(object):
         self.trigger_threshold = 20
         self.start_time = 1000*monotonic() # millis
         self.filter_ratio = 50
+        self.sensors = []
+        self.environmental_data_update_tracker = 0
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
+
+    def discover_sensors(self, *args, **kwargs):
+        for loader, name, ispkg in pkgutil.iter_modules():
+            if name.endswith('_sensor'):
+                try:
+                    sensor_module = importlib.import_module(name)
+                    self.sensors.extend(sensor_module.discover(*args, **kwargs))
+                except ImportError:
+                    pass
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
@@ -117,6 +130,15 @@ class BaseHardwareInterface(object):
 
     def set_race_status(self, race_status):
         self.race_status = race_status
+
+    def update_environmental_data(self):
+        '''Updates environmental data.'''
+        self.environmental_data_update_tracker += 1
+
+        partition = (self.environmental_data_update_tracker % 2)
+        for index, sensor in enumerate(self.sensors):
+            if (index % 2) == partition:
+                sensor.update()
 
     #
     # Get Json Node Data Functions

@@ -3,7 +3,6 @@
 import os
 import smbus # For i2c comms
 import io
-import importlib
 import gevent # For threads and timing
 from gevent.lock import BoundedSemaphore # To limit i2c calls
 from monotonic import monotonic # to capture read timing
@@ -86,7 +85,7 @@ def unpack_rssi(node, data):
 
 
 class RHInterface(BaseHardwareInterface):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
         self.pass_record_callback = None # Function added in server.py
@@ -142,56 +141,7 @@ class RHInterface(BaseHardwareInterface):
             else:
                 print "Node {0}: API_level={1}".format(node.index+1, node.api_level)
 
-        # Core temperature
-        with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
-            self.core_temp = float(f.read())/1000
-
-        self.environmental_data_update_tracker = 0
-
-        # Scan for INA219 devices
-        self.ina219_devices = []
-        self.ina219_data = []
-        supported_ina219_addrs = [0x40, 0x41, 0x44, 0x45]
-        try:
-            self.ina219Class = getattr(importlib.import_module('ina219'), 'INA219')
-            for index, addr in enumerate(supported_ina219_addrs):
-                try:
-                    device = self.ina219Class(0.1, address=addr)
-                    device.configure()
-                    data = {
-                        'voltage': device.voltage(),
-                        'current': device.current(),
-                        'power': device.power()
-                    }
-                    device.sleep()
-                    print "INA219 found at address {0}".format(addr)
-                    gevent.sleep(I2C_CHILL_TIME)
-                    self.ina219_devices.append(device)
-                    self.ina219_data.append(data)
-                except IOError as err:
-                    print "No INA219 at address {0}".format(addr)
-                gevent.sleep(I2C_CHILL_TIME)
-        except ImportError:
-            self.ina219Class = None
-
-        # Scan for BME280 devices
-        self.bme280_addrs = []
-        self.bme280_data = []
-        supported_bme280_addrs = [0x76, 0x77]
-        try:
-            self.bme280SampleMethod = getattr(importlib.import_module('bme280'), 'sample')
-            for index, addr in enumerate(supported_bme280_addrs):
-                try:
-                    data = self.bme280SampleMethod(self.i2c, addr)
-                    print "BME280 found at address {0}".format(addr)
-                    gevent.sleep(I2C_CHILL_TIME)
-                    self.bme280_addrs.append(addr)
-                    self.bme280_data.append(data)
-                except IOError as err:
-                    print "No BME280 at address {0}".format(addr)
-                gevent.sleep(I2C_CHILL_TIME)
-        except ImportError:
-            self.bme280SampleMethod = None
+        self.discover_sensors(config=kwargs['config'].get('SENSORS', {}), i2c_helper=self)
 
 
     #
@@ -385,6 +335,19 @@ class RHInterface(BaseHardwareInterface):
                 else:
                     self.log('Retry (IOError) limit reached in write_block:  addr={0} offs={1} data={2} retry={3} ts={4}'.format(addr, offset, data, retry_count, self.i2c_timestamp))
         return success
+
+    def with_i2c(self, callback):
+        val = None
+        if callable(callback):
+            try:
+                with self.semaphore:
+                    self.i2c_sleep()
+                    val = callback()
+                    self.i2c_timestamp = self.milliseconds()
+            except IOError as err:
+                self.log('I2C error: '+str(err))
+                self.i2c_timestamp = self.milliseconds()
+        return val
 
     #
     # Internal helper functions for setting single values
@@ -623,44 +586,7 @@ class RHInterface(BaseHardwareInterface):
         if node.api_level >= 14:
             self.set_value_8(node, FORCE_END_CROSSING, 0)
 
-    def update_environmental_data(self):
-        '''Updates environmental data.'''
-        self.environmental_data_update_tracker += 1
 
-        if self.ina219Class and (self.environmental_data_update_tracker % 2) == 0:
-            for index, device in enumerate(self.ina219_devices):
-                try:
-                    with self.semaphore:
-                        self.i2c_sleep()
-                        device = self.ina219_devices[index]
-                        device.wake()
-                        data = {
-                            'voltage': device.voltage(),
-                            'current': device.current(),
-                            'power': device.power()/1000.0
-                        }
-                        device.sleep()
-                        self.ina219_data[index] = data
-                        self.i2c_timestamp = self.milliseconds()
-                except IOError as err:
-                    self.log('INA219 Read Error: ' + str(err))
-                    self.i2c_timestamp = self.milliseconds()
-
-        if self.bme280SampleMethod and (self.environmental_data_update_tracker % 2) == 1:
-            for index, addr in enumerate(self.bme280_addrs):
-                try:
-                    with self.semaphore:
-                        self.i2c_sleep()
-                        data = self.bme280SampleMethod(self.i2c, addr)
-                        self.bme280_data[index] = data
-                        self.i2c_timestamp = self.milliseconds()
-                except IOError as err:
-                    self.log('BME280 Read Error: ' + str(err))
-                    self.i2c_timestamp = self.milliseconds()
-
-        with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
-            self.core_temp = float(f.read())/1000
-
-def get_hardware_interface():
+def get_hardware_interface(*args, **kwargs):
     '''Returns the RotorHazard interface object.'''
-    return RHInterface()
+    return RHInterface(*args, **kwargs)
