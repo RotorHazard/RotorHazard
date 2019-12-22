@@ -23,6 +23,55 @@
 			]});
 		});
 
+                socket.on('class_data', function (msg) {
+                        if (msg.classes.length > 0) {
+                            $('#set_current_class').empty();
+                            for (var i in msg.classes) {
+                                    var raceclass = msg.classes[i];
+                                    var opt = $('<option value="' + raceclass.id + '">' + raceclass.name + '</option>');
+
+                                    $('#set_current_class').append(opt);
+                            }
+                        }
+
+                });
+
+
+                socket.on('race_list', function (msg) {
+                        race_list = msg;
+
+                        $('button#load_pilot_results').prop('disabled', false);
+                        if (race_list_loaded) {
+                                var prev_heat = $('#selected_heat').val();
+                        }
+
+                        $('#selected_heat').empty();
+                        for (var heat_i in race_list.heats) {
+                                var heat = race_list.heats[heat_i];
+
+                                if (heat.note) {
+                                        var heat_name = heat.note;
+                                } else {
+                                        var heat_name = __('Heat') + ' ' + heat_i;
+                                }
+
+                                $('#selected_heat').append('<option value="' + heat_i + '">' + heat_name + '</option>');
+                        }
+                        $('#selected_heat').val(heat_i);
+
+                        if (race_list_loaded) {
+                                $('#selected_heat').val(prev_heat);
+                        } else {
+                                race_list_loaded = true;
+                                $('#selected_heat').prop('disabled', false);
+                                $('#selected_round').prop('disabled', false);
+                                $('#selected_pilot').prop('disabled', false);
+                                $('#load_race').prop('disabled', false);
+                        }
+
+                        $('#selected_heat').trigger('change');
+                });
+
 		socket.on('round_data', function (msg) {
 			var page = $('.page-rounds')
 			page.empty();

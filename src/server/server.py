@@ -2733,14 +2733,20 @@ def calc_leaderboard(**params):
             fastest_lap.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
-                stat_query = DB.session.query(DB.func.min(CurrentLap.lap_time)) \
-                    .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0)
+                stat_query = DB.session.query(DB.func.min(CurrentLap.lap_time),CurrentLap.lap_time) \
+                    .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0).one()
+                fastest_lap_round.append(0)
+                fastest_lap_heat.append(0)
             else:
                 stat_query = DB.session.query(DB.func.min(SavedRaceLap.lap_time)) \
                     .filter(SavedRaceLap.pilot_id == pilot, \
                         SavedRaceLap.deleted != 1, \
                         SavedRaceLap.race_id.in_(racelist), \
                         ~SavedRaceLap.id.in_(holeshots[i]))
+                fround = DB.session.query(SavedRaceMeta.round_id,SavedRaceMeta.heat_id).filter(SavedRaceMeta.id==stat_query.race_id).first()
+                fheat = DB.session.query( Heat.note).filter_by(heat_id=fround.heat_id).first()
+                fastest_lap_round.append(fround.round_id)
+                fastest_lap_heat.append(fheat.note)
 
             fast_lap = stat_query.scalar()
             fastest_lap.append(fast_lap)
