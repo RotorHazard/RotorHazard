@@ -61,7 +61,7 @@ class I2CNode(Node):
         success = False
         retry_count = 0
         data_with_checksum = data
-        if self.api_level <= 18:
+        if self.api_level <= 19:
             data_with_checksum.append(command)
         data_with_checksum.append(calculate_checksum(data_with_checksum))
         while success is False and retry_count < RETRY_COUNT:
