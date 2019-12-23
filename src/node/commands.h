@@ -14,8 +14,8 @@ struct Message_s
 
 typedef struct Message_s Message_t;
 
-#define MIN_FREQ 5645
-#define MAX_FREQ 5945
+#define MIN_FREQ 100
+#define MAX_FREQ 9999
 
 #define READ_ADDRESS 0x00
 #define READ_FREQUENCY 0x03
