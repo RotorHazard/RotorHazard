@@ -31,8 +31,8 @@
 		});
 
               socket.on('class_data', function (msg) {
-                        $('#set_current_class').empty();
-                        if (msg.classes.length) {
+                        if (msg.classes.length > 0) {
+                            $('#set_current_class').empty();
                             for (var i in msg.classes) {
                                     var raceclass = msg.classes[i];
                                     var opt = $('<option value="' + raceclass.id + '">' + raceclass.name + '</option>');
