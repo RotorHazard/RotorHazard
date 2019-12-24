@@ -1411,11 +1411,6 @@ def on_backup_database():
     }
     SOCKET_IO.emit('database_bkp_done', emit_payload)
 
-@SOCKET_IO.on('delete_last_heat')
-def on_delete_last_heat(data):
-    '''Delete last heat of the db'''
-    db_delete_last_heat()
-
 @SOCKET_IO.on('reset_database')
 def on_reset_database(data):
     '''Reset database.'''
@@ -1626,7 +1621,6 @@ def on_stage_race():
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,
-            'silent_countdown': MAX == 0,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'pi_starts_at_s': RACE_START
@@ -2093,7 +2087,6 @@ def emit_race_status(**params):
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'hide_stage_timer': race_format.start_delay_min != race_format.start_delay_max,
-            'silent_countdown': race_format.start_delay_max == 0,
             'pi_starts_at_s': RACE_START
         }
     if ('nobroadcast' in params):
@@ -3806,6 +3799,7 @@ def assign_frequencies():
 
 def db_init():
     '''Initialize database.'''
+    DB.create_all() # Creates tables from database classes/models
     db_reset_pilots()
     db_reset_heats()
     db_reset_current_laps()
@@ -3846,16 +3840,6 @@ def db_reset_heats():
             DB.session.add(Heat(heat_id=1, node_index=node, class_id=CLASS_ID_NONE, pilot_id=node+1))
     DB.session.commit()
     server_log('Database heats reset')
-
-def db_delete_last_heat():
-    '''deletes last heat'''
-    heat_row = DB.session.query(Heat)
-    if heat_row.count() > 1:
-        #DB.session.query(DB.func.max(Heat.id)).delete() 
-        #DB.session.commit()
-        server_log('Database delete last heat')
-    else:
-        server_log('Database can not delete last heat')
 
 def db_reset_classes():
     '''Resets database race classes to default.'''
