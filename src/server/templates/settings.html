@@ -542,15 +542,15 @@
 			return false;
 		});
 
-		$('button#generate_heats').click(function (event) {
-			var data = {
-				class: parseInt($(this).data('generator_input_class')),
-				num_pilots: parseInt($(this).data('pilots_per_heat')),
-				win_condition: parseInt($(this).data('win_condition'))
-			};
-			socket.emit('generate_heats', data);
-			return false;
-		});
+                $('button#generate_heats').click(function (event) {
+                        var data = {
+                                generator_input_class: parseInt($(this).data('generator_input_class')),
+                                pilots_per_heat: parseInt($(this).data('pilots_per_heat')),
+                                win_condition: parseInt($(this).data('win_condition'))
+                        };
+                        socket.emit('generate_heats', data);
+                        return false;
+                });
 
 		socket.on('class_data', function (msg) {
 			$(".race_classes").empty();
@@ -1420,8 +1420,7 @@
 		</ol>
 		<div class="control-set">
 				<button id="add_heat">+ {{ __('Add Heat') }}</button>
-				<button id="delete_last_heat">+ {{ __('Delete Last Heat') }}</button>
-                                <p>Advanced heat generator</p> 
+                                <h2>Advanced heat generator</h2> 
 
 			        <label for="generator_input_class">{{ __('input class') }}</label>
 			        <select id="generator_input_class">
@@ -1436,6 +1435,7 @@
                                 <br>
 				<label> pilots per heat <input type="number" id="pilots_per_heat" value="4" min="1" max="8" >  </label>
 				<button class="generate_heats" >{{ __('Generate Heat') }}</button>
+				<button id="delete_last_heat">- {{ __('Delete Last Heat') }}</button>
 
 		</div>
 	</div>

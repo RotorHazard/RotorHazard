@@ -1412,7 +1412,7 @@ def on_backup_database():
     SOCKET_IO.emit('database_bkp_done', emit_payload)
 
 @SOCKET_IO.on('delete_last_heat')
-def on_delete_last_heat(data):
+def on_delete_last_heat():
     '''Delete last heat of the db'''
     db_delete_last_heat()
 
@@ -3849,11 +3849,15 @@ def db_reset_heats():
 
 def db_delete_last_heat():
     '''deletes last heat'''
-    heat_row = DB.session.query(Heat)
-    if heat_row.count() > 1:
-        #DB.session.query(DB.func.max(Heat.id)).delete() 
-        #DB.session.commit()
-        server_log('Database delete last heat')
+
+    heat_count = DB.session.query(DB.func.max(Heat.heat_id)).scalar()
+    has_race = SavedRaceMeta.query.filter_by(heat_id=heat_count).first()
+
+    if (not has_race) and  (heat_count > 1):
+        DB.session.query(Heat).filter(Heat.heat_id == heat_count).delete()
+        DB.session.commit()
+        server_log('Admin deleted last heat ' + str(heat_count))
+        emit_heat_data()
     else:
         server_log('Database can not delete last heat')
 
