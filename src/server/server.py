@@ -47,12 +47,11 @@ HEAT_ID_NONE = 0  # indicator value for practice heat
 CLASS_ID_NONE = 0  # indicator value for unclassified heat
 FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
-EVENT_RESULTS_CACHE = {} # Cache of results page leaderboards
-EVENT_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
-
 LAST_RACE_CACHE = {} # Cache of current race after clearing
 LAST_RACE_LAPS_CACHE = {} # Cache of current race after clearing
 LAST_RACE_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
+
+GENERAL_RESULTS_CACHE = {} # This is an array that saves all of the various cache data, event_results, race_list, and class results.
 
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
@@ -1214,8 +1213,10 @@ def on_alter_heat(data):
     if 'pilot' in data:
         db_update.pilot_id = data['pilot']
     if 'note' in data:
-        global EVENT_RESULTS_CACHE_VALID
-        EVENT_RESULTS_CACHE_VALID = False
+        global GENERAL_RESULTS_CACHE
+        cachekey='event_results'
+        if cachekey in GENERAL_RESULTS_CACHE.keys():
+            GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
         db_update.note = data['note']
     if 'class' in data:
         db_update.class_id = data['class']
@@ -1243,8 +1244,10 @@ def on_alter_race_class(data):
     race_class = data['class_id']
     db_update = RaceClass.query.get(race_class)
     if 'class_name' in data:
-        global EVENT_RESULTS_CACHE_VALID
-        EVENT_RESULTS_CACHE_VALID = False
+        global GENERAL_RESULTS_CACHE 
+        cachekey='event_results'
+        if cachekey in GENERAL_RESULTS_CACHE.keys():
+            GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
         db_update.name = data['class_name']
     if 'class_format' in data:
         db_update.format_id = data['class_format']
@@ -1279,18 +1282,22 @@ def on_add_pilot():
 @SOCKET_IO.on('alter_pilot')
 def on_alter_pilot(data):
     '''Update pilot.'''
-    global EVENT_RESULTS_CACHE_VALID
+    global GENERAL_RESULTS_CACHE 
     pilot_id = data['pilot_id']
     db_update = Pilot.query.get(pilot_id)
     if 'callsign' in data:
-        EVENT_RESULTS_CACHE_VALID = False
+        cachekey='event_results'
+        if cachekey in GENERAL_RESULTS_CACHE.keys():
+            GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
         db_update.callsign = data['callsign']
     if 'team_name' in data:
         db_update.team = data['team_name']
     if 'phonetic' in data:
         db_update.phonetic = data['phonetic']
     if 'name' in data:
-        EVENT_RESULTS_CACHE_VALID = False
+        cachekey='event_results'
+        if cachekey in GENERAL_RESULTS_CACHE.keys():
+            GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
         db_update.name = data['name']
     DB.session.commit()
     server_log('Altered pilot {0} to {1}'.format(pilot_id, data))
@@ -1407,8 +1414,10 @@ def on_backup_database():
 @SOCKET_IO.on('reset_database')
 def on_reset_database(data):
     '''Reset database.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
+    global GENERAL_RESULTS_CACHE
+    cachekey='event_results'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
 
     reset_type = data['reset_type']
     if reset_type == 'races':
@@ -1612,7 +1621,6 @@ def on_stage_race():
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,
-            'silent_countdown': MAX == 0,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'pi_starts_at_s': RACE_START
@@ -1690,10 +1698,21 @@ def on_stop_race():
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
     '''Save current laps data to the database.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
+    global GENERAL_RESULTS_CACHE
+    cachekey='event_results'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
     race_format = getCurrentRaceFormat()
     heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).first()
+
+    cachekey='class'+str(heat.class_id)
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
+
+    cachekey='race_list'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
+
     # Get the last saved round for the current heat
     max_round = DB.session.query(DB.func.max(SavedRaceMeta.round_id)) \
             .filter_by(heat_id=RACE.current_heat).scalar()
@@ -1755,8 +1774,11 @@ def on_save_laps():
 
 @SOCKET_IO.on('resave_laps')
 def on_resave_laps(data):
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
+
+    global GENERAL_RESULTS_CACHE
+    cachekey='event_results'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
 
     heat_id = data['heat_id']
     round_id = data['round_id']
@@ -1769,6 +1791,16 @@ def on_resave_laps(data):
     laps = data['laps']
     enter_at = data['enter_at']
     exit_at = data['exit_at']
+
+    heat = Heat.query.filter_by(heat_id=heat_id, node_index=0).first()
+    print 'heat classid ' + str(heat.class_id)
+    cachekey='class'+str(heat.class_id)
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
+
+    cachekey='race_list'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
 
     Pilotrace = SavedPilotRace.query.filter_by(id=pilotrace_id).one()
     Pilotrace.enter_at = enter_at
@@ -2055,7 +2087,6 @@ def emit_race_status(**params):
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'hide_stage_timer': race_format.start_delay_min != race_format.start_delay_max,
-            'silent_countdown': race_format.start_delay_max == 0,
             'pi_starts_at_s': RACE_START
         }
     if ('nobroadcast' in params):
@@ -2238,6 +2269,16 @@ def emit_current_laps(**params):
 
 def emit_race_list(**params):
     '''Emits race listing'''
+    # if the report is cached and valid, return that
+    cachekey='race_list'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        if (GENERAL_RESULTS_CACHE[cachekey]['isvalid'] == 1):
+            if ('nobroadcast' in params):
+                emit('race_list', GENERAL_RESULTS_CACHE[cachekey]['content'])
+            else:
+                SOCKET_IO.emit('race_list', GENERAL_RESULTS_CACHE[cachekey]['content'])
+            return
+   
     heats = {}
     for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
         heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
@@ -2308,6 +2349,17 @@ def emit_race_list(**params):
         # 'heats_by_class': heats_by_class,
         # 'classes': current_classes,
     }
+    cachekey='race_list'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 1
+        GENERAL_RESULTS_CACHE[cachekey]['content'] = emit_payload
+    else:
+        newReport = {}
+        newReport[cachekey] = {}
+        newReport[cachekey]['isvalid'] = 1
+        newReport[cachekey]['content'] = emit_payload
+        GENERAL_RESULTS_CACHE.update(newReport)
+
 
     if ('nobroadcast' in params):
         emit('race_list', emit_payload)
@@ -2321,11 +2373,11 @@ def emit_round_data_notify(**params):
 
 def emit_round_data(**params):
     '''Emits saved races to rounds page.'''
-    global EVENT_RESULTS_CACHE
-    global EVENT_RESULTS_CACHE_VALID
+    global GENERAL_RESULTS_CACHE
 
-    if EVENT_RESULTS_CACHE_VALID:
-        emit_payload = EVENT_RESULTS_CACHE
+    cachekey='event_results'
+    if (cachekey in GENERAL_RESULTS_CACHE.keys()) and  (GENERAL_RESULTS_CACHE[cachekey]['isvalid'] == 1):
+       emit_payload = GENERAL_RESULTS_CACHE[cachekey]['content']
 
     else:
         heats = {}
@@ -2393,8 +2445,16 @@ def emit_round_data(**params):
             'event_leaderboard': calc_leaderboard()
         }
 
-        EVENT_RESULTS_CACHE = emit_payload
-        EVENT_RESULTS_CACHE_VALID = True
+        cachekey='event_results'
+        if cachekey in GENERAL_RESULTS_CACHE.keys():
+            GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 1
+            GENERAL_RESULTS_CACHE[cachekey]['content'] = emit_payload
+        else:
+            newReport = {}
+            newReport[cachekey] = {}
+            newReport[cachekey]['isvalid'] = 1
+            newReport[cachekey]['content'] = emit_payload
+            GENERAL_RESULTS_CACHE.update(newReport)
 
     if ('nobroadcast' in params):
         emit('round_data', emit_payload)
@@ -2403,14 +2463,23 @@ def emit_round_data(**params):
 
 def emit_specific_class_round_data(**params):
     '''Emits saved races to rounds page.'''
-    global EVENT_RESULTS_CACHE
-    global EVENT_RESULTS_CACHE_VALID
-   
+    global GENERAL_RESULTS_CACHE 
+
     if ('specific_class' in params):
         specific_class = params['specific_class']
     else:
         specific_class = CLASS_ID_NONE
-
+ 
+    cachekey='class'+specific_class
+    # if the report is cached and valid, return that
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        if (GENERAL_RESULTS_CACHE[cachekey]['isvalid'] == 1):
+            if ('nobroadcast' in params):
+                emit('class_round_data', GENERAL_RESULTS_CACHE[cachekey]['content'])
+            else:
+                SOCKET_IO.emit('class_round_data', GENERAL_RESULTS_CACHE[cachekey]['content'])
+            return
+   
     heats = {}
     for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().filter_by(class_id=specific_class).order_by(SavedRaceMeta.heat_id):
         heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
@@ -2470,6 +2539,17 @@ def emit_specific_class_round_data(**params):
     emit_payload = {
         'classes': current_classes
     }
+
+    cachekey='class'+specific_class
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 1
+        GENERAL_RESULTS_CACHE[cachekey]['content'] = emit_payload
+    else:
+        newReport = {}
+        newReport[cachekey] = {}
+        newReport[cachekey]['isvalid'] = 1
+        newReport[cachekey]['content'] = emit_payload
+        GENERAL_RESULTS_CACHE.update(newReport)
 
     if ('nobroadcast' in params):
         emit('class_round_data', emit_payload)
@@ -2645,20 +2725,21 @@ def calc_leaderboard(**params):
             fastest_lap_heat.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
-                stat_query = DB.session.query(DB.func.min(CurrentLap.lap_time)) \
-                    .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0)
+                stat_query = DB.session.query(DB.func.min(CurrentLap.lap_time),CurrentLap.lap_time) \
+                    .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0).one()
+                fastest_lap_round.append(0)
+                fastest_lap_heat.append(0)
             else:
                 stat_query = DB.session.query(DB.func.min(SavedRaceLap.lap_time),SavedRaceLap.lap_time,SavedRaceLap.race_id) \
                     .filter(SavedRaceLap.pilot_id == pilot, \
                         SavedRaceLap.deleted != 1, \
                         SavedRaceLap.race_id.in_(racelist), \
                         ~SavedRaceLap.id.in_(holeshots[i])).one()
+                fround = DB.session.query(SavedRaceMeta.round_id,SavedRaceMeta.heat_id).filter(SavedRaceMeta.id==stat_query.race_id).first()
+                fheat = DB.session.query( Heat.note).filter_by(heat_id=fround.heat_id).first()
 
-            fround = DB.session.query(SavedRaceMeta.round_id,SavedRaceMeta.heat_id).filter(SavedRaceMeta.id==stat_query.race_id).first()
-            fheat = DB.session.query( Heat.note).filter_by(heat_id=fround.heat_id).first()
-
-            fastest_lap_round.append(fround.round_id)
-            fastest_lap_heat.append(fheat.note)
+                fastest_lap_round.append(fround.round_id)
+                fastest_lap_heat.append(fheat.note)
 
             fastest_lap.append(stat_query.lap_time)
 
