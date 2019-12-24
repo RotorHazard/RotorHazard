@@ -566,6 +566,7 @@ function timerModel() {
 	this.time_s = false; // simplified relative time in seconds
 	this.count_up = false; // use fixed-length timer
 	this.duration = 0; // fixed-length duration, in seconds
+        this.silent_countdown = false; // eliminate countdown tones
 
 	this.drift_history = [];
 	this.drift_history_samples = 10;
@@ -791,6 +792,7 @@ var rotorhazard = {
 	pi_time_diff_samples: [], // stored previously acquired offsets
 
 	timer: {
+		suppress_countdown_beep: false,
 		deferred: new timerModel(),
 		race: new timerModel(),
 		stopAll: function() {
@@ -951,7 +953,7 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 	if (timer.warn_until < window.performance.now()) {
 		$('.timing-clock .warning').hide();
 	}
-	if (timer.time_s < 0) {
+	if (timer.time_s < 0 && !timer.silent_countdown) {
 		if (timer.hidden_staging) {
 			// beep every second during staging if timer is hidden
 			if (timer.time_s * 10 % 10 == 0) {
