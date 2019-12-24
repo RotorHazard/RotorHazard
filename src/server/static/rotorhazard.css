@@ -97,6 +97,7 @@ th, td {
 	vertical-align: top;
 }
 
+
 input, select, textarea {
 	font: inherit;
 	box-sizing: border-box;
@@ -691,6 +692,9 @@ main.page-home {
 
 .node-controls {
 	margin-top: 0.25em;
+}
+input#pilots_per_heat {
+	width: 2em
 }
 
 .enter-exit-control {
