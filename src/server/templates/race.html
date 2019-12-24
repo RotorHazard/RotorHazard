@@ -16,6 +16,7 @@
 		rotorhazard.race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
 
 		rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
+		rotorhazard.timer.race.silent_countdown = Boolean(msg.silent_countdown);
 		rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
 		rotorhazard.timer.race.duration = msg.race_time_sec;
 
