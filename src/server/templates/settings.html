@@ -537,6 +537,21 @@
 			return false;
 		});
 
+		$('button#delete_last_heat').click(function (event) {
+			socket.emit('delete_last_heat');
+			return false;
+		});
+
+		$('button#generate_heats').click(function (event) {
+			var data = {
+				class: parseInt($(this).data('generator_input_class')),
+				num_pilots: parseInt($(this).data('pilots_per_heat')),
+				win_condition: parseInt($(this).data('win_condition'))
+			};
+			socket.emit('generate_heats', data);
+			return false;
+		});
+
 		socket.on('class_data', function (msg) {
 			$(".race_classes").empty();
 
@@ -544,8 +559,11 @@
 				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '</p>');
 
 				var classlist = $('<ol>');
+                                $('#generator_input_class').empty();
 				for (var i in msg.classes) {
 					var race_class = msg.classes[i];
+					opt = '<option value="' + msg.classes[i].id + '">' + msg.classes[i].name + '</option>'
+                                        $('#generator_input_class').append(opt);
 					var el = $('<li>');
 					el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');
 					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
@@ -568,6 +586,7 @@
 					el.appendTo(classlist);
 				}
 				classlist.appendTo($('.race_classes'));
+
 			} else {
 				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
 			}
@@ -1400,131 +1419,147 @@
 			<li>{{ __('Loading...') }}</li>
 		</ol>
 		<div class="control-set">
-			<button id="add_heat">+ {{ __('Add Heat') }}</button>
-		</div>
-	</div>
-</div>
+				<button id="add_heat">+ {{ __('Add Heat') }}</button>
+				<button id="delete_last_heat">+ {{ __('Delete Last Heat') }}</button>
+                                <p>Advanced heat generator</p> 
 
-<!--Pilots list for editing-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Pilots') }}</h2>
-	</div>
-	<div class="panel-content">
-		<ul class="pilots">
-			<li>{{ __('Loading...') }}</li>
-		</ul>
-
-		<div class="control-set">
-			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
-		</div>
-	</div>
-</div>
-
-<!--Voice Settings-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Audio Control') }}</h2>
-	</div>
-	<div class="panel-content">
-		<p class="form-note">{{ __('Voice settings apply to this device only.') }}</p>
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_voice_language">{{ __('Voice Select') }}</label>
-				</div>
-				<div id="voice_select"></div>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_voice_string_language">{{ __('Voice Language') }}</label>
-				</div>
-				<select id="set_voice_string_language">
-					<option>{{ __('Loading...') }}</option>
+			        <label for="generator_input_class">{{ __('input class') }}</label>
+			        <select id="generator_input_class">
+			     	    <option>{{ __('Loading...') }}</option>
+			        </select>
+				<label for="win_condition">{{ __('Win Condition') }}</label>
+				<select id="win_condition">
+					<option value="1">{{ __('Most Laps') }}</option>
+					<option value="3">{{ __('Fastest Lap') }}</option>
+					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
 				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					{{ __('Voice Test') }} &nbsp; &nbsp;
-				</div>
-				<input type="text" id="voice_test_text" value="{{ getOption('timerName') }}">
-				<button class="button" id="play_voice_test">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>
-			</li>
-			<li>
-				<div class="label-block">
-					{{ __('Announcements') }}
-				</div>
-				<ul>
-					<li><label><input type="checkbox" id="voice_callsign"> {{ __('Callsign') }}</label></li>
-					<li><label><input type="checkbox" id="voice_lap_count"> {{ __('Lap Number') }}</label></li>
-					<li><label><input type="checkbox" id="voice_lap_time"> {{ __('Lap Time') }}</label></li>
-					<li><label><input type="checkbox" id="voice_race_timer"> {{ __('Race Timer') }}</label></li>
-					<li><label><input type="checkbox" id="voice_team_lap_count"> {{ __('Team Lap Total') }}</label></li>
-					<li><label><input type="checkbox" id="voice_race_winner"> {{ __('Race Winner') }}</label></li>
-				</ul>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_voice_volume">{{ __('Voice Volume') }}</label>
-					<p class="desc">{{ __('Volume') }}: <span id="voice_volume_value"></span></p>
-				</div>
-				<input type="range" id="set_voice_volume" min="1" max="100">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_voice_rate">{{ __('Voice Rate') }}</label>
-					<p class="desc">{{ __('Rate') }}: <span id="voice_rate_value"></span></p>
-				</div>
-				<input type="range" id="set_voice_rate" min="0" max="2.0" step="0.01">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_voice_pitch">{{ __('Voice Pitch') }}</label>
-					<p class="desc">{{ __('Pitch') }}: <span id="voice_pitch_value"></span></p>
-				</div>
-				<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_tone_volume">{{ __('Tone Volume') }}</label>
-					<p class="desc">{{ __('Volume') }}: <span id="tone_volume_value"></span></p>
-				</div>
-				<input type="range" id="set_tone_volume" min="1" max="100">
-			</li>
-			<li>
-				<div class="label-block">
-					{{ __('Indicator Beeps') }}
-				</div>
-				<ul>
-					<li><label><input type="checkbox" id="beep_on_first_pass_button"> {{ __('On First Pass') }}</label></li>
-					<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
-					<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
-					<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
-					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
-				</ul>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_indicator_volume">{{ __('Indicator Beeps Volume') }}</label>
-					<p class="desc">{{ __('Volume') }}: <span id="indicator_volume_value"></span></p>
-				</div>
-				<input type="range" id="set_indicator_volume" min="1" max="100">
-			</li>
-		</ol>
-	</div>
-</div>
+                                <br>
+				<label> pilots per heat <input type="number" id="pilots_per_heat" value="4" min="1" max="8" >  </label>
+				<button class="generate_heats" >{{ __('Generate Heat') }}</button>
 
-<!--Race Format-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Race Format') }}</h2>
+		</div>
 	</div>
-	<div class="panel-content">
-		<p class="form-note">{{ __('Formats used with saved races cannot be modified. (Clear races to release.)') }}</p>
-		<p class="form-note">{{ __('Format cannot be changed while a race is running.') }}</p>
 
-		<div class="control-set">
-			<label for="set_race_format">{{ __('Format:') }}</label>
+	<!--Pilots list for editing-->
+	<div class="panel collapsing">
+		<div class="panel-header">
+			<h2>{{ __('Pilots') }}</h2>
+		</div>
+		<div class="panel-content">
+			<ul class="pilots">
+				<li>{{ __('Loading...') }}</li>
+			</ul>
+
+			<div class="control-set">
+				<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
+			</div>
+		</div>
+	</div>
+
+	<!--Voice Settings-->
+	<div class="panel collapsing">
+		<div class="panel-header">
+			<h2>{{ __('Audio Control') }}</h2>
+		</div>
+		<div class="panel-content">
+			<p class="form-note">{{ __('Voice settings apply to this device only.') }}</p>
+			<ol class="form">
+				<li>
+					<div class="label-block">
+						<label for="set_voice_language">{{ __('Voice Select') }}</label>
+					</div>
+					<div id="voice_select"></div>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="set_voice_string_language">{{ __('Voice Language') }}</label>
+					</div>
+					<select id="set_voice_string_language">
+						<option>{{ __('Loading...') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						{{ __('Voice Test') }} &nbsp; &nbsp;
+					</div>
+					<input type="text" id="voice_test_text" value="{{ getOption('timerName') }}">
+					<button class="button" id="play_voice_test">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>
+				</li>
+				<li>
+					<div class="label-block">
+						{{ __('Announcements') }}
+					</div>
+					<ul>
+						<li><label><input type="checkbox" id="voice_callsign"> {{ __('Callsign') }}</label></li>
+						<li><label><input type="checkbox" id="voice_lap_count"> {{ __('Lap Number') }}</label></li>
+						<li><label><input type="checkbox" id="voice_lap_time"> {{ __('Lap Time') }}</label></li>
+						<li><label><input type="checkbox" id="voice_race_timer"> {{ __('Race Timer') }}</label></li>
+						<li><label><input type="checkbox" id="voice_team_lap_count"> {{ __('Team Lap Total') }}</label></li>
+						<li><label><input type="checkbox" id="voice_race_winner"> {{ __('Race Winner') }}</label></li>
+					</ul>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="set_voice_volume">{{ __('Voice Volume') }}</label>
+						<p class="desc">{{ __('Volume') }}: <span id="voice_volume_value"></span></p>
+					</div>
+					<input type="range" id="set_voice_volume" min="1" max="100">
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="set_voice_rate">{{ __('Voice Rate') }}</label>
+						<p class="desc">{{ __('Rate') }}: <span id="voice_rate_value"></span></p>
+					</div>
+					<input type="range" id="set_voice_rate" min="0" max="2.0" step="0.01">
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="set_voice_pitch">{{ __('Voice Pitch') }}</label>
+						<p class="desc">{{ __('Pitch') }}: <span id="voice_pitch_value"></span></p>
+					</div>
+					<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="set_tone_volume">{{ __('Tone Volume') }}</label>
+						<p class="desc">{{ __('Volume') }}: <span id="tone_volume_value"></span></p>
+					</div>
+					<input type="range" id="set_tone_volume" min="1" max="100">
+				</li>
+				<li>
+					<div class="label-block">
+						{{ __('Indicator Beeps') }}
+					</div>
+					<ul>
+						<li><label><input type="checkbox" id="beep_on_first_pass_button"> {{ __('On First Pass') }}</label></li>
+						<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
+						<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
+						<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
+						<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
+					</ul>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="set_indicator_volume">{{ __('Indicator Beeps Volume') }}</label>
+						<p class="desc">{{ __('Volume') }}: <span id="indicator_volume_value"></span></p>
+					</div>
+					<input type="range" id="set_indicator_volume" min="1" max="100">
+				</li>
+			</ol>
+		</div>
+	</div>
+
+	<!--Race Format-->
+	<div class="panel collapsing">
+		<div class="panel-header">
+			<h2>{{ __('Race Format') }}</h2>
+		</div>
+		<div class="panel-content">
+			<p class="form-note">{{ __('Formats used with saved races cannot be modified. (Clear races to release.)') }}</p>
+			<p class="form-note">{{ __('Format cannot be changed while a race is running.') }}</p>
+
+			<div class="control-set">
+				<label for="set_race_format">{{ __('Format:') }}</label>
 			<select id="set_race_format">
 				<option>{{ __('Loading...') }}</option>
 			</select>
