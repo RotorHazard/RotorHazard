@@ -544,9 +544,9 @@
 
                 $('button#generate_heats').click(function (event) {
                         var data = {
-                                generator_input_class: parseInt($(this).data('generator_input_class')),
-                                pilots_per_heat: parseInt($(this).data('pilots_per_heat')),
-                                win_condition: parseInt($(this).data('win_condition'))
+                                generator_input_class: $('#generator_input_class').val(),
+                                pilots_per_heat: $('#pilots_per_heat').val(),
+                                win_condition: $('#win_condition').val(),
                         };
                         socket.emit('generate_heats', data);
                         return false;
@@ -1421,8 +1421,9 @@
 		<div class="control-set">
 				<button id="add_heat">+ {{ __('Add Heat') }}</button>
                                 <h2>Advanced heat generator</h2> 
+                                <p>For generating main event heats based on results from existing class</p>
 
-			        <label for="generator_input_class">{{ __('input class') }}</label>
+			        <label for="generator_input_class">{{ __('Input class') }}</label>
 			        <select id="generator_input_class">
 			     	    <option>{{ __('Loading...') }}</option>
 			        </select>
@@ -1434,7 +1435,7 @@
 				</select>
                                 <br>
 				<label> pilots per heat <input type="number" id="pilots_per_heat" value="4" min="1" max="8" >  </label>
-				<button class="generate_heats" >{{ __('Generate Heat') }}</button>
+				<button id="generate_heats">{{ __('Generate Heats') }}</button>
 				<button id="delete_last_heat">- {{ __('Delete Last Heat') }}</button>
 
 		</div>
