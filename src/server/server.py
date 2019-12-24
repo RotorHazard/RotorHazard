@@ -1341,6 +1341,71 @@ def on_alter_heat(data):
     server_log('Heat {0} Node {1} altered to {2}'.format(heat, node_index+1, data))
     emit_heat_data(noself=True) # Settings page, new pilot position in heats
 
+@SOCKET_IO.on('generate_heats')
+def on_generate_heats(data):
+    '''Update heat.'''
+    print 'generate heat'
+    generator_input_class = int(data['generator_input_class'])
+    pilots_per_heat = min(int(data['pilots_per_heat']),RACE.num_nodes)
+    win_condition = data['win_condition']
+    max_heat_id = DB.session.query(DB.func.max(Heat.heat_id)).scalar()
+
+
+    if (win_condition == '1' ): 
+        generate_type='by_race_time'
+     
+    if (win_condition == '3' ):
+        generate_type='by_fastest_lap'
+     
+    if (win_condition == '4' ):
+        generate_type='by_consecutives'
+
+    #generate the class results if it has not already
+    emit_specific_class_round_data(specific_class=str(generator_input_class))
+
+    cachekey='class'+str(generator_input_class)
+    # if the report is cached and valid, return that
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        if (GENERAL_RESULTS_CACHE[cachekey]['isvalid'] == 1):
+            class_results = GENERAL_RESULTS_CACHE[cachekey]['content']['classes'][generator_input_class]['leaderboard'][generate_type]
+            max_heat_id = DB.session.query(DB.func.max(Heat.heat_id)).scalar()
+            max_heat_id += 1
+            assigned_pilots_in_heat = 1 
+            heat_note = 'A' 
+            for row in class_results:
+                pilot_id= row['pilot_id'] 
+                pilot= row['callsign'] 
+                node_index = SavedPilotRace.query.filter_by(pilot_id=pilot_id).first().node_index
+                
+                # Check if the node_index is already taken if so, just find any open node that has no pilot in this heat 
+                current_node_occupant = DB.session.query(DB.func.max(Heat.heat_id)).filter_by(heat_id=max_heat_id, node_index=node_index).scalar()
+                if current_node_occupant is not None: # ie this node is taken
+                    for checking_index  in range(pilots_per_heat): 
+                        current_node_occupant = DB.session.query(DB.func.max(Heat.heat_id)).filter_by(heat_id=max_heat_id, node_index=checking_index).scalar()
+                        if current_node_occupant is  None: # Not taken
+                            node_index=checking_index
+
+                print "generating heat "+  pilot + " id=" +str(pilot_id) + " node index ="+  str(node_index) +" "+ heat_note +"Main heat_id=" + str(max_heat_id) 
+                DB.session.add(Heat(heat_id=max_heat_id, node_index=node_index, pilot_id=pilot_id, class_id=CLASS_ID_NONE,note=heat_note+"-Main"))
+                DB.session.commit()
+                assigned_pilots_in_heat += 1
+
+                #iterate to the next heat if we have fully populated this one 
+                
+                if assigned_pilots_in_heat > pilots_per_heat:
+                    # for odd reasons, the rest of the system wants heats fully populated
+                    for checking_index  in range(RACE.num_nodes): 
+                        current_node_occupant = DB.session.query(DB.func.max(Heat.heat_id)).filter_by(heat_id=max_heat_id, node_index=checking_index).scalar()
+                        if current_node_occupant is  None: # Not taken
+                            DB.session.add(Heat(heat_id=max_heat_id, node_index=checking_index, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE, note=heat_note+"-Main"))
+                            DB.session.commit()
+                    max_heat_id += 1
+                    assigned_pilots_in_heat = 1 
+                    heat_note= chr(ord(heat_note) + 1 )
+
+
+    emit_heat_data() 
+
 @SOCKET_IO.on('add_race_class')
 def on_add_race_class():
     '''Adds the next available pilot id number in the database.'''
@@ -2952,7 +3017,7 @@ def calc_leaderboard(**params):
                 consecutives.append(None)
 
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives)
+    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_round, fastest_lap_heat, pilot_ids)
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
@@ -2969,6 +3034,7 @@ def calc_leaderboard(**params):
             'fastest_lap': time_format(row[4]),
             'team_name': row[5],
             'consecutives': time_format(row[6]),
+            'pilot_id': row[9],
         })
 
     # Sort fastest_laps x[4]
@@ -2984,6 +3050,9 @@ def calc_leaderboard(**params):
             'fastest_lap': time_format(row[4]),
             'team_name': row[5],
             'consecutives': time_format(row[6]),
+            'fastest_lap_round': row[7],
+            'fastest_lap_heat': row[8],
+            'pilot_id': row[9],
         })
 
     # Sort consecutives x[6]
@@ -2999,6 +3068,7 @@ def calc_leaderboard(**params):
             'fastest_lap': time_format(row[4]),
             'team_name': row[5],
             'consecutives': time_format(row[6]),
+            'pilot_id': row[9],
         })
 
     leaderboard_output = {
