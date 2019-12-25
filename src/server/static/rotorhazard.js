@@ -962,11 +962,11 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 				}
 			}
-		} else if (timer.time_s == 30
-			|| timer.time_s == 20
-			|| timer.time_s == 10) {
-			speak('<div>' + __l('Starting in') + ' ' + timer.time_s + ' ' + __l('Seconds') + '</div>', true);
-		} else if (timer.time_s <= 5) {
+		} else if (timer.time_s == -30
+			|| timer.time_s == -20
+			|| timer.time_s == -10) {
+			speak('<div>' + __l('Starting in') + ' ' + (-timer.time_s) + ' ' + __l('Seconds') + '</div>', true);
+		} else if (timer.time_s >= -5) {
 			// staging beep for last 5 seconds before start
 			if (timer.time_s * 10 % 10 == 0) {
 				if( rotorhazard.use_mp3_tones){
