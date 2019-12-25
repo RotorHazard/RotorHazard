@@ -1347,7 +1347,6 @@ def on_alter_heat(data):
 @SOCKET_IO.on('generate_heats')
 def on_generate_heats(data):
     '''Update heat.'''
-    print 'generate heat'
     generator_input_class = int(data['generator_input_class'])
     pilots_per_heat = min(int(data['pilots_per_heat']),RACE.num_nodes)
     win_condition = data['win_condition']
@@ -1989,7 +1988,6 @@ def on_resave_laps(data):
     exit_at = data['exit_at']
 
     heat = Heat.query.filter_by(heat_id=heat_id, node_index=0).first()
-    print 'heat classid ' + str(heat.class_id)
     cachekey='class'+str(heat.class_id)
     if cachekey in GENERAL_RESULTS_CACHE.keys():
         GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
@@ -2306,7 +2304,6 @@ def emit_race_status(**params):
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'hide_stage_timer': race_format.start_delay_min != race_format.start_delay_max,
-            'silent_countdown': race_format.start_delay_max == 0,
             'pi_starts_at_s': RACE_START
         }
     if ('nobroadcast' in params):
@@ -2772,6 +2769,16 @@ def emit_specific_class_round_data(**params):
         heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
 
     current_classes = {}
+    # Do the unclassifed class   
+    if (specific_class == '0'):
+        current_class = {}
+        current_class['id'] = CLASS_ID_NONE 
+        current_class['name'] = 'Unclassified'
+        current_class['description'] = 'Unclassified' 
+        current_class['leaderboard'] = calc_leaderboard(class_id=0)
+        current_classes[0] = current_class
+
+    # Else Do the    
     for race_class in RaceClass.query.filter_by(id=specific_class).all():
         current_class = {}
         current_class['id'] = race_class.id
@@ -3171,7 +3178,7 @@ def emit_class_data(**params):
         current_class['description'] = race_class.description
         current_class['format'] = race_class.format_id
 
-        has_race = SavedRaceMeta.query.filter_by(class_id=race_class.id).one_or_none()
+        has_race = SavedRaceMeta.query.filter_by(class_id=race_class.id).first()
         if has_race:
             current_class['locked'] = True
         else:
@@ -4054,6 +4061,7 @@ def assign_frequencies():
 
 def db_init():
     '''Initialize database.'''
+    DB.create_all() # Creates tables from database classes/models
     db_reset_pilots()
     db_reset_heats()
     db_reset_current_laps()
@@ -4108,6 +4116,7 @@ def db_delete_last_heat():
         emit_heat_data()
     else:
         server_log('Database can not delete last heat')
+        emit_heat_data()
 
 def db_reset_classes():
     '''Resets database race classes to default.'''
