@@ -30,7 +30,7 @@
 			]});
 		});
 
-              socket.on('class_data', function (msg) {
+                socket.on('class_data', function (msg) {
                         if (msg.classes.length > 0) {
                             $('#set_current_class').empty();
                             for (var i in msg.classes) {
@@ -78,7 +78,6 @@
 
                         $('#selected_heat').trigger('change');
                 });
-
 
 		socket.on('round_data', function (msg) {
 			var page = $('.results_display')

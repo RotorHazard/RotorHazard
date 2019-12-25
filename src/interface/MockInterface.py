@@ -17,7 +17,7 @@ CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at lev
 ENTER_AT_PEAK_MARGIN = 5         # closest that captured enter-at level can be to node peak RSSI
 
 class MockInterface(BaseHardwareInterface):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
         self.pass_record_callback = None # Function added in server.py
@@ -29,9 +29,9 @@ class MockInterface(BaseHardwareInterface):
         self.nodes = [] # Array to hold each node object
         self.data = []
         i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
-        for index, addr in enumerate(i2c_addrs):
+        for index in range(int(os.environ.get('RH_NODES', '8'))):
             node = Node() # New node instance
-            node.i2c_addr = addr # Set current loop i2c_addr
+            node.i2c_addr = i2c_addrs[index] # Set current loop i2c_addr
             node.index = index
             node.api_valid_flag = True
             node.api_level = 18
@@ -45,16 +45,7 @@ class MockInterface(BaseHardwareInterface):
                 f = None
             self.data.append(f)
 
-        # Core temperature
-        self.core_temp = 30
-
-        # Scan for INA219 devices
-        self.ina219_devices = []
-        self.ina219_data = []
-
-        # Scan for BME280 devices
-        self.bme280_addrs = []
-        self.bme280_data = []
+        self.discover_sensors()
 
 
     #
@@ -201,9 +192,6 @@ class MockInterface(BaseHardwareInterface):
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
 
-    def update_environmental_data(self):
-        '''Updates environmental data.'''
-
-def get_hardware_interface():
+def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''
-    return MockInterface()
+    return MockInterface(*args, **kwargs)

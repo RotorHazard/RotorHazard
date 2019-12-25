@@ -27,6 +27,8 @@ To build and configure the system, follow the instructions here:
 [doc/Hardware Setup.md](doc/Hardware%20Setup.md)  
 [doc/Software Setup.md](doc/Software%20Setup.md)
 
+**Note:** The 'master' branch in the GitHub repository will usually contain the latest development code, which may not be stable. To install the latest stable release, please follow the instructions in the [doc/Software Setup.md](doc/Software%20Setup.md) document.
+
 ## User Guide
 For initial setup and running races, follow these instructions: [doc/User Guide.md](doc/User%20Guide.md)
 

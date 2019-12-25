@@ -5,6 +5,7 @@
 <script type="text/javascript" charset="utf-8">
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	$(document).ready(function () {
 		socket.emit('load_data', {'load_types': [
@@ -22,6 +23,7 @@
 			'min_lap',
 			'race_status',
 			'team_racing_mode',
+			'cluster_status'
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -83,6 +85,11 @@
 		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
 		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
+
+		if ('{{ getOption('ledBrightness') }}' != 'False') {
+			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
+			$('#led_brightness_value').html($('#set_led_brightness').val());
+		}
 
 		// populate frequency selects
 		$('.frequency_table').each(function(){
@@ -178,30 +185,56 @@
 			}
 		});
 		socket.on('environmental_data', function (msg) {
-			$('#core-temperature').html(Number(msg.core_temperature).toFixed(1));
 			env_table_html = '';
-			if (msg.aux_voltage.length > 0) {
-				env_table_html += '<tr><th>'+__('Voltage (V)')+'</th><th>'+__('Current (mA)')+'</th><th>'+__('Power (W)')+'</th></tr>';
-				for (i=0; i < msg.aux_voltage.length; i++) {
-					env_table_html += '<tr>';
-					env_table_html += '<td>' + Number(msg.aux_voltage[i]).toFixed(2) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_current[i]).toFixed(0) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_power[i]).toFixed(2) + '</td>';
-					env_table_html += '</tr>';
+			for (i=0; i<msg.length; i++) {
+				var sensor = msg[i];
+				var name = Object.keys(sensor)[0];
+				var data = sensor[name];
+				var values = '';
+				var br = '';
+				for (var reading in data) {
+					var value = data[reading].value;
+					var units = data[reading].units;
+					values += br;
+					if (reading == 'voltage') {
+						values += __('Voltage: ') + Number(value).toFixed(2)+units;
+					} else if(reading == 'current') {
+						values += __('Current: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'power') {
+						values += __('Power: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'temperature') {
+						values += __('Temperature: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'humidity') {
+						values += __('Humidity: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'pressure') {
+						values += __('Pressure: ') + Number(value).toFixed(1)+units;
+					} else {
+						values += __('Unknown: ') + value;
+					}
+					br = '<br/>';
 				}
-			}
-			if (msg.aux_temperature.length > 0) {
-				env_table_html += '<tr><th>'+__('Temperature (°C)')+'</th><th>'+__('Humidity (%rH)')+'</th><th>'+__('Pressure (hPa)')+'</th></tr>';
-				for (i=0; i < msg.aux_temperature.length; i++) {
-					env_table_html += '<tr>';
-					env_table_html += '<td>' + Number(msg.aux_temperature[i]).toFixed(1) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_humidity[i]).toFixed(1) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_pressure[i]).toFixed(1) + '</td>';
-					env_table_html += '</tr>';
-				}
+				env_table_html += '<tr>';
+				env_table_html += '<td>' + name + '</td>';
+				env_table_html += '<td>' + values + '</td>';
+				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<table>' + env_table_html + '</table>');
+				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table>');
+			}
+		});
+		socket.on('cluster_status', function (msg) {
+			cluster_table_html = '';
+			if (msg.slaves && msg.slaves.length > 0) {
+				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Time since last contact (s)')+'</th></tr>';
+				for (i=0; i < msg.slaves.length; i++) {
+					cluster_table_html += '<tr>';
+					cluster_table_html += '<td>' + msg.slaves[i].address + '</td>';
+					cluster_table_html += '<td>' + msg.slaves[i].last_contact + '</td>';
+					cluster_table_html += '</tr>';
+				}
+			}
+			if (cluster_table_html) {
+				$('#cluster-status-table').html('<table>' + cluster_table_html + '</table>');
 			}
 		});
 
@@ -455,6 +488,8 @@
 					return 1;
 				return 0;
 			});
+                        $('button#delete_last_heat').prop('disabled', false);
+                        $('button#generate_heats').prop('disabled', false);
 
 			$(".heats").empty();
 			for (var i in msg.heats) {
@@ -539,6 +574,7 @@
 
 		$('button#delete_last_heat').click(function (event) {
 			socket.emit('delete_last_heat');
+                        $('button#delete_last_heat').prop('disabled', true);
 			return false;
 		});
 
@@ -548,6 +584,7 @@
                                 pilots_per_heat: $('#pilots_per_heat').val(),
                                 win_condition: $('#win_condition').val(),
                         };
+                        $('button#generate_heats').prop('disabled', true);
                         socket.emit('generate_heats', data);
                         return false;
                 });
@@ -555,11 +592,13 @@
 		socket.on('class_data', function (msg) {
 			$(".race_classes").empty();
 
+                        $('#generator_input_class').empty();
+			opt = '<option value="0">Unclassified</option>'
+                        $('#generator_input_class').append(opt);
 			if (msg.classes.length) {
 				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '</p>');
 
 				var classlist = $('<ol>');
-                                $('#generator_input_class').empty();
 				for (var i in msg.classes) {
 					var race_class = msg.classes[i];
 					opt = '<option value="' + msg.classes[i].id + '">' + msg.classes[i].name + '</option>'
@@ -586,7 +625,6 @@
 					el.appendTo(classlist);
 				}
 				classlist.appendTo($('.race_classes'));
-
 			} else {
 				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
 			}
@@ -1156,6 +1194,31 @@
 			socket.emit('LED_RBCHASE');
 			return false;
 		});
+
+		$('#set_led_brightness').on('input', function (event) {
+			var val = brightness_logsl.value($(this).val());
+			$('#led_brightness_value').html($(this).val());
+		});
+
+		$('#set_led_brightness').change(function (event) {
+			var val = brightness_logsl.value($(this).val());
+			// emit data
+			var data = {
+				brightness: Math.round(val),
+			};
+			socket.emit('LED_brightness', data);
+		});
+
+		$('#set_led_color').change(function (event) {
+				var colors = convertColor($(this).val());
+				var data = {
+					red: colors.r,
+					green: colors.g,
+					blue: colors.b,
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
 	});
 
 	function speak(obj) {
@@ -1441,126 +1504,126 @@
 		</div>
 	</div>
 
-	<!--Pilots list for editing-->
-	<div class="panel collapsing">
-		<div class="panel-header">
-			<h2>{{ __('Pilots') }}</h2>
-		</div>
-		<div class="panel-content">
-			<ul class="pilots">
-				<li>{{ __('Loading...') }}</li>
-			</ul>
+<!--Pilots list for editing-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Pilots') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ul class="pilots">
+			<li>{{ __('Loading...') }}</li>
+		</ul>
 
-			<div class="control-set">
-				<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
-			</div>
+		<div class="control-set">
+			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
 		</div>
 	</div>
+</div>
 
-	<!--Voice Settings-->
-	<div class="panel collapsing">
-		<div class="panel-header">
-			<h2>{{ __('Audio Control') }}</h2>
-		</div>
-		<div class="panel-content">
-			<p class="form-note">{{ __('Voice settings apply to this device only.') }}</p>
-			<ol class="form">
-				<li>
-					<div class="label-block">
-						<label for="set_voice_language">{{ __('Voice Select') }}</label>
-					</div>
-					<div id="voice_select"></div>
-				</li>
-				<li>
-					<div class="label-block">
-						<label for="set_voice_string_language">{{ __('Voice Language') }}</label>
-					</div>
-					<select id="set_voice_string_language">
-						<option>{{ __('Loading...') }}</option>
-					</select>
-				</li>
-				<li>
-					<div class="label-block">
-						{{ __('Voice Test') }} &nbsp; &nbsp;
-					</div>
-					<input type="text" id="voice_test_text" value="{{ getOption('timerName') }}">
-					<button class="button" id="play_voice_test">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>
-				</li>
-				<li>
-					<div class="label-block">
-						{{ __('Announcements') }}
-					</div>
-					<ul>
-						<li><label><input type="checkbox" id="voice_callsign"> {{ __('Callsign') }}</label></li>
-						<li><label><input type="checkbox" id="voice_lap_count"> {{ __('Lap Number') }}</label></li>
-						<li><label><input type="checkbox" id="voice_lap_time"> {{ __('Lap Time') }}</label></li>
-						<li><label><input type="checkbox" id="voice_race_timer"> {{ __('Race Timer') }}</label></li>
-						<li><label><input type="checkbox" id="voice_team_lap_count"> {{ __('Team Lap Total') }}</label></li>
-						<li><label><input type="checkbox" id="voice_race_winner"> {{ __('Race Winner') }}</label></li>
-					</ul>
-				</li>
-				<li>
-					<div class="label-block">
-						<label for="set_voice_volume">{{ __('Voice Volume') }}</label>
-						<p class="desc">{{ __('Volume') }}: <span id="voice_volume_value"></span></p>
-					</div>
-					<input type="range" id="set_voice_volume" min="1" max="100">
-				</li>
-				<li>
-					<div class="label-block">
-						<label for="set_voice_rate">{{ __('Voice Rate') }}</label>
-						<p class="desc">{{ __('Rate') }}: <span id="voice_rate_value"></span></p>
-					</div>
-					<input type="range" id="set_voice_rate" min="0" max="2.0" step="0.01">
-				</li>
-				<li>
-					<div class="label-block">
-						<label for="set_voice_pitch">{{ __('Voice Pitch') }}</label>
-						<p class="desc">{{ __('Pitch') }}: <span id="voice_pitch_value"></span></p>
-					</div>
-					<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
-				</li>
-				<li>
-					<div class="label-block">
-						<label for="set_tone_volume">{{ __('Tone Volume') }}</label>
-						<p class="desc">{{ __('Volume') }}: <span id="tone_volume_value"></span></p>
-					</div>
-					<input type="range" id="set_tone_volume" min="1" max="100">
-				</li>
-				<li>
-					<div class="label-block">
-						{{ __('Indicator Beeps') }}
-					</div>
-					<ul>
-						<li><label><input type="checkbox" id="beep_on_first_pass_button"> {{ __('On First Pass') }}</label></li>
-						<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
-						<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
-						<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
-						<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
-					</ul>
-				</li>
-				<li>
-					<div class="label-block">
-						<label for="set_indicator_volume">{{ __('Indicator Beeps Volume') }}</label>
-						<p class="desc">{{ __('Volume') }}: <span id="indicator_volume_value"></span></p>
-					</div>
-					<input type="range" id="set_indicator_volume" min="1" max="100">
-				</li>
-			</ol>
-		</div>
+<!--Voice Settings-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Audio Control') }}</h2>
 	</div>
+	<div class="panel-content">
+		<p class="form-note">{{ __('Voice settings apply to this device only.') }}</p>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_voice_language">{{ __('Voice Select') }}</label>
+				</div>
+				<div id="voice_select"></div>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_string_language">{{ __('Voice Language') }}</label>
+				</div>
+				<select id="set_voice_string_language">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					{{ __('Voice Test') }} &nbsp; &nbsp;
+				</div>
+				<input type="text" id="voice_test_text" value="{{ getOption('timerName') }}">
+				<button class="button" id="play_voice_test">&#9658;&#65038; <span class="screen-reader-text">{{ __('Play') }}</span></button>
+			</li>
+			<li>
+				<div class="label-block">
+					{{ __('Announcements') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="voice_callsign"> {{ __('Callsign') }}</label></li>
+					<li><label><input type="checkbox" id="voice_lap_count"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="voice_lap_time"> {{ __('Lap Time') }}</label></li>
+					<li><label><input type="checkbox" id="voice_race_timer"> {{ __('Race Timer') }}</label></li>
+					<li><label><input type="checkbox" id="voice_team_lap_count"> {{ __('Team Lap Total') }}</label></li>
+					<li><label><input type="checkbox" id="voice_race_winner"> {{ __('Race Winner') }}</label></li>
+				</ul>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_volume">{{ __('Voice Volume') }}</label>
+					<p class="desc">{{ __('Volume') }}: <span id="voice_volume_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_volume" min="1" max="100">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_rate">{{ __('Voice Rate') }}</label>
+					<p class="desc">{{ __('Rate') }}: <span id="voice_rate_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_rate" min="0" max="2.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_voice_pitch">{{ __('Voice Pitch') }}</label>
+					<p class="desc">{{ __('Pitch') }}: <span id="voice_pitch_value"></span></p>
+				</div>
+				<input type="range" id="set_voice_pitch" min="0" max="2.0" step="0.01">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_tone_volume">{{ __('Tone Volume') }}</label>
+					<p class="desc">{{ __('Volume') }}: <span id="tone_volume_value"></span></p>
+				</div>
+				<input type="range" id="set_tone_volume" min="1" max="100">
+			</li>
+			<li>
+				<div class="label-block">
+					{{ __('Indicator Beeps') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="beep_on_first_pass_button"> {{ __('On First Pass') }}</label></li>
+					<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
+					<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
+					<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
+					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
+				</ul>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_indicator_volume">{{ __('Indicator Beeps Volume') }}</label>
+					<p class="desc">{{ __('Volume') }}: <span id="indicator_volume_value"></span></p>
+				</div>
+				<input type="range" id="set_indicator_volume" min="1" max="100">
+			</li>
+		</ol>
+	</div>
+</div>
 
-	<!--Race Format-->
-	<div class="panel collapsing">
-		<div class="panel-header">
-			<h2>{{ __('Race Format') }}</h2>
-		</div>
-		<div class="panel-content">
-			<p class="form-note">{{ __('Formats used with saved races cannot be modified. (Clear races to release.)') }}</p>
-			<p class="form-note">{{ __('Format cannot be changed while a race is running.') }}</p>
+<!--Race Format-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Race Format') }}</h2>
+	</div>
+	<div class="panel-content">
+		<p class="form-note">{{ __('Formats used with saved races cannot be modified. (Clear races to release.)') }}</p>
+		<p class="form-note">{{ __('Format cannot be changed while a race is running.') }}</p>
 
-			<div class="control-set">
-				<label for="set_race_format">{{ __('Format:') }}</label>
+		<div class="control-set">
+			<label for="set_race_format">{{ __('Format:') }}</label>
 			<select id="set_race_format">
 				<option>{{ __('Loading...') }}</option>
 			</select>
@@ -1690,6 +1753,21 @@
 			<button class="LED-chase" data-rgb="#00ff00"><img src="../static/image/LED-chase-green.png"></button>
 			<button class="LED-chase" data-rgb="#ff0000"><img src="../static/image/LED-chase-red.png"></button>
 		</div>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_led_brightness">{{ __('LED Brightness') }}</label>
+					<p class="desc">{{ __('Level') }}: <span id="led_brightness_value"></span></p>
+				</div>
+				<input type="range" id="set_led_brightness" min="1" max="25">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_led_color">{{ __('LED Color') }}</label>
+				</div>
+				<input type="color" id="set_led_color" />
+			</li>
+		</ol>
 	</div>
 </div>
 
@@ -1722,11 +1800,10 @@
 		<h2>{{ __('System') }}</h2>
 	</div>
 	<div class="panel-content">
-		<div class="control-set">
-		{{ __('Core temperature:') }} <span id="core-temperature"></span>{{ __('°C') }}
+		<div id="env-data-table" class="control-set">
 		</div>
 		<br />
-		<div id="env-data-table" class="control-set">
+		<div id="cluster-status-table" class="control-set">
 		</div>
 		<br />
 		<div class="control-set">
