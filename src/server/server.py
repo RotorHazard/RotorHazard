@@ -1121,6 +1121,9 @@ def on_load_data(data):
             emit_pilot_data(nobroadcast=True)
         elif load_type == 'round_data':
             emit_round_data(nobroadcast=True)
+        elif load_type == 'class_round_data':
+            specific_class = data['specific_class']
+            emit_specific_class_round_data(nobroadcast=True,specific_class=specific_class)
         elif load_type == 'race_format':
             emit_race_format(nobroadcast=True)
         elif load_type == 'node_tuning':
@@ -2911,6 +2914,8 @@ def calc_leaderboard(**params):
     average_lap = []
     fastest_lap = []
     consecutives = []
+    fastest_lap_round = []
+    fastest_lap_heat = []
 
     for i, pilot in enumerate(pilot_ids):
         # Get the total race time for each pilot
@@ -2960,6 +2965,8 @@ def calc_leaderboard(**params):
         # Get the fastest lap time for each pilot
         if max_laps[i] is 0:
             fastest_lap.append(0) # Add zero if no laps completed
+            fastest_lap_round.append(0) # Add zero if no laps completed
+            fastest_lap_heat.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
                 stat_query = DB.session.query(DB.func.min(CurrentLap.lap_time),CurrentLap.lap_time) \
@@ -2967,18 +2974,18 @@ def calc_leaderboard(**params):
                 fastest_lap_round.append(0)
                 fastest_lap_heat.append(0)
             else:
-                stat_query = DB.session.query(DB.func.min(SavedRaceLap.lap_time)) \
+                stat_query = DB.session.query(DB.func.min(SavedRaceLap.lap_time),SavedRaceLap.lap_time,SavedRaceLap.race_id) \
                     .filter(SavedRaceLap.pilot_id == pilot, \
                         SavedRaceLap.deleted != 1, \
                         SavedRaceLap.race_id.in_(racelist), \
-                        ~SavedRaceLap.id.in_(holeshots[i]))
+                        ~SavedRaceLap.id.in_(holeshots[i])).one()
                 fround = DB.session.query(SavedRaceMeta.round_id,SavedRaceMeta.heat_id).filter(SavedRaceMeta.id==stat_query.race_id).first()
                 fheat = DB.session.query( Heat.note).filter_by(heat_id=fround.heat_id).first()
+
                 fastest_lap_round.append(fround.round_id)
                 fastest_lap_heat.append(fheat.note)
 
-            fast_lap = stat_query.scalar()
-            fastest_lap.append(fast_lap)
+            fastest_lap.append(stat_query.lap_time)
 
         # find best consecutive 3 laps
         if max_laps[i] < 3:
