@@ -1725,7 +1725,7 @@ def on_stage_race():
             check_emit_team_racing_status()  # Show initial team-racing status info
         MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
         MAX = max(race_format.start_delay_min, race_format.start_delay_max)
-        DELAY = random.randint(MIN, MAX) + 1 # Add 1 for prestage
+        DELAY = random.randint(MIN, MAX) + 0.9 # Add ~1 for prestage (<1 to prevent timer beep)
 
         RACE_START = monotonic() + DELAY
         RACE_START_TOKEN = random.random()
