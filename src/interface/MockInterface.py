@@ -34,7 +34,7 @@ class MockInterface(BaseHardwareInterface):
             node.i2c_addr = i2c_addrs[index] # Set current loop i2c_addr
             node.index = index
             node.api_valid_flag = True
-            node.api_level = 18
+            node.api_level = 19
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.nodes.append(node) # Add new node to RHInterface
