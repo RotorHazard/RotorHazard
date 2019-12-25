@@ -1405,6 +1405,13 @@ def on_generate_heats(data):
                     assigned_pilots_in_heat = 1 
                     heat_note= chr(ord(heat_note) + 1 )
 
+            # for odd reasons, the rest of the system wants heats fully populated this gets the last heat generated
+            for checking_index  in range(RACE.num_nodes): 
+                current_node_occupant = DB.session.query(DB.func.max(Heat.heat_id)).filter_by(heat_id=max_heat_id, node_index=checking_index).scalar()
+                if current_node_occupant is  None: # Not taken
+                    DB.session.add(Heat(heat_id=max_heat_id, node_index=checking_index, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE, note=heat_note+"-Main"))
+                    DB.session.commit()
+
 
     emit_heat_data() 
 
