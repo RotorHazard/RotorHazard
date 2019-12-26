@@ -3847,6 +3847,7 @@ def db_reset_heats():
         else:
             DB.session.add(Heat(heat_id=1, node_index=node, class_id=CLASS_ID_NONE, pilot_id=node+1))
     DB.session.commit()
+    RACE.current_heat = 1
     server_log('Database heats reset')
 
 def db_reset_classes():
