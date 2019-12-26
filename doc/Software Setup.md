@@ -38,33 +38,33 @@ core_freq=250
 ```
 Save and exit the file with Ctrl-X
 
-Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.1.0" with the current version code, and enter the commands:
+Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
 ```
 cd ~
-wget https://codeload.github.com/RotorHazard/RotorHazard/zip/v1.1.0 -O temp.zip
+wget https://codeload.github.com/RotorHazard/RotorHazard/zip/1.2.3 -O temp.zip
 unzip temp.zip
-mv RotorHazard-1.1.0 RotorHazard
+mv RotorHazard-1.2.3 RotorHazard
 rm temp.zip
 ```
 
-Install web server dependencies:
-Be patient, this command may take a few minutes.
+Install RotorHazard server dependencies (be patient, this command may take a few minutes):
 ```
-cd /home/pi/RotorHazard/src/server
+cd ~/RotorHazard/src/server
 sudo pip install -r requirements.txt
 ```
 
 Update permissions in working folder:
 ```
-cd ~
-cd /home/pi/RotorHazard/src
+cd ~/RotorHazard/src
 sudo chmod 777 server
 ```
+
+*Note: If RotorHazard is already installed, see the [Updating an existing installation](#update) section below.*
 
 ## Install Receiver Node Code (Arduinos)
 Arduino 1.8+ is required. Download from https://www.arduino.cc/en/Main/Software
 
-*The node code and the server version must match. Use the file included with the server code you downloaded earlier; do not download a different file directly from GitHub.*
+*The node code and the server version must match. Use the 'node' code included with the server code you downloaded earlier; do not download a different file directly from GitHub.*
 
 Open 'RotorHazard/src/node/node.ino' in the Arduino IDE.
 
@@ -75,13 +75,14 @@ Configure the '#define NODE_NUMBER' line of the .ino for each node before upload
 ```
 
 Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:
-node #1: ground pin D5
-node #2: ground pin D6
-node #3: ground pin D7
-node #4: ground pin D8
-node #5: ground pin D5 and pin D4
-node #6: ground pin D6 and pin D4
-node #7: ground pin D7 and pin D4
+
+node #1: ground pin D5  
+node #2: ground pin D6  
+node #3: ground pin D7  
+node #4: ground pin D8  
+node #5: ground pin D5 and pin D4  
+node #6: ground pin D6 and pin D4  
+node #7: ground pin D7 and pin D4  
 node #8: ground pin D8 and pin D4
 
 ## Install Optional Components
@@ -153,7 +154,7 @@ The following instructions will start the web server on the raspberry pi, allowi
 #### Manual Start
 Open a terminal and enter the following:
 ```
-cd /home/pi/RotorHazard/src/server
+cd ~/RotorHazard/src/server
 python server.py
 ```
 The server may be stopped by hitting Ctrl-C
@@ -196,8 +197,32 @@ A system shutdown should always be performed before unplugging the power, either
 sudo shutdown now
 ```
 
+<a id="update"></a>
+### Updating an existing installation
+
+Before updating, any currently-running RotorHazard server should be stopped. If installed as a service, it may be stopped with a command like: `sudo systemctl stop rotorhazard`
+
+To update an existing RotorHazard installation: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
+```
+cd ~
+wget https://codeload.github.com/RotorHazard/RotorHazard/zip/1.2.3 -O temp.zip
+unzip temp.zip
+mv RotorHazard RotorHazard.old
+mv RotorHazard-1.2.3 RotorHazard
+rm temp.zip
+cp RotorHazard.old/src/server/config.json RotorHazard/
+cp RotorHazard.old/src/server/database.db RotorHazard/
+```
+The previous installation ends up in the 'RotorHazard.old' directory, which may be deleted or moved.
+
+The RotorHazard server dependencies should also be updated (be patient, this command may take a few minutes):
+```
+cd ~/RotorHazard/src/server
+sudo pip install --upgrade --no-cache-dir -r requirements.txt
+```
+
 -----------------------------
 
-See Also:
-[doc/Hardware Setup.md](Hardware%20Setup.md)
+See Also:  
+[doc/Hardware Setup.md](Hardware%20Setup.md)  
 [doc/User Guide.md](User%20Guide.md)
