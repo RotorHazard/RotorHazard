@@ -29,11 +29,7 @@ The main flow for a contributing is as follows:
 
 The primary thing to remember is that separate pull requests should be created for separate branches.  Never create a pull request from your `master` branch.
 
-Once you have created the PR,
-every new commit/push in your branch will propagate from your fork into the PR in the main GitHub/RotorHazard repo.
-Checkout another branch first if you want something else.
-
-Push will often fail if you edit or squash commits in a branch already pushed. Never do such things after creating the PR.
+Once you have created the PR, every new commit/push in your branch will propagate from your fork into the PR in the main GitHub/RotorHazard repo. Checkout another branch first if you want something else.
 
 Later, you can get the changes from the RotorHazard repo into your `master` branch by adding RotorHazard as a git remote and merging from it as follows:
 
@@ -57,3 +53,7 @@ If you have a fork of the Delta5 repository in your GitHub account, you probably
 When code is added to an existing file, the new code should follow what's already there in terms of indentation (spaces vs tabs), braces, naming conventions, etc.
 
 If a PR is modifying functionality, try to avoid unnecessary whitespace changes (i.e., adding/removing trailing spaces or newlines), as this makes it harder to see the functional changes. Improvements to whitespace and code style should be implemented PRs that do only those things.
+
+## Eclipse PyDev Project
+
+The [Eclipse IDE](https://www.eclipse.org/eclipseide/) (with the [PyDev](https://www.pydev.org) extension) may be used to edit the Python source code -- the ".project" and ".pydevproject" files define the project, which may be loaded via "File | Open Projects from File System..." in Eclipse.
