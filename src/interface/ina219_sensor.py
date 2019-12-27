@@ -30,16 +30,19 @@ class INA219Sensor(I2CSensor):
         return self._power
 
 
-def discover(*args, **kwargs):
+def discover(config, *args, **kwargs):
+    if 'i2c_helper' not in kwargs:
+        return []
+
     sensors = []
-    config = kwargs['config']
+    i2c_helper = kwargs['i2c_helper']
     supported_ina219_addrs = [0x40, 0x41, 0x44, 0x45]
     for addr in supported_ina219_addrs:
         url = I2CSensor.url(addr)
         sensor_config = config.get(url, {})
         name = sensor_config.get('name', url)
         try:
-            sensors.append(INA219Sensor(name, addr, kwargs['i2c_helper'], sensor_config))
+            sensors.append(INA219Sensor(name, addr, i2c_helper, sensor_config))
             print "INA219 found at address {0}".format(addr)
         except IOError:
             print "No INA219 at address {0}".format(addr)

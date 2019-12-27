@@ -7,6 +7,9 @@
 		"DEBUG": false,
 		"CORS_ALLOWED_HOSTS": "*"
 	},
+	"SENSORS": {
+	},
+	"SERIAL_PORTS": [],
 	"LED": {
 		"LED_COUNT": 150,
 		"LED_PIN": 10,

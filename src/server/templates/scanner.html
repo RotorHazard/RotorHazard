@@ -1,0 +1,60 @@
+{% extends "layout.html" %} {% block title %}Scan{% endblock %} {% block head %}
+
+<script type="text/javascript" src="./static/chart/Chart.min.js"></script>
+<script type="text/javascript" src="./static/scanner.js"></script>
+<link rel="stylesheet" href="./static/chart/Chart.min.css"></link>
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function () {
+		var scanners = [];
+
+		// set up node local store
+		for (let i = 0; i < {{ num_nodes }}; i++) {
+			let scanner = createBandScanner('freq-graph-' + i);
+			scanners.push(scanner);
+		}
+
+		registerMessageHandlers(socket, scanners);
+
+		$('.set_scan').change(function (event) {
+			let nodeIndex = parseInt($(this).data('node'));
+			scanners[nodeIndex].isEnabled = $(this).is(':checked');
+			let data = {
+				node: nodeIndex,
+				scan: scanners[nodeIndex].isEnabled,
+			};
+			socket.emit('set_scan', data);
+			scanners[nodeIndex].clear();
+		});
+
+	});
+</script>
+{% endblock %} {% block content %}
+<main class="page-settings">
+
+<div class="panel">
+	<div class="panel-header">
+		<h2>{{ __('Scanner') }}</h2>
+	</div>
+	<div class="full-width">
+		<div class="node-list">
+			{% for node in range(num_nodes) %}
+			<div class="node" data-node="{{ node }}">
+				<h3>{{ __('Node') }} {{ node + 1 }}</h3>
+				<div style="">
+					<canvas id="freq-graph-{{ node }}">
+					</canvas>
+				</div>
+				<div class="node-controls">
+					<div>
+						<label for="set_scan_{{ node }}">{{ __('Scan') }}</label>
+						<input type="checkbox" id="set_scan_{{ node }}" class="set_scan" data-node="{{ node }}">
+					</div>
+				</div>
+			</div>
+			{% endfor %}
+		</div>
+	</div>
+</div>
+
+</main>
+{% endblock %}

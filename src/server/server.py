@@ -1,9 +1,9 @@
 '''RotorHazard server script'''
 from __builtin__ import True
-RELEASE_VERSION = "2.1.0-beta.1" # Public release version code
+RELEASE_VERSION = "2.1.0 (dev 2)" # Public release version code
 SERVER_API = 24 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 19 # Most recent node API
+NODE_API_BEST = 20 # Most recent node API
 JSON_API = 2 # JSON API version
 
 import os
@@ -74,6 +74,7 @@ Config = {}
 Config['GENERAL'] = {}
 Config['SENSORS'] = {}
 Config['LED'] = {}
+Config['SERIAL_PORTS'] = []
 
 # LED strip configuration:
 Config['LED']['LED_COUNT']      = 150      # Number of LED pixels.
@@ -103,6 +104,8 @@ try:
     Config['LED'].update(ExternalConfig['LED'])
     if 'SENSORS' in ExternalConfig:
         Config['SENSORS'].update(ExternalConfig['SENSORS'])
+    if 'SERIAL_PORTS' in ExternalConfig:
+        Config['SERIAL_PORTS'].extend(ExternalConfig['SERIAL_PORTS'])
     Config['GENERAL']['configFile'] = 1
     print 'Configuration file imported'
     APP.config['SECRET_KEY'] = Config['GENERAL']['SECRET_KEY']
@@ -116,8 +119,9 @@ except ValueError:
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENERAL']['CORS_ALLOWED_HOSTS'])
 
+interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
-    interfaceModule = importlib.import_module('RHInterface')
+    interfaceModule = importlib.import_module(interface_type + 'Interface')
 except ImportError:
     interfaceModule = importlib.import_module('MockInterface')
 INTERFACE = interfaceModule.get_hardware_interface(config=Config)
@@ -757,6 +761,13 @@ def settings():
         ConfigFile=Config['GENERAL']['configFile'],
         Debug=Config['GENERAL']['DEBUG'])
 
+@APP.route('/scanner')
+def scanner():
+    '''Route to scanner page.'''
+
+    return render_template('scanner.html', serverInfo=serverInfo, getOption=getOption, __=__,
+        num_nodes=RACE.num_nodes)
+
 @APP.route('/imdtabler')
 def imdtabler():
     '''Route to IMDTabler page.'''
@@ -1311,6 +1322,11 @@ def on_cap_exit_at_btn(data):
     node_index = data['node_index']
     if INTERFACE.start_capture_exit_at_level(node_index):
         server_log('Starting capture of exit-at level for node {0}'.format(node_index+1))
+
+@SOCKET_IO.on('set_scan')
+def on_set_scan(data):
+    node_index = data['node']
+    INTERFACE.nodes[node_index].is_scanning = data['scan']
 
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
@@ -3622,7 +3638,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     else: # This is a normal completed lap
                         # Find the time stamp of the last lap completed
                         last_lap_time_stamp = CurrentLap.query.filter_by( \
-                            node_index=node.index, lap_id=last_lap_id).one().lap_time_stamp
+                        node_index=node.index, lap_id=last_lap_id).one().lap_time_stamp
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
                         lap_id = last_lap_id + 1
@@ -4158,12 +4174,13 @@ server_log('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEAS
 if serverInfo['node_api_match'] is False:
     server_log('** WARNING: Node API mismatch. **')
 
-if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
-    server_log('** WARNING: Node firmware is out of date and may not function properly **')
-elif serverInfo['node_api_lowest'] < NODE_API_BEST:
-    server_log('** NOTICE: Node firmware update is available **')
-elif serverInfo['node_api_lowest'] > NODE_API_BEST:
-    server_log('** WARNING: Node firmware is newer than this server version supports **')
+if RACE.num_nodes > 0:
+    if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
+        server_log('** WARNING: Node firmware is out of date and may not function properly **')
+    elif serverInfo['node_api_lowest'] < NODE_API_BEST:
+        server_log('** NOTICE: Node firmware update is available **')
+    elif serverInfo['node_api_lowest'] > NODE_API_BEST:
+        server_log('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
     if int(getOption('server_api')) < SERVER_API:
@@ -4293,3 +4310,4 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
 # Start HTTP server
 if __name__ == '__main__':
     start()
+

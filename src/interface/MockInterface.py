@@ -1,4 +1,4 @@
-'''Mock interface layer.'''
+'''Mock hardware interface layer.'''
 
 import os
 import gevent # For threads and timing
@@ -34,7 +34,7 @@ class MockInterface(BaseHardwareInterface):
             node.i2c_addr = i2c_addrs[index] # Set current loop i2c_addr
             node.index = index
             node.api_valid_flag = True
-            node.api_level = 19
+            node.api_level = 20
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.nodes.append(node) # Add new node to RHInterface
@@ -148,50 +148,13 @@ class MockInterface(BaseHardwareInterface):
         if node.api_valid_flag:
             node.exit_at_level = self.transmit_exit_at_level(node, level)
 
-    def set_calibration_threshold_global(self, threshold):
-        return threshold  # dummy function; no longer supported
-
-    def enable_calibration_mode(self):
-        pass  # dummy function; no longer supported
-
-    def set_calibration_offset_global(self, offset):
-        return offset  # dummy function; no longer supported
-
-    def set_trigger_threshold_global(self, threshold):
-        return threshold  # dummy function; no longer supported
-
     def mark_start_time(self, node_index, start_time):
         node = self.nodes[node_index]
-
-    def mark_start_time_global(self, pi_time):
-        bcast_flag = False
-        start_time = int(round(pi_time * 1000)) # convert to ms
-
-    def start_capture_enter_at_level(self, node_index):
-        node = self.nodes[node_index]
-        if node.cap_enter_at_flag is False and node.api_valid_flag:
-            node.cap_enter_at_total = 0
-            node.cap_enter_at_count = 0
-                   # set end time for capture of RSSI level:
-            node.cap_enter_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
-            node.cap_enter_at_flag = True
-            return True
-        return False
-
-    def start_capture_exit_at_level(self, node_index):
-        node = self.nodes[node_index]
-        if node.cap_exit_at_flag is False and node.api_valid_flag:
-            node.cap_exit_at_total = 0
-            node.cap_exit_at_count = 0
-                   # set end time for capture of RSSI level:
-            node.cap_exit_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
-            node.cap_exit_at_flag = True
-            return True
-        return False
 
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''
+    print('Using mock hardware interface')
     return MockInterface(*args, **kwargs)
