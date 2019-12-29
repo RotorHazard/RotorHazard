@@ -122,9 +122,13 @@ SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENE
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
     interfaceModule = importlib.import_module(interface_type + 'Interface')
-except ImportError:
+    INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+    if len(INTERFACE.nodes) <= 0:
+        raise RuntimeError('No nodes found')
+except (ImportError, RuntimeError):
+    print 'Unable to initialize nodes via ' + interface_type + 'Interface'
     interfaceModule = importlib.import_module('MockInterface')
-INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+    INTERFACE = interfaceModule.get_hardware_interface(config=Config)
 RACE = get_race_state() # For storing race management variables
 
 def diff_milliseconds(t2, t1):
