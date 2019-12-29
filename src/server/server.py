@@ -112,9 +112,9 @@ try:
 except IOError:
     Config['GENERAL']['configFile'] = 0
     print 'No configuration file found, using defaults'
-except ValueError:
+except ValueError as ex:
     Config['GENERAL']['configFile'] = -1
-    print 'Configuration file invalid, using defaults'
+    print 'Configuration file invalid, using defaults; error is: ' + str(ex)
 
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENERAL']['CORS_ALLOWED_HOSTS'])
@@ -292,8 +292,7 @@ for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
         slave_info = {'address': slave_info, 'mode': Slave.TIMER_MODE}
     if 'timeout' not in slave_info:
         slave_info['timeout'] = Config['GENERAL']['SLAVE_TIMEOUT']
-    isMirror = (slave_info['mode'] == Slave.MIRROR_MODE)
-    if isMirror:
+    if 'mode' in slave_info and slave_info['mode'] == Slave.MIRROR_MODE:
         hasMirrors = True
     elif hasMirrors:
         print '** Mirror slaves must be last - ignoring remaining slave config **'
