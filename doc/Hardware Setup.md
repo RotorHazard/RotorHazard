@@ -76,6 +76,9 @@ Sensors (such as BME280 and INA219) may be attached to the I2C bus and power pin
     },
 ```
 
+### Multiple Timers
+Multiple RotorHazard timers may be connected together (i.e., for split timing and mirroring) -- see [doc/Cluster.md](Cluster.md).
+
 -----------------------------
 
 See Also:  

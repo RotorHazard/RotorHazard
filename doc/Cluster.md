@@ -1,11 +1,39 @@
 # Cluster
 
-## Setup
+Additional RotorHazard timers may be attached as "slave" units, interfaced via their network connection (i.e., WiFi).  The default mode is 'timer' (for split timing), which allows multiple timers to be placed around the track to get intermediate lap times.  A 'mirror' mode is also supported, in which the slave timer will mirror the actions of the master (for instance as an "LED-only" timer that displays the actions of the master).
+
+### Configuration
+
+Additional timers may be configured (in 'src/server/config.json') under "GENERAL" with a "SLAVES" entry containing an array of IP addresses of the slave timers in track order.
+
+```
+{
+	"GENERAL": {
+		... ,
+		"SLAVES": ["192.168.1.2:5000", "192.168.1.3:5000"]
+	}
+}
+```
+
+Additional options may be configured, for example:
+
+```
+{
+	"GENERAL": {
+		... ,
+		"SLAVES": [{"address": "192.168.1.2:5000", "mode": "timer", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
+		"SLAVE_TIMEOUT": 10
+	}
+}
+```
+* "address": The IP address and port for the slave timer.
+* "mode": The mode for the timer (either "timer" or "mirror").
+* "distance": The distance from the previous gate (used to calculate speed).
+
+### Clock Synchronization
 
 It is important that all timers have their clocks synchronized.
 You can use NTP to do this.
-
-### NTP
 
 On all timers:
 
@@ -28,7 +56,7 @@ On all timers:
 
 ### Random number generator
 
-Activate hardware RNG to improve available entropy.
+The random number generator helps improve WiFi connectivity (maintains entropy for encryption). Activate hardware RNG to improve available entropy.
 
 	sudo apt-get install rng-tools
 
@@ -40,34 +68,9 @@ Then, restart rng-tools with
 
     sudo service rng-tools restart
 
-### Config
+### Notes
 
-In config.json, under "GENERAL", add a "SLAVES" setting with
-an array of IP addresses of the slave timers in track order.
-
-```
-{
-	"GENERAL": {
-
-		"SLAVES": ["192.168.1.2:5000", "192.168.1.3:5000"]
-	}
-}
-
-```
-
-Additional config options:
-
-```
-{
-	"GENERAL": {
-
-		"SLAVES": [{"address": "192.168.1.2:5000", "mode": "timer", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
-		"SLAVE_TIMEOUT": 10
-	}
-}
-```
-
-## Notes
+Missed/incorrect split times will have no impact on the recording of lap times by the master timer.
 
 A slave can also be a master, but sub-splits are not propagated upwards.
 
