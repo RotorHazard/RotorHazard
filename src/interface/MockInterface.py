@@ -13,8 +13,6 @@ UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.5')) # Main update 
 
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
-CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
-ENTER_AT_PEAK_MARGIN = 5         # closest that captured enter-at level can be to node peak RSSI
 
 class MockInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
@@ -147,9 +145,6 @@ class MockInterface(BaseHardwareInterface):
         node = self.nodes[node_index]
         if node.api_valid_flag:
             node.exit_at_level = self.transmit_exit_at_level(node, level)
-
-    def mark_start_time(self, node_index, start_time):
-        node = self.nodes[node_index]
 
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]

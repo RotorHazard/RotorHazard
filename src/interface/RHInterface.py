@@ -26,11 +26,8 @@ WRITE_EXIT_AT_LEVEL = 0x72
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 
 UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
-
 RETRY_COUNT = 5 # Limit of I/O retries
-
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
-CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
 
 def unpack_8(data):
     return data[0]
@@ -413,11 +410,6 @@ class RHInterface(BaseHardwareInterface):
         if node.api_valid_flag and node.is_valid_rssi(level):
             if self.transmit_exit_at_level(node, level):
                 node.exit_at_level = level
-
-    def mark_start_time(self, node_index, start_time):
-        node = self.nodes[node_index]
-        if node.api_valid_flag:
-            self.set_value_32(node, MARK_START_TIME, start_time)
 
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
