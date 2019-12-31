@@ -4170,21 +4170,24 @@ class NoLEDHandler(LEDHandler):
         LEDHandler.__init__(self, None)
 
 # Create LED object with appropriate configuration.
-led_type = os.environ.get('RH_LEDS', 'ws281x')
 strip = None
-# note: any calls to 'getOption()' need to happen after the DB initialization,
-#       otherwise it causes problems when run with no existing DB file
-led_brightness = int(getOption("ledBrightness"))
-try:
-    ledModule = importlib.import_module(led_type + '_leds')
-    strip = ledModule.get_pixel_interface(config=Config['LED'], brightness=led_brightness)
-except ImportError:
+if Config['LED']['LED_COUNT'] > 0:
+    led_type = os.environ.get('RH_LEDS', 'ws281x')
+    # note: any calls to 'getOption()' need to happen after the DB initialization,
+    #       otherwise it causes problems when run with no existing DB file
+    led_brightness = int(getOption("ledBrightness"))
     try:
-        ledModule = importlib.import_module('ANSI_leds')
+        ledModule = importlib.import_module(led_type + '_leds')
         strip = ledModule.get_pixel_interface(config=Config['LED'], brightness=led_brightness)
     except ImportError:
-        ledModule = None
-        print 'LED: disabled (no modules available)'
+        try:
+            ledModule = importlib.import_module('ANSI_leds')
+            strip = ledModule.get_pixel_interface(config=Config['LED'], brightness=led_brightness)
+        except ImportError:
+            ledModule = None
+            print 'LED: disabled (no modules available)'
+else:
+    print 'LED: disabled (configured LED_COUNT is <= 0)'
 
 if strip:
     # Initialize the library (must be called once before other functions).
