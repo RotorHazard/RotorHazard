@@ -5,6 +5,7 @@
 <script type="text/javascript" charset="utf-8">
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	$(document).ready(function () {
 		socket.emit('load_data', {'load_types': [
@@ -22,6 +23,7 @@
 			'min_lap',
 			'race_status',
 			'team_racing_mode',
+			'cluster_status'
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -83,6 +85,11 @@
 		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
 		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
+
+		if ('{{ getOption('ledBrightness') }}' != 'False') {
+			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
+			$('#led_brightness_value').html($('#set_led_brightness').val());
+		}
 
 		// populate frequency selects
 		$('.frequency_table').each(function(){
@@ -178,30 +185,56 @@
 			}
 		});
 		socket.on('environmental_data', function (msg) {
-			$('#core-temperature').html(Number(msg.core_temperature).toFixed(1));
 			env_table_html = '';
-			if (msg.aux_voltage.length > 0) {
-				env_table_html += '<tr><th>'+__('Voltage (V)')+'</th><th>'+__('Current (mA)')+'</th><th>'+__('Power (W)')+'</th></tr>';
-				for (i=0; i < msg.aux_voltage.length; i++) {
-					env_table_html += '<tr>';
-					env_table_html += '<td>' + Number(msg.aux_voltage[i]).toFixed(2) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_current[i]).toFixed(0) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_power[i]).toFixed(2) + '</td>';
-					env_table_html += '</tr>';
+			for (i=0; i<msg.length; i++) {
+				var sensor = msg[i];
+				var name = Object.keys(sensor)[0];
+				var data = sensor[name];
+				var values = '';
+				var br = '';
+				for (var reading in data) {
+					var value = data[reading].value;
+					var units = data[reading].units;
+					values += br;
+					if (reading == 'voltage') {
+						values += __('Voltage: ') + Number(value).toFixed(2)+units;
+					} else if(reading == 'current') {
+						values += __('Current: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'power') {
+						values += __('Power: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'temperature') {
+						values += __('Temperature: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'humidity') {
+						values += __('Humidity: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'pressure') {
+						values += __('Pressure: ') + Number(value).toFixed(1)+units;
+					} else {
+						values += __('Unknown: ') + value;
+					}
+					br = '<br/>';
 				}
-			}
-			if (msg.aux_temperature.length > 0) {
-				env_table_html += '<tr><th>'+__('Temperature (°C)')+'</th><th>'+__('Humidity (%rH)')+'</th><th>'+__('Pressure (hPa)')+'</th></tr>';
-				for (i=0; i < msg.aux_temperature.length; i++) {
-					env_table_html += '<tr>';
-					env_table_html += '<td>' + Number(msg.aux_temperature[i]).toFixed(1) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_humidity[i]).toFixed(1) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_pressure[i]).toFixed(1) + '</td>';
-					env_table_html += '</tr>';
-				}
+				env_table_html += '<tr>';
+				env_table_html += '<td>' + name + '</td>';
+				env_table_html += '<td>' + values + '</td>';
+				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<table>' + env_table_html + '</table>');
+				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table>');
+			}
+		});
+		socket.on('cluster_status', function (msg) {
+			cluster_table_html = '';
+			if (msg.slaves && msg.slaves.length > 0) {
+				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Time since last contact (s)')+'</th></tr>';
+				for (i=0; i < msg.slaves.length; i++) {
+					cluster_table_html += '<tr>';
+					cluster_table_html += '<td>' + msg.slaves[i].address + '</td>';
+					cluster_table_html += '<td>' + msg.slaves[i].last_contact + '</td>';
+					cluster_table_html += '</tr>';
+				}
+			}
+			if (cluster_table_html) {
+				$('#cluster-status-table').html('<table>' + cluster_table_html + '</table>');
 			}
 		});
 
@@ -1137,6 +1170,31 @@
 			socket.emit('LED_RBCHASE');
 			return false;
 		});
+
+		$('#set_led_brightness').on('input', function (event) {
+			var val = brightness_logsl.value($(this).val());
+			$('#led_brightness_value').html($(this).val());
+		});
+
+		$('#set_led_brightness').change(function (event) {
+			var val = brightness_logsl.value($(this).val());
+			// emit data
+			var data = {
+				brightness: Math.round(val),
+			};
+			socket.emit('LED_brightness', data);
+		});
+
+		$('#set_led_color').change(function (event) {
+				var colors = convertColor($(this).val());
+				var data = {
+					red: colors.r,
+					green: colors.g,
+					blue: colors.b,
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
 	});
 
 	function speak(obj) {
@@ -1254,6 +1312,7 @@
 				<div class="rssi-graph">
 					<button class="pause_graph" data-node="{{ node }}">&#x23ef;&#xFE0E;<span class="screen-reader-text"> {{ __('Pause/Resume Graph') }}</span></button>
 					<canvas id="rssi-graph-{{ node }}">
+					</canvas>
 				</div>
 				<div class="crossing crossing_flag_{{ node }}">{{ __('Clear') }}</div>
 				<div class="node-controls">
@@ -1654,6 +1713,21 @@
 			<button class="LED-chase" data-rgb="#00ff00"><img src="../static/image/LED-chase-green.png"></button>
 			<button class="LED-chase" data-rgb="#ff0000"><img src="../static/image/LED-chase-red.png"></button>
 		</div>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_led_brightness">{{ __('LED Brightness') }}</label>
+					<p class="desc">{{ __('Level') }}: <span id="led_brightness_value"></span></p>
+				</div>
+				<input type="range" id="set_led_brightness" min="1" max="25">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_led_color">{{ __('LED Color') }}</label>
+				</div>
+				<input type="color" id="set_led_color" />
+			</li>
+		</ol>
 	</div>
 </div>
 
@@ -1686,11 +1760,10 @@
 		<h2>{{ __('System') }}</h2>
 	</div>
 	<div class="panel-content">
-		<div class="control-set">
-		{{ __('Core temperature:') }} <span id="core-temperature"></span>{{ __('°C') }}
+		<div id="env-data-table" class="control-set">
 		</div>
 		<br />
-		<div id="env-data-table" class="control-set">
+		<div id="cluster-status-table" class="control-set">
 		</div>
 		<br />
 		<div class="control-set">

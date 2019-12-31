@@ -117,18 +117,18 @@
         </tr>
     </thead>
     <tbody>
-        {% for savedrace in savedraces.query.all() %}
+        {% for savedracelap in savedraceLap.query.all() %}
         <tr>
-            <td>{{ savedrace.id }}</td>
-            <td>{{ savedrace.round_id }}</td>
-            <td>{{ savedrace.heat_id }}</td>
-            <td>{{ savedrace.class_id }}</td>
-            <td>{{ savedrace.node_index }}</td>
-            <td>{{ savedrace.pilot_id }}</td>
-            <td>{{ savedrace.lap_id }}</td>
-            <td>{{ savedrace.lap_time_stamp }}</td>
-            <td>{{ savedrace.lap_time }}</td>
-            <td>{{ savedrace.lap_time_formatted }}</td>
+            <td>{{ savedracelap.id }}</td>
+            <td>{{ savedracelap.round_id }}</td>
+            <td>{{ savedracelap.heat_id }}</td>
+            <td>{{ savedracelap.class_id }}</td>
+            <td>{{ savedracelap.node_index }}</td>
+            <td>{{ savedracelap.pilot_id }}</td>
+            <td>{{ savedracelap.lap_id }}</td>
+            <td>{{ savedracelap.lap_time_stamp }}</td>
+            <td>{{ savedracelap.lap_time }}</td>
+            <td>{{ savedracelap.lap_time_formatted }}</td>
         </tr>
         {% endfor %}
     </tbody>

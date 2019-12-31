@@ -29,7 +29,7 @@
 template <typename T, uint8_t N, T default_value> class FastRunningMedian {
 
 public:
-	FastRunningMedian() {
+	void init() {
 		_buffer_ptr = N;
 		_median_ptr = N/2;
 		_unfilled = N;
@@ -41,7 +41,7 @@ public:
 			_inbuffer[i] = default_value;
 			_sortbuffer[i] = default_value;
 		}
-	};
+	}
 
 	bool isFilled() {
 		return _unfilled == 0;
