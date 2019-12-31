@@ -6,11 +6,11 @@ def led_theaterChase(strip, color, wait_ms=50, iterations=5):
     """Movie theater light style chaser animation."""
     for j in range(iterations):
         for q in range(3):
-            for i in range(0, strip.numPixels(), 3):
+            for i in range(0, strip.numPixels()-q, 3):
                 strip.setPixelColor(i+q, color)
             strip.show()
             gevent.sleep(wait_ms/1000.0)
-            for i in range(0, strip.numPixels(), 3):
+            for i in range(0, strip.numPixels()-q, 3):
                 strip.setPixelColor(i+q, 0)
 
 def color_wheel(pos):
@@ -44,11 +44,11 @@ def led_theaterChaseRainbow(strip, wait_ms=25):
     """Rainbow movie theater light style chaser animation."""
     for j in range(256):
         for q in range(3):
-            for i in range(0, strip.numPixels(), 3):
+            for i in range(0, strip.numPixels()-q, 3):
                 strip.setPixelColor(i+q, color_wheel((i+j) % 255))
             strip.show()
             gevent.sleep(wait_ms/1000.0)
-            for i in range(0, strip.numPixels(), 3):
+            for i in range(0, strip.numPixels()-q, 3):
                 strip.setPixelColor(i+q, 0)
 
 class StripLEDHandler(LEDHandler):
