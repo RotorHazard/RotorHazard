@@ -59,7 +59,7 @@ class ANSIPixel:
 			start = end
 			row += 1
 
-def get_pixel_interface(config, *args, **kwargs):
+def get_pixel_interface(config, brightness, *args, **kwargs):
     '''Returns the pixel interface.'''
     print('LED: locally enabled via ANSIPixel')
     return ANSIPixel(config['LED_COUNT'], config.get('LED_ROWS', 1))

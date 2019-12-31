@@ -1,5 +1,4 @@
 '''RotorHazard server script'''
-from __builtin__ import True
 RELEASE_VERSION = "2.1.0 (dev 3)" # Public release version code
 SERVER_API = 24 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
@@ -164,8 +163,6 @@ RACE_STATUS_TIED_STR = 'Race is tied; continuing'  # shown when Most Laps Wins r
 RACE_STATUS_CROSSING = 'Waiting for cross'  # indicator for Most Laps Wins race
 
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
-
-Pixel = None
 
 #
 # Slaves
@@ -615,36 +612,6 @@ class RHRaceFormat():
     @classmethod
     def isDbBased(cls, race_format):
         return hasattr(race_format, 'id')
-
-#
-# LED Code
-#
-
-class NoLEDHandler(LEDHandler):
-    def __init__(self):
-        LEDHandler.__init__(self, None)
-
-# Create LED object with appropriate configuration.
-led_type = os.environ.get('RH_LEDS', 'ws281x')
-try:
-    ledModule = importlib.import_module(led_type + '_leds')
-except ImportError:
-    try:
-        ledModule = importlib.import_module('ANSI_leds')
-    except ImportError:
-        ledModule = None
-        print 'LED: disabled (no modules available)'
-
-if ledModule:
-    strip = ledModule.get_pixel_interface(config=Config['LED'])
-    # Initialize the library (must be called once before other functions).
-    strip.begin()
-    led_handler_name = os.environ.get('RH_LED_HANDLER', Config['LED']['HANDLER'])
-    ledHandlerModule = importlib.import_module(led_handler_name + '_led_handler')
-    led_handler = ledHandlerModule.get_led_handler(strip=strip, config=Config['LED'])
-else:
-    strip = None
-    led_handler = NoLEDHandler()
 
 #
 # Authentication
@@ -3733,23 +3700,6 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
         emit_exit_at_level(node)
 
 def node_crossing_callback(node):
-    if node.crossing_flag:
-        if node.index==0:
-            onoff(strip, Color(0,31,255)) # Blue
-        elif node.index==1:
-            onoff(strip, Color(255,63,0)) # Orange
-        elif node.index==2:
-            onoff(strip, Color(127,255,0)) # Light Green
-        elif node.index==3:
-            onoff(strip, Color(255,255,0)) # Yellow
-        elif node.index==4:
-            onoff(strip, Color(127,0,255)) # Purple
-        elif node.index==5:
-            onoff(strip, Color(255,0,127)) # Pink
-        elif node.index==6:
-            onoff(strip, Color(63,255,63)) # Mint
-        elif node.index==7:
-            onoff(strip, Color(0,191,255)) # Sky
     emit_node_crossing_change(node)
 
 # set callback functions invoked by interface module
@@ -4211,59 +4161,39 @@ on_set_profile({'profile': current_profile}, False)
 if Heat.query.first():
     RACE.current_heat = Heat.query.first().heat_id
 
+#
+# LED Code
+#
+
+class NoLEDHandler(LEDHandler):
+    def __init__(self):
+        LEDHandler.__init__(self, None)
+
 # Create LED object with appropriate configuration.
+led_type = os.environ.get('RH_LEDS', 'ws281x')
+strip = None
+# note: any calls to 'getOption()' need to happen after the DB initialization,
+#       otherwise it causes problems when run with no existing DB file
+led_brightness = int(getOption("ledBrightness"))
 try:
-    pixelModule = importlib.import_module('rpi_ws281x')
-    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-    print 'LED: selecting library "rpi_ws2812x"'
+    ledModule = importlib.import_module(led_type + '_leds')
+    strip = ledModule.get_pixel_interface(config=Config['LED'], brightness=led_brightness)
 except ImportError:
-    pass
-
-try:
-    pixelModule = importlib.import_module('neopixel')
-    Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-    print 'LED: selecting library "neopixel" (older)'
-except ImportError:
-    pass
-
-if Pixel != None:
-    Color = getattr(pixelModule, 'Color')
-    led_strip_config = Config['LED']['LED_STRIP']
-    if led_strip_config == 'RGB':
-        led_strip = 0x00100800
-    elif led_strip_config == 'RBG':
-        led_strip = 0x00100008
-    elif led_strip_config == 'GRB':
-        led_strip = 0x00081000
-    elif led_strip_config == 'GBR':
-        led_strip = 0x00080010
-    elif led_strip_config == 'BRG':
-        led_strip = 0x00001008
-    elif led_strip_config == 'BGR':
-        led_strip = 0x00000810
-    else:
-        print 'LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config)
-        Pixel = None
-    print 'LED: hardware GPIO enabled'
-else:
     try:
-        pixelModule = importlib.import_module('ANSIPixel')
-        Pixel = getattr(pixelModule, 'ANSIPixel')
-        Color = getattr(pixelModule, 'Color')
-        led_strip = None
-        print 'LED: simulated via ANSIPixel (no physical LED support enabled)'
+        ledModule = importlib.import_module('ANSI_leds')
+        strip = ledModule.get_pixel_interface(config=Config['LED'], brightness=led_brightness)
     except ImportError:
-        strip = None
-        Color = lambda r, g, b:None
-        led_strip = None
+        ledModule = None
         print 'LED: disabled (no modules available)'
 
-if isLedEnabled():
-    # note: any calls to 'getOption()' need to happen after the DB initialization,
-    #       otherwise it causes problems when run with no existing DB file
-    strip = Pixel(Config['LED']['LED_COUNT'], Config['LED']['LED_PIN'], Config['LED']['LED_FREQ_HZ'], Config['LED']['LED_DMA'], Config['LED']['LED_INVERT'], int(getOption("ledBrightness")), Config['LED']['LED_CHANNEL'], led_strip)
-    # Intialize the library (must be called once before other functions).
+if strip:
+    # Initialize the library (must be called once before other functions).
     strip.begin()
+    led_handler_name = os.environ.get('RH_LED_HANDLER', Config['LED']['HANDLER'])
+    ledHandlerModule = importlib.import_module(led_handler_name + '_led_handler')
+    led_handler = ledHandlerModule.get_led_handler(strip=strip, config=Config['LED'])
+else:
+    led_handler = NoLEDHandler()
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)

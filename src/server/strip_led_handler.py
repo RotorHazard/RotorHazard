@@ -1,5 +1,5 @@
 '''Standard LED strip handler.'''
-from led_handler import LEDHandler, Color, led_on, led_off
+from led_handler import LEDHandler, Color, ColorVal, led_on, led_off
 import gevent
 
 def led_theaterChase(strip, color, wait_ms=50, iterations=5):
@@ -56,31 +56,31 @@ class StripLEDHandler(LEDHandler):
         LEDHandler.__init__(self, strip)
 
     def staging(self):
-        led_on(self.strip, COLOR_ORANGE)
+        led_on(self.strip, ColorVal.ORANGE)
 
     def start(self):
-        led_on(self.strip, COLOR_GREEN)
+        led_on(self.strip, ColorVal.GREEN)
 
     def pass_record(self, node):
-        if node.index==0:
-            led_on(self.strip, COLOR_BLUE)
-        elif node.index==1:
-            led_on(self.strip, COLOR_DARK_ORANGE)
-        elif node.index==2:
-            led_on(self.strip, COLOR_PINK)
-        elif node.index==3:
-            led_on(self.strip, COLOR_PURPLE)
-        elif node.index==4:
-            led_on(self.strip, COLOR_YELLOW)
-        elif node.index==5:
-            led_on(self.strip, COLOR_CYAN)
-        elif node.index==6:
-            led_on(self.strip, COLOR_GREEN)
-        elif node.index==7:
-            led_on(self.strip, COLOR_RED)
+        if node.index == 0:
+            led_on(self.strip, ColorVal.BLUE)
+        elif node.index == 1:
+            led_on(self.strip, ColorVal.DARK_ORANGE)
+        elif node.index == 2:
+            led_on(self.strip, ColorVal.PINK)
+        elif node.index == 3:
+            led_on(self.strip, ColorVal.PURPLE)
+        elif node.index == 4:
+            led_on(self.strip, ColorVal.YELLOW)
+        elif node.index == 5:
+            led_on(self.strip, ColorVal.CYAN)
+        elif node.index == 6:
+            led_on(self.strip, ColorVal.GREEN)
+        elif node.index == 7:
+            led_on(self.strip, ColorVal.RED)
 
     def stop(self):
-        led_on(self.strip, COLOR_RED)
+        led_on(self.strip, ColorVal.RED)
 
 def get_led_handler(strip, config, *args, **kwargs):
     return StripLEDHandler(strip)

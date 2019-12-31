@@ -7,16 +7,17 @@ def Color(red, green, blue):
     """
     return (red << 16) | (green << 8) | blue
 
-COLOR_NONE = Color(0,0,0)
-COLOR_BLUE = Color(0,0,255)
-COLOR_CYAN = Color(0,255,255)
-COLOR_DARK_ORANGE = Color(255,50,0)
-COLOR_GREEN = Color(0,255,0)
-COLOR_ORANGE = Color(255,128,0)
-COLOR_PINK = Color(255,0,60)
-COLOR_PURPLE = Color(150,0,255)
-COLOR_RED = Color(255,0,0)
-COLOR_YELLOW = Color(250,210,0)
+class ColorVal:
+    NONE = Color(0,0,0)
+    BLUE = Color(0,0,255)
+    CYAN = Color(0,255,255)
+    DARK_ORANGE = Color(255,50,0)
+    GREEN = Color(0,255,0)
+    ORANGE = Color(255,128,0)
+    PINK = Color(255,0,60)
+    PURPLE = Color(150,0,255)
+    RED = Color(255,0,0)
+    YELLOW = Color(250,210,0)
 
 def led_on(strip, color):
     for i in range(strip.numPixels()):
@@ -24,7 +25,7 @@ def led_on(strip, color):
     strip.show()
 
 def led_off(strip):
-    led_on(strip, COLOR_NONE)
+    led_on(strip, ColorVal.NONE)
 
 class LEDHandler:
     def __init__(self, strip):
