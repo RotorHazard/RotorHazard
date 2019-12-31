@@ -6,6 +6,10 @@ NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 20 # Most recent node API
 JSON_API = 2 # JSON API version
 
+import gevent
+import gevent.monkey
+gevent.monkey.patch_all()
+
 import os
 import sys
 import shutil
@@ -23,16 +27,12 @@ from flask import Flask, render_template, request, Response, session
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
 
-import gevent
-import gevent.monkey
-gevent.monkey.patch_all()
-
 import random
 import json
 
 # LED imports
-import time
-import signal
+from led_handler import Color, LEDHandler, led_on, led_off
+from strip_led_handler import led_theaterChase, led_rainbow, led_rainbowCycle, led_theaterChaseRainbow
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -77,6 +77,7 @@ Config['LED'] = {}
 Config['SERIAL_PORTS'] = []
 
 # LED strip configuration:
+Config['LED']['HANDLER']        = 'strip'
 Config['LED']['LED_COUNT']      = 150      # Number of LED pixels.
 Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
 Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
@@ -619,74 +620,31 @@ class RHRaceFormat():
 # LED Code
 #
 
-def isLedEnabled():
-    return Pixel is not None
+class NoLEDHandler(LEDHandler):
+    def __init__(self):
+        LEDHandler.__init__(self, None)
 
-def signal_handler(signal, frame):
-    if isLedEnabled():
-        onoff(strip, Color(0,0,0))
-        sys.exit(0)
+# Create LED object with appropriate configuration.
+led_type = os.environ.get('RH_LEDS', 'ws281x')
+try:
+    ledModule = importlib.import_module(led_type + '_leds')
+except ImportError:
+    try:
+        ledModule = importlib.import_module('ANSI_leds')
+    except ImportError:
+        ledModule = None
+        print 'LED: disabled (no modules available)'
 
-# LED one color ON/OFF
-def onoff(strip, color):
-    if isLedEnabled():
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(i, color)
-        strip.show()
-
-def theaterChase(strip, color, wait_ms=50, iterations=5):
-    """Movie theater light style chaser animation."""
-    if isLedEnabled():
-        for j in range(iterations):
-            for q in range(3):
-                for i in range(0, strip.numPixels(), 3):
-                    strip.setPixelColor(i+q, color)
-                strip.show()
-                time.sleep(wait_ms/1000.0)
-                for i in range(0, strip.numPixels(), 3):
-                    strip.setPixelColor(i+q, 0)
-
-def wheel(pos):
-    """Generate rainbow colors across 0-255 positions."""
-    if isLedEnabled():
-        if pos < 85:
-            return Color(pos * 3, 255 - pos * 3, 0)
-        elif pos < 170:
-            pos -= 85
-            return Color(255 - pos * 3, 0, pos * 3)
-        else:
-            pos -= 170
-            return Color(0, pos * 3, 255 - pos * 3)
-
-def rainbow(strip, wait_ms=2, iterations=1):
-    """Draw rainbow that fades across all pixels at once."""
-    if isLedEnabled():
-        for j in range(256*iterations):
-            for i in range(strip.numPixels()):
-                strip.setPixelColor(i, wheel((i+j) & 255))
-            strip.show()
-            time.sleep(wait_ms/1000.0)
-
-def rainbowCycle(strip, wait_ms=2, iterations=1):
-    """Draw rainbow that uniformly distributes itself across all pixels."""
-    if isLedEnabled():
-        for j in range(256*iterations):
-            for i in range(strip.numPixels()):
-                strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
-            strip.show()
-            time.sleep(wait_ms/1000.0)
-
-def theaterChaseRainbow(strip, wait_ms=25):
-    """Rainbow movie theater light style chaser animation."""
-    if isLedEnabled():
-        for j in range(256):
-            for q in range(3):
-                for i in range(0, strip.numPixels(), 3):
-                    strip.setPixelColor(i+q, wheel((i+j) % 255))
-                strip.show()
-                time.sleep(wait_ms/1000.0)
-                for i in range(0, strip.numPixels(), 3):
-                    strip.setPixelColor(i+q, 0)
+if ledModule:
+    strip = ledModule.get_pixel_interface(config=Config['LED'])
+    # Initialize the library (must be called once before other functions).
+    strip.begin()
+    led_handler_name = os.environ.get('RH_LED_HANDLER', Config['LED']['HANDLER'])
+    ledHandlerModule = importlib.import_module(led_handler_name + '_led_handler')
+    led_handler = ledHandlerModule.get_led_handler(strip=strip, config=Config['LED'])
+else:
+    strip = None
+    led_handler = NoLEDHandler()
 
 #
 # Authentication
@@ -1585,7 +1543,7 @@ def on_shutdown_pi():
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
     server_log('Shutdown pi')
-    time.sleep(1);
+    gevent.sleep(1);
     os.system("sudo shutdown now")
 
 @SOCKET_IO.on("set_min_lap")
@@ -1729,7 +1687,7 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        onoff(strip, Color(255,128,0)) #ORANGE for STAGING
+        gevent.spawn(led_handler.staging)
         clear_laps() # Clear laps before race start
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
         RACE.timer_running = 0 # indicate race timer not running
@@ -1774,7 +1732,7 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        onoff(strip, Color(0,255,0)) #GREEN for GO
+        gevent.spawn(led_handler.start)
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now()
@@ -1825,7 +1783,7 @@ def on_stop_race():
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    onoff(strip, Color(255,0,0)) #RED ON
+    gevent.spawn(led_handler.stop)
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -2147,7 +2105,8 @@ def on_LED_solid(data):
     led_red = data['red']
     led_green = data['green']
     led_blue = data['blue']
-    onoff(strip, Color(led_red,led_green,led_blue))
+    if strip is not None:
+        led_on(strip, Color(led_red,led_green,led_blue))
 
 @SOCKET_IO.on('LED_chase')
 def on_LED_chase(data):
@@ -2155,19 +2114,23 @@ def on_LED_chase(data):
     led_red = data['red']
     led_green = data['green']
     led_blue = data['blue']
-    theaterChase(strip, Color(led_red,led_green,led_blue))
+    if strip is not None:
+        led_theaterChase(strip, Color(led_red,led_green,led_blue))
 
 @SOCKET_IO.on('LED_RB')
 def on_LED_RB():
-    rainbow(strip) #Rainbow
+    if strip is not None:
+        led_rainbow(strip) #Rainbow
 
 @SOCKET_IO.on('LED_RBCYCLE')
 def on_LED_RBCYCLE():
-    rainbowCycle(strip) #Rainbow Cycle
+    if strip is not None:
+        led_rainbowCycle(strip) #Rainbow Cycle
 
 @SOCKET_IO.on('LED_RBCHASE')
 def on_LED_RBCHASE():
-    theaterChaseRainbow(strip) #Rainbow Chase
+    if strip is not None:
+        led_theaterChaseRainbow(strip) #Rainbow Chase
 
 @SOCKET_IO.on('LED_brightness')
 def on_LED_brightness(data):
@@ -3742,6 +3705,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             elif lap_id == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
 
+                        gevent.spawn(led_handler.pass_record, node)
                 else:
                     server_log('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
@@ -4310,7 +4274,9 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
     except Exception as ex:
         print "Server exception:  " + str(ex)
 
+    if strip is not None:
+        led_off(strip)
+
 # Start HTTP server
 if __name__ == '__main__':
     start()
-
