@@ -22,7 +22,7 @@ class SerialNode(Node):
 
     def read_block(self, interface, command, size):
         '''
-        Read i2c data given command, and data size.
+        Read serial data given command, and data size.
         '''
         success = False
         retry_count = 0
@@ -38,6 +38,7 @@ class SerialNode(Node):
                     data = data[:-1]
                 else:
                     # self.log('Invalid Checksum ({0}): {1}'.format(retry_count, data))
+                    gevent.sleep(0.1)
                     retry_count = retry_count + 1
                     if retry_count < RETRY_COUNT:
                         if retry_count > 1:  # don't log the occasional single retry
@@ -46,6 +47,7 @@ class SerialNode(Node):
                         interface.log('Retry (checksum) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
             except IOError as err:
                 interface.log('Read Error: ' + str(err))
+                gevent.sleep(0.1)
                 retry_count = retry_count + 1
                 if retry_count < RETRY_COUNT:
                     if retry_count > 1:  # don't log the occasional single retry
@@ -56,7 +58,7 @@ class SerialNode(Node):
 
     def write_block(self, interface, command, data):
         '''
-        Write i2c data given command, and data.
+        Write serial data given command, and data.
         '''
         success = False
         retry_count = 0
@@ -82,10 +84,11 @@ def discover(*args, **kwargs):
     nodes = []
 
     config = kwargs['config']
-    for index, comm in enumerate(config['SERIAL_PORTS']):
-        node = SerialNode(index, comm)
-        print("Node {0} found at port {1}".format(index+1, node.serial.name))
-        nodes.append(node)
+    if 'SERIAL_PORTS' in config:
+        for index, comm in enumerate(config['SERIAL_PORTS']):
+            node = SerialNode(index, comm)
+            print("Node {0} found at port {1}".format(index+1, node.serial.name))
+            nodes.append(node)
 
     gevent.sleep(BOOTLOADER_CHILL_TIME)
     return nodes
