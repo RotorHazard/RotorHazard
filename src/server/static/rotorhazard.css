@@ -864,7 +864,7 @@ input#pilots_per_heat {
 }
 
 .page-rounds .node table {
-	margin-top: 0;
+	margin-top: 10;
 }
 
 .race-results h4 {

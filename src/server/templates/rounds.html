@@ -267,7 +267,7 @@
 		});
 
 		socket.on('class_round_data', function (msg) {
-			var page = $('.results_display')
+			var page = $('.class_results_display')
 			page.empty();
 
                         $('button#load_class_results').prop('disabled', false);
@@ -335,8 +335,8 @@
                $('button#load_class_results').click(function (event) {
 
                         if(!$(this).prop('disabled')) {
-			        $('.results_display').empty()
-			        $('.results_display').html('<p> {{ __('Loading...') }} </p>')
+			        $('.class_results_display').empty()
+			        $('.class_results_display').html('<p> {{ __('Loading...') }} </p>')
                                 $(this).prop('disabled', true);
                                 socket.emit('load_data', {'load_types': [ 'class_round_data', ], 'specific_class' : $('#set_current_class').val() } );
                         }
@@ -484,7 +484,8 @@
 		});
 	</script>
 	<main class="page-rounds">
-
+                        
+                        <h3>Results by pilot </h3>
 			<div class="control-set">
 				<label for="selected_heat" class="screen-reader-text">{{ __('Heat') }}</label>
 				<select id="selected_heat" disabled>
@@ -510,18 +511,22 @@
 				</div>
 
 			</div>
+                        <h3>Summary results by class  </h3>
 			<div class="control-set">
 				<label for="set_current_class" class="screen-reader-text">{{ __('Current Class') }}</label>
 				<select id="set_current_class">
 					<option value="">{{ __('Loading...') }}</option>
 				</select>
 				<button id="load_class_results"><span class="narrow">{{ __('Get') }}</span><span class="wide">{{ __('Class Summary') }}</span></button>
+			        <div id="id=_class_results_display" class="class_results_display">
+			           <p>Select class and press {{__('Class Summary')}} button</p>
+			         </div>
+                                 <h3 class="admin-hide">Total event results </h3>
 				 <!-- change line below to <p class="admin-hide"> if you only want admins to see this button  -->
-				<p><button id="load_all_results"><span class="narrow">{{ __('GetSummary') }}</span><span class="wide">{{ __('All') }} {{ __('Results') }}</span></button> </p>
-			</div>
-
-			<div id="id=results_display" class="results_display">
-			   <p>Select class and press {{__('Class Summary')}} button</p>
+				<p class="admin-hide"><button id="load_all_results"><span class="narrow">{{ __('Get') }}</span><span class="wide">{{ __('All') }} {{ __('Results') }}</span></button> </p>
+			        <div id="id=results_display" class="results_display">
+			           <p>Press {{__('All')}} {{__('Results')}} button</p>
+			        </div>
 			</div>
 
 
