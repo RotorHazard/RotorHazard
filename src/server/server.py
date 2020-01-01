@@ -1319,7 +1319,10 @@ def on_add_heat():
     '''Adds the next available heat number to the database.'''
     max_heat_id = DB.session.query(DB.func.max(Heat.heat_id)).scalar()
     for node in range(RACE.num_nodes): # Add next heat with pilots 1 thru 5
-        DB.session.add(Heat(heat_id=max_heat_id+1, node_index=node, pilot_id=node+1, class_id=CLASS_ID_NONE))
+        if  max_heat_id != 0:
+            DB.session.add(Heat(heat_id=max_heat_id+1, node_index=node, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE))
+        else:
+            DB.session.add(Heat(heat_id=max_heat_id+1, node_index=node, pilot_id=node+1, class_id=CLASS_ID_NONE))
     DB.session.commit()
     server_log('Heat added: Heat {0}'.format(max_heat_id+1))
     emit_heat_data() # Settings page, new pilot position in heats
@@ -1455,8 +1458,8 @@ def on_add_pilot():
     DB.session.add(new_pilot)
     DB.session.flush()
     DB.session.refresh(new_pilot)
-    new_pilot.name = __('Pilot %d Name') % (new_pilot.id)
-    new_pilot.callsign = __('Callsign %d') % (new_pilot.id)
+    new_pilot.name = __('zPilot %d Name') % (new_pilot.id)
+    new_pilot.callsign = __('zCallsign %d') % (new_pilot.id)
     new_pilot.team = DEF_TEAM_NAME
     new_pilot.phonetic = ''
     DB.session.commit()
