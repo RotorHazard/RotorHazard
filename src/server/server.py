@@ -1254,7 +1254,7 @@ def on_cap_exit_at_btn(data):
 @SOCKET_IO.on('set_scan')
 def on_set_scan(data):
     node_index = data['node']
-    INTERFACE.nodes[node_index].is_scanning = data['scan']
+    INTERFACE.nodes[node_index].scan_interval = data['scan_interval']
 
 @SOCKET_IO.on('add_heat')
 def on_add_heat():

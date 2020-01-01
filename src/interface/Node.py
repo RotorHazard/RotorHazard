@@ -35,7 +35,7 @@ class Node:
         self.history_values = []
         self.history_times = []
 
-        self.is_scanning = False
+        self.scan_interval = 0 # scanning frequency interval
 
         self.io_request = None # request time of last I/O read
         self.io_response = None # response time of last I/O read

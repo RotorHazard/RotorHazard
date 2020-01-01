@@ -68,7 +68,7 @@ class BaseHardwareInterface(object):
             gevent.spawn(self.hardware_log_callback, string)
 
     def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list):
-        if not node.is_scanning:
+        if node.scan_interval == 0:
             if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
                 node.crossing_flag = cross_flag
                 if callable(self.node_crossing_callback):
@@ -218,8 +218,8 @@ class BaseHardwareInterface(object):
             'crossing_flag': [node.crossing_flag for node in self.nodes]
         }
         for i, node in enumerate(self.nodes):
-            if node.is_scanning:
-                new_freq = node.frequency + 10
+            if node.scan_interval > 0:
+                new_freq = node.frequency + node.scan_interval
                 if new_freq < 5645 or new_freq > 5945:
                     new_freq = 5645
                 self.set_frequency(i, new_freq)

@@ -28,7 +28,7 @@ def log(s):
 INTERFACE.hardware_log_callback=log
 
 for node in INTERFACE.nodes:
-    node.is_scanning = True
+    node.scan_interval = 1
     INTERFACE.set_frequency(node.index, 5645)
 
 INTERFACE.start()
