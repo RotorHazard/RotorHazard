@@ -133,6 +133,10 @@ input[type="radio"] {
 	padding: 0;
 }
 
+select#set_sort_mode {
+	width: 10em
+}
+
 select {
 	width: 100%;
 }

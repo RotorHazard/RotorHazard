@@ -827,6 +827,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.min_lap'] = JSON.stringify(this.min_lap);
 		localStorage['rotorhazard.admin'] = JSON.stringify(this.admin);
 		localStorage['rotorhazard.primaryPilot'] = JSON.stringify(this.primaryPilot);
+		localStorage['rotorhazard.sort_mode'] = JSON.stringify(this.sort_mode);
 		return true;
 	},
 	restoreData: function(dataType) {
@@ -899,6 +900,9 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.primaryPilot']) {
 				this.primaryPilot = JSON.parse(localStorage['rotorhazard.primaryPilot']);
+			}
+			if (localStorage['rotorhazard.sort_mode']) {
+				this.sort_mode = JSON.parse(localStorage['rotorhazard.sort_mode']);
 			}
 			return true;
 		}

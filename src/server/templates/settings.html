@@ -482,12 +482,20 @@
 		/* Heats */
 		socket.on('heat_data', function (msg) {
 			msg.pilot_data.sort(function(a, b){
-				if (a.callsign < b.callsign)
+				if (rotorhazard.sort_mode == 0) {
+				    if (a.name < b.name)
 					return -1;
-				if (a.callsign > b.callsign)
+				    if (a.name > b.name)
 					return 1;
-				return 0;
+				    return 0;} 
+                                else {
+				    if (a.callsign < b.callsign)
+					return -1;
+				    if (a.callsign > b.callsign)
+					return 1;
+				    return 0;} 
 			});
+			$('#set_sort_mode').val(rotorhazard.sort_mode);
                         $('button#delete_last_heat').prop('disabled', false);
                         $('button#generate_heats').prop('disabled', false);
 
@@ -662,11 +670,18 @@
 		/* Pilots */
 		socket.on('pilot_data', function (msg) {
 			msg.pilots.sort(function(a, b){
-				if (a.callsign < b.callsign)
+				if (rotorhazard.sort_mode == 0) {
+				    if (a.name < b.name)
 					return -1;
-				if (a.callsign > b.callsign)
+				    if (a.name > b.name)
 					return 1;
-				return 0;
+				    return 0;} 
+                                else {
+				    if (a.callsign < b.callsign)
+					return -1;
+				    if (a.callsign > b.callsign)
+					return 1;
+				    return 0;} 
 			});
 			$(".pilots").empty();
 			for (var i in msg.pilots) {
@@ -688,11 +703,18 @@
 			}
 
 			msg.pilots.sort(function(a, b){
-				if (a.callsign < b.callsign)
+				if (rotorhazard.sort_mode == 0) {
+				    if (a.name < b.name)
 					return -1;
-				if (a.callsign > b.callsign)
+				    if (a.name > b.name)
 					return 1;
-				return 0;
+				    return 0;} 
+                                else {
+				    if (a.callsign < b.callsign)
+					return -1;
+				    if (a.callsign > b.callsign)
+					return 1;
+				    return 0;} 
 			});
 
 			$('.set_pilot_position').each(function(){
@@ -772,6 +794,13 @@
 		$(document).on('change', '#set_voice_language', function (event) {
 			rotorhazard.voice_language = $(this).val();
 			rotorhazard.saveData();
+		});
+		$(document).on('change', '#set_sort_mode', function (event) {
+			rotorhazard.sort_mode = $(this).val();
+			rotorhazard.saveData();
+		        socket.emit('load_data', {'load_types': [
+		   	    'pilot_data'
+		        ]});
 		});
 
 		// construct language selection
@@ -1524,6 +1553,13 @@
 		<div class="control-set">
 			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
 		</div>
+				<div class="label-block">
+					<label for="set_sort_mode">{{ __('Pilot Sort Preference') }}</label>
+				</div>
+				<select id="set_sort_mode">
+					<option value="0">{{ __('Sort by Name') }}</option>
+					<option value="1">{{ __('Sort by Callsign') }}</option>
+				</select>
 	</div>
 </div>
 
