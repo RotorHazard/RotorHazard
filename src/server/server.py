@@ -2,7 +2,7 @@
 RELEASE_VERSION = "2.1.0 (dev 3)" # Public release version code
 SERVER_API = 24 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 20 # Most recent node API
+NODE_API_BEST = 21 # Most recent node API
 JSON_API = 2 # JSON API version
 
 import gevent

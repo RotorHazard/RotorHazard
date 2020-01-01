@@ -154,7 +154,7 @@ class RHInterface(BaseHardwareInterface):
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
-                    if node.api_level >= 20:
+                    if node.api_level >= 21:
                         data = node.read_block(self, READ_LAP_STATS, 16)
                     elif node.api_level >= 18:
                         data = node.read_block(self, READ_LAP_STATS, 19)
@@ -181,7 +181,7 @@ class RHInterface(BaseHardwareInterface):
                         offset_crossing = 8
                         offset_passNadirRssi = 9
                         offset_nodeNadirRssi = 10
-                        if node.api_level >= 20:
+                        if node.api_level >= 21:
                             offset_peakRssi = 11
                             offset_peakFirstTime = 12
                             offset_peakLastTime = 14
@@ -217,7 +217,7 @@ class RHInterface(BaseHardwareInterface):
                             if node.api_level >= 18:
                                 ms_val = unpack_16(data[1:])
                                 pn_history = PeakNadirHistory()
-                                if node.api_level >= 20:
+                                if node.api_level >= 21:
                                     if data[offset_crossing] & 0x02:
                                         pn_history.peakRssi = unpack_rssi(node, data[offset_peakRssi:])
                                         pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
