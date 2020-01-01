@@ -7,7 +7,7 @@ struct Buffer_s
 {
     byte index = 0;
     byte size = 0;
-    uint8_t data[32];  // Data array for I/O, up to 32 bytes per message
+    uint8_t data[20];  // Data array for I/O, up to 20 bytes per message
 };
 
 typedef struct Buffer_s Buffer_t;

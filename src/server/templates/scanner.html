@@ -20,7 +20,7 @@
 			scanners[nodeIndex].isEnabled = $(this).is(':checked');
 			let data = {
 				node: nodeIndex,
-				scan: scanners[nodeIndex].isEnabled,
+				scan_interval: scanners[nodeIndex].isEnabled ? 1 : 0,
 			};
 			socket.emit('set_scan', data);
 			scanners[nodeIndex].clear();

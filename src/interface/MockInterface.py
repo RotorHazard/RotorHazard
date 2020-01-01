@@ -18,10 +18,6 @@ class MockInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
-        self.pass_record_callback = None # Function added in server.py
-        self.hardware_log_callback = None # Function added in server.py
-        self.new_enter_or_exit_at_callback = None # Function added in server.py
-        self.node_crossing_callback = None # Function added in server.py
 
         # Scans all i2c_addrs to populate nodes array
         self.nodes = [] # Array to hold each node object
@@ -45,16 +41,6 @@ class MockInterface(BaseHardwareInterface):
 
         self.discover_sensors()
 
-
-    #
-    # Class Functions
-    #
-
-    def log(self, message):
-        '''Hardware log of messages.'''
-        if callable(self.hardware_log_callback):
-            string = 'Interface: {0}'.format(message)
-            self.hardware_log_callback(string)
 
     #
     # Update Loop
@@ -103,7 +89,8 @@ class MockInterface(BaseHardwareInterface):
                 pn_history.peakFirstTime = int(data_columns[11])
                 pn_history.peakLastTime = int(data_columns[12])
                 pn_history.nadirRssi = int(data_columns[13])
-                pn_history.nadirTime = int(data_columns[14])
+                pn_history.nadirFirstTime = int(data_columns[14])
+                pn_history.nadirLastTime = int(data_columns[15])
 
                 if node.is_valid_rssi(rssi_val):
                     node.current_rssi = rssi_val

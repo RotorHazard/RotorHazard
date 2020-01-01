@@ -86,6 +86,13 @@ void handleWriteCommand(Message_t *msg)
     msg->command = 0;  // Clear previous command
 }
 
+void ioBufferWriteExtremum(Buffer_t *buf, Extremum *e, mtime_t now)
+{
+  ioBufferWriteRssi(buf, e->rssi);
+  ioBufferWrite16(buf, uint16_t(now - e->firstTime));
+  ioBufferWrite16(buf, uint16_t(now - e->firstTime - e->duration));
+}
+
 // Generic IO read command handler
 void handleReadCommand(Message_t *msg)
 {
@@ -110,29 +117,25 @@ void handleReadCommand(Message_t *msg)
               ioBufferWriteRssi(&(msg->buffer), state.nodeRssiPeak);
               ioBufferWriteRssi(&(msg->buffer), lastPass.rssiPeak);  // RSSI peak for last lap pass
               ioBufferWrite16(&(msg->buffer), uint16_t(state.loopTimeMicros));
-              ioBufferWrite8(&(msg->buffer), state.crossing ? (uint8_t) 1 : (uint8_t) 0);  // 'crossing' status
+              uint8_t flags = state.crossing ? (uint8_t) 1 : (uint8_t) 0;  // 'crossing' status
+              if (isPeakValid(history.peakSend) && (!isNadirValid(history.nadirSend) || (history.peakSend.firstTime < history.nadirSend.firstTime))) {
+        	  flags |= 0x02;
+              }
+              ioBufferWrite8(&(msg->buffer), flags);
               ioBufferWriteRssi(&(msg->buffer), lastPass.rssiNadir);  // lowest rssi since end of last pass
               ioBufferWriteRssi(&(msg->buffer), state.nodeRssiNadir);
 
-              if (isPeakValid(history.peakSendRssi)) {
+              if (isPeakValid(history.peakSend) && (!isNadirValid(history.nadirSend) || (history.peakSend.firstTime < history.nadirSend.firstTime))) {
                   // send peak and reset
-                  ioBufferWriteRssi(&(msg->buffer), history.peakSendRssi);
-                  ioBufferWrite16(&(msg->buffer), uint16_t(now - history.peakSendFirstTime));
-                  ioBufferWrite16(&(msg->buffer), uint16_t(now - history.peakSendLastTime));
-                  history.peakSendRssi = 0;
-              } else {
-                  ioBufferWriteRssi(&(msg->buffer), 0);
-                  ioBufferWrite16(&(msg->buffer), 0);
-                  ioBufferWrite16(&(msg->buffer), 0);
-              }
-
-              if (isNadirValid(history.nadirSendRssi)) {
+                  ioBufferWriteExtremum(&(msg->buffer), &(history.peakSend), now);
+                  history.peakSend.rssi = 0;
+              } else if (isNadirValid(history.nadirSend) && (!isPeakValid(history.peakSend) || (history.nadirSend.firstTime < history.peakSend.firstTime))) {
                   // send nadir and reset
-                  ioBufferWriteRssi(&(msg->buffer), history.nadirSendRssi);
-                  ioBufferWrite16(&(msg->buffer), uint16_t(now - history.nadirSendTime));
-                  history.nadirSendRssi = MAX_RSSI;
+                  ioBufferWriteExtremum(&(msg->buffer), &(history.nadirSend), now);
+                  history.nadirSend.rssi = MAX_RSSI;
               } else {
                   ioBufferWriteRssi(&(msg->buffer), 0);
+                  ioBufferWrite16(&(msg->buffer), 0);
                   ioBufferWrite16(&(msg->buffer), 0);
               }
             }

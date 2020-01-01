@@ -1,3 +1,4 @@
+import gevent
 import importlib
 import pkgutil
 from monotonic import monotonic
@@ -48,6 +49,10 @@ class BaseHardwareInterface(object):
         self.sensors = []
         self.environmental_data_update_tracker = 0
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
+        self.pass_record_callback = None # Function added in server.py
+        self.hardware_log_callback = None # Function added in server.py
+        self.new_enter_or_exit_at_callback = None # Function added in server.py
+        self.node_crossing_callback = None # Function added in server.py
 
     def discover_sensors(self, *args, **kwargs):
         self.sensors.extend(discover_plugins('sensor', *args, **kwargs))
@@ -60,10 +65,10 @@ class BaseHardwareInterface(object):
         '''Hardware log of messages.'''
         if callable(self.hardware_log_callback):
             string = 'Interface: {0}'.format(message)
-            self.hardware_log_callback(string)
+            gevent.spawn(self.hardware_log_callback, string)
 
     def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list):
-        if not node.is_scanning:
+        if node.scan_interval == 0:
             if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
                 node.crossing_flag = cross_flag
                 if callable(self.node_crossing_callback):
@@ -91,7 +96,7 @@ class BaseHardwareInterface(object):
                     if node.node_peak_rssi > 0 and node.node_peak_rssi - node.enter_at_level < ENTER_AT_PEAK_MARGIN:
                         node.enter_at_level = node.node_peak_rssi - ENTER_AT_PEAK_MARGIN
                     if callable(self.new_enter_or_exit_at_callback):
-                        self.new_enter_or_exit_at_callback(node, True)
+                        gevent.spawn(self.new_enter_or_exit_at_callback, node, True)
     
             # check if capturing exit-at level for node
             if node.cap_exit_at_flag:
@@ -101,7 +106,7 @@ class BaseHardwareInterface(object):
                     node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
                     node.cap_exit_at_flag = False
                     if callable(self.new_enter_or_exit_at_callback):
-                        self.new_enter_or_exit_at_callback(node, False)
+                        gevent.spawn(self.new_enter_or_exit_at_callback, node, False)
 
         # prune history data if race is not running (keep last 60s)
         if self.race_status is BaseHardwareInterface.RACE_STATUS_READY:
@@ -119,7 +124,7 @@ class BaseHardwareInterface(object):
     def process_crossings(self, cross_list):
         if len(cross_list) > 0:
             for node in cross_list:
-                self.node_crossing_callback(node)
+                gevent.spawn(self.node_crossing_callback, node)
 
     def process_updates(self, upd_list):
         if len(upd_list) > 0:
@@ -127,7 +132,7 @@ class BaseHardwareInterface(object):
                 item = upd_list[0]
                 node = item[0]
                 if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                    self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
+                    gevent.spawn(self.pass_record_callback, node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
                 node.last_lap_id = item[1]  # new_lap_id
 
             else:  # list contains multiple items; sort so processed in order by lap time
@@ -135,7 +140,7 @@ class BaseHardwareInterface(object):
                 for item in upd_list:
                     node = item[0]
                     if node.last_lap_id != -1 and callable(self.pass_record_callback):
-                        self.pass_record_callback(node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
+                        gevent.spawn(self.pass_record_callback, node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
                     node.last_lap_id = item[1]  # new_lap_id
 
     #
@@ -145,7 +150,7 @@ class BaseHardwareInterface(object):
     def intf_simulate_lap(self, node_index, ms_val):
         node = self.nodes[node_index]
         node.lap_timestamp = monotonic() - (ms_val / 1000.0)
-        self.pass_record_callback(node, node.lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
+        gevent.spawn(self.pass_record_callback, node, node.lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
 
     def set_race_status(self, race_status):
         self.race_status = race_status
@@ -213,8 +218,8 @@ class BaseHardwareInterface(object):
             'crossing_flag': [node.crossing_flag for node in self.nodes]
         }
         for i, node in enumerate(self.nodes):
-            if node.is_scanning:
-                new_freq = node.frequency + 10
+            if node.scan_interval > 0:
+                new_freq = node.frequency + node.scan_interval
                 if new_freq < 5645 or new_freq > 5945:
                     new_freq = 5645
                 self.set_frequency(i, new_freq)
@@ -244,11 +249,19 @@ class BaseHardwareInterface(object):
 
 
 class PeakNadirHistory:
+    def __init__(self):
+        self.peakRssi = 0
+        self.peakFirstTime = 0
+        self.peakLastTime = 0
+        self.nadirRssi = 0
+        self.nadirFirstTime = 0
+        self.nadirLastTime = 0
+
     def addTo(self, readtime, history_values, history_times, interface):
         if self.peakRssi > 0:
             if self.nadirRssi > 0:
                 # both
-                if self.peakLastTime > self.nadirTime:
+                if self.peakLastTime > self.nadirFirstTime:
                     # process peak first
                     if self.peakFirstTime > self.peakLastTime:
                         history_values.append(self.peakRssi)
@@ -262,12 +275,16 @@ class PeakNadirHistory:
                         interface.log('Ignoring corrupted peak history times ({0} < {1})'.format(self.peakFirstTime, self.peakLastTime))
 
                     history_values.append(self.nadirRssi)
-                    history_times.append(readtime - (self.nadirTime / 1000.0))
+                    history_times.append(readtime - (self.nadirFirstTime / 1000.0))
+                    history_values.append(self.nadirRssi)
+                    history_times.append(readtime - (self.nadirLastTime / 1000.0))
 
                 else:
                     # process nadir first
                     history_values.append(self.nadirRssi)
-                    history_times.append(readtime - (self.nadirTime / 1000.0))
+                    history_times.append(readtime - (self.nadirFirstTime / 1000.0))
+                    history_values.append(self.nadirRssi)
+                    history_times.append(readtime - (self.nadirLastTime / 1000.0))
                     if self.peakFirstTime > self.peakLastTime:
                         history_values.append(self.peakRssi)
                         history_times.append(readtime - (self.peakFirstTime / 1000.0))
@@ -297,4 +314,6 @@ class PeakNadirHistory:
             # no peak, nadir
             # process nadir only
             history_values.append(self.nadirRssi)
-            history_times.append(readtime - (self.nadirTime / 1000.0))
+            history_times.append(readtime - (self.nadirFirstTime / 1000.0))
+            history_values.append(self.nadirRssi)
+            history_times.append(readtime - (self.nadirLastTime / 1000.0))

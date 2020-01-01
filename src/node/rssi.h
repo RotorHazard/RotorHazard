@@ -4,10 +4,11 @@
 #include "rhtypes.h"
 
 #define MAX_RSSI 0xFF
+#define MAX_DURATION 0xFFFF
 #define SmoothingSamples 255
 #define SmoothingTimestampSize 128 // half median window, rounded up
-#define isPeakValid(x) ((x) != 0)
-#define isNadirValid(x) ((x) != MAX_RSSI)
+#define isPeakValid(x) ((x).rssi != 0)
+#define isNadirValid(x) ((x).rssi != MAX_RSSI)
 
 struct Settings
 {
@@ -18,6 +19,13 @@ struct Settings
     rssi_t volatile exitAtLevel = 80;
 };
 
+struct Extremum
+{
+  rssi_t volatile rssi;
+  mtime_t volatile firstTime;
+  uint16_t volatile duration;
+};
+
 struct State
 {
     bool volatile crossing = false; // True when the quad is going through the gate
@@ -25,9 +33,7 @@ struct State
     rssi_t lastRssi = 0;
     mtime_t rssiTimestamp = 0; // timestamp of the smoothed value
 
-    rssi_t passRssiPeak = 0; // peak smoothed rssi seen during current pass
-    mtime_t passRssiPeakFirstTime = 0; // time of the first peak rssi for the current pass - only valid if passRssiPeak != 0
-    mtime_t passRssiPeakLastTime = 0; // time of the last peak rssi for the current pass - only valid if passRssiPeak != 0
+    Extremum passPeak = {0, 0, 0}; // peak seen during current pass - only valid if pass.rssi != 0
     rssi_t passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
 
     rssi_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set
@@ -42,19 +48,13 @@ struct State
 
 struct History
 {
-    rssi_t volatile peakRssi = 0;
-    mtime_t volatile peakFirstTime = 0;
-    mtime_t volatile peakLastTime = 0;
+    Extremum peak = {0, 0, 0};
     bool volatile hasPendingPeak = false;
-    rssi_t volatile peakSendRssi = 0;
-    mtime_t volatile peakSendFirstTime = 0; // only valid if peakSendRssi != 0
-    mtime_t volatile peakSendLastTime = 0; // only valid if peakSendRssi != 0
+    Extremum peakSend = {0, 0, 0}; // only valid if peakSend.rssi != 0
 
-    rssi_t volatile nadirRssi = MAX_RSSI;
-    mtime_t volatile nadirTime = 0;
+    Extremum nadir = {0, 0, 0};
     bool volatile hasPendingNadir = false;
-    rssi_t volatile nadirSendRssi = MAX_RSSI;
-    mtime_t volatile nadirSendTime = 0; // only valid if nadirSendRssi != MAX_RSSI
+    Extremum nadirSend = {MAX_RSSI, 0, 0}; // only valid if nadirSend.rssi != MAX_RSSI
 
     int8_t rssiChange = 0; // >0 for raising, <0 for falling
 };
