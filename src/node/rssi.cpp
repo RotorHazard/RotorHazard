@@ -31,8 +31,15 @@ bool rssiStateValid()
 
 void rssiStateReset()
 {
+  state.crossing = false;
+  state.passPeak.rssi = 0;
+  state.passRssiNadir = MAX_RSSI;
   state.nodeRssiPeak = 0;
   state.nodeRssiNadir = MAX_RSSI;
+  history.hasPendingPeak = false;
+  history.peakSend.rssi = 0;
+  history.hasPendingNadir = false;
+  history.nadirSend.rssi = MAX_RSSI;
 }
 
 static void bufferHistoricPeak(bool force) {
