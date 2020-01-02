@@ -79,14 +79,14 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
   if (rssiMedian.isFilled() && state.rxFreqSetFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received
 
-      state.lastRssi = state.rssi;
       state.rssi = rssiMedian.getMedian(); // retrieve the median
       state.rssiTimestamp = SmoothingTimestamps[SmoothingTimestampsIndex];
 
       /*** update history ***/
 
-      int rssiChange = state.rssi - state.lastRssi;
+      int rssiChange = (state.rssi - state.lastRssi) / 2;  // rescale to remove some jitter
       if (rssiChange > 0) { // RSSI is rising
+      state.lastRssi = state.rssi;
 	  // must buffer latest peak to prevent losing it (overwriting any unsent peak)
 	  bufferHistoricPeak(true);
 
@@ -100,6 +100,7 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
 	  }
 
       } else if (rssiChange < 0) { // RSSI is falling
+      state.lastRssi = state.rssi;
 	  // must buffer latest nadir to prevent losing it (overwriting any unsent nadir)
 	  bufferHistoricNadir(true);
 
@@ -171,6 +172,8 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
 	  // track lowest rssi seen since end of last pass
 	  state.passRssiNadir = min(state.rssi, state.passRssiNadir);
       }
+    } else {
+      state.lastRssi = state.rssi = rssiMedian.getMedian();
     }
 
   // Calculate the time it takes to run the main loop
