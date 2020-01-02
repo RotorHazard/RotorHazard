@@ -1374,6 +1374,7 @@ def on_generate_heats(data):
             max_heat_id += 1
             assigned_pilots_in_heat = 1 
             heat_note = 'A' 
+            skipped_pilots = []
             for row in class_results:
                 pilot_id= row['pilot_id'] 
                 pilot= row['callsign'] 
@@ -1382,25 +1383,40 @@ def on_generate_heats(data):
                 # Check if the node_index is already taken if so, just find any open node that has no pilot in this heat 
                 current_node_occupant = DB.session.query(DB.func.max(Heat.heat_id)).filter_by(heat_id=max_heat_id, node_index=node_index).scalar()
                 if current_node_occupant is not None: # ie this node is taken
-                    for checking_index  in range(pilots_per_heat): 
-                        current_node_occupant = DB.session.query(DB.func.max(Heat.heat_id)).filter_by(heat_id=max_heat_id, node_index=checking_index).scalar()
-                        if current_node_occupant is  None: # Not taken
-                            node_index=checking_index
+                    skipped_pilots.append(pilot_id)
+                else:
 
-                print "generating heat "+  pilot + " id=" +str(pilot_id) + " node index ="+  str(node_index) +" "+ heat_note +"Main heat_id=" + str(max_heat_id) 
-                DB.session.add(Heat(heat_id=max_heat_id, node_index=node_index, pilot_id=pilot_id, class_id=CLASS_ID_NONE,note=heat_note+"-Main"))
-                DB.session.commit()
+
+                    server_log( "generating heat "+  pilot + " id=" +str(pilot_id) + " node index ="+  str(node_index) +" "+ heat_note +"Main heat_id=" + str(max_heat_id) )
+                    DB.session.add(Heat(heat_id=max_heat_id, node_index=node_index, pilot_id=pilot_id, class_id=CLASS_ID_NONE,note=heat_note+"-Main"))
+                    DB.session.commit()
+
                 assigned_pilots_in_heat += 1
 
-                #iterate to the next heat if we have fully populated this one 
+                #iterate to the next heat if we have fully populated this one, but first handled the skipped pilots 
                 
                 if assigned_pilots_in_heat > pilots_per_heat:
-                    # for odd reasons, the rest of the system wants heats fully populated
+                    # so we've assigned all of the non-frequency conflicted pilots in this main
+                    # now just place all of the skipped_pilots in available nodes
+                    for this_pilot in skipped_pilots:
+                        for checking_index  in range(pilots_per_heat): 
+                            current_node_occupant = DB.session.query(DB.func.max(Heat.heat_id)).filter_by(heat_id=max_heat_id, node_index=checking_index).scalar()
+                            if current_node_occupant is  None: # Not taken yet
+                                node_index=checking_index
+                                break
+
+                        server_log( "generating heat for skipped pilot id=" +str(this_pilot) + " node index ="+  str(node_index) +" "+ heat_note +"Main heat_id=" + str(max_heat_id) )
+                        DB.session.add(Heat(heat_id=max_heat_id, node_index=node_index, pilot_id=this_pilot, class_id=CLASS_ID_NONE,note=heat_note+"-Main"))
+                        DB.session.commit()
+
+                    # for odd reasons, the rest of the system wants heats fully populated 
                     for checking_index  in range(RACE.num_nodes): 
                         current_node_occupant = DB.session.query(DB.func.max(Heat.heat_id)).filter_by(heat_id=max_heat_id, node_index=checking_index).scalar()
                         if current_node_occupant is  None: # Not taken
                             DB.session.add(Heat(heat_id=max_heat_id, node_index=checking_index, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE, note=heat_note+"-Main"))
                             DB.session.commit()
+
+                    skipped_pilots = []
                     max_heat_id += 1
                     assigned_pilots_in_heat = 1 
                     heat_note= chr(ord(heat_note) + 1 )
@@ -4442,16 +4458,16 @@ elif serverInfo['node_api_lowest'] > NODE_API_BEST:
 if not db_inited_flag:
     if int(getOption('server_api')) < SERVER_API:
         server_log('Old server API version; resetting database')
-        recover_database()
+        #recover_database()
     elif not Heat.query.count():
         server_log('Heats are empty; resetting database')
-        recover_database()
+        #recover_database()
     elif not Profiles.query.count():
         server_log('Profiles are empty; resetting database')
-        recover_database()
+        #recover_database()
     elif not RaceFormat.query.count():
         server_log('Formats are empty; resetting database')
-        recover_database()
+        #recover_database()
 
 # Expand heats (if number of nodes increases)
 expand_heats()
@@ -4558,7 +4574,7 @@ if isLedEnabled():
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)
     try:
-        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
+        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=False, use_reloader=False)
     except KeyboardInterrupt:
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
