@@ -264,35 +264,36 @@ class PeakNadirHistory:
                 if self.peakLastTime > self.nadirFirstTime:
                     # process peak first
                     if self.peakFirstTime > self.peakLastTime:
-                        history_values.append(self.peakRssi)
-                        history_times.append(readtime - (self.peakFirstTime / 1000.0))
-                        history_values.append(self.peakRssi)
-                        history_times.append(readtime - (self.peakLastTime / 1000.0))
+                        self._addEntry(self.peakRssi, readtime - (self.peakFirstTime / 1000.0), history_values, history_times)
+                        self._addEntry(self.peakRssi, readtime - (self.peakLastTime / 1000.0), history_values, history_times)
                     elif self.peakFirstTime == self.peakLastTime:
-                        history_values.append(self.peakRssi)
-                        history_times.append(readtime - (self.peakLastTime / 1000.0))
+                        self._addEntry(self.peakRssi, readtime - (self.peakLastTime / 1000.0), history_values, history_times)
                     else:
                         interface.log('Ignoring corrupted peak history times ({0} < {1})'.format(self.peakFirstTime, self.peakLastTime))
 
-                    history_values.append(self.nadirRssi)
-                    history_times.append(readtime - (self.nadirFirstTime / 1000.0))
-                    history_values.append(self.nadirRssi)
-                    history_times.append(readtime - (self.nadirLastTime / 1000.0))
+                    if self.nadirFirstTime > self.nadirLastTime:
+                        self._addEntry(self.nadirRssi, readtime - (self.nadirFirstTime / 1000.0), history_values, history_times)
+                        self._addEntry(self.nadirRssi, readtime - (self.nadirLastTime / 1000.0), history_values, history_times)
+                    elif self.nadirFirstTime == self.nadirLastTime:
+                        self._addEntry(self.nadirRssi, readtime - (self.nadirLastTime / 1000.0), history_values, history_times)
+                    else:
+                        interface.log('Ignoring corrupted nadir history times ({0} < {1})'.format(self.nadirFirstTime, self.nadirLastTime))
 
                 else:
                     # process nadir first
-                    history_values.append(self.nadirRssi)
-                    history_times.append(readtime - (self.nadirFirstTime / 1000.0))
-                    history_values.append(self.nadirRssi)
-                    history_times.append(readtime - (self.nadirLastTime / 1000.0))
+                    if self.nadirFirstTime > self.nadirLastTime:
+                        self._addEntry(self.nadirRssi, readtime - (self.nadirFirstTime / 1000.0), history_values, history_times)
+                        self._addEntry(self.nadirRssi, readtime - (self.nadirLastTime / 1000.0), history_values, history_times)
+                    elif self.nadirFirstTime == self.nadirLastTime:
+                        self._addEntry(self.nadirRssi, readtime - (self.nadirLastTime / 1000.0), history_values, history_times)
+                    else:
+                        interface.log('Ignoring corrupted nadir history times ({0} < {1})'.format(self.nadirFirstTime, self.nadirLastTime))
+
                     if self.peakFirstTime > self.peakLastTime:
-                        history_values.append(self.peakRssi)
-                        history_times.append(readtime - (self.peakFirstTime / 1000.0))
-                        history_values.append(self.peakRssi)
-                        history_times.append(readtime - (self.peakLastTime / 1000.0))
+                        self._addEntry(self.peakRssi, readtime - (self.peakFirstTime / 1000.0), history_values, history_times)
+                        self._addEntry(self.peakRssi, readtime - (self.peakLastTime / 1000.0), history_values, history_times)
                     elif self.peakFirstTime == self.peakLastTime:
-                        history_values.append(self.peakRssi)
-                        history_times.append(readtime - (self.peakLastTime / 1000.0))
+                        self._addEntry(self.peakRssi, readtime - (self.peakLastTime / 1000.0), history_values, history_times)
                     else:
                         interface.log('Ignoring corrupted peak history times ({0} < {1})'.format(self.peakFirstTime, self.peakLastTime))
 
@@ -300,20 +301,29 @@ class PeakNadirHistory:
                 # peak, no nadir
                 # process peak only
                 if self.peakFirstTime > self.peakLastTime:
-                    history_values.append(self.peakRssi)
-                    history_times.append(readtime - (self.peakFirstTime / 1000.0))
-                    history_values.append(self.peakRssi)
-                    history_times.append(readtime - (self.peakLastTime / 1000.0))
+                    self._addEntry(self.peakRssi, readtime - (self.peakFirstTime / 1000.0), history_values, history_times)
+                    self._addEntry(self.peakRssi, readtime - (self.peakLastTime / 1000.0), history_values, history_times)
                 elif self.peakFirstTime == self.peakLastTime:
-                    history_values.append(self.peakRssi)
-                    history_times.append(readtime - (self.peakLastTime / 1000.0))
+                    self._addEntry(self.peakRssi, readtime - (self.peakLastTime / 1000.0), history_values, history_times)
                 else:
                     interface.log('Ignoring corrupted peak history times ({0} < {1})'.format(self.peakFirstTime, self.peakLastTime))
 
         elif self.nadirRssi > 0:
             # no peak, nadir
             # process nadir only
-            history_values.append(self.nadirRssi)
-            history_times.append(readtime - (self.nadirFirstTime / 1000.0))
-            history_values.append(self.nadirRssi)
-            history_times.append(readtime - (self.nadirLastTime / 1000.0))
+            if self.nadirFirstTime > self.nadirLastTime:
+                self._addEntry(self.nadirRssi, readtime - (self.nadirFirstTime / 1000.0), history_values, history_times)
+                self._addEntry(self.nadirRssi, readtime - (self.nadirLastTime / 1000.0), history_values, history_times)
+            elif self.nadirFirstTime == self.nadirLastTime:
+                self._addEntry(self.nadirRssi, readtime - (self.nadirLastTime / 1000.0), history_values, history_times)
+            else:
+                interface.log('Ignoring corrupted nadir history times ({0} < {1})'.format(self.nadirFirstTime, self.nadirLastTime))
+
+    def _addEntry(self, entry_value, entry_time, history_values, history_times):
+        hist_len = len(history_values)
+        # if previous two entries have same value then just extend time on last entry
+        if hist_len >= 2 and history_values[hist_len-1] == entry_value and history_values[hist_len-2] == entry_value:
+            history_times[hist_len-1] = entry_time
+        else:
+            history_values.append(entry_value)
+            history_times.append(entry_time)
