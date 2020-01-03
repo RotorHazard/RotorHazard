@@ -410,6 +410,14 @@ class Pilot(DB.Model):
     def __repr__(self):
         return '<Pilot %r>' % self.id
 
+class PilotAttr(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    attr_name = DB.Column(DB.String(40), primary_key=True)
+    attr_value = DB.Column(DB.Boolean, nullable=False)
+
+    def __repr__(self):
+        return '<PilotAttr %r>' % self.id
+
 class Heat(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     heat_id = DB.Column(DB.Integer, nullable=False)
@@ -1493,6 +1501,27 @@ def on_alter_pilot(data):
         emit_heat_data() # Settings page, new pilot callsign in heats
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
+
+@SOCKET_IO.on('change_pilot_attr')
+def change_pilot_attr(data):
+    pilot_id = data['id']
+    attr = data['attr']
+    value = data['value']
+    db_update = PilotAttr.query.filter_by(id=pilot_id,attr_name=attr).one()
+    db_update.attr_value = value
+    DB.session.commit()
+
+@SOCKET_IO.on('add_pilot_attr')
+def change_pilot_attr(data):
+    attr = data['attr']
+    already_exists = PilotAttr.query.filter_by(attr_name=attr).count()
+    if already_exists == 0:
+        print 'attribute is being added ' + attr
+        for pilot in Pilot.query.all():
+            DB.session.add(PilotAttr(id=pilot.id,attr_name=attr, attr_value=False))
+            DB.session.commit()
+
+        emit_pilot_data()
 
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
@@ -3216,16 +3245,22 @@ def emit_pilot_data(**params):
             if name == pilot.team:
                 opts_str += ' selected'
             opts_str += '>' + name + '</option>'
-
+        
+        attr_list = [] 
+        pilot_attrs = PilotAttr.query.filter_by(id=pilot.id)
+        if pilot_attrs:
+            for this_attr in pilot_attrs:
+                attr_list.append({this_attr.attr_name:this_attr.attr_value})
+      
         pilots_list.append({
             'pilot_id': pilot.id,
             'callsign': pilot.callsign,
             'team': pilot.team,
             'phonetic': pilot.phonetic,
             'name': pilot.name,
-            'team_options': opts_str
+            'team_options': opts_str,
+            'attributes': attr_list  
         })
-
     emit_payload = {
         'pilots': pilots_list
     }
@@ -4088,9 +4123,11 @@ def db_reset():
 def db_reset_pilots():
     '''Resets database pilots to default.'''
     DB.session.query(Pilot).delete()
+    DB.session.query(PilotAttr).delete()
     for node in range(RACE.num_nodes):
         DB.session.add(Pilot(callsign='Callsign {0}'.format(node+1), \
             name='Pilot {0} Name'.format(node+1), team=DEF_TEAM_NAME, phonetic=''))
+        DB.session.add(PilotAttr(id=node+1,attr_name='registered', attr_value=False))
     DB.session.commit()
     server_log('Database pilots reset')
 
@@ -4554,7 +4591,7 @@ if isLedEnabled():
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)
     try:
-        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
+        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=False, use_reloader=False)
     except KeyboardInterrupt:
         print "Server terminated by keyboard interrupt"
     except Exception as ex:

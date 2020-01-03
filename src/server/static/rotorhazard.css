@@ -700,6 +700,9 @@ main.page-home {
 input#pilots_per_heat {
 	width: 2em
 }
+input#new_attribute {
+	width: 8em
+}
 
 .enter-exit-control {
 	display: flex;

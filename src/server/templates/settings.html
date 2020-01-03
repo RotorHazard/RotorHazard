@@ -251,6 +251,7 @@
 			return false;
 		});
 
+
 		/* Profiles */
 		socket.on('node_tuning', function (msg) {
 			$('#set_profile').empty();
@@ -697,7 +698,19 @@
 					phonetic.append('<button class="speak_pilot" data-pilot_id="' + msg.pilots[i].pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
 					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilots[i].pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '">' + msg.pilots[i].team_options + '</select></div>');
+						
+					for (var j in msg.pilots[i].attributes) {
+						var pair=msg.pilots[i].attributes[j];
+						var name = Object.keys(pair)[0];
+						var value = pair[name];
+						var pilot_id = msg.pilots[i].pilot_id;
 
+						if (value) {
+							el.append('<label><input type="checkbox" id="pilot_'+ pilot_id +'_' + name + '" checked onchange="changePilotAttr( this)" > ' + name + '  </label>')
+						} else {
+							el.append('<label><input type="checkbox" id="pilot_'+ pilot_id +'_' + name + '" onchange="changePilotAttr( this)"  > ' + name + '  </label>')
+						}
+					}
 					el.appendTo($('.pilots'));
 				}
 			}
@@ -785,6 +798,17 @@
 
 		$('button#add_pilot').click(function (event) {
 			socket.emit('add_pilot');
+			return false;
+		});
+
+		/* add attribute */
+		$('button#add_attribute').click(function (event) {
+			var data = {
+				attr: $('#new_attribute').val(),
+			};
+			socket.emit('add_pilot_attr', data);
+
+			$('#new_attribute').val('');
 			return false;
 		});
 
@@ -1257,6 +1281,15 @@
 		});
 	});
 
+        function changePilotAttr(objectreference){
+           var pilot_andattribute=objectreference.id.split("_",3);
+           var pilotid=pilot_andattribute[1];
+           var attr=pilot_andattribute[2];
+	   var value=objectreference.checked;
+           var data = { id:pilotid, attr:attr, value:value};
+           socket.emit('change_pilot_attr', data);
+           return;
+        }
 	function speak(obj) {
 		$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
 	};
@@ -1552,7 +1585,6 @@
 
 		<div class="control-set">
 			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
-		</div>
 				<div class="label-block">
 					<label for="set_sort_mode">{{ __('Pilot Sort Preference') }}</label>
 				</div>
@@ -1560,6 +1592,14 @@
 					<option value="0">{{ __('Sort by Name') }}</option>
 					<option value="1">{{ __('Sort by Callsign') }}</option>
 				</select>
+		</div>
+		<div class="control-set">
+		<div class="label-block">
+	   	<label for="new_attribute">{{ __('Add Custom Attribute') }}</label>
+	        </div>
+		<button id="add_attribute">{{ __('Add Attribute') }}</button>
+		<input type="text" id="new_attribute" maxlength="20" placeholder="attribute name"> 
+               </div>
 	</div>
 </div>
 
