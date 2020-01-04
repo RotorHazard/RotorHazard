@@ -523,8 +523,14 @@
 					                for (var l in msg.pilot_data[k].attributes) {
 					                    pilot_attrs =  msg.pilot_data[k].attributes[l]
                                                             if ( pilot_attrs.Registered == true ){
-							        selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+				                                if (rotorhazard.sort_mode == 0) {
+							            selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].name + ' (' + msg.pilot_data[k].callsign + ')</option>')
+                                                                } else {
+							            selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+                                                                }
+					                        break;
                                                             }
+                                                            
                                                         }
 						}
 					selectbox.val(heatpilot);
