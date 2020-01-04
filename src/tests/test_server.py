@@ -38,19 +38,19 @@ class ServerTest(unittest.TestCase):
 
     def test_alter_pilot(self):
         for i in range(1, len(server.INTERFACE.nodes)):
-	        data = {
-	        	'pilot_id': i,
-	        	'callsign': 'Test '+str(i),
-	        	'team_name': 'team T',
-	        	'phonetic': 'Teeest',
-	        	'name': 'Tester'
-	        }
-	        self.client.emit('alter_pilot', data)
-	        self.client.emit('load_data', {'load_types': ['pilot_data']})
-	        resp = self.get_response('pilot_data')
-	        self.assertEquals(resp['pilots'][i-1]['callsign'], data['callsign'])
-	        self.assertEquals(resp['pilots'][i-1]['phonetic'], data['phonetic'])
-	        self.assertEquals(resp['pilots'][i-1]['name'], data['name'])
+            data = {
+                'pilot_id': i,
+                'callsign': 'Test '+str(i),
+                'team_name': 'team T',
+                'phonetic': 'Teeest',
+                'name': 'Tester'
+            }
+            self.client.emit('alter_pilot', data)
+            self.client.emit('load_data', {'load_types': ['pilot_data']})
+            resp = self.get_response('pilot_data')
+            self.assertEquals(resp['pilots'][i-1]['callsign'], data['callsign'])
+            self.assertEquals(resp['pilots'][i-1]['phonetic'], data['phonetic'])
+            self.assertEquals(resp['pilots'][i-1]['name'], data['name'])
 
     def test_add_profile(self):
         self.client.emit('load_data', {'load_types': ['node_tuning']})
@@ -62,8 +62,8 @@ class ServerTest(unittest.TestCase):
 
     def test_alter_profile(self):
         data = {
-        	'profile_name': 'Test ' + str(datetime.now()),
-        	'profile_description': 'Testing'
+            'profile_name': 'Test ' + str(datetime.now()),
+            'profile_description': 'Testing'
         }
         self.client.emit('alter_profile', data)
         resp = self.get_response('node_tuning')
@@ -80,14 +80,14 @@ class ServerTest(unittest.TestCase):
 
     def test_alter_race_format(self):
         data = {
-        	'format_name': 'Test ' + str(datetime.now()),
-        	'race_mode': 0,
-        	'race_time': 30,
-        	'start_delay_min': 1,
-        	'start_delay_max': 4,
-        	'number_laps_win': 5,
-        	'win_condition': 0,
-        	'team_racing_mode': True
+            'format_name': 'Test ' + str(datetime.now()),
+            'race_mode': 0,
+            'race_time': 30,
+            'start_delay_min': 1,
+            'start_delay_max': 4,
+            'number_laps_win': 5,
+            'win_condition': 0,
+            'team_racing_mode': True
         }
         self.client.emit('alter_race_format', data)
         resp = self.get_response('race_format')
@@ -110,10 +110,10 @@ class ServerTest(unittest.TestCase):
 
     def test_alter_race_class(self):
         data = {
-        	'class_id': 1,
-        	'class_name': 'New name',
-        	'class_format': 0,
-        	'class_description': 'Test class'
+            'class_id': 1,
+            'class_name': 'New name',
+            'class_format': 0,
+            'class_description': 'Test class'
         }
         self.client.emit('alter_race_class', data)
         self.client.emit('load_data', {'load_types': ['class_data']})
@@ -132,11 +132,11 @@ class ServerTest(unittest.TestCase):
 
     def test_alter_heat(self):
         data = {
-        	'heat': 1,
-        	'node': 0,
-        	'pilot': 1,
-        	'note': 'Test',
-        	'class': 1
+            'heat': 1,
+            'node': 0,
+            'pilot': 1,
+            'note': 'Test',
+            'class': 1
         }
         self.client.emit('alter_heat', data)
         self.client.emit('load_data', {'load_types': ['heat_data']})

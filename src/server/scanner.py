@@ -17,9 +17,9 @@ if len(sys.argv) < 2:
     exit()
 
 INTERFACE = RHInterface.get_hardware_interface(
-	config={
-		'SERIAL_PORTS': [sys.argv[1]]
-	}
+    config={
+        'SERIAL_PORTS': [sys.argv[1]]
+    }
 )
 
 def log(s):
