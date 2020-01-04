@@ -4427,7 +4427,7 @@ def recover_database():
         if pilot_query_data:
             DB.session.query(Pilot).delete()
             restore_table(Pilot, pilot_query_data, 'callsign')
-            add_pilot_attr({'attr':'Registered'})
+            add_pilot_attr({'attr':'Registered', 'value':True})
         restore_table(RaceFormat, raceFormat_query_data)
         restore_table(Profiles, profiles_query_data)
         restore_table(RaceClass, raceClass_query_data)
