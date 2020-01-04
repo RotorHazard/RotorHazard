@@ -1470,6 +1470,10 @@ def on_add_pilot():
     new_pilot.callsign = __('zCallsign %d') % (new_pilot.id)
     new_pilot.team = DEF_TEAM_NAME
     new_pilot.phonetic = ''
+    pilot_attrs = PilotAttr.query.filter_by(id=1)
+    if pilot_attrs:
+        for this_attr in pilot_attrs:
+            DB.session.add(PilotAttr(id=new_pilot.id, attr_name=this_attr.attr_name, attr_value=this_attr.attr_value))
     DB.session.commit()
     server_log('Pilot added: Pilot {0}'.format(new_pilot.id))
     emit_pilot_data()
@@ -1510,14 +1514,20 @@ def change_pilot_attr(data):
     db_update = PilotAttr.query.filter_by(id=pilot_id,attr_name=attr).one()
     db_update.attr_value = value
     DB.session.commit()
+    emit_pilot_data()
 
 @SOCKET_IO.on('add_pilot_attr')
 def add_pilot_attr(data):
     attr = data['attr']
+    if 'value' in data:
+        default_value= data['value']
+    else:
+        default_value=False 
+
     already_exists = PilotAttr.query.filter_by(attr_name=attr).count()
     if already_exists == 0:
         for pilot in Pilot.query.all():
-            DB.session.add(PilotAttr(id=pilot.id,attr_name=attr, attr_value=False))
+            DB.session.add(PilotAttr(id=pilot.id,attr_name=attr, attr_value=default_value))
             DB.session.commit()
 
         emit_pilot_data()
@@ -3180,10 +3190,16 @@ def emit_heat_data(**params):
 
     pilots = []
     for pilot in Pilot.query.all():
+        attr_list = [] 
+        pilot_attrs = PilotAttr.query.filter_by(id=pilot.id)
+        if pilot_attrs:
+            for this_attr in pilot_attrs:
+                attr_list.append({this_attr.attr_name:this_attr.attr_value})
         pilots.append({
             'pilot_id': pilot.id,
             'callsign': pilot.callsign,
-            'name': pilot.name
+            'name': pilot.name,
+            'attributes': attr_list  
             })
 
     emit_payload = {

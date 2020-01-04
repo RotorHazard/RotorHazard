@@ -520,9 +520,11 @@
 					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" >')
 					selectbox.append('<option value="0">None</option>')
 						for (var k in msg.pilot_data) {
-							selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
-						}
-					selectbox.val(heatpilot);
+					                pilot_attrs =  msg.pilot_data[k].attributes[0]
+                                                        if ( pilot_attrs.Registered == true ){
+							 selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+                                                        }
+						}					selectbox.val(heatpilot);
 					selectbox.prop('disabled', heats.locked);
 					pilot.append(selectbox);
 					slot.append(pilot);
