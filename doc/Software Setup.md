@@ -66,9 +66,9 @@ Arduino 1.8+ is required. Download from https://www.arduino.cc/en/Main/Software
 
 *The node code and the server version must match. Use the 'node' code included with the server code you downloaded earlier; do not download a different file directly from GitHub.*
 
-Open 'RotorHazard/src/node/node.ino' in the Arduino IDE.
+The node code may be edited and built using the [Eclipse IDE](https://www.eclipse.org/eclipseide/) and the "[Eclipse C++ IDE for Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)" plugin (or the old-fashioned way using the Arduino IDE). In Eclipse, the node-code project may be loaded via "File | Open Projects from File System..."
 
-Configure the '#define NODE_NUMBER' line of the .ino for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
+Edit the 'src/node/rhnode.cpp' file and configure the '#define NODE_NUMBER' value for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
 ```
 // Node Setup -- Set node number here (1 - 8)
 #define NODE_NUMBER 1

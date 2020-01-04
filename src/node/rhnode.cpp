@@ -25,19 +25,20 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <Arduino.h>
 #include <util/atomic.h>
 #include <Wire.h>
 #include "rhtypes.h"
 #include "rssi.h"
 #include "commands.h"
-#include "eeprom.h"
+#include "rheeprom.h"
 
 // ******************************************************************** //
 
-// *** Node Setup — Set node number here (1–8): ***
+// *** Node Setup - Set node number here (1-8): ***
 #define NODE_NUMBER 0
 
-// Set to 1–8 for manual selection.
+// Set to 1-8 for manual selection.
 // Leave at 0 for automatic selection via hardware pin.
 // For automatic selection, ground pins for each node:
 //                pin D4 open   pin D4 grounded
@@ -51,13 +52,10 @@
 // ******************************************************************** //
 
 
-
-
-
 // i2c address for node
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
-uint8_t i2cSlaveAddress = (6 + (NODE_NUMBER * 2));
+uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 
 static const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
 static const int spiDataPin = 11;
@@ -80,44 +78,60 @@ static Message_t i2cMessage, serialMessage;
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
+void i2cReceive(int byteCount);
+bool i2cReadAndValidateIoBuffer(byte expectedSize);
+void i2cTransmit();
+void setRxModule(uint16_t frequency);
 
 // Initialize program
 void setup()
 {
-    if (!NODE_NUMBER) {
-      pinMode(4, INPUT_PULLUP);
-      pinMode(5, INPUT_PULLUP);
-      pinMode(6, INPUT_PULLUP);
-      pinMode(7, INPUT_PULLUP);
-      pinMode(8, INPUT_PULLUP);
+    if (!NODE_NUMBER)
+    {
+        pinMode(4, INPUT_PULLUP);
+        pinMode(5, INPUT_PULLUP);
+        pinMode(6, INPUT_PULLUP);
+        pinMode(7, INPUT_PULLUP);
+        pinMode(8, INPUT_PULLUP);
 
-      if (digitalRead(4) == HIGH) {
-        if (digitalRead(5) == LOW) {
-          i2cSlaveAddress = 8;
+        if (digitalRead(4) == HIGH)
+        {
+            if (digitalRead(5) == LOW)
+            {
+                i2cSlaveAddress = 8;
+            }
+            else if (digitalRead(6) == LOW)
+            {
+                i2cSlaveAddress = 10;
+            }
+            else if (digitalRead(7) == LOW)
+            {
+                i2cSlaveAddress = 12;
+            }
+            else if (digitalRead(8) == LOW)
+            {
+                i2cSlaveAddress = 14;
+            }
         }
-        else if (digitalRead(6) == LOW) {
-          i2cSlaveAddress = 10;
+        else
+        {
+            if (digitalRead(5) == LOW)
+            {
+                i2cSlaveAddress = 16;
+            }
+            else if (digitalRead(6) == LOW)
+            {
+                i2cSlaveAddress = 18;
+            }
+            else if (digitalRead(7) == LOW)
+            {
+                i2cSlaveAddress = 20;
+            }
+            else if (digitalRead(8) == LOW)
+            {
+                i2cSlaveAddress = 22;
+            }
         }
-        else if (digitalRead(7) == LOW) {
-          i2cSlaveAddress = 12;
-        }
-        else if (digitalRead(8) == LOW) {
-          i2cSlaveAddress = 14;
-        }
-      } else {
-        if (digitalRead(5) == LOW) {
-          i2cSlaveAddress = 16;
-        }
-        else if (digitalRead(6) == LOW) {
-          i2cSlaveAddress = 18;
-        }
-        else if (digitalRead(7) == LOW) {
-          i2cSlaveAddress = 20;
-        }
-        else if (digitalRead(8) == LOW) {
-          i2cSlaveAddress = 22;
-        }
-      }
     }
 
     Serial.begin(115200);  // Start serial interface
@@ -277,13 +291,13 @@ void setRxModule(uint16_t frequency)
 // Read the RSSI value for the current channel
 rssi_t rssiRead()
 {
-  // reads 5V value as 0-1023, RX5808 is 3.3V powered so RSSI pin will never output the full range
+    // reads 5V value as 0-1023, RX5808 is 3.3V powered so RSSI pin will never output the full range
     int raw = analogRead(0);
     // clamp upper range to fit scaling
     if (raw > 0x01FF)
-      raw = 0x01FF;
+        raw = 0x01FF;
     // rescale to fit into a byte and remove some jitter
-    return raw>>1;
+    return raw >> 1;
 }
 
 static mtime_t loopMillis = 0;
@@ -292,7 +306,8 @@ static mtime_t loopMillis = 0;
 void loop()
 {
     mtime_t ms = millis();
-    if (ms > loopMillis) {
+    if (ms > loopMillis)
+    {
         loopMillis = ms;
         // read raw RSSI close to taking timestamp
         rssiProcess(rssiRead(), ms);
@@ -301,29 +316,35 @@ void loop()
     /*** update settings ***/
 
     uint8_t changeFlags;
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
         changeFlags = settingChangedFlags;
         settingChangedFlags = 0;
     }
-    if (changeFlags & FREQ_SET) {
+    if (changeFlags & FREQ_SET)
+    {
         uint16_t newVtxFreq;
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
             newVtxFreq = settings.vtxFreq;
         }
         setRxModule(newVtxFreq);
         state.rxFreqSetFlag = true;
 
-        if (changeFlags & FREQ_CHANGED) {
+        if (changeFlags & FREQ_CHANGED)
+        {
             eepromWriteWord(EEPROM_ADRW_RXFREQ, newVtxFreq);
             rssiStateReset();  // restart rssi peak tracking for node
         }
     }
 
-    if (changeFlags & ENTERAT_CHANGED) {
+    if (changeFlags & ENTERAT_CHANGED)
+    {
         eepromWriteWord(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
     }
 
-    if (changeFlags & EXITAT_CHANGED) {
+    if (changeFlags & EXITAT_CHANGED)
+    {
         eepromWriteWord(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
     }
 }
@@ -349,7 +370,8 @@ void i2cReceive(int byteCount)
     if (i2cMessage.command > 0x50)
     {  // Commands > 0x50 are writes TO this slave
         byte expectedSize = getPayloadSize(i2cMessage.command);
-        if (expectedSize > 0 && i2cReadAndValidateIoBuffer(expectedSize)) {
+        if (expectedSize > 0 && i2cReadAndValidateIoBuffer(expectedSize))
+        {
             handleWriteCommand(&i2cMessage);
         }
         i2cMessage.buffer.size = 0;
@@ -371,8 +393,11 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize)
 {
     uint8_t checksum;
 
-    for (i2cMessage.buffer.size = 0; i2cMessage.buffer.size < expectedSize + 1; i2cMessage.buffer.size++) {
-        if (!Wire.available()) {
+    for (i2cMessage.buffer.size = 0; i2cMessage.buffer.size < expectedSize + 1;
+            i2cMessage.buffer.size++)
+    {
+        if (!Wire.available())
+        {
             return false;
         }
         i2cMessage.buffer.data[i2cMessage.buffer.size] = Wire.read();
@@ -380,9 +405,12 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize)
 
     checksum = ioCalculateChecksum(i2cMessage.buffer.data, expectedSize);
 
-    if (i2cMessage.buffer.data[i2cMessage.buffer.size-1] == checksum) {
+    if (i2cMessage.buffer.data[i2cMessage.buffer.size-1] == checksum)
+    {
         return true;
-    } else {
+    }
+    else
+    {
         LOG_ERROR("Invalid checksum", checksum);
         return false;
     }
@@ -397,47 +425,54 @@ void i2cTransmit()
 
     if (i2cMessage.buffer.size > 0)
     {  // If there is pending data, send it
-        Wire.write((byte *) i2cMessage.buffer.data, i2cMessage.buffer.size);
+        Wire.write((byte *)i2cMessage.buffer.data, i2cMessage.buffer.size);
         i2cMessage.buffer.size = 0;
     }
 }
 
 void serialEvent()
 {
-	uint8_t nextByte = Serial.read();
-	if (serialMessage.buffer.size == 0) {
-		// new command
-	    serialMessage.command = nextByte;
-	    if (serialMessage.command > 0x50)
-	    {  // Commands > 0x50 are writes TO this slave
-	        byte expectedSize = getPayloadSize(serialMessage.command);
-	        if (expectedSize > 0) {
-	        	serialMessage.buffer.index = 0;
-	        	serialMessage.buffer.size = expectedSize + 1; // include checksum byte
-	        }
-	    }
-	    else
-	    {
-	        handleReadCommand(&serialMessage);
-	
-	        if (serialMessage.buffer.size > 0)
-	        {  // If there is pending data, send it
-	            Serial.write((byte *) serialMessage.buffer.data, serialMessage.buffer.size);
-	            serialMessage.buffer.size = 0;
-	        }
-	    }
+    uint8_t nextByte = Serial.read();
+    if (serialMessage.buffer.size == 0)
+    {
+        // new command
+        serialMessage.command = nextByte;
+        if (serialMessage.command > 0x50)
+        {  // Commands > 0x50 are writes TO this slave
+            byte expectedSize = getPayloadSize(serialMessage.command);
+            if (expectedSize > 0)
+            {
+                serialMessage.buffer.index = 0;
+                serialMessage.buffer.size = expectedSize + 1;  // include checksum byte
+            }
+        }
+        else
+        {
+            handleReadCommand(&serialMessage);
+
+            if (serialMessage.buffer.size > 0)
+            {  // If there is pending data, send it
+                Serial.write((byte *)serialMessage.buffer.data, serialMessage.buffer.size);
+                serialMessage.buffer.size = 0;
+            }
+        }
     }
     else
     {
-    	// existing command
-    	serialMessage.buffer.data[serialMessage.buffer.index++] = nextByte;
-    	if (serialMessage.buffer.index == serialMessage.buffer.size) {
-    		uint8_t checksum = ioCalculateChecksum(serialMessage.buffer.data, serialMessage.buffer.size-1);
-    	    if (serialMessage.buffer.data[serialMessage.buffer.size-1] == checksum) {
-	            handleWriteCommand(&serialMessage);
-	        } else {
+        // existing command
+        serialMessage.buffer.data[serialMessage.buffer.index++] = nextByte;
+        if (serialMessage.buffer.index == serialMessage.buffer.size)
+        {
+            uint8_t checksum = ioCalculateChecksum(serialMessage.buffer.data,
+                    serialMessage.buffer.size - 1);
+            if (serialMessage.buffer.data[serialMessage.buffer.size - 1] == checksum)
+            {
+                handleWriteCommand(&serialMessage);
+            }
+            else
+            {
                 LOG_ERROR("Invalid checksum", checksum);
-	        }
+            }
             serialMessage.buffer.size = 0;
         }
     }

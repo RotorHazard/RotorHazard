@@ -1,6 +1,6 @@
 #ifndef __TEST__
 #include <Arduino.h>
-#include "eeprom.h"
+#include "rheeprom.h"
 
 //Writes 2-byte word to EEPROM at address.
 void eepromWriteWord(int addr, uint16_t val)

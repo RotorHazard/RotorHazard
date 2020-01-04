@@ -1,5 +1,5 @@
-#ifndef eeprom_h
-#define eeprom_h
+#ifndef rheeprom_h
+#define rheeprom_h
 
 #include <EEPROM.h>
 

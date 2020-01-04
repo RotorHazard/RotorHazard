@@ -2,3 +2,4 @@
 /*.bin
 /*.gcda
 /*.gcno
+/build/
