@@ -1512,11 +1512,10 @@ def change_pilot_attr(data):
     DB.session.commit()
 
 @SOCKET_IO.on('add_pilot_attr')
-def change_pilot_attr(data):
+def add_pilot_attr(data):
     attr = data['attr']
     already_exists = PilotAttr.query.filter_by(attr_name=attr).count()
     if already_exists == 0:
-        print 'attribute is being added ' + attr
         for pilot in Pilot.query.all():
             DB.session.add(PilotAttr(id=pilot.id,attr_name=attr, attr_value=False))
             DB.session.commit()
@@ -4127,7 +4126,6 @@ def db_reset_pilots():
     for node in range(RACE.num_nodes):
         DB.session.add(Pilot(callsign='Callsign {0}'.format(node+1), \
             name='Pilot {0} Name'.format(node+1), team=DEF_TEAM_NAME, phonetic=''))
-        DB.session.add(PilotAttr(id=node+1,attr_name='registered', attr_value=False))
     DB.session.commit()
     server_log('Database pilots reset')
 
@@ -4413,6 +4411,7 @@ def recover_database():
         if pilot_query_data:
             DB.session.query(Pilot).delete()
             restore_table(Pilot, pilot_query_data, 'callsign')
+            add_pilot_attr({'attr':'Registered'})
         restore_table(RaceFormat, raceFormat_query_data)
         restore_table(Profiles, profiles_query_data)
         restore_table(RaceClass, raceClass_query_data)
