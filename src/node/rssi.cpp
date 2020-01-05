@@ -73,7 +73,7 @@ static void initExtremum(Extremum *e)
     e->duration = 0;
 }
 
-void rssiProcess(rssi_t rssi, mtime_t millis)
+bool rssiProcess(rssi_t rssi, mtime_t millis)
 {
     rssiMedian.addValue(rssi);
 
@@ -84,7 +84,7 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
         SmoothingTimestampsIndex = 0;
     }
 
-    if (rssiMedian.isFilled() && state.rxFreqSetFlag)
+    if (rssiMedian.isFilled() && state.activatedFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received
 
         state.rssi = rssiMedian.getMedian();  // retrieve the median
@@ -217,16 +217,7 @@ void rssiProcess(rssi_t rssi, mtime_t millis)
     state.loopTimeMicros = loopMicros - state.lastloopMicros;
     state.lastloopMicros = loopMicros;
 
-    // Status LED
-    if (state.crossing ||  // on while crossing
-        (millis / 100) % 10 == 0)  // blink
-    {
-        digitalWrite(LED_BUILTIN, HIGH);
-    }
-    else
-    {
-        digitalWrite(LED_BUILTIN, LOW);
-    }
+    return state.crossing;
 }
 
 // Function called when crossing ends (by RSSI or I2C command)

@@ -57,9 +57,22 @@
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
 uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 
-static const int slaveSelectPin = 10;  // Setup data pins for rx5808 comms
-static const int spiDataPin = 11;
-static const int spiClockPin = 13;
+// Set to 0 for standard RotorHazard node wiring; set to 1 for ArduVidRx node wiring
+//   See here for an ArduVidRx example: http://www.etheli.com/ArduVidRx/hw/index.html#promini
+#define ARDUVIDRX_WIRING_FLAG 0
+
+#if !ARDUVIDRX_WIRING_FLAG
+#define RX5808_DATA_PIN 11             //DATA output line to RX5808 module
+#define RX5808_SEL_PIN 10              //CLK output line to RX5808 module
+#define RX5808_CLK_PIN 13              //SEL output line to RX5808 module
+#define RSSI_INPUT_PIN 0               //RSSI input from RX5808 (primary)
+#else
+#define RX5808_DATA_PIN 10             //DATA output line to RX5808 module
+#define RX5808_SEL_PIN 11              //CLK output line to RX5808 module
+#define RX5808_CLK_PIN 12              //SEL output line to RX5808 module
+#define RSSI_INPUT_PIN A7              //RSSI input from RX5808 (primary)
+#endif
+
 
 #define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
 #define EEPROM_ADRW_ENTERAT 2      //address for stored 'enterAtLevel'
@@ -136,10 +149,10 @@ void setup()
 
     Serial.begin(115200);  // Start serial interface
 
-    pinMode(slaveSelectPin, OUTPUT);  // RX5808 comms
-    pinMode(spiDataPin, OUTPUT);
-    pinMode(spiClockPin, OUTPUT);
-    digitalWrite(slaveSelectPin, HIGH);
+    pinMode(RX5808_SEL_PIN, OUTPUT);  // RX5808 comms
+    pinMode(RX5808_DATA_PIN, OUTPUT);
+    pinMode(RX5808_CLK_PIN, OUTPUT);
+    digitalWrite(RX5808_SEL_PIN, HIGH);
 
     while (!Serial)
     {
@@ -180,39 +193,39 @@ void setup()
 
 void SERIAL_SENDBIT1()
 {
-    digitalWrite(spiClockPin, LOW);
+    digitalWrite(RX5808_CLK_PIN, LOW);
     delayMicroseconds(300);
-    digitalWrite(spiDataPin, HIGH);
+    digitalWrite(RX5808_DATA_PIN, HIGH);
     delayMicroseconds(300);
-    digitalWrite(spiClockPin, HIGH);
+    digitalWrite(RX5808_CLK_PIN, HIGH);
     delayMicroseconds(300);
-    digitalWrite(spiClockPin, LOW);
+    digitalWrite(RX5808_CLK_PIN, LOW);
     delayMicroseconds(300);
 }
 
 void SERIAL_SENDBIT0()
 {
-    digitalWrite(spiClockPin, LOW);
+    digitalWrite(RX5808_CLK_PIN, LOW);
     delayMicroseconds(300);
-    digitalWrite(spiDataPin, LOW);
+    digitalWrite(RX5808_DATA_PIN, LOW);
     delayMicroseconds(300);
-    digitalWrite(spiClockPin, HIGH);
+    digitalWrite(RX5808_CLK_PIN, HIGH);
     delayMicroseconds(300);
-    digitalWrite(spiClockPin, LOW);
+    digitalWrite(RX5808_CLK_PIN, LOW);
     delayMicroseconds(300);
 }
 
 void SERIAL_ENABLE_LOW()
 {
     delayMicroseconds(100);
-    digitalWrite(slaveSelectPin, LOW);
+    digitalWrite(RX5808_SEL_PIN, LOW);
     delayMicroseconds(100);
 }
 
 void SERIAL_ENABLE_HIGH()
 {
     delayMicroseconds(100);
-    digitalWrite(slaveSelectPin, HIGH);
+    digitalWrite(RX5808_SEL_PIN, HIGH);
     delayMicroseconds(100);
 }
 
@@ -283,21 +296,43 @@ void setRxModule(uint16_t frequency)
     SERIAL_ENABLE_HIGH();  // Finished clocking data in
     delay(2);
 
-    digitalWrite(slaveSelectPin, LOW);
-    digitalWrite(spiClockPin, LOW);
-    digitalWrite(spiDataPin, LOW);
+    digitalWrite(RX5808_SEL_PIN, LOW);
+    digitalWrite(RX5808_CLK_PIN, LOW);
+    digitalWrite(RX5808_DATA_PIN, LOW);
 }
 
 // Read the RSSI value for the current channel
 rssi_t rssiRead()
 {
     // reads 5V value as 0-1023, RX5808 is 3.3V powered so RSSI pin will never output the full range
-    int raw = analogRead(0);
+    int raw = analogRead(RSSI_INPUT_PIN);
     // clamp upper range to fit scaling
     if (raw > 0x01FF)
         raw = 0x01FF;
     // rescale to fit into a byte and remove some jitter
     return raw >> 1;
+}
+
+static bool currentStatusLedFlag = false;
+
+void setStatusLed(bool onFlag)
+{
+    if (onFlag)
+    {
+        if (!currentStatusLedFlag)
+        {
+            currentStatusLedFlag = true;
+            digitalWrite(LED_BUILTIN, HIGH);
+        }
+    }
+    else
+    {
+        if (currentStatusLedFlag)
+        {
+            currentStatusLedFlag = false;
+            digitalWrite(LED_BUILTIN, LOW);
+        }
+    }
 }
 
 static mtime_t loopMillis = 0;
@@ -307,45 +342,68 @@ void loop()
 {
     mtime_t ms = millis();
     if (ms > loopMillis)
-    {
-        loopMillis = ms;
+    {  // limit to once per millisecond
         // read raw RSSI close to taking timestamp
-        rssiProcess(rssiRead(), ms);
-    }
+        bool crossingFlag = rssiProcess(rssiRead(), ms);
 
-    /*** update settings ***/
+        // update settings and status LED
 
-    uint8_t changeFlags;
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-    {
-        changeFlags = settingChangedFlags;
-        settingChangedFlags = 0;
-    }
-    if (changeFlags & FREQ_SET)
-    {
-        uint16_t newVtxFreq;
+        uint8_t changeFlags;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            newVtxFreq = settings.vtxFreq;
+            changeFlags = settingChangedFlags;
+            settingChangedFlags &= COMM_ACTIVITY;  // clear all except COMM_ACTIVITY
         }
-        setRxModule(newVtxFreq);
-        state.rxFreqSetFlag = true;
-
-        if (changeFlags & FREQ_CHANGED)
+        if (changeFlags & FREQ_SET)
         {
-            eepromWriteWord(EEPROM_ADRW_RXFREQ, newVtxFreq);
-            rssiStateReset();  // restart rssi peak tracking for node
+            uint16_t newVtxFreq;
+            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+            {
+                newVtxFreq = settings.vtxFreq;
+            }
+            setRxModule(newVtxFreq);
+            state.activatedFlag = true;
+
+            if (changeFlags & FREQ_CHANGED)
+            {
+                eepromWriteWord(EEPROM_ADRW_RXFREQ, newVtxFreq);
+                rssiStateReset();  // restart rssi peak tracking for node
+            }
         }
-    }
 
-    if (changeFlags & ENTERAT_CHANGED)
-    {
-        eepromWriteWord(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
-    }
+        // also allow READ_LAP_STATS command to activate operations
+        //  so they will resume after node reset (i.e., via watchdog timer)
+        if (!state.activatedFlag && (changeFlags & LAPSTATS_READ))
+            state.activatedFlag = true;
 
-    if (changeFlags & EXITAT_CHANGED)
-    {
-        eepromWriteWord(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
+        if (changeFlags & ENTERAT_CHANGED)
+            eepromWriteWord(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
+
+        if (changeFlags & EXITAT_CHANGED)
+            eepromWriteWord(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
+
+        // Status LED
+        if (ms <= 1000)
+        {  //flash three times during first second of running
+            int ti = (int)ms / 100;
+            setStatusLed(ti != 3 && ti != 7);
+        }
+        else if ((int)(ms % 20) == 0)
+        {  //only run every 20ms so flashes last longer (brighter)
+
+            // if crossing or communications activity then LED on
+            if (crossingFlag)
+                setStatusLed(true);
+            else if (changeFlags & COMM_ACTIVITY)
+            {
+                setStatusLed(true);
+                settingChangedFlags = 0;  // clear COMM_ACTIVITY flag
+            }
+            else
+                setStatusLed(ms % 2000 == 0);  // blink
+        }
+
+        loopMillis = ms;
     }
 }
 

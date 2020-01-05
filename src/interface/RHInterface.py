@@ -170,7 +170,7 @@ class RHInterface(BaseHardwareInterface):
                 else:
                     data = node.read_block(self, READ_LAP_STATS, 17)
 
-                if data != None:
+                if data != None and len(data) > 0:
                     lap_id = data[0]
 
                     if node.api_level >= 18:

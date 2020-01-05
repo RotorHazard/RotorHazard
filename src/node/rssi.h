@@ -39,7 +39,7 @@ struct State
     rssi_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set
     rssi_t volatile nodeRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since the node frequency was set
 
-    bool volatile rxFreqSetFlag = false; // Set true after initial WRITE_FREQUENCY command received
+    bool volatile activatedFlag = false; // Set true after initial WRITE_FREQUENCY command received
 
     // variables to track the loop time
     utime_t volatile loopTimeMicros = 0;
@@ -78,7 +78,7 @@ bool rssiStateValid();
  * Restarts rssi peak tracking for node.
  */
 void rssiStateReset();
-void rssiProcess(rssi_t rssi, mtime_t millis);
+bool rssiProcess(rssi_t rssi, mtime_t millis);
 void rssiEndCrossing();
 
 #endif

@@ -39,6 +39,8 @@ typedef struct Message_s Message_t;
 #define FREQ_CHANGED    0x02
 #define ENTERAT_CHANGED 0x04
 #define EXITAT_CHANGED  0x08
+#define COMM_ACTIVITY   0x10
+#define LAPSTATS_READ   0x20
 
 byte getPayloadSize(uint8_t command);
 void handleWriteCommand(Message_t *msg);

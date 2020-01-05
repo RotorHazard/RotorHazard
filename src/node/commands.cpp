@@ -44,6 +44,9 @@ void handleWriteCommand(Message_t *msg)
     uint16_t u16val;
     rssi_t rssiVal;
 
+    // indicate communications activity detected
+    settingChangedFlags |= COMM_ACTIVITY;
+
     msg->buffer.index = 0;
 
     switch (msg->command)
@@ -100,6 +103,9 @@ void ioBufferWriteExtremum(Buffer_t *buf, Extremum *e, mtime_t now)
 // Generic IO read command handler
 void handleReadCommand(Message_t *msg)
 {
+    // indicate communications activity detected
+    settingChangedFlags |= COMM_ACTIVITY;
+
     msg->buffer.size = 0;
 
     switch (msg->command)
@@ -154,7 +160,10 @@ void handleReadCommand(Message_t *msg)
                 ioBufferWrite16(&(msg->buffer), 0);
                 ioBufferWrite16(&(msg->buffer), 0);
             }
-        }
+
+            settingChangedFlags |= LAPSTATS_READ;
+
+            }
             break;
 
         case READ_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
