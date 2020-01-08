@@ -1532,6 +1532,25 @@ def add_pilot_attr(data):
 
         emit_pilot_data()
 
+@SOCKET_IO.on('delete_pilot_attr')
+def delete_pilot_attr(data):
+    attr = data['attr']
+
+    already_exists = PilotAttr.query.filter_by(attr_name=attr).count()
+    
+    if (already_exists > 0):
+        for pilot in Pilot.query.all():
+            if ( attr != 'Registered'):
+                pilot_attr = PilotAttr.query.filter_by(id=pilot.id,attr_name=attr).first()
+                DB.session.delete(pilot_attr)
+            else:
+                db_update = PilotAttr.query.filter_by(id=pilot.id,attr_name=attr).one()
+                db_update.attr_value = False
+
+            DB.session.commit()
+
+        emit_pilot_data()
+
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
     '''Adds new profile in the database.'''

@@ -823,6 +823,17 @@
 			return false;
 		});
 
+		/* delete attribute */
+		$('button#delete_attribute').click(function (event) {
+			var data = {
+				attr: $('#new_attribute').val(),
+			};
+			socket.emit('delete_pilot_attr', data);
+
+			$('#new_attribute').val('');
+			return false;
+		});
+
 		/* Voice */
 		$('#beep_on_first_pass_button').prop('disabled', rotorhazard.beep_crossing_exited);
 
@@ -1609,6 +1620,7 @@
 	   	<label for="new_attribute">{{ __('Add Custom Attribute') }}</label>
 	        </div>
 		<button id="add_attribute">{{ __('Add Attribute') }}</button>
+		<button id="delete_attribute">{{ __('Delete Attribute') }}</button>
 		<input type="text" id="new_attribute" maxlength="20" placeholder="attribute name"> 
                </div>
 	</div>
