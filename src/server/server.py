@@ -2873,7 +2873,7 @@ def emit_class_data(**params):
         current_class['description'] = race_class.description
         current_class['format'] = race_class.format_id
 
-        has_race = SavedRaceMeta.query.filter_by(class_id=race_class.id).one_or_none()
+        has_race = SavedRaceMeta.query.filter_by(class_id=race_class.id).all()
         if has_race:
             current_class['locked'] = True
         else:
