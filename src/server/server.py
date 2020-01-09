@@ -3109,6 +3109,7 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
 
 def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=None):
     '''Checks if pilot or team has most laps for a win.'''
+    # pass_node_index: -1 if called from 'check_race_time_expired()'; node.index if called from 'pass_record_callback()'
     global Race_laps_winner_name
 
     race_format = getCurrentRaceFormat()
@@ -3222,7 +3223,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
 
         if max_lap_id <= 0:  # if no laps then bail out
             Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
-            if pass_node_index < 0:  # if called from 'race_time_finished()'
+            if pass_node_index < 0:  # if called from 'check_race_time_expired()'
                 emit_team_racing_status(Race_laps_winner_name)
                 emit_phonetic_text('Race tied', 'race_winner')
             return
@@ -3233,7 +3234,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         for item in pilots_list:
             if item[3].index != pass_node_index:  # if node is for other pilot
                 if item[3].crossing_flag and item[0] >= max_lap_id - 1:
-                    # if called from 'race_time_finished()' then allow race tied after crossing
+                    # if called from 'check_race_time_expired()' then allow race tied after crossing
                     if pass_node_index < 0:
                         Race_laps_winner_name = RACE_STATUS_CROSSING
                     else:  # if called from 'pass_record_callback()' then no more ties
@@ -3252,7 +3253,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
 
         # check for pilots with max laps; if more than one then select one with
         #  earliest lap time (if called from 'pass_record_callback()' fn) or
-        #  indicate status tied (if called from 'race_time_finished()' fn)
+        #  indicate status tied (if called from 'check_race_time_expired()' fn)
         win_pilot_id = -1
         win_lap_tstamp = 0
         for item in pilots_list:
@@ -3266,7 +3267,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                         if item[1] < win_lap_tstamp:  # this pilot has earlier lap time
                             win_pilot_id = item[2]
                             win_lap_tstamp = item[1]
-                    else:  # called from 'race_time_finished()' or was waiting for crossing
+                    else:  # called from 'check_race_time_expired()' or was waiting for crossing
                         if Race_laps_winner_name is not RACE_STATUS_TIED_STR:
                             Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
                             emit_team_racing_status(Race_laps_winner_name)
