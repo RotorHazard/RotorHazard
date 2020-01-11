@@ -1,3 +1,4 @@
+#ifndef __TEST__
 // RotorHazard FPV Race Timing
 // Based on Delta 5 Race Timer by Scott Chin
 // SPI driver based on fs_skyrf_58g-main.c Written by Simon Chambers
@@ -535,3 +536,4 @@ void serialEvent()
         }
     }
 }
+#endif

@@ -8,7 +8,7 @@ unittest(freqNotSet) {
   nano->reset();
   rssiInit();
 
-  state.rxFreqSetFlag = false;
+  state.activatedFlag = false;
 
   sendSignal(nano, 43);
   assertFalse(rssiStateValid());

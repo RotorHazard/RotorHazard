@@ -11,7 +11,7 @@ unittest(slowCrossing) {
   nano->reset();
   rssiInit();
 
-  state.rxFreqSetFlag = true;
+  state.activatedFlag = true;
 
   // prime the state with some background signal
   sendSignal(nano, 50);
@@ -42,9 +42,9 @@ unittest(slowCrossing) {
   assertEqual(50, (int)state.passRssiNadir);
 
   if (duration > 0) {
-      assertEqual(0, history.rssiChange);
+      assertEqual(0, (int)history.rssiChange);
   } else {
-      assertEqual(40, history.rssiChange);
+      assertEqual(80, (int)history.rssiChange);
   }
   assertEqual(130, (int)history.peak.rssi); // first upward trend
   assertEqual(timestamp(3), (int)history.peak.firstTime);
@@ -68,7 +68,7 @@ unittest(slowCrossing) {
   assertFalse(isPeakValid(state.passPeak)); // crossing/pass finished
   assertEqual(70, (int)state.passRssiNadir);
 
-  assertEqual(-30, history.rssiChange);
+  assertEqual(-60, (int)history.rssiChange);
   assertEqual(130, (int)history.peak.rssi);
   assertEqual(timestamp(3), (int)history.peak.firstTime);
   assertEqual(time(1+duration)-1, (int)history.peak.duration);
