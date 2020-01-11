@@ -1254,7 +1254,17 @@ def on_cap_exit_at_btn(data):
 @SOCKET_IO.on('set_scan')
 def on_set_scan(data):
     node_index = data['node']
-    INTERFACE.nodes[node_index].scan_interval = data['scan_interval']
+    minScanFreq = data['min_scan_frequency']
+    maxScanFreq = data['max_scan_frequency']
+    maxScanInterval = data['max_scan_interval']
+    minScanInterval = data['min_scan_interval']
+    scanZoom = data['scan_zoom']
+    INTERFACE.set_scan(node_index, minScanFreq, maxScanFreq, maxScanInterval, minScanInterval, scanZoom)
+    if not INTERFACE.nodes[node_index].scan_enabled:
+        current_profile = int(getOption("currentProfile"))
+        profile = Profiles.query.get(current_profile)
+        freqs = json.loads(profile.frequencies)
+        INTERFACE.set_frequency(node_index, freqs["f"][node_index])
 
 @SOCKET_IO.on('add_heat')
 def on_add_heat():

@@ -198,6 +198,10 @@ class BaseHardwareInterface(object):
             if (index % 2) == partition:
                 sensor.update()
 
+    def set_scan(self, node_index, minFreq, maxFreq, maxInterval, minInterval, zoom):
+        node = self.nodes[node_index]
+        node.set_scan_interval(minFreq, maxFreq, maxInterval, minInterval, zoom)
+
     #
     # Get Json Node Data Functions
     #
@@ -218,10 +222,13 @@ class BaseHardwareInterface(object):
             'crossing_flag': [node.crossing_flag for node in self.nodes]
         }
         for i, node in enumerate(self.nodes):
-            if node.scan_interval > 0:
+            if node.scan_enabled:
                 new_freq = node.frequency + node.scan_interval
-                if new_freq < 5645 or new_freq > 5945:
-                    new_freq = 5645
+                if new_freq < node.min_scan_frequency or new_freq > node.max_scan_frequency:
+                    new_freq = node.min_scan_frequency
+                    node.scan_interval /= node.scan_zoom
+                    if node.scan_interval < node.min_scan_interval:
+                        node.scan_interval = node.max_scan_interval
                 self.set_frequency(i, new_freq)
         return json
 

@@ -17,10 +17,15 @@
 
 		$('.set_scan').change(function (event) {
 			let nodeIndex = parseInt($(this).data('node'));
-			scanners[nodeIndex].isEnabled = $(this).is(':checked');
+			let enabled = $(this).is(':checked');
+			scanners[nodeIndex].isEnabled = enabled;
 			let data = {
 				node: nodeIndex,
-				scan_interval: scanners[nodeIndex].isEnabled ? 1 : 0,
+				min_scan_frequency: enabled ? 5645 : 0,
+				max_scan_frequency: enabled ? 5945 : 0,
+				max_scan_interval: enabled ? 1 : 0,
+				min_scan_interval: enabled ? 1 : 0,
+				scan_zoom: enabled ? 1 : 0,
 			};
 			socket.emit('set_scan', data);
 			scanners[nodeIndex].clear();

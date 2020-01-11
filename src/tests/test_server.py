@@ -145,6 +145,41 @@ class ServerTest(unittest.TestCase):
         self.assertEquals(resp['heats'][1]['note'], data['note'])
         self.assertEquals(resp['heats'][1]['class_id'], data['class'])
 
+# scanner
+
+    def test_scanner(self):
+        self.client.emit('set_frequency', {
+            'node': 0,
+            'frequency': 5888
+        })
+        self.client.emit('set_scan', {
+            'node': 0,
+            'min_scan_frequency': 5645,
+            'max_scan_frequency': 5945,
+            'max_scan_interval': 1,
+            'min_scan_interval': 1,
+            'scan_zoom': 1,
+        })
+        # allow some scanning to happen
+        new_freq = 5888
+        while new_freq == 5888:
+            gevent.sleep(0.5)
+            resp = self.get_response('heartbeat')
+            new_freq = resp['frequency'][0]
+
+        self.client.emit('set_scan', {
+            'node': 0,
+            'min_scan_frequency': 0,
+            'max_scan_frequency': 0,
+            'max_scan_interval': 0,
+            'min_scan_interval': 0,
+            'scan_zoom': 0,
+        })
+        # check original frequency is restored
+        gevent.sleep(0.5)
+        resp = self.get_response('heartbeat')
+        self.assertEqual(resp['frequency'][0], 5888)
+
 # verify LiveTime compatibility
 
     def test_livetime_get_version(self):
