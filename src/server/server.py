@@ -3532,6 +3532,7 @@ def check_race_time_expired():
     if race_format and race_format.race_mode == 0: # count down
         if monotonic() >= RACE_START + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
+            gevent.spawn(led_handler.finished)
             if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
@@ -4210,6 +4211,7 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
 
     if strip is not None:
         led_off(strip)
+        # gevent.spawn(led_handler.startup)
 
 # Start HTTP server
 if __name__ == '__main__':

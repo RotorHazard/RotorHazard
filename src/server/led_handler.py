@@ -31,6 +31,9 @@ class LEDHandler:
     def __init__(self, strip):
         self.strip = strip
 
+    def startup(self):
+        pass
+
     def staging(self):
         pass
 
@@ -41,4 +44,7 @@ class LEDHandler:
         pass
 
     def stop(self):
+        pass
+
+    def finished(self):
         pass
