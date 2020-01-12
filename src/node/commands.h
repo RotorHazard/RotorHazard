@@ -41,10 +41,11 @@ typedef struct Message_s Message_t;
 #define EXITAT_CHANGED  0x08
 #define COMM_ACTIVITY   0x10
 #define LAPSTATS_READ   0x20
+#define SERIAL_CMD_MSG  0x40
 
 byte getPayloadSize(uint8_t command);
-void handleWriteCommand(Message_t *msg);
-void handleReadCommand(Message_t *msg);
+void handleWriteCommand(Message_t *msg, bool serialFlag);
+void handleReadCommand(Message_t *msg, bool serialFlag);
 
 extern uint8_t settingChangedFlags;
 

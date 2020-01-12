@@ -82,6 +82,8 @@ uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 #define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
 #define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
 
+#define COMMS_MONITOR_TIME_MS 5000 //I2C communications monitor grace/trigger time
+
 // dummy macro
 #define LOG_ERROR(...)
 
@@ -92,6 +94,7 @@ static Message_t i2cMessage, serialMessage;
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
+void i2cInitialize(bool delayFlag);
 void i2cReceive(int byteCount);
 bool i2cReadAndValidateIoBuffer(byte expectedSize);
 void i2cTransmit();
@@ -159,11 +162,7 @@ void setup()
     {
     };  // Wait for the Serial port to initialise
 
-    Wire.begin(i2cSlaveAddress);  // I2C slave address setup
-    Wire.onReceive(i2cReceive);  // Trigger 'i2cReceive' function on incoming data
-    Wire.onRequest(i2cTransmit);  // Trigger 'i2cTransmit' function for outgoing data, on master request
-
-    TWAR = (i2cSlaveAddress << 1) | 1;  // enable broadcasts to be received
+    i2cInitialize(false);  // setup I2C slave address and callbacks
 
     // set ADC prescaler to 16 to speedup ADC readings
     sbi(ADCSRA, ADPS2);
@@ -337,6 +336,8 @@ void setStatusLed(bool onFlag)
 }
 
 static mtime_t loopMillis = 0;
+static bool commsMonitorEnabledFlag = false;
+static mtime_t commsMonitorLastResetTime = 0;
 
 // Main loop
 void loop()
@@ -355,6 +356,7 @@ void loop()
             changeFlags = settingChangedFlags;
             settingChangedFlags &= COMM_ACTIVITY;  // clear all except COMM_ACTIVITY
         }
+        bool oldActFlag = state.activatedFlag;
         if (changeFlags & FREQ_SET)
         {
             uint16_t newVtxFreq;
@@ -373,9 +375,29 @@ void loop()
         }
 
         // also allow READ_LAP_STATS command to activate operations
-        //  so they will resume after node reset (i.e., via watchdog timer)
+        //  so they will resume after node or I2C bus reset
         if (!state.activatedFlag && (changeFlags & LAPSTATS_READ))
             state.activatedFlag = true;
+
+        if (commsMonitorEnabledFlag)
+        {
+            if (changeFlags & COMM_ACTIVITY)
+            {  //communications activity detected; update comms monitor time
+                commsMonitorLastResetTime = ms;
+            }
+            else if (ms - commsMonitorLastResetTime > COMMS_MONITOR_TIME_MS)
+            {  //too long since last communications activity detected
+                commsMonitorEnabledFlag = false;
+                // redo init, which should release I2C pins (SDA & SCL) if "stuck"
+                i2cInitialize(true);
+            }
+        }
+        else if (oldActFlag && (changeFlags & LAPSTATS_READ) &&
+                (changeFlags & SERIAL_CMD_MSG) == (uint8_t)0)
+        {  //if activated and I2C LAPSTATS_READ cmd received then enable comms monitor
+            commsMonitorEnabledFlag = true;
+            commsMonitorLastResetTime = ms;
+        }
 
         if (changeFlags & ENTERAT_CHANGED)
             eepromWriteWord(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
@@ -408,6 +430,21 @@ void loop()
     }
 }
 
+void i2cInitialize(bool delayFlag)
+{
+    setStatusLed(true);
+    Wire.end();  // release I2C pins (SDA & SCL), in case they are "stuck"
+    if (delayFlag)   // do delay if called via comms monitor
+        delay(250);  //  to help bus reset and show longer LED flash
+    setStatusLed(false);
+
+    Wire.begin(i2cSlaveAddress);  // I2C slave address setup
+    Wire.onReceive(i2cReceive);   // Trigger 'i2cReceive' function on incoming data
+    Wire.onRequest(i2cTransmit);  // Trigger 'i2cTransmit' function for outgoing data, on master request
+
+    TWAR = (i2cSlaveAddress << 1) | 1;  // enable broadcasts to be received
+}
+
 // Function called by twi interrupt service when master sends information to the slave
 // or when master sets up a specific read request
 void i2cReceive(int byteCount)
@@ -431,7 +468,7 @@ void i2cReceive(int byteCount)
         byte expectedSize = getPayloadSize(i2cMessage.command);
         if (expectedSize > 0 && i2cReadAndValidateIoBuffer(expectedSize))
         {
-            handleWriteCommand(&i2cMessage);
+            handleWriteCommand(&i2cMessage, false);
         }
         i2cMessage.buffer.size = 0;
     }
@@ -480,7 +517,7 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize)
 // A transmit buffer (ioBuffer) is populated with the data before sending.
 void i2cTransmit()
 {
-    handleReadCommand(&i2cMessage);
+    handleReadCommand(&i2cMessage, false);
 
     if (i2cMessage.buffer.size > 0)
     {  // If there is pending data, send it
@@ -507,7 +544,7 @@ void serialEvent()
         }
         else
         {
-            handleReadCommand(&serialMessage);
+            handleReadCommand(&serialMessage, true);
 
             if (serialMessage.buffer.size > 0)
             {  // If there is pending data, send it
@@ -526,7 +563,7 @@ void serialEvent()
                     serialMessage.buffer.size - 1);
             if (serialMessage.buffer.data[serialMessage.buffer.size - 1] == checksum)
             {
-                handleWriteCommand(&serialMessage);
+                handleWriteCommand(&serialMessage, true);
             }
             else
             {

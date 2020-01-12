@@ -39,15 +39,13 @@ byte getPayloadSize(uint8_t command)
 }
 
 // Generic IO write command handler
-void handleWriteCommand(Message_t *msg)
+void handleWriteCommand(Message_t *msg, bool serialFlag)
 {
     uint16_t u16val;
     rssi_t rssiVal;
 
-    // indicate communications activity detected
-    settingChangedFlags |= COMM_ACTIVITY;
-
     msg->buffer.index = 0;
+    bool actFlag = true;
 
     switch (msg->command)
     {
@@ -88,6 +86,15 @@ void handleWriteCommand(Message_t *msg)
 
         default:
             LOG_ERROR("Invalid write command: ", msg->command, HEX);
+            actFlag = false;  // not valid activity
+    }
+
+    // indicate communications activity detected
+    if (actFlag)
+    {
+        settingChangedFlags |= COMM_ACTIVITY;
+        if (serialFlag)
+            settingChangedFlags |= SERIAL_CMD_MSG;
     }
 
     msg->command = 0;  // Clear previous command
@@ -101,12 +108,10 @@ void ioBufferWriteExtremum(Buffer_t *buf, Extremum *e, mtime_t now)
 }
 
 // Generic IO read command handler
-void handleReadCommand(Message_t *msg)
+void handleReadCommand(Message_t *msg, bool serialFlag)
 {
-    // indicate communications activity detected
-    settingChangedFlags |= COMM_ACTIVITY;
-
     msg->buffer.size = 0;
+    bool actFlag = true;
 
     switch (msg->command)
     {
@@ -192,6 +197,15 @@ void handleReadCommand(Message_t *msg)
 
         default:  // If an invalid command is sent, write nothing back, master must react
             LOG_ERROR("Invalid read command: ", msg->command, HEX);
+            actFlag = false;  // not valid activity
+    }
+
+    // indicate communications activity detected
+    if (actFlag)
+    {
+        settingChangedFlags |= COMM_ACTIVITY;
+        if (serialFlag)
+            settingChangedFlags |= SERIAL_CMD_MSG;
     }
 
     if (msg->buffer.size > 0)
