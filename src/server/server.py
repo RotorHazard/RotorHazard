@@ -42,6 +42,7 @@ APP = Flask(__name__, static_url_path='/static')
 APP.config['SECRET_KEY'] = 'secret!'
 
 HEARTBEAT_THREAD = None
+HEARTBEAT_DATA_RATE_FACTOR = 5
 
 PILOT_ID_NONE = 0  # indicator value for no pilot configured
 HEAT_ID_NONE = 0  # indicator value for practice heat
@@ -1261,10 +1262,9 @@ def on_set_scan(data):
     node = INTERFACE.nodes[node_index]
     node.set_scan_interval(minScanFreq, maxScanFreq, maxScanInterval, minScanInterval, scanZoom)
     if node.scan_enabled:
-        # TODO set faster poll rate
-        pass
+        HEARTBEAT_DATA_RATE_FACTOR = 50
     else:
-        # TODO reset poll rate
+        HEARTBEAT_DATA_RATE_FACTOR = 5
         profile = getCurrentProfile()
         freqs = json.loads(profile.frequencies)
         INTERFACE.set_frequency(node_index, freqs["f"][node_index])
@@ -3445,20 +3445,20 @@ def heartbeat_thread_function():
 
         # update displayed IMD rating after freqs changed:
         if heartbeat_thread_function.imdtabler_flag and \
-                (heartbeat_thread_function.iter_tracker % 5) == 0:
+                (heartbeat_thread_function.iter_tracker % HEARTBEAT_DATA_RATE_FACTOR) == 0:
             heartbeat_thread_function.imdtabler_flag = False
             emit_imdtabler_rating()
 
         # emit rest of node data, but less often:
-        if (heartbeat_thread_function.iter_tracker % 20) == 0:
+        if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
             emit_node_data()
 
         # emit cluster status less often:
-        if (heartbeat_thread_function.iter_tracker % 20) == 10:
+        if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == (2*HEARTBEAT_DATA_RATE_FACTOR):
             CLUSTER.emitStatus()
 
         # emit environment data less often:
-        if (heartbeat_thread_function.iter_tracker % 100) == 0:
+        if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
             INTERFACE.update_environmental_data()
             emit_environmental_data()
 
@@ -3469,7 +3469,7 @@ def heartbeat_thread_function():
                 on_stage_race()
                 RACE_SCHEDULED = False
 
-        gevent.sleep(0.100)
+        gevent.sleep(0.500/HEARTBEAT_DATA_RATE_FACTOR)
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''

@@ -8,18 +8,6 @@
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	$(document).ready(function () {
-		// ensure scan mode is turned off
-		for (i = 0; i < {{ num_nodes }}; i++) {
-			socket.emit('set_scan', {
-				node: i,
-				min_scan_frequency: 0,
-				max_scan_frequency: 0,
-				max_scan_interval: 0,
-				min_scan_interval: 0,
-				scan_zoom: 0,
-			});
-		}
-
  		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',

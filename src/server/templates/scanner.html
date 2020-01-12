@@ -32,6 +32,19 @@
 		});
 
 	});
+	$(document).unload(function () {
+		// best effort to stop scan mode when page is closed
+		for (i = 0; i < {{ num_nodes }}; i++) {
+			socket.emit('set_scan', {
+				node: i,
+				min_scan_frequency: 0,
+				max_scan_frequency: 0,
+				max_scan_interval: 0,
+				min_scan_interval: 0,
+				scan_zoom: 0,
+			});
+		}
+	});
 </script>
 {% endblock %} {% block content %}
 <main class="page-settings">
