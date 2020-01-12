@@ -198,10 +198,6 @@ class BaseHardwareInterface(object):
             if (index % 2) == partition:
                 sensor.update()
 
-    def set_scan(self, node_index, minFreq, maxFreq, maxInterval, minInterval, zoom):
-        node = self.nodes[node_index]
-        node.set_scan_interval(minFreq, maxFreq, maxInterval, minInterval, zoom)
-
     #
     # Get Json Node Data Functions
     #

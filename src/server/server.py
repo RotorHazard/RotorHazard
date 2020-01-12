@@ -1258,8 +1258,13 @@ def on_set_scan(data):
     maxScanInterval = data['max_scan_interval']
     minScanInterval = data['min_scan_interval']
     scanZoom = data['scan_zoom']
-    INTERFACE.set_scan(node_index, minScanFreq, maxScanFreq, maxScanInterval, minScanInterval, scanZoom)
-    if not INTERFACE.nodes[node_index].scan_enabled:
+    node = INTERFACE.nodes[node_index]
+    node.set_scan_interval(minScanFreq, maxScanFreq, maxScanInterval, minScanInterval, scanZoom)
+    if node.scan_enabled:
+        # TODO set faster poll rate
+        pass
+    else:
+        # TODO reset poll rate
         profile = getCurrentProfile()
         freqs = json.loads(profile.frequencies)
         INTERFACE.set_frequency(node_index, freqs["f"][node_index])
