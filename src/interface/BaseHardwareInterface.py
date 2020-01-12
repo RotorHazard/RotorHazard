@@ -23,7 +23,7 @@ def discover_plugins(type, *args, **kwargs):
     plugins = []
     for plugin_module in discover_modules(type):
         try:
-            plugins.extend(plugin_module.discover(*args, **kwargs))
+            plugins.extend(plugin_module.discover(len(plugins), *args, **kwargs))
         except AttributeError as err:
             print('Error loading plugin {0}: {1}'.format(plugin_module.__name__, err))
             pass

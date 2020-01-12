@@ -80,14 +80,14 @@ class SerialNode(Node):
         return success
 
 
-def discover(*args, **kwargs):
+def discover(idxOffset, *args, **kwargs):
     nodes = []
 
     config = kwargs['config']
     if 'SERIAL_PORTS' in config:
         for index, comm in enumerate(config['SERIAL_PORTS']):
-            node = SerialNode(index, comm)
-            print("Node {0} found at port {1}".format(index+1, node.serial.name))
+            node = SerialNode(index+idxOffset, comm)
+            print("Serial node {0} found at port {1}".format(index+idxOffset+1, node.serial.name))
             nodes.append(node)
 
     gevent.sleep(BOOTLOADER_CHILL_TIME)
