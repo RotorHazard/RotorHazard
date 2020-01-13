@@ -19,9 +19,31 @@ class ColorVal:
     RED = Color(255,0,0)
     YELLOW = Color(250,210,0)
 
-def led_on(strip, color):
-    for i in range(strip.numPixels()):
-        strip.setPixelColor(i, color)
+class ColorPattern:
+    SOLID = 0
+    ALTERNATING = 1
+    TWO_OUT_OF_THREE = 2
+    CUSTOM_RB_CYCLE = 3  # handled by subclass
+
+def led_on(strip, color, pattern=ColorPattern.SOLID):
+    if pattern == ColorPattern.SOLID:
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, color)
+    elif pattern == ColorPattern.ALTERNATING:
+        onFlag = True
+        for i in range(strip.numPixels()):
+            if onFlag:
+                strip.setPixelColor(i, color)
+                onFlag = False
+            else:
+                strip.setPixelColor(i, ColorVal.NONE)
+                onFlag = True
+    elif pattern == ColorPattern.TWO_OUT_OF_THREE:
+        for i in range(strip.numPixels()):
+            if (i + 1) % 3 != 0:
+                strip.setPixelColor(i, color)
+            else:
+                strip.setPixelColor(i, ColorVal.NONE)
     strip.show()
 
 def led_off(strip):
@@ -40,10 +62,16 @@ class LEDHandler:
     def start(self):
         pass
 
+    def stop(self):
+        pass
+
     def pass_record(self, node):
         pass
 
-    def stop(self):
+    def crossing_entered(self, node):
+        pass
+        
+    def showRainbowCycle(self):
         pass
 
     def finished(self):

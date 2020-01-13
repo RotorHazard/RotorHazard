@@ -1,6 +1,7 @@
 '''Standard LED strip handler.'''
-from led_handler import LEDHandler, Color, ColorVal, led_on, led_off
+from led_handler import LEDHandler, Color, ColorVal, ColorPattern, led_on, led_off
 import gevent
+from monotonic import monotonic
 
 def led_theaterChase(strip, color, wait_ms=50, iterations=5):
     """Movie theater light style chaser animation."""
@@ -52,35 +53,61 @@ def led_theaterChaseRainbow(strip, wait_ms=25):
                 strip.setPixelColor(i+q, 0)
 
 class StripLEDHandler(LEDHandler):
+    
+    processEventObj = gevent.event.Event()
+    processCurrentColor = ColorVal.NONE
+    processCurrentPattern = ColorPattern.SOLID
+    processLastSetColorTime = monotonic()
+    processColorLingerTime = 0
+    VTX_COLOR_LINGER_TIME = 5  # delay before clearing colors via VTX enter/pass (seconds)
+    RACE_COLOR_LINGER_TIME = 300  # delay before clearing race stage/start/stop colors (seconds)
+    
+    nodeToColorArray = [ColorVal.BLUE, ColorVal.DARK_ORANGE, ColorVal.PINK, ColorVal.PURPLE, \
+                        ColorVal.YELLOW, ColorVal.CYAN, ColorVal.GREEN, ColorVal.RED]
+    
     def __init__(self, strip):
         LEDHandler.__init__(self, strip)
-
+        gevent.spawn(self.processThreadFn)
+    
+    def processThreadFn(self):
+        while True:
+            if self.processEventObj.wait(0.250):  # wait for timeout or event flag set
+                self.processEventObj.clear()
+                self.processLastSetColorTime = monotonic()
+                if self.processCurrentPattern != ColorPattern.CUSTOM_RB_CYCLE:
+                    led_on(self.strip, self.processCurrentColor, self.processCurrentPattern)
+                else:
+                    led_rainbowCycle(self.strip)
+            elif self.processCurrentColor != ColorVal.NONE and self.processColorLingerTime > 0 and \
+                        monotonic() > self.processLastSetColorTime + self.processColorLingerTime:
+                self.processCurrentColor = ColorVal.NONE
+                led_off(self.strip)
+        
+    def cmdStripColor(self, clrVal, clrPat, lingerTime=0):
+        self.processCurrentColor = clrVal
+        self.processCurrentPattern = clrPat
+        self.processColorLingerTime = lingerTime
+        self.processEventObj.set()  # interrupt event 'wait' in 'processThreadFn()'
+        
     def staging(self):
-        led_on(self.strip, ColorVal.ORANGE)
+        self.cmdStripColor(ColorVal.ORANGE, ColorPattern.TWO_OUT_OF_THREE, self.RACE_COLOR_LINGER_TIME)
 
     def start(self):
-        led_on(self.strip, ColorVal.GREEN)
-
-    def pass_record(self, node):
-        if node.index == 0:
-            led_on(self.strip, ColorVal.BLUE)
-        elif node.index == 1:
-            led_on(self.strip, ColorVal.DARK_ORANGE)
-        elif node.index == 2:
-            led_on(self.strip, ColorVal.PINK)
-        elif node.index == 3:
-            led_on(self.strip, ColorVal.PURPLE)
-        elif node.index == 4:
-            led_on(self.strip, ColorVal.YELLOW)
-        elif node.index == 5:
-            led_on(self.strip, ColorVal.CYAN)
-        elif node.index == 6:
-            led_on(self.strip, ColorVal.GREEN)
-        elif node.index == 7:
-            led_on(self.strip, ColorVal.RED)
+        self.cmdStripColor(ColorVal.GREEN, ColorPattern.SOLID, self.VTX_COLOR_LINGER_TIME)  # race is running so clear after a short time
 
     def stop(self):
-        led_on(self.strip, ColorVal.RED)
+        self.cmdStripColor(ColorVal.RED, ColorPattern.SOLID, self.RACE_COLOR_LINGER_TIME)
+
+    def pass_record(self, node):
+            self.cmdStripColor(self.nodeToColorArray[node.index%len(self.nodeToColorArray)], \
+                               ColorPattern.ALTERNATING, self.VTX_COLOR_LINGER_TIME)
+
+    def crossing_entered(self, node):
+            self.cmdStripColor(self.nodeToColorArray[node.index%len(self.nodeToColorArray)], \
+                               ColorPattern.SOLID)  # crossings should be short term, so stay on until next event
+        
+    def showRainbowCycle(self):
+        self.cmdStripColor(ColorVal.BLUE, ColorPattern.CUSTOM_RB_CYCLE, 1)
 
 def get_led_handler(strip, config, *args, **kwargs):
     return StripLEDHandler(strip)

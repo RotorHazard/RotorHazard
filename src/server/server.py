@@ -1654,7 +1654,7 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        gevent.spawn(led_handler.staging)
+        led_handler.staging()
         clear_laps() # Clear laps before race start
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
         RACE.timer_running = 0 # indicate race timer not running
@@ -1699,7 +1699,7 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        gevent.spawn(led_handler.start)
+        led_handler.start()
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now()
@@ -1750,7 +1750,7 @@ def on_stop_race():
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    gevent.spawn(led_handler.stop)
+    led_handler.stop()
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -3532,7 +3532,7 @@ def check_race_time_expired():
     if race_format and race_format.race_mode == 0: # count down
         if monotonic() >= RACE_START + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
-            gevent.spawn(led_handler.finished)
+            led_handler.finished()
             if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
@@ -3674,7 +3674,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             elif lap_id == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
 
-                        gevent.spawn(led_handler.pass_record, node)
+                        led_handler.pass_record(node)
                 else:
                     server_log('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
@@ -3703,6 +3703,8 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
 
 def node_crossing_callback(node):
     emit_node_crossing_change(node)
+    if node.crossing_flag:  # if VTX entered gate then set LED color
+        led_handler.crossing_entered(node)
 
 # set callback functions invoked by interface module
 INTERFACE.pass_record_callback = pass_record_callback
@@ -4202,6 +4204,7 @@ else:
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)
+    led_handler.showRainbowCycle()
     try:
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
     except KeyboardInterrupt:
@@ -4211,7 +4214,7 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
 
     if strip is not None:
         led_off(strip)
-        # gevent.spawn(led_handler.startup)
+        # led_handler.startup()
 
 # Start HTTP server
 if __name__ == '__main__':
