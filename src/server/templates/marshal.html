@@ -178,6 +178,7 @@
 
 			// load current race data
 			current_race_data = jQuery.extend(true, {}, race_list.heats[heat].rounds[round].pilotraces[pilot]);
+			current_race_data.pilotrace_index = pilot;
 			// fill current data with race meta
 			current_race_data.round_id = round;
 			current_race_data.heat_id = heat;
@@ -502,6 +503,10 @@
 					exit_at: current_race_data.exit_at,
 				}
 				socket.emit('resave_laps', data);
+				var this_pilotrace = race_list.heats[current_race_data.heat_id].rounds[current_race_data.round_id].pilotraces[current_race_data.pilotrace_index];
+				this_pilotrace.enter_at = current_race_data.enter_at;
+				this_pilotrace.exit_at = current_race_data.exit_at;
+				this_pilotrace.laps = current_race_data.laps;
 			} else {
 				standard_message_queue.push(__('No race loaded'));
 				if (standard_message_queue.length == 1) {
