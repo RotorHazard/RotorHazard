@@ -64,6 +64,15 @@
 		socket.on('race_list', function (msg) {
 			race_list = msg;
 
+			for (var heat in race_list.heats) {
+				for (var round in race_list.heats[heat].rounds) {
+					for (var pilotrace in race_list.heats[heat].rounds[round].pilotraces) {
+						race_list.heats[heat].rounds[round].pilotraces[pilotrace].minRSSI = Math.min.apply(null, race_list.heats[heat].rounds[round].pilotraces[pilotrace].history_values) - 2;
+						race_list.heats[heat].rounds[round].pilotraces[pilotrace].maxRSSI = Math.max.apply(null, race_list.heats[heat].rounds[round].pilotraces[pilotrace].history_values) + 2;
+					}
+				}
+			}
+
 			if (race_list_loaded) {
 				var prev_heat = $('#selected_heat').val();
 			}
@@ -251,6 +260,8 @@
 				{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: parseInt($('#enterat').val())}, // red
 				{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: parseInt($('#exitat').val())}, // orange
 			];
+			graph.options.minValue = current_race_data.minRSSI;
+			graph.options.maxValue = current_race_data.maxRSSI;
 
 			graph.render(graph_canvas, endTime);
 		}
