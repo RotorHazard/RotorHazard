@@ -4139,7 +4139,7 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     except:
         java_ver = None
         server_log('Unable to find java; for IMDTabler functionality try:')
-        server_log('sudo apt-get install oracle-java8-jdk')
+        server_log('sudo apt-get install openjdk-8-jdk')
     if java_ver:
         try:
             imdtabler_ver = subprocess.check_output( \
