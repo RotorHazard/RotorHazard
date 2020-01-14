@@ -76,13 +76,13 @@ Edit the 'src/node/rhnode.cpp' file and configure the '#define NODE_NUMBER' valu
 
 Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:
 
-node #1: ground pin D5  
-node #2: ground pin D6  
-node #3: ground pin D7  
-node #4: ground pin D8  
-node #5: ground pin D5 and pin D4  
-node #6: ground pin D6 and pin D4  
-node #7: ground pin D7 and pin D4  
+node #1: ground pin D5
+node #2: ground pin D6
+node #3: ground pin D7
+node #4: ground pin D8
+node #5: ground pin D5 and pin D4
+node #6: ground pin D6 and pin D4
+node #7: ground pin D7 and pin D4
 node #8: ground pin D8 and pin D4
 
 ## Install Optional Components
@@ -137,7 +137,7 @@ sudo python setup.py install
 ### Java Support
 Java enables calculating of IMD scores. If you started with RASPBIAN WITH DESKTOP, this step should not be necessary as Java is installed by default. Otherwise:
 ```
-sudo apt-get install oracle-java8-jdk
+sudo apt-get install openjdk-8-jdk
 ```
 
 ## Prepare System
@@ -223,6 +223,6 @@ sudo pip install --upgrade --no-cache-dir -r requirements.txt
 
 -----------------------------
 
-See Also:  
-[doc/Hardware Setup.md](Hardware%20Setup.md)  
+See Also:
+[doc/Hardware Setup.md](Hardware%20Setup.md)
 [doc/User Guide.md](User%20Guide.md)
