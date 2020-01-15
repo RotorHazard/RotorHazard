@@ -30,7 +30,7 @@ class INA219Sensor(I2CSensor):
         return self._power
 
 
-def discover(config, *args, **kwargs):
+def discover(idxOffset, config, *args, **kwargs):
     if 'i2c_helper' not in kwargs:
         return []
 

@@ -100,7 +100,7 @@ class RHInterface(BaseHardwareInterface):
             node.frequency = self.get_value_16(node, READ_FREQUENCY)
                    # read NODE_API_LEVEL and verification value:
             rev_val = self.get_value_16(node, READ_REVISION_CODE)
-            if (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
+            if rev_val and (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
                 node.api_level = rev_val & 0xFF
             else:
                 node.api_level = 0  # if verify failed (fn not defined) then set API level to 0

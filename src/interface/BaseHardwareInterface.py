@@ -19,9 +19,9 @@ def discover_modules(type):
                 pass
     return plugin_modules
 
-def discover_plugins(type, *args, **kwargs):
+def discover_plugins(mod_type, *args, **kwargs):
     plugins = []
-    for plugin_module in discover_modules(type):
+    for plugin_module in discover_modules(mod_type):
         try:
             plugins.extend(plugin_module.discover(len(plugins), *args, **kwargs))
         except AttributeError as err:
