@@ -25,7 +25,7 @@ class BME280Sensor(I2CSensor):
         return self.data.humidity
 
 
-def discover(config, *args, **kwargs):
+def discover(idxOffset, config, *args, **kwargs):
     if 'i2c_helper' not in kwargs:
         return []
 
