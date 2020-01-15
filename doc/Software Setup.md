@@ -76,13 +76,13 @@ Edit the 'src/node/rhnode.cpp' file and configure the '#define NODE_NUMBER' valu
 
 Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:
 
-node #1: ground pin D5
-node #2: ground pin D6
-node #3: ground pin D7
-node #4: ground pin D8
-node #5: ground pin D5 and pin D4
-node #6: ground pin D6 and pin D4
-node #7: ground pin D7 and pin D4
+node #1: ground pin D5<br/>
+node #2: ground pin D6<br/>
+node #3: ground pin D7<br/>
+node #4: ground pin D8<br/>
+node #5: ground pin D5 and pin D4<br/>
+node #6: ground pin D6 and pin D4<br/>
+node #7: ground pin D7 and pin D4<br/>
 node #8: ground pin D8 and pin D4
 
 ## Install Optional Components
@@ -223,6 +223,6 @@ sudo pip install --upgrade --no-cache-dir -r requirements.txt
 
 -----------------------------
 
-See Also:
+See Also:<br/>
 [doc/Hardware Setup.md](Hardware%20Setup.md)
 [doc/User Guide.md](User%20Guide.md)
