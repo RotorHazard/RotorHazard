@@ -49,6 +49,7 @@ CLASS_ID_NONE = 0  # indicator value for unclassified heat
 FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
 EVENT_RESULTS_CACHE = {} # Cache of results page leaderboards
+EVENT_RESULTS_CACHE_BUILDING = False # Whether results are being calculated
 EVENT_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
 
 LAST_RACE_CACHE = {} # Cache of current race after clearing
@@ -2436,86 +2437,105 @@ def emit_round_data_notify(**params):
     SOCKET_IO.emit('round_data_notify')
 
 def emit_round_data(**params):
-    '''Emits saved races to rounds page.'''
-    global EVENT_RESULTS_CACHE
-    global EVENT_RESULTS_CACHE_VALID
+    ''' kick off non-blocking thread to generate data'''
+    gevent.spawn(emit_round_data_thread, params, request.sid)
 
-    if EVENT_RESULTS_CACHE_VALID:
-        emit_payload = EVENT_RESULTS_CACHE
+def emit_round_data_thread(params, sid):
+    with APP.test_request_context():
+        '''Emits saved races to rounds page.'''
+        global EVENT_RESULTS_CACHE
+        global EVENT_RESULTS_CACHE_BUILDING
+        global EVENT_RESULTS_CACHE_VALID
 
-    else:
-        heats = {}
-        for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
-            heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
+        if EVENT_RESULTS_CACHE_VALID: # Output existing calculated results
+            emit_payload = EVENT_RESULTS_CACHE
 
-            rounds = []
-            for round in SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRaceMeta.round_id):
-                pilotraces = []
-                for pilotrace in SavedPilotRace.query.filter_by(race_id=round.id).all():
-                    laps = []
-                    for lap in SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
-                        laps.append({
-                                'id': lap.id,
-                                'lap_time_stamp': lap.lap_time_stamp,
-                                'lap_time': lap.lap_time,
-                                'lap_time_formatted': lap.lap_time_formatted,
-                                'source': lap.source,
-                                'deleted': lap.deleted
-                            })
+        elif EVENT_RESULTS_CACHE_BUILDING: # Don't restart calculation if another calculation thread exists
+            while EVENT_RESULTS_CACHE_BUILDING is True: # Pause thread until calculations are completed
+                gevent.sleep(1)
 
-                    pilot_data = Pilot.query.filter_by(id=pilotrace.pilot_id).first()
-                    if pilot_data:
-                        nodepilot = pilot_data.callsign
-                    else:
-                        nodepilot = None
+            emit_payload = EVENT_RESULTS_CACHE
 
-                    pilotraces.append({
-                        'callsign': nodepilot,
-                        'pilot_id': pilotrace.pilot_id,
-                        'node_index': pilotrace.node_index,
-                        'laps': laps
+        else:
+            EVENT_RESULTS_CACHE_BUILDING = True
+
+            heats = {}
+            for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
+                heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
+
+                rounds = []
+                for round in SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRaceMeta.round_id):
+                    pilotraces = []
+                    for pilotrace in SavedPilotRace.query.filter_by(race_id=round.id).all():
+                        gevent.sleep()
+                        laps = []
+                        for lap in SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
+                            laps.append({
+                                    'id': lap.id,
+                                    'lap_time_stamp': lap.lap_time_stamp,
+                                    'lap_time': lap.lap_time,
+                                    'lap_time_formatted': lap.lap_time_formatted,
+                                    'source': lap.source,
+                                    'deleted': lap.deleted
+                                })
+
+                        pilot_data = Pilot.query.filter_by(id=pilotrace.pilot_id).first()
+                        if pilot_data:
+                            nodepilot = pilot_data.callsign
+                        else:
+                            nodepilot = None
+
+                        pilotraces.append({
+                            'callsign': nodepilot,
+                            'pilot_id': pilotrace.pilot_id,
+                            'node_index': pilotrace.node_index,
+                            'laps': laps
+                        })
+                    rounds.append({
+                        'id': round.round_id,
+                        'start_time_formatted': round.start_time_formatted,
+                        'nodes': pilotraces,
+                        'leaderboard': calc_leaderboard(heat_id=heat.heat_id, round_id=round.round_id)
                     })
-                rounds.append({
-                    'id': round.round_id,
-                    'start_time_formatted': round.start_time_formatted,
-                    'nodes': pilotraces,
-                    'leaderboard': calc_leaderboard(heat_id=heat.heat_id, round_id=round.round_id)
-                })
-            heats[heat.heat_id] = {
-                'heat_id': heat.heat_id,
-                'note': heatnote,
-                'rounds': rounds,
-                'leaderboard': calc_leaderboard(heat_id=heat.heat_id)
+                heats[heat.heat_id] = {
+                    'heat_id': heat.heat_id,
+                    'note': heatnote,
+                    'rounds': rounds,
+                    'leaderboard': calc_leaderboard(heat_id=heat.heat_id)
+                }
+
+            gevent.sleep()
+            heats_by_class = {}
+            heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
+            for race_class in RaceClass.query.all():
+                heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
+
+            gevent.sleep()
+            current_classes = {}
+            for race_class in RaceClass.query.all():
+                current_class = {}
+                current_class['id'] = race_class.id
+                current_class['name'] = race_class.name
+                current_class['description'] = race_class.name
+                current_class['leaderboard'] = calc_leaderboard(class_id=race_class.id)
+                current_classes[race_class.id] = current_class
+
+            gevent.sleep()
+            emit_payload = {
+                'heats': heats,
+                'heats_by_class': heats_by_class,
+                'classes': current_classes,
+                'event_leaderboard': calc_leaderboard()
             }
 
-        heats_by_class = {}
-        heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
-        for race_class in RaceClass.query.all():
-            heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
+            EVENT_RESULTS_CACHE = emit_payload
+            EVENT_RESULTS_CACHE_VALID = True
+            EVENT_RESULTS_CACHE_BUILDING = False
 
-        current_classes = {}
-        for race_class in RaceClass.query.all():
-            current_class = {}
-            current_class['id'] = race_class.id
-            current_class['name'] = race_class.name
-            current_class['description'] = race_class.name
-            current_class['leaderboard'] = calc_leaderboard(class_id=race_class.id)
-            current_classes[race_class.id] = current_class
-
-        emit_payload = {
-            'heats': heats,
-            'heats_by_class': heats_by_class,
-            'classes': current_classes,
-            'event_leaderboard': calc_leaderboard()
-        }
-
-        EVENT_RESULTS_CACHE = emit_payload
-        EVENT_RESULTS_CACHE_VALID = True
-
-    if ('nobroadcast' in params):
-        emit('round_data', emit_payload)
-    else:
-        SOCKET_IO.emit('round_data', emit_payload)
+        if ('nobroadcast' in params):
+            emit('round_data', emit_payload, namespace='/', room=sid)
+        else:
+            SOCKET_IO.emit('round_data', emit_payload, namespace='/')
 
 def calc_leaderboard(**params):
     ''' Generates leaderboards '''
@@ -2570,6 +2590,7 @@ def calc_leaderboard(**params):
         else:
             race_format = None
 
+    gevent.sleep()
     # Get the pilot ids for all relevant races
     # Add pilot callsigns
     # Add pilot team names
@@ -2582,6 +2603,7 @@ def calc_leaderboard(**params):
     holeshots = []
 
     for pilot in Pilot.query.filter(Pilot.id != PILOT_ID_NONE):
+        gevent.sleep()
         if USE_CURRENT:
             stat_query = DB.session.query(DB.func.count(CurrentLap.lap_id)) \
                 .filter(CurrentLap.pilot_id == pilot.id, \
@@ -2603,6 +2625,7 @@ def calc_leaderboard(**params):
                     ).all()
 
                 for pilotrace in pilotraces:
+                    gevent.sleep()
                     holeshot_lap = SavedRaceLap.query \
                         .filter(SavedRaceLap.pilotrace_id == pilotrace.id, \
                             SavedRaceLap.deleted != 1, \
@@ -2633,6 +2656,7 @@ def calc_leaderboard(**params):
     consecutives = []
 
     for i, pilot in enumerate(pilot_ids):
+        gevent.sleep()
         # Get the total race time for each pilot
         if max_laps[i] is 0:
             total_time.append(0) # Add zero if no laps completed
@@ -2648,6 +2672,7 @@ def calc_leaderboard(**params):
 
             total_time.append(stat_query.scalar())
 
+        gevent.sleep()
         # Get the last lap for each pilot (current race only)
         if max_laps[i] is 0:
             last_lap.append(None) # Add zero if no laps completed
@@ -2660,6 +2685,7 @@ def calc_leaderboard(**params):
             else:
                 last_lap.append(None)
 
+        gevent.sleep()
         # Get the average lap time for each pilot
         if max_laps[i] is 0:
             average_lap.append(0) # Add zero if no laps completed
@@ -2677,6 +2703,7 @@ def calc_leaderboard(**params):
             avg_lap = stat_query.scalar()
             average_lap.append(avg_lap)
 
+        gevent.sleep()
         # Get the fastest lap time for each pilot
         if max_laps[i] is 0:
             fastest_lap.append(0) # Add zero if no laps completed
@@ -2694,6 +2721,7 @@ def calc_leaderboard(**params):
             fast_lap = stat_query.scalar()
             fastest_lap.append(fast_lap)
 
+        gevent.sleep()
         # find best consecutive 3 laps
         if max_laps[i] < 3:
             consecutives.append(None)
@@ -2706,10 +2734,12 @@ def calc_leaderboard(**params):
                     CurrentLap.pilot_id == pilot).all()
 
                 for j in range(len(thisrace) - 2):
+                    gevent.sleep()
                     all_consecutives.append(thisrace[j].lap_time + thisrace[j+1].lap_time + thisrace[j+2].lap_time)
 
             else:
                 for race_id in racelist:
+                    gevent.sleep()
                     thisrace = DB.session.query(SavedRaceLap.lap_time) \
                         .filter(SavedRaceLap.pilot_id == pilot, \
                             SavedRaceLap.race_id == race_id, \
@@ -2719,6 +2749,7 @@ def calc_leaderboard(**params):
 
                     if len(thisrace) >= 3:
                         for j in range(len(thisrace) - 2):
+                            gevent.sleep()
                             all_consecutives.append(thisrace[j].lap_time + thisrace[j+1].lap_time + thisrace[j+2].lap_time)
 
             # Sort consecutives
@@ -2730,6 +2761,7 @@ def calc_leaderboard(**params):
             else:
                 consecutives.append(None)
 
+    gevent.sleep()
     # Combine for sorting
     leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives)
 
@@ -2750,6 +2782,7 @@ def calc_leaderboard(**params):
             'consecutives': time_format(row[6]),
         })
 
+    gevent.sleep()
     # Sort fastest_laps x[4]
     leaderboard_by_fastest_lap = sorted(leaderboard, key = lambda x: (x[4] if x[4] > 0 else float('inf')))
 
@@ -2765,6 +2798,7 @@ def calc_leaderboard(**params):
             'consecutives': time_format(row[6]),
         })
 
+    gevent.sleep()
     # Sort consecutives x[6]
     leaderboard_by_consecutives = sorted(leaderboard, key = lambda x: (x[6] if x[6] > 0 else float('inf')))
 
