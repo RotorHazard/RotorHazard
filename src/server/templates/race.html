@@ -151,8 +151,10 @@
 		$('#schedule_m').val(rotorhazard.schedule_m);
 		$('#schedule_s').val(rotorhazard.schedule_s);
 
-		$('#set_led_brightness').val(brightness_logsl.position(rotorhazard.led_brightness));
-		$('#led_brightness_value').html($('#set_led_brightness').val());
+		if ('{{ getOption('ledBrightness') }}' != 'False') {
+			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
+			$('#led_brightness_value').html($('#set_led_brightness').val());
+		}
 
 		// set up node local store
 		for (i = 0; i < {{ num_nodes }}; i++) {
