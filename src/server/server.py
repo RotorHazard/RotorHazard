@@ -165,6 +165,23 @@ RACE_STATUS_CROSSING = 'Waiting for cross'  # indicator for Most Laps Wins race
 
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 
+import re
+def uniqueName(desiredName, otherNames):
+    if desiredName in otherNames:
+        newName = desiredName
+        match = re.match('^(.*) ([0-9]*)$', desiredName)
+        if match:
+            nextInt = int(match.group(2))
+            nextInt += 1
+            newName = match.group(1) + ' ' + str(nextInt)
+        else:
+            newName = desiredName + " 2"
+
+        newName = uniqueName(newName, otherNames)
+        return newName
+    else:
+        return desiredName
+
 #
 # Slaves
 #
@@ -1550,7 +1567,8 @@ def on_set_race_format(data):
 def on_add_race_format():
     '''Adds new format in the database by duplicating an existing one.'''
     source_format = getCurrentRaceFormat()
-    new_format = RaceFormat(name=__('Copy of %s') % source_format.name,
+    all_format_names = [format.name for format in RaceFormat.query.all()]
+    new_format = RaceFormat(name=uniqueName(source_format.name, all_format_names),
                              race_mode=source_format.race_mode,
                              race_time_sec=source_format.race_time_sec ,
                              start_delay_min=source_format.start_delay_min,
