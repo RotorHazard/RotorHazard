@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "2.1.0 (dev 3)" # Public release version code
-SERVER_API = 24 # Server API version
+SERVER_API = 25 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 21 # Most recent node API
 JSON_API = 2 # JSON API version
@@ -446,6 +446,7 @@ class CurrentLap(DB.Model):
     lap_time = DB.Column(DB.Integer, nullable=False)
     lap_time_formatted = DB.Column(DB.Integer, nullable=False)
     source = DB.Column(DB.Integer, nullable=False)
+    deleted = DB.Column(DB.Boolean, nullable=False)
 
     def __repr__(self):
         return '<CurrentLap %r>' % self.pilot_id
@@ -1811,7 +1812,7 @@ def on_save_laps():
                         lap_time=lap.lap_time, \
                         lap_time_formatted=lap.lap_time_formatted, \
                         source = lap.source, \
-                        deleted = False
+                        deleted = lap.deleted
                     ))
 
     DB.session.commit()
@@ -2011,36 +2012,8 @@ def on_delete_lap(data):
     '''Delete a false lap.'''
     node_index = data['node']
     lap_id = data['lapid']
-    max_lap = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
-        .filter_by(node_index=node_index).scalar()
-    if lap_id is not max_lap:
-        # Update the lap_time for the next lap
-        previous_lap = CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id-1).one()
-        next_lap = CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id+1).one()
-        next_lap.lap_time = next_lap.lap_time_stamp - previous_lap.lap_time_stamp
-        next_lap.lap_time_formatted = time_format(next_lap.lap_time)
-        # Delete the false lap
-        CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id).delete()
-        # Update lap numbers
-        for lap in CurrentLap.query.filter(CurrentLap.node_index==node_index, CurrentLap.lap_id>lap_id).all():
-            lap.lap_id = lap.lap_id - 1
-        # Update splits
-        last_split_id = DB.session.query(DB.func.max(LapSplit.split_id)).filter_by(lap_id=lap_id-1).scalar()
-        if last_split_id:
-            LapSplit.query.filter(LapSplit.node_index==node_index, LapSplit.lap_id==lap_id, LapSplit.split_id<=last_split_id).delete()
-            for split in LapSplit.query.filter(LapSplit.node_index==node_index, LapSplit.lap_id==lap_id, LapSplit.split_id>last_split_id).all():
-                split.lap_id = split.lap_id - 1
-            for split in LapSplit.query.filter(LapSplit.node_index==node_index, LapSplit.lap_id>lap_id).all():
-                split.lap_id = split.lap_id - 1
-    else:
-        # Delete the false lap
-        CurrentLap.query.filter(CurrentLap.node_index==node_index, CurrentLap.lap_id==lap_id).delete()
-        # Merge splits
-        last_split_id = DB.session.query(DB.func.max(LapSplit.split_id)).filter_by(lap_id=lap_id-1).scalar()
-        if last_split_id:
-            LapSplit.query.filter(LapSplit.node_index==node_index, LapSplit.lap_id==lap_id, LapSplit.split_id<=last_split_id).delete()
-            for split in LapSplit.query.filter(LapSplit.node_index==node_index, LapSplit.lap_id==lap_id, LapSplit.split_id>last_split_id).all():
-                split.lap_id = split.lap_id - 1
+    db_update = CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id).one()
+    db_update.deleted = True
     DB.session.commit()
     server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_id))
     emit_current_laps() # Race page, update web client
@@ -2302,7 +2275,7 @@ def emit_current_laps(**params):
         for node in range(RACE.num_nodes):
             node_laps = []
             last_lap_id = -1
-            for lap in CurrentLap.query.filter_by(node_index=node).order_by(CurrentLap.lap_id).all():
+            for lap in CurrentLap.query.filter(CurrentLap.node_index==node, CurrentLap.deleted != 1).order_by(CurrentLap.lap_id).all():
                 splits = get_splits(node, lap.lap_id, True)
                 node_laps.append({
                     'lap_id': lap.lap_id,
@@ -2607,7 +2580,8 @@ def calc_leaderboard(**params):
         if USE_CURRENT:
             stat_query = DB.session.query(DB.func.count(CurrentLap.lap_id)) \
                 .filter(CurrentLap.pilot_id == pilot.id, \
-                    CurrentLap.lap_id != 0)
+                    CurrentLap.lap_id != 0, \
+                    CurrentLap.deleted != 1)
             max_lap = stat_query.scalar()
             current_heat = Heat.query.filter_by(heat_id=RACE.current_heat, pilot_id=pilot.id).first()
             if current_heat and profile_freqs["f"][current_heat.node_index] != FREQUENCY_ID_NONE:
@@ -2663,7 +2637,7 @@ def calc_leaderboard(**params):
         else:
             if USE_CURRENT:
                 stat_query = DB.session.query(DB.func.sum(CurrentLap.lap_time)) \
-                    .filter_by(pilot_id=pilot)
+                    .filter(CurrentLap.pilot_id==pilot, CurrentLap.deleted != 1)
             else:
                 stat_query = DB.session.query(DB.func.sum(SavedRaceLap.lap_time)) \
                     .filter(SavedRaceLap.pilot_id == pilot, \
@@ -2679,7 +2653,7 @@ def calc_leaderboard(**params):
         else:
             if USE_CURRENT:
                 stat_query = CurrentLap.query \
-                    .filter_by(pilot_id=pilot) \
+                    .filter(CurrentLap.pilot_id==pilot, CurrentLap.deleted != 1) \
                     .order_by(-CurrentLap.lap_id)
                 last_lap.append(stat_query.first().lap_time)
             else:
@@ -2692,7 +2666,8 @@ def calc_leaderboard(**params):
         else:
             if USE_CURRENT:
                 stat_query = DB.session.query(DB.func.avg(CurrentLap.lap_time)) \
-                    .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0)
+                    .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0, \
+                        CurrentLap.deleted != 1)
             else:
                 stat_query = DB.session.query(DB.func.avg(SavedRaceLap.lap_time)) \
                     .filter(SavedRaceLap.pilot_id == pilot, \
@@ -2710,7 +2685,8 @@ def calc_leaderboard(**params):
         else:
             if USE_CURRENT:
                 stat_query = DB.session.query(DB.func.min(CurrentLap.lap_time)) \
-                    .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0)
+                    .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0, \
+                        CurrentLap.deleted != 1)
             else:
                 stat_query = DB.session.query(DB.func.min(SavedRaceLap.lap_time)) \
                     .filter(SavedRaceLap.pilot_id == pilot, \
@@ -2731,7 +2707,8 @@ def calc_leaderboard(**params):
             if USE_CURRENT:
                 thisrace = DB.session.query(CurrentLap.lap_time) \
                     .filter(CurrentLap.lap_id != 0, \
-                    CurrentLap.pilot_id == pilot).all()
+                        CurrentLap.pilot_id == pilot, \
+                        CurrentLap.deleted != 1).all()
 
                 for j in range(len(thisrace) - 2):
                     gevent.sleep()
@@ -3023,7 +3000,7 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
 
               # iterate through list of laps, sorted by lap timestamp
     for item in sorted(CurrentLap.query.with_entities(CurrentLap.lap_time_stamp, CurrentLap.lap_id, \
-                                                      CurrentLap.pilot_id).all()):
+                                                      CurrentLap.pilot_id).filter(CurrentLap.deleted != 1).all()):
         if item[1] > 0:  # current lap is > 0
             team_name = pilot_team_dict[item[2]]
             if team_name in t_laps_dict:
@@ -3086,7 +3063,8 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
             pilot_id = node_pilot_dict.get(node.index)
             if pilot_id:
                 lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
-                        .filter_by(node_index=node.index).scalar()
+                        .filter(CurrentLap.node_index==node.index, \
+                            CurrentLap.deleted != 1).scalar()
                 if lap_id is None:
                     lap_id = 0
                             # if (other) pilot crossing for possible winning lap then wait
@@ -3095,7 +3073,8 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
                     server_log('check_pilot_laps_win waiting for crossing, Node {0}'.format(node.index+1))
                     return -1
                 if lap_id >= num_laps_win:
-                    lap_data = CurrentLap.query.filter_by(node_index=node.index, lap_id=num_laps_win).one()
+                    lap_data = CurrentLap.query.filter(CurrentLap.node_index==node.index, \
+                        CurrentLap.deleted != 1, lap_id=num_laps_win).one()
                     #server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
                              # save pilot_id for earliest lap time:
                     if win_pilot_id < 0 or lap_data.lap_time_stamp < win_lap_tstamp:
@@ -3243,9 +3222,11 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                 pilot_id = node_pilot_dict.get(node.index)
                 if pilot_id:
                     lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
-                            .filter_by(node_index=node.index).scalar()
+                            .filter(CurrentLap.node_index==node.index, \
+                                CurrentLap.deleted != 1).scalar()
                     if lap_id > 0:
-                        lap_data = CurrentLap.query.filter_by(node_index=node.index, lap_id=lap_id).one_or_none()
+                        lap_data = CurrentLap.query.filter(CurrentLap.node_index==node.index, \
+                            CurrentLap.deleted != 1, lap_id=lap_id).one_or_none()
                         if lap_data:
                             pilots_list.append((lap_id, lap_data.lap_time_stamp, pilot_id, node))
                             if lap_id > max_lap_id:
@@ -3598,7 +3579,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                     # Get the last completed lap from the database
                     last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
-                        .filter_by(node_index=node.index).scalar()
+                        .filter(CurrentLap.node_index==node.index, \
+                            CurrentLap.deleted != 1).scalar()
 
                     if last_lap_id is None: # No previous laps, this is the first pass
                         # Lap zero represents the time from the launch pad to flying through the gate
@@ -3606,8 +3588,10 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         lap_id = 0
                     else: # This is a normal completed lap
                         # Find the time stamp of the last lap completed
-                        last_lap_time_stamp = CurrentLap.query.filter_by( \
-                        node_index=node.index, lap_id=last_lap_id).one().lap_time_stamp
+                        last_lap_time_stamp = CurrentLap.query.filter( \
+                            CurrentLap.node_index==node.index, \
+                            CurrentLap.deleted != 1, \
+                            CurrentLap.lap_id==last_lap_id).one().lap_time_stamp
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
                         lap_id = last_lap_id + 1
@@ -3634,7 +3618,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         # Add the new lap to the database
                         DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
                             lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
-                            lap_time_formatted=time_format(lap_time), source=source))
+                            lap_time_formatted=time_format(lap_time), source=source, deleted=False))
                         DB.session.commit()
 
                         #server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
