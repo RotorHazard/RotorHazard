@@ -784,6 +784,7 @@ var rotorhazard = {
 	graphing: false, // currently graphing RSSI
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array
+	heats: {}, // heats object
 
 	panelstates: {}, // collapsible panel state
 

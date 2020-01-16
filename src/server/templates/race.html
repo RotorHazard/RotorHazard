@@ -314,10 +314,11 @@
 		});
 
 		socket.on('heat_data', function (msg) {
+			rotorhazard.heats = msg.heats;
 			$('#set_current_heat').empty();
 			for (var i in msg.heats) {
 				var heat = msg.heats[i];
-				var opt = $('<option value="' + heat.heat_id + '">');
+				var opt = $('<option value="' + heat.heat_id + '" data-class="' + heat.class_id + '">');
 
 				if (heat.note) {
 					opt.html(heat.note);
@@ -536,6 +537,29 @@
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
 			}
+
+			var selectedHeat = $('#set_current_heat').val();
+			var selectedClass = rotorhazard.heats[selectedHeat].class_id;
+			var otherHeats = [];
+			for (heat_i in rotorhazard.heats) {
+				if (rotorhazard.heats[heat_i].class_id == selectedClass) {
+					otherHeats.push(heat_i);
+				}
+			}
+
+			if (otherHeats.length > 1) {
+				var newHeat = null;
+				if (otherHeats[otherHeats.length - 1] == selectedHeat) {
+					newHeat = otherHeats[0];
+				} else {
+					while (otherHeats[otherHeats.length - 1] != selectedHeat) {
+						newHeat = otherHeats.pop();
+					}
+				}
+
+				$('#set_current_heat').val(newHeat).change();
+			}
+
 			return false;
 		});
 
