@@ -1,0 +1,52 @@
+{% extends "layout.html" %} {% block title %}Docs{% endblock %} {% block head %}
+
+<script src="./static/showdown-1.9.1/showdown.min.js"></script>
+
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function () {
+		// get markdown and convert to HTML
+		var converter = new showdown.Converter({
+			ghCodeBlocks: true,
+			ghCompatibleHeaderId: true,
+			literalMidWordUnderscores: true,
+			simpleLineBreaks: true
+		}),
+		md_output = converter.makeHtml({{ doc|tojson }})
+	    var output = $(md_output);
+
+		// internal link rerouting
+		var root = new RegExp(location.host);
+		var is_http = new RegExp('^https?://');
+		var is_mail = new RegExp('^mailto:');
+
+		output.find('a').each(function(){
+			var url = $(this)[0].href;
+			if (url) {
+				if (is_http.test(url)) {
+					if(root.test(url)){
+						$(this).attr('href', '/docs?d=' + $(this).attr('href'));
+					}
+				}
+			}
+		});
+
+		// populate page
+		$('#dest').html(output);
+
+		// follow anchors
+		if (window.location.hash) {
+			document.getElementById(window.location.hash.slice(1)).scrollIntoView();
+		}
+	});
+</script>
+{% endblock %} {% block content %}
+<main class="page-docs">
+
+<div class="panel">
+	<div class="panel-content">
+		<div id="dest"><p>{{ __('Loading...') }}</p></div>
+	</div>
+</div>
+
+</main>
+{% endblock %}

@@ -9,6 +9,7 @@ import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
 
+import io
 import os
 import sys
 import shutil
@@ -22,7 +23,7 @@ from datetime import datetime
 from functools import wraps
 from collections import OrderedDict
 
-from flask import Flask, render_template, request, Response, session
+from flask import Flask, render_template, send_file, request, Response, session
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
 
@@ -752,6 +753,26 @@ def database():
         profiles=Profiles,
         race_format=RaceFormat,
         globalSettings=GlobalSettings)
+
+@APP.route('/docs')
+def viewDocs():
+    '''Route to doc viewer.'''
+    docfile = request.args.get('d')
+
+    with io.open('../../doc/' + docfile, 'r', encoding="utf-8") as f:
+        doc = f.read()
+
+    return render_template('viewdocs.html',
+        serverInfo=serverInfo,
+        getOption=getOption,
+        __=__,
+        doc=doc
+        )
+
+@APP.route('/img/<path:imgfile>')
+def viewImg(imgfile):
+    '''Route to img called within doc viewer.'''
+    return send_file('../../doc/img/' + imgfile)
 
 # JSON API
 
