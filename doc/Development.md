@@ -38,15 +38,8 @@ Later, you can get the changes from the RotorHazard repo into your `master` bran
 3. `git fetch RotorHazard`
 4. `git merge RotorHazard/master`
 5. `git push origin master` is an optional step that will update your fork on GitHub
- 
+
 If using Windows, [TortoiseGit](https://tortoisegit.org) is highly recommended.
-
-## Forking Delta5 and RotorHazard on GitHub
-
-If you have a fork of the Delta5 repository in your GitHub account, you probably won't be able to create a fork of the RotorHazard repository in the same account. (GitHub does not seem to allow forks sourcing the same repository to be on there simultaneously.)  The solutions we have found are to either:
-
-* Delete the copy of the Delta5 fork in you GitHub account and then create a fork of the RotorHazard repository into there, or
-* Create a new account on GitHub and fork the RotorHazard repository into that account.
 
 ## Coding Style
 
