@@ -73,8 +73,22 @@
 				}
 			}
 
+			// find most recent race
+			var prev_heat = null;
 			if (race_list_loaded) {
-				var prev_heat = $('#selected_heat').val();
+				prev_heat = $('#selected_heat').val();
+			} else {
+				var newest_race = 0;
+				for (var heat in race_list.heats) {
+					for (var round in race_list.heats[heat].rounds) {
+						var race_time = race_list.heats[heat].rounds[round].start_time;
+
+						if (newest_race < race_time) {
+							newest_race = race_time;
+							prev_heat = heat;
+						}
+					}
+				}
 			}
 
 			$('#selected_heat').empty();
@@ -89,17 +103,14 @@
 
 				$('#selected_heat').append('<option value="' + heat_i + '">' + heat_name + '</option>');
 			}
-			$('#selected_heat').val(heat_i);
 
-			if (race_list_loaded) {
-				$('#selected_heat').val(prev_heat);
-			} else {
+			if (!race_list_loaded) {
 				race_list_loaded = true;
 				$('#selected_heat').prop('disabled', false);
 				$('#selected_round').prop('disabled', false);
 				$('#selected_pilot').prop('disabled', false);
-				$('#load_race').prop('disabled', false);
 			}
+			$('#selected_heat').val(prev_heat);
 
 			$('#selected_heat').trigger('change');
 		});
