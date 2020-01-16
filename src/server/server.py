@@ -563,17 +563,26 @@ class GlobalSettings(DB.Model):
 # Option helpers
 #
 
+GLOBALS_CACHE = {} # Local Python cache for global settings
+def primeGlobalsCache():
+    global GLOBALS_CACHE
+
+    settings = GlobalSettings.query.all()
+    for setting in settings:
+        GLOBALS_CACHE[setting.option_name] = setting.option_value
+
 def getOption(option, default_value=False):
     try:
-        settings = GlobalSettings.query.filter_by(option_name=option).one_or_none()
-        if settings:
-            return settings.option_value
+        if GLOBALS_CACHE[option]:
+            return GLOBALS_CACHE[option]
         else:
             return default_value
     except:
         return default_value
 
 def setOption(option, value):
+    GLOBALS_CACHE[option] = value
+
     settings = GlobalSettings.query.filter_by(option_name=option).one_or_none()
     if settings:
         settings.option_value = value
@@ -4124,6 +4133,8 @@ if not os.path.exists(DB_FILE_NAME):
     server_log('No database.db file found; creating initial database')
     db_init()
     db_inited_flag = True
+
+primeGlobalsCache()
 
 # collect server info for About panel
 serverInfo = buildServerInfo()
