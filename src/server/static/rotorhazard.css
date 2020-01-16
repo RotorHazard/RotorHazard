@@ -108,6 +108,7 @@ input[type="number"],
 textarea {
 	width: 100%;
 	border: solid 0.125em hsl(212.7, 67.8%, 29.2%);
+	border-color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
 	border-radius: 0.25rem;
 	background: #fff;
 	padding: 0.25rem;
