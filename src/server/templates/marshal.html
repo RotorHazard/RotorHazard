@@ -154,7 +154,7 @@
 
 			for (var pilot_i in race_list.heats[heat].rounds[round].pilotraces) {
 				var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot_i];
-				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' + pilotrace.pilot_id + '">' + pilotrace.callsign + '</option>');
+				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' + pilotrace.pilot_id + '">' + pilotrace.callsign + ' (' + (pilotrace.node_index + 1) + ')</option>');
 			}
 
 			$('#selected_pilot option').each(function(){
