@@ -566,6 +566,7 @@ function timerModel() {
 	this.time_s = false; // simplified relative time in seconds
 	this.count_up = false; // use fixed-length timer
 	this.duration = 0; // fixed-length duration, in seconds
+	this.allow_expire = false; // prevent expire callbacks until timer runs 1 loop
 
 	this.drift_history = [];
 	this.drift_history_samples = 10;
@@ -590,7 +591,7 @@ function timerModel() {
 					if (self.time_s <= 0) {
 						continue_timer = false;
 						self.running = false;
-						if (self.callbacks.expire instanceof Function) {
+						if (self.allow_expire && self.callbacks.expire instanceof Function) {
 							self.callbacks.expire(self);
 						}
 					} else {
@@ -622,6 +623,8 @@ function timerModel() {
 				}
 			}
 		}
+
+		self.allow_expire = true;
 
 		if (continue_timer) {
 			var now = window.performance.now()
@@ -906,7 +909,7 @@ var rotorhazard = {
 
 // deferred timer callbacks (time until race)
 rotorhazard.timer.deferred.callbacks.start = function(timer){
-	if (rotorhazard.timer.staging.running || rotorhazard.timer.race.running) {  // defer timing to staging/race timers
+	if (rotorhazard.timer.race.running) {  // defer timing to staging/race timers
 		rotorhazard.timer.deferred.stop();
 	}
 }
