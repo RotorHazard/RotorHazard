@@ -66,8 +66,8 @@ A good starting point for *ExitAt* is to capture the value with a quad about 20â
 
 ### Missing Laps
 ![Tuning Graph](img/Tuning%20Graph-04.svg)<br />
-_Laps are not recorded if RSSI does not reach EnterAt (red)_
-* Raise *EnterAt*
+_Laps are not recorded if RSSI does not reach EnterAt_
+* Lower *EnterAt*
 
 ![Tuning Graph](img/Tuning%20Graph-05.svg)<br />
 _Laps are gouped together if ExitAt is too high, because the first lap crossing never Exits._
