@@ -1380,6 +1380,15 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
+					<label for="set_calibrationMode">{{ __('Calibration Mode') }}</label>
+				</div>
+				<select id="set_calibrationMode" class="set-option" data-option="calibrationMode">
+					<option value="0">{{ __('Manual') }}</option>
+					<option value="1">{{ __('Adaptive') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="set_recovery_max_offset">{{ __('Missed Lap Offset') }}</label>
 					<p class="desc">{{ __('Adjusts EnterAt value after "Catch Missed Lap"') }}</p>
 				</div>
