@@ -9,15 +9,19 @@ def Color(red, green, blue):
 
 class ColorVal:
     NONE = Color(0,0,0)
-    BLUE = Color(0,0,255)
+    BLUE = Color(0,31,255)
     CYAN = Color(0,255,255)
-    DARK_ORANGE = Color(255,50,0)
+    DARK_ORANGE = Color(255,63,0)
+    DARK_YELLOW = Color(250,210,0)
     GREEN = Color(0,255,0)
+    LIGHT_GREEN = Color(127,255,0)
     ORANGE = Color(255,128,0)
-    PINK = Color(255,0,60)
-    PURPLE = Color(150,0,255)
+    MINT = Color(63,255,63)
+    PINK = Color(255,0,127)
+    PURPLE = Color(127,0,255)
     RED = Color(255,0,0)
-    YELLOW = Color(250,210,0)
+    SKY = Color(0,191,255)
+    YELLOW = Color(255,255,0)
 
 class ColorPattern:
     SOLID = 0

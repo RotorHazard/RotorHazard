@@ -62,8 +62,8 @@ class StripLEDHandler(LEDHandler):
     VTX_COLOR_LINGER_TIME = 5  # delay before clearing colors via VTX enter/pass (seconds)
     RACE_COLOR_LINGER_TIME = 300  # delay before clearing race stage/start/stop colors (seconds)
     
-    nodeToColorArray = [ColorVal.BLUE, ColorVal.DARK_ORANGE, ColorVal.PINK, ColorVal.PURPLE, \
-                        ColorVal.YELLOW, ColorVal.CYAN, ColorVal.GREEN, ColorVal.RED]
+    nodeToColorArray = [ColorVal.BLUE, ColorVal.DARK_ORANGE, ColorVal.LIGHT_GREEN, ColorVal.YELLOW, \
+                        ColorVal.PURPLE, ColorVal.PINK, ColorVal.MINT, ColorVal.SKY]
     
     def __init__(self, strip):
         LEDHandler.__init__(self, strip)
