@@ -4302,17 +4302,13 @@ else:
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)
-    led_handler.showRainbowCycle()
+    led_handler.startup()
     try:
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
     except KeyboardInterrupt:
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
-
-    if strip is not None:
-        led_off(strip)
-        # led_handler.startup()
 
 # Start HTTP server
 if __name__ == '__main__':

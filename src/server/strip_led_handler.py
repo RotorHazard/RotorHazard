@@ -106,7 +106,7 @@ class StripLEDHandler(LEDHandler):
             self.cmdStripColor(self.nodeToColorArray[node.index%len(self.nodeToColorArray)], \
                                ColorPattern.SOLID)  # crossings should be short term, so stay on until next event
         
-    def showRainbowCycle(self):
+    def startup(self):
         self.cmdStripColor(ColorVal.BLUE, ColorPattern.CUSTOM_RB_CYCLE, 1)
 
 def get_led_handler(strip, config, *args, **kwargs):
