@@ -87,6 +87,10 @@ Config['LED']['LED_INVERT']     = False   # True to invert the signal (when usin
 Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
 
+Config['LED']['BITMAPS'] = {}
+Config['LED']['BITMAPS']['PANEL_ROTATE'] = 0   # LED Panel rotation
+Config['LED']['BITMAPS']['INVERTED_PANEL_ROWS'] = False  # Z-ordered LED panel fix
+
 # other default configurations
 Config['GENERAL']['HTTP_PORT'] = 5000
 Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
@@ -103,7 +107,15 @@ try:
     with open(CONFIG_FILE_NAME, 'r') as f:
         ExternalConfig = json.load(f)
     Config['GENERAL'].update(ExternalConfig['GENERAL'])
-    Config['LED'].update(ExternalConfig['LED'])
+
+    try:
+        bitmaptree = Config['LED']['BITMAPS']
+        Config['LED'].update(ExternalConfig['LED'])
+        Config['LED']['BITMAPS'] = bitmaptree
+        Config['LED']['BITMAPS'].update(ExternalConfig['LED']['BITMAPS'])
+    except KeyError:
+        Config['LED'].update(ExternalConfig['LED'])
+
     if 'SENSORS' in ExternalConfig:
         Config['SENSORS'].update(ExternalConfig['SENSORS'])
     if 'SERIAL_PORTS' in ExternalConfig:
