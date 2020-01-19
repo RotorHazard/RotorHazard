@@ -59,6 +59,9 @@ class LEDHandler:
 
     def startup(self):
         pass
+        
+    def shutdown(self):
+        pass
 
     def staging(self):
         pass
@@ -73,9 +76,6 @@ class LEDHandler:
         pass
 
     def crossing_entered(self, node):
-        pass
-        
-    def showRainbowCycle(self):
         pass
 
     def finished(self):

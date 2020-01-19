@@ -70,6 +70,7 @@ class StripLEDHandler(LEDHandler):
         gevent.spawn(self.processThreadFn)
     
     def processThreadFn(self):
+        gevent.sleep(0.250)  # start with a sleep to let other startup threads run
         while True:
             if self.processEventObj.wait(0.250):  # wait for timeout or event flag set
                 self.processEventObj.clear()
@@ -99,15 +100,18 @@ class StripLEDHandler(LEDHandler):
         self.cmdStripColor(ColorVal.RED, ColorPattern.SOLID, self.RACE_COLOR_LINGER_TIME)
 
     def pass_record(self, node):
-            self.cmdStripColor(self.nodeToColorArray[node.index%len(self.nodeToColorArray)], \
-                               ColorPattern.ALTERNATING, self.VTX_COLOR_LINGER_TIME)
+        self.cmdStripColor(self.nodeToColorArray[node.index%len(self.nodeToColorArray)], \
+                           ColorPattern.ALTERNATING, self.VTX_COLOR_LINGER_TIME)
 
     def crossing_entered(self, node):
-            self.cmdStripColor(self.nodeToColorArray[node.index%len(self.nodeToColorArray)], \
-                               ColorPattern.SOLID)  # crossings should be short term, so stay on until next event
+        self.cmdStripColor(self.nodeToColorArray[node.index%len(self.nodeToColorArray)], \
+                           ColorPattern.SOLID)  # crossings should be short term, so stay on until next event
         
     def startup(self):
         self.cmdStripColor(ColorVal.BLUE, ColorPattern.CUSTOM_RB_CYCLE, 1)
+        
+    def shutdown(self):
+        led_off(self.strip)
 
 def get_led_handler(strip, config, *args, **kwargs):
     return StripLEDHandler(strip)

@@ -4302,13 +4302,15 @@ else:
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)
-    led_handler.startup()
+    led_handler.startup()  # show startup indicator on LEDs
     try:
+        # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
     except KeyboardInterrupt:
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
+    led_handler.shutdown()  # server is shutting down, so shut off LEDs
 
 # Start HTTP server
 if __name__ == '__main__':
