@@ -87,9 +87,27 @@ Config['LED']['LED_INVERT']     = False   # True to invert the signal (when usin
 Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
 
-Config['LED']['BITMAPS'] = {}
-Config['LED']['BITMAPS']['PANEL_ROTATE'] = 0   # LED Panel rotation
-Config['LED']['BITMAPS']['INVERTED_PANEL_ROWS'] = False  # Z-ordered LED panel fix
+Config['LED']['BITMAPS'] = {
+    "PANEL_ROTATE": 0,
+    "INVERTED_PANEL_ROWS": False,
+    "startup": [
+        {"image": "static/image/LEDpanel-RotorHazard-logo.png", "delay": 0}
+    ],
+    "staging": [
+        {"image": "static/image/LEDpanel-status-staging.png", "delay": 0}
+    ],
+    "start": [
+        {"image": "static/image/LEDpanel-status-start.png", "delay": 0}
+    ],
+    "stop": [
+        {"image": "static/image/LEDpanel-status-stop.png", "delay": 0}
+    ],
+    "finished": [
+        {"image": "static/image/LEDpanel-status-finished.png", "delay": 0}
+    ]
+}
+
+
 
 # other default configurations
 Config['GENERAL']['HTTP_PORT'] = 5000
