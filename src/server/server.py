@@ -93,16 +93,16 @@ Config['LED']['BITMAPS'] = {
     "startup": [
         {"image": "static/image/LEDpanel-RotorHazard-logo.png", "delay": 0}
     ],
-    "staging": [
+    "raceStaging": [
         {"image": "static/image/LEDpanel-status-staging.png", "delay": 0}
     ],
-    "start": [
+    "raceStarted": [
         {"image": "static/image/LEDpanel-status-start.png", "delay": 0}
     ],
-    "stop": [
+    "raceStopped": [
         {"image": "static/image/LEDpanel-status-stop.png", "delay": 0}
     ],
-    "finished": [
+    "raceFinished": [
         {"image": "static/image/LEDpanel-status-finished.png", "delay": 0}
     ]
 }
