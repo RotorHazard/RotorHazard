@@ -1394,24 +1394,7 @@
 			</li>
 		</ol>
 
-		<div class="calibration-guide">
-			<h3>{{ __('Calibration') }}</h3>
-			<ol>
-				<li>{{ __('Power on a VTx at the same frequency as the node') }}</li>
-				<li>{{ __('Pass VTx very near the timer to establish peak RSSI for node') }}</li>
-				<li>{{ __('Place VTx 5-10 feet away and press "Capture" for EnterAt') }}</li>
-				<li>{{ __('Place VTx 20-30 feet away and press "Capture" for ExitAt') }}</li>
-				<li>{{ __('Review "Crossing" points and adjust until accurately responding') }}</li>
-				<li>{{ __('The EnterAt value should always be higher than the ExitAt value') }}</li>
-			</ol>
-			<h3>{{ __('Troubleshooting') }}</h3>
-			<ul>
-				<li>{{ __('If gate crossings are being missed then lower EnterAt') }}</li>
-				<li>{{ __("If gate crossing are triggered when they shouldn't be then increase EnterAt") }}</li>
-				<li>{{ __('If a pass by the timer is resulting in multiple crossings, lower ExitAt') }}</li>
-				<li>{{ __('If the "Crossing" indicator is stuck on then increase ExitAt') }}</li>
-			</ul>
-		</div>
+		<p class="form-note"><a href="/docs?d=Tuning%20Parameters.md">{{ __("Tuning Parameters") }}</a></p>
 	</div>
 </div>
 
