@@ -82,7 +82,7 @@ class BaseHardwareInterface(object):
                 node.lap_timestamp = readtime - (ms_val / 1000.0)
     
             # if new lap detected for node then append item to updates list
-            if lap_id != node.last_lap_id:
+            if lap_id != node.node_lap_id:
                 upd_list.append((node, lap_id, node.lap_timestamp))
     
             # check if capturing enter-at level for node
@@ -131,17 +131,17 @@ class BaseHardwareInterface(object):
             if len(upd_list) == 1:  # list contains single item
                 item = upd_list[0]
                 node = item[0]
-                if node.last_lap_id != -1 and callable(self.pass_record_callback):
+                if node.node_lap_id != -1 and callable(self.pass_record_callback):
                     gevent.spawn(self.pass_record_callback, node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
-                node.last_lap_id = item[1]  # new_lap_id
+                node.node_lap_id = item[1]  # new_lap_id
 
             else:  # list contains multiple items; sort so processed in order by lap time
                 upd_list.sort(key = lambda i: i[0].lap_timestamp)
                 for item in upd_list:
                     node = item[0]
-                    if node.last_lap_id != -1 and callable(self.pass_record_callback):
+                    if node.node_lap_id != -1 and callable(self.pass_record_callback):
                         gevent.spawn(self.pass_record_callback, node, item[2], BaseHardwareInterface.LAP_SOURCE_REALTIME)  # (node, lap_time_absolute)
-                    node.last_lap_id = item[1]  # new_lap_id
+                    node.node_lap_id = item[1]  # new_lap_id
 
     #
     # External functions for setting data

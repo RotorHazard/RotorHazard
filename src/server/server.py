@@ -719,6 +719,8 @@ def results():
 @requires_auth
 def race():
     '''Route to race management page.'''
+    if RACE.race_status == RACE_STATUS_READY:
+        led_handler.racePrepare()
     return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat,
@@ -735,6 +737,8 @@ def racepublic():
 @requires_auth
 def marshal():
     '''Route to race management page.'''
+    if RACE.race_status == RACE_STATUS_READY and led_handler.isOnRacePrepare():
+        led_handler.clear()
     return render_template('marshal.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes)
 
@@ -742,7 +746,8 @@ def marshal():
 @requires_auth
 def settings():
     '''Route to settings page.'''
-
+    if RACE.race_status == RACE_STATUS_READY and led_handler.isOnRacePrepare():
+        led_handler.clear()
     return render_template('settings.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config['GENERAL']['configFile'],
@@ -1734,8 +1739,9 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        led_handler.staging()
+        led_handler.raceStaging()
         clear_laps() # Clear laps before race start
+        init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
         RACE.timer_running = 0 # indicate race timer not running
         RACE.race_status = RACE_STATUS_STAGING
@@ -1779,7 +1785,7 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        led_handler.start()
+        led_handler.raceStarted()
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now()
@@ -1824,13 +1830,14 @@ def on_stop_race():
         server_log('No active race to stop')
         RACE.race_status = RACE_STATUS_READY # Go back to ready state
         INTERFACE.set_race_status(RACE_STATUS_READY)
+        led_handler.clear()
 
     RACE.timer_running = 0 # indicate race timer not running
     RACE_SCHEDULED = False # also stop any deferred start
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    led_handler.stop()
+    led_handler.raceStopped()
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -1958,6 +1965,7 @@ def on_discard_laps():
         check_emit_team_racing_status()  # Show team-racing status info
     else:
         emit_team_racing_status('')  # clear any displayed "Winner is" text
+    led_handler.clear()
 
 def clear_laps():
     '''Clear the current laps table.'''
@@ -1971,6 +1979,17 @@ def clear_laps():
     DB.session.query(LapSplit).delete()
     DB.session.commit()
     server_log('Current laps cleared')
+
+def init_node_cross_fields():
+    '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
+    for node in INTERFACE.nodes:
+        if node.frequency and node.frequency > 0:
+            node.current_pilot_id = Heat.query.filter_by( \
+                    heat_id=RACE.current_heat, node_index=node.index).one().pilot_id
+        else:
+            node.current_pilot_id = PILOT_ID_NONE
+        node.first_cross_flag = False
+        node.show_crossing_flag = False
 
 @SOCKET_IO.on('set_current_heat')
 def on_set_current_heat(data):
@@ -3625,7 +3644,7 @@ def check_race_time_expired():
     if race_format and race_format.race_mode == 0: # count down
         if monotonic() >= RACE_START + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
-            led_handler.finished()
+            led_handler.raceFinished()
             if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
@@ -3664,6 +3683,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         # Lap zero represents the time from the launch pad to flying through the gate
                         lap_time = lap_time_stamp
                         lap_id = 0
+                        node.first_cross_flag = True  # indicate first crossing completed
                     else: # This is a normal completed lap
                         # Find the time stamp of the last lap completed
                         last_lap_time_stamp = CurrentLap.query.filter( \
@@ -3769,8 +3789,6 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                             emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
                             elif lap_id == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
-
-                        led_handler.pass_record(node)
                 else:
                     server_log('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
@@ -3799,8 +3817,31 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
 
 def node_crossing_callback(node):
     emit_node_crossing_change(node)
-    if node.crossing_flag:  # if VTX entered gate then set LED color
-        led_handler.crossing_entered(node)
+    # handle LED gate-status indicators:
+    if led_handler.isEnabled():
+        # if race staging or stopped or 'Race' page displayed then no indicators
+        if RACE.race_status == RACE_STATUS_STAGING or RACE.race_status == RACE_STATUS_DONE \
+                or led_handler.isOnRacePrepare():
+            return
+        if RACE.race_status == RACE_STATUS_RACING:  # if race is in progress
+            # if no pilot assigned to node or no first crossing yet then no indicators
+            if node.current_pilot_id == PILOT_ID_NONE or not node.first_cross_flag:
+                return
+            # first crossing has happened; if 'enter' then show indicator,
+            #  if first event is 'exit' then ignore (because will be end of first crossing)
+            if node.crossing_flag:
+                led_handler.crossingEntered(node)
+                node.show_crossing_flag = True
+            else:
+                if node.show_crossing_flag:
+                    led_handler.crossingExited(node)
+                else:
+                    node.show_crossing_flag = True
+        else:
+            if node.crossing_flag:
+                led_handler.crossingEntered(node)
+            else:
+                led_handler.crossingExited(node)
 
 # set callback functions invoked by interface module
 INTERFACE.pass_record_callback = pass_record_callback

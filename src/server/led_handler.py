@@ -21,13 +21,15 @@ class ColorVal:
     PURPLE = Color(127,0,255)
     RED = Color(255,0,0)
     SKY = Color(0,191,255)
+    WHITE = Color(255,255,255)
     YELLOW = Color(255,255,0)
 
 class ColorPattern:
     SOLID = 0
     ALTERNATING = 1
     TWO_OUT_OF_THREE = 2
-    CUSTOM_RB_CYCLE = 3  # handled by subclass
+    MOD_SEVEN = 3
+    CUSTOM_RB_CYCLE = 4  # handled by subclass
 
 def led_on(strip, color, pattern=ColorPattern.SOLID):
     if pattern == ColorPattern.SOLID:
@@ -48,6 +50,12 @@ def led_on(strip, color, pattern=ColorPattern.SOLID):
                 strip.setPixelColor(i, color)
             else:
                 strip.setPixelColor(i, ColorVal.NONE)
+    elif pattern == ColorPattern.MOD_SEVEN:
+        for i in range(strip.numPixels()):
+            if i % 7 == 0:
+                strip.setPixelColor(i, color)
+            else:
+                strip.setPixelColor(i, ColorVal.NONE)
     strip.show()
 
 def led_off(strip):
@@ -57,26 +65,38 @@ class LEDHandler:
     def __init__(self, strip):
         self.strip = strip
 
+    def isEnabled(self):
+        return False
+
     def startup(self):
         pass
         
     def shutdown(self):
         pass
 
-    def staging(self):
+    def racePrepare(self):
         pass
 
-    def start(self):
+    def raceStaging(self):
         pass
 
-    def stop(self):
+    def raceStarted(self):
         pass
 
-    def pass_record(self, node):
+    def raceStopped(self):
         pass
 
-    def crossing_entered(self, node):
+    def raceFinished(self):
         pass
 
-    def finished(self):
+    def clear(self):
         pass
+
+    def crossingEntered(self, node):
+        pass
+
+    def crossingExited(self, node):
+        pass
+
+    def isOnRacePrepare(self):
+        return False

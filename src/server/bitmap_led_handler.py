@@ -32,6 +32,9 @@ class BitmapLEDHandler:
         self.strip = strip
         self.config = config
 
+    def isEnabled(self):
+        return True
+
     def __getattr__(self, name):
         def render(*args, **kwargs):
             bitmaps = self.config.get(name)

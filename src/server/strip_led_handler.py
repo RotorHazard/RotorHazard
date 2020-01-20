@@ -59,6 +59,8 @@ class StripLEDHandler(LEDHandler):
     processCurrentPattern = ColorPattern.SOLID
     processLastSetColorTime = monotonic()
     processColorLingerTime = 0
+    onRacePrepareFlag = False
+    RACE_PREPARE_COLOR = ColorVal.DARK_ORANGE
     VTX_COLOR_LINGER_TIME = 5  # delay before clearing colors via VTX enter/pass (seconds)
     RACE_COLOR_LINGER_TIME = 300  # delay before clearing race stage/start/stop colors (seconds)
     
@@ -68,7 +70,10 @@ class StripLEDHandler(LEDHandler):
     def __init__(self, strip):
         LEDHandler.__init__(self, strip)
         gevent.spawn(self.processThreadFn)
-    
+
+    def isEnabled(self):
+        return True
+
     def processThreadFn(self):
         gevent.sleep(0.250)  # start with a sleep to let other startup threads run
         while True:
@@ -83,34 +88,47 @@ class StripLEDHandler(LEDHandler):
                         monotonic() > self.processLastSetColorTime + self.processColorLingerTime:
                 self.processCurrentColor = ColorVal.NONE
                 led_off(self.strip)
-        
+
     def cmdStripColor(self, clrVal, clrPat, lingerTime=0):
         self.processCurrentColor = clrVal
         self.processCurrentPattern = clrPat
         self.processColorLingerTime = lingerTime
         self.processEventObj.set()  # interrupt event 'wait' in 'processThreadFn()'
-        
-    def staging(self):
+        self.onRacePrepareFlag = False
+
+    def racePrepare(self):
+        self.cmdStripColor(self.RACE_PREPARE_COLOR, ColorPattern.MOD_SEVEN, self.RACE_COLOR_LINGER_TIME)
+        self.onRacePrepareFlag = True
+    
+    def raceStaging(self):
         self.cmdStripColor(ColorVal.ORANGE, ColorPattern.TWO_OUT_OF_THREE, self.RACE_COLOR_LINGER_TIME)
 
-    def start(self):
-        self.cmdStripColor(ColorVal.GREEN, ColorPattern.SOLID, self.VTX_COLOR_LINGER_TIME)  # race is running so clear after a short time
+    def raceStarted(self):
+        self.cmdStripColor(ColorVal.GREEN, ColorPattern.SOLID, self.VTX_COLOR_LINGER_TIME*2)  # race is running so clear after a short time
 
-    def stop(self):
+    def raceStopped(self):
         self.cmdStripColor(ColorVal.RED, ColorPattern.SOLID, self.RACE_COLOR_LINGER_TIME)
 
-    def pass_record(self, node):
+    def clear(self):
+        self.cmdStripColor(ColorVal.NONE, ColorPattern.SOLID)
+
+    def crossingEntered(self, node):
+        self.cmdStripColor(self.nodeToColorArray[node.index%len(self.nodeToColorArray)], \
+                           ColorPattern.SOLID)  # crossings should be short term, so stay on until next event
+
+    def crossingExited(self, node):
         self.cmdStripColor(self.nodeToColorArray[node.index%len(self.nodeToColorArray)], \
                            ColorPattern.ALTERNATING, self.VTX_COLOR_LINGER_TIME)
 
-    def crossing_entered(self, node):
-        self.cmdStripColor(self.nodeToColorArray[node.index%len(self.nodeToColorArray)], \
-                           ColorPattern.SOLID)  # crossings should be short term, so stay on until next event
+    # return True if last call was to 'racePrepare()' fn (and hasn't timed out)
+    def isOnRacePrepare(self):
+        return self.onRacePrepareFlag and self.processCurrentColor == self.RACE_PREPARE_COLOR
         
     def startup(self):
         self.cmdStripColor(ColorVal.BLUE, ColorPattern.CUSTOM_RB_CYCLE, 1)
         
     def shutdown(self):
+        self.processCurrentColor = ColorVal.NONE
         led_off(self.strip)
 
 def get_led_handler(strip, config, *args, **kwargs):

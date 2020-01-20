@@ -5,13 +5,17 @@ class Node:
     def __init__(self):
         self.api_level = 0
         self.api_valid_flag = False
+        self.index = -1
         self.frequency = 0
         self.current_rssi = 0
         self.node_peak_rssi = 0
         self.node_nadir_rssi = 0
         self.pass_peak_rssi = 0
         self.pass_nadir_rssi = 0
-        self.last_lap_id = -1
+        self.node_lap_id = -1
+        self.current_pilot_id = 0
+        self.first_cross_flag = False
+        self.show_crossing_flag = False
         # self.lap_ms_since_start = -1
         self.lap_timestamp = -1
         self.loop_time = 10
