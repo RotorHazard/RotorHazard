@@ -31,8 +31,7 @@ import random
 import json
 
 # LED imports
-from led_handler import Color, LEDHandler, led_on, led_off
-from strip_led_handler import led_theaterChase, led_rainbow, led_rainbowCycle, led_theaterChaseRainbow
+from led_handler import LEDHandler, NoLEDHandler, Color, ColorPattern
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -720,7 +719,7 @@ def results():
 def race():
     '''Route to race management page.'''
     if RACE.race_status == RACE_STATUS_READY:
-        led_handler.racePrepare()
+        led_handler.event("racePrepare")
     return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat,
@@ -1739,7 +1738,7 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        led_handler.raceStaging()
+        led_handler.event("raceStaging")
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
@@ -1785,7 +1784,7 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        led_handler.raceStarted()
+        led_handler.event("raceStarted")
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now()
@@ -1837,7 +1836,7 @@ def on_stop_race():
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    led_handler.raceStopped()
+    led_handler.event("raceStopped")
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -2144,7 +2143,7 @@ def on_LED_solid(data):
     led_green = data['green']
     led_blue = data['blue']
     if strip is not None:
-        led_on(strip, Color(led_red,led_green,led_blue))
+        led_handler.event("manualChange", color=Color(led_red,led_green,led_blue), pattern=ColorPattern.SOLID, time=None)
 
 @SOCKET_IO.on('LED_chase')
 def on_LED_chase(data):
@@ -2153,28 +2152,29 @@ def on_LED_chase(data):
     led_green = data['green']
     led_blue = data['blue']
     if strip is not None:
-        led_theaterChase(strip, Color(led_red,led_green,led_blue))
+        led_handler.event("manualChange", color=Color(led_red,led_green,led_blue), pattern=ColorPattern.CHASE, time=None)
 
 @SOCKET_IO.on('LED_RB')
 def on_LED_RB():
     if strip is not None:
-        led_rainbow(strip) #Rainbow
+        # *** not reimplemented *** led_rainbow(strip) #Rainbow
 
 @SOCKET_IO.on('LED_RBCYCLE')
 def on_LED_RBCYCLE():
     if strip is not None:
+        led_handler.event("manualChange", color=Color(led_red,led_green,led_blue), pattern=ColorPattern.CUSTOM_RB_CYCLE, time=None)
         led_rainbowCycle(strip) #Rainbow Cycle
 
 @SOCKET_IO.on('LED_RBCHASE')
 def on_LED_RBCHASE():
     if strip is not None:
-        led_theaterChaseRainbow(strip) #Rainbow Chase
+        # *** not reimplemented *** led_theaterChaseRainbow(strip) #Rainbow Chase
 
 @SOCKET_IO.on('LED_brightness')
 def on_LED_brightness(data):
     '''Change LED Brightness'''
     brightness = data['brightness']
-    strip.setBrightness(brightness)
+    strip.setBrightness(brightness) # *** Errors ANSIPixel ***
     strip.show()
     setOption("ledBrightness", brightness)
 
@@ -3644,7 +3644,7 @@ def check_race_time_expired():
     if race_format and race_format.race_mode == 0: # count down
         if monotonic() >= RACE_START + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
-            led_handler.raceFinished()
+            led_handler.event("raceFinished")
             if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
@@ -3830,18 +3830,18 @@ def node_crossing_callback(node):
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
-                led_handler.crossingEntered(node)
+                led_handler.event("crossingEntered", node=node)
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
-                    led_handler.crossingExited(node)
+                    led_handler.event("crossingExited", node=node)
                 else:
                     node.show_crossing_flag = True
         else:
             if node.crossing_flag:
-                led_handler.crossingEntered(node)
+                led_handler.event("crossingEntered", node=node)
             else:
-                led_handler.crossingExited(node)
+                led_handler.event("crossingExited", node=node)
 
 # set callback functions invoked by interface module
 INTERFACE.pass_record_callback = pass_record_callback
@@ -4308,10 +4308,6 @@ if Heat.query.first():
 # LED Code
 #
 
-class NoLEDHandler(LEDHandler):
-    def __init__(self):
-        LEDHandler.__init__(self, None)
-
 # Create LED object with appropriate configuration.
 strip = None
 if Config['LED']['LED_COUNT'] > 0:
@@ -4335,15 +4331,15 @@ else:
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
-    led_handler_name = os.environ.get('RH_LED_HANDLER', Config['LED']['HANDLER'])
-    ledHandlerModule = importlib.import_module(led_handler_name + '_led_handler')
-    led_handler = ledHandlerModule.get_led_handler(strip=strip, config=Config['LED'])
+
+    Config['LED']['HANDLER'] = os.environ.get('RH_LED_HANDLER', Config['LED']['HANDLER'])
+    led_handler = LEDHandler(strip, Config['LED'])
 else:
     led_handler = NoLEDHandler()
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)
-    led_handler.startup()  # show startup indicator on LEDs
+    led_handler.event("startup")  # show startup indicator on LEDs
     try:
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
@@ -4351,7 +4347,7 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
-    led_handler.shutdown()  # server is shutting down, so shut off LEDs
+    led_handler.event("shutdown")  # server is shutting down, so shut off LEDs
 
 # Start HTTP server
 if __name__ == '__main__':
