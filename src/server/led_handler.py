@@ -31,8 +31,8 @@ class ColorPattern:
     MOD_SEVEN = 3
     CUSTOM_RB_CYCLE = 4  # handled by subclass
     CHASE = 5  # handled by subclass
-    RAINBOW = 6
-    RAINBOW_CHASE = 7
+    RAINBOW = 6  # handled by subclass
+    RAINBOW_CHASE = 7  # handled by subclass
 
 def led_on(strip, color, pattern=ColorPattern.SOLID):
     if pattern == ColorPattern.SOLID:
@@ -174,6 +174,7 @@ from monotonic import monotonic
 
 def led_theaterChase(strip, color, wait_ms=50, iterations=5):
     """Movie theater light style chaser animation."""
+    led_on(strip, ColorVal.NONE)
     for j in range(iterations):
         for q in range(3):
             for i in range(0, strip.numPixels()-q, 3):
@@ -196,11 +197,10 @@ def color_wheel(pos):
 
 def led_rainbow(strip, wait_ms=2, iterations=1):
     """Draw rainbow that fades across all pixels at once."""
-    for j in range(256*iterations):
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(i, color_wheel((i+j) & 255))
-        strip.show()
-        gevent.sleep(wait_ms/1000.0)
+    for i in range(strip.numPixels()):
+        strip.setPixelColor(i, color_wheel((i) & 255))
+    strip.show()
+    gevent.sleep(wait_ms/1000.0)
 
 def led_rainbowCycle(strip, wait_ms=2, iterations=1):
     """Draw rainbow that uniformly distributes itself across all pixels."""
@@ -212,6 +212,7 @@ def led_rainbowCycle(strip, wait_ms=2, iterations=1):
 
 def led_theaterChaseRainbow(strip, wait_ms=25):
     """Rainbow movie theater light style chaser animation."""
+    led_on(strip, ColorVal.NONE)
     for j in range(256):
         for q in range(3):
             for i in range(0, strip.numPixels()-q, 3):

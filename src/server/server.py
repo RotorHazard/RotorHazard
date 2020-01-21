@@ -2167,7 +2167,7 @@ def on_LED_RBCYCLE():
 @SOCKET_IO.on('LED_RBCHASE')
 def on_LED_RBCHASE():
     if strip is not None:
-        led_handler.event("manualChange", color=None, pattern=ColorPattern.RAINBOW, time=5) #Rainbow Chase
+        led_handler.event("manualChange", color=None, pattern=ColorPattern.RAINBOW_CHASE, time=5) #Rainbow Chase
 
 @SOCKET_IO.on('LED_brightness')
 def on_LED_brightness(data):
