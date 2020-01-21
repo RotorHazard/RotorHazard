@@ -60,6 +60,9 @@ class ANSIPixel:
             start = end
             row += 1
 
+    def setBrightness(*args, **kwargs):
+        pass
+
 def get_pixel_interface(config, brightness, *args, **kwargs):
     '''Returns the pixel interface.'''
     print('LED: locally enabled via ANSIPixel')

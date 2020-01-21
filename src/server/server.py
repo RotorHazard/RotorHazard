@@ -2152,29 +2152,28 @@ def on_LED_chase(data):
     led_green = data['green']
     led_blue = data['blue']
     if strip is not None:
-        led_handler.event("manualChange", color=Color(led_red,led_green,led_blue), pattern=ColorPattern.CHASE, time=None)
+        led_handler.event("manualChange", color=Color(led_red,led_green,led_blue), pattern=ColorPattern.CHASE, time=5)
 
 @SOCKET_IO.on('LED_RB')
 def on_LED_RB():
     if strip is not None:
-        # *** not reimplemented *** led_rainbow(strip) #Rainbow
+        led_handler.event("manualChange", color=None, pattern=ColorPattern.RAINBOW, time=5) #Rainbow
 
 @SOCKET_IO.on('LED_RBCYCLE')
 def on_LED_RBCYCLE():
     if strip is not None:
-        led_handler.event("manualChange", color=Color(led_red,led_green,led_blue), pattern=ColorPattern.CUSTOM_RB_CYCLE, time=None)
-        led_rainbowCycle(strip) #Rainbow Cycle
+        led_handler.event("manualChange", color=None, pattern=ColorPattern.CUSTOM_RB_CYCLE, time=5) #Rainbow Cycle
 
 @SOCKET_IO.on('LED_RBCHASE')
 def on_LED_RBCHASE():
     if strip is not None:
-        # *** not reimplemented *** led_theaterChaseRainbow(strip) #Rainbow Chase
+        led_handler.event("manualChange", color=None, pattern=ColorPattern.RAINBOW, time=5) #Rainbow Chase
 
 @SOCKET_IO.on('LED_brightness')
 def on_LED_brightness(data):
     '''Change LED Brightness'''
     brightness = data['brightness']
-    strip.setBrightness(brightness) # *** Errors ANSIPixel ***
+    strip.setBrightness(brightness)
     strip.show()
     setOption("ledBrightness", brightness)
 

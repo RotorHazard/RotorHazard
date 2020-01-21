@@ -31,6 +31,8 @@ class ColorPattern:
     MOD_SEVEN = 3
     CUSTOM_RB_CYCLE = 4  # handled by subclass
     CHASE = 5  # handled by subclass
+    RAINBOW = 6
+    RAINBOW_CHASE = 7
 
 def led_on(strip, color, pattern=ColorPattern.SOLID):
     if pattern == ColorPattern.SOLID:
@@ -156,13 +158,13 @@ class NoLEDHandler(LEDHandler):
     def isEnabled(self):
         return False
 
-    def event(self, event, eventData):
+    def event(*args, **kwargs):
         pass
 
-    def clear(self):
+    def clear(*args, **kwargs):
         pass
 
-    def isOnRacePrepare(self):
+    def isOnRacePrepare(*args, **kwargs):
         return False
 
 
@@ -240,6 +242,10 @@ class StripLEDHandler:
                     led_rainbowCycle(self.strip)
                 elif self.processCurrentPattern is ColorPattern.CHASE:
                     led_theaterChase(self.strip, self.processCurrentColor)
+                elif self.processCurrentPattern is ColorPattern.RAINBOW:
+                    led_rainbow(self.strip)
+                elif self.processCurrentPattern is ColorPattern.RAINBOW_CHASE:
+                    led_theaterChaseRainbow(self.strip)
                 else:
                     led_on(self.strip, self.processCurrentColor, self.processCurrentPattern)
             elif self.processCurrentColor != ColorVal.NONE and self.processColorLingerTime > 0 and \
@@ -280,7 +286,6 @@ class BitmapLEDHandler:
         self.config = config
 
     def displayImage(self, name):
-        print(name)
         bitmaps = name
         if bitmaps is not None:
             for bitmap in bitmaps:
