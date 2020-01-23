@@ -604,8 +604,9 @@ def primeGlobalsCache():
 
 def getOption(option, default_value=False):
     try:
-        if GLOBALS_CACHE[option]:
-            return GLOBALS_CACHE[option]
+        val = GLOBALS_CACHE[option]
+        if val or val == "":
+            return val
         else:
             return default_value
     except:
