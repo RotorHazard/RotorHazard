@@ -59,8 +59,6 @@ class StripLEDHandler(LEDHandler):
     processCurrentPattern = ColorPattern.SOLID
     processLastSetColorTime = monotonic()
     processColorLingerTime = 0
-    onRacePrepareFlag = False
-    RACE_PREPARE_COLOR = ColorVal.DARK_ORANGE
     VTX_COLOR_LINGER_TIME = 5  # delay before clearing colors via VTX enter/pass (seconds)
     RACE_COLOR_LINGER_TIME = 300  # delay before clearing race stage/start/stop colors (seconds)
     
@@ -94,11 +92,6 @@ class StripLEDHandler(LEDHandler):
         self.processCurrentPattern = clrPat
         self.processColorLingerTime = lingerTime
         self.processEventObj.set()  # interrupt event 'wait' in 'processThreadFn()'
-        self.onRacePrepareFlag = False
-
-    def racePrepare(self):
-        self.cmdStripColor(self.RACE_PREPARE_COLOR, ColorPattern.MOD_SEVEN, self.RACE_COLOR_LINGER_TIME)
-        self.onRacePrepareFlag = True
     
     def raceStaging(self):
         self.cmdStripColor(ColorVal.ORANGE, ColorPattern.TWO_OUT_OF_THREE, self.RACE_COLOR_LINGER_TIME)
@@ -119,10 +112,6 @@ class StripLEDHandler(LEDHandler):
     def crossingExited(self, node):
         self.cmdStripColor(self.nodeToColorArray[node.index%len(self.nodeToColorArray)], \
                            ColorPattern.ALTERNATING, self.VTX_COLOR_LINGER_TIME)
-
-    # return True if last call was to 'racePrepare()' fn (and hasn't timed out)
-    def isOnRacePrepare(self):
-        return self.onRacePrepareFlag and self.processCurrentColor == self.RACE_PREPARE_COLOR
         
     def startup(self):
         self.cmdStripColor(ColorVal.BLUE, ColorPattern.CUSTOM_RB_CYCLE, 1)

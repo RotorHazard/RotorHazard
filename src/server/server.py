@@ -720,8 +720,6 @@ def results():
 @requires_auth
 def race():
     '''Route to race management page.'''
-    if RACE.race_status == RACE_STATUS_READY:
-        led_handler.racePrepare()
     return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat,
@@ -738,8 +736,6 @@ def racepublic():
 @requires_auth
 def marshal():
     '''Route to race management page.'''
-    if RACE.race_status == RACE_STATUS_READY and led_handler.isOnRacePrepare():
-        led_handler.clear()
     return render_template('marshal.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes)
 
@@ -747,8 +743,6 @@ def marshal():
 @requires_auth
 def settings():
     '''Route to settings page.'''
-    if RACE.race_status == RACE_STATUS_READY and led_handler.isOnRacePrepare():
-        led_handler.clear()
     return render_template('settings.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config['GENERAL']['configFile'],
@@ -3819,15 +3813,9 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
 def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
-    if led_handler.isEnabled():
-        # if race staging or stopped or 'Race' page displayed then no indicators
-        if RACE.race_status == RACE_STATUS_STAGING or RACE.race_status == RACE_STATUS_DONE \
-                or led_handler.isOnRacePrepare():
-            return
-        if RACE.race_status == RACE_STATUS_RACING:  # if race is in progress
-            # if no pilot assigned to node or no first crossing yet then no indicators
-            if node.current_pilot_id == PILOT_ID_NONE or not node.first_cross_flag:
-                return
+    if led_handler.isEnabled() and RACE.race_status == RACE_STATUS_RACING:  # if race is in progress
+        # if pilot assigned to node and first crossing is complete
+        if node.current_pilot_id != PILOT_ID_NONE and node.first_cross_flag:
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
@@ -3838,16 +3826,6 @@ def node_crossing_callback(node):
                     led_handler.crossingExited(node)
                 else:
                     node.show_crossing_flag = True
-        else:
-            if node.crossing_flag:
-                led_handler.crossingEntered(node)
-            else:
-                led_handler.crossingExited(node)
-
-# set callback functions invoked by interface module
-INTERFACE.pass_record_callback = pass_record_callback
-INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
-INTERFACE.node_crossing_callback = node_crossing_callback
 
 def server_log(message):
     '''Messages emitted from the server script.'''
@@ -3858,8 +3836,6 @@ def hardware_log_callback(message):
     '''Message emitted from the interface class.'''
     print message
     SOCKET_IO.emit('hardware_log', message)
-
-INTERFACE.hardware_log_callback = hardware_log_callback
 
 def default_frequencies():
     '''Set node frequencies, R1367 for 4, IMD6C+ for 5+.'''
@@ -4209,6 +4185,12 @@ def expand_heats():
 #
 # Program Initialize
 #
+
+# set callback functions invoked by interface module
+INTERFACE.pass_record_callback = pass_record_callback
+INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
+INTERFACE.node_crossing_callback = node_crossing_callback
+INTERFACE.hardware_log_callback = hardware_log_callback
 
 # Save number of nodes found
 RACE.num_nodes = len(INTERFACE.nodes)

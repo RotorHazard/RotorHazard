@@ -74,9 +74,6 @@ class LEDHandler:
     def shutdown(self):
         pass
 
-    def racePrepare(self):
-        pass
-
     def raceStaging(self):
         pass
 
@@ -97,6 +94,3 @@ class LEDHandler:
 
     def crossingExited(self, node):
         pass
-
-    def isOnRacePrepare(self):
-        return False
