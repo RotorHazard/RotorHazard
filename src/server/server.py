@@ -79,7 +79,7 @@ Config['SERIAL_PORTS'] = []
 
 # LED strip configuration:
 Config['LED']['HANDLER']        = 'strip'
-Config['LED']['LED_COUNT']      = 150      # Number of LED pixels.
+Config['LED']['LED_COUNT']      = 0       # Number of LED pixels.
 Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
 Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
 Config['LED']['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
@@ -132,7 +132,10 @@ try:
         Config['LED']['BITMAPS'] = bitmaptree
         Config['LED']['BITMAPS'].update(ExternalConfig['LED']['BITMAPS'])
     except KeyError:
-        Config['LED'].update(ExternalConfig['LED'])
+        if 'LED' in ExternalConfig:
+            Config['LED'].update(ExternalConfig['LED'])
+        else:
+            print "No 'LED' entry found in configuration file "
 
     if 'SENSORS' in ExternalConfig:
         Config['SENSORS'].update(ExternalConfig['SENSORS'])
