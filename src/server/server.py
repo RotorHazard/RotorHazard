@@ -1766,8 +1766,16 @@ def on_stage_race():
 def race_start_thread(start_token):
     global Race_laps_winner_name
 
-    # non-blocking delay before time-critical code
-    while (monotonic() < RACE_START - 2):
+    # clear any lingering crossings at staging (if node rssi < enterAt)
+    for node in INTERFACE.nodes:
+        if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != PILOT_ID_NONE and \
+                    node.current_rssi < node.enter_at_level:
+            server_log("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
+                       format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
+            INTERFACE.force_end_crossing(node.index)
+
+    # do non-blocking delay before time-critical code
+    while (monotonic() < RACE_START - 0.5):
         gevent.sleep(0.1)
 
     if RACE.race_status == RACE_STATUS_STAGING and \
@@ -1775,7 +1783,7 @@ def race_start_thread(start_token):
         # Only start a race if it is not already in progress
         # Null this thread if token has changed (race stopped/started quickly)
 
-        # create blocking delay until race start
+        # do blocking delay until race start
         while monotonic() < RACE_START:
             pass
 
@@ -1789,6 +1797,11 @@ def race_start_thread(start_token):
             node.history_values = [] # clear race history
             node.history_times = []
             node.under_min_lap_count = 0
+            # clear any lingering crossing (if rssi>enterAt then first crossing starts now)
+            if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != PILOT_ID_NONE:
+                server_log("Forcing end crossing for node {0} at start (rssi={1}, enterAt={2}, exitAt={3})".\
+                           format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
+                INTERFACE.force_end_crossing(node.index)
 
         RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
         INTERFACE.set_race_status(RACE_STATUS_RACING)
