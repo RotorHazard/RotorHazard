@@ -3182,7 +3182,7 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
                     return -1
                 if lap_id >= num_laps_win:
                     lap_data = CurrentLap.query.filter(CurrentLap.node_index==node.index, \
-                        CurrentLap.deleted != 1, lap_id=num_laps_win).one()
+                        CurrentLap.deleted != 1, CurrentLap.lap_id==num_laps_win).one()
                     #server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
                              # save pilot_id for earliest lap time:
                     if win_pilot_id < 0 or lap_data.lap_time_stamp < win_lap_tstamp:
@@ -3334,7 +3334,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                                 CurrentLap.deleted != 1).scalar()
                     if lap_id > 0:
                         lap_data = CurrentLap.query.filter(CurrentLap.node_index==node.index, \
-                            CurrentLap.deleted != 1, lap_id=lap_id).one_or_none()
+                            CurrentLap.deleted != 1, CurrentLap.lap_id==lap_id).one_or_none()
                         if lap_data:
                             pilots_list.append((lap_id, lap_data.lap_time_stamp, pilot_id, node))
                             if lap_id > max_lap_id:
