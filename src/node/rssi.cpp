@@ -1,20 +1,17 @@
 #include "config.h"
-#include "FastRunningMedian.h"
 #include "rssi.h"
+
+#include "median-filter.h"
 
 struct Settings settings;
 struct State state;
 struct History history;
 struct LastPass lastPass;
 
-FastRunningMedian<rssi_t, SmoothingSamples, 0> rssiMedian;
-
-mtime_t SmoothingTimestamps[SmoothingTimestampSize];
-uint8_t SmoothingTimestampsIndex = 0;
+Filter<rssi_t> *filter = &_filter;
 
 void rssiInit()
 {
-    rssiMedian.init();
     state.lastloopMicros = micros();
 }
 
@@ -107,25 +104,18 @@ static void initExtremum(Extremum *e)
 
 bool rssiProcess(rssi_t rssi, mtime_t millis)
 {
-    rssiMedian.addValue(rssi);
+    filter->addRawValue(millis, rssi);
 
-    SmoothingTimestamps[SmoothingTimestampsIndex] = millis;
-    SmoothingTimestampsIndex++;
-    if (SmoothingTimestampsIndex >= SmoothingTimestampSize)
-    {
-        SmoothingTimestampsIndex = 0;
-    }
-
-    if (rssiMedian.isFilled() && state.activatedFlag)
+    if (filter->isFilled() && state.activatedFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received
 
         state.lastRssi = state.rssi;
-        state.rssi = rssiMedian.getMedian();  // retrieve the median
-        state.rssiTimestamp = SmoothingTimestamps[SmoothingTimestampsIndex];
+        state.rssi = filter->getFilteredValue();
+        state.rssiTimestamp = filter->getFilterTimestamp();
 
         /*** update history ***/
 
-        int rssiChange = state.rssi - state.lastRssi;
+        const int rssiChange = state.rssi - state.lastRssi;
         if (rssiChange > 0)
         {  // RSSI is rising
             // must buffer latest peak to prevent losing it (overwriting any unsent peak)
