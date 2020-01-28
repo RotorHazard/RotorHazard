@@ -1595,6 +1595,15 @@ def on_shutdown_pi():
     gevent.sleep(1);
     os.system("sudo shutdown now")
 
+@SOCKET_IO.on('reboot_pi')
+def on_reboot_pi():
+    '''Shutdown the raspberry pi.'''
+    CLUSTER.emit('reboot_pi')
+    emit_priority_message(__('Server is rebooting.'), True)
+    server_log('Rebooting pi')
+    gevent.sleep(1);
+    os.system("sudo reboot now")
+
 @SOCKET_IO.on("set_min_lap")
 def on_set_min_lap(data):
     min_lap = data['min_lap']
