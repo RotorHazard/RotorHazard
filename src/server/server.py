@@ -1746,6 +1746,9 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
+        if int(getOption('calibrationMode')):
+            autoUpdateCalibration()
+
         led_handler.raceStaging()
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
@@ -1774,6 +1777,78 @@ def on_stage_race():
             'race_time_sec': race_format.race_time_sec,
             'pi_starts_at_s': RACE_START
         }) # Announce staging with chosen delay
+
+def autoUpdateCalibration():
+    ''' Apply best tuning values to nodes '''
+    for node_index, node in enumerate(INTERFACE.nodes):
+        calibration = findBestValues(node, node_index)
+
+        if node.enter_at_level is not calibration['enter_at_level']:
+            on_set_enter_at_level({
+                'node': node_index,
+                'enter_at_level': calibration['enter_at_level']
+            })
+
+        if node.exit_at_level is not calibration['exit_at_level']:
+            on_set_exit_at_level({
+                'node': node_index,
+                'exit_at_level': calibration['exit_at_level']
+            })
+
+def findBestValues(node, node_index):
+    ''' Search race history for best tuning values '''
+
+    # get commonly used values
+    heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).one()
+    pilot = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
+    current_class = heat.class_id
+
+    # test for same heat, same node
+    race_query = SavedRaceMeta.query.filter_by(heat_id=heat.heat_id).order_by(-SavedRaceMeta.id).first()
+    if race_query:
+        pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
+        if pilotrace_query:
+            server_log('calibration: found same pilot+node in same heat')
+            return {
+                'enter_at_level': pilotrace_query.enter_at,
+                'exit_at_level': pilotrace_query.exit_at
+            }
+
+    # test for same class, same pilot, same node
+    race_query = SavedRaceMeta.query.filter_by(class_id=current_class).order_by(-SavedRaceMeta.id).first()
+    if race_query:
+        pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, node_index=node_index, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
+        if pilotrace_query:
+            server_log('calibration: found same pilot+node in other heat with same class')
+            return {
+                'enter_at_level': pilotrace_query.enter_at,
+                'exit_at_level': pilotrace_query.exit_at
+            }
+
+    # test for same pilot, same node
+    pilotrace_query = SavedPilotRace.query.filter_by(node_index=node_index, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
+    if pilotrace_query:
+        server_log('calibration: found same pilot+node in other heat with other class')
+        return {
+            'enter_at_level': pilotrace_query.enter_at,
+            'exit_at_level': pilotrace_query.exit_at
+        }
+
+    # test for same node
+    pilotrace_query = SavedPilotRace.query.filter_by(node_index=node_index).order_by(-SavedPilotRace.id).first()
+    if pilotrace_query:
+        server_log('calibration: found same node in other heat')
+        return {
+            'enter_at_level': pilotrace_query.enter_at,
+            'exit_at_level': pilotrace_query.exit_at
+        }
+
+    # fallback
+    server_log('calibration: no calibration hints found, no change')
+    return {
+        'enter_at_level': node.enter_at_level,
+        'exit_at_level': node.exit_at_level
+    }
 
 def race_start_thread(start_token):
     global Race_laps_winner_name
@@ -4058,6 +4133,7 @@ def db_reset_options_defaults():
     setOption("currentLanguage", "")
     setOption("currentProfile", "1")
     setCurrentRaceFormat(RaceFormat.query.first())
+    setOption("calibrationMode", "0")
     # minimum lap
     setOption("MinLapSec", "10")
     setOption("MinLapBehavior", "0")
