@@ -1746,9 +1746,6 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        if int(getOption('calibrationMode')):
-            autoUpdateCalibration()
-
         led_handler.raceStaging()
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
@@ -1803,12 +1800,20 @@ def findBestValues(node, node_index):
     pilot = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
     current_class = heat.class_id
 
+    # test for disabled node
+    if pilot is PILOT_ID_NONE or profile_freqs["f"][node.index] is FREQUENCY_ID_NONE:
+        server_log('Node {0} calibration: skipping disabled node'.format(node.index+1))
+        return {
+            'enter_at_level': node.enter_at_level,
+            'exit_at_level': node.exit_at_level
+        }
+
     # test for same heat, same node
     race_query = SavedRaceMeta.query.filter_by(heat_id=heat.heat_id).order_by(-SavedRaceMeta.id).first()
     if race_query:
         pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
         if pilotrace_query:
-            server_log('calibration: found same pilot+node in same heat')
+            server_log('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
             return {
                 'enter_at_level': pilotrace_query.enter_at,
                 'exit_at_level': pilotrace_query.exit_at
@@ -1819,7 +1824,7 @@ def findBestValues(node, node_index):
     if race_query:
         pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, node_index=node_index, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
         if pilotrace_query:
-            server_log('calibration: found same pilot+node in other heat with same class')
+            server_log('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
             return {
                 'enter_at_level': pilotrace_query.enter_at,
                 'exit_at_level': pilotrace_query.exit_at
@@ -1828,7 +1833,7 @@ def findBestValues(node, node_index):
     # test for same pilot, same node
     pilotrace_query = SavedPilotRace.query.filter_by(node_index=node_index, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
     if pilotrace_query:
-        server_log('calibration: found same pilot+node in other heat with other class')
+        server_log('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
         return {
             'enter_at_level': pilotrace_query.enter_at,
             'exit_at_level': pilotrace_query.exit_at
@@ -1837,14 +1842,14 @@ def findBestValues(node, node_index):
     # test for same node
     pilotrace_query = SavedPilotRace.query.filter_by(node_index=node_index).order_by(-SavedPilotRace.id).first()
     if pilotrace_query:
-        server_log('calibration: found same node in other heat')
+        server_log('Node {0} calibration: found same node in other heat'.format(node.index+1))
         return {
             'enter_at_level': pilotrace_query.enter_at,
             'exit_at_level': pilotrace_query.exit_at
         }
 
     # fallback
-    server_log('calibration: no calibration hints found, no change')
+    server_log('Node {0} calibration: no calibration hints found, no change.format(node.index+1)')
     return {
         'enter_at_level': node.enter_at_level,
         'exit_at_level': node.exit_at_level
@@ -2092,6 +2097,10 @@ def on_set_current_heat(data):
     new_heat_id = data['heat']
     RACE.current_heat = new_heat_id
     server_log('Current heat set: Heat {0}'.format(new_heat_id))
+
+    if int(getOption('calibrationMode')):
+        autoUpdateCalibration()
+
     emit_current_heat() # Race page, to update heat selection button
     emit_leaderboard() # Race page, to update callsigns in leaderboard
     race_format = getCurrentRaceFormat()
