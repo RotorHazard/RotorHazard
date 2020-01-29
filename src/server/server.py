@@ -31,7 +31,8 @@ import random
 import json
 
 # LED imports
-from led_handler import LEDHandler, NoLEDHandler, Color, ColorPattern
+from led_event_handler import LEDEventHandler, NoLEDHandler
+from led_handlers import Color, ColorVal, ColorPattern
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -78,34 +79,15 @@ Config['SERIAL_PORTS'] = []
 
 # LED strip configuration:
 Config['LED']['HANDLER']        = 'strip'
-Config['LED']['LED_COUNT']      = 150      # Number of LED pixels.
+Config['LED']['LED_COUNT']      = 0      # Number of LED pixels.
 Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
 Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
 Config['LED']['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
 Config['LED']['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
 Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
-
-Config['LED']['BITMAPS'] = {
-    "PANEL_ROTATE": 0,
-    "INVERTED_PANEL_ROWS": False,
-    "startup": [
-        {"image": "static/image/LEDpanel-RotorHazard-logo.png", "delay": 0}
-    ],
-    "raceStaging": [
-        {"image": "static/image/LEDpanel-status-staging.png", "delay": 0}
-    ],
-    "raceStarted": [
-        {"image": "static/image/LEDpanel-status-start.png", "delay": 0}
-    ],
-    "raceStopped": [
-        {"image": "static/image/LEDpanel-status-stop.png", "delay": 0}
-    ],
-    "raceFinished": [
-        {"image": "static/image/LEDpanel-status-finished.png", "delay": 0}
-    ]
-}
-
+Config['LED']['PANEL_ROTATE']   = 0
+Config['LED']['INVERTED_PANEL_ROWS'] = False
 
 
 # other default configurations
@@ -124,14 +106,14 @@ try:
     with open(CONFIG_FILE_NAME, 'r') as f:
         ExternalConfig = json.load(f)
     Config['GENERAL'].update(ExternalConfig['GENERAL'])
-
-    try:
-        bitmaptree = Config['LED']['BITMAPS']
-        Config['LED'].update(ExternalConfig['LED'])
-        Config['LED']['BITMAPS'] = bitmaptree
-        Config['LED']['BITMAPS'].update(ExternalConfig['LED']['BITMAPS'])
-    except KeyError:
-        Config['LED'].update(ExternalConfig['LED'])
+    Config['LED'].update(ExternalConfig['LED'])
+#    try:
+#        bitmaptree = Config['LED']['BITMAPS']
+#        Config['LED'].update(ExternalConfig['LED'])
+#        Config['LED']['BITMAPS'] = bitmaptree
+#        Config['LED']['BITMAPS'].update(ExternalConfig['LED']['BITMAPS'])
+#    except KeyError:
+#        Config['LED'].update(ExternalConfig['LED'])
 
     if 'SENSORS' in ExternalConfig:
         Config['SENSORS'].update(ExternalConfig['SENSORS'])
@@ -718,8 +700,6 @@ def results():
 @requires_auth
 def race():
     '''Route to race management page.'''
-    if RACE.race_status == RACE_STATUS_READY:
-        led_handler.event("racePrepare")
     return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat,
@@ -736,7 +716,7 @@ def racepublic():
 @requires_auth
 def marshal():
     '''Route to race management page.'''
-    if RACE.race_status == RACE_STATUS_READY and led_handler.isOnRacePrepare():
+    if RACE.race_status == RACE_STATUS_READY:
         led_handler.clear()
     return render_template('marshal.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes)
@@ -745,7 +725,7 @@ def marshal():
 @requires_auth
 def settings():
     '''Route to settings page.'''
-    if RACE.race_status == RACE_STATUS_READY and led_handler.isOnRacePrepare():
+    if RACE.race_status == RACE_STATUS_READY:
         led_handler.clear()
     return render_template('settings.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
@@ -3819,8 +3799,7 @@ def node_crossing_callback(node):
     # handle LED gate-status indicators:
     if led_handler.isEnabled():
         # if race staging or stopped or 'Race' page displayed then no indicators
-        if RACE.race_status == RACE_STATUS_STAGING or RACE.race_status == RACE_STATUS_DONE \
-                or led_handler.isOnRacePrepare():
+        if RACE.race_status == RACE_STATUS_STAGING or RACE.race_status == RACE_STATUS_DONE:
             return
         if RACE.race_status == RACE_STATUS_RACING:  # if race is in progress
             # if no pilot assigned to node or no first crossing yet then no indicators
@@ -4331,14 +4310,24 @@ if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
 
-    Config['LED']['HANDLER'] = os.environ.get('RH_LED_HANDLER', Config['LED']['HANDLER'])
-    led_handler = LEDHandler(strip, Config['LED'])
+    # Config['LED']['HANDLER'] = os.environ.get('RH_LED_HANDLER', Config['LED']['HANDLER'])
+    led_handler = LEDEventHandler(strip, Config['LED'])
 else:
     led_handler = NoLEDHandler()
 
+handlers = importlib.import_module('led_handlers')
+handlers.registerHandlers(led_handler)
+led_handler.setEventHandler("startup", "startupBitmap")
+led_handler.setEventHandler("raceStaging", "stagingBitmap")
+led_handler.setEventHandler("raceFinished", "finishedBitmap")
+led_handler.setEventHandler("raceStopped", "stoppedBitmap")
+led_handler.setEventHandler("raceStarted", "startBitmap")
+led_handler.setEventHandler("shutdown", "clear")
+
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)
-    led_handler.event("startup")  # show startup indicator on LEDs
+
+    led_handler.event("startup") # show startup indicator on LEDs
     try:
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
