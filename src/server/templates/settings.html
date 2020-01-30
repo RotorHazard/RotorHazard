@@ -1051,6 +1051,11 @@
 			return false;
 		});
 
+		$('button#reboot_pi').click(function (event) {
+			socket.emit('reboot_pi');
+			return false;
+		});
+
 		socket.on('set_option', function (msg) {
 			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
 		});
@@ -1374,6 +1379,15 @@
 
 		<!--Edit system tuning values-->
 		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_calibrationMode">{{ __('Calibration Mode') }}</label>
+				</div>
+				<select id="set_calibrationMode" class="set-option" data-option="calibrationMode">
+					<option value="0">{{ __('Manual') }}</option>
+					<option value="1">{{ __('Adaptive') }}</option>
+				</select>
+			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_recovery_max_offset">{{ __('Missed Lap Offset') }}</label>
@@ -1719,6 +1733,7 @@
 		<br />
 		<div class="control-set">
 			<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
+			<a href="#reboot_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Reboot') }}</a>
 			{% if Debug %}<a href="/hardwarelog" class="debug button-like">{{ __('Log') }}</a>{% endif %}
 		</div>
 
@@ -1727,6 +1742,15 @@
 			<div class="popup-content">
 				<p>{{ __('Shut down server?') }}</p>
 				<p><button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="reboot_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>Alert</h2>
+			<div class="popup-content">
+				<p>{{ __('Reboot server?') }}</p>
+				<p><button class="btn-danger" id="reboot_pi">{{ __('Reboot') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>

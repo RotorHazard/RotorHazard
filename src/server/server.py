@@ -108,14 +108,20 @@ try:
     with open(CONFIG_FILE_NAME, 'r') as f:
         ExternalConfig = json.load(f)
     Config['GENERAL'].update(ExternalConfig['GENERAL'])
-    Config['LED'].update(ExternalConfig['LED'])
+
+    if 'LED' in ExternalConfig:
+        Config['LED'].update(ExternalConfig['LED'])
+
 #    try:
 #        bitmaptree = Config['LED']['BITMAPS']
 #        Config['LED'].update(ExternalConfig['LED'])
 #        Config['LED']['BITMAPS'] = bitmaptree
 #        Config['LED']['BITMAPS'].update(ExternalConfig['LED']['BITMAPS'])
 #    except KeyError:
-#        Config['LED'].update(ExternalConfig['LED'])
+#        if 'LED' in ExternalConfig:
+#            Config['LED'].update(ExternalConfig['LED'])
+#        else:
+#            print "No 'LED' entry found in configuration file "
 
     if 'SENSORS' in ExternalConfig:
         Config['SENSORS'].update(ExternalConfig['SENSORS'])
@@ -587,8 +593,9 @@ def primeGlobalsCache():
 
 def getOption(option, default_value=False):
     try:
-        if GLOBALS_CACHE[option]:
-            return GLOBALS_CACHE[option]
+        val = GLOBALS_CACHE[option]
+        if val or val == "":
+            return val
         else:
             return default_value
     except:
@@ -1323,8 +1330,8 @@ def on_set_scan(data):
 def on_add_heat():
     '''Adds the next available heat number to the database.'''
     max_heat_id = DB.session.query(DB.func.max(Heat.heat_id)).scalar()
-    for node in range(RACE.num_nodes): # Add next heat with pilots 1 thru 5
-        DB.session.add(Heat(heat_id=max_heat_id+1, node_index=node, pilot_id=node+1, class_id=CLASS_ID_NONE))
+    for node in range(RACE.num_nodes): # Add next heat with empty pilots
+        DB.session.add(Heat(heat_id=max_heat_id+1, node_index=node, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE))
     DB.session.commit()
     server_log('Heat added: Heat {0}'.format(max_heat_id+1))
     emit_heat_data() # Settings page, new pilot position in heats
@@ -1576,6 +1583,15 @@ def on_shutdown_pi():
     gevent.sleep(1);
     os.system("sudo shutdown now")
 
+@SOCKET_IO.on('reboot_pi')
+def on_reboot_pi():
+    '''Shutdown the raspberry pi.'''
+    CLUSTER.emit('reboot_pi')
+    emit_priority_message(__('Server is rebooting.'), True)
+    server_log('Rebooting pi')
+    gevent.sleep(1);
+    os.system("sudo reboot now")
+
 @SOCKET_IO.on("set_min_lap")
 def on_set_min_lap(data):
     min_lap = data['min_lap']
@@ -1809,7 +1825,11 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
+        if int(getOption('calibrationMode')):
+            autoUpdateCalibration()
+
         led_manager.event("raceStaging")
+
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
@@ -1838,11 +1858,91 @@ def on_stage_race():
             'pi_starts_at_s': RACE_START
         }) # Announce staging with chosen delay
 
+def autoUpdateCalibration():
+    ''' Apply best tuning values to nodes '''
+    for node_index, node in enumerate(INTERFACE.nodes):
+        calibration = findBestValues(node, node_index)
+
+        if node.enter_at_level is not calibration['enter_at_level']:
+            on_set_enter_at_level({
+                'node': node_index,
+                'enter_at_level': calibration['enter_at_level']
+            })
+
+        if node.exit_at_level is not calibration['exit_at_level']:
+            on_set_exit_at_level({
+                'node': node_index,
+                'exit_at_level': calibration['exit_at_level']
+            })
+
+def findBestValues(node, node_index):
+    ''' Search race history for best tuning values '''
+
+    # get commonly used values
+    heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).one()
+    pilot = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
+    current_class = heat.class_id
+
+    # test for same heat, same node
+    race_query = SavedRaceMeta.query.filter_by(heat_id=heat.heat_id).order_by(-SavedRaceMeta.id).first()
+    if race_query:
+        pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
+        if pilotrace_query:
+            server_log('calibration: found same pilot+node in same heat')
+            return {
+                'enter_at_level': pilotrace_query.enter_at,
+                'exit_at_level': pilotrace_query.exit_at
+            }
+
+    # test for same class, same pilot, same node
+    race_query = SavedRaceMeta.query.filter_by(class_id=current_class).order_by(-SavedRaceMeta.id).first()
+    if race_query:
+        pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, node_index=node_index, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
+        if pilotrace_query:
+            server_log('calibration: found same pilot+node in other heat with same class')
+            return {
+                'enter_at_level': pilotrace_query.enter_at,
+                'exit_at_level': pilotrace_query.exit_at
+            }
+
+    # test for same pilot, same node
+    pilotrace_query = SavedPilotRace.query.filter_by(node_index=node_index, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
+    if pilotrace_query:
+        server_log('calibration: found same pilot+node in other heat with other class')
+        return {
+            'enter_at_level': pilotrace_query.enter_at,
+            'exit_at_level': pilotrace_query.exit_at
+        }
+
+    # test for same node
+    pilotrace_query = SavedPilotRace.query.filter_by(node_index=node_index).order_by(-SavedPilotRace.id).first()
+    if pilotrace_query:
+        server_log('calibration: found same node in other heat')
+        return {
+            'enter_at_level': pilotrace_query.enter_at,
+            'exit_at_level': pilotrace_query.exit_at
+        }
+
+    # fallback
+    server_log('calibration: no calibration hints found, no change')
+    return {
+        'enter_at_level': node.enter_at_level,
+        'exit_at_level': node.exit_at_level
+    }
+
 def race_start_thread(start_token):
     global Race_laps_winner_name
 
-    # non-blocking delay before time-critical code
-    while (monotonic() < RACE_START - 2):
+    # clear any lingering crossings at staging (if node rssi < enterAt)
+    for node in INTERFACE.nodes:
+        if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != PILOT_ID_NONE and \
+                    node.current_rssi < node.enter_at_level:
+            server_log("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
+                       format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
+            INTERFACE.force_end_crossing(node.index)
+
+    # do non-blocking delay before time-critical code
+    while (monotonic() < RACE_START - 0.5):
         gevent.sleep(0.1)
 
     if RACE.race_status == RACE_STATUS_STAGING and \
@@ -1850,7 +1950,7 @@ def race_start_thread(start_token):
         # Only start a race if it is not already in progress
         # Null this thread if token has changed (race stopped/started quickly)
 
-        # create blocking delay until race start
+        # do blocking delay until race start
         while monotonic() < RACE_START:
             pass
 
@@ -1864,6 +1964,11 @@ def race_start_thread(start_token):
             node.history_values = [] # clear race history
             node.history_times = []
             node.under_min_lap_count = 0
+            # clear any lingering crossing (if rssi>enterAt then first crossing starts now)
+            if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != PILOT_ID_NONE:
+                server_log("Forcing end crossing for node {0} at start (rssi={1}, enterAt={2}, exitAt={3})".\
+                           format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
+                INTERFACE.force_end_crossing(node.index)
 
         RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
         INTERFACE.set_race_status(RACE_STATUS_RACING)
@@ -3261,7 +3366,7 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
                     return -1
                 if lap_id >= num_laps_win:
                     lap_data = CurrentLap.query.filter(CurrentLap.node_index==node.index, \
-                        CurrentLap.deleted != 1, lap_id=num_laps_win).one()
+                        CurrentLap.deleted != 1, CurrentLap.lap_id==num_laps_win).one()
                     #server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
                              # save pilot_id for earliest lap time:
                     if win_pilot_id < 0 or lap_data.lap_time_stamp < win_lap_tstamp:
@@ -3908,14 +4013,10 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
 def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
-    if led_manager.isEnabled():
-        # if race staging or stopped then no indicators
-        if RACE.race_status == RACE_STATUS_STAGING or RACE.race_status == RACE_STATUS_DONE:
-            return
-        if RACE.race_status == RACE_STATUS_RACING:  # if race is in progress
-            # if no pilot assigned to node or no first crossing yet then no indicators
-            if node.current_pilot_id == PILOT_ID_NONE or not node.first_cross_flag:
-                return
+
+    if led_handler.isEnabled() and RACE.race_status == RACE_STATUS_RACING:  # if race is in progress
+        # if pilot assigned to node and first crossing is complete
+        if node.current_pilot_id != PILOT_ID_NONE and node.first_cross_flag:
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
@@ -3930,21 +4031,6 @@ def node_crossing_callback(node):
                         })
                 else:
                     node.show_crossing_flag = True
-        else:
-            # if race status is READY
-            if node.crossing_flag:
-                led_manager.event("crossingEntered", {
-                    'nodeIndex': node.index
-                    })
-            else:
-                led_manager.event("crossingExited", {
-                    'nodeIndex': node.index
-                    })
-
-# set callback functions invoked by interface module
-INTERFACE.pass_record_callback = pass_record_callback
-INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
-INTERFACE.node_crossing_callback = node_crossing_callback
 
 def server_log(message):
     '''Messages emitted from the server script.'''
@@ -3955,8 +4041,6 @@ def hardware_log_callback(message):
     '''Message emitted from the interface class.'''
     print message
     SOCKET_IO.emit('hardware_log', message)
-
-INTERFACE.hardware_log_callback = hardware_log_callback
 
 def default_frequencies():
     '''Set node frequencies, R1367 for 4, IMD6C+ for 5+.'''
@@ -4154,6 +4238,7 @@ def db_reset_options_defaults():
     setOption("currentLanguage", "")
     setOption("currentProfile", "1")
     setCurrentRaceFormat(RaceFormat.query.first())
+    setOption("calibrationMode", "0")
     # minimum lap
     setOption("MinLapSec", "10")
     setOption("MinLapBehavior", "0")
@@ -4306,6 +4391,12 @@ def expand_heats():
 #
 # Program Initialize
 #
+
+# set callback functions invoked by interface module
+INTERFACE.pass_record_callback = pass_record_callback
+INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
+INTERFACE.node_crossing_callback = node_crossing_callback
+INTERFACE.hardware_log_callback = hardware_log_callback
 
 # Save number of nodes found
 RACE.num_nodes = len(INTERFACE.nodes)
