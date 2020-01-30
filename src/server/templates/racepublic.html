@@ -206,7 +206,7 @@
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				rotorhazard.nodes[i].frequency = msg.frequency[i];
 				freq.updateBlocks();
-			} 
+			}
 		});
 
 		socket.on('current_laps', function (msg) {
@@ -482,11 +482,11 @@
 
 		<!--Display the current laps-->
 		<div class="race-results">
-			{% for node in range(num_nodes) %}
-			<div class="node" data-id="{{ node }}">
-				<h4 class="callsign_{{ node }}">{{ __('Loading...') }}</h4>
-				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
-				<table class="laps" id="current_laps_{{ node }}">
+			{% for node in nodes %}
+			<div class="node" data-id="{{ node.index }}">
+				<h4 class="callsign_{{ node.index }}">{{ __('Loading...') }}</h4>
+				<div class="channel-block" data-node="{{ node.index }}"><span class="ch"></span> <span class="fr"></span></div>
+				<table class="laps" id="current_laps_{{ node.index }}">
 					<tbody>
 					</tbody>
 				</table>

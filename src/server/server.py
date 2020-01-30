@@ -736,14 +736,23 @@ def race():
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat,
         heats=Heat, pilots=Pilot,
-        nodes=nodes,
-        frequencies=[node.frequency for node in INTERFACE.nodes])
+        nodes=nodes)
 
 @APP.route('/current')
 def racepublic():
     '''Route to race management page.'''
+    frequencies = [node.frequency for node in INTERFACE.nodes]
+    nodes = []
+    for idx, freq in enumerate(frequencies):
+        if freq:
+            nodes.append({
+                'freq': freq,
+                'index': idx
+            })
+
     return render_template('racepublic.html', serverInfo=serverInfo, getOption=getOption, __=__,
-        num_nodes=RACE.num_nodes)
+        num_nodes=RACE.num_nodes,
+        nodes=nodes)
 
 @APP.route('/marshal')
 @requires_auth
