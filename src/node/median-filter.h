@@ -37,4 +37,4 @@ private:
 
 #define SmoothingSamples 255
 
-extern MedianFilter<rssi_t, SmoothingSamples, 0> _filter;
+MedianFilter<rssi_t, SmoothingSamples, 0> _filter;
