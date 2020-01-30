@@ -91,6 +91,10 @@
 			$('#led_brightness_value').html($('#set_led_brightness').val());
 		}
 
+		if ('{{ getOption('calibrationMode') }}' == '1') {
+			$('#set_calibrationMode').val(1);
+		}
+
 		// populate frequency selects
 		$('.frequency_table').each(function(){
 			$(this).html(freq.buildSelect());
@@ -259,7 +263,6 @@
 			}
 			$('#set_profile').val(msg.current_profile);
 			$('#set_profile_name').val( msg.profile_name);
-			$('#set_profile_description').val( msg.profile_description);
 		});
 
 		$('#set_profile').change(function (event) {
@@ -282,13 +285,6 @@
 		$('#set_profile_name').change(function (event) {
 			var data = {
 				profile_name: $(this).val()
-			};
-			socket.emit('alter_profile', data);
-		})
-
-		$('#set_profile_description').change(function (event) {
-			var data = {
-				profile_description: $(this).val()
 			};
 			socket.emit('alter_profile', data);
 		})
@@ -1234,40 +1230,6 @@
 	</div>
 </div>
 
-<!--Environment-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Profiles') }}</h2>
-	</div>
-	<div class="panel-content">
-		<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
-
-		<div class="control-set">
-			<label for="set_profile">{{ __('Profile') }}:</label>
-			<select id="set_profile">
-				<option>{{ __('Loading...') }}</option>
-			</select>
-			<button id="add_profile">+ {{ __('Add Profile') }}</button>
-			<button class="btn-danger" id="delete_profile">&#215; {{ __('Remove') }}</button>
-		</div>
-
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_profile_name">{{ __('Name') }}</label>
-				</div>
-				<input type="text" id="set_profile_name">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_profile_description">{{ __('Description') }}</label>
-				</div>
-				<textarea id="set_profile_description"></textarea>
-			</li>
-		</ol>
-	</div>
-</div>
-
 <!--Frequency Setup-->
 <div class="panel collapsing">
 	<div class="panel-header">
@@ -1295,6 +1257,26 @@
 			{% endfor %}
 		</div>
 		<div class="control-set" id="imd_rating_label"></div>
+
+		<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
+
+		<div class="control-set">
+			<label for="set_profile">{{ __('Profile') }}:</label>
+			<select id="set_profile">
+				<option>{{ __('Loading...') }}</option>
+			</select>
+			<button id="add_profile">+ {{ __('Add Profile') }}</button>
+			<button class="btn-danger" id="delete_profile">&#215; {{ __('Remove') }}</button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_profile_name">{{ __('Name') }}</label>
+				</div>
+				<input type="text" id="set_profile_name">
+			</li>
+		</ol>
 	</div>
 </div>
 

@@ -1792,6 +1792,8 @@ def autoUpdateCalibration():
                 'exit_at_level': calibration['exit_at_level']
             })
 
+    emit_enter_and_exit_at_levels()
+
 def findBestValues(node, node_index):
     ''' Search race history for best tuning values '''
 
@@ -1801,7 +1803,7 @@ def findBestValues(node, node_index):
     current_class = heat.class_id
 
     # test for disabled node
-    if pilot is PILOT_ID_NONE or profile_freqs["f"][node.index] is FREQUENCY_ID_NONE:
+    if pilot is PILOT_ID_NONE or node.frequency is FREQUENCY_ID_NONE:
         server_log('Node {0} calibration: skipping disabled node'.format(node.index+1))
         return {
             'enter_at_level': node.enter_at_level,
@@ -2047,8 +2049,12 @@ def on_resave_laps(data):
     DB.session.commit()
     message = __('Race times adjusted for: Heat {0} Round {1} / {2}').format(heat_id, round_id, callsign)
     emit_priority_message(message, False)
-    emit_round_data_notify()
     server_log(message)
+    emit_round_data_notify()
+    print heat_id
+    print RACE.current_heat
+    if int(getOption('calibrationMode')):
+        autoUpdateCalibration()
 
 @SOCKET_IO.on('discard_laps')
 def on_discard_laps():
@@ -4040,18 +4046,10 @@ def db_reset_profile():
     template = {}
     template["v"] = [None, None, None, None, None, None, None, None]
 
-    DB.session.add(Profiles(name=__("Outdoor"),
-                             description = __("Medium filtering"),
+    DB.session.add(Profiles(name=__("Default"),
                              frequencies = json.dumps(new_freqs),
                              enter_ats = json.dumps(template),
-                             exit_ats = json.dumps(template),
-                             f_ratio=100))
-    DB.session.add(Profiles(name=__("Indoor"),
-                             description = __("Strong filtering"),
-                             frequencies = json.dumps(new_freqs),
-                             enter_ats = json.dumps(template),
-                             exit_ats = json.dumps(template),
-                             f_ratio=10))
+                             exit_ats = json.dumps(template)))
     DB.session.commit()
     setOption("currentProfile", 1)
     server_log("Database set default profiles")
