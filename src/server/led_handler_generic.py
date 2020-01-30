@@ -43,7 +43,7 @@ def led_on(strip, color, pattern=ColorPattern.SOLID):
 def led_off(strip):
     led_on(strip, ColorVal.NONE)
 
-def led_theaterChase(strip, color, wait_ms=50, iterations=5):
+def theaterChase(strip, color, wait_ms=50, iterations=5):
     """Movie theater light style chaser animation."""
     led_on(strip, ColorVal.NONE)
     for j in range(iterations):
@@ -66,22 +66,31 @@ def color_wheel(pos):
         pos -= 170
         return Color(0, pos * 3, 255 - pos * 3)
 
-def led_rainbow(strip, wait_ms=2, iterations=1):
+def rainbow(strip, config, args=None):
     """Draw rainbow that fades across all pixels at once."""
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, color_wheel((i) & 255))
     strip.show()
-    gevent.sleep(wait_ms/1000.0)
 
-def led_rainbowCycle(strip, wait_ms=2, iterations=1):
+def rainbowCycle(strip, config, args=None):
     """Draw rainbow that uniformly distributes itself across all pixels."""
+    if args and 'wait_ms' in args:
+        wait_ms = args['wait_ms']
+    else:
+        wait_ms = 2
+
+    if args and 'iterations' in args:
+        iterations = args['iterations']
+    else:
+        iterations = 1
+
     for j in range(256*iterations):
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
         strip.show()
         gevent.sleep(wait_ms/1000.0)
 
-def led_theaterChaseRainbow(strip, wait_ms=25):
+def theaterChaseRainbow(strip, wait_ms=25):
     """Rainbow movie theater light style chaser animation."""
     led_on(strip, ColorVal.NONE)
     for j in range(256):
@@ -93,18 +102,18 @@ def led_theaterChaseRainbow(strip, wait_ms=25):
             for i in range(0, strip.numPixels()-q, 3):
                 strip.setPixelColor(i+q, 0)
 
-def showColor(strip, config, args={}):
-    if 'color' in args:
+def showColor(strip, config, args=None):
+    if args and 'color' in args:
         color = args['color']
     else:
         color = ColorVal.NONE
 
-    if 'pattern' in args:
+    if args and 'pattern' in args:
         pattern = args['pattern']
     else:
         pattern = ColorPattern.SOLID
 
-    if 'nodeIndex' in args:
+    if args and 'nodeIndex' in args:
         led_on(strip, nodeToColorArray[args['nodeIndex']], pattern)
     else:
         led_on(strip, color, pattern)
@@ -118,6 +127,13 @@ def clear(strip, config, args=None):
 
 def hold(strip, config, args=None):
     pass
+
+    def led_rainbow(strip, wait_ms=2, iterations=1):
+        """Draw rainbow that fades across all pixels at once."""
+        for i in range(strip.numPixels()):
+            strip.setPixelColor(i, color_wheel((i) & 255))
+        strip.show()
+        gevent.sleep(wait_ms/1000.0)
 
 def registerHandlers(manager):
     # register generic color change (does nothing without arguments)
@@ -149,6 +165,9 @@ def registerHandlers(manager):
         'pattern': ColorPattern.ALTERNATING,
         'time': Timing.VTX_EXPIRE
         })
+
+    # register rainbow cycle startup
+    manager.registerEventHandler("rainbowCycle", "Color/Pattern: Rainbow", rainbowCycle, ["startup"])
 
     # register clear for all events
     manager.registerEventHandler("clear", "Turn Off", clear, ["startup", "raceStaging", "crossingEntered", "crossingExited","raceStarted", "raceFinished", "raceStopped", "shutdown"])

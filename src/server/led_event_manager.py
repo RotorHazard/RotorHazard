@@ -110,8 +110,4 @@ class ColorPattern:
     ALTERNATING = 1
     TWO_OUT_OF_THREE = 2
     MOD_SEVEN = 3
-    CUSTOM_RB_CYCLE = 4  # handled by subclass
-    CHASE = 5  # handled by subclass
-    RAINBOW = 6  # handled by subclass
-    RAINBOW_CHASE = 7  # handled by subclass
-    FOUR_ON_FOUR_OFF = 8
+    FOUR_ON_FOUR_OFF = 4

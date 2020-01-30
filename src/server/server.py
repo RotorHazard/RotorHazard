@@ -4510,7 +4510,7 @@ def set_handlers():
             "raceStopped": "stopColor",
             "crossingEntered": "enterColor",
             "crossingExited": "exitColor",
-            "startup": "clear",
+            "startup": "rainbowCycle",
             "shutdown": "clear"
         }
 
