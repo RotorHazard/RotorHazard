@@ -1,10 +1,11 @@
 '''
-LED event handler wiring
+LED event manager
+Wires events to handlers
 '''
 
 import gevent
 
-class LEDEventHandler:
+class LEDEventManager:
     processEventObj = gevent.event.Event()
 
     events = {}
@@ -35,16 +36,19 @@ class LEDEventHandler:
                 handler = self.eventHandlers[currentEvent]
                 args = handler['defaultArgs']
                 if eventArgs:
-                    args.update(eventArgs)
+                    if args:
+                        args.update(eventArgs)
+                    else:
+                        args = eventArgs
 
                 # restart thread regardless of status
                 if self.eventThread is not None:
-                    self.eventThread.kill
+                    self.eventThread.kill()
 
                 self.eventThread = gevent.spawn(handler['handlerFn'], self.strip, self.config, args)
 
-    def clear(*args):
-        pass
+    def clear(self):
+        self.eventHandlers['clear']['handlerFn'](self.strip, self.config)
 
 class NoLEDHandler():
     def __init__(self):

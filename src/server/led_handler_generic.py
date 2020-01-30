@@ -1,8 +1,9 @@
 '''LED visual effects'''
 
+# to use this handler, run:
+#    sudo pip install pillow
+
 import gevent
-import cv2
-import numpy as np
 
 def Color(red, green, blue):
     """Convert the provided red, green, blue color to a 24-bit color value.
@@ -37,9 +38,14 @@ class ColorPattern:
     CHASE = 5  # handled by subclass
     RAINBOW = 6  # handled by subclass
     RAINBOW_CHASE = 7  # handled by subclass
+    FOUR_ON_FOUR_OFF = 8
 
 nodeToColorArray = [ColorVal.BLUE, ColorVal.DARK_ORANGE, ColorVal.LIGHT_GREEN, ColorVal.YELLOW, \
                         ColorVal.PURPLE, ColorVal.PINK, ColorVal.MINT, ColorVal.SKY]
+
+class Timing:
+    VTX_EXPIRE = 4
+    START_EXPIRE = 8
 
 def led_on(strip, color, pattern=ColorPattern.SOLID):
     if pattern == ColorPattern.SOLID:
@@ -63,6 +69,12 @@ def led_on(strip, color, pattern=ColorPattern.SOLID):
     elif pattern == ColorPattern.MOD_SEVEN:
         for i in range(strip.numPixels()):
             if i % 7 == 0:
+                strip.setPixelColor(i, color)
+            else:
+                strip.setPixelColor(i, ColorVal.NONE)
+    elif pattern == ColorPattern.FOUR_ON_FOUR_OFF:
+        for i in range(strip.numPixels()):
+            if i % 8 < 4:
                 strip.setPixelColor(i, color)
             else:
                 strip.setPixelColor(i, ColorVal.NONE)
@@ -121,36 +133,25 @@ def led_theaterChaseRainbow(strip, wait_ms=25):
             for i in range(0, strip.numPixels()-q, 3):
                 strip.setPixelColor(i+q, 0)
 
-def showColor(strip, config, args):
-    led_on(strip, args['color'])
+def showColor(strip, config, args={}):
+    if 'color' in args:
+        color = args['color']
+    else:
+        color = ColorVal.NONE
 
-def showBitmap(strip, config, args):
-    def setPixels(img):
-        pos = 0
-        for row in range(0, img.shape[0]):
-            for col in range(0, img.shape[1]):
-                if pos == strip.numPixels():
-                    return
+    if 'pattern' in args:
+        pattern = args['pattern']
+    else:
+        pattern = ColorPattern.SOLID
 
-                c = col
-                if config['INVERTED_PANEL_ROWS']:
-                    if row % 2 == 0:
-                        c = 15 - col
+    if 'nodeIndex' in args:
+        led_on(strip, nodeToColorArray[args['nodeIndex']], pattern)
+    else:
+        led_on(strip, color, pattern)
 
-                strip.setPixelColor(pos, Color(img[row][c][2], img[row][c][1], img[row][c][0]))
-                pos += 1
-
-    bitmaps = args['bitmaps']
-    if bitmaps and bitmaps is not None:
-        for bitmap in bitmaps:
-            img = cv2.imread(bitmap['image']) # BGR
-            delay = bitmap['delay']
-
-            rotated = np.rot90(img, config['PANEL_ROTATE'])
-
-            setPixels(rotated)
-            strip.show()
-            gevent.sleep(delay/1000.0)
+    if 'time' in args and args['time'] is not None:
+        gevent.sleep(args['time'])
+        led_off(strip)
 
 def clear(strip, config, args=None):
     led_off(strip)
@@ -159,29 +160,38 @@ def hold(strip, config, args=None):
     pass
 
 def registerHandlers(handler):
-
-    # register state bitmaps
-    handler.registerEventHandler("startupBitmap", showBitmap, ["startup"], {'bitmaps': [
-        {"image": "static/image/LEDpanel-RotorHazard-logo.png", "delay": 0}
-    ]})
-    handler.registerEventHandler("stagingBitmap", showBitmap, ["raceStaging"], {'bitmaps': [
-        {"image": "static/image/LEDpanel-status-staging.png", "delay": 0}
-    ]})
-    handler.registerEventHandler("startBitmap", showBitmap, ["raceStarted"], {'bitmaps': [
-        {"image": "static/image/LEDpanel-status-start.png", "delay": 0}
-    ]})
-    handler.registerEventHandler("stoppedBitmap", showBitmap, ["raceStopped"], {'bitmaps': [
-        {"image": "static/image/LEDpanel-status-stop.png", "delay": 0}
-    ]})
-    handler.registerEventHandler("finishedBitmap", showBitmap, ["raceFinished"], {'bitmaps': [
-        {"image": "static/image/LEDpanel-status-finished.png", "delay": 0}
-    ]})
-
     # register generic color change
-    handler.registerEventHandler("color", showColor, ["startup", "raceStaging", "raceRunning", "raceFinished", "raceStopped", "manual", "shutdown"], {'color': ColorVal.NONE})
+    handler.registerEventHandler("stripColor", showColor, ["startup", "raceStaging", "raceRunning", "raceFinished", "raceStopped", "manual", "shutdown"])
+
+    # register specific colors for typical events
+    handler.registerEventHandler("stagingColor", showColor, ["raceStaging"], {
+        'color': ColorVal.ORANGE,
+        'pattern': ColorPattern.TWO_OUT_OF_THREE
+        })
+    handler.registerEventHandler("startColor", showColor, ["raceRunning"], {
+        'color': ColorVal.GREEN,
+        'pattern': ColorPattern.SOLID,
+        'time': Timing.START_EXPIRE
+        })
+    handler.registerEventHandler("finishColor", showColor, ["raceFinished"], {
+        'color': ColorVal.WHITE,
+        'pattern': ColorPattern.FOUR_ON_FOUR_OFF
+        })
+    handler.registerEventHandler("stopColor", showColor, ["raceStopped"], {
+        'color': ColorVal.RED,
+        'pattern': ColorPattern.SOLID
+        })
+
+    handler.registerEventHandler("enterColor", showColor, ["crossingEntered"], {
+        'pattern': ColorPattern.SOLID
+        })
+    handler.registerEventHandler("exitColor", showColor, ["crossingExited"], {
+        'pattern': ColorPattern.ALTERNATING,
+        'time': Timing.VTX_EXPIRE
+        })
 
     # register clear for all events
-    handler.registerEventHandler("clear", clear, ["startup", "raceStaging", "crossingEntered", "crossingExisted","raceRunning", "raceFinished", "raceStopped", "manual", "shutdown"])
+    handler.registerEventHandler("clear", clear, ["startup", "raceStaging", "crossingEntered", "crossingExited","raceRunning", "raceFinished", "raceStopped", "manual", "shutdown"])
 
     # register hold/none for all events
-    handler.registerEventHandler("none", hold, ["startup", "raceStaging", "crossingEntered", "crossingExisted", "raceRunning", "raceFinished", "raceStopped", "manual", "shutdown"])
+    handler.registerEventHandler("none", hold, ["startup", "raceStaging", "crossingEntered", "crossingExited", "raceRunning", "raceFinished", "raceStopped", "manual", "shutdown"])

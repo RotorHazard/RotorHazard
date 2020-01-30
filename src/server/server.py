@@ -12,6 +12,7 @@ gevent.monkey.patch_all()
 import io
 import os
 import sys
+import glob
 import shutil
 import base64
 import subprocess
@@ -31,8 +32,8 @@ import random
 import json
 
 # LED imports
-from led_event_handler import LEDEventHandler, NoLEDHandler
-from led_handlers import Color, ColorVal, ColorPattern
+from led_event_manager import LEDEventManager, NoLEDHandler
+from led_handler_generic import Color, ColorVal, ColorPattern
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -79,19 +80,21 @@ Config['SERIAL_PORTS'] = []
 
 # LED strip configuration:
 Config['LED']['HANDLER']        = 'strip'
-Config['LED']['LED_COUNT']      = 0      # Number of LED pixels.
+Config['LED']['LED_COUNT']      = 0       # Number of LED pixels.
 Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
 Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
 Config['LED']['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
 Config['LED']['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
 Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
+Config['LED']['LED_ROWS']       = 1       # Number of rows in LED array
 Config['LED']['PANEL_ROTATE']   = 0
 Config['LED']['INVERTED_PANEL_ROWS'] = False
 
 
 # other default configurations
 Config['GENERAL']['HTTP_PORT'] = 5000
+Config['GENERAL']['SECRET_KEY'] = random.random()
 Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
 Config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
 Config['GENERAL']['SLAVES'] = []
@@ -716,8 +719,6 @@ def racepublic():
 @requires_auth
 def marshal():
     '''Route to race management page.'''
-    if RACE.race_status == RACE_STATUS_READY:
-        led_handler.clear()
     return render_template('marshal.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes)
 
@@ -725,8 +726,6 @@ def marshal():
 @requires_auth
 def settings():
     '''Route to settings page.'''
-    if RACE.race_status == RACE_STATUS_READY:
-        led_handler.clear()
     return render_template('settings.html', serverInfo=serverInfo, getOption=getOption, __=__,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config['GENERAL']['configFile'],
@@ -2114,6 +2113,9 @@ def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
     server_log('Simulated lap: Node {0}'.format(node_index+1))
+    led_handler.event("crossingExited", {
+        'nodeIndex': node_index
+        })
     INTERFACE.intf_simulate_lap(node_index, 0)
 
 @SOCKET_IO.on('LED_solid')
@@ -2123,7 +2125,11 @@ def on_LED_solid(data):
     led_green = data['green']
     led_blue = data['blue']
     if strip is not None:
-        led_handler.event("manualChange", color=Color(led_red,led_green,led_blue), pattern=ColorPattern.SOLID, time=None)
+        led_handler.event("manualChange", {
+            'color': Color(led_red,led_green,led_blue),
+            'pattern': ColorPattern.SOLID,
+            'time': None
+            })
 
 @SOCKET_IO.on('LED_chase')
 def on_LED_chase(data):
@@ -2132,22 +2138,35 @@ def on_LED_chase(data):
     led_green = data['green']
     led_blue = data['blue']
     if strip is not None:
-        led_handler.event("manualChange", color=Color(led_red,led_green,led_blue), pattern=ColorPattern.CHASE, time=5)
+        led_handler.event("manualChange", {
+            'color': Color(led_red,led_green,led_blue),
+            'pattern': ColorPattern.CHASE,
+            'time': 5
+            })
 
 @SOCKET_IO.on('LED_RB')
 def on_LED_RB():
     if strip is not None:
-        led_handler.event("manualChange", color=None, pattern=ColorPattern.RAINBOW, time=5) #Rainbow
+        led_handler.event("manualChange", {
+            'pattern': ColorPattern.RAINBOW,
+            'time': 5
+            }) #Rainbow
 
 @SOCKET_IO.on('LED_RBCYCLE')
 def on_LED_RBCYCLE():
     if strip is not None:
-        led_handler.event("manualChange", color=None, pattern=ColorPattern.CUSTOM_RB_CYCLE, time=5) #Rainbow Cycle
+        led_handler.event("manualChange", {
+            'pattern': ColorPattern.CUSTOM_RB_CYCLE,
+            'time': 5
+            }) #Rainbow Cycle
 
 @SOCKET_IO.on('LED_RBCHASE')
 def on_LED_RBCHASE():
     if strip is not None:
-        led_handler.event("manualChange", color=None, pattern=ColorPattern.RAINBOW_CHASE, time=5) #Rainbow Chase
+        led_handler.event("manualChange", {
+            'pattern': ColorPattern.RAINBOW_CHASE,
+            'time': 5
+            }) #Rainbow Chase
 
 @SOCKET_IO.on('LED_brightness')
 def on_LED_brightness(data):
@@ -3302,7 +3321,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                                 CurrentLap.deleted != 1).scalar()
                     if lap_id > 0:
                         lap_data = CurrentLap.query.filter(CurrentLap.node_index==node.index, \
-                            CurrentLap.deleted != 1, lap_id=lap_id).one_or_none()
+                            CurrentLap.deleted != 1, CurrentLap.lap_id==lap_id).one_or_none()
                         if lap_data:
                             pilots_list.append((lap_id, lap_data.lap_time_stamp, pilot_id, node))
                             if lap_id > max_lap_id:
@@ -3798,7 +3817,7 @@ def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
     if led_handler.isEnabled():
-        # if race staging or stopped or 'Race' page displayed then no indicators
+        # if race staging or stopped then no indicators
         if RACE.race_status == RACE_STATUS_STAGING or RACE.race_status == RACE_STATUS_DONE:
             return
         if RACE.race_status == RACE_STATUS_RACING:  # if race is in progress
@@ -3808,18 +3827,27 @@ def node_crossing_callback(node):
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
-                led_handler.event("crossingEntered", node=node)
+                led_handler.event("crossingEntered", {
+                    'nodeIndex': node.index
+                    })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
-                    led_handler.event("crossingExited", node=node)
+                    led_handler.event("crossingExited", {
+                        'nodeIndex': node.index
+                        })
                 else:
                     node.show_crossing_flag = True
         else:
+            # if race status is READY
             if node.crossing_flag:
-                led_handler.event("crossingEntered", node=node)
+                led_handler.event("crossingEntered", {
+                    'nodeIndex': node.index
+                    })
             else:
-                led_handler.event("crossingExited", node=node)
+                led_handler.event("crossingExited", {
+                    'nodeIndex': node.index
+                    })
 
 # set callback functions invoked by interface module
 INTERFACE.pass_record_callback = pass_record_callback
@@ -4309,19 +4337,36 @@ else:
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
-
-    # Config['LED']['HANDLER'] = os.environ.get('RH_LED_HANDLER', Config['LED']['HANDLER'])
-    led_handler = LEDEventHandler(strip, Config['LED'])
+    led_handler = LEDEventManager(strip, Config['LED'])
 else:
     led_handler = NoLEDHandler()
 
-handlers = importlib.import_module('led_handlers')
-handlers.registerHandlers(led_handler)
+LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
+
+for handlerFile in LEDHandlerFiles:
+    try:
+        lib = importlib.import_module(handlerFile)
+        lib.registerHandlers(led_handler)
+    except ImportError:
+        print 'Handler not imported: may requires additional dependencies'
+
+# set handler defaults
+# TODO: set up interface to select handler per event
+
+# led_handler.setEventHandler("raceStaging", "stagingColor")
+# led_handler.setEventHandler("raceFinished", "finishColor")
+# led_handler.setEventHandler("raceStopped", "stoppedColor")
+# led_handler.setEventHandler("raceStarted", "startColor")
+led_handler.setEventHandler("crossingEntered", "enterColor")
+led_handler.setEventHandler("crossingExited", "exitColor")
+
 led_handler.setEventHandler("startup", "startupBitmap")
 led_handler.setEventHandler("raceStaging", "stagingBitmap")
 led_handler.setEventHandler("raceFinished", "finishedBitmap")
 led_handler.setEventHandler("raceStopped", "stoppedBitmap")
 led_handler.setEventHandler("raceStarted", "startBitmap")
+
+led_handler.setEventHandler("manualChange", "stripColor")
 led_handler.setEventHandler("shutdown", "clear")
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
