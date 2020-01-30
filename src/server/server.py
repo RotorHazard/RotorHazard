@@ -32,8 +32,7 @@ import random
 import json
 
 # LED imports
-from led_event_manager import LEDEventManager, NoLEDHandler
-from led_handler_generic import Color, ColorVal, ColorPattern
+from led_event_manager import LEDEventManager, NoLEDManager, Color, ColorVal, ColorPattern
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -1149,6 +1148,8 @@ def on_load_data(data):
             emit_language(nobroadcast=True)
         elif load_type == 'all_languages':
             emit_all_languages(nobroadcast=True)
+        elif load_type == 'led_handler_setup':
+            emit_led_handler_setup()
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
         elif load_type == 'cluster_status':
@@ -1670,6 +1671,97 @@ def on_alter_race_format(data):
             emit_race_format()
             emit_class_data()
 
+# LED Handler
+
+def emit_led_handler_setup(**params):
+    '''Emits LED event/handler wiring options.'''
+    if led_manager.isEnabled():
+        configurable_events = [
+            {
+                "event": "raceStaging",
+                "label": __("Race Staging")
+            },
+            {
+                "event": "raceStarted",
+                "label": __("Race Start")
+            },
+            {
+                "event": "raceFinished",
+                "label": __("Race Finish")
+            },
+            {
+                "event": "raceStopped",
+                "label": __("Race Stop")
+            },
+            {
+                "event": "crossingEntered",
+                "label": __("Gate Entrance")
+            },
+            {
+                "event": "crossingExited",
+                "label": __("Gate Exit")
+            },
+            {
+                "event": "startup",
+                "label": __("Server Startup")
+            },
+            {
+                "event": "shutdown",
+                "label": __("Server Shutdown")
+            }
+        ]
+
+        handlers = led_manager.getRegisteredHandlers()
+
+        emit_payload = {
+            'events': []
+        }
+
+        for event in configurable_events:
+            selectedHandler = led_manager.getEventHandler(event['event'])
+
+            handler_list = []
+
+            for handler in handlers:
+                if event['event'] in handlers[handler]['validEvents']:
+                    handler_list.append({
+                            'name': handler,
+                            'label': __(handlers[handler]['label'])
+                        })
+
+            emit_payload['events'].append({
+                'event': event["event"],
+                'label': event["label"],
+                'selected': selectedHandler,
+                'handlers': handler_list
+            })
+
+        # never broadcast
+        emit('led_handler_setup_data', emit_payload)
+
+@SOCKET_IO.on('set_led_event_handler')
+def on_set_led_handler(data):
+    '''Set handler for event.'''
+    if 'event' in data and 'handler' in data:
+        led_manager.setEventHandler(data['event'], data['handler'])
+
+        handler_opt = getOption('ledHandlers')
+        if handler_opt:
+            handlers = json.loads(handler_opt)
+        else:
+            handlers = {}
+
+        handlers[data['event']] = data['handler']
+        setOption('ledHandlers', json.dumps(handlers))
+
+        server_log('Set LED event {0} to handler {1}'.format(data['event'], data['handler']))
+
+@SOCKET_IO.on('test_led_event')
+def on_set_led_handler(data):
+    '''Send LED event.'''
+    if 'event' in data:
+        led_manager.event(data['event'])
+
 # Race management socket io events
 
 @SOCKET_IO.on('schedule_race')
@@ -1717,7 +1809,7 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        led_handler.event("raceStaging")
+        led_manager.event("raceStaging")
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
@@ -1763,7 +1855,7 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        led_handler.event("raceStarted")
+        led_manager.event("raceStarted")
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now()
@@ -1808,14 +1900,14 @@ def on_stop_race():
         server_log('No active race to stop')
         RACE.race_status = RACE_STATUS_READY # Go back to ready state
         INTERFACE.set_race_status(RACE_STATUS_READY)
-        led_handler.clear()
+        led_manager.clear()
 
     RACE.timer_running = 0 # indicate race timer not running
     RACE_SCHEDULED = False # also stop any deferred start
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    led_handler.event("raceStopped")
+    led_manager.event("raceStopped")
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -1943,7 +2035,7 @@ def on_discard_laps():
         check_emit_team_racing_status()  # Show team-racing status info
     else:
         emit_team_racing_status('')  # clear any displayed "Winner is" text
-    led_handler.clear()
+    led_manager.clear()
 
 def clear_laps():
     '''Clear the current laps table.'''
@@ -2113,7 +2205,7 @@ def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
     server_log('Simulated lap: Node {0}'.format(node_index+1))
-    led_handler.event("crossingExited", {
+    led_manager.event("crossingExited", {
         'nodeIndex': node_index
         })
     INTERFACE.intf_simulate_lap(node_index, 0)
@@ -2125,7 +2217,7 @@ def on_LED_solid(data):
     led_green = data['green']
     led_blue = data['blue']
     if strip is not None:
-        led_handler.event("manualChange", {
+        led_manager.event("manualChange", {
             'color': Color(led_red,led_green,led_blue),
             'pattern': ColorPattern.SOLID,
             'time': None
@@ -2138,7 +2230,7 @@ def on_LED_chase(data):
     led_green = data['green']
     led_blue = data['blue']
     if strip is not None:
-        led_handler.event("manualChange", {
+        led_manager.event("manualChange", {
             'color': Color(led_red,led_green,led_blue),
             'pattern': ColorPattern.CHASE,
             'time': 5
@@ -2147,7 +2239,7 @@ def on_LED_chase(data):
 @SOCKET_IO.on('LED_RB')
 def on_LED_RB():
     if strip is not None:
-        led_handler.event("manualChange", {
+        led_manager.event("manualChange", {
             'pattern': ColorPattern.RAINBOW,
             'time': 5
             }) #Rainbow
@@ -2155,7 +2247,7 @@ def on_LED_RB():
 @SOCKET_IO.on('LED_RBCYCLE')
 def on_LED_RBCYCLE():
     if strip is not None:
-        led_handler.event("manualChange", {
+        led_manager.event("manualChange", {
             'pattern': ColorPattern.CUSTOM_RB_CYCLE,
             'time': 5
             }) #Rainbow Cycle
@@ -2163,7 +2255,7 @@ def on_LED_RBCYCLE():
 @SOCKET_IO.on('LED_RBCHASE')
 def on_LED_RBCHASE():
     if strip is not None:
-        led_handler.event("manualChange", {
+        led_manager.event("manualChange", {
             'pattern': ColorPattern.RAINBOW_CHASE,
             'time': 5
             }) #Rainbow Chase
@@ -3642,7 +3734,7 @@ def check_race_time_expired():
     if race_format and race_format.race_mode == 0: # count down
         if monotonic() >= RACE_START + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
-            led_handler.event("raceFinished")
+            led_manager.event("raceFinished")
             if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
@@ -3816,7 +3908,7 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
 def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
-    if led_handler.isEnabled():
+    if led_manager.isEnabled():
         # if race staging or stopped then no indicators
         if RACE.race_status == RACE_STATUS_STAGING or RACE.race_status == RACE_STATUS_DONE:
             return
@@ -3827,13 +3919,13 @@ def node_crossing_callback(node):
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
-                led_handler.event("crossingEntered", {
+                led_manager.event("crossingEntered", {
                     'nodeIndex': node.index
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
-                    led_handler.event("crossingExited", {
+                    led_manager.event("crossingExited", {
                         'nodeIndex': node.index
                         })
                 else:
@@ -3841,11 +3933,11 @@ def node_crossing_callback(node):
         else:
             # if race status is READY
             if node.crossing_flag:
-                led_handler.event("crossingEntered", {
+                led_manager.event("crossingEntered", {
                     'nodeIndex': node.index
                     })
             else:
-                led_handler.event("crossingExited", {
+                led_manager.event("crossingExited", {
                     'nodeIndex': node.index
                     })
 
@@ -4314,6 +4406,29 @@ if Heat.query.first():
 # LED Code
 #
 
+# set handler defaults
+def set_handlers():
+    handler_opt = getOption('ledHandlers')
+    if handler_opt:
+        handlers = json.loads(handler_opt)
+    else:
+        handlers = {
+            "raceStaging": "stagingColor",
+            "raceStarted": "startColor",
+            "raceFinished": "finishColor",
+            "raceStopped": "stopColor",
+            "crossingEntered": "enterColor",
+            "crossingExited": "exitColor",
+            "startup": "clear",
+            "shutdown": "clear"
+        }
+
+    # set handlers
+    led_manager.setEventHandler("manualChange", "stripColor")
+    for item in handlers:
+        led_manager.setEventHandler(item, handlers[item])
+
+
 # Create LED object with appropriate configuration.
 strip = None
 if Config['LED']['LED_COUNT'] > 0:
@@ -4337,42 +4452,25 @@ else:
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
-    led_handler = LEDEventManager(strip, Config['LED'])
+    led_manager = LEDEventManager(strip, Config['LED'])
 else:
-    led_handler = NoLEDHandler()
+    led_manager = NoLEDManager()
 
 LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
 
 for handlerFile in LEDHandlerFiles:
     try:
         lib = importlib.import_module(handlerFile)
-        lib.registerHandlers(led_handler)
+        lib.registerHandlers(led_manager)
     except ImportError:
-        print 'Handler not imported: may requires additional dependencies'
+        print 'Handler {0} not imported (may require additional dependencies)'.format(handlerFile)
 
-# set handler defaults
-# TODO: set up interface to select handler per event
-
-# led_handler.setEventHandler("raceStaging", "stagingColor")
-# led_handler.setEventHandler("raceFinished", "finishColor")
-# led_handler.setEventHandler("raceStopped", "stoppedColor")
-# led_handler.setEventHandler("raceStarted", "startColor")
-led_handler.setEventHandler("crossingEntered", "enterColor")
-led_handler.setEventHandler("crossingExited", "exitColor")
-
-led_handler.setEventHandler("startup", "startupBitmap")
-led_handler.setEventHandler("raceStaging", "stagingBitmap")
-led_handler.setEventHandler("raceFinished", "finishedBitmap")
-led_handler.setEventHandler("raceStopped", "stoppedBitmap")
-led_handler.setEventHandler("raceStarted", "startBitmap")
-
-led_handler.setEventHandler("manualChange", "stripColor")
-led_handler.setEventHandler("shutdown", "clear")
+set_handlers()
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     print "Running http server at port " + str(port_val)
 
-    led_handler.event("startup") # show startup indicator on LEDs
+    led_manager.event("startup") # show startup indicator on LEDs
     try:
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
@@ -4380,7 +4478,7 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
-    led_handler.event("shutdown")  # server is shutting down, so shut off LEDs
+    led_manager.event("shutdown")  # server is shutting down, so shut off LEDs
 
 # Start HTTP server
 if __name__ == '__main__':

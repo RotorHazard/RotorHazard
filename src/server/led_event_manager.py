@@ -19,15 +19,27 @@ class LEDEventManager:
     def isEnabled(self):
         return True
 
-    def registerEventHandler(self, name, handlerFn, validEvents, defaultArgs=None):
+    def registerEventHandler(self, name, label, handlerFn, validEvents, defaultArgs=None):
         self.eventHandlers[name] = {
+            "label": label,
             "handlerFn": handlerFn,
             "validEvents": validEvents,
             "defaultArgs": defaultArgs
         }
+        return True
+
+    def getRegisteredHandlers(self):
+        return self.eventHandlers
+
+    def getEventHandler(self, event):
+        if event in self.events:
+            return self.events[event]
+        else:
+            return False
 
     def setEventHandler(self, event, name):
         self.events[event] = name
+        return True
 
     def event(self, event, eventArgs=None):
         if event in self.events:
@@ -46,11 +58,14 @@ class LEDEventManager:
                     self.eventThread.kill()
 
                 self.eventThread = gevent.spawn(handler['handlerFn'], self.strip, self.config, args)
+                return True
+
+        return False
 
     def clear(self):
         self.eventHandlers['clear']['handlerFn'](self.strip, self.config)
 
-class NoLEDHandler():
+class NoLEDManager():
     def __init__(self):
         pass
 
@@ -59,6 +74,44 @@ class NoLEDHandler():
 
     def __getattr__(self, *args, **kwargs):
         def nothing(*args, **kwargs):
-            pass
+            return False
         return nothing
 
+'''
+Generic data structures for working with LED commands
+'''
+
+def Color(red, green, blue):
+    """Convert the provided red, green, blue color to a 24-bit color value.
+    Each color component should be a value 0-255 where 0 is the lowest intensity
+    and 255 is the highest intensity.
+    """
+    return (red << 16) | (green << 8) | blue
+
+class ColorVal:
+    NONE = Color(0,0,0)
+    BLUE = Color(0,31,255)
+    CYAN = Color(0,255,255)
+    DARK_ORANGE = Color(255,63,0)
+    DARK_YELLOW = Color(250,210,0)
+    GREEN = Color(0,255,0)
+    LIGHT_GREEN = Color(127,255,0)
+    ORANGE = Color(255,128,0)
+    MINT = Color(63,255,63)
+    PINK = Color(255,0,127)
+    PURPLE = Color(127,0,255)
+    RED = Color(255,0,0)
+    SKY = Color(0,191,255)
+    WHITE = Color(255,255,255)
+    YELLOW = Color(255,255,0)
+
+class ColorPattern:
+    SOLID = 0
+    ALTERNATING = 1
+    TWO_OUT_OF_THREE = 2
+    MOD_SEVEN = 3
+    CUSTOM_RB_CYCLE = 4  # handled by subclass
+    CHASE = 5  # handled by subclass
+    RAINBOW = 6  # handled by subclass
+    RAINBOW_CHASE = 7  # handled by subclass
+    FOUR_ON_FOUR_OFF = 8

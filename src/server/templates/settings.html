@@ -23,6 +23,7 @@
 			'min_lap',
 			'race_status',
 			'team_racing_mode',
+			'led_handler_setup',
 			'cluster_status'
 		]});
 
@@ -1134,41 +1135,47 @@
 		});
 
 		/* LED Controls */
-		$('button.LED-color').click(function (event) {
-				var colors = convertColor($(this).data('rgb'));
-				var data = {
-					red: colors.r,
-					green: colors.g,
-					blue: colors.b,
-				};
-				socket.emit('LED_solid', data);
-				return false;
+		socket.on('led_handler_setup_data', function (msg) {
+			var led_html = $('<ol class="form">');
+
+			for (var i in msg.events) {
+				var led_event = msg.events[i];
+				var valid_selection = false;
+
+				led_select = $('<select id="led-event-' + led_event.event + '" data-event="' + led_event.event + '" class="led-event-select"></select>');
+
+				const handlers = led_event.handlers.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
+				for (var opt in handlers) {
+					var handler = handlers[opt];
+
+					var led_select_option = $('<option value="' + handler.name + '">' + handler.label + '</option>')
+
+					led_select.append(led_select_option);
+
+					if (handler.name == led_event.selected)
+						valid_selection = true;
+				}
+
+				var led_event_block = $('<li>');
+				led_event_block.append($('<div class="label-block"><label for="led-event-' + led_event.event + '">' + led_event.label + '</label></div>'));
+				led_event_block.append(led_select);
+
+				if (valid_selection) {
+					led_select.val(led_event.selected);
+				}
+
+				led_html.append(led_event_block);
+			}
+
+			$('#LED-handler-setup').append(led_html);
 		});
 
-		$('button.LED-chase').click(function (event) {
-				var colors = convertColor($(this).data('rgb'));
-				var data = {
-					red: colors.r,
-					green: colors.g,
-					blue: colors.b,
-				};
-				socket.emit('LED_chase', data);
-				return false;
-		});
-
-		$('button#LED_RB').click(function (event) {
-			socket.emit('LED_RB');
-			return false;
-		});
-
-		$('button#LED_RBCYCLE').click(function (event) {
-			socket.emit('LED_RBCYCLE');
-			return false;
-		});
-
-		$('button#LED_RBCHASE').click(function (event) {
-			socket.emit('LED_RBCHASE');
-			return false;
+		$(document).on('change', '.led-event-select', function(event) {
+			var data = {
+				event: $(this).data('event'),
+				handler: $(this).val()
+			};
+			socket.emit('set_led_event_handler', data);
 		});
 
 		$('#set_led_brightness').on('input', function (event) {
@@ -1183,17 +1190,6 @@
 				brightness: Math.round(val),
 			};
 			socket.emit('LED_brightness', data);
-		});
-
-		$('#set_led_color').change(function (event) {
-				var colors = convertColor($(this).val());
-				var data = {
-					red: colors.r,
-					green: colors.g,
-					blue: colors.b,
-				};
-				socket.emit('LED_solid', data);
-				return false;
 		});
 	});
 
@@ -1669,42 +1665,11 @@
 <!--LED controls-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('LED Control') }}</h2>
+		<h2>{{ __('LED Events') }}</h2>
 	</div>
 	<div class="panel-content">
-		<div class="control-set">
-			<button class="LED-color" data-rgb="#000000"><span style="background-color:#000000"></span></button>
-			<button class="led" id="LED_RB"><span><img src="../static/image/LED-rainbow.png"></span></button>
-			<button class="led" id="LED_RBCYCLE"><span><img src="../static/image/LED-rainbow.png"></span></button>
-			<br />
-			<button class="LED-color" data-rgb="#ff0000"><span style="background-color:#ff0000"></span></button>
-			<button class="LED-color" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
-			<button class="LED-color" data-rgb="#ff7f00"><span style="background-color:#ff7f00"></span></button>
-			<button class="LED-color" data-rgb="#00ff00"><span style="background-color:#00ff00"></span></button>
-			<br />
-			<button class="LED-chase" data-rgb="#ff0000"><span style="background-color:#ff0000"></span></button>
-			<button class="LED-chase" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
-			<button class="LED-chase" data-rgb="#ff7f00"><span style="background-color:#ff7f00"></span></button>
-			<button class="LED-chase" data-rgb="#00ff00"><span style="background-color:#00ff00"></span></button>
-			<br />
-			<button class="LED-color" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
-			<button class="LED-color" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
-			<button class="LED-color" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
-			<button class="LED-color" data-rgb="#ffff00"><span style="background-color:#ffff00"></span></button>
-			<button class="LED-color" data-rgb="#7f00ff"><span style="background-color:#7f00ff"></span></button>
-			<button class="LED-color" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
-			<button class="LED-color" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
-			<button class="LED-color" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
-			<br />
-			<button class="LED-chase" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
-			<button class="LED-chase" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
-			<button class="LED-chase" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
-			<button class="LED-chase" data-rgb="#ffff00"><span style="background-color:#ffff00"></span></button>
-			<button class="LED-chase" data-rgb="#7f00ff"><span style="background-color:#7f00ff"></span></button>
-			<button class="LED-chase" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
-			<button class="LED-chase" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
-			<button class="LED-chase" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
-		</div>
+		<div id="LED-handler-setup"></div>
+
 		<ol class="form">
 			<li>
 				<div class="label-block">
@@ -1712,12 +1677,6 @@
 					<p class="desc">{{ __('Level') }}: <span id="led_brightness_value"></span></p>
 				</div>
 				<input type="range" id="set_led_brightness" min="1" max="25">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_led_color">{{ __('LED Color') }}</label>
-				</div>
-				<input type="color" id="set_led_color" />
 			</li>
 		</ol>
 	</div>

@@ -1,44 +1,7 @@
 '''LED visual effects'''
 
-# to use this handler, run:
-#    sudo pip install pillow
-
+from led_event_manager import Color, ColorVal, ColorPattern
 import gevent
-
-def Color(red, green, blue):
-    """Convert the provided red, green, blue color to a 24-bit color value.
-    Each color component should be a value 0-255 where 0 is the lowest intensity
-    and 255 is the highest intensity.
-    """
-    return (red << 16) | (green << 8) | blue
-
-class ColorVal:
-    NONE = Color(0,0,0)
-    BLUE = Color(0,31,255)
-    CYAN = Color(0,255,255)
-    DARK_ORANGE = Color(255,63,0)
-    DARK_YELLOW = Color(250,210,0)
-    GREEN = Color(0,255,0)
-    LIGHT_GREEN = Color(127,255,0)
-    ORANGE = Color(255,128,0)
-    MINT = Color(63,255,63)
-    PINK = Color(255,0,127)
-    PURPLE = Color(127,0,255)
-    RED = Color(255,0,0)
-    SKY = Color(0,191,255)
-    WHITE = Color(255,255,255)
-    YELLOW = Color(255,255,0)
-
-class ColorPattern:
-    SOLID = 0
-    ALTERNATING = 1
-    TWO_OUT_OF_THREE = 2
-    MOD_SEVEN = 3
-    CUSTOM_RB_CYCLE = 4  # handled by subclass
-    CHASE = 5  # handled by subclass
-    RAINBOW = 6  # handled by subclass
-    RAINBOW_CHASE = 7  # handled by subclass
-    FOUR_ON_FOUR_OFF = 8
 
 nodeToColorArray = [ColorVal.BLUE, ColorVal.DARK_ORANGE, ColorVal.LIGHT_GREEN, ColorVal.YELLOW, \
                         ColorVal.PURPLE, ColorVal.PINK, ColorVal.MINT, ColorVal.SKY]
@@ -52,23 +15,20 @@ def led_on(strip, color, pattern=ColorPattern.SOLID):
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, color)
     elif pattern == ColorPattern.ALTERNATING:
-        onFlag = True
         for i in range(strip.numPixels()):
-            if onFlag:
+            if i % 2 < 1:
                 strip.setPixelColor(i, color)
-                onFlag = False
             else:
                 strip.setPixelColor(i, ColorVal.NONE)
-                onFlag = True
     elif pattern == ColorPattern.TWO_OUT_OF_THREE:
         for i in range(strip.numPixels()):
-            if (i + 1) % 3 != 0:
+            if i % 3 < 2:
                 strip.setPixelColor(i, color)
             else:
                 strip.setPixelColor(i, ColorVal.NONE)
     elif pattern == ColorPattern.MOD_SEVEN:
         for i in range(strip.numPixels()):
-            if i % 7 == 0:
+            if i % 7 < 1:
                 strip.setPixelColor(i, color)
             else:
                 strip.setPixelColor(i, ColorVal.NONE)
@@ -159,39 +119,39 @@ def clear(strip, config, args=None):
 def hold(strip, config, args=None):
     pass
 
-def registerHandlers(handler):
-    # register generic color change
-    handler.registerEventHandler("stripColor", showColor, ["startup", "raceStaging", "raceRunning", "raceFinished", "raceStopped", "manual", "shutdown"])
+def registerHandlers(manager):
+    # register generic color change (does nothing without arguments)
+    manager.registerEventHandler("stripColor", "Color/Pattern", showColor, ["manualChange"])
 
     # register specific colors for typical events
-    handler.registerEventHandler("stagingColor", showColor, ["raceStaging"], {
+    manager.registerEventHandler("stagingColor", "Color/Pattern: Orange 2/1", showColor, ["raceStaging"], {
         'color': ColorVal.ORANGE,
         'pattern': ColorPattern.TWO_OUT_OF_THREE
         })
-    handler.registerEventHandler("startColor", showColor, ["raceRunning"], {
+    manager.registerEventHandler("startColor", "Color/Pattern: Green Solid", showColor, ["raceStarted"], {
         'color': ColorVal.GREEN,
         'pattern': ColorPattern.SOLID,
         'time': Timing.START_EXPIRE
         })
-    handler.registerEventHandler("finishColor", showColor, ["raceFinished"], {
+    manager.registerEventHandler("finishColor", "Color/Pattern: White 4/4", showColor, ["raceFinished"], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF
         })
-    handler.registerEventHandler("stopColor", showColor, ["raceStopped"], {
+    manager.registerEventHandler("stopColor", "Color/Pattern: Red Solid", showColor, ["raceStopped"], {
         'color': ColorVal.RED,
         'pattern': ColorPattern.SOLID
         })
 
-    handler.registerEventHandler("enterColor", showColor, ["crossingEntered"], {
+    manager.registerEventHandler("enterColor", "Color/Pattern: (Pilot/Node) Solid", showColor, ["crossingEntered"], {
         'pattern': ColorPattern.SOLID
         })
-    handler.registerEventHandler("exitColor", showColor, ["crossingExited"], {
+    manager.registerEventHandler("exitColor", "Color/Pattern: (Pilot/Node) 1/1", showColor, ["crossingExited"], {
         'pattern': ColorPattern.ALTERNATING,
         'time': Timing.VTX_EXPIRE
         })
 
     # register clear for all events
-    handler.registerEventHandler("clear", clear, ["startup", "raceStaging", "crossingEntered", "crossingExited","raceRunning", "raceFinished", "raceStopped", "manual", "shutdown"])
+    manager.registerEventHandler("clear", "Turn Off", clear, ["startup", "raceStaging", "crossingEntered", "crossingExited","raceStarted", "raceFinished", "raceStopped", "shutdown"])
 
-    # register hold/none for all events
-    handler.registerEventHandler("none", hold, ["startup", "raceStaging", "crossingEntered", "crossingExited", "raceRunning", "raceFinished", "raceStopped", "manual", "shutdown"])
+    # register hold/no change for most events
+    manager.registerEventHandler("none", "No Change", hold, ["raceStaging", "crossingEntered", "crossingExited", "raceStarted", "raceFinished", "raceStopped", "shutdown"])

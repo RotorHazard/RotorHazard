@@ -3,9 +3,9 @@
 # to use this handler, run:
 #    sudo pip install pillow
 
+from led_event_manager import Color, ColorVal, ColorPattern
 import gevent
 from PIL import Image
-from led_handler_generic import Color
 
 def showBitmap(strip, config, args):
     def setPixels(img):
@@ -37,20 +37,20 @@ def showBitmap(strip, config, args):
             gevent.sleep(delay/1000.0)
 
 
-def registerHandlers(handler):
+def registerHandlers(manager):
     # register state bitmaps
-    handler.registerEventHandler("startupBitmap", showBitmap, ["startup"], {'bitmaps': [
+    manager.registerEventHandler("startupBitmap", "Image: RotorHazard Logo", showBitmap, ["startup"], {'bitmaps': [
         {"image": "static/image/LEDpanel-RotorHazard-logo.png", "delay": 0}
     ]})
-    handler.registerEventHandler("stagingBitmap", showBitmap, ["raceStaging"], {'bitmaps': [
+    manager.registerEventHandler("stagingBitmap", "Image: Orange Staging Square", showBitmap, ["raceStaging"], {'bitmaps': [
         {"image": "static/image/LEDpanel-status-staging.png", "delay": 0}
     ]})
-    handler.registerEventHandler("startBitmap", showBitmap, ["raceStarted"], {'bitmaps': [
+    manager.registerEventHandler("startBitmap", "Image: Green Upward Arrow", showBitmap, ["raceStarted"], {'bitmaps': [
         {"image": "static/image/LEDpanel-status-start.png", "delay": 0}
     ]})
-    handler.registerEventHandler("stoppedBitmap", showBitmap, ["raceStopped"], {'bitmaps': [
+    manager.registerEventHandler("stoppedBitmap", "Image: Red X", showBitmap, ["raceStopped"], {'bitmaps': [
         {"image": "static/image/LEDpanel-status-stop.png", "delay": 0}
     ]})
-    handler.registerEventHandler("finishedBitmap", showBitmap, ["raceFinished"], {'bitmaps': [
+    manager.registerEventHandler("finishedBitmap", "Image: Checkerboard", showBitmap, ["raceFinished", "raceStopped"], {'bitmaps': [
         {"image": "static/image/LEDpanel-status-finished.png", "delay": 0}
     ]})
