@@ -4058,7 +4058,7 @@ def db_reset_options_defaults():
     setOption("currentLanguage", "")
     setOption("currentProfile", "1")
     setCurrentRaceFormat(RaceFormat.query.first())
-    setOption("calibrationMode", "0")
+    setOption("calibrationMode", "1")
     # minimum lap
     setOption("MinLapSec", "10")
     setOption("MinLapBehavior", "0")
