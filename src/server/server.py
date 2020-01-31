@@ -40,7 +40,6 @@ sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startu
 from RHRace import get_race_state
 
 APP = Flask(__name__, static_url_path='/static')
-APP.config['SECRET_KEY'] = 'secret!'
 
 HEARTBEAT_THREAD = None
 
@@ -143,7 +142,6 @@ try:
         Config['SERIAL_PORTS'].extend(ExternalConfig['SERIAL_PORTS'])
     Config['GENERAL']['configFile'] = 1
     print 'Configuration file imported'
-    APP.config['SECRET_KEY'] = Config['GENERAL']['SECRET_KEY']
 except IOError:
     Config['GENERAL']['configFile'] = 0
     print 'No configuration file found, using defaults'
@@ -4352,6 +4350,11 @@ else:
     led_handler = NoLEDHandler()
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
+    if not getOption("secret_key"):
+        setOption("secret_key", unicode(os.urandom(50), errors='ignore'))
+
+    APP.config['SECRET_KEY'] = getOption("secret_key")
+
     print "Running http server at port " + str(port_val)
     led_handler.startup()  # show startup indicator on LEDs
     try:
