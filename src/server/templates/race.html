@@ -460,6 +460,9 @@
 					if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
 						$tr.addClass('min-lap-warning');
 					}
+					if (!rotorhazard.race_formats.race_mode && lap.lap_raw > (rotorhazard.race_formats.race_time_sec * 1000)) {
+						$tr.addClass('after-time-expired');
+					}
 					$tr.appendTo('#current_laps_' + i);
 
 				});
@@ -928,6 +931,8 @@
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
 			}
 			$('#set_race_format').val(msg.current_format);
+
+			rotorhazard.race_formats = msg;
 		});
 
 		$('#set_race_format').change(function (event) {
