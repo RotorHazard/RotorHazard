@@ -351,21 +351,7 @@
 		});
 
 		socket.on('stage_ready', function (msg) {
-			var response_time = new Date();
-			var server_delay = ((response_time - request_time) / 2);
-
-			var data = { // supply delay to stage 2
-				delay: msg.start_delay
-			}
-			setTimeout(function(){
-				timer.mode(msg.race_mode);
-				timer.setRaceDuration(msg.race_time_sec);
-				timer.reset();
-				timer.pre_race(msg.start_delay, msg.hide_stage_timer);
-				timer.start(); // Start clock
-
-				race_mode = msg.race_time_sec;
-			}, server_delay);
+			race_kickoff(msg);
 		});
 
 		socket.on('stop_timer', function (msg) {
