@@ -1428,6 +1428,23 @@ footer img {
 	overflow: auto;
 }
 
+.LED-color span,
+.LED-chase span {
+	display: block;
+	min-width: 1.2em;
+	height: 1.2em;
+	margin: 0;
+}
+
+.LED-chase span {
+	background: url(image/chase.svg) center no-repeat;
+}
+
+.led img {
+	display: block;
+	margin: 0;
+}
+
 /* ************* */
 /* Print Styling */
 /* ************* */
