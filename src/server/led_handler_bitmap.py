@@ -39,18 +39,18 @@ def showBitmap(strip, config, args):
 
 def registerHandlers(manager):
     # register state bitmaps
-    manager.registerEventHandler("startupBitmap", "Image: RotorHazard Logo", showBitmap, ["startup"], {'bitmaps': [
+    manager.registerEventHandler("bitmapRHLogo", "Image: RotorHazard Logo", showBitmap, ["startup"], {'bitmaps': [
         {"image": "static/image/LEDpanel-RotorHazard-logo.png", "delay": 0}
     ]})
-    manager.registerEventHandler("stagingBitmap", "Image: Orange Staging Square", showBitmap, ["raceStaging"], {'bitmaps': [
+    manager.registerEventHandler("bitmapOrangeSquare", "Image: Orange Staging Square", showBitmap, ["raceStaging"], {'bitmaps': [
         {"image": "static/image/LEDpanel-status-staging.png", "delay": 0}
     ]})
-    manager.registerEventHandler("startBitmap", "Image: Green Upward Arrow", showBitmap, ["raceStarted"], {'bitmaps': [
+    manager.registerEventHandler("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, ["raceStarted"], {'bitmaps': [
         {"image": "static/image/LEDpanel-status-start.png", "delay": 0}
     ]})
-    manager.registerEventHandler("stoppedBitmap", "Image: Red X", showBitmap, ["raceStopped"], {'bitmaps': [
+    manager.registerEventHandler("bitmapRedX", "Image: Red X", showBitmap, ["raceStopped"], {'bitmaps': [
         {"image": "static/image/LEDpanel-status-stop.png", "delay": 0}
     ]})
-    manager.registerEventHandler("finishedBitmap", "Image: Checkerboard", showBitmap, ["raceFinished", "raceStopped"], {'bitmaps': [
+    manager.registerEventHandler("bitmapCheckerboard", "Image: Checkerboard", showBitmap, ["raceFinished", "raceStopped"], {'bitmaps': [
         {"image": "static/image/LEDpanel-status-finished.png", "delay": 0}
     ]})

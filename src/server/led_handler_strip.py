@@ -137,40 +137,39 @@ def hold(strip, config, args=None):
 
 def registerHandlers(manager):
     # register generic color change (does nothing without arguments)
-    manager.registerEventHandler("stripColor", "Color/Pattern", showColor, ["manualChange"])
-
-    # register specific colors for typical events
-    manager.registerEventHandler("stagingColor", "Color/Pattern: Orange 2/1", showColor, ["raceStaging"], {
-        'color': ColorVal.ORANGE,
-        'pattern': ColorPattern.TWO_OUT_OF_THREE
-        })
-    manager.registerEventHandler("startColor", "Color/Pattern: Green Solid", showColor, ["raceStarted"], {
-        'color': ColorVal.GREEN,
-        'pattern': ColorPattern.SOLID,
-        'time': Timing.START_EXPIRE
-        })
-    manager.registerEventHandler("finishColor", "Color/Pattern: White 4/4", showColor, ["raceFinished"], {
-        'color': ColorVal.WHITE,
-        'pattern': ColorPattern.FOUR_ON_FOUR_OFF
-        })
-    manager.registerEventHandler("stopColor", "Color/Pattern: Red Solid", showColor, ["raceStopped"], {
-        'color': ColorVal.RED,
+    manager.registerEventHandler("stripColor", "Color/Pattern", showColor, ["manualColor"])
+    manager.registerEventHandler("stripColorSolid", "Color/Pattern: (Pilot/Node) Solid", showColor, ["crossingEntered", "crossingExited"], {
         'pattern': ColorPattern.SOLID
         })
-
-    manager.registerEventHandler("enterColor", "Color/Pattern: (Pilot/Node) Solid", showColor, ["crossingEntered"], {
-        'pattern': ColorPattern.SOLID
-        })
-    manager.registerEventHandler("exitColor", "Color/Pattern: (Pilot/Node) 1/1", showColor, ["crossingExited"], {
+    manager.registerEventHandler("stripColor1_1", "Color/Pattern: (Pilot/Node) 1/1", showColor, ["crossingEntered", "crossingExited"], {
         'pattern': ColorPattern.ALTERNATING,
         'time': Timing.VTX_EXPIRE
         })
 
-    # register rainbow cycle startup
-    manager.registerEventHandler("rainbowCycle", "Color/Pattern: Rainbow", rainbowCycle, ["startup"])
+    # register specific colors needed for typical events
+    manager.registerEventHandler("stripColorOrange2_1", "Color/Pattern: Orange 2/1", showColor, ["raceStaging"], {
+        'color': ColorVal.ORANGE,
+        'pattern': ColorPattern.TWO_OUT_OF_THREE
+        })
+    manager.registerEventHandler("stripColorGreenSolid", "Color/Pattern: Green Solid", showColor, ["raceStarted"], {
+        'color': ColorVal.GREEN,
+        'pattern': ColorPattern.SOLID,
+        'time': Timing.START_EXPIRE
+        })
+    manager.registerEventHandler("stripColorWhite4_4", "Color/Pattern: White 4/4", showColor, ["raceFinished"], {
+        'color': ColorVal.WHITE,
+        'pattern': ColorPattern.FOUR_ON_FOUR_OFF
+        })
+    manager.registerEventHandler("stripColorRedSolid", "Color/Pattern: Red Solid", showColor, ["raceStopped"], {
+        'color': ColorVal.RED,
+        'pattern': ColorPattern.SOLID
+        })
 
-    # register clear for all events
+    # rainbow cycle
+    manager.registerEventHandler("rainbowCycle", "Color/Pattern: Rainbow", rainbowCycle, ["startup", "raceStaging", "crossingEntered", "crossingExited","raceStarted", "raceFinished", "raceStopped"])
+
+    # clear (available for all events, but also by specific manager function)
     manager.registerEventHandler("clear", "Turn Off", clear, ["startup", "raceStaging", "crossingEntered", "crossingExited","raceStarted", "raceFinished", "raceStopped", "shutdown"])
 
-    # register hold/no change for most events
+    # hold/no change
     manager.registerEventHandler("none", "No Change", hold, ["raceStaging", "crossingEntered", "crossingExited", "raceStarted", "raceFinished", "raceStopped", "shutdown"])

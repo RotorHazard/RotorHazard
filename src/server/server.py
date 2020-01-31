@@ -2322,7 +2322,7 @@ def on_LED_solid(data):
     led_green = data['green']
     led_blue = data['blue']
     if strip is not None:
-        led_manager.event("manualChange", {
+        led_manager.event("manualColor", {
             'color': Color(led_red,led_green,led_blue),
             'pattern': ColorPattern.SOLID,
             'time': None
@@ -2352,8 +2352,7 @@ def on_LED_RB():
 @SOCKET_IO.on('LED_RBCYCLE')
 def on_LED_RBCYCLE():
     if strip is not None:
-        led_manager.event("manualChange", {
-            'pattern': ColorPattern.CUSTOM_RB_CYCLE,
+        led_manager.event("rainbowCycle", {
             'time': 5
             }) #Rainbow Cycle
 
@@ -4504,18 +4503,18 @@ def set_handlers():
         handlers = json.loads(handler_opt)
     else:
         handlers = {
-            "raceStaging": "stagingColor",
-            "raceStarted": "startColor",
-            "raceFinished": "finishColor",
-            "raceStopped": "stopColor",
-            "crossingEntered": "enterColor",
-            "crossingExited": "exitColor",
+            "raceStaging": "stripColorOrange2_1",
+            "raceStarted": "stripColorGreenSolid",
+            "raceFinished": "stripColorWhite4_4",
+            "raceStopped": "stripColorRedSolid",
+            "crossingEntered": "stripColorSolid",
+            "crossingExited": "stripColor1_1",
             "startup": "rainbowCycle",
             "shutdown": "clear"
         }
 
     # set handlers
-    led_manager.setEventHandler("manualChange", "stripColor")
+    led_manager.setEventHandler("manualColor", "stripColor")
     for item in handlers:
         led_manager.setEventHandler(item, handlers[item])
 
