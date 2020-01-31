@@ -1,6 +1,6 @@
 '''LED visual effects'''
 
-from led_event_manager import Color, ColorVal, ColorPattern
+from led_event_manager import LEDEvent, Color, ColorVal, ColorPattern
 import gevent
 
 nodeToColorArray = [ColorVal.BLUE, ColorVal.DARK_ORANGE, ColorVal.LIGHT_GREEN, ColorVal.YELLOW, \
@@ -137,39 +137,39 @@ def hold(strip, config, args=None):
 
 def registerHandlers(manager):
     # register generic color change (does nothing without arguments)
-    manager.registerEventHandler("stripColor", "Color/Pattern", showColor, ["manualColor"])
-    manager.registerEventHandler("stripColorSolid", "Color/Pattern: (Pilot/Node) Solid", showColor, ["crossingEntered", "crossingExited"], {
+    manager.registerEventHandler("stripColor", "Color/Pattern", showColor, [LEDEvent.MANUAL])
+    manager.registerEventHandler("stripColorSolid", "Color/Pattern: (Pilot/Node) Solid", showColor, [LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
         'pattern': ColorPattern.SOLID
         })
-    manager.registerEventHandler("stripColor1_1", "Color/Pattern: (Pilot/Node) 1/1", showColor, ["crossingEntered", "crossingExited"], {
+    manager.registerEventHandler("stripColor1_1", "Color/Pattern: (Pilot/Node) 1/1", showColor, [LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
         'pattern': ColorPattern.ALTERNATING,
         'time': Timing.VTX_EXPIRE
         })
 
     # register specific colors needed for typical events
-    manager.registerEventHandler("stripColorOrange2_1", "Color/Pattern: Orange 2/1", showColor, ["raceStaging"], {
+    manager.registerEventHandler("stripColorOrange2_1", "Color/Pattern: Orange 2/1", showColor, [LEDEvent.RACESTAGE], {
         'color': ColorVal.ORANGE,
         'pattern': ColorPattern.TWO_OUT_OF_THREE
         })
-    manager.registerEventHandler("stripColorGreenSolid", "Color/Pattern: Green Solid", showColor, ["raceStarted"], {
+    manager.registerEventHandler("stripColorGreenSolid", "Color/Pattern: Green Solid", showColor, [LEDEvent.RACESTART], {
         'color': ColorVal.GREEN,
         'pattern': ColorPattern.SOLID,
         'time': Timing.START_EXPIRE
         })
-    manager.registerEventHandler("stripColorWhite4_4", "Color/Pattern: White 4/4", showColor, ["raceFinished"], {
+    manager.registerEventHandler("stripColorWhite4_4", "Color/Pattern: White 4/4", showColor, [LEDEvent.RACEFINISH], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF
         })
-    manager.registerEventHandler("stripColorRedSolid", "Color/Pattern: Red Solid", showColor, ["raceStopped"], {
+    manager.registerEventHandler("stripColorRedSolid", "Color/Pattern: Red Solid", showColor, [LEDEvent.RACESTOP], {
         'color': ColorVal.RED,
         'pattern': ColorPattern.SOLID
         })
 
     # rainbow cycle
-    manager.registerEventHandler("rainbowCycle", "Color/Pattern: Rainbow", rainbowCycle, ["startup", "raceStaging", "crossingEntered", "crossingExited","raceStarted", "raceFinished", "raceStopped"])
+    manager.registerEventHandler("rainbowCycle", "Color/Pattern: Rainbow", rainbowCycle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP])
 
     # clear (available for all events, but also by specific manager function)
-    manager.registerEventHandler("clear", "Turn Off", clear, ["startup", "raceStaging", "crossingEntered", "crossingExited","raceStarted", "raceFinished", "raceStopped", "shutdown"])
+    manager.registerEventHandler("clear", "Turn Off", clear, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN])
 
     # hold/no change
-    manager.registerEventHandler("none", "No Change", hold, ["raceStaging", "crossingEntered", "crossingExited", "raceStarted", "raceFinished", "raceStopped", "shutdown"])
+    manager.registerEventHandler("none", "No Change", hold, [LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN])

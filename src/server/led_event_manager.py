@@ -111,3 +111,50 @@ class ColorPattern:
     TWO_OUT_OF_THREE = 2
     MOD_SEVEN = 3
     FOUR_ON_FOUR_OFF = 4
+
+class LEDEvent:
+    MANUAL = 'manual'
+    RACESTAGE = 'raceStage'
+    RACESTART = 'raceStart'
+    RACEFINISH = 'raceFinish'
+    RACESTOP = 'raceStop'
+    RACEWIN = 'raceWin'
+    CROSSINGENTER = 'crossingEnter'
+    CROSSINGEXIT = 'crossingExit'
+    STARTUP = 'startup'
+    SHUTDOWN = 'shutdown'
+
+    configurable_events = [
+        {
+            "event": RACESTAGE,
+            "label": "Race Staging"
+        },
+        {
+            "event": RACESTART,
+            "label": "Race Start"
+        },
+        {
+            "event": RACEFINISH,
+            "label": "Race Finish"
+        },
+        {
+            "event": RACESTOP,
+            "label": "Race Stop"
+        },
+        {
+            "event": CROSSINGENTER,
+            "label": "Gate Entrance"
+        },
+        {
+            "event": CROSSINGEXIT,
+            "label": "Gate Exit"
+        },
+        {
+            "event": STARTUP,
+            "label": "Server Startup"
+        },
+        {
+            "event": SHUTDOWN,
+            "label": "Server Shutdown"
+        }
+    ]
