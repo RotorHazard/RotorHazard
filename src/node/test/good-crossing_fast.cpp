@@ -44,12 +44,10 @@ unittest(fastCrossing) {
   assertEqual(130, (int)history.peak.rssi); // first upward trend
   assertEqual(timestamp(3), (int)history.peak.firstTime);
   assertEqual(0, (int)history.peak.duration);
-  assertEqual(0, (int)history.nadir.rssi); // no downward trend yet
-  assertEqual(0, (int)history.nadir.firstTime);
-  assertEqual(0, (int)history.nadir.duration);
+  assertFalse(isNadirValid(history.nadir)); // no downward trend yet
 
   assertFalse(isPeakValid(history.peakSend));
-  assertEqual(0, (int)history.nadirSend.rssi);
+  assertFalse(isNadirValid(history.nadirSend));
 
   // exit
   sendSignal(nano, 70);
@@ -74,7 +72,7 @@ unittest(fastCrossing) {
   assertEqual(130, (int)history.peakSend.rssi);
   assertEqual(timestamp(3), (int)history.peakSend.firstTime);
   assertEqual(time(1)-1, (int)history.peakSend.duration);
-  assertEqual(0, (int)history.nadirSend.rssi);
+  assertFalse(isNadirValid(history.nadirSend));
 
   assertEqual(130, (int)lastPass.rssiPeak);
   assertEqual(50, (int)lastPass.rssiNadir);
@@ -104,9 +102,10 @@ unittest(fastCrossing) {
   assertEqual(130, (int)history.peakSend.rssi);
   assertEqual(timestamp(3), (int)history.peakSend.firstTime);
   assertEqual(time(1)-1, (int)history.peakSend.duration);
-  assertEqual(0, (int)history.nadirSend.rssi);
-  assertEqual(0, (int)history.nadirSend.firstTime);
-  assertEqual(0, (int)history.nadirSend.duration);
+  readPeak();
+  assertEqual(70, (int)history.nadirSend.rssi);
+  assertEqual(timestamp(4), (int)history.nadirSend.firstTime);
+  assertEqual(time(1)-1, (int)history.nadirSend.duration);
 
   assertEqual(130, (int)lastPass.rssiPeak);
   assertEqual(50, (int)lastPass.rssiNadir);
@@ -116,12 +115,13 @@ unittest(fastCrossing) {
   // small fall
   sendSignal(nano, 60);
 
-  assertEqual(130, (int)history.peakSend.rssi);
-  assertEqual(timestamp(3), (int)history.peakSend.firstTime);
+  assertEqual(75, (int)history.peakSend.rssi);
+  assertEqual(timestamp(5), (int)history.peakSend.firstTime);
   assertEqual(time(1)-1, (int)history.peakSend.duration);
   assertEqual(70, (int)history.nadirSend.rssi);
   assertEqual(timestamp(4), (int)history.nadirSend.firstTime);
   assertEqual(time(1)-1, (int)history.nadirSend.duration);
+  readNadir();
 }
 
 unittest_main()

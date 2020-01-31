@@ -110,11 +110,10 @@
 			}
 		});
 
-		// set up nodes
-		$('.node').each(function(){
-			var node_id = parseInt($(this).data('id'));
-			rotorhazard.nodes[node_id] = new nodeModel();
-		});
+		// set up node local store
+		for (i = 0; i < {{ num_nodes }}; i++) {
+			rotorhazard.nodes[i] = new nodeModel();
+		}
 
 		// populate voice controls
 		$('#voice-calls').val(parseInt(rotorhazard.primaryPilot));
@@ -133,6 +132,9 @@
 		$().articulate('pitch', rotorhazard.voice_pitch);
 		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
 		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
+		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
+		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
+		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
 		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
 
 		socket.on('race_scheduled', function (msg) {
@@ -206,13 +208,19 @@
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				rotorhazard.nodes[i].frequency = msg.frequency[i];
 				freq.updateBlocks();
-			} 
+			}
 		});
 
 		socket.on('current_laps', function (msg) {
-			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json object
+			current_laps = msg;
+			show_current_laps();
+		});
+
+		function show_current_laps() {
+			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
 				$('#current_laps_' + i + ' tbody > tr').remove();
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
+					var $tr = '';
 					var lapTime = lap.lap_time;
 					if (lap.splits.length > 0) {
 						lapTime += ' (';
@@ -229,21 +237,53 @@
 						lapTime += ')';
 					}
 					if (lap.lap_id == 0) {
-						var $tr = $('<tr class="lap_0">').append(
-							$('<td>').text(lap.lap_id),
-							$('<td>').text(lapTime)
-						).appendTo('#current_laps_' + i);
+						var local_colspan = 2;
+						$tr = $('<tr class="lap_0">');
+						if(rotorhazard.display_lap_id) {
+							local_colspan = 1;
+							$tr.append(
+								$('<td class="display_lap_id">').text(lap.lap_id)
+							);
+						}
+						$tr.append($('<td colspan="'+local_colspan+'">').text(lap.lap_time));
 					}
 					else {
 						var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
-						var $tr = $('<tr>').append(
-							$('<td>').text(lap.lap_id),
-							$('<td>').text(lapTime).prepend($('<span class="from_start">').text(lapTimeStamp))
-						).appendTo('#current_laps_' + i);
+
+						$tr = $('<tr>')
+						var local_colspan = 2;
+						if(rotorhazard.display_lap_id) {
+							local_colspan = 1;
+							$tr.append(
+								$('<td class="display_lap_id">').text(lap.lap_id)
+							);
+						}
+						$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ');
+						$local_prepend = $('<span class="from_start">');
+
+						if(rotorhazard.display_time_first_pass) {
+							$local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp));
+							if(rotorhazard.display_time_start){
+								$local_prepend.append(" / ");
+							}
+						}
+
+						if(rotorhazard.display_time_start){
+							$local_prepend.append(formatTimeMillis(lap.lap_time_stamp));
+						}
+						$time_td.prepend($local_prepend);
+						$tr.append($time_td);
 					}
+					if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
+						$tr.addClass('min-lap-warning');
+					}
+					if (!rotorhazard.race_formats.race_mode && lap.lap_raw > (rotorhazard.race_formats.race_time_sec * 1000)) {
+						$tr.addClass('after-time-expired');
+					}
+					$tr.appendTo('#current_laps_' + i);
 				});
 			});
-		});
+		}
 
 		socket.on('leaderboard', function (msg) {
 			$('#leaderboard').empty();
@@ -314,21 +354,7 @@
 		});
 
 		socket.on('stage_ready', function (msg) {
-			var response_time = new Date();
-			var server_delay = ((response_time - request_time) / 2);
-
-			var data = { // supply delay to stage 2
-				delay: msg.start_delay
-			}
-			setTimeout(function(){
-				timer.mode(msg.race_mode);
-				timer.setRaceDuration(msg.race_time_sec);
-				timer.reset();
-				timer.pre_race(msg.start_delay, msg.hide_stage_timer);
-				timer.start(); // Start clock
-
-				race_mode = msg.race_time_sec;
-			}, server_delay);
+			race_kickoff(msg);
 		});
 
 		socket.on('stop_timer', function (msg) {
@@ -442,9 +468,30 @@
 			rotorhazard.saveData();
 		});
 
+		$('#display_lap_id').change(function (event) {
+			rotorhazard.display_lap_id = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
+		$('#display_time_start').change(function (event) {
+			rotorhazard.display_time_start = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
+		$('#display_time_first_pass').change(function (event) {
+			rotorhazard.display_time_first_pass = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
+		socket.on('race_format', function (msg) {
+			rotorhazard.race_formats = msg;
+		});
+
 		$('#use_mp3_tones').change(function (event) {
 			rotorhazard.use_mp3_tones = $(this).prop('checked');
-			rotorhazard.saveData();
 		});
 	});
 
@@ -482,11 +529,11 @@
 
 		<!--Display the current laps-->
 		<div class="race-results">
-			{% for node in range(num_nodes) %}
-			<div class="node" data-id="{{ node }}">
-				<h4 class="callsign_{{ node }}">{{ __('Loading...') }}</h4>
-				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
-				<table class="laps" id="current_laps_{{ node }}">
+			{% for node in nodes %}
+			<div class="node" data-id="{{ node.index }}">
+				<h4 class="callsign_{{ node.index }}">{{ __('Loading...') }}</h4>
+				<div class="channel-block" data-node="{{ node.index }}"><span class="ch"></span> <span class="fr"></span></div>
+				<table class="laps" id="current_laps_{{ node.index }}">
 					<tbody>
 					</tbody>
 				</table>
@@ -565,6 +612,27 @@
 				</div>
 				<ul>
 					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
+				</ul>
+			</li>
+		</ol>
+	</div>
+</div>
+
+<!--Display Settings-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Display Settings') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					{{ __('Lap Information') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="display_lap_id"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
+					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
 				</ul>
 			</li>
 		</ol>

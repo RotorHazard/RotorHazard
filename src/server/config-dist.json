@@ -1,7 +1,6 @@
 {
 	"GENERAL": {
 		"HTTP_PORT": 5000,
-		"SECRET_KEY": "secret!",
 		"ADMIN_USERNAME": "admin",
 		"ADMIN_PASSWORD": "rotorhazard",
 		"DEBUG": false,

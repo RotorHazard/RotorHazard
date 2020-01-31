@@ -40,7 +40,6 @@ sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startu
 from RHRace import get_race_state
 
 APP = Flask(__name__, static_url_path='/static')
-APP.config['SECRET_KEY'] = 'secret!'
 
 HEARTBEAT_THREAD = None
 
@@ -129,7 +128,6 @@ try:
         Config['SERIAL_PORTS'].extend(ExternalConfig['SERIAL_PORTS'])
     Config['GENERAL']['configFile'] = 1
     print 'Configuration file imported'
-    APP.config['SECRET_KEY'] = Config['GENERAL']['SECRET_KEY']
 except IOError:
     Config['GENERAL']['configFile'] = 0
     print 'No configuration file found, using defaults'
@@ -709,18 +707,37 @@ def results():
 @requires_auth
 def race():
     '''Route to race management page.'''
+    frequencies = [node.frequency for node in INTERFACE.nodes]
+    nodes = []
+    for idx, freq in enumerate(frequencies):
+        if freq:
+            nodes.append({
+                'freq': freq,
+                'index': idx
+            })
+
     return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
         led_enabled=led_manager.isEnabled(),
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat,
         heats=Heat, pilots=Pilot,
-        frequencies=[node.frequency for node in INTERFACE.nodes])
+        nodes=nodes)
 
 @APP.route('/current')
 def racepublic():
     '''Route to race management page.'''
+    frequencies = [node.frequency for node in INTERFACE.nodes]
+    nodes = []
+    for idx, freq in enumerate(frequencies):
+        if freq:
+            nodes.append({
+                'freq': freq,
+                'index': idx
+            })
+
     return render_template('racepublic.html', serverInfo=serverInfo, getOption=getOption, __=__,
-        num_nodes=RACE.num_nodes)
+        num_nodes=RACE.num_nodes,
+        nodes=nodes)
 
 @APP.route('/marshal')
 @requires_auth
@@ -1819,11 +1836,7 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        if int(getOption('calibrationMode')):
-            autoUpdateCalibration()
-
         led_manager.event(LEDEvent.RACESTAGE)
-
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
@@ -1869,6 +1882,8 @@ def autoUpdateCalibration():
                 'exit_at_level': calibration['exit_at_level']
             })
 
+    emit_enter_and_exit_at_levels()
+
 def findBestValues(node, node_index):
     ''' Search race history for best tuning values '''
 
@@ -1877,12 +1892,20 @@ def findBestValues(node, node_index):
     pilot = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
     current_class = heat.class_id
 
+    # test for disabled node
+    if pilot is PILOT_ID_NONE or node.frequency is FREQUENCY_ID_NONE:
+        server_log('Node {0} calibration: skipping disabled node'.format(node.index+1))
+        return {
+            'enter_at_level': node.enter_at_level,
+            'exit_at_level': node.exit_at_level
+        }
+
     # test for same heat, same node
     race_query = SavedRaceMeta.query.filter_by(heat_id=heat.heat_id).order_by(-SavedRaceMeta.id).first()
     if race_query:
         pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
         if pilotrace_query:
-            server_log('calibration: found same pilot+node in same heat')
+            server_log('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
             return {
                 'enter_at_level': pilotrace_query.enter_at,
                 'exit_at_level': pilotrace_query.exit_at
@@ -1893,7 +1916,7 @@ def findBestValues(node, node_index):
     if race_query:
         pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, node_index=node_index, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
         if pilotrace_query:
-            server_log('calibration: found same pilot+node in other heat with same class')
+            server_log('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
             return {
                 'enter_at_level': pilotrace_query.enter_at,
                 'exit_at_level': pilotrace_query.exit_at
@@ -1902,7 +1925,7 @@ def findBestValues(node, node_index):
     # test for same pilot, same node
     pilotrace_query = SavedPilotRace.query.filter_by(node_index=node_index, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
     if pilotrace_query:
-        server_log('calibration: found same pilot+node in other heat with other class')
+        server_log('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
         return {
             'enter_at_level': pilotrace_query.enter_at,
             'exit_at_level': pilotrace_query.exit_at
@@ -1911,14 +1934,14 @@ def findBestValues(node, node_index):
     # test for same node
     pilotrace_query = SavedPilotRace.query.filter_by(node_index=node_index).order_by(-SavedPilotRace.id).first()
     if pilotrace_query:
-        server_log('calibration: found same node in other heat')
+        server_log('Node {0} calibration: found same node in other heat'.format(node.index+1))
         return {
             'enter_at_level': pilotrace_query.enter_at,
             'exit_at_level': pilotrace_query.exit_at
         }
 
     # fallback
-    server_log('calibration: no calibration hints found, no change')
+    server_log('Node {0} calibration: no calibration hints found, no change.format(node.index+1)')
     return {
         'enter_at_level': node.enter_at_level,
         'exit_at_level': node.exit_at_level
@@ -2116,8 +2139,12 @@ def on_resave_laps(data):
     DB.session.commit()
     message = __('Race times adjusted for: Heat {0} Round {1} / {2}').format(heat_id, round_id, callsign)
     emit_priority_message(message, False)
-    emit_round_data_notify()
     server_log(message)
+    emit_round_data_notify()
+    print heat_id
+    print RACE.current_heat
+    if int(getOption('calibrationMode')):
+        autoUpdateCalibration()
 
 @SOCKET_IO.on('discard_laps')
 def on_discard_laps():
@@ -2166,112 +2193,15 @@ def on_set_current_heat(data):
     new_heat_id = data['heat']
     RACE.current_heat = new_heat_id
     server_log('Current heat set: Heat {0}'.format(new_heat_id))
+
+    if int(getOption('calibrationMode')):
+        autoUpdateCalibration()
+
     emit_current_heat() # Race page, to update heat selection button
     emit_leaderboard() # Race page, to update callsigns in leaderboard
     race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         check_emit_team_racing_status()  # Show initial team-racing status info
-
-@SOCKET_IO.on('recover_pass')
-def on_recover_pass(data):
-    node_index = data['node']
-
-    # define catch window
-    start_time = monotonic() - int(getOption('MinLapSec'))
-
-    history_values = INTERFACE.nodes[node_index].history_values
-    history_times = INTERFACE.nodes[node_index].history_times
-
-    if len(history_values):
-        start_index = bisect.bisect_left(history_times, start_time)
-
-        if start_index <= len(history_values):
-            if data['method'] == 'max': # catch missed pass
-                max_idx_local = max(xrange(len(history_values[start_index:])), key=history_values[start_index:].__getitem__)
-                max_idx = start_index + max_idx_local
-                max_rssi = history_values[max_idx]
-                max_rssi_time = history_times[max_idx]
-
-                server_log('Recovering pass: Node {0} / Pass {1}'.format(node_index + 1, max_rssi_time))
-
-                # record best lap possible regardless of data validity (client asked for one)
-                INTERFACE.intf_simulate_lap(node_index, max_rssi_time)
-
-                new_enterat = max_rssi - int(getOption("HistoryMaxOffset"))
-
-                if new_enterat > INTERFACE.nodes[node_index].node_nadir_rssi:
-                    if new_enterat < INTERFACE.nodes[node_index].node_peak_rssi:
-                        if new_enterat >= INTERFACE.nodes[node_index].exit_at_level + int(getOption("HistoryMinOffset")):
-                            on_set_enter_at_level({
-                                'node': node_index,
-                                'enter_at_level': new_enterat
-                            })
-                        else:
-                            emit_priority_message(__('No tuning adjustment made on node {0}: Requested Enterat of {1} is too close or below ExitAt.').format(node_index + 1, new_enterat), False, nobroadcast=True)
-                            server_log('Skipping EnterAt adjustment: new RSSI of {0} too close to ExitAt {1}' \
-                                .format(new_enterat, INTERFACE.nodes[node_index].exit_at_level))
-
-                    else:
-                        emit_priority_message(__('Tuning adjust failed on node {0}: Bad RSSI value ').format(node_index + 1), False, nobroadcast=True)
-                        server_log('Skipping EnterAt adjustment: new RSSI of {0} not below Node Peak {1}' \
-                            .format(new_enterat, INTERFACE.nodes[node_index].node_peak_rssi))
-                else:
-                    emit_priority_message(__('Tuning adjust failed on node {0}: Bad RSSI value').format(node_index + 1), False, nobroadcast=True)
-                    server_log('Skipping EnterAt adjustment: new RSSI of {0} not above Node Nadir {1}' \
-                        .format(new_enterat, INTERFACE.nodes[node_index].node_nadir_rssi))
-
-            elif data['method'] == 'min': # force end crossing
-                server_log('Force end crossing: Node {0}'.format(node_index + 1))
-
-                # end crossing now
-                if INTERFACE.nodes[node_index].crossing_flag:
-                    INTERFACE.force_end_crossing(node_index)
-
-                    min_idx_local = min(xrange(len(history_values[start_index:])), key=history_values[start_index:].__getitem__)
-                    min_idx = start_index + min_idx_local
-                    min_rssi = history_values[min_idx]
-                    min_rssi_time = history_times[min_idx]
-
-                    new_exitat = min_rssi + int(getOption("HistoryMinOffset"))
-
-                    if new_exitat > INTERFACE.nodes[node_index].node_nadir_rssi:
-                        if new_exitat < INTERFACE.nodes[node_index].node_peak_rssi:
-                            if new_exitat >= INTERFACE.nodes[node_index].enter_at_level:
-                                if new_exitat + int(getOption("HistoryMaxOffset")) < INTERFACE.nodes[node_index].node_peak_rssi:
-                                    on_set_enter_at_level({
-                                        'node': node_index,
-                                        'enter_at_level': new_exitat + int(getOption("HistoryMaxOffset"))
-                                    })
-                                    emit_priority_message(__('WARNING: Force end on node {0} required increase of EnterAt. EnterAt may be improperly calibrated.').format(node_index + 1), False, nobroadcast=True)
-                                    server_log('Forced end required EnterAt adjustment')
-                                else:
-                                    emit_priority_message(__('WARNING: Force end adjustment on node {0} failed: insufficient RSSI range.').format(node_index + 1), False, nobroadcast=True)
-                                    server_log('Skipping EnterAt adjustment: adjustment required, but would have set above NodePeak')
-                            else:
-                                emit_priority_message(__('Force end failed on node {0}: Bad RSSI value.').format(node_index + 1), False, nobroadcast=True)
-                                server_log('Skipping ExitAt adjustment: RSSI of {0} under Node Peak {1}' \
-                                    .format(min_rssi, INTERFACE.nodes[node_index].node_peak_rssi))
-
-                        on_set_exit_at_level({
-                            'node': node_index,
-                            'exit_at_level': new_exitat
-                        })
-                    else:
-                        emit_priority_message(__('Force end failed on node {0}: Bad RSSI value').format(node_index + 1), False, nobroadcast=True)
-                        server_log('Skipping ExitAt adjustment: RSSI of {0} above Node Nadir {1}' \
-                            .format(min_rssi, INTERFACE.nodes[node_index].node_nadir_rssi))
-                else:
-                    emit_priority_message(__('Cannot force end: Node {0} is not crossing').format(node_index + 1), False, nobroadcast=True)
-                    server_log('Skipping ExitAt adjustment: Node {0} is not crossing'.format(node_index + 1))
-
-            emit_enter_and_exit_at_levels()
-        else:
-            emit_priority_message(__('Cannot perform operation on Node {0}: Not enough history').format(node_index + 1), False, nobroadcast=True)
-            server_log('Cannot perform operation on Node {0}: Not enough history'.format(node_index + 1))
-    else:
-        emit_priority_message(__('Cannot perform operation on Node {0}: Not enough history').format(node_index + 1), False, nobroadcast=True)
-        server_log('Cannot perform operation on Node {0}: Not enough history'.format(node_index + 1))
-
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -3991,6 +3921,11 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                             emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
                             elif lap_id == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
+                    else:
+                        DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
+                            lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
+                            lap_time_formatted=time_format(lap_time), source=source, deleted=True))
+                        DB.session.commit()
                 else:
                     server_log('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
@@ -4143,18 +4078,10 @@ def db_reset_profile():
     template = {}
     template["v"] = [None, None, None, None, None, None, None, None]
 
-    DB.session.add(Profiles(name=__("Outdoor"),
-                             description = __("Medium filtering"),
+    DB.session.add(Profiles(name=__("Default"),
                              frequencies = json.dumps(new_freqs),
                              enter_ats = json.dumps(template),
-                             exit_ats = json.dumps(template),
-                             f_ratio=100))
-    DB.session.add(Profiles(name=__("Indoor"),
-                             description = __("Strong filtering"),
-                             frequencies = json.dumps(new_freqs),
-                             enter_ats = json.dumps(template),
-                             exit_ats = json.dumps(template),
-                             f_ratio=10))
+                             exit_ats = json.dumps(template)))
     DB.session.commit()
     setOption("currentProfile", 1)
     server_log("Database set default profiles")
@@ -4245,14 +4172,10 @@ def db_reset_options_defaults():
     setOption("currentLanguage", "")
     setOption("currentProfile", "1")
     setCurrentRaceFormat(RaceFormat.query.first())
-    setOption("calibrationMode", "0")
+    setOption("calibrationMode", "1")
     # minimum lap
     setOption("MinLapSec", "10")
     setOption("MinLapBehavior", "0")
-    # pass catching settings
-    setOption("HistoryExpireDuration", "10000")
-    setOption("HistoryMaxOffset", "10")
-    setOption("HistoryMinOffset", "10")
     # event information
     setOption("eventName", __("FPV Race"))
     setOption("eventDescription", "")
@@ -4566,6 +4489,11 @@ for handlerFile in LEDHandlerFiles:
 set_handlers()
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
+    if not getOption("secret_key"):
+        setOption("secret_key", unicode(os.urandom(50), errors='ignore'))
+
+    APP.config['SECRET_KEY'] = getOption("secret_key")
+
     print "Running http server at port " + str(port_val)
 
     led_manager.event(LEDEvent.STARTUP) # show startup indicator on LEDs

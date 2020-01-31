@@ -92,6 +92,10 @@
 			$('#led_brightness_value').html($('#set_led_brightness').val());
 		}
 
+		if ('{{ getOption('calibrationMode') }}' == '1') {
+			$('#set_calibrationMode').val(1);
+		}
+
 		// populate frequency selects
 		$('.frequency_table').each(function(){
 			$(this).html(freq.buildSelect());
@@ -260,7 +264,6 @@
 			}
 			$('#set_profile').val(msg.current_profile);
 			$('#set_profile_name').val( msg.profile_name);
-			$('#set_profile_description').val( msg.profile_description);
 		});
 
 		$('#set_profile').change(function (event) {
@@ -283,13 +286,6 @@
 		$('#set_profile_name').change(function (event) {
 			var data = {
 				profile_name: $(this).val()
-			};
-			socket.emit('alter_profile', data);
-		})
-
-		$('#set_profile_description').change(function (event) {
-			var data = {
-				profile_description: $(this).val()
 			};
 			socket.emit('alter_profile', data);
 		})
@@ -410,15 +406,6 @@
 				node.graph.render(node.canvas, node.graphPausedTime);
 			}
 			node.graphPaused = !node.graphPaused;
-		});
-
-		$('button.catch-pass').click(function (event) {
-			var data = {
-				node: parseInt($(this).data('node')),
-				method: $(this).data('method'),
-			};
-			socket.emit('recover_pass', data);
-			return false;
 		});
 
 		$('.set_frequency').change(function (event) {
@@ -1230,40 +1217,6 @@
 	</div>
 </div>
 
-<!--Environment-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Profiles') }}</h2>
-	</div>
-	<div class="panel-content">
-		<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
-
-		<div class="control-set">
-			<label for="set_profile">{{ __('Profile') }}:</label>
-			<select id="set_profile">
-				<option>{{ __('Loading...') }}</option>
-			</select>
-			<button id="add_profile">+ {{ __('Add Profile') }}</button>
-			<button class="btn-danger" id="delete_profile">&#215; {{ __('Remove') }}</button>
-		</div>
-
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_profile_name">{{ __('Name') }}</label>
-				</div>
-				<input type="text" id="set_profile_name">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_profile_description">{{ __('Description') }}</label>
-				</div>
-				<textarea id="set_profile_description"></textarea>
-			</li>
-		</ol>
-	</div>
-</div>
-
 <!--Frequency Setup-->
 <div class="panel collapsing">
 	<div class="panel-header">
@@ -1291,6 +1244,26 @@
 			{% endfor %}
 		</div>
 		<div class="control-set" id="imd_rating_label"></div>
+
+		<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
+
+		<div class="control-set">
+			<label for="set_profile">{{ __('Profile') }}:</label>
+			<select id="set_profile">
+				<option>{{ __('Loading...') }}</option>
+			</select>
+			<button id="add_profile">+ {{ __('Add Profile') }}</button>
+			<button class="btn-danger" id="delete_profile">&#215; {{ __('Remove') }}</button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_profile_name">{{ __('Name') }}</label>
+				</div>
+				<input type="text" id="set_profile_name">
+			</li>
+		</ol>
 	</div>
 </div>
 
@@ -1327,11 +1300,6 @@
 						<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
 						<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
 						<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
-					</div>
-
-					<div class="catch-passes">
-						<button class="catch-pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
-						<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
 					</div>
 				</div>
 				<table>
@@ -1387,20 +1355,6 @@
 					<option value="0">{{ __('Manual') }}</option>
 					<option value="1">{{ __('Adaptive') }}</option>
 				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_recovery_max_offset">{{ __('Missed Lap Offset') }}</label>
-					<p class="desc">{{ __('Adjusts EnterAt value after "Catch Missed Lap"') }}</p>
-				</div>
-				<input type="text" id="set_recovery_max_offset" class="set-option" data-option="HistoryMaxOffset" value="{{ getOption('HistoryMaxOffset') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_recovery_min_offset">{{ __('End Crossing Offset') }}</label>
-					<p class="desc">{{ __('Adjusts ExitAt value after "Force End Crossing"') }}</p>
-				</div>
-				<input type="text" id="set_recovery_min_offset" class="set-option" data-option="HistoryMinOffset" value="{{ getOption('HistoryMinOffset') }}">
 			</li>
 		</ol>
 
