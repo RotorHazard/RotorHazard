@@ -1405,13 +1405,13 @@
 		<h2>{{ __('LED Control') }}</h2>
 	</div>
 	<div class="panel-content">
-		<div id="LED-events"></div>
+		<div class="control-set">
+			<button class="LED-color" data-rgb="#000000">{{ __('Turn Off') }}</button>
+		</div>
 
 		<div id="LED-handlers"></div>
 
 		<div class="control-set">
-			<button class="LED-color" data-rgb="#000000">{{ __('Turn Off') }}</button>
-			<br />
 			<!--
 			<button class="led" id="LED_RB"><span><img src="../static/image/LED-rainbow.png"></span></button>
 			<button class="led" id="LED_RBCYCLE"><span><img src="../static/image/LED-rainbow.png"></span></button>
