@@ -1,6 +1,7 @@
 '''LED visual effects'''
 
 # to use this handler, run:
+#    sudo apt-get install libjpeg-dev
 #    sudo pip install pillow
 
 from led_event_manager import LEDEvent, Color
