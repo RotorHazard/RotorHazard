@@ -212,7 +212,12 @@
 		});
 
 		socket.on('current_laps', function (msg) {
-			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json object
+			current_laps = msg;
+			show_current_laps();
+		});
+
+		function show_current_laps() {
+			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
 				$('#current_laps_' + i + ' tbody > tr').remove();
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
 					var $tr = '';
@@ -275,7 +280,7 @@
 					$tr.appendTo('#current_laps_' + i);
 				});
 			});
-		});
+		}
 
 		socket.on('leaderboard', function (msg) {
 			$('#leaderboard').empty();
@@ -477,16 +482,19 @@
 		$('#display_lap_id').change(function (event) {
 			rotorhazard.display_lap_id = $(this).prop('checked');
 			rotorhazard.saveData();
+			show_current_laps();
 		});
 
 		$('#display_time_start').change(function (event) {
 			rotorhazard.display_time_start = $(this).prop('checked');
 			rotorhazard.saveData();
+			show_current_laps();
 		});
 
 		$('#display_time_first_pass').change(function (event) {
 			rotorhazard.display_time_first_pass = $(this).prop('checked');
 			rotorhazard.saveData();
+			show_current_laps();
 		});
 
 		$('#use_mp3_tones').change(function (event) {
@@ -623,20 +631,17 @@
 		<h2>{{ __('Display Settings') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">{{ __('Display settings apply to this device only.') }}</p>
 		<ol class="form">
-
 			<li>
 				<div class="label-block">
 					{{ __('Lap Information') }}
 				</div>
 				<ul>
-					<li><label><input type="checkbox" id="display_lap_id"> {{ __('show Lap ID') }}</label></li>
-					<li><label><input type="checkbox" id="display_time_start"> {{ __('show time since start') }}</label></li>
-					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('show time since first pass') }}</label></li>
+					<li><label><input type="checkbox" id="display_lap_id"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
+					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
 				</ul>
 			</li>
-
 		</ol>
 	</div>
 </div>
