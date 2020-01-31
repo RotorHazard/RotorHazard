@@ -710,6 +710,7 @@ def results():
 def race():
     '''Route to race management page.'''
     return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
+        led_enabled=led_manager.isEnabled(),
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat,
         heats=Heat, pilots=Pilot,
@@ -733,6 +734,7 @@ def marshal():
 def settings():
     '''Route to settings page.'''
     return render_template('settings.html', serverInfo=serverInfo, getOption=getOption, __=__,
+        led_enabled=led_manager.isEnabled(),
         num_nodes=RACE.num_nodes,
         ConfigFile=Config['GENERAL']['configFile'],
         Debug=Config['GENERAL']['DEBUG'])
@@ -1157,6 +1159,8 @@ def on_load_data(data):
             emit_all_languages(nobroadcast=True)
         elif load_type == 'led_handler_setup':
             emit_led_handler_setup()
+        elif load_type == 'led_handlers':
+            emit_led_handlers()
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
         elif load_type == 'cluster_status':
@@ -1706,9 +1710,9 @@ def emit_led_handler_setup(**params):
             for handler in handlers:
                 if event['event'] in handlers[handler]['validEvents']:
                     handler_list.append({
-                            'name': handler,
-                            'label': __(handlers[handler]['label'])
-                        })
+                        'name': handler,
+                        'label': __(handlers[handler]['label'])
+                    })
 
             emit_payload['events'].append({
                 'event': event["event"],
@@ -1719,6 +1723,25 @@ def emit_led_handler_setup(**params):
 
         # never broadcast
         emit('led_handler_setup_data', emit_payload)
+
+def emit_led_handlers(**params):
+    if led_manager.isEnabled():
+        handlers = led_manager.getRegisteredHandlers()
+
+        handler_list = []
+        for handler in handlers:
+            if LEDEvent.NOCONTROL not in handlers[handler]['validEvents']:
+                handler_list.append({
+                    'name': handler,
+                    'label': __(handlers[handler]['label'])
+                })
+
+        emit_payload = {
+            'handlers': handler_list
+        }
+
+        # never broadcast
+        emit('led_handlers', emit_payload)
 
 @SOCKET_IO.on('set_led_event_handler')
 def on_set_led_handler(data):
@@ -1737,11 +1760,17 @@ def on_set_led_handler(data):
 
         server_log('Set LED event {0} to handler {1}'.format(data['event'], data['handler']))
 
-@SOCKET_IO.on('test_led_event')
-def on_set_led_handler(data):
-    '''Send LED event.'''
-    if 'event' in data:
-        led_manager.event(data['event'])
+@SOCKET_IO.on('use_led_handler')
+def on_use_led_handler(data):
+    '''Activate arbitrary LED Handler.'''
+    if led_manager.isEnabled() and 'handler' in data:
+        led_manager.setEventHandler(LEDEvent.MANUAL, data['handler'])
+
+        args = None
+        if 'args' in data:
+            args = data['args']
+
+        led_manager.event(LEDEvent.MANUAL, args)
 
 # Race management socket io events
 
@@ -2286,48 +2315,62 @@ def on_LED_solid(data):
     led_red = data['red']
     led_green = data['green']
     led_blue = data['blue']
-    if strip is not None:
-        led_manager.event(LEDEvent.MANUAL, {
+
+    on_use_led_handler({
+        'handler': "stripColor",
+        'args': {
             'color': Color(led_red,led_green,led_blue),
             'pattern': ColorPattern.SOLID,
             'time': None
-            })
+        }
+    })
 
 @SOCKET_IO.on('LED_chase')
 def on_LED_chase(data):
-    '''LED Solid Color'''
+    '''LED Solid Color Chase'''
     led_red = data['red']
     led_green = data['green']
     led_blue = data['blue']
-    if strip is not None:
-        led_manager.event(LEDEvent.MANUAL, {
+
+    on_use_led_handler({
+        'handler': "stripColor",
+        'args': {
             'color': Color(led_red,led_green,led_blue),
             'pattern': ColorPattern.CHASE,
             'time': 5
-            })
+        }
+    })
+
 
 @SOCKET_IO.on('LED_RB')
 def on_LED_RB():
-    if strip is not None:
-        led_manager.event(LEDEvent.MANUAL, {
-            'pattern': ColorPattern.RAINBOW,
+    '''LED rainbow'''
+    on_use_led_handler({
+        'handler': "rainbow",
+        'args': {
             'time': 5
-            }) #Rainbow
+        }
+    })
 
 @SOCKET_IO.on('LED_RBCYCLE')
 def on_LED_RBCYCLE():
-    if strip is not None:
-        led_manager.event(LEDEvent.MANUAL, {
+    '''LED rainbow Cycle'''
+    on_use_led_handler({
+        'handler': "rainbowCycle",
+        'args': {
             'time': 5
-            }) #Rainbow Cycle
+        }
+    })
 
 @SOCKET_IO.on('LED_RBCHASE')
 def on_LED_RBCHASE():
-    if strip is not None:
-        led_manager.event(LEDEvent.MANUAL, {
-            'pattern': ColorPattern.RAINBOW_CHASE,
+    '''LED Rainbow Cycle Chase'''
+    on_use_led_handler({
+        'handler': "rainbowCycleChase",
+        'args': {
             'time': 5
-            }) #Rainbow Chase
+        }
+    })
 
 @SOCKET_IO.on('LED_brightness')
 def on_LED_brightness(data):

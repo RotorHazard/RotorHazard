@@ -113,6 +113,7 @@ class ColorPattern:
     FOUR_ON_FOUR_OFF = 4
 
 class LEDEvent:
+    NOCONTROL = 'noControlDisplay'
     MANUAL = 'manual'
     RACESTAGE = 'raceStage'
     RACESTART = 'raceStart'

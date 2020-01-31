@@ -1147,7 +1147,7 @@
 				var led_event = msg.events[i];
 				var valid_selection = false;
 
-				led_select = $('<select id="led-event-' + led_event.event + '" data-event="' + led_event.event + '" class="led-event-select"></select>');
+				var led_select = $('<select id="led-event-' + led_event.event + '" data-event="' + led_event.event + '" class="led-event-select"></select>');
 
 				const handlers = led_event.handlers.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
 				for (var opt in handlers) {
@@ -1677,6 +1677,7 @@
 </div>
 
 <!--LED controls-->
+{% if led_enabled %}
 <div class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('LED Events') }}</h2>
@@ -1695,6 +1696,7 @@
 		</ol>
 	</div>
 </div>
+{% endif %}
 
 <!--Reset database-->
 <div class="panel collapsing">

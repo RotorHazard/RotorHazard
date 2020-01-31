@@ -128,20 +128,13 @@ def clear(strip, config, args=None):
 def hold(strip, config, args=None):
     pass
 
-    def led_rainbow(strip, wait_ms=2, iterations=1):
-        """Draw rainbow that fades across all pixels at once."""
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(i, color_wheel((i) & 255))
-        strip.show()
-        gevent.sleep(wait_ms/1000.0)
-
 def registerHandlers(manager):
     # register generic color change (does nothing without arguments)
-    manager.registerEventHandler("stripColor", "Color/Pattern", showColor, [LEDEvent.MANUAL])
-    manager.registerEventHandler("stripColorSolid", "Color/Pattern: (Pilot/Node) Solid", showColor, [LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
+    manager.registerEventHandler("stripColor", "Color/Pattern (Args)", showColor, [LEDEvent.NOCONTROL])
+    manager.registerEventHandler("stripColorSolid", "Color/Pattern: (Pilot/Node) Solid", showColor, [LEDEvent.NOCONTROL, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
         'pattern': ColorPattern.SOLID
         })
-    manager.registerEventHandler("stripColor1_1", "Color/Pattern: (Pilot/Node) 1/1", showColor, [LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
+    manager.registerEventHandler("stripColor1_1", "Color/Pattern: (Pilot/Node) 1/1", showColor, [LEDEvent.NOCONTROL, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
         'pattern': ColorPattern.ALTERNATING,
         'time': Timing.VTX_EXPIRE
         })
@@ -165,11 +158,12 @@ def registerHandlers(manager):
         'pattern': ColorPattern.SOLID
         })
 
-    # rainbow cycle
-    manager.registerEventHandler("rainbowCycle", "Color/Pattern: Rainbow", rainbowCycle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP])
+    # rainbow
+    manager.registerEventHandler("rainbow", "Color/Pattern: Rainbow", rainbow, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP])
+    manager.registerEventHandler("rainbowCycle", "Color/Pattern: Rainbow Cycle", rainbowCycle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP])
 
     # clear (available for all events, but also by specific manager function)
-    manager.registerEventHandler("clear", "Turn Off", clear, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN])
+    manager.registerEventHandler("clear", "Turn Off", clear, [LEDEvent.NOCONTROL, LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN])
 
-    # hold/no change
-    manager.registerEventHandler("none", "No Change", hold, [LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN])
+    # hold/no change (NOCONTOL to remove from "LED Control" panel)
+    manager.registerEventHandler("none", "No Change", hold, [LEDEvent.NOCONTROL, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN])
