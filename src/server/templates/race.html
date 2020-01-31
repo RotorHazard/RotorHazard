@@ -645,15 +645,6 @@
 			node.graphPaused = !node.graphPaused;
 		});
 
-		$('button.catch-pass').click(function (event) {
-			var data = {
-				node: parseInt($(this).data('node')),
-				method: $(this).data('method'),
-			};
-			socket.emit('recover_pass', data);
-			return false;
-		});
-
 		$('button.simulate_lap').click(function (event) {
 			// if(!$(this).prop('disabled')) {
 				if (rotorhazard.beep_manual_lap_button) {
@@ -1179,11 +1170,6 @@
 								<label for="set_exit_at_level_{{ node.index }}">{{ __('ExitAt') }}</label>
 								<input type="number" id="set_exit_at_level_{{ node.index }}" class="set_exit_at_level" data-node="{{ node.index }}" min="0" max="999">
 								<button class="cap_exit_at_btn" data-node_index="{{ node.index }}">{{ __('Capture') }}</button>
-							</div>
-
-							<div class="catch-passes">
-								<button class="catch-pass" data-node="{{ node.index }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
-								<button class="catch-pass" data-node="{{ node.index }}" data-method="min">{{ __('Force End Crossing') }}</button>
 							</div>
 						</div>
 						<table>

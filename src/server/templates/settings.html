@@ -407,15 +407,6 @@
 			node.graphPaused = !node.graphPaused;
 		});
 
-		$('button.catch-pass').click(function (event) {
-			var data = {
-				node: parseInt($(this).data('node')),
-				method: $(this).data('method'),
-			};
-			socket.emit('recover_pass', data);
-			return false;
-		});
-
 		$('.set_frequency').change(function (event) {
 			show_imd_rating_dashes();
 			var data = {
@@ -1314,11 +1305,6 @@
 						<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
 						<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
 					</div>
-
-					<div class="catch-passes">
-						<button class="catch-pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
-						<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
-					</div>
 				</div>
 				<table>
 					<tr class="datarow">
@@ -1373,20 +1359,6 @@
 					<option value="0">{{ __('Manual') }}</option>
 					<option value="1">{{ __('Adaptive') }}</option>
 				</select>
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_recovery_max_offset">{{ __('Missed Lap Offset') }}</label>
-					<p class="desc">{{ __('Adjusts EnterAt value after "Catch Missed Lap"') }}</p>
-				</div>
-				<input type="text" id="set_recovery_max_offset" class="set-option" data-option="HistoryMaxOffset" value="{{ getOption('HistoryMaxOffset') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_recovery_min_offset">{{ __('End Crossing Offset') }}</label>
-					<p class="desc">{{ __('Adjusts ExitAt value after "Force End Crossing"') }}</p>
-				</div>
-				<input type="text" id="set_recovery_min_offset" class="set-option" data-option="HistoryMinOffset" value="{{ getOption('HistoryMinOffset') }}">
 			</li>
 		</ol>
 
