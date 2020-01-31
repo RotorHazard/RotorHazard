@@ -3817,6 +3817,11 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                             emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
                             elif lap_id == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
+                    else:
+                        DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
+                            lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
+                            lap_time_formatted=time_format(lap_time), source=source, deleted=True))
+                        DB.session.commit()
                 else:
                     server_log('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
