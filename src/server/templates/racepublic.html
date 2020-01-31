@@ -110,11 +110,10 @@
 			}
 		});
 
-		// set up nodes
-		$('.node').each(function(){
-			var node_id = parseInt($(this).data('id'));
-			rotorhazard.nodes[node_id] = new nodeModel();
-		});
+		// set up node local store
+		for (i = 0; i < {{ num_nodes }}; i++) {
+			rotorhazard.nodes[i] = new nodeModel();
+		}
 
 		// populate voice controls
 		$('#voice-calls').val(parseInt(rotorhazard.primaryPilot));
