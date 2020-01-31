@@ -49,12 +49,10 @@ unittest(slowCrossing) {
   assertEqual(130, (int)history.peak.rssi); // first upward trend
   assertEqual(timestamp(3), (int)history.peak.firstTime);
   assertEqual(time(duration), (int)history.peak.duration);
-  assertEqual(0, (int)history.nadir.rssi); // no downward trend yet
-  assertEqual(0, (int)history.nadir.firstTime);
-  assertEqual(0, (int)history.nadir.duration);
+  assertFalse(isNadirValid(history.nadir)); // no downward trend yet
 
   assertFalse(isPeakValid(history.peakSend));
-  assertEqual(0, (int)history.nadirSend.rssi);
+  assertFalse(isNadirValid(history.nadirSend));
 
   // exit
   sendSignal(nano, 70);
@@ -79,7 +77,7 @@ unittest(slowCrossing) {
   assertEqual(130, (int)history.peakSend.rssi);
   assertEqual(timestamp(3), (int)history.peakSend.firstTime);
   assertEqual(time(1+duration)-1, (int)history.peakSend.duration);
-  assertEqual(0, (int)history.nadirSend.rssi);
+  assertFalse(isNadirValid(history.nadirSend));
 
   assertEqual(130, (int)lastPass.rssiPeak);
   assertEqual(50, (int)lastPass.rssiNadir);

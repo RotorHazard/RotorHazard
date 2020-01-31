@@ -53,7 +53,7 @@ unittest(gradualCrossing) {
   assertTrue(isPeakValid(history.peakSend));
   assertEqual(130, (int)history.peakSend.rssi);
   assertEqual(time(2)-1, (int)history.peakSend.duration);
-  assertEqual(0, (int)history.nadirSend.rssi);
+  assertFalse(isNadirValid(history.nadirSend));
 
   assertEqual(130, (int)state.nodeRssiPeak);
   assertEqual(50, (int)state.nodeRssiNadir);

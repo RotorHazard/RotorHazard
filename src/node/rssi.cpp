@@ -44,25 +44,63 @@ void rssiStateReset()
 
 static void bufferHistoricPeak(bool force)
 {
-    if (history.hasPendingPeak && (!isPeakValid(history.peakSend) || force))
+    if (history.hasPendingPeak)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            history.peakSend = history.peak;
+            if (!isPeakValid(history.peakSend))
+            {
+                // no current peak to send so just overwrite
+                history.peakSend = history.peak;
+                history.hasPendingPeak = false;
+            }
+            else if (force)
+            {
+                // must do something
+                if (history.peak.rssi > history.peakSend.rssi)
+                {
+                    // prefer higher peak
+                    history.peakSend = history.peak;
+                }
+                else if (history.peak.rssi == history.peakSend.rssi)
+                {
+                    // merge
+                    history.peakSend.duration = endTime(history.peak) - history.peakSend.firstTime;
+                }
+                history.hasPendingPeak = false;
+            }
         }
-        history.hasPendingPeak = false;
     }
 }
 
 static void bufferHistoricNadir(bool force)
 {
-    if (history.hasPendingNadir && (!isNadirValid(history.nadirSend) || force))
+    if (history.hasPendingNadir)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            history.nadirSend = history.nadir;
+            if (!isNadirValid(history.nadirSend))
+            {
+                // no current nadir to send so just overwrite
+                history.nadirSend = history.nadir;
+                history.hasPendingNadir = false;
+            }
+            else if (force)
+            {
+                // must do something
+                if (history.nadir.rssi < history.nadirSend.rssi)
+                {
+                    // prefer lower nadir
+                    history.nadirSend = history.nadir;
+                }
+                else if (history.nadir.rssi == history.nadirSend.rssi)
+                {
+                    // merge
+                    history.nadirSend.duration = endTime(history.nadir) - history.nadirSend.firstTime;
+                }
+                history.hasPendingNadir = false;
+            }
         }
-        history.hasPendingNadir = false;
     }
 }
 
