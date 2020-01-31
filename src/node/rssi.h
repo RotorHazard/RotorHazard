@@ -9,6 +9,7 @@
 #define SmoothingTimestampSize 128 // half median window, rounded up
 #define isPeakValid(x) ((x).rssi != 0)
 #define isNadirValid(x) ((x).rssi != MAX_RSSI)
+#define endTime(x) ((x).firstTime + (x).duration)
 
 struct Settings
 {
@@ -52,7 +53,7 @@ struct History
     bool volatile hasPendingPeak = false;
     Extremum peakSend = {0, 0, 0}; // only valid if peakSend.rssi != 0
 
-    Extremum nadir = {0, 0, 0};
+    Extremum nadir = {MAX_RSSI, 0, 0};
     bool volatile hasPendingNadir = false;
     Extremum nadirSend = {MAX_RSSI, 0, 0}; // only valid if nadirSend.rssi != MAX_RSSI
 
