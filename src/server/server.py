@@ -2266,7 +2266,8 @@ def on_LED_chase(data):
         'handler': "stripColor",
         'args': {
             'color': Color(led_red,led_green,led_blue),
-            'pattern': ColorPattern.CHASE,
+#            'pattern': ColorPattern.CHASE,  # TODO implement chase animation pattern
+            'pattern': ColorPattern.ALTERNATING,
             'time': 5
         }
     })
@@ -3956,7 +3957,7 @@ def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
 
-    if led_handler.isEnabled() and RACE.race_status == RACE_STATUS_RACING:  # if race is in progress
+    if led_manager.isEnabled() and RACE.race_status == RACE_STATUS_RACING:  # if race is in progress
         # if pilot assigned to node and first crossing is complete
         if node.current_pilot_id != PILOT_ID_NONE and node.first_cross_flag:
             # first crossing has happened; if 'enter' then show indicator,
