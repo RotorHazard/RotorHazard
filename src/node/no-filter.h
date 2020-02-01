@@ -24,5 +24,3 @@ template <typename T> class NoFilter : public Filter<T>
 		  return timestamp;
 		}
 };
-
-NoFilter<rssi_t> _filter;

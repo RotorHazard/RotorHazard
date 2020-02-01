@@ -48,5 +48,3 @@ class LowPassFilter20Hz : public Filter<rssi_t>
 		  return timestamps.getFirst();
 		}
 };
-
-LowPassFilter20Hz _filter;

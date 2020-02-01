@@ -1,3 +1,5 @@
+#ifndef cyclicbuffer_h
+#define cyclicbuffer_h
 
 template <typename T, uint8_t N> class CyclicBuffer {
 
@@ -22,3 +24,5 @@ private:
   T buffer[N];
   uint8_t pos = 0;
 };
+
+#endif

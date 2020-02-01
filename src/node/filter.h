@@ -1,3 +1,6 @@
+#ifndef filter_h
+#define filter_h
+
 #include "rhtypes.h"
 
 template <typename T> class Filter {
@@ -11,3 +14,5 @@ public:
   virtual T getFilteredValue() = 0;
   virtual mtime_t getFilterTimestamp() = 0;
 };
+
+#endif

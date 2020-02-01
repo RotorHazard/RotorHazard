@@ -1,5 +1,7 @@
 #include "../median-filter.h"
 
+extern MedianFilter<rssi_t, SmoothingSamples, 0> _filter;
+
 #define milliTick(nano) (nano->micros += 1000)
 #define readPeak() (history.peakSend.rssi = 0)
 #define readNadir() (history.nadirSend.rssi = MAX_RSSI)

@@ -1,12 +1,35 @@
 #include "config.h"
 #include "rssi.h"
-
-//select the filter to use here
-//#include "median-filter.h"
-//#include "lowpass20hz-filter.h"
-//#include "lowpass50hz-filter.h"
+#include "median-filter.h"
+#include "lowpass20hz-filter.h"
+#include "lowpass50hz-filter.h"
 #include "lowpass100hz-filter.h"
-//#include "no-filter.h"
+#include "no-filter.h"
+
+#define FILTER_NONE 0
+#define FILTER_MEDIAN 1
+#define FILTER_100 2
+#define FILTER_50 3
+#define FILTER_20 4
+
+#ifdef __TEST__
+  #define FILTER FILTER_MEDIAN
+#else
+  //select the filter to use here
+  #define FILTER FILTER_100
+#endif
+
+#if FILTER == FILTER_MEDIAN
+  MedianFilter<rssi_t, SmoothingSamples, 0> _filter;
+#elif FILTER == FILTER_20
+  LowPassFilter20Hz _filter;
+#elif FILTER == FILTER_50
+  LowPassFilter50Hz _filter;
+#elif FILTER == FILTER_100
+  LowPassFilter100Hz _filter;
+#else
+  NoFilter<rssi_t> _filter;
+#endif
 
 struct Settings settings;
 struct State state;
