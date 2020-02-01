@@ -1,6 +1,7 @@
 #include "filter.h"
-#include "cyclicbuffer.h"
 #include "FastRunningMedian.h"
+#define CIRCULAR_BUFFER_INT_SAFE
+#include <CircularBuffer.h>
 
 template <typename T, uint8_t N, T default_value> class MedianFilter : public Filter<T> {
 
@@ -11,7 +12,7 @@ public:
 
   void addRawValue(mtime_t ts, T value) {
     median.addValue(value);
-    timestamps.addLast(ts);
+    timestamps.push(ts);
   }
 
   T getFilteredValue() {
@@ -19,7 +20,7 @@ public:
   }
 
   mtime_t getFilterTimestamp() {
-    return timestamps.getFirst();
+    return timestamps.first();
   }
 
   uint8_t getSampleCapacity() {
@@ -27,12 +28,12 @@ public:
   }
 
   uint8_t getTimestampCapacity() {
-    return timestamps.getCapacity();
+    return timestamps.capacity;
   }
 
 private:
   FastRunningMedian<T,N,default_value> median;
-  CyclicBuffer<mtime_t,(N+1)/2> timestamps; // size is half median window, rounded up
+  CircularBuffer<mtime_t,(N+1)/2> timestamps; // size is half median window, rounded up
 };
 
 #define SmoothingSamples 255

@@ -1,5 +1,6 @@
 #include "filter.h"
-#include "cyclicbuffer.h"
+#define CIRCULAR_BUFFER_INT_SAFE
+#include <CircularBuffer.h>
 
 /*
  * Based on
@@ -19,7 +20,7 @@ class LowPassFilter50Hz : public Filter<rssi_t>
 		uint8_t unfilled = 3;
 		float v[3];
 		rssi_t nextValue;
-		CyclicBuffer<mtime_t,2> timestamps;
+		CircularBuffer<mtime_t,2> timestamps;
 	public:
 		bool isFilled() {
 		    return unfilled == 0;
@@ -37,7 +38,7 @@ class LowPassFilter50Hz : public Filter<rssi_t>
                  + (1.38090148240868249019 * v[1]);
 			nextValue = (rssi_t)((v[0] + v[2]) + 2 * v[1]); // 2^
 
-            timestamps.addLast(ts);
+            timestamps.push(ts);
 		}
 
 		rssi_t getFilteredValue() {
@@ -45,6 +46,6 @@ class LowPassFilter50Hz : public Filter<rssi_t>
 		}
 
 		mtime_t getFilterTimestamp() {
-		  return timestamps.getFirst();
+		  return timestamps.first();
 		}
 };
