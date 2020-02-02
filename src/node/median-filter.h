@@ -1,7 +1,7 @@
 #include "filter.h"
 #include "FastRunningMedian.h"
 #define CIRCULAR_BUFFER_INT_SAFE
-#include <CircularBuffer.h>
+#include "CircularBuffer.h"
 
 template <typename T, uint8_t N, T default_value> class MedianFilter : public Filter<T>
 {

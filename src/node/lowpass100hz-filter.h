@@ -1,6 +1,6 @@
 #include "filter.h"
 #define CIRCULAR_BUFFER_INT_SAFE
-#include <CircularBuffer.h>
+#include "CircularBuffer.h"
 
 /*
  * Based on

@@ -11,7 +11,7 @@
 
 uint8_t settingChangedFlags = 0;
 
-byte getPayloadSize(uint8_t command)
+byte Message::getPayloadSize()
 {
     byte size;
     switch (command)
@@ -58,19 +58,19 @@ void resetPairedNode(int pinState)
 }
 
 // Generic IO write command handler
-void handleWriteCommand(Message_t *msg, bool serialFlag)
+void Message::handleWriteCommand(bool serialFlag)
 {
     uint8_t u8val;
     uint16_t u16val;
     rssi_t rssiVal;
 
-    msg->buffer.flipForRead();
+    buffer.flipForRead();
     bool actFlag = true;
 
-    switch (msg->command)
+    switch (command)
     {
         case WRITE_FREQUENCY:
-            u16val = msg->buffer.read16();
+            u16val = buffer.read16();
             if (u16val >= MIN_FREQ && u16val <= MAX_FREQ)
             {
                 if (u16val != settings.vtxFreq)
@@ -92,7 +92,7 @@ void handleWriteCommand(Message_t *msg, bool serialFlag)
             break;
 
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-            rssiVal = ioBufferReadRssi(msg->buffer);
+            rssiVal = ioBufferReadRssi(buffer);
             if (rssiVal != settings.exitAtLevel)
             {
                 settings.exitAtLevel = rssiVal;
@@ -105,12 +105,12 @@ void handleWriteCommand(Message_t *msg, bool serialFlag)
             break;
 
         case RESET_PAIRED_NODE:  // reset paired node for ISP
-            u8val = msg->buffer.read8();
+            u8val = buffer.read8();
             resetPairedNode(u8val);
             break;
 
         default:
-            LOG_ERROR("Invalid write command: ", msg->command, HEX);
+            LOG_ERROR("Invalid write command: ", command, HEX);
             actFlag = false;  // not valid activity
     }
 
@@ -122,7 +122,7 @@ void handleWriteCommand(Message_t *msg, bool serialFlag)
             settingChangedFlags |= SERIAL_CMD_MSG;
     }
 
-    msg->command = 0;  // Clear previous command
+    command = 0;  // Clear previous command
 }
 
 void ioBufferWriteExtremum(Buffer& buf, const Extremum& e, mtime_t now)
@@ -133,30 +133,30 @@ void ioBufferWriteExtremum(Buffer& buf, const Extremum& e, mtime_t now)
 }
 
 // Generic IO read command handler
-void handleReadCommand(Message_t *msg, bool serialFlag)
+void Message::handleReadCommand(bool serialFlag)
 {
-    msg->buffer.flipForWrite();
+    buffer.flipForWrite();
     bool actFlag = true;
 
-    switch (msg->command)
+    switch (command)
     {
         case READ_ADDRESS:
-            msg->buffer.write8(i2cSlaveAddress);
+            buffer.write8(i2cSlaveAddress);
             break;
 
         case READ_FREQUENCY:
-            msg->buffer.write16(settings.vtxFreq);
+            buffer.write16(settings.vtxFreq);
             break;
 
         case READ_LAP_STATS:
             {
             mtime_t now = millis();
-            msg->buffer.write8(lastPass.lap);
-            msg->buffer.write16(uint16_t(now - lastPass.timestamp));  // ms since lap
-            ioBufferWriteRssi(msg->buffer, state.rssi);
-            ioBufferWriteRssi(msg->buffer, state.nodeRssiPeak);
-            ioBufferWriteRssi(msg->buffer, lastPass.rssiPeak);  // RSSI peak for last lap pass
-            msg->buffer.write16(uint16_t(state.loopTimeMicros));
+            buffer.write8(lastPass.lap);
+            buffer.write16(uint16_t(now - lastPass.timestamp));  // ms since lap
+            ioBufferWriteRssi(buffer, state.rssi);
+            ioBufferWriteRssi(buffer, state.nodeRssiPeak);
+            ioBufferWriteRssi(buffer, lastPass.rssiPeak);  // RSSI peak for last lap pass
+            buffer.write16(uint16_t(state.loopTimeMicros));
             // set flag if 'crossing' in progress
             uint8_t flags = state.crossing ? (uint8_t)LAPSTATS_FLAG_CROSSING : (uint8_t)0;
             if (!history.peakSend.isEmpty()
@@ -165,16 +165,16 @@ void handleReadCommand(Message_t *msg, bool serialFlag)
             {
                 flags |= LAPSTATS_FLAG_PEAK;
             }
-            msg->buffer.write8(flags);
-            ioBufferWriteRssi(msg->buffer, lastPass.rssiNadir);  // lowest rssi since end of last pass
-            ioBufferWriteRssi(msg->buffer, state.nodeRssiNadir);
+            buffer.write8(flags);
+            ioBufferWriteRssi(buffer, lastPass.rssiNadir);  // lowest rssi since end of last pass
+            ioBufferWriteRssi(buffer, state.nodeRssiNadir);
 
             if (!history.peakSend.isEmpty()
                   && (history.nadirSend.isEmpty()
                     || (history.peakSend.first().firstTime < history.nadirSend.first().firstTime)))
             {
                 // send peak
-                ioBufferWriteExtremum(msg->buffer, history.peakSend.first(), now);
+                ioBufferWriteExtremum(buffer, history.peakSend.first(), now);
                 history.peakSend.removeFirst();
             }
             else if (!history.nadirSend.isEmpty()
@@ -182,14 +182,14 @@ void handleReadCommand(Message_t *msg, bool serialFlag)
                     || (history.nadirSend.first().firstTime < history.peakSend.first().firstTime)))
             {
                 // send nadir
-                ioBufferWriteExtremum(msg->buffer, history.nadirSend.first(), now);
+                ioBufferWriteExtremum(buffer, history.nadirSend.first(), now);
                 history.nadirSend.removeFirst();
             }
             else
             {
-                ioBufferWriteRssi(msg->buffer, 0);
-                msg->buffer.write16(0);
-                msg->buffer.write16(0);
+                ioBufferWriteRssi(buffer, 0);
+                buffer.write16(0);
+                buffer.write16(0);
             }
 
             settingChangedFlags |= LAPSTATS_READ;
@@ -198,31 +198,31 @@ void handleReadCommand(Message_t *msg, bool serialFlag)
             break;
 
         case READ_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
-            ioBufferWriteRssi(msg->buffer, settings.enterAtLevel);
+            ioBufferWriteRssi(buffer, settings.enterAtLevel);
             break;
 
         case READ_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-            ioBufferWriteRssi(msg->buffer, settings.exitAtLevel);
+            ioBufferWriteRssi(buffer, settings.exitAtLevel);
             break;
 
         case READ_REVISION_CODE:  // reply with NODE_API_LEVEL and verification value
-            msg->buffer.write16((0x25 << 8) + NODE_API_LEVEL);
+            buffer.write16((0x25 << 8) + NODE_API_LEVEL);
             break;
 
         case READ_NODE_RSSI_PEAK:
-            ioBufferWriteRssi(msg->buffer, state.nodeRssiPeak);
+            ioBufferWriteRssi(buffer, state.nodeRssiPeak);
             break;
 
         case READ_NODE_RSSI_NADIR:
-            ioBufferWriteRssi(msg->buffer, state.nodeRssiNadir);
+            ioBufferWriteRssi(buffer, state.nodeRssiNadir);
             break;
 
         case READ_TIME_MILLIS:
-            msg->buffer.write32(millis());
+            buffer.write32(millis());
             break;
 
         default:  // If an invalid command is sent, write nothing back, master must react
-            LOG_ERROR("Invalid read command: ", msg->command, HEX);
+            LOG_ERROR("Invalid read command: ", command, HEX);
             actFlag = false;  // not valid activity
     }
 
@@ -234,10 +234,10 @@ void handleReadCommand(Message_t *msg, bool serialFlag)
             settingChangedFlags |= SERIAL_CMD_MSG;
     }
 
-    if (!msg->buffer.isEmpty())
+    if (!buffer.isEmpty())
     {
-        msg->buffer.writeChecksum();
+        buffer.writeChecksum();
     }
 
-    msg->command = 0;  // Clear previous command
+    command = 0;  // Clear previous command
 }

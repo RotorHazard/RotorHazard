@@ -50,7 +50,7 @@ uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 // dummy macro
 #define LOG_ERROR(...)
 
-static Message_t i2cMessage, serialMessage;
+Message i2cMessage, serialMessage;
 
 // Defines for fast ADC reads
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
@@ -453,10 +453,10 @@ void i2cReceive(int byteCount)
 
     if (i2cMessage.command > 0x50)
     {  // Commands > 0x50 are writes TO this slave
-        byte expectedSize = getPayloadSize(i2cMessage.command);
+        byte expectedSize = i2cMessage.getPayloadSize();
         if (expectedSize > 0 && i2cReadAndValidateIoBuffer(expectedSize))
         {
-            handleWriteCommand(&i2cMessage, false);
+            i2cMessage.handleWriteCommand(false);
         }
         i2cMessage.buffer.size = 0;
     }
@@ -487,7 +487,7 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize)
         i2cMessage.buffer.data[i2cMessage.buffer.size] = Wire.read();
     }
 
-    checksum = ioCalculateChecksum(i2cMessage.buffer.data, expectedSize);
+    checksum = i2cMessage.buffer.calculateChecksum(expectedSize);
 
     if (i2cMessage.buffer.data[i2cMessage.buffer.size-1] == checksum)
     {
@@ -505,7 +505,7 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize)
 // A transmit buffer (ioBuffer) is populated with the data before sending.
 void i2cTransmit()
 {
-    handleReadCommand(&i2cMessage, false);
+    i2cMessage.handleReadCommand(false);
 
     if (i2cMessage.buffer.size > 0)
     {  // If there is pending data, send it
@@ -523,7 +523,7 @@ void serialEvent()
         serialMessage.command = nextByte;
         if (serialMessage.command > 0x50)
         {  // Commands > 0x50 are writes TO this slave
-            byte expectedSize = getPayloadSize(serialMessage.command);
+            byte expectedSize = serialMessage.getPayloadSize();
             if (expectedSize > 0)
             {
                 serialMessage.buffer.index = 0;
@@ -532,7 +532,7 @@ void serialEvent()
         }
         else
         {
-            handleReadCommand(&serialMessage, true);
+            serialMessage.handleReadCommand(true);
 
             if (serialMessage.buffer.size > 0)
             {  // If there is pending data, send it
@@ -547,11 +547,10 @@ void serialEvent()
         serialMessage.buffer.data[serialMessage.buffer.index++] = nextByte;
         if (serialMessage.buffer.index == serialMessage.buffer.size)
         {
-            uint8_t checksum = ioCalculateChecksum(serialMessage.buffer.data,
-                    serialMessage.buffer.size - 1);
+            uint8_t checksum = serialMessage.buffer.calculateChecksum(serialMessage.buffer.size - 1);
             if (serialMessage.buffer.data[serialMessage.buffer.size - 1] == checksum)
             {
-                handleWriteCommand(&serialMessage, true);
+                serialMessage.handleWriteCommand(true);
             }
             else
             {
