@@ -74,9 +74,9 @@ unittest(slowCrossing) {
   assertEqual(timestamp(4+duration), (int)history.nadir.firstTime);
   assertEqual(0, (int)history.nadir.duration);
 
-  assertEqual(130, (int)history.peakSend.first()->rssi);
-  assertEqual(timestamp(3), (int)history.peakSend.first()->firstTime);
-  assertEqual(time(1+duration)-1, (int)history.peakSend.first()->duration);
+  assertEqual(130, (int)history.peakSend.first().rssi);
+  assertEqual(timestamp(3), (int)history.peakSend.first().firstTime);
+  assertEqual(time(1+duration)-1, (int)history.peakSend.first().duration);
   assertTrue(history.nadirSend.isEmpty());
 
   assertEqual(130, (int)lastPass.rssiPeak);

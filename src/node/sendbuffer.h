@@ -15,7 +15,7 @@ public:
       }
   }
   virtual void addOrDiscard(const T& e) = 0;
-  virtual T* first() = 0;
+  virtual const T& first() = 0;
   virtual void removeFirst() = 0;
   virtual void clear() = 0;
 protected:

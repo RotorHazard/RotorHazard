@@ -69,9 +69,9 @@ unittest(fastCrossing) {
   assertEqual(timestamp(4), (int)history.nadir.firstTime);
   assertEqual(0, (int)history.nadir.duration);
 
-  assertEqual(130, (int)history.peakSend.first()->rssi);
-  assertEqual(timestamp(3), (int)history.peakSend.first()->firstTime);
-  assertEqual(time(1)-1, (int)history.peakSend.first()->duration);
+  assertEqual(130, (int)history.peakSend.first().rssi);
+  assertEqual(timestamp(3), (int)history.peakSend.first().firstTime);
+  assertEqual(time(1)-1, (int)history.peakSend.first().duration);
   assertTrue(history.nadirSend.isEmpty());
 
   assertEqual(130, (int)lastPass.rssiPeak);
@@ -99,13 +99,13 @@ unittest(fastCrossing) {
   assertEqual(timestamp(4), (int)history.nadir.firstTime);
   assertEqual(time(1)-1, (int)history.nadir.duration);
 
-  assertEqual(130, (int)history.peakSend.first()->rssi);
-  assertEqual(timestamp(3), (int)history.peakSend.first()->firstTime);
-  assertEqual(time(1)-1, (int)history.peakSend.first()->duration);
+  assertEqual(130, (int)history.peakSend.first().rssi);
+  assertEqual(timestamp(3), (int)history.peakSend.first().firstTime);
+  assertEqual(time(1)-1, (int)history.peakSend.first().duration);
   history.peakSend.removeFirst();
-  assertEqual(70, (int)history.nadirSend.first()->rssi);
-  assertEqual(timestamp(4), (int)history.nadirSend.first()->firstTime);
-  assertEqual(time(1)-1, (int)history.nadirSend.first()->duration);
+  assertEqual(70, (int)history.nadirSend.first().rssi);
+  assertEqual(timestamp(4), (int)history.nadirSend.first().firstTime);
+  assertEqual(time(1)-1, (int)history.nadirSend.first().duration);
 
   assertEqual(130, (int)lastPass.rssiPeak);
   assertEqual(50, (int)lastPass.rssiNadir);
@@ -115,12 +115,12 @@ unittest(fastCrossing) {
   // small fall
   sendSignal(nano, 60);
 
-  assertEqual(75, (int)history.peakSend.first()->rssi);
-  assertEqual(timestamp(5), (int)history.peakSend.first()->firstTime);
-  assertEqual(time(1)-1, (int)history.peakSend.first()->duration);
-  assertEqual(70, (int)history.nadirSend.first()->rssi);
-  assertEqual(timestamp(4), (int)history.nadirSend.first()->firstTime);
-  assertEqual(time(1)-1, (int)history.nadirSend.first()->duration);
+  assertEqual(75, (int)history.peakSend.first().rssi);
+  assertEqual(timestamp(5), (int)history.peakSend.first().firstTime);
+  assertEqual(time(1)-1, (int)history.peakSend.first().duration);
+  assertEqual(70, (int)history.nadirSend.first().rssi);
+  assertEqual(timestamp(4), (int)history.nadirSend.first().firstTime);
+  assertEqual(time(1)-1, (int)history.nadirSend.first().duration);
   history.nadirSend.removeFirst();
 }
 

@@ -26,8 +26,8 @@ class SinglePeakSendBuffer : public SendBuffer<Extremum>
               buffer.duration = endTime(e) - buffer.firstTime;
           }
       }
-      Extremum* first() {
-          return &buffer;
+      const Extremum& first() {
+          return buffer;
       }
       void removeFirst() {
           invalidatePeak(buffer);
@@ -61,8 +61,8 @@ class SingleNadirSendBuffer : public SendBuffer<Extremum>
               buffer.duration = endTime(e) - buffer.firstTime;
           }
       }
-      Extremum* first() {
-          return &buffer;
+      const Extremum& first() {
+          return buffer;
       }
       void removeFirst() {
           invalidateNadir(buffer);

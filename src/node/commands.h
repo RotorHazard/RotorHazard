@@ -9,7 +9,7 @@
 struct Message_s
 {
     uint8_t command;  // code to identify messages
-    Buffer_t buffer;  // request/response payload
+    Buffer buffer;  // request/response payload
 };
 
 typedef struct Message_s Message_t;
