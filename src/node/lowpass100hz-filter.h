@@ -10,19 +10,19 @@
 //Low pass bessel filter order=2 alpha1=0.1
 class LowPassFilter100Hz : public Filter<rssi_t>
 {
-	public:
-		LowPassFilter100Hz()
-		{
-		    v[0] = 0.0;
-		    v[1] = 0.0;
-		}
 	private:
 		uint8_t unfilled = 3;
 		float v[3];
 		rssi_t nextValue;
 		CircularBuffer<mtime_t,2> timestamps;
 	public:
-		bool isFilled() {
+        LowPassFilter100Hz()
+        {
+            v[0] = 0.0;
+            v[1] = 0.0;
+        }
+
+        bool isFilled() {
 		    return unfilled == 0;
 		}
 

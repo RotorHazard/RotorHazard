@@ -2,12 +2,9 @@
 #define rssi_h
 
 #include "rhtypes.h"
+#include "single-sendbuffer.h"
 
-#define MAX_RSSI 0xFF
 #define MAX_DURATION 0xFFFF
-#define isPeakValid(x) ((x).rssi != 0)
-#define isNadirValid(x) ((x).rssi != MAX_RSSI)
-#define endTime(x) ((x).firstTime + (x).duration)
 
 struct Settings
 {
@@ -16,13 +13,6 @@ struct Settings
     rssi_t volatile enterAtLevel = 96;
     // lap pass ends when RSSI goes below this level
     rssi_t volatile exitAtLevel = 80;
-};
-
-struct Extremum
-{
-  rssi_t volatile rssi;
-  mtime_t volatile firstTime;
-  uint16_t volatile duration;
 };
 
 struct State
@@ -49,11 +39,11 @@ struct History
 {
     Extremum peak = {0, 0, 0};
     bool volatile hasPendingPeak = false;
-    Extremum peakSend = {0, 0, 0}; // only valid if peakSend.rssi != 0
+    SinglePeakSendBuffer peakSend;
 
     Extremum nadir = {MAX_RSSI, 0, 0};
     bool volatile hasPendingNadir = false;
-    Extremum nadirSend = {MAX_RSSI, 0, 0}; // only valid if nadirSend.rssi != MAX_RSSI
+    SingleNadirSendBuffer nadirSend;
 
     int8_t rssiChange = 0; // >0 for raising, <0 for falling
 };

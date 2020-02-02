@@ -159,8 +159,9 @@ void handleReadCommand(Message_t *msg, bool serialFlag)
             ioBufferWrite16(&(msg->buffer), uint16_t(state.loopTimeMicros));
             // set flag if 'crossing' in progress
             uint8_t flags = state.crossing ? (uint8_t)LAPSTATS_FLAG_CROSSING : (uint8_t)0;
-            if (isPeakValid(history.peakSend) && (!isNadirValid(history.nadirSend)
-                    || (history.peakSend.firstTime < history.nadirSend.firstTime)))
+            if (!history.peakSend.isEmpty()
+                  && (history.nadirSend.isEmpty()
+                    || (history.peakSend.first()->firstTime < history.nadirSend.first()->firstTime)))
             {
                 flags |= LAPSTATS_FLAG_PEAK;
             }
@@ -168,19 +169,21 @@ void handleReadCommand(Message_t *msg, bool serialFlag)
             ioBufferWriteRssi(&(msg->buffer), lastPass.rssiNadir);  // lowest rssi since end of last pass
             ioBufferWriteRssi(&(msg->buffer), state.nodeRssiNadir);
 
-            if ((flags & (uint8_t)LAPSTATS_FLAG_PEAK) != (uint8_t)0)
+            if (!history.peakSend.isEmpty()
+                  && (history.nadirSend.isEmpty()
+                    || (history.peakSend.first()->firstTime < history.nadirSend.first()->firstTime)))
             {
                 // send peak and reset
-                ioBufferWriteExtremum(&(msg->buffer), &(history.peakSend), now);
-                history.peakSend.rssi = 0;
+                ioBufferWriteExtremum(&(msg->buffer), history.peakSend.first(), now);
+                history.peakSend.removeFirst();
             }
-            else if (isNadirValid(history.nadirSend)
-                  && (!isPeakValid(history.peakSend)
-                    || (history.nadirSend.firstTime < history.peakSend.firstTime)))
+            else if (!history.nadirSend.isEmpty()
+                  && (history.peakSend.isEmpty()
+                    || (history.nadirSend.first()->firstTime < history.peakSend.first()->firstTime)))
             {
                 // send nadir and reset
-                ioBufferWriteExtremum(&(msg->buffer), &(history.nadirSend), now);
-                history.nadirSend.rssi = MAX_RSSI;
+                ioBufferWriteExtremum(&(msg->buffer), history.nadirSend.first(), now);
+                history.nadirSend.removeFirst();
             }
             else
             {

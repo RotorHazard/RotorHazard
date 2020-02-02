@@ -3,8 +3,6 @@
 extern MedianFilter<rssi_t, SmoothingSamples, 0> _filter;
 
 #define milliTick(nano) (nano->micros += 1000)
-#define readPeak() (history.peakSend.rssi = 0)
-#define readNadir() (history.nadirSend.rssi = MAX_RSSI)
 
 const static int N_2 = _filter.getSampleCapacity()/2+1;
 const static int N_TS = _filter.getTimestampCapacity();

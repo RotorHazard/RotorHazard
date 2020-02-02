@@ -51,14 +51,16 @@ bool rssiStateValid()
 void rssiStateReset()
 {
     state.crossing = false;
-    state.passPeak.rssi = 0;
+    invalidatePeak(state.passPeak);
     state.passRssiNadir = MAX_RSSI;
     state.nodeRssiPeak = 0;
     state.nodeRssiNadir = MAX_RSSI;
+    invalidatePeak(history.peak);
     history.hasPendingPeak = false;
-    history.peakSend.rssi = 0;
+    history.peakSend.clear();
+    invalidateNadir(history.nadir);
     history.hasPendingNadir = false;
-    history.nadirSend.rssi = MAX_RSSI;
+    history.nadirSend.clear();
 }
 
 static void bufferHistoricPeak(bool force)
@@ -67,25 +69,14 @@ static void bufferHistoricPeak(bool force)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            if (!isPeakValid(history.peakSend))
+            bool buffered = history.peakSend.addIfAvailable(history.peak);
+            if (buffered)
             {
-                // no current peak to send so just overwrite
-                history.peakSend = history.peak;
                 history.hasPendingPeak = false;
             }
             else if (force)
             {
-                // must do something
-                if (history.peak.rssi > history.peakSend.rssi)
-                {
-                    // prefer higher peak
-                    history.peakSend = history.peak;
-                }
-                else if (history.peak.rssi == history.peakSend.rssi)
-                {
-                    // merge
-                    history.peakSend.duration = endTime(history.peak) - history.peakSend.firstTime;
-                }
+                history.peakSend.addOrDiscard(history.peak);
                 history.hasPendingPeak = false;
             }
         }
@@ -98,25 +89,14 @@ static void bufferHistoricNadir(bool force)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            if (!isNadirValid(history.nadirSend))
+            bool buffered = history.nadirSend.addIfAvailable(history.nadir);
+            if (buffered)
             {
-                // no current nadir to send so just overwrite
-                history.nadirSend = history.nadir;
                 history.hasPendingNadir = false;
             }
             else if (force)
             {
-                // must do something
-                if (history.nadir.rssi < history.nadirSend.rssi)
-                {
-                    // prefer lower nadir
-                    history.nadirSend = history.nadir;
-                }
-                else if (history.nadir.rssi == history.nadirSend.rssi)
-                {
-                    // merge
-                    history.nadirSend.duration = endTime(history.nadir) - history.nadirSend.firstTime;
-                }
+                history.nadirSend.addOrDiscard(history.nadir);
                 history.hasPendingNadir = false;
             }
         }
