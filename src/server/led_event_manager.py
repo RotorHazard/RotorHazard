@@ -62,6 +62,28 @@ class LEDEventManager:
 
         return False
 
+    def eventDirect(self, event, eventArgs=None):
+        """ Do event call using calling thread """
+        if event in self.events:
+            currentEvent = self.events[event]
+            if currentEvent in self.eventHandlers:
+                handler = self.eventHandlers[currentEvent]
+                args = handler['defaultArgs']
+                if eventArgs:
+                    if args:
+                        args.update(eventArgs)
+                    else:
+                        args = eventArgs
+
+                # restart thread regardless of status
+                if self.eventThread is not None:
+                    self.eventThread.kill()
+
+                handler['handlerFn'](self.strip, self.config, args)
+                return True
+
+        return False
+
     def clear(self):
         self.eventHandlers['clear']['handlerFn'](self.strip, self.config)
 

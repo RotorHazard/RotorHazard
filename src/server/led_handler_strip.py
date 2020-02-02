@@ -69,7 +69,7 @@ def color_wheel(pos):
 def rainbow(strip, config, args=None):
     """Draw rainbow that fades across all pixels at once."""
     for i in range(strip.numPixels()):
-        strip.setPixelColor(i, color_wheel((i) & 255))
+        strip.setPixelColor(i, color_wheel(int(i * 256 / strip.numPixels()) & 255))
     strip.show()
 
 def rainbowCycle(strip, config, args=None):
@@ -82,13 +82,16 @@ def rainbowCycle(strip, config, args=None):
     if args and 'iterations' in args:
         iterations = args['iterations']
     else:
-        iterations = 1
+        iterations = 3
 
     for j in range(256*iterations):
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
         strip.show()
         gevent.sleep(wait_ms/1000.0)
+
+    if 'offWhenDone' in args and args['offWhenDone']:
+        led_off(strip)
 
 def theaterChaseRainbow(strip, wait_ms=25):
     """Rainbow movie theater light style chaser animation."""
@@ -160,7 +163,9 @@ def registerHandlers(manager):
 
     # rainbow
     manager.registerEventHandler("rainbow", "Color/Pattern: Rainbow", rainbow, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP])
-    manager.registerEventHandler("rainbowCycle", "Color/Pattern: Rainbow Cycle", rainbowCycle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP])
+    manager.registerEventHandler("rainbowCycle", "Color/Pattern: Rainbow Cycle", rainbowCycle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+        'offWhenDone': True
+        })
 
     # clear - permanently assigned to LEDEventManager.clear()
     manager.registerEventHandler("clear", "Turn Off", clear, [LEDEvent.NOCONTROL, LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN])

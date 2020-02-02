@@ -4505,7 +4505,7 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
-    led_manager.event(LEDEvent.SHUTDOWN)  # server is shutting down, so shut off LEDs
+    led_manager.eventDirect(LEDEvent.SHUTDOWN)  # server is shutting down, so shut off LEDs
 
 # Start HTTP server
 if __name__ == '__main__':
