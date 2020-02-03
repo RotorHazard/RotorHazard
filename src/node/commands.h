@@ -16,16 +16,6 @@ public:
     void handleWriteCommand(bool serialFlag);
     void handleReadCommand(bool serialFlag);
 };
-class Message
-{
-public:
-    uint8_t command;  // code to identify messages
-    Buffer buffer;  // request/response payload
-
-    byte getPayloadSize();
-    void handleWriteCommand(bool serialFlag);
-    void handleReadCommand(bool serialFlag);
-};
 
 #define MIN_FREQ 100
 #define MAX_FREQ 9999

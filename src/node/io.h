@@ -54,6 +54,7 @@ class Buffer {
             {
                 checksum += data[i];
             }
+            return checksum;
         }
         void writeChecksum() {
             uint8_t checksum = calculateChecksum(size);

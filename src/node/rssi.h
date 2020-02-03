@@ -2,7 +2,8 @@
 #define rssi_h
 
 #include "rhtypes.h"
-#include "single-sendbuffer.h"
+#include "filter.h"
+#include "sendbuffer.h"
 
 #define MAX_DURATION 0xFFFF
 
@@ -37,15 +38,15 @@ struct State
 
 struct History
 {
-    Extremum peak = {0, 0, 0};
-    bool volatile hasPendingPeak = false;
-    SinglePeakSendBuffer peakSend;
+    Extremum peak;
+    bool volatile hasPendingPeak;
+    SendBuffer<Extremum> *peakSend;
 
-    Extremum nadir = {MAX_RSSI, 0, 0};
-    bool volatile hasPendingNadir = false;
-    SingleNadirSendBuffer nadirSend;
+    Extremum nadir;
+    bool volatile hasPendingNadir;
+    SendBuffer<Extremum> *nadirSend;
 
-    int8_t rssiChange = 0; // >0 for raising, <0 for falling
+    int8_t rssiChange; // >0 for raising, <0 for falling
 };
 
 struct LastPass
@@ -61,6 +62,8 @@ extern struct State state;
 extern struct History history;
 extern struct LastPass lastPass;
 
+void rssiSetFilter(Filter<rssi_t> *f);
+void rssiSetSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir);
 void rssiInit();
 bool rssiStateValid();
 /**

@@ -9,6 +9,7 @@
 unittest(slowCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
+  rssiSetFilter(&testFilter);
   rssiInit();
 
   state.activatedFlag = true;
@@ -51,8 +52,8 @@ unittest(slowCrossing) {
   assertEqual(time(duration), (int)history.peak.duration);
   assertFalse(isNadirValid(history.nadir)); // no downward trend yet
 
-  assertTrue(history.peakSend.isEmpty());
-  assertTrue(history.nadirSend.isEmpty());
+  assertTrue(history.peakSend->isEmpty());
+  assertTrue(history.nadirSend->isEmpty());
 
   // exit
   sendSignal(nano, 70);
@@ -74,10 +75,10 @@ unittest(slowCrossing) {
   assertEqual(timestamp(4+duration), (int)history.nadir.firstTime);
   assertEqual(0, (int)history.nadir.duration);
 
-  assertEqual(130, (int)history.peakSend.first().rssi);
-  assertEqual(timestamp(3), (int)history.peakSend.first().firstTime);
-  assertEqual(time(1+duration)-1, (int)history.peakSend.first().duration);
-  assertTrue(history.nadirSend.isEmpty());
+  assertEqual(130, (int)history.peakSend->first().rssi);
+  assertEqual(timestamp(3), (int)history.peakSend->first().firstTime);
+  assertEqual(time(1+duration)-1, (int)history.peakSend->first().duration);
+  assertTrue(history.nadirSend->isEmpty());
 
   assertEqual(130, (int)lastPass.rssiPeak);
   assertEqual(50, (int)lastPass.rssiNadir);

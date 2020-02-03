@@ -5,38 +5,53 @@
 #include "lowpass50hz-filter.h"
 #include "lowpass100hz-filter.h"
 #include "no-filter.h"
+#include "single-sendbuffer.h"
+#include "multi-sendbuffer.h"
 
-#define FILTER_NONE 0
-#define FILTER_MEDIAN 1
-#define FILTER_100 2
-#define FILTER_50 3
-#define FILTER_20 4
+#define FILTER_NONE NoFilter<rssi_t>
+#define FILTER_MEDIAN MedianFilter<rssi_t, SmoothingSamples, 0>
+#define FILTER_100 LowPassFilter100Hz
+#define FILTER_50 LowPassFilter50Hz
+#define FILTER_20 LowPassFilter20Hz
 
-#ifdef __TEST__
-  #define FILTER FILTER_MEDIAN
-#else
-  //select the filter to use here
-  #define FILTER FILTER_100
-#endif
+//select the filter to use here
+#define FILTER_IMPL FILTER_MEDIAN
 
-#if FILTER == FILTER_MEDIAN
-  MedianFilter<rssi_t, SmoothingSamples, 0> _filter;
-#elif FILTER == FILTER_20
-  LowPassFilter20Hz _filter;
-#elif FILTER == FILTER_50
-  LowPassFilter50Hz _filter;
-#elif FILTER == FILTER_100
-  LowPassFilter100Hz _filter;
-#else
-  NoFilter<rssi_t> _filter;
-#endif
+#define PEAK_SENDBUFFER_SINGLE SinglePeakSendBuffer
+#define PEAK_SENDBUFFFER_MULTI MultiSendBuffer<Extremum,10>
+#define NADIR_SENDBUFFER_SINGLE SingleNadirSendBuffer
+#define NADIR_SENDBUFFFER_MULTI MultiSendBuffer<Extremum,10>
+
+//select the send buffer to use here
+#define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_SINGLE
+#define NADIR_SENDBUFFER_IMPL NADIR_SENDBUFFER_SINGLE
+
+
+FILTER_IMPL defaultFilter;
+PEAK_SENDBUFFER_IMPL defaultPeakSendBuffer;
+NADIR_SENDBUFFER_IMPL defaultNadirSendBuffer;
 
 struct Settings settings;
 struct State state;
-struct History history;
+struct History history = {
+    {0, 0, 0}, false, &defaultPeakSendBuffer,
+    {MAX_RSSI, 0, 0}, false, &defaultNadirSendBuffer,
+    0
+};
 struct LastPass lastPass;
 
-Filter<rssi_t> *filter = &_filter;
+static Filter<rssi_t> *filter = &defaultFilter;
+
+void rssiSetFilter(Filter<rssi_t> *f)
+{
+    filter = f;
+}
+
+void rssiSetSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir)
+{
+    history.peakSend = peak;
+    history.nadirSend = nadir;
+}
 
 void rssiInit()
 {
@@ -57,10 +72,10 @@ void rssiStateReset()
     state.nodeRssiNadir = MAX_RSSI;
     invalidatePeak(history.peak);
     history.hasPendingPeak = false;
-    history.peakSend.clear();
+    history.peakSend->clear();
     invalidateNadir(history.nadir);
     history.hasPendingNadir = false;
-    history.nadirSend.clear();
+    history.nadirSend->clear();
 }
 
 static void bufferHistoricPeak(bool force)
@@ -69,14 +84,14 @@ static void bufferHistoricPeak(bool force)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            bool buffered = history.peakSend.addIfAvailable(history.peak);
+            bool buffered = history.peakSend->addIfAvailable(history.peak);
             if (buffered)
             {
                 history.hasPendingPeak = false;
             }
             else if (force)
             {
-                history.peakSend.addOrDiscard(history.peak);
+                history.peakSend->addOrDiscard(history.peak);
                 history.hasPendingPeak = false;
             }
         }
@@ -89,14 +104,14 @@ static void bufferHistoricNadir(bool force)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            bool buffered = history.nadirSend.addIfAvailable(history.nadir);
+            bool buffered = history.nadirSend->addIfAvailable(history.nadir);
             if (buffered)
             {
                 history.hasPendingNadir = false;
             }
             else if (force)
             {
-                history.nadirSend.addOrDiscard(history.nadir);
+                history.nadirSend->addOrDiscard(history.nadir);
                 history.hasPendingNadir = false;
             }
         }

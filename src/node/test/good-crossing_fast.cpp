@@ -9,6 +9,7 @@
 unittest(fastCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
+  rssiSetFilter(&testFilter);
   rssiInit();
 
   state.activatedFlag = true;
@@ -46,8 +47,8 @@ unittest(fastCrossing) {
   assertEqual(0, (int)history.peak.duration);
   assertFalse(isNadirValid(history.nadir)); // no downward trend yet
 
-  assertTrue(history.peakSend.isEmpty());
-  assertTrue(history.nadirSend.isEmpty());
+  assertTrue(history.peakSend->isEmpty());
+  assertTrue(history.nadirSend->isEmpty());
 
   // exit
   sendSignal(nano, 70);
@@ -69,10 +70,10 @@ unittest(fastCrossing) {
   assertEqual(timestamp(4), (int)history.nadir.firstTime);
   assertEqual(0, (int)history.nadir.duration);
 
-  assertEqual(130, (int)history.peakSend.first().rssi);
-  assertEqual(timestamp(3), (int)history.peakSend.first().firstTime);
-  assertEqual(time(1)-1, (int)history.peakSend.first().duration);
-  assertTrue(history.nadirSend.isEmpty());
+  assertEqual(130, (int)history.peakSend->first().rssi);
+  assertEqual(timestamp(3), (int)history.peakSend->first().firstTime);
+  assertEqual(time(1)-1, (int)history.peakSend->first().duration);
+  assertTrue(history.nadirSend->isEmpty());
 
   assertEqual(130, (int)lastPass.rssiPeak);
   assertEqual(50, (int)lastPass.rssiNadir);
@@ -99,13 +100,13 @@ unittest(fastCrossing) {
   assertEqual(timestamp(4), (int)history.nadir.firstTime);
   assertEqual(time(1)-1, (int)history.nadir.duration);
 
-  assertEqual(130, (int)history.peakSend.first().rssi);
-  assertEqual(timestamp(3), (int)history.peakSend.first().firstTime);
-  assertEqual(time(1)-1, (int)history.peakSend.first().duration);
-  history.peakSend.removeFirst();
-  assertEqual(70, (int)history.nadirSend.first().rssi);
-  assertEqual(timestamp(4), (int)history.nadirSend.first().firstTime);
-  assertEqual(time(1)-1, (int)history.nadirSend.first().duration);
+  assertEqual(130, (int)history.peakSend->first().rssi);
+  assertEqual(timestamp(3), (int)history.peakSend->first().firstTime);
+  assertEqual(time(1)-1, (int)history.peakSend->first().duration);
+  history.peakSend->removeFirst();
+  assertEqual(70, (int)history.nadirSend->first().rssi);
+  assertEqual(timestamp(4), (int)history.nadirSend->first().firstTime);
+  assertEqual(time(1)-1, (int)history.nadirSend->first().duration);
 
   assertEqual(130, (int)lastPass.rssiPeak);
   assertEqual(50, (int)lastPass.rssiNadir);
@@ -115,13 +116,13 @@ unittest(fastCrossing) {
   // small fall
   sendSignal(nano, 60);
 
-  assertEqual(75, (int)history.peakSend.first().rssi);
-  assertEqual(timestamp(5), (int)history.peakSend.first().firstTime);
-  assertEqual(time(1)-1, (int)history.peakSend.first().duration);
-  assertEqual(70, (int)history.nadirSend.first().rssi);
-  assertEqual(timestamp(4), (int)history.nadirSend.first().firstTime);
-  assertEqual(time(1)-1, (int)history.nadirSend.first().duration);
-  history.nadirSend.removeFirst();
+  assertEqual(75, (int)history.peakSend->first().rssi);
+  assertEqual(timestamp(5), (int)history.peakSend->first().firstTime);
+  assertEqual(time(1)-1, (int)history.peakSend->first().duration);
+  assertEqual(70, (int)history.nadirSend->first().rssi);
+  assertEqual(timestamp(4), (int)history.nadirSend->first().firstTime);
+  assertEqual(time(1)-1, (int)history.nadirSend->first().duration);
+  history.nadirSend->removeFirst();
 }
 
 unittest_main()
