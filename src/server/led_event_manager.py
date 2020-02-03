@@ -75,9 +75,10 @@ class LEDEventManager:
                     else:
                         args = eventArgs
 
-                # restart thread regardless of status
+                # stop any current thread
                 if self.eventThread is not None:
                     self.eventThread.kill()
+                    self.eventThread = None
 
                 handler['handlerFn'](self.strip, self.config, args)
                 return True

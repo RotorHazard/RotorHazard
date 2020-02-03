@@ -4321,6 +4321,27 @@ def expand_heats():
 
     DB.session.commit()
 
+def init_LED_handlers():
+    # start with defaults
+    handlers = {
+        LEDEvent.RACESTAGE: "stripColorOrange2_1",
+        LEDEvent.RACESTART: "stripColorGreenSolid",
+        LEDEvent.RACEFINISH: "stripColorWhite4_4",
+        LEDEvent.RACESTOP: "stripColorRedSolid",
+        LEDEvent.CROSSINGENTER: "stripColorSolid",
+        LEDEvent.CROSSINGEXIT: "stripColor1_1",
+        LEDEvent.STARTUP: "rainbowCycle",
+        LEDEvent.SHUTDOWN: "clear"
+    }
+    # update with DB values (if any)
+    handler_opt = getOption('ledHandlers')
+    if handler_opt:
+        handlers.update(json.loads(handler_opt))
+    # set handlers
+    led_manager.setEventHandler("manualColor", "stripColor")
+    for item in handlers:
+        led_manager.setEventHandler(item, handlers[item])
+
 #
 # Program Initialize
 #
@@ -4426,34 +4447,7 @@ on_set_profile({'profile': current_profile}, False)
 if Heat.query.first():
     RACE.current_heat = Heat.query.first().heat_id
 
-#
-# LED Code
-#
-
-# set handler defaults
-def set_handlers():
-    handler_opt = getOption('ledHandlers')
-    if handler_opt:
-        handlers = json.loads(handler_opt)
-    else:
-        handlers = {
-            LEDEvent.RACESTAGE: "stripColorOrange2_1",
-            LEDEvent.RACESTART: "stripColorGreenSolid",
-            LEDEvent.RACEFINISH: "stripColorWhite4_4",
-            LEDEvent.RACESTOP: "stripColorRedSolid",
-            LEDEvent.CROSSINGENTER: "stripColorSolid",
-            LEDEvent.CROSSINGEXIT: "stripColor1_1",
-            LEDEvent.STARTUP: "rainbowCycle",
-            LEDEvent.SHUTDOWN: "clear"
-        }
-
-    # set handlers
-    led_manager.setEventHandler("manualColor", "stripColor")
-    for item in handlers:
-        led_manager.setEventHandler(item, handlers[item])
-
-
-# Create LED object with appropriate configuration.
+# Create LED object with appropriate configuration
 strip = None
 if Config['LED']['LED_COUNT'] > 0:
     led_type = os.environ.get('RH_LEDS', 'ws281x')
@@ -4472,24 +4466,20 @@ if Config['LED']['LED_COUNT'] > 0:
             print 'LED: disabled (no modules available)'
 else:
     print 'LED: disabled (configured LED_COUNT is <= 0)'
-
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
     led_manager = LEDEventManager(strip, Config['LED'])
 else:
     led_manager = NoLEDManager()
-
 LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
-
 for handlerFile in LEDHandlerFiles:
     try:
         lib = importlib.import_module(handlerFile)
         lib.registerHandlers(led_manager)
     except ImportError:
         print 'Handler {0} not imported (may require additional dependencies)'.format(handlerFile)
-
-set_handlers()
+init_LED_handlers()
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     if not getOption("secret_key"):
