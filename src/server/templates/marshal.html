@@ -211,9 +211,6 @@
 
 			// display graph
 			graph_series.data = [];
-			// prevent graph from breaking if no data is recorded
-
-			// prevent graph from breaking if no data is recorded
 			for (idx in current_race_data.history_times) {
 				var value = current_race_data.history_times[idx];
 				if (value == lastValue) {
@@ -283,7 +280,6 @@
 				{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: parseInt($('#enterat').val())}, // red
 				{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: parseInt($('#exitat').val())}, // orange
 			];
-
 
 			graph.render(graph_canvas, endTime);
 		}
