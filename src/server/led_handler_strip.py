@@ -143,20 +143,20 @@ def registerHandlers(manager):
         })
 
     # register specific colors needed for typical events
-    manager.registerEventHandler("stripColorOrange2_1", "Color/Pattern: Orange 2/1", showColor, [LEDEvent.RACESTAGE], {
+    manager.registerEventHandler("stripColorOrange2_1", "Color/Pattern: Orange 2/1", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {
         'color': ColorVal.ORANGE,
         'pattern': ColorPattern.TWO_OUT_OF_THREE
         })
-    manager.registerEventHandler("stripColorGreenSolid", "Color/Pattern: Green Solid", showColor, [LEDEvent.RACESTART], {
+    manager.registerEventHandler("stripColorGreenSolid", "Color/Pattern: Green Solid", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {
         'color': ColorVal.GREEN,
         'pattern': ColorPattern.SOLID,
         'time': Timing.START_EXPIRE
         })
-    manager.registerEventHandler("stripColorWhite4_4", "Color/Pattern: White 4/4", showColor, [LEDEvent.RACEFINISH], {
+    manager.registerEventHandler("stripColorWhite4_4", "Color/Pattern: White 4/4", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF
         })
-    manager.registerEventHandler("stripColorRedSolid", "Color/Pattern: Red Solid", showColor, [LEDEvent.RACESTOP], {
+    manager.registerEventHandler("stripColorRedSolid", "Color/Pattern: Red Solid", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {
         'color': ColorVal.RED,
         'pattern': ColorPattern.SOLID
         })

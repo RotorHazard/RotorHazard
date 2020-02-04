@@ -40,7 +40,7 @@ def showBitmap(strip, config, args):
 
 def registerHandlers(manager):
     # register state bitmaps
-    manager.registerEventHandler("bitmapRHLogo", "Image: RotorHazard", showBitmap, [LEDEvent.STARTUP], {'bitmaps': [
+    manager.registerEventHandler("bitmapRHLogo", "Image: RotorHazard", showBitmap, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-RotorHazard.png", "delay": 0}
     ]})
     manager.registerEventHandler("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, [LEDEvent.RACESTAGE], {'bitmaps': [
