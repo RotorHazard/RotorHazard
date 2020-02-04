@@ -211,6 +211,9 @@
 
 			// display graph
 			graph_series.data = [];
+			// prevent graph from breaking if no data is recorded
+
+			// prevent graph from breaking if no data is recorded
 			for (idx in current_race_data.history_times) {
 				var value = current_race_data.history_times[idx];
 				if (value == lastValue) {
@@ -263,7 +266,15 @@
 			var graphWidth = graph_canvas.offsetWidth;
 
 			var startTime = current_race_data.start_time;
-			var endTime = current_race_data.history_times[current_race_data.history_times.length - 1];
+			if (current_race_data.history_times.length) {
+				var endTime = current_race_data.history_times[current_race_data.history_times.length - 1];
+				graph.options.minValue = current_race_data.minRSSI;
+				graph.options.maxValue = current_race_data.maxRSSI;
+			} else {
+				var endTime = current_race_data.start_time + 1;
+				graph.options.minValue = current_race_data.exit_at;
+				graph.options.maxValue = current_race_data.enter_at;
+			}
 			var duration = endTime - startTime;
 			var span = duration / graphWidth;
 
@@ -272,8 +283,7 @@
 				{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: parseInt($('#enterat').val())}, // red
 				{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: parseInt($('#exitat').val())}, // orange
 			];
-			graph.options.minValue = current_race_data.minRSSI;
-			graph.options.maxValue = current_race_data.maxRSSI;
+
 
 			graph.render(graph_canvas, endTime);
 		}
