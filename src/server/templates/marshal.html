@@ -64,8 +64,31 @@
 		socket.on('race_list', function (msg) {
 			race_list = msg;
 
+			for (var heat in race_list.heats) {
+				for (var round in race_list.heats[heat].rounds) {
+					for (var pilotrace in race_list.heats[heat].rounds[round].pilotraces) {
+						race_list.heats[heat].rounds[round].pilotraces[pilotrace].minRSSI = Math.min.apply(null, race_list.heats[heat].rounds[round].pilotraces[pilotrace].history_values) - 2;
+						race_list.heats[heat].rounds[round].pilotraces[pilotrace].maxRSSI = Math.max.apply(null, race_list.heats[heat].rounds[round].pilotraces[pilotrace].history_values) + 2;
+					}
+				}
+			}
+
+			// find most recent race
+			var prev_heat = null;
 			if (race_list_loaded) {
-				var prev_heat = $('#selected_heat').val();
+				prev_heat = $('#selected_heat').val();
+			} else {
+				var newest_race = 0;
+				for (var heat in race_list.heats) {
+					for (var round in race_list.heats[heat].rounds) {
+						var race_time = race_list.heats[heat].rounds[round].start_time;
+
+						if (newest_race < race_time) {
+							newest_race = race_time;
+							prev_heat = heat;
+						}
+					}
+				}
 			}
 
 			$('#selected_heat').empty();
@@ -80,17 +103,14 @@
 
 				$('#selected_heat').append('<option value="' + heat_i + '">' + heat_name + '</option>');
 			}
-			$('#selected_heat').val(heat_i);
 
-			if (race_list_loaded) {
-				$('#selected_heat').val(prev_heat);
-			} else {
+			if (!race_list_loaded) {
 				race_list_loaded = true;
 				$('#selected_heat').prop('disabled', false);
 				$('#selected_round').prop('disabled', false);
 				$('#selected_pilot').prop('disabled', false);
-				$('#load_race').prop('disabled', false);
 			}
+			$('#selected_heat').val(prev_heat);
 
 			$('#selected_heat').trigger('change');
 		});
@@ -134,7 +154,7 @@
 
 			for (var pilot_i in race_list.heats[heat].rounds[round].pilotraces) {
 				var pilotrace = race_list.heats[heat].rounds[round].pilotraces[pilot_i];
-				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' + pilotrace.pilot_id + '">' + pilotrace.callsign + '</option>');
+				$('#selected_pilot').append('<option value="' + pilot_i + '" data-pilot-id="' + pilotrace.pilot_id + '">' + pilotrace.callsign + ' (' + (pilotrace.node_index + 1) + ')</option>');
 			}
 
 			$('#selected_pilot option').each(function(){
@@ -169,6 +189,7 @@
 
 			// load current race data
 			current_race_data = jQuery.extend(true, {}, race_list.heats[heat].rounds[round].pilotraces[pilot]);
+			current_race_data.pilotrace_index = pilot;
 			// fill current data with race meta
 			current_race_data.round_id = round;
 			current_race_data.heat_id = heat;
@@ -251,6 +272,8 @@
 				{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: parseInt($('#enterat').val())}, // red
 				{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: parseInt($('#exitat').val())}, // orange
 			];
+			graph.options.minValue = current_race_data.minRSSI;
+			graph.options.maxValue = current_race_data.maxRSSI;
 
 			graph.render(graph_canvas, endTime);
 		}
@@ -491,6 +514,10 @@
 					exit_at: current_race_data.exit_at,
 				}
 				socket.emit('resave_laps', data);
+				var this_pilotrace = race_list.heats[current_race_data.heat_id].rounds[current_race_data.round_id].pilotraces[current_race_data.pilotrace_index];
+				this_pilotrace.enter_at = current_race_data.enter_at;
+				this_pilotrace.exit_at = current_race_data.exit_at;
+				this_pilotrace.laps = current_race_data.laps;
 			} else {
 				standard_message_queue.push(__('No race loaded'));
 				if (standard_message_queue.length == 1) {
