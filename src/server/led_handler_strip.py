@@ -332,7 +332,7 @@ def registerEffects(manager):
         })
 
     # blink
-    manager.registerEffect("stripBlink", "Blink 3×", blink, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("stripBlink", "Blink 3x", blink, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
         'decay': 0.5,
