@@ -32,7 +32,7 @@ import random
 import json
 
 # LED imports
-from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorVal, ColorPattern
+from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -2237,7 +2237,8 @@ def on_simulate_lap(data):
     node_index = data['node']
     server_log('Simulated lap: Node {0}'.format(node_index+1))
     led_manager.event(LEDEvent.CROSSINGEXIT, {
-        'nodeIndex': node_index
+        'nodeIndex': node_index,
+        'color': hexToColor(getOption('nodeColor_' + (node_index+1), '#ffffff'))
         })
     INTERFACE.intf_simulate_lap(node_index, 0)
 
@@ -3966,13 +3967,15 @@ def node_crossing_callback(node):
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
                 led_manager.event(LEDEvent.CROSSINGENTER, {
-                    'nodeIndex': node.index
+                    'nodeIndex': node.index,
+                    'color': hexToColor(getOption('nodeColor_' + (node_index+1), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
                     led_manager.event(LEDEvent.CROSSINGEXIT, {
-                        'nodeIndex': node.index
+                        'nodeIndex': node.index,
+                        'color': hexToColor(getOption('nodeColor_' + (node_index+1), '#ffffff'))
                         })
                 else:
                     node.show_crossing_flag = True
@@ -4184,6 +4187,15 @@ def db_reset_options_defaults():
     setOption("eventDescription", "")
     # LED settings
     setOption("ledBrightness", "32")
+    # LED colors
+    setOption("nodeColor_0", "#001fff")
+    setOption("nodeColor_1", "#ff3f00")
+    setOption("nodeColor_2", "#7fff00")
+    setOption("nodeColor_3", "#ffff00")
+    setOption("nodeColor_4", "#7f00ff")
+    setOption("nodeColor_5", "#ff007f")
+    setOption("nodeColor_6", "#3fff3f")
+    setOption("nodeColor_7", "#00bfff")
 
     server_log("Reset global settings")
 
