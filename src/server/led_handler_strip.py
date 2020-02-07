@@ -199,7 +199,7 @@ def fade(strip, config, a={}):
             else:
                 led_off(strip)
 
-        led_off(strip)
+            led_off(strip)
         gevent.sleep(args['offTime']/1000.0);
 
 def sparkle(strip, config, a={}):
@@ -213,13 +213,13 @@ def sparkle(strip, config, a={}):
 
     # decay time = log(decay cutoff=10 / max brightness=256) / log(decay rate)
     if args['decay']:
-        decayTime = int(math.ceil(math.log(0.0390625) / math.log(args['decay'])))
+        decaySteps = int(math.ceil(math.log(0.0390625) / math.log(args['decay'])))
     else:
-        decayTime = 0
+        decaySteps = 0
 
     led_off(strip)
 
-    for i in range(args['iterations'] + decayTime):
+    for i in range(args['iterations'] + decaySteps):
         # fade brightness all LEDs one step
         for j in range(strip.numPixels()):
             c = strip.getPixelColor(j)
@@ -299,9 +299,9 @@ def larsonScanner(strip, config, a={}):
         gevent.sleep(args['returnDelay']/1000.0)
 
 def dim(color, decay):
-    r = color & 0x00ff0000 >> 16;
-    g = color & 0x0000ff00 >> 8;
-    b = color & 0x000000ff;
+    r = (color & 0x00ff0000) >> 16;
+    g = (color & 0x0000ff00) >> 8;
+    b = (color & 0x000000ff);
 
     r = 0 if r <= 10 else int(r*decay)
     g = 0 if g <= 10 else int(g*decay)
