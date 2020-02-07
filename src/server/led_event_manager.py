@@ -19,7 +19,7 @@ class LEDEventManager:
     def isEnabled(self):
         return True
 
-    def registerEventHandler(self, name, label, handlerFn, validEvents, defaultArgs=None):
+    def registerEffect(self, name, label, handlerFn, validEvents, defaultArgs=None):
         self.eventHandlers[name] = {
             "label": label,
             "handlerFn": handlerFn,
