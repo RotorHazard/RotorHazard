@@ -36,34 +36,37 @@ class ANSIPixel:
         r = color >> 16 & 0xff
         g = color >> 8  & 0xff
         b = color & 0xff
-        if color == 0:
+
+        if r < 32 and g < 32 and b < 32:
             c = Fore.BLACK
-        elif r == 255 and g == 255 and b == 255:
+        elif r > 191 and g >= 191 and b >= 191:
             c = Fore.WHITE
-        elif r == 255 and g == 0 and b == 0:
+        elif r > 191 and g < 64 and b < 64:
             c = Fore.LIGHTRED_EX
-        elif r == 0 and g == 255 and b == 0:
+        elif r < 64 and g > 191 and b == 64:
             c = Fore.LIGHTGREEN_EX
-        elif r == 0 and g == 0 and b == 255:
+        elif r < 64 and g < 64 and b > 191:
             c = Fore.LIGHTBLUE_EX
-        elif r > 128 and g > 128 and b < 128:
+        elif r > 127 and g > 127 and b < 128:
             c = Fore.LIGHTYELLOW_EX
-        elif r > 128 and g < 128 and b > 128:
+        elif r > 127 and g < 128 and b > 127:
             c = Fore.LIGHTMAGENTA_EX
-        elif r < 128 and g > 128 and b > 128:
+        elif r < 128 and g > 127 and b > 127:
             c = Fore.LIGHTCYAN_EX
-        elif r > 0 and g == 0 and b == 0:
+        elif r > 31 and g < 32 and b < 32:
             c = Fore.RED
-        elif r == 0 and g > 0 and b == 0:
+        elif r < 32 and g > 31 and b < 32:
             c = Fore.GREEN
-        elif r == 0 and g == 0 and b > 0:
+        elif r < 32 and g < 32 and b > 31:
             c = Fore.BLUE
-        elif r > 0 and g > 0 and b == 0:
+        elif r > 31 and g > 31 and b < 32:
             c = Fore.YELLOW
-        elif r > 0 and g == 0 and b > 0:
+        elif r > 31 and g < 32 and b > 31:
             c = Fore.MAGENTA
-        elif r == 0 and g > 0 and b > 0:
+        elif r < 32 and g > 31 and b > 31:
             c = Fore.CYAN
+        elif r > 127 and g > 127 and b > 127:
+            c = Fore.WHITE
         else:
             c = Fore.BLACK
 
