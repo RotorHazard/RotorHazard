@@ -112,7 +112,7 @@ def Color(red, green, blue):
     return (red << 16) | (green << 8) | blue
 
 def hexToColor(hex):
-    return int(strip(hex, '#'), 16)
+    return int(hex.replace('#', ''), 16)
 
 class ColorVal:
     NONE = Color(0,0,0)

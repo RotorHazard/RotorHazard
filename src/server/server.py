@@ -2238,7 +2238,7 @@ def on_simulate_lap(data):
     server_log('Simulated lap: Node {0}'.format(node_index+1))
     led_manager.event(LEDEvent.CROSSINGEXIT, {
         'nodeIndex': node_index,
-        'color': hexToColor(getOption('nodeColor_' + (node_index+1), '#ffffff'))
+        'color': hexToColor(getOption('nodeColor_' + str(node_index), '#ffffff'))
         })
     INTERFACE.intf_simulate_lap(node_index, 0)
 
@@ -3968,14 +3968,14 @@ def node_crossing_callback(node):
             if node.crossing_flag:
                 led_manager.event(LEDEvent.CROSSINGENTER, {
                     'nodeIndex': node.index,
-                    'color': hexToColor(getOption('nodeColor_' + (node_index+1), '#ffffff'))
+                    'color': hexToColor(getOption('nodeColor_' + str(node_index+1), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
                     led_manager.event(LEDEvent.CROSSINGEXIT, {
                         'nodeIndex': node.index,
-                        'color': hexToColor(getOption('nodeColor_' + (node_index+1), '#ffffff'))
+                        'color': hexToColor(getOption('nodeColor_' + str(node_index+1), '#ffffff'))
                         })
                 else:
                     node.show_crossing_flag = True
