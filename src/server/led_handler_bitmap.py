@@ -42,15 +42,16 @@ def registerEffects(manager):
     # register state bitmaps
     manager.registerEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-RotorHazard.png", "delay": 0}
-    ]})
+        ]})
     manager.registerEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, [LEDEvent.RACESTAGE], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-pause.png", "delay": 0}
-    ]})
+        ]})
     manager.registerEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, [LEDEvent.RACESTART], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-arrow.png", "delay": 0}
-    ]})
+        ]})
     manager.registerEffect("bitmapRedX", "Image: Red X", showBitmap, [LEDEvent.RACESTOP], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-X.png", "delay": 0}
-    ]})
+        ]})
     manager.registerEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, [LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-checkerboard.png", "delay": 0}
+        ]})
