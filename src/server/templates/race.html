@@ -42,7 +42,7 @@
 			'current_laps',
 			'race_status',
 			'team_racing_stat_if_enb',
-			'led_handlers'
+			'led_effects'
 		]});
 
 		socket.on('pi_time', function (msg) {
@@ -986,35 +986,35 @@
 
 		/* LED Controls */
 
-		socket.on('led_handlers', function (msg) {
+		socket.on('led_effects', function (msg) {
 			var led_html = $('<div class="control-set">');
 
-			var led_select = $('<select id="led-handlers-select"></select>');
+			var led_select = $('<select id="led-effects-select"></select>');
 
-			const handlers = msg.handlers.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
+			const effects = msg.effects.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
 
-			for (var i in handlers) {
-				var handler = handlers[i];
+			for (var i in effects) {
+				var effect = effects[i];
 
-				var led_select_option = $('<option value="' + handler.name + '">' + handler.label + '</option>')
+				var led_select_option = $('<option value="' + effect.name + '">' + effect.label + '</option>')
 
 				led_select.append(led_select_option);
 			}
 
-			led_html.append($('<label for="led-handlers">' + __('Effect') + '</label>'));
+			led_html.append($('<label for="led-effects">' + __('Effect') + '</label>'));
 			led_html.append(' ');
 			led_html.append(led_select);
 			led_html.append(' ');
-			led_html.append($('<button id="use-led-handler">' + __('Go') + '</button>'));
+			led_html.append($('<button id="use-led-effect">' + __('Go') + '</button>'));
 
-			$('#LED-handlers').append(led_html);
+			$('#LED-effects').append(led_html);
 		});
 
-		$(document).on('click', '#use-led-handler', function (event) {
+		$(document).on('click', '#use-led-effect', function (event) {
 			var data = {
-				handler: $('#led-handlers-select').val()
+				effect: $('#led-effects-select').val()
 			};
-			socket.emit('use_led_handler', data);
+			socket.emit('use_led_effect', data);
 		});
 
 		$('button.LED-color').click(function (event) {
@@ -1486,7 +1486,7 @@
 			<button class="LED-color" data-rgb="#000000">{{ __('Turn Off') }}</button>
 		</div>
 
-		<div id="LED-handlers"></div>
+		<div id="LED-effects"></div>
 
 		<div class="control-set">
 			<!--

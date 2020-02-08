@@ -23,7 +23,7 @@
 			'min_lap',
 			'race_status',
 			'team_racing_mode',
-			'led_handler_setup',
+			'led_effect_setup',
 			'cluster_status'
 		]});
 
@@ -1127,7 +1127,7 @@
 		});
 
 		/* LED Controls */
-		socket.on('led_handler_setup_data', function (msg) {
+		socket.on('led_effect_setup_data', function (msg) {
 			var led_html = $('<ol class="form">');
 
 			for (var i in msg.events) {
@@ -1136,15 +1136,15 @@
 
 				var led_select = $('<select id="led-event-' + led_event.event + '" data-event="' + led_event.event + '" class="led-event-select"></select>');
 
-				const handlers = led_event.handlers.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
-				for (var opt in handlers) {
-					var handler = handlers[opt];
+				const effects = led_event.effects.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
+				for (var opt in effects) {
+					var effect = effects[opt];
 
-					var led_select_option = $('<option value="' + handler.name + '">' + handler.label + '</option>')
+					var led_select_option = $('<option value="' + effect.name + '">' + effect.label + '</option>')
 
 					led_select.append(led_select_option);
 
-					if (handler.name == led_event.selected)
+					if (effect.name == led_event.selected)
 						valid_selection = true;
 				}
 
@@ -1159,15 +1159,15 @@
 				led_html.append(led_event_block);
 			}
 
-			$('#LED-handler-setup').append(led_html);
+			$('#LED-effect-setup').append(led_html);
 		});
 
 		$(document).on('change', '.led-event-select', function(event) {
 			var data = {
 				event: $(this).data('event'),
-				handler: $(this).val()
+				effect: $(this).val()
 			};
-			socket.emit('set_led_event_handler', data);
+			socket.emit('set_led_event_effect', data);
 		});
 
 		$('#set_led_brightness').on('input', function (event) {
@@ -1637,7 +1637,7 @@
 		<h2>{{ __('LED Events') }}</h2>
 	</div>
 	<div class="panel-content">
-		<div id="LED-handler-setup"></div>
+		<div id="LED-effect-setup"></div>
 
 		<ol class="form">
 			<li>

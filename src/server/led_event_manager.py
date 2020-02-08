@@ -9,7 +9,7 @@ class LEDEventManager:
     processEventObj = gevent.event.Event()
 
     events = {}
-    eventHandlers = {}
+    eventEffects = {}
     eventThread = None
 
     def __init__(self, strip, config):
@@ -20,7 +20,7 @@ class LEDEventManager:
         return True
 
     def registerEffect(self, name, label, handlerFn, validEvents, defaultArgs=None):
-        self.eventHandlers[name] = {
+        self.eventEffects[name] = {
             "label": label,
             "handlerFn": handlerFn,
             "validEvents": validEvents,
@@ -28,25 +28,25 @@ class LEDEventManager:
         }
         return True
 
-    def getRegisteredHandlers(self):
-        return self.eventHandlers
+    def getRegisteredEffects(self):
+        return self.eventEffects
 
-    def getEventHandler(self, event):
+    def getEventEffect(self, event):
         if event in self.events:
             return self.events[event]
         else:
             return False
 
-    def setEventHandler(self, event, name):
+    def setEventEffect(self, event, name):
         self.events[event] = name
         return True
 
     def event(self, event, eventArgs=None):
         if event in self.events:
             currentEvent = self.events[event]
-            if currentEvent in self.eventHandlers:
-                handler = self.eventHandlers[currentEvent]
-                args = handler['defaultArgs']
+            if currentEvent in self.eventEffects:
+                effect = self.eventEffects[currentEvent]
+                args = effect['defaultArgs']
                 if eventArgs:
                     if args:
                         args.update(eventArgs)
@@ -57,7 +57,7 @@ class LEDEventManager:
                 if self.eventThread is not None:
                     self.eventThread.kill()
 
-                self.eventThread = gevent.spawn(handler['handlerFn'], self.strip, self.config, args)
+                self.eventThread = gevent.spawn(effect['handlerFn'], self.strip, self.config, args)
                 return True
 
         return False
@@ -66,9 +66,9 @@ class LEDEventManager:
         """ Do event call using calling thread """
         if event in self.events:
             currentEvent = self.events[event]
-            if currentEvent in self.eventHandlers:
-                handler = self.eventHandlers[currentEvent]
-                args = handler['defaultArgs']
+            if currentEvent in self.eventEffects:
+                effect = self.eventEffects[currentEvent]
+                args = effect['defaultArgs']
                 if eventArgs:
                     if args:
                         args.update(eventArgs)
@@ -80,13 +80,13 @@ class LEDEventManager:
                     self.eventThread.kill()
                     self.eventThread = None
 
-                handler['handlerFn'](self.strip, self.config, args)
+                effect['handlerFn'](self.strip, self.config, args)
                 return True
 
         return False
 
     def clear(self):
-        self.eventHandlers['clear']['handlerFn'](self.strip, self.config)
+        self.eventEffects['clear']['handlerFn'](self.strip, self.config)
 
 class NoLEDManager():
     def __init__(self):
