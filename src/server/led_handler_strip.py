@@ -136,11 +136,15 @@ def hold(strip, config, args=None):
 # Effects adapted from work by Hans Luijten https://www.tweaking4all.com/hardware/arduino/adruino-led-strip-effects/
 
 def colorWipe(strip, config, a={}):
+    gevent.sleep(0) # never time-critical
+
     args = {
         'color': ColorVal.WHITE,
-        'speedDelay': 10,
+        'speedDelay': 256,
     }
     args.update(a)
+
+    args['speedDelay'] = args['speedDelay']/float(strip.numPixels()) # scale effect by strip length
 
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, args['color'])
@@ -151,47 +155,43 @@ def fade(strip, config, a={}):
     args = {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
-        'decay': 0.9,
+        'steps': 25,
         'speedDelay': 10,
-        'onTime': 0,
-        'offTime': 0,
+        'onTime': 250,
+        'offTime': 250,
         'iterations': 1
     }
     args.update(a)
 
-    if 'outDecay' not in args:
-        args['outDecay'] = args['decay']
+    led_off(strip)
 
-    if args['decay'] > 0:
-        # decay time = log(decay cutoff=10 / max brightness=256) / log(decay rate)
-        decaySteps = int(math.ceil(math.log(0.0390625) / math.log(args['decay'])))
-    else:
-        decaySteps = 0
-
-    if args['outDecay'] is not False and args['outDecay'] > 0:
-        # decay time = log(decay cutoff=10 / max brightness=256) / log(decay rate)
-        outDecaySteps = int(math.ceil(math.log(0.0390625) / math.log(args['outDecay'])))
-    else:
-        outDecaySteps = 0
+    if 'outSteps' not in args:
+        args['outSteps'] = args['steps']
 
     # effect should never exceed 3Hz (prevent seizures)
-    args['offTime'] = min(333-((decaySteps*args['speedDelay'])+(outDecaySteps*args['speedDelay'])+args['onTime']), args['offTime'])
+    args['offTime'] = min(333-((args['steps']*args['speedDelay'])+(args['outSteps']*args['speedDelay'])+args['onTime']), args['offTime'])
 
     for i in range(args['iterations']):
-        for j in range(decaySteps, 0, -1):
-            c = dim(args['color'], args['decay']**j)
-            led_on(strip, c, args['pattern'])
-            strip.show()
-            gevent.sleep(args['speedDelay']/1000.0);
-        else:
+        # fade in
+        if args['steps']:
+            led_off(strip)
+            gevent.sleep(0) # never time-critical
+            for j in range(0, args['steps'], 1):
+                c = dim(args['color'], j/float(args['steps']))
+                led_on(strip, c, args['pattern'])
+                strip.show()
+                gevent.sleep(args['speedDelay']/1000.0);
+            else:
+                led_on(strip, args['color'], args['pattern'])
+
             led_on(strip, args['color'], args['pattern'])
+            gevent.sleep(args['onTime']/1000.0);
 
-        led_on(strip, args['color'], args['pattern'])
-        gevent.sleep(args['onTime']/1000.0);
-
-        if args['outDecay'] is not False:
-            for j in range(outDecaySteps):
-                c = dim(args['color'], args['decay']**j)
+        # fade out
+        if args['outSteps']:
+            led_on(strip, args['color'], args['pattern'])
+            for j in range(args['outSteps'], 0, -1):
+                c = dim(args['color'], j/float(args['outSteps']))
                 led_on(strip, c, args['pattern'])
                 strip.show()
                 gevent.sleep(args['speedDelay']/1000.0);
@@ -200,20 +200,24 @@ def fade(strip, config, a={}):
                 led_off(strip)
 
             led_off(strip)
+
         gevent.sleep(args['offTime']/1000.0);
 
 def sparkle(strip, config, a={}):
     args = {
         'color': ColorVal.WHITE,
+        'chance': 1.0,
         'decay': 0.95,
         'speedDelay': 100,
         'iterations': 100
     }
     args.update(a)
 
+    gevent.sleep(0) # never time-critical
+
     # decay time = log(decay cutoff=10 / max brightness=256) / log(decay rate)
     if args['decay']:
-        decaySteps = int(math.ceil(math.log(0.0390625) / math.log(args['decay'])))
+        decaySteps = int(math.ceil(math.log(0.00390625) / math.log(args['decay'])))
     else:
         decaySteps = 0
 
@@ -225,10 +229,12 @@ def sparkle(strip, config, a={}):
             c = strip.getPixelColor(j)
             strip.setPixelColor(j, dim(c, args['decay']))
 
-        # pick new pixel to light up
+        # pick new pixels to light up
         if i < args['iterations']:
-            pixel = random.randint(0, strip.numPixels()-1)
-            strip.setPixelColor(pixel, args['color'])
+            for px in range(strip.numPixels()):
+                if random.random() < float(args['chance']) / strip.numPixels():
+                    # scale effect by strip length
+                    strip.setPixelColor(px, args['color'])
 
         strip.show()
         gevent.sleep(args['speedDelay']/1000.0);
@@ -239,9 +245,11 @@ def meteor(strip, config, a={}):
         'meteorSize': 10,
         'decay': 0.75,
         'randomDecay': True,
-        'speedDelay': 3
+        'speedDelay': 1
     }
     args.update(a)
+
+    gevent.sleep(0) # never time-critical
 
     led_off(strip)
 
@@ -265,16 +273,21 @@ def larsonScanner(strip, config, a={}):
     args = {
         'color': ColorVal.WHITE,
         'eyeSize': 4,
-        'speedDelay': 10,
+        'speedDelay': 256,
         'returnDelay': 50,
         'iterations': 3
     }
     args.update(a)
 
+    args['speedDelay'] = args['speedDelay']/float(strip.numPixels()) # scale effect by strip length
+
+    gevent.sleep(0) # never time-critical
+
+    led_off(strip)
+
     for k in range(args['iterations']):
-        for i in range(strip.numPixels()-args['eyeSize']-2):
-            if i >= 0:
-                strip.setPixelColor(i-1, ColorVal.NONE)
+        for i in range(strip.numPixels()-args['eyeSize']-1):
+            strip.setPixelColor(i-1, ColorVal.NONE)
 
             strip.setPixelColor(i, dim(args['color'], 0.25))
             for j in range(args['eyeSize']):
@@ -285,8 +298,8 @@ def larsonScanner(strip, config, a={}):
 
         gevent.sleep(args['returnDelay']/1000.0)
 
-        for i in range(strip.numPixels()-args['eyeSize']-2, 0, -1):
-            if i < strip.numPixels()-args['eyeSize']-2:
+        for i in range(strip.numPixels()-args['eyeSize']-2, -1, -1):
+            if i > strip.numPixels()-args['eyeSize']-2:
                 strip.setPixelColor(i+args['eyeSize']+2, ColorVal.NONE)
 
             strip.setPixelColor(i, dim(args['color'], 0.25))
@@ -303,9 +316,9 @@ def dim(color, decay):
     g = (color & 0x0000ff00) >> 8;
     b = (color & 0x000000ff);
 
-    r = 0 if r <= 10 else int(r*decay)
-    g = 0 if g <= 10 else int(g*decay)
-    b = 0 if b <= 10 else int(b*decay)
+    r = 0 if r <= 1 else int(r*decay)
+    g = 0 if g <= 1 else int(g*decay)
+    b = 0 if b <= 1 else int(b*decay)
 
     return Color(int(r), int(g), int(b))
 
@@ -353,39 +366,57 @@ def registerEffects(manager):
     # wipe
     manager.registerEffect("stripWipe", "Wipe", colorWipe, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
         'color': ColorVal.WHITE,
-        'speedDelay': 10,
+        'speedDelay': 256,
         })
 
     # fade
     manager.registerEffect("stripFadeIn", "Fade In", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
-        'decay': 0.95,
-        'outDecay': False,
+        'steps': 50,
+        'outSteps': 0,
         'speedDelay': 10,
         'onTime': 0,
         'offTime': 0,
         'iterations': 1
     })
-    manager.registerEffect("stripPulse", "Pulse", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("stripFadeOut", "Fade Out", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
-        'decay': 0.95,
+        'steps': 0,
+        'outSteps': 100,
         'speedDelay': 10,
-        'onTime': 500,
-        'offTime': 500,
+        'onTime': 0,
+        'offTime': 0,
+        'iterations': 1
+    })
+    manager.registerEffect("stripPulse", "Pulse 3x", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+        'color': ColorVal.WHITE,
+        'pattern': ColorPattern.SOLID,
+        'steps': 50,
+        'speedDelay': 10,
+        'onTime': 0,
+        'offTime': 0,
         'iterations': 3
     })
-
     # blink
     manager.registerEffect("stripBlink", "Blink 3x", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
-        'decay': 0,
-        'speedDelay': 0,
+        'steps': 1,
+        'speedDelay': 1,
         'onTime': 100,
-        'offTime': 200,
+        'offTime': 100,
         'iterations': 3
+        })
+
+    # sparkle
+    manager.registerEffect("stripSparkle", "Sparkle", sparkle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+        'color': ColorVal.WHITE,
+        'chance': 1.0,
+        'decay': 0.95,
+        'speedDelay': 10,
+        'iterations': 100
         })
 
     # meteor
@@ -394,22 +425,14 @@ def registerEffects(manager):
         'meteorSize': 10,
         'decay': 0.75,
         'randomDecay': True,
-        'speedDelay': 3
-        })
-
-    # sparkle
-    manager.registerEffect("stripSparkle", "Sparkle", sparkle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
-        'color': ColorVal.WHITE,
-        'decay': 0.95,
-        'speedDelay': 50,
-        'iterations': 100
+        'speedDelay': 1
         })
 
     # larson scanner
     manager.registerEffect("stripScanner", "Scanner", larsonScanner, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
         'color': ColorVal.WHITE,
         'eyeSize': 4,
-        'speedDelay': 0,
+        'speedDelay': 256,
         'returnDelay': 50,
         'iterations': 3
         })
