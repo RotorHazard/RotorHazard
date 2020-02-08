@@ -84,7 +84,7 @@ class MockInterface(BaseHardwareInterface):
                 cross_flag = True if data_columns[7]=='T' else False
                 node.pass_nadir_rssi = int(data_columns[8])
                 node.node_nadir_rssi = int(data_columns[9])
-                pn_history = PeakNadirHistory()
+                pn_history = PeakNadirHistory(node.index)
                 pn_history.peakRssi = int(data_columns[10])
                 pn_history.peakFirstTime = int(data_columns[11])
                 pn_history.peakLastTime = int(data_columns[12])

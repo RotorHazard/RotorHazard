@@ -70,4 +70,4 @@ class Node:
         }
 
     def is_valid_rssi(self, value):
-        return value >= 1 and value <= self.max_rssi_value
+        return value > 0 and value < self.max_rssi_value

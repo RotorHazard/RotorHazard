@@ -249,7 +249,8 @@ class BaseHardwareInterface(object):
 
 
 class PeakNadirHistory:
-    def __init__(self):
+    def __init__(self, node_index=-1):
+        self.nodeIndex = node_index
         self.peakRssi = 0
         self.peakFirstTime = 0
         self.peakLastTime = 0
@@ -269,7 +270,7 @@ class PeakNadirHistory:
                     elif self.peakFirstTime == self.peakLastTime:
                         self._addEntry(self.peakRssi, readtime - (self.peakLastTime / 1000.0), history_values, history_times)
                     else:
-                        interface.log('Ignoring corrupted peak history times ({0} < {1})'.format(self.peakFirstTime, self.peakLastTime))
+                        interface.log('Ignoring corrupted peak history times ({0} < {1}) on node {2}'.format(self.peakFirstTime, self.peakLastTime, self.nodeIndex+1))
 
                     if self.nadirFirstTime > self.nadirLastTime:
                         self._addEntry(self.nadirRssi, readtime - (self.nadirFirstTime / 1000.0), history_values, history_times)
@@ -277,7 +278,7 @@ class PeakNadirHistory:
                     elif self.nadirFirstTime == self.nadirLastTime:
                         self._addEntry(self.nadirRssi, readtime - (self.nadirLastTime / 1000.0), history_values, history_times)
                     else:
-                        interface.log('Ignoring corrupted nadir history times ({0} < {1})'.format(self.nadirFirstTime, self.nadirLastTime))
+                        interface.log('Ignoring corrupted nadir history times ({0} < {1}) on node {2}'.format(self.nadirFirstTime, self.nadirLastTime, self.nodeIndex+1))
 
                 else:
                     # process nadir first
@@ -287,7 +288,7 @@ class PeakNadirHistory:
                     elif self.nadirFirstTime == self.nadirLastTime:
                         self._addEntry(self.nadirRssi, readtime - (self.nadirLastTime / 1000.0), history_values, history_times)
                     else:
-                        interface.log('Ignoring corrupted nadir history times ({0} < {1})'.format(self.nadirFirstTime, self.nadirLastTime))
+                        interface.log('Ignoring corrupted nadir history times ({0} < {1}) on node {2}'.format(self.nadirFirstTime, self.nadirLastTime, self.nodeIndex+1))
 
                     if self.peakFirstTime > self.peakLastTime:
                         self._addEntry(self.peakRssi, readtime - (self.peakFirstTime / 1000.0), history_values, history_times)
@@ -295,7 +296,7 @@ class PeakNadirHistory:
                     elif self.peakFirstTime == self.peakLastTime:
                         self._addEntry(self.peakRssi, readtime - (self.peakLastTime / 1000.0), history_values, history_times)
                     else:
-                        interface.log('Ignoring corrupted peak history times ({0} < {1})'.format(self.peakFirstTime, self.peakLastTime))
+                        interface.log('Ignoring corrupted peak history times ({0} < {1}) on node {2}'.format(self.peakFirstTime, self.peakLastTime, self.nodeIndex+1))
 
             else:
                 # peak, no nadir
@@ -306,7 +307,7 @@ class PeakNadirHistory:
                 elif self.peakFirstTime == self.peakLastTime:
                     self._addEntry(self.peakRssi, readtime - (self.peakLastTime / 1000.0), history_values, history_times)
                 else:
-                    interface.log('Ignoring corrupted peak history times ({0} < {1})'.format(self.peakFirstTime, self.peakLastTime))
+                    interface.log('Ignoring corrupted peak history times ({0} < {1}) on node {2}'.format(self.peakFirstTime, self.peakLastTime, self.nodeIndex+1))
 
         elif self.nadirRssi > 0:
             # no peak, nadir
@@ -317,7 +318,7 @@ class PeakNadirHistory:
             elif self.nadirFirstTime == self.nadirLastTime:
                 self._addEntry(self.nadirRssi, readtime - (self.nadirLastTime / 1000.0), history_values, history_times)
             else:
-                interface.log('Ignoring corrupted nadir history times ({0} < {1})'.format(self.nadirFirstTime, self.nadirLastTime))
+                interface.log('Ignoring corrupted nadir history times ({0} < {1}) on node {2}'.format(self.nadirFirstTime, self.nadirLastTime, self.nodeIndex+1))
 
     def _addEntry(self, entry_value, entry_time, history_values, history_times):
         hist_len = len(history_values)
