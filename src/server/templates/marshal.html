@@ -34,6 +34,11 @@
 			strokeStyle:'hsl(214, 53%, 60%)',
 			fillStyle:'hsla(214, 53%, 60%, 0.4)'
 		});
+		var current_lap_vertical_line = new TimeSeries();
+		graph.addTimeSeries(current_lap_vertical_line, {lineWidth:1.7,
+			strokeStyle:'hsl(59, 100%, 50%)',
+			fillStyle:'hsla(59, 53%, 60%, 0.4)'
+		});
 		graph.streamTo(graph_canvas, 1);
 		graph.stop();
 
@@ -110,9 +115,10 @@
 				$('#selected_round').prop('disabled', false);
 				$('#selected_pilot').prop('disabled', false);
 			}
-			$('#selected_heat').val(prev_heat);
-
-			$('#selected_heat').trigger('change');
+			if(prev_heat){
+				$('#selected_heat').val(prev_heat);
+				$('#selected_heat').trigger('change');
+			}
 		});
 
 		// set up node local store
@@ -220,7 +226,9 @@
 				}
 				var lastValue = value;
 			}
-
+			// Current lap line drawn as just a flat line at the bottom of the graph for now.
+			current_lap_vertical_line.append(current_race_data.start_time, graph.options.minValue);
+			clearMarkedLap();
 			renderGraph();
 
 			// populate laps
@@ -230,6 +238,7 @@
 			return false;
 		}
 
+ 
 		function disableUI() {
 			$('#enterat').prop('disabled', true);
 			$('#exitat').prop('disabled', true);
@@ -284,6 +293,12 @@
 			graph.render(graph_canvas, endTime);
 		}
 
+		function clearMarkedLap(){
+			$('#laps tbody tr').each((index,row) => {$(row).removeClass("lap-highlighted")})
+			current_lap_vertical_line.clear();
+			current_lap_vertical_line.append(current_race_data.start_time, graph.options.minValue);
+		}
+
 		var resizeTimer;
 		$(window).on('resize', function(){
 			if (race_loaded) {
@@ -294,6 +309,8 @@
 			}
 		});
 
+		
+
 		function displayLaps(laps_obj) {
 			var lapList = $('#laps tbody');
 			lapList.empty();
@@ -301,7 +318,8 @@
 			var lap_index = 0;
 			for (var lap_i in laps_obj) {
 				var lap = laps_obj[lap_i];
-				var lapData = $('<tr>');
+				var lapData = $('<tr >');
+				lapData.attr("lapTimeStamp", lap.lap_time_stamp);
 
 				if (lap.deleted) {
 					lapData.addClass('lap-deleted');
@@ -339,7 +357,31 @@
 				}
 				lapList.append(lapData);
 			}
+			
+			// When a user clicks on a lap, toggle that lap's highlight pointer in the graph. 
+			$('#laps tbody tr').click( function(){
+				var thisrow = $(this)
+				if(race_loaded && !thisrow.hasClass("lap-highlighted")){
+					//Remove highlighting from other rows.
+					clearMarkedLap();
+					thisrow.addClass("lap-highlighted");
+					var lap_time_stamp = parseFloat(this.getAttribute("lapTimeStamp"));
+					//convert lap time to history time.
+					var history_time_stamp = current_race_data.start_time + lap_time_stamp / 1000;
+					current_lap_vertical_line.clear();
+					// create a .25 second bump on the graph highlighting the currently clicked lap.
+					current_lap_vertical_line.append(current_race_data.start_time, graph.options.minValue);
+					current_lap_vertical_line.append(history_time_stamp - .125, graph.options.minValue);
+					current_lap_vertical_line.append(history_time_stamp, graph.options.maxValue);
+					current_lap_vertical_line.append(history_time_stamp + .125, graph.options.minValue);
+					renderGraph();
+				} else {
+					clearMarkedLap();
+					renderGraph();
+				}
+			});
 		}
+
 
 		$('#recalc').click(function(){
 			if (race_loaded) {
@@ -461,7 +503,9 @@
 					deleted: false
 				});
 				calc_lap_times(current_race_data.laps)
+				clearMarkedLap();
 				displayLaps(current_race_data.laps);
+				renderGraph();
 			} else {
 				standard_message_queue.push(__('No race loaded'));
 				if (standard_message_queue.length == 1) {
@@ -482,7 +526,9 @@
 				}
 
 				current_race_data.laps = laps;
+				clearMarkedLap();
 				displayLaps(laps);
+				renderGraph();
 			} else {
 				standard_message_queue.push(__('No race loaded'));
 				if (standard_message_queue.length == 1) {
