@@ -4470,16 +4470,16 @@ if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
     led_manager = LEDEventManager(strip, Config['LED'])
+    LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
+    for handlerFile in LEDHandlerFiles:
+        try:
+            lib = importlib.import_module(handlerFile)
+            lib.registerHandlers(led_manager)
+        except ImportError:
+            print 'Handler {0} not imported (may require additional dependencies)'.format(handlerFile)
+    init_LED_handlers()
 else:
     led_manager = NoLEDManager()
-LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
-for handlerFile in LEDHandlerFiles:
-    try:
-        lib = importlib.import_module(handlerFile)
-        lib.registerHandlers(led_manager)
-    except ImportError:
-        print 'Handler {0} not imported (may require additional dependencies)'.format(handlerFile)
-init_LED_handlers()
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     if not getOption("secret_key"):
