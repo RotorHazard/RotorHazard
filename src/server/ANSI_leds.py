@@ -43,7 +43,7 @@ class ANSIPixel:
             c = Fore.WHITE
         elif r > 191 and g < 64 and b < 64:
             c = Fore.LIGHTRED_EX
-        elif r < 64 and g > 191 and b == 64:
+        elif r < 64 and g > 191 and b < 64:
             c = Fore.LIGHTGREEN_EX
         elif r < 64 and g < 64 and b > 191:
             c = Fore.LIGHTBLUE_EX
