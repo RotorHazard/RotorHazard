@@ -20,6 +20,12 @@ In between *EnterAt* and *ExitAt*, the system will remain *Crossing* or *Clear* 
 
 ![Sample RSSI Graph](img/Sample%20RSSI%20Graph.svg)
 
+### Calibration Mode
+
+*Manual* calibration mode will always use the *EnterAt* and *ExitAt* values provided by the user.
+
+*Adaptive* calibration mode uses the user-defined points unless there are saved races. When saved races exist, changing heats will initiate a search of previous race data for the best calibration values to use in the upcoming race. These values are copied and replace the current *EnterAt* and *ExitAt* values for all nodes. This mode improves calibration as more races are saved if the race director confirms the incoming lap counts or recalculates them through the *Marshal* page.
+
 ## Tuning
 Before tuning, power up the timer and keep it running for a few minutes to allow the receiver modules to warm up. The RSSI values tend to increase by a few points as the timer heats up.
 
