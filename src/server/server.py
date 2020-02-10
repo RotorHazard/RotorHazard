@@ -32,7 +32,7 @@ import random
 import json
 
 # LED imports
-from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorVal, ColorPattern
+from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -78,7 +78,6 @@ Config['LED'] = {}
 Config['SERIAL_PORTS'] = []
 
 # LED strip configuration:
-Config['LED']['HANDLER']        = 'strip'
 Config['LED']['LED_COUNT']      = 0       # Number of LED pixels.
 Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
 Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
@@ -1181,10 +1180,10 @@ def on_load_data(data):
             emit_language(nobroadcast=True)
         elif load_type == 'all_languages':
             emit_all_languages(nobroadcast=True)
-        elif load_type == 'led_handler_setup':
-            emit_led_handler_setup()
-        elif load_type == 'led_handlers':
-            emit_led_handlers()
+        elif load_type == 'led_effect_setup':
+            emit_led_effect_setup()
+        elif load_type == 'led_effects':
+            emit_led_effects()
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
         elif load_type == 'cluster_status':
@@ -1271,7 +1270,7 @@ def restore_node_frequency(node_index):
     freq = profile_freqs["f"][node_index]
     INTERFACE.set_frequency(node_index, freq)
     server_log('Frequency restored: Node {0} Frequency {1}'.format(node_index+1, freq))
-    
+
 @SOCKET_IO.on('set_enter_at_level')
 def on_set_enter_at_level(data):
     '''Set node enter-at level.'''
@@ -1730,80 +1729,80 @@ def on_alter_race_format(data):
             emit_race_format()
             emit_class_data()
 
-# LED Handler
+# LED Effects
 
-def emit_led_handler_setup(**params):
-    '''Emits LED event/handler wiring options.'''
+def emit_led_effect_setup(**params):
+    '''Emits LED event/effect wiring options.'''
     if led_manager.isEnabled():
-        handlers = led_manager.getRegisteredHandlers()
+        effects = led_manager.getRegisteredEffects()
 
         emit_payload = {
             'events': []
         }
 
         for event in LEDEvent.configurable_events:
-            selectedHandler = led_manager.getEventHandler(event['event'])
+            selectedEffect = led_manager.getEventEffect(event['event'])
 
-            handler_list = []
+            effect_list = []
 
-            for handler in handlers:
-                if event['event'] in handlers[handler]['validEvents']:
-                    handler_list.append({
-                        'name': handler,
-                        'label': __(handlers[handler]['label'])
+            for effect in effects:
+                if event['event'] in effects[effect]['validEvents']:
+                    effect_list.append({
+                        'name': effect,
+                        'label': __(effects[effect]['label'])
                     })
 
             emit_payload['events'].append({
                 'event': event["event"],
                 'label': __(event["label"]),
-                'selected': selectedHandler,
-                'handlers': handler_list
+                'selected': selectedEffect,
+                'effects': effect_list
             })
 
         # never broadcast
-        emit('led_handler_setup_data', emit_payload)
+        emit('led_effect_setup_data', emit_payload)
 
-def emit_led_handlers(**params):
+def emit_led_effects(**params):
     if led_manager.isEnabled():
-        handlers = led_manager.getRegisteredHandlers()
+        effects = led_manager.getRegisteredEffects()
 
-        handler_list = []
-        for handler in handlers:
-            if LEDEvent.NOCONTROL not in handlers[handler]['validEvents']:
-                handler_list.append({
-                    'name': handler,
-                    'label': __(handlers[handler]['label'])
+        effect_list = []
+        for effect in effects:
+            if LEDEvent.NOCONTROL not in effects[effect]['validEvents']:
+                effect_list.append({
+                    'name': effect,
+                    'label': __(effects[effect]['label'])
                 })
 
         emit_payload = {
-            'handlers': handler_list
+            'effects': effect_list
         }
 
         # never broadcast
-        emit('led_handlers', emit_payload)
+        emit('led_effects', emit_payload)
 
-@SOCKET_IO.on('set_led_event_handler')
-def on_set_led_handler(data):
-    '''Set handler for event.'''
-    if led_manager.isEnabled() and 'event' in data and 'handler' in data:
-        led_manager.setEventHandler(data['event'], data['handler'])
+@SOCKET_IO.on('set_led_event_effect')
+def on_set_led_effect(data):
+    '''Set effect for event.'''
+    if led_manager.isEnabled() and 'event' in data and 'effect' in data:
+        led_manager.setEventEffect(data['event'], data['effect'])
 
-        handler_opt = getOption('ledHandlers')
-        if handler_opt:
-            handlers = json.loads(handler_opt)
+        effect_opt = getOption('ledEffects')
+        if effect_opt:
+            effects = json.loads(effect_opt)
         else:
-            handlers = {}
+            effects = {}
 
-        handlers[data['event']] = data['handler']
-        setOption('ledHandlers', json.dumps(handlers))
+        effects[data['event']] = data['effect']
+        setOption('ledEffects', json.dumps(effects))
 
-        server_log('Set LED event {0} to handler {1}'.format(data['event'], data['handler']))
+        server_log('Set LED event {0} to effect {1}'.format(data['event'], data['effect']))
 
-@SOCKET_IO.on('use_led_handler')
-def on_use_led_handler(data):
-    '''Activate arbitrary LED Handler.'''
-    if led_manager.isEnabled() and 'handler' in data:
-        led_manager.setEventHandler(LEDEvent.MANUAL, data['handler'])
+@SOCKET_IO.on('use_led_effect')
+def on_use_led_effect(data):
+    '''Activate arbitrary LED Effect.'''
+    if led_manager.isEnabled() and 'effect' in data:
+        led_manager.setEventEffect(LEDEvent.MANUAL, data['effect'])
 
         args = None
         if 'args' in data:
@@ -2256,7 +2255,8 @@ def on_simulate_lap(data):
     node_index = data['node']
     server_log('Simulated lap: Node {0}'.format(node_index+1))
     led_manager.event(LEDEvent.CROSSINGEXIT, {
-        'nodeIndex': node_index
+        'nodeIndex': node_index,
+        'color': hexToColor(getOption('colorNode_' + str(node_index), '#ffffff'))
         })
     INTERFACE.intf_simulate_lap(node_index, 0)
 
@@ -2267,8 +2267,8 @@ def on_LED_solid(data):
     led_green = data['green']
     led_blue = data['blue']
 
-    on_use_led_handler({
-        'handler': "stripColor",
+    on_use_led_effect({
+        'effect': "stripColor",
         'args': {
             'color': Color(led_red,led_green,led_blue),
             'pattern': ColorPattern.SOLID,
@@ -2283,8 +2283,8 @@ def on_LED_chase(data):
     led_green = data['green']
     led_blue = data['blue']
 
-    on_use_led_handler({
-        'handler': "stripColor",
+    on_use_led_effect({
+        'effect': "stripColor",
         'args': {
             'color': Color(led_red,led_green,led_blue),
 #            'pattern': ColorPattern.CHASE,  # TODO implement chase animation pattern
@@ -2297,8 +2297,8 @@ def on_LED_chase(data):
 @SOCKET_IO.on('LED_RB')
 def on_LED_RB():
     '''LED rainbow'''
-    on_use_led_handler({
-        'handler': "rainbow",
+    on_use_led_effect({
+        'effect': "rainbow",
         'args': {
             'time': 5
         }
@@ -2307,8 +2307,8 @@ def on_LED_RB():
 @SOCKET_IO.on('LED_RBCYCLE')
 def on_LED_RBCYCLE():
     '''LED rainbow Cycle'''
-    on_use_led_handler({
-        'handler': "rainbowCycle",
+    on_use_led_effect({
+        'effect': "rainbowCycle",
         'args': {
             'time': 5
         }
@@ -2317,8 +2317,8 @@ def on_LED_RBCYCLE():
 @SOCKET_IO.on('LED_RBCHASE')
 def on_LED_RBCHASE():
     '''LED Rainbow Cycle Chase'''
-    on_use_led_handler({
-        'handler': "rainbowCycleChase",
+    on_use_led_effect({
+        'effect': "rainbowCycleChase",
         'args': {
             'time': 5
         }
@@ -3980,13 +3980,15 @@ def node_crossing_callback(node):
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
                 led_manager.event(LEDEvent.CROSSINGENTER, {
-                    'nodeIndex': node.index
+                    'nodeIndex': node.index,
+                    'color': hexToColor(getOption('colorNode_' + str(node_index+1), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
                     led_manager.event(LEDEvent.CROSSINGEXIT, {
-                        'nodeIndex': node.index
+                        'nodeIndex': node.index,
+                        'color': hexToColor(getOption('colorNode_' + str(node_index+1), '#ffffff'))
                         })
                 else:
                     node.show_crossing_flag = True
@@ -4197,6 +4199,15 @@ def db_reset_options_defaults():
     setOption("eventDescription", "")
     # LED settings
     setOption("ledBrightness", "32")
+    # LED colors
+    setOption("colorNode_0", "#001fff")
+    setOption("colorNode_1", "#ff3f00")
+    setOption("colorNode_2", "#7fff00")
+    setOption("colorNode_3", "#ffff00")
+    setOption("colorNode_4", "#7f00ff")
+    setOption("colorNode_5", "#ff007f")
+    setOption("colorNode_6", "#3fff3f")
+    setOption("colorNode_7", "#00bfff")
 
     server_log("Reset global settings")
 
@@ -4334,9 +4345,9 @@ def expand_heats():
 
     DB.session.commit()
 
-def init_LED_handlers():
+def init_LED_effects():
     # start with defaults
-    handlers = {
+    effects = {
         LEDEvent.RACESTAGE: "stripColorOrange2_1",
         LEDEvent.RACESTART: "stripColorGreenSolid",
         LEDEvent.RACEFINISH: "stripColorWhite4_4",
@@ -4347,13 +4358,13 @@ def init_LED_handlers():
         LEDEvent.SHUTDOWN: "clear"
     }
     # update with DB values (if any)
-    handler_opt = getOption('ledHandlers')
-    if handler_opt:
-        handlers.update(json.loads(handler_opt))
-    # set handlers
-    led_manager.setEventHandler("manualColor", "stripColor")
-    for item in handlers:
-        led_manager.setEventHandler(item, handlers[item])
+    effect_opt = getOption('ledEffects')
+    if effect_opt:
+        effects.update(json.loads(effect_opt))
+    # set effects
+    led_manager.setEventEffect("manualColor", "stripColor")
+    for item in effects:
+        led_manager.setEventEffect(item, effects[item])
 
 #
 # Program Initialize
