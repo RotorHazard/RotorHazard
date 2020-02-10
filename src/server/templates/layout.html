@@ -85,7 +85,7 @@
 						<li><a href="/docs?d=Cluster.md">{{ __("Split Timing Guide") }}</a></li>
 
 						<li><a href="/imdtabler">{{ __("IMDTabler") }}</a></li>
-						<li><a href="/scanner">{{ __("Band Scanner") }}</a></li>
+						{% if Debug %}<li><a href="/scanner">{{ __("Band Scanner") }}</a></li>{% endif %}
 						<li><a href="https://github.com/RotorHazard/RotorHazard/" target="_blank">{{ __("RotorHazard on GitHub") }} &#10132;&#xFE0E;</a></li>
 						<li><a href="#about" class="open-mfp-popup">{{ __("About RotorHazard") }}</a></li>
 					</ul>
