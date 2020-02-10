@@ -2237,7 +2237,7 @@ def on_simulate_lap(data):
     server_log('Simulated lap: Node {0}'.format(node_index+1))
     led_manager.event(LEDEvent.CROSSINGEXIT, {
         'nodeIndex': node_index,
-        'color': hexToColor(getOption('nodeColor_' + str(node_index), '#ffffff'))
+        'color': hexToColor(getOption('colorNode_' + str(node_index), '#ffffff'))
         })
     INTERFACE.intf_simulate_lap(node_index, 0)
 
@@ -3967,14 +3967,14 @@ def node_crossing_callback(node):
             if node.crossing_flag:
                 led_manager.event(LEDEvent.CROSSINGENTER, {
                     'nodeIndex': node.index,
-                    'color': hexToColor(getOption('nodeColor_' + str(node_index+1), '#ffffff'))
+                    'color': hexToColor(getOption('colorNode_' + str(node_index+1), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
                     led_manager.event(LEDEvent.CROSSINGEXIT, {
                         'nodeIndex': node.index,
-                        'color': hexToColor(getOption('nodeColor_' + str(node_index+1), '#ffffff'))
+                        'color': hexToColor(getOption('colorNode_' + str(node_index+1), '#ffffff'))
                         })
                 else:
                     node.show_crossing_flag = True
@@ -4187,14 +4187,14 @@ def db_reset_options_defaults():
     # LED settings
     setOption("ledBrightness", "32")
     # LED colors
-    setOption("nodeColor_0", "#001fff")
-    setOption("nodeColor_1", "#ff3f00")
-    setOption("nodeColor_2", "#7fff00")
-    setOption("nodeColor_3", "#ffff00")
-    setOption("nodeColor_4", "#7f00ff")
-    setOption("nodeColor_5", "#ff007f")
-    setOption("nodeColor_6", "#3fff3f")
-    setOption("nodeColor_7", "#00bfff")
+    setOption("colorNode_0", "#001fff")
+    setOption("colorNode_1", "#ff3f00")
+    setOption("colorNode_2", "#7fff00")
+    setOption("colorNode_3", "#ffff00")
+    setOption("colorNode_4", "#7f00ff")
+    setOption("colorNode_5", "#ff007f")
+    setOption("colorNode_6", "#3fff3f")
+    setOption("colorNode_7", "#00bfff")
 
     server_log("Reset global settings")
 
