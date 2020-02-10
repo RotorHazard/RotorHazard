@@ -1196,6 +1196,10 @@ main.page-home {
 	color: var(--contrast_1_high);
 }
 
+.lap-highlighted {
+	color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
+}
+
 .node-warnings {
 	text-align: left;
 	background: hsl(25, 85%, 55%);
