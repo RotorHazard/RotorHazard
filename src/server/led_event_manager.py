@@ -147,6 +147,7 @@ class LEDEvent:
     RACESTART = 'raceStart'
     RACEFINISH = 'raceFinish'
     RACESTOP = 'raceStop'
+    LAPSCLEAR = 'lapsClear'
     RACEWIN = 'raceWin'
     CROSSINGENTER = 'crossingEnter'
     CROSSINGEXIT = 'crossingExit'
@@ -169,6 +170,10 @@ class LEDEvent:
         {
             "event": RACESTOP,
             "label": "Race Stop"
+        },
+        {
+            "event": LAPSCLEAR,
+            "label": "Save/Clear Laps"
         },
         {
             "event": CROSSINGENTER,

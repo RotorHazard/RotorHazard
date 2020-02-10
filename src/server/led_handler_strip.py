@@ -318,41 +318,38 @@ def dim(color, decay):
 
 def registerEffects(manager):
 
-    # register generic color change (does nothing without arguments)
+    # color
     manager.registerEffect("stripColor", "Color/Pattern (Args)", showColor, [LEDEvent.NOCONTROL])
-    manager.registerEffect("stripColorSolid", "Color/Pattern: (Pilot/Node) Solid", showColor, [LEDEvent.NOCONTROL, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
+    manager.registerEffect("stripColorSolid", "Solid", showColor, [LEDEvent.NOCONTROL, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
         'pattern': ColorPattern.SOLID
         })
-    manager.registerEffect("stripColor1_1", "Color/Pattern: (Pilot/Node) 1/1", showColor, [LEDEvent.NOCONTROL, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
+    manager.registerEffect("stripColor1_1", "Pattern 1-1", showColor, [LEDEvent.NOCONTROL, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
         'pattern': ColorPattern.ALTERNATING,
         'time': Timing.VTX_EXPIRE
         })
-    manager.registerEffect("stripWipe", "Color Wipe: (Pilot/Node)", colorWipe, [LEDEvent.NOCONTROL, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
-        'color': ColorVal.WHITE,
-        'speedDelay': 3
-        })
 
-    # register specific colors needed for typical events
-    manager.registerEffect("stripColorOrange2_1", "Color/Pattern: Orange 2/1", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {
+
+    # register specific items needed for typical events
+    manager.registerEffect("stripColorOrange2_1", "Pattern 2-1 / Orange", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN], {
         'color': ColorVal.ORANGE,
         'pattern': ColorPattern.TWO_OUT_OF_THREE
         })
-    manager.registerEffect("stripColorGreenSolid", "Color/Pattern: Green Solid", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {
+    manager.registerEffect("stripColorGreenSolid", "Solid / Green", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN], {
         'color': ColorVal.GREEN,
         'pattern': ColorPattern.SOLID,
         'time': Timing.START_EXPIRE
         })
-    manager.registerEffect("stripColorWhite4_4", "Color/Pattern: White 4/4", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {
+    manager.registerEffect("stripColorWhite4_4", "Pattern 4-4", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF
         })
-    manager.registerEffect("stripColorRedSolid", "Color/Pattern: Red Solid", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {
+    manager.registerEffect("stripColorRedSolid", "Solid / Red", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN], {
         'color': ColorVal.RED,
         'pattern': ColorPattern.SOLID
         })
 
     # chase
-    manager.registerEffect("stripChase", "Chase: 1/2", chase, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("stripChase", "Chase Pattern 1-2", chase, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.ONE_OF_THREE,
         'speedDelay': 50,
@@ -361,19 +358,19 @@ def registerEffects(manager):
         })
 
     # rainbow
-    manager.registerEffect("rainbow", "Color/Pattern: Rainbow", rainbow, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP])
-    manager.registerEffect("rainbowCycle", "Color/Pattern: Rainbow Cycle", rainbowCycle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("rainbow", "Rainbow", rainbow, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR])
+    manager.registerEffect("rainbowCycle", "Rainbow Cycle", rainbowCycle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'offWhenDone': True
         })
 
     # wipe
-    manager.registerEffect("stripWipe", "Wipe", colorWipe, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("stripWipe", "Wipe", colorWipe, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'color': ColorVal.WHITE,
-        'speedDelay': 256,
+        'speedDelay': 3,
         })
 
     # fade
-    manager.registerEffect("stripFadeIn", "Fade In", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("stripFadeIn", "Fade In", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
         'steps': 50,
@@ -383,7 +380,7 @@ def registerEffects(manager):
         'offTime': 0,
         'iterations': 1
         })
-    manager.registerEffect("stripPulse", "Pulse 3x", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("stripPulse", "Pulse 3x", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
         'steps': 10,
@@ -393,7 +390,7 @@ def registerEffects(manager):
         'offTime': 10,
         'iterations': 3
         })
-    manager.registerEffect("stripFadeOut", "Fade Out", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("stripFadeOut", "Fade Out", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
         'steps': 10,
@@ -405,7 +402,7 @@ def registerEffects(manager):
         })
 
     # blink
-    manager.registerEffect("stripBlink", "Blink 3x", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("stripBlink", "Blink 3x", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
         'steps': 1,
@@ -416,7 +413,7 @@ def registerEffects(manager):
         })
 
     # sparkle
-    manager.registerEffect("stripSparkle", "Sparkle", sparkle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("stripSparkle", "Sparkle", sparkle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'color': ColorVal.WHITE,
         'chance': 1.0,
         'decay': 0.95,
@@ -425,7 +422,7 @@ def registerEffects(manager):
         })
 
     # meteor
-    manager.registerEffect("stripMeteor", "Meteor Fall", meteor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("stripMeteor", "Meteor Fall", meteor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'color': ColorVal.WHITE,
         'meteorSize': 10,
         'decay': 0.75,
@@ -434,7 +431,7 @@ def registerEffects(manager):
         })
 
     # larson scanner
-    manager.registerEffect("stripScanner", "Scanner", larsonScanner, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+    manager.registerEffect("stripScanner", "Scanner", larsonScanner, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'color': ColorVal.WHITE,
         'eyeSize': 4,
         'speedDelay': 256,
@@ -443,7 +440,7 @@ def registerEffects(manager):
         })
 
     # clear - permanently assigned to LEDEventManager.clear()
-    manager.registerEffect("clear", "Turn Off", clear, [LEDEvent.NOCONTROL, LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN])
+    manager.registerEffect("clear", "Turn Off", clear, [LEDEvent.NOCONTROL, LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN])
 
     # hold/no change
-    manager.registerEffect("none", "No Change", hold, [LEDEvent.NOCONTROL, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN])
+    manager.registerEffect("none", "No Change", hold, [LEDEvent.NOCONTROL, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN])

@@ -2181,7 +2181,7 @@ def on_discard_laps():
         check_emit_team_racing_status()  # Show team-racing status info
     else:
         emit_team_racing_status('')  # clear any displayed "Winner is" text
-    led_manager.clear()
+    led_manager.event(LEDEvent.LAPSCLEAR)
 
 def clear_laps():
     '''Clear the current laps table.'''
@@ -4352,6 +4352,7 @@ def init_LED_effects():
         LEDEvent.RACESTART: "stripColorGreenSolid",
         LEDEvent.RACEFINISH: "stripColorWhite4_4",
         LEDEvent.RACESTOP: "stripColorRedSolid",
+        LEDEvent.LAPSCLEAR: "clear",
         LEDEvent.CROSSINGENTER: "stripColorSolid",
         LEDEvent.CROSSINGEXIT: "stripColor1_1",
         LEDEvent.STARTUP: "rainbowCycle",
@@ -4498,10 +4499,10 @@ if strip:
     for handlerFile in LEDHandlerFiles:
         try:
             lib = importlib.import_module(handlerFile)
-            lib.registerHandlers(led_manager)
+            lib.registerEffects(led_manager)
         except ImportError:
             print 'Handler {0} not imported (may require additional dependencies)'.format(handlerFile)
-    init_LED_handlers()
+    init_LED_effects()
 else:
     led_manager = NoLEDManager()
 
