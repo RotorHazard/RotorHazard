@@ -1266,6 +1266,25 @@
 		<h2>{{ __('Frequency Setup') }}</h2>
 	</div>
 	<div class="panel-content">
+		<div class="control-set">
+			<label for="set_profile">{{ __('Profile') }}:</label>
+			<select id="set_profile">
+				<option>{{ __('Loading...') }}</option>
+			</select>
+			<button id="add_profile">+ {{ __('Add Profile') }}</button>
+			<button class="btn-danger" id="delete_profile">&#215; {{ __('Remove') }}</button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_profile_name">{{ __('Name') }}</label>
+				</div>
+				<input type="text" id="set_profile_name">
+			</li>
+		</ol>
+		<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
+
 		<!--Apply preset-->
 		<div class="control-set">
 			{{ __('Preset') }}:
@@ -1287,26 +1306,6 @@
 			{% endfor %}
 		</div>
 		<div class="control-set" id="imd_rating_label"></div>
-
-		<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
-
-		<div class="control-set">
-			<label for="set_profile">{{ __('Profile') }}:</label>
-			<select id="set_profile">
-				<option>{{ __('Loading...') }}</option>
-			</select>
-			<button id="add_profile">+ {{ __('Add Profile') }}</button>
-			<button class="btn-danger" id="delete_profile">&#215; {{ __('Remove') }}</button>
-		</div>
-
-		<ol class="form">
-			<li>
-				<div class="label-block">
-					<label for="set_profile_name">{{ __('Name') }}</label>
-				</div>
-				<input type="text" id="set_profile_name">
-			</li>
-		</ol>
 	</div>
 </div>
 
