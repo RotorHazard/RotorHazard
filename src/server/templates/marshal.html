@@ -64,7 +64,7 @@
 		socket.on('race_list', function (msg) {
 			race_list = msg;
 
-			if (!race_list.heats.length) {
+			if (jQuery.isEmptyObject(race_list.heats)) {
 				$('.page-marshal>.panel>.panel-content').html('<p>There is no saved race data available to view.</p>');
 				return false;
 			}
