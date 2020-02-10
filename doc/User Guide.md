@@ -55,11 +55,10 @@ In the Audio Control section, the user can select whether any one pilot, all pil
 
 This page allows changing the timer's optional settings and event setup.
 
-#### Profiles
-Profiles contain settings for various circumstances or environments, such as outdoor and indoor areas. Settings saved into the profile are frequencies and node tuning values. Changing this list immediately activates the selected profile. Other settings that you adjust will be saved to the currently active profile.
-
 #### Frequency Setup
 Choose a preset or manually select frequencies for each node. Arbitrary frequency selection is possible, as is disabling a node. The IMD score for currently selected frequencies is calculated and displayed at the bottom of the panel.
+
+Profiles contain frequencies and node tuning values. Changing this list immediately activates the selected profile, and changing current frequencies and node tuning immediately saves to the profile.
 
 #### Sensor Tuning
 See [doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
