@@ -64,6 +64,11 @@
 		socket.on('race_list', function (msg) {
 			race_list = msg;
 
+			if (!race_list.heats.length) {
+				$('.page-marshal>.panel>.panel-content').html('<p>There is no saved race data available to view.</p>');
+				return false;
+			}
+
 			for (var heat in race_list.heats) {
 				for (var round in race_list.heats[heat].rounds) {
 					for (var pilotrace in race_list.heats[heat].rounds[round].pilotraces) {
