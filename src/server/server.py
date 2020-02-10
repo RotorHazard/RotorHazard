@@ -42,6 +42,7 @@ from RHRace import get_race_state
 APP = Flask(__name__, static_url_path='/static')
 
 HEARTBEAT_THREAD = None
+HEARTBEAT_DATA_RATE_FACTOR = 5
 
 PILOT_ID_NONE = 0  # indicator value for no pilot configured
 HEAT_ID_NONE = 0  # indicator value for practice heat
@@ -608,6 +609,10 @@ def setOption(option, value):
     else:
         DB.session.add(GlobalSettings(option_name=option, option_value=value))
     DB.session.commit()
+
+def getCurrentProfile():
+    current_profile = int(getOption('currentProfile'))
+    return Profiles.query.get(current_profile)
 
 def getCurrentRaceFormat():
     if RACE.format is None:
@@ -1198,8 +1203,7 @@ def on_set_frequency(data):
     node_index = data['node']
     frequency = data['frequency']
 
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     freqs = json.loads(profile.frequencies)
     freqs["f"][node_index] = frequency
     profile.frequencies = json.dumps(freqs)
@@ -1220,8 +1224,7 @@ def on_set_frequency_preset(data):
     CLUSTER.emit('set_frequency_preset', data)
     freqs = []
     if data['preset'] == 'All-N1':
-        current_profile = int(getOption("currentProfile"))
-        profile = Profiles.query.get(current_profile)
+        profile = getCurrentProfile()
         profile_freqs = json.loads(profile.frequencies)
         frequency = profile_freqs["f"][0]
         for idx in range(RACE.num_nodes):
@@ -1243,8 +1246,7 @@ def on_set_frequency_preset(data):
 def set_all_frequencies(freqs):
     ''' Set frequencies for all nodes (but do not update hardware) '''
     # Set DB
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     profile_freqs = json.loads(profile.frequencies)
 
     for idx in range(RACE.num_nodes):
@@ -1269,8 +1271,7 @@ def on_set_enter_at_level(data):
         server_log('Node enter-at set null; getting from node: Node {0}'.format(node_index+1))
         enter_at_level = INTERFACE.nodes[node_index].enter_at_level
 
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     enter_ats = json.loads(profile.enter_ats)
     enter_ats["v"][node_index] = enter_at_level
     profile.enter_ats = json.dumps(enter_ats)
@@ -1289,8 +1290,7 @@ def on_set_exit_at_level(data):
         server_log('Node exit-at set null; getting from node: Node {0}'.format(node_index+1))
         exit_at_level = INTERFACE.nodes[node_index].exit_at_level
 
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     exit_ats = json.loads(profile.exit_ats)
     exit_ats["v"][node_index] = exit_at_level
     profile.exit_ats = json.dumps(exit_ats)
@@ -1345,7 +1345,20 @@ def on_cap_exit_at_btn(data):
 @SOCKET_IO.on('set_scan')
 def on_set_scan(data):
     node_index = data['node']
-    INTERFACE.nodes[node_index].scan_interval = data['scan_interval']
+    minScanFreq = data['min_scan_frequency']
+    maxScanFreq = data['max_scan_frequency']
+    maxScanInterval = data['max_scan_interval']
+    minScanInterval = data['min_scan_interval']
+    scanZoom = data['scan_zoom']
+    node = INTERFACE.nodes[node_index]
+    node.set_scan_interval(minScanFreq, maxScanFreq, maxScanInterval, minScanInterval, scanZoom)
+    if node.scan_enabled:
+        HEARTBEAT_DATA_RATE_FACTOR = 50
+    else:
+        HEARTBEAT_DATA_RATE_FACTOR = 5
+        profile = getCurrentProfile()
+        freqs = json.loads(profile.frequencies)
+        INTERFACE.set_frequency(node_index, freqs["f"][node_index])
 
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
@@ -1455,8 +1468,7 @@ def on_alter_pilot(data):
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
     '''Adds new profile in the database.'''
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     new_freqs = {}
     new_freqs["f"] = default_frequencies()
 
@@ -1477,8 +1489,7 @@ def on_add_profile():
 def on_delete_profile():
     '''Delete profile'''
     if (DB.session.query(Profiles).count() > 1): # keep one profile
-        current_profile = int(getOption("currentProfile"))
-        profile = Profiles.query.get(current_profile)
+        profile = getCurrentProfile()
         DB.session.delete(profile)
         DB.session.commit()
         first_profile_id = Profiles.query.first().id
@@ -1488,8 +1499,7 @@ def on_delete_profile():
 @SOCKET_IO.on('alter_profile')
 def on_alter_profile(data):
     ''' update profile '''
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     if 'profile_name' in data:
         profile.name = data['profile_name']
     if 'profile_description' in data:
@@ -2046,8 +2056,7 @@ def on_save_laps():
     if max_round is None:
         max_round = 0
     # Loop through laps to copy to saved races
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     profile_freqs = json.loads(profile.frequencies)
 
     new_race = SavedRaceMeta( \
@@ -2363,7 +2372,7 @@ def emit_race_status(**params):
 
 def emit_frequency_data(**params):
     '''Emits node data.'''
-    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+    profile_freqs = json.loads(getCurrentProfile().frequencies)
     emit_payload = {
             'frequency': profile_freqs["f"][:RACE.num_nodes]
         }
@@ -2403,8 +2412,7 @@ def emit_environmental_data(**params):
 
 def emit_enter_and_exit_at_levels(**params):
     '''Emits enter-at and exit-at levels for nodes.'''
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     profile_enter_ats = json.loads(profile.enter_ats)
     profile_exit_ats = json.loads(profile.exit_ats)
 
@@ -2419,8 +2427,7 @@ def emit_enter_and_exit_at_levels(**params):
 
 def emit_node_tuning(**params):
     '''Emits node tuning values.'''
-    current_profile = int(getOption("currentProfile"))
-    tune_val = Profiles.query.get(current_profile)
+    tune_val = getCurrentProfile()
     emit_payload = {
         'profile_ids': [profile.id for profile in Profiles.query.all()],
         'profile_names': [profile.name for profile in Profiles.query.all()],
@@ -2763,8 +2770,7 @@ def calc_leaderboard(**params):
 
     # Get profile (current), frequencies (current), race query (saved), and race format (all)
     if USE_CURRENT:
-        current_profile = int(getOption("currentProfile"))
-        profile = Profiles.query.get(current_profile)
+        profile = getCurrentProfile()
         profile_freqs = json.loads(profile.frequencies)
 
         race_format = getCurrentRaceFormat()
@@ -3214,7 +3220,7 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
     '''Calculates and returns team-racing info.'''
               # create dictionary with key=pilot_id, value=team_name
     pilot_team_dict = {}
-    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+    profile_freqs = json.loads(getCurrentProfile().frequencies)
                              # dict for current heat with key=node_index, value=pilot_id
     node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
                       filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
@@ -3286,7 +3292,7 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
     '''Checks if a pilot has completed enough laps to win.'''
     win_pilot_id = -1
     win_lap_tstamp = 0
-    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+    profile_freqs = json.loads(getCurrentProfile().frequencies)
                              # dict for current heat with key=node_index, value=pilot_id
     node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
                       filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
@@ -3327,8 +3333,7 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
         for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
             if node.crossing_flag and node.index != pass_node_index:
                 if not profile_freqs:
-                    profile_freqs = json.loads(Profiles.query.get( \
-                                               int(getOption("currentProfile"))).frequencies)
+                    profile_freqs = json.loads(getCurrentProfile().frequencies)
                 if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
                     pilot_id = node_pilot_dict.get(node.index)
                     if pilot_id:  # node has pilot assigned to it
@@ -3407,8 +3412,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                     if node.index != pass_node_index:  # if node is for other pilot
                         if node.crossing_flag:
                             if not profile_freqs:
-                                profile_freqs = json.loads(Profiles.query.get( \
-                                                int(getOption("currentProfile"))).frequencies)
+                                profile_freqs = json.loads(getCurrentProfile().frequencies)
                             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
                                 if not node_pilot_dict:
                                     node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
@@ -3445,7 +3449,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         pilots_list = []  # (lap_id, lap_time_stamp, pilot_id, node)
         max_lap_id = 0
         num_max_lap = 0
-        profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+        profile_freqs = json.loads(getCurrentProfile().frequencies)
                                   # dict for current heat with key=node_index, value=pilot_id
         node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
                           filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
@@ -3615,7 +3619,7 @@ def emit_imdtabler_page(**params):
         try:                          # get IMDTabler version string
             imdtabler_ver = subprocess.check_output( \
                                 'java -jar ' + IMDTABLER_JAR_NAME + ' -v', shell=True).rstrip()
-            profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+            profile_freqs = json.loads(getCurrentProfile().frequencies)
             fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
             fs_list = []
             for val in fi_list:  # convert list of integers to list of strings
@@ -3648,7 +3652,7 @@ def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
 def emit_imdtabler_rating():
     '''Emits IMDTabler rating for current profile frequencies.'''
     try:
-        profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+        profile_freqs = json.loads(getCurrentProfile().frequencies)
         imd_val = None
         fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
         fs_list = []
@@ -3688,20 +3692,20 @@ def heartbeat_thread_function():
 
         # update displayed IMD rating after freqs changed:
         if heartbeat_thread_function.imdtabler_flag and \
-                (heartbeat_thread_function.iter_tracker % 5) == 0:
+                (heartbeat_thread_function.iter_tracker % HEARTBEAT_DATA_RATE_FACTOR) == 0:
             heartbeat_thread_function.imdtabler_flag = False
             emit_imdtabler_rating()
 
         # emit rest of node data, but less often:
-        if (heartbeat_thread_function.iter_tracker % 20) == 0:
+        if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
             emit_node_data()
 
         # emit cluster status less often:
-        if (heartbeat_thread_function.iter_tracker % 20) == 10:
+        if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == (2*HEARTBEAT_DATA_RATE_FACTOR):
             CLUSTER.emitStatus()
 
         # emit environment data less often:
-        if (heartbeat_thread_function.iter_tracker % 100) == 0:
+        if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
             INTERFACE.update_environmental_data()
             emit_environmental_data()
 
@@ -3712,7 +3716,7 @@ def heartbeat_thread_function():
                 on_stage_race()
                 RACE_SCHEDULED = False
 
-        gevent.sleep(0.100)
+        gevent.sleep(0.500/HEARTBEAT_DATA_RATE_FACTOR)
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''
@@ -3791,7 +3795,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
     emit_node_data() # For updated triggers and peaks
 
     global Race_laps_winner_name
-    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+    profile_freqs = json.loads(getCurrentProfile().frequencies)
     if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end (RACE_DURATION_MS is invalid while race is in progress)
         if RACE.race_status is RACE_STATUS_RACING \
@@ -3997,8 +4001,7 @@ def default_frequencies():
 
 def assign_frequencies():
     '''Assign frequencies to nodes'''
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     freqs = json.loads(profile.frequencies)
 
     for idx in range(RACE.num_nodes):
