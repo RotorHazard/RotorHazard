@@ -132,11 +132,13 @@ class ColorVal:
     YELLOW = Color(255,255,0)
 
 class ColorPattern:
-    SOLID = 0
-    ALTERNATING = 1
-    TWO_OUT_OF_THREE = 2
-    MOD_SEVEN = 3
-    FOUR_ON_FOUR_OFF = 4
+    SOLID = None
+    ''' [# ON, # OFF] '''
+    ALTERNATING = [1, 1]
+    ONE_OF_THREE = [1, 2]
+    TWO_OUT_OF_THREE = [2, 1]
+    MOD_SEVEN = [1, 6]
+    FOUR_ON_FOUR_OFF = [4, 4]
 
 class LEDEvent:
     NOCONTROL = 'noControlDisplay'

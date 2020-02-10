@@ -12,34 +12,19 @@ class Timing:
     VTX_EXPIRE = 4
     START_EXPIRE = 8
 
-def led_on(strip, color, pattern=ColorPattern.SOLID):
+def led_on(strip, color, pattern=ColorPattern.SOLID, offset=0):
     if pattern == ColorPattern.SOLID:
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, color)
-    elif pattern == ColorPattern.ALTERNATING:
+    else:
+        patternlength = sum(pattern)
+
         for i in range(strip.numPixels()):
-            if i % 2 < 1:
+            if (i+offset) % patternlength < pattern[0]:
                 strip.setPixelColor(i, color)
             else:
                 strip.setPixelColor(i, ColorVal.NONE)
-    elif pattern == ColorPattern.TWO_OUT_OF_THREE:
-        for i in range(strip.numPixels()):
-            if i % 3 < 2:
-                strip.setPixelColor(i, color)
-            else:
-                strip.setPixelColor(i, ColorVal.NONE)
-    elif pattern == ColorPattern.MOD_SEVEN:
-        for i in range(strip.numPixels()):
-            if i % 7 < 1:
-                strip.setPixelColor(i, color)
-            else:
-                strip.setPixelColor(i, ColorVal.NONE)
-    elif pattern == ColorPattern.FOUR_ON_FOUR_OFF:
-        for i in range(strip.numPixels()):
-            if i % 8 < 4:
-                strip.setPixelColor(i, color)
-            else:
-                strip.setPixelColor(i, ColorVal.NONE)
+
     strip.show()
 
 def led_off(strip):
