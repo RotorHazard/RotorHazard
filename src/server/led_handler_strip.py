@@ -30,17 +30,26 @@ def led_on(strip, color, pattern=ColorPattern.SOLID, offset=0):
 def led_off(strip):
     led_on(strip, ColorVal.NONE)
 
-def theaterChase(strip, color, wait_ms=50, iterations=5):
+def chase(strip, config, a={}):
     """Movie theater light style chaser animation."""
-    led_on(strip, ColorVal.NONE)
-    for j in range(iterations):
-        for q in range(3):
-            for i in range(0, strip.numPixels()-q, 3):
-                strip.setPixelColor(i+q, color)
-            strip.show()
-            gevent.sleep(wait_ms/1000.0)
-            for i in range(0, strip.numPixels()-q, 3):
-                strip.setPixelColor(i+q, 0)
+    args = {
+        'color': ColorVal.WHITE,
+        'pattern': ColorPattern.ONE_OF_THREE,
+        'speedDelay': 50,
+        'iterations': 5,
+        'offWhenDone': True
+    }
+    args.update(a)
+
+    led_off(strip)
+
+    for i in range(args['iterations'] * sum(args['pattern'])):
+        led_on(strip, args['color'], args['pattern'], i)
+        gevent.sleep(args['speedDelay']/1000.0)
+
+    if args['offWhenDone']:
+        led_off(strip)
+        print(args['color'])
 
 def color_wheel(pos):
     """Generate rainbow colors across 0-255 positions."""
@@ -342,6 +351,15 @@ def registerEffects(manager):
         'pattern': ColorPattern.SOLID
         })
 
+    # chase
+    manager.registerEffect("stripChase", "Chase: 1/2", chase, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
+        'color': ColorVal.WHITE,
+        'pattern': ColorPattern.ONE_OF_THREE,
+        'speedDelay': 50,
+        'iterations': 5,
+        'offWhenDone': True
+        })
+
     # rainbow
     manager.registerEffect("rainbow", "Color/Pattern: Rainbow", rainbow, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP])
     manager.registerEffect("rainbowCycle", "Color/Pattern: Rainbow Cycle", rainbowCycle, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
@@ -364,7 +382,7 @@ def registerEffects(manager):
         'onTime': 0,
         'offTime': 0,
         'iterations': 1
-    })
+        })
     manager.registerEffect("stripPulse", "Pulse 3x", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
@@ -374,7 +392,7 @@ def registerEffects(manager):
         'onTime': 10,
         'offTime': 10,
         'iterations': 3
-    })
+        })
     manager.registerEffect("stripFadeOut", "Fade Out", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
@@ -384,7 +402,7 @@ def registerEffects(manager):
         'onTime': 0,
         'offTime': 0,
         'iterations': 1
-    })
+        })
 
     # blink
     manager.registerEffect("stripBlink", "Blink 3x", fade, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {
