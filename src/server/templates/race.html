@@ -1028,32 +1028,6 @@
 				return false;
 		});
 
-		$('button.LED-chase').click(function (event) {
-				var colors = convertColor($(this).data('rgb'));
-				var data = {
-					red: colors.r,
-					green: colors.g,
-					blue: colors.b,
-				};
-				socket.emit('LED_chase', data);
-				return false;
-		});
-
-		$('button#LED_RB').click(function (event) {
-			socket.emit('LED_RB');
-			return false;
-		});
-
-		$('button#LED_RBCYCLE').click(function (event) {
-			socket.emit('LED_RBCYCLE');
-			return false;
-		});
-
-		$('button#LED_RBCHASE').click(function (event) {
-			socket.emit('LED_RBCHASE');
-			return false;
-		});
-
 		$('#set_led_brightness').on('input', function (event) {
 			var val = brightness_logsl.value($(this).val());
 			$('#led_brightness_value').html($(this).val());
@@ -1066,17 +1040,6 @@
 				brightness: Math.round(val),
 			};
 			socket.emit('LED_brightness', data);
-		});
-
-		$('#set_led_color').change(function (event) {
-				var colors = convertColor($(this).val());
-				var data = {
-					red: colors.r,
-					green: colors.g,
-					blue: colors.b,
-				};
-				socket.emit('LED_solid', data);
-				return false;
 		});
 
 		/* Other */
@@ -1486,21 +1449,7 @@
 			<button class="LED-color" data-rgb="#000000">{{ __('Turn Off') }}</button>
 		</div>
 
-		<div id="LED-handlers"></div>
-
 		<div class="control-set">
-			<!--
-			<button class="led" id="LED_RB"><span><img src="../static/image/LED-rainbow.png"></span></button>
-			<button class="led" id="LED_RBCYCLE"><span><img src="../static/image/LED-rainbow.png"></span></button>
-			<br />
-			-->
-			<!--
-			<button class="LED-chase" data-rgb="#ff0000"><span style="background-color:#ff0000"></span></button>
-			<button class="LED-chase" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
-			<button class="LED-chase" data-rgb="#ff7f00"><span style="background-color:#ff7f00"></span></button>
-			<button class="LED-chase" data-rgb="#00ff00"><span style="background-color:#00ff00"></span></button>
-			<br />
-			-->
 			<button class="LED-color" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
 			<button class="LED-color" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
 			<button class="LED-color" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
@@ -1509,18 +1458,8 @@
 			<button class="LED-color" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
 			<button class="LED-color" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
 			<button class="LED-color" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
-			<br />
-			<!--
-			<button class="LED-chase" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
-			<button class="LED-chase" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
-			<button class="LED-chase" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
-			<button class="LED-chase" data-rgb="#ffff00"><span style="background-color:#ffff00"></span></button>
-			<button class="LED-chase" data-rgb="#7f00ff"><span style="background-color:#7f00ff"></span></button>
-			<button class="LED-chase" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
-			<button class="LED-chase" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
-			<button class="LED-chase" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
-			-->
 		</div>
+
 		<ol class="form">
 			<li>
 				<div class="label-block">
@@ -1536,6 +1475,8 @@
 				<input type="color" id="set_led_color" />
 			</li>
 		</ol>
+
+		<div id="LED-handlers"></div>
 	</div>
 </div>
 {% endif %}
