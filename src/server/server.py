@@ -1,8 +1,8 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.1.0 (dev 4)" # Public release version code
-SERVER_API = 25 # Server API version
+RELEASE_VERSION = "2.1.0-beta.2" # Public release version code
+SERVER_API = 26 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 21 # Most recent node API
+NODE_API_BEST = 22 # Most recent node API
 JSON_API = 2 # JSON API version
 
 import gevent
