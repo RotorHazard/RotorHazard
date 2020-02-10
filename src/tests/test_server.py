@@ -178,6 +178,8 @@ class ServerTest(unittest.TestCase):
         # check original frequency is restored
         gevent.sleep(0.5)
         resp = self.get_response('heartbeat')
+        gevent.sleep(0.25)
+        resp = self.get_response('heartbeat')
         self.assertEqual(resp['frequency'][0], 5888)
 
 # verify LiveTime compatibility
