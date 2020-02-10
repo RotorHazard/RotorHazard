@@ -28,7 +28,7 @@ def log(s):
 INTERFACE.hardware_log_callback=log
 
 for node in INTERFACE.nodes:
-    node.scan_interval = 1
+    node.set_scan_interval(5645, 5945, 80, 5, 2)
     INTERFACE.set_frequency(node.index, 5645)
 
 INTERFACE.start()
@@ -43,7 +43,7 @@ def heartbeat_thread_function():
 gevent.spawn(heartbeat_thread_function)
 
 APP = Flask(__name__, static_url_path='/static')
-SOCKET_IO = SocketIO(APP, async_mode='gevent')
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins='*')
 
 def __(s):
     return s

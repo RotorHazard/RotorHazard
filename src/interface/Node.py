@@ -39,7 +39,13 @@ class Node:
         self.history_values = []
         self.history_times = []
 
+        self.scan_enabled = False
         self.scan_interval = 0 # scanning frequency interval
+        self.min_scan_frequency = 0
+        self.max_scan_frequency = 0
+        self.max_scan_interval = 0
+        self.min_scan_interval = 0
+        self.scan_zoom = 0
 
         self.io_request = None # request time of last I/O read
         self.io_response = None # response time of last I/O read
@@ -52,6 +58,24 @@ class Node:
             self.max_rssi_value = 255
         else:
             self.max_rssi_value = 999
+
+    def set_scan_interval(self, minFreq, maxFreq, maxInterval, minInterval, zoom):
+        if minFreq > 0 and minFreq <= maxFreq and minInterval > 0 and minInterval <= maxInterval and zoom > 0:
+            self.scan_enabled = True
+            self.min_scan_frequency = minFreq
+            self.max_scan_frequency = maxFreq
+            self.max_scan_interval = maxInterval
+            self.min_scan_interval = minInterval
+            self.scan_zoom = zoom
+            self.scan_interval = maxInterval
+        else:
+            self.scan_enabled = False
+            self.min_scan_frequency = 0
+            self.max_scan_frequency = 0
+            self.max_scan_interval = 0
+            self.min_scan_interval = 0
+            self.scan_zoom = 0
+            self.scan_interval = 0
 
     def get_settings_json(self):
         return {
