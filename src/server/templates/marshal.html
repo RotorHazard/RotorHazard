@@ -701,6 +701,77 @@
 				}
 			}
 		});
+
+		var isDragging = false;
+		var startingEnter = false;
+		var startingExit = false;
+		var adjustEnter = true;
+
+		function mapRange(val, start, end){
+			return val * (end - start) / 1 + start;
+		}
+
+		function handleGraphInteraction(evt) {
+			var y = (evt.pageY - evt.target.offsetTop) / evt.target.offsetHeight;
+//			var x = (evt.pageX - evt.target.offsetLeft) / evt.target.offsetWidth;
+
+			var rssi = parseInt(mapRange(y, graph.options.maxValue, graph.options.minValue));
+//			var time = mapRange(x, current_race_data.start_time, current_race_data.end_time);
+
+			if (adjustEnter) {
+				$('#enterat').val(rssi);
+				$('#enterat').trigger('change');
+				if (rssi < current_race_data.exit_at + 2)  {
+					$('#exitat').val(rssi - 2);
+					$('#exitat').trigger('change');
+				}
+			} else {
+				$('#exitat').val(rssi);
+				$('#exitat').trigger('change');
+				if (rssi > current_race_data.enter_at - 2)  {
+					$('#enterat').val(rssi + 2);
+					$('#enterat').trigger('change');
+				}
+			}
+		}
+
+		$(graph_canvas)
+		.mousedown(function(evt){
+			isDragging = true;
+			startingEnter = current_race_data.enter_at;
+			startingExit = current_race_data.exit_at;
+
+			var y = (evt.pageY - evt.target.offsetTop) / evt.target.offsetHeight;
+//			var x = (evt.pageX - evt.target.offsetLeft) / evt.target.offsetWidth;
+
+			var rssi = parseInt(mapRange(y, graph.options.maxValue, graph.options.minValue));
+//			var time = mapRange(x, current_race_data.start_time, current_race_data.end_time);
+
+			var midPoint = (startingEnter + startingExit) >> 1;
+			adjustEnter = (rssi >= midPoint);
+
+			handleGraphInteraction(evt);
+		})
+		.mousemove(function(evt){
+			if (isDragging) {
+				handleGraphInteraction(evt);
+			}
+		})
+		.mouseup(function(evt){
+			if (isDragging) {
+				$('#recalc').trigger('click');
+				isDragging = false;
+			}
+		})
+		.mouseout(function(evt){
+			if (isDragging) {
+				$('#enterat').val(startingEnter);
+				$('#enterat').trigger('change');
+				$('#exitat').val(startingExit);
+				$('#exitat').trigger('change');
+				isDragging = false;
+			}
+		});
 	});
 </script>
 {% endblock %} {% block content %}
