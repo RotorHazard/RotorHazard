@@ -1113,6 +1113,7 @@ main.page-home {
 	background: -moz-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%, hsl(13.1, 64.6%, 37.6%) 100%);
 	background: -webkit-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
 	background: linear-gradient(to bottom, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
+	color: #fff;
 }
 
 .btn-warning {
@@ -1121,6 +1122,7 @@ main.page-home {
 	background: -moz-linear-gradient(top, hsl(41.1, 86.2%, 54.5%) 0%, hsl(23.1, 64.6%, 37.6%) 100%);
 	background: -webkit-linear-gradient(top, hsl(41.1, 86.2%, 54.5%) 0%,hsl(23.1, 64.6%, 37.6%) 100%);
 	background: linear-gradient(to bottom, hsl(41.1, 86.2%, 54.5%) 0%,hsl(23.1, 64.6%, 37.6%) 100%);
+	color: #fff;
 }
 
 .rssi-graph {

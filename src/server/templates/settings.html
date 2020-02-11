@@ -1104,6 +1104,11 @@
 			var hex_high = hslToHex(hue, sat, lum_high);
 			var contrast_high = contrastColor(hex_high);
 			$('html').css('--contrast_' + option_index + '_high', contrast_high);
+
+			return {
+				'low': contrast_low,
+				'high': contrast_high
+			}
 		}
 
 		$.cssNumber.hue_0 = true;
@@ -1119,12 +1124,68 @@
 			calcContrasts(option_index);
 		});
 
+		$('.hue-control').on('change', function (event) {
+			var option = $(this).data('option');
+			var value = $(this).val();
+			$('html').css('--' + option, value);
+			var option_index = option.split('_')[1];
+			var contrasts = calcContrasts(option_index);
+
+			var data = {
+				option: option,
+				value: value
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_low',
+				value: contrasts.low
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_high',
+				value: contrasts.high
+			};
+			socket.emit('set_option', data);
+
+			return false;
+		});
+
 		$('.sat-control').on('input', function (event) {
 			var option = $(this).data('option');
 			var value = $(this).val();
 			$('html').css('--' + option, value + '%');
 			var option_index = option.split('_')[1];
 			calcContrasts(option_index);
+		});
+
+		$('.sat-control').on('change ', function (event) {
+			var option = $(this).data('option');
+			var value = $(this).val();
+			$('html').css('--' + option, value + '%');
+			var option_index = option.split('_')[1];
+			var contrasts = calcContrasts(option_index);
+
+			var data = {
+				option: option,
+				value: value
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_low',
+				value: contrasts.low
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_high',
+				value: contrasts.high
+			};
+			socket.emit('set_option', data);
+
+			return false;
 		});
 
 		/* LED Controls */
@@ -1810,25 +1871,25 @@
 				<div class="label-block">
 					<label for="set_hue_primary">{{ __('Primary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_primary" class="set-option hue-control" data-option="hue_0" value="{{ getOption('hue_0') }}" min="0" max="359">
+				<input type="range" id="set_hue_primary" class="hue-control" data-option="hue_0" value="{{ getOption('hue_0') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_primary">{{ __('Primary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_primary" class="set-option sat-control" data-option="sat_0" value="{{ getOption('sat_0') }}" min="0" max="100">
+				<input type="range" id="set_sat_primary" class="sat-control" data-option="sat_0" value="{{ getOption('sat_0') }}" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_hue_secondary">{{ __('Secondary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_secondary" class="set-option hue-control" data-option="hue_1" value="{{ getOption('hue_1') }}" min="0" max="359">
+				<input type="range" id="set_hue_secondary" class="hue-control" data-option="hue_1" value="{{ getOption('hue_1') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_secondary">{{ __('Secondary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_secondary" class="set-option sat-control" data-option="sat_1" value="{{ getOption('sat_1') }}" min="0" max="100">
+				<input type="range" id="set_sat_secondary" class="sat-control" data-option="sat_1" value="{{ getOption('sat_1') }}" min="0" max="100">
 			</li>
 		</ol>
 
