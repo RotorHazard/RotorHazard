@@ -1207,7 +1207,7 @@ main.page-home {
 	pointer-events: none;
 }
 
-.lap-highlighted td:first-child:before {
+.lap-highlighted td:first-child::before {
 	content: "\25B6 ";
 	font-size: 0.75em;
 	vertical-align: top;

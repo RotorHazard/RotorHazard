@@ -711,10 +711,7 @@
 			return val * (end - start) / 1 + start;
 		}
 
-		function handleGraphInteraction(evt) {
-			var y = (evt.pageY - evt.target.offsetTop) / evt.target.offsetHeight;
-//			var x = (evt.pageX - evt.target.offsetLeft) / evt.target.offsetWidth;
-
+		function handleGraphInteraction(evt, x, y) {
 			var rssi = parseInt(mapRange(y, graph.options.maxValue, graph.options.minValue));
 //			var time = mapRange(x, current_race_data.start_time, current_race_data.end_time);
 
@@ -735,8 +732,7 @@
 			}
 		}
 
-		$(graph_canvas)
-		.mousedown(function(evt){
+		$(graph_canvas).on('mousedown', function(evt){
 			isDragging = true;
 			startingEnter = current_race_data.enter_at;
 			startingExit = current_race_data.exit_at;
@@ -750,27 +746,72 @@
 			var midPoint = (startingEnter + startingExit) >> 1;
 			adjustEnter = (rssi >= midPoint);
 
-			handleGraphInteraction(evt);
+			handleGraphInteraction(evt, null, y);
+			$('#recalc').trigger('click');
 		})
-		.mousemove(function(evt){
+		$(graph_canvas).on('mousemove', function(evt){
 			if (isDragging) {
-				handleGraphInteraction(evt);
+				var y = (evt.pageY - evt.target.offsetTop) / evt.target.offsetHeight;
+//				var x = (evt.pageX - evt.target.offsetLeft) / evt.target.offsetWidth;
+
+				handleGraphInteraction(evt, null, y);
+				$('#recalc').trigger('click');
 			}
 		})
-		.mouseup(function(evt){
+		$(graph_canvas).on('mouseup', function(evt){
 			if (isDragging) {
 				$('#recalc').trigger('click');
 				isDragging = false;
 			}
 		})
-		.mouseout(function(evt){
+		$(graph_canvas).on('mouseout', function(evt){
 			if (isDragging) {
 				$('#enterat').val(startingEnter);
 				$('#enterat').trigger('change');
 				$('#exitat').val(startingExit);
 				$('#exitat').trigger('change');
-				isDragging = false;
+				$('#recalc').trigger('click');
 			}
+		});
+		$(document).on('mouseup', function(){
+			isDragging = false;
+		});
+
+		$(graph_canvas).on('touchstart', function(evt) {
+			evt.preventDefault();
+			if (evt.targetTouches.length == 1) {
+				startingEnter = current_race_data.enter_at;
+				startingExit = current_race_data.exit_at;
+
+				var y = (evt.targetTouches[0].pageY - evt.target.offsetTop) / evt.target.offsetHeight;
+	//			var x = (evt.pageX - evt.target.offsetLeft) / evt.target.offsetWidth;
+
+				var rssi = parseInt(mapRange(y, graph.options.maxValue, graph.options.minValue));
+	//			var time = mapRange(x, current_race_data.start_time, current_race_data.end_time);
+
+				var midPoint = (startingEnter + startingExit) >> 1;
+				adjustEnter = (rssi >= midPoint);
+
+				handleGraphInteraction(evt, null, y);
+			}
+		})
+		$(graph_canvas).on('touchmove', function(evt) {
+			if (evt.targetTouches.length == 1) {
+				var y = (evt.targetTouches[0].pageY - evt.target.offsetTop) / evt.target.offsetHeight;
+				handleGraphInteraction(evt, null, y);
+			}
+		})
+		$(graph_canvas).on('touchend', function(evt){
+			if (evt.targetTouches.length == 0) {
+				$('#recalc').trigger('click');
+			}
+		})
+		$(graph_canvas).on('touchCancel', function(evt){
+			$('#enterat').val(startingEnter);
+			$('#enterat').trigger('change');
+			$('#exitat').val(startingExit);
+			$('#exitat').trigger('change');
+			$('#recalc').trigger('click');
 		});
 	});
 </script>
