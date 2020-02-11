@@ -10,6 +10,7 @@
 	var race_list_loaded = false;
 	var race_loaded = false;
 	var current_race_data = {};
+	var precalc_laps = {};
 	var min_lap = {{ getOption('MinLapSec') }} * 1000;
 
 	$(document).ready(function () {
@@ -220,6 +221,16 @@
 			current_race_data.start_time = race_list.heats[heat].rounds[round].start_time;
 			current_race_data.start_time_formatted = race_list.heats[heat].rounds[round].start_time_formatted;
 
+			if (current_race_data.history_times.length) {
+				current_race_data.end_time = current_race_data.history_times[current_race_data.history_times.length - 1];
+				graph.options.minValue = current_race_data.minRSSI;
+				graph.options.maxValue = current_race_data.maxRSSI;
+			} else {
+				current_race_data.end_time = current_race_data.start_time + 1
+				graph.options.minValue = current_race_data.exit_at;
+				graph.options.maxValue = current_race_data.enter_at;
+			}
+
 			// update header
 			var header = $( "#selected_heat option:selected" ).text() + ' / ' +
 			$( "#selected_round option:selected" ).text() + ' / ' +
@@ -253,21 +264,23 @@
 			return false;
 		}
 
-		function disableUI() {
-			$('#enterat').prop('disabled', true);
-			$('#exitat').prop('disabled', true);
-			$('#recalc').prop('disabled', true);
-			$('#load-transitions').prop('disabled', true);
-			$('#save-transitions').prop('disabled', true);
+		function disableUI(lapsOnly=false) {
+			if (!lapsOnly) {
+				$('#enterat').prop('disabled', true);
+				$('#exitat').prop('disabled', true);
+				$('#recalc').prop('disabled', true);
+				$('#load-transitions').prop('disabled', true);
+				$('#save-transitions').prop('disabled', true);
+
+				$('#race-title').html(__('Select Race'));
+				context.clearRect(0, 0, graph_canvas.width, graph_canvas.height);
+				$('#enterat').val('');
+				$('#exitat').val('');
+			}
 			$('#manual-lap-time').prop('disabled', true);
 			$('#add-lap').prop('disabled', true);
 			$('#clean-laps').prop('disabled', true);
 			$('#save-laps').prop('disabled', true);
-
-			$('#race-title').html(__('Select Race'));
-			context.clearRect(0, 0, graph_canvas.width, graph_canvas.height);
-			$('#enterat').val('');
-			$('#exitat').val('');
 		}
 
 		function enableUI() {
@@ -280,21 +293,14 @@
 			$('#add-lap').prop('disabled', false);
 			$('#clean-laps').prop('disabled', false);
 			$('#save-laps').prop('disabled', false);
+			$('#discard-laps').prop('disabled', false);
 		}
 
 		function renderGraph() {
 			var graphWidth = graph_canvas.offsetWidth;
 
 			var startTime = current_race_data.start_time;
-			if (current_race_data.history_times.length) {
-				var endTime = current_race_data.history_times[current_race_data.history_times.length - 1];
-				graph.options.minValue = current_race_data.minRSSI;
-				graph.options.maxValue = current_race_data.maxRSSI;
-			} else {
-				var endTime = current_race_data.start_time + 1;
-				graph.options.minValue = current_race_data.exit_at;
-				graph.options.maxValue = current_race_data.enter_at;
-			}
+			var endTime = current_race_data.end_time;
 			var duration = endTime - startTime;
 			var span = duration / graphWidth;
 
@@ -309,15 +315,15 @@
 
 		function clearCrossings() {
 			lap_marker_series.clear();
-			lap_marker_series.append(current_race_data.start_time, graph.options.minValue - 10);
+			lap_marker_series.append(current_race_data.start_time - 10, graph.options.minValue - 10);
 			deleted_lap_series.clear();
-			deleted_lap_series.append(current_race_data.start_time, graph.options.minValue - 10);
+			deleted_lap_series.append(current_race_data.start_time - 10, graph.options.minValue - 10);
 		}
 
 		function clearMarkedLap(){
 			$('#laps tbody tr').each((index,row) => {$(row).removeClass("lap-highlighted")})
 			selection_series.clear();
-			selection_series.append(current_race_data.start_time, graph.options.minValue - 10);
+			selection_series.append(current_race_data.start_time - 10, graph.options.minValue - 10);
 		}
 
 		var resizeTimer;
@@ -415,6 +421,7 @@
 		}
 
 		$('#recalc').click(function(){
+			precalc_laps = precalc_rx_data();
 			if (race_loaded) {
 				var laps = recalc_rx_data();
 				for (var lap_i in current_race_data.laps) {
@@ -427,6 +434,8 @@
 				current_race_data.laps = laps;
 				displayLaps(laps);
 				renderGraph();
+				$('#laps').removeClass('invalid');
+				enableUI();
 			} else {
 				standard_message_queue.push(__('No race loaded'));
 				if (standard_message_queue.length == 1) {
@@ -438,16 +447,23 @@
 		$('#enterat').change(function(){
 			lap_marker_series.clear();
 			deleted_lap_series.clear();
+			precalc_laps = precalc_rx_data();
 			renderGraph();
 		});
 
 		$('#exitat').change(function(){
 			lap_marker_series.clear();
 			deleted_lap_series.clear();
+			precalc_laps = precalc_rx_data();
 			renderGraph();
 		});
 
 		function recalc_rx_data() {
+			return precalc_laps;
+		}
+
+		function precalc_rx_data() {
+			// calc laps
 			var enterat = parseInt($('#enterat').val());
 			var exitat = parseInt($('#exitat').val());
 
@@ -512,6 +528,21 @@
 						deleted: false
 					});
 			}
+
+			// redraw crossings
+			clearCrossings();
+			for (var lap_i in laps) {
+				var lap = laps[lap_i];
+
+				lap_marker_series.append(lap.crossingStart - 0.001, graph.options.minValue - 10);
+				lap_marker_series.append(lap.crossingStart, graph.options.maxValue + 10);
+				lap_marker_series.append(lap.crossingEnd, graph.options.maxValue + 10);
+				lap_marker_series.append(lap.crossingEnd + 0.001, graph.options.minValue - 10);
+			}
+
+			// invalidate current laps
+			$('#laps').addClass('invalid');
+			disableUI(true);
 
 			return laps;
 		}
@@ -627,6 +658,10 @@
 			}
 		});
 
+		$('#discard-laps').click(function(){
+			load_race();
+		});
+
 		$('#load-transitions').click(function(){
 			if (race_loaded) {
 				var node = current_race_data.node_index;
@@ -735,6 +770,7 @@
 				<div class="control-block">
 					<h3>{{ __('Confirm') }}</h3>
 					<button id="save-laps" disabled>{{ __('Commit Changes') }}</button>
+					<button id="discard-laps" disabled>{{ __('Discard Changes') }}</button>
 				</div>
 			</div>
 		</div>

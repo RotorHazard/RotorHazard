@@ -1202,6 +1202,11 @@ main.page-home {
 	cursor: pointer;
 }
 
+.invalid {
+	opacity: 0.2;
+	pointer-events: none;
+}
+
 .lap-highlighted td:first-child:before {
 	content: "\25B6 ";
 	font-size: 0.75em;
