@@ -3981,14 +3981,14 @@ def node_crossing_callback(node):
             if node.crossing_flag:
                 led_manager.event(LEDEvent.CROSSINGENTER, {
                     'nodeIndex': node.index,
-                    'color': hexToColor(getOption('colorNode_' + str(node_index+1), '#ffffff'))
+                    'color': hexToColor(getOption('colorNode_' + str(node.index), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
                     led_manager.event(LEDEvent.CROSSINGEXIT, {
                         'nodeIndex': node.index,
-                        'color': hexToColor(getOption('colorNode_' + str(node_index+1), '#ffffff'))
+                        'color': hexToColor(getOption('colorNode_' + str(node.index), '#ffffff'))
                         })
                 else:
                     node.show_crossing_flag = True
