@@ -1198,8 +1198,24 @@ main.page-home {
 	color: var(--contrast_1_high);
 }
 
-.lap-highlighted {
+.page-marshal td:not(:last-child) {
+	cursor: pointer;
+}
+
+.lap-highlighted td:first-child:before {
+	content: "\25B6 ";
+	font-size: 0.75em;
+	vertical-align: top;
+	margin-right: 0.25rem;
 	color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
+	background: var(--contrast_0_high);
+	border-radius: 2.5em;
+	padding: 0.25em;
+	line-height: 1;
+	position: absolute;
+	display: block;
+	width: 1em;
+	height: 1em;
 }
 
 .node-warnings {
