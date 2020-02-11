@@ -49,7 +49,6 @@ def chase(strip, config, a={}):
 
     if args['offWhenDone']:
         led_off(strip)
-        print(args['color'])
 
 def color_wheel(pos):
     """Generate rainbow colors across 0-255 positions."""
@@ -123,9 +122,6 @@ def showColor(strip, config, args=None):
 
 def clear(strip, config, args=None):
     led_off(strip)
-
-def hold(strip, config, args=None):
-    pass
 
 # Effects adapted from work by Hans Luijten https://www.tweaking4all.com/hardware/arduino/adruino-led-strip-effects/
 
@@ -441,6 +437,3 @@ def registerEffects(manager):
 
     # clear - permanently assigned to LEDEventManager.clear()
     manager.registerEffect("clear", "Turn Off", clear, [LEDEvent.NOCONTROL, LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN])
-
-    # hold/no change
-    manager.registerEffect("none", "No Change", hold, [LEDEvent.NOCONTROL, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN])

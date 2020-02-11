@@ -16,6 +16,14 @@ class LEDEventManager:
         self.strip = strip
         self.config = config
 
+        # hold
+        self.registerEffect("hold", "Hold", lambda *args: None,
+            [LEDEvent.NOCONTROL, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN])
+
+        # do nothing
+        self.registerEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN])
+
+
     def isEnabled(self):
         return True
 
@@ -43,21 +51,22 @@ class LEDEventManager:
 
     def event(self, event, eventArgs=None):
         if event in self.events:
-            currentEvent = self.events[event]
-            if currentEvent in self.eventEffects:
-                effect = self.eventEffects[currentEvent]
-                args = effect['defaultArgs']
-                if eventArgs:
-                    if args:
-                        args.update(eventArgs)
-                    else:
-                        args = eventArgs
+            currentEffect = self.events[event]
+            if currentEffect in self.eventEffects:
+                if currentEffect != 'none':
+                    effect = self.eventEffects[currentEffect]
+                    args = effect['defaultArgs']
+                    if eventArgs:
+                        if args:
+                            args.update(eventArgs)
+                        else:
+                            args = eventArgs
 
-                # restart thread regardless of status
-                if self.eventThread is not None:
-                    self.eventThread.kill()
+                    # restart thread regardless of status
+                    if self.eventThread is not None:
+                        self.eventThread.kill()
 
-                self.eventThread = gevent.spawn(effect['handlerFn'], self.strip, self.config, args)
+                    self.eventThread = gevent.spawn(effect['handlerFn'], self.strip, self.config, args)
                 return True
 
         return False
@@ -65,22 +74,23 @@ class LEDEventManager:
     def eventDirect(self, event, eventArgs=None):
         """ Do event call using calling thread """
         if event in self.events:
-            currentEvent = self.events[event]
-            if currentEvent in self.eventEffects:
-                effect = self.eventEffects[currentEvent]
-                args = effect['defaultArgs']
-                if eventArgs:
-                    if args:
-                        args.update(eventArgs)
-                    else:
-                        args = eventArgs
+            currentEffect = self.events[event]
+            if currentEffect in self.eventEffects:
+                if currentEffect != 'none':
+                    effect = self.eventEffects[currentEffect]
+                    args = effect['defaultArgs']
+                    if eventArgs:
+                        if args:
+                            args.update(eventArgs)
+                        else:
+                            args = eventArgs
 
-                # stop any current thread
-                if self.eventThread is not None:
-                    self.eventThread.kill()
-                    self.eventThread = None
+                    # stop any current thread
+                    if self.eventThread is not None:
+                        self.eventThread.kill()
+                        self.eventThread = None
 
-                effect['handlerFn'](self.strip, self.config, args)
+                    effect['handlerFn'](self.strip, self.config, args)
                 return True
 
         return False
