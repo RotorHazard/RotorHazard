@@ -445,6 +445,9 @@
 		});
 
 		$('#enterat').change(function(){
+			$(this).val(Math.min($(this).val(), graph.options.maxValue));
+			$(this).val(Math.max($(this).val(), graph.options.minValue));
+
 			lap_marker_series.clear();
 			deleted_lap_series.clear();
 			precalc_laps = precalc_rx_data();
@@ -452,6 +455,9 @@
 		});
 
 		$('#exitat').change(function(){
+			$(this).val(Math.min($(this).val(), graph.options.maxValue));
+			$(this).val(Math.max($(this).val(), graph.options.minValue));
+
 			lap_marker_series.clear();
 			deleted_lap_series.clear();
 			precalc_laps = precalc_rx_data();
