@@ -2161,8 +2161,6 @@ def on_resave_laps(data):
     emit_priority_message(message, False)
     server_log(message)
     emit_round_data_notify()
-    print heat_id
-    print RACE.current_heat
     if int(getOption('calibrationMode')):
         autoUpdateCalibration()
 
