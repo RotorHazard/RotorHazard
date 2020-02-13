@@ -803,6 +803,12 @@ def viewDocs():
     '''Route to doc viewer.'''
     docfile = request.args.get('d')
 
+    language = getOption("currentLanguage")
+    if language:
+        translation = language + '-' + docfile
+        if os.path.isfile('../../doc/' + translation):
+            docfile = translation
+
     with io.open('../../doc/' + docfile, 'r', encoding="utf-8") as f:
         doc = f.read()
 
