@@ -5,9 +5,6 @@ import gevent
 import random
 import math
 
-nodeToColorArray = [ColorVal.BLUE, ColorVal.DARK_ORANGE, ColorVal.LIGHT_GREEN, ColorVal.YELLOW, \
-                        ColorVal.PURPLE, ColorVal.PINK, ColorVal.MINT, ColorVal.SKY]
-
 class Timing:
     VTX_EXPIRE = 4
     START_EXPIRE = 8
@@ -111,10 +108,7 @@ def showColor(strip, config, args=None):
     else:
         pattern = ColorPattern.SOLID
 
-    if args and 'nodeIndex' in args:
-        led_on(strip, nodeToColorArray[args['nodeIndex']], pattern)
-    else:
-        led_on(strip, color, pattern)
+    led_on(strip, color, pattern)
 
     if 'time' in args and args['time'] is not None:
         gevent.sleep(float(args['time']))
@@ -316,10 +310,18 @@ def registerEffects(manager):
 
     # color
     manager.registerEffect("stripColor", "Color/Pattern (Args)", showColor, [LEDEvent.NOCONTROL])
-    manager.registerEffect("stripColorSolid", "Solid", showColor, [LEDEvent.NOCONTROL, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
+    manager.registerEffect("stripColorSolid", "Solid", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'pattern': ColorPattern.SOLID
         })
-    manager.registerEffect("stripColor1_1", "Pattern 1-1", showColor, [LEDEvent.NOCONTROL, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT], {
+    manager.registerEffect("stripColor1_1", "Pattern 1-1", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
+        'pattern': ColorPattern.ALTERNATING
+        })
+
+    manager.registerEffect("stripColorSolid_4s", "Solid (4s expire)", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
+        'pattern': ColorPattern.SOLID,
+        'time': Timing.VTX_EXPIRE
+        })
+    manager.registerEffect("stripColor1_1_4s", "Pattern 1-1 (4s expire)", showColor, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR], {
         'pattern': ColorPattern.ALTERNATING,
         'time': Timing.VTX_EXPIRE
         })

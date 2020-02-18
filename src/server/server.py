@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.1.0 (dev 5)" # Public release version code
+RELEASE_VERSION = "2.1.0-beta.3" # Public release version code
 SERVER_API = 26 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 22 # Most recent node API
@@ -4295,7 +4295,18 @@ def recover_database():
             "currentLanguage",
             "currentProfile",
             "currentFormat",
+            "calibrationMode",
             "MinLapSec",
+            "MinLapBehavior",
+            "ledBrightness",
+            "colorNode_0",
+            "colorNode_1",
+            "colorNode_2",
+            "colorNode_3",
+            "colorNode_4",
+            "colorNode_5",
+            "colorNode_6",
+            "colorNode_7",
         ]
         carryOver = {}
         for opt in carryoverOpts:
@@ -4358,7 +4369,7 @@ def init_LED_effects():
         LEDEvent.RACESTOP: "stripColorRedSolid",
         LEDEvent.LAPSCLEAR: "clear",
         LEDEvent.CROSSINGENTER: "stripColorSolid",
-        LEDEvent.CROSSINGEXIT: "stripColor1_1",
+        LEDEvent.CROSSINGEXIT: "stripColor1_1_4s",
         LEDEvent.STARTUP: "rainbowCycle",
         LEDEvent.SHUTDOWN: "clear"
     }
