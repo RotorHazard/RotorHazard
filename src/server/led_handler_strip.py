@@ -9,7 +9,7 @@ class Timing:
     VTX_EXPIRE = 4
     START_EXPIRE = 8
 
-def led_on(strip, color, pattern=ColorPattern.SOLID, offset=0):
+def led_on(strip, color=ColorVal.WHITE, pattern=ColorPattern.SOLID, offset=0):
     if pattern == ColorPattern.SOLID:
         for i in range(strip.numPixels()):
             strip.setPixelColor(i, color)
@@ -101,7 +101,7 @@ def showColor(strip, config, args=None):
     if args and 'color' in args:
         color = args['color']
     else:
-        color = ColorVal.NONE
+        color = ColorVal.WHITE
 
     if args and 'pattern' in args:
         pattern = args['pattern']
@@ -416,7 +416,7 @@ def registerEffects(manager):
         'chance': 1.0,
         'decay': 0.95,
         'speedDelay': 10,
-        'iterations': 30
+        'iterations': 50
         })
 
     # meteor
