@@ -1,7 +1,7 @@
 # Desarrollo
 
 Este documento es principalmente para desarrolladores.
-Si planea contribuir a RotorHazard abriendo una solicitud de extracción para una corrección de errores o función, lea el siguiente texto antes de comenzar. Esto lo ayudará a enviar su contribución en un formulario que tenga buenas posibilidades de ser aceptado.
+Si planea contribuir a RotorHazard abriendo una solicitud de extracción para una corrección de errores o función, lea el siguiente texto antes de comenzar. Esto le ayudará a enviar su contribución en un formulario que tenga buenas posibilidades de ser aceptado.
 
 ## Usando git y GitHub
 
@@ -13,7 +13,7 @@ Si necesita ayuda con las solicitudes de extracción, hay guías en GitHub aquí
 
 https://help.github.com/articles/creating-a-pull-request
 
-The main flow for a contributing is as follows:
+El flujo principal para un contribuidor es el siguiente:
 
 1. Inicie sesion en GitHub, vaya a [RotorHazard repository](https://github.com/RotorHazard/RotorHazard) y presione `fork`;
 2. Luego use el comando line/terminal en su ordenador: `git clone <url to YOUR fork>`;
