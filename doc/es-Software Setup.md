@@ -265,7 +265,7 @@ Para ver la interfaz web-GUI, abra un navegador web e ingrese en la barra de dir
 
 -----------------------------
 
-See Also:<br/>
+Vea también:<br/>
 [doc/Hardware Setup.md](Hardware%20Setup.md)<br/>
 [doc/USB Nodes.md](USB%20Nodes.md)<br/>
 [doc/User Guide.md](User%20Guide.md)
