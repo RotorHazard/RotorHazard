@@ -63,12 +63,12 @@ Los pines en el cuadro verde son los que ya están en uso en el temporizador. Lo
 ### Sensores adicionales
 Se pueden conectar sensores (como BME280 e INA219) al bus I2C y a los pines de alimentación. Consulte los archivos '..._ sensor.py' en el directorio "src / interface" para ver ejemplos de implementación. Los sensores deben especificarse en el archivo "src / server / config.json": en la siguiente configuración de muestra, un sensor BME280 está configurado en la dirección I2C 0x76 (como "Clima") y los sensores INA219 están configurados en 0x40 y 0x41 .
 ```
-    "SENSORS": {
+    "SENSORES": {
             "i2c:0x76": {
-                    "name": "Climate"
+                    "name": "Temperatura"
             },
             "i2c:0x40": {
-                    "name": "Battery",
+                    "name": "Batería",
                     "max_current": 0.1
             },
             "i2c:0x41": {
