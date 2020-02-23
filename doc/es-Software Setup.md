@@ -75,17 +75,16 @@ Edite el archivo 'src / node / rhnode.cpp' y configure el valor '#define NODE_NU
 // Node Setup -- Set node number here (1 - 8)
 #define NODE_NUMBER 1
 ```
+También se puede configurar de manera automática los nodos mediante la conexión a tierra de estos pines de los Arduinos. Establezca NODE_NUMBER en 0, luego empalme estos pines a tierra (GND):
 
-Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:
-
-node #1: ground pin D5<br/>
-node #2: ground pin D6<br/>
-node #3: ground pin D7<br/>
-node #4: ground pin D8<br/>
-node #5: ground pin D5 and pin D4<br/>
-node #6: ground pin D6 and pin D4<br/>
-node #7: ground pin D7 and pin D4<br/>
-node #8: ground pin D8 and pin D4
+nodo #1: GND a pin D5<br/>
+nodo #2: GND a pin D6<br/>
+nodo #3: GND a pin D7<br/>
+nodo #4: GND a pin D8<br/>
+nodo #5: GND a pin D5 y pin D4<br/>
+nodo #6: GND a pin D6 y pin D4<br/>
+nodo #7: GND a pin D7 y pin D4<br/>
+nodo #8: GND a pin D8 y pin D4<br/>
 
 ## Instalar Componentes opcionales
 ### Soporte WS2812b LED
