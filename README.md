@@ -39,6 +39,9 @@ For initial setup and running races, follow these instructions: [doc/User Guide.
 ## Migrating from/to Delta5
 RotorHazard uses the same hardware, but different code for the nodes. Re-flash your Arduinos as in the [setup instructions](doc/Software%20Setup.md#receiver-nodes-arduinos) whenever you switch between the two projects.
 
+## Additional Resources
+Links to external resources are available from the [Wiki](https://github.com/RotorHazard/RotorHazard/wiki), including extended tutorials, video content, and a Raspberry Pi setup/install/upgrade/node flashing tool.
+
 ## Contributors
 * Michael Niggel
 * Eric Thomas
