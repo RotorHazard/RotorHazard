@@ -2234,6 +2234,21 @@ def on_delete_lap(data):
     lap_id = data['lapid']
     db_update = CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id).one()
     db_update.deleted = True
+
+    db_next = CurrentLap.query.filter( \
+        CurrentLap.node_index==node_index, \
+        CurrentLap.deleted != 1, \
+        CurrentLap.lap_id > lap_id).order_by(CurrentLap.lap_id).first()
+
+    db_last = CurrentLap.query.filter( \
+        CurrentLap.node_index==node_index, \
+        CurrentLap.deleted != 1, \
+        CurrentLap.lap_id < lap_id).order_by(CurrentLap.lap_id.desc()).first()
+
+    if db_next and db_last:
+        db_next.lap_time = db_next.lap_time_stamp - db_last.lap_time_stamp
+        db_next.lap_time_formatted = time_format(db_next.lap_time)
+
     DB.session.commit()
     server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_id))
     emit_current_laps() # Race page, update web client
@@ -3829,8 +3844,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                     # Get the last completed lap from the database
                     last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
-                        .filter(CurrentLap.node_index==node.index, \
-                            CurrentLap.deleted != 1).scalar()
+                        .filter(CurrentLap.node_index==node.index).scalar()
 
                     if last_lap_id is None: # No previous laps, this is the first pass
                         # Lap zero represents the time from the launch pad to flying through the gate
@@ -3841,8 +3855,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         # Find the time stamp of the last lap completed
                         last_lap_time_stamp = CurrentLap.query.filter( \
                             CurrentLap.node_index==node.index, \
-                            CurrentLap.deleted != 1, \
-                            CurrentLap.lap_id==last_lap_id).one().lap_time_stamp
+                            CurrentLap.deleted != 1).order_by(CurrentLap.lap_id.desc()).first().lap_time_stamp
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
                         lap_id = last_lap_id + 1
