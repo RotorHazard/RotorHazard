@@ -137,6 +137,10 @@ input[type="radio"] {
 	padding: 0;
 }
 
+select#set_sort_mode {
+	width: 10em
+}
+
 select {
 	width: 100%;
 }
@@ -696,6 +700,12 @@ main.page-home {
 
 .node-controls {
 	margin-top: 0.25em;
+}
+input#pilots_per_heat {
+	width: 2em
+}
+input#new_attribute {
+	width: 8em
 }
 
 .enter-exit-control {

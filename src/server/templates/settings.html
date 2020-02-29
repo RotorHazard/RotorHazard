@@ -471,12 +471,22 @@
 		/* Heats */
 		socket.on('heat_data', function (msg) {
 			msg.pilot_data.sort(function(a, b){
-				if (a.name < b.name)
+				if (rotorhazard.sort_mode == 0) {
+				    if (a.name < b.name)
 					return -1;
-				if (a.name > b.name)
+				    if (a.name > b.name)
 					return 1;
-				return 0;
+				    return 0;} 
+                                else {
+				    if (a.callsign < b.callsign)
+					return -1;
+				    if (a.callsign > b.callsign)
+					return 1;
+				    return 0;} 
 			});
+			$('#set_sort_mode').val(rotorhazard.sort_mode);
+                        $('button#delete_last_heat').prop('disabled', false);
+                        $('button#generate_heats').prop('disabled', false);
 
 			$(".heats").empty();
 			for (var i in msg.heats) {
@@ -498,7 +508,17 @@
 					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" >')
 					selectbox.append('<option value="0">None</option>')
 						for (var k in msg.pilot_data) {
-							selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+				                    for (var l in msg.pilot_data[k].attributes) {
+					                    pilot_attrs =  msg.pilot_data[k].attributes[l]
+                                                            if ( pilot_attrs.Registered == true ){
+                                                               if (rotorhazard.sort_mode == 0) {
+                                                                    selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].name + ' (' + msg.pilot_data[k].callsign + ')</option>')
+                                                                } else {
+                                                                    selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+                                                                }
+                                                                break;
+                                                            }
+                                                     }
 						}
 					selectbox.val(heatpilot);
 					selectbox.prop('disabled', heats.locked);
@@ -559,15 +579,37 @@
 			return false;
 		});
 
+		$('button#delete_last_heat').click(function (event) {
+			socket.emit('delete_last_heat');
+                        $('button#delete_last_heat').prop('disabled', true);
+			return false;
+		});
+
+                $('button#generate_heats').click(function (event) {
+                        var data = {
+                                generator_input_class: $('#generator_input_class').val(),
+                                pilots_per_heat: $('#pilots_per_heat').val(),
+                                win_condition: $('#win_condition').val(),
+                        };
+                        $('button#generate_heats').prop('disabled', true);
+                        socket.emit('generate_heats', data);
+                        return false;
+                });
+
 		socket.on('class_data', function (msg) {
 			$(".race_classes").empty();
 
+                        $('#generator_input_class').empty();
+			opt = '<option value="0">Unclassified</option>'
+                        $('#generator_input_class').append(opt);
 			if (msg.classes.length) {
 				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '</p>');
 
 				var classlist = $('<ol>');
 				for (var i in msg.classes) {
 					var race_class = msg.classes[i];
+					opt = '<option value="' + msg.classes[i].id + '">' + msg.classes[i].name + '</option>'
+                                        $('#generator_input_class').append(opt);
 					var el = $('<li>');
 					el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');
 					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
@@ -626,6 +668,20 @@
 
 		/* Pilots */
 		socket.on('pilot_data', function (msg) {
+			msg.pilots.sort(function(a, b){
+				if (rotorhazard.sort_mode == 0) {
+				    if (a.name < b.name)
+					return -1;
+				    if (a.name > b.name)
+					return 1;
+				    return 0;} 
+                                else {
+				    if (a.callsign < b.callsign)
+					return -1;
+				    if (a.callsign > b.callsign)
+					return 1;
+				    return 0;} 
+			});
 			$(".pilots").empty();
 			for (var i in msg.pilots) {
 				if (msg.pilots[i].pilot_id != 0) {
@@ -640,17 +696,36 @@
 					phonetic.append('<button class="speak_pilot" data-pilot_id="' + msg.pilots[i].pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
 					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilots[i].pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '">' + msg.pilots[i].team_options + '</select></div>');
+						
+					for (var j in msg.pilots[i].attributes) {
+						var pair=msg.pilots[i].attributes[j];
+						var name = Object.keys(pair)[0];
+						var value = pair[name];
+						var pilot_id = msg.pilots[i].pilot_id;
 
+						if (value) {
+							el.append('<label><input type="checkbox" id="pilot_'+ pilot_id +'_' + name + '" checked onchange="changePilotAttr( this)" > ' + name + '  </label>')
+						} else {
+							el.append('<label><input type="checkbox" id="pilot_'+ pilot_id +'_' + name + '" onchange="changePilotAttr( this)"  > ' + name + '  </label>')
+						}
+					}
 					el.appendTo($('.pilots'));
 				}
 			}
 
 			msg.pilots.sort(function(a, b){
-				if (a.name < b.name)
+				if (rotorhazard.sort_mode == 0) {
+				    if (a.name < b.name)
 					return -1;
-				if (a.name > b.name)
+				    if (a.name > b.name)
 					return 1;
-				return 0;
+				    return 0;} 
+                                else {
+				    if (a.callsign < b.callsign)
+					return -1;
+				    if (a.callsign > b.callsign)
+					return 1;
+				    return 0;} 
 			});
 
 			$('.set_pilot_position').each(function(){
@@ -724,12 +799,41 @@
 			return false;
 		});
 
+		/* add attribute */
+		$('button#add_attribute').click(function (event) {
+			var data = {
+				attr: $('#new_attribute').val(),
+			};
+			socket.emit('add_pilot_attr', data);
+
+			$('#new_attribute').val('');
+			return false;
+		});
+
+		/* delete attribute */
+		$('button#delete_attribute').click(function (event) {
+			var data = {
+				attr: $('#new_attribute').val(),
+			};
+			socket.emit('delete_pilot_attr', data);
+
+			$('#new_attribute').val('');
+			return false;
+		});
+
 		/* Voice */
 		$('#beep_on_first_pass_button').prop('disabled', rotorhazard.beep_crossing_exited);
 
 		$(document).on('change', '#set_voice_language', function (event) {
 			rotorhazard.voice_language = $(this).val();
 			rotorhazard.saveData();
+		});
+		$(document).on('change', '#set_sort_mode', function (event) {
+			rotorhazard.sort_mode = $(this).val();
+			rotorhazard.saveData();
+		        socket.emit('load_data', {'load_types': [
+		   	    'pilot_data'
+		        ]});
 		});
 
 		// construct language selection
@@ -1289,6 +1393,15 @@
 		});
 	});
 
+    function changePilotAttr(objectreference){
+           var pilot_andattribute=objectreference.id.split("_",3);
+           var pilotid=pilot_andattribute[1];
+           var attr=pilot_andattribute[2];
+	   var value=objectreference.checked;
+           var data = { id:pilotid, attr:attr, value:value};
+           socket.emit('change_pilot_attr', data);
+           return;
+        }
 	function speak(obj) {
 		$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
 	};
@@ -1507,10 +1620,27 @@
 			<li>{{ __('Loading...') }}</li>
 		</ol>
 		<div class="control-set">
-			<button id="add_heat">+ {{ __('Add Heat') }}</button>
+				<button id="add_heat">+ {{ __('Add Heat') }}</button>
+                                <h2>Advanced heat generator</h2> 
+                                <p>For generating main event heats based on results from existing class</p>
+
+			        <label for="generator_input_class">{{ __('Input class') }}</label>
+			        <select id="generator_input_class">
+			     	    <option>{{ __('Loading...') }}</option>
+			        </select>
+				<label for="win_condition">{{ __('Win Condition') }}</label>
+				<select id="win_condition">
+					<option value="1">{{ __('Most Laps') }}</option>
+					<option value="3">{{ __('Fastest Lap') }}</option>
+					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
+				</select>
+                                <br>
+				<label> pilots per heat <input type="number" id="pilots_per_heat" value="4" min="1" max="8" >  </label>
+				<button id="generate_heats">{{ __('Generate Heats') }}</button>
+				<button id="delete_last_heat">- {{ __('Delete Last Heat') }}</button>
+
 		</div>
 	</div>
-</div>
 
 <!--Pilots list for editing-->
 <div class="panel collapsing">
@@ -1524,7 +1654,22 @@
 
 		<div class="control-set">
 			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
+				<div class="label-block">
+					<label for="set_sort_mode">{{ __('Pilot Sort Preference') }}</label>
+				</div>
+				<select id="set_sort_mode">
+					<option value="0">{{ __('Sort by Name') }}</option>
+					<option value="1">{{ __('Sort by Callsign') }}</option>
+				</select>
 		</div>
+		<div class="control-set">
+		<div class="label-block">
+	   	<label for="new_attribute">{{ __('Add Custom Attribute') }}</label>
+	        </div>
+		<button id="add_attribute">{{ __('Add Attribute') }}</button>
+		<button id="delete_attribute">{{ __('Delete Attribute') }}</button>
+		<input type="text" id="new_attribute" maxlength="20" placeholder="attribute name"> 
+               </div>
 	</div>
 </div>
 

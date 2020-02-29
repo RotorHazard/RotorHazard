@@ -57,6 +57,8 @@ LAST_RACE_CACHE = {} # Cache of current race after clearing
 LAST_RACE_LAPS_CACHE = {} # Cache of current race after clearing
 LAST_RACE_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
 
+GENERAL_RESULTS_CACHE = {} # This is an array that saves all of the various cache data, event_results, race_list, and class results.
+
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
 CONFIG_FILE_NAME = 'config.json'
@@ -451,6 +453,14 @@ class Pilot(DB.Model):
 
     def __repr__(self):
         return '<Pilot %r>' % self.id
+
+class PilotAttr(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    attr_name = DB.Column(DB.String(40), primary_key=True)
+    attr_value = DB.Column(DB.Boolean, nullable=False)
+
+    def __repr__(self):
+        return '<PilotAttr %r>' % self.id
 
 class Heat(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
@@ -1403,6 +1413,94 @@ def on_alter_heat(data):
     server_log('Heat {0} Node {1} altered to {2}'.format(heat, node_index+1, data))
     emit_heat_data(noself=True) # Settings page, new pilot position in heats
 
+@SOCKET_IO.on('generate_heats')
+def on_generate_heats(data):
+    '''Update heat.'''
+    generator_input_class = int(data['generator_input_class'])
+    pilots_per_heat = min(int(data['pilots_per_heat']),RACE.num_nodes)
+    win_condition = data['win_condition']
+    max_heat_id = DB.session.query(DB.func.max(Heat.heat_id)).scalar()
+
+
+    if (win_condition == '1' ): 
+        generate_type='by_race_time'
+     
+    if (win_condition == '3' ):
+        generate_type='by_fastest_lap'
+     
+    if (win_condition == '4' ):
+        generate_type='by_consecutives'
+
+    #generate the class results if it has not already
+    emit_specific_class_round_data(specific_class=str(generator_input_class))
+
+    cachekey='class'+str(generator_input_class)
+    # if the report is cached and valid, return that
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        if (GENERAL_RESULTS_CACHE[cachekey]['isvalid'] == 1):
+            class_results = GENERAL_RESULTS_CACHE[cachekey]['content']['classes'][generator_input_class]['leaderboard'][generate_type]
+            max_heat_id = DB.session.query(DB.func.max(Heat.heat_id)).scalar()
+            max_heat_id += 1
+            assigned_pilots_in_heat = 1 
+            heat_note = 'A' 
+            skipped_pilots = []
+            for row in class_results:
+                #iterate to the next heat if we have fully populated this one, but first handled the skipped pilots 
+                if assigned_pilots_in_heat > pilots_per_heat:
+                    # so we've assigned all of the non-frequency conflicted pilots in this main
+                    # now just place all of the skipped_pilots in available nodes
+
+                    add_skipped_pilots(skipped_pilots, pilots_per_heat, max_heat_id, heat_note  )
+                    skipped_pilots = []
+
+                    max_heat_id += 1
+                    assigned_pilots_in_heat = 1 
+                    heat_note= chr(ord(heat_note) + 1 )
+                pilot_id= row['pilot_id'] 
+                pilot= row['callsign'] 
+                node_index = SavedPilotRace.query.filter_by(pilot_id=pilot_id).first().node_index
+                
+                # Check if the node_index is already taken if so, just find any open node that has no pilot in this heat 
+                current_node_occupant = DB.session.query(DB.func.max(Heat.heat_id)).filter_by(heat_id=max_heat_id, node_index=node_index).scalar()
+                if current_node_occupant is not None: # ie this node is taken
+                    skipped_pilots.append(pilot_id)
+                else:
+
+
+                    server_log( "generating heat "+  pilot + " id=" +str(pilot_id) + " node index ="+  str(node_index) +" "+ heat_note +"Main heat_id=" + str(max_heat_id) )
+                    DB.session.add(Heat(heat_id=max_heat_id, node_index=node_index, pilot_id=pilot_id, class_id=CLASS_ID_NONE,note=heat_note+"-Main"))
+                    DB.session.commit()
+
+                assigned_pilots_in_heat += 1
+
+            #add any skipped pilots of the last heat
+            add_skipped_pilots(skipped_pilots, pilots_per_heat, max_heat_id, heat_note  )
+            skipped_pilots = []
+
+    emit_heat_data() 
+
+def add_skipped_pilots(skipped_pilots, pilots_per_heat, max_heat_id, heat_note  ):
+    # so we've assigned all of the non-frequency conflicted pilots in this main
+    # now just place all of the skipped_pilots in available nodes
+    for this_pilot in skipped_pilots:
+        for checking_index  in range(pilots_per_heat): 
+            current_node_occupant = DB.session.query(DB.func.max(Heat.heat_id)).filter_by(heat_id=max_heat_id, node_index=checking_index).scalar()
+            if current_node_occupant is  None: # Not taken yet
+                node_index=checking_index
+                break
+
+        server_log( "generating heat for skipped pilot id=" +str(this_pilot) + " node index ="+  str(node_index) +" "+ heat_note +"Main heat_id=" + str(max_heat_id) )
+        DB.session.add(Heat(heat_id=max_heat_id, node_index=node_index, pilot_id=this_pilot, class_id=CLASS_ID_NONE,note=heat_note+"-Main"))
+        DB.session.commit()
+
+    # for odd reasons, the rest of the system wants heats fully populated 
+    for checking_index  in range(RACE.num_nodes): 
+        current_node_occupant = DB.session.query(DB.func.max(Heat.heat_id)).filter_by(heat_id=max_heat_id, node_index=checking_index).scalar()
+        if current_node_occupant is  None: # Not taken
+            DB.session.add(Heat(heat_id=max_heat_id, node_index=checking_index, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE, note=heat_note+"-Main"))
+            DB.session.commit()
+
+
 @SOCKET_IO.on('add_race_class')
 def on_add_race_class():
     '''Adds the next available pilot id number in the database.'''
@@ -1448,10 +1546,14 @@ def on_add_pilot():
     DB.session.add(new_pilot)
     DB.session.flush()
     DB.session.refresh(new_pilot)
-    new_pilot.name = __('Pilot %d Name') % (new_pilot.id)
-    new_pilot.callsign = __('Callsign %d') % (new_pilot.id)
+    new_pilot.name = __('zPilot %d Name') % (new_pilot.id)
+    new_pilot.callsign = __('zCallsign %d') % (new_pilot.id)
     new_pilot.team = DEF_TEAM_NAME
     new_pilot.phonetic = ''
+    pilot_attrs = PilotAttr.query.filter_by(id=1)
+    if pilot_attrs:
+        for this_attr in pilot_attrs:
+            DB.session.add(PilotAttr(id=new_pilot.id, attr_name=this_attr.attr_name, attr_value=this_attr.attr_value))
     DB.session.commit()
     server_log('Pilot added: Pilot {0}'.format(new_pilot.id))
     emit_pilot_data()
@@ -1479,6 +1581,50 @@ def on_alter_pilot(data):
         emit_heat_data() # Settings page, new pilot callsign in heats
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
+
+@SOCKET_IO.on('change_pilot_attr')
+def change_pilot_attr(data):
+    pilot_id = data['id']
+    attr = data['attr']
+    value = data['value']
+    db_update = PilotAttr.query.filter_by(id=pilot_id,attr_name=attr).one()
+    db_update.attr_value = value
+    DB.session.commit()
+    emit_pilot_data()
+
+@SOCKET_IO.on('add_pilot_attr')
+def add_pilot_attr(data):
+    attr = data['attr']
+    if 'value' in data:
+        default_value= data['value']
+    else:
+        default_value=False 
+
+    for pilot in Pilot.query.all():
+        already_exists = PilotAttr.query.filter_by(id=pilot.id,attr_name=attr).count()
+        if already_exists == 0:
+            DB.session.add(PilotAttr(id=pilot.id,attr_name=attr, attr_value=default_value))
+    DB.session.commit()
+    emit_pilot_data()
+
+@SOCKET_IO.on('delete_pilot_attr')
+def delete_pilot_attr(data):
+    attr = data['attr']
+
+    already_exists = PilotAttr.query.filter_by(attr_name=attr).count()
+    
+    if (already_exists > 0):
+        for pilot in Pilot.query.all():
+            if ( attr != 'Registered'):
+                pilot_attr = PilotAttr.query.filter_by(id=pilot.id,attr_name=attr).first()
+                DB.session.delete(pilot_attr)
+            else:
+                db_update = PilotAttr.query.filter_by(id=pilot.id,attr_name=attr).one()
+                db_update.attr_value = False
+
+            DB.session.commit()
+
+        emit_pilot_data()
 
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
@@ -1581,6 +1727,11 @@ def on_backup_database():
         'file_data' : file_content
     }
     SOCKET_IO.emit('database_bkp_done', emit_payload)
+
+@SOCKET_IO.on('delete_last_heat')
+def on_delete_last_heat():
+    '''Delete last heat of the db'''
+    db_delete_last_heat()
 
 @SOCKET_IO.on('reset_database')
 def on_reset_database(data):
@@ -2777,6 +2928,110 @@ def emit_round_data_thread(params, sid):
             emit('round_data', emit_payload, namespace='/', room=sid)
         else:
             SOCKET_IO.emit('round_data', emit_payload, namespace='/')
+def emit_specific_class_round_data(**params):
+    '''Emits saved races to rounds page.'''
+    global GENERAL_RESULTS_CACHE 
+
+    if ('specific_class' in params):
+        specific_class = params['specific_class']
+    else:
+        specific_class = CLASS_ID_NONE
+ 
+    cachekey='class'+specific_class
+    # if the report is cached and valid, return that
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        if (GENERAL_RESULTS_CACHE[cachekey]['isvalid'] == 1):
+            if ('nobroadcast' in params):
+                emit('class_round_data', GENERAL_RESULTS_CACHE[cachekey]['content'])
+            else:
+                SOCKET_IO.emit('class_round_data', GENERAL_RESULTS_CACHE[cachekey]['content'])
+            return
+   
+    heats = {}
+    for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().filter_by(class_id=specific_class).order_by(SavedRaceMeta.heat_id):
+        heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
+
+        rounds = []
+        for round in SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id,class_id=specific_class).order_by(SavedRaceMeta.round_id):
+            pilotraces = []
+            for pilotrace in SavedPilotRace.query.filter_by(race_id=round.id).all():
+                laps = []
+                for lap in SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
+                    laps.append({
+                                'id': lap.id,
+                                'lap_time_stamp': lap.lap_time_stamp,
+                                'lap_time': lap.lap_time,
+                                'lap_time_formatted': lap.lap_time_formatted,
+                                'source': lap.source,
+                                'deleted': lap.deleted
+                        })
+
+                pilot_data = Pilot.query.filter_by(id=pilotrace.pilot_id).first()
+                if pilot_data:
+                        nodepilot = pilot_data.callsign
+                else:
+                        nodepilot = None
+
+                pilotraces.append({
+                        'callsign': nodepilot,
+                        'pilot_id': pilotrace.pilot_id,
+                        'node_index': pilotrace.node_index,
+                        'laps': laps
+                })
+            rounds.append({
+                'id': round.round_id,
+                'start_time_formatted': round.start_time_formatted,
+                'nodes': pilotraces
+            })
+        heats[heat.heat_id] = {
+            'heat_id': heat.heat_id,
+            'note': heatnote,
+            'rounds': rounds
+        }
+
+    heats_by_class = {}
+    heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
+    for race_class in RaceClass.query.filter_by(id=specific_class).all():
+        heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
+
+    current_classes = {}
+    # Do the unclassifed class   
+    if (specific_class == '0'):
+        current_class = {}
+        current_class['id'] = CLASS_ID_NONE 
+        current_class['name'] = 'Unclassified'
+        current_class['description'] = 'Unclassified' 
+        current_class['leaderboard'] = calc_leaderboard(class_id=0)
+        current_classes[0] = current_class
+
+    # Else Do the    
+    for race_class in RaceClass.query.filter_by(id=specific_class).all():
+        current_class = {}
+        current_class['id'] = race_class.id
+        current_class['name'] = race_class.name
+        current_class['description'] = race_class.name
+        current_class['leaderboard'] = calc_leaderboard(class_id=race_class.id)
+        current_classes[race_class.id] = current_class
+
+    emit_payload = {
+        'classes': current_classes
+    }
+
+    cachekey='class'+specific_class
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 1
+        GENERAL_RESULTS_CACHE[cachekey]['content'] = emit_payload
+    else:
+        newReport = {}
+        newReport[cachekey] = {}
+        newReport[cachekey]['isvalid'] = 1
+        newReport[cachekey]['content'] = emit_payload
+        GENERAL_RESULTS_CACHE.update(newReport)
+
+    if ('nobroadcast' in params):
+        emit('class_round_data', emit_payload)
+    else:
+        SOCKET_IO.emit('class_round_data', emit_payload)
 
 def calc_leaderboard(**params):
     ''' Generates leaderboards '''
@@ -2895,6 +3150,8 @@ def calc_leaderboard(**params):
     average_lap = []
     fastest_lap = []
     consecutives = []
+    fastest_lap_round = []
+    fastest_lap_heat = []
 
     for i, pilot in enumerate(pilot_ids):
         gevent.sleep()
@@ -2949,20 +3206,28 @@ def calc_leaderboard(**params):
         # Get the fastest lap time for each pilot
         if max_laps[i] is 0:
             fastest_lap.append(0) # Add zero if no laps completed
+            fastest_lap_round.append(0) # Add zero if no laps completed
+            fastest_lap_heat.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
-                stat_query = DB.session.query(DB.func.min(CurrentLap.lap_time)) \
+                stat_query = DB.session.query(DB.func.min(CurrentLap.lap_time),CurrentLap.lap_time) \
                     .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0, \
-                        CurrentLap.deleted != 1)
+                        CurrentLap.deleted != 1).one()
+                fastest_lap_round.append(0)
+                fastest_lap_heat.append(0)
             else:
-                stat_query = DB.session.query(DB.func.min(SavedRaceLap.lap_time)) \
+                stat_query = DB.session.query(DB.func.min(SavedRaceLap.lap_time),SavedRaceLap.lap_time,SavedRaceLap.race_id) \
                     .filter(SavedRaceLap.pilot_id == pilot, \
                         SavedRaceLap.deleted != 1, \
                         SavedRaceLap.race_id.in_(racelist), \
-                        ~SavedRaceLap.id.in_(holeshots[i]))
+                        ~SavedRaceLap.id.in_(holeshots[i])).one()
+                fround = DB.session.query(SavedRaceMeta.round_id,SavedRaceMeta.heat_id).filter(SavedRaceMeta.id==stat_query.race_id).first()
+                fheat = DB.session.query( Heat.note).filter_by(heat_id=fround.heat_id).first()
 
-            fast_lap = stat_query.scalar()
-            fastest_lap.append(fast_lap)
+                fastest_lap_round.append(fround.round_id)
+                fastest_lap_heat.append(fheat.note)
+
+            fastest_lap.append(stat_query.lap_time)
 
         gevent.sleep()
         # find best consecutive 3 laps
@@ -3007,7 +3272,7 @@ def calc_leaderboard(**params):
 
     gevent.sleep()
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives)
+    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_round, fastest_lap_heat, pilot_ids)
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
@@ -3024,6 +3289,7 @@ def calc_leaderboard(**params):
             'fastest_lap': time_format(row[4]),
             'team_name': row[5],
             'consecutives': time_format(row[6]),
+            'pilot_id': row[9],
         })
 
     gevent.sleep()
@@ -3040,6 +3306,9 @@ def calc_leaderboard(**params):
             'fastest_lap': time_format(row[4]),
             'team_name': row[5],
             'consecutives': time_format(row[6]),
+            'fastest_lap_round': row[7],
+            'fastest_lap_heat': row[8],
+            'pilot_id': row[9],
         })
 
     gevent.sleep()
@@ -3056,6 +3325,7 @@ def calc_leaderboard(**params):
             'fastest_lap': time_format(row[4]),
             'team_name': row[5],
             'consecutives': time_format(row[6]),
+            'pilot_id': row[9],
         })
 
     leaderboard_output = {
@@ -3123,10 +3393,16 @@ def emit_heat_data(**params):
 
     pilots = []
     for pilot in Pilot.query.all():
+        attr_list = [] 
+        pilot_attrs = PilotAttr.query.filter_by(id=pilot.id)
+        if pilot_attrs:
+            for this_attr in pilot_attrs:
+                attr_list.append({this_attr.attr_name:this_attr.attr_value})
         pilots.append({
             'pilot_id': pilot.id,
             'callsign': pilot.callsign,
-            'name': pilot.name
+            'name': pilot.name,
+            'attributes': attr_list  
             })
 
     emit_payload = {
@@ -3187,14 +3463,21 @@ def emit_pilot_data(**params):
             if name == pilot.team:
                 opts_str += ' selected'
             opts_str += '>' + name + '</option>'
-
+        
+        attr_list = [] 
+        pilot_attrs = PilotAttr.query.filter_by(id=pilot.id)
+        if pilot_attrs:
+            for this_attr in pilot_attrs:
+                attr_list.append({this_attr.attr_name:this_attr.attr_value})
+      
         pilots_list.append({
             'pilot_id': pilot.id,
             'callsign': pilot.callsign,
             'team': pilot.team,
             'phonetic': pilot.phonetic,
             'name': pilot.name,
-            'team_options': opts_str
+            'team_options': opts_str,
+            'attributes': attr_list  
         })
 
     emit_payload = {
@@ -4068,6 +4351,7 @@ def db_reset_pilots():
     for node in range(RACE.num_nodes):
         DB.session.add(Pilot(callsign='Callsign {0}'.format(node+1), \
             name='Pilot {0} Name'.format(node+1), team=DEF_TEAM_NAME, phonetic=''))
+    add_pilot_attr({'attr':'Registered', 'value':True})
     DB.session.commit()
     server_log('Database pilots reset')
 
@@ -4082,6 +4366,21 @@ def db_reset_heats():
     DB.session.commit()
     RACE.current_heat = 1
     server_log('Database heats reset')
+
+def db_delete_last_heat():
+    '''deletes last heat'''
+
+    heat_count = DB.session.query(DB.func.max(Heat.heat_id)).scalar()
+    has_race = SavedRaceMeta.query.filter_by(heat_id=heat_count).first()
+
+    if (not has_race) and  (heat_count > 1):
+        DB.session.query(Heat).filter(Heat.heat_id == heat_count).delete()
+        DB.session.commit()
+        server_log('Admin deleted last heat ' + str(heat_count))
+        emit_heat_data()
+    else:
+        server_log('Database can not delete last heat')
+        emit_heat_data()
 
 def db_reset_classes():
     '''Resets database race classes to default.'''
@@ -4348,6 +4647,7 @@ def recover_database():
         if pilot_query_data:
             DB.session.query(Pilot).delete()
             restore_table(Pilot, pilot_query_data, 'callsign')
+            add_pilot_attr({'attr':'Registered', 'value':False})
         restore_table(RaceFormat, raceFormat_query_data)
         restore_table(Profiles, profiles_query_data)
         restore_table(RaceClass, raceClass_query_data)
@@ -4545,7 +4845,7 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
     led_manager.event(LEDEvent.STARTUP) # show startup indicator on LEDs
     try:
         # the following fn does not return until the server is shutting down
-        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
+        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=False, use_reloader=False)
     except KeyboardInterrupt:
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
