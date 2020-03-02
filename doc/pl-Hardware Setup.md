@@ -65,10 +65,10 @@ Czujniki (takie jak BME280 and INA219) mogą być podłączone do magistrali I2C
 ```
     "SENSORS": {
             "i2c:0x76": {
-                    "name": "Climate"
+                    "name": "Temperatura"
             },
             "i2c:0x40": {
-                    "name": "Battery",
+                    "name": "Bateria",
                     "max_current": 0.1
             },
             "i2c:0x41": {
