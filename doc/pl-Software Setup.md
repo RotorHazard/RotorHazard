@@ -74,14 +74,14 @@ Edytuj plik 'src/node/rhnode.cpp' i skonfiguruj wartość '#define NODE_NUMBER' 
 ```
 Automatyczne numerowanie sprzętowe, również jest możliwe. Ustaw NODE_NUMBER jako 0, następnie połącz następujące piny z masą:
 
-node #1: ground pin D5<br/>
-node #2: ground pin D6<br/>
-node #3: ground pin D7<br/>
-node #4: ground pin D8<br/>
-node #5: ground pin D5 and pin D4<br/>
-node #6: ground pin D6 and pin D4<br/>
-node #7: ground pin D7 and pin D4<br/>
-node #8: ground pin D8 and pin D4
+node #1: pin D5 podłączony do masy<br/>
+node #2: pin D6 podłączony do masy<br/>
+node #3: pin D7 podłączony do masy<br/>
+node #4: pin D8 podłączony do masy<br/>
+node #5: pin D5 i pin D4 podłączone do masy<br/>
+node #6: pin D6 i pin D4 podłączone do masy<br/>
+node #7: pin D7 i pin D4 podłączone do masy<br/>
+node #8: pin D8 i pin D4 podłączone do masy
 
 
 ## Zainstaluj Opcjonalne Składniki
