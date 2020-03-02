@@ -1,6 +1,6 @@
-﻿# Instrukcje Konfiguracji Oprogramowania
+# Instrukcje Konfiguracji Oprogramowania
 
-Głównym komponentem oprogramowania systemu RotorHazard jest jego serwer, napisany w języku python, który operuje jego funkcjami i służy jako serwer web dla przeglądarki. W standardowym ustawieniu serwer jest włączony na Raspberry Pi. Możliwe jest włączenie RotorHazard na innym typie urządzenia – zobacz poniżej sekcję [Inne Systemy Operacyjne](#otheros). 
+Głównym komponentem oprogramowania systemu RotorHazard jest jego serwer, napisany w języku python, który operuje jego funkcjami i służy jako serwer web dla przeglądarki. W standardowym ustawieniu serwer jest włączony na Raspberry Pi. Możliwe jest włączenie RotorHazard na innym typie urządzenia – zobacz poniżej sekcję [Inne Systemy Operacyjne](#otheros).
 ## Zainstaluj System – (Raspberry Pi)
 Uwaga: Wiele spośród wymienionych niżej komend wymaga połączenia z Internetem.
 
@@ -37,7 +37,7 @@ core_freq=250
 Zapisz i zamknij naciskając Ctrl+X.
 
 Zainstaluj RotorHazard w '/home/pi/' na Raspberry Pi następujący sposób:
-Idź do strony [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) 
+Idź do strony [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest)
 
 „Ostatnie wydania” i zobacz jaka jest aktualna wersja kodu. W komendach poniżej zastąp znaki "1.2.3" aktualną wersję kodu i wpisz następujące komendy:
 ```
@@ -60,12 +60,12 @@ sudo chmod 777 server
 Uwaga: jeśli RotorHazard jest już zainstalowany, zobacz w sekcji poniżej[uaktualnianie obecnej instalacji](#update).
 
 ## Zainstaluj kod dla odnóg Arduino
-Wymagane jest Arduino w wersji minimum 1.8. Ściągnij z: 
+Wymagane jest Arduino w wersji minimum 1.8. Ściągnij z:
 https://www.arduino.cc/en/Main/Software
 
 *Wersja oprogramowania dla odnóg oraz serwera muszą do siebie pasować. Użyj kodu przygotowanego dla odnóg z tego samego folderu, z którego instalujesz serwer. Nie ściągaj innych plików bezpośrednio z GitHub.*
 
-Kod dla odnóg może być edytowany i przygotowany używając [Eclipse IDE](https://www.eclipse.org/eclipseide/) i "[Eclipse C++ IDE dla Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)" (albo “po-staremu” używając Arduino IDE). W Eclipse projekt zawierający kod dla odnóg może być otwarty poprzez „Plik”, „Otwórz projekt z pliku systemowego…” 
+Kod dla odnóg może być edytowany i przygotowany używając [Eclipse IDE](https://www.eclipse.org/eclipseide/) i "[Eclipse C++ IDE dla Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)" (albo “po-staremu” używając Arduino IDE). W Eclipse projekt zawierający kod dla odnóg może być otwarty poprzez „Plik”, „Otwórz projekt z pliku systemowego…”
 
 Edytuj plik 'src/node/rhnode.cpp' i skonfiguruj wartość '#define NODE_NUMBER' dla każdej odnogi przed uaktualnieniem. Dla pierwszej odnogi ustaw NODE_NUMBER jako 1, dla drugiej ustaw jako 2, itd.
 ```
@@ -224,7 +224,7 @@ sudo pip install --upgrade --no-cache-dir -r requirements.txt
 <a id="otheros"></a>
 ### Pozostałe Systemy Operacyjne
 
-Serwer RotorHazard może być uruchomiony na każdym komputerze obsługującym python. W tych alternatywnych konfiguracjach, jedna albo więcej odnóg może być podłączona przez USB – zobacz [doc/USB Nodes.md](USB%20Nodes.md) aby uzyskać więcej informacji. Serwer może również być włączony używając “wirtualnych” (sztucznych) odnóg. 
+Serwer RotorHazard może być uruchomiony na każdym komputerze obsługującym python. W tych alternatywnych konfiguracjach, jedna albo więcej odnóg może być podłączona przez USB – zobacz [doc/USB Nodes.md](USB%20Nodes.md) aby uzyskać więcej informacji. Serwer może również być włączony używając “wirtualnych” (sztucznych) odnóg.
 
 Aby zainstalować serwer RotorHazard na tych systemach:
 

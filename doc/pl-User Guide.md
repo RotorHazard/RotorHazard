@@ -1,4 +1,4 @@
-﻿# RotorHazard Race Timer - Instrukcja Użytkownika
+# RotorHazard Race Timer - Instrukcja Użytkownika
 
 ## Wstępna Konfiguracja
 
@@ -16,7 +16,7 @@ ADMIN_USERNAME i ADMIN_PASSWORD są danymi do logowania, potrzebnymi aby zmienia
 
 
 ### Połączenie z Serwerem
-Komputer, telefon albo tablet może być użyty do interakcji z timerem, przez włączenie strony internetowej i wpisanie adresu IP należącego do Raspberry Pi. Raspberry Pi może być podłączone używając kabla Ethernet albo do dostępnej sieci WiFi. Jeżeli adres IP Raspberry jest nieznany może być sprawdzony poprzez wpisanie w wierszu poleceń komendy "ifconfig". Może być też skonfigurowany jako statyczny adres IP w preferencjach sieciowych, w wersji desktop systemu. Jeśli jest połączony z siecią WiFi, jego adres IP może być sprawdzony na liście "klientów", ma stronie konfiguracyjnej routera. 
+Komputer, telefon albo tablet może być użyty do interakcji z timerem, przez włączenie strony internetowej i wpisanie adresu IP należącego do Raspberry Pi. Raspberry Pi może być podłączone używając kabla Ethernet albo do dostępnej sieci WiFi. Jeżeli adres IP Raspberry jest nieznany może być sprawdzony poprzez wpisanie w wierszu poleceń komendy "ifconfig". Może być też skonfigurowany jako statyczny adres IP w preferencjach sieciowych, w wersji desktop systemu. Jeśli jest połączony z siecią WiFi, jego adres IP może być sprawdzony na liście "klientów", ma stronie konfiguracyjnej routera.
 
 
 W przeglądarce sieciowej, wpisz adres IP timera i port ustawiony w pliku konfiguracyjnym albo zostaw port nie-wpisany jeśli jest ustawiony na 80.
@@ -79,7 +79,7 @@ Kiedy przeprowadzasz wyścigi, biegi będą zablokowane i nie będą mogły być
 
 Dodaj wpis dla każdego pilota który będzie się ścigał. System będzie ogłaszał pilotów bazując na ich zapisanych znakach wywoławczych. Fonetyczna wymowa dla każdego znaku może być użyta, żeby dostosować komunikaty głosowe, nie jest to jednak wymagane.
 
-#### Kontrola Audio 
+#### Kontrola Audio
 
 Wszelka kontrola audio jest przypisana lokalnie do przeglądarki i urządzenia gdzie ją ustawiasz, włączając w to listę dostępnych języków, głośność, i to jakie komunikaty i wskaźniki mają być w życiu.
 
@@ -119,17 +119,17 @@ Ta sekcja nadpisuje to co aktualnie wyświetlają LEDy. Wybierz ją dla tymczaso
 
 Ta sekcja nie pojawi się w ustawieniach jeżeli timer nie ma ustawionych LED-ów. Informacja na ten temat pojawia się podczas uruchomienia się serwera - w terminalu.
 
-#### Baza Danych 
+#### Baza Danych
 
 Wybierz kopię zapasową aktualnej bazy danych - zapisz do pliku i ściągnij albo Wyczyść dane. Możesz też wyczyścić wyścigi, klasy, biegi i pilotów.
 
-#### System 
+#### System
 
 Wybierz język interfejsu i zmień parametry które wpływają na wygląd interfejsu timera takie jak nazwa albo schemat kolorów. Możesz też zamknąć serwer z poziomu tego panelu.
 
 ### Bieg
 
-Ta strona pozwala ci na kontrolowanie timera i włączanie wyścigu. 
+Ta strona pozwala ci na kontrolowanie timera i włączanie wyścigu.
 
 Wybierz bieg, który ma być włączony jako kolejny.
 

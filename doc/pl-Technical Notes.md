@@ -1,4 +1,4 @@
-﻿# Uwagi techniczne
+# Uwagi techniczne
 
 RotorHazard Race timer jest otwartym projektem open-source opartym o wiele odnóg (nodes), używającym sygnału video z pojazdów i urządzeń FPV, żeby zdeterminować kiedy przekraczają linię start/meta. Sercem systemu jest Raspberry Pi, każda odnoga posiada Arduino Nano i moduł odbiorczy RX5808.
 

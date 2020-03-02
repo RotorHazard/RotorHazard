@@ -1,4 +1,4 @@
-﻿# Grupa
+# Grupa
 
 Dodatkowe timery RotorHazard mogą być podłączone jako moduły "slave", porozumiewające się za pomocą wbudowanych interfejsów sieciowych (np. WiFi). Domyślny tryb to  „timer” (dla mierzenia międzyczasów), który pozwala wielu timerom być umieszczonym wzdłuż toru, żeby podawać międzyczasy. Tryb "lustrzany" (mirror) również jest wspierany. W trybie tym moduł "slave" dokładnie odwzorowuje to co robi moduł główny (np. może być ustawiony jako "tylko-LED i pokazywać animacje LED-owe modułu głównego).
 
@@ -44,7 +44,7 @@ Na głównym, edytuj /etc/npd.conf i dodaj linie podobne do:
 
 	restrict 192.168.123.0 mask 255.255.255.0
 	broadcast 192.168.123.255
-	
+
 Na modułach "slave", edytuj /etc/npd.conf i dodaj linie podobne do:
 
 	server 192.168.123.1
@@ -73,13 +73,13 @@ Następnie, zrestartuj rng-tools wpisując
 
 Przegapione i niepoprawne międzyczasy nie mają żadnego wpływu na zapamiętywanie czasów okrążeń przez moduł główny.
 
-Moduł "slave", również może być głównym, ale pod-podziały nie są przekazywane wyżej w hierarchii. 
+Moduł "slave", również może być głównym, ale pod-podziały nie są przekazywane wyżej w hierarchii.
 
 Jeśli chcesz używać Grupy opartej o Wifi, instrukcje jak stworzyć Access Point (WiFi hot-spot) możesz znaleźć na:
 <https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md>.
 Przeczytaj też <https://github.com/mr-canoehead/vpn_client_gateway/wiki/Configuring-the-Pi-as-a-WiFi-Access-Point>
 i <https://superuser.com/questions/1263588/strange-issue-with-denyinterfaces-in-access-point-config>.
-Zwłaszcza dodaj `denyinterfaces wlan0` do `/etc/dhcpcd.conf` i `sudo nano /etc/network/interfaces.d/wlan0` 
+Zwłaszcza dodaj `denyinterfaces wlan0` do `/etc/dhcpcd.conf` i `sudo nano /etc/network/interfaces.d/wlan0`
 ```
 allow-hotplug wlan0
 iface wlan0 inet static

@@ -1,8 +1,8 @@
-﻿# Kalibracja i Parametry Strojenia Czujników
+# Kalibracja i Parametry Strojenia Czujników
 
 Każda odnoga monitoruje siłę sygnału (RSSI) wybranych częstotliwości i używa tych względnych wartości, żeby zdeterminować kiedy nadajnik jest w pobliżu bramki. System pomiaru czasu RotorHazard pozwala na kalibrację każdej odnogi indywidualnie, przez co różnice w sprzecie mogą zostać skompensowane dla danego systemu i otoczenia.
 
-Odnoga może być w stanie *Przelotu* (Crossing) lub *Czysto* (Clear). Jeśli odnoga jest w stanie *Czysto*, system zakłada, że nadajnik nie jest w pobliżu bramki, ponieważ wartość RSSI jest niska. Jeśli jest w stanie 
+Odnoga może być w stanie *Przelotu* (Crossing) lub *Czysto* (Clear). Jeśli odnoga jest w stanie *Czysto*, system zakłada, że nadajnik nie jest w pobliżu bramki, ponieważ wartość RSSI jest niska. Jeśli jest w stanie
 *Przelotu*, system zakłada, że nadajnik przekracza bramkę, ponieważ wartość RSSI jest wysoka. Przelot przez okrążanie będzie zapisany, kiedy zakończy się *Przelot*, a system wróci do stanu *Czysto*.
 
 ![Wykres strojenia](img/Tuning%20Graph-06.svg)<br />
@@ -36,13 +36,13 @@ Możesz użyć zakładki *Zarządzanie*, żeby stroić wartości wizualnie.  Zbi
 ![Wykres Strojenia](img/Tuning%20Graph-10.svg)
 
 * Poniżej piku podczas wszystkich przelotów przez bramkę
-* Powyżej każdego piku kiedy nadajnik nie jest w pobliżu bramki 
+* Powyżej każdego piku kiedy nadajnik nie jest w pobliżu bramki
 * Wyżej niż wartość *Wylot*
 
 ### Ustawianie wartości *Wylot*
 ![Wykres Strojenia](img/Tuning%20Graph-11.svg)
 
-* Poniżej każdego spłaszczenia jakie pojawiają się podczas przygotowywania przez bramkę 
+* Poniżej każdego spłaszczenia jakie pojawiają się podczas przygotowywania przez bramkę
 * Powyżej najniższej wartości widzianej atrakcje okrążenia
 * Poniżej wartości *Wlot*
 
@@ -92,7 +92,7 @@ _Zbyt wiele okrążeń pojawia się kiedy wartość *Wylot* jest za blisko warto
 * Podnieś wartość *Wlot*, jeśli to możliwe
 * Obniż wartośc *Wylot*
 
-### Ustawienie Minimalny Czas Okrążenia zawsze utrzymuje pierwsze przekroczenie i odrzuca kolejne które pojawiają się zbyt szybko. 
+### Ustawienie Minimalny Czas Okrążenia zawsze utrzymuje pierwsze przekroczenie i odrzuca kolejne które pojawiają się zbyt szybko.
 *W takim wypadku ustawienie to odrzuciłoby pierwsze poprawne przekroczenie i utrzymało kolejne niepoprawne. Zaleca się pozostawienie opcji ustawionej na *Podświetlenie*, a nie na *Odrzucenie*, żeby organizator wyścigu mógł ręcznie sprawdzić każdy przypadek.
 
 ### Okrążeniom zajmuje dużo czasu, żeby się zarejestrowały

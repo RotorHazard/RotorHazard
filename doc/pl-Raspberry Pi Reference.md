@@ -40,7 +40,7 @@ Ustaw hasło dla użytkownika pi
 $ sudo smbpasswd -a pi
 ```
 
-### Instalacja Github 
+### Instalacja Github
 ```
 $ sudo apt-get install git
 ```

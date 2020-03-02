@@ -1,4 +1,4 @@
-﻿# Poradnik Organizacji Eventu
+# Poradnik Organizacji Eventu
 
 Podstawy konfuguracji eventu to ustawienie pilotów, biegów i odnóg (odbiorników). Możesz też dodać szczegóły do wydarzenia i klasy zawodów -- jeśli chcesz.
 
@@ -19,14 +19,14 @@ W Ustawieniach otwórz Formaty Wyścigów. [Dostosuj ustawienia](User%20Guide.md
 
 **Klasy** to grupy pilotów, którzy współdzielą charakterystykę. Stwórz klasy bazując na tym, jak Twój event jest zaprojektowany, jeśli potrzebujesz więcej niż jednej klasy. Nazwij swoją klasę dla odniesienia w innych miejscach. Opis klasy jest widoczny na stronie Wydarzenia. Ustawianie opcjonalnego formatu powoduje, że wszystkie wyścigi w danej klasie używają wybranego Formatu Wyścigów.
 
-Przypisz biegi do klas, aby móc ich używać. Kiedy wyścig jest zapisany jako bieg do przypisanej klasy, rezultaty będą kalkulowane osobno i pojawią się oddzielnie jako oddzielna sekcja w wynikach wyścigów. 
+Przypisz biegi do klas, aby móc ich używać. Kiedy wyścig jest zapisany jako bieg do przypisanej klasy, rezultaty będą kalkulowane osobno i pojawią się oddzielnie jako oddzielna sekcja w wynikach wyścigów.
 
 ## Strojenie odbiorników w zależności od okoliczności i środowiska
 Kiedy timer jest uruchomiony w miejscu wyścigu, ustaw [parametry odbiorników i filtrowania](Tuning%20Parameters.md), żeby najlepiej pasowały do wybranego typu wyścigów. Opcjonalnie, stwórz profil dla danej lokacji, żeby później móc go łatwo wczytać.
 
 ## Przykład
 
-8 Pilotów zbiera się w pomieszczeniu, żeby ścigać się micro-quadami. Format wyścigu to pięć rund kwalifikacyjnych, rozstrzyganych poprzez dodanie całkowitej ilości okrążeń czterech najlepszych pilotów do pojedynczego wyścigu finałowego. Przed wydarzeniem, organizator dodaje wszystkich pilotów w panelu Piloci. Dwie klasy są stworzone, "Kwalifikacje" i "Finał" i obie klasy są wpisane w format "Whoop Sprint". Dwa biegi są stworzone, po czterech pilotów w każdym i oba biegi są przypisane do klasy "Kwalifikacje". 
+8 Pilotów zbiera się w pomieszczeniu, żeby ścigać się micro-quadami. Format wyścigu to pięć rund kwalifikacyjnych, rozstrzyganych poprzez dodanie całkowitej ilości okrążeń czterech najlepszych pilotów do pojedynczego wyścigu finałowego. Przed wydarzeniem, organizator dodaje wszystkich pilotów w panelu Piloci. Dwie klasy są stworzone, "Kwalifikacje" i "Finał" i obie klasy są wpisane w format "Whoop Sprint". Dwa biegi są stworzone, po czterech pilotów w każdym i oba biegi są przypisane do klasy "Kwalifikacje".
 
 W dzień wydarzenie, organizator wybiera profil "Wewnątrz", żeby ustawić żądane częstotliwości i filtrowanie i upewnić się, że odbiorniki są zestrojone poprawnie. Ze strony Wyścig, każdy bieg jest przeprowadzony pięć razy. Timer organizuje te wyścigi w rundy 1 do 5 na stronie wyników kiedy wyścigi są przeprowadzane.
 

@@ -1,4 +1,4 @@
-﻿# Rozwój
+# Rozwój
 
 Ten dokument jest przede wszystkim przeznaczony dla developerów.
 Jeśli chcesz mieć wkład w RotorHazard otwierając "pull request" dla poprawy błędów albo dla nowych funkcji, przeczytaj proszę następujący tekst zanim zaczniesz. To pomoże Ci wnieść wkład w sposób, który znacząco zwiększy szansę na jego akceptację.
