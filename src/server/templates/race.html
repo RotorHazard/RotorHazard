@@ -92,12 +92,11 @@
 			}
 
 			// update server info
-			var a = 0;
+			var a = Infinity;
 			for (var i in rotorhazard.pi_time_diff_samples) {
-				a = Math.max(a, rotorhazard.pi_time_diff_samples[i].response);
+				a = Math.min(a, rotorhazard.pi_time_diff_samples[i].response);
 			}
 			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
-
 		});
 
 		socket.on('all_languages', function (msg) {

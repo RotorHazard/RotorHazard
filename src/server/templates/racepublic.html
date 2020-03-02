@@ -39,6 +39,8 @@
 			'team_racing_stat_if_enb'
 		]});
 
+		$('#about>.popup-content').append('<p id="server-lag">Sync quality: [calculating]</p>');
+
 		socket.on('pi_time', function (msg) {
 			var response_time = window.performance.now();
 			var server_delay = response_time - rotorhazard.pi_time_request;
@@ -82,6 +84,13 @@
 					socket.emit('get_pi_time');
 				}, (Math.random() * 500) + 250); // 0.25 to 0.75s delay
 			}
+
+			// update server info
+			var a = Infinity;
+			for (var i in rotorhazard.pi_time_diff_samples) {
+				a = Math.min(a, rotorhazard.pi_time_diff_samples[i].response);
+			}
+			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
 		});
 
 		socket.on('all_languages', function (msg) {
