@@ -70,7 +70,7 @@
 			var diff_max = rotorhazard.pi_time_diff_samples[0].differential + rotorhazard.pi_time_diff_samples[0].response
 
 			rotorhazard.pi_time_diff_samples = rotorhazard.pi_time_diff_samples.filter(function(value, index, array) {
-				return value.differential > diff_min && value.differential < diff_max;
+				return value.differential >= diff_min && value.differential <= diff_max;
 			});
 
 			// get filtered value
