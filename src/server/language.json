@@ -1321,7 +1321,7 @@
 			"Commit Changes": "Zatwierdź zmiany",
 			"Confirm": "Potwierdź",
 			"Copy of %s": "Kopia %s",
-			"Copy server/config-dist.json to server/config.json and then update settings for your server port number, admin username/password, and LED configuration.": "Skopiuj server/config-dist.json do server/config.json i następnie zaktualizuj ustawienia dla portu Twojego serwera oraz nazwę użytkownika, hasło i konfigurację LED.",
+			"Copy <em>server/config-dist.json</em> to <em>server/config.json</em> and then update settings for your server port number, admin username/password, and LED configuration.": "Skopiuj <em>server/config-dist.json</em> do <em>server/config.json</em> i następnie zaktualizuj ustawienia dla portu Twojego serwera oraz nazwę użytkownika, hasło i konfigurację LED.",
 			"Core temperature": "Temperatura Rdzenia",
 			"Count Down": "Odliczanie w dół",
 			"Count Up": "Odliczanie w górę",
