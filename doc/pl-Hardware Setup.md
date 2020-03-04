@@ -84,6 +84,6 @@ Wiele timerów RotorHazard może być połączonych razem (np. dla pomiaru międ
 -----------------------------
 
 Zobacz Również:<br/>
-[doc/USB Nodes.md](pl-USB%20Nodes.md)<br/>
+[doc/USB Nodes.md](USB%20Nodes.md)<br/>
 [doc/Software Setup.md](Software%20Setup.md)<br/>
 [doc/User Guide.md](User%20Guide.md)

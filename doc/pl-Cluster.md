@@ -1,4 +1,4 @@
-# Grupa
+﻿# Grupa
 
 Dodatkowe timery RotorHazard mogą być podłączone jako moduły "slave", porozumiewające się za pomocą wbudowanych interfejsów sieciowych (np. WiFi). Domyślny tryb to  „timer” (dla mierzenia międzyczasów), który pozwala wielu timerom być umieszczonym wzdłuż toru, żeby podawać międzyczasy. Tryb "lustrzany" (mirror) również jest wspierany. W trybie tym moduł "slave" dokładnie odwzorowuje to co robi moduł główny (np. może być ustawiony jako "tylko-LED i pokazywać animacje LED-owe modułu głównego).
 
@@ -89,4 +89,4 @@ iface wlan0 inet static
 	broadcast 10.2.2.255
 	post-up systemctl restart hostapd
 ```
-żeby dhcp współpracowało poprawnie z hot-spotem.
+żeby DHCP współpracowało poprawnie z hot-spotem.
