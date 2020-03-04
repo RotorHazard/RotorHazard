@@ -3,7 +3,7 @@
 ## Wstępna Konfiguracja
 
 ###  Ustawienia Sprzętu i Oprogramowania
-Follow the instructions here if not done already:
+Postępuj zgodnie z instrukcja podanymi poniżej, jeśli jeszcze tego nie zrobiłeś:
 [doc/Hardware Setup.md](Hardware%20Setup.md)
 [doc/Software Setup.md](Software%20Setup.md)
 

@@ -89,4 +89,4 @@ iface wlan0 inet static
 	broadcast 10.2.2.255
 	post-up systemctl restart hostapd
 ```
-żeby dhcp współpracowało poprawnie z hot-spotem.
+żeby dhcpcd współpracowało poprawnie z hot-spotem.
