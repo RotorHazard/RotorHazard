@@ -1168,6 +1168,7 @@ def on_load_data(data):
             emit_round_data(nobroadcast=True)
         elif load_type == 'class_round_data':
             specific_class = data['specific_class']
+            emit_specific_class_round_data(nobroadcast=True,specific_class=specific_class)
         elif load_type == 'race_format':
             emit_race_format(nobroadcast=True)
         elif load_type == 'node_tuning':
