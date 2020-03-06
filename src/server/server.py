@@ -127,13 +127,13 @@ try:
     if 'SERIAL_PORTS' in ExternalConfig:
         Config['SERIAL_PORTS'].extend(ExternalConfig['SERIAL_PORTS'])
     Config['GENERAL']['configFile'] = 1
-    print 'Configuration file imported'
+    print ("Configuration file imported")
 except IOError:
     Config['GENERAL']['configFile'] = 0
-    print 'No configuration file found, using defaults'
+    print ("No configuration file found, using defaults")
 except ValueError as ex:
     Config['GENERAL']['configFile'] = -1
-    print 'Configuration file invalid, using defaults; error is: ' + str(ex)
+    print ("Configuration file invalid, using defaults; error is: " + str(ex))
 
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENERAL']['CORS_ALLOWED_HOSTS'])
@@ -145,7 +145,7 @@ try:
     if len(INTERFACE.nodes) <= 0:
         raise RuntimeError('No nodes found')
 except (ImportError, RuntimeError):
-    print 'Unable to initialize nodes via ' + interface_type + 'Interface'
+    print ("Unable to initialize nodes via " + interface_type + "Interface")
     interfaceModule = importlib.import_module('MockInterface')
     INTERFACE = interfaceModule.get_hardware_interface(config=Config)
 RACE = get_race_state() # For storing race management variables
@@ -157,7 +157,7 @@ def diff_milliseconds(t2, t1):
 
 EPOCH_START = datetime(1970, 1, 1)
 PROGRAM_START_TIMESTAMP = diff_milliseconds(datetime.now(), EPOCH_START)
-print 'Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP)
+print ("Program started at {0:13f}".format(PROGRAM_START_TIMESTAMP))
 PROGRAM_START = monotonic()
 PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
 
@@ -225,15 +225,15 @@ class Slave:
     def reconnect(self):
         if self.lastContact == -1:
             startConnectTime = monotonic()
-            print "Slave {0}: connecting to {1}...".format(self.id+1, self.address)
+            print ("Slave {0}: connecting to {1}...".format(self.id+1, self.address))
             while monotonic() < startConnectTime + self.info['timeout']:
                 try:
                     self.sio.connect(self.address)
-                    print "Slave {0}: connected to {1}".format(self.id+1, self.address)
+                    print ("Slave {0}: connected to {1}".format(self.id+1, self.address))
                     return True
                 except socketio.exceptions.ConnectionError:
                     gevent.sleep(0.1)
-            print "Slave {0}: connection to {1} failed!".format(self.id+1, self.address)
+            print ("Slave {0}: connection to {1} failed!".format(self.id+1, self.address))
             return False
 
     def emit(self, event, data = None):
@@ -284,7 +284,7 @@ class Slave:
                 split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
                 server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
                     .format(node_index+1, current_lap_id+1, time_format(split_time), \
-                    ('{0:.2f}'.format(split_speed) if split_speed <> None else 'None')))
+                    ('{0:.2f}'.format(split_speed) if split_speed != None else 'None')))
 
                 DB.session.add(LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=current_lap_id, split_id=split_id, \
                     split_time_stamp=split_ts, split_time=split_time, split_time_formatted=time_format(split_time), \
@@ -329,7 +329,7 @@ for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
     if 'mode' in slave_info and slave_info['mode'] == Slave.MIRROR_MODE:
         hasMirrors = True
     elif hasMirrors:
-        print '** Mirror slaves must be last - ignoring remaining slave config **'
+        print ("** Mirror slaves must be last - ignoring remaining slave config **")
         break
     slave = Slave(index, slave_info)
     CLUSTER.addSlave(slave)
@@ -343,11 +343,11 @@ Languages = {}
 try:
     with open(LANGUAGE_FILE_NAME, 'r') as f:
         Languages = json.load(f)
-    print 'Language file imported'
+    print ("Language file imported")
 except IOError:
-    print 'No language file found, using defaults'
+    print ("No language file found, using defaults")
 except ValueError:
-    print 'Language file invalid, using defaults'
+    print ("Language file invalid, using defaults")
 
 def __(text, domain=''):
     # return translated string
@@ -2613,7 +2613,7 @@ def get_splits(node, lap_id, lapCompleted):
                 'split_id': slave_index,
                 'split_raw': split.split_time,
                 'split_time': split.split_time_formatted,
-                'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed <> None else '-'
+                'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed != None else '-'
             }
         elif lapCompleted:
             split_payload = {
@@ -4043,12 +4043,12 @@ def node_crossing_callback(node):
 
 def server_log(message):
     '''Messages emitted from the server script.'''
-    print message
+    print(message)
     SOCKET_IO.emit('hardware_log', message)
 
 def hardware_log_callback(message):
     '''Message emitted from the interface class.'''
-    print message
+    print(message)
     SOCKET_IO.emit('hardware_log', message)
 
 def default_frequencies():
@@ -4439,9 +4439,9 @@ INTERFACE.hardware_log_callback = hardware_log_callback
 # Save number of nodes found
 RACE.num_nodes = len(INTERFACE.nodes)
 if RACE.num_nodes == 0:
-    print '*** WARNING: NO RECEIVER NODES FOUND ***'
+    print ("*** WARNING: NO RECEIVER NODES FOUND ***")
 else:
-    print 'Number of nodes found: {0}'.format(RACE.num_nodes)
+    print ("Number of nodes found: {0}".format(RACE.num_nodes))
 
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
@@ -4547,9 +4547,9 @@ if Config['LED']['LED_COUNT'] > 0:
             strip = ledModule.get_pixel_interface(config=Config['LED'], brightness=led_brightness)
         except ImportError:
             ledModule = None
-            print 'LED: disabled (no modules available)'
+            print ("LED: disabled (no modules available)")
 else:
-    print 'LED: disabled (configured LED_COUNT is <= 0)'
+    print ("LED: disabled (configured LED_COUNT is <= 0)")
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
@@ -4560,7 +4560,7 @@ if strip:
             lib = importlib.import_module(handlerFile)
             lib.registerEffects(led_manager)
         except ImportError:
-            print 'Handler {0} not imported (may require additional dependencies)'.format(handlerFile)
+            print ("Handler {0} not imported (may require additional dependencies)".format(handlerFile))
     init_LED_effects()
 else:
     led_manager = NoLEDManager()
@@ -4571,16 +4571,16 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
 
     APP.config['SECRET_KEY'] = getOption("secret_key")
 
-    print "Running http server at port " + str(port_val)
+    print("Running http server at port " + str(port_val))
 
     led_manager.event(LEDEvent.STARTUP) # show startup indicator on LEDs
     try:
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
     except KeyboardInterrupt:
-        print "Server terminated by keyboard interrupt"
+        print("Server terminated by keyboard interrupt")
     except Exception as ex:
-        print "Server exception:  " + str(ex)
+        print("Server exception:  " + str(ex))
     led_manager.eventDirect(LEDEvent.SHUTDOWN)  # server is shutting down, so shut off LEDs
 
 # Start HTTP server
