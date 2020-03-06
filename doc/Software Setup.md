@@ -21,7 +21,7 @@ sudo apt-get update && sudo apt-get upgrade
 
 Install Python and the Python drivers for the GPIO.
 ```
-sudo apt-get install python-dev libffi-dev python-smbus build-essential python-pip git scons swig python-rpi.gpio
+sudo apt install python-dev libffi-dev python-smbus build-essential python-pip git scons swig python-rpi.gpio
 ```
 
 Install the function interface into Python
