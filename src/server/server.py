@@ -1,9 +1,9 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "2.2.0 (dev 0)" # Public release version code
-SERVER_API = 26 # Server API version
+SERVER_API = 27 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 22 # Most recent node API
-JSON_API = 2 # JSON API version
+JSON_API = 3 # JSON API version
 
 import gevent
 import gevent.monkey
@@ -250,7 +250,7 @@ class Slave:
     def on_pass_record(self, data):
         self.lastContact = monotonic()
         node_index = data['node']
-        pilot_id = Heat.query.filter_by( \
+        pilot_id = HeatNode.query.filter_by( \
             heat_id=RACE.current_heat, node_index=node_index).one_or_none().pilot_id
 
         if pilot_id != PILOT_ID_NONE:
@@ -460,18 +460,25 @@ class Pilot(DB.Model):
 
 class Heat(DB.Model):
     __tablename__ = 'heat'
-    __table_args__ = (
-        DB.UniqueConstraint('heat_id', 'node_index'),
-    )
     id = DB.Column(DB.Integer, primary_key=True)
-    heat_id = DB.Column(DB.Integer, nullable=False)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
     note = DB.Column(DB.String(80), nullable=True)
     class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
 
     def __repr__(self):
-        return '<Heat %r>' % self.heat_id
+        return '<Heat %r>' % self.id
+
+class HeatNode(DB.Model):
+    __tablename__ = 'heat_node'
+    __table_args__ = (
+        DB.UniqueConstraint('heat_id', 'node_index'),
+    )
+    id = DB.Column(DB.Integer, primary_key=True)
+    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
+    node_index = DB.Column(DB.Integer, nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+
+    def __repr__(self):
+        return '<HeatNode %r>' % self._id
 
 class RaceClass(DB.Model):
     __tablename__ = 'race_class'
@@ -526,7 +533,7 @@ class SavedRaceMeta(DB.Model):
     )
     id = DB.Column(DB.Integer, primary_key=True)
     round_id = DB.Column(DB.Integer, nullable=False)
-    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.heat_id"), nullable=False)
+    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
     class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
     format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
     start_time = DB.Column(DB.Integer, nullable=False) # internal monotonic time
@@ -821,6 +828,7 @@ def database():
     return render_template('database.html', serverInfo=serverInfo, getOption=getOption, __=__,
         pilots=Pilot,
         heats=Heat,
+        heatnodes=HeatNode,
         race_class=RaceClass,
         currentlaps=CurrentLap,
         savedraceMeta=SavedRaceMeta,
@@ -901,50 +909,57 @@ def api_pilot(pilot_id):
 @APP.route('/api/heat/all')
 def api_heat_all():
     all_heats = {}
-    for heat in Heat.query.with_entities(Heat.heat_id).distinct():
-        heatdata = Heat.query.filter_by(heat_id=heat.heat_id, node_index=0).first()
-        pilots = []
-        for node in range(RACE.num_nodes):
-            pilot_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=node).first().pilot_id
-            pilots.append(pilot_id)
-        heat_id = heatdata.heat_id
-        note = heatdata.note
-        race_class = heatdata.class_id
-        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.heat_id).first()
+    for heat in Heat.query.all():
+        heat_id = heat.id
+        note = heat.note
+        race_class = heat.class_id
+
+        heatnodes = HeatNode.query.filter_by(heat_id=heat.id).all()
+        pilots = {}
+        for pilot in heatnodes:
+            pilots[pilot.node_index]= pilot.pilot_id
+
+        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
         if has_race:
             locked = True
         else:
             locked = False
 
-        all_heats[heat_id] = {'pilots': pilots,
+        all_heats[heat_id] = {
             'note': note,
             'heat_id': heat_id,
             'class_id': race_class,
-            'locked': locked}
+            'nodes_pilots': pilots,
+            'locked': locked
+        }
 
     return json.dumps({"heats": all_heats}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/heat/<int:heat_id>')
 def api_heat(heat_id):
-    heatdata = Heat.query.filter_by(heat_id=heat_id, node_index=0).first()
-    if heatdata:
-        pilots = []
-        for node in range(RACE.num_nodes):
-            pilot_id = Heat.query.filter_by(heat_id=heat_id, node_index=node).first().pilot_id
-            pilots.append(pilot_id)
-        note = heatdata.note
-        race_class = heatdata.class_id
-        has_race = SavedRaceMeta.query.filter_by(heat_id=heat_id).first()
+    heat = Heat.query.get(heat_id)
+    if heat:
+        note = heat.note
+        race_class = heat.class_id
+
+        heatnodes = HeatNode.query.filter_by(heat_id=heat.id).all()
+        pilots = {}
+        for pilot in heatnodes:
+            pilots[pilot.node_index]= pilot.pilot_id
+
+        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
         if has_race:
             locked = True
         else:
             locked = False
 
-        heat = {'pilots': pilots,
-          'note': note,
-          'heat_id': heat_id,
-          'class_id': race_class,
-          'locked': locked}
+        heat = {
+            'note': note,
+            'heat_id': heat_id,
+            'class_id': race_class,
+            'nodes_pilots': pilots,
+            'locked': locked
+        }
     else:
         heat = None
 
@@ -1409,30 +1424,58 @@ def on_set_scan(data):
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
     '''Adds the next available heat number to the database.'''
-    max_heat_id = DB.session.query(DB.func.max(Heat.heat_id)).scalar()
+    new_heat = Heat(class_id=CLASS_ID_NONE)
+    DB.session.add(new_heat)
+    DB.session.flush()
+    DB.session.refresh(new_heat)
+
     for node in range(RACE.num_nodes): # Add next heat with empty pilots
-        DB.session.add(Heat(heat_id=max_heat_id+1, node_index=node, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE))
+        DB.session.add(HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=PILOT_ID_NONE))
+
     DB.session.commit()
-    server_log('Heat added: Heat {0}'.format(max_heat_id+1))
-    emit_heat_data() # Settings page, new pilot position in heats
+    server_log('Heat added: Heat {0}'.format(new_heat.id))
+    emit_heat_data()
 
 @SOCKET_IO.on('alter_heat')
 def on_alter_heat(data):
     '''Update heat.'''
-    heat = data['heat']
-    node_index = data['node'] if 'node' in data else 0
-    db_update = Heat.query.filter_by(heat_id=heat, node_index=node_index).one()
-    if 'pilot' in data:
-        db_update.pilot_id = data['pilot']
+    heat_id = data['heat']
+    heat = Heat.query.get(heat_id)
+
     if 'note' in data:
         global EVENT_RESULTS_CACHE_VALID
         EVENT_RESULTS_CACHE_VALID = False
-        db_update.note = data['note']
+        heat.note = data['note']
     if 'class' in data:
-        db_update.class_id = data['class']
+        heat.class_id = data['class']
+    if 'pilot' in data:
+        node_index = data['node']
+        heatnode = HeatNode.query.filter_by(heat_id=heat.id, node_index=node_index).one()
+        heatnode.pilot_id = data['pilot']
+
     DB.session.commit()
-    server_log('Heat {0} Node {1} altered to {2}'.format(heat, node_index+1, data))
-    emit_heat_data(noself=True) # Settings page, new pilot position in heats
+    server_log('Heat {0} altered with {1}'.format(heat_id, data))
+    emit_heat_data(noself=True)
+
+@SOCKET_IO.on('delete_heat')
+def on_alter_heat(data):
+    '''Delete heat.'''
+    if (DB.session.query(Heat).count() > 1): # keep one profile
+        heat_id = data['heat']
+        heat = Heat.query.get(heat_id)
+        heatnodes = HeatNode.query.filter_by(heat_id=heat.id, node_index=node_index).all()
+        DB.session.delete(heat)
+        for heatnode in heatnodes:
+            DB.session.delete(heatnode)
+        DB.session.commit()
+
+        if RACE.current_heat == heat:
+            RACE.current_heat == Heat.query.first()
+
+        server_log('Heat {0} deleted'.format(heat))
+        emit_heat_data(noself=True)
+    else:
+        server_log('Refusing to delete only heat')
 
 @SOCKET_IO.on('add_race_class')
 def on_add_race_class():
@@ -1541,6 +1584,8 @@ def on_delete_profile():
         first_profile_id = Profiles.query.first().id
         setOption("currentProfile", first_profile_id)
         on_set_profile(data={ 'profile': first_profile_id })
+    else:
+        server_log('Refusing to delete only profile')
 
 @SOCKET_IO.on('alter_profile')
 def on_alter_profile(data):
@@ -1732,6 +1777,8 @@ def on_delete_race_format():
             first_raceFormat = RaceFormat.query.first()
             setCurrentRaceFormat(first_raceFormat)
             emit_race_format()
+        else:
+            server_log('Refusing to delete only format')
     else:
         emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
         server_log("Format change prevented by active race")
@@ -1946,8 +1993,8 @@ def findBestValues(node, node_index):
     ''' Search race history for best tuning values '''
 
     # get commonly used values
-    heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).one()
-    pilot = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
+    heat = Heat.query.get(RACE.current_heat)
+    pilot = HeatNode.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
     current_class = heat.class_id
 
     # test for disabled node
@@ -1959,7 +2006,7 @@ def findBestValues(node, node_index):
         }
 
     # test for same heat, same node
-    race_query = SavedRaceMeta.query.filter_by(heat_id=heat.heat_id).order_by(-SavedRaceMeta.id).first()
+    race_query = SavedRaceMeta.query.filter_by(heat_id=heat.id).order_by(-SavedRaceMeta.id).first()
     if race_query:
         pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
         if pilotrace_query:
@@ -2095,7 +2142,7 @@ def on_save_laps():
     global EVENT_RESULTS_CACHE_VALID
     EVENT_RESULTS_CACHE_VALID = False
     race_format = getCurrentRaceFormat()
-    heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).one()
+    heat = Heat.query.get(RACE.current_heat)
     # Get the last saved round for the current heat
     max_round = DB.session.query(DB.func.max(SavedRaceMeta.round_id)) \
             .filter_by(heat_id=RACE.current_heat).scalar()
@@ -2119,7 +2166,8 @@ def on_save_laps():
 
     for node_index in range(RACE.num_nodes):
         if profile_freqs["f"][node_index] != FREQUENCY_ID_NONE:
-            pilot_id = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
+            pilot_id = HeatNode.query.filter_by( \
+                heat_id=RACE.current_heat, node_index=node_index).one().pilot_id
 
             if pilot_id != PILOT_ID_NONE:
                 new_pilotrace = SavedPilotRace( \
@@ -2233,12 +2281,17 @@ def clear_laps():
 
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
+    heatnodes = HeatNode.query.filter_by( \
+        heat_id=RACE.current_heat, node_index=node_index).all()
+
     for node in INTERFACE.nodes:
+        node.current_pilot_id = PILOT_ID_NONE
         if node.frequency and node.frequency > 0:
-            node.current_pilot_id = Heat.query.filter_by( \
-                    heat_id=RACE.current_heat, node_index=node.index).one().pilot_id
-        else:
-            node.current_pilot_id = PILOT_ID_NONE
+            for heatnode in heatnodes:
+                if heatnode.node_index == node_index:
+                    node.current_pilot_id = heatnode.pilot_id
+                    break
+
         node.first_cross_flag = False
         node.show_crossing_flag = False
 
@@ -2630,7 +2683,7 @@ def emit_race_list(**params):
     '''Emits race listing'''
     heats = {}
     for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
-        heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
+        heatnote = Heat.query.get(heat.heat_id).note
 
         rounds = {}
         for round in SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRaceMeta.round_id):
@@ -2680,9 +2733,9 @@ def emit_race_list(**params):
 
     '''
     heats_by_class = {}
-    heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
+    heats_by_class[CLASS_ID_NONE] = [heat.id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE).all()]
     for race_class in RaceClass.query.all():
-        heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
+        heats_by_class[race_class.id] = [heat.id for heat in Heat.query.filter_by(class_id=race_class.id).all()]
 
     current_classes = {}
     for race_class in RaceClass.query.all():
@@ -2733,7 +2786,7 @@ def emit_round_data_thread(params, sid):
 
             heats = {}
             for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
-                heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
+                heatnote = Heat.query.get(heat.heat_id).note
 
                 rounds = []
                 for round in SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRaceMeta.round_id):
@@ -2778,9 +2831,9 @@ def emit_round_data_thread(params, sid):
 
             gevent.sleep()
             heats_by_class = {}
-            heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
+            heats_by_class[CLASS_ID_NONE] = [heat.id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE).all()]
             for race_class in RaceClass.query.all():
-                heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
+                heats_by_class[race_class.id] = [heat.id for heat in Heat.query.filter_by(class_id=race_class.id).all()]
 
             gevent.sleep()
             current_classes = {}
@@ -2881,7 +2934,7 @@ def calc_leaderboard(**params):
                     CurrentLap.lap_id != 0, \
                     CurrentLap.deleted != 1)
             max_lap = stat_query.scalar()
-            current_heat = Heat.query.filter_by(heat_id=RACE.current_heat, pilot_id=pilot.id).first()
+            current_heat = HeatNode.query.filter_by(heat_id=RACE.current_heat, pilot_id=pilot.id).first()
             if current_heat and profile_freqs["f"][current_heat.node_index] != FREQUENCY_ID_NONE:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
@@ -3123,15 +3176,17 @@ def emit_leaderboard(**params):
 def emit_heat_data(**params):
     '''Emits heat data.'''
     current_heats = {}
-    for heat in Heat.query.with_entities(Heat.heat_id).distinct():
-        heatdata = Heat.query.filter_by(heat_id=heat.heat_id, node_index=0).one()
+    for heat in Heat.query.all():
+        heat_id = heat.id
+        note = heat.note
+        race_class = heat.class_id
+
+        heatnodes = HeatNode.query.filter_by(heat_id=heat.id).order_by(HeatNode.node_index).all()
         pilots = []
-        for node in range(RACE.num_nodes):
-            pilot_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=node).one().pilot_id
+        for pilot in heatnodes:
             pilots.append(pilot_id)
-        heat_id = heatdata.heat_id
-        note = heatdata.note
-        race_class = heatdata.class_id
+            # pilots[pilot.node_index]= pilot.pilot_id
+
         has_race = SavedRaceMeta.query.filter_by(heat_id=heat.heat_id).first()
         if has_race:
             locked = True
@@ -3244,8 +3299,9 @@ def emit_current_heat(**params):
     '''Emits the current heat.'''
     callsigns = []
                              # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                      filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+        filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
+
     for node_index in range(RACE.num_nodes):
         pilot_id = node_pilot_dict.get(node_index)
         if pilot_id:
@@ -3257,7 +3313,7 @@ def emit_current_heat(**params):
         else:
             callsigns.append(None)
 
-    heat_data = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).one()
+    heat_data = Heat.query.get(RACE.current_heat)
 
     heat_note = heat_data.note
 
@@ -3282,8 +3338,8 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
     pilot_team_dict = {}
     profile_freqs = json.loads(getCurrentProfile().frequencies)
                              # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                      filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+                      filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
     for node in INTERFACE.nodes:
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
@@ -3354,8 +3410,8 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
     win_lap_tstamp = 0
     profile_freqs = json.loads(getCurrentProfile().frequencies)
                              # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                      filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+                      filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
     for node in INTERFACE.nodes:
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
@@ -3388,8 +3444,8 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
     if Race_laps_winner_name is None and pilot_team_dict:
         profile_freqs = None
                                   # dict for current heat with key=node_index, value=pilot_id
-        node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                          filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+        node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+                          filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
         for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
             if node.crossing_flag and node.index != pass_node_index:
                 if not profile_freqs:
@@ -3475,8 +3531,8 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                                 profile_freqs = json.loads(getCurrentProfile().frequencies)
                             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
                                 if not node_pilot_dict:
-                                    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                                              filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+                                    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+                                              filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
                                 pilot_id = node_pilot_dict.get(node.index)
                                 if pilot_id:  # node has pilot assigned to it
                                     team_name = pilot_team_dict[pilot_id]
@@ -3511,8 +3567,8 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         num_max_lap = 0
         profile_freqs = json.loads(getCurrentProfile().frequencies)
                                   # dict for current heat with key=node_index, value=pilot_id
-        node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                          filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+        node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+                          filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
         for node in INTERFACE.nodes:  # load per-pilot data into 'pilots_list'
             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
                 pilot_id = node_pilot_dict.get(node.index)
@@ -3863,7 +3919,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                 lap_timestamp_absolute < RACE_END):
 
             # Get the current pilot id on the node
-            pilot_id = Heat.query.filter_by( \
+            pilot_id = HeatNode.query.filter_by( \
                 heat_id=RACE.current_heat, node_index=node.index).one().pilot_id
 
             # reject passes before race start and with disabled (no-pilot) nodes
@@ -4105,11 +4161,8 @@ def db_reset_pilots():
 def db_reset_heats():
     '''Resets database heats to default.'''
     DB.session.query(Heat).delete()
-    for node in range(RACE.num_nodes):
-        if node == 0:
-            DB.session.add(Heat(heat_id=1, node_index=node, class_id=CLASS_ID_NONE, note='', pilot_id=node+1))
-        else:
-            DB.session.add(Heat(heat_id=1, node_index=node, class_id=CLASS_ID_NONE, pilot_id=node+1))
+    DB.session.query(HeatNode).delete()
+    on_add_heat()
     DB.session.commit()
     RACE.current_heat = 1
     server_log('Database heats reset')
@@ -4319,7 +4372,6 @@ def recover_database():
         raceFormat_query_data = query_table_data(RaceFormat)
         profiles_query_data = query_table_data(Profiles)
         raceClass_query_data = query_table_data(RaceClass)
-        heat_query_data = query_table_data(Heat, Heat.heat_id, 1)
 
         carryoverOpts = [
             "timerName",
@@ -4382,9 +4434,6 @@ def recover_database():
         restore_table(RaceFormat, raceFormat_query_data)
         restore_table(Profiles, profiles_query_data)
         restore_table(RaceClass, raceClass_query_data)
-        if heat_query_data and len(heat_query_data) == RACE.num_nodes:
-            DB.session.query(Heat).delete()
-            restore_table(Heat, heat_query_data, 'node_index')
 
         for opt in carryOver:
             setOption(opt, carryOver[opt])
@@ -4396,11 +4445,11 @@ def recover_database():
     DB.session.commit()
 
 def expand_heats():
-    for heat_ids in Heat.query.with_entities(Heat.heat_id).distinct():
+    for heat_ids in Heat.query.all():
         for node in range(RACE.num_nodes):
-            heat_row = Heat.query.filter_by(heat_id=heat_ids.heat_id, node_index=node)
+            heat_row = HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
             if not heat_row.count():
-                DB.session.add(Heat(heat_id=heat_ids.heat_id, node_index=node, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE))
+                DB.session.add(HeatNode(heat_id=heat_ids.heat_id, node_index=node, pilot_id=PILOT_ID_NONE))
 
     DB.session.commit()
 
@@ -4476,6 +4525,9 @@ if not db_inited_flag:
     elif not Heat.query.count():
         server_log('Heats are empty; resetting database')
         recover_database()
+    elif not HeatNode.query.count():
+        server_log('Heats are empty; resetting database')
+        recover_database()
     elif not Profiles.query.count():
         server_log('Profiles are empty; resetting database')
         recover_database()
@@ -4529,7 +4581,7 @@ on_set_profile({'profile': current_profile}, False)
 
 # Set current heat on startup
 if Heat.query.first():
-    RACE.current_heat = Heat.query.first().heat_id
+    RACE.current_heat = Heat.query.first().id
 
 # Create LED object with appropriate configuration
 strip = None
