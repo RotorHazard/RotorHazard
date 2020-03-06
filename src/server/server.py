@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.2.0 (dev 0)" # Public release version code
+RELEASE_VERSION = "2.1.0 (dev 6)" # Public release version code
 SERVER_API = 26 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 22 # Most recent node API
@@ -127,13 +127,13 @@ try:
     if 'SERIAL_PORTS' in ExternalConfig:
         Config['SERIAL_PORTS'].extend(ExternalConfig['SERIAL_PORTS'])
     Config['GENERAL']['configFile'] = 1
-    print ("Configuration file imported")
+    print 'Configuration file imported'
 except IOError:
     Config['GENERAL']['configFile'] = 0
-    print ("No configuration file found, using defaults")
+    print 'No configuration file found, using defaults'
 except ValueError as ex:
     Config['GENERAL']['configFile'] = -1
-    print ("Configuration file invalid, using defaults; error is: " + str(ex))
+    print 'Configuration file invalid, using defaults; error is: ' + str(ex)
 
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENERAL']['CORS_ALLOWED_HOSTS'])
@@ -145,7 +145,7 @@ try:
     if len(INTERFACE.nodes) <= 0:
         raise RuntimeError('No nodes found')
 except (ImportError, RuntimeError):
-    print ("Unable to initialize nodes via " + interface_type + "Interface")
+    print 'Unable to initialize nodes via ' + interface_type + 'Interface'
     interfaceModule = importlib.import_module('MockInterface')
     INTERFACE = interfaceModule.get_hardware_interface(config=Config)
 RACE = get_race_state() # For storing race management variables
@@ -157,7 +157,7 @@ def diff_milliseconds(t2, t1):
 
 EPOCH_START = datetime(1970, 1, 1)
 PROGRAM_START_TIMESTAMP = diff_milliseconds(datetime.now(), EPOCH_START)
-print ("Program started at {0:13f}".format(PROGRAM_START_TIMESTAMP))
+print 'Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP)
 PROGRAM_START = monotonic()
 PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
 
@@ -225,15 +225,15 @@ class Slave:
     def reconnect(self):
         if self.lastContact == -1:
             startConnectTime = monotonic()
-            print ("Slave {0}: connecting to {1}...".format(self.id+1, self.address))
+            print "Slave {0}: connecting to {1}...".format(self.id+1, self.address)
             while monotonic() < startConnectTime + self.info['timeout']:
                 try:
                     self.sio.connect(self.address)
-                    print ("Slave {0}: connected to {1}".format(self.id+1, self.address))
+                    print "Slave {0}: connected to {1}".format(self.id+1, self.address)
                     return True
                 except socketio.exceptions.ConnectionError:
                     gevent.sleep(0.1)
-            print ("Slave {0}: connection to {1} failed!".format(self.id+1, self.address))
+            print "Slave {0}: connection to {1} failed!".format(self.id+1, self.address)
             return False
 
     def emit(self, event, data = None):
@@ -284,7 +284,7 @@ class Slave:
                 split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
                 server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
                     .format(node_index+1, current_lap_id+1, time_format(split_time), \
-                    ('{0:.2f}'.format(split_speed) if split_speed != None else 'None')))
+                    ('{0:.2f}'.format(split_speed) if split_speed <> None else 'None')))
 
                 DB.session.add(LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=current_lap_id, split_id=split_id, \
                     split_time_stamp=split_ts, split_time=split_time, split_time_formatted=time_format(split_time), \
@@ -329,7 +329,7 @@ for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
     if 'mode' in slave_info and slave_info['mode'] == Slave.MIRROR_MODE:
         hasMirrors = True
     elif hasMirrors:
-        print ("** Mirror slaves must be last - ignoring remaining slave config **")
+        print '** Mirror slaves must be last - ignoring remaining slave config **'
         break
     slave = Slave(index, slave_info)
     CLUSTER.addSlave(slave)
@@ -343,11 +343,11 @@ Languages = {}
 try:
     with open(LANGUAGE_FILE_NAME, 'r') as f:
         Languages = json.load(f)
-    print ("Language file imported")
+    print 'Language file imported'
 except IOError:
-    print ("No language file found, using defaults")
+    print 'No language file found, using defaults'
 except ValueError:
-    print ("Language file invalid, using defaults")
+    print 'Language file invalid, using defaults'
 
 def __(text, domain=''):
     # return translated string
@@ -441,14 +441,8 @@ def buildServerInfo():
 #
 # Database Models
 #
-# pilot 1-N node
-# node 1-N lap
-# lap 1-N splits
-# heat 1-N node
-# round 1-N heat
 
 class Pilot(DB.Model):
-    __tablename__ = 'pilot'
     id = DB.Column(DB.Integer, primary_key=True)
     callsign = DB.Column(DB.String(80), nullable=False)
     team = DB.Column(DB.String(80), nullable=False, default=DEF_TEAM_NAME)
@@ -459,38 +453,29 @@ class Pilot(DB.Model):
         return '<Pilot %r>' % self.id
 
 class Heat(DB.Model):
-    __tablename__ = 'heat'
-    __table_args__ = (
-        DB.UniqueConstraint('heat_id', 'node_index'),
-    )
     id = DB.Column(DB.Integer, primary_key=True)
     heat_id = DB.Column(DB.Integer, nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    pilot_id = DB.Column(DB.Integer, nullable=False)
     note = DB.Column(DB.String(80), nullable=True)
-    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
+    class_id = DB.Column(DB.Integer, nullable=False)
 
     def __repr__(self):
         return '<Heat %r>' % self.heat_id
 
 class RaceClass(DB.Model):
-    __tablename__ = 'race_class'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=True)
     description = DB.Column(DB.String(256), nullable=True)
-    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
+    format_id = DB.Column(DB.Integer, nullable=False)
 
     def __repr__(self):
         return '<RaceClass %r>' % self.id
 
 class CurrentLap(DB.Model):
-    __tablename__ = 'current_lap'
-    __table_args__ = (
-        DB.UniqueConstraint('node_index', 'lap_id'),
-    )
     id = DB.Column(DB.Integer, primary_key=True)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    pilot_id = DB.Column(DB.Integer, nullable=False)
     lap_id = DB.Column(DB.Integer, nullable=False)
     lap_time_stamp = DB.Column(DB.Integer, nullable=False)
     lap_time = DB.Column(DB.Integer, nullable=False)
@@ -502,13 +487,9 @@ class CurrentLap(DB.Model):
         return '<CurrentLap %r>' % self.pilot_id
 
 class LapSplit(DB.Model):
-    __tablename__ = 'lap_split'
-    __table_args__ = (
-        DB.UniqueConstraint('node_index', 'lap_id', 'split_id'),
-    )
     id = DB.Column(DB.Integer, primary_key=True)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    pilot_id = DB.Column(DB.Integer, nullable=False)
     lap_id = DB.Column(DB.Integer, nullable=False)
     split_id = DB.Column(DB.Integer, nullable=False)
     split_time_stamp = DB.Column(DB.Integer, nullable=False)
@@ -520,15 +501,11 @@ class LapSplit(DB.Model):
         return '<LapSplit %r>' % self.pilot_id
 
 class SavedRaceMeta(DB.Model):
-    __tablename__ = 'saved_race_meta'
-    __table_args__ = (
-        DB.UniqueConstraint('round_id', 'heat_id'),
-    )
     id = DB.Column(DB.Integer, primary_key=True)
     round_id = DB.Column(DB.Integer, nullable=False)
-    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.heat_id"), nullable=False)
-    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
-    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
+    heat_id = DB.Column(DB.Integer, nullable=False)
+    class_id = DB.Column(DB.Integer, nullable=False)
+    format_id = DB.Column(DB.Integer, nullable=False)
     start_time = DB.Column(DB.Integer, nullable=False) # internal monotonic time
     start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
 
@@ -536,14 +513,10 @@ class SavedRaceMeta(DB.Model):
         return '<SavedRaceMeta %r>' % self.id
 
 class SavedPilotRace(DB.Model):
-    __tablename__ = 'saved_pilot_race'
-    __table_args__ = (
-        DB.UniqueConstraint('race_id', 'node_index'),
-    )
     id = DB.Column(DB.Integer, primary_key=True)
-    race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
+    race_id = DB.Column(DB.Integer, nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    pilot_id = DB.Column(DB.Integer, nullable=False)
     history_values = DB.Column(DB.String, nullable=True)
     history_times = DB.Column(DB.String, nullable=True)
     penalty_time = DB.Column(DB.Integer, nullable=False)
@@ -555,12 +528,11 @@ class SavedPilotRace(DB.Model):
         return '<SavedPilotRace %r>' % self.id
 
 class SavedRaceLap(DB.Model):
-    __tablename__ = 'saved_race_lap'
     id = DB.Column(DB.Integer, primary_key=True)
-    race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
-    pilotrace_id = DB.Column(DB.Integer, DB.ForeignKey("saved_pilot_race.id"), nullable=False)
+    race_id = DB.Column(DB.Integer, nullable=False)
+    pilotrace_id = DB.Column(DB.Integer, nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    pilot_id = DB.Column(DB.Integer, nullable=False)
     lap_time_stamp = DB.Column(DB.Integer, nullable=False)
     lap_time = DB.Column(DB.Integer, nullable=False)
     lap_time_formatted = DB.Column(DB.String, nullable=False)
@@ -575,7 +547,6 @@ LAP_SOURCE_MANUAL = 1
 LAP_SOURCE_RECALC = 2
 
 class Profiles(DB.Model):
-    __tablename__ = 'profiles'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False)
     description = DB.Column(DB.String(256), nullable=True)
@@ -585,7 +556,6 @@ class Profiles(DB.Model):
     f_ratio = DB.Column(DB.Integer, nullable=True)
 
 class RaceFormat(DB.Model):
-    __tablename__ = 'race_format'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False)
     race_mode = DB.Column(DB.Integer, nullable=False)
@@ -603,7 +573,6 @@ WIN_CONDITION_FASTEST_LAP = 3 # Not yet implemented
 WIN_CONDITION_FASTEST_3_CONSECUTIVE = 4 # Not yet implemented
 
 class GlobalSettings(DB.Model):
-    __tablename__ = 'global_settings'
     id = DB.Column(DB.Integer, primary_key=True)
     option_name = DB.Column(DB.String(40), nullable=False)
     option_value = DB.Column(DB.String(256), nullable=False)
@@ -2613,7 +2582,7 @@ def get_splits(node, lap_id, lapCompleted):
                 'split_id': slave_index,
                 'split_raw': split.split_time,
                 'split_time': split.split_time_formatted,
-                'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed != None else '-'
+                'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed <> None else '-'
             }
         elif lapCompleted:
             split_payload = {
@@ -4043,12 +4012,12 @@ def node_crossing_callback(node):
 
 def server_log(message):
     '''Messages emitted from the server script.'''
-    print(message)
+    print message
     SOCKET_IO.emit('hardware_log', message)
 
 def hardware_log_callback(message):
     '''Message emitted from the interface class.'''
-    print(message)
+    print message
     SOCKET_IO.emit('hardware_log', message)
 
 def default_frequencies():
@@ -4439,9 +4408,9 @@ INTERFACE.hardware_log_callback = hardware_log_callback
 # Save number of nodes found
 RACE.num_nodes = len(INTERFACE.nodes)
 if RACE.num_nodes == 0:
-    print ("*** WARNING: NO RECEIVER NODES FOUND ***")
+    print '*** WARNING: NO RECEIVER NODES FOUND ***'
 else:
-    print ("Number of nodes found: {0}".format(RACE.num_nodes))
+    print 'Number of nodes found: {0}'.format(RACE.num_nodes)
 
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
@@ -4547,9 +4516,9 @@ if Config['LED']['LED_COUNT'] > 0:
             strip = ledModule.get_pixel_interface(config=Config['LED'], brightness=led_brightness)
         except ImportError:
             ledModule = None
-            print ("LED: disabled (no modules available)")
+            print 'LED: disabled (no modules available)'
 else:
-    print ("LED: disabled (configured LED_COUNT is <= 0)")
+    print 'LED: disabled (configured LED_COUNT is <= 0)'
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
@@ -4560,7 +4529,7 @@ if strip:
             lib = importlib.import_module(handlerFile)
             lib.registerEffects(led_manager)
         except ImportError:
-            print ("Handler {0} not imported (may require additional dependencies)".format(handlerFile))
+            print 'Handler {0} not imported (may require additional dependencies)'.format(handlerFile)
     init_LED_effects()
 else:
     led_manager = NoLEDManager()
@@ -4571,16 +4540,16 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
 
     APP.config['SECRET_KEY'] = getOption("secret_key")
 
-    print("Running http server at port " + str(port_val))
+    print "Running http server at port " + str(port_val)
 
     led_manager.event(LEDEvent.STARTUP) # show startup indicator on LEDs
     try:
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
     except KeyboardInterrupt:
-        print("Server terminated by keyboard interrupt")
+        print "Server terminated by keyboard interrupt"
     except Exception as ex:
-        print("Server exception:  " + str(ex))
+        print "Server exception:  " + str(ex)
     led_manager.eventDirect(LEDEvent.SHUTDOWN)  # server is shutting down, so shut off LEDs
 
 # Start HTTP server

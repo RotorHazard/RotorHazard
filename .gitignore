@@ -2,4 +2,3 @@
 *.pyc
 config.json
 db_bkp
-src/server/server.py
