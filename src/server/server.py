@@ -49,10 +49,6 @@ HEAT_ID_NONE = 0  # indicator value for practice heat
 CLASS_ID_NONE = 0  # indicator value for unclassified heat
 FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
-EVENT_RESULTS_CACHE = {} # Cache of results page leaderboards
-EVENT_RESULTS_CACHE_BUILDING = False # Whether results are being calculated
-EVENT_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
-
 LAST_RACE_CACHE = {} # Cache of current race after clearing
 LAST_RACE_LAPS_CACHE = {} # Cache of current race after clearing
 LAST_RACE_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
@@ -1170,6 +1166,8 @@ def on_load_data(data):
             emit_pilot_data(nobroadcast=True)
         elif load_type == 'round_data':
             emit_round_data(nobroadcast=True)
+        elif load_type == 'class_round_data':
+            specific_class = data['specific_class']
         elif load_type == 'race_format':
             emit_race_format(nobroadcast=True)
         elif load_type == 'node_tuning':
@@ -1404,8 +1402,10 @@ def on_alter_heat(data):
     if 'pilot' in data:
         db_update.pilot_id = data['pilot']
     if 'note' in data:
-        global EVENT_RESULTS_CACHE_VALID
-        EVENT_RESULTS_CACHE_VALID = False
+        global GENERAL_RESULTS_CACHE
+        cachekey='event_results'
+        if cachekey in GENERAL_RESULTS_CACHE.keys():
+            GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
         db_update.note = data['note']
     if 'class' in data:
         db_update.class_id = data['class']
@@ -1521,8 +1521,10 @@ def on_alter_race_class(data):
     race_class = data['class_id']
     db_update = RaceClass.query.get(race_class)
     if 'class_name' in data:
-        global EVENT_RESULTS_CACHE_VALID
-        EVENT_RESULTS_CACHE_VALID = False
+        global GENERAL_RESULTS_CACHE 
+        cachekey='event_results'
+        if cachekey in GENERAL_RESULTS_CACHE.keys():
+            GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
         db_update.name = data['class_name']
     if 'class_format' in data:
         db_update.format_id = data['class_format']
@@ -1561,18 +1563,22 @@ def on_add_pilot():
 @SOCKET_IO.on('alter_pilot')
 def on_alter_pilot(data):
     '''Update pilot.'''
-    global EVENT_RESULTS_CACHE_VALID
+    global GENERAL_RESULTS_CACHE 
     pilot_id = data['pilot_id']
     db_update = Pilot.query.get(pilot_id)
     if 'callsign' in data:
-        EVENT_RESULTS_CACHE_VALID = False
+        cachekey='event_results'
+        if cachekey in GENERAL_RESULTS_CACHE.keys():
+            GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
         db_update.callsign = data['callsign']
     if 'team_name' in data:
         db_update.team = data['team_name']
     if 'phonetic' in data:
         db_update.phonetic = data['phonetic']
     if 'name' in data:
-        EVENT_RESULTS_CACHE_VALID = False
+        cachekey='event_results'
+        if cachekey in GENERAL_RESULTS_CACHE.keys():
+            GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
         db_update.name = data['name']
     DB.session.commit()
     server_log('Altered pilot {0} to {1}'.format(pilot_id, data))
@@ -1736,8 +1742,10 @@ def on_delete_last_heat():
 @SOCKET_IO.on('reset_database')
 def on_reset_database(data):
     '''Reset database.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
+    global GENERAL_RESULTS_CACHE
+    cachekey='event_results'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
 
     reset_type = data['reset_type']
     if reset_type == 'races':
@@ -2212,10 +2220,20 @@ def on_stop_race():
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
     '''Save current laps data to the database.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
+    global GENERAL_RESULTS_CACHE
+    cachekey='event_results'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
     race_format = getCurrentRaceFormat()
     heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).one()
+
+    cachekey='class'+str(heat.class_id)
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
+
+    cachekey='race_list'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
     # Get the last saved round for the current heat
     max_round = DB.session.query(DB.func.max(SavedRaceMeta.round_id)) \
             .filter_by(heat_id=RACE.current_heat).scalar()
@@ -2276,8 +2294,11 @@ def on_save_laps():
 
 @SOCKET_IO.on('resave_laps')
 def on_resave_laps(data):
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
+
+    global GENERAL_RESULTS_CACHE
+    cachekey='event_results'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
 
     heat_id = data['heat_id']
     round_id = data['round_id']
@@ -2290,6 +2311,15 @@ def on_resave_laps(data):
     laps = data['laps']
     enter_at = data['enter_at']
     exit_at = data['exit_at']
+
+    heat = Heat.query.filter_by(heat_id=heat_id, node_index=0).first()
+    cachekey='class'+str(heat.class_id)
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
+
+    cachekey='race_list'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 0
 
     Pilotrace = SavedPilotRace.query.filter_by(id=pilotrace_id).one()
     Pilotrace.enter_at = enter_at
@@ -2748,6 +2778,16 @@ def get_splits(node, lap_id, lapCompleted):
 
 def emit_race_list(**params):
     '''Emits race listing'''
+    # if the report is cached and valid, return that
+    cachekey='race_list'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        if (GENERAL_RESULTS_CACHE[cachekey]['isvalid'] == 1):
+            if ('nobroadcast' in params):
+                emit('race_list', GENERAL_RESULTS_CACHE[cachekey]['content'])
+            else:
+                SOCKET_IO.emit('race_list', GENERAL_RESULTS_CACHE[cachekey]['content'])
+            return
+   
     heats = {}
     for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
         heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
@@ -2818,6 +2858,17 @@ def emit_race_list(**params):
         # 'heats_by_class': heats_by_class,
         # 'classes': current_classes,
     }
+    cachekey='race_list'
+    if cachekey in GENERAL_RESULTS_CACHE.keys():
+        GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 1
+        GENERAL_RESULTS_CACHE[cachekey]['content'] = emit_payload
+    else:
+        newReport = {}
+        newReport[cachekey] = {}
+        newReport[cachekey]['isvalid'] = 1
+        newReport[cachekey]['content'] = emit_payload
+        GENERAL_RESULTS_CACHE.update(newReport)
+
 
     if ('nobroadcast' in params):
         emit('race_list', emit_payload)
@@ -2835,21 +2886,27 @@ def emit_round_data(**params):
 def emit_round_data_thread(params, sid):
     with APP.test_request_context():
         '''Emits saved races to rounds page.'''
-        global EVENT_RESULTS_CACHE
-        global EVENT_RESULTS_CACHE_BUILDING
-        global EVENT_RESULTS_CACHE_VALID
 
-        if EVENT_RESULTS_CACHE_VALID: # Output existing calculated results
-            emit_payload = EVENT_RESULTS_CACHE
-
-        elif EVENT_RESULTS_CACHE_BUILDING: # Don't restart calculation if another calculation thread exists
-            while EVENT_RESULTS_CACHE_BUILDING is True: # Pause thread until calculations are completed
+        global GENERAL_RESULTS_CACHE
+        cachekey='event_results'
+        if (cachekey in GENERAL_RESULTS_CACHE.keys()) and  (GENERAL_RESULTS_CACHE[cachekey]['isvalid'] == 1):
+            emit_payload = GENERAL_RESULTS_CACHE[cachekey]['content']
+        elif (cachekey in GENERAL_RESULTS_CACHE.keys()) and  (GENERAL_RESULTS_CACHE[cachekey]['building'] == 1):
+            while (GENERAL_RESULTS_CACHE[cachekey]['building'] == 1): # Pause thread until calculations are completed
                 gevent.sleep(1)
 
-            emit_payload = EVENT_RESULTS_CACHE
+            emit_payload = GENERAL_RESULTS_CACHE[cachekey]['content']
 
         else:
-            EVENT_RESULTS_CACHE_BUILDING = True
+       
+            if cachekey in GENERAL_RESULTS_CACHE.keys():
+                GENERAL_RESULTS_CACHE[cachekey]['building'] = 1
+            else:
+                newReport = {}
+                newReport[cachekey] = {}
+                newReport[cachekey]['building'] = 1
+                GENERAL_RESULTS_CACHE.update(newReport) 
+
 
             heats = {}
             for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
@@ -2920,9 +2977,17 @@ def emit_round_data_thread(params, sid):
                 'event_leaderboard': calc_leaderboard()
             }
 
-            EVENT_RESULTS_CACHE = emit_payload
-            EVENT_RESULTS_CACHE_VALID = True
-            EVENT_RESULTS_CACHE_BUILDING = False
+        cachekey='event_results'
+        if cachekey in GENERAL_RESULTS_CACHE.keys():
+            GENERAL_RESULTS_CACHE[cachekey]['isvalid'] = 1
+            GENERAL_RESULTS_CACHE[cachekey]['content'] = emit_payload
+        else:
+            newReport = {}
+            newReport[cachekey] = {}
+            newReport[cachekey]['isvalid'] = 1
+            newReport[cachekey]['content'] = emit_payload
+            GENERAL_RESULTS_CACHE.update(newReport) 
+        GENERAL_RESULTS_CACHE[cachekey]['building'] = 0
 
         if ('nobroadcast' in params):
             emit('round_data', emit_payload, namespace='/', room=sid)
