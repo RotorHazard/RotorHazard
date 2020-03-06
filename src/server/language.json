@@ -1600,7 +1600,7 @@
 			"EnterAt is very near ExitAt: <strong>Passes may register too frequently</strong>.": "Wartość Wlotu jest bardzo blisko wartości Wylotu: <strong>Przeloty mogą rejestrować się zbyt często</strong>.",
 			"EnterAt is very near NodePeak: <strong>Passes may not register</strong>. <em>Complete a lap pass before adjusting node values.</em>": "Wartość Wlotu jest bardzo blisko wartości NodePik: <strong>Przelot mogą się nie zarejestrowć</strong>. Wykonaj kompletny przelot przed regulacją wartości.",
 			"EnterAt must be greater than ExitAt: <strong>Passes WILL NOT register correctly</strong>.": "Wartość Wlotu musi być większa od wartości Wylotu: <strong>Przelot NIE BĘDZIE rejestrowany prawidłowo</strong>.",
-			"Event Heats and Classes": "Wydarzenia Grupa Wyscigów i Klasy",
+			"Event Heats and Classes": "Event: Biegi i Klasy",
 			"Event": "Wydarzenie",
 			"ExitAt is lower than NodeNadir: <strong>Passes WILL NOT register</strong>.": "Wartość Wylotu jest mniejszy od NodeNiż: <strong>Przelot NIE BĘDZIE rejestrowany</strong>.",
 			"ExitAt is lower than PassNadir: <strong>Passes may not complete</strong>.": "Wartość Wylotu jest mniejszy niż PrzelotNiż: <strong>Przelot może nie zostać ukończony</strong>.",
