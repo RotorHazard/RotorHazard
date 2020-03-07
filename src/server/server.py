@@ -762,8 +762,7 @@ def race():
     return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
         led_enabled=led_manager.isEnabled(),
         num_nodes=RACE.num_nodes,
-        current_heat=RACE.current_heat,
-        heats=Heat, pilots=Pilot,
+        current_heat=RACE.current_heat, pilots=Pilot,
         nodes=nodes)
 
 @APP.route('/current')
@@ -2890,16 +2889,22 @@ def calc_leaderboard(**params):
     else:
         if USE_CLASS:
             race_query = SavedRaceMeta.query.filter_by(class_id=USE_CLASS)
-            current_format = RaceClass.query.get(USE_CLASS).format_id
+            if race_query.count() >= 1:
+                current_format = RaceClass.query.get(USE_CLASS).format_id
+            else:
+                current_format = None
         elif USE_HEAT:
             if USE_ROUND:
                 race_query = SavedRaceMeta.query.filter_by(heat_id=USE_HEAT, round_id=USE_ROUND)
                 current_format = race_query.first().format_id
             else:
                 race_query = SavedRaceMeta.query.filter_by(heat_id=USE_HEAT)
-                heat_class = race_query.first().class_id
-                if heat_class:
-                    current_format = RaceClass.query.get(heat_class).format_id
+                if race_query.count() >= 1:
+                    heat_class = race_query.first().class_id
+                    if heat_class:
+                        current_format = RaceClass.query.get(heat_class).format_id
+                    else:
+                        current_format = None
                 else:
                     current_format = None
         else:

@@ -29,9 +29,6 @@
     <thead>
         <tr>
             <th>{{ __('ID') }}</th>
-            <th>{{ __('Heat ID') }}</th>
-            <th>{{ __('Node Index') }}</th>
-            <th>{{ __('Pilot ID') }}</th>
             <th>{{ __('Note') }}</th>
             <th>{{ __('Class ID') }}</th>
         </tr>
@@ -40,11 +37,30 @@
         {% for heat in heats.query.all() %}
         <tr>
             <td>{{ heat.id }}</td>
-            <td>{{ heat.heat_id }}</td>
-            <td>{{ heat.node_index }}</td>
-            <td>{{ heat.pilot_id }}</td>
             <td>{{ heat.note }}</td>
             <td>{{ heat.class_id }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2>{{ __('Heat Nodes') }}</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>{{ __('ID') }}</th>
+            <th>{{ __('Heat ID') }}</th>
+            <th>{{ __('Node') }}</th>
+            <th>{{ __('Pilot ID') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for heatnode in heatnodes.query.all() %}
+        <tr>
+            <td>{{ heatnode.id }}</td>
+            <td>{{ heatnode.heat_id }}</td>
+            <td>{{ heatnode.node_index }}</td>
+            <td>{{ heatnode.pilot_id }}</td>
         </tr>
         {% endfor %}
     </tbody>
