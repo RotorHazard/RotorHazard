@@ -917,7 +917,7 @@ def api_heat_all():
         heatnodes = HeatNode.query.filter_by(heat_id=heat.id).all()
         pilots = {}
         for pilot in heatnodes:
-            pilots[pilot.node_index]= pilot.pilot_id
+            pilots[pilot.node_index] = pilot.pilot_id
 
         has_race = SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
         if has_race:
@@ -945,7 +945,7 @@ def api_heat(heat_id):
         heatnodes = HeatNode.query.filter_by(heat_id=heat.id).all()
         pilots = {}
         for pilot in heatnodes:
-            pilots[pilot.node_index]= pilot.pilot_id
+            pilots[pilot.node_index] = pilot.pilot_id
 
         has_race = SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
         if has_race:
@@ -2282,13 +2282,13 @@ def clear_laps():
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
     heatnodes = HeatNode.query.filter_by( \
-        heat_id=RACE.current_heat, node_index=node_index).all()
+        heat_id=RACE.current_heat).all()
 
     for node in INTERFACE.nodes:
         node.current_pilot_id = PILOT_ID_NONE
         if node.frequency and node.frequency > 0:
             for heatnode in heatnodes:
-                if heatnode.node_index == node_index:
+                if heatnode.node_index == node.index:
                     node.current_pilot_id = heatnode.pilot_id
                     break
 
@@ -3183,11 +3183,10 @@ def emit_heat_data(**params):
 
         heatnodes = HeatNode.query.filter_by(heat_id=heat.id).order_by(HeatNode.node_index).all()
         pilots = []
-        for pilot in heatnodes:
-            pilots.append(pilot_id)
-            # pilots[pilot.node_index]= pilot.pilot_id
+        for heatnode in heatnodes:
+            pilots.append(heatnode.pilot_id)
 
-        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.heat_id).first()
+        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
         if has_race:
             locked = True
         else:
