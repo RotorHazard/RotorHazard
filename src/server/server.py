@@ -597,9 +597,14 @@ class RaceFormat(DB.Model):
     race_time_sec = DB.Column(DB.Integer, nullable=False)
     start_delay_min = DB.Column(DB.Integer, nullable=False)
     start_delay_max = DB.Column(DB.Integer, nullable=False)
+    staging_tones = DB.Column(DB.Integer, nullable=False)
     number_laps_win = DB.Column(DB.Integer, nullable=False)
     win_condition = DB.Column(DB.Integer, nullable=False)
     team_racing_mode = DB.Column(DB.Boolean, nullable=False)
+
+TONES_NONE = 0
+TONES_ONE = 1
+TONES_ALL = 2
 
 WIN_CONDITION_NONE = 0
 WIN_CONDITION_MOST_LAPS = 1
@@ -675,12 +680,13 @@ def setCurrentRaceFormat(race_format):
         RACE.format = race_format
 
 class RHRaceFormat():
-    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, number_laps_win, win_condition, team_racing_mode):
+    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode):
         self.name = name
         self.race_mode = race_mode
         self.race_time_sec = race_time_sec
         self.start_delay_min = start_delay_min
         self.start_delay_max = start_delay_max
+        self.staging_tones = staging_tones
         self.number_laps_win = number_laps_win
         self.win_condition = win_condition
         self.team_racing_mode = team_racing_mode
@@ -692,6 +698,7 @@ class RHRaceFormat():
                             race_time_sec=race_format.race_time_sec,
                             start_delay_min=race_format.start_delay_min,
                             start_delay_max=race_format.start_delay_max,
+                            staging_tones=race_format.staging_tones,
                             number_laps_win=race_format.number_laps_win,
                             win_condition=race_format.win_condition,
                             team_racing_mode=race_format.team_racing_mode)
@@ -1717,6 +1724,7 @@ def on_add_race_format():
                              race_time_sec=source_format.race_time_sec ,
                              start_delay_min=source_format.start_delay_min,
                              start_delay_max=source_format.start_delay_max,
+                             staging_tones=source_format.staging_tones,
                              number_laps_win=source_format.number_laps_win,
                              win_condition=source_format.win_condition,
                              team_racing_mode=source_format.team_racing_mode)
@@ -1758,6 +1766,8 @@ def on_alter_race_format(data):
             race_format.start_delay_min = data['start_delay_min']
         if 'start_delay_max' in data:
             race_format.start_delay_max = data['start_delay_max']
+        if 'staging_tones' in data:
+            race_format.staging_tones = data['staging_tones']
         if 'number_laps_win' in data:
             race_format.number_laps_win = data['number_laps_win']
         if 'win_condition' in data:
@@ -1923,6 +1933,7 @@ def on_stage_race():
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,
+            'delay': DELAY,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'pi_starts_at_s': RACE_START
@@ -2427,6 +2438,7 @@ def emit_race_status(**params):
             'race_status': RACE.race_status,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
+            'race_staging_tones': race_format.staging_tones,
             'hide_stage_timer': race_format.start_delay_min != race_format.start_delay_max,
             'pi_starts_at_s': RACE_START
         }
@@ -2556,6 +2568,7 @@ def emit_race_format(**params):
         'race_time_sec': race_format.race_time_sec,
         'start_delay_min': race_format.start_delay_min,
         'start_delay_max': race_format.start_delay_max,
+        'staging_tones': race_format.staging_tones,
         'number_laps_win': race_format.number_laps_win,
         'win_condition': race_format.win_condition,
         'team_racing_mode': 1 if race_format.team_racing_mode else 0,
@@ -4164,6 +4177,7 @@ def db_reset_race_formats():
                              race_time_sec=120,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=0,
                              win_condition=WIN_CONDITION_MOST_LAPS,
                              team_racing_mode=False))
@@ -4172,6 +4186,7 @@ def db_reset_race_formats():
                              race_time_sec=90,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=0,
                              win_condition=WIN_CONDITION_MOST_LAPS,
                              team_racing_mode=False))
@@ -4180,6 +4195,7 @@ def db_reset_race_formats():
                              race_time_sec=210,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=0,
                              win_condition=WIN_CONDITION_MOST_LAPS,
                              team_racing_mode=False))
@@ -4188,14 +4204,16 @@ def db_reset_race_formats():
                              race_time_sec=0,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=3,
                              win_condition=WIN_CONDITION_FIRST_TO_LAP_X,
                              team_racing_mode=False))
     DB.session.add(RaceFormat(name=__("Open Practice"),
                              race_mode=1,
                              race_time_sec=0,
-                             start_delay_min=3,
-                             start_delay_max=3,
+                             start_delay_min=0,
+                             start_delay_max=0,
+                             staging_tones=0,
                              number_laps_win=0,
                              win_condition=WIN_CONDITION_NONE,
                              team_racing_mode=False))
@@ -4204,6 +4222,7 @@ def db_reset_race_formats():
                              race_time_sec=120,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=0,
                              win_condition=WIN_CONDITION_MOST_LAPS,
                              team_racing_mode=True))
@@ -4212,6 +4231,7 @@ def db_reset_race_formats():
                              race_time_sec=120,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=7,
                              win_condition=WIN_CONDITION_FIRST_TO_LAP_X,
                              team_racing_mode=True))
@@ -4498,6 +4518,7 @@ SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
                          race_time_sec=0,
                          start_delay_min=0,
                          start_delay_max=0,
+                         staging_tones=0,
                          number_laps_win=0,
                          win_condition=WIN_CONDITION_NONE,
                          team_racing_mode=False)
