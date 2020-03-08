@@ -13,7 +13,7 @@ class SerialNode(Node):
     def __init__(self, index, port):
         Node.__init__(self)
         self.index = index
-        self.serial = serial.Serial(port=port, baudrate=115200, timeout=0.1)
+        self.serial = serial.Serial(port=port, baudrate=115200, timeout=0.25)
 
 
     #
@@ -30,31 +30,46 @@ class SerialNode(Node):
         while success is False and retry_count < RETRY_COUNT:
             try:
                 self.io_request = monotonic()
+                self.serial.flushInput()
                 self.serial.write(bytearray([command]))
                 data = bytearray(self.serial.read(size + 1))
                 self.io_response = monotonic()
                 if validate_checksum(data):
-                    success = True
-                    data = data[:-1]
+                    if len(data) == size + 1:
+                        success = True
+                        data = data[:-1]
+                    else:
+                        retry_count = retry_count + 1
+                        if retry_count < RETRY_COUNT:
+                            interface.log('Retry (bad length) in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
+                        else:
+                            interface.log('Retry (bad length) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
+                        gevent.sleep(0.25)
                 else:
                     # self.log('Invalid Checksum ({0}): {1}'.format(retry_count, data))
-                    gevent.sleep(0.1)
                     retry_count = retry_count + 1
-                    if retry_count < RETRY_COUNT:
-                        if retry_count > 1:  # don't log the occasional single retry
-                            interface.log('Retry (checksum) in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
+                    if data and len(data) > 0:
+                        if retry_count < RETRY_COUNT:
+                            if retry_count > 1:  # don't log the occasional single retry
+                                interface.log('Retry (checksum) in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
+                        else:
+                            interface.log('Retry (checksum) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
                     else:
-                        interface.log('Retry (checksum) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
+                        if retry_count < RETRY_COUNT:
+                                interface.log('Retry (no data) in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
+                        else:
+                            interface.log('Retry (no data) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
+                    gevent.sleep(0.25)
             except IOError as err:
                 interface.log('Read Error: ' + str(err))
-                gevent.sleep(0.1)
                 retry_count = retry_count + 1
                 if retry_count < RETRY_COUNT:
                     if retry_count > 1:  # don't log the occasional single retry
                         interface.log('Retry (IOError) in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
                 else:
                     interface.log('Retry (IOError) limit reached in read_block:  port={0} cmd={1} size={2} retry={3}'.format(self.serial.port, command, size, retry_count))
-        return data
+                gevent.sleep(0.25)
+        return data if success else None
 
     def write_block(self, interface, command, data):
         '''

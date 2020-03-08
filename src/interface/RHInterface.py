@@ -101,9 +101,13 @@ class RHInterface(BaseHardwareInterface):
         self.data_loggers = []
         for node in self.nodes:
             node.frequency = self.get_value_16(node, READ_FREQUENCY)
+            if not node.frequency:
+                raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
                    # read NODE_API_LEVEL and verification value:
             rev_val = self.get_value_16(node, READ_REVISION_CODE)
-            if rev_val and (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
+            if not rev_val:
+                raise RuntimeError('Unable to read revision code from node {0}'.format(node.index+1))
+            if (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
                 node.api_level = rev_val & 0xFF
             else:
                 node.api_level = 0  # if verify failed (fn not defined) then set API level to 0
@@ -140,16 +144,21 @@ class RHInterface(BaseHardwareInterface):
 
     def start(self):
         if self.update_thread is None:
-            self.log('Starting background thread.')
+            self.log('Starting background thread')
             self.update_thread = gevent.spawn(self.update_loop)
 
     def update_loop(self):
-        try:
-            while True:
-                self.update()
-                gevent.sleep(UPDATE_SLEEP)
-        except KeyboardInterrupt:
-            print("Update thread terminated by keyboard interrupt")
+        while True:
+            try:
+                while True:
+                    self.update()
+                    gevent.sleep(UPDATE_SLEEP)
+            except KeyboardInterrupt:
+                print("Update thread terminated by keyboard interrupt")
+                return
+            except Exception as ex:
+                self.log('Exception in RHInterface update_loop():  ' + str(ex))
+                gevent.sleep(UPDATE_SLEEP*10)
 
     def update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)

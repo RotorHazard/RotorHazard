@@ -66,6 +66,8 @@ class BaseHardwareInterface(object):
         if callable(self.hardware_log_callback):
             string = 'Interface: {0}'.format(message)
             gevent.spawn(self.hardware_log_callback, string)
+        else:
+            print 'Interface: {0}'.format(message)
 
     def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list):
         if node.scan_interval == 0:
