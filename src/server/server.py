@@ -139,15 +139,20 @@ except ValueError as ex:
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENERAL']['CORS_ALLOWED_HOSTS'])
 
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
+INTERFACE = None
 try:
     interfaceModule = importlib.import_module(interface_type + 'Interface')
     INTERFACE = interfaceModule.get_hardware_interface(config=Config)
-    if len(INTERFACE.nodes) <= 0:
-        raise RuntimeError('No nodes found')
-except (ImportError, RuntimeError):
-    print 'Unable to initialize nodes via ' + interface_type + 'Interface'
-    interfaceModule = importlib.import_module('MockInterface')
-    INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+except (ImportError, RuntimeError, IOError) as ex:
+    print 'Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex)
+if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
+    if not Config['SERIAL_PORTS'] or len(Config['SERIAL_PORTS']) <= 0:
+        interfaceModule = importlib.import_module('MockInterface')
+        INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+    else:
+        print 'Unable to initialize specified serial node(s): {0}'.format(Config['SERIAL_PORTS'])
+        sys.exit()
+
 RACE = get_race_state() # For storing race management variables
 
 def diff_milliseconds(t2, t1):
