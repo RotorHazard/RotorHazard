@@ -4478,17 +4478,21 @@ if RACE.num_nodes > 0:
         server_log('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
-    if int(getOption('server_api')) < SERVER_API:
-        server_log('Old server API version; resetting database')
-        recover_database()
-    elif not Heat.query.count():
-        server_log('Heats are empty; resetting database')
-        recover_database()
-    elif not Profiles.query.count():
-        server_log('Profiles are empty; resetting database')
-        recover_database()
-    elif not RaceFormat.query.count():
-        server_log('Formats are empty; resetting database')
+    try:
+        if int(getOption('server_api')) < SERVER_API:
+            server_log('Old server API version; resetting database')
+            recover_database()
+        elif not Heat.query.count():
+            server_log('Heats are empty; resetting database')
+            recover_database()
+        elif not Profiles.query.count():
+            server_log('Profiles are empty; resetting database')
+            recover_database()
+        elif not RaceFormat.query.count():
+            server_log('Formats are empty; resetting database')
+            recover_database()
+    except Exception as ex:
+        server_log('Resetting data after DB-check exception:  ' + str(ex))
         recover_database()
 
 # Expand heats (if number of nodes increases)
