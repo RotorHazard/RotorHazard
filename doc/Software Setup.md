@@ -207,7 +207,7 @@ sudo shutdown now
 <a id="update"></a>
 ### Updating an existing installation
 
-Before updating, any currently-running RotorHazard server should be stopped. If installed as a service, it may be stopped with a command like: 
+Before updating, any currently-running RotorHazard server should be stopped. If installed as a service, it may be stopped with a command like:
 ```
 sudo systemctl stop rotorhazard
 ```
@@ -249,10 +249,10 @@ To install the RotorHazard server on these systems:
 
 1. Open up a command prompt and navigate to the ```src/server``` directory in the RotorHazard files (using the 'cd' command).
 
-1. Install the RotorHazard server dependencies using the 'requirements.txt' file, using one of the commands below.
+1. Install the RotorHazard server dependencies using the 'requirements.txt' file, using one of the commands below. (Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
   * On a Windows system the command to use will likely be:<br/>```python -m pip install -r requirements.txt```<br/><br/>
   * On a Linux system the command to use will likely be:<br/>```sudo pip install -r requirements.txt```<br/>
-(Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
+
 
 To run the RotorHazard server on these systems:
 
