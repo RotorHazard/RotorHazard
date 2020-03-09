@@ -2460,7 +2460,7 @@ def emit_node_tuning(**params):
     emit_payload = {
         'profile_ids': [profile.id for profile in Profiles.query.all()],
         'profile_names': [profile.name for profile in Profiles.query.all()],
-        'current_profile': current_profile,
+        'current_profile': int(getOption('currentProfile')),
         'profile_name': tune_val.name,
         'profile_description': tune_val.description
     }
