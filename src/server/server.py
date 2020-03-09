@@ -4273,9 +4273,12 @@ def backup_db_file(copy_flag):
     try:
         (dbname, dbext) = os.path.splitext(DB_FILE_NAME)
         bkp_name = DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
+        if not os.path.exists(DB_BKP_DIR_NAME):
+            os.makedirs(DB_BKP_DIR_NAME)
+        if os.path.isfile(bkp_name):  # if target file exists then use 'now' timestamp
+            time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+            bkp_name = DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
         if copy_flag:
-            if not os.path.exists(DB_BKP_DIR_NAME):
-                os.makedirs(DB_BKP_DIR_NAME)
             shutil.copy2(DB_FILE_NAME, bkp_name);
             server_log('Copied database file to:  ' + bkp_name)
         else:
