@@ -25,6 +25,9 @@ WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 
+LAPSTATS_FLAG_CROSSING = 0x01  # crossing is in progress
+LAPSTATS_FLAG_PEAK = 0x02      # reported extremum is peak
+
 UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
 RETRY_COUNT = 5 # Limit of I/O retries
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
@@ -98,9 +101,13 @@ class RHInterface(BaseHardwareInterface):
         self.data_loggers = []
         for node in self.nodes:
             node.frequency = self.get_value_16(node, READ_FREQUENCY)
+            if not node.frequency:
+                raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
                    # read NODE_API_LEVEL and verification value:
             rev_val = self.get_value_16(node, READ_REVISION_CODE)
-            if rev_val and (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
+            if not rev_val:
+                raise RuntimeError('Unable to read revision code from node {0}'.format(node.index+1))
+            if (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
                 node.api_level = rev_val & 0xFF
             else:
                 node.api_level = 0  # if verify failed (fn not defined) then set API level to 0
@@ -137,16 +144,21 @@ class RHInterface(BaseHardwareInterface):
 
     def start(self):
         if self.update_thread is None:
-            self.log('Starting background thread.')
+            self.log('Starting background thread')
             self.update_thread = gevent.spawn(self.update_loop)
 
     def update_loop(self):
-        try:
-            while True:
-                self.update()
-                gevent.sleep(UPDATE_SLEEP)
-        except KeyboardInterrupt:
-            print("Update thread terminated by keyboard interrupt")
+        while True:
+            try:
+                while True:
+                    self.update()
+                    gevent.sleep(UPDATE_SLEEP)
+            except KeyboardInterrupt:
+                print("Update thread terminated by keyboard interrupt")
+                return
+            except Exception as ex:
+                self.log('Exception in RHInterface update_loop():  ' + str(ex))
+                gevent.sleep(UPDATE_SLEEP*10)
 
     def update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
@@ -178,7 +190,7 @@ class RHInterface(BaseHardwareInterface):
                         offset_nodePeakRssi = 4
                         offset_passPeakRssi = 5
                         offset_loopTime = 6
-                        offset_crossing = 8
+                        offset_lapStatsFlags = 8
                         offset_passNadirRssi = 9
                         offset_nodeNadirRssi = 10
                         if node.api_level >= 21:
@@ -199,7 +211,7 @@ class RHInterface(BaseHardwareInterface):
                         offset_nodePeakRssi = 7
                         offset_passPeakRssi = 9
                         offset_loopTime = 11
-                        offset_crossing = 15
+                        offset_lapStatsFlags = 15
                         offset_passNadirRssi = 16
                         offset_nodeNadirRssi = 18
                         offset_peakRssi = 20
@@ -216,37 +228,57 @@ class RHInterface(BaseHardwareInterface):
                         if node.api_valid_flag:  # if newer API functions supported
                             if node.api_level >= 18:
                                 ms_val = unpack_16(data[1:])
-                                pn_history = PeakNadirHistory()
+                                pn_history = PeakNadirHistory(node.index)
                                 if node.api_level >= 21:
-                                    if data[offset_crossing] & 0x02:
-                                        pn_history.peakRssi = unpack_rssi(node, data[offset_peakRssi:])
+                                    if data[offset_lapStatsFlags] & LAPSTATS_FLAG_PEAK:
+                                        rssi_val = unpack_rssi(node, data[offset_peakRssi:])
+                                        if node.is_valid_rssi(rssi_val):
+                                            pn_history.peakRssi = rssi_val
+                                            pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
+                                            pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
+                                        elif rssi_val > 0:
+                                            self.log('History peak RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
+                                    else:
+                                        rssi_val = unpack_rssi(node, data[offset_nadirRssi:])
+                                        if node.is_valid_rssi(rssi_val):
+                                            pn_history.nadirRssi = rssi_val
+                                            pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
+                                            pn_history.nadirLastTime = unpack_16(data[offset_nadirLastTime:])
+                                        elif rssi_val > 0:
+                                            self.log('History nadir RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
+                                else:
+                                    rssi_val = unpack_rssi(node, data[offset_peakRssi:])
+                                    if node.is_valid_rssi(rssi_val):
+                                        pn_history.peakRssi = rssi_val
                                         pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
                                         pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
-                                    else:
-                                        pn_history.nadirRssi = unpack_rssi(node, data[offset_nadirRssi:])
+                                    rssi_val = unpack_rssi(node, data[offset_nadirRssi:])
+                                    if node.is_valid_rssi(rssi_val):
+                                        pn_history.nadirRssi = rssi_val
                                         pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
-                                        pn_history.nadirLastTime = unpack_16(data[offset_nadirLastTime:])
-                                else:
-                                    pn_history.peakRssi = unpack_rssi(node, data[offset_peakRssi:])
-                                    pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
-                                    pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
-                                    pn_history.nadirRssi = unpack_rssi(node, data[offset_nadirRssi:])
-                                    pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
-                                    pn_history.nadirLastTime = pn_history.nadirFirstTime
+                                        pn_history.nadirLastTime = pn_history.nadirFirstTime
                             else:
                                 ms_val = unpack_32(data[1:])
 
-                            node.node_peak_rssi = unpack_rssi(node, data[offset_nodePeakRssi:])
-                            node.pass_peak_rssi = unpack_rssi(node, data[offset_passPeakRssi:])
+                            rssi_val = unpack_rssi(node, data[offset_nodePeakRssi:])
+                            if node.is_valid_rssi(rssi_val):
+                                node.node_peak_rssi = rssi_val
+                            rssi_val = unpack_rssi(node, data[offset_passPeakRssi:])
+                            if node.is_valid_rssi(rssi_val):
+                                node.pass_peak_rssi = rssi_val
                             node.loop_time = unpack_16(data[offset_loopTime:])
-                            if data[offset_crossing] & 0x01:
+                            if data[offset_lapStatsFlags] & LAPSTATS_FLAG_CROSSING:
                                 cross_flag = True
                             else:
                                 cross_flag = False
-                            node.pass_nadir_rssi = unpack_rssi(node, data[offset_passNadirRssi:])
+                            rssi_val = unpack_rssi(node, data[offset_passNadirRssi:])
+                            if node.is_valid_rssi(rssi_val):
+                                node.pass_nadir_rssi = rssi_val
 
                             if node.api_level >= 13:
-                                node.node_nadir_rssi = unpack_rssi(node, data[offset_nodeNadirRssi:])
+                                rssi_val = unpack_rssi(node, data[offset_nodeNadirRssi:])
+                                if node.is_valid_rssi(rssi_val):
+                                    node.node_nadir_rssi = rssi_val
 
                             if node.api_level >= 18:
                                 data_logger = self.data_loggers[node.index]

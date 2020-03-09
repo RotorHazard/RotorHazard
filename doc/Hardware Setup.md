@@ -3,8 +3,8 @@
 ## Parts List
 
 ### Receiver Node(s) (this list makes one node, build up to eight)
-* 1 x Arduino Nano
-* 1 x RX5808 module with SPI mod (modules with date code 20120322 are known to work)
+* 1 x [Arduino Nano](https://www.ebay.com/sch/i.html?_nkw=Arduino+Nano+V3.0+16M+5V+ATmega328P)
+* 1 x [RX5808 module](https://www.banggood.com/search/rx5808-module.html) with SPI mod (modules with date code 20120322 are known to work)
 * 3 x 1k ohm resistor
 * 1 x 100k ohm resistor
 * 26 AWG and 30 AWG silicone wire
@@ -41,6 +41,8 @@ The shield should be soldered back in place after removing the resistor.
 ### Receiver Nodes
 Complete wiring connections between each Arduino and RX5808.
 ![receiver node wiring](img/Receivernode.png)
+
+Note: A simple receiver node may also be constructed and attached via USB -- see [doc/USB Nodes.md](USB%20Nodes.md).
 
 ### System Assembly
 Complete wiring connections between each Arduino and the Raspberry Pi.
@@ -81,6 +83,7 @@ Multiple RotorHazard timers may be connected together (i.e., for split timing an
 
 -----------------------------
 
-See Also:  
-[doc/Software Setup.md](Software%20Setup.md)  
+See Also:<br/>
+[doc/USB Nodes.md](USB%20Nodes.md)<br/>
+[doc/Software Setup.md](Software%20Setup.md)<br/>
 [doc/User Guide.md](User%20Guide.md)

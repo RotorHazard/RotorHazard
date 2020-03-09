@@ -1,4 +1,12 @@
 function createBandScanner(elementId) {
+	let channels = [
+		{freq:5658, name:'R1'},
+		{freq:5695, name:'R2'},
+		{freq:5760, name:'F2'},
+		{freq:5800, name:'F4'},
+		{freq:5880, name:'R7'},
+		{freq:5917, name:'R8'}
+	];
 	let canvas = document.getElementById(elementId);
 	let chart = new Chart(canvas, {
 		type: 'bar',
@@ -28,6 +36,24 @@ function createBandScanner(elementId) {
 		},
 		options: {
 			scales: {
+				xAxes: [{
+					barPercentage: 1,
+					categoryPercentage: 1,
+					ticks: {
+						fontSize: 10,
+						lineHeight: 2,
+						callback: function(dataLabel, index) {
+							let freq = parseInt(dataLabel);
+							for(let chan of channels) {
+								let chanFreq = chan.freq;
+								if(freq >= chanFreq-5 && freq <= chanFreq+5) {
+									return [dataLabel, chan.name];
+								}
+							}
+							return dataLabel;
+						}
+					}
+				}],
 				yAxes: [{
 					type: 'linear',
 					ticks: {

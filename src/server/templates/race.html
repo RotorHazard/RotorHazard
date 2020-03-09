@@ -42,8 +42,10 @@
 			'current_laps',
 			'race_status',
 			'team_racing_stat_if_enb',
-			'led_handlers'
+			'led_effects'
 		]});
+
+		$('#about>.popup-content').append('<p id="server-lag">Sync quality: [calculating]</p>');
 
 		socket.on('pi_time', function (msg) {
 			var response_time = window.performance.now();
@@ -68,7 +70,7 @@
 			var diff_max = rotorhazard.pi_time_diff_samples[0].differential + rotorhazard.pi_time_diff_samples[0].response
 
 			rotorhazard.pi_time_diff_samples = rotorhazard.pi_time_diff_samples.filter(function(value, index, array) {
-				return value.differential > diff_min && value.differential < diff_max;
+				return value.differential >= diff_min && value.differential <= diff_max;
 			});
 
 			// get filtered value
@@ -88,6 +90,13 @@
 					socket.emit('get_pi_time');
 				}, (Math.random() * 500) + 250); // 0.25 to 0.75s delay
 			}
+
+			// update server info
+			var a = Infinity;
+			for (var i in rotorhazard.pi_time_diff_samples) {
+				a = Math.min(a, rotorhazard.pi_time_diff_samples[i].response);
+			}
+			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
 		});
 
 		socket.on('all_languages', function (msg) {
@@ -398,8 +407,9 @@
 		function show_current_laps() {
 			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
 				$('#current_laps_' + i + ' tbody > tr').remove();
+				var lap_index = 0;
+
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap_id is json object
-					// No lap deletion for first lap
 					var $tr = '';
 					var lapTime = lap.lap_time;
 					if (lap.splits.length > 0) {
@@ -416,56 +426,49 @@
 						}
 						lapTime += ')';
 					}
-					if (lap.lap_id == 0) {
-						var local_colspan = 2;
-						$tr = $('<tr class="lap_0">');
-						if(rotorhazard.display_lap_id) {
-							local_colspan = 1;
-							$tr.append(
-								$('<td class="display_lap_id">').text(lap.lap_id)
-							);
-						}
-						$tr.append($('<td colspan="'+local_colspan+'">').text(lap.lap_time));
+
+					var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
+
+					$tr = $('<tr>')
+					if (lap_index == 0) {
+						$tr.addClass('lap_0');
 					}
-					else {
-						var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
 
-
-						$tr = $('<tr>')
-						var local_colspan = 2;
-						if(rotorhazard.display_lap_id) {
-							local_colspan = 1;
-							$tr.append(
-								$('<td class="display_lap_id">').text(lap.lap_id)
-							);
-						}
-						$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ').append(
-								$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + lap.lap_id + '">&#215;</button>')
-								);
-						$local_prepend = $('<span class="from_start">');
-
-						if(rotorhazard.display_time_first_pass) {
-							$local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp));
-							if(rotorhazard.display_time_start){
-								$local_prepend.append(" / ");
-							}
-						}
-
-						if(rotorhazard.display_time_start) {
-							$local_prepend.append(formatTimeMillis(lap.lap_time_stamp));
-						}
-
-						$time_td.prepend($local_prepend);
-						$tr.append($time_td);
+					var local_colspan = 2;
+					if(rotorhazard.display_lap_id) {
+						local_colspan = 1;
+						$tr.append(
+							$('<td class="display_lap_id">').text(lap_index)
+						);
 					}
+					$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ').append(
+							$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + lap.lap_id + '">&#215;</button>')
+							);
+					$local_prepend = $('<span class="from_start">');
+
+					if(rotorhazard.display_time_first_pass) {
+						$local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp));
+						if(rotorhazard.display_time_start){
+							$local_prepend.append(" / ");
+						}
+					}
+
+					if(rotorhazard.display_time_start) {
+						$local_prepend.append(formatTimeMillis(lap.lap_time_stamp));
+					}
+
+					$time_td.prepend($local_prepend);
+					$tr.append($time_td);
+
 					if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
 						$tr.addClass('min-lap-warning');
 					}
-					if (!rotorhazard.race_formats.race_mode && lap.lap_raw > (rotorhazard.race_formats.race_time_sec * 1000)) {
+					if (!rotorhazard.race_formats.race_mode && lap.lap_time_stamp > (rotorhazard.race_formats.race_time_sec * 1000)) {
 						$tr.addClass('after-time-expired');
 					}
 					$tr.appendTo('#current_laps_' + i);
 
+					lap_index++;
 				});
 			});
 		}
@@ -986,35 +989,35 @@
 
 		/* LED Controls */
 
-		socket.on('led_handlers', function (msg) {
+		socket.on('led_effects', function (msg) {
 			var led_html = $('<div class="control-set">');
 
-			var led_select = $('<select id="led-handlers-select"></select>');
+			var led_select = $('<select id="led-effects-select"></select>');
 
-			const handlers = msg.handlers.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
+			const effects = msg.effects.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
 
-			for (var i in handlers) {
-				var handler = handlers[i];
+			for (var i in effects) {
+				var effect = effects[i];
 
-				var led_select_option = $('<option value="' + handler.name + '">' + handler.label + '</option>')
+				var led_select_option = $('<option value="' + effect.name + '">' + effect.label + '</option>')
 
 				led_select.append(led_select_option);
 			}
 
-			led_html.append($('<label for="led-handlers">' + __('Effect') + '</label>'));
+			led_html.append($('<label for="led-effects">' + __('Effect') + '</label>'));
 			led_html.append(' ');
 			led_html.append(led_select);
 			led_html.append(' ');
-			led_html.append($('<button id="use-led-handler">' + __('Go') + '</button>'));
+			led_html.append($('<button id="use-led-effect">' + __('Go') + '</button>'));
 
-			$('#LED-handlers').append(led_html);
+			$('#LED-effects').append(led_html);
 		});
 
-		$(document).on('click', '#use-led-handler', function (event) {
+		$(document).on('click', '#use-led-effect', function (event) {
 			var data = {
-				handler: $('#led-handlers-select').val()
+				effect: $('#led-effects-select').val()
 			};
-			socket.emit('use_led_handler', data);
+			socket.emit('use_led_effect', data);
 		});
 
 		$('button.LED-color').click(function (event) {
@@ -1026,32 +1029,6 @@
 				};
 				socket.emit('LED_solid', data);
 				return false;
-		});
-
-		$('button.LED-chase').click(function (event) {
-				var colors = convertColor($(this).data('rgb'));
-				var data = {
-					red: colors.r,
-					green: colors.g,
-					blue: colors.b,
-				};
-				socket.emit('LED_chase', data);
-				return false;
-		});
-
-		$('button#LED_RB').click(function (event) {
-			socket.emit('LED_RB');
-			return false;
-		});
-
-		$('button#LED_RBCYCLE').click(function (event) {
-			socket.emit('LED_RBCYCLE');
-			return false;
-		});
-
-		$('button#LED_RBCHASE').click(function (event) {
-			socket.emit('LED_RBCHASE');
-			return false;
 		});
 
 		$('#set_led_brightness').on('input', function (event) {
@@ -1066,17 +1043,6 @@
 				brightness: Math.round(val),
 			};
 			socket.emit('LED_brightness', data);
-		});
-
-		$('#set_led_color').change(function (event) {
-				var colors = convertColor($(this).val());
-				var data = {
-					red: colors.r,
-					green: colors.g,
-					blue: colors.b,
-				};
-				socket.emit('LED_solid', data);
-				return false;
 		});
 
 		/* Other */
@@ -1486,21 +1452,7 @@
 			<button class="LED-color" data-rgb="#000000">{{ __('Turn Off') }}</button>
 		</div>
 
-		<div id="LED-handlers"></div>
-
 		<div class="control-set">
-			<!--
-			<button class="led" id="LED_RB"><span><img src="../static/image/LED-rainbow.png"></span></button>
-			<button class="led" id="LED_RBCYCLE"><span><img src="../static/image/LED-rainbow.png"></span></button>
-			<br />
-			-->
-			<!--
-			<button class="LED-chase" data-rgb="#ff0000"><span style="background-color:#ff0000"></span></button>
-			<button class="LED-chase" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
-			<button class="LED-chase" data-rgb="#ff7f00"><span style="background-color:#ff7f00"></span></button>
-			<button class="LED-chase" data-rgb="#00ff00"><span style="background-color:#00ff00"></span></button>
-			<br />
-			-->
 			<button class="LED-color" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
 			<button class="LED-color" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
 			<button class="LED-color" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
@@ -1509,18 +1461,8 @@
 			<button class="LED-color" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
 			<button class="LED-color" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
 			<button class="LED-color" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
-			<br />
-			<!--
-			<button class="LED-chase" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
-			<button class="LED-chase" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
-			<button class="LED-chase" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
-			<button class="LED-chase" data-rgb="#ffff00"><span style="background-color:#ffff00"></span></button>
-			<button class="LED-chase" data-rgb="#7f00ff"><span style="background-color:#7f00ff"></span></button>
-			<button class="LED-chase" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
-			<button class="LED-chase" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
-			<button class="LED-chase" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
-			-->
 		</div>
+
 		<ol class="form">
 			<li>
 				<div class="label-block">
@@ -1536,6 +1478,8 @@
 				<input type="color" id="set_led_color" />
 			</li>
 		</ol>
+
+		<div id="LED-effects"></div>
 	</div>
 </div>
 {% endif %}

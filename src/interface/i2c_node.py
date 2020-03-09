@@ -25,10 +25,10 @@ class I2CNode(Node):
             try:
                 def _read():
                     self.io_request = monotonic()
-                    data = self.i2c_helper.i2c.read_i2c_block_data(self.i2c_addr, command, size + 1)
+                    _data = self.i2c_helper.i2c.read_i2c_block_data(self.i2c_addr, command, size + 1)
                     self.io_response = monotonic()
-                    if validate_checksum(data):
-                        return data
+                    if validate_checksum(_data):
+                        return _data
                     else:
                         return None
                 data = self.i2c_helper.with_i2c(_read)

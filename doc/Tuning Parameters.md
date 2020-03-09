@@ -20,6 +20,12 @@ In between *EnterAt* and *ExitAt*, the system will remain *Crossing* or *Clear* 
 
 ![Sample RSSI Graph](img/Sample%20RSSI%20Graph.svg)
 
+### Calibration Mode
+
+*Manual* calibration mode will always use the *EnterAt* and *ExitAt* values provided by the user.
+
+*Adaptive* calibration mode uses the user-defined points unless there are saved races. When saved races exist, changing heats will initiate a search of previous race data for the best calibration values to use in the upcoming race. These values are copied and replace the current *EnterAt* and *ExitAt* values for all nodes. This mode improves calibration as more races are saved if the race director confirms the incoming lap counts or recalculates them through the *Marshal* page.
+
 ## Tuning
 Before tuning, power up the timer and keep it running for a few minutes to allow the receiver modules to warm up. The RSSI values tend to increase by a few points as the timer heats up.
 
@@ -101,10 +107,3 @@ _Laps will not register if RSSI never reaches *EnterAt*._
 ![Tuning Graph](img/Tuning%20Graph-08.svg)<br />
 _Laps will not complete if RSSI never drops below *ExitAt*._
 * Raise *ExitAt*
-
-## Retroactive Pass Recording
-During a race, if you notice a pass was not recorded, you may use the "Catch Missed Pass" button. The timer will review recent RSSI history for the node and find the most likely occurrence of a missed pass, recording it as a lap. The node's *EnterAt* value is then adjusted so that similar passes to the one marked as "missed" will be counted in the future. If the adjustment would make the node unstable, a warning is issued instead.
-
-If you notice a node crossing does not complete within a reasonable time, you may use the "Force End Crossing" button. The timer will review recent RSSI history for the node and find a low point where the crossing could be safely ended. The node's *ExitAt* value is then adjusted so that passes will end at this point in the future. If the adjustment would make the node unstable, a warning is issued instead.
-
-The window of time both of these functions use is based on the current *Minimum Lap Time* setting.

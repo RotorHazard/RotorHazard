@@ -1,8 +1,8 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.1.0 (dev 4)" # Public release version code
-SERVER_API = 25 # Server API version
+RELEASE_VERSION = "2.2.0 (dev 0)" # Public release version code
+SERVER_API = 26 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 21 # Most recent node API
+NODE_API_BEST = 22 # Most recent node API
 JSON_API = 2 # JSON API version
 
 import gevent
@@ -32,7 +32,7 @@ import random
 import json
 
 # LED imports
-from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorVal, ColorPattern
+from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -42,6 +42,7 @@ from RHRace import get_race_state
 APP = Flask(__name__, static_url_path='/static')
 
 HEARTBEAT_THREAD = None
+HEARTBEAT_DATA_RATE_FACTOR = 5
 
 PILOT_ID_NONE = 0  # indicator value for no pilot configured
 HEAT_ID_NONE = 0  # indicator value for practice heat
@@ -77,7 +78,6 @@ Config['LED'] = {}
 Config['SERIAL_PORTS'] = []
 
 # LED strip configuration:
-Config['LED']['HANDLER']        = 'strip'
 Config['LED']['LED_COUNT']      = 0       # Number of LED pixels.
 Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
 Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
@@ -139,15 +139,20 @@ except ValueError as ex:
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENERAL']['CORS_ALLOWED_HOSTS'])
 
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
+INTERFACE = None
 try:
     interfaceModule = importlib.import_module(interface_type + 'Interface')
     INTERFACE = interfaceModule.get_hardware_interface(config=Config)
-    if len(INTERFACE.nodes) <= 0:
-        raise RuntimeError('No nodes found')
-except (ImportError, RuntimeError):
-    print 'Unable to initialize nodes via ' + interface_type + 'Interface'
-    interfaceModule = importlib.import_module('MockInterface')
-    INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+except (ImportError, RuntimeError, IOError) as ex:
+    print 'Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex)
+if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
+    if not Config['SERIAL_PORTS'] or len(Config['SERIAL_PORTS']) <= 0:
+        interfaceModule = importlib.import_module('MockInterface')
+        INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+    else:
+        print 'Unable to initialize specified serial node(s): {0}'.format(Config['SERIAL_PORTS'])
+        sys.exit()
+
 RACE = get_race_state() # For storing race management variables
 
 def diff_milliseconds(t2, t1):
@@ -441,8 +446,14 @@ def buildServerInfo():
 #
 # Database Models
 #
+# pilot 1-N node
+# node 1-N lap
+# lap 1-N splits
+# heat 1-N node
+# round 1-N heat
 
 class Pilot(DB.Model):
+    __tablename__ = 'pilot'
     id = DB.Column(DB.Integer, primary_key=True)
     callsign = DB.Column(DB.String(80), nullable=False)
     team = DB.Column(DB.String(80), nullable=False, default=DEF_TEAM_NAME)
@@ -453,29 +464,38 @@ class Pilot(DB.Model):
         return '<Pilot %r>' % self.id
 
 class Heat(DB.Model):
+    __tablename__ = 'heat'
+    __table_args__ = (
+        DB.UniqueConstraint('heat_id', 'node_index'),
+    )
     id = DB.Column(DB.Integer, primary_key=True)
     heat_id = DB.Column(DB.Integer, nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
     note = DB.Column(DB.String(80), nullable=True)
-    class_id = DB.Column(DB.Integer, nullable=False)
+    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
 
     def __repr__(self):
         return '<Heat %r>' % self.heat_id
 
 class RaceClass(DB.Model):
+    __tablename__ = 'race_class'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=True)
     description = DB.Column(DB.String(256), nullable=True)
-    format_id = DB.Column(DB.Integer, nullable=False)
+    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
 
     def __repr__(self):
         return '<RaceClass %r>' % self.id
 
 class CurrentLap(DB.Model):
+    __tablename__ = 'current_lap'
+    __table_args__ = (
+        DB.UniqueConstraint('node_index', 'lap_id'),
+    )
     id = DB.Column(DB.Integer, primary_key=True)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
     lap_id = DB.Column(DB.Integer, nullable=False)
     lap_time_stamp = DB.Column(DB.Integer, nullable=False)
     lap_time = DB.Column(DB.Integer, nullable=False)
@@ -487,9 +507,13 @@ class CurrentLap(DB.Model):
         return '<CurrentLap %r>' % self.pilot_id
 
 class LapSplit(DB.Model):
+    __tablename__ = 'lap_split'
+    __table_args__ = (
+        DB.UniqueConstraint('node_index', 'lap_id', 'split_id'),
+    )
     id = DB.Column(DB.Integer, primary_key=True)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
     lap_id = DB.Column(DB.Integer, nullable=False)
     split_id = DB.Column(DB.Integer, nullable=False)
     split_time_stamp = DB.Column(DB.Integer, nullable=False)
@@ -501,11 +525,15 @@ class LapSplit(DB.Model):
         return '<LapSplit %r>' % self.pilot_id
 
 class SavedRaceMeta(DB.Model):
+    __tablename__ = 'saved_race_meta'
+    __table_args__ = (
+        DB.UniqueConstraint('round_id', 'heat_id'),
+    )
     id = DB.Column(DB.Integer, primary_key=True)
     round_id = DB.Column(DB.Integer, nullable=False)
-    heat_id = DB.Column(DB.Integer, nullable=False)
-    class_id = DB.Column(DB.Integer, nullable=False)
-    format_id = DB.Column(DB.Integer, nullable=False)
+    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.heat_id"), nullable=False)
+    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
+    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
     start_time = DB.Column(DB.Integer, nullable=False) # internal monotonic time
     start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
 
@@ -513,10 +541,14 @@ class SavedRaceMeta(DB.Model):
         return '<SavedRaceMeta %r>' % self.id
 
 class SavedPilotRace(DB.Model):
+    __tablename__ = 'saved_pilot_race'
+    __table_args__ = (
+        DB.UniqueConstraint('race_id', 'node_index'),
+    )
     id = DB.Column(DB.Integer, primary_key=True)
-    race_id = DB.Column(DB.Integer, nullable=False)
+    race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
     history_values = DB.Column(DB.String, nullable=True)
     history_times = DB.Column(DB.String, nullable=True)
     penalty_time = DB.Column(DB.Integer, nullable=False)
@@ -528,11 +560,12 @@ class SavedPilotRace(DB.Model):
         return '<SavedPilotRace %r>' % self.id
 
 class SavedRaceLap(DB.Model):
+    __tablename__ = 'saved_race_lap'
     id = DB.Column(DB.Integer, primary_key=True)
-    race_id = DB.Column(DB.Integer, nullable=False)
-    pilotrace_id = DB.Column(DB.Integer, nullable=False)
+    race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
+    pilotrace_id = DB.Column(DB.Integer, DB.ForeignKey("saved_pilot_race.id"), nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
     lap_time_stamp = DB.Column(DB.Integer, nullable=False)
     lap_time = DB.Column(DB.Integer, nullable=False)
     lap_time_formatted = DB.Column(DB.String, nullable=False)
@@ -547,6 +580,7 @@ LAP_SOURCE_MANUAL = 1
 LAP_SOURCE_RECALC = 2
 
 class Profiles(DB.Model):
+    __tablename__ = 'profiles'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False)
     description = DB.Column(DB.String(256), nullable=True)
@@ -556,6 +590,7 @@ class Profiles(DB.Model):
     f_ratio = DB.Column(DB.Integer, nullable=True)
 
 class RaceFormat(DB.Model):
+    __tablename__ = 'race_format'
     id = DB.Column(DB.Integer, primary_key=True)
     name = DB.Column(DB.String(80), nullable=False)
     race_mode = DB.Column(DB.Integer, nullable=False)
@@ -573,6 +608,7 @@ WIN_CONDITION_FASTEST_LAP = 3 # Not yet implemented
 WIN_CONDITION_FASTEST_3_CONSECUTIVE = 4 # Not yet implemented
 
 class GlobalSettings(DB.Model):
+    __tablename__ = 'global_settings'
     id = DB.Column(DB.Integer, primary_key=True)
     option_name = DB.Column(DB.String(40), nullable=False)
     option_value = DB.Column(DB.String(256), nullable=False)
@@ -608,6 +644,10 @@ def setOption(option, value):
     else:
         DB.session.add(GlobalSettings(option_name=option, option_value=value))
     DB.session.commit()
+
+def getCurrentProfile():
+    current_profile = int(getOption('currentProfile'))
+    return Profiles.query.get(current_profile)
 
 def getCurrentRaceFormat():
     if RACE.format is None:
@@ -691,7 +731,8 @@ def requires_auth(f):
 @APP.route('/')
 def index():
     '''Route to home page.'''
-    return render_template('home.html', serverInfo=serverInfo, getOption=getOption, __=__)
+    return render_template('home.html', serverInfo=serverInfo,
+                           getOption=getOption, __=__, Debug=Config['GENERAL']['DEBUG'])
 
 @APP.route('/heats')
 def heats():
@@ -757,6 +798,7 @@ def settings():
         Debug=Config['GENERAL']['DEBUG'])
 
 @APP.route('/scanner')
+@requires_auth
 def scanner():
     '''Route to scanner page.'''
 
@@ -796,6 +838,12 @@ def database():
 def viewDocs():
     '''Route to doc viewer.'''
     docfile = request.args.get('d')
+
+    language = getOption("currentLanguage")
+    if language:
+        translation = language + '-' + docfile
+        if os.path.isfile('../../doc/' + translation):
+            docfile = translation
 
     with io.open('../../doc/' + docfile, 'r', encoding="utf-8") as f:
         doc = f.read()
@@ -1174,10 +1222,10 @@ def on_load_data(data):
             emit_language(nobroadcast=True)
         elif load_type == 'all_languages':
             emit_all_languages(nobroadcast=True)
-        elif load_type == 'led_handler_setup':
-            emit_led_handler_setup()
-        elif load_type == 'led_handlers':
-            emit_led_handlers()
+        elif load_type == 'led_effect_setup':
+            emit_led_effect_setup()
+        elif load_type == 'led_effects':
+            emit_led_effects()
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
         elif load_type == 'cluster_status':
@@ -1198,8 +1246,7 @@ def on_set_frequency(data):
     node_index = data['node']
     frequency = data['frequency']
 
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     freqs = json.loads(profile.frequencies)
     freqs["f"][node_index] = frequency
     profile.frequencies = json.dumps(freqs)
@@ -1220,8 +1267,7 @@ def on_set_frequency_preset(data):
     CLUSTER.emit('set_frequency_preset', data)
     freqs = []
     if data['preset'] == 'All-N1':
-        current_profile = int(getOption("currentProfile"))
-        profile = Profiles.query.get(current_profile)
+        profile = getCurrentProfile()
         profile_freqs = json.loads(profile.frequencies)
         frequency = profile_freqs["f"][0]
         for idx in range(RACE.num_nodes):
@@ -1243,8 +1289,7 @@ def on_set_frequency_preset(data):
 def set_all_frequencies(freqs):
     ''' Set frequencies for all nodes (but do not update hardware) '''
     # Set DB
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     profile_freqs = json.loads(profile.frequencies)
 
     for idx in range(RACE.num_nodes):
@@ -1259,6 +1304,15 @@ def hardware_set_all_frequencies(freqs):
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs[idx])
 
+def restore_node_frequency(node_index):
+    ''' Restore frequency for given node index (update hardware) '''
+    gevent.sleep(0.250)  # pause to get clear of heartbeat actions for scanner
+    profile = getCurrentProfile()
+    profile_freqs = json.loads(profile.frequencies)
+    freq = profile_freqs["f"][node_index]
+    INTERFACE.set_frequency(node_index, freq)
+    server_log('Frequency restored: Node {0} Frequency {1}'.format(node_index+1, freq))
+
 @SOCKET_IO.on('set_enter_at_level')
 def on_set_enter_at_level(data):
     '''Set node enter-at level.'''
@@ -1269,8 +1323,7 @@ def on_set_enter_at_level(data):
         server_log('Node enter-at set null; getting from node: Node {0}'.format(node_index+1))
         enter_at_level = INTERFACE.nodes[node_index].enter_at_level
 
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     enter_ats = json.loads(profile.enter_ats)
     enter_ats["v"][node_index] = enter_at_level
     profile.enter_ats = json.dumps(enter_ats)
@@ -1289,8 +1342,7 @@ def on_set_exit_at_level(data):
         server_log('Node exit-at set null; getting from node: Node {0}'.format(node_index+1))
         exit_at_level = INTERFACE.nodes[node_index].exit_at_level
 
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     exit_ats = json.loads(profile.exit_ats)
     exit_ats["v"][node_index] = exit_at_level
     profile.exit_ats = json.dumps(exit_ats)
@@ -1345,7 +1397,19 @@ def on_cap_exit_at_btn(data):
 @SOCKET_IO.on('set_scan')
 def on_set_scan(data):
     node_index = data['node']
-    INTERFACE.nodes[node_index].scan_interval = data['scan_interval']
+    minScanFreq = data['min_scan_frequency']
+    maxScanFreq = data['max_scan_frequency']
+    maxScanInterval = data['max_scan_interval']
+    minScanInterval = data['min_scan_interval']
+    scanZoom = data['scan_zoom']
+    node = INTERFACE.nodes[node_index]
+    node.set_scan_interval(minScanFreq, maxScanFreq, maxScanInterval, minScanInterval, scanZoom)
+    if node.scan_enabled:
+        HEARTBEAT_DATA_RATE_FACTOR = 50
+    else:
+        HEARTBEAT_DATA_RATE_FACTOR = 5
+        gevent.sleep(0.100)  # pause/spawn to get clear of heartbeat actions for scanner
+        gevent.spawn(restore_node_frequency(node_index))
 
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
@@ -1455,8 +1519,7 @@ def on_alter_pilot(data):
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
     '''Adds new profile in the database.'''
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     new_freqs = {}
     new_freqs["f"] = default_frequencies()
 
@@ -1477,8 +1540,7 @@ def on_add_profile():
 def on_delete_profile():
     '''Delete profile'''
     if (DB.session.query(Profiles).count() > 1): # keep one profile
-        current_profile = int(getOption("currentProfile"))
-        profile = Profiles.query.get(current_profile)
+        profile = getCurrentProfile()
         DB.session.delete(profile)
         DB.session.commit()
         first_profile_id = Profiles.query.first().id
@@ -1488,8 +1550,7 @@ def on_delete_profile():
 @SOCKET_IO.on('alter_profile')
 def on_alter_profile(data):
     ''' update profile '''
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     if 'profile_name' in data:
         profile.name = data['profile_name']
     if 'profile_description' in data:
@@ -1710,80 +1771,80 @@ def on_alter_race_format(data):
             emit_race_format()
             emit_class_data()
 
-# LED Handler
+# LED Effects
 
-def emit_led_handler_setup(**params):
-    '''Emits LED event/handler wiring options.'''
+def emit_led_effect_setup(**params):
+    '''Emits LED event/effect wiring options.'''
     if led_manager.isEnabled():
-        handlers = led_manager.getRegisteredHandlers()
+        effects = led_manager.getRegisteredEffects()
 
         emit_payload = {
             'events': []
         }
 
         for event in LEDEvent.configurable_events:
-            selectedHandler = led_manager.getEventHandler(event['event'])
+            selectedEffect = led_manager.getEventEffect(event['event'])
 
-            handler_list = []
+            effect_list = []
 
-            for handler in handlers:
-                if event['event'] in handlers[handler]['validEvents']:
-                    handler_list.append({
-                        'name': handler,
-                        'label': __(handlers[handler]['label'])
+            for effect in effects:
+                if event['event'] in effects[effect]['validEvents']:
+                    effect_list.append({
+                        'name': effect,
+                        'label': __(effects[effect]['label'])
                     })
 
             emit_payload['events'].append({
                 'event': event["event"],
                 'label': __(event["label"]),
-                'selected': selectedHandler,
-                'handlers': handler_list
+                'selected': selectedEffect,
+                'effects': effect_list
             })
 
         # never broadcast
-        emit('led_handler_setup_data', emit_payload)
+        emit('led_effect_setup_data', emit_payload)
 
-def emit_led_handlers(**params):
+def emit_led_effects(**params):
     if led_manager.isEnabled():
-        handlers = led_manager.getRegisteredHandlers()
+        effects = led_manager.getRegisteredEffects()
 
-        handler_list = []
-        for handler in handlers:
-            if LEDEvent.NOCONTROL not in handlers[handler]['validEvents']:
-                handler_list.append({
-                    'name': handler,
-                    'label': __(handlers[handler]['label'])
+        effect_list = []
+        for effect in effects:
+            if LEDEvent.NOCONTROL not in effects[effect]['validEvents']:
+                effect_list.append({
+                    'name': effect,
+                    'label': __(effects[effect]['label'])
                 })
 
         emit_payload = {
-            'handlers': handler_list
+            'effects': effect_list
         }
 
         # never broadcast
-        emit('led_handlers', emit_payload)
+        emit('led_effects', emit_payload)
 
-@SOCKET_IO.on('set_led_event_handler')
-def on_set_led_handler(data):
-    '''Set handler for event.'''
-    if led_manager.isEnabled() and 'event' in data and 'handler' in data:
-        led_manager.setEventHandler(data['event'], data['handler'])
+@SOCKET_IO.on('set_led_event_effect')
+def on_set_led_effect(data):
+    '''Set effect for event.'''
+    if led_manager.isEnabled() and 'event' in data and 'effect' in data:
+        led_manager.setEventEffect(data['event'], data['effect'])
 
-        handler_opt = getOption('ledHandlers')
-        if handler_opt:
-            handlers = json.loads(handler_opt)
+        effect_opt = getOption('ledEffects')
+        if effect_opt:
+            effects = json.loads(effect_opt)
         else:
-            handlers = {}
+            effects = {}
 
-        handlers[data['event']] = data['handler']
-        setOption('ledHandlers', json.dumps(handlers))
+        effects[data['event']] = data['effect']
+        setOption('ledEffects', json.dumps(effects))
 
-        server_log('Set LED event {0} to handler {1}'.format(data['event'], data['handler']))
+        server_log('Set LED event {0} to effect {1}'.format(data['event'], data['effect']))
 
-@SOCKET_IO.on('use_led_handler')
-def on_use_led_handler(data):
-    '''Activate arbitrary LED Handler.'''
-    if led_manager.isEnabled() and 'handler' in data:
-        led_manager.setEventHandler(LEDEvent.MANUAL, data['handler'])
+@SOCKET_IO.on('use_led_effect')
+def on_use_led_effect(data):
+    '''Activate arbitrary LED Effect.'''
+    if led_manager.isEnabled() and 'effect' in data:
+        led_manager.setEventEffect(LEDEvent.MANUAL, data['effect'])
 
         args = None
         if 'args' in data:
@@ -2046,8 +2107,7 @@ def on_save_laps():
     if max_round is None:
         max_round = 0
     # Loop through laps to copy to saved races
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     profile_freqs = json.loads(profile.frequencies)
 
     new_race = SavedRaceMeta( \
@@ -2143,8 +2203,6 @@ def on_resave_laps(data):
     emit_priority_message(message, False)
     server_log(message)
     emit_round_data_notify()
-    print heat_id
-    print RACE.current_heat
     if int(getOption('calibrationMode')):
         autoUpdateCalibration()
 
@@ -2163,7 +2221,7 @@ def on_discard_laps():
         check_emit_team_racing_status()  # Show team-racing status info
     else:
         emit_team_racing_status('')  # clear any displayed "Winner is" text
-    led_manager.clear()
+    led_manager.event(LEDEvent.LAPSCLEAR)
 
 def clear_laps():
     '''Clear the current laps table.'''
@@ -2212,6 +2270,21 @@ def on_delete_lap(data):
     lap_id = data['lapid']
     db_update = CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id).one()
     db_update.deleted = True
+
+    db_next = CurrentLap.query.filter( \
+        CurrentLap.node_index==node_index, \
+        CurrentLap.deleted != 1, \
+        CurrentLap.lap_id > lap_id).order_by(CurrentLap.lap_id).first()
+
+    db_last = CurrentLap.query.filter( \
+        CurrentLap.node_index==node_index, \
+        CurrentLap.deleted != 1, \
+        CurrentLap.lap_id < lap_id).order_by(CurrentLap.lap_id.desc()).first()
+
+    if db_next and db_last:
+        db_next.lap_time = db_next.lap_time_stamp - db_last.lap_time_stamp
+        db_next.lap_time_formatted = time_format(db_next.lap_time)
+
     DB.session.commit()
     server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_id))
     emit_current_laps() # Race page, update web client
@@ -2237,7 +2310,8 @@ def on_simulate_lap(data):
     node_index = data['node']
     server_log('Simulated lap: Node {0}'.format(node_index+1))
     led_manager.event(LEDEvent.CROSSINGEXIT, {
-        'nodeIndex': node_index
+        'nodeIndex': node_index,
+        'color': hexToColor(getOption('colorNode_' + str(node_index), '#ffffff'))
         })
     INTERFACE.intf_simulate_lap(node_index, 0)
 
@@ -2248,8 +2322,8 @@ def on_LED_solid(data):
     led_green = data['green']
     led_blue = data['blue']
 
-    on_use_led_handler({
-        'handler': "stripColor",
+    on_use_led_effect({
+        'effect': "stripColor",
         'args': {
             'color': Color(led_red,led_green,led_blue),
             'pattern': ColorPattern.SOLID,
@@ -2264,8 +2338,8 @@ def on_LED_chase(data):
     led_green = data['green']
     led_blue = data['blue']
 
-    on_use_led_handler({
-        'handler': "stripColor",
+    on_use_led_effect({
+        'effect': "stripColor",
         'args': {
             'color': Color(led_red,led_green,led_blue),
 #            'pattern': ColorPattern.CHASE,  # TODO implement chase animation pattern
@@ -2278,8 +2352,8 @@ def on_LED_chase(data):
 @SOCKET_IO.on('LED_RB')
 def on_LED_RB():
     '''LED rainbow'''
-    on_use_led_handler({
-        'handler': "rainbow",
+    on_use_led_effect({
+        'effect': "rainbow",
         'args': {
             'time': 5
         }
@@ -2288,8 +2362,8 @@ def on_LED_RB():
 @SOCKET_IO.on('LED_RBCYCLE')
 def on_LED_RBCYCLE():
     '''LED rainbow Cycle'''
-    on_use_led_handler({
-        'handler': "rainbowCycle",
+    on_use_led_effect({
+        'effect': "rainbowCycle",
         'args': {
             'time': 5
         }
@@ -2298,8 +2372,8 @@ def on_LED_RBCYCLE():
 @SOCKET_IO.on('LED_RBCHASE')
 def on_LED_RBCHASE():
     '''LED Rainbow Cycle Chase'''
-    on_use_led_handler({
-        'handler': "rainbowCycleChase",
+    on_use_led_effect({
+        'effect': "rainbowCycleChase",
         'args': {
             'time': 5
         }
@@ -2363,7 +2437,7 @@ def emit_race_status(**params):
 
 def emit_frequency_data(**params):
     '''Emits node data.'''
-    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+    profile_freqs = json.loads(getCurrentProfile().frequencies)
     emit_payload = {
             'frequency': profile_freqs["f"][:RACE.num_nodes]
         }
@@ -2403,8 +2477,7 @@ def emit_environmental_data(**params):
 
 def emit_enter_and_exit_at_levels(**params):
     '''Emits enter-at and exit-at levels for nodes.'''
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     profile_enter_ats = json.loads(profile.enter_ats)
     profile_exit_ats = json.loads(profile.exit_ats)
 
@@ -2419,8 +2492,7 @@ def emit_enter_and_exit_at_levels(**params):
 
 def emit_node_tuning(**params):
     '''Emits node tuning values.'''
-    current_profile = int(getOption("currentProfile"))
-    tune_val = Profiles.query.get(current_profile)
+    tune_val = getCurrentProfile()
     emit_payload = {
         'profile_ids': [profile.id for profile in Profiles.query.all()],
         'profile_names': [profile.name for profile in Profiles.query.all()],
@@ -2763,8 +2835,7 @@ def calc_leaderboard(**params):
 
     # Get profile (current), frequencies (current), race query (saved), and race format (all)
     if USE_CURRENT:
-        current_profile = int(getOption("currentProfile"))
-        profile = Profiles.query.get(current_profile)
+        profile = getCurrentProfile()
         profile_freqs = json.loads(profile.frequencies)
 
         race_format = getCurrentRaceFormat()
@@ -3214,7 +3285,7 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
     '''Calculates and returns team-racing info.'''
               # create dictionary with key=pilot_id, value=team_name
     pilot_team_dict = {}
-    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+    profile_freqs = json.loads(getCurrentProfile().frequencies)
                              # dict for current heat with key=node_index, value=pilot_id
     node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
                       filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
@@ -3286,7 +3357,7 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
     '''Checks if a pilot has completed enough laps to win.'''
     win_pilot_id = -1
     win_lap_tstamp = 0
-    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+    profile_freqs = json.loads(getCurrentProfile().frequencies)
                              # dict for current heat with key=node_index, value=pilot_id
     node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
                       filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
@@ -3327,8 +3398,7 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
         for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
             if node.crossing_flag and node.index != pass_node_index:
                 if not profile_freqs:
-                    profile_freqs = json.loads(Profiles.query.get( \
-                                               int(getOption("currentProfile"))).frequencies)
+                    profile_freqs = json.loads(getCurrentProfile().frequencies)
                 if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
                     pilot_id = node_pilot_dict.get(node.index)
                     if pilot_id:  # node has pilot assigned to it
@@ -3407,8 +3477,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                     if node.index != pass_node_index:  # if node is for other pilot
                         if node.crossing_flag:
                             if not profile_freqs:
-                                profile_freqs = json.loads(Profiles.query.get( \
-                                                int(getOption("currentProfile"))).frequencies)
+                                profile_freqs = json.loads(getCurrentProfile().frequencies)
                             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
                                 if not node_pilot_dict:
                                     node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
@@ -3445,7 +3514,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         pilots_list = []  # (lap_id, lap_time_stamp, pilot_id, node)
         max_lap_id = 0
         num_max_lap = 0
-        profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+        profile_freqs = json.loads(getCurrentProfile().frequencies)
                                   # dict for current heat with key=node_index, value=pilot_id
         node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
                           filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
@@ -3615,7 +3684,7 @@ def emit_imdtabler_page(**params):
         try:                          # get IMDTabler version string
             imdtabler_ver = subprocess.check_output( \
                                 'java -jar ' + IMDTABLER_JAR_NAME + ' -v', shell=True).rstrip()
-            profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+            profile_freqs = json.loads(getCurrentProfile().frequencies)
             fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
             fs_list = []
             for val in fi_list:  # convert list of integers to list of strings
@@ -3648,7 +3717,7 @@ def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
 def emit_imdtabler_rating():
     '''Emits IMDTabler rating for current profile frequencies.'''
     try:
-        profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+        profile_freqs = json.loads(getCurrentProfile().frequencies)
         imd_val = None
         fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
         fs_list = []
@@ -3688,20 +3757,20 @@ def heartbeat_thread_function():
 
         # update displayed IMD rating after freqs changed:
         if heartbeat_thread_function.imdtabler_flag and \
-                (heartbeat_thread_function.iter_tracker % 5) == 0:
+                (heartbeat_thread_function.iter_tracker % HEARTBEAT_DATA_RATE_FACTOR) == 0:
             heartbeat_thread_function.imdtabler_flag = False
             emit_imdtabler_rating()
 
         # emit rest of node data, but less often:
-        if (heartbeat_thread_function.iter_tracker % 20) == 0:
+        if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
             emit_node_data()
 
         # emit cluster status less often:
-        if (heartbeat_thread_function.iter_tracker % 20) == 10:
+        if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == (2*HEARTBEAT_DATA_RATE_FACTOR):
             CLUSTER.emitStatus()
 
         # emit environment data less often:
-        if (heartbeat_thread_function.iter_tracker % 100) == 0:
+        if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
             INTERFACE.update_environmental_data()
             emit_environmental_data()
 
@@ -3712,7 +3781,7 @@ def heartbeat_thread_function():
                 on_stage_race()
                 RACE_SCHEDULED = False
 
-        gevent.sleep(0.100)
+        gevent.sleep(0.500/HEARTBEAT_DATA_RATE_FACTOR)
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''
@@ -3791,7 +3860,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
     emit_node_data() # For updated triggers and peaks
 
     global Race_laps_winner_name
-    profile_freqs = json.loads(Profiles.query.get(int(getOption("currentProfile"))).frequencies)
+    profile_freqs = json.loads(getCurrentProfile().frequencies)
     if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end (RACE_DURATION_MS is invalid while race is in progress)
         if RACE.race_status is RACE_STATUS_RACING \
@@ -3811,8 +3880,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                     # Get the last completed lap from the database
                     last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
-                        .filter(CurrentLap.node_index==node.index, \
-                            CurrentLap.deleted != 1).scalar()
+                        .filter(CurrentLap.node_index==node.index).scalar()
 
                     if last_lap_id is None: # No previous laps, this is the first pass
                         # Lap zero represents the time from the launch pad to flying through the gate
@@ -3823,8 +3891,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         # Find the time stamp of the last lap completed
                         last_lap_time_stamp = CurrentLap.query.filter( \
                             CurrentLap.node_index==node.index, \
-                            CurrentLap.deleted != 1, \
-                            CurrentLap.lap_id==last_lap_id).one().lap_time_stamp
+                            CurrentLap.deleted != 1).order_by(CurrentLap.lap_id.desc()).first().lap_time_stamp
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
                         lap_id = last_lap_id + 1
@@ -3966,13 +4033,15 @@ def node_crossing_callback(node):
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
                 led_manager.event(LEDEvent.CROSSINGENTER, {
-                    'nodeIndex': node.index
+                    'nodeIndex': node.index,
+                    'color': hexToColor(getOption('colorNode_' + str(node.index), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
                     led_manager.event(LEDEvent.CROSSINGEXIT, {
-                        'nodeIndex': node.index
+                        'nodeIndex': node.index,
+                        'color': hexToColor(getOption('colorNode_' + str(node.index), '#ffffff'))
                         })
                 else:
                     node.show_crossing_flag = True
@@ -3997,8 +4066,7 @@ def default_frequencies():
 
 def assign_frequencies():
     '''Assign frequencies to nodes'''
-    current_profile = int(getOption("currentProfile"))
-    profile = Profiles.query.get(current_profile)
+    profile = getCurrentProfile()
     freqs = json.loads(profile.frequencies)
 
     for idx in range(RACE.num_nodes):
@@ -4184,6 +4252,15 @@ def db_reset_options_defaults():
     setOption("eventDescription", "")
     # LED settings
     setOption("ledBrightness", "32")
+    # LED colors
+    setOption("colorNode_0", "#001fff")
+    setOption("colorNode_1", "#ff3f00")
+    setOption("colorNode_2", "#7fff00")
+    setOption("colorNode_3", "#ffff00")
+    setOption("colorNode_4", "#7f00ff")
+    setOption("colorNode_5", "#ff007f")
+    setOption("colorNode_6", "#3fff3f")
+    setOption("colorNode_7", "#00bfff")
 
     server_log("Reset global settings")
 
@@ -4196,9 +4273,12 @@ def backup_db_file(copy_flag):
     try:
         (dbname, dbext) = os.path.splitext(DB_FILE_NAME)
         bkp_name = DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
+        if not os.path.exists(DB_BKP_DIR_NAME):
+            os.makedirs(DB_BKP_DIR_NAME)
+        if os.path.isfile(bkp_name):  # if target file exists then use 'now' timestamp
+            time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+            bkp_name = DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
         if copy_flag:
-            if not os.path.exists(DB_BKP_DIR_NAME):
-                os.makedirs(DB_BKP_DIR_NAME)
             shutil.copy2(DB_FILE_NAME, bkp_name);
             server_log('Copied database file to:  ' + bkp_name)
         else:
@@ -4267,7 +4347,18 @@ def recover_database():
             "currentLanguage",
             "currentProfile",
             "currentFormat",
+            "calibrationMode",
             "MinLapSec",
+            "MinLapBehavior",
+            "ledBrightness",
+            "colorNode_0",
+            "colorNode_1",
+            "colorNode_2",
+            "colorNode_3",
+            "colorNode_4",
+            "colorNode_5",
+            "colorNode_6",
+            "colorNode_7",
         ]
         carryOver = {}
         for opt in carryoverOpts:
@@ -4321,26 +4412,27 @@ def expand_heats():
 
     DB.session.commit()
 
-def init_LED_handlers():
+def init_LED_effects():
     # start with defaults
-    handlers = {
+    effects = {
         LEDEvent.RACESTAGE: "stripColorOrange2_1",
         LEDEvent.RACESTART: "stripColorGreenSolid",
         LEDEvent.RACEFINISH: "stripColorWhite4_4",
         LEDEvent.RACESTOP: "stripColorRedSolid",
+        LEDEvent.LAPSCLEAR: "clear",
         LEDEvent.CROSSINGENTER: "stripColorSolid",
-        LEDEvent.CROSSINGEXIT: "stripColor1_1",
+        LEDEvent.CROSSINGEXIT: "stripColor1_1_4s",
         LEDEvent.STARTUP: "rainbowCycle",
         LEDEvent.SHUTDOWN: "clear"
     }
     # update with DB values (if any)
-    handler_opt = getOption('ledHandlers')
-    if handler_opt:
-        handlers.update(json.loads(handler_opt))
-    # set handlers
-    led_manager.setEventHandler("manualColor", "stripColor")
-    for item in handlers:
-        led_manager.setEventHandler(item, handlers[item])
+    effect_opt = getOption('ledEffects')
+    if effect_opt:
+        effects.update(json.loads(effect_opt))
+    # set effects
+    led_manager.setEventEffect("manualColor", "stripColor")
+    for item in effects:
+        led_manager.setEventEffect(item, effects[item])
 
 #
 # Program Initialize
@@ -4386,17 +4478,21 @@ if RACE.num_nodes > 0:
         server_log('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
-    if int(getOption('server_api')) < SERVER_API:
-        server_log('Old server API version; resetting database')
-        recover_database()
-    elif not Heat.query.count():
-        server_log('Heats are empty; resetting database')
-        recover_database()
-    elif not Profiles.query.count():
-        server_log('Profiles are empty; resetting database')
-        recover_database()
-    elif not RaceFormat.query.count():
-        server_log('Formats are empty; resetting database')
+    try:
+        if int(getOption('server_api')) < SERVER_API:
+            server_log('Old server API version; resetting database')
+            recover_database()
+        elif not Heat.query.count():
+            server_log('Heats are empty; resetting database')
+            recover_database()
+        elif not Profiles.query.count():
+            server_log('Profiles are empty; resetting database')
+            recover_database()
+        elif not RaceFormat.query.count():
+            server_log('Formats are empty; resetting database')
+            recover_database()
+    except Exception as ex:
+        server_log('Resetting data after DB-check exception:  ' + str(ex))
         recover_database()
 
 # Expand heats (if number of nodes increases)
@@ -4470,16 +4566,16 @@ if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
     led_manager = LEDEventManager(strip, Config['LED'])
+    LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
+    for handlerFile in LEDHandlerFiles:
+        try:
+            lib = importlib.import_module(handlerFile)
+            lib.registerEffects(led_manager)
+        except ImportError:
+            print 'Handler {0} not imported (may require additional dependencies)'.format(handlerFile)
+    init_LED_effects()
 else:
     led_manager = NoLEDManager()
-LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
-for handlerFile in LEDHandlerFiles:
-    try:
-        lib = importlib.import_module(handlerFile)
-        lib.registerHandlers(led_manager)
-    except ImportError:
-        print 'Handler {0} not imported (may require additional dependencies)'.format(handlerFile)
-init_LED_handlers()
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     if not getOption("secret_key"):

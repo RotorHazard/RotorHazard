@@ -17,12 +17,16 @@
 		// internal link rerouting
 		var root = new RegExp(location.host);
 		var is_http = new RegExp('^https?://');
+		var is_anchor = new RegExp('#');
 		var is_mail = new RegExp('^mailto:');
 
 		output.find('a').each(function(){
 			var url = $(this)[0].href;
 			if (url) {
-				if (is_http.test(url)) {
+				if (is_anchor.test($(this).attr('href'))) {
+					$(this).attr('href', window.location.href.split('#')[0] + $(this).attr('href'));
+				}
+				else if (is_http.test(url)) {
 					if(root.test(url)){
 						$(this).attr('href', '/docs?d=' + $(this).attr('href'));
 					}

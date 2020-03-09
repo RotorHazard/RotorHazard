@@ -132,20 +132,18 @@ void handleReadCommand(Message_t *msg, bool serialFlag)
             ioBufferWriteRssi(&(msg->buffer), state.nodeRssiPeak);
             ioBufferWriteRssi(&(msg->buffer), lastPass.rssiPeak);  // RSSI peak for last lap pass
             ioBufferWrite16(&(msg->buffer), uint16_t(state.loopTimeMicros));
-            uint8_t flags = state.crossing ? (uint8_t)1 : (uint8_t)0;  // 'crossing' status
-            if (isPeakValid(history.peakSend)
-                  && (!isNadirValid(history.nadirSend)
+            // set flag if 'crossing' in progress
+            uint8_t flags = state.crossing ? (uint8_t)LAPSTATS_FLAG_CROSSING : (uint8_t)0;
+            if (isPeakValid(history.peakSend) && (!isNadirValid(history.nadirSend)
                     || (history.peakSend.firstTime < history.nadirSend.firstTime)))
             {
-                flags |= 0x02;
+                flags |= LAPSTATS_FLAG_PEAK;
             }
             ioBufferWrite8(&(msg->buffer), flags);
             ioBufferWriteRssi(&(msg->buffer), lastPass.rssiNadir);  // lowest rssi since end of last pass
             ioBufferWriteRssi(&(msg->buffer), state.nodeRssiNadir);
 
-            if (isPeakValid(history.peakSend)
-                  && (!isNadirValid(history.nadirSend)
-                    || (history.peakSend.firstTime < history.nadirSend.firstTime)))
+            if ((flags & (uint8_t)LAPSTATS_FLAG_PEAK) != (uint8_t)0)
             {
                 // send peak and reset
                 ioBufferWriteExtremum(&(msg->buffer), &(history.peakSend), now);

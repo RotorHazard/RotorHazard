@@ -28,7 +28,7 @@ class MockInterface(BaseHardwareInterface):
             node.i2c_addr = i2c_addrs[index] # Set current loop i2c_addr
             node.index = index
             node.api_valid_flag = True
-            node.api_level = 21
+            node.api_level = 22
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.nodes.append(node) # Add new node to RHInterface
@@ -38,8 +38,6 @@ class MockInterface(BaseHardwareInterface):
             except IOError:
                 f = None
             self.data.append(f)
-
-        self.discover_sensors()
 
 
     #
@@ -84,7 +82,7 @@ class MockInterface(BaseHardwareInterface):
                 cross_flag = True if data_columns[7]=='T' else False
                 node.pass_nadir_rssi = int(data_columns[8])
                 node.node_nadir_rssi = int(data_columns[9])
-                pn_history = PeakNadirHistory()
+                pn_history = PeakNadirHistory(node.index)
                 pn_history.peakRssi = int(data_columns[10])
                 pn_history.peakFirstTime = int(data_columns[11])
                 pn_history.peakLastTime = int(data_columns[12])

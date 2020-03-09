@@ -1,5 +1,7 @@
 # Software Setup Instructions
 
+The central software component of the RotorHazard system is its server, written in Python, which operates its functions and serves up web pages to browsers. In a standard setup, the server is run on a RaspberryPi. (It is also possible to run RotorHazard on other types of hardware -- see the [Other Operating Systems](#otheros) section below.)
+
 ## Install System (Raspberry Pi)
 Note: Many of the setup commands below require that the Rasperry Pi has internet access.
 
@@ -220,9 +222,54 @@ The RotorHazard server dependencies should also be updated (be patient, this com
 cd ~/RotorHazard/src/server
 sudo pip install --upgrade --no-cache-dir -r requirements.txt
 ```
+<br/>
+
+-----------------------------
+
+<a id="otheros"></a>
+### Other Operating Systems
+
+The RotorHazard server may be run on any computer with an operating system that supports Python. In these alternate configurations, one or more hardware nodes may be connected via USB -- see [doc/USB Nodes.md](USB%20Nodes.md) for more information. The server may also be run using simulated (mock) nodes.
+
+To install the RotorHazard server on these systems:
+
+1. If the computer does not already have Python installed, download and install Python version 2.7 from https://www.python.org/downloads . To check if Python is installed, open up a command prompt and enter ```python --version```
+
+1. From the RotorHazard [Releases page on github](https://github.com/RotorHazard/RotorHazard/releases), download the "Source code (zip)" file.
+
+1. Unzip the downloaded file into a directory (aka folder) on the computer.
+
+1. Open up a command prompt and navigate to the ```src/server``` directory in the RotorHazard files (using the 'cd' command).
+
+1. Install the RotorHazard server dependencies using the 'requirements.txt' file, using one of the commands below.
+  * On a Windows system the command to use will likely be:<br/>```python -m pip install -r requirements.txt```
+  * On a Linux system the command to use will likely be:<br/>```sudo pip install -r requirements.txt```<br/>
+(Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
+
+To run the RotorHazard server on these systems:
+
+1. Open up a command prompt and navigate to the ```src/server``` directory in the RotorHazard files (if not already there).
+
+1. Enter: ```python server.py```
+
+1. If the server starts up properly, you should see various log messages, including one like this:
+    ```
+    Running http server at port 5000
+    ```
+
+1. The server may be stopped by hitting Ctrl-C
+
+If hardware nodes are connected via USB, they will need to be configured in the "SERIAL_PORTS" section in the "src/server/config.json" configuration file (see [doc/USB Nodes.md](USB%20Nodes.md) for details).
+
+If no hardware nodes are configured, the server will operate using simulated (mock) nodes. In this mode the web-GUI interface may be explored and tested.
+
+To view the web-GUI interface, open up a web browser and enter into the address bar: ```localhost:5000``` (If the HTTP_PORT value in the configuration has been changed then use that value instead of 5000). If the server is running then the RotorHazard main page should appear. Note that pages reserved for the race director (Admin/Settings) are password protected with the username and password specified in the configuration.
+
+<br/>
 
 -----------------------------
 
 See Also:<br/>
-[doc/Hardware Setup.md](Hardware%20Setup.md)
+[doc/Hardware Setup.md](Hardware%20Setup.md)<br/>
+[doc/USB Nodes.md](USB%20Nodes.md)<br/>
 [doc/User Guide.md](User%20Guide.md)

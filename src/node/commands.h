@@ -4,7 +4,7 @@
 #include "io.h"
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 21
+#define NODE_API_LEVEL 22
 
 struct Message_s
 {
@@ -42,6 +42,9 @@ typedef struct Message_s Message_t;
 #define COMM_ACTIVITY   0x10
 #define LAPSTATS_READ   0x20
 #define SERIAL_CMD_MSG  0x40
+
+#define LAPSTATS_FLAG_CROSSING 0x01  // crossing is in progress
+#define LAPSTATS_FLAG_PEAK 0x02      // reported extremum is peak
 
 byte getPayloadSize(uint8_t command);
 void handleWriteCommand(Message_t *msg, bool serialFlag);

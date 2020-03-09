@@ -8,11 +8,9 @@ Follow the instructions here if not done already:
 [doc/Software Setup.md](Software%20Setup.md)
 
 ### Set up Config File
-In the "src/server" directory, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the HTTP_PORT, SECRET_KEY, ADMIN_USERNAME, and ADMIN_PASSWORD values. Make sure you keep this config file as valid JSON. A linter utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
+In the "src/server" directory, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the HTTP_PORT,  ADMIN_USERNAME, and ADMIN_PASSWORD values. Python strictly requires tis file to be valid JSON. A linter utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
 
-HTTP_PORT is the port value the server will run on. By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and the server will fail to start. Port 5000 should be available. (Note that if port 80 is used, the server will need to be run using the *sudo* command.)
-
-SECRET_KEY should be modified to any random value.
+HTTP_PORT is the port value the server will run on. By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and the server will fail to start. If port 80 is used, the server may need to be run using the *sudo* command. Port 5000 should be available. Some versions of LiveTime will only connect to a server on port 5000.
 
 ADMIN_USERNAME and ADMIN_PASSWORD are the login credentials you will use to make changes to settings.
 
@@ -20,7 +18,8 @@ ADMIN_USERNAME and ADMIN_PASSWORD are the login credentials you will use to make
 ### Connect to the Server
 A computer, phone or tablet may be used to interact with the race timer by launching a web browser and entering the IP address of the Raspberry Pi. The Raspberry Pi may be connected using an ethernet cable, or to an available WiFi network. If the IP address of the Pi is not known, it may be viewed using the terminal command "ifconfig", and it can configured to a static value on the Pi desktop via the "Network Preferences." If the Pi is connected to a WiFi network, its IP address may be found in the 'Clients' list on the admin page for the network's router.
 
-In the web browser, type in the IP address of for the race timer and the port value you set in the config file (if not 80).
+In the web browser, type in the IP address of for the race timer and the port value you set in the config file (or leave off the :port if set to 80).
+
 ```
 XXX.XXX.XXX.XXX:5000
 ```
@@ -55,11 +54,10 @@ In the Audio Control section, the user can select whether any one pilot, all pil
 
 This page allows changing the timer's optional settings and event setup.
 
-#### Profiles
-Profiles contain settings for various circumstances or environments, such as outdoor and indoor areas. Settings saved into the profile are frequencies and node tuning values. Changing this list immediately activates the selected profile. Other settings that you adjust will be saved to the currently active profile.
-
 #### Frequency Setup
 Choose a preset or manually select frequencies for each node. Arbitrary frequency selection is possible, as is disabling a node. The IMD score for currently selected frequencies is calculated and displayed at the bottom of the panel.
+
+Profiles contain frequencies and node tuning values. Changing this list immediately activates the selected profile, and changing current frequencies and node tuning immediately saves to the profile.
 
 #### Sensor Tuning
 See [doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
@@ -103,8 +101,17 @@ Minimum lap time and team racing mode are not stored with the race format.
 
 Minimum lap time automatically discards passes that would have registered laps less than the specified duration. Use with caution, as this will discard data that may have been valid.
 
+#### LED Effects
+Choose a visual effect for each timer event. The timer will display this effect when the event occurs, immediately overriding any existing display or effect. Some visual effects are only available on particular timer events. Some visual effects are modified by the event, most notably the color of gate crossing enters/exits. Most effects can be previewed through the LED Control panel.
+
+Some LED effects can be delayed a short time if the timer is busy with time-critical tasks. (Others such as race start are never delayed.) Because of this effect and potentially concurrent crossings, _"Turn Off"_ should usually be avoided for gate exits. Instead, use _"No Change"_ on gate entrance and your desired effect on gate exit.
+
+_This section will not appear if your timer does not have LEDs configured. A notice appears in the startup log._
+
 #### LED Control
-This section will override the current LED display.
+This section will override the current LED display. Choose to temporarily shut off the display, display some pre-configured colors, display any custom color, or display a defined effect. You can also use the slider to adjust the brightness of your panel. The ideal setting for FPV cameras is where the lit panel matches the brightness of a white object. This puts the panel output within the dynamic range of what the camera can capture. However, using a low brightness setting distorts color reproduction and smoothness of color transitions.
+
+_This section will not appear if your timer does not have LEDs configured. A notice appears in the startup log._
 
 #### Database
 Choose to backup the current database (save to a file on the pi and prompt to download it) or clear data. You may clear races, classes, heats, and pilots.
@@ -129,9 +136,9 @@ A "+ Lap" button is provided to force lap pass for that node to be immediately r
 
 When a race is over, use the "Stop Race" button (Hotkey: <kbd>x</kbd>) to discontinue counting laps. You need to do this  even if the timer reaches zero in a "Count Down" format—a popular race format allows pilots to finish the lap they are on when time expires. For best results, clear the timing gate and allow all valid crossings to end before stopping the race.
 
-Once a race has concluded, you must choose "Save Laps" or "Clear Laps" before starting another race. "Save Laps" (Hotkey: <kbd>c</kbd>) will store race results to the database and display them on the "Results" page. "Clear Laps" (Hotkey: <kbd>v</kbd>) will discard the race results.
+Once a race has concluded, you must choose "Save Laps" or "Clear Laps" before starting another race. "Save Laps" (Hotkey: <kbd>c</kbd>) will store race results to the database and display them on the "Results" page. "Clear Laps" (Hotkey: <kbd>v</kbd>) will discard the race results. Saving laps will automatically advance the heat selection to the next heat with the same class as the saved race.
 
-The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. Audio Control and LED Contral are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race. "Time Until Race Start" will schedule a race to be run at a future time. Operators may use this to set a hard limit on the amount of time allowed for pilots to prepare, or to start the timer and then participate in the race themselves.
+The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. _Audio Control_ and _LED Control_ are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race. "Time Until Race Start" will schedule a race to be run at a future time. Operators may use this to set a hard limit on the amount of time allowed for pilots to prepare, or to start the timer and then participate in the race themselves.
 
 ### Marshal
 
@@ -142,5 +149,7 @@ Select the round, heat, and pilot to adjust. Enter and Exit points are automatic
 Add laps by entering the crossing time in seconds from the beginning of the race, then pressing the "Add Lap" button.
 
 Delete laps with the "×" button on the unwanted lap. Deleted laps are removed from calculations but remain present in the data for later reference. "Clear laps" to permanently remove the data from the database.
+
+You may click on/touch the graph to set enter/exit points, activate recalculation, and highlight specific laps. Clicking on laps in the list also adds a highlight on the graph. Press <kbd>delete</kbd> or <kbd>x</kbd> to delete a highlighted lap. Active laps are displayed in green, and deleted laps change to red. The width of the lap indicator shows the enter/exit points, and the yellow highlight draws a line at the exact lap time within that window.
 
 "Commit changes" when you are finished adjusting the race data to save it to the database and update the race results.
