@@ -1,2 +1,5 @@
 /Gemfile.lock
 /*.bin
+/*.gcda
+/*.gcno
+/build/

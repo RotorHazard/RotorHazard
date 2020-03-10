@@ -31,6 +31,7 @@
 			'language',
 			'frequency_data',
 			'pilot_data',
+			'race_format',
 			'leaderboard_cache',
 			'current_laps',
 			'race_status',
@@ -38,19 +39,40 @@
 			'team_racing_stat_if_enb'
 		]});
 
+		$('#about>.popup-content').append('<p id="server-lag">Sync quality: [calculating]</p>');
+
 		socket.on('pi_time', function (msg) {
 			var response_time = window.performance.now();
 			var server_delay = response_time - rotorhazard.pi_time_request;
 			var server_oneway = server_delay ? server_delay / 2 : server_delay;
 
-			var pi_time_diff = (msg.pi_time_s * 1000) - response_time - server_oneway; // convert seconds (pi) to millis (JS)
-			pi_sync_change = pi_time_diff - rotorhazard.pi_time_diff;
+			var pi_time_diff = {
+				'differential': (msg.pi_time_s * 1000) - response_time - server_oneway, // convert seconds (pi) to millis (JS)
+				'response': parseFloat(server_delay)
+			}
 
 			// store sync sample
 			rotorhazard.pi_time_diff_samples.push(pi_time_diff);
 
+			// sort stored samples
+			rotorhazard.pi_time_diff_samples.sort(function(a, b){
+				return a.response - b.response;
+			})
+
+			// remove unusable samples
+			var diff_min = rotorhazard.pi_time_diff_samples[0].differential - rotorhazard.pi_time_diff_samples[0].response
+			var diff_max = rotorhazard.pi_time_diff_samples[0].differential + rotorhazard.pi_time_diff_samples[0].response
+
+			rotorhazard.pi_time_diff_samples = rotorhazard.pi_time_diff_samples.filter(function(value, index, array) {
+				return value.differential >= diff_min && value.differential <= diff_max;
+			});
+
 			// get filtered value
-			rotorhazard.pi_time_diff = median(rotorhazard.pi_time_diff_samples);
+			var a = [];
+			for (var i in rotorhazard.pi_time_diff_samples) {
+				a.push(rotorhazard.pi_time_diff_samples[i].differential);
+			}
+			rotorhazard.pi_time_diff = median(a);
 
 			// pass current sync to timer
 			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
@@ -60,8 +82,15 @@
 				setTimeout(function(){
 					rotorhazard.pi_time_request = window.performance.now();
 					socket.emit('get_pi_time');
-				}, (Math.random() * 250) + 250); // 0.25 to 0.5s delay
+				}, (Math.random() * 500) + 250); // 0.25 to 0.75s delay
 			}
+
+			// update server info
+			var a = Infinity;
+			for (var i in rotorhazard.pi_time_diff_samples) {
+				a = Math.min(a, rotorhazard.pi_time_diff_samples[i].response);
+			}
+			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
 		});
 
 		socket.on('all_languages', function (msg) {
@@ -91,11 +120,10 @@
 			}
 		});
 
-		// set up nodes
-		$('.node').each(function(){
-			var node_id = parseInt($(this).data('id'));
-			rotorhazard.nodes[node_id] = new nodeModel();
-		});
+		// set up node local store
+		for (i = 0; i < {{ num_nodes }}; i++) {
+			rotorhazard.nodes[i] = new nodeModel();
+		}
 
 		// populate voice controls
 		$('#voice-calls').val(parseInt(rotorhazard.primaryPilot));
@@ -114,6 +142,9 @@
 		$().articulate('pitch', rotorhazard.voice_pitch);
 		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
 		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
+		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
+		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
+		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
 		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
 
 		socket.on('race_scheduled', function (msg) {
@@ -128,6 +159,7 @@
 		socket.on('race_status', function (msg) {
 			switch (msg.race_status) {
 				case 1: // Race running
+					rotorhazard.race_status_go_time = window.performance.now();
 					$('body').addClass('race-running');
 					$('body').removeClass('race-stopped');
 					$('body').removeClass('race-new');
@@ -190,24 +222,75 @@
 		});
 
 		socket.on('current_laps', function (msg) {
-			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json array
+			current_laps = msg;
+			show_current_laps();
+		});
+
+		function show_current_laps() {
+			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
 				$('#current_laps_' + i + ' tbody > tr').remove();
-				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
-					if (node_index.lap_id[j] == 0) {
-						var $tr = $('<tr class="lap_0">').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j])
-						).appendTo('#current_laps_' + i);
+				var lap_index = 0;
+
+				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
+					var $tr = '';
+					var lapTime = lap.lap_time;
+					if (lap.splits.length > 0) {
+						lapTime += ' (';
+						for (k=0; k<lap.splits.length; k++) {
+							var split = lap.splits[k];
+							if (k > 0) {
+								lapTime += ', ';
+							}
+							lapTime += split.split_time;
+							if (split.split_speed) {
+								lapTime += '/' + split.split_speed;
+							}
+						}
+						lapTime += ')';
 					}
-					else {
-						var $tr = $('<tr>').append(
-							$('<td>').text(node_index.lap_id[j]),
-							$('<td>').text(node_index.lap_time[j]).prepend($('<span class="from_start">').text(formatTimeMillis(node_index.lap_time_stamp[j])))
-						).appendTo('#current_laps_' + i);
+
+					var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
+
+					$tr = $('<tr>')
+					if (lap_index == 0) {
+						$tr.addClass('lap_0');
 					}
+
+					var local_colspan = 2;
+					if(rotorhazard.display_lap_id) {
+						local_colspan = 1;
+						$tr.append(
+							$('<td class="display_lap_id">').text(lap_index)
+						);
+					}
+					$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ');
+					$local_prepend = $('<span class="from_start">');
+
+					if(rotorhazard.display_time_first_pass) {
+						$local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp));
+						if(rotorhazard.display_time_start){
+							$local_prepend.append(" / ");
+						}
+					}
+
+					if(rotorhazard.display_time_start){
+						$local_prepend.append(formatTimeMillis(lap.lap_time_stamp));
+					}
+					$time_td.prepend($local_prepend);
+					$tr.append($time_td);
+
+					if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
+						$tr.addClass('min-lap-warning');
+					}
+					if (!rotorhazard.race_formats.race_mode && lap.lap_time_stamp > (rotorhazard.race_formats.race_time_sec * 1000)) {
+						$tr.addClass('after-time-expired');
+					}
+					$tr.appendTo('#current_laps_' + i);
+
+					lap_index++;
 				});
 			});
-		});
+		}
 
 		socket.on('leaderboard', function (msg) {
 			$('#leaderboard').empty();
@@ -278,21 +361,7 @@
 		});
 
 		socket.on('stage_ready', function (msg) {
-			var response_time = new Date();
-			var server_delay = ((response_time - request_time) / 2);
-
-			var data = { // supply delay to stage 2
-				delay: msg.start_delay
-			}
-			setTimeout(function(){
-				timer.mode(msg.race_mode);
-				timer.setRaceDuration(msg.race_time_sec);
-				timer.reset();
-				timer.pre_race(msg.start_delay, msg.hide_stage_timer);
-				timer.start(); // Start clock
-
-				race_mode = msg.race_time_sec;
-			}, server_delay);
+			race_kickoff(msg);
 		});
 
 		socket.on('stop_timer', function (msg) {
@@ -406,9 +475,30 @@
 			rotorhazard.saveData();
 		});
 
+		$('#display_lap_id').change(function (event) {
+			rotorhazard.display_lap_id = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
+		$('#display_time_start').change(function (event) {
+			rotorhazard.display_time_start = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
+		$('#display_time_first_pass').change(function (event) {
+			rotorhazard.display_time_first_pass = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
+		socket.on('race_format', function (msg) {
+			rotorhazard.race_formats = msg;
+		});
+
 		$('#use_mp3_tones').change(function (event) {
 			rotorhazard.use_mp3_tones = $(this).prop('checked');
-			rotorhazard.saveData();
 		});
 	});
 
@@ -446,11 +536,11 @@
 
 		<!--Display the current laps-->
 		<div class="race-results">
-			{% for node in range(num_nodes) %}
-			<div class="node" data-id="{{ node }}">
-				<h4 class="callsign_{{ node }}">{{ __('Loading...') }}</h4>
-				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
-				<table class="laps" id="current_laps_{{ node }}">
+			{% for node in nodes %}
+			<div class="node" data-id="{{ node.index }}">
+				<h4 class="callsign_{{ node.index }}">{{ __('Loading...') }}</h4>
+				<div class="channel-block" data-node="{{ node.index }}"><span class="ch"></span> <span class="fr"></span></div>
+				<table class="laps" id="current_laps_{{ node.index }}">
 					<tbody>
 					</tbody>
 				</table>
@@ -529,6 +619,27 @@
 				</div>
 				<ul>
 					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
+				</ul>
+			</li>
+		</ol>
+	</div>
+</div>
+
+<!--Display Settings-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Display Settings') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					{{ __('Lap Information') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="display_lap_id"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
+					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
 				</ul>
 			</li>
 		</ol>

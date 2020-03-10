@@ -5,9 +5,10 @@
 <script type="text/javascript" charset="utf-8">
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	$(document).ready(function () {
-		socket.emit('load_data', {'load_types': [
+ 		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',
 			'node_data',
@@ -22,6 +23,9 @@
 			'min_lap',
 			'race_status',
 			'team_racing_mode',
+			'led_effects',
+			'led_effect_setup',
+			'cluster_status'
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -83,6 +87,15 @@
 		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
 		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
+
+		if ('{{ getOption('ledBrightness') }}' != 'False') {
+			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
+			$('#led_brightness_value').html($('#set_led_brightness').val());
+		}
+
+		if ('{{ getOption('calibrationMode') }}' == '1') {
+			$('#set_calibrationMode').val(1);
+		}
 
 		// populate frequency selects
 		$('.frequency_table').each(function(){
@@ -178,30 +191,56 @@
 			}
 		});
 		socket.on('environmental_data', function (msg) {
-			$('#core-temperature').html(Number(msg.core_temperature).toFixed(1));
 			env_table_html = '';
-			if (msg.aux_voltage.length > 0) {
-				env_table_html += '<tr><th>'+__('Voltage (V)')+'</th><th>'+__('Current (mA)')+'</th><th>'+__('Power (W)')+'</th></tr>';
-				for (i=0; i < msg.aux_voltage.length; i++) {
-					env_table_html += '<tr>';
-					env_table_html += '<td>' + Number(msg.aux_voltage[i]).toFixed(2) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_current[i]).toFixed(0) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_power[i]).toFixed(2) + '</td>';
-					env_table_html += '</tr>';
+			for (i=0; i<msg.length; i++) {
+				var sensor = msg[i];
+				var name = Object.keys(sensor)[0];
+				var data = sensor[name];
+				var values = '';
+				var br = '';
+				for (var reading in data) {
+					var value = data[reading].value;
+					var units = data[reading].units;
+					values += br;
+					if (reading == 'voltage') {
+						values += __('Voltage: ') + Number(value).toFixed(2)+units;
+					} else if(reading == 'current') {
+						values += __('Current: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'power') {
+						values += __('Power: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'temperature') {
+						values += __('Temperature: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'humidity') {
+						values += __('Humidity: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'pressure') {
+						values += __('Pressure: ') + Number(value).toFixed(1)+units;
+					} else {
+						values += __('Unknown: ') + value;
+					}
+					br = '<br/>';
 				}
-			}
-			if (msg.aux_temperature.length > 0) {
-				env_table_html += '<tr><th>'+__('Temperature (°C)')+'</th><th>'+__('Humidity (%rH)')+'</th><th>'+__('Pressure (hPa)')+'</th></tr>';
-				for (i=0; i < msg.aux_temperature.length; i++) {
-					env_table_html += '<tr>';
-					env_table_html += '<td>' + Number(msg.aux_temperature[i]).toFixed(1) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_humidity[i]).toFixed(1) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_pressure[i]).toFixed(1) + '</td>';
-					env_table_html += '</tr>';
-				}
+				env_table_html += '<tr>';
+				env_table_html += '<td>' + name + '</td>';
+				env_table_html += '<td>' + values + '</td>';
+				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<table>' + env_table_html + '</table>');
+				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table>');
+			}
+		});
+		socket.on('cluster_status', function (msg) {
+			cluster_table_html = '';
+			if (msg.slaves && msg.slaves.length > 0) {
+				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Time since last contact (s)')+'</th></tr>';
+				for (i=0; i < msg.slaves.length; i++) {
+					cluster_table_html += '<tr>';
+					cluster_table_html += '<td>' + msg.slaves[i].address + '</td>';
+					cluster_table_html += '<td>' + msg.slaves[i].last_contact + '</td>';
+					cluster_table_html += '</tr>';
+				}
+			}
+			if (cluster_table_html) {
+				$('#cluster-status-table').html('<table>' + cluster_table_html + '</table>');
 			}
 		});
 
@@ -226,7 +265,6 @@
 			}
 			$('#set_profile').val(msg.current_profile);
 			$('#set_profile_name').val( msg.profile_name);
-			$('#set_profile_description').val( msg.profile_description);
 		});
 
 		$('#set_profile').change(function (event) {
@@ -249,13 +287,6 @@
 		$('#set_profile_name').change(function (event) {
 			var data = {
 				profile_name: $(this).val()
-			};
-			socket.emit('alter_profile', data);
-		})
-
-		$('#set_profile_description').change(function (event) {
-			var data = {
-				profile_description: $(this).val()
 			};
 			socket.emit('alter_profile', data);
 		})
@@ -376,15 +407,6 @@
 				node.graph.render(node.canvas, node.graphPausedTime);
 			}
 			node.graphPaused = !node.graphPaused;
-		});
-
-		$('button.catch-pass').click(function (event) {
-			var data = {
-				node: parseInt($(this).data('node')),
-				method: $(this).data('method'),
-			};
-			socket.emit('recover_pass', data);
-			return false;
 		});
 
 		$('.set_frequency').change(function (event) {
@@ -1017,6 +1039,11 @@
 			return false;
 		});
 
+		$('button#reboot_pi').click(function (event) {
+			socket.emit('reboot_pi');
+			return false;
+		});
+
 		socket.on('set_option', function (msg) {
 			$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
 		});
@@ -1077,6 +1104,11 @@
 			var hex_high = hslToHex(hue, sat, lum_high);
 			var contrast_high = contrastColor(hex_high);
 			$('html').css('--contrast_' + option_index + '_high', contrast_high);
+
+			return {
+				'low': contrast_low,
+				'high': contrast_high
+			}
 		}
 
 		$.cssNumber.hue_0 = true;
@@ -1092,6 +1124,34 @@
 			calcContrasts(option_index);
 		});
 
+		$('.hue-control').on('change', function (event) {
+			var option = $(this).data('option');
+			var value = $(this).val();
+			$('html').css('--' + option, value);
+			var option_index = option.split('_')[1];
+			var contrasts = calcContrasts(option_index);
+
+			var data = {
+				option: option,
+				value: value
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_low',
+				value: contrasts.low
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_high',
+				value: contrasts.high
+			};
+			socket.emit('set_option', data);
+
+			return false;
+		});
+
 		$('.sat-control').on('input', function (event) {
 			var option = $(this).data('option');
 			var value = $(this).val();
@@ -1100,7 +1160,66 @@
 			calcContrasts(option_index);
 		});
 
+		$('.sat-control').on('change ', function (event) {
+			var option = $(this).data('option');
+			var value = $(this).val();
+			$('html').css('--' + option, value + '%');
+			var option_index = option.split('_')[1];
+			var contrasts = calcContrasts(option_index);
+
+			var data = {
+				option: option,
+				value: value
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_low',
+				value: contrasts.low
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_high',
+				value: contrasts.high
+			};
+			socket.emit('set_option', data);
+
+			return false;
+		});
+
 		/* LED Controls */
+		socket.on('led_effects', function (msg) {
+			var led_html = $('<div class="control-set">');
+
+			var led_select = $('<select id="led-effects-select"></select>');
+
+			const effects = msg.effects.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
+
+			for (var i in effects) {
+				var effect = effects[i];
+
+				var led_select_option = $('<option value="' + effect.name + '">' + effect.label + '</option>')
+
+				led_select.append(led_select_option);
+			}
+
+			led_html.append($('<label for="led-effects">' + __('Effect') + '</label>'));
+			led_html.append(' ');
+			led_html.append(led_select);
+			led_html.append(' ');
+			led_html.append($('<button id="use-led-effect">' + __('Go') + '</button>'));
+
+			$('#LED-effects').append(led_html);
+		});
+
+		$(document).on('click', '#use-led-effect', function (event) {
+			var data = {
+				effect: $('#led-effects-select').val()
+			};
+			socket.emit('use_led_effect', data);
+		});
+
 		$('button.LED-color').click(function (event) {
 				var colors = convertColor($(this).data('rgb'));
 				var data = {
@@ -1112,30 +1231,61 @@
 				return false;
 		});
 
-		$('button.LED-chase').click(function (event) {
-				var colors = convertColor($(this).data('rgb'));
-				var data = {
-					red: colors.r,
-					green: colors.g,
-					blue: colors.b,
-				};
-				socket.emit('LED_chase', data);
-				return false;
+		socket.on('led_effect_setup_data', function (msg) {
+			var led_html = $('<ol class="form">');
+
+			for (var i in msg.events) {
+				var led_event = msg.events[i];
+				var valid_selection = false;
+
+				var led_select = $('<select id="led-event-' + led_event.event + '" data-event="' + led_event.event + '" class="led-event-select"></select>');
+
+				const effects = led_event.effects.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
+				for (var opt in effects) {
+					var effect = effects[opt];
+
+					var led_select_option = $('<option value="' + effect.name + '">' + effect.label + '</option>')
+
+					led_select.append(led_select_option);
+
+					if (effect.name == led_event.selected)
+						valid_selection = true;
+				}
+
+				var led_event_block = $('<li>');
+				led_event_block.append($('<div class="label-block"><label for="led-event-' + led_event.event + '">' + led_event.label + '</label></div>'));
+				led_event_block.append(led_select);
+
+				if (valid_selection) {
+					led_select.val(led_event.selected);
+				}
+
+				led_html.append(led_event_block);
+			}
+
+			$('#LED-effect-setup').append(led_html);
 		});
 
-		$('button#LED_RB').click(function (event) {
-			socket.emit('LED_RB');
-			return false;
+		$(document).on('change', '.led-event-select', function(event) {
+			var data = {
+				event: $(this).data('event'),
+				effect: $(this).val()
+			};
+			socket.emit('set_led_event_effect', data);
 		});
 
-		$('button#LED_RBCYCLE').click(function (event) {
-			socket.emit('LED_RBCYCLE');
-			return false;
+		$('#set_led_brightness').on('input', function (event) {
+			var val = brightness_logsl.value($(this).val());
+			$('#led_brightness_value').html($(this).val());
 		});
 
-		$('button#LED_RBCHASE').click(function (event) {
-			socket.emit('LED_RBCHASE');
-			return false;
+		$('#set_led_brightness').change(function (event) {
+			var val = brightness_logsl.value($(this).val());
+			// emit data
+			var data = {
+				brightness: Math.round(val),
+			};
+			socket.emit('LED_brightness', data);
 		});
 	});
 
@@ -1171,14 +1321,12 @@
 	</div>
 </div>
 
-<!--Environment-->
+<!--Frequency Setup-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Profiles') }}</h2>
+		<h2>{{ __('Frequency Setup') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
-
 		<div class="control-set">
 			<label for="set_profile">{{ __('Profile') }}:</label>
 			<select id="set_profile">
@@ -1195,22 +1343,9 @@
 				</div>
 				<input type="text" id="set_profile_name">
 			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_profile_description">{{ __('Description') }}</label>
-				</div>
-				<textarea id="set_profile_description"></textarea>
-			</li>
 		</ol>
-	</div>
-</div>
+		<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
 
-<!--Frequency Setup-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Frequency Setup') }}</h2>
-	</div>
-	<div class="panel-content">
 		<!--Apply preset-->
 		<div class="control-set">
 			{{ __('Preset') }}:
@@ -1254,6 +1389,7 @@
 				<div class="rssi-graph">
 					<button class="pause_graph" data-node="{{ node }}">&#x23ef;&#xFE0E;<span class="screen-reader-text"> {{ __('Pause/Resume Graph') }}</span></button>
 					<canvas id="rssi-graph-{{ node }}">
+					</canvas>
 				</div>
 				<div class="crossing crossing_flag_{{ node }}">{{ __('Clear') }}</div>
 				<div class="node-controls">
@@ -1267,11 +1403,6 @@
 						<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
 						<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
 						<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
-					</div>
-
-					<div class="catch-passes">
-						<button class="catch-pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
-						<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
 					</div>
 				</div>
 				<table>
@@ -1321,40 +1452,16 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="set_recovery_max_offset">{{ __('Missed Lap Offset') }}</label>
-					<p class="desc">{{ __('Adjusts EnterAt value after "Catch Missed Lap"') }}</p>
+					<label for="set_calibrationMode">{{ __('Calibration Mode') }}</label>
 				</div>
-				<input type="text" id="set_recovery_max_offset" class="set-option" data-option="HistoryMaxOffset" value="{{ getOption('HistoryMaxOffset') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_recovery_min_offset">{{ __('End Crossing Offset') }}</label>
-					<p class="desc">{{ __('Adjusts ExitAt value after "Force End Crossing"') }}</p>
-				</div>
-				<input type="text" id="set_recovery_min_offset" class="set-option" data-option="HistoryMinOffset" value="{{ getOption('HistoryMinOffset') }}">
+				<select id="set_calibrationMode" class="set-option" data-option="calibrationMode">
+					<option value="0">{{ __('Manual') }}</option>
+					<option value="1">{{ __('Adaptive') }}</option>
+				</select>
 			</li>
 		</ol>
 
-		<div class="calibration-guide">
-			<h3>{{ __('Calibration') }}</h3>
-			<ol>
-				<li>{{ __('Power on a VTx at the same frequency as the node') }}</li>
-				<li>{{ __('Pass VTx very near the timer to establish peak RSSI for node') }}</li>
-				<li>{{ __('Place VTx 5-10 feet away and press "Capture" for EnterAt') }}</li>
-				<li>{{ __('Place VTx 20-30 feet away and press "Capture" for ExitAt') }}</li>
-				<li>{{ __('Review "Crossing" points and adjust until accurately responding') }}</li>
-				<li>{{ __('The EnterAt value should always be higher than the ExitAt value') }}</li>
-			</ol>
-			<h3>{{ __('Troubleshooting') }}</h3>
-			<ul>
-				<li>{{ __('If gate crossings are being missed then lower EnterAt') }}</li>
-				<li>{{ __("If gate crossing are triggered when they shouldn't be then increase EnterAt") }}</li>
-				<li>{{ __('If a pass by the timer is resulting in multiple crossings, lower ExitAt') }}</li>
-				<li>{{ __('If the "Crossing" indicator is stuck on then increase ExitAt') }}</li>
-				<li>{{ __('If crossings are still erratic, increase RSSI Smoothing to reduce noise') }}</li>
-                <li>{{ __('If missing high-speed passes, try decreasing RSSI Smoothing') }}</li>
-			</ul>
-		</div>
+		<p class="form-note"><a href="/docs?d=Tuning%20Parameters.md">{{ __("Tuning Parameters") }}</a></p>
 	</div>
 </div>
 
@@ -1627,35 +1734,56 @@
 </div>
 
 <!--LED controls-->
+{% if led_enabled %}
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('LED Events') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div id="LED-effect-setup"></div>
+	</div>
+</div>
+
 <div class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('LED Control') }}</h2>
 	</div>
 	<div class="panel-content">
 		<div class="control-set">
-			<button class="LED-color" data-rgb="#000000"><img src="../static/image/LED-off.png"></button>
-			<button id="LED_RBCYCLE"><img src="../static/image/LED-rainbow.png"></button>
-			<br />
-			<button class="LED-color" data-rgb="#0000ff"><img src="../static/image/LED-blue.png"></button>
-			<button class="LED-color" data-rgb="#ff3200"><img src="../static/image/LED-orange.png"></button>
-			<button class="LED-color" data-rgb="#ff003C"><img src="../static/image/LED-pink.png"></button>
-			<button class="LED-color" data-rgb="#9600ff"><img src="../static/image/LED-purple.png"></button>
-			<button class="LED-color" data-rgb="#ffD200"><img src="../static/image/LED-yellow.png"></button>
-			<button class="LED-color" data-rgb="#00ffff"><img src="../static/image/LED-cyan.png"></button>
-			<button class="LED-color" data-rgb="#00ff00"><img src="../static/image/LED-green.png"></button>
-			<button class="LED-color" data-rgb="#ff0000"><img src="../static/image/LED-red.png"></button>
-			<br />
-			<button class="LED-chase" data-rgb="#0000ff"><img src="../static/image/LED-chase-blue.png"></button>
-			<button class="LED-chase" data-rgb="#ff3200"><img src="../static/image/LED-chase-orange.png"></button>
-			<button class="LED-chase" data-rgb="#ff003C"><img src="../static/image/LED-chase-pink.png"></button>
-			<button class="LED-chase" data-rgb="#9600ff"><img src="../static/image/LED-chase-purple.png"></button>
-			<button class="LED-chase" data-rgb="#ffD200"><img src="../static/image/LED-chase-yellow.png"></button>
-			<button class="LED-chase" data-rgb="#00ffff"><img src="../static/image/LED-chase-cyan.png"></button>
-			<button class="LED-chase" data-rgb="#00ff00"><img src="../static/image/LED-chase-green.png"></button>
-			<button class="LED-chase" data-rgb="#ff0000"><img src="../static/image/LED-chase-red.png"></button>
+			<button class="LED-color" data-rgb="#000000">{{ __('Turn Off') }}</button>
 		</div>
+
+		<div class="control-set">
+			<button class="LED-color" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
+			<button class="LED-color" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
+			<button class="LED-color" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
+			<button class="LED-color" data-rgb="#ffff00"><span style="background-color:#ffff00"></span></button>
+			<button class="LED-color" data-rgb="#7f00ff"><span style="background-color:#7f00ff"></span></button>
+			<button class="LED-color" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
+			<button class="LED-color" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
+			<button class="LED-color" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_led_brightness">{{ __('LED Brightness') }}</label>
+					<p class="desc">{{ __('Level') }}: <span id="led_brightness_value"></span></p>
+				</div>
+				<input type="range" id="set_led_brightness" min="1" max="25">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_led_color">{{ __('LED Color') }}</label>
+				</div>
+				<input type="color" id="set_led_color" />
+			</li>
+		</ol>
+
+		<div id="LED-effects"></div>
 	</div>
 </div>
+{% endif %}
 
 <!--Reset database-->
 <div class="panel collapsing">
@@ -1686,15 +1814,15 @@
 		<h2>{{ __('System') }}</h2>
 	</div>
 	<div class="panel-content">
-		<div class="control-set">
-		{{ __('Core temperature:') }} <span id="core-temperature"></span>{{ __('°C') }}
+		<div id="env-data-table" class="control-set">
 		</div>
 		<br />
-		<div id="env-data-table" class="control-set">
+		<div id="cluster-status-table" class="control-set">
 		</div>
 		<br />
 		<div class="control-set">
 			<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
+			<a href="#reboot_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Reboot') }}</a>
 			{% if Debug %}<a href="/hardwarelog" class="debug button-like">{{ __('Log') }}</a>{% endif %}
 		</div>
 
@@ -1703,6 +1831,15 @@
 			<div class="popup-content">
 				<p>{{ __('Shut down server?') }}</p>
 				<p><button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="reboot_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>Alert</h2>
+			<div class="popup-content">
+				<p>{{ __('Reboot server?') }}</p>
+				<p><button class="btn-danger" id="reboot_pi">{{ __('Reboot') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>
@@ -1734,25 +1871,25 @@
 				<div class="label-block">
 					<label for="set_hue_primary">{{ __('Primary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_primary" class="set-option hue-control" data-option="hue_0" value="{{ getOption('hue_0') }}" min="0" max="359">
+				<input type="range" id="set_hue_primary" class="hue-control" data-option="hue_0" value="{{ getOption('hue_0') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_primary">{{ __('Primary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_primary" class="set-option sat-control" data-option="sat_0" value="{{ getOption('sat_0') }}" min="0" max="100">
+				<input type="range" id="set_sat_primary" class="sat-control" data-option="sat_0" value="{{ getOption('sat_0') }}" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_hue_secondary">{{ __('Secondary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_secondary" class="set-option hue-control" data-option="hue_1" value="{{ getOption('hue_1') }}" min="0" max="359">
+				<input type="range" id="set_hue_secondary" class="hue-control" data-option="hue_1" value="{{ getOption('hue_1') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_secondary">{{ __('Secondary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_secondary" class="set-option sat-control" data-option="sat_1" value="{{ getOption('sat_1') }}" min="0" max="100">
+				<input type="range" id="set_sat_secondary" class="sat-control" data-option="sat_1" value="{{ getOption('sat_1') }}" min="0" max="100">
 			</li>
 		</ol>
 

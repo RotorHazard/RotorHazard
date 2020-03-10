@@ -4,8 +4,12 @@
 #include "rhtypes.h"
 
 #define MAX_RSSI 0xFF
+#define MAX_DURATION 0xFFFF
 #define SmoothingSamples 255
-#define SmoothingTimestampSize 127 // half median window, rounded up
+#define SmoothingTimestampSize 128 // half median window, rounded up
+#define isPeakValid(x) ((x).rssi != 0)
+#define isNadirValid(x) ((x).rssi != MAX_RSSI)
+#define endTime(x) ((x).firstTime + (x).duration)
 
 struct Settings
 {
@@ -16,53 +20,52 @@ struct Settings
     rssi_t volatile exitAtLevel = 80;
 };
 
+struct Extremum
+{
+  rssi_t volatile rssi;
+  mtime_t volatile firstTime;
+  uint16_t volatile duration;
+};
+
 struct State
 {
     bool volatile crossing = false; // True when the quad is going through the gate
     rssi_t volatile rssi = 0; // Smoothed rssi value
-    rssi_t volatile lastRssi = 0;
-    mtime_t volatile rssiTimestamp = 0; // timestamp of the smoothed value
+    rssi_t lastRssi = 0;
+    mtime_t rssiTimestamp = 0; // timestamp of the smoothed value
 
-    rssi_t volatile passRssiPeak = 0; // peak smoothed rssi seen during current pass
-    mtime_t volatile passRssiPeakFirstTime = 0; // time of the first peak rssi for the current pass
-    mtime_t volatile passRssiPeakLastTime = 0; // time of the last peak rssi for the current pass
-    rssi_t volatile passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
+    Extremum passPeak = {0, 0, 0}; // peak seen during current pass - only valid if pass.rssi != 0
+    rssi_t passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
 
     rssi_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set
     rssi_t volatile nodeRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since the node frequency was set
 
-    bool volatile rxFreqSetFlag = false; // Set true after initial WRITE_FREQUENCY command received
+    bool volatile activatedFlag = false; // Set true after initial WRITE_FREQUENCY command received
 
     // variables to track the loop time
     utime_t volatile loopTimeMicros = 0;
-    utime_t volatile lastloopMicros = 0;
+    utime_t lastloopMicros = 0;
 };
 
 struct History
 {
-    rssi_t volatile peakRssi;
-    mtime_t volatile peakFirstTime;
-    mtime_t volatile peakLastTime;
-    bool volatile peakSend;
-    rssi_t volatile peakSendRssi;
-    mtime_t volatile peakSendFirstTime;
-    mtime_t volatile peakSendLastTime;
+    Extremum peak = {0, 0, 0};
+    bool volatile hasPendingPeak = false;
+    Extremum peakSend = {0, 0, 0}; // only valid if peakSend.rssi != 0
 
-    rssi_t volatile nadirRssi;
-    mtime_t volatile nadirTime;
-    bool volatile nadirSend;
-    rssi_t volatile nadirSendRssi;
-    mtime_t volatile nadirSendTime;
+    Extremum nadir = {MAX_RSSI, 0, 0};
+    bool volatile hasPendingNadir = false;
+    Extremum nadirSend = {MAX_RSSI, 0, 0}; // only valid if nadirSend.rssi != MAX_RSSI
 
-    int8_t volatile rssiChange; // >0 for raising, <0 for falling
+    int8_t rssiChange = 0; // >0 for raising, <0 for falling
 };
 
 struct LastPass
 {
-    rssi_t volatile rssiPeak;
-    mtime_t volatile timestamp;
-    rssi_t volatile rssiNadir;
-    uint8_t volatile lap;
+    rssi_t volatile rssiPeak = 0;
+    mtime_t volatile timestamp = 0;
+    rssi_t volatile rssiNadir = MAX_RSSI;
+    uint8_t volatile lap = 0;
 };
 
 extern struct Settings settings;
@@ -76,7 +79,7 @@ bool rssiStateValid();
  * Restarts rssi peak tracking for node.
  */
 void rssiStateReset();
-void rssiProcess(rssi_t rssi, mtime_t millis);
+bool rssiProcess(rssi_t rssi, mtime_t millis);
 void rssiEndCrossing();
 
 #endif

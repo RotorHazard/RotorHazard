@@ -21,6 +21,10 @@ body>* {
 	box-sizing: border-box;
 }
 
+img {
+	max-width: 100%;
+}
+
 a {
 	color: hsl(212.7, 67.8%, 29.2%);
 	color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
@@ -108,6 +112,7 @@ input[type="number"],
 textarea {
 	width: 100%;
 	border: solid 0.125em hsl(212.7, 67.8%, 29.2%);
+	border-color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
 	border-radius: 0.25rem;
 	background: #fff;
 	padding: 0.25rem;
@@ -1098,12 +1103,17 @@ main.page-home {
 	background: #eee;
 }
 
+.after-time-expired {
+	background: #eee;
+}
+
 .btn-danger {
 	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
 	background: hsl(8.2, 86.5%, 53.7%);
 	background: -moz-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%, hsl(13.1, 64.6%, 37.6%) 100%);
 	background: -webkit-linear-gradient(top, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
 	background: linear-gradient(to bottom, hsl(8.2, 86.5%, 53.7%) 0%,hsl(13.1, 64.6%, 37.6%) 100%);
+	color: #fff;
 }
 
 .btn-warning {
@@ -1112,6 +1122,7 @@ main.page-home {
 	background: -moz-linear-gradient(top, hsl(41.1, 86.2%, 54.5%) 0%, hsl(23.1, 64.6%, 37.6%) 100%);
 	background: -webkit-linear-gradient(top, hsl(41.1, 86.2%, 54.5%) 0%,hsl(23.1, 64.6%, 37.6%) 100%);
 	background: linear-gradient(to bottom, hsl(41.1, 86.2%, 54.5%) 0%,hsl(23.1, 64.6%, 37.6%) 100%);
+	color: #fff;
 }
 
 .rssi-graph {
@@ -1185,6 +1196,31 @@ main.page-home {
 	color: #000;
 	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
 	color: var(--contrast_1_high);
+}
+
+.page-marshal td:not(:last-child) {
+	cursor: pointer;
+}
+
+.invalid {
+	opacity: 0.2;
+	pointer-events: none;
+}
+
+.lap-highlighted td:first-child::before {
+	content: "\25B6 ";
+	font-size: 0.75em;
+	vertical-align: top;
+	margin-right: 0.25rem;
+	color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
+	background: var(--contrast_0_high);
+	border-radius: 2.5em;
+	padding: 0.25em;
+	line-height: 1;
+	position: absolute;
+	display: block;
+	width: 1em;
+	height: 1em;
 }
 
 .node-warnings {
@@ -1411,6 +1447,29 @@ footer {
 footer img {
 	height: 2.5em;
 	vertical-align: middle;
+}
+
+.page-docs pre {
+	background: #eee;
+	padding: 1rem;
+	overflow: auto;
+}
+
+.LED-color span,
+.LED-chase span {
+	display: block;
+	min-width: 1.2em;
+	height: 1.2em;
+	margin: 0;
+}
+
+.LED-chase span {
+	background: url(image/chase.svg) center no-repeat;
+}
+
+.led img {
+	display: block;
+	margin: 0;
 }
 
 /* ************* */
