@@ -4,6 +4,7 @@
 #    sudo apt-get install libjpeg-dev
 #    sudo pip install pillow
 
+from eventmanager import Evt
 from led_event_manager import LEDEvent, Color
 import gevent
 from PIL import Image
@@ -50,18 +51,18 @@ def showBitmap(args):
 
 def registerEffects(manager):
     # register state bitmaps
-    manager.registerEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {'bitmaps': [
+    manager.registerEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, [Evt.STARTUP, Evt.RACESTAGE, Evt.RACESTART, Evt.RACEFINISH, Evt.RACESTOP, Evt.SHUTDOWN], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-RotorHazard.png", "delay": 0}
         ]})
-    manager.registerEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, [LEDEvent.RACESTAGE], {'bitmaps': [
+    manager.registerEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, [Evt.RACESTAGE], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-pause.png", "delay": 0}
         ]})
-    manager.registerEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, [LEDEvent.RACESTART], {'bitmaps': [
+    manager.registerEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, [Evt.RACESTART], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-arrow.png", "delay": 0}
         ]})
-    manager.registerEffect("bitmapRedX", "Image: Red X", showBitmap, [LEDEvent.RACESTOP], {'bitmaps': [
+    manager.registerEffect("bitmapRedX", "Image: Red X", showBitmap, [Evt.RACESTOP], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-X.png", "delay": 0}
         ]})
-    manager.registerEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, [LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {'bitmaps': [
+    manager.registerEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, [Evt.RACEFINISH, Evt.RACESTOP], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-checkerboard.png", "delay": 0}
         ]})

@@ -55,19 +55,6 @@ class EventManager:
                 return True
         return False
 
-'''
-Events.trigger(Event.RACESTAGE, None)
-
-Events.on(Event.RACESTAGE, 'LED', ledEffect(), {})
-
-Events.on(Event.RACESTAGE, 'OSD', osdEffect)
-
-Events.trigger(Evt.CROSSINGENTER, {
-    'nodeIndex': node_index,
-    'color': hexToColor(getOption('colorNode_' + str(node_index), '#ffffff'))
-    })
-'''
-
 class Evt:
     MANUAL = 'maunaul'
     RACESCHEDULE = 'raceSchedule'

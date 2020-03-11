@@ -20,10 +20,10 @@ class LEDEventManager:
 
         # hold
         self.registerEffect("hold", "Hold", lambda *args: None,
-            [LEDEvent.NOCONTROL, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN])
+            [LEDEvent.NOCONTROL, Evt.RACESTAGE, Evt.CROSSINGENTER, Evt.CROSSINGEXIT, Evt.RACESTART, Evt.RACEFINISH, Evt.RACESTOP, Evt.LAPSCLEAR, Evt.SHUTDOWN])
 
         # do nothing
-        self.registerEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN])
+        self.registerEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, Evt.RACESTAGE, Evt.CROSSINGENTER, Evt.CROSSINGEXIT, Evt.RACESTART, Evt.RACEFINISH, Evt.RACESTOP, Evt.LAPSCLEAR, Evt.SHUTDOWN])
 
 
     def isEnabled(self):
@@ -124,53 +124,42 @@ class ColorPattern:
 
 class LEDEvent:
     NOCONTROL = 'noControlDisplay'
-    MANUAL = 'manual'
-    RACESTAGE = 'raceStage'
-    RACESTART = 'raceStart'
-    RACEFINISH = 'raceFinish'
-    RACESTOP = 'raceStop'
-    LAPSCLEAR = 'lapsClear'
-    RACEWIN = 'raceWin'
-    CROSSINGENTER = 'crossingEnter'
-    CROSSINGEXIT = 'crossingExit'
-    STARTUP = 'startup'
-    SHUTDOWN = 'shutdown'
 
     configurable_events = [
         {
-            "event": RACESTAGE,
+            "event": Evt.RACESTAGE,
             "label": "Race Staging"
         },
         {
-            "event": RACESTART,
+            "event": Evt.RACESTART,
             "label": "Race Start"
         },
         {
-            "event": RACEFINISH,
+            "event": Evt.RACEFINISH,
             "label": "Race Finish"
         },
         {
-            "event": RACESTOP,
+            "event": Evt.RACESTOP,
             "label": "Race Stop"
         },
         {
-            "event": LAPSCLEAR,
+            "event": Evt.LAPSCLEAR,
             "label": "Save/Clear Laps"
         },
         {
-            "event": CROSSINGENTER,
+            "event": Evt.CROSSINGENTER,
             "label": "Gate Entrance"
         },
         {
-            "event": CROSSINGEXIT,
+            "event": Evt.CROSSINGEXIT,
             "label": "Gate Exit"
         },
         {
-            "event": STARTUP,
+            "event": Evt.STARTUP,
             "label": "Server Startup"
         },
         {
-            "event": SHUTDOWN,
+            "event": Evt.SHUTDOWN,
             "label": "Server Shutdown"
         }
     ]

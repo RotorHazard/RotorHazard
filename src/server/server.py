@@ -4419,15 +4419,15 @@ def expand_heats():
 def init_LED_effects():
     # start with defaults
     effects = {
-        LEDEvent.RACESTAGE: "stripColorOrange2_1",
-        LEDEvent.RACESTART: "stripColorGreenSolid",
-        LEDEvent.RACEFINISH: "stripColorWhite4_4",
-        LEDEvent.RACESTOP: "stripColorRedSolid",
-        LEDEvent.LAPSCLEAR: "clear",
-        LEDEvent.CROSSINGENTER: "stripColorSolid",
-        LEDEvent.CROSSINGEXIT: "stripColor1_1_4s",
-        LEDEvent.STARTUP: "rainbowCycle",
-        LEDEvent.SHUTDOWN: "clear"
+        Evt.RACESTAGE: "stripColorOrange2_1",
+        Evt.RACESTART: "stripColorGreenSolid",
+        Evt.RACEFINISH: "stripColorWhite4_4",
+        Evt.RACESTOP: "stripColorRedSolid",
+        Evt.LAPSCLEAR: "clear",
+        Evt.CROSSINGENTER: "stripColorSolid",
+        Evt.CROSSINGEXIT: "stripColor1_1_4s",
+        Evt.STARTUP: "rainbowCycle",
+        Evt.SHUTDOWN: "clear"
     }
     # update with DB values (if any)
     effect_opt = getOption('ledEffects')
