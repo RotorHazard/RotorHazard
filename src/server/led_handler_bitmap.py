@@ -8,7 +8,17 @@ from led_event_manager import LEDEvent, Color
 import gevent
 from PIL import Image
 
-def showBitmap(strip, config, args):
+def showBitmap(args):
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
+    if 'config' in args:
+        config = args['config']
+    else:
+        return False
+
     def setPixels(img):
         pos = 0
         for row in range(0, img.height):

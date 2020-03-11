@@ -27,24 +27,29 @@ def led_on(strip, color=ColorVal.WHITE, pattern=ColorPattern.SOLID, offset=0):
 def led_off(strip):
     led_on(strip, ColorVal.NONE)
 
-def chase(strip, config, a={}):
+def chase(args):
     """Movie theater light style chaser animation."""
-    args = {
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
+    a = {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.ONE_OF_THREE,
         'speedDelay': 50,
         'iterations': 5,
         'offWhenDone': True
     }
-    args.update(a)
+    a.update(args)
 
     led_off(strip)
 
-    for i in range(args['iterations'] * sum(args['pattern'])):
-        led_on(strip, args['color'], args['pattern'], i)
-        gevent.sleep(args['speedDelay']/1000.0)
+    for i in range(a['iterations'] * sum(a['pattern'])):
+        led_on(strip, a['color'], a['pattern'], i)
+        gevent.sleep(a['speedDelay']/1000.0)
 
-    if args['offWhenDone']:
+    if a['offWhenDone']:
         led_off(strip)
 
 def color_wheel(pos):
@@ -58,14 +63,24 @@ def color_wheel(pos):
         pos -= 170
         return Color(0, pos * 3, 255 - pos * 3)
 
-def rainbow(strip, config, args=None):
+def rainbow(args):
     """Draw rainbow that fades across all pixels at once."""
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, color_wheel(int(i * 256 / strip.numPixels()) & 255))
     strip.show()
 
-def rainbowCycle(strip, config, args=None):
+def rainbowCycle(args):
     """Draw rainbow that uniformly distributes itself across all pixels."""
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
     if args and 'wait_ms' in args:
         wait_ms = args['wait_ms']
     else:
@@ -85,6 +100,7 @@ def rainbowCycle(strip, config, args=None):
     if 'offWhenDone' in args and args['offWhenDone']:
         led_off(strip)
 
+'''
 def theaterChaseRainbow(strip, wait_ms=25):
     """Rainbow movie theater light style chaser animation."""
     led_on(strip, ColorVal.NONE)
@@ -96,14 +112,20 @@ def theaterChaseRainbow(strip, wait_ms=25):
             gevent.sleep(wait_ms/1000.0)
             for i in range(0, strip.numPixels()-q, 3):
                 strip.setPixelColor(i+q, 0)
+'''
 
-def showColor(strip, config, args=None):
-    if args and 'color' in args:
+def showColor(args):
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
+    if 'color' in args:
         color = args['color']
     else:
         color = ColorVal.WHITE
 
-    if args and 'pattern' in args:
+    if 'pattern' in args:
         pattern = args['pattern']
     else:
         pattern = ColorPattern.SOLID
@@ -114,29 +136,44 @@ def showColor(strip, config, args=None):
         gevent.sleep(float(args['time']))
         led_off(strip)
 
-def clear(strip, config, args=None):
+def clear(args):
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
     led_off(strip)
 
 # Effects adapted from work by Hans Luijten https://www.tweaking4all.com/hardware/arduino/adruino-led-strip-effects/
 
-def colorWipe(strip, config, a={}):
+def colorWipe(args):
     gevent.idle() # never time-critical
 
-    args = {
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
+    a = {
         'color': ColorVal.WHITE,
         'speedDelay': 256,
     }
-    args.update(a)
+    a.update(args)
 
-    args['speedDelay'] = args['speedDelay']/float(strip.numPixels()) # scale effect by strip length
+    a['speedDelay'] = a['speedDelay']/float(strip.numPixels()) # scale effect by strip length
 
     for i in range(strip.numPixels()):
-        strip.setPixelColor(i, args['color'])
+        strip.setPixelColor(i, a['color'])
         strip.show()
-        gevent.sleep(args['speedDelay']/1000.0)
+        gevent.sleep(a['speedDelay']/1000.0)
 
-def fade(strip, config, a={}):
-    args = {
+def fade(args):
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
+    a = {
         'color': ColorVal.WHITE,
         'pattern': ColorPattern.SOLID,
         'steps': 25,
@@ -145,93 +182,103 @@ def fade(strip, config, a={}):
         'offTime': 250,
         'iterations': 1
     }
-    args.update(a)
+    a.update(args)
 
     led_off(strip)
 
-    if 'outSteps' not in args:
-        args['outSteps'] = args['steps']
+    if 'outSteps' not in a:
+        a['outSteps'] = a['steps']
 
     # effect should never exceed 3Hz (prevent seizures)
-    args['offTime'] = min(333-((args['steps']*args['speedDelay'])+(args['outSteps']*args['speedDelay'])+args['onTime']), args['offTime'])
+    a['offTime'] = min(333-((a['steps']*a['speedDelay'])+(a['outSteps']*a['speedDelay'])+a['onTime']), a['offTime'])
 
-    for i in range(args['iterations']):
+    for i in range(a['iterations']):
         # fade in
-        if args['steps']:
+        if a['steps']:
             led_off(strip)
             gevent.idle() # never time-critical
-            for j in range(0, args['steps'], 1):
-                c = dim(args['color'], j/float(args['steps']))
-                led_on(strip, c, args['pattern'])
+            for j in range(0, a['steps'], 1):
+                c = dim(a['color'], j/float(a['steps']))
+                led_on(strip, c, a['pattern'])
                 strip.show()
-                gevent.sleep(args['speedDelay']/1000.0);
+                gevent.sleep(a['speedDelay']/1000.0);
             else:
-                led_on(strip, args['color'], args['pattern'])
+                led_on(strip, a['color'], a['pattern'])
 
-            led_on(strip, args['color'], args['pattern'])
-            gevent.sleep(args['onTime']/1000.0);
+            led_on(strip, a['color'], a['pattern'])
+            gevent.sleep(a['onTime']/1000.0);
 
         # fade out
-        if args['outSteps']:
-            led_on(strip, args['color'], args['pattern'])
-            for j in range(args['outSteps'], 0, -1):
-                c = dim(args['color'], j/float(args['outSteps']))
-                led_on(strip, c, args['pattern'])
+        if a['outSteps']:
+            led_on(strip, a['color'], a['pattern'])
+            for j in range(a['outSteps'], 0, -1):
+                c = dim(a['color'], j/float(a['outSteps']))
+                led_on(strip, c, a['pattern'])
                 strip.show()
-                gevent.sleep(args['speedDelay']/1000.0);
+                gevent.sleep(a['speedDelay']/1000.0);
 
             else:
                 led_off(strip)
 
             led_off(strip)
 
-        gevent.sleep(args['offTime']/1000.0);
+        gevent.sleep(a['offTime']/1000.0);
 
-def sparkle(strip, config, a={}):
-    args = {
+def sparkle(args):
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
+    a = {
         'color': ColorVal.WHITE,
         'chance': 1.0,
         'decay': 0.95,
         'speedDelay': 100,
         'iterations': 100
     }
-    args.update(a)
+    a.update(args)
 
     gevent.idle() # never time-critical
 
     # decay time = log(decay cutoff=10 / max brightness=256) / log(decay rate)
-    if args['decay']:
-        decaySteps = int(math.ceil(math.log(0.00390625) / math.log(args['decay'])))
+    if a['decay']:
+        decaySteps = int(math.ceil(math.log(0.00390625) / math.log(a['decay'])))
     else:
         decaySteps = 0
 
     led_off(strip)
 
-    for i in range(args['iterations'] + decaySteps):
+    for i in range(a['iterations'] + decaySteps):
         # fade brightness all LEDs one step
         for j in range(strip.numPixels()):
             c = strip.getPixelColor(j)
-            strip.setPixelColor(j, dim(c, args['decay']))
+            strip.setPixelColor(j, dim(c, a['decay']))
 
         # pick new pixels to light up
-        if i < args['iterations']:
+        if i < a['iterations']:
             for px in range(strip.numPixels()):
-                if random.random() < float(args['chance']) / strip.numPixels():
+                if random.random() < float(a['chance']) / strip.numPixels():
                     # scale effect by strip length
-                    strip.setPixelColor(px, args['color'])
+                    strip.setPixelColor(px, a['color'])
 
         strip.show()
-        gevent.sleep(args['speedDelay']/1000.0);
+        gevent.sleep(a['speedDelay']/1000.0);
 
-def meteor(strip, config, a={}):
-    args = {
+def meteor(args):
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
+    a = {
         'color': ColorVal.WHITE,
         'meteorSize': 10,
         'decay': 0.75,
         'randomDecay': True,
         'speedDelay': 1
     }
-    args.update(a)
+    a.update(args)
 
     gevent.idle() # never time-critical
 
@@ -241,59 +288,64 @@ def meteor(strip, config, a={}):
 
         # fade brightness all LEDs one step
         for j in range(strip.numPixels()):
-            if not args['randomDecay'] or random.random() > 0.5:
+            if not a['randomDecay'] or random.random() > 0.5:
                 c = strip.getPixelColor(j)
-                strip.setPixelColor(j, dim(c, args['decay']))
+                strip.setPixelColor(j, dim(c, a['decay']))
 
         # draw meteor
-        for j in range(args['meteorSize']):
+        for j in range(a['meteorSize']):
             if i - j < strip.numPixels() and i - j >= 0:
-                strip.setPixelColor(i-j, args['color'])
+                strip.setPixelColor(i-j, a['color'])
 
         strip.show()
-        gevent.sleep(args['speedDelay']/1000.0)
+        gevent.sleep(a['speedDelay']/1000.0)
 
-def larsonScanner(strip, config, a={}):
-    args = {
+def larsonScanner(args):
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
+    a = {
         'color': ColorVal.WHITE,
         'eyeSize': 4,
         'speedDelay': 256,
         'returnDelay': 50,
         'iterations': 3
     }
-    args.update(a)
+    a.update(args)
 
-    args['speedDelay'] = args['speedDelay']/float(strip.numPixels()) # scale effect by strip length
+    a['speedDelay'] = a['speedDelay']/float(strip.numPixels()) # scale effect by strip length
 
     gevent.idle() # never time-critical
 
     led_off(strip)
 
-    for k in range(args['iterations']):
-        for i in range(strip.numPixels()-args['eyeSize']-1):
+    for k in range(a['iterations']):
+        for i in range(strip.numPixels()-a['eyeSize']-1):
             strip.setPixelColor(i-1, ColorVal.NONE)
 
-            strip.setPixelColor(i, dim(args['color'], 0.25))
-            for j in range(args['eyeSize']):
-                strip.setPixelColor(i+j+1, args['color'])
-            strip.setPixelColor(i+args['eyeSize']+1, dim(args['color'], 0.25))
+            strip.setPixelColor(i, dim(a['color'], 0.25))
+            for j in range(a['eyeSize']):
+                strip.setPixelColor(i+j+1, a['color'])
+            strip.setPixelColor(i+a['eyeSize']+1, dim(a['color'], 0.25))
             strip.show()
-            gevent.sleep(args['speedDelay']/1000.0)
+            gevent.sleep(a['speedDelay']/1000.0)
 
-        gevent.sleep(args['returnDelay']/1000.0)
+        gevent.sleep(a['returnDelay']/1000.0)
 
-        for i in range(strip.numPixels()-args['eyeSize']-2, -1, -1):
-            if i < strip.numPixels()-args['eyeSize']-2:
-                strip.setPixelColor(i+args['eyeSize']+2, ColorVal.NONE)
+        for i in range(strip.numPixels()-a['eyeSize']-2, -1, -1):
+            if i < strip.numPixels()-a['eyeSize']-2:
+                strip.setPixelColor(i+a['eyeSize']+2, ColorVal.NONE)
 
-            strip.setPixelColor(i, dim(args['color'], 0.25))
-            for j in range(args['eyeSize']):
-                strip.setPixelColor(i+j+1, args['color'])
-            strip.setPixelColor(i+args['eyeSize']+1, dim(args['color'], 0.25))
+            strip.setPixelColor(i, dim(a['color'], 0.25))
+            for j in range(a['eyeSize']):
+                strip.setPixelColor(i+j+1, a['color'])
+            strip.setPixelColor(i+a['eyeSize']+1, dim(a['color'], 0.25))
             strip.show()
-            gevent.sleep(args['speedDelay']/1000.0)
+            gevent.sleep(a['speedDelay']/1000.0)
 
-        gevent.sleep(args['returnDelay']/1000.0)
+        gevent.sleep(a['returnDelay']/1000.0)
 
 def dim(color, decay):
     r = (color & 0x00ff0000) >> 16;
