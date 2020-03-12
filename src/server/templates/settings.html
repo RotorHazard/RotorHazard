@@ -1231,6 +1231,17 @@
 				return false;
 		});
 
+		$('#set_led_color').change(function (event) {
+				var colors = convertColor($(this).val());
+				var data = {
+					red: colors.r,
+					green: colors.g,
+					blue: colors.b,
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
 		socket.on('led_effect_setup_data', function (msg) {
 			var led_html = $('<ol class="form">');
 
