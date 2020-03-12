@@ -14,7 +14,7 @@ def get_pixel_interface(config, brightness, *args, **kwargs):
         pixelModule = importlib.import_module('neopixel')
         Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
         print 'LED: selecting library "neopixel" (older)'
-    
+
     led_strip_config = config['LED_STRIP']
     if led_strip_config == 'RGB':
         led_strip = 0x00100800
@@ -28,6 +28,19 @@ def get_pixel_interface(config, brightness, *args, **kwargs):
         led_strip = 0x00001008
     elif led_strip_config == 'BGR':
         led_strip = 0x00000810
+    elif led_strip_config == 'RGBW':
+        led_strip = 0x18100800
+    elif led_strip_config == 'RBGW':
+        led_strip = 0x18100008
+    elif led_strip_config == 'GRBW':
+        led_strip = 0x18081000
+    elif led_strip_config == 'GBRW':
+        led_strip = 0x18080010
+    elif led_strip_config == 'BRGW':
+        led_strip = 0x18001008
+    elif led_strip_config == 'BGRW':
+        led_strip = 0x18000810
+
     else:
         print 'LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config)
         return None
