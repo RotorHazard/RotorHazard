@@ -84,6 +84,10 @@ void handleWriteCommand(Message_t *msg, bool serialFlag)
             rssiEndCrossing();
             break;
 
+        case RESET_PAIRED_NODE:  // reset paired node for ISP
+            resetPairedNode();
+            break;
+
         default:
             LOG_ERROR("Invalid write command: ", msg->command, HEX);
             actFlag = false;  // not valid activity
