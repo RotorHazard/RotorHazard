@@ -38,6 +38,10 @@ add the following lines to the end of the file:
 dtparam=i2c_baudrate=75000
 core_freq=250
 ```
+If you are planning to use RotorHazard with Raspberry Pi 4 add just first line:
+```
+dtparam=i2c_baudrate=75000
+```
 Save and exit the file with Ctrl-X
 
 Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
