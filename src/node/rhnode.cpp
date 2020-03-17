@@ -33,6 +33,7 @@
 #include "rssi.h"
 #include "commands.h"
 #include "rheeprom.h"
+#include "resetNode.h"
 
 // ******************************************************************** //
 
@@ -213,13 +214,6 @@ void setup()
 
     rssiInit();
 }
-
-//
-void resetPairedNode()
-{
-    // STUB FOR ISP NODE RESET
-}
-
 
 // Functions for the rx5808 module
 

@@ -1,6 +1,7 @@
 #include "rhtypes.h"
 #include "rssi.h"
 #include "commands.h"
+#include "resetNode.h"
 
 #ifdef __TEST__
   static uint8_t i2cSlaveAddress = 0x08;
