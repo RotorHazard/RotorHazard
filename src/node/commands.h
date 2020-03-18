@@ -51,7 +51,6 @@ typedef struct Message_s Message_t;
 byte getPayloadSize(uint8_t command);
 void handleWriteCommand(Message_t *msg, bool serialFlag);
 void handleReadCommand(Message_t *msg, bool serialFlag);
-void resetPairedNode();
 
 extern uint8_t settingChangedFlags;
 

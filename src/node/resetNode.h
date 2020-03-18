@@ -5,4 +5,5 @@
 #define NODE_RESET_PIN 13
 #endif
 
+void initNodeResetPin();
 void resetPairedNode();
