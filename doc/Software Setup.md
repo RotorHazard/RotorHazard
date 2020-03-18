@@ -162,7 +162,9 @@ python server.py
 The server may be stopped by hitting Ctrl-C
 
 #### Start on Boot
-Create a service
+To configure the system to automatically start the RotorHazard server when booting up:
+
+Create a service file:
 ```
 sudo nano /lib/systemd/system/rotorhazard.service
 ```
@@ -181,21 +183,25 @@ WantedBy=multi-user.target
 ```
 save and exit (CTRL-X, Y, ENTER).
 
-Update permissions.
+Update permissions:
 ```
 sudo chmod 644 /lib/systemd/system/rotorhazard.service
 ```
 
-Start on boot commands.
+Enable the service:
 ```
 sudo systemctl daemon-reload
 sudo systemctl enable rotorhazard.service
 sudo reboot
 ```
-#### Stop the server service
-If a server was started as a service, during the boot, you may use that command to stop it:
+#### Stopping the server service
+If the RotorHazard server was started as a service during the boot, it may be stopped with a command like this:
 ```
 sudo systemctl stop rotorhazard
+```
+To disable the service (so it no longer runs when the system starts up), enter:
+```
+sudo systemctl disable rotorhazard.service
 ```
 
 ### Shutting down the System
