@@ -33,6 +33,7 @@
 #include "rssi.h"
 #include "commands.h"
 #include "rheeprom.h"
+#include "resetNode.h"
 
 // ******************************************************************** //
 
@@ -40,15 +41,9 @@
 #define NODE_NUMBER 0
 
 // Set to 1-8 for manual selection.
-// Leave at 0 for automatic selection via hardware pin.
-// For automatic selection, ground pins for each node:
-//                pin D4 open   pin D4 grounded
-// ground pin D5  node 1        node 5
-// ground pin D6  node 2        node 6
-// ground pin D7  node 3        node 7
-// ground pin D8  node 4        node 8
 
-// See https://github.com/RotorHazard/RotorHazard/blob/master/doc/Software%20Setup.md#receiver-nodes-arduinos
+// Set to 0 for automatic selection via hardware pin.
+// See https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing
 
 // ******************************************************************** //
 
@@ -105,62 +100,93 @@ void setup()
 {
     if (!NODE_NUMBER)
     {
+        // current hardware selection
+        pinMode(2, INPUT_PULLUP);
+        pinMode(3, INPUT_PULLUP);
         pinMode(4, INPUT_PULLUP);
+        // legacy selection - DEPRECATED
         pinMode(5, INPUT_PULLUP);
         pinMode(6, INPUT_PULLUP);
         pinMode(7, INPUT_PULLUP);
         pinMode(8, INPUT_PULLUP);
 
-        if (digitalRead(4) == HIGH)
+        // check if legacy spec pins are in use
+        if (digitalRead(5) == LOW
+        || digitalRead(6) == LOW
+        || digitalRead(7) == LOW
+        || digitalRead(8) == LOW)
         {
-            if (digitalRead(5) == LOW)
+            // legacy spec
+            if (digitalRead(4) == HIGH)
             {
-                i2cSlaveAddress = 8;
+                if (digitalRead(5) == LOW)
+                {
+                    i2cSlaveAddress = 8;
+                }
+                else if (digitalRead(6) == LOW)
+                {
+                    i2cSlaveAddress = 10;
+                }
+                else if (digitalRead(7) == LOW)
+                {
+                    i2cSlaveAddress = 12;
+                }
+                else if (digitalRead(8) == LOW)
+                {
+                    i2cSlaveAddress = 14;
+                }
             }
-            else if (digitalRead(6) == LOW)
+            else
             {
-                i2cSlaveAddress = 10;
+                if (digitalRead(5) == LOW)
+                {
+                    i2cSlaveAddress = 16;
+                }
+                else if (digitalRead(6) == LOW)
+                {
+                    i2cSlaveAddress = 18;
+                }
+                else if (digitalRead(7) == LOW)
+                {
+                    i2cSlaveAddress = 20;
+                }
+                else if (digitalRead(8) == LOW)
+                {
+                    i2cSlaveAddress = 22;
+                }
             }
-            else if (digitalRead(7) == LOW)
+        } else {
+            // use standard selection
+
+            i2cSlaveAddress = 0;
+
+            if (digitalRead(2) == LOW)
             {
-                i2cSlaveAddress = 12;
+                i2cSlaveAddress | 1;
             }
-            else if (digitalRead(8) == LOW)
+            else if (digitalRead(3) == LOW)
             {
-                i2cSlaveAddress = 14;
+                i2cSlaveAddress | 2;
             }
-        }
-        else
-        {
-            if (digitalRead(5) == LOW)
+            else if (digitalRead(4) == LOW)
             {
-                i2cSlaveAddress = 16;
+                i2cSlaveAddress | 4;
             }
-            else if (digitalRead(6) == LOW)
-            {
-                i2cSlaveAddress = 18;
-            }
-            else if (digitalRead(7) == LOW)
-            {
-                i2cSlaveAddress = 20;
-            }
-            else if (digitalRead(8) == LOW)
-            {
-                i2cSlaveAddress = 22;
-            }
+
+            i2cSlaveAddress = 6 + (i2cSlaveAddress * 2);
         }
     }
 
-    Serial.begin(115200);  // Start serial interface
-
+    pinMode(NODE_RESET_PIN, OUTPUT);  // node reset for ISP
     pinMode(RX5808_SEL_PIN, OUTPUT);  // RX5808 comms
     pinMode(RX5808_DATA_PIN, OUTPUT);
     pinMode(RX5808_CLK_PIN, OUTPUT);
     digitalWrite(RX5808_SEL_PIN, HIGH);
 
-    while (!Serial)
-    {
-    };  // Wait for the Serial port to initialise
+    initNodeResetPin();
+
+    Serial.begin(115200);  // Start serial interface
+    while (!Serial) {};  // Wait for the Serial port to initialise
 
     i2cInitialize(false);  // setup I2C slave address and callbacks
 
