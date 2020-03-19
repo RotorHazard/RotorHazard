@@ -1,7 +1,6 @@
 #include "rhtypes.h"
 #include "rssi.h"
 #include "commands.h"
-#include "resetNode.h"
 
 #ifdef __TEST__
   static uint8_t i2cSlaveAddress = 0x08;
@@ -83,10 +82,6 @@ void handleWriteCommand(Message_t *msg, bool serialFlag)
 
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
             rssiEndCrossing();
-            break;
-
-        case RESET_PAIRED_NODE:  // reset paired node for ISP
-            resetPairedNode();
             break;
 
         default:
