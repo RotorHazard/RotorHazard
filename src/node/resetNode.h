@@ -6,4 +6,5 @@
 #endif
 
 void initNodeResetPin();
+void endSerial();
 void resetPairedNode();

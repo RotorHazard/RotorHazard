@@ -7,6 +7,11 @@ void initNodeResetPin()
 	digitalWrite(NODE_RESET_PIN, HIGH);
 }
 
+void endSerial()
+{
+	Serial.end();
+}
+
 void resetPairedNode()
 {
 	// Node reset for ISP
@@ -17,4 +22,5 @@ void resetPairedNode()
 	delay(100);
 	digitalWrite(NODE_RESET_PIN, HIGH);
 }
+
 #endif

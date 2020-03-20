@@ -85,6 +85,10 @@ void handleWriteCommand(Message_t *msg, bool serialFlag)
             rssiEndCrossing();
             break;
 
+        case CLOSE_SERIAL:  // end Serial so ISP can be performed
+            endSerial();
+            break;
+
         case RESET_PAIRED_NODE:  // reset paired node for ISP
             resetPairedNode();
             break;
