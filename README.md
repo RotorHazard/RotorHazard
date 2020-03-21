@@ -48,6 +48,7 @@ Links to external resources are available from the [Wiki](https://github.com/Rot
 * Klaus Michael Schneider
 * Mark Hale
 * Cerberus Velvet
+* David Just
 * Scott Chin and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
 
 ### Supported by:
@@ -58,7 +59,7 @@ Links to external resources are available from the [Wiki](https://github.com/Rot
 * German: Klaus Michael Schneider
 * Spanish: Ramon Hernandez Roldan
 * French: Yannick M.
-* Polish: Mariusz Misiurek
+* Polish: Mariusz Misiurek and Paweł Fabiszewski
 
 ## Feedback
 

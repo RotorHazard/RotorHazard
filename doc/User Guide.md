@@ -4,8 +4,9 @@
 
 ### Hardware and Software Setup
 Follow the instructions here if not done already:
-[doc/Hardware Setup.md](Hardware%20Setup.md)
-[doc/Software Setup.md](Software%20Setup.md)
+[Hardware Setup](Hardware%20Setup.md)
+[Software Setup](Software%20Setup.md)
+[RF shielding](Shielding%20and%20Course%20Position.md)
 
 ### Set up Config File
 In the "src/server" directory, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the HTTP_PORT,  ADMIN_USERNAME, and ADMIN_PASSWORD values. Python strictly requires tis file to be valid JSON. A linter utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.

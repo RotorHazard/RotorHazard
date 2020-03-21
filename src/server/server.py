@@ -139,15 +139,20 @@ except ValueError as ex:
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENERAL']['CORS_ALLOWED_HOSTS'])
 
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
+INTERFACE = None
 try:
     interfaceModule = importlib.import_module(interface_type + 'Interface')
     INTERFACE = interfaceModule.get_hardware_interface(config=Config)
-    if len(INTERFACE.nodes) <= 0:
-        raise RuntimeError('No nodes found')
-except (ImportError, RuntimeError):
-    print 'Unable to initialize nodes via ' + interface_type + 'Interface'
-    interfaceModule = importlib.import_module('MockInterface')
-    INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+except (ImportError, RuntimeError, IOError) as ex:
+    print 'Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex)
+if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
+    if not Config['SERIAL_PORTS'] or len(Config['SERIAL_PORTS']) <= 0:
+        interfaceModule = importlib.import_module('MockInterface')
+        INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+    else:
+        print 'Unable to initialize specified serial node(s): {0}'.format(Config['SERIAL_PORTS'])
+        sys.exit()
+
 RACE = get_race_state() # For storing race management variables
 
 def diff_milliseconds(t2, t1):
@@ -2543,7 +2548,7 @@ def emit_node_tuning(**params):
     emit_payload = {
         'profile_ids': [profile.id for profile in Profiles.query.all()],
         'profile_names': [profile.name for profile in Profiles.query.all()],
-        'current_profile': current_profile,
+        'current_profile': int(getOption('currentProfile')),
         'profile_name': tune_val.name,
         'profile_description': tune_val.description
     }
@@ -4325,9 +4330,12 @@ def backup_db_file(copy_flag):
     try:
         (dbname, dbext) = os.path.splitext(DB_FILE_NAME)
         bkp_name = DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
+        if not os.path.exists(DB_BKP_DIR_NAME):
+            os.makedirs(DB_BKP_DIR_NAME)
+        if os.path.isfile(bkp_name):  # if target file exists then use 'now' timestamp
+            time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+            bkp_name = DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
         if copy_flag:
-            if not os.path.exists(DB_BKP_DIR_NAME):
-                os.makedirs(DB_BKP_DIR_NAME)
             shutil.copy2(DB_FILE_NAME, bkp_name);
             server_log('Copied database file to:  ' + bkp_name)
         else:
@@ -4523,20 +4531,21 @@ if RACE.num_nodes > 0:
         server_log('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
-    if int(getOption('server_api')) < SERVER_API:
-        server_log('Old server API version; resetting database')
-        recover_database()
-    elif not Heat.query.count():
-        server_log('Heats are empty; resetting database')
-        recover_database()
-    elif not HeatNode.query.count():
-        server_log('Heats are empty; resetting database')
-        recover_database()
-    elif not Profiles.query.count():
-        server_log('Profiles are empty; resetting database')
-        recover_database()
-    elif not RaceFormat.query.count():
-        server_log('Formats are empty; resetting database')
+    try:
+        if int(getOption('server_api')) < SERVER_API:
+            server_log('Old server API version; resetting database')
+            recover_database()
+        elif not Heat.query.count():
+            server_log('Heats are empty; resetting database')
+            recover_database()
+        elif not Profiles.query.count():
+            server_log('Profiles are empty; resetting database')
+            recover_database()
+        elif not RaceFormat.query.count():
+            server_log('Formats are empty; resetting database')
+            recover_database()
+    except Exception as ex:
+        server_log('Resetting data after DB-check exception:  ' + str(ex))
         recover_database()
 
 # Expand heats (if number of nodes increases)

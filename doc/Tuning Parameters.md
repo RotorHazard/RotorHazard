@@ -1,5 +1,7 @@
 # Calibration and Sensor Tuning Parameters
 
+_If you are having trouble calibrating your timer, be sure you have constructed and placed [RF shielding](Shielding%20and%20Course%20Position.md) correctly._
+
 Each node keeps track of the signal strength (RSSI) on a selected frequency and uses this relative strength to determine whether a transmitter is near the timing gate. The RotorHazard timing system allows you to calibrate each node individually so that you can compensate for the behavior and hardware differences across your system and environment.
 
 A node can be *Crossing* or *Clear*. If a node is *Clear*, the system believes a transmitter is not near the timing gate because the RSSI is low. If it is *Crossing*, the system believes a transmitter is passing by the timing gate because the RSSI is high. A lap pass will be recorded once the *Crossing* is finished and the system returns to *Clear*.
