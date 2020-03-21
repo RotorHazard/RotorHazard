@@ -1209,8 +1209,7 @@
 				</div>
 				<div class="rssi-graph page" data-node="{{ node.index }}"><canvas id="rssi-graph-{{ node.index }}"></div>
 				<h4 class="callsign_{{ node.index }}">
-					{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node.index).first().pilot_id ).first().callsign
-					}}
+					Loading...
 				</h4>
 				<div class="crossing crossing_flag_{{ node.index }}"><span>{{ __('Clear') }}</span></div>
 				<table class="laps" id="current_laps_{{ node.index }}">
@@ -1425,8 +1424,6 @@
 		</ol>
 	</div>
 </div>
-
-
 
 <!--Display Settings-->
 <div class="panel collapsing">
