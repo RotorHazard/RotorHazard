@@ -175,22 +175,6 @@ PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
 def monotonic_to_milliseconds(secs):
     return 1000.0*secs - PROGRAM_START_MILLIS_OFFSET
 
-RACE_START = monotonic() # Updated on race start commands
-RACE_START_TOKEN = False # Check start thread matches correct stage sequence
-RACE_DURATION_MS = 0 # Calculated when race is stopped
-RACE_END = 0 # Updated when race is stopped
-
-RACE_SCHEDULED = False # Whether to start a race when time
-RACE_SCHEDULED_TIME = 0 # Start race when time reaches this value
-
-RACE_STATUS_READY = 0
-RACE_STATUS_STAGING = 3
-RACE_STATUS_RACING = 1
-RACE_STATUS_DONE = 2
-
-Race_laps_winner_name = None  # set to name of winner in first-to-X-laps race
-RACE_STATUS_TIED_STR = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
-RACE_STATUS_CROSSING = 'Waiting for cross'  # indicator for Most Laps Wins race
 
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 
@@ -266,7 +250,7 @@ class Slave:
 
         if pilot_id != PILOT_ID_NONE:
 
-            split_ts = data['timestamp'] + (PROGRAM_START_MILLIS_OFFSET - 1000.0*RACE_START)
+            split_ts = data['timestamp'] + (PROGRAM_START_MILLIS_OFFSET - 1000.0*RACE.start_time_monotonic)
             last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)).filter_by(node_index=node_index).scalar()
             if last_lap_id is None: # first lap
                 current_lap_id = 0
@@ -1169,8 +1153,8 @@ def on_get_version():
 
 @SOCKET_IO.on('get_timestamp')
 def on_get_timestamp():
-    if RACE.race_status == RACE_STATUS_STAGING:
-        now = RACE_START
+    if RACE.race_status == RACE.STATUS_STAGING:
+        now = RACE.start_time_monotonic
     else:
         now = monotonic()
     return {'timestamp': monotonic_to_milliseconds(now)}
@@ -1751,7 +1735,7 @@ def on_set_min_lap_behavior(data):
 @SOCKET_IO.on("set_race_format")
 def on_set_race_format(data):
     ''' set current race_format '''
-    if RACE.race_status == RACE_STATUS_READY: # prevent format change if race running
+    if RACE.race_status == RACE.STATUS_READY: # prevent format change if race running
         race_format_val = data['race_format']
         race_format = RaceFormat.query.get(race_format_val)
         DB.session.flush()
@@ -1788,7 +1772,7 @@ def on_add_race_format():
 @SOCKET_IO.on('delete_race_format')
 def on_delete_race_format():
     '''Delete profile'''
-    if RACE.race_status == RACE_STATUS_READY: # prevent format change if race running
+    if RACE.race_status == RACE.STATUS_READY: # prevent format change if race running
         raceformat = getCurrentDbRaceFormat()
         if raceformat and (DB.session.query(RaceFormat).count() > 1): # keep one format
             DB.session.delete(raceformat)
@@ -1919,28 +1903,27 @@ def on_use_led_effect(data):
 
 @SOCKET_IO.on('schedule_race')
 def on_schedule_race(data):
-    global RACE_SCHEDULED
-    global RACE_SCHEDULED_TIME
+    global RACE
 
-    RACE_SCHEDULED_TIME = monotonic() + (data['m'] * 60) + data['s']
-    RACE_SCHEDULED = True
+    RACE.scheduled_time = monotonic() + (data['m'] * 60) + data['s']
+    RACE.scheduled = True
 
-    SOCKET_IO.emit('race_scheduled', {
-        'scheduled': RACE_SCHEDULED,
-        'scheduled_at': RACE_SCHEDULED_TIME
+    SOCKET_IO.emit('RACE.scheduled', {
+        'scheduled': RACE.scheduled,
+        'scheduled_at': RACE.scheduled_time
         })
 
     emit_priority_message(__("Next race begins in {0:01d}:{1:02d}".format(data['m'], data['s'])), True)
 
 @SOCKET_IO.on('cancel_schedule_race')
 def cancel_schedule_race():
-    global RACE_SCHEDULED
+    global RACE
 
-    RACE_SCHEDULED = False
+    RACE.scheduled = False
 
-    SOCKET_IO.emit('race_scheduled', {
-        'scheduled': RACE_SCHEDULED,
-        'scheduled_at': RACE_SCHEDULED_TIME
+    SOCKET_IO.emit('RACE.scheduled', {
+        'scheduled': RACE.scheduled,
+        'scheduled_at': RACE.scheduled_time
         })
 
     emit_priority_message(__("Scheduled race cancelled"), False)
@@ -1955,10 +1938,9 @@ def on_get_pi_time():
 @SOCKET_IO.on('stage_race')
 def on_stage_race():
     CLUSTER.emit('stage_race')
-    if RACE.race_status == RACE_STATUS_READY: # only initiate staging if ready
+    global RACE
+    if RACE.race_status == RACE.STATUS_READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
-        global RACE_START
-        global RACE_START_TOKEN
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
@@ -1967,8 +1949,8 @@ def on_stage_race():
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
         RACE.timer_running = 0 # indicate race timer not running
-        RACE.race_status = RACE_STATUS_STAGING
-        INTERFACE.set_race_status(RACE_STATUS_STAGING)
+        RACE.race_status = RACE.STATUS_STAGING
+        INTERFACE.set_race_status(RACE.STATUS_STAGING)
         emit_current_laps() # Race page, blank laps to the web client
         emit_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
@@ -1980,16 +1962,16 @@ def on_stage_race():
         MAX = max(race_format.start_delay_min, race_format.start_delay_max)
         DELAY = random.randint(MIN, MAX) + 0.9 # Add ~1 for prestage (<1 to prevent timer beep)
 
-        RACE_START = monotonic() + DELAY
-        RACE_START_TOKEN = random.random()
-        gevent.spawn(race_start_thread, RACE_START_TOKEN)
+        RACE.start_time_monotonic = monotonic() + DELAY
+        RACE.start_token = random.random()
+        gevent.spawn(race_start_thread, RACE.start_token)
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,
             'delay': DELAY,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
-            'pi_starts_at_s': RACE_START
+            'pi_starts_at_s': RACE.start_time_monotonic
         }) # Announce staging with chosen delay
 
 def autoUpdateCalibration():
@@ -2075,7 +2057,7 @@ def findBestValues(node, node_index):
     }
 
 def race_start_thread(start_token):
-    global Race_laps_winner_name
+    global RACE
 
     # clear any lingering crossings at staging (if node rssi < enterAt)
     for node in INTERFACE.nodes:
@@ -2086,16 +2068,16 @@ def race_start_thread(start_token):
             INTERFACE.force_end_crossing(node.index)
 
     # do non-blocking delay before time-critical code
-    while (monotonic() < RACE_START - 0.5):
+    while (monotonic() < RACE.start_time_monotonic - 0.5):
         gevent.sleep(0.1)
 
-    if RACE.race_status == RACE_STATUS_STAGING and \
-        RACE_START_TOKEN == start_token:
+    if RACE.race_status == RACE.STATUS_STAGING and \
+        RACE.start_token == start_token:
         # Only start a race if it is not already in progress
         # Null this thread if token has changed (race stopped/started quickly)
 
         # do blocking delay until race start
-        while monotonic() < RACE_START:
+        while monotonic() < RACE.start_time_monotonic:
             pass
 
         # do time-critical tasks
@@ -2114,27 +2096,26 @@ def race_start_thread(start_token):
                            format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
                 INTERFACE.force_end_crossing(node.index)
 
-        RACE.race_status = RACE_STATUS_RACING # To enable registering passed laps
-        INTERFACE.set_race_status(RACE_STATUS_RACING)
+        RACE.race_status = RACE.STATUS_RACING # To enable registering passed laps
+        INTERFACE.set_race_status(RACE.STATUS_RACING)
         RACE.timer_running = 1 # indicate race timer is running
-        Race_laps_winner_name = None  # name of winner in first-to-X-laps race
+        RACE.laps_winner_name = None  # name of winner in first-to-X-laps race
         emit_race_status() # Race page, to set race button states
-        server_log('Race started at {0} ({1:13f})'.format(RACE_START, monotonic_to_milliseconds(RACE_START)))
+        server_log('Race started at {0} ({1:13f})'.format(RACE.start_time_monotonic, monotonic_to_milliseconds(RACE.start_time_monotonic)))
 
 @SOCKET_IO.on('stop_race')
 def on_stop_race():
     '''Stops the race and stops registering laps.'''
-    global RACE_END
+    global RACE
 
     CLUSTER.emit('stop_race')
-    if RACE.race_status == RACE_STATUS_RACING:
-        global RACE_DURATION_MS # To redefine main program variable
-        RACE_END = monotonic() # Update the race end time stamp
-        delta_time = RACE_END - RACE_START
+    if RACE.race_status == RACE.STATUS_RACING:
+        RACE.end_time = monotonic() # Update the race end time stamp
+        delta_time = RACE.end_time - RACE.start_time_monotonic
         milli_sec = delta_time * 1000.0
-        RACE_DURATION_MS = milli_sec
+        RACE.duration_ms = milli_sec
 
-        server_log('Race stopped at {0} ({1:13f}), duration {2}ms'.format(RACE_END, monotonic_to_milliseconds(RACE_END), RACE_DURATION_MS))
+        server_log('Race stopped at {0} ({1:13f}), duration {2}ms'.format(RACE.end_time, monotonic_to_milliseconds(RACE.end_time), RACE.duration_ms))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
@@ -2143,16 +2124,16 @@ def on_stop_race():
         if len(min_laps_list) > 0:
             server_log('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
-        RACE.race_status = RACE_STATUS_DONE # To stop registering passed laps, waiting for laps to be cleared
-        INTERFACE.set_race_status(RACE_STATUS_DONE)
+        RACE.race_status = RACE.STATUS_DONE # To stop registering passed laps, waiting for laps to be cleared
+        INTERFACE.set_race_status(RACE.STATUS_DONE)
     else:
         server_log('No active race to stop')
-        RACE.race_status = RACE_STATUS_READY # Go back to ready state
-        INTERFACE.set_race_status(RACE_STATUS_READY)
+        RACE.race_status = RACE.STATUS_READY # Go back to ready state
+        INTERFACE.set_race_status(RACE.STATUS_READY)
         led_manager.clear()
 
     RACE.timer_running = 0 # indicate race timer not running
-    RACE_SCHEDULED = False # also stop any deferred start
+    RACE.scheduled = False # also stop any deferred start
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
@@ -2179,7 +2160,7 @@ def on_save_laps():
         heat_id=RACE.current_heat, \
         class_id=heat.class_id, \
         format_id=getOption('currentFormat'), \
-        start_time = RACE_START, \
+        start_time = RACE.start_time_monotonic, \
         start_time_formatted = RACE.start_time.strftime("%Y-%m-%d %H:%M:%S")
     )
     DB.session.add(new_race)
@@ -2276,8 +2257,8 @@ def on_discard_laps():
     '''Clear the current laps without saving.'''
     CLUSTER.emit('discard_laps')
     clear_laps()
-    RACE.race_status = RACE_STATUS_READY # Flag status as ready to start next race
-    INTERFACE.set_race_status(RACE_STATUS_READY)
+    RACE.race_status = RACE.STATUS_READY # Flag status as ready to start next race
+    INTERFACE.set_race_status(RACE.STATUS_READY)
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
@@ -2292,10 +2273,10 @@ def clear_laps():
     '''Clear the current laps table.'''
     global LAST_RACE_CACHE
     global LAST_RACE_CACHE_VALID
-    global Race_laps_winner_name
+    global RACE
     LAST_RACE_CACHE = calc_leaderboard(current_race=True)
     LAST_RACE_CACHE_VALID = True
-    Race_laps_winner_name = None  # clear winner in first-to-X-laps race
+    RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
     DB.session.query(CurrentLap).delete() # Clear out the current laps table
     DB.session.query(LapSplit).delete()
     DB.session.commit()
@@ -2461,13 +2442,13 @@ def on_LED_brightness(data):
 def on_set_option(data):
     setOption(data['option'], data['value'])
 
-@SOCKET_IO.on('get_race_scheduled')
+@SOCKET_IO.on('get_RACE.scheduled')
 def get_race_elapsed():
     # never broadcasts to all
 
-    emit('race_scheduled', {
-        'scheduled': RACE_SCHEDULED,
-        'scheduled_at': RACE_SCHEDULED_TIME
+    emit('RACE.scheduled', {
+        'scheduled': RACE.scheduled,
+        'scheduled_at': RACE.scheduled_time
     })
 
 @SOCKET_IO.on('imdtabler_update_freqs')
@@ -2499,7 +2480,7 @@ def emit_race_status(**params):
             'race_time_sec': race_format.race_time_sec,
             'race_staging_tones': race_format.staging_tones,
             'hide_stage_timer': race_format.start_delay_min != race_format.start_delay_max,
-            'pi_starts_at_s': RACE_START
+            'pi_starts_at_s': RACE.start_time_monotonic
         }
     if ('nobroadcast' in params):
         emit('race_status', emit_payload)
@@ -3408,12 +3389,12 @@ def check_emit_team_racing_status(t_laps_dict=None, **params):
     disp_str = ''
     for t_name in sorted(t_laps_dict.keys()):
         disp_str += ' <span class="team-laps">Team ' + t_name + ' Lap: ' + str(t_laps_dict[t_name][0]) + '</span>'
-    if Race_laps_winner_name is not None:
-        if Race_laps_winner_name is not RACE_STATUS_TIED_STR and \
-                Race_laps_winner_name is not RACE_STATUS_CROSSING:
-            disp_str += '<span class="team-winner">Winner is Team ' + Race_laps_winner_name + '</span>'
+    if RACE.laps_winner_name is not None:
+        if RACE.laps_winner_name is not RACE.status_tied_str and \
+                RACE.laps_winner_name is not RACE.status_crossing:
+            disp_str += '<span class="team-winner">Winner is Team ' + RACE.laps_winner_name + '</span>'
         else:
-            disp_str += '<span class="team-winner">' + Race_laps_winner_name + '</span>'
+            disp_str += '<span class="team-winner">' + RACE.laps_winner_name + '</span>'
     #server_log('Team racing status: ' + disp_str)
     emit_team_racing_status(disp_str)
 
@@ -3468,9 +3449,9 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
 
 def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_index=-1):
     '''Checks if a team has completed enough laps to win.'''
-    global Race_laps_winner_name
+    global RACE
          # make sure there's not a pilot in the process of crossing for a winning lap
-    if Race_laps_winner_name is None and pilot_team_dict:
+    if RACE.laps_winner_name is None and pilot_team_dict:
         profile_freqs = None
                                   # dict for current heat with key=node_index, value=pilot_id
         node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
@@ -3500,12 +3481,12 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
             win_name = team_name
             win_tstamp = ent[1]
     #server_log('DEBUG check_team_laps_win win_name={0} tstamp={1}'.format(win_name,win_tstamp))
-    Race_laps_winner_name = win_name
+    RACE.laps_winner_name = win_name
 
 def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=None):
     '''Checks if pilot or team has most laps for a win.'''
     # pass_node_index: -1 if called from 'check_race_time_expired()'; node.index if called from 'pass_record_callback()'
-    global Race_laps_winner_name
+    global RACE
 
     race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode: # team racing mode enabled
@@ -3531,7 +3512,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                     num_max_lap = 1
                 else:  # if team is tied for highest lap count found so far
                     # not waiting for crossing
-                    if pass_node_index >= 0 and Race_laps_winner_name is not RACE_STATUS_CROSSING:
+                    if pass_node_index >= 0 and RACE.laps_winner_name is not RACE.status_crossing:
                         num_max_lap += 1  # count number of teams at max lap
                         if ent[1] < win_tstamp:  # this team has earlier lap time
                             win_name = team_name
@@ -3541,7 +3522,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         #server_log('DEBUG check_most_laps_win tied={0} win_name={1} tstamp={2}'.format(tied_flag,win_name,win_tstamp))
 
         if tied_flag or max_lap_count <= 0:
-            Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
+            RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
             check_emit_team_racing_status(t_laps_dict)
             emit_phonetic_text('Race tied', 'race_winner')
             return  # wait for next 'pass_record_callback()' event
@@ -3549,8 +3530,8 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         if win_name:  # if a team looks like the winner
 
             # make sure there's not a pilot in the process of crossing for a winning lap
-            if (Race_laps_winner_name is None or Race_laps_winner_name is RACE_STATUS_TIED_STR or \
-                                Race_laps_winner_name is RACE_STATUS_CROSSING) and pilot_team_dict:
+            if (RACE.laps_winner_name is None or RACE.laps_winner_name is RACE.status_tied_str or \
+                                RACE.laps_winner_name is RACE.status_crossing) and pilot_team_dict:
                 profile_freqs = None
                 node_pilot_dict = None  # dict for current heat with key=node_index, value=pilot_id
                 for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
@@ -3572,22 +3553,22 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                                         if ent and ent[0] == max_lap_count - 1:
                                             # allow race tied when gate crossing completes
                                             if pass_node_index < 0:
-                                                Race_laps_winner_name = RACE_STATUS_CROSSING
+                                                RACE.laps_winner_name = RACE.status_crossing
                                             else:  # if called from 'pass_record_callback()' then no more ties
-                                                Race_laps_winner_name = RACE_STATUS_TIED_STR
+                                                RACE.laps_winner_name = RACE.status_tied_str
                                             server_log('check_most_laps_win waiting for crossing, Node {0}'.\
                                                                                   format(node.index+1))
                                             return
 
             # if race currently tied and more than one team at max lap
             #  then don't stop the tied race in progress
-            if (Race_laps_winner_name is not RACE_STATUS_TIED_STR) or num_max_lap <= 1:
-                Race_laps_winner_name = win_name  # indicate a team has won
+            if (RACE.laps_winner_name is not RACE.status_tied_str) or num_max_lap <= 1:
+                RACE.laps_winner_name = win_name  # indicate a team has won
                 check_emit_team_racing_status(t_laps_dict)
-                emit_phonetic_text('Race done, winner is team ' + Race_laps_winner_name, 'race_winner')
+                emit_phonetic_text('Race done, winner is team ' + RACE.laps_winner_name, 'race_winner')
 
         else:    # if no team looks like the winner
-            Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
+            RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
 
     else:  # not team racing mode
 
@@ -3618,9 +3599,9 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         #server_log('DEBUG check_most_laps_win pass_node_index={0} max_lap={1}'.format(pass_node_index, max_lap_id))
 
         if max_lap_id <= 0:  # if no laps then bail out
-            Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
+            RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
             if pass_node_index < 0:  # if called from 'check_race_time_expired()'
-                emit_team_racing_status(Race_laps_winner_name)
+                emit_team_racing_status(RACE.laps_winner_name)
                 emit_phonetic_text('Race tied', 'race_winner')
             return
 
@@ -3632,9 +3613,9 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                 if item[3].crossing_flag and item[0] >= max_lap_id - 1:
                     # if called from 'check_race_time_expired()' then allow race tied after crossing
                     if pass_node_index < 0:
-                        Race_laps_winner_name = RACE_STATUS_CROSSING
+                        RACE.laps_winner_name = RACE.status_crossing
                     else:  # if called from 'pass_record_callback()' then no more ties
-                        Race_laps_winner_name = RACE_STATUS_TIED_STR
+                        RACE.laps_winner_name = RACE.status_tied_str
                     server_log('check_most_laps_win waiting for crossing, Node {0}'.format(item[3].index+1))
                     return
             else:
@@ -3643,7 +3624,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         # if race currently tied and called from 'pass_record_callback()'
         #  and current-pass pilot is not only one at max lap
         #  then clear 'pass_node_index' so pass will not stop a tied race in progress
-        if Race_laps_winner_name is RACE_STATUS_TIED_STR and pass_node_index >= 0 and \
+        if RACE.laps_winner_name is RACE.status_tied_str and pass_node_index >= 0 and \
                 (pass_node_lap_id < max_lap_id or (pass_node_lap_id == max_lap_id and num_max_lap > 1)):
             pass_node_index = -1
 
@@ -3659,28 +3640,28 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                     win_lap_tstamp = item[1]
                 else:  # other pilots found at max_lap
                              # if called from 'pass_record_callback()' and not waiting for crossing
-                    if pass_node_index >= 0 and Race_laps_winner_name is not RACE_STATUS_CROSSING:
+                    if pass_node_index >= 0 and RACE.laps_winner_name is not RACE.status_crossing:
                         if item[1] < win_lap_tstamp:  # this pilot has earlier lap time
                             win_pilot_id = item[2]
                             win_lap_tstamp = item[1]
                     else:  # called from 'check_race_time_expired()' or was waiting for crossing
-                        if Race_laps_winner_name is not RACE_STATUS_TIED_STR:
-                            Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
-                            emit_team_racing_status(Race_laps_winner_name)
+                        if RACE.laps_winner_name is not RACE.status_tied_str:
+                            RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
+                            emit_team_racing_status(RACE.laps_winner_name)
                             emit_phonetic_text('Race tied', 'race_winner')
                         return  # wait for next 'pass_record_callback()' event
         #server_log('DEBUG check_most_laps_win win_pilot_id={0}'.format(win_pilot_id))
 
         if win_pilot_id >= 0:
             win_callsign = Pilot.query.filter_by(id=win_pilot_id).one().callsign
-            Race_laps_winner_name = win_callsign  # indicate a pilot has won
-            emit_team_racing_status('Winner is ' + Race_laps_winner_name)
+            RACE.laps_winner_name = win_callsign  # indicate a pilot has won
+            emit_team_racing_status('Winner is ' + RACE.laps_winner_name)
             win_phon_name = Pilot.query.filter_by(id=win_pilot_id).one().phonetic
             if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                 win_phon_name = win_callsign
             emit_phonetic_text('Race done, winner is ' + win_phon_name, 'race_winner')
         else:
-            Race_laps_winner_name = RACE_STATUS_TIED_STR  # indicate status tied
+            RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
 
 def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **params):
     '''Emits phonetic data.'''
@@ -3827,43 +3808,43 @@ def heartbeat_thread_function():
     '''Emits current rssi data.'''
     while True:
         try:
+            global RACE
             node_data = INTERFACE.get_heartbeat_json()
-    
+
             SOCKET_IO.emit('heartbeat', node_data)
             heartbeat_thread_function.iter_tracker += 1
-    
+
             # check if race timer is finished
             if RACE.timer_running:
                 check_race_time_expired()
-    
+
             # update displayed IMD rating after freqs changed:
             if heartbeat_thread_function.imdtabler_flag and \
                     (heartbeat_thread_function.iter_tracker % HEARTBEAT_DATA_RATE_FACTOR) == 0:
                 heartbeat_thread_function.imdtabler_flag = False
                 emit_imdtabler_rating()
-    
+
             # emit rest of node data, but less often:
             if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
                 emit_node_data()
-    
+
             # emit cluster status less often:
             if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == (2*HEARTBEAT_DATA_RATE_FACTOR):
                 CLUSTER.emitStatus()
-    
+
             # emit environment data less often:
             if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
                 INTERFACE.update_environmental_data()
                 emit_environmental_data()
-                
+
             time_now = monotonic()
-    
+
             # check if race is to be started
-            global RACE_SCHEDULED
-            if RACE_SCHEDULED:
-                if time_now > RACE_SCHEDULED_TIME:
+            if RACE.scheduled:
+                if time_now > RACE.scheduled_time:
                     on_stage_race()
-                    RACE_SCHEDULED = False
-    
+                    RACE.scheduled = False
+
             # if any comm errors then log them (at defined intervals; faster if debug mode)
             if time_now > heartbeat_thread_function.last_error_rep_time + \
                         (ERROR_REPORT_INTERVAL_SECS if not Config['GENERAL']['DEBUG'] \
@@ -3871,7 +3852,7 @@ def heartbeat_thread_function():
                 heartbeat_thread_function.last_error_rep_time = time_now
                 if INTERFACE.get_intf_total_error_count() > 0:
                     server_log(INTERFACE.get_intf_error_report_str())
-            
+
             gevent.sleep(0.500/HEARTBEAT_DATA_RATE_FACTOR)
 
         except KeyboardInterrupt:
@@ -3883,14 +3864,14 @@ def heartbeat_thread_function():
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''
-    delta_time = monotonic() - RACE_START
+    delta_time = monotonic() - RACE.start_time_monotonic
     milli_sec = delta_time * 1000.0
     return milli_sec
 
-def ms_to_race_scheduled():
+def ms_to_race_start():
     '''Return milliseconds since race start.'''
-    if RACE_SCHEDULED:
-        delta_time = monotonic() - RACE_SCHEDULED_TIME
+    if RACE.scheduled:
+        delta_time = monotonic() - RACE.scheduled_time
         milli_sec = delta_time * 1000.0
         return milli_sec
     else:
@@ -3944,7 +3925,7 @@ def time_format_mmss(millis):
 def check_race_time_expired():
     race_format = getCurrentRaceFormat()
     if race_format and race_format.race_mode == 0: # count down
-        if monotonic() >= RACE_START + race_format.race_time_sec:
+        if monotonic() >= RACE.start_time_monotonic + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
             Events.trigger(Evt.RACEFINISH)
             if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
@@ -3957,13 +3938,13 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
-    global Race_laps_winner_name
+    global RACE
     profile_freqs = json.loads(getCurrentProfile().frequencies)
     if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
-        # always count laps if race is running, otherwise test if lap should have counted before race end (RACE_DURATION_MS is invalid while race is in progress)
-        if RACE.race_status is RACE_STATUS_RACING \
-            or (RACE.race_status is RACE_STATUS_DONE and \
-                lap_timestamp_absolute < RACE_END):
+        # always count laps if race is running, otherwise test if lap should have counted before race end (RACE.duration_ms is invalid while race is in progress)
+        if RACE.race_status is RACE.STATUS_RACING \
+            or (RACE.race_status is RACE.STATUS_DONE and \
+                lap_timestamp_absolute < RACE.end_time):
 
             # Get the current pilot id on the node
             pilot_id = HeatNode.query.filter_by( \
@@ -3971,9 +3952,9 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
             # reject passes before race start and with disabled (no-pilot) nodes
             if pilot_id != PILOT_ID_NONE:
-                if lap_timestamp_absolute >= RACE_START:
+                if lap_timestamp_absolute >= RACE.start_time_monotonic:
 
-                    lap_time_stamp = (lap_timestamp_absolute - RACE_START)
+                    lap_time_stamp = (lap_timestamp_absolute - RACE.start_time_monotonic)
                     lap_time_stamp *= 1000 # store as milliseconds
 
                     # Get the last completed lap from the database
@@ -4011,7 +3992,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         SOCKET_IO.emit('pass_record', {
                             'node': node.index,
                             'frequency': node.frequency,
-                            'timestamp': lap_time_stamp + monotonic_to_milliseconds(RACE_START)
+                            'timestamp': lap_time_stamp + monotonic_to_milliseconds(RACE.start_time_monotonic)
                         })
                         # Add the new lap to the database
                         DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
@@ -4043,15 +4024,15 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                                 # if Most Laps Wins race is tied then check for winner
                                 if race_format.win_condition == WIN_CONDITION_MOST_LAPS:
-                                    if Race_laps_winner_name is RACE_STATUS_TIED_STR or \
-                                                Race_laps_winner_name is RACE_STATUS_CROSSING:
+                                    if RACE.laps_winner_name is RACE.status_tied_str or \
+                                                RACE.laps_winner_name is RACE.status_crossing:
                                         check_most_laps_win(node.index, t_laps_dict, pilot_team_dict)
 
                                 # if a team has won the race and this is the winning lap
-                                elif Race_laps_winner_name is not None and \
-                                            team_name == Race_laps_winner_name and \
+                                elif RACE.laps_winner_name is not None and \
+                                            team_name == RACE.laps_winner_name and \
                                             team_laps >= race_format.number_laps_win:
-                                    emit_phonetic_text('Winner is team ' + Race_laps_winner_name, 'race_winner')
+                                    emit_phonetic_text('Winner is team ' + RACE.laps_winner_name, 'race_winner')
                             elif lap_id == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
 
@@ -4063,8 +4044,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                                                      # if Most Laps Wins race is tied then check for winner
                                     if race_format.win_condition == WIN_CONDITION_MOST_LAPS:
-                                        if Race_laps_winner_name is RACE_STATUS_TIED_STR or \
-                                                    Race_laps_winner_name is RACE_STATUS_CROSSING:
+                                        if RACE.laps_winner_name is RACE.status_tied_str or \
+                                                    RACE.laps_winner_name is RACE.status_crossing:
                                             check_most_laps_win(node.index)
 
                                 else:           # need to check if any pilot has enough laps to win
@@ -4075,12 +4056,12 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                             emit_team_racing_status('Winner is ' + win_callsign)
                                             emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
 
-                                            if Race_laps_winner_name is None:
+                                            if RACE.laps_winner_name is None:
                                                     # a pilot has won the race and has not yet been announced
                                                 win_phon_name = Pilot.query.get(win_pilot_id).phonetic
                                                 if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                                                     win_phon_name = win_callsign
-                                                Race_laps_winner_name = win_callsign  # call out winner (once)
+                                                RACE.laps_winner_name = win_callsign  # call out winner (once)
                                                 emit_phonetic_text('Winner is ' + win_phon_name, 'race_winner')
 
                                         else:  # no pilot has won the race; send phonetic data to be spoken
@@ -4124,7 +4105,7 @@ def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
 
-    if led_manager.isEnabled() and RACE.race_status == RACE_STATUS_RACING:  # if race is in progress
+    if led_manager.isEnabled() and RACE.race_status == RACE.STATUS_RACING:  # if race is in progress
         # if pilot assigned to node and first crossing is complete
         if node.current_pilot_id != PILOT_ID_NONE and node.first_cross_flag:
             # first crossing has happened; if 'enter' then show indicator,

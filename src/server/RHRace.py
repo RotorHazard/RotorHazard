@@ -7,8 +7,25 @@ class RHRace():
         self.current_heat = 1
         self.race_status = 0
         self.timer_running = 0
-        self.start_time = 0
+        self.start_time = 0 # datetime
         self.format = None
+
+        self.start_time_monotonic = 0
+        self.start_token = False # Check start thread matches correct stage sequence
+        self.duration_ms = 0 # Calculated when race is stopped
+        self.end_time = 0 # Updated when race is stopped
+
+        self.scheduled = False # Whether to start a race when time
+        self.scheduled_time = 0 # Start race when time reaches this value
+
+        self.laps_winner_name = None  # set to name of winner in first-to-X-laps race
+        self.status_tied_str = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
+        self.status_crossing = 'Waiting for cross'  # indicator for Most Laps Wins race
+
+    STATUS_READY = 0
+    STATUS_STAGING = 3
+    STATUS_RACING = 1
+    STATUS_DONE = 2
 
 def get_race_state():
     '''Returns the race object.'''
