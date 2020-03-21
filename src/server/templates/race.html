@@ -20,6 +20,8 @@
 		rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
 		rotorhazard.timer.race.duration = msg.race_time_sec;
 
+		rotorhazard.timer.race.max_delay = msg.delay;
+
 		rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
 	}
 
@@ -192,6 +194,7 @@
 		socket.on('race_status', function (msg) {
 			rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
 			rotorhazard.timer.race.duration = msg.race_time_sec;
+			rotorhazard.timer.race.staging_tones = msg.race_staging_tones;
 
 			switch (msg.race_status) {
 				case 1: // Race running

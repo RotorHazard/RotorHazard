@@ -544,6 +544,10 @@ nodeModel.prototype = {
 }
 
 /* Data model for timer */
+const TONES_NONE = 0;
+const TONES_ONE = 1;
+const TONES_ALL = 2;
+
 function timerModel() {
 	// interval control
 	this.interval = 100; // in ms
@@ -563,6 +567,8 @@ function timerModel() {
 	this.running = false;
 	this.zero_time = null; // timestamp for timer's zero point
 	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
+	this.staging_tones = TONES_ALL; // sound tones during staging
+	this.max_delay = Infinity; // don't sound more tones than this even if staging takes longer
 	this.time_s = false; // simplified relative time in seconds
 	this.count_up = false; // use fixed-length timer
 	this.duration = 0; // fixed-length duration, in seconds
@@ -572,7 +578,7 @@ function timerModel() {
 	this.drift_history_samples = 10;
 	this.drift_correction = 0;
 
-	this.warn_until = 0;
+	this.warn_until = 0; // display sync warning
 
 	var self = this;
 
@@ -967,13 +973,26 @@ rotorhazard.timer.deferred.callbacks.expire = function(timer){
 rotorhazard.timer.race.callbacks.start = function(timer){
 	$('.time-display').html(timer.renderHTML());
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
+	if (timer.staging_tones == TONES_ONE
+		&& timer.max_delay >= 1) {
+		// beep on start if single staging tone
+		if( rotorhazard.use_mp3_tones){
+			sound_stage.play();
+		}
+		else {
+			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+		}
+	}
 }
 rotorhazard.timer.race.callbacks.step = function(timer){
 	if (timer.warn_until < window.performance.now()) {
 		$('.timing-clock .warning').hide();
 	}
-	if (timer.time_s < 0) {
-		if (timer.hidden_staging) {
+	if (timer.time_s < 0
+		&& timer.time_s >= -timer.max_delay) {
+		// time before race begins (staging)
+		if (timer.hidden_staging
+			&& timer.staging_tones == TONES_ALL) {
 			// beep every second during staging if timer is hidden
 			if (timer.time_s * 10 % 10 == 0) {
 				if( rotorhazard.use_mp3_tones){
@@ -987,7 +1006,8 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 			|| timer.time_s == -20
 			|| timer.time_s == -10) {
 			speak('<div>' + __l('Starting in') + ' ' + (-timer.time_s) + ' ' + __l('Seconds') + '</div>', true);
-		} else if (timer.time_s >= -5) {
+		} else if (timer.staging_tones == TONES_ALL
+			&& timer.time_s >= -5) {
 			// staging beep for last 5 seconds before start
 			if (timer.time_s * 10 % 10 == 0) {
 				if( rotorhazard.use_mp3_tones){
