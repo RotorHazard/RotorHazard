@@ -30,3 +30,10 @@ class RHRace():
 def get_race_state():
     '''Returns the race object.'''
     return RHRace()
+
+class WinCondition():
+    NONE = 0
+    MOST_LAPS = 1
+    FIRST_TO_LAP_X = 2
+    FASTEST_LAP = 3 # Not yet implemented
+    FASTEST_3_CONSECUTIVE = 4 # Not yet implemented

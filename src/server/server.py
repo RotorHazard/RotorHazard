@@ -41,7 +41,7 @@ from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, Co
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
-from RHRace import get_race_state
+from RHRace import get_race_state, WinCondition
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -602,12 +602,6 @@ class RaceFormat(DB.Model):
 TONES_NONE = 0
 TONES_ONE = 1
 TONES_ALL = 2
-
-WIN_CONDITION_NONE = 0
-WIN_CONDITION_MOST_LAPS = 1
-WIN_CONDITION_FIRST_TO_LAP_X = 2
-WIN_CONDITION_FASTEST_LAP = 3 # Not yet implemented
-WIN_CONDITION_FASTEST_3_CONSECUTIVE = 4 # Not yet implemented
 
 class GlobalSettings(DB.Model):
     __tablename__ = 'global_settings'
@@ -2343,7 +2337,7 @@ def on_delete_lap(data):
     race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         # update team-racing status info
-        if race_format.win_condition != WIN_CONDITION_MOST_LAPS:  # if not Most Laps Wins race
+        if race_format.win_condition != WinCondition.MOST_LAPS:  # if not Most Laps Wins race
             if race_format.number_laps_win > 0:  # if number-laps-win race
                 t_laps_dict, team_name, pilot_team_dict = get_team_laps_info(-1, race_format.number_laps_win)
                 check_team_laps_win(t_laps_dict, race_format.number_laps_win, pilot_team_dict)
@@ -3166,7 +3160,7 @@ def calc_leaderboard(**params):
         }
     else:
         leaderboard_output['meta'] = {
-            'win_condition': WIN_CONDITION_NONE,
+            'win_condition': WinCondition.NONE,
             'team_racing_mode': False
         }
 
@@ -3928,7 +3922,7 @@ def check_race_time_expired():
         if monotonic() >= RACE.start_time_monotonic + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
             Events.trigger(Evt.RACEFINISH)
-            if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
+            if race_format.win_condition == WinCondition.MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
 def pass_record_callback(node, lap_timestamp_absolute, source):
@@ -4009,7 +4003,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                             # if win condition is first-to-x-laps and x is valid
                             #  then check if a team has enough laps to win
-                            if race_format.win_condition == WIN_CONDITION_FIRST_TO_LAP_X and race_format.number_laps_win > 0:
+                            if race_format.win_condition == WinCondition.FIRST_TO_LAP_X and race_format.number_laps_win > 0:
                                 t_laps_dict, team_name, pilot_team_dict = \
                                     get_team_laps_info(pilot_id, race_format.number_laps_win)
                                 team_laps = t_laps_dict[team_name][0]
@@ -4023,7 +4017,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
 
                                 # if Most Laps Wins race is tied then check for winner
-                                if race_format.win_condition == WIN_CONDITION_MOST_LAPS:
+                                if race_format.win_condition == WinCondition.MOST_LAPS:
                                     if RACE.laps_winner_name is RACE.status_tied_str or \
                                                 RACE.laps_winner_name is RACE.status_crossing:
                                         check_most_laps_win(node.index, t_laps_dict, pilot_team_dict)
@@ -4039,17 +4033,17 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         else:  # not team racing mode
                             if lap_id > 0:
                                                 # send phonetic data to be spoken
-                                if race_format.win_condition != WIN_CONDITION_FIRST_TO_LAP_X or race_format.number_laps_win <= 0:
+                                if race_format.win_condition != WinCondition.FIRST_TO_LAP_X or race_format.number_laps_win <= 0:
                                     emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
 
                                                      # if Most Laps Wins race is tied then check for winner
-                                    if race_format.win_condition == WIN_CONDITION_MOST_LAPS:
+                                    if race_format.win_condition == WinCondition.MOST_LAPS:
                                         if RACE.laps_winner_name is RACE.status_tied_str or \
                                                     RACE.laps_winner_name is RACE.status_crossing:
                                             check_most_laps_win(node.index)
 
                                 else:           # need to check if any pilot has enough laps to win
-                                    if race_format.win_condition == WIN_CONDITION_FIRST_TO_LAP_X:
+                                    if race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
                                         win_pilot_id = check_pilot_laps_win(node.index, race_format.number_laps_win)
                                         if win_pilot_id >= 0:  # a pilot has won the race
                                             win_callsign = Pilot.query.get(win_pilot_id).callsign
@@ -4242,7 +4236,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=0,
-                             win_condition=WIN_CONDITION_MOST_LAPS,
+                             win_condition=WinCondition.MOST_LAPS,
                              team_racing_mode=False))
     DB.session.add(RaceFormat(name=__("Whoop Sprint"),
                              race_mode=0,
@@ -4251,7 +4245,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=0,
-                             win_condition=WIN_CONDITION_MOST_LAPS,
+                             win_condition=WinCondition.MOST_LAPS,
                              team_racing_mode=False))
     DB.session.add(RaceFormat(name=__("Limited Class"),
                              race_mode=0,
@@ -4260,7 +4254,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=0,
-                             win_condition=WIN_CONDITION_MOST_LAPS,
+                             win_condition=WinCondition.MOST_LAPS,
                              team_racing_mode=False))
     DB.session.add(RaceFormat(name=__("First to 3 Laps"),
                              race_mode=1,
@@ -4269,7 +4263,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=3,
-                             win_condition=WIN_CONDITION_FIRST_TO_LAP_X,
+                             win_condition=WinCondition.FIRST_TO_LAP_X,
                              team_racing_mode=False))
     DB.session.add(RaceFormat(name=__("Open Practice"),
                              race_mode=1,
@@ -4278,7 +4272,7 @@ def db_reset_race_formats():
                              start_delay_max=0,
                              staging_tones=0,
                              number_laps_win=0,
-                             win_condition=WIN_CONDITION_NONE,
+                             win_condition=WinCondition.NONE,
                              team_racing_mode=False))
     DB.session.add(RaceFormat(name=__("Team / Most Laps Wins"),
                              race_mode=0,
@@ -4287,7 +4281,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=0,
-                             win_condition=WIN_CONDITION_MOST_LAPS,
+                             win_condition=WinCondition.MOST_LAPS,
                              team_racing_mode=True))
     DB.session.add(RaceFormat(name=__("Team / First to 7 Laps"),
                              race_mode=0,
@@ -4296,7 +4290,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=7,
-                             win_condition=WIN_CONDITION_FIRST_TO_LAP_X,
+                             win_condition=WinCondition.FIRST_TO_LAP_X,
                              team_racing_mode=True))
     DB.session.commit()
     setCurrentRaceFormat(RaceFormat.query.first())
@@ -4586,7 +4580,7 @@ SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
                          start_delay_max=0,
                          staging_tones=0,
                          number_laps_win=0,
-                         win_condition=WIN_CONDITION_NONE,
+                         win_condition=WinCondition.NONE,
                          team_racing_mode=False)
 
 # Import IMDTabler
