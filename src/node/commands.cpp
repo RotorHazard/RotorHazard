@@ -42,6 +42,7 @@ byte getPayloadSize(uint8_t command)
 // Generic IO write command handler
 void handleWriteCommand(Message_t *msg, bool serialFlag)
 {
+    uint8_t u8val;
     uint16_t u16val;
     rssi_t rssiVal;
 
@@ -90,8 +91,8 @@ void handleWriteCommand(Message_t *msg, bool serialFlag)
             break;
 
         case RESET_PAIRED_NODE:  // reset paired node for ISP
-            pinstate = ioBufferRead8(&(msg->buffer));
-            resetPairedNode(pinState);
+            u8val = ioBufferRead8(&(msg->buffer));
+            resetPairedNode(u8val);
             break;
 
         default:
