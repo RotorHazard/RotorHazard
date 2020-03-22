@@ -61,10 +61,10 @@ class LEDEventManager:
 
         if event in [Evt.SHUTDOWN]:
             # event is direct (blocking)
-            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, True)
+            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 50)
         else:
             # event is normal (threaded/non-blocking)
-            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, False)
+            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 100)
         return True
 
     def clear(self):
