@@ -38,6 +38,8 @@ add the following lines to the end of the file:
 dtparam=i2c_baudrate=75000
 core_freq=250
 ```
+Note: The first line sets the transfer rate on the I2C bus (which is used to communicate with the Arduino node processors). The second line fixes a potential variable clock-rate issue, described [here](https://www.abelectronics.co.uk/kb/article/1089/i2c--smbus-and-raspbian-stretch-linux). If a Raspberry Pi 4 is being used, the second line may need to be omitted.
+
 Save and exit the file with Ctrl-X
 
 Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
