@@ -4481,7 +4481,7 @@ def expand_heats():
         for node in range(RACE.num_nodes):
             heat_row = HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
             if not heat_row.count():
-                DB.session.add(HeatNode(heat_id=heat_ids.heat_id, node_index=node, pilot_id=PILOT_ID_NONE))
+                DB.session.add(HeatNode(heat_id=heat_ids.id, node_index=node, pilot_id=PILOT_ID_NONE))
 
     DB.session.commit()
 
