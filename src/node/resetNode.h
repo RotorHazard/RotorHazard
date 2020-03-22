@@ -7,4 +7,4 @@
 
 void initNodeResetPin();
 void endSerial();
-void resetPairedNode();
+void resetPairedNode(int pinState);

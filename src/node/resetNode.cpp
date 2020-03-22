@@ -12,15 +12,15 @@ void endSerial()
 	Serial.end();
 }
 
-void resetPairedNode()
+void resetPairedNode(int pinState)
 {
 	// Node reset for ISP
 	// Resets other node wired to this node's reset pin (typically D12)
-	digitalWrite(NODE_RESET_PIN, HIGH);
-	delay(50);
-	digitalWrite(NODE_RESET_PIN, LOW);
-	delay(100);
-	digitalWrite(NODE_RESET_PIN, HIGH);
+	if (pinState) {
+		digitalWrite(NODE_RESET_PIN, HIGH);
+	} else {
+		digitalWrite(NODE_RESET_PIN, LOW);
+	}
 }
 
 #endif

@@ -90,7 +90,8 @@ void handleWriteCommand(Message_t *msg, bool serialFlag)
             break;
 
         case RESET_PAIRED_NODE:  // reset paired node for ISP
-            resetPairedNode();
+            pinstate = ioBufferRead8(&(msg->buffer));
+            resetPairedNode(pinState);
             break;
 
         default:
