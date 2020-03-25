@@ -108,6 +108,21 @@ cd python
 sudo python setup.py install
 ```
 
+Note: The **LED_COUNT** value will need to be set in the `src/server/config.json` file. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
+```
+LED_COUNT:  Number of LED pixels in strip (or panel)
+LED_PIN:  GPIO pin connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
+LED_FREQ_HZ:  LED signal frequency in hertz (usually 800000)
+LED_DMA:  DMA channel to use for generating signal (default 10)
+LED_INVERT:  True to invert the signal (when using NPN transistor level shift)
+LED_CHANNEL:  Set to '1' for GPIOs 13, 19, 41, 45 or 53
+LED_STRIP:  Strip type and color ordering (default is 'GRB')
+LED_ROWS:  Number of rows in LED-panel array (1 for strip)
+PANEL_ROTATE:  Optional panel-rotation value (default 0)
+INVERTED_PANEL_ROWS:  Optional panel row-inversion (default false)
+```
+If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
+
 ### INA219 Voltage/Current Support
 The ina219 interface is provided by the following project:
 https://github.com/chrisb2/pi_ina219

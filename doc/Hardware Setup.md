@@ -54,7 +54,8 @@ Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common groun
 A directional RF shield significantly improves the system's ability to reject false passes. See [RF shielding](Shielding%20and%20Course%20Position.md)
 
 ### WS2812b LED Support
-The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under Software Setup.
+The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under [doc/Software Setup.md](Software%20Setup.md).
+
 ![led wiring](img/GPIO.jpg)
 
 ### Additional Sensors
