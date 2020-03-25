@@ -57,7 +57,8 @@ A directional RF shield significantly improves the system's ability to reject fa
 * Line your system case with copper tape
 
 ### WS2812b LED Support
-The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under Software Setup.
+The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under [doc/Software Setup.md](Software%20Setup.md).
+
 ![led wiring](img/GPIO.jpg)
 
 ### Additional Sensors
