@@ -64,7 +64,7 @@ class LEDEventManager:
             self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 50)
         else:
             # event is normal (threaded/non-blocking)
-            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 100)
+            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 150)
         return True
 
     def clear(self):
