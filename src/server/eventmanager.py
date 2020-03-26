@@ -61,7 +61,7 @@ class EventManager:
         return False
 
 class Evt:
-    MANUAL = 'maunaul'
+    MANUAL = 'manual'
     RACESCHEDULE = 'raceSchedule'
     RACESTAGE = 'raceStage'
     RACESTART = 'raceStart'

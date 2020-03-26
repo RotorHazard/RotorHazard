@@ -38,6 +38,9 @@ Events = EventManager()
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
 
+# VRx
+from VRxManager import VRxManager
+
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
@@ -80,6 +83,7 @@ Config['GENERAL'] = {}
 Config['SENSORS'] = {}
 Config['LED'] = {}
 Config['SERIAL_PORTS'] = []
+Config['VRX_SERVER'] = {}
 
 # LED strip configuration:
 Config['LED']['LED_COUNT']      = 0       # Number of LED pixels.
@@ -130,6 +134,9 @@ try:
         Config['SENSORS'].update(ExternalConfig['SENSORS'])
     if 'SERIAL_PORTS' in ExternalConfig:
         Config['SERIAL_PORTS'].extend(ExternalConfig['SERIAL_PORTS'])
+    if 'VRX_SERVER' in ExternalConfig:
+        Config['VRX_SERVER'].update(ExternalConfig['VRX_SERVER'])
+
     Config['GENERAL']['configFile'] = 1
     print 'Configuration file imported'
 except IOError:
@@ -4654,6 +4661,12 @@ if strip:
     init_LED_effects()
 else:
     led_manager = NoLEDManager()
+
+
+if 'HOST' in Config['VRX_SERVER']:
+    vrx_manager = VRxManager(Events, Config['VRX_SERVER']['HOST'])
+    # test command:
+    vrx_manager.setFrequency(1, 5800)
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     if not getOption("secret_key"):
