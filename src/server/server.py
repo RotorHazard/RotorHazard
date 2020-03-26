@@ -31,6 +31,10 @@ from flask_sqlalchemy import SQLAlchemy
 import random
 import json
 
+# Events manager
+from eventmanager import Evt, EventManager
+Events = EventManager()
+
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
 
@@ -1710,7 +1714,7 @@ def on_reset_database(data):
 @SOCKET_IO.on('shutdown_pi')
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
-    led_manager.eventDirect(LEDEvent.SHUTDOWN)  # server is shutting down, so shut off LEDs
+    Events.trigger(Evt.SHUTDOWN)  # server is shutting down, so shut off LEDs
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
     server_log('Shutdown pi')
@@ -1720,7 +1724,7 @@ def on_shutdown_pi():
 @SOCKET_IO.on('reboot_pi')
 def on_reboot_pi():
     '''Shutdown the raspberry pi.'''
-    led_manager.eventDirect(LEDEvent.SHUTDOWN)  # server is shutting down, so shut off LEDs
+    Events.trigger(Evt.SHUTDOWN)  # server is shutting down, so shut off LEDs
     CLUSTER.emit('reboot_pi')
     emit_priority_message(__('Server is rebooting.'), True)
     server_log('Rebooting pi')
@@ -1900,13 +1904,13 @@ def on_set_led_effect(data):
 def on_use_led_effect(data):
     '''Activate arbitrary LED Effect.'''
     if led_manager.isEnabled() and 'effect' in data:
-        led_manager.setEventEffect(LEDEvent.MANUAL, data['effect'])
+        led_manager.setEventEffect(Evt.MANUAL, data['effect'])
 
         args = None
         if 'args' in data:
             args = data['args']
 
-        led_manager.event(LEDEvent.MANUAL, args)
+        Events.trigger(Evt.MANUAL, args)
 
 # Race management socket io events
 
@@ -1955,7 +1959,7 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        led_manager.event(LEDEvent.RACESTAGE)
+        Events.trigger(Evt.RACESTAGE)
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
@@ -2092,7 +2096,7 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        led_manager.event(LEDEvent.RACESTART)
+        Events.trigger(Evt.RACESTART)
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now()
@@ -2149,7 +2153,7 @@ def on_stop_race():
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    led_manager.event(LEDEvent.RACESTOP)
+    Events.trigger(Evt.RACESTOP)
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -2279,7 +2283,7 @@ def on_discard_laps():
         check_emit_team_racing_status()  # Show team-racing status info
     else:
         emit_team_racing_status('')  # clear any displayed "Winner is" text
-    led_manager.event(LEDEvent.LAPSCLEAR)
+    Events.trigger(Evt.LAPSCLEAR)
 
 def clear_laps():
     '''Clear the current laps table.'''
@@ -2372,7 +2376,7 @@ def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
     server_log('Simulated lap: Node {0}'.format(node_index+1))
-    led_manager.event(LEDEvent.CROSSINGEXIT, {
+    Events.trigger(Evt.CROSSINGEXIT, {
         'nodeIndex': node_index,
         'color': hexToColor(getOption('colorNode_' + str(node_index), '#ffffff'))
         })
@@ -3921,7 +3925,7 @@ def check_race_time_expired():
     if race_format and race_format.race_mode == 0: # count down
         if monotonic() >= RACE_START + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
-            led_manager.event(LEDEvent.RACEFINISH)
+            Events.trigger(Evt.RACEFINISH)
             if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
@@ -4105,14 +4109,14 @@ def node_crossing_callback(node):
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
-                led_manager.event(LEDEvent.CROSSINGENTER, {
+                Events.trigger(Evt.CROSSINGENTER, {
                     'nodeIndex': node.index,
                     'color': hexToColor(getOption('colorNode_' + str(node.index), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
-                    led_manager.event(LEDEvent.CROSSINGEXIT, {
+                    Events.trigger(Evt.CROSSINGEXIT, {
                         'nodeIndex': node.index,
                         'color': hexToColor(getOption('colorNode_' + str(node.index), '#ffffff'))
                         })
@@ -4488,15 +4492,15 @@ def expand_heats():
 def init_LED_effects():
     # start with defaults
     effects = {
-        LEDEvent.RACESTAGE: "stripColorOrange2_1",
-        LEDEvent.RACESTART: "stripColorGreenSolid",
-        LEDEvent.RACEFINISH: "stripColorWhite4_4",
-        LEDEvent.RACESTOP: "stripColorRedSolid",
-        LEDEvent.LAPSCLEAR: "clear",
-        LEDEvent.CROSSINGENTER: "stripColorSolid",
-        LEDEvent.CROSSINGEXIT: "stripColor1_1_4s",
-        LEDEvent.STARTUP: "rainbowCycle",
-        LEDEvent.SHUTDOWN: "clear"
+        Evt.RACESTAGE: "stripColorOrange2_1",
+        Evt.RACESTART: "stripColorGreenSolid",
+        Evt.RACEFINISH: "stripColorWhite4_4",
+        Evt.RACESTOP: "stripColorRedSolid",
+        Evt.LAPSCLEAR: "clear",
+        Evt.CROSSINGENTER: "stripColorSolid",
+        Evt.CROSSINGEXIT: "stripColor1_1_4s",
+        Evt.STARTUP: "rainbowCycle",
+        Evt.SHUTDOWN: "clear"
     }
     # update with DB values (if any)
     effect_opt = getOption('ledEffects')
@@ -4639,7 +4643,7 @@ else:
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
-    led_manager = LEDEventManager(strip, Config['LED'])
+    led_manager = LEDEventManager(Events, strip, Config['LED'])
     LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
     for handlerFile in LEDHandlerFiles:
         try:
@@ -4659,7 +4663,8 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
 
     print "Running http server at port " + str(port_val)
 
-    led_manager.event(LEDEvent.STARTUP) # show startup indicator on LEDs
+    Events.trigger(Evt.STARTUP)
+
     try:
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
@@ -4667,7 +4672,8 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
-    led_manager.eventDirect(LEDEvent.SHUTDOWN)  # server is shutting down, so shut off LEDs
+
+    Events.trigger(Evt.SHUTDOWN)
 
 # Start HTTP server
 if __name__ == '__main__':
