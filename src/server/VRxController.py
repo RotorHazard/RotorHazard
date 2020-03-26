@@ -1,4 +1,5 @@
-import paho.mqtt.client as mqttc
+import paho.mqtt.client as mqtt_client
+import time
 
 from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics
 
@@ -6,12 +7,25 @@ from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics
 class VRxController:
     """Every video receiver has the following methods and data attributes"""
     def __init__(self, mqtt_hostname, node_frequencies):
-        self.mqttc = mqttc(client_id="VRxController", clean_session=True)
+        self.mqttc = mqtt_client.Client(client_id="VRxController", clean_session=True)
         self.mqttc.connect(mqtt_hostname)
+
+        # Subscibe to all topics
+        for rec_ver in mqtt_subscribe_topics:
+            rec_topics = mqtt_subscribe_topics[rec_ver]
+            for rec_topic in rec_topics:
+
+                # Format with subtopics if they exist
+                try:
+                    rec_topic = rec_topic%'*'
+                except TypeError:
+                    pass
+                
+                self.mqttc.subscribe(rec_topic)
 
         if len(node_frequencies) != 8:
             raise ValueError("node_frequencies must be length 8")
-        self._nodes = [VRxNode(mqtt_hostname, n, node_frequencies[n]) for n in range(8)]
+        self._nodes = [VRxNode(self.mqttc, n, node_frequencies[n]) for n in range(8)]
         self._frequency = [node.node_frequency for node in self._nodes]
         self._lock_status = [node.node_lock_status for node in self._nodes]
         self._camera_type = [node.node_camera_type for node in self._nodes]
@@ -85,11 +99,12 @@ class VRxController:
 class VRxNode:
     """Commands and Requests apply to all receivers at a node number"""
     def __init__(self, 
-                 mqtt_hostname,
+                 mqtt_client,
                  node_number, 
                  node_frequency, 
                  node_camera_type = 'A',
                  ):
+        self.mqttc = mqtt_client
 
         self.MIN_NODE_NUM = 0
         self.MAX_NODE_NUM = 7
@@ -141,7 +156,10 @@ class VRxNode:
 
     @property
     def node_lock_status(self, ):
-        raise NotImplementedError
+        topic = mqtt_publish_topics["cv1"]["receiver_request_node_active_topic"]%self._node_number
+        self.mqttc.publish(topic,
+                           "?")
+        time.sleep(0.1)
         return self._node_lock_status
 
 
