@@ -1,9 +1,9 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "2.2.0 (dev 0)" # Public release version code
-SERVER_API = 26 # Server API version
+SERVER_API = 27 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 22 # Most recent node API
-JSON_API = 2 # JSON API version
+JSON_API = 3 # JSON API version
 
 import gevent
 import gevent.monkey
@@ -30,6 +30,10 @@ from flask_sqlalchemy import SQLAlchemy
 
 import random
 import json
+
+# Events manager
+from eventmanager import Evt, EventManager
+Events = EventManager()
 
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
@@ -255,7 +259,7 @@ class Slave:
     def on_pass_record(self, data):
         self.lastContact = monotonic()
         node_index = data['node']
-        pilot_id = Heat.query.filter_by( \
+        pilot_id = HeatNode.query.filter_by( \
             heat_id=RACE.current_heat, node_index=node_index).one_or_none().pilot_id
 
         if pilot_id != PILOT_ID_NONE:
@@ -465,18 +469,25 @@ class Pilot(DB.Model):
 
 class Heat(DB.Model):
     __tablename__ = 'heat'
-    __table_args__ = (
-        DB.UniqueConstraint('heat_id', 'node_index'),
-    )
     id = DB.Column(DB.Integer, primary_key=True)
-    heat_id = DB.Column(DB.Integer, nullable=False)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
     note = DB.Column(DB.String(80), nullable=True)
     class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
 
     def __repr__(self):
-        return '<Heat %r>' % self.heat_id
+        return '<Heat %r>' % self.id
+
+class HeatNode(DB.Model):
+    __tablename__ = 'heat_node'
+    __table_args__ = (
+        DB.UniqueConstraint('heat_id', 'node_index'),
+    )
+    id = DB.Column(DB.Integer, primary_key=True)
+    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
+    node_index = DB.Column(DB.Integer, nullable=False)
+    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+
+    def __repr__(self):
+        return '<HeatNode %r>' % self._id
 
 class RaceClass(DB.Model):
     __tablename__ = 'race_class'
@@ -531,7 +542,7 @@ class SavedRaceMeta(DB.Model):
     )
     id = DB.Column(DB.Integer, primary_key=True)
     round_id = DB.Column(DB.Integer, nullable=False)
-    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.heat_id"), nullable=False)
+    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
     class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
     format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
     start_time = DB.Column(DB.Integer, nullable=False) # internal monotonic time
@@ -597,9 +608,14 @@ class RaceFormat(DB.Model):
     race_time_sec = DB.Column(DB.Integer, nullable=False)
     start_delay_min = DB.Column(DB.Integer, nullable=False)
     start_delay_max = DB.Column(DB.Integer, nullable=False)
+    staging_tones = DB.Column(DB.Integer, nullable=False)
     number_laps_win = DB.Column(DB.Integer, nullable=False)
     win_condition = DB.Column(DB.Integer, nullable=False)
     team_racing_mode = DB.Column(DB.Boolean, nullable=False)
+
+TONES_NONE = 0
+TONES_ONE = 1
+TONES_ALL = 2
 
 WIN_CONDITION_NONE = 0
 WIN_CONDITION_MOST_LAPS = 1
@@ -675,12 +691,13 @@ def setCurrentRaceFormat(race_format):
         RACE.format = race_format
 
 class RHRaceFormat():
-    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, number_laps_win, win_condition, team_racing_mode):
+    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode):
         self.name = name
         self.race_mode = race_mode
         self.race_time_sec = race_time_sec
         self.start_delay_min = start_delay_min
         self.start_delay_max = start_delay_max
+        self.staging_tones = staging_tones
         self.number_laps_win = number_laps_win
         self.win_condition = win_condition
         self.team_racing_mode = team_racing_mode
@@ -692,6 +709,7 @@ class RHRaceFormat():
                             race_time_sec=race_format.race_time_sec,
                             start_delay_min=race_format.start_delay_min,
                             start_delay_max=race_format.start_delay_max,
+                            staging_tones=race_format.staging_tones,
                             number_laps_win=race_format.number_laps_win,
                             win_condition=race_format.win_condition,
                             team_racing_mode=race_format.team_racing_mode)
@@ -760,8 +778,7 @@ def race():
     return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
         led_enabled=led_manager.isEnabled(),
         num_nodes=RACE.num_nodes,
-        current_heat=RACE.current_heat,
-        heats=Heat, pilots=Pilot,
+        current_heat=RACE.current_heat, pilots=Pilot,
         nodes=nodes)
 
 @APP.route('/current')
@@ -826,6 +843,7 @@ def database():
     return render_template('database.html', serverInfo=serverInfo, getOption=getOption, __=__,
         pilots=Pilot,
         heats=Heat,
+        heatnodes=HeatNode,
         race_class=RaceClass,
         currentlaps=CurrentLap,
         savedraceMeta=SavedRaceMeta,
@@ -906,50 +924,57 @@ def api_pilot(pilot_id):
 @APP.route('/api/heat/all')
 def api_heat_all():
     all_heats = {}
-    for heat in Heat.query.with_entities(Heat.heat_id).distinct():
-        heatdata = Heat.query.filter_by(heat_id=heat.heat_id, node_index=0).first()
-        pilots = []
-        for node in range(RACE.num_nodes):
-            pilot_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=node).first().pilot_id
-            pilots.append(pilot_id)
-        heat_id = heatdata.heat_id
-        note = heatdata.note
-        race_class = heatdata.class_id
-        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.heat_id).first()
+    for heat in Heat.query.all():
+        heat_id = heat.id
+        note = heat.note
+        race_class = heat.class_id
+
+        heatnodes = HeatNode.query.filter_by(heat_id=heat.id).all()
+        pilots = {}
+        for pilot in heatnodes:
+            pilots[pilot.node_index] = pilot.pilot_id
+
+        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
         if has_race:
             locked = True
         else:
             locked = False
 
-        all_heats[heat_id] = {'pilots': pilots,
+        all_heats[heat_id] = {
             'note': note,
             'heat_id': heat_id,
             'class_id': race_class,
-            'locked': locked}
+            'nodes_pilots': pilots,
+            'locked': locked
+        }
 
     return json.dumps({"heats": all_heats}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/heat/<int:heat_id>')
 def api_heat(heat_id):
-    heatdata = Heat.query.filter_by(heat_id=heat_id, node_index=0).first()
-    if heatdata:
-        pilots = []
-        for node in range(RACE.num_nodes):
-            pilot_id = Heat.query.filter_by(heat_id=heat_id, node_index=node).first().pilot_id
-            pilots.append(pilot_id)
-        note = heatdata.note
-        race_class = heatdata.class_id
-        has_race = SavedRaceMeta.query.filter_by(heat_id=heat_id).first()
+    heat = Heat.query.get(heat_id)
+    if heat:
+        note = heat.note
+        race_class = heat.class_id
+
+        heatnodes = HeatNode.query.filter_by(heat_id=heat.id).all()
+        pilots = {}
+        for pilot in heatnodes:
+            pilots[pilot.node_index] = pilot.pilot_id
+
+        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
         if has_race:
             locked = True
         else:
             locked = False
 
-        heat = {'pilots': pilots,
-          'note': note,
-          'heat_id': heat_id,
-          'class_id': race_class,
-          'locked': locked}
+        heat = {
+            'note': note,
+            'heat_id': heat_id,
+            'class_id': race_class,
+            'nodes_pilots': pilots,
+            'locked': locked
+        }
     else:
         heat = None
 
@@ -1414,30 +1439,58 @@ def on_set_scan(data):
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
     '''Adds the next available heat number to the database.'''
-    max_heat_id = DB.session.query(DB.func.max(Heat.heat_id)).scalar()
+    new_heat = Heat(class_id=CLASS_ID_NONE)
+    DB.session.add(new_heat)
+    DB.session.flush()
+    DB.session.refresh(new_heat)
+
     for node in range(RACE.num_nodes): # Add next heat with empty pilots
-        DB.session.add(Heat(heat_id=max_heat_id+1, node_index=node, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE))
+        DB.session.add(HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=PILOT_ID_NONE))
+
     DB.session.commit()
-    server_log('Heat added: Heat {0}'.format(max_heat_id+1))
-    emit_heat_data() # Settings page, new pilot position in heats
+    server_log('Heat added: Heat {0}'.format(new_heat.id))
+    emit_heat_data()
 
 @SOCKET_IO.on('alter_heat')
 def on_alter_heat(data):
     '''Update heat.'''
-    heat = data['heat']
-    node_index = data['node'] if 'node' in data else 0
-    db_update = Heat.query.filter_by(heat_id=heat, node_index=node_index).one()
-    if 'pilot' in data:
-        db_update.pilot_id = data['pilot']
+    heat_id = data['heat']
+    heat = Heat.query.get(heat_id)
+
     if 'note' in data:
         global EVENT_RESULTS_CACHE_VALID
         EVENT_RESULTS_CACHE_VALID = False
-        db_update.note = data['note']
+        heat.note = data['note']
     if 'class' in data:
-        db_update.class_id = data['class']
+        heat.class_id = data['class']
+    if 'pilot' in data:
+        node_index = data['node']
+        heatnode = HeatNode.query.filter_by(heat_id=heat.id, node_index=node_index).one()
+        heatnode.pilot_id = data['pilot']
+
     DB.session.commit()
-    server_log('Heat {0} Node {1} altered to {2}'.format(heat, node_index+1, data))
-    emit_heat_data(noself=True) # Settings page, new pilot position in heats
+    server_log('Heat {0} altered with {1}'.format(heat_id, data))
+    emit_heat_data(noself=True)
+
+@SOCKET_IO.on('delete_heat')
+def on_alter_heat(data):
+    '''Delete heat.'''
+    if (DB.session.query(Heat).count() > 1): # keep one profile
+        heat_id = data['heat']
+        heat = Heat.query.get(heat_id)
+        heatnodes = HeatNode.query.filter_by(heat_id=heat.id, node_index=node_index).all()
+        DB.session.delete(heat)
+        for heatnode in heatnodes:
+            DB.session.delete(heatnode)
+        DB.session.commit()
+
+        if RACE.current_heat == heat:
+            RACE.current_heat == Heat.query.first()
+
+        server_log('Heat {0} deleted'.format(heat))
+        emit_heat_data(noself=True)
+    else:
+        server_log('Refusing to delete only heat')
 
 @SOCKET_IO.on('add_race_class')
 def on_add_race_class():
@@ -1546,6 +1599,8 @@ def on_delete_profile():
         first_profile_id = Profiles.query.first().id
         setOption("currentProfile", first_profile_id)
         on_set_profile(data={ 'profile': first_profile_id })
+    else:
+        server_log('Refusing to delete only profile')
 
 @SOCKET_IO.on('alter_profile')
 def on_alter_profile(data):
@@ -1659,7 +1714,7 @@ def on_reset_database(data):
 @SOCKET_IO.on('shutdown_pi')
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
-    led_manager.eventDirect(LEDEvent.SHUTDOWN)  # server is shutting down, so shut off LEDs
+    Events.trigger(Evt.SHUTDOWN)  # server is shutting down, so shut off LEDs
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
     server_log('Shutdown pi')
@@ -1669,7 +1724,7 @@ def on_shutdown_pi():
 @SOCKET_IO.on('reboot_pi')
 def on_reboot_pi():
     '''Shutdown the raspberry pi.'''
-    led_manager.eventDirect(LEDEvent.SHUTDOWN)  # server is shutting down, so shut off LEDs
+    Events.trigger(Evt.SHUTDOWN)  # server is shutting down, so shut off LEDs
     CLUSTER.emit('reboot_pi')
     emit_priority_message(__('Server is rebooting.'), True)
     server_log('Rebooting pi')
@@ -1717,6 +1772,7 @@ def on_add_race_format():
                              race_time_sec=source_format.race_time_sec ,
                              start_delay_min=source_format.start_delay_min,
                              start_delay_max=source_format.start_delay_max,
+                             staging_tones=source_format.staging_tones,
                              number_laps_win=source_format.number_laps_win,
                              win_condition=source_format.win_condition,
                              team_racing_mode=source_format.team_racing_mode)
@@ -1737,6 +1793,8 @@ def on_delete_race_format():
             first_raceFormat = RaceFormat.query.first()
             setCurrentRaceFormat(first_raceFormat)
             emit_race_format()
+        else:
+            server_log('Refusing to delete only format')
     else:
         emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
         server_log("Format change prevented by active race")
@@ -1758,6 +1816,8 @@ def on_alter_race_format(data):
             race_format.start_delay_min = data['start_delay_min']
         if 'start_delay_max' in data:
             race_format.start_delay_max = data['start_delay_max']
+        if 'staging_tones' in data:
+            race_format.staging_tones = data['staging_tones']
         if 'number_laps_win' in data:
             race_format.number_laps_win = data['number_laps_win']
         if 'win_condition' in data:
@@ -1844,13 +1904,13 @@ def on_set_led_effect(data):
 def on_use_led_effect(data):
     '''Activate arbitrary LED Effect.'''
     if led_manager.isEnabled() and 'effect' in data:
-        led_manager.setEventEffect(LEDEvent.MANUAL, data['effect'])
+        led_manager.setEventEffect(Evt.MANUAL, data['effect'])
 
         args = None
         if 'args' in data:
             args = data['args']
 
-        led_manager.event(LEDEvent.MANUAL, args)
+        Events.trigger(Evt.MANUAL, args)
 
 # Race management socket io events
 
@@ -1899,7 +1959,7 @@ def on_stage_race():
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        led_manager.event(LEDEvent.RACESTAGE)
+        Events.trigger(Evt.RACESTAGE)
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
@@ -1923,6 +1983,7 @@ def on_stage_race():
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,
+            'delay': DELAY,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'pi_starts_at_s': RACE_START
@@ -1951,8 +2012,8 @@ def findBestValues(node, node_index):
     ''' Search race history for best tuning values '''
 
     # get commonly used values
-    heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).one()
-    pilot = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
+    heat = Heat.query.get(RACE.current_heat)
+    pilot = HeatNode.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
     current_class = heat.class_id
 
     # test for disabled node
@@ -1964,7 +2025,7 @@ def findBestValues(node, node_index):
         }
 
     # test for same heat, same node
-    race_query = SavedRaceMeta.query.filter_by(heat_id=heat.heat_id).order_by(-SavedRaceMeta.id).first()
+    race_query = SavedRaceMeta.query.filter_by(heat_id=heat.id).order_by(-SavedRaceMeta.id).first()
     if race_query:
         pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
         if pilotrace_query:
@@ -2035,7 +2096,7 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        led_manager.event(LEDEvent.RACESTART)
+        Events.trigger(Evt.RACESTART)
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now()
@@ -2092,7 +2153,7 @@ def on_stop_race():
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    led_manager.event(LEDEvent.RACESTOP)
+    Events.trigger(Evt.RACESTOP)
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -2100,7 +2161,7 @@ def on_save_laps():
     global EVENT_RESULTS_CACHE_VALID
     EVENT_RESULTS_CACHE_VALID = False
     race_format = getCurrentRaceFormat()
-    heat = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).one()
+    heat = Heat.query.get(RACE.current_heat)
     # Get the last saved round for the current heat
     max_round = DB.session.query(DB.func.max(SavedRaceMeta.round_id)) \
             .filter_by(heat_id=RACE.current_heat).scalar()
@@ -2124,7 +2185,8 @@ def on_save_laps():
 
     for node_index in range(RACE.num_nodes):
         if profile_freqs["f"][node_index] != FREQUENCY_ID_NONE:
-            pilot_id = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
+            pilot_id = HeatNode.query.filter_by( \
+                heat_id=RACE.current_heat, node_index=node_index).one().pilot_id
 
             if pilot_id != PILOT_ID_NONE:
                 new_pilotrace = SavedPilotRace( \
@@ -2221,7 +2283,7 @@ def on_discard_laps():
         check_emit_team_racing_status()  # Show team-racing status info
     else:
         emit_team_racing_status('')  # clear any displayed "Winner is" text
-    led_manager.event(LEDEvent.LAPSCLEAR)
+    Events.trigger(Evt.LAPSCLEAR)
 
 def clear_laps():
     '''Clear the current laps table.'''
@@ -2238,12 +2300,17 @@ def clear_laps():
 
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
+    heatnodes = HeatNode.query.filter_by( \
+        heat_id=RACE.current_heat).all()
+
     for node in INTERFACE.nodes:
+        node.current_pilot_id = PILOT_ID_NONE
         if node.frequency and node.frequency > 0:
-            node.current_pilot_id = Heat.query.filter_by( \
-                    heat_id=RACE.current_heat, node_index=node.index).one().pilot_id
-        else:
-            node.current_pilot_id = PILOT_ID_NONE
+            for heatnode in heatnodes:
+                if heatnode.node_index == node.index:
+                    node.current_pilot_id = heatnode.pilot_id
+                    break
+
         node.first_cross_flag = False
         node.show_crossing_flag = False
 
@@ -2309,7 +2376,7 @@ def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
     server_log('Simulated lap: Node {0}'.format(node_index+1))
-    led_manager.event(LEDEvent.CROSSINGEXIT, {
+    Events.trigger(Evt.CROSSINGEXIT, {
         'nodeIndex': node_index,
         'color': hexToColor(getOption('colorNode_' + str(node_index), '#ffffff'))
         })
@@ -2427,6 +2494,7 @@ def emit_race_status(**params):
             'race_status': RACE.race_status,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
+            'race_staging_tones': race_format.staging_tones,
             'hide_stage_timer': race_format.start_delay_min != race_format.start_delay_max,
             'pi_starts_at_s': RACE_START
         }
@@ -2556,6 +2624,7 @@ def emit_race_format(**params):
         'race_time_sec': race_format.race_time_sec,
         'start_delay_min': race_format.start_delay_min,
         'start_delay_max': race_format.start_delay_max,
+        'staging_tones': race_format.staging_tones,
         'number_laps_win': race_format.number_laps_win,
         'win_condition': race_format.win_condition,
         'team_racing_mode': 1 if race_format.team_racing_mode else 0,
@@ -2635,7 +2704,7 @@ def emit_race_list(**params):
     '''Emits race listing'''
     heats = {}
     for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
-        heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
+        heatnote = Heat.query.get(heat.heat_id).note
 
         rounds = {}
         for round in SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRaceMeta.round_id):
@@ -2685,9 +2754,9 @@ def emit_race_list(**params):
 
     '''
     heats_by_class = {}
-    heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
+    heats_by_class[CLASS_ID_NONE] = [heat.id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE).all()]
     for race_class in RaceClass.query.all():
-        heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
+        heats_by_class[race_class.id] = [heat.id for heat in Heat.query.filter_by(class_id=race_class.id).all()]
 
     current_classes = {}
     for race_class in RaceClass.query.all():
@@ -2738,7 +2807,7 @@ def emit_round_data_thread(params, sid):
 
             heats = {}
             for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
-                heatnote = Heat.query.filter_by( heat_id=heat.heat_id ).first().note
+                heatnote = Heat.query.get(heat.heat_id).note
 
                 rounds = []
                 for round in SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRaceMeta.round_id):
@@ -2783,9 +2852,9 @@ def emit_round_data_thread(params, sid):
 
             gevent.sleep()
             heats_by_class = {}
-            heats_by_class[CLASS_ID_NONE] = [heat.heat_id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE,node_index=0).all()]
+            heats_by_class[CLASS_ID_NONE] = [heat.id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE).all()]
             for race_class in RaceClass.query.all():
-                heats_by_class[race_class.id] = [heat.heat_id for heat in Heat.query.filter_by(class_id=race_class.id,node_index=0).all()]
+                heats_by_class[race_class.id] = [heat.id for heat in Heat.query.filter_by(class_id=race_class.id).all()]
 
             gevent.sleep()
             current_classes = {}
@@ -2842,16 +2911,22 @@ def calc_leaderboard(**params):
     else:
         if USE_CLASS:
             race_query = SavedRaceMeta.query.filter_by(class_id=USE_CLASS)
-            current_format = RaceClass.query.get(USE_CLASS).format_id
+            if race_query.count() >= 1:
+                current_format = RaceClass.query.get(USE_CLASS).format_id
+            else:
+                current_format = None
         elif USE_HEAT:
             if USE_ROUND:
                 race_query = SavedRaceMeta.query.filter_by(heat_id=USE_HEAT, round_id=USE_ROUND)
                 current_format = race_query.first().format_id
             else:
                 race_query = SavedRaceMeta.query.filter_by(heat_id=USE_HEAT)
-                heat_class = race_query.first().class_id
-                if heat_class:
-                    current_format = RaceClass.query.get(heat_class).format_id
+                if race_query.count() >= 1:
+                    heat_class = race_query.first().class_id
+                    if heat_class:
+                        current_format = RaceClass.query.get(heat_class).format_id
+                    else:
+                        current_format = None
                 else:
                     current_format = None
         else:
@@ -2886,7 +2961,7 @@ def calc_leaderboard(**params):
                     CurrentLap.lap_id != 0, \
                     CurrentLap.deleted != 1)
             max_lap = stat_query.scalar()
-            current_heat = Heat.query.filter_by(heat_id=RACE.current_heat, pilot_id=pilot.id).first()
+            current_heat = HeatNode.query.filter_by(heat_id=RACE.current_heat, pilot_id=pilot.id).first()
             if current_heat and profile_freqs["f"][current_heat.node_index] != FREQUENCY_ID_NONE:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
@@ -3128,16 +3203,17 @@ def emit_leaderboard(**params):
 def emit_heat_data(**params):
     '''Emits heat data.'''
     current_heats = {}
-    for heat in Heat.query.with_entities(Heat.heat_id).distinct():
-        heatdata = Heat.query.filter_by(heat_id=heat.heat_id, node_index=0).one()
+    for heat in Heat.query.all():
+        heat_id = heat.id
+        note = heat.note
+        race_class = heat.class_id
+
+        heatnodes = HeatNode.query.filter_by(heat_id=heat.id).order_by(HeatNode.node_index).all()
         pilots = []
-        for node in range(RACE.num_nodes):
-            pilot_id = Heat.query.filter_by(heat_id=heat.heat_id, node_index=node).one().pilot_id
-            pilots.append(pilot_id)
-        heat_id = heatdata.heat_id
-        note = heatdata.note
-        race_class = heatdata.class_id
-        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.heat_id).first()
+        for heatnode in heatnodes:
+            pilots.append(heatnode.pilot_id)
+
+        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
         if has_race:
             locked = True
         else:
@@ -3249,8 +3325,9 @@ def emit_current_heat(**params):
     '''Emits the current heat.'''
     callsigns = []
                              # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                      filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+        filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
+
     for node_index in range(RACE.num_nodes):
         pilot_id = node_pilot_dict.get(node_index)
         if pilot_id:
@@ -3262,7 +3339,7 @@ def emit_current_heat(**params):
         else:
             callsigns.append(None)
 
-    heat_data = Heat.query.filter_by(heat_id=RACE.current_heat, node_index=0).one()
+    heat_data = Heat.query.get(RACE.current_heat)
 
     heat_note = heat_data.note
 
@@ -3287,8 +3364,8 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
     pilot_team_dict = {}
     profile_freqs = json.loads(getCurrentProfile().frequencies)
                              # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                      filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+                      filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
     for node in INTERFACE.nodes:
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
@@ -3359,8 +3436,8 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
     win_lap_tstamp = 0
     profile_freqs = json.loads(getCurrentProfile().frequencies)
                              # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                      filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+                      filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
     for node in INTERFACE.nodes:
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
@@ -3393,8 +3470,8 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
     if Race_laps_winner_name is None and pilot_team_dict:
         profile_freqs = None
                                   # dict for current heat with key=node_index, value=pilot_id
-        node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                          filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+        node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+                          filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
         for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
             if node.crossing_flag and node.index != pass_node_index:
                 if not profile_freqs:
@@ -3480,8 +3557,8 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                                 profile_freqs = json.loads(getCurrentProfile().frequencies)
                             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
                                 if not node_pilot_dict:
-                                    node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                                              filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+                                    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+                                              filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
                                 pilot_id = node_pilot_dict.get(node.index)
                                 if pilot_id:  # node has pilot assigned to it
                                     team_name = pilot_team_dict[pilot_id]
@@ -3516,8 +3593,8 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         num_max_lap = 0
         profile_freqs = json.loads(getCurrentProfile().frequencies)
                                   # dict for current heat with key=node_index, value=pilot_id
-        node_pilot_dict = dict(Heat.query.with_entities(Heat.node_index, Heat.pilot_id). \
-                          filter(Heat.heat_id==RACE.current_heat, Heat.pilot_id!=PILOT_ID_NONE).all())
+        node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
+                          filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
         for node in INTERFACE.nodes:  # load per-pilot data into 'pilots_list'
             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
                 pilot_id = node_pilot_dict.get(node.index)
@@ -3848,7 +3925,7 @@ def check_race_time_expired():
     if race_format and race_format.race_mode == 0: # count down
         if monotonic() >= RACE_START + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
-            led_manager.event(LEDEvent.RACEFINISH)
+            Events.trigger(Evt.RACEFINISH)
             if race_format.win_condition == WIN_CONDITION_MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
@@ -3868,7 +3945,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                 lap_timestamp_absolute < RACE_END):
 
             # Get the current pilot id on the node
-            pilot_id = Heat.query.filter_by( \
+            pilot_id = HeatNode.query.filter_by( \
                 heat_id=RACE.current_heat, node_index=node.index).one().pilot_id
 
             # reject passes before race start and with disabled (no-pilot) nodes
@@ -4032,14 +4109,14 @@ def node_crossing_callback(node):
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
-                led_manager.event(LEDEvent.CROSSINGENTER, {
+                Events.trigger(Evt.CROSSINGENTER, {
                     'nodeIndex': node.index,
                     'color': hexToColor(getOption('colorNode_' + str(node.index), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
-                    led_manager.event(LEDEvent.CROSSINGEXIT, {
+                    Events.trigger(Evt.CROSSINGEXIT, {
                         'nodeIndex': node.index,
                         'color': hexToColor(getOption('colorNode_' + str(node.index), '#ffffff'))
                         })
@@ -4110,11 +4187,8 @@ def db_reset_pilots():
 def db_reset_heats():
     '''Resets database heats to default.'''
     DB.session.query(Heat).delete()
-    for node in range(RACE.num_nodes):
-        if node == 0:
-            DB.session.add(Heat(heat_id=1, node_index=node, class_id=CLASS_ID_NONE, note='', pilot_id=node+1))
-        else:
-            DB.session.add(Heat(heat_id=1, node_index=node, class_id=CLASS_ID_NONE, pilot_id=node+1))
+    DB.session.query(HeatNode).delete()
+    on_add_heat()
     DB.session.commit()
     RACE.current_heat = 1
     server_log('Database heats reset')
@@ -4164,6 +4238,7 @@ def db_reset_race_formats():
                              race_time_sec=120,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=0,
                              win_condition=WIN_CONDITION_MOST_LAPS,
                              team_racing_mode=False))
@@ -4172,6 +4247,7 @@ def db_reset_race_formats():
                              race_time_sec=90,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=0,
                              win_condition=WIN_CONDITION_MOST_LAPS,
                              team_racing_mode=False))
@@ -4180,6 +4256,7 @@ def db_reset_race_formats():
                              race_time_sec=210,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=0,
                              win_condition=WIN_CONDITION_MOST_LAPS,
                              team_racing_mode=False))
@@ -4188,14 +4265,16 @@ def db_reset_race_formats():
                              race_time_sec=0,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=3,
                              win_condition=WIN_CONDITION_FIRST_TO_LAP_X,
                              team_racing_mode=False))
     DB.session.add(RaceFormat(name=__("Open Practice"),
                              race_mode=1,
                              race_time_sec=0,
-                             start_delay_min=3,
-                             start_delay_max=3,
+                             start_delay_min=0,
+                             start_delay_max=0,
+                             staging_tones=0,
                              number_laps_win=0,
                              win_condition=WIN_CONDITION_NONE,
                              team_racing_mode=False))
@@ -4204,6 +4283,7 @@ def db_reset_race_formats():
                              race_time_sec=120,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=0,
                              win_condition=WIN_CONDITION_MOST_LAPS,
                              team_racing_mode=True))
@@ -4212,6 +4292,7 @@ def db_reset_race_formats():
                              race_time_sec=120,
                              start_delay_min=2,
                              start_delay_max=5,
+                             staging_tones=2,
                              number_laps_win=7,
                              win_condition=WIN_CONDITION_FIRST_TO_LAP_X,
                              team_racing_mode=True))
@@ -4327,7 +4408,6 @@ def recover_database():
         raceFormat_query_data = query_table_data(RaceFormat)
         profiles_query_data = query_table_data(Profiles)
         raceClass_query_data = query_table_data(RaceClass)
-        heat_query_data = query_table_data(Heat, Heat.heat_id, 1)
 
         carryoverOpts = [
             "timerName",
@@ -4390,9 +4470,6 @@ def recover_database():
         restore_table(RaceFormat, raceFormat_query_data)
         restore_table(Profiles, profiles_query_data)
         restore_table(RaceClass, raceClass_query_data)
-        if heat_query_data and len(heat_query_data) == RACE.num_nodes:
-            DB.session.query(Heat).delete()
-            restore_table(Heat, heat_query_data, 'node_index')
 
         for opt in carryOver:
             setOption(opt, carryOver[opt])
@@ -4404,26 +4481,26 @@ def recover_database():
     DB.session.commit()
 
 def expand_heats():
-    for heat_ids in Heat.query.with_entities(Heat.heat_id).distinct():
+    for heat_ids in Heat.query.all():
         for node in range(RACE.num_nodes):
-            heat_row = Heat.query.filter_by(heat_id=heat_ids.heat_id, node_index=node)
+            heat_row = HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
             if not heat_row.count():
-                DB.session.add(Heat(heat_id=heat_ids.heat_id, node_index=node, pilot_id=PILOT_ID_NONE, class_id=CLASS_ID_NONE))
+                DB.session.add(HeatNode(heat_id=heat_ids.id, node_index=node, pilot_id=PILOT_ID_NONE))
 
     DB.session.commit()
 
 def init_LED_effects():
     # start with defaults
     effects = {
-        LEDEvent.RACESTAGE: "stripColorOrange2_1",
-        LEDEvent.RACESTART: "stripColorGreenSolid",
-        LEDEvent.RACEFINISH: "stripColorWhite4_4",
-        LEDEvent.RACESTOP: "stripColorRedSolid",
-        LEDEvent.LAPSCLEAR: "clear",
-        LEDEvent.CROSSINGENTER: "stripColorSolid",
-        LEDEvent.CROSSINGEXIT: "stripColor1_1_4s",
-        LEDEvent.STARTUP: "rainbowCycle",
-        LEDEvent.SHUTDOWN: "clear"
+        Evt.RACESTAGE: "stripColorOrange2_1",
+        Evt.RACESTART: "stripColorGreenSolid",
+        Evt.RACEFINISH: "stripColorWhite4_4",
+        Evt.RACESTOP: "stripColorRedSolid",
+        Evt.LAPSCLEAR: "clear",
+        Evt.CROSSINGENTER: "stripColorSolid",
+        Evt.CROSSINGEXIT: "stripColor1_1_4s",
+        Evt.STARTUP: "rainbowCycle",
+        Evt.SHUTDOWN: "clear"
     }
     # update with DB values (if any)
     effect_opt = getOption('ledEffects')
@@ -4505,6 +4582,7 @@ SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
                          race_time_sec=0,
                          start_delay_min=0,
                          start_delay_max=0,
+                         staging_tones=0,
                          number_laps_win=0,
                          win_condition=WIN_CONDITION_NONE,
                          team_racing_mode=False)
@@ -4541,7 +4619,7 @@ on_set_profile({'profile': current_profile}, False)
 
 # Set current heat on startup
 if Heat.query.first():
-    RACE.current_heat = Heat.query.first().heat_id
+    RACE.current_heat = Heat.query.first().id
 
 # Create LED object with appropriate configuration
 strip = None
@@ -4565,7 +4643,7 @@ else:
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
-    led_manager = LEDEventManager(strip, Config['LED'])
+    led_manager = LEDEventManager(Events, strip, Config['LED'])
     LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
     for handlerFile in LEDHandlerFiles:
         try:
@@ -4585,7 +4663,8 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
 
     print "Running http server at port " + str(port_val)
 
-    led_manager.event(LEDEvent.STARTUP) # show startup indicator on LEDs
+    Events.trigger(Evt.STARTUP)
+
     try:
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
@@ -4593,7 +4672,8 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
-    led_manager.eventDirect(LEDEvent.SHUTDOWN)  # server is shutting down, so shut off LEDs
+
+    Events.trigger(Evt.SHUTDOWN)
 
 # Start HTTP server
 if __name__ == '__main__':

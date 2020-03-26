@@ -17,7 +17,7 @@
 * 5V power supply, 3 amp minimum (or 12V power supply if onboard regulators are used)
 
 ### Additional Components
-* RF shielding (see below)
+* [RF shielding](Shielding%20and%20Course%20Position.md)
 
 ### Optional Components
 * Ethernet cable, 50ft plus
@@ -51,13 +51,11 @@ Note: be sure all Receiver Nodes and the Raspberry Pi are tied to a common groun
 ![system wiring](img/D5-i2c.png)
 
 ### Add a Directional RF Shield
-A directional RF shield significantly improves the system's ability to reject false passes. This allows operators to increase its sensitivity or build courses that pass more closesly to the timing gate. Construct a directional shield that leaves a line of sight open between the timer and the timing gate, but blocks or attenuates RF signals from other directions. The most popular options to accomplish this are:
-* Place the system inside a metal box with one side open, such as an ammo can, paint can, metal bucket, or computer case. It is recommended to attach this case to an electrical ground on the timer.
-* Dig a hole into the ground and place your case within it
-* Line your system case with copper tape
+A directional RF shield significantly improves the system's ability to reject false passes. See [RF shielding](Shielding%20and%20Course%20Position.md)
 
 ### WS2812b LED Support
-The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under Software Setup.
+The pins in the green box is what were already used by the timer. The pins in the red box is where you connect the signal and ground from the ws2812b LEDs.  The LEDs will require a separate power source. See WS2812b LED support under [doc/Software Setup.md](Software%20Setup.md).
+
 ![led wiring](img/GPIO.jpg)
 
 ### Additional Sensors

@@ -38,6 +38,8 @@ add the following lines to the end of the file:
 dtparam=i2c_baudrate=75000
 core_freq=250
 ```
+Note: The first line sets the transfer rate on the I2C bus (which is used to communicate with the Arduino node processors). The second line fixes a potential variable clock-rate issue, described [here](https://www.abelectronics.co.uk/kb/article/1089/i2c--smbus-and-raspbian-stretch-linux). If a Raspberry Pi 4 is being used, the second line may need to be omitted.
+
 Save and exit the file with Ctrl-X
 
 Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
@@ -106,6 +108,21 @@ cd python
 sudo python setup.py install
 ```
 
+Note: The **LED_COUNT** value will need to be set in the `src/server/config.json` file. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
+```
+LED_COUNT:  Number of LED pixels in strip (or panel)
+LED_PIN:  GPIO pin connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
+LED_FREQ_HZ:  LED signal frequency in hertz (usually 800000)
+LED_DMA:  DMA channel to use for generating signal (default 10)
+LED_INVERT:  True to invert the signal (when using NPN transistor level shift)
+LED_CHANNEL:  Set to '1' for GPIOs 13, 19, 41, 45 or 53
+LED_STRIP:  Strip type and color ordering (default is 'GRB')
+LED_ROWS:  Number of rows in LED-panel array (1 for strip)
+PANEL_ROTATE:  Optional panel-rotation value (default 0)
+INVERTED_PANEL_ROWS:  Optional panel row-inversion (default false)
+```
+If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
+
 ### INA219 Voltage/Current Support
 The ina219 interface is provided by the following project:
 https://github.com/chrisb2/pi_ina219
@@ -162,7 +179,9 @@ python server.py
 The server may be stopped by hitting Ctrl-C
 
 #### Start on Boot
-Create a service
+To configure the system to automatically start the RotorHazard server when booting up:
+
+Create a service file:
 ```
 sudo nano /lib/systemd/system/rotorhazard.service
 ```
@@ -181,21 +200,25 @@ WantedBy=multi-user.target
 ```
 save and exit (CTRL-X, Y, ENTER).
 
-Update permissions.
+Update permissions:
 ```
 sudo chmod 644 /lib/systemd/system/rotorhazard.service
 ```
 
-Start on boot commands.
+Enable the service:
 ```
 sudo systemctl daemon-reload
 sudo systemctl enable rotorhazard.service
 sudo reboot
 ```
-#### Stop the server service
-If a server was started as a service, during the boot, you may use that command to stop it:
+#### Stopping the server service
+If the RotorHazard server was started as a service during the boot, it may be stopped with a command like this:
 ```
 sudo systemctl stop rotorhazard
+```
+To disable the service (so it no longer runs when the system starts up), enter:
+```
+sudo systemctl disable rotorhazard.service
 ```
 
 ### Shutting down the System
