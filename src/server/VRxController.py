@@ -1,7 +1,9 @@
 import paho.mqtt.client as mqtt_client
 import time
+import json
 
 from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics
+
 
 
 class VRxController:
@@ -44,12 +46,13 @@ class VRxController:
             key: node_number
             value: desired frequency
         """
-        for node_index in frequencies:
-            f = frequencies[node_index]
-            self._nodes[node_index].node_frequency = f
+        for node_number in frequencies:
+            f = frequencies[node_number]
+            self._nodes[node_number].node_frequency = f
 
     def set_node_frequency(self, node_number, frequency):
-        self._nodes[node_number].node_frequency = frequency
+        node = self._nodes[node_number]
+        node.set_node_frequency(frequency)
 
     def get_node_frequency(self, node_number, frequency):
         self._nodes[node_number].node_frequency
@@ -110,7 +113,7 @@ class VRxNode:
         self.MAX_NODE_NUM = 7
 
         if self.MIN_NODE_NUM <= node_number <= self.MAX_NODE_NUM:
-            self._node_number = node_number
+            self.__node_number = node_number
         else:
             raise Exception("node_number out of range")
 
@@ -121,26 +124,37 @@ class VRxNode:
     @property
     def node_number(self):
         """Get the node number"""
-        return self._node_number
+        print("node property get")
+        return self.__node_number
 
     @node_number.setter
     def node_number(self, node_number):
         if self.MIN_NODE_NUM <= node_number <= self.MAX_NODE_NUM:
             # TODO change the node number of all receivers and apply the settings of the other node number
             raise NotImplementedError
-            self._node_number = node_number
+            print("x")
+            # self._node_number = node_number
         else:
             raise Exception("node_number out of range")
 
     @property
     def node_frequency(self, ):
         """Gets the frequency of a node"""
+        #print("getfrequency of", self.__node_number)
         return self._node_frequency
 
     @node_frequency.setter
     def node_frequency(self, frequency):
         """Sets all receivers at this node number to the new frequency"""
+        print("setfrequency")
         raise NotImplementedError
+
+    def set_node_frequency(self, frequency):
+        """Sets all receivers at this node number to the new frequency"""
+        topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"]%self.__node_number
+        message = {"frequency":frequency}
+        self.mqttc.publish(topic,
+                           json.dumps(message))
 
     @property
     def node_camera_type(self, ):
@@ -156,7 +170,7 @@ class VRxNode:
 
     @property
     def node_lock_status(self, ):
-        topic = mqtt_publish_topics["cv1"]["receiver_request_node_active_topic"]%self._node_number
+        topic = mqtt_publish_topics["cv1"]["receiver_request_node_active_topic"]%self.__node_number
         self.mqttc.publish(topic,
                            "?")
         time.sleep(0.1)
@@ -174,6 +188,9 @@ def main():
                           5840,
                           5860,
                           5880,])
+
+    # Set node 3's frequency to 5781
+    vrxc.set_node_frequency(3,5781)
 
 
 if __name__ == "__main__":
