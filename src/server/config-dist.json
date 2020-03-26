@@ -9,6 +9,9 @@
 	"SENSORS": {
 	},
 	"SERIAL_PORTS": [],
+	"VRX_SERVER": {
+		"HOST": "localhost"
+	},
 	"LED": {
 		"LED_COUNT": 0,
 		"LED_PIN": 10,
