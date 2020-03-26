@@ -64,6 +64,9 @@ Events = EventManager()
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorPattern, hexToColor
 
+# VRx
+from VRxManager import VRxManager
+
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 

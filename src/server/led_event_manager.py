@@ -3,12 +3,9 @@ LED event manager
 Wires events to handlers
 '''
 
-import gevent
 from eventmanager import Evt
 
 class LEDEventManager:
-    processEventObj = gevent.event.Event()
-
     events = {}
     eventEffects = {}
     eventThread = None

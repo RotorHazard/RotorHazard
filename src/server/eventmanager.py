@@ -61,7 +61,16 @@ class EventManager:
         return False
 
 class Evt:
-    # Program
+    MANUAL = 'manual'
+    RACESCHEDULE = 'raceSchedule'
+    RACESTAGE = 'raceStage'
+    RACESTART = 'raceStart'
+    RACEFINISH = 'raceFinish'
+    RACESTOP = 'raceStop'
+    LAPSCLEAR = 'lapsClear'
+    RACEWIN = 'raceWin'
+    CROSSINGENTER = 'crossingEnter'
+    CROSSINGEXIT = 'crossingExit'
     STARTUP = 'startup'
     SHUTDOWN = 'shutdown'
     OPTION_SET = 'optionSet'
