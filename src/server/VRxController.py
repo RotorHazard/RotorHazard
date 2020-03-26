@@ -19,6 +19,7 @@ VRxALL = -1
 
 
 
+
 class VRxController:
     """Every video receiver has the following methods and data attributes"""
     controllers = {}
@@ -463,6 +464,9 @@ def main():
     # # Set node 3's frequency to 5781
     # vrxc.set_node_frequency(3,5781)
     pass
+
+    # Set node 3's frequency to 5781
+    vrxc.set_node_frequency(3,5781)
 
 
 if __name__ == "__main__":
