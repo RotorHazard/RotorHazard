@@ -22,10 +22,10 @@ class RHRace():
         self.status_tied_str = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
         self.status_crossing = 'Waiting for cross'  # indicator for Most Laps Wins race
 
-    STATUS_READY = 0
-    STATUS_STAGING = 3
-    STATUS_RACING = 1
-    STATUS_DONE = 2
+        self.node_laps = [] # contains current race laps, by node
+
+    def get_active_laps(self):
+        return filter(lambda lap : lap['deleted'] == False, self.node_laps)
 
 def get_race_state():
     '''Returns the race object.'''
@@ -37,3 +37,36 @@ class WinCondition():
     FIRST_TO_LAP_X = 2
     FASTEST_LAP = 3 # Not yet implemented
     FASTEST_3_CONSECUTIVE = 4 # Not yet implemented
+
+class RaceStatus():
+    READY = 0
+    STAGING = 3
+    RACING = 1
+    DONE = 2
+
+
+'''
+RACE.node_laps[node.index].append({
+    'pilot_id': pilot_id,
+    'lap_id': lap_id,
+    'lap_time_stamp': lap_time_stamp,
+    'lap_time': lap_time,
+    'lap_time_formatted': time_format(lap_time),
+    'source': source,
+    'deleted': False
+})
+
+# non-database model
+CurrentLap = []
+
+class LapObj():
+    id =
+    node_index =
+    pilot_id =
+    lap_id =
+    lap_time_stamp =
+    lap_time =
+    lap_time_formatted =
+    source =
+    deleted =
+'''

@@ -41,7 +41,7 @@ from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, Co
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
-from RHRace import get_race_state, WinCondition
+from RHRace import get_race_state, WinCondition, RaceStatus
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -251,13 +251,13 @@ class Slave:
         if pilot_id != PILOT_ID_NONE:
 
             split_ts = data['timestamp'] + (PROGRAM_START_MILLIS_OFFSET - 1000.0*RACE.start_time_monotonic)
-            last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)).filter_by(node_index=node_index).scalar()
+            last_lap_id = RACE.get_active_laps()[node_index][-1]['lap_id']
             if last_lap_id is None: # first lap
                 current_lap_id = 0
                 last_lap_ts = 0
             else:
                 current_lap_id = last_lap_id + 1
-                last_lap_ts = CurrentLap.query.filter_by(node_index=node_index, lap_id=last_lap_id).one().lap_time_stamp
+                last_lap_ts = RACE.node_laps[node_index][-1]['lap_time_stamp']
 
             split_id = self.id
             last_split_id = DB.session.query(DB.func.max(LapSplit.split_id)).filter_by(node_index=node_index, lap_id=current_lap_id).scalar()
@@ -485,24 +485,6 @@ class RaceClass(DB.Model):
     def __repr__(self):
         return '<RaceClass %r>' % self.id
 
-class CurrentLap(DB.Model):
-    __tablename__ = 'current_lap'
-    __table_args__ = (
-        DB.UniqueConstraint('node_index', 'lap_id'),
-    )
-    id = DB.Column(DB.Integer, primary_key=True)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
-    lap_id = DB.Column(DB.Integer, nullable=False)
-    lap_time_stamp = DB.Column(DB.Integer, nullable=False)
-    lap_time = DB.Column(DB.Integer, nullable=False)
-    lap_time_formatted = DB.Column(DB.Integer, nullable=False)
-    source = DB.Column(DB.Integer, nullable=False)
-    deleted = DB.Column(DB.Boolean, nullable=False)
-
-    def __repr__(self):
-        return '<CurrentLap %r>' % self.pilot_id
-
 class LapSplit(DB.Model):
     __tablename__ = 'lap_split'
     __table_args__ = (
@@ -572,9 +554,10 @@ class SavedRaceLap(DB.Model):
     def __repr__(self):
         return '<SavedRaceLap %r>' % self.id
 
-LAP_SOURCE_REALTIME = 0
-LAP_SOURCE_MANUAL = 1
-LAP_SOURCE_RECALC = 2
+class LapSource:
+    REALTIME = 0
+    MANUAL = 1
+    RECALC = 2
 
 class Profiles(DB.Model):
     __tablename__ = 'profiles'
@@ -825,7 +808,6 @@ def database():
         heats=Heat,
         heatnodes=HeatNode,
         race_class=RaceClass,
-        currentlaps=CurrentLap,
         savedraceMeta=SavedRaceMeta,
         savedraceLap=SavedRaceLap,
         profiles=Profiles,
@@ -1012,13 +994,8 @@ def api_profile(profile_id):
 
 @APP.route('/api/race/current')
 def api_race_current():
-    query = CurrentLap.query.all()
-    laps = []
-    for lap in query:
-        laps.append(lap)
-
     payload = {
-        "raw_laps": laps,
+        "raw_laps": RACE.node_laps,
         "leaderboard": calc_leaderboard(current_race=True)
     }
 
@@ -1147,7 +1124,7 @@ def on_get_version():
 
 @SOCKET_IO.on('get_timestamp')
 def on_get_timestamp():
-    if RACE.race_status == RACE.STATUS_STAGING:
+    if RACE.race_status == RaceStatus.STAGING:
         now = RACE.start_time_monotonic
     else:
         now = monotonic()
@@ -1729,7 +1706,7 @@ def on_set_min_lap_behavior(data):
 @SOCKET_IO.on("set_race_format")
 def on_set_race_format(data):
     ''' set current race_format '''
-    if RACE.race_status == RACE.STATUS_READY: # prevent format change if race running
+    if RACE.race_status == RaceStatus.READY: # prevent format change if race running
         race_format_val = data['race_format']
         race_format = RaceFormat.query.get(race_format_val)
         DB.session.flush()
@@ -1766,7 +1743,7 @@ def on_add_race_format():
 @SOCKET_IO.on('delete_race_format')
 def on_delete_race_format():
     '''Delete profile'''
-    if RACE.race_status == RACE.STATUS_READY: # prevent format change if race running
+    if RACE.race_status == RaceStatus.READY: # prevent format change if race running
         raceformat = getCurrentDbRaceFormat()
         if raceformat and (DB.session.query(RaceFormat).count() > 1): # keep one format
             DB.session.delete(raceformat)
@@ -1933,7 +1910,7 @@ def on_get_pi_time():
 def on_stage_race():
     CLUSTER.emit('stage_race')
     global RACE
-    if RACE.race_status == RACE.STATUS_READY: # only initiate staging if ready
+    if RACE.race_status == RaceStatus.READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
         global LAST_RACE_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
@@ -1943,8 +1920,8 @@ def on_stage_race():
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
         RACE.timer_running = 0 # indicate race timer not running
-        RACE.race_status = RACE.STATUS_STAGING
-        INTERFACE.set_race_status(RACE.STATUS_STAGING)
+        RACE.race_status = RaceStatus.STAGING
+        INTERFACE.set_race_status(RaceStatus.STAGING)
         emit_current_laps() # Race page, blank laps to the web client
         emit_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
@@ -2065,7 +2042,7 @@ def race_start_thread(start_token):
     while (monotonic() < RACE.start_time_monotonic - 0.5):
         gevent.sleep(0.1)
 
-    if RACE.race_status == RACE.STATUS_STAGING and \
+    if RACE.race_status == RaceStatus.STAGING and \
         RACE.start_token == start_token:
         # Only start a race if it is not already in progress
         # Null this thread if token has changed (race stopped/started quickly)
@@ -2090,8 +2067,8 @@ def race_start_thread(start_token):
                            format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
                 INTERFACE.force_end_crossing(node.index)
 
-        RACE.race_status = RACE.STATUS_RACING # To enable registering passed laps
-        INTERFACE.set_race_status(RACE.STATUS_RACING)
+        RACE.race_status = RaceStatus.RACING # To enable registering passed laps
+        INTERFACE.set_race_status(RaceStatus.RACING)
         RACE.timer_running = 1 # indicate race timer is running
         RACE.laps_winner_name = None  # name of winner in first-to-X-laps race
         emit_race_status() # Race page, to set race button states
@@ -2103,7 +2080,7 @@ def on_stop_race():
     global RACE
 
     CLUSTER.emit('stop_race')
-    if RACE.race_status == RACE.STATUS_RACING:
+    if RACE.race_status == RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
         delta_time = RACE.end_time - RACE.start_time_monotonic
         milli_sec = delta_time * 1000.0
@@ -2118,12 +2095,12 @@ def on_stop_race():
         if len(min_laps_list) > 0:
             server_log('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
-        RACE.race_status = RACE.STATUS_DONE # To stop registering passed laps, waiting for laps to be cleared
-        INTERFACE.set_race_status(RACE.STATUS_DONE)
+        RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
+        INTERFACE.set_race_status(RaceStatus.DONE)
     else:
         server_log('No active race to stop')
-        RACE.race_status = RACE.STATUS_READY # Go back to ready state
-        INTERFACE.set_race_status(RACE.STATUS_READY)
+        RACE.race_status = RaceStatus.READY # Go back to ready state
+        INTERFACE.set_race_status(RaceStatus.READY)
         led_manager.clear()
 
     RACE.timer_running = 0 # indicate race timer not running
@@ -2181,7 +2158,7 @@ def on_save_laps():
                 DB.session.flush()
                 DB.session.refresh(new_pilotrace)
 
-                for lap in CurrentLap.query.filter_by(node_index=node_index).all():
+                for lap in RACE.node_laps[node_index]:
                     DB.session.add(SavedRaceLap( \
                         race_id=new_race.id, \
                         pilotrace_id=new_pilotrace.id, \
@@ -2251,8 +2228,8 @@ def on_discard_laps():
     '''Clear the current laps without saving.'''
     CLUSTER.emit('discard_laps')
     clear_laps()
-    RACE.race_status = RACE.STATUS_READY # Flag status as ready to start next race
-    INTERFACE.set_race_status(RACE.STATUS_READY)
+    RACE.race_status = RaceStatus.READY # Flag status as ready to start next race
+    INTERFACE.set_race_status(RaceStatus.READY)
     emit_current_laps() # Race page, blank laps to the web client
     emit_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
@@ -2271,7 +2248,7 @@ def clear_laps():
     LAST_RACE_CACHE = calc_leaderboard(current_race=True)
     LAST_RACE_CACHE_VALID = True
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
-    DB.session.query(CurrentLap).delete() # Clear out the current laps table
+    RACE.node_laps = [] # Clear out the current laps table
     DB.session.query(LapSplit).delete()
     DB.session.commit()
     server_log('Current laps cleared')
@@ -2313,18 +2290,12 @@ def on_delete_lap(data):
     '''Delete a false lap.'''
     node_index = data['node']
     lap_id = data['lapid']
-    db_update = CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id).one()
+    db_update = RACE.node_laps[node_index][-1]
     db_update.deleted = True
 
-    db_next = CurrentLap.query.filter( \
-        CurrentLap.node_index==node_index, \
-        CurrentLap.deleted != 1, \
-        CurrentLap.lap_id > lap_id).order_by(CurrentLap.lap_id).first()
+    db_next = filter(lambda lap : lap['lap_id'] > lap_id, RACE.get_active_laps()[node_index])[0]
 
-    db_last = CurrentLap.query.filter( \
-        CurrentLap.node_index==node_index, \
-        CurrentLap.deleted != 1, \
-        CurrentLap.lap_id < lap_id).order_by(CurrentLap.lap_id.desc()).first()
+    db_last = filter(lambda lap : lap['lap_id'] < lap_id, RACE.get_active_laps()[node_index])[-1]
 
     if db_next and db_last:
         db_next.lap_time = db_next.lap_time_stamp - db_last.lap_time_stamp
@@ -2622,11 +2593,10 @@ def emit_current_laps(**params):
         emit_payload = LAST_RACE_LAPS_CACHE
     else:
         current_laps = []
-        # for node in DB.session.query(CurrentLap.node_index).distinct():
         for node in range(RACE.num_nodes):
             node_laps = []
             last_lap_id = -1
-            for lap in CurrentLap.query.filter(CurrentLap.node_index==node, CurrentLap.deleted != 1).order_by(CurrentLap.lap_id).all():
+            for lap in RACE.get_active_laps()[node]:
                 splits = get_splits(node, lap.lap_id, True)
                 node_laps.append({
                     'lap_id': lap.lap_id,
@@ -3420,9 +3390,8 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
             if pilot_id:
-                lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
-                        .filter(CurrentLap.node_index==node.index, \
-                            CurrentLap.deleted != 1).scalar()
+                lap_id = RACE.get_active_laps()[node.index][-1]['lap_id']
+
                 if lap_id is None:
                     lap_id = 0
                             # if (other) pilot crossing for possible winning lap then wait
@@ -3431,8 +3400,7 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
                     server_log('check_pilot_laps_win waiting for crossing, Node {0}'.format(node.index+1))
                     return -1
                 if lap_id >= num_laps_win:
-                    lap_data = CurrentLap.query.filter(CurrentLap.node_index==node.index, \
-                        CurrentLap.deleted != 1, CurrentLap.lap_id==num_laps_win).one()
+                    lap_data = filter(lambda lap : lap['lap_id']==num_laps_win, RACE.get_active_laps()[node.index])
                     #server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
                              # save pilot_id for earliest lap time:
                     if win_pilot_id < 0 or lap_data.lap_time_stamp < win_lap_tstamp:
@@ -3577,12 +3545,10 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
                 pilot_id = node_pilot_dict.get(node.index)
                 if pilot_id:
-                    lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
-                            .filter(CurrentLap.node_index==node.index, \
-                                CurrentLap.deleted != 1).scalar()
+                    lap_id = RACE.get_active_laps()[node.index][-1]['lap_id']
                     if lap_id > 0:
-                        lap_data = CurrentLap.query.filter(CurrentLap.node_index==node.index, \
-                            CurrentLap.deleted != 1, CurrentLap.lap_id==lap_id).one_or_none()
+                        lap_data = filter(lambda lap : lap['lap_id']==lap_id, RACE.get_active_laps()[node.index])
+
                         if lap_data:
                             pilots_list.append((lap_id, lap_data.lap_time_stamp, pilot_id, node))
                             if lap_id > max_lap_id:
@@ -3936,8 +3902,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
     profile_freqs = json.loads(getCurrentProfile().frequencies)
     if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end (RACE.duration_ms is invalid while race is in progress)
-        if RACE.race_status is RACE.STATUS_RACING \
-            or (RACE.race_status is RACE.STATUS_DONE and \
+        if RACE.race_status is RaceStatus.RACING \
+            or (RACE.race_status is RaceStatus.DONE and \
                 lap_timestamp_absolute < RACE.end_time):
 
             # Get the current pilot id on the node
@@ -3952,8 +3918,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     lap_time_stamp *= 1000 # store as milliseconds
 
                     # Get the last completed lap from the database
-                    last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
-                        .filter(CurrentLap.node_index==node.index).scalar()
+                    last_lap_id = RACE.get_active_laps()[node.index][-1]['lap_id']
 
                     if last_lap_id is None: # No previous laps, this is the first pass
                         # Lap zero represents the time from the launch pad to flying through the gate
@@ -3962,9 +3927,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         node.first_cross_flag = True  # indicate first crossing completed
                     else: # This is a normal completed lap
                         # Find the time stamp of the last lap completed
-                        last_lap_time_stamp = CurrentLap.query.filter( \
-                            CurrentLap.node_index==node.index, \
-                            CurrentLap.deleted != 1).order_by(CurrentLap.lap_id.desc()).first().lap_time_stamp
+                        last_lap_time_stamp = RACE.get_active_laps()[node_index][-1]['lap_time_stamp']
+
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
                         lap_id = last_lap_id + 1
@@ -3989,10 +3953,15 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'timestamp': lap_time_stamp + monotonic_to_milliseconds(RACE.start_time_monotonic)
                         })
                         # Add the new lap to the database
-                        DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
-                            lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
-                            lap_time_formatted=time_format(lap_time), source=source, deleted=False))
-                        DB.session.commit()
+                        RACE.node_laps[node.index].append({
+                            'pilot_id': pilot_id,
+                            'lap_id': lap_id,
+                            'lap_time_stamp': lap_time_stamp,
+                            'lap_time': lap_time,
+                            'lap_time_formatted': time_format(lap_time),
+                            'source': source,
+                            'deleted': False
+                        })
 
                         #server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
                         #    .format(node.index+1, lap_id, time_format(lap_time)))
@@ -4065,10 +4034,15 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             elif lap_id == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
                     else:
-                        DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
-                            lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
-                            lap_time_formatted=time_format(lap_time), source=source, deleted=True))
-                        DB.session.commit()
+                        RACE.node_laps[node.index].append({
+                            'pilot_id': pilot_id,
+                            'lap_id': lap_id,
+                            'lap_time_stamp': lap_time_stamp,
+                            'lap_time': lap_time,
+                            'lap_time_formatted': time_format(lap_time),
+                            'source': source,
+                            'deleted': True
+                        })
                 else:
                     server_log('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
@@ -4099,7 +4073,7 @@ def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
 
-    if led_manager.isEnabled() and RACE.race_status == RACE.STATUS_RACING:  # if race is in progress
+    if led_manager.isEnabled() and RACE.race_status == RaceStatus.RACING:  # if race is in progress
         # if pilot assigned to node and first crossing is complete
         if node.current_pilot_id != PILOT_ID_NONE and node.first_cross_flag:
             # first crossing has happened; if 'enter' then show indicator,
@@ -4197,8 +4171,7 @@ def db_reset_classes():
 
 def db_reset_current_laps():
     '''Resets database current laps to default.'''
-    DB.session.query(CurrentLap).delete()
-    DB.session.commit()
+    RACE.node_laps = []
     server_log('Database current laps reset')
 
 def db_reset_saved_races():
