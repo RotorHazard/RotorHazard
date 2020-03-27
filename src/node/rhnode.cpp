@@ -98,6 +98,8 @@ void setRxModule(uint16_t frequency);
 // Initialize program
 void setup()
 {
+    initNodeResetPin();
+
     if (!NODE_NUMBER)
     {
         // current hardware selection
@@ -177,13 +179,10 @@ void setup()
         }
     }
 
-    pinMode(NODE_RESET_PIN, OUTPUT);  // node reset for ISP
     pinMode(RX5808_SEL_PIN, OUTPUT);  // RX5808 comms
     pinMode(RX5808_DATA_PIN, OUTPUT);
     pinMode(RX5808_CLK_PIN, OUTPUT);
     digitalWrite(RX5808_SEL_PIN, HIGH);
-
-    initNodeResetPin();
 
     Serial.begin(115200);  // Start serial interface
     while (!Serial) {};  // Wait for the Serial port to initialise
