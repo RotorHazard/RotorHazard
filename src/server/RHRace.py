@@ -25,7 +25,11 @@ class RHRace():
         self.node_laps = [] # contains current race laps, by node
 
     def get_active_laps(self):
-        return filter(lambda lap : lap['deleted'] == False, self.node_laps)
+        filtered = []
+        for node in self.node_laps:
+            filtered.append(filter(lambda lap : lap['deleted'] == False, node))
+
+        return filtered
 
 def get_race_state():
     '''Returns the race object.'''
