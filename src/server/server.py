@@ -65,7 +65,7 @@ Events = EventManager()
 from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorPattern, hexToColor
 
 # VRx
-from VRxManager import VRxManager
+from VRxController import VRxController
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -1035,6 +1035,7 @@ def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs[idx])
+    
 
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
@@ -5002,7 +5003,28 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
         Options.set("secret_key", unicode(os.urandom(50), errors='ignore'))
 
-    APP.config['SECRET_KEY'] = Options.get("secret_key")
+if 'HOST' in Config['VRX_SERVER']:
+    vrx_controller = VRxController(Events, 
+                                   Config['VRX_SERVER']['HOST'],
+                                   [5740,
+                                    5760,
+                                    5780,
+                                    5800,
+                                    5820,
+                                    5840,
+                                    5860,
+                                    5880,])
+
+    # test command:
+    vrx_controller.set_node_frequency(1, 5800)
+else:
+    print("Video Receiver: Communcation Disabled")
+
+def start(port_val = Config['GENERAL']['HTTP_PORT']):
+    if not getOption("secret_key"):
+        setOption("secret_key", unicode(os.urandom(50), errors='ignore'))
+
+    APP.config['SECRET_KEY'] = getOption("secret_key")
 
     logger.info("Running http server at port " + str(port_val))
 
