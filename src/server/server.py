@@ -39,7 +39,7 @@ Events = EventManager()
 from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
 
 # VRx
-from VRxManager import VRxManager
+from VRxController import VRxController
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -109,6 +109,8 @@ Config['GENERAL']['DEBUG'] = False
 Config['GENERAL']['CORS_ALLOWED_HOSTS'] = '*'
 
 Config['GENERAL']['NODE_DRIFT_CALC_TIME'] = 10
+
+Config['VRX_SERVER']['HOST'] = 'localhost'  # MQTT broker runs on same IP as RH server
 
 # override defaults above with config from file
 try:
@@ -1335,6 +1337,7 @@ def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs[idx])
+    
 
 def restore_node_frequency(node_index):
     ''' Restore frequency for given node index (update hardware) '''
@@ -4664,9 +4667,21 @@ else:
 
 
 if 'HOST' in Config['VRX_SERVER']:
-    vrx_manager = VRxManager(Events, Config['VRX_SERVER']['HOST'])
+    vrx_controller = VRxController(Events, 
+                                   Config['VRX_SERVER']['HOST'],
+                                   [5740,
+                                    5760,
+                                    5780,
+                                    5800,
+                                    5820,
+                                    5840,
+                                    5860,
+                                    5880,])
+
     # test command:
-    vrx_manager.setFrequency(1, 5800)
+    vrx_controller.set_node_frequency(1, 5800)
+else:
+    print("Video Receiver: Communcation Disabled")
 
 def start(port_val = Config['GENERAL']['HTTP_PORT']):
     if not getOption("secret_key"):
