@@ -43,6 +43,8 @@ sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startu
 
 from RHRace import get_race_state, WinCondition, RaceStatus
 
+import Config
+
 APP = Flask(__name__, static_url_path='/static')
 
 HEARTBEAT_THREAD = None
@@ -65,7 +67,6 @@ LAST_RACE_CACHE_VALID = False # Whether cache is valid (False = regenerate cache
 
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
-CONFIG_FILE_NAME = 'config.json'
 LANGUAGE_FILE_NAME = 'language.json'
 IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 
@@ -77,72 +78,9 @@ APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 DB = SQLAlchemy(APP)
 
-Config = {}
-Config['GENERAL'] = {}
-Config['SENSORS'] = {}
-Config['LED'] = {}
-Config['SERIAL_PORTS'] = []
-
-# LED strip configuration:
-Config['LED']['LED_COUNT']      = 0       # Number of LED pixels.
-Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
-Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
-Config['LED']['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
-Config['LED']['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
-Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
-Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
-Config['LED']['LED_ROWS']       = 1       # Number of rows in LED array
-Config['LED']['PANEL_ROTATE']   = 0
-Config['LED']['INVERTED_PANEL_ROWS'] = False
-
-
-# other default configurations
-Config['GENERAL']['HTTP_PORT'] = 5000
-Config['GENERAL']['SECRET_KEY'] = random.random()
-Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
-Config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
-Config['GENERAL']['SLAVES'] = []
-Config['GENERAL']['SLAVE_TIMEOUT'] = 300 # seconds
-Config['GENERAL']['DEBUG'] = False
-Config['GENERAL']['CORS_ALLOWED_HOSTS'] = '*'
-
-Config['GENERAL']['NODE_DRIFT_CALC_TIME'] = 10
-
-# override defaults above with config from file
-try:
-    with open(CONFIG_FILE_NAME, 'r') as f:
-        ExternalConfig = json.load(f)
-    Config['GENERAL'].update(ExternalConfig['GENERAL'])
-
-    if 'LED' in ExternalConfig:
-        Config['LED'].update(ExternalConfig['LED'])
-
-#    try:
-#        bitmaptree = Config['LED']['BITMAPS']
-#        Config['LED'].update(ExternalConfig['LED'])
-#        Config['LED']['BITMAPS'] = bitmaptree
-#        Config['LED']['BITMAPS'].update(ExternalConfig['LED']['BITMAPS'])
-#    except KeyError:
-#        if 'LED' in ExternalConfig:
-#            Config['LED'].update(ExternalConfig['LED'])
-#        else:
-#            print "No 'LED' entry found in configuration file "
-
-    if 'SENSORS' in ExternalConfig:
-        Config['SENSORS'].update(ExternalConfig['SENSORS'])
-    if 'SERIAL_PORTS' in ExternalConfig:
-        Config['SERIAL_PORTS'].extend(ExternalConfig['SERIAL_PORTS'])
-    Config['GENERAL']['configFile'] = 1
-    print 'Configuration file imported'
-except IOError:
-    Config['GENERAL']['configFile'] = 0
-    print 'No configuration file found, using defaults'
-except ValueError as ex:
-    Config['GENERAL']['configFile'] = -1
-    print 'Configuration file invalid, using defaults; error is: ' + str(ex)
 
 # start SocketIO service
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config['GENERAL']['CORS_ALLOWED_HOSTS'])
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'])
 
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 INTERFACE = None
@@ -152,11 +90,11 @@ try:
 except (ImportError, RuntimeError, IOError) as ex:
     print 'Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex)
 if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
-    if not Config['SERIAL_PORTS'] or len(Config['SERIAL_PORTS']) <= 0:
+    if not Config.SERIAL_PORTS or len(Config.SERIAL_PORTS) <= 0:
         interfaceModule = importlib.import_module('MockInterface')
         INTERFACE = interfaceModule.get_hardware_interface(config=Config)
     else:
-        print 'Unable to initialize specified serial node(s): {0}'.format(Config['SERIAL_PORTS'])
+        print 'Unable to initialize specified serial node(s): {0}'.format(Config.SERIAL_PORTS)
         sys.exit()
 
 RACE = get_race_state() # For storing race management variables
@@ -316,11 +254,11 @@ class Cluster:
 
 CLUSTER = Cluster()
 hasMirrors = False
-for index, slave_info in enumerate(Config['GENERAL']['SLAVES']):
+for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
     if isinstance(slave_info, basestring):
         slave_info = {'address': slave_info, 'mode': Slave.TIMER_MODE}
     if 'timeout' not in slave_info:
-        slave_info['timeout'] = Config['GENERAL']['SLAVE_TIMEOUT']
+        slave_info['timeout'] = Config.GENERAL['SLAVE_TIMEOUT']
     if 'mode' in slave_info and slave_info['mode'] == Slave.MIRROR_MODE:
         hasMirrors = True
     elif hasMirrors:
@@ -687,7 +625,7 @@ class RHRaceFormat():
 
 def check_auth(username, password):
     '''Check if a username password combination is valid.'''
-    return username == Config['GENERAL']['ADMIN_USERNAME'] and password == Config['GENERAL']['ADMIN_PASSWORD']
+    return username == Config.GENERAL['ADMIN_USERNAME'] and password == Config.GENERAL['ADMIN_PASSWORD']
 
 def authenticate():
     '''Sends a 401 response that enables basic auth.'''
@@ -713,7 +651,7 @@ def requires_auth(f):
 def index():
     '''Route to home page.'''
     return render_template('home.html', serverInfo=serverInfo,
-                           getOption=getOption, __=__, Debug=Config['GENERAL']['DEBUG'])
+                           getOption=getOption, __=__, Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/heats')
 def heats():
@@ -774,8 +712,8 @@ def settings():
     return render_template('settings.html', serverInfo=serverInfo, getOption=getOption, __=__,
         led_enabled=led_manager.isEnabled(),
         num_nodes=RACE.num_nodes,
-        ConfigFile=Config['GENERAL']['configFile'],
-        Debug=Config['GENERAL']['DEBUG'])
+        ConfigFile=Config.GENERAL['configFile'],
+        Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/scanner')
 @requires_auth
@@ -4592,18 +4530,18 @@ if Heat.query.first():
 
 # Create LED object with appropriate configuration
 strip = None
-if Config['LED']['LED_COUNT'] > 0:
+if Config.LED['LED_COUNT'] > 0:
     led_type = os.environ.get('RH_LEDS', 'ws281x')
     # note: any calls to 'getOption()' need to happen after the DB initialization,
     #       otherwise it causes problems when run with no existing DB file
     led_brightness = int(getOption("ledBrightness"))
     try:
         ledModule = importlib.import_module(led_type + '_leds')
-        strip = ledModule.get_pixel_interface(config=Config['LED'], brightness=led_brightness)
+        strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
     except ImportError:
         try:
             ledModule = importlib.import_module('ANSI_leds')
-            strip = ledModule.get_pixel_interface(config=Config['LED'], brightness=led_brightness)
+            strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
         except ImportError:
             ledModule = None
             print 'LED: disabled (no modules available)'
@@ -4612,7 +4550,7 @@ else:
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
-    led_manager = LEDEventManager(Events, strip, Config['LED'])
+    led_manager = LEDEventManager(Events, strip, Config.LED)
     LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
     for handlerFile in LEDHandlerFiles:
         try:
@@ -4624,7 +4562,7 @@ if strip:
 else:
     led_manager = NoLEDManager()
 
-def start(port_val = Config['GENERAL']['HTTP_PORT']):
+def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not getOption("secret_key"):
         setOption("secret_key", unicode(os.urandom(50), errors='ignore'))
 
