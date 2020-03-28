@@ -132,7 +132,25 @@ class MockInterface(BaseHardwareInterface):
             node.exit_at_level = self.transmit_exit_at_level(node, level)
 
     def force_end_crossing(self, node_index):
-        node = self.nodes[node_index]
+        pass
+
+    def inc_intf_read_block_count(self):
+        pass
+
+    def inc_intf_read_error_count(self):
+        pass
+
+    def inc_intf_write_block_count(self):
+        pass
+
+    def inc_intf_write_error_count(self):
+        pass
+
+    def get_intf_total_error_count(self):
+        pass
+
+    def get_intf_error_report_str(self):
+        return ""
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''

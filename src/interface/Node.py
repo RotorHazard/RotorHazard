@@ -49,7 +49,9 @@ class Node:
 
         self.io_request = None # request time of last I/O read
         self.io_response = None # response time of last I/O read
-
+        
+        self.read_block_count = 0
+        self.read_error_count = 0
 
     def init(self):
         if self.api_level >= 10:
@@ -95,3 +97,17 @@ class Node:
 
     def is_valid_rssi(self, value):
         return value > 0 and value < self.max_rssi_value
+
+    def inc_read_block_count(self, interface):
+        if interface:
+            self.read_block_count += 1
+            interface.inc_intf_read_block_count()
+
+    def inc_read_error_count(self, interface):
+        if interface:
+            self.read_error_count += 1
+            interface.inc_intf_read_error_count()
+
+    def get_read_error_report_str(self):
+        return "Node{0}:{1}/{2}({3:.2%})".format(self.index+1, self.read_error_count, \
+                self.read_block_count, (float(self.read_error_count) / float(self.read_block_count)))

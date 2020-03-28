@@ -29,7 +29,7 @@ LAPSTATS_FLAG_CROSSING = 0x01  # crossing is in progress
 LAPSTATS_FLAG_PEAK = 0x02      # reported extremum is peak
 
 UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
-RETRY_COUNT = 5 # Limit of I/O retries
+MAX_RETRY_COUNT = 4 # Limit of I/O retries
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 
 def unpack_8(data):
@@ -89,6 +89,11 @@ class RHInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
+
+        self.intf_read_block_count = 0  # number of blocks read by all nodes
+        self.intf_read_error_count = 0  # number of read errors for all nodes
+        self.intf_write_block_count = 0  # number of blocks write by all nodes
+        self.intf_write_error_count = 0  # number of write errors for all nodes
 
         extKwargs = {}
         for helper in discover_modules('helper'):
@@ -331,7 +336,7 @@ class RHInterface(BaseHardwareInterface):
         success = False
         retry_count = 0
         out_value = None
-        while success is False and retry_count < RETRY_COUNT:
+        while success is False and retry_count <= MAX_RETRY_COUNT:
             node.write_block(self, write_command, pack_8(in_value))
             out_value = self.get_value_8(node, read_command)
             if out_value == in_value:
@@ -348,7 +353,7 @@ class RHInterface(BaseHardwareInterface):
         success = False
         retry_count = 0
         out_value = None
-        while success is False and retry_count < RETRY_COUNT:
+        while success is False and retry_count <= MAX_RETRY_COUNT:
             node.write_block(self, write_command, pack_16(in_value))
             out_value = self.get_value_16(node, read_command)
                    # confirm same value (also handle negative value)
@@ -366,7 +371,7 @@ class RHInterface(BaseHardwareInterface):
         success = False
         retry_count = 0
         out_value = None
-        while success is False and retry_count < RETRY_COUNT:
+        while success is False and retry_count <= MAX_RETRY_COUNT:
             node.write_block(self, write_command, pack_32(in_value))
             out_value = self.get_value_32(node, read_command)
                    # confirm same value (also handle negative value)
@@ -384,7 +389,7 @@ class RHInterface(BaseHardwareInterface):
         success = False
         retry_count = 0
         out_value = None
-        while success is False and retry_count < RETRY_COUNT:
+        while success is False and retry_count <= MAX_RETRY_COUNT:
             if node.write_block(self, write_command, pack_8(in_value)):
                 success = True
             else:
@@ -396,7 +401,7 @@ class RHInterface(BaseHardwareInterface):
         success = False
         retry_count = 0
         out_value = None
-        while success is False and retry_count < RETRY_COUNT:
+        while success is False and retry_count <= MAX_RETRY_COUNT:
             if node.write_block(self, write_command, pack_32(in_value)):
                 success = True
             else:
@@ -465,6 +470,31 @@ class RHInterface(BaseHardwareInterface):
         if node.api_level >= 14:
             self.set_value_8(node, FORCE_END_CROSSING, 0)
 
+    def inc_intf_read_block_count(self):
+        self.intf_read_block_count += 1
+
+    def inc_intf_read_error_count(self):
+        self.intf_read_error_count += 1
+
+    def inc_intf_write_block_count(self):
+        self.intf_write_block_count += 1
+
+    def inc_intf_write_error_count(self):
+        self.intf_write_error_count += 1
+
+    def get_intf_total_error_count(self):
+        return self.intf_read_error_count + self.intf_write_error_count
+
+    def get_intf_error_report_str(self, showWriteFlag=False):
+        retStr = "CommErrors:"
+        if showWriteFlag or self.intf_write_error_count > 0:
+            retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, self.intf_write_block_count, \
+                            (float(self.intf_write_error_count) / float(self.intf_write_block_count)))
+        retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count, self.intf_read_block_count, \
+                            (float(self.intf_read_error_count) / float(self.intf_read_block_count)))
+        for node in self.nodes:
+            retStr += ", " + node.get_read_error_report_str()
+        return retStr
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the RotorHazard interface object.'''

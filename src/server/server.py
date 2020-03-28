@@ -53,6 +53,8 @@ HEAT_ID_NONE = 0  # indicator value for practice heat
 CLASS_ID_NONE = 0  # indicator value for unclassified heat
 FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
+ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
+
 EVENT_RESULTS_CACHE = {} # Cache of results page leaderboards
 EVENT_RESULTS_CACHE_BUILDING = False # Whether results are being calculated
 EVENT_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
@@ -1145,6 +1147,7 @@ def connect_handler():
     server_log('Client connected')
     heartbeat_thread_function.iter_tracker = 0  # declare/init variables for HB function
     heartbeat_thread_function.imdtabler_flag = False
+    heartbeat_thread_function.last_error_rep_time = monotonic()
     INTERFACE.start()
     global HEARTBEAT_THREAD
     if HEARTBEAT_THREAD is None:
@@ -3823,42 +3826,60 @@ def heartbeat_thread_function():
 
     '''Emits current rssi data.'''
     while True:
-        node_data = INTERFACE.get_heartbeat_json()
+        try:
+            node_data = INTERFACE.get_heartbeat_json()
+    
+            SOCKET_IO.emit('heartbeat', node_data)
+            heartbeat_thread_function.iter_tracker += 1
+    
+            # check if race timer is finished
+            if RACE.timer_running:
+                check_race_time_expired()
+    
+            # update displayed IMD rating after freqs changed:
+            if heartbeat_thread_function.imdtabler_flag and \
+                    (heartbeat_thread_function.iter_tracker % HEARTBEAT_DATA_RATE_FACTOR) == 0:
+                heartbeat_thread_function.imdtabler_flag = False
+                emit_imdtabler_rating()
+    
+            # emit rest of node data, but less often:
+            if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
+                emit_node_data()
+    
+            # emit cluster status less often:
+            if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == (2*HEARTBEAT_DATA_RATE_FACTOR):
+                CLUSTER.emitStatus()
+    
+            # emit environment data less often:
+            if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
+                INTERFACE.update_environmental_data()
+                emit_environmental_data()
+                
+            time_now = monotonic()
+    
+            # check if race is to be started
+            global RACE_SCHEDULED
+            if RACE_SCHEDULED:
+                if time_now > RACE_SCHEDULED_TIME:
+                    on_stage_race()
+                    RACE_SCHEDULED = False
+    
+            # if any comm errors then log them (at defined intervals; faster if debug mode)
+            if time_now > heartbeat_thread_function.last_error_rep_time + \
+                        (ERROR_REPORT_INTERVAL_SECS if not Config['GENERAL']['DEBUG'] \
+                        else ERROR_REPORT_INTERVAL_SECS/10):
+                heartbeat_thread_function.last_error_rep_time = time_now
+                if INTERFACE.get_intf_total_error_count() > 0:
+                    server_log(INTERFACE.get_intf_error_report_str())
+            
+            gevent.sleep(0.500/HEARTBEAT_DATA_RATE_FACTOR)
 
-        SOCKET_IO.emit('heartbeat', node_data)
-        heartbeat_thread_function.iter_tracker += 1
-
-        # check if race timer is finished
-        if RACE.timer_running:
-            check_race_time_expired()
-
-        # update displayed IMD rating after freqs changed:
-        if heartbeat_thread_function.imdtabler_flag and \
-                (heartbeat_thread_function.iter_tracker % HEARTBEAT_DATA_RATE_FACTOR) == 0:
-            heartbeat_thread_function.imdtabler_flag = False
-            emit_imdtabler_rating()
-
-        # emit rest of node data, but less often:
-        if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
-            emit_node_data()
-
-        # emit cluster status less often:
-        if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == (2*HEARTBEAT_DATA_RATE_FACTOR):
-            CLUSTER.emitStatus()
-
-        # emit environment data less often:
-        if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
-            INTERFACE.update_environmental_data()
-            emit_environmental_data()
-
-        # check if race is to be started
-        global RACE_SCHEDULED
-        if RACE_SCHEDULED:
-            if monotonic() > RACE_SCHEDULED_TIME:
-                on_stage_race()
-                RACE_SCHEDULED = False
-
-        gevent.sleep(0.500/HEARTBEAT_DATA_RATE_FACTOR)
+        except KeyboardInterrupt:
+            print("Heartbeat thread terminated by keyboard interrupt")
+            return
+        except Exception as ex:
+            server_log('Exception in Heartbeat thread loop:  ' + str(ex))
+            gevent.sleep(0.500)
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''
@@ -4674,6 +4695,7 @@ def start(port_val = Config['GENERAL']['HTTP_PORT']):
         print "Server exception:  " + str(ex)
 
     Events.trigger(Evt.SHUTDOWN)
+    print INTERFACE.get_intf_error_report_str(True)
 
 # Start HTTP server
 if __name__ == '__main__':
