@@ -73,11 +73,13 @@ IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 DEF_TEAM_NAME = 'A'  # default team
 
+import Database
 BASEDIR = os.getcwd()
 APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-DB = SQLAlchemy(APP)
-
+DB = Database.DB
+DB.init_app(APP)
+DB.app = APP
 
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'])
@@ -183,7 +185,7 @@ class Slave:
     def on_pass_record(self, data):
         self.lastContact = monotonic()
         node_index = data['node']
-        pilot_id = HeatNode.query.filter_by( \
+        pilot_id = Database.HeatNode.query.filter_by( \
             heat_id=RACE.current_heat, node_index=node_index).one_or_none().pilot_id
 
         if pilot_id != PILOT_ID_NONE:
@@ -198,7 +200,7 @@ class Slave:
                 last_lap_ts = RACE.node_laps[node_index][-1]['lap_time_stamp']
 
             split_id = self.id
-            last_split_id = DB.session.query(DB.func.max(LapSplit.split_id)).filter_by(node_index=node_index, lap_id=current_lap_id).scalar()
+            last_split_id = DB.session.query(DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=current_lap_id).scalar()
             if last_split_id is None: # first split for this lap
                 if split_id > 0:
                     server_log('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
@@ -207,7 +209,7 @@ class Slave:
                 if split_id > last_split_id:
                     if split_id > last_split_id + 1:
                         server_log('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
-                    last_split_ts = LapSplit.query.filter_by(node_index=node_index, lap_id=current_lap_id, split_id=last_split_id).one().split_time_stamp
+                    last_split_ts = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=current_lap_id, split_id=last_split_id).one().split_time_stamp
                 else:
                     server_log('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
                     last_split_ts = None
@@ -219,7 +221,7 @@ class Slave:
                     .format(node_index+1, current_lap_id+1, time_format(split_time), \
                     ('{0:.2f}'.format(split_speed) if split_speed <> None else 'None')))
 
-                DB.session.add(LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=current_lap_id, split_id=split_id, \
+                DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=current_lap_id, split_id=split_id, \
                     split_time_stamp=split_ts, split_time=split_time, split_time_formatted=time_format(split_time), \
                     split_speed=split_speed))
                 DB.session.commit()
@@ -371,164 +373,9 @@ def buildServerInfo():
 
     return serverInfo
 
-#
-# Database Models
-#
-# pilot 1-N node
-# node 1-N lap
-# lap 1-N splits
-# heat 1-N node
-# round 1-N heat
-
-class Pilot(DB.Model):
-    __tablename__ = 'pilot'
-    id = DB.Column(DB.Integer, primary_key=True)
-    callsign = DB.Column(DB.String(80), nullable=False)
-    team = DB.Column(DB.String(80), nullable=False, default=DEF_TEAM_NAME)
-    phonetic = DB.Column(DB.String(80), nullable=False)
-    name = DB.Column(DB.String(120), nullable=False)
-
-    def __repr__(self):
-        return '<Pilot %r>' % self.id
-
-class Heat(DB.Model):
-    __tablename__ = 'heat'
-    id = DB.Column(DB.Integer, primary_key=True)
-    note = DB.Column(DB.String(80), nullable=True)
-    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
-
-    def __repr__(self):
-        return '<Heat %r>' % self.id
-
-class HeatNode(DB.Model):
-    __tablename__ = 'heat_node'
-    __table_args__ = (
-        DB.UniqueConstraint('heat_id', 'node_index'),
-    )
-    id = DB.Column(DB.Integer, primary_key=True)
-    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
-
-    def __repr__(self):
-        return '<HeatNode %r>' % self._id
-
-class RaceClass(DB.Model):
-    __tablename__ = 'race_class'
-    id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), nullable=True)
-    description = DB.Column(DB.String(256), nullable=True)
-    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
-
-    def __repr__(self):
-        return '<RaceClass %r>' % self.id
-
-class LapSplit(DB.Model):
-    __tablename__ = 'lap_split'
-    __table_args__ = (
-        DB.UniqueConstraint('node_index', 'lap_id', 'split_id'),
-    )
-    id = DB.Column(DB.Integer, primary_key=True)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
-    lap_id = DB.Column(DB.Integer, nullable=False)
-    split_id = DB.Column(DB.Integer, nullable=False)
-    split_time_stamp = DB.Column(DB.Integer, nullable=False)
-    split_time = DB.Column(DB.Integer, nullable=False)
-    split_time_formatted = DB.Column(DB.Integer, nullable=False)
-    split_speed = DB.Column(DB.Float, nullable=True)
-
-    def __repr__(self):
-        return '<LapSplit %r>' % self.pilot_id
-
-class SavedRaceMeta(DB.Model):
-    __tablename__ = 'saved_race_meta'
-    __table_args__ = (
-        DB.UniqueConstraint('round_id', 'heat_id'),
-    )
-    id = DB.Column(DB.Integer, primary_key=True)
-    round_id = DB.Column(DB.Integer, nullable=False)
-    heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
-    class_id = DB.Column(DB.Integer, DB.ForeignKey("race_class.id"), nullable=False)
-    format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
-    start_time = DB.Column(DB.Integer, nullable=False) # internal monotonic time
-    start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
-
-    def __repr__(self):
-        return '<SavedRaceMeta %r>' % self.id
-
-class SavedPilotRace(DB.Model):
-    __tablename__ = 'saved_pilot_race'
-    __table_args__ = (
-        DB.UniqueConstraint('race_id', 'node_index'),
-    )
-    id = DB.Column(DB.Integer, primary_key=True)
-    race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
-    history_values = DB.Column(DB.String, nullable=True)
-    history_times = DB.Column(DB.String, nullable=True)
-    penalty_time = DB.Column(DB.Integer, nullable=False)
-    penalty_desc = DB.Column(DB.String, nullable=True)
-    enter_at = DB.Column(DB.Integer, nullable=False)
-    exit_at = DB.Column(DB.Integer, nullable=False)
-
-    def __repr__(self):
-        return '<SavedPilotRace %r>' % self.id
-
-class SavedRaceLap(DB.Model):
-    __tablename__ = 'saved_race_lap'
-    id = DB.Column(DB.Integer, primary_key=True)
-    race_id = DB.Column(DB.Integer, DB.ForeignKey("saved_race_meta.id"), nullable=False)
-    pilotrace_id = DB.Column(DB.Integer, DB.ForeignKey("saved_pilot_race.id"), nullable=False)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
-    lap_time_stamp = DB.Column(DB.Integer, nullable=False)
-    lap_time = DB.Column(DB.Integer, nullable=False)
-    lap_time_formatted = DB.Column(DB.String, nullable=False)
-    source = DB.Column(DB.Integer, nullable=False)
-    deleted = DB.Column(DB.Boolean, nullable=False)
-
-    def __repr__(self):
-        return '<SavedRaceLap %r>' % self.id
-
-class LapSource:
-    REALTIME = 0
-    MANUAL = 1
-    RECALC = 2
-
-class Profiles(DB.Model):
-    __tablename__ = 'profiles'
-    id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), nullable=False)
-    description = DB.Column(DB.String(256), nullable=True)
-    frequencies = DB.Column(DB.String(80), nullable=False)
-    enter_ats = DB.Column(DB.String(80), nullable=True)
-    exit_ats = DB.Column(DB.String(80), nullable=True)
-    f_ratio = DB.Column(DB.Integer, nullable=True)
-
-class RaceFormat(DB.Model):
-    __tablename__ = 'race_format'
-    id = DB.Column(DB.Integer, primary_key=True)
-    name = DB.Column(DB.String(80), nullable=False)
-    race_mode = DB.Column(DB.Integer, nullable=False)
-    race_time_sec = DB.Column(DB.Integer, nullable=False)
-    start_delay_min = DB.Column(DB.Integer, nullable=False)
-    start_delay_max = DB.Column(DB.Integer, nullable=False)
-    staging_tones = DB.Column(DB.Integer, nullable=False)
-    number_laps_win = DB.Column(DB.Integer, nullable=False)
-    win_condition = DB.Column(DB.Integer, nullable=False)
-    team_racing_mode = DB.Column(DB.Boolean, nullable=False)
-
 TONES_NONE = 0
 TONES_ONE = 1
 TONES_ALL = 2
-
-class GlobalSettings(DB.Model):
-    __tablename__ = 'global_settings'
-    id = DB.Column(DB.Integer, primary_key=True)
-    option_name = DB.Column(DB.String(40), nullable=False)
-    option_value = DB.Column(DB.String(256), nullable=False)
 
 #
 # Option helpers
@@ -538,7 +385,7 @@ GLOBALS_CACHE = {} # Local Python cache for global settings
 def primeGlobalsCache():
     global GLOBALS_CACHE
 
-    settings = GlobalSettings.query.all()
+    settings = Database.GlobalSettings.query.all()
     for setting in settings:
         GLOBALS_CACHE[setting.option_name] = setting.option_value
 
@@ -555,21 +402,21 @@ def getOption(option, default_value=False):
 def setOption(option, value):
     GLOBALS_CACHE[option] = value
 
-    settings = GlobalSettings.query.filter_by(option_name=option).one_or_none()
+    settings = Database.GlobalSettings.query.filter_by(option_name=option).one_or_none()
     if settings:
         settings.option_value = value
     else:
-        DB.session.add(GlobalSettings(option_name=option, option_value=value))
+        DB.session.add(Database.GlobalSettings(option_name=option, option_value=value))
     DB.session.commit()
 
 def getCurrentProfile():
     current_profile = int(getOption('currentProfile'))
-    return Profiles.query.get(current_profile)
+    return Database.Profiles.query.get(current_profile)
 
 def getCurrentRaceFormat():
     if RACE.format is None:
         val = int(getOption('currentFormat'))
-        race_format = RaceFormat.query.get(val)
+        race_format = Database.RaceFormat.query.get(val)
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
         RACE.format.id = race_format.id
@@ -578,7 +425,7 @@ def getCurrentRaceFormat():
 def getCurrentDbRaceFormat():
     if RACE.format is None or RHRaceFormat.isDbBased(RACE.format):
         val = int(getOption('currentFormat'))
-        return RaceFormat.query.get(val)
+        return Database.RaceFormat.query.get(val)
     else:
         return None
 
@@ -679,7 +526,7 @@ def race():
     return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
         led_enabled=led_manager.isEnabled(),
         num_nodes=RACE.num_nodes,
-        current_heat=RACE.current_heat, pilots=Pilot,
+        current_heat=RACE.current_heat, pilots=Database.Pilot,
         nodes=nodes)
 
 @APP.route('/current')
@@ -742,15 +589,15 @@ def hardwarelog():
 def database():
     '''Route to database page.'''
     return render_template('database.html', serverInfo=serverInfo, getOption=getOption, __=__,
-        pilots=Pilot,
-        heats=Heat,
-        heatnodes=HeatNode,
-        race_class=RaceClass,
-        savedraceMeta=SavedRaceMeta,
-        savedraceLap=SavedRaceLap,
-        profiles=Profiles,
-        race_format=RaceFormat,
-        globalSettings=GlobalSettings)
+        pilots=Database.Pilot,
+        heats=Database.Heat,
+        heatnodes=Database.HeatNode,
+        race_class=Database.RaceClass,
+        savedraceMeta=Database.SavedRaceMeta,
+        savedraceLap=Database.SavedRaceLap,
+        profiles=Database.Profiles,
+        race_format=Database.RaceFormat,
+        globalSettings=Database.GlobalSettings)
 
 @APP.route('/docs')
 def viewDocs():
@@ -808,7 +655,7 @@ class AlchemyEncoder(json.JSONEncoder):
 
 @APP.route('/api/pilot/all')
 def api_pilot_all():
-    pilots = Pilot.query.all()
+    pilots = Database.Pilot.query.all()
     payload = []
     for pilot in pilots:
         payload.append(pilot)
@@ -817,24 +664,25 @@ def api_pilot_all():
 
 @APP.route('/api/pilot/<int:pilot_id>')
 def api_pilot(pilot_id):
-    pilot = Pilot.query.get(pilot_id)
+    pilot = Database.Pilot.query.get(pilot_id)
 
     return json.dumps({"pilot": pilot}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/heat/all')
 def api_heat_all():
     all_heats = {}
-    for heat in Heat.query.all():
+    for heat in Database.Heat.query.all():
         heat_id = heat.id
         note = heat.note
         race_class = heat.class_id
 
-        heatnodes = HeatNode.query.filter_by(heat_id=heat.id).all()
+        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
         pilots = {}
         for pilot in heatnodes:
             pilots[pilot.node_index] = pilot.pilot_id
 
-        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
+        has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
+
         if has_race:
             locked = True
         else:
@@ -852,17 +700,18 @@ def api_heat_all():
 
 @APP.route('/api/heat/<int:heat_id>')
 def api_heat(heat_id):
-    heat = Heat.query.get(heat_id)
+    heat = Database.Heat.query.get(heat_id)
     if heat:
         note = heat.note
         race_class = heat.class_id
 
-        heatnodes = HeatNode.query.filter_by(heat_id=heat.id).all()
+        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
         pilots = {}
         for pilot in heatnodes:
             pilots[pilot.node_index] = pilot.pilot_id
 
-        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
+        has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
+
         if has_race:
             locked = True
         else:
@@ -887,7 +736,7 @@ def api_heat(heat_id):
 
 @APP.route('/api/class/all')
 def api_class_all():
-    race_classes = RaceClass.query.all()
+    race_classes = Database.RaceClass.query.all()
     payload = []
     for race_class in race_classes:
         payload.append(race_class)
@@ -896,13 +745,13 @@ def api_class_all():
 
 @APP.route('/api/class/<int:class_id>')
 def api_class(class_id):
-    race_class = RaceClass.query.get(class_id)
+    race_class = Database.RaceClass.query.get(class_id)
 
     return json.dumps({"class": race_class}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/format/all')
 def api_format_all():
-    formats = RaceFormat.query.all()
+    formats = Database.RaceFormat.query.all()
     payload = []
     for race_format in formats:
         payload.append(race_format)
@@ -911,13 +760,13 @@ def api_format_all():
 
 @APP.route('/api/format/<int:format_id>')
 def api_format(format_id):
-    raceformat = RaceFormat.query.get(format_id)
+    raceformat = Database.RaceFormat.query.get(format_id)
 
     return json.dumps({"format": raceformat}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
 @APP.route('/api/profile/all')
 def api_profile_all():
-    profiles = Profiles.query.all()
+    profiles = Database.Profiles.query.all()
     payload = []
     for profile in profiles:
         payload.append(profile)
@@ -926,7 +775,7 @@ def api_profile_all():
 
 @APP.route('/api/profile/<int:profile_id>')
 def api_profile(profile_id):
-    profile = Profiles.query.get(profile_id)
+    profile = Database.Profiles.query.get(profile_id)
 
     return json.dumps({"profile": profile}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
@@ -942,8 +791,8 @@ def api_race_current():
 @APP.route('/api/race/all')
 def api_race_all():
     heats = []
-    for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
-        max_rounds = DB.session.query(DB.func.max(SavedRaceMeta.round_id)).filter_by(heat_id=heat.heat_id).scalar()
+    for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
+        max_rounds = DB.session.query(DB.func.max(Database.SavedRaceMeta.round_id)).filter_by(heat_id=heat.heat_id).scalar()
         heats.append({
             "id": heat.heat_id,
             "rounds": max_rounds
@@ -958,12 +807,12 @@ def api_race_all():
 
 @APP.route('/api/race/<int:heat_id>/<int:round_id>')
 def api_race(heat_id, round_id):
-    race = SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).one()
+    race = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).one()
 
     pilotraces = []
-    for pilotrace in SavedPilotRace.query.filter_by(race_id=race.id).all():
+    for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=race.id).all():
         laps = []
-        for lap in SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
+        for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
             laps.append({
                     'id': lap.id,
                     'lap_time_stamp': lap.lap_time_stamp,
@@ -973,7 +822,7 @@ def api_race(heat_id, round_id):
                     'deleted': lap.deleted
                 })
 
-        pilot_data = Pilot.query.filter_by(id=pilotrace.pilot_id).first()
+        pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
         if pilot_data:
             nodepilot = pilot_data.callsign
         else:
@@ -1018,7 +867,7 @@ def api_status():
 
 @APP.route('/api/options')
 def api_options():
-    opt_query = GlobalSettings.query.all()
+    opt_query = Database.GlobalSettings.query.all()
     options = {}
     if opt_query:
         for opt in opt_query:
@@ -1335,13 +1184,13 @@ def on_set_scan(data):
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
     '''Adds the next available heat number to the database.'''
-    new_heat = Heat(class_id=CLASS_ID_NONE)
+    new_heat = Database.Heat(class_id=CLASS_ID_NONE)
     DB.session.add(new_heat)
     DB.session.flush()
     DB.session.refresh(new_heat)
 
     for node in range(RACE.num_nodes): # Add next heat with empty pilots
-        DB.session.add(HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=PILOT_ID_NONE))
+        DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=PILOT_ID_NONE))
 
     DB.session.commit()
     server_log('Heat added: Heat {0}'.format(new_heat.id))
@@ -1351,7 +1200,7 @@ def on_add_heat():
 def on_alter_heat(data):
     '''Update heat.'''
     heat_id = data['heat']
-    heat = Heat.query.get(heat_id)
+    heat = Database.Heat.query.get(heat_id)
 
     if 'note' in data:
         global EVENT_RESULTS_CACHE_VALID
@@ -1391,7 +1240,7 @@ def on_alter_heat(data):
 @SOCKET_IO.on('add_race_class')
 def on_add_race_class():
     '''Adds the next available pilot id number in the database.'''
-    new_race_class = RaceClass(name='New class', format_id=0)
+    new_race_class = Database.RaceClass(name='New class', format_id=0)
     DB.session.add(new_race_class)
     DB.session.flush()
     DB.session.refresh(new_race_class)
@@ -1406,7 +1255,7 @@ def on_add_race_class():
 def on_alter_race_class(data):
     '''Update race class.'''
     race_class = data['class_id']
-    db_update = RaceClass.query.get(race_class)
+    db_update = Database.RaceClass.query.get(race_class)
     if 'class_name' in data:
         global EVENT_RESULTS_CACHE_VALID
         EVENT_RESULTS_CACHE_VALID = False
@@ -1426,7 +1275,7 @@ def on_alter_race_class(data):
 @SOCKET_IO.on('add_pilot')
 def on_add_pilot():
     '''Adds the next available pilot id number in the database.'''
-    new_pilot = Pilot(name='New Pilot',
+    new_pilot = Database.Pilot(name='New Pilot',
                            callsign='New Callsign',
                            team=DEF_TEAM_NAME,
                            phonetic = '')
@@ -1446,7 +1295,7 @@ def on_alter_pilot(data):
     '''Update pilot.'''
     global EVENT_RESULTS_CACHE_VALID
     pilot_id = data['pilot_id']
-    db_update = Pilot.query.get(pilot_id)
+    db_update = Database.Pilot.query.get(pilot_id)
     if 'callsign' in data:
         EVENT_RESULTS_CACHE_VALID = False
         db_update.callsign = data['callsign']
@@ -1472,7 +1321,7 @@ def on_add_profile():
     new_freqs = {}
     new_freqs["f"] = default_frequencies()
 
-    new_profile = Profiles(name=__('New Profile'),
+    new_profile = Database.Profiles(name=__('New Profile'),
                            description = __('New Profile'),
                            frequencies = json.dumps(new_freqs),
                            enter_ats = profile.enter_ats,
@@ -1488,11 +1337,11 @@ def on_add_profile():
 @SOCKET_IO.on('delete_profile')
 def on_delete_profile():
     '''Delete profile'''
-    if (DB.session.query(Profiles).count() > 1): # keep one profile
+    if (DB.session.query(Database.Profiles).count() > 1): # keep one profile
         profile = getCurrentProfile()
         DB.session.delete(profile)
         DB.session.commit()
-        first_profile_id = Profiles.query.first().id
+        first_profile_id = Database.Profiles.query.first().id
         setOption("currentProfile", first_profile_id)
         on_set_profile(data={ 'profile': first_profile_id })
     else:
@@ -1515,7 +1364,7 @@ def on_set_profile(data, emit_vals=True):
     ''' set current profile '''
     CLUSTER.emit('set_profile', data)
     profile_val = int(data['profile'])
-    profile = Profiles.query.get(profile_val)
+    profile = Database.Profiles.query.get(profile_val)
     if profile:
         setOption("currentProfile", data['profile'])
         server_log("Set Profile to '%s'" % profile_val)
@@ -1646,7 +1495,7 @@ def on_set_race_format(data):
     ''' set current race_format '''
     if RACE.race_status == RaceStatus.READY: # prevent format change if race running
         race_format_val = data['race_format']
-        race_format = RaceFormat.query.get(race_format_val)
+        race_format = Database.RaceFormat.query.get(race_format_val)
         DB.session.flush()
         setCurrentRaceFormat(race_format)
         DB.session.commit()
@@ -1662,8 +1511,8 @@ def on_set_race_format(data):
 def on_add_race_format():
     '''Adds new format in the database by duplicating an existing one.'''
     source_format = getCurrentRaceFormat()
-    all_format_names = [format.name for format in RaceFormat.query.all()]
-    new_format = RaceFormat(name=uniqueName(source_format.name, all_format_names),
+    all_format_names = [format.name for format in Database.RaceFormat.query.all()]
+    new_format = Database.RaceFormat(name=uniqueName(source_format.name, all_format_names),
                              race_mode=source_format.race_mode,
                              race_time_sec=source_format.race_time_sec ,
                              start_delay_min=source_format.start_delay_min,
@@ -1683,10 +1532,10 @@ def on_delete_race_format():
     '''Delete profile'''
     if RACE.race_status == RaceStatus.READY: # prevent format change if race running
         raceformat = getCurrentDbRaceFormat()
-        if raceformat and (DB.session.query(RaceFormat).count() > 1): # keep one format
+        if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
             DB.session.delete(raceformat)
             DB.session.commit()
-            first_raceFormat = RaceFormat.query.first()
+            first_raceFormat = Database.RaceFormat.query.first()
             setCurrentRaceFormat(first_raceFormat)
             emit_race_format()
         else:
@@ -1906,8 +1755,8 @@ def findBestValues(node, node_index):
     ''' Search race history for best tuning values '''
 
     # get commonly used values
-    heat = Heat.query.get(RACE.current_heat)
-    pilot = HeatNode.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
+    heat = Database.Heat.query.get(RACE.current_heat)
+    pilot = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
     current_class = heat.class_id
 
     # test for disabled node
@@ -1919,9 +1768,10 @@ def findBestValues(node, node_index):
         }
 
     # test for same heat, same node
-    race_query = SavedRaceMeta.query.filter_by(heat_id=heat.id).order_by(-SavedRaceMeta.id).first()
+    race_query = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).order_by(-Database.SavedRaceMeta.id).first()
+
     if race_query:
-        pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
+        pilotrace_query = Database.SavedPilotRace.query.filter_by(race_id=race_query.id, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
         if pilotrace_query:
             server_log('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
             return {
@@ -1930,9 +1780,9 @@ def findBestValues(node, node_index):
             }
 
     # test for same class, same pilot, same node
-    race_query = SavedRaceMeta.query.filter_by(class_id=current_class).order_by(-SavedRaceMeta.id).first()
+    race_query = Database.SavedRaceMeta.query.filter_by(class_id=current_class).order_by(-Database.SavedRaceMeta.id).first()
     if race_query:
-        pilotrace_query = SavedPilotRace.query.filter_by(race_id=race_query.id, node_index=node_index, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
+        pilotrace_query = Database.SavedPilotRace.query.filter_by(race_id=race_query.id, node_index=node_index, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
         if pilotrace_query:
             server_log('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
             return {
@@ -1941,7 +1791,7 @@ def findBestValues(node, node_index):
             }
 
     # test for same pilot, same node
-    pilotrace_query = SavedPilotRace.query.filter_by(node_index=node_index, pilot_id=pilot).order_by(-SavedPilotRace.id).first()
+    pilotrace_query = Database.SavedPilotRace.query.filter_by(node_index=node_index, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
     if pilotrace_query:
         server_log('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
         return {
@@ -1950,7 +1800,7 @@ def findBestValues(node, node_index):
         }
 
     # test for same node
-    pilotrace_query = SavedPilotRace.query.filter_by(node_index=node_index).order_by(-SavedPilotRace.id).first()
+    pilotrace_query = Database.SavedPilotRace.query.filter_by(node_index=node_index).order_by(-Database.SavedPilotRace.id).first()
     if pilotrace_query:
         server_log('Node {0} calibration: found same node in other heat'.format(node.index+1))
         return {
@@ -2054,9 +1904,9 @@ def on_save_laps():
     global EVENT_RESULTS_CACHE_VALID
     EVENT_RESULTS_CACHE_VALID = False
     race_format = getCurrentRaceFormat()
-    heat = Heat.query.get(RACE.current_heat)
+    heat = Database.Heat.query.get(RACE.current_heat)
     # Get the last saved round for the current heat
-    max_round = DB.session.query(DB.func.max(SavedRaceMeta.round_id)) \
+    max_round = DB.session.query(DB.func.max(Database.SavedRaceMeta.round_id)) \
             .filter_by(heat_id=RACE.current_heat).scalar()
     if max_round is None:
         max_round = 0
@@ -2064,7 +1914,7 @@ def on_save_laps():
     profile = getCurrentProfile()
     profile_freqs = json.loads(profile.frequencies)
 
-    new_race = SavedRaceMeta( \
+    new_race = Database.SavedRaceMeta( \
         round_id=max_round+1, \
         heat_id=RACE.current_heat, \
         class_id=heat.class_id, \
@@ -2078,11 +1928,11 @@ def on_save_laps():
 
     for node_index in range(RACE.num_nodes):
         if profile_freqs["f"][node_index] != FREQUENCY_ID_NONE:
-            pilot_id = HeatNode.query.filter_by( \
+            pilot_id = Database.HeatNode.query.filter_by( \
                 heat_id=RACE.current_heat, node_index=node_index).one().pilot_id
 
             if pilot_id != PILOT_ID_NONE:
-                new_pilotrace = SavedPilotRace( \
+                new_pilotrace = Database.SavedPilotRace( \
                     race_id=new_race.id, \
                     node_index=node_index, \
                     pilot_id=pilot_id, \
@@ -2097,7 +1947,7 @@ def on_save_laps():
                 DB.session.refresh(new_pilotrace)
 
                 for lap in RACE.node_laps[node_index]:
-                    DB.session.add(SavedRaceLap( \
+                    DB.session.add(Database.SavedRaceLap( \
                         race_id=new_race.id, \
                         pilotrace_id=new_pilotrace.id, \
                         node_index=node_index, \
@@ -2131,17 +1981,17 @@ def on_resave_laps(data):
     enter_at = data['enter_at']
     exit_at = data['exit_at']
 
-    Pilotrace = SavedPilotRace.query.filter_by(id=pilotrace_id).one()
+    Pilotrace = Database.SavedPilotRace.query.filter_by(id=pilotrace_id).one()
     Pilotrace.enter_at = enter_at
     Pilotrace.exit_at = exit_at
 
-    SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).delete()
+    Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).delete()
 
     for lap in laps:
         tmp_lap_time_formatted = lap['lap_time']
         if isinstance(tmp_lap_time_formatted, float):
             tmp_lap_time_formatted = time_format(lap['lap_time'])
-        DB.session.add(SavedRaceLap( \
+        DB.session.add(Database.SavedRaceLap( \
             race_id=race_id, \
             pilotrace_id=pilotrace_id, \
             node_index=node, \
@@ -2187,7 +2037,7 @@ def clear_laps():
     LAST_RACE_CACHE_VALID = True
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
     RACE.node_laps = [] # Clear out the current laps table
-    DB.session.query(LapSplit).delete()
+    DB.session.query(Database.LapSplit).delete()
     DB.session.commit()
     server_log('Current laps cleared')
 
@@ -2449,8 +2299,8 @@ def emit_node_tuning(**params):
     '''Emits node tuning values.'''
     tune_val = getCurrentProfile()
     emit_payload = {
-        'profile_ids': [profile.id for profile in Profiles.query.all()],
-        'profile_names': [profile.name for profile in Profiles.query.all()],
+        'profile_ids': [profile.id for profile in Database.Profiles.query.all()],
+        'profile_names': [profile.name for profile in Database.Profiles.query.all()],
         'current_profile': int(getOption('currentProfile')),
         'profile_name': tune_val.name,
         'profile_description': tune_val.description
@@ -2496,15 +2346,15 @@ def emit_race_format(**params):
     '''Emits race format values.'''
     race_format = getCurrentRaceFormat()
     is_db_race_format = RHRaceFormat.isDbBased(race_format)
-    has_race = not is_db_race_format or SavedRaceMeta.query.filter_by(format_id=race_format.id).first()
+    has_race = not is_db_race_format or Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first()
     if has_race:
         locked = True
     else:
         locked = False
 
     emit_payload = {
-        'format_ids': [raceformat.id for raceformat in RaceFormat.query.all()],
-        'format_names': [raceformat.name for raceformat in RaceFormat.query.all()],
+        'format_ids': [raceformat.id for raceformat in Database.RaceFormat.query.all()],
+        'format_names': [raceformat.name for raceformat in Database.RaceFormat.query.all()],
         'current_format': race_format.id if is_db_race_format else None,
         'format_name': race_format.name,
         'race_mode': race_format.race_mode,
@@ -2567,7 +2417,7 @@ def emit_current_laps(**params):
 def get_splits(node, lap_id, lapCompleted):
     splits = []
     for slave_index in range(len(CLUSTER.slaves)):
-        split = LapSplit.query.filter_by(node_index=node,lap_id=lap_id,split_id=slave_index).one_or_none()
+        split = Database.LapSplit.query.filter_by(node_index=node,lap_id=lap_id,split_id=slave_index).one_or_none()
         if split:
             split_payload = {
                 'split_id': slave_index,
@@ -2589,15 +2439,15 @@ def get_splits(node, lap_id, lapCompleted):
 def emit_race_list(**params):
     '''Emits race listing'''
     heats = {}
-    for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
-        heatnote = Heat.query.get(heat.heat_id).note
+    for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
+        heatnote = Database.Heat.query.get(heat.heat_id).note
 
         rounds = {}
-        for round in SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRaceMeta.round_id):
+        for round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
             pilotraces = []
-            for pilotrace in SavedPilotRace.query.filter_by(race_id=round.id).all():
+            for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
                 laps = []
-                for lap in SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).order_by(SavedRaceLap.lap_time_stamp).all():
+                for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).order_by(Database.SavedRaceLap.lap_time_stamp).all():
                     laps.append({
                             'id': lap.id,
                             'lap_time_stamp': lap.lap_time_stamp,
@@ -2607,7 +2457,7 @@ def emit_race_list(**params):
                             'deleted': lap.deleted
                         })
 
-                pilot_data = Pilot.query.filter_by(id=pilotrace.pilot_id).first()
+                pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
                 if pilot_data:
                     nodepilot = pilot_data.callsign
                 else:
@@ -2640,12 +2490,12 @@ def emit_race_list(**params):
 
     '''
     heats_by_class = {}
-    heats_by_class[CLASS_ID_NONE] = [heat.id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE).all()]
-    for race_class in RaceClass.query.all():
-        heats_by_class[race_class.id] = [heat.id for heat in Heat.query.filter_by(class_id=race_class.id).all()]
+    heats_by_class[CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=CLASS_ID_NONE).all()]
+    for race_class in Database.RaceClass.query.all():
+        heats_by_class[race_class.id] = [heat.id for heat in Database.Heat.query.filter_by(class_id=race_class.id).all()]
 
     current_classes = {}
-    for race_class in RaceClass.query.all():
+    for race_class in Database.RaceClass.query.all():
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
@@ -2692,16 +2542,16 @@ def emit_round_data_thread(params, sid):
             EVENT_RESULTS_CACHE_BUILDING = True
 
             heats = {}
-            for heat in SavedRaceMeta.query.with_entities(SavedRaceMeta.heat_id).distinct().order_by(SavedRaceMeta.heat_id):
-                heatnote = Heat.query.get(heat.heat_id).note
+            for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
+                heatnote = Database.Heat.query.get(heat.heat_id).note
 
                 rounds = []
-                for round in SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(SavedRaceMeta.round_id):
+                for round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
                     pilotraces = []
-                    for pilotrace in SavedPilotRace.query.filter_by(race_id=round.id).all():
+                    for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
                         gevent.sleep()
                         laps = []
-                        for lap in SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
+                        for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
                             laps.append({
                                     'id': lap.id,
                                     'lap_time_stamp': lap.lap_time_stamp,
@@ -2711,7 +2561,7 @@ def emit_round_data_thread(params, sid):
                                     'deleted': lap.deleted
                                 })
 
-                        pilot_data = Pilot.query.filter_by(id=pilotrace.pilot_id).first()
+                        pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
                         if pilot_data:
                             nodepilot = pilot_data.callsign
                         else:
@@ -2738,13 +2588,13 @@ def emit_round_data_thread(params, sid):
 
             gevent.sleep()
             heats_by_class = {}
-            heats_by_class[CLASS_ID_NONE] = [heat.id for heat in Heat.query.filter_by(class_id=CLASS_ID_NONE).all()]
-            for race_class in RaceClass.query.all():
-                heats_by_class[race_class.id] = [heat.id for heat in Heat.query.filter_by(class_id=race_class.id).all()]
+            heats_by_class[CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=CLASS_ID_NONE).all()]
+            for race_class in Database.RaceClass.query.all():
+                heats_by_class[race_class.id] = [heat.id for heat in Database.Heat.query.filter_by(class_id=race_class.id).all()]
 
             gevent.sleep()
             current_classes = {}
-            for race_class in RaceClass.query.all():
+            for race_class in Database.RaceClass.query.all():
                 current_class = {}
                 current_class['id'] = race_class.id
                 current_class['name'] = race_class.name
@@ -2796,34 +2646,34 @@ def calc_leaderboard(**params):
         race_format = getCurrentRaceFormat()
     else:
         if USE_CLASS:
-            race_query = SavedRaceMeta.query.filter_by(class_id=USE_CLASS)
+            race_query = Database.SavedRaceMeta.query.filter_by(class_id=USE_CLASS)
             if race_query.count() >= 1:
                 current_format = RaceClass.query.get(USE_CLASS).format_id
             else:
                 current_format = None
         elif USE_HEAT:
             if USE_ROUND:
-                race_query = SavedRaceMeta.query.filter_by(heat_id=USE_HEAT, round_id=USE_ROUND)
+                race_query = Database.SavedRaceMeta.query.filter_by(heat_id=USE_HEAT, round_id=USE_ROUND)
                 current_format = race_query.first().format_id
             else:
-                race_query = SavedRaceMeta.query.filter_by(heat_id=USE_HEAT)
+                race_query = Database.SavedRaceMeta.query.filter_by(heat_id=USE_HEAT)
                 if race_query.count() >= 1:
                     heat_class = race_query.first().class_id
                     if heat_class:
-                        current_format = RaceClass.query.get(heat_class).format_id
+                        current_format = Database.RaceClass.query.get(heat_class).format_id
                     else:
                         current_format = None
                 else:
                     current_format = None
         else:
-            race_query = SavedRaceMeta.query
+            race_query = Database.SavedRaceMeta.query
             current_format = None
 
         selected_races = race_query.all()
         racelist = [r.id for r in selected_races]
 
         if current_format:
-            race_format = RaceFormat.query.get(current_format)
+            race_format = Database.RaceFormat.query.get(current_format)
         else:
             race_format = None
 
@@ -2839,7 +2689,7 @@ def calc_leaderboard(**params):
     max_laps = []
     holeshots = []
 
-    for pilot in Pilot.query.filter(Pilot.id != PILOT_ID_NONE):
+    for pilot in Database.Pilot.query.filter(Database.Pilot.id != PILOT_ID_NONE):
         gevent.sleep()
         if USE_CURRENT:
             stat_query = DB.session.query(DB.func.count(CurrentLap.lap_id)) \
@@ -2847,7 +2697,7 @@ def calc_leaderboard(**params):
                     CurrentLap.lap_id != 0, \
                     CurrentLap.deleted != 1)
             max_lap = stat_query.scalar()
-            current_heat = HeatNode.query.filter_by(heat_id=RACE.current_heat, pilot_id=pilot.id).first()
+            current_heat = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, pilot_id=pilot.id).first()
             if current_heat and profile_freqs["f"][current_heat.node_index] != FREQUENCY_ID_NONE:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
@@ -2857,27 +2707,27 @@ def calc_leaderboard(**params):
             # find hole shots
             holeshot_laps = []
             for race in racelist:
-                pilotraces = SavedPilotRace.query \
-                    .filter(SavedPilotRace.pilot_id == pilot.id, \
-                    SavedPilotRace.race_id == race \
+                pilotraces = Database.SavedPilotRace.query \
+                    .filter(Database.SavedPilotRace.pilot_id == pilot.id, \
+                    Database.SavedPilotRace.race_id == race \
                     ).all()
 
                 for pilotrace in pilotraces:
                     gevent.sleep()
-                    holeshot_lap = SavedRaceLap.query \
-                        .filter(SavedRaceLap.pilotrace_id == pilotrace.id, \
-                            SavedRaceLap.deleted != 1, \
-                            ).order_by(SavedRaceLap.lap_time_stamp).first()
+                    holeshot_lap = Database.SavedRaceLap.query \
+                        .filter(Database.SavedRaceLap.pilotrace_id == pilotrace.id, \
+                            Database.SavedRaceLap.deleted != 1, \
+                            ).order_by(Database.SavedRaceLap.lap_time_stamp).first()
 
                     if holeshot_lap:
                         holeshot_laps.append(holeshot_lap.id)
 
             # get total laps
-            stat_query = DB.session.query(DB.func.count(SavedRaceLap.id)) \
-                .filter(SavedRaceLap.pilot_id == pilot.id, \
-                    SavedRaceLap.deleted != 1, \
-                    SavedRaceLap.race_id.in_(racelist), \
-                    ~SavedRaceLap.id.in_(holeshot_laps))
+            stat_query = DB.session.query(DB.func.count(Database.SavedRaceLap.id)) \
+                .filter(Database.SavedRaceLap.pilot_id == pilot.id, \
+                    Database.SavedRaceLap.deleted != 1, \
+                    Database.SavedRaceLap.race_id.in_(racelist), \
+                    ~Database.SavedRaceLap.id.in_(holeshot_laps))
 
             max_lap = stat_query.scalar()
             if max_lap > 0:
@@ -2903,10 +2753,10 @@ def calc_leaderboard(**params):
                 stat_query = DB.session.query(DB.func.sum(CurrentLap.lap_time)) \
                     .filter(CurrentLap.pilot_id==pilot, CurrentLap.deleted != 1)
             else:
-                stat_query = DB.session.query(DB.func.sum(SavedRaceLap.lap_time)) \
-                    .filter(SavedRaceLap.pilot_id == pilot, \
-                        SavedRaceLap.deleted != 1, \
-                        SavedRaceLap.race_id.in_(racelist))
+                stat_query = DB.session.query(DB.func.sum(Database.SavedRaceLap.lap_time)) \
+                    .filter(Database.SavedRaceLap.pilot_id == pilot, \
+                        Database.SavedRaceLap.deleted != 1, \
+                        Database.SavedRaceLap.race_id.in_(racelist))
 
             total_time.append(stat_query.scalar())
 
@@ -2933,11 +2783,11 @@ def calc_leaderboard(**params):
                     .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0, \
                         CurrentLap.deleted != 1)
             else:
-                stat_query = DB.session.query(DB.func.avg(SavedRaceLap.lap_time)) \
-                    .filter(SavedRaceLap.pilot_id == pilot, \
-                        SavedRaceLap.deleted != 1, \
-                        SavedRaceLap.race_id.in_(racelist), \
-                        ~SavedRaceLap.id.in_(holeshots[i]))
+                stat_query = DB.session.query(DB.func.avg(Database.SavedRaceLap.lap_time)) \
+                    .filter(Database.SavedRaceLap.pilot_id == pilot, \
+                        Database.SavedRaceLap.deleted != 1, \
+                        Database.SavedRaceLap.race_id.in_(racelist), \
+                        ~Database.SavedRaceLap.id.in_(holeshots[i]))
 
             avg_lap = stat_query.scalar()
             average_lap.append(avg_lap)
@@ -2952,11 +2802,11 @@ def calc_leaderboard(**params):
                     .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0, \
                         CurrentLap.deleted != 1)
             else:
-                stat_query = DB.session.query(DB.func.min(SavedRaceLap.lap_time)) \
-                    .filter(SavedRaceLap.pilot_id == pilot, \
-                        SavedRaceLap.deleted != 1, \
-                        SavedRaceLap.race_id.in_(racelist), \
-                        ~SavedRaceLap.id.in_(holeshots[i]))
+                stat_query = DB.session.query(DB.func.min(Database.SavedRaceLap.lap_time)) \
+                    .filter(Database.SavedRaceLap.pilot_id == pilot, \
+                        Database.SavedRaceLap.deleted != 1, \
+                        Database.SavedRaceLap.race_id.in_(racelist), \
+                        ~Database.SavedRaceLap.id.in_(holeshots[i]))
 
             fast_lap = stat_query.scalar()
             fastest_lap.append(fast_lap)
@@ -2981,11 +2831,11 @@ def calc_leaderboard(**params):
             else:
                 for race_id in racelist:
                     gevent.sleep()
-                    thisrace = DB.session.query(SavedRaceLap.lap_time) \
-                        .filter(SavedRaceLap.pilot_id == pilot, \
-                            SavedRaceLap.race_id == race_id, \
-                            SavedRaceLap.deleted != 1, \
-                            ~SavedRaceLap.id.in_(holeshots[i]) \
+                    thisrace = DB.session.query(Database.SavedRaceLap.lap_time) \
+                        .filter(Database.SavedRaceLap.pilot_id == pilot, \
+                            Database.SavedRaceLap.race_id == race_id, \
+                            Database.SavedRaceLap.deleted != 1, \
+                            ~Database.SavedRaceLap.id.in_(holeshots[i]) \
                             ).all()
 
                     if len(thisrace) >= 3:
@@ -3089,17 +2939,18 @@ def emit_leaderboard(**params):
 def emit_heat_data(**params):
     '''Emits heat data.'''
     current_heats = {}
-    for heat in Heat.query.all():
+    for heat in Database.Heat.query.all():
         heat_id = heat.id
         note = heat.note
         race_class = heat.class_id
 
-        heatnodes = HeatNode.query.filter_by(heat_id=heat.id).order_by(HeatNode.node_index).all()
+        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
         pilots = []
         for heatnode in heatnodes:
             pilots.append(heatnode.pilot_id)
 
-        has_race = SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
+        has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
+
         if has_race:
             locked = True
         else:
@@ -3112,7 +2963,7 @@ def emit_heat_data(**params):
             'locked': locked}
 
     current_classes = []
-    for race_class in RaceClass.query.all():
+    for race_class in Database.RaceClass.query.all():
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
@@ -3120,7 +2971,7 @@ def emit_heat_data(**params):
         current_classes.append(current_class)
 
     pilots = []
-    for pilot in Pilot.query.all():
+    for pilot in Database.Pilot.query.all():
         pilots.append({
             'pilot_id': pilot.id,
             'callsign': pilot.callsign,
@@ -3142,14 +2993,14 @@ def emit_heat_data(**params):
 def emit_class_data(**params):
     '''Emits class data.'''
     current_classes = []
-    for race_class in RaceClass.query.all():
+    for race_class in Database.RaceClass.query.all():
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
         current_class['description'] = race_class.description
         current_class['format'] = race_class.format_id
 
-        has_race = SavedRaceMeta.query.filter_by(class_id=race_class.id).all()
+        has_race = Database.SavedRaceMeta.query.filter_by(class_id=race_class.id).all()
         if has_race:
             current_class['locked'] = True
         else:
@@ -3158,7 +3009,7 @@ def emit_class_data(**params):
         current_classes.append(current_class)
 
     formats = []
-    for race_format in RaceFormat.query.all():
+    for race_format in Database.RaceFormat.query.all():
         raceformat = {}
         raceformat['id'] = race_format.id
         raceformat['name'] = race_format.name
@@ -3178,7 +3029,7 @@ def emit_class_data(**params):
 def emit_pilot_data(**params):
     '''Emits pilot data.'''
     pilots_list = []
-    for pilot in Pilot.query.all():
+    for pilot in Database.Pilot.query.all():
         opts_str = '' # create team-options string for each pilot, with current team selected
         for name in TEAM_NAMES_LIST:
             opts_str += '<option value="' + name + '"'
@@ -3211,13 +3062,13 @@ def emit_current_heat(**params):
     '''Emits the current heat.'''
     callsigns = []
                              # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
-        filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
+    node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
+        filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=PILOT_ID_NONE).all())
 
     for node_index in range(RACE.num_nodes):
         pilot_id = node_pilot_dict.get(node_index)
         if pilot_id:
-            pilot = Pilot.query.get(pilot_id)
+            pilot = Database.Pilot.query.get(pilot_id)
             if pilot:
                 callsigns.append(pilot.callsign)
             else:
@@ -3225,13 +3076,13 @@ def emit_current_heat(**params):
         else:
             callsigns.append(None)
 
-    heat_data = Heat.query.get(RACE.current_heat)
+    heat_data = Database.Heat.query.get(RACE.current_heat)
 
     heat_note = heat_data.note
 
     heat_format = None
     if heat_data.class_id != CLASS_ID_NONE:
-        heat_format = RaceClass.query.get(heat_data.class_id).format_id
+        heat_format = Database.RaceClass.query.get(heat_data.class_id).format_id
 
     emit_payload = {
         'current_heat': RACE.current_heat,
@@ -3250,13 +3101,14 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
     pilot_team_dict = {}
     profile_freqs = json.loads(getCurrentProfile().frequencies)
                              # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
-                      filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
+    node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, HeatNode.pilot_id). \
+                      filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=PILOT_ID_NONE).all())
+
     for node in INTERFACE.nodes:
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
             if pilot_id:
-                pilot_team_dict[pilot_id] = Pilot.query.filter_by(id=pilot_id).one().team
+                pilot_team_dict[pilot_id] = Database.Pilot.query.filter_by(id=pilot_id).one().team
     #server_log('DEBUG get_team_laps_info pilot_team_dict: {0}'.format(pilot_team_dict))
 
     t_laps_dict = {}  # create dictionary (key=team_name, value=[lapCount,timestamp]) with initial zero laps
@@ -3322,8 +3174,9 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
     win_lap_tstamp = 0
     profile_freqs = json.loads(getCurrentProfile().frequencies)
                              # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
-                      filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
+    node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
+                      filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=PILOT_ID_NONE).all())
+
     for node in INTERFACE.nodes:
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
@@ -3354,8 +3207,9 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
     if RACE.laps_winner_name is None and pilot_team_dict:
         profile_freqs = None
                                   # dict for current heat with key=node_index, value=pilot_id
-        node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
-                          filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
+        node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
+                          filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=PILOT_ID_NONE).all())
+
         for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
             if node.crossing_flag and node.index != pass_node_index:
                 if not profile_freqs:
@@ -3441,8 +3295,9 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                                 profile_freqs = json.loads(getCurrentProfile().frequencies)
                             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
                                 if not node_pilot_dict:
-                                    node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
-                                              filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
+                                    node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
+                                              filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=PILOT_ID_NONE).all())
+
                                 pilot_id = node_pilot_dict.get(node.index)
                                 if pilot_id:  # node has pilot assigned to it
                                     team_name = pilot_team_dict[pilot_id]
@@ -3477,8 +3332,9 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         num_max_lap = 0
         profile_freqs = json.loads(getCurrentProfile().frequencies)
                                   # dict for current heat with key=node_index, value=pilot_id
-        node_pilot_dict = dict(HeatNode.query.with_entities(HeatNode.node_index, HeatNode.pilot_id). \
-                          filter(HeatNode.heat_id==RACE.current_heat, HeatNode.pilot_id!=PILOT_ID_NONE).all())
+        node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
+                          filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=PILOT_ID_NONE).all())
+
         for node in INTERFACE.nodes:  # load per-pilot data into 'pilots_list'
             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
                 pilot_id = node_pilot_dict.get(node.index)
@@ -3551,10 +3407,10 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         #server_log('DEBUG check_most_laps_win win_pilot_id={0}'.format(win_pilot_id))
 
         if win_pilot_id >= 0:
-            win_callsign = Pilot.query.filter_by(id=win_pilot_id).one().callsign
+            win_callsign = Database.Pilot.query.filter_by(id=win_pilot_id).one().callsign
             RACE.laps_winner_name = win_callsign  # indicate a pilot has won
             emit_team_racing_status('Winner is ' + RACE.laps_winner_name)
-            win_phon_name = Pilot.query.filter_by(id=win_pilot_id).one().phonetic
+            win_phon_name = Database.Pilot.query.filter_by(id=win_pilot_id).one().phonetic
             if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                 win_phon_name = win_callsign
             emit_phonetic_text('Race done, winner is ' + win_phon_name, 'race_winner')
@@ -3565,9 +3421,9 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **param
     '''Emits phonetic data.'''
     raw_time = lap_time
     phonetic_time = phonetictime_format(lap_time)
-    phonetic_name = Pilot.query.get(pilot_id).phonetic
-    callsign = Pilot.query.get(pilot_id).callsign
-    pilot_id = Pilot.query.get(pilot_id).id
+    phonetic_name = Database.Pilot.query.get(pilot_id).phonetic
+    callsign = Database.Pilot.query.get(pilot_id).callsign
+    pilot_id = Database.Pilot.query.get(pilot_id).id
     emit_payload = {
         'pilot': phonetic_name,
         'callsign': callsign,
@@ -3845,7 +3701,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                 lap_timestamp_absolute < RACE.end_time):
 
             # Get the current pilot id on the node
-            pilot_id = HeatNode.query.filter_by( \
+            pilot_id = Database.HeatNode.query.filter_by( \
                 heat_id=RACE.current_heat, node_index=node.index).one().pilot_id
 
             # reject passes before race start and with disabled (no-pilot) nodes
@@ -3953,13 +3809,13 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                     if race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
                                         win_pilot_id = check_pilot_laps_win(node.index, race_format.number_laps_win)
                                         if win_pilot_id >= 0:  # a pilot has won the race
-                                            win_callsign = Pilot.query.get(win_pilot_id).callsign
+                                            win_callsign = Database.Pilot.query.get(win_pilot_id).callsign
                                             emit_team_racing_status('Winner is ' + win_callsign)
                                             emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
 
                                             if RACE.laps_winner_name is None:
                                                     # a pilot has won the race and has not yet been announced
-                                                win_phon_name = Pilot.query.get(win_pilot_id).phonetic
+                                                win_phon_name = Database.Pilot.query.get(win_pilot_id).phonetic
                                                 if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                                                     win_phon_name = win_callsign
                                                 RACE.laps_winner_name = win_callsign  # call out winner (once)
@@ -4085,17 +3941,17 @@ def db_reset():
 
 def db_reset_pilots():
     '''Resets database pilots to default.'''
-    DB.session.query(Pilot).delete()
+    DB.session.query(Database.Pilot).delete()
     for node in range(RACE.num_nodes):
-        DB.session.add(Pilot(callsign='Callsign {0}'.format(node+1), \
-            name='Pilot {0} Name'.format(node+1), team=DEF_TEAM_NAME, phonetic=''))
+        DB.session.add(Database.Pilot(callsign='Callsign {0}'.format(node+1), \
+            name='Database.Pilot {0} Name'.format(node+1), team=DEF_TEAM_NAME, phonetic=''))
     DB.session.commit()
     server_log('Database pilots reset')
 
 def db_reset_heats():
     '''Resets database heats to default.'''
-    DB.session.query(Heat).delete()
-    DB.session.query(HeatNode).delete()
+    DB.session.query(Database.Heat).delete()
+    DB.session.query(Database.HeatNode).delete()
     on_add_heat()
     DB.session.commit()
     RACE.current_heat = 1
@@ -4103,7 +3959,7 @@ def db_reset_heats():
 
 def db_reset_classes():
     '''Resets database race classes to default.'''
-    DB.session.query(RaceClass).delete()
+    DB.session.query(Database.RaceClass).delete()
     DB.session.commit()
     server_log('Database race classes reset')
 
@@ -4114,15 +3970,15 @@ def db_reset_current_laps():
 
 def db_reset_saved_races():
     '''Resets database saved races to default.'''
-    DB.session.query(SavedRaceMeta).delete()
-    DB.session.query(SavedPilotRace).delete()
-    DB.session.query(SavedRaceLap).delete()
+    DB.session.query(Database.SavedRaceMeta).delete()
+    DB.session.query(Database.SavedPilotRace).delete()
+    DB.session.query(Database.SavedRaceLap).delete()
     DB.session.commit()
     server_log('Database saved races reset')
 
 def db_reset_profile():
     '''Set default profile'''
-    DB.session.query(Profiles).delete()
+    DB.session.query(Database.Profiles).delete()
 
     new_freqs = {}
     new_freqs["f"] = default_frequencies()
@@ -4130,7 +3986,7 @@ def db_reset_profile():
     template = {}
     template["v"] = [None, None, None, None, None, None, None, None]
 
-    DB.session.add(Profiles(name=__("Default"),
+    DB.session.add(Database.Profiles(name=__("Default"),
                              frequencies = json.dumps(new_freqs),
                              enter_ats = json.dumps(template),
                              exit_ats = json.dumps(template)))
@@ -4139,8 +3995,8 @@ def db_reset_profile():
     server_log("Database set default profiles")
 
 def db_reset_race_formats():
-    DB.session.query(RaceFormat).delete()
-    DB.session.add(RaceFormat(name=__("MultiGP Standard"),
+    DB.session.query(Database.RaceFormat).delete()
+    DB.session.add(Database.RaceFormat(name=__("MultiGP Standard"),
                              race_mode=0,
                              race_time_sec=120,
                              start_delay_min=2,
@@ -4149,7 +4005,7 @@ def db_reset_race_formats():
                              number_laps_win=0,
                              win_condition=WinCondition.MOST_LAPS,
                              team_racing_mode=False))
-    DB.session.add(RaceFormat(name=__("Whoop Sprint"),
+    DB.session.add(Database.RaceFormat(name=__("Whoop Sprint"),
                              race_mode=0,
                              race_time_sec=90,
                              start_delay_min=2,
@@ -4158,7 +4014,7 @@ def db_reset_race_formats():
                              number_laps_win=0,
                              win_condition=WinCondition.MOST_LAPS,
                              team_racing_mode=False))
-    DB.session.add(RaceFormat(name=__("Limited Class"),
+    DB.session.add(Database.RaceFormat(name=__("Limited Class"),
                              race_mode=0,
                              race_time_sec=210,
                              start_delay_min=2,
@@ -4167,7 +4023,7 @@ def db_reset_race_formats():
                              number_laps_win=0,
                              win_condition=WinCondition.MOST_LAPS,
                              team_racing_mode=False))
-    DB.session.add(RaceFormat(name=__("First to 3 Laps"),
+    DB.session.add(Database.RaceFormat(name=__("First to 3 Laps"),
                              race_mode=1,
                              race_time_sec=0,
                              start_delay_min=2,
@@ -4176,7 +4032,7 @@ def db_reset_race_formats():
                              number_laps_win=3,
                              win_condition=WinCondition.FIRST_TO_LAP_X,
                              team_racing_mode=False))
-    DB.session.add(RaceFormat(name=__("Open Practice"),
+    DB.session.add(Database.RaceFormat(name=__("Open Practice"),
                              race_mode=1,
                              race_time_sec=0,
                              start_delay_min=0,
@@ -4185,7 +4041,7 @@ def db_reset_race_formats():
                              number_laps_win=0,
                              win_condition=WinCondition.NONE,
                              team_racing_mode=False))
-    DB.session.add(RaceFormat(name=__("Team / Most Laps Wins"),
+    DB.session.add(Database.RaceFormat(name=__("Team / Most Laps Wins"),
                              race_mode=0,
                              race_time_sec=120,
                              start_delay_min=2,
@@ -4194,7 +4050,7 @@ def db_reset_race_formats():
                              number_laps_win=0,
                              win_condition=WinCondition.MOST_LAPS,
                              team_racing_mode=True))
-    DB.session.add(RaceFormat(name=__("Team / First to 7 Laps"),
+    DB.session.add(Database.RaceFormat(name=__("Team / First to 7 Laps"),
                              race_mode=0,
                              race_time_sec=120,
                              start_delay_min=2,
@@ -4204,11 +4060,11 @@ def db_reset_race_formats():
                              win_condition=WinCondition.FIRST_TO_LAP_X,
                              team_racing_mode=True))
     DB.session.commit()
-    setCurrentRaceFormat(RaceFormat.query.first())
+    setCurrentRaceFormat(Database.RaceFormat.query.first())
     server_log("Database reset race formats")
 
 def db_reset_options_defaults():
-    DB.session.query(GlobalSettings).delete()
+    DB.session.query(Database.GlobalSettings).delete()
     setOption("server_api", SERVER_API)
     # group identifiers
     setOption("timerName", __("RotorHazard"))
@@ -4230,7 +4086,7 @@ def db_reset_options_defaults():
     # timer state
     setOption("currentLanguage", "")
     setOption("currentProfile", "1")
-    setCurrentRaceFormat(RaceFormat.query.first())
+    setCurrentRaceFormat(Database.RaceFormat.query.first())
     setOption("calibrationMode", "1")
     # minimum lap
     setOption("MinLapSec", "10")
@@ -4288,7 +4144,7 @@ def restore_table(class_type, table_query_data, match_name='name'):
     if table_query_data:
         try:
             for row_data in table_query_data:
-                if (class_type is not Pilot) or getattr(row_data, 'callsign', '') != '-' or \
+                if (class_type is not Database.Pilot) or getattr(row_data, 'callsign', '') != '-' or \
                                               getattr(row_data, 'name', '') != '-None-':
                     db_update = class_type.query.filter(getattr(class_type,match_name)==getattr(row_data,match_name)).first()
                     if db_update is None:
@@ -4311,10 +4167,10 @@ def restore_table(class_type, table_query_data, match_name='name'):
 def recover_database():
     try:
         server_log('Recovering data from previous database')
-        pilot_query_data = query_table_data(Pilot)
-        raceFormat_query_data = query_table_data(RaceFormat)
-        profiles_query_data = query_table_data(Profiles)
-        raceClass_query_data = query_table_data(RaceClass)
+        pilot_query_data = query_table_data(Database.Pilot)
+        raceFormat_query_data = query_table_data(Database.RaceFormat)
+        profiles_query_data = query_table_data(Database.Profiles)
+        raceClass_query_data = query_table_data(Database.RaceClass)
 
         carryoverOpts = [
             "timerName",
@@ -4372,11 +4228,11 @@ def recover_database():
     db_init()
     try:
         if pilot_query_data:
-            DB.session.query(Pilot).delete()
-            restore_table(Pilot, pilot_query_data, 'callsign')
-        restore_table(RaceFormat, raceFormat_query_data)
-        restore_table(Profiles, profiles_query_data)
-        restore_table(RaceClass, raceClass_query_data)
+            DB.session.query(Database.Pilot).delete()
+            restore_table(Database.Pilot, pilot_query_data, 'callsign')
+        restore_table(Database.RaceFormat, raceFormat_query_data)
+        restore_table(Database.Profiles, profiles_query_data)
+        restore_table(Database.RaceClass, raceClass_query_data)
 
         for opt in carryOver:
             setOption(opt, carryOver[opt])
@@ -4388,9 +4244,9 @@ def recover_database():
     DB.session.commit()
 
 def expand_heats():
-    for heat_ids in Heat.query.all():
+    for heat_ids in Database.Heat.query.all():
         for node in range(RACE.num_nodes):
-            heat_row = HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
+            heat_row = Database.HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
             if not heat_row.count():
                 DB.session.add(HeatNode(heat_id=heat_ids.id, node_index=node, pilot_id=PILOT_ID_NONE))
 
@@ -4466,13 +4322,13 @@ if not db_inited_flag:
         if int(getOption('server_api')) < SERVER_API:
             server_log('Old server API version; resetting database')
             recover_database()
-        elif not Heat.query.count():
+        elif not Database.Heat.query.count():
             server_log('Heats are empty; resetting database')
             recover_database()
-        elif not Profiles.query.count():
+        elif not Database.Profiles.query.count():
             server_log('Profiles are empty; resetting database')
             recover_database()
-        elif not RaceFormat.query.count():
+        elif not Database.RaceFormat.query.count():
             server_log('Formats are empty; resetting database')
             recover_database()
     except Exception as ex:
@@ -4525,8 +4381,8 @@ current_profile = int(getOption("currentProfile"))
 on_set_profile({'profile': current_profile}, False)
 
 # Set current heat on startup
-if Heat.query.first():
-    RACE.current_heat = Heat.query.first().id
+if Database.Heat.query.first():
+    RACE.current_heat = Database.Heat.query.first().id
 
 # Create LED object with appropriate configuration
 strip = None
