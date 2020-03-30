@@ -3137,7 +3137,7 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
     pilot_team_dict = {}
     profile_freqs = json.loads(getCurrentProfile().frequencies)
                              # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, HeatNode.pilot_id). \
+    node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
                       filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=PILOT_ID_NONE).all())
 
     for node in INTERFACE.nodes:
@@ -3153,14 +3153,20 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
             t_laps_dict[team_name] = [0, 0]
 
               # iterate through list of laps, sorted by lap timestamp
-    for item in sorted(CurrentLap.query.with_entities(CurrentLap.lap_time_stamp, CurrentLap.lap_id, \
-                                                      CurrentLap.pilot_id).filter(CurrentLap.deleted != 1).all()):
-        if item[1] > 0:  # current lap is > 0
-            team_name = pilot_team_dict[item[2]]
+
+    grouped_laps = []
+    for node_index in range(RACE.num_nodes):
+        for lap in RACE.get_active_laps()[node_index]:
+            lap['pilot'] = RACE.node_pilots[node_index]
+            grouped_laps.append(lap)
+
+    for item in sorted(grouped_laps, key=lambda lap : lap['lap_time_stamp']):
+        if item['lap_number'] > 0:  # current lap is > 0
+            team_name = pilot_team_dict[item['pilot']]
             if team_name in t_laps_dict:
                 t_laps_dict[team_name][0] += 1       # increment lap count for team
                 if num_laps_win == 0 or t_laps_dict[team_name][0] <= num_laps_win:
-                    t_laps_dict[team_name][1] = item[0]  # update lap_time_stamp (if not past winning lap)
+                    t_laps_dict[team_name][1] = item['lap_time_stamp']  # update lap_time_stamp (if not past winning lap)
                 #server_log('DEBUG get_team_laps_info team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
     #server_log('DEBUG get_team_laps_info t_laps_dict: {0}'.format(t_laps_dict))
 
