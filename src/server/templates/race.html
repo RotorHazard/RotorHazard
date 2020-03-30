@@ -410,7 +410,6 @@
 		function show_current_laps() {
 			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
 				$('#current_laps_' + i + ' tbody > tr').remove();
-				var lap_index = 0;
 
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap_id is json object
 					var $tr = '';
@@ -433,7 +432,7 @@
 					var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
 
 					$tr = $('<tr>')
-					if (lap_index == 0) {
+					if (lap.lap_number == 0) {
 						$tr.addClass('lap_0');
 					}
 
@@ -441,11 +440,11 @@
 					if(rotorhazard.display_lap_id) {
 						local_colspan = 1;
 						$tr.append(
-							$('<td class="display_lap_id">').text(lap_index)
+							$('<td class="display_lap_number">').text(lap_number)
 						);
 					}
 					$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ').append(
-							$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + lap.lap_id + '">&#215;</button>')
+							$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">&#215;</button>')
 							);
 					$local_prepend = $('<span class="from_start">');
 
@@ -470,8 +469,6 @@
 						$tr.addClass('after-time-expired');
 					}
 					$tr.appendTo('#current_laps_' + i);
-
-					lap_index++;
 				});
 			});
 		}
@@ -714,7 +711,7 @@
 		$(document).on("click", ".delete_lap", function (event) { // Needed for buttons added after document load
 			var data = {
 				node: parseInt($(this).data('node')),
-				lapid: parseInt($(this).data('lapid')),
+				lap_index: parseInt($(this).data('lap-index')),
 			};
 			socket.emit('delete_lap', data);
 			return false;

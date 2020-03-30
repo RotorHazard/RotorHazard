@@ -191,7 +191,7 @@ class Slave:
         if pilot_id != PILOT_ID_NONE:
 
             split_ts = data['timestamp'] + (PROGRAM_START_MILLIS_OFFSET - 1000.0*RACE.start_time_monotonic)
-            last_lap_id = RACE.get_active_laps()[node_index][-1]['lap_id']
+            last_lap_id = RACE.get_active_laps()[node_index][-1]['lap_number']
             if last_lap_id is None: # first lap
                 current_lap_id = 0
                 last_lap_ts = 0
@@ -1210,7 +1210,7 @@ def on_alter_heat(data):
         heat.class_id = data['class']
     if 'pilot' in data:
         node_index = data['node']
-        heatnode = HeatNode.query.filter_by(heat_id=heat.id, node_index=node_index).one()
+        heatnode = Database.HeatNode.query.filter_by(heat_id=heat.id, node_index=node_index).one()
         heatnode.pilot_id = data['pilot']
 
     DB.session.commit()
@@ -1952,11 +1952,11 @@ def on_save_laps():
                         pilotrace_id=new_pilotrace.id, \
                         node_index=node_index, \
                         pilot_id=pilot_id, \
-                        lap_time_stamp=lap.lap_time_stamp, \
-                        lap_time=lap.lap_time, \
-                        lap_time_formatted=lap.lap_time_formatted, \
-                        source = lap.source, \
-                        deleted = lap.deleted
+                        lap_time_stamp=lap['lap_time_stamp'], \
+                        lap_time=lap['lap_time'], \
+                        lap_time_formatted=lap['lap_time_formatted'], \
+                        source = lap['source'], \
+                        deleted = lap['deleted']
                     ))
 
     DB.session.commit()
@@ -2036,14 +2036,14 @@ def clear_laps():
     LAST_RACE_CACHE = calc_leaderboard(current_race=True)
     LAST_RACE_CACHE_VALID = True
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
-    RACE.node_laps = [] # Clear out the current laps table
+    db_reset_current_laps() # Clear out the current laps table
     DB.session.query(Database.LapSplit).delete()
     DB.session.commit()
     server_log('Current laps cleared')
 
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
-    heatnodes = HeatNode.query.filter_by( \
+    heatnodes = Database.HeatNode.query.filter_by( \
         heat_id=RACE.current_heat).all()
 
     for node in INTERFACE.nodes:
@@ -2062,6 +2062,13 @@ def on_set_current_heat(data):
     '''Update the current heat variable.'''
     new_heat_id = data['heat']
     RACE.current_heat = new_heat_id
+
+    RACE.node_pilots = {}
+    RACE.node_teams = {}
+    for heatNode in Database.HeatNode.query.filter_by(heat_id=new_heat_id):
+        RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+        RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+
     server_log('Current heat set: Heat {0}'.format(new_heat_id))
 
     if int(getOption('calibrationMode')):
@@ -2076,21 +2083,32 @@ def on_set_current_heat(data):
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
     '''Delete a false lap.'''
+
     node_index = data['node']
-    lap_id = data['lapid']
-    db_update = RACE.node_laps[node_index][-1]
-    db_update.deleted = True
+    lap_index = data['lap_index']
 
-    db_next = filter(lambda lap : lap['lap_id'] > lap_id, RACE.get_active_laps()[node_index])[0]
+    RACE.node_laps[node_index][lap_index]['deleted'] = True
 
-    db_last = filter(lambda lap : lap['lap_id'] < lap_id, RACE.get_active_laps()[node_index])[-1]
+    time = RACE.node_laps[node_index][lap_index]['lap_time_stamp']
+
+    db_last = False
+    db_next = False
+    for lap in RACE.node_laps[node_index]:
+        if not lap['deleted']:
+            if lap['lap_time_stamp'] < time:
+                db_last = lap
+            if lap['lap_time_stamp'] > time:
+                db_next = lap
+                break
 
     if db_next and db_last:
-        db_next.lap_time = db_next.lap_time_stamp - db_last.lap_time_stamp
-        db_next.lap_time_formatted = time_format(db_next.lap_time)
+        db_next['lap_time'] = db_next['lap_time_stamp'] - db_last['lap_time_stamp']
+        db_next['lap_time_formatted'] = time_format(db_next['lap_time'])
+    elif db_next:
+        db_next['lap_time'] = db_next['lap_time_stamp']
+        db_next['lap_time_formatted'] = time_format(db_next['lap_time'])
 
-    DB.session.commit()
-    server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_id))
+    server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
     race_format = getCurrentRaceFormat()
@@ -2384,20 +2402,22 @@ def emit_current_laps(**params):
         for node in range(RACE.num_nodes):
             node_laps = []
             last_lap_id = -1
-            for lap in RACE.get_active_laps()[node]:
-                splits = get_splits(node, lap.lap_id, True)
-                node_laps.append({
-                    'lap_id': lap.lap_id,
-                    'lap_raw': lap.lap_time,
-                    'lap_time': lap.lap_time_formatted,
-                    'lap_time_stamp': lap.lap_time_stamp,
-                    'splits': splits
-                })
-                last_lap_id = lap.lap_id
+            for idx, lap in enumerate(RACE.node_laps[node]):
+                if not lap['deleted']:
+                    splits = get_splits(node, lap['lap_number'], True)
+                    node_laps.append({
+                        'lap_index': idx,
+                        'lap_number': lap['lap_number'],
+                        'lap_raw': lap['lap_time'],
+                        'lap_time': lap['lap_time_formatted'],
+                        'lap_time_stamp': lap['lap_time_stamp'],
+                        'splits': splits
+                    })
+                    last_lap_id = lap['lap_number']
             splits = get_splits(node, last_lap_id+1, False)
             if splits:
                 node_laps.append({
-                    'lap_id': last_lap_id+1,
+                    'lap_number': last_lap_id+1,
                     'lap_time': '',
                     'lap_time_stamp': 0,
                     'splits': splits
@@ -2642,7 +2662,6 @@ def calc_leaderboard(**params):
     if USE_CURRENT:
         profile = getCurrentProfile()
         profile_freqs = json.loads(profile.frequencies)
-
         race_format = getCurrentRaceFormat()
     else:
         if USE_CLASS:
@@ -2687,22 +2706,30 @@ def calc_leaderboard(**params):
     callsigns = []
     team_names = []
     max_laps = []
+    current_laps = []
     holeshots = []
 
     for pilot in Database.Pilot.query.filter(Database.Pilot.id != PILOT_ID_NONE):
         gevent.sleep()
         if USE_CURRENT:
-            stat_query = DB.session.query(DB.func.count(CurrentLap.lap_id)) \
-                .filter(CurrentLap.pilot_id == pilot.id, \
-                    CurrentLap.lap_id != 0, \
-                    CurrentLap.deleted != 1)
-            max_lap = stat_query.scalar()
+            laps = []
+            for node_index in RACE.node_pilots:
+                if RACE.node_pilots[node_index] == pilot.id:
+                    laps = RACE.get_active_laps()[node_index]
+                    break
+
+            if laps:
+                max_lap = len(laps) - 1
+            else:
+                max_lap = 0
+
             current_heat = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, pilot_id=pilot.id).first()
             if current_heat and profile_freqs["f"][current_heat.node_index] != FREQUENCY_ID_NONE:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
+                current_laps.append(laps)
         else:
             # find hole shots
             holeshot_laps = []
@@ -2750,15 +2777,19 @@ def calc_leaderboard(**params):
             total_time.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
-                stat_query = DB.session.query(DB.func.sum(CurrentLap.lap_time)) \
-                    .filter(CurrentLap.pilot_id==pilot, CurrentLap.deleted != 1)
+                race_total = 0
+                for lap in current_laps[i]:
+                    race_total += lap['lap_time']
+
+                total_time.append(race_total)
+
             else:
                 stat_query = DB.session.query(DB.func.sum(Database.SavedRaceLap.lap_time)) \
                     .filter(Database.SavedRaceLap.pilot_id == pilot, \
                         Database.SavedRaceLap.deleted != 1, \
                         Database.SavedRaceLap.race_id.in_(racelist))
 
-            total_time.append(stat_query.scalar())
+                total_time.append(stat_query.scalar())
 
         gevent.sleep()
         # Get the last lap for each pilot (current race only)
@@ -2766,10 +2797,7 @@ def calc_leaderboard(**params):
             last_lap.append(None) # Add zero if no laps completed
         else:
             if USE_CURRENT:
-                stat_query = CurrentLap.query \
-                    .filter(CurrentLap.pilot_id==pilot, CurrentLap.deleted != 1) \
-                    .order_by(-CurrentLap.lap_id)
-                last_lap.append(stat_query.first().lap_time)
+                last_lap.append(current_laps[i][-1]['lap_time'])
             else:
                 last_lap.append(None)
 
@@ -2779,9 +2807,18 @@ def calc_leaderboard(**params):
             average_lap.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
-                stat_query = DB.session.query(DB.func.avg(CurrentLap.lap_time)) \
-                    .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0, \
-                        CurrentLap.deleted != 1)
+                avg_lap = (current_laps[i][-1]['lap_time_stamp'] - current_laps[i][0]['lap_time_stamp']) / (len(current_laps[i]) - 1)
+
+                '''
+                timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
+
+                lap_total = 0
+                for lap in timed_laps:
+                    lap_total += lap['lap_time']
+
+                avg_lap = lap_total / len(timed_laps)
+                '''
+
             else:
                 stat_query = DB.session.query(DB.func.avg(Database.SavedRaceLap.lap_time)) \
                     .filter(Database.SavedRaceLap.pilot_id == pilot, \
@@ -2789,7 +2826,8 @@ def calc_leaderboard(**params):
                         Database.SavedRaceLap.race_id.in_(racelist), \
                         ~Database.SavedRaceLap.id.in_(holeshots[i]))
 
-            avg_lap = stat_query.scalar()
+                avg_lap = stat_query.scalar()
+
             average_lap.append(avg_lap)
 
         gevent.sleep()
@@ -2798,9 +2836,9 @@ def calc_leaderboard(**params):
             fastest_lap.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
-                stat_query = DB.session.query(DB.func.min(CurrentLap.lap_time)) \
-                    .filter(CurrentLap.pilot_id == pilot, CurrentLap.lap_id != 0, \
-                        CurrentLap.deleted != 1)
+                timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
+
+                fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
             else:
                 stat_query = DB.session.query(DB.func.min(Database.SavedRaceLap.lap_time)) \
                     .filter(Database.SavedRaceLap.pilot_id == pilot, \
@@ -2808,7 +2846,8 @@ def calc_leaderboard(**params):
                         Database.SavedRaceLap.race_id.in_(racelist), \
                         ~Database.SavedRaceLap.id.in_(holeshots[i]))
 
-            fast_lap = stat_query.scalar()
+                fast_lap = stat_query.scalar()
+
             fastest_lap.append(fast_lap)
 
         gevent.sleep()
@@ -2819,14 +2858,11 @@ def calc_leaderboard(**params):
             all_consecutives = []
 
             if USE_CURRENT:
-                thisrace = DB.session.query(CurrentLap.lap_time) \
-                    .filter(CurrentLap.lap_id != 0, \
-                        CurrentLap.pilot_id == pilot, \
-                        CurrentLap.deleted != 1).all()
+                thisrace = current_laps[i][1:]
 
                 for j in range(len(thisrace) - 2):
                     gevent.sleep()
-                    all_consecutives.append(thisrace[j].lap_time + thisrace[j+1].lap_time + thisrace[j+2].lap_time)
+                    all_consecutives.append(thisrace[j]['lap_time'] + thisrace[j+1]['lap_time'] + thisrace[j+2]['lap_time'])
 
             else:
                 for race_id in racelist:
@@ -3181,7 +3217,7 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
             if pilot_id:
-                lap_id = RACE.get_active_laps()[node.index][-1]['lap_id']
+                lap_id = RACE.get_active_laps()[node.index][-1]['lap_number']
 
                 if lap_id is None:
                     lap_id = 0
@@ -3191,7 +3227,7 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
                     server_log('check_pilot_laps_win waiting for crossing, Node {0}'.format(node.index+1))
                     return -1
                 if lap_id >= num_laps_win:
-                    lap_data = filter(lambda lap : lap['lap_id']==num_laps_win, RACE.get_active_laps()[node.index])
+                    lap_data = filter(lambda lap : lap['lap_number']==num_laps_win, RACE.get_active_laps()[node.index])
                     #server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
                              # save pilot_id for earliest lap time:
                     if win_pilot_id < 0 or lap_data.lap_time_stamp < win_lap_tstamp:
@@ -3339,9 +3375,9 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
                 pilot_id = node_pilot_dict.get(node.index)
                 if pilot_id:
-                    lap_id = RACE.get_active_laps()[node.index][-1]['lap_id']
+                    lap_id = RACE.get_active_laps()[node.index][-1]['lap_number']
                     if lap_id > 0:
-                        lap_data = filter(lambda lap : lap['lap_id']==lap_id, RACE.get_active_laps()[node.index])
+                        lap_data = filter(lambda lap : lap['lap_number']==lap_id, RACE.get_active_laps()[node.index])
 
                         if lap_data:
                             pilots_list.append((lap_id, lap_data.lap_time_stamp, pilot_id, node))
@@ -3601,7 +3637,7 @@ def heartbeat_thread_function():
 
             # if any comm errors then log them (at defined intervals; faster if debug mode)
             if time_now > heartbeat_thread_function.last_error_rep_time + \
-                        (ERROR_REPORT_INTERVAL_SECS if not Config['GENERAL']['DEBUG'] \
+                        (ERROR_REPORT_INTERVAL_SECS if not Config.GENERAL['DEBUG'] \
                         else ERROR_REPORT_INTERVAL_SECS/10):
                 heartbeat_thread_function.last_error_rep_time = time_now
                 if INTERFACE.get_intf_total_error_count() > 0:
@@ -3712,7 +3748,9 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     lap_time_stamp *= 1000 # store as milliseconds
 
                     # Get the last completed lap from the database
-                    last_lap_id = RACE.get_active_laps()[node.index][-1]['lap_id']
+                    last_lap_id = None
+                    if len(RACE.get_active_laps()[node.index]):
+                        last_lap_id = RACE.get_active_laps()[node.index][-1]['lap_number']
 
                     if last_lap_id is None: # No previous laps, this is the first pass
                         # Lap zero represents the time from the launch pad to flying through the gate
@@ -3721,7 +3759,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         node.first_cross_flag = True  # indicate first crossing completed
                     else: # This is a normal completed lap
                         # Find the time stamp of the last lap completed
-                        last_lap_time_stamp = RACE.get_active_laps()[node_index][-1]['lap_time_stamp']
+                        last_lap_time_stamp = RACE.get_active_laps()[node.index][-1]['lap_time_stamp']
 
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
@@ -3748,8 +3786,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         })
                         # Add the new lap to the database
                         RACE.node_laps[node.index].append({
-                            'pilot_id': pilot_id,
-                            'lap_id': lap_id,
+                            'lap_number': lap_id,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
                             'lap_time_formatted': time_format(lap_time),
@@ -3829,8 +3866,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                 emit_first_pass_registered(node.index) # play first-pass sound
                     else:
                         RACE.node_laps[node.index].append({
-                            'pilot_id': pilot_id,
-                            'lap_id': lap_id,
+                            'lap_number': lap_id,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
                             'lap_time_formatted': time_format(lap_time),
@@ -3944,7 +3980,7 @@ def db_reset_pilots():
     DB.session.query(Database.Pilot).delete()
     for node in range(RACE.num_nodes):
         DB.session.add(Database.Pilot(callsign='Callsign {0}'.format(node+1), \
-            name='Database.Pilot {0} Name'.format(node+1), team=DEF_TEAM_NAME, phonetic=''))
+            name='Pilot {0} Name'.format(node+1), team=DEF_TEAM_NAME, phonetic=''))
     DB.session.commit()
     server_log('Database pilots reset')
 
@@ -3965,7 +4001,10 @@ def db_reset_classes():
 
 def db_reset_current_laps():
     '''Resets database current laps to default.'''
-    RACE.node_laps = []
+    RACE.node_laps = {}
+    for idx in range(RACE.num_nodes):
+        RACE.node_laps[idx] = []
+
     server_log('Database current laps reset')
 
 def db_reset_saved_races():
@@ -4383,6 +4422,12 @@ on_set_profile({'profile': current_profile}, False)
 # Set current heat on startup
 if Database.Heat.query.first():
     RACE.current_heat = Database.Heat.query.first().id
+    RACE.node_pilots = {}
+    RACE.node_teams = {}
+    for heatNode in Database.HeatNode.query.filter_by(heat_id=RACE.current_heat):
+        RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+        RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+
 
 # Create LED object with appropriate configuration
 strip = None
