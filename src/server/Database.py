@@ -48,7 +48,7 @@ class HeatNode(DB.Model):
     pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
 
     def __repr__(self):
-        return '<HeatNode %r>' % self._id
+        return '<HeatNode %r>' % self.id
 
 class RaceClass(DB.Model):
     __tablename__ = 'race_class'

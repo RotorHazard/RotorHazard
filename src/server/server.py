@@ -1214,11 +1214,23 @@ def on_alter_heat(data):
         heatnode.pilot_id = data['pilot']
 
     DB.session.commit()
+
+    if heat_id == RACE.current_heat:
+        RACE.node_pilots = {}
+        RACE.node_teams = {}
+        for heatNode in Database.HeatNode.query.filter_by(heat_id=heat_id):
+            RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+
+            if heatNode.pilot_id is not PILOT_ID_NONE:
+                RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+            else:
+                RACE.node_teams[heatNode.node_index] = None
+
     server_log('Heat {0} altered with {1}'.format(heat_id, data))
     emit_heat_data(noself=True)
 
 @SOCKET_IO.on('delete_heat')
-def on_alter_heat(data):
+def on_delete_heat(data):
     '''Delete heat.'''
     if (DB.session.query(Heat).count() > 1): # keep one profile
         heat_id = data['heat']
@@ -2067,7 +2079,11 @@ def on_set_current_heat(data):
     RACE.node_teams = {}
     for heatNode in Database.HeatNode.query.filter_by(heat_id=new_heat_id):
         RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-        RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+
+        if heatNode.pilot_id is not PILOT_ID_NONE:
+            RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+        else:
+            RACE.node_teams[heatNode.node_index] = None
 
     server_log('Current heat set: Heat {0}'.format(new_heat_id))
 
@@ -4432,8 +4448,11 @@ if Database.Heat.query.first():
     RACE.node_teams = {}
     for heatNode in Database.HeatNode.query.filter_by(heat_id=RACE.current_heat):
         RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-        RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
 
+        if heatNode.pilot_id is not PILOT_ID_NONE:
+            RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+        else:
+            RACE.node_teams[heatNode.node_index] = None
 
 # Create LED object with appropriate configuration
 strip = None
