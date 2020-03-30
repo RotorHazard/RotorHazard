@@ -4,6 +4,7 @@
 #    sudo apt-get install libjpeg-dev
 #    sudo pip install pillow
 
+import Config
 from eventmanager import Evt
 from led_event_manager import LEDEvent, Color
 import gevent
@@ -15,11 +16,6 @@ def showBitmap(args):
     else:
         return False
 
-    if 'config' in args:
-        config = args['config']
-    else:
-        return False
-
     def setPixels(img):
         pos = 0
         for row in range(0, img.height):
@@ -28,7 +24,7 @@ def showBitmap(args):
                     return
 
                 c = col
-                if config['INVERTED_PANEL_ROWS']:
+                if Config.LED['INVERTED_PANEL_ROWS']:
                     if row % 2 == 0:
                         c = 15 - col
 
@@ -42,7 +38,7 @@ def showBitmap(args):
             img = Image.open(bitmap['image'])
             delay = bitmap['delay']
 
-            img = img.rotate(90 * config['PANEL_ROTATE'])
+            img = img.rotate(90 * Config.LED['PANEL_ROTATE'])
 
             setPixels(img)
             strip.show()

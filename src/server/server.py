@@ -4457,7 +4457,7 @@ else:
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
-    led_manager = LEDEventManager(Events, strip, Config.LED)
+    led_manager = LEDEventManager(Events, strip)
     LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
     for handlerFile in LEDHandlerFiles:
         try:
