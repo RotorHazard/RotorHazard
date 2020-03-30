@@ -245,9 +245,9 @@ class ServerTest(unittest.TestCase):
         server.RACE.race_status = 1
         node = Node()
         node.index = 0
-        server.pass_record_callback(node, server.RACE_START + 19.8, 0)
+        server.pass_record_callback(node, server.RACE.start_time_monotonic + 19.8, 0)
         resp = self.get_response('pass_record')
         self.assertIn('node', resp)
         self.assertIn('frequency', resp)
         self.assertIn('timestamp', resp)
-        self.assertEqual(resp['timestamp'], server.monotonic_to_milliseconds(server.RACE_START) + 19800)
+        self.assertEqual(resp['timestamp'], server.monotonic_to_milliseconds(server.RACE.start_time_monotonic) + 19800)
