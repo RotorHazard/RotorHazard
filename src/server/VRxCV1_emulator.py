@@ -3,12 +3,15 @@
 import paho.mqtt.client as mqtt_client
 import socket
 import argparse
+import sys
 
 import json
 
 # mqtt topics are flipped for the VRX
 from mqtt_topics import mqtt_publish_topics as mqtt_sub_topics
 from mqtt_topics import mqtt_subscribe_topics as mqtt_pub_topics
+
+
 
 import time
 
@@ -36,7 +39,7 @@ class MQTT_Client:
         self.initialize()
 
         self.loop_start = self._client.loop_start
-        self.loop_forever = self._client.loop_forever()
+        self.loop_forever = self._client.loop_forever
         self.message_callback_add = self._client.message_callback_add
         self.message_callback_remove = self._client.message_callback_remove
 
@@ -49,10 +52,10 @@ class MQTT_Client:
             self._subscribe_start()
 
         except socket.gaierror as e:
-            print("No device at ", self._broker_ip)
+            print("No device at '{0}'".format(self._broker_ip))
             raise e
         except socket.error as e:
-            print("MQTT broker not alive at ", self._broker_ip)
+            print("MQTT broker not alive at '{0}'".format(self._broker_ip))  
             raise e
      
 
@@ -166,6 +169,7 @@ class VRxCV_emulator:
     
         try:
             self._mqttc.loop_forever()  # This blocks
+            #self._mqttc.loop_start()
         except KeyboardInterrupt:
             self._mqttc.disconnect_gracefully()
         except:
