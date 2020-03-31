@@ -4,8 +4,14 @@ import json
 
 from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics
 from VRxCV1_emulator import MQTT_Client
-
 from eventmanager import Evt
+
+# ClearView API
+# cd ~
+# git clone https://github.com/ryaniftron/clearview_interface_public.git
+# cd ~/clearview_interface_public/src/clearview-py
+# python2 -m pip install -e .
+import clearview 
 
 VRxALL = -1
 
@@ -33,25 +39,59 @@ class VRxController:
     def __init__(self, eventmanager, VRxServer, node_frequencies):
         self.Events = eventmanager
 
+        self._cv = clearview.ClearView(return_formatted_commands=True)
+
         #TODO the subscribe topics subscribe it to a node number by default
         #Don't hack by making node number *
 
+        #TODO: pass in "CV1 to the MQTT_CLIENT maybe. "
+        # There will be multiple clients, one for each protocol"
         # Probably best to manually add the subscriptions and callbacks
         self._mqttc = MQTT_Client(client_id="VRxController",
                                  broker_ip=VRxServer,
                                  subscribe_topics = mqtt_subscribe_topics)
         self._mqttc.loop_start()
-
         num_nodes = len(node_frequencies)
 
         
-        self._nodes = [VRxNode(self._mqttc, n, node_frequencies[n]) for n in range(8)]
+        self._nodes = [VRxNode(self._mqttc, n, node_frequencies[n], self._cv) for n in range(8)]
 
         #TODO is this the right way. Store data twice? Maybe it should be a member var.
         # If the decorators worked...
         self._frequency = [node.node_frequency for node in self._nodes]
         self._lock_status = [node.node_lock_status for node in self._nodes]
         self._camera_type = [node.node_camera_type for node in self._nodes]
+
+        # Events
+        self.Events.on(Evt.STARTUP, 'VRx', self.do_startup, {}, 200)
+        self.Events.on(Evt.RACESTART, 'VRx', self.do_racestart, {}, 200)
+
+    def do_startup(self,arg):
+        print("vrxc: Doing startup")
+
+        # Request status of all receivers (static and variable)
+        self.request_static_status(all=True)
+        self.request_variable_status(all=True)
+
+        # Update the DB with receivers that exist and their status
+        # (Because the pi was already running, they should all be connected to the broker)
+        # Even if the server.py is restarted, the broker continues to run:) 
+
+        # Set the receiver's frequencies based on band/channel
+    
+    def do_racestart(self, arg):
+        self.set_message_direct(VRxALL,"GO!")
+
+    
+    ##############
+    ## MQTT Status
+    ##############
+    def request_static_status(self, node_number=VRxALL, all=False):
+        #self._mqttc.publish()
+        raise NotImplementedError
+
+    
+
 
     ###########
     # Frequency
@@ -125,6 +165,7 @@ class VRxController:
 
     def set_message_direct(self, node_number, message):
         """set a message directly. Truncated if over length"""
+        
 
     
 
@@ -137,9 +178,11 @@ class VRxNode:
                  mqtt_client,
                  node_number, 
                  node_frequency, 
+                 cv,
                  node_camera_type = 'A',
                  ):
         self._mqttc = mqtt_client
+        self._cv = cv
 
         self.MIN_NODE_NUM = 0
         self.MAX_NODE_NUM = 7
@@ -203,9 +246,10 @@ class VRxNode:
     def set_node_frequency(self, frequency):
         """Sets all receivers at this node number to the new frequency"""
         topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self.__node_number
-        message = {"frequency":frequency}
-        self._mqttc.publish(topic,
-                           json.dumps(message))
+        messages = self._cv.set_custom_frequency(self._cv.bc_id, frequency)
+        for m in messages:
+            print(topic,m)
+            self._mqttc.publish(topic,m)
 
     @property
     def node_camera_type(self, ):
