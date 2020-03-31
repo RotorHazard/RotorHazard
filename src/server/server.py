@@ -191,16 +191,16 @@ class Slave:
         if pilot_id != PILOT_ID_NONE:
 
             split_ts = data['timestamp'] + (PROGRAM_START_MILLIS_OFFSET - 1000.0*RACE.start_time_monotonic)
-            last_lap_id = RACE.get_active_laps()[node_index][-1]['lap_number']
-            if last_lap_id is None: # first lap
-                current_lap_id = 0
+
+            lap_count = max(0, len(RACE.get_active_laps()[node.index]) - 1)
+
+            if lap_count:
+                last_lap_ts = RACE.get_active_laps()[node_index][-1]['lap_time_stamp']
+            else: # first lap
                 last_lap_ts = 0
-            else:
-                current_lap_id = last_lap_id + 1
-                last_lap_ts = RACE.node_laps[node_index][-1]['lap_time_stamp']
 
             split_id = self.id
-            last_split_id = DB.session.query(DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=current_lap_id).scalar()
+            last_split_id = DB.session.query(DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=lap_count).scalar()
             if last_split_id is None: # first split for this lap
                 if split_id > 0:
                     server_log('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
@@ -209,7 +209,7 @@ class Slave:
                 if split_id > last_split_id:
                     if split_id > last_split_id + 1:
                         server_log('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
-                    last_split_ts = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=current_lap_id, split_id=last_split_id).one().split_time_stamp
+                    last_split_ts = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=lap_count, split_id=last_split_id).one().split_time_stamp
                 else:
                     server_log('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
                     last_split_ts = None
@@ -218,10 +218,10 @@ class Slave:
                 split_time = split_ts - last_split_ts
                 split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
                 server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
-                    .format(node_index+1, current_lap_id+1, time_format(split_time), \
+                    .format(node_index+1, lap_count+1, time_format(split_time), \
                     ('{0:.2f}'.format(split_speed) if split_speed <> None else 'None')))
 
-                DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=current_lap_id, split_id=split_id, \
+                DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=lap_count, split_id=split_id, \
                     split_time_stamp=split_ts, split_time=split_time, split_time_formatted=time_format(split_time), \
                     split_speed=split_speed))
                 DB.session.commit()
@@ -3239,16 +3239,14 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
         if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
             if pilot_id:
-                lap_id = RACE.get_active_laps()[node.index][-1]['lap_number']
+                lap_count = max(0, len(RACE.get_active_laps()[node.index]) - 1)
 
-                if lap_id is None:
-                    lap_id = 0
                             # if (other) pilot crossing for possible winning lap then wait
                             #  in case lap time turns out to be earliest:
-                if node.crossing_flag and node.index != pass_node_index and lap_id == num_laps_win - 1:
+                if node.crossing_flag and node.index != pass_node_index and lap_count == num_laps_win - 1:
                     server_log('check_pilot_laps_win waiting for crossing, Node {0}'.format(node.index+1))
                     return -1
-                if lap_id >= num_laps_win:
+                if lap_count >= num_laps_win:
                     lap_data = filter(lambda lap : lap['lap_number']==num_laps_win, RACE.get_active_laps()[node.index])
                     #server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
                              # save pilot_id for earliest lap time:
@@ -3397,16 +3395,16 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
             if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
                 pilot_id = node_pilot_dict.get(node.index)
                 if pilot_id:
-                    lap_id = RACE.get_active_laps()[node.index][-1]['lap_number']
-                    if lap_id > 0:
-                        lap_data = filter(lambda lap : lap['lap_number']==lap_id, RACE.get_active_laps()[node.index])
+                    lap_count = max(0, len(RACE.get_active_laps()[node.index]) - 1)
+                    if lap_count > 0:
+                        lap_data = filter(lambda lap : lap['lap_number']==lap_count, RACE.get_active_laps()[node.index])
 
                         if lap_data:
-                            pilots_list.append((lap_id, lap_data.lap_time_stamp, pilot_id, node))
-                            if lap_id > max_lap_id:
-                                max_lap_id = lap_id
+                            pilots_list.append((lap_count, lap_data.lap_time_stamp, pilot_id, node))
+                            if lap_count > max_lap_id:
+                                max_lap_id = lap_count
                                 num_max_lap = 1
-                            elif lap_id == max_lap_id:
+                            elif lap_count == max_lap_id:
                                 num_max_lap += 1  # count number of nodes at max lap
         #server_log('DEBUG check_most_laps_win pass_node_index={0} max_lap={1}'.format(pass_node_index, max_lap_id))
 
@@ -3769,34 +3767,30 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     lap_time_stamp = (lap_timestamp_absolute - RACE.start_time_monotonic)
                     lap_time_stamp *= 1000 # store as milliseconds
 
-                    # Get the last completed lap from the database
-                    last_lap_id = None
-                    if len(RACE.get_active_laps()[node.index]):
-                        last_lap_id = RACE.get_active_laps()[node.index][-1]['lap_number']
+                    lap_number = len(RACE.get_active_laps()[node.index])
 
-                    if last_lap_id is None: # No previous laps, this is the first pass
-                        # Lap zero represents the time from the launch pad to flying through the gate
-                        lap_time = lap_time_stamp
-                        lap_id = 0
-                        node.first_cross_flag = True  # indicate first crossing completed
-                    else: # This is a normal completed lap
+                    if lap_number: # This is a normal completed lap
                         # Find the time stamp of the last lap completed
                         last_lap_time_stamp = RACE.get_active_laps()[node.index][-1]['lap_time_stamp']
 
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
-                        lap_id = last_lap_id + 1
+
+                    else: # No previous laps, this is the first pass
+                        # Lap zero represents the time from the launch pad to flying through the gate
+                        lap_time = lap_time_stamp
+                        node.first_cross_flag = True  # indicate first crossing completed
 
                     race_format = getCurrentRaceFormat()
                     min_lap = int(getOption("MinLapSec"))
                     min_lap_behavior = int(getOption("MinLapBehavior"))
 
                     lap_ok_flag = True
-                    if lap_id != 0:  # if initial lap then always accept and don't check lap time; else:
+                    if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
                         if lap_time < (min_lap * 1000):  # if lap time less than minimum
                             node.under_min_lap_count += 1
                             server_log('Pass record under lap minimum ({3}): Node={0}, Lap={1}, LapTime={2}, Count={4}' \
-                                       .format(node.index+1, lap_id, time_format(lap_time), min_lap, node.under_min_lap_count))
+                                       .format(node.index+1, lap_number, time_format(lap_time), min_lap, node.under_min_lap_count))
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
 
@@ -3808,7 +3802,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         })
                         # Add the new lap to the database
                         RACE.node_laps[node.index].append({
-                            'lap_number': lap_id,
+                            'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
                             'lap_time_formatted': time_format(lap_time),
@@ -3817,7 +3811,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         })
 
                         #server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
-                        #    .format(node.index+1, lap_id, time_format(lap_time)))
+                        #    .format(node.index+1, lap_number, time_format(lap_time)))
                         emit_current_laps() # update all laps on the race page
                         emit_leaderboard() # update leaderboard
 
@@ -3835,8 +3829,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                 team_laps = t_laps_dict[team_name][0]
                             check_emit_team_racing_status(t_laps_dict)
 
-                            if lap_id > 0:   # send phonetic data to be spoken
-                                emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps)
+                            if lap_number > 0:   # send phonetic data to be spoken
+                                emit_phonetic_data(pilot_id, lap_number, lap_time, team_name, team_laps)
 
                                 # if Most Laps Wins race is tied then check for winner
                                 if race_format.win_condition == WinCondition.MOST_LAPS:
@@ -3849,14 +3843,14 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                             team_name == RACE.laps_winner_name and \
                                             team_laps >= race_format.number_laps_win:
                                     emit_phonetic_text('Winner is team ' + RACE.laps_winner_name, 'race_winner')
-                            elif lap_id == 0:
+                            elif lap_number == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
 
                         else:  # not team racing mode
-                            if lap_id > 0:
+                            if lap_number > 0:
                                                 # send phonetic data to be spoken
                                 if race_format.win_condition != WinCondition.FIRST_TO_LAP_X or race_format.number_laps_win <= 0:
-                                    emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+                                    emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
 
                                                      # if Most Laps Wins race is tied then check for winner
                                     if race_format.win_condition == WinCondition.MOST_LAPS:
@@ -3870,7 +3864,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                         if win_pilot_id >= 0:  # a pilot has won the race
                                             win_callsign = Database.Pilot.query.get(win_pilot_id).callsign
                                             emit_team_racing_status('Winner is ' + win_callsign)
-                                            emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+                                            emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
 
                                             if RACE.laps_winner_name is None:
                                                     # a pilot has won the race and has not yet been announced
@@ -3881,14 +3875,14 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                                 emit_phonetic_text('Winner is ' + win_phon_name, 'race_winner')
 
                                         else:  # no pilot has won the race; send phonetic data to be spoken
-                                            emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
+                                            emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
                                     else:  # other win conditions
-                                            emit_phonetic_data(pilot_id, lap_id, lap_time, None, None)
-                            elif lap_id == 0:
+                                            emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
+                            elif lap_number == 0:
                                 emit_first_pass_registered(node.index) # play first-pass sound
                     else:
                         RACE.node_laps[node.index].append({
-                            'lap_number': lap_id,
+                            'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
                             'lap_time_formatted': time_format(lap_time),
