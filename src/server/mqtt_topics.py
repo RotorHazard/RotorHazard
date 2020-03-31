@@ -12,22 +12,31 @@
 receiver_command_all = "rx/cv1/cmd_all"
 
 # Send command to a node_number
-receiver_command_node_topic = ("rx/cv1/cmd_node/%s","node_number")
+receiver_command_node_topic = ("rx/cv1/cmd_node/%d","node_number")
 
 # Send command to a specific receiver
 receiver_command_targeted_topic = ("rx/cv1/cmd_target/%s","receiver_serial_num")
 
-# Send a kcik command to a specific receiver (leave the network)
+# Send a kick command to a specific receiver (leave the network)
 receiver_kick_topic = ("rx/cv1/kick/%s","receiver_serial_num")
 
-# Make a request to all nodes at a node number (all nodes reply)
-receiver_request_node_all_topic = ("rx/cv1/req_node_all", None)
+# Send an active promotion or demotion to a specific receiver
+receiver_active_topic = ("rx/cv1/active/%s","receiver_serial_num")
 
-# Make a request to a specific node number (the active node replies)
-receiver_request_node_active_topic = ("rx/cv1/req_node_active/%s","node_number")
+# Make a request to all receivers (all receivers reply)
+receiver_request_all_topic = ("rx/cv1/req_all", None)
+
+# Make a request to all nodes at a node number (all nodes at that node_number reply)
+receiver_request_node_all_topic = ("rx/cv1/req_node/%d", "node_number")
+
+# Make a request to the active node at a node index
+# Only the active receiver at that node replies
+receiver_request_node_active_topic = ("rx/cv1/req_node_active/%d", "node_number")
 
 # Make a request to a specific receiver
 receiver_request_targeted_topic = ("rx/cv1/req_target/%s","receiver_serial_num")
+
+
 
         # Subscribe Topics
 
@@ -39,6 +48,8 @@ receiver_response_node_topic = ("rx/cv1/resp_node/%s", "*")
 
 # Connection status for receivers
 receiver_connection = ("rxcn/%s", "node_number")
+
+# TODO status topics
 
 mqtt_publish_topics = {
     "cv1" :
