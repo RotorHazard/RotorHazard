@@ -67,7 +67,6 @@ LAST_RACE_CACHE_VALID = False # Whether cache is valid (False = regenerate cache
 
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
-LANGUAGE_FILE_NAME = 'language.json'
 IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
@@ -273,41 +272,8 @@ for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
 # Translation functions
 #
 
-Languages = {}
-# Load language file
-try:
-    with open(LANGUAGE_FILE_NAME, 'r') as f:
-        Languages = json.load(f)
-    print 'Language file imported'
-except IOError:
-    print 'No language file found, using defaults'
-except ValueError:
-    print 'Language file invalid, using defaults'
-
-def __(text, domain=''):
-    # return translated string
-    if not domain:
-        lang = getOption('currentLanguage')
-
-    if lang:
-        if lang in Languages:
-            if text in Languages[lang]['values']:
-                return Languages[lang]['values'][text]
-    return text
-
-def getLanguages():
-    # get list of available languages
-    langs = []
-    for lang in Languages:
-        l = {}
-        l['id'] = lang
-        l['name'] = Languages[lang]['name']
-        langs.append(l)
-    return langs
-
-def getAllLanguages():
-    # return full language dictionary
-    return Languages
+import Language
+from Language import __
 
 #
 # Server Info
@@ -381,41 +347,15 @@ TONES_ALL = 2
 # Option helpers
 #
 
-GLOBALS_CACHE = {} # Local Python cache for global settings
-def primeGlobalsCache():
-    global GLOBALS_CACHE
-
-    settings = Database.GlobalSettings.query.all()
-    for setting in settings:
-        GLOBALS_CACHE[setting.option_name] = setting.option_value
-
-def getOption(option, default_value=False):
-    try:
-        val = GLOBALS_CACHE[option]
-        if val or val == "":
-            return val
-        else:
-            return default_value
-    except:
-        return default_value
-
-def setOption(option, value):
-    GLOBALS_CACHE[option] = value
-
-    settings = Database.GlobalSettings.query.filter_by(option_name=option).one_or_none()
-    if settings:
-        settings.option_value = value
-    else:
-        DB.session.add(Database.GlobalSettings(option_name=option, option_value=value))
-    DB.session.commit()
+import Options
 
 def getCurrentProfile():
-    current_profile = int(getOption('currentProfile'))
+    current_profile = int(Options.get('currentProfile'))
     return Database.Profiles.query.get(current_profile)
 
 def getCurrentRaceFormat():
     if RACE.format is None:
-        val = int(getOption('currentFormat'))
+        val = int(Options.get('currentFormat'))
         race_format = Database.RaceFormat.query.get(val)
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
@@ -424,14 +364,14 @@ def getCurrentRaceFormat():
 
 def getCurrentDbRaceFormat():
     if RACE.format is None or RHRaceFormat.isDbBased(RACE.format):
-        val = int(getOption('currentFormat'))
+        val = int(Options.get('currentFormat'))
         return Database.RaceFormat.query.get(val)
     else:
         return None
 
 def setCurrentRaceFormat(race_format):
     if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
-        setOption('currentFormat', race_format.id)
+        Options.set('currentFormat', race_format.id)
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
         RACE.format.id = race_format.id
@@ -498,17 +438,17 @@ def requires_auth(f):
 def index():
     '''Route to home page.'''
     return render_template('home.html', serverInfo=serverInfo,
-                           getOption=getOption, __=__, Debug=Config.GENERAL['DEBUG'])
+                           getOption=Options.get, __=__, Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/heats')
 def heats():
     '''Route to heat summary page.'''
-    return render_template('heats.html', serverInfo=serverInfo, getOption=getOption, __=__)
+    return render_template('heats.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
 @APP.route('/results')
 def results():
     '''Route to round summary page.'''
-    return render_template('rounds.html', serverInfo=serverInfo, getOption=getOption, __=__)
+    return render_template('rounds.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
 @APP.route('/race')
 @requires_auth
@@ -523,7 +463,7 @@ def race():
                 'index': idx
             })
 
-    return render_template('race.html', serverInfo=serverInfo, getOption=getOption, __=__,
+    return render_template('race.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         led_enabled=led_manager.isEnabled(),
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat, pilots=Database.Pilot,
@@ -541,7 +481,7 @@ def racepublic():
                 'index': idx
             })
 
-    return render_template('racepublic.html', serverInfo=serverInfo, getOption=getOption, __=__,
+    return render_template('racepublic.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes,
         nodes=nodes)
 
@@ -549,14 +489,14 @@ def racepublic():
 @requires_auth
 def marshal():
     '''Route to race management page.'''
-    return render_template('marshal.html', serverInfo=serverInfo, getOption=getOption, __=__,
+    return render_template('marshal.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/settings')
 @requires_auth
 def settings():
     '''Route to settings page.'''
-    return render_template('settings.html', serverInfo=serverInfo, getOption=getOption, __=__,
+    return render_template('settings.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         led_enabled=led_manager.isEnabled(),
         num_nodes=RACE.num_nodes,
         ConfigFile=Config.GENERAL['configFile'],
@@ -567,14 +507,14 @@ def settings():
 def scanner():
     '''Route to scanner page.'''
 
-    return render_template('scanner.html', serverInfo=serverInfo, getOption=getOption, __=__,
+    return render_template('scanner.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/imdtabler')
 def imdtabler():
     '''Route to IMDTabler page.'''
 
-    return render_template('imdtabler.html', serverInfo=serverInfo, getOption=getOption, __=__)
+    return render_template('imdtabler.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
 # Debug Routes
 
@@ -582,13 +522,13 @@ def imdtabler():
 @requires_auth
 def hardwarelog():
     '''Route to hardware log page.'''
-    return render_template('hardwarelog.html', serverInfo=serverInfo, getOption=getOption, __=__)
+    return render_template('hardwarelog.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
 @APP.route('/database')
 @requires_auth
 def database():
     '''Route to database page.'''
-    return render_template('database.html', serverInfo=serverInfo, getOption=getOption, __=__,
+    return render_template('database.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         pilots=Database.Pilot,
         heats=Database.Heat,
         heatnodes=Database.HeatNode,
@@ -604,7 +544,7 @@ def viewDocs():
     '''Route to doc viewer.'''
     docfile = request.args.get('d')
 
-    language = getOption("currentLanguage")
+    language = Options.get("currentLanguage")
     if language:
         translation = language + '-' + docfile
         if os.path.isfile('../../doc/' + translation):
@@ -615,7 +555,7 @@ def viewDocs():
 
     return render_template('viewdocs.html',
         serverInfo=serverInfo,
-        getOption=getOption,
+        getOption=Options.get,
         __=__,
         doc=doc
         )
@@ -858,8 +798,8 @@ def api_status():
             "current_heat": RACE.current_heat,
             "num_nodes": RACE.num_nodes,
             "race_status": RACE.race_status,
-            "currentProfile": getOption('currentProfile'),
-            "currentFormat": getOption('currentFormat'),
+            "currentProfile": Options.get('currentProfile'),
+            "currentFormat": Options.get('currentFormat'),
         }
     }
 
@@ -931,8 +871,8 @@ def on_reset_auto_calibration(data):
     on_discard_laps()
     setCurrentRaceFormat(SLAVE_RACE_FORMAT)
     emit_race_format()
-    setOption("MinLapSec", "0")
-    setOption("MinLapBehavior", "0")
+    Options.set("MinLapSec", "0")
+    Options.set("MinLapBehavior", "0")
     on_stage_race()
 
 # Cluster events
@@ -941,8 +881,8 @@ def on_reset_auto_calibration(data):
 def on_join_cluster():
     setCurrentRaceFormat(SLAVE_RACE_FORMAT)
     emit_race_format()
-    setOption("MinLapSec", "0")
-    setOption("MinLapBehavior", "0")
+    Options.set("MinLapSec", "0")
+    Options.set("MinLapBehavior", "0")
     server_log('Joined cluster')
 
 # RotorHazard events
@@ -1147,7 +1087,7 @@ def hardware_set_all_exit_ats(exit_at_levels):
 @SOCKET_IO.on('set_language')
 def on_set_language(data):
     '''Set interface language.'''
-    setOption('currentLanguage', data['language'])
+    Options.set('currentLanguage', data['language'])
     DB.session.commit()
 
 @SOCKET_IO.on('cap_enter_at_btn')
@@ -1354,7 +1294,7 @@ def on_delete_profile():
         DB.session.delete(profile)
         DB.session.commit()
         first_profile_id = Database.Profiles.query.first().id
-        setOption("currentProfile", first_profile_id)
+        Options.set("currentProfile", first_profile_id)
         on_set_profile(data={ 'profile': first_profile_id })
     else:
         server_log('Refusing to delete only profile')
@@ -1378,7 +1318,7 @@ def on_set_profile(data, emit_vals=True):
     profile_val = int(data['profile'])
     profile = Database.Profiles.query.get(profile_val)
     if profile:
-        setOption("currentProfile", data['profile'])
+        Options.set("currentProfile", data['profile'])
         server_log("Set Profile to '%s'" % profile_val)
         # set freqs, enter_ats, and exit_ats
         freqs_loaded = json.loads(profile.frequencies)
@@ -1491,14 +1431,14 @@ def on_reboot_pi():
 @SOCKET_IO.on("set_min_lap")
 def on_set_min_lap(data):
     min_lap = data['min_lap']
-    setOption("MinLapSec", data['min_lap'])
+    Options.set("MinLapSec", data['min_lap'])
     server_log("set min lap time to %s seconds" % min_lap)
     emit_min_lap(noself=True)
 
 @SOCKET_IO.on("set_min_lap_behavior")
 def on_set_min_lap_behavior(data):
     min_lap_behavior = data['min_lap_behavior']
-    setOption("MinLapBehavior", data['min_lap_behavior'])
+    Options.set("MinLapBehavior", data['min_lap_behavior'])
     server_log("set min lap behavior to %s" % min_lap_behavior)
     emit_min_lap(noself=True)
 
@@ -1646,14 +1586,14 @@ def on_set_led_effect(data):
     if led_manager.isEnabled() and 'event' in data and 'effect' in data:
         led_manager.setEventEffect(data['event'], data['effect'])
 
-        effect_opt = getOption('ledEffects')
+        effect_opt = Options.get('ledEffects')
         if effect_opt:
             effects = json.loads(effect_opt)
         else:
             effects = {}
 
         effects[data['event']] = data['effect']
-        setOption('ledEffects', json.dumps(effects))
+        Options.set('ledEffects', json.dumps(effects))
 
         server_log('Set LED event {0} to effect {1}'.format(data['event'], data['effect']))
 
@@ -1930,7 +1870,7 @@ def on_save_laps():
         round_id=max_round+1, \
         heat_id=RACE.current_heat, \
         class_id=heat.class_id, \
-        format_id=getOption('currentFormat'), \
+        format_id=Options.get('currentFormat'), \
         start_time = RACE.start_time_monotonic, \
         start_time_formatted = RACE.start_time.strftime("%Y-%m-%d %H:%M:%S")
     )
@@ -2020,7 +1960,7 @@ def on_resave_laps(data):
     emit_priority_message(message, False)
     server_log(message)
     emit_round_data_notify()
-    if int(getOption('calibrationMode')):
+    if int(Options.get('calibrationMode')):
         autoUpdateCalibration()
 
 @SOCKET_IO.on('discard_laps')
@@ -2087,7 +2027,7 @@ def on_set_current_heat(data):
 
     server_log('Current heat set: Heat {0}'.format(new_heat_id))
 
-    if int(getOption('calibrationMode')):
+    if int(Options.get('calibrationMode')):
         autoUpdateCalibration()
 
     emit_current_heat() # Race page, to update heat selection button
@@ -2149,7 +2089,7 @@ def on_simulate_lap(data):
     server_log('Simulated lap: Node {0}'.format(node_index+1))
     Events.trigger(Evt.CROSSINGEXIT, {
         'nodeIndex': node_index,
-        'color': hexToColor(getOption('colorNode_' + str(node_index), '#ffffff'))
+        'color': hexToColor(Options.get('colorNode_' + str(node_index), '#ffffff'))
         })
     INTERFACE.intf_simulate_lap(node_index, 0)
 
@@ -2223,11 +2163,11 @@ def on_LED_brightness(data):
     brightness = data['brightness']
     strip.setBrightness(brightness)
     strip.show()
-    setOption("ledBrightness", brightness)
+    Options.set("ledBrightness", brightness)
 
 @SOCKET_IO.on('set_option')
 def on_set_option(data):
-    setOption(data['option'], data['value'])
+    Options.set(data['option'], data['value'])
 
 @SOCKET_IO.on('get_RACE.scheduled')
 def get_race_elapsed():
@@ -2335,7 +2275,7 @@ def emit_node_tuning(**params):
     emit_payload = {
         'profile_ids': [profile.id for profile in Database.Profiles.query.all()],
         'profile_names': [profile.name for profile in Database.Profiles.query.all()],
-        'current_profile': int(getOption('currentProfile')),
+        'current_profile': int(Options.get('currentProfile')),
         'profile_name': tune_val.name,
         'profile_description': tune_val.description
     }
@@ -2347,8 +2287,8 @@ def emit_node_tuning(**params):
 def emit_language(**params):
     '''Emits race status.'''
     emit_payload = {
-            'language': getOption("currentLanguage"),
-            'languages': getLanguages()
+            'language': Options.get("currentLanguage"),
+            'languages': Language.getLanguages()
         }
     if ('nobroadcast' in params):
         emit('language', emit_payload)
@@ -2358,7 +2298,7 @@ def emit_language(**params):
 def emit_all_languages(**params):
     '''Emits full language dictionary.'''
     emit_payload = {
-            'languages': getAllLanguages()
+            'languages': Language.getAllLanguages()
         }
     if ('nobroadcast' in params):
         emit('all_languages', emit_payload)
@@ -2368,8 +2308,8 @@ def emit_all_languages(**params):
 def emit_min_lap(**params):
     '''Emits current minimum lap.'''
     emit_payload = {
-        'min_lap': getOption('MinLapSec'),
-        'min_lap_behavior': getOption("MinLapBehavior")
+        'min_lap': Options.get('MinLapSec'),
+        'min_lap_behavior': Options.get("MinLapBehavior")
     }
     if ('nobroadcast' in params):
         emit('min_lap', emit_payload)
@@ -3782,8 +3722,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         node.first_cross_flag = True  # indicate first crossing completed
 
                     race_format = getCurrentRaceFormat()
-                    min_lap = int(getOption("MinLapSec"))
-                    min_lap_behavior = int(getOption("MinLapBehavior"))
+                    min_lap = int(Options.get("MinLapSec"))
+                    min_lap_behavior = int(Options.get("MinLapBehavior"))
 
                     lap_ok_flag = True
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
@@ -3927,14 +3867,14 @@ def node_crossing_callback(node):
             if node.crossing_flag:
                 Events.trigger(Evt.CROSSINGENTER, {
                     'nodeIndex': node.index,
-                    'color': hexToColor(getOption('colorNode_' + str(node.index), '#ffffff'))
+                    'color': hexToColor(Options.get('colorNode_' + str(node.index), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
                     Events.trigger(Evt.CROSSINGEXIT, {
                         'nodeIndex': node.index,
-                        'color': hexToColor(getOption('colorNode_' + str(node.index), '#ffffff'))
+                        'color': hexToColor(Options.get('colorNode_' + str(node.index), '#ffffff'))
                         })
                 else:
                     node.show_crossing_flag = True
@@ -4046,7 +3986,7 @@ def db_reset_profile():
                              enter_ats = json.dumps(template),
                              exit_ats = json.dumps(template)))
     DB.session.commit()
-    setOption("currentProfile", 1)
+    Options.set("currentProfile", 1)
     server_log("Database set default profiles")
 
 def db_reset_race_formats():
@@ -4120,46 +4060,46 @@ def db_reset_race_formats():
 
 def db_reset_options_defaults():
     DB.session.query(Database.GlobalSettings).delete()
-    setOption("server_api", SERVER_API)
+    Options.set("server_api", SERVER_API)
     # group identifiers
-    setOption("timerName", __("RotorHazard"))
-    setOption("timerLogo", "")
+    Options.set("timerName", __("RotorHazard"))
+    Options.set("timerLogo", "")
     # group colors
-    setOption("hue_0", "212")
-    setOption("sat_0", "55")
-    setOption("lum_0_low", "29.2")
-    setOption("lum_0_high", "46.7")
-    setOption("contrast_0_low", "#ffffff")
-    setOption("contrast_0_high", "#ffffff")
+    Options.set("hue_0", "212")
+    Options.set("sat_0", "55")
+    Options.set("lum_0_low", "29.2")
+    Options.set("lum_0_high", "46.7")
+    Options.set("contrast_0_low", "#ffffff")
+    Options.set("contrast_0_high", "#ffffff")
 
-    setOption("hue_1", "25")
-    setOption("sat_1", "85.3")
-    setOption("lum_1_low", "37.6")
-    setOption("lum_1_high", "54.5")
-    setOption("contrast_1_low", "#ffffff")
-    setOption("contrast_1_high", "#000000")
+    Options.set("hue_1", "25")
+    Options.set("sat_1", "85.3")
+    Options.set("lum_1_low", "37.6")
+    Options.set("lum_1_high", "54.5")
+    Options.set("contrast_1_low", "#ffffff")
+    Options.set("contrast_1_high", "#000000")
     # timer state
-    setOption("currentLanguage", "")
-    setOption("currentProfile", "1")
+    Options.set("currentLanguage", "")
+    Options.set("currentProfile", "1")
     setCurrentRaceFormat(Database.RaceFormat.query.first())
-    setOption("calibrationMode", "1")
+    Options.set("calibrationMode", "1")
     # minimum lap
-    setOption("MinLapSec", "10")
-    setOption("MinLapBehavior", "0")
+    Options.set("MinLapSec", "10")
+    Options.set("MinLapBehavior", "0")
     # event information
-    setOption("eventName", __("FPV Race"))
-    setOption("eventDescription", "")
+    Options.set("eventName", __("FPV Race"))
+    Options.set("eventDescription", "")
     # LED settings
-    setOption("ledBrightness", "32")
+    Options.set("ledBrightness", "32")
     # LED colors
-    setOption("colorNode_0", "#001fff")
-    setOption("colorNode_1", "#ff3f00")
-    setOption("colorNode_2", "#7fff00")
-    setOption("colorNode_3", "#ffff00")
-    setOption("colorNode_4", "#7f00ff")
-    setOption("colorNode_5", "#ff007f")
-    setOption("colorNode_6", "#3fff3f")
-    setOption("colorNode_7", "#00bfff")
+    Options.set("colorNode_0", "#001fff")
+    Options.set("colorNode_1", "#ff3f00")
+    Options.set("colorNode_2", "#7fff00")
+    Options.set("colorNode_3", "#ffff00")
+    Options.set("colorNode_4", "#7f00ff")
+    Options.set("colorNode_5", "#ff007f")
+    Options.set("colorNode_6", "#3fff3f")
+    Options.set("colorNode_7", "#00bfff")
 
     server_log("Reset global settings")
 
@@ -4260,12 +4200,12 @@ def recover_database():
         ]
         carryOver = {}
         for opt in carryoverOpts:
-            val = getOption(opt, None)
+            val = Options.get(opt, None)
             if val is not None:
                 carryOver[opt] = val
 
         # RSSI reduced by half for 2.0.0
-        if int(getOption('server_api')) < 23:
+        if int(Options.get('server_api')) < 23:
             for profile in profiles_query_data:
                 if profile.enter_ats:
                     enter_ats = json.loads(profile.enter_ats)
@@ -4290,7 +4230,7 @@ def recover_database():
         restore_table(Database.RaceClass, raceClass_query_data)
 
         for opt in carryOver:
-            setOption(opt, carryOver[opt])
+            Options.set(opt, carryOver[opt])
         server_log('UI Options restored')
 
     except Exception as ex:
@@ -4321,7 +4261,7 @@ def init_LED_effects():
         Evt.SHUTDOWN: "clear"
     }
     # update with DB values (if any)
-    effect_opt = getOption('ledEffects')
+    effect_opt = Options.get('ledEffects')
     if effect_opt:
         effects.update(json.loads(effect_opt))
     # set effects
@@ -4356,7 +4296,7 @@ if not os.path.exists(DB_FILE_NAME):
     db_init()
     db_inited_flag = True
 
-primeGlobalsCache()
+Options.primeGlobalsCache()
 
 # collect server info for About panel
 serverInfo = buildServerInfo()
@@ -4374,7 +4314,7 @@ if RACE.num_nodes > 0:
 
 if not db_inited_flag:
     try:
-        if int(getOption('server_api')) < SERVER_API:
+        if int(Options.get('server_api')) < SERVER_API:
             server_log('Old server API version; resetting database')
             recover_database()
         elif not Database.Heat.query.count():
@@ -4432,7 +4372,7 @@ else:
 db_reset_current_laps()
 
 # Send initial profile values to nodes
-current_profile = int(getOption("currentProfile"))
+current_profile = int(Options.get("currentProfile"))
 on_set_profile({'profile': current_profile}, False)
 
 # Set current heat on startup
@@ -4452,9 +4392,9 @@ if Database.Heat.query.first():
 strip = None
 if Config.LED['LED_COUNT'] > 0:
     led_type = os.environ.get('RH_LEDS', 'ws281x')
-    # note: any calls to 'getOption()' need to happen after the DB initialization,
+    # note: any calls to 'Options.get()' need to happen after the DB initialization,
     #       otherwise it causes problems when run with no existing DB file
-    led_brightness = int(getOption("ledBrightness"))
+    led_brightness = int(Options.get("ledBrightness"))
     try:
         ledModule = importlib.import_module(led_type + '_leds')
         strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
@@ -4483,10 +4423,10 @@ else:
     led_manager = NoLEDManager()
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
-    if not getOption("secret_key"):
-        setOption("secret_key", unicode(os.urandom(50), errors='ignore'))
+    if not Options.get("secret_key"):
+        Options.set("secret_key", unicode(os.urandom(50), errors='ignore'))
 
-    APP.config['SECRET_KEY'] = getOption("secret_key")
+    APP.config['SECRET_KEY'] = Options.get("secret_key")
 
     print "Running http server at port " + str(port_val)
 
