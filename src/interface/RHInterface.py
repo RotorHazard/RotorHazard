@@ -136,7 +136,7 @@ class RHInterface(BaseHardwareInterface):
         sensorKwargs = {}
         sensorKwargs.update(extKwargs)
         del sensorKwargs['config']
-        self.discover_sensors(config=kwargs['config'].get('SENSORS', {}), *args, **sensorKwargs)
+        self.discover_sensors(config=kwargs['config'].SENSORS, *args, **sensorKwargs)
 
 
     def discover_nodes(self, *args, **kwargs):

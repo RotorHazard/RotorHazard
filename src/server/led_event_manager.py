@@ -13,10 +13,9 @@ class LEDEventManager:
     eventEffects = {}
     eventThread = None
 
-    def __init__(self, eventmanager, strip, config):
+    def __init__(self, eventmanager, strip):
         self.Events = eventmanager
         self.strip = strip
-        self.config = config
 
         # hold
         self.registerEffect("hold", "Hold", lambda *args: None,
@@ -56,7 +55,6 @@ class LEDEventManager:
 
         args.update({
             'strip': self.strip,
-            'config': self.config,
             })
 
         if event in [Evt.SHUTDOWN]:
@@ -68,7 +66,7 @@ class LEDEventManager:
         return True
 
     def clear(self):
-        self.eventEffects['clear']['handlerFn'](self.strip, self.config)
+        self.eventEffects['clear']['handlerFn'](self.strip)
 
 class NoLEDManager():
     def __init__(self):
