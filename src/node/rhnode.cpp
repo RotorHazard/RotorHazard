@@ -184,8 +184,17 @@ void setup()
     pinMode(RX5808_CLK_PIN, OUTPUT);
     digitalWrite(RX5808_SEL_PIN, HIGH);
 
-    Serial.begin(115200);  // Start serial interface
-    while (!Serial) {};  // Wait for the Serial port to initialise
+    if (digitalRead(2) == HIGH
+    && digitalRead(3) == HIGH
+    && digitalRead(4) == HIGH
+    && digitalRead(5) == HIGH
+    && digitalRead(6) == HIGH
+    && digitalRead(7) == HIGH
+    && digitalRead(8) == HIGH)
+    {
+        Serial.begin(115200);  // Start serial interface
+        while (!Serial) {};  // Wait for the Serial port to initialise
+    }
 
     i2cInitialize(false);  // setup I2C slave address and callbacks
 

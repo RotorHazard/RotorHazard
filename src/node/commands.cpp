@@ -36,10 +36,6 @@ byte getPayloadSize(uint8_t command)
             size = 1;
             break;
 
-        case CLOSE_SERIAL:  // end Serial so ISP can be performed
-            size = 1;
-            break;
-            
         default:  // invalid command
             LOG_ERROR("Invalid write command: ", command, HEX);
             size = -1;
@@ -92,10 +88,6 @@ void handleWriteCommand(Message_t *msg, bool serialFlag)
 
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
             rssiEndCrossing();
-            break;
-
-        case CLOSE_SERIAL:  // end Serial so ISP can be performed
-            endSerial();
             break;
 
         case RESET_PAIRED_NODE:  // reset paired node for ISP
