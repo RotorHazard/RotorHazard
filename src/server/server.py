@@ -193,7 +193,7 @@ class Slave:
 
             split_ts = data['timestamp'] + (PROGRAM_START_MILLIS_OFFSET - 1000.0*RACE.start_time_monotonic)
 
-            lap_count = max(0, len(RACE.get_active_laps()[node.index]) - 1)
+            lap_count = max(0, len(RACE.get_active_laps()[node_index]) - 1)
 
             if lap_count:
                 last_lap_ts = RACE.get_active_laps()[node_index][-1]['lap_time_stamp']
@@ -1163,17 +1163,17 @@ def on_alter_heat(data):
 @SOCKET_IO.on('delete_heat')
 def on_delete_heat(data):
     '''Delete heat.'''
-    if (DB.session.query(Heat).count() > 1): # keep one profile
+    if (DB.session.query(Database.Heat).count() > 1): # keep one profile
         heat_id = data['heat']
-        heat = Heat.query.get(heat_id)
-        heatnodes = HeatNode.query.filter_by(heat_id=heat.id, node_index=node_index).all()
+        heat = Database.Heat.query.get(heat_id)
+        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
         DB.session.delete(heat)
         for heatnode in heatnodes:
             DB.session.delete(heatnode)
         DB.session.commit()
 
         if RACE.current_heat == heat:
-            RACE.current_heat == Heat.query.first()
+            RACE.current_heat = Database.Heat.query.first()
 
         server_log('Heat {0} deleted'.format(heat))
         emit_heat_data(noself=True)
@@ -2614,7 +2614,7 @@ def calc_leaderboard(**params):
         if USE_CLASS:
             race_query = Database.SavedRaceMeta.query.filter_by(class_id=USE_CLASS)
             if race_query.count() >= 1:
-                current_format = RaceClass.query.get(USE_CLASS).format_id
+                current_format = Database.RaceClass.query.get(USE_CLASS).format_id
             else:
                 current_format = None
         elif USE_HEAT:
@@ -4234,7 +4234,7 @@ def expand_heats():
         for node in range(RACE.num_nodes):
             heat_row = Database.HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
             if not heat_row.count():
-                DB.session.add(HeatNode(heat_id=heat_ids.id, node_index=node, pilot_id=PILOT_ID_NONE))
+                DB.session.add(Database.HeatNode(heat_id=heat_ids.id, node_index=node, pilot_id=PILOT_ID_NONE))
 
     DB.session.commit()
 
