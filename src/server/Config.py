@@ -36,15 +36,15 @@ GENERAL['CORS_ALLOWED_HOSTS'] = '*'
 
 # override defaults above with config from file
 try:
-	with open(CONFIG_FILE_NAME, 'r') as f:
-		ExternalConfig = json.load(f)
-	GENERAL.update(ExternalConfig['GENERAL'])
+    with open(CONFIG_FILE_NAME, 'r') as f:
+        ExternalConfig = json.load(f)
+    GENERAL.update(ExternalConfig['GENERAL'])
 
-	if 'LED' in ExternalConfig:
-		LED.update(ExternalConfig['LED'])
+    if 'LED' in ExternalConfig:
+        LED.update(ExternalConfig['LED'])
 
-	'''
-	# Subtree updating
+    '''
+    # Subtree updating
     try:
         bitmaptree = LED['BITMAPS']
         LED'].update(ExternalLED'])
@@ -57,15 +57,15 @@ try:
             print "No 'LED' entry found in configuration file "
     '''
 
-	if 'SENSORS' in ExternalConfig:
-		SENSORS.update(ExternalConfig['SENSORS'])
-	if 'SERIAL_PORTS' in ExternalConfig:
-		SERIAL_PORTS.extend(ExternalConfig['SERIAL_PORTS'])
-	GENERAL['configFile'] = 1
-	print 'Configuration file imported'
+    if 'SENSORS' in ExternalConfig:
+        SENSORS.update(ExternalConfig['SENSORS'])
+    if 'SERIAL_PORTS' in ExternalConfig:
+        SERIAL_PORTS.extend(ExternalConfig['SERIAL_PORTS'])
+    GENERAL['configFile'] = 1
+    print 'Configuration file imported'
 except IOError:
-	GENERAL['configFile'] = 0
-	print 'No configuration file found, using defaults'
+    GENERAL['configFile'] = 0
+    print 'No configuration file found, using defaults'
 except ValueError as ex:
-	GENERAL['configFile'] = -1
-	print 'Configuration file invalid, using defaults; error is: ' + str(ex)
+    GENERAL['configFile'] = -1
+    print 'Configuration file invalid, using defaults; error is: ' + str(ex)
