@@ -13,11 +13,11 @@ import io
 import os
 import sys
 import glob
+import re
 import shutil
 import base64
 import subprocess
 import importlib
-import bisect
 import socketio
 from monotonic import monotonic
 from datetime import datetime
@@ -26,24 +26,28 @@ from collections import OrderedDict
 
 from flask import Flask, render_template, send_file, request, Response, session
 from flask_socketio import SocketIO, emit
-from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.ext.declarative import DeclarativeMeta
 
 import random
 import json
+
+import Config
+import Options
+import Database
+import Language
+from Language import __
 
 # Events manager
 from eventmanager import Evt, EventManager
 Events = EventManager()
 
 # LED imports
-from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
+from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorPattern, hexToColor
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
 from RHRace import get_race_state, WinCondition, RaceStatus
-
-import Config
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -72,7 +76,6 @@ IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 DEF_TEAM_NAME = 'A'  # default team
 
-import Database
 BASEDIR = os.getcwd()
 APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -117,7 +120,6 @@ def monotonic_to_milliseconds(secs):
 
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 
-import re
 def uniqueName(desiredName, otherNames):
     if desiredName in otherNames:
         newName = desiredName
@@ -269,13 +271,6 @@ for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
     CLUSTER.addSlave(slave)
 
 #
-# Translation functions
-#
-
-import Language
-from Language import __
-
-#
 # Server Info
 #
 
@@ -346,8 +341,6 @@ TONES_ALL = 2
 #
 # Option helpers
 #
-
-import Options
 
 def getCurrentProfile():
     current_profile = int(Options.get('currentProfile'))
@@ -566,8 +559,6 @@ def viewImg(imgfile):
     return send_file('../../doc/img/' + imgfile)
 
 # JSON API
-
-from sqlalchemy.ext.declarative import DeclarativeMeta
 
 class AlchemyEncoder(json.JSONEncoder):
     def default(self, obj):
