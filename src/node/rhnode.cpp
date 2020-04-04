@@ -164,15 +164,15 @@ void setup()
 
             if (digitalRead(2) == LOW)
             {
-                i2cSlaveAddress | 1;
+                i2cSlaveAddress |= 1;
             }
-            else if (digitalRead(3) == LOW)
+            if (digitalRead(3) == LOW)
             {
-                i2cSlaveAddress | 2;
+                i2cSlaveAddress |= 2;
             }
-            else if (digitalRead(4) == LOW)
+            if (digitalRead(4) == LOW)
             {
-                i2cSlaveAddress | 4;
+                i2cSlaveAddress |= 4;
             }
 
             i2cSlaveAddress = 6 + (i2cSlaveAddress * 2);
