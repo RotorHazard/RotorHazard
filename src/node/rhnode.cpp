@@ -57,24 +57,24 @@ uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 //   See here for an ArduVidRx example: http://www.etheli.com/ArduVidRx/hw/index.html#promini
 #define ARDUVIDRX_WIRING_FLAG 0
 
-#if !ARDUVIDRX_WIRING_FLAG
-#define RX5808_DATA_PIN 11             //DATA output line to RX5808 module
-#define RX5808_SEL_PIN 10              //CLK output line to RX5808 module
-#define RX5808_CLK_PIN 13              //SEL output line to RX5808 module
-#define RSSI_INPUT_PIN 0               //RSSI input from RX5808 (primary)
-#define HARDWARE_SELECT_PIN_1 2
-#define HARDWARE_SELECT_PIN_2 3
-#define HARDWARE_SELECT_PIN_3 4
-#define LEGACY_HARDWARE_SELECT_PIN_1 4
-#define LEGACY_HARDWARE_SELECT_PIN_2 5
-#define LEGACY_HARDWARE_SELECT_PIN_3 6
-#define LEGACY_HARDWARE_SELECT_PIN_4 7
-#define LEGACY_HARDWARE_SELECT_PIN_5 8
-#else
+#if ARDUVIDRX_WIRING_FLAG
 #define RX5808_DATA_PIN 10             //DATA output line to RX5808 module
 #define RX5808_SEL_PIN 11              //CLK output line to RX5808 module
 #define RX5808_CLK_PIN 12              //SEL output line to RX5808 module
 #define RSSI_INPUT_PIN A7              //RSSI input from RX5808 (primary)
+#elif CHORUS_WIRING_FLAG
+#define RX5808_DATA_PIN 10             //DATA output line to RX5808 module
+#define RX5808_SEL_PIN 11              //CLK output line to RX5808 module
+#define RX5808_CLK_PIN 12              //SEL output line to RX5808 module
+#define RSSI_INPUT_PIN A3               //RSSI input from RX5808 (primary)
+#else
+#define RX5808_DATA_PIN 11             //DATA output line to RX5808 module
+#define RX5808_SEL_PIN 10              //CLK output line to RX5808 module
+#define RX5808_CLK_PIN 13              //SEL output line to RX5808 module
+#define RSSI_INPUT_PIN 0               //RSSI input from RX5808 (primary)
+#endif
+
+#define DISABLE_SERIAL 9
 #define HARDWARE_SELECT_PIN_1 2
 #define HARDWARE_SELECT_PIN_2 3
 #define HARDWARE_SELECT_PIN_3 4
@@ -83,8 +83,6 @@ uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 #define LEGACY_HARDWARE_SELECT_PIN_3 6
 #define LEGACY_HARDWARE_SELECT_PIN_4 7
 #define LEGACY_HARDWARE_SELECT_PIN_5 8
-#endif
-
 
 #define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
 #define EEPROM_ADRW_ENTERAT 2      //address for stored 'enterAtLevel'
@@ -201,14 +199,7 @@ void setup()
     pinMode(RX5808_CLK_PIN, OUTPUT);
     digitalWrite(RX5808_SEL_PIN, HIGH);
 
-    if (digitalRead(HARDWARE_SELECT_PIN_1) == HIGH
-    && digitalRead(HARDWARE_SELECT_PIN_2) == HIGH
-    && digitalRead(HARDWARE_SELECT_PIN_3) == HIGH
-    && digitalRead(LEGACY_HARDWARE_SELECT_PIN_1) == HIGH
-    && digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == HIGH
-    && digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == HIGH
-    && digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == HIGH
-    && digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == HIGH)
+    if (digitalRead(DISABLE_SERIAL) == HIGH)
     {
         Serial.begin(115200);  // Start serial interface
         while (!Serial) {};  // Wait for the Serial port to initialise
