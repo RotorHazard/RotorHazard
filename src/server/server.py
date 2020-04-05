@@ -1204,7 +1204,7 @@ def on_alter_race_class(data):
         global FULL_RESULTS_CACHE_VALID
         FULL_RESULTS_CACHE_VALID = False
         db_update.name = data['class_name']
-        db_update.cacheStatus = cacheStatus.INVALID
+        db_update.cacheStatus = CacheStatus.INVALID
     if 'class_format' in data:
         db_update.format_id = data['class_format']
     if 'class_description' in data:
@@ -1244,7 +1244,7 @@ def on_alter_pilot(data):
     if 'callsign' in data:
         FULL_RESULTS_CACHE_VALID = False
         db_update.callsign = data['callsign']
-        db_update.cacheStatus = cacheStatus.INVALID
+        db_update.cacheStatus = CacheStatus.INVALID
     if 'team_name' in data:
         db_update.team = data['team_name']
     if 'phonetic' in data:
@@ -1252,7 +1252,7 @@ def on_alter_pilot(data):
     if 'name' in data:
         FULL_RESULTS_CACHE_VALID = False
         db_update.name = data['name']
-        db_update.cacheStatus = cacheStatus.INVALID
+        db_update.cacheStatus = CacheStatus.INVALID
     DB.session.commit()
     server_log('Altered pilot {0} to {1}'.format(pilot_id, data))
     emit_pilot_data(noself=True) # Settings page, new pilot settings
