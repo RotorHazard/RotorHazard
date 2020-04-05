@@ -186,8 +186,3 @@ class GlobalSettings(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     option_name = DB.Column(DB.String(40), nullable=False)
     option_value = DB.Column(DB.String, nullable=False)
-
-class CacheStatus:
-	INVALID = 0
-	BUILDING = 1
-	VALID = 2

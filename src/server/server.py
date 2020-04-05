@@ -61,9 +61,9 @@ FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 
-EVENT_RESULTS_CACHE = {} # Cache of results page leaderboards
-EVENT_RESULTS_CACHE_BUILDING = False # Whether results are being calculated
-EVENT_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
+FULL_RESULTS_CACHE = {} # Cache of complete results page
+FULL_RESULTS_CACHE_BUILDING = False # Whether results are being calculated
+FULL_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
 
 LAST_RACE_CACHE = {} # Cache of current race after clearing
 LAST_RACE_LAPS_CACHE = {} # Cache of current race after clearing
@@ -1115,7 +1115,7 @@ def on_set_scan(data):
 @SOCKET_IO.on('add_heat')
 def on_add_heat():
     '''Adds the next available heat number to the database.'''
-    new_heat = Database.Heat(class_id=CLASS_ID_NONE, cacheStatus=Database.CacheStatus.INVALID)
+    new_heat = Database.Heat(class_id=CLASS_ID_NONE, cacheStatus=CacheStatus.INVALID)
     DB.session.add(new_heat)
     DB.session.flush()
     DB.session.refresh(new_heat)
@@ -1134,9 +1134,10 @@ def on_alter_heat(data):
     heat = Database.Heat.query.get(heat_id)
 
     if 'note' in data:
-        global EVENT_RESULTS_CACHE_VALID
-        EVENT_RESULTS_CACHE_VALID = False
+        global FULL_RESULTS_CACHE_VALID
+        FULL_RESULTS_CACHE_VALID = False
         heat.note = data['note']
+        heat.cacheStatus = CacheStatus.INVALID
     if 'class' in data:
         heat.class_id = data['class']
     if 'pilot' in data:
@@ -1183,7 +1184,7 @@ def on_delete_heat(data):
 @SOCKET_IO.on('add_race_class')
 def on_add_race_class():
     '''Adds the next available pilot id number in the database.'''
-    new_race_class = Database.RaceClass(name='New class', format_id=0, cacheStatus=Database.CacheStatus.INVALID)
+    new_race_class = Database.RaceClass(name='New class', format_id=0, cacheStatus=CacheStatus.INVALID)
     DB.session.add(new_race_class)
     DB.session.flush()
     DB.session.refresh(new_race_class)
@@ -1200,9 +1201,10 @@ def on_alter_race_class(data):
     race_class = data['class_id']
     db_update = Database.RaceClass.query.get(race_class)
     if 'class_name' in data:
-        global EVENT_RESULTS_CACHE_VALID
-        EVENT_RESULTS_CACHE_VALID = False
+        global FULL_RESULTS_CACHE_VALID
+        FULL_RESULTS_CACHE_VALID = False
         db_update.name = data['class_name']
+        db_update.cacheStatus = cacheStatus.INVALID
     if 'class_format' in data:
         db_update.format_id = data['class_format']
     if 'class_description' in data:
@@ -1236,19 +1238,21 @@ def on_add_pilot():
 @SOCKET_IO.on('alter_pilot')
 def on_alter_pilot(data):
     '''Update pilot.'''
-    global EVENT_RESULTS_CACHE_VALID
+    global FULL_RESULTS_CACHE_VALID
     pilot_id = data['pilot_id']
     db_update = Database.Pilot.query.get(pilot_id)
     if 'callsign' in data:
-        EVENT_RESULTS_CACHE_VALID = False
+        FULL_RESULTS_CACHE_VALID = False
         db_update.callsign = data['callsign']
+        db_update.cacheStatus = cacheStatus.INVALID
     if 'team_name' in data:
         db_update.team = data['team_name']
     if 'phonetic' in data:
         db_update.phonetic = data['phonetic']
     if 'name' in data:
-        EVENT_RESULTS_CACHE_VALID = False
+        FULL_RESULTS_CACHE_VALID = False
         db_update.name = data['name']
+        db_update.cacheStatus = cacheStatus.INVALID
     DB.session.commit()
     server_log('Altered pilot {0} to {1}'.format(pilot_id, data))
     emit_pilot_data(noself=True) # Settings page, new pilot settings
@@ -1364,8 +1368,8 @@ def on_backup_database():
 @SOCKET_IO.on('reset_database')
 def on_reset_database(data):
     '''Reset database.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
+    global FULL_RESULTS_CACHE_VALID
+    FULL_RESULTS_CACHE_VALID = False
 
     reset_type = data['reset_type']
     if reset_type == 'races':
@@ -1642,7 +1646,7 @@ def on_stage_race():
     global RACE
     if RACE.race_status == RaceStatus.READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
-        global LAST_RACE_CACHE_VALID
+        global FULL_RESULTS_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
         Events.trigger(Evt.RACESTAGE)
@@ -1844,8 +1848,8 @@ def on_stop_race():
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
     '''Save current laps data to the database.'''
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
+    global FULL_RESULTS_CACHE_VALID
+    FULL_RESULTS_CACHE_VALID = False
     race_format = getCurrentRaceFormat()
     heat = Database.Heat.query.get(RACE.current_heat)
     # Get the last saved round for the current heat
@@ -1864,7 +1868,7 @@ def on_save_laps():
         format_id=Options.get('currentFormat'), \
         start_time = RACE.start_time_monotonic, \
         start_time_formatted = RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"), \
-        cacheStatus=Database.CacheStatus.INVALID
+        cacheStatus=CacheStatus.INVALID
     )
     DB.session.add(new_race)
     DB.session.flush()
@@ -1919,8 +1923,8 @@ def on_save_laps():
 
 @SOCKET_IO.on('resave_laps')
 def on_resave_laps(data):
-    global EVENT_RESULTS_CACHE_VALID
-    EVENT_RESULTS_CACHE_VALID = False
+    global FULL_RESULTS_CACHE_VALID
+    FULL_RESULTS_CACHE_VALID = False
 
     heat_id = data['heat_id']
     round_id = data['round_id']
@@ -1974,40 +1978,46 @@ def on_resave_laps(data):
         autoUpdateCalibration()
 
 def build_results_caches(params):
+    global FULL_RESULTS_CACHE
+    FULL_RESULTS_CACHE = False
+    token = "token_" + str(random.random())
+
     race = Database.SavedRaceMeta.query.get(params['race_id'])
     heat = Database.Heat.query.get(params['heat_id'])
     race_class = Database.RaceClass.query.get(heat.class_id)
 
-    race.cacheStatus = Database.CacheStatus.BUILDING
-    heat.cacheStatus = Database.CacheStatus.BUILDING
+    race.cacheStatus = token
+    heat.cacheStatus = token
     if race_class:
-        race_class.cacheStatus = Database.CacheStatus.BUILDING
-    Options.set("eventResults_cacheStatus", Database.CacheStatus.BUILDING)
+        race_class.cacheStatus == token
+    Options.set("eventResults_cacheStatus", token)
 
     # rebuild race result
     gevent.sleep()
-    race.results = calc_leaderboard(heat_id=params['heat_id'], round_id=params['round_id'])
-    race.cacheStatus = Database.CacheStatus.VALID
-    DB.session.commit()
+    if race.cacheStatus == token:
+        race.results = calc_leaderboard(heat_id=params['heat_id'], round_id=params['round_id'])
+        race.cacheStatus = CacheStatus.VALID
+        DB.session.commit()
 
     # rebuild heat summary
     gevent.sleep()
-    heat.results = calc_leaderboard(heat_id=params['heat_id'])
-    heat.cacheStatus = Database.CacheStatus.VALID
-    DB.session.commit()
+    if heat.cacheStatus == token:
+        heat.results = calc_leaderboard(heat_id=params['heat_id'])
+        heat.cacheStatus = CacheStatus.VALID
+        DB.session.commit()
 
     # rebuild class summary
     if race_class:
-        gevent.sleep()
-        race_class.results = calc_leaderboard(class_id=heat.class_id)
-        race_class.cacheStatus = Database.CacheStatus.VALID
-        DB.session.commit()
+        if race_class.cacheStatus == token:
+            gevent.sleep()
+            race_class.results = calc_leaderboard(class_id=heat.class_id)
+            race_class.cacheStatus = CacheStatus.VALID
+            DB.session.commit()
 
     # rebuild event summary
     gevent.sleep()
     Options.set("eventResults", json.dumps(calc_leaderboard()))
-    Options.set("eventResults_cacheStatus", Database.CacheStatus.VALID)
-
+    Options.set("eventResults_cacheStatus", CacheStatus.VALID)
 
 @SOCKET_IO.on('discard_laps')
 def on_discard_laps():
@@ -2547,21 +2557,21 @@ def emit_round_data(**params):
 def emit_round_data_thread(params, sid):
     with APP.test_request_context():
         '''Emits saved races to rounds page.'''
-        global EVENT_RESULTS_CACHE
-        global EVENT_RESULTS_CACHE_BUILDING
-        global EVENT_RESULTS_CACHE_VALID
+        global FULL_RESULTS_CACHE
+        global FULL_RESULTS_CACHE_BUILDING
+        global FULL_RESULTS_CACHE_VALID
 
-        if EVENT_RESULTS_CACHE_VALID: # Output existing calculated results
-            emit_payload = EVENT_RESULTS_CACHE
+        if FULL_RESULTS_CACHE_VALID: # Output existing calculated results
+            emit_payload = FULL_RESULTS_CACHE
 
-        elif EVENT_RESULTS_CACHE_BUILDING: # Don't restart calculation if another calculation thread exists
-            while EVENT_RESULTS_CACHE_BUILDING is True: # Pause thread until calculations are completed
+        elif FULL_RESULTS_CACHE_BUILDING: # Don't restart calculation if another calculation thread exists
+            while FULL_RESULTS_CACHE_BUILDING is True: # Pause thread until calculations are completed
                 gevent.sleep(1)
 
-            emit_payload = EVENT_RESULTS_CACHE
+            emit_payload = FULL_RESULTS_CACHE
 
         else:
-            EVENT_RESULTS_CACHE_BUILDING = True
+            FULL_RESULTS_CACHE_BUILDING = True
 
             heats = {}
             for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
@@ -2595,23 +2605,38 @@ def emit_round_data_thread(params, sid):
                             'node_index': pilotrace.node_index,
                             'laps': laps
                         })
-                    while round.cacheStatus is Database.CacheStatus.BUILDING:
-                        gevent.sleep()
+                    if round.cacheStatus == CacheStatus.INVALID:
+                        results = calc_leaderboard(heat_id=heat.heat_id, round_id=round.round_id)
+                        round.results = results
+                        round.cacheStatus = CacheStatus.VALID
+                        DB.session.commit()
+                    else:
+                        while round.cacheStatus != CacheStatus.VALID:
+                            gevent.idle()
+                        results = round.results
 
                     rounds.append({
                         'id': round.round_id,
                         'start_time_formatted': round.start_time_formatted,
                         'nodes': pilotraces,
-                        'leaderboard': round.results
+                        'leaderboard': results
                     })
-                while heatdata.cacheStatus is Database.CacheStatus.BUILDING:
-                    gevent.sleep()
+
+                if heatdata.cacheStatus == CacheStatus.INVALID:
+                    results = calc_leaderboard(heat_id=heat.heat_id)
+                    heatdata.results = results
+                    heatdata.cacheStatus = CacheStatus.VALID
+                    DB.session.commit()
+                else:
+                    while heatdata.cacheStatus != CacheStatus.VALID:
+                        gevent.idle()
+                    results = heatdata.results
 
                 heats[heat.heat_id] = {
                     'heat_id': heat.heat_id,
                     'note': heatdata.note,
                     'rounds': rounds,
-                    'leaderboard': heatdata.results
+                    'leaderboard': results
                 }
 
             gevent.sleep()
@@ -2623,36 +2648,59 @@ def emit_round_data_thread(params, sid):
             gevent.sleep()
             current_classes = {}
             for race_class in Database.RaceClass.query.all():
-                while race_class.cacheStatus is Database.CacheStatus.BUILDING:
-                    gevent.sleep()
+
+                if race_class.cacheStatus == CacheStatus.INVALID:
+                    results = calc_leaderboard(class_id=race_class.id)
+                    race_class.results = results
+                    race_class.cacheStatus = CacheStatus.VALID
+                    DB.session.commit()
+                else:
+                    while race_class.cacheStatus != CacheStatus.VALID:
+                        gevent.idle()
+                    results = race_class.results
 
                 current_class = {}
                 current_class['id'] = race_class.id
                 current_class['name'] = race_class.name
                 current_class['description'] = race_class.name
-                current_class['leaderboard'] = race_class.results
+                current_class['leaderboard'] = results
                 current_classes[race_class.id] = current_class
 
             gevent.sleep()
 
-            while Options.get("eventResults_cacheStatus") is Database.CacheStatus.BUILDING:
-                gevent.sleep()
+            if Options.get("eventResults_cacheStatus") == CacheStatus.INVALID:
+                results = calc_leaderboard()
+                Options.set("eventResults", json.dumps(results))
+                Options.set("eventResults_cacheStatus", CacheStatus.VALID)
+                DB.session.commit()
+            else:
+                while Options.get("eventResults_cacheStatus") != CacheStatus.VALID:
+                    gevent.idle()
+                results = json.loads(Options.get("eventResults"))
 
             emit_payload = {
                 'heats': heats,
                 'heats_by_class': heats_by_class,
                 'classes': current_classes,
-                'event_leaderboard': json.loads(Options.get("eventResults"))
+                'event_leaderboard': results
             }
 
-            EVENT_RESULTS_CACHE = emit_payload
-            EVENT_RESULTS_CACHE_VALID = True
-            EVENT_RESULTS_CACHE_BUILDING = False
+            FULL_RESULTS_CACHE = emit_payload
+            FULL_RESULTS_CACHE_VALID = True
+            FULL_RESULTS_CACHE_BUILDING = False
 
         if ('nobroadcast' in params):
             emit('round_data', emit_payload, namespace='/', room=sid)
         else:
             SOCKET_IO.emit('round_data', emit_payload, namespace='/')
+
+'''
+Results generation and caching
+'''
+
+class CacheStatus:
+    INVALID = 'invalid'
+    VALID = 'valid'
 
 def calc_leaderboard(**params):
     ''' Generates leaderboards '''
@@ -4159,6 +4207,8 @@ def db_reset_options_defaults():
     Options.set("colorNode_5", "#ff007f")
     Options.set("colorNode_6", "#3fff3f")
     Options.set("colorNode_7", "#00bfff")
+    # Event results cache
+    Options.set("eventResults_cacheStatus", CacheStatus.INVALID)
 
     server_log("Reset global settings")
 
