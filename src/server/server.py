@@ -1915,7 +1915,7 @@ def on_save_laps():
         'heat_id': RACE.current_heat,
         'round_id': new_race.round_id,
     }
-    gevent.spawn(build_results_caches, params)
+    gevent.spawn(build_race_results_caches, params)
 
     server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
     on_discard_laps() # Also clear the current laps
@@ -1971,53 +1971,11 @@ def on_resave_laps(data):
         'heat_id': data['heat_id'],
         'round_id': data['round_id'],
     }
-    gevent.spawn(build_results_caches, params)
+    gevent.spawn(build_race_results_caches, params)
 
     emit_round_data_notify()
     if int(Options.get('calibrationMode')):
         autoUpdateCalibration()
-
-def build_results_caches(params):
-    global FULL_RESULTS_CACHE
-    FULL_RESULTS_CACHE = False
-    token = "token_" + str(random.random())
-
-    race = Database.SavedRaceMeta.query.get(params['race_id'])
-    heat = Database.Heat.query.get(params['heat_id'])
-    race_class = Database.RaceClass.query.get(heat.class_id)
-
-    race.cacheStatus = token
-    heat.cacheStatus = token
-    if race_class:
-        race_class.cacheStatus == token
-    Options.set("eventResults_cacheStatus", token)
-
-    # rebuild race result
-    gevent.sleep()
-    if race.cacheStatus == token:
-        race.results = calc_leaderboard(heat_id=params['heat_id'], round_id=params['round_id'])
-        race.cacheStatus = CacheStatus.VALID
-        DB.session.commit()
-
-    # rebuild heat summary
-    gevent.sleep()
-    if heat.cacheStatus == token:
-        heat.results = calc_leaderboard(heat_id=params['heat_id'])
-        heat.cacheStatus = CacheStatus.VALID
-        DB.session.commit()
-
-    # rebuild class summary
-    if race_class:
-        if race_class.cacheStatus == token:
-            gevent.sleep()
-            race_class.results = calc_leaderboard(class_id=heat.class_id)
-            race_class.cacheStatus = CacheStatus.VALID
-            DB.session.commit()
-
-    # rebuild event summary
-    gevent.sleep()
-    Options.set("eventResults", json.dumps(calc_leaderboard()))
-    Options.set("eventResults_cacheStatus", CacheStatus.VALID)
 
 @SOCKET_IO.on('discard_laps')
 def on_discard_laps():
@@ -2557,6 +2515,8 @@ def emit_round_data(**params):
 def emit_round_data_thread(params, sid):
     with APP.test_request_context():
         '''Emits saved races to rounds page.'''
+        CACHE_TIMEOUT = 30
+
         global FULL_RESULTS_CACHE
         global FULL_RESULTS_CACHE_BUILDING
         global FULL_RESULTS_CACHE_VALID
@@ -2611,9 +2571,14 @@ def emit_round_data_thread(params, sid):
                         round.cacheStatus = CacheStatus.VALID
                         DB.session.commit()
                     else:
-                        while round.cacheStatus != CacheStatus.VALID:
+                        checkStatus = True
+                        while checkStatus:
                             gevent.idle()
-                        results = round.results
+                            if round.cacheStatus == CacheStatus.VALID:
+                                results = round.results
+                                break
+                            elif isinstance(round.cacheStatus, int) and round.cacheStatus < monotonic() + CACHE_TIMEOUT:
+                                checkStatus = False
 
                     rounds.append({
                         'id': round.round_id,
@@ -2628,9 +2593,14 @@ def emit_round_data_thread(params, sid):
                     heatdata.cacheStatus = CacheStatus.VALID
                     DB.session.commit()
                 else:
-                    while heatdata.cacheStatus != CacheStatus.VALID:
+                    checkStatus = True
+                    while checkStatus:
                         gevent.idle()
-                    results = heatdata.results
+                        if heatdata.cacheStatus == CacheStatus.VALID:
+                            results = heatdata.results
+                            break
+                        elif isinstance(heatdata.cacheStatus, int) and heatdata.cacheStatus < monotonic() + CACHE_TIMEOUT:
+                            checkStatus = False
 
                 heats[heat.heat_id] = {
                     'heat_id': heat.heat_id,
@@ -2655,9 +2625,14 @@ def emit_round_data_thread(params, sid):
                     race_class.cacheStatus = CacheStatus.VALID
                     DB.session.commit()
                 else:
-                    while race_class.cacheStatus != CacheStatus.VALID:
+                    checkStatus = True
+                    while checkStatus:
                         gevent.idle()
-                    results = race_class.results
+                        if race_class.cacheStatus == CacheStatus.VALID:
+                            results = race_class.results
+                            break
+                        elif isinstance(race_class.cacheStatus, int) and race_class.cacheStatus < monotonic() + CACHE_TIMEOUT:
+                            checkStatus = False
 
                 current_class = {}
                 current_class['id'] = race_class.id
@@ -2674,9 +2649,15 @@ def emit_round_data_thread(params, sid):
                 Options.set("eventResults_cacheStatus", CacheStatus.VALID)
                 DB.session.commit()
             else:
-                while Options.get("eventResults_cacheStatus") != CacheStatus.VALID:
+                checkStatus = True
+                while checkStatus:
                     gevent.idle()
-                results = json.loads(Options.get("eventResults"))
+                    status = Options.get("eventResults_cacheStatus")
+                    if status == CacheStatus.VALID:
+                        results = json.loads(Options.get("eventResults"))
+                        break
+                    elif isinstance(status, int) and status < monotonic() + CACHE_TIMEOUT:
+                        checkStatus = False
 
             emit_payload = {
                 'heats': heats,
@@ -2701,6 +2682,65 @@ Results generation and caching
 class CacheStatus:
     INVALID = 'invalid'
     VALID = 'valid'
+
+def normalize_cache_status():
+    ''' Check all caches and invalidate any paused builds '''
+    for race in Database.SavedRaceMeta.query.all():
+        if race.cacheStatus != CacheStatus.VALID:
+            race.cacheStatus = CacheStatus.INVALID
+
+    for heat in Database.Heat.query.all():
+        if heat.cacheStatus != CacheStatus.VALID:
+            heat.cacheStatus = CacheStatus.INVALID
+
+    for race_class in Database.RaceClass.query.all():
+        if race_class.cacheStatus != CacheStatus.VALID:
+            race_class.cacheStatus = CacheStatus.INVALID
+
+    if Options.get("eventResults_cacheStatus") != CacheStatus.VALID:
+        Options.set("eventResults_cacheStatus", CacheStatus.INVALID)
+
+def build_race_results_caches(params):
+    global FULL_RESULTS_CACHE
+    FULL_RESULTS_CACHE = False
+    token = monotonic()
+
+    race = Database.SavedRaceMeta.query.get(params['race_id'])
+    heat = Database.Heat.query.get(params['heat_id'])
+    race_class = Database.RaceClass.query.get(heat.class_id)
+
+    race.cacheStatus = token
+    heat.cacheStatus = token
+    if race_class:
+        race_class.cacheStatus == token
+    Options.set("eventResults_cacheStatus", token)
+
+    # rebuild race result
+    gevent.sleep()
+    if race.cacheStatus == token:
+        race.results = calc_leaderboard(heat_id=params['heat_id'], round_id=params['round_id'])
+        race.cacheStatus = CacheStatus.VALID
+        DB.session.commit()
+
+    # rebuild heat summary
+    gevent.sleep()
+    if heat.cacheStatus == token:
+        heat.results = calc_leaderboard(heat_id=params['heat_id'])
+        heat.cacheStatus = CacheStatus.VALID
+        DB.session.commit()
+
+    # rebuild class summary
+    if race_class:
+        if race_class.cacheStatus == token:
+            gevent.sleep()
+            race_class.results = calc_leaderboard(class_id=heat.class_id)
+            race_class.cacheStatus = CacheStatus.VALID
+            DB.session.commit()
+
+    # rebuild event summary
+    gevent.sleep()
+    Options.set("eventResults", json.dumps(calc_leaderboard()))
+    Options.set("eventResults_cacheStatus", CacheStatus.VALID)
 
 def calc_leaderboard(**params):
     ''' Generates leaderboards '''
@@ -4496,6 +4536,9 @@ if Database.Heat.query.first():
             RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
         else:
             RACE.node_teams[heatNode.node_index] = None
+
+# Normalize results caches
+normalize_cache_status()
 
 # Create LED object with appropriate configuration
 strip = None
