@@ -74,7 +74,7 @@ uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 #define RSSI_INPUT_PIN 0               //RSSI input from RX5808 (primary)
 #endif
 
-#define DISABLE_SERIAL 9
+#define DISABLE_SERIAL_PIN 9  //pull pin low (to GND) to disable serial port
 #define HARDWARE_SELECT_PIN_1 2
 #define HARDWARE_SELECT_PIN_2 3
 #define HARDWARE_SELECT_PIN_3 4
@@ -116,6 +116,7 @@ void setup()
 
     if (!NODE_NUMBER)
     {
+        pinMode(DISABLE_SERIAL_PIN, INPUT_PULLUP);
         // current hardware selection
         pinMode(HARDWARE_SELECT_PIN_1, INPUT_PULLUP);
         pinMode(HARDWARE_SELECT_PIN_2, INPUT_PULLUP);
@@ -199,7 +200,7 @@ void setup()
     pinMode(RX5808_CLK_PIN, OUTPUT);
     digitalWrite(RX5808_SEL_PIN, HIGH);
 
-    if (digitalRead(DISABLE_SERIAL) == HIGH)
+    if (digitalRead(DISABLE_SERIAL_PIN) == HIGH)
     {
         Serial.begin(115200);  // Start serial interface
         while (!Serial) {};  // Wait for the Serial port to initialise
