@@ -515,7 +515,11 @@
 					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '">')
 						selectbox.append('<option value="0">Unclassified</option>')
 						for (var k in msg.classes) {
-							selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
+							if (msg.classes[k].name) {
+								selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
+							} else {
+								selectbox.append('<option value="' + msg.classes[k].id + '">' + __('Class') + ' ' + msg.classes[k].id + '</option>')
+							}
 						}
 					if (heats.class_id > 0) {
 						selectbox.val(heats.class_id);
@@ -1540,6 +1544,7 @@
 		<h2>{{ __('Pilots') }}</h2>
 	</div>
 	<div class="panel-content">
+		<p class="form-note">{{ __('Altering pilot callsigns rebuilds all race results.') }}</p>
 		<ul class="pilots">
 			<li>{{ __('Loading...') }}</li>
 		</ul>
