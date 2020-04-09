@@ -73,7 +73,12 @@
 
 						var current_class = msg.classes[race_class];
 						if (current_class) {
-							class_panel_header.append('<h2><button class="no-style">' + current_class.name + '</button></h2>');
+							if (current_class.name) {
+								class_panel_header.append('<h2><button class="no-style">' + current_class.name + '</button></h2>');
+							} else {
+								class_panel_header.append('<h2><button class="no-style">' + __('Class') + ' ' + current_class.id + '</button></h2>');
+							}
+
 
 							var class_leaderboard = $('<div id="class_' + class_id + '_leaderboard" class="panel collapsing class-leaderboard">');
 
