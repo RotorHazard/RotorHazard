@@ -826,6 +826,7 @@ def connect_handler():
     if HEARTBEAT_THREAD is None:
         HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
         server_log('Heartbeat thread started')
+    emit_heat_data(nobroadcast=True)
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
