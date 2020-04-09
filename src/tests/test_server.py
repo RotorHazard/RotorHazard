@@ -23,7 +23,7 @@ class ServerTest(unittest.TestCase):
 
     def get_response(self, event):
         responses = self.client.get_received()
-        for resp in responses:
+        for resp in reversed(responses):
             if resp['name'] == event:
                 return resp['args'][0]
         self.fail('No response of type {0}'.format(event))
@@ -141,7 +141,7 @@ class ServerTest(unittest.TestCase):
         self.client.emit('alter_heat', data)
         self.client.emit('load_data', {'load_types': ['heat_data']})
         resp = self.get_response('heat_data')
-        # self.assertEquals(resp['heats'][1]['pilots'][0], data['pilot']) # pilot assignments now in heatnode
+        self.assertEquals(resp['heats'][1]['pilots'][0], data['pilot'])
         self.assertEquals(resp['heats'][1]['note'], data['note'])
         self.assertEquals(resp['heats'][1]['class_id'], data['class'])
 
