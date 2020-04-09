@@ -2031,8 +2031,26 @@ def on_set_current_heat(data):
     new_heat_id = data['heat']
     RACE.current_heat = new_heat_id
 
-    RACE.node_pilots = {}
-    RACE.node_teams = {}
+    RACE.node_pilots = {
+        '0': 0,
+        '1': 0,
+        '2': 0,
+        '3': 0,
+        '4': 0,
+        '5': 0,
+        '6': 0,
+        '7': 0,
+    }
+    RACE.node_teams = {
+        '0': None,
+        '1': None,
+        '2': None,
+        '3': None,
+        '4': None,
+        '5': None,
+        '6': None,
+        '7': None,
+    }
     for heatNode in Database.HeatNode.query.filter_by(heat_id=new_heat_id):
         RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
@@ -2850,7 +2868,7 @@ def calc_leaderboard(**params):
         if USE_CURRENT:
             laps = []
             for node_index in RACE.node_pilots:
-                if RACE.node_pilots[node_index] == pilot.id:
+                if RACE.node_pilots[node_index] == pilot.id and node_index < RACE.num_nodes:
                     laps = RACE.get_active_laps()[node_index]
                     break
 
