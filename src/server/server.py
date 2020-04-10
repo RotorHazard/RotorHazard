@@ -818,9 +818,6 @@ def api_options():
 def connect_handler():
     '''Starts the interface and a heartbeat thread for rssi.'''
     server_log('Client connected')
-    heartbeat_thread_function.iter_tracker = 0  # declare/init variables for HB function
-    heartbeat_thread_function.imdtabler_flag = False
-    heartbeat_thread_function.last_error_rep_time = monotonic()
     INTERFACE.start()
     global HEARTBEAT_THREAD
     if HEARTBEAT_THREAD is None:
@@ -3809,6 +3806,11 @@ def heartbeat_thread_function():
         except Exception as ex:
             server_log('Exception in Heartbeat thread loop:  ' + str(ex))
             gevent.sleep(0.500)
+
+# declare/initialize variables for heartbeat functions
+heartbeat_thread_function.iter_tracker = 0
+heartbeat_thread_function.imdtabler_flag = False
+heartbeat_thread_function.last_error_rep_time = monotonic()
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''
