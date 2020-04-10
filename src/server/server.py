@@ -86,24 +86,9 @@ DB.app = APP
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'])
 
-interface_type = os.environ.get('RH_INTERFACE', 'RH')
-INTERFACE = None
-try:
-    interfaceModule = importlib.import_module(interface_type + 'Interface')
-    INTERFACE = interfaceModule.get_hardware_interface(config=Config)
-except (ImportError, RuntimeError, IOError) as ex:
-    print 'Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex)
-if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
-    if not Config.SERIAL_PORTS or len(Config.SERIAL_PORTS) <= 0:
-        interfaceModule = importlib.import_module('MockInterface')
-        INTERFACE = interfaceModule.get_hardware_interface(config=Config)
-    else:
-        try:
-            importlib.import_module('serial')
-            print 'Unable to initialize specified serial node(s): {0}'.format(Config.SERIAL_PORTS)
-        except ImportError:
-            print "Unable to import library for serial node(s) - is 'pyserial' installed?"
-        sys.exit()
+INTERFACE = None  # initialized later
+CLUSTER = None    # initialized later
+Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 
 RACE = get_race_state() # For storing race management variables
 
@@ -118,27 +103,12 @@ print 'Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP)
 PROGRAM_START = monotonic()
 PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
 
+TONES_NONE = 0
+TONES_ONE = 1
+TONES_ALL = 2
+
 def monotonic_to_milliseconds(secs):
     return 1000.0*secs - PROGRAM_START_MILLIS_OFFSET
-
-
-Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
-
-def uniqueName(desiredName, otherNames):
-    if desiredName in otherNames:
-        newName = desiredName
-        match = re.match('^(.*) ([0-9]*)$', desiredName)
-        if match:
-            nextInt = int(match.group(2))
-            nextInt += 1
-            newName = match.group(1) + ' ' + str(nextInt)
-        else:
-            newName = desiredName + " 2"
-
-        newName = uniqueName(newName, otherNames)
-        return newName
-    else:
-        return desiredName
 
 #
 # Slaves
@@ -259,21 +229,6 @@ class Cluster:
             'last_contact': int(now-slave.lastContact) if slave.lastContact >= 0 else 'connection lost' \
             }] for slave in self.slaves})
 
-CLUSTER = Cluster()
-hasMirrors = False
-for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
-    if isinstance(slave_info, basestring):
-        slave_info = {'address': slave_info, 'mode': Slave.TIMER_MODE}
-    if 'timeout' not in slave_info:
-        slave_info['timeout'] = Config.GENERAL['SLAVE_TIMEOUT']
-    if 'mode' in slave_info and slave_info['mode'] == Slave.MIRROR_MODE:
-        hasMirrors = True
-    elif hasMirrors:
-        print '** Mirror slaves must be last - ignoring remaining slave config **'
-        break
-    slave = Slave(index, slave_info)
-    CLUSTER.addSlave(slave)
-
 #
 # Server Info
 #
@@ -338,9 +293,20 @@ def buildServerInfo():
 
     return serverInfo
 
-TONES_NONE = 0
-TONES_ONE = 1
-TONES_ALL = 2
+def uniqueName(desiredName, otherNames):
+    if desiredName in otherNames:
+        newName = desiredName
+        match = re.match('^(.*) ([0-9]*)$', desiredName)
+        if match:
+            nextInt = int(match.group(2))
+            nextInt += 1
+            newName = match.group(1) + ' ' + str(nextInt)
+        else:
+            newName = desiredName + " 2"
+        newName = uniqueName(newName, otherNames)
+        return newName
+    else:
+        return desiredName
 
 #
 # Option helpers
@@ -4478,6 +4444,39 @@ def init_LED_effects():
 #
 # Program Initialize
 #
+
+interface_type = os.environ.get('RH_INTERFACE', 'RH')
+try:
+    interfaceModule = importlib.import_module(interface_type + 'Interface')
+    INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+except (ImportError, RuntimeError, IOError) as ex:
+    print 'Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex)
+if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
+    if not Config.SERIAL_PORTS or len(Config.SERIAL_PORTS) <= 0:
+        interfaceModule = importlib.import_module('MockInterface')
+        INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+    else:
+        try:
+            importlib.import_module('serial')
+            print 'Unable to initialize specified serial node(s): {0}'.format(Config.SERIAL_PORTS)
+        except ImportError:
+            print "Unable to import library for serial node(s) - is 'pyserial' installed?"
+        sys.exit()
+
+CLUSTER = Cluster()
+hasMirrors = False
+for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
+    if isinstance(slave_info, basestring):
+        slave_info = {'address': slave_info, 'mode': Slave.TIMER_MODE}
+    if 'timeout' not in slave_info:
+        slave_info['timeout'] = Config.GENERAL['SLAVE_TIMEOUT']
+    if 'mode' in slave_info and slave_info['mode'] == Slave.MIRROR_MODE:
+        hasMirrors = True
+    elif hasMirrors:
+        print '** Mirror slaves must be last - ignoring remaining slave config **'
+        break
+    slave = Slave(index, slave_info)
+    CLUSTER.addSlave(slave)
 
 # set callback functions invoked by interface module
 INTERFACE.pass_record_callback = pass_record_callback
