@@ -98,7 +98,11 @@ if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
         interfaceModule = importlib.import_module('MockInterface')
         INTERFACE = interfaceModule.get_hardware_interface(config=Config)
     else:
-        print 'Unable to initialize specified serial node(s): {0}'.format(Config.SERIAL_PORTS)
+        try:
+            importlib.import_module('serial')
+            print 'Unable to initialize specified serial node(s): {0}'.format(Config.SERIAL_PORTS)
+        except ImportError:
+            print "Unable to import library for serial node(s) - is 'pyserial' installed?"
         sys.exit()
 
 RACE = get_race_state() # For storing race management variables
