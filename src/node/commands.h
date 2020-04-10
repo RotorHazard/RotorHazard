@@ -4,7 +4,7 @@
 #include "io.h"
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 22
+#define NODE_API_LEVEL 23
 
 struct Message_s
 {
