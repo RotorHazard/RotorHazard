@@ -12,6 +12,7 @@ gevent.monkey.patch_all()
 import io
 import os
 import sys
+import platform
 import glob
 import re
 import shutil
@@ -60,6 +61,7 @@ CLASS_ID_NONE = 0  # indicator value for unclassified heat
 FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
+IS_SYS_RASPBERRY_PI = False       # may be set by 'idAndLogSystemInfo()'
 
 FULL_RESULTS_CACHE = {} # Cache of complete results page
 FULL_RESULTS_CACHE_BUILDING = False # Whether results are being calculated
@@ -99,7 +101,6 @@ def diff_milliseconds(t2, t1):
 
 EPOCH_START = datetime(1970, 1, 1)
 PROGRAM_START_TIMESTAMP = diff_milliseconds(datetime.now(), EPOCH_START)
-print 'Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP)
 PROGRAM_START = monotonic()
 PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
 
@@ -308,6 +309,23 @@ def uniqueName(desiredName, otherNames):
     else:
         return desiredName
 
+def idAndLogSystemInfo():
+    global IS_SYS_RASPBERRY_PI
+    try:
+        modelStr = None
+        try:
+            fileHnd = open("/proc/device-tree/model", "r")
+            modelStr = fileHnd.read()
+            fileHnd.close()
+        except:
+            pass
+        if modelStr and "raspberry pi" in modelStr.lower():
+            IS_SYS_RASPBERRY_PI = True
+            server_log("Host machine: " + modelStr)
+        server_log("Host OS: {0} {1}".format(platform.system(), platform.release()))
+    except Exception as ex:
+        print "Error in idAndLogSystemInfo():  " + str(ex)
+    
 #
 # Option helpers
 #
@@ -4444,6 +4462,12 @@ def init_LED_effects():
 #
 # Program Initialize
 #
+
+server_log('RotorHazard v{0}'.format(RELEASE_VERSION))
+idAndLogSystemInfo()
+server_log('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
+server_log(Config.getInitResultStr())
+server_log(Language.getInitResultStr())
 
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:

@@ -34,6 +34,8 @@ GENERAL['SLAVE_TIMEOUT'] = 300 # seconds
 GENERAL['DEBUG'] = False
 GENERAL['CORS_ALLOWED_HOSTS'] = '*'
 
+InitResultStr = None
+
 # override defaults above with config from file
 try:
     with open(CONFIG_FILE_NAME, 'r') as f:
@@ -62,10 +64,13 @@ try:
     if 'SERIAL_PORTS' in ExternalConfig:
         SERIAL_PORTS.extend(ExternalConfig['SERIAL_PORTS'])
     GENERAL['configFile'] = 1
-    print 'Configuration file imported'
+    InitResultStr = "Using configuration file '{0}'".format(CONFIG_FILE_NAME)
 except IOError:
     GENERAL['configFile'] = 0
-    print 'No configuration file found, using defaults'
+    InitResultStr = "No configuration file found, using defaults"
 except ValueError as ex:
     GENERAL['configFile'] = -1
-    print 'Configuration file invalid, using defaults; error is: ' + str(ex)
+    InitResultStr = "Configuration file invalid, using defaults; error is: " + str(ex)
+
+def getInitResultStr():
+    return InitResultStr

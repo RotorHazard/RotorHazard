@@ -8,15 +8,19 @@ import json
 LANGUAGE_FILE_NAME = 'language.json'
 
 Languages = {}
+InitResultStr = None
 # Load language file
 try:
     with open(LANGUAGE_FILE_NAME, 'r') as f:
         Languages = json.load(f)
-    print 'Language file imported'
+    InitResultStr = 'Language file imported'
 except IOError:
-    print 'No language file found, using defaults'
+    InitResultStr = 'No language file found, using defaults'
 except ValueError:
-    print 'Language file invalid, using defaults'
+    InitResultStr = 'Language file invalid, using defaults'
+
+def getInitResultStr():
+    return InitResultStr
 
 def __(text, domain=''):
     # return translated string
