@@ -326,6 +326,21 @@ def idAndLogSystemInfo():
     except Exception as ex:
         print "Error in idAndLogSystemInfo():  " + str(ex)
     
+# Checks if the given file is owned by 'root' and changes owner to 'pi' user if so.
+# Returns True if file owner changed to 'pi' user; False if not.
+def checkSetFileOwnerPi(fileNameStr):
+    try:
+        if IS_SYS_RASPBERRY_PI:
+            # check that 'pi' user exists, file exists, and file owner is 'root'
+            if os.getlogin() == 'pi' and os.path.isfile(fileNameStr) and os.stat(fileNameStr).st_uid == 0:
+                subprocess.check_call(["sudo", "chown", "pi:pi", fileNameStr])
+                if os.stat(fileNameStr).st_uid != 0:
+                    return True
+                server_log("Unable to change owner in 'checkSetFileOwnerPi()', file: " + fileNameStr)
+    except Exception as ex:
+        server_log("Error in 'checkSetFileOwnerPi()':  " + str(ex))
+    return False
+
 #
 # Option helpers
 #
@@ -4524,6 +4539,10 @@ if not os.path.exists(DB_FILE_NAME):
     server_log('No database.db file found; creating initial database')
     db_init()
     db_inited_flag = True
+
+# check if DB file owned by 'root' and change owner to 'pi' user if so
+if checkSetFileOwnerPi(DB_FILE_NAME):
+    server_log("Changed DB-file owner from 'root' to 'pi' (file: '{0}')".format(DB_FILE_NAME))
 
 Options.primeGlobalsCache()
 
