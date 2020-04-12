@@ -1,6 +1,7 @@
 #include "rhtypes.h"
 #include "rssi.h"
 #include "commands.h"
+#include "resetNode.h"
 
 #ifdef __TEST__
   static uint8_t i2cSlaveAddress = 0x08;
@@ -31,6 +32,10 @@ byte getPayloadSize(uint8_t command)
             size = 1;
             break;
 
+        case RESET_PAIRED_NODE:  // reset paired node for ISP
+            size = 1;
+            break;
+
         default:  // invalid command
             LOG_ERROR("Invalid write command: ", command, HEX);
             size = -1;
@@ -41,6 +46,7 @@ byte getPayloadSize(uint8_t command)
 // Generic IO write command handler
 void handleWriteCommand(Message_t *msg, bool serialFlag)
 {
+    uint8_t u8val;
     uint16_t u16val;
     rssi_t rssiVal;
 
@@ -82,6 +88,11 @@ void handleWriteCommand(Message_t *msg, bool serialFlag)
 
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
             rssiEndCrossing();
+            break;
+
+        case RESET_PAIRED_NODE:  // reset paired node for ISP
+            u8val = ioBufferRead8(&(msg->buffer));
+            resetPairedNode(u8val);
             break;
 
         default:

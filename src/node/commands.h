@@ -4,7 +4,7 @@
 #include "io.h"
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 22
+#define NODE_API_LEVEL 23
 
 struct Message_s
 {
@@ -34,6 +34,7 @@ typedef struct Message_s Message_t;
 #define WRITE_EXIT_AT_LEVEL 0x72
 
 #define FORCE_END_CROSSING 0x78  // kill current crossing flag regardless of RSSI value
+#define RESET_PAIRED_NODE 0x79  // command to reset node for ISP
 
 #define FREQ_SET        0x01
 #define FREQ_CHANGED    0x02
