@@ -1,7 +1,7 @@
+#include "config.h"
 #include "rhtypes.h"
 #include "rssi.h"
 #include "commands.h"
-#include "resetNode.h"
 
 #ifdef __TEST__
   static uint8_t i2cSlaveAddress = 0x08;
@@ -41,6 +41,20 @@ byte getPayloadSize(uint8_t command)
             size = -1;
     }
     return size;
+}
+
+// Node reset for ISP; resets other node wired to this node's reset pin
+void resetPairedNode(int pinState)
+{
+    if (pinState)
+    {
+        pinMode(NODE_RESET_PIN, INPUT_PULLUP);
+    }
+    else
+    {
+        pinMode(NODE_RESET_PIN, OUTPUT);
+        digitalWrite(NODE_RESET_PIN, LOW);
+    }
 }
 
 // Generic IO write command handler

@@ -1,10 +1,4 @@
-#ifdef __TEST__
-  #define ATOMIC_BLOCK(x)
-  #define ATOMIC_RESTORESTATE
-#else
-  #include <util/atomic.h>
-#endif
-#include <Arduino.h>
+#include "config.h"
 #include "FastRunningMedian.h"
 #include "rssi.h"
 
