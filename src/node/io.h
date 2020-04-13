@@ -1,7 +1,7 @@
 #ifndef io_h
 #define io_h
 
-#include <Arduino.h>
+#include "config.h"
 
 struct Buffer_s
 {

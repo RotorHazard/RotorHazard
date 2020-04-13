@@ -1,3 +1,4 @@
+#include "config.h"
 #include "io.h"
 
 uint8_t ioBufferRead8(Buffer_t *buf)

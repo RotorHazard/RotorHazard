@@ -1,5 +1,5 @@
 #ifndef __TEST__
-#include <Arduino.h>
+#include "config.h"
 #include "rheeprom.h"
 
 //Writes 2-byte word to EEPROM at address.

@@ -20,7 +20,6 @@ typedef struct Message_s Message_t;
 #define READ_ADDRESS 0x00
 #define READ_FREQUENCY 0x03
 #define READ_LAP_STATS 0x05
-#define READ_FILTER_RATIO 0x20    // API_level>=10 uses 16-bit value
 #define READ_REVISION_CODE 0x22   // read NODE_API_LEVEL and verification value
 #define READ_NODE_RSSI_PEAK 0x23  // read 'state.nodeRssiPeak' value
 #define READ_NODE_RSSI_NADIR 0x24  // read 'state.nodeRssiNadir' value
@@ -29,7 +28,6 @@ typedef struct Message_s Message_t;
 #define READ_TIME_MILLIS 0x33     // read current 'millis()' value
 
 #define WRITE_FREQUENCY 0x51
-#define WRITE_FILTER_RATIO 0x70   // API_level>=10 uses 16-bit value
 #define WRITE_ENTER_AT_LEVEL 0x71
 #define WRITE_EXIT_AT_LEVEL 0x72
 

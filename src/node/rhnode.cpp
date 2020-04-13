@@ -26,63 +26,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <Arduino.h>
-#include <util/atomic.h>
+#include "config.h"
 #include <Wire.h>
 #include "rhtypes.h"
 #include "rssi.h"
 #include "commands.h"
 #include "rheeprom.h"
-#include "resetNode.h"
-
-// ******************************************************************** //
-
-// *** Node Setup - Set node number here (1-8): ***
-#define NODE_NUMBER 0
-
-// Set to 1-8 for manual selection.
-
-// Set to 0 for automatic selection via hardware pin.
-// See https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing
-
-// ******************************************************************** //
-
 
 // i2c address for node
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
 uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
-
-// Set to 0 for standard RotorHazard node wiring; set to 1 for ArduVidRx node wiring
-//   See here for an ArduVidRx example: http://www.etheli.com/ArduVidRx/hw/index.html#promini
-#define ARDUVIDRX_WIRING_FLAG 0
-
-#if ARDUVIDRX_WIRING_FLAG
-#define RX5808_DATA_PIN 10             //DATA output line to RX5808 module
-#define RX5808_SEL_PIN 11              //CLK output line to RX5808 module
-#define RX5808_CLK_PIN 12              //SEL output line to RX5808 module
-#define RSSI_INPUT_PIN A7              //RSSI input from RX5808 (primary)
-#elif CHORUS_WIRING_FLAG
-#define RX5808_DATA_PIN 10             //DATA output line to RX5808 module
-#define RX5808_SEL_PIN 11              //CLK output line to RX5808 module
-#define RX5808_CLK_PIN 12              //SEL output line to RX5808 module
-#define RSSI_INPUT_PIN A3               //RSSI input from RX5808 (primary)
-#else
-#define RX5808_DATA_PIN 11             //DATA output line to RX5808 module
-#define RX5808_SEL_PIN 10              //CLK output line to RX5808 module
-#define RX5808_CLK_PIN 13              //SEL output line to RX5808 module
-#define RSSI_INPUT_PIN 0               //RSSI input from RX5808 (primary)
-#endif
-
-#define DISABLE_SERIAL_PIN 9  //pull pin low (to GND) to disable serial port
-#define HARDWARE_SELECT_PIN_1 2
-#define HARDWARE_SELECT_PIN_2 3
-#define HARDWARE_SELECT_PIN_3 4
-#define LEGACY_HARDWARE_SELECT_PIN_1 4
-#define LEGACY_HARDWARE_SELECT_PIN_2 5
-#define LEGACY_HARDWARE_SELECT_PIN_3 6
-#define LEGACY_HARDWARE_SELECT_PIN_4 7
-#define LEGACY_HARDWARE_SELECT_PIN_5 8
 
 #define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
 #define EEPROM_ADRW_ENTERAT 2      //address for stored 'enterAtLevel'
@@ -96,7 +50,6 @@ uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 // dummy macro
 #define LOG_ERROR(...)
 
-
 static Message_t i2cMessage, serialMessage;
 
 // Defines for fast ADC reads
@@ -109,101 +62,92 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize);
 void i2cTransmit();
 void setRxModule(uint16_t frequency);
 
+#if (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
+// Configure the I2C address based on input-pin level.
+void configI2cSlaveAddress()
+{
+    // current hardware selection
+    pinMode(HARDWARE_SELECT_PIN_1, INPUT_PULLUP);
+    pinMode(HARDWARE_SELECT_PIN_2, INPUT_PULLUP);
+    pinMode(HARDWARE_SELECT_PIN_3, INPUT_PULLUP);
+    // legacy selection - DEPRECATED
+    pinMode(LEGACY_HARDWARE_SELECT_PIN_1, INPUT_PULLUP);
+    pinMode(LEGACY_HARDWARE_SELECT_PIN_2, INPUT_PULLUP);
+    pinMode(LEGACY_HARDWARE_SELECT_PIN_3, INPUT_PULLUP);
+    pinMode(LEGACY_HARDWARE_SELECT_PIN_4, INPUT_PULLUP);
+    pinMode(LEGACY_HARDWARE_SELECT_PIN_5, INPUT_PULLUP);
+
+    delay(100);  // delay a bit a let pin levels settle before reading inputs
+
+    // check if legacy spec pins are in use (2-5 only)
+    if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == LOW ||
+        digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == LOW ||
+        digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == LOW ||
+        digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == LOW)
+    {
+        // legacy spec
+        if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_1) == HIGH)
+        {
+            if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == LOW)
+                i2cSlaveAddress = 8;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == LOW)
+                i2cSlaveAddress = 10;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == LOW)
+                i2cSlaveAddress = 12;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == LOW)
+                i2cSlaveAddress = 14;
+        }
+        else
+        {
+            if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == LOW)
+                i2cSlaveAddress = 16;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == LOW)
+                i2cSlaveAddress = 18;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == LOW)
+                i2cSlaveAddress = 20;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == LOW)
+                i2cSlaveAddress = 22;
+        }
+    }
+    else
+    {   // use standard selection
+        i2cSlaveAddress = 0;
+        if (digitalRead(HARDWARE_SELECT_PIN_1) == LOW)
+            i2cSlaveAddress |= 1;
+        if (digitalRead(HARDWARE_SELECT_PIN_2) == LOW)
+            i2cSlaveAddress |= 2;
+        if (digitalRead(HARDWARE_SELECT_PIN_3) == LOW)
+            i2cSlaveAddress |= 4;
+        i2cSlaveAddress = 8 + (i2cSlaveAddress * 2);
+    }
+}
+#endif  // (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
+
 // Initialize program
 void setup()
 {
-    initNodeResetPin();
-
-    if (!NODE_NUMBER)
-    {
-        pinMode(DISABLE_SERIAL_PIN, INPUT_PULLUP);
-        // current hardware selection
-        pinMode(HARDWARE_SELECT_PIN_1, INPUT_PULLUP);
-        pinMode(HARDWARE_SELECT_PIN_2, INPUT_PULLUP);
-        pinMode(HARDWARE_SELECT_PIN_3, INPUT_PULLUP);
-        // legacy selection - DEPRECATED
-        pinMode(LEGACY_HARDWARE_SELECT_PIN_1, INPUT_PULLUP);
-        pinMode(LEGACY_HARDWARE_SELECT_PIN_2, INPUT_PULLUP);
-        pinMode(LEGACY_HARDWARE_SELECT_PIN_3, INPUT_PULLUP);
-        pinMode(LEGACY_HARDWARE_SELECT_PIN_4, INPUT_PULLUP);
-        pinMode(LEGACY_HARDWARE_SELECT_PIN_5, INPUT_PULLUP);
-
-        // check if legacy spec pins are in use (2-5 only)
-        if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == LOW
-        || digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == LOW
-        || digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == LOW
-        || digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == LOW)
-        {
-            // legacy spec
-            if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_1) == HIGH)
-            {
-                if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == LOW)
-                {
-                    i2cSlaveAddress = 8;
-                }
-                else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == LOW)
-                {
-                    i2cSlaveAddress = 10;
-                }
-                else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == LOW)
-                {
-                    i2cSlaveAddress = 12;
-                }
-                else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == LOW)
-                {
-                    i2cSlaveAddress = 14;
-                }
-            }
-            else
-            {
-                if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == LOW)
-                {
-                    i2cSlaveAddress = 16;
-                }
-                else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == LOW)
-                {
-                    i2cSlaveAddress = 18;
-                }
-                else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == LOW)
-                {
-                    i2cSlaveAddress = 20;
-                }
-                else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == LOW)
-                {
-                    i2cSlaveAddress = 22;
-                }
-            }
-        } else {
-            // use standard selection
-
-            i2cSlaveAddress = 0;
-
-            if (digitalRead(HARDWARE_SELECT_PIN_1) == LOW)
-            {
-                i2cSlaveAddress |= 1;
-            }
-            if (digitalRead(HARDWARE_SELECT_PIN_2) == LOW)
-            {
-                i2cSlaveAddress |= 2;
-            }
-            if (digitalRead(HARDWARE_SELECT_PIN_3) == LOW)
-            {
-                i2cSlaveAddress |= 4;
-            }
-
-            i2cSlaveAddress = 8 + (i2cSlaveAddress * 2);
-        }
-    }
-
-    pinMode(RX5808_SEL_PIN, OUTPUT);  // RX5808 comms
+    // initialize pins for RX5808 module communications
+    pinMode(RX5808_SEL_PIN, OUTPUT);
     pinMode(RX5808_DATA_PIN, OUTPUT);
     pinMode(RX5808_CLK_PIN, OUTPUT);
     digitalWrite(RX5808_SEL_PIN, HIGH);
 
+    // init pin used to reset paired Arduino via RESET_PAIRED_NODE command
+    pinMode(NODE_RESET_PIN, INPUT_PULLUP);
+
+    // init pin that can be pulled low (to GND) to disable serial port
+    pinMode(DISABLE_SERIAL_PIN, INPUT_PULLUP);
+
+#if (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
+    configI2cSlaveAddress();
+#else
+    delay(100);  // delay a bit a let pin level settle before reading input
+#endif
+
     if (digitalRead(DISABLE_SERIAL_PIN) == HIGH)
     {
-        Serial.begin(115200);  // Start serial interface
-        while (!Serial) {};  // Wait for the Serial port to initialise
+        Serial.begin(SERIAL_BAUD_RATE);  // Start serial interface
+        while (!Serial) {};  // Wait for the Serial port to initialize
     }
 
     i2cInitialize(false);  // setup I2C slave address and callbacks
