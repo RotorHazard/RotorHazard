@@ -1644,8 +1644,19 @@ def on_get_pi_time():
 
 @SOCKET_IO.on('stage_race')
 def on_stage_race():
-    CLUSTER.emit('stage_race')
     global RACE
+    valid_pilots = False
+    heatNodes = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat).all()
+    for heatNode in heatNodes:
+        if heatNode.node_index < RACE.num_nodes:
+            if heatNode.pilot_id != PILOT_ID_NONE:
+                valid_pilots = True
+                break
+
+    if valid_pilots is False:
+        emit_priority_message(__('No valid pilots in race'), True, nobroadcast=True)
+
+    CLUSTER.emit('stage_race')
     if RACE.race_status == RaceStatus.READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
         global FULL_RESULTS_CACHE_VALID
