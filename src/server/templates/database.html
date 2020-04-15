@@ -88,34 +88,6 @@
     </tbody>
 </table>
 
-<h2>{{ __('Current Laps') }}</h2>
-<table class="table">
-    <thead>
-        <tr>
-            <th>{{ __('ID') }}</th>
-            <th>{{ __('Node Index') }}</th>
-            <th>{{ __('Pilot ID') }}</th>
-            <th>{{ __('Lap ID') }}</th>
-            <th>{{ __('Lap Time Stamp') }}</th>
-            <th>{{ __('Lap Time') }}</th>
-            <th>{{ __('Lap Time Formatted') }}</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for currentlap in currentlaps.query.all() %}
-        <tr>
-            <td>{{ currentlap.id }}</td>
-            <td>{{ currentlap.node_index }}</td>
-            <td>{{ currentlap.pilot_id }}</td>
-            <td>{{ currentlap.lap_id }}</td>
-            <td>{{ currentlap.lap_time_stamp }}</td>
-            <td>{{ currentlap.lap_time }}</td>
-            <td>{{ currentlap.lap_time_formatted }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
 <h2>{{ __('Saved Races') }}</h2>
 <table class="table">
     <thead>
