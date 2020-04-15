@@ -4337,8 +4337,8 @@ def query_table_data(class_type, filter_crit=None, filter_value=0):
         if filter_crit is None:
             return class_type.query.all()
         return class_type.query.filter(filter_crit==filter_value).all()
-    except Exception:
-        server_log('Unable to read "{0}" table from previous database'.format(class_type.__name__))
+    except Exception as ex:
+        server_log('Unable to read "{0}" table from previous database: {1}'.format(class_type.__name__), ex)
 
 def restore_table(class_type, table_query_data, match_name='name'):
     if table_query_data:
