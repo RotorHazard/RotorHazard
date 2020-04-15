@@ -1236,8 +1236,8 @@ def on_add_pilot():
     DB.session.add(new_pilot)
     DB.session.flush()
     DB.session.refresh(new_pilot)
-    new_pilot.name = __('Pilot %d Name') % (new_pilot.id)
-    new_pilot.callsign = __('Callsign %d') % (new_pilot.id)
+    new_pilot.name = __('~Pilot %d Name') % (new_pilot.id)
+    new_pilot.callsign = __('~Callsign %d') % (new_pilot.id)
     new_pilot.team = DEF_TEAM_NAME
     new_pilot.phonetic = ''
     DB.session.commit()
