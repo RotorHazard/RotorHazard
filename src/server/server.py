@@ -325,7 +325,7 @@ def idAndLogSystemInfo():
         server_log("Host OS: {0} {1}".format(platform.system(), platform.release()))
     except Exception as ex:
         print "Error in idAndLogSystemInfo():  " + str(ex)
-    
+
 # Checks if the given file is owned by 'root' and changes owner to 'pi' user if so.
 # Returns True if file owner changed to 'pi' user; False if not.
 def checkSetFileOwnerPi(fileNameStr):
@@ -762,6 +762,11 @@ def api_race(heat_id, round_id):
         else:
             nodepilot = None
 
+        if Options.get('pilotSort') == 'callsign':
+            pilot_data.sort(key=lambda x: (x['callsign'], x['name']))
+        else:
+            pilot_data.sort(key=lambda x: (x['name'], x['callsign']))
+
         pilotraces.append({
             'callsign': nodepilot,
             'pilot_id': pilotrace.pilot_id,
@@ -771,6 +776,7 @@ def api_race(heat_id, round_id):
     payload = {
         'start_time_formatted': race.start_time_formatted,
         'nodes': pilotraces,
+        'sort': Options.get('pilotSort'),
         'leaderboard': calc_leaderboard(heat_id=heat_id, round_id=round_id)
     }
 
@@ -3179,10 +3185,16 @@ def emit_heat_data(**params):
             'name': pilot.name
             })
 
+    if Options.get('pilotSort') == 'callsign':
+        pilots.sort(key=lambda x: (x['callsign'], x['name']))
+    else:
+        pilots.sort(key=lambda x: (x['name'], x['callsign']))
+
     emit_payload = {
         'heats': current_heats,
         'pilot_data': pilots,
         'classes': current_classes,
+        'pilotSort': Options.get('pilotSort'),
     }
     if ('nobroadcast' in params):
         emit('heat_data', emit_payload)
@@ -3246,6 +3258,11 @@ def emit_pilot_data(**params):
             'name': pilot.name,
             'team_options': opts_str
         })
+
+        if Options.get('pilotSort') == 'callsign':
+            pilots_list.sort(key=lambda x: (x['callsign'], x['name']))
+        else:
+            pilots_list.sort(key=lambda x: (x['name'], x['callsign']))
 
     emit_payload = {
         'pilots': pilots_list
