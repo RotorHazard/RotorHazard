@@ -1355,7 +1355,13 @@ function build_leaderboard(leaderboard, display_type, meta) {
 			var lap = leaderboard[i].fastest_lap;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
-			row.append('<td class="fast" data-source="'+ leaderboard[i].fastest_lap_source +'">'+ lap +'</td>');
+			if (leaderboard[i].fastest_lap_source) {
+				row.append('<td class="fast" title="'+ leaderboard[i].fastest_lap_source +'">'+ lap +'</td>');
+				row.data('source', leaderboard[i].fastest_lap_source);
+			} else {
+				row.append('<td class="fast">'+ lap +'</td>');
+			}
+
 		}
 		if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
@@ -1364,7 +1370,12 @@ function build_leaderboard(leaderboard, display_type, meta) {
 			var lap = leaderboard[i].consecutives;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
-			row.append('<td class="consecutive" data-source="'+ leaderboard[i].consecutives_source +'">'+ lap +'</td>');
+			if (leaderboard[i].consecutives_source) {
+				row.append('<td class="consecutive" title="'+ leaderboard[i].consecutives_source +'">'+ lap +'</td>');
+				row.data('source', leaderboard[i].consecutives_source);
+			} else {
+				row.append('<td class="consecutive">'+ lap +'</td>');
+			}
 		}
 
 		body.append(row);
