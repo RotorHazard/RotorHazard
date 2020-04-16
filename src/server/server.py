@@ -2934,6 +2934,7 @@ def calc_leaderboard(**params):
     average_lap = []
     fastest_lap = []
     consecutives = []
+    fastest_lap_source = []
 
     for i, pilot in enumerate(pilot_ids):
         gevent.sleep()
@@ -2999,19 +3000,36 @@ def calc_leaderboard(**params):
         # Get the fastest lap time for each pilot
         if max_laps[i] is 0:
             fastest_lap.append(0) # Add zero if no laps completed
+            fastest_lap_source.append(None)
         else:
             if USE_CURRENT:
                 timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
 
                 fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
+                fastest_lap_source.append(None)
             else:
-                stat_query = DB.session.query(DB.func.min(Database.SavedRaceLap.lap_time)) \
+                stat_query = DB.session.query(DB.func.min(Database.SavedRaceLap.lap_time).label('time'),Database.SavedRaceLap.race_id) \
                     .filter(Database.SavedRaceLap.pilot_id == pilot, \
                         Database.SavedRaceLap.deleted != 1, \
                         Database.SavedRaceLap.race_id.in_(racelist), \
-                        ~Database.SavedRaceLap.id.in_(holeshots[i]))
+                        ~Database.SavedRaceLap.id.in_(holeshots[i])).one()
 
-                fast_lap = stat_query.scalar()
+                fast_lap = stat_query.time
+
+                if USE_HEAT:
+                    fastest_lap_source.append(None)
+                else:
+                    source_query = Database.SavedRaceMeta.query.get(stat_query.race_id)
+                    fast_lap_round = source_query.round_id
+                    fast_lap_heat = source_query.heat_id
+                    fast_lap_heatnote = Database.Heat.query.get(fast_lap_heat).note
+
+                    if fast_lap_heatnote:
+                        source_text = fast_lap_heatnote + ' / ' + __('Round') + ' ' + str(fast_lap_round)
+                    else:
+                        source_text = __('Heat') + ' ' + str(fast_lap_heat) + ' / ' + __('Round') + ' ' + str(fast_lap_round)
+
+                    fastest_lap_source.append(source_text)
 
             fastest_lap.append(fast_lap)
 
@@ -3055,7 +3073,7 @@ def calc_leaderboard(**params):
 
     gevent.sleep()
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives)
+    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source)
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
@@ -3072,6 +3090,7 @@ def calc_leaderboard(**params):
             'fastest_lap': time_format(row[4]),
             'team_name': row[5],
             'consecutives': time_format(row[6]),
+            'fastest_lap_source': row[7],
         })
 
     gevent.sleep()
@@ -3088,6 +3107,7 @@ def calc_leaderboard(**params):
             'fastest_lap': time_format(row[4]),
             'team_name': row[5],
             'consecutives': time_format(row[6]),
+            'fastest_lap_source': row[7],
         })
 
     gevent.sleep()
@@ -3104,6 +3124,7 @@ def calc_leaderboard(**params):
             'fastest_lap': time_format(row[4]),
             'team_name': row[5],
             'consecutives': time_format(row[6]),
+            'fastest_lap_source': row[7],
         })
 
     leaderboard_output = {

@@ -1355,7 +1355,7 @@ function build_leaderboard(leaderboard, display_type, meta) {
 			var lap = leaderboard[i].fastest_lap;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
-			row.append('<td class="fast">'+ lap +'</td>');
+			row.append('<td class="fast" title="'+ leaderboard[i].fastest_lap_source +'">'+ lap +'</td>');
 		}
 		if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
