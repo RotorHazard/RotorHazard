@@ -325,7 +325,7 @@ def idAndLogSystemInfo():
         server_log("Host OS: {0} {1}".format(platform.system(), platform.release()))
     except Exception as ex:
         print "Error in idAndLogSystemInfo():  " + str(ex)
-    
+
 # Checks if the given file is owned by 'root' and changes owner to 'pi' user if so.
 # Returns True if file owner changed to 'pi' user; False if not.
 def checkSetFileOwnerPi(fileNameStr):
@@ -2714,6 +2714,7 @@ class CacheStatus:
     INVALID = 'invalid'
     VALID = 'valid'
 
+@SOCKET_IO.on('wipe_cache')
 def invalidate_all_caches():
     ''' Check all caches and invalidate any paused builds '''
     for race in Database.SavedRaceMeta.query.all():
