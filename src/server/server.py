@@ -325,7 +325,7 @@ def idAndLogSystemInfo():
         server_log("Host OS: {0} {1}".format(platform.system(), platform.release()))
     except Exception as ex:
         print "Error in idAndLogSystemInfo():  " + str(ex)
-    
+
 # Checks if the given file is owned by 'root' and changes owner to 'pi' user if so.
 # Returns True if file owner changed to 'pi' user; False if not.
 def checkSetFileOwnerPi(fileNameStr):
@@ -2091,6 +2091,14 @@ def on_delete_lap(data):
     RACE.node_laps[node_index][lap_index]['deleted'] = True
 
     time = RACE.node_laps[node_index][lap_index]['lap_time_stamp']
+
+    lap_number = 0
+    for lap in RACE.node_laps[node_index]:
+        if not lap['deleted']:
+            lap['lap_number'] = lap_number
+            lap_number += 1
+        else:
+            lap['lap_number'] = None
 
     db_last = False
     db_next = False
