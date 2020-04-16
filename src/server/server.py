@@ -2936,6 +2936,7 @@ def calc_leaderboard(**params):
     fastest_lap = []
     consecutives = []
     fastest_lap_source = []
+    consecutives_source = []
 
     for i, pilot in enumerate(pilot_ids):
         gevent.sleep()
@@ -3009,7 +3010,7 @@ def calc_leaderboard(**params):
                 fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
                 fastest_lap_source.append(None)
             else:
-                stat_query = DB.session.query(DB.func.min(Database.SavedRaceLap.lap_time).label('time'),Database.SavedRaceLap.race_id) \
+                stat_query = DB.session.query(DB.func.min(Database.SavedRaceLap.lap_time).label('time'), Database.SavedRaceLap.race_id) \
                     .filter(Database.SavedRaceLap.pilot_id == pilot, \
                         Database.SavedRaceLap.deleted != 1, \
                         Database.SavedRaceLap.race_id.in_(racelist), \
@@ -3061,20 +3062,40 @@ def calc_leaderboard(**params):
                     if len(thisrace) >= 3:
                         for j in range(len(thisrace) - 2):
                             gevent.sleep()
-                            all_consecutives.append(thisrace[j].lap_time + thisrace[j+1].lap_time + thisrace[j+2].lap_time)
+                            all_consecutives.append({
+                                'time': thisrace[j].lap_time + thisrace[j+1].lap_time + thisrace[j+2].lap_time,
+                                'race_id': race_id
+                            })
 
             # Sort consecutives
-            all_consecutives = sorted(all_consecutives, key = lambda x: (x is None, x))
+            all_consecutives = sorted(all_consecutives, key = lambda x: (x['time'] is None, x['time']))
             # Get lowest not-none value (if any)
 
             if all_consecutives:
-                consecutives.append(all_consecutives[0])
+                consecutives.append(all_consecutives[0]['time'])
+
+                if USE_HEAT:
+                    consecutives_source.append(None)
+                else:
+                    source_query = Database.SavedRaceMeta.query.get(all_consecutives[0]['race_id'])
+                    fast_lap_round = source_query.round_id
+                    fast_lap_heat = source_query.heat_id
+                    fast_lap_heatnote = Database.Heat.query.get(fast_lap_heat).note
+
+                    if fast_lap_heatnote:
+                        source_text = fast_lap_heatnote + ' / ' + __('Round') + ' ' + str(fast_lap_round)
+                    else:
+                        source_text = __('Heat') + ' ' + str(fast_lap_heat) + ' / ' + __('Round') + ' ' + str(fast_lap_round)
+
+                    consecutives_source.append(source_text)
+
             else:
                 consecutives.append(None)
+                consecutives_source.append(None)
 
     gevent.sleep()
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source)
+    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source)
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
@@ -3092,6 +3113,7 @@ def calc_leaderboard(**params):
             'team_name': row[5],
             'consecutives': time_format(row[6]),
             'fastest_lap_source': row[7],
+            'consecutives_source': row[8],
         })
 
     gevent.sleep()
@@ -3109,6 +3131,7 @@ def calc_leaderboard(**params):
             'team_name': row[5],
             'consecutives': time_format(row[6]),
             'fastest_lap_source': row[7],
+            'consecutives_source': row[8],
         })
 
     gevent.sleep()
@@ -3126,6 +3149,7 @@ def calc_leaderboard(**params):
             'team_name': row[5],
             'consecutives': time_format(row[6]),
             'fastest_lap_source': row[7],
+            'consecutives_source': row[8],
         })
 
     leaderboard_output = {
