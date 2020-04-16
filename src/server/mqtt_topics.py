@@ -27,7 +27,7 @@ receiver_active_topic = ("rx/cv1/active/%s","receiver_serial_num")
 receiver_request_all_topic = ("rx/cv1/req_all", None)
 
 # Make a request to all nodes at a node number (all nodes at that node_number reply)
-receiver_request_node_all_topic = ("rx/cv1/req_node/%d", "node_number")
+receiver_request_node_all_topic = ("rx/cv1/req_node_all/%d", "node_number")
 
 # Make a request to the active node at a node index
 # Only the active receiver at that node replies
@@ -41,13 +41,16 @@ receiver_request_targeted_topic = ("rx/cv1/req_target/%s","receiver_serial_num")
         # Subscribe Topics
 
 # Response for all
-receiver_response_all = "rx/cv1/resp_all"
+receiver_response_all_topic = ("rx/cv1/resp_all", None)
 
 # Response for a node number
-receiver_response_node_topic = ("rx/cv1/resp_node/%s", "*")
+receiver_response_node_topic = ("rx/cv1/resp_node/%s", "+")
+
+# Response for a specific recevier
+receiver_response_targeted_topic = ("rx/cv1/resp_target/%s", "+")
 
 # Connection status for receivers
-receiver_connection = ("rxcn/%s", "node_number")
+receiver_connection_topic = ("rxcn/%s", "+")
 
 # TODO status topics
 
@@ -67,8 +70,9 @@ mqtt_publish_topics = {
 mqtt_subscribe_topics = {
     "cv1" :
         {
-            "receiver_response_all":receiver_response_all,
-            "receiver_response_node_topic":receiver_response_node_topic,
-            "receiver_connection":receiver_connection
+            "receiver_response_all":receiver_response_all_topic,
+            "receiver_response_node":receiver_response_node_topic,
+            "receiver_connection":receiver_connection_topic,
+            "receiver_response_targeted":receiver_response_targeted_topic
         }
 }
