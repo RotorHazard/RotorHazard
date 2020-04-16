@@ -11,6 +11,8 @@ import json
 from mqtt_topics import mqtt_publish_topics as mqtt_sub_topics
 from mqtt_topics import mqtt_subscribe_topics as mqtt_pub_topics
 
+from paho.mqtt.client import topic_matches_sub
+
 
 
 import time
@@ -21,8 +23,12 @@ class MQTT_Client:
     def __init__(self, client_id, broker_ip, subscribe_topics=None, node_number=0,debug=False):
         self._client_id = client_id
         self._broker_ip = broker_ip
-        self._subscribe_topics_at_start = subscribe_topics
+        self._subscribe_topics_dict_at_start = subscribe_topics
+        self._subscribed_topics = {}
         self._debug = debug
+        #TODO I don't think the node number should be in here.
+        # subscribed topics should be supplied preformatted using a helper written here
+
         if 0 <= node_number <= 7:
             self._node_number = node_number
         else:
@@ -42,10 +48,12 @@ class MQTT_Client:
         self.loop_forever = self._client.loop_forever
         self.message_callback_add = self._client.message_callback_add
         self.message_callback_remove = self._client.message_callback_remove
+        self.subscribe = self._client.subscribe
 
     def initialize(self):
         self._client.on_connect = self.on_connect
         self._client.on_disconnect = self.on_disconnect
+        # self._client.on_subscribe = self.on_subscribe
 
         try:
             self._client.connect(self._broker_ip)
@@ -60,10 +68,17 @@ class MQTT_Client:
      
 
     def on_message(self,client, userdata, message):
-        print("Warning: Uncaptured message topic received: \n\t*Topic '%s'\n\t*Message:'%s'"%(message.topic,message.payload))
+        print("Warning: Uncaptured message topic received: \n\t*Topic '%s'\n\t*Message:'%s'"%(message.topic,message.payload.strip()))
         print("\tIf this happens, make sure to bind the message to a function if subscribed to it.")
 
+        # client.topic_matches_sub("cv/+","cv/a")
+        if topic_matches_sub(self._subscribed_topics["receiver_response_targeted"] , message.topic):
+            print("on_message TODO sloppy fallback. Captured direct response from ", message.topic.split('/')[-1])
+            #try parsing
 
+
+    def on_subscribe(self,client, userdata, mid, granted_qos):
+        raise NotImplementedError
 
 
 
@@ -82,6 +97,7 @@ class MQTT_Client:
                                   self._last_will["payload"],
                                   1,    #QOS 1 guaranteed
                                   retain=False)
+    
     def _bind_message_callbacks(self):
         self._client.on_message = self.on_message
 
@@ -90,16 +106,16 @@ class MQTT_Client:
         self._client.on_log = self.on_log
 
     def _subscribe_start(self):
-        """ Subscribe to a bunch of topics in self._subscribe_topics_at_start
+        """ Subscribe to a bunch of topics in self._subscribe_topics_dict_at_start
         substituting in the node number and receiver serial number as needed
         """
-        if self._subscribe_topics_at_start is not None:
-            subscribe_topics = self._subscribe_topics_at_start
+        if self._subscribe_topics_dict_at_start is not None:
+            subscribe_topics = self._subscribe_topics_dict_at_start
              # Subscibe to all topics
             for rec_ver in subscribe_topics:
                 rec_topics = subscribe_topics[rec_ver]
-                for rec_topic in rec_topics:
-                    rec_topic = rec_topics[rec_topic]
+                for topic_key in rec_topics:
+                    rec_topic = rec_topics[topic_key]
                     # Format with subtopics if they exist
                     
                     formatter_name = rec_topic[1]
@@ -108,7 +124,7 @@ class MQTT_Client:
                         rec_topic = rec_topic[0]%self._node_number
                     elif formatter_name == "receiver_serial_num":
                         rec_topic = rec_topic[0]%self._client_id
-                    elif formatter_name in ["#","*"]:   # subscibe to all at level (*) or recursively all (#)
+                    elif formatter_name in ["#","+"]:   # subscibe to all at single level (+) or recursively all (#)
                         rec_topic = rec_topic[0]%formatter_name
                     elif formatter_name is None:
                         rec_topic = rec_topic[0]
@@ -120,7 +136,15 @@ class MQTT_Client:
                         raise TypeError("rec_topic not of correct type: %s"%rec_topic)
                     
                     self._client.subscribe(rec_topic)
-                    print("\tSubscribed to %s"% rec_topic)
+                    # TODO use a factory method to add callbacks dynamically
+                    # https://www.freecodecamp.org/news/dynamic-class-definition-in-python-3e6f7d20a381/
+                    # self.message_callback_add() because we already bound that locally to this class
+                    #
+                    # For now, use on_message by comparing a list of topics and performing actions
+                    # or see _add_message_callbacks in VRxCV_emulator
+                    print("\tSubscribing to %s"% rec_topic)
+                    self._subscribed_topics[topic_key] = rec_topic
+
 
         
 
@@ -154,7 +178,12 @@ class MQTT_Client:
 
 
 
+"""
+This emulates the MQTT messaging AND the clearview. 
 
+If you have an ESP32, flash the ESP32 with the software and hook up a serial port.
+Then, run the clearview's simulator linked to the serial port
+"""
 class VRxCV_emulator:
     def __init__(self, protocol_version, serial_num, broker_ip, node_number):
         self._protocol_version = protocol_version
