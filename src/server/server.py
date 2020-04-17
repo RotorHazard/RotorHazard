@@ -1170,16 +1170,23 @@ def on_delete_heat(data):
         heat_id = data['heat']
         heat = Database.Heat.query.get(heat_id)
         heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
-        DB.session.delete(heat)
-        for heatnode in heatnodes:
-            DB.session.delete(heatnode)
-        DB.session.commit()
 
-        if RACE.current_heat == heat:
-            RACE.current_heat = Database.Heat.query.first()
+        has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
 
-        server_log('Heat {0} deleted'.format(heat))
-        emit_heat_data(noself=True)
+        if has_race:
+            server_log('Refusing to delete heat {0}: is in use'.format(heat.id))
+        else:
+            DB.session.delete(heat)
+            for heatnode in heatnodes:
+                DB.session.delete(heatnode)
+            DB.session.commit()
+
+            if RACE.current_heat == heat:
+                RACE.current_heat = Database.Heat.query.first()
+
+            server_log('Heat {0} deleted'.format(heat.id))
+            emit_heat_data(noself=True)
+
     else:
         server_log('Refusing to delete only heat')
 
@@ -1219,6 +1226,27 @@ def on_alter_race_class(data):
     if 'class_format' in data:
         emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
 
+@SOCKET_IO.on('delete_class')
+def on_delete_class(data):
+    '''Delete class.'''
+    class_id = data['class']
+    race_class = Database.RaceClass.query.get(class_id)
+
+    has_race = Database.SavedRaceMeta.query.filter_by(class_id=race_class.id).first()
+
+    if has_race:
+        server_log('Refusing to delete class {0}: is in use'.format(race_class.id))
+    else:
+        DB.session.delete(race_class)
+        for heat in Database.Heat.query.all():
+            if heat.class_id == race_class.id:
+                heat.class_id = CLASS_ID_NONE
+
+        DB.session.commit()
+
+        server_log('Class {0} deleted'.format(race_class.id))
+        emit_class_data(noself=True)
+        emit_heat_data(noself=True)
 
 @SOCKET_IO.on('add_pilot')
 def on_add_pilot():
@@ -1263,9 +1291,29 @@ def on_alter_pilot(data):
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
+@SOCKET_IO.on('delete_pilot')
+def on_delete_pilot(data):
+    '''Delete heat.'''
+    pilot_id = data['pilot']
+    pilot = Database.Pilot.query.get(pilot_id)
+
+    has_race = Database.SavedPilotRace.query.filter_by(pilot_id=pilot.id).first()
+
+    if has_race:
+        server_log('Refusing to delete pilot {0}: is in use'.format(pilot.id))
+    else:
+        DB.session.delete(pilot)
+        for heatNode in Database.HeatNode.query.all():
+            if heatNode.pilot_id == race_class.id:
+                heatNode.pilot_id = PILOT_ID_NONE
+        DB.session.commit()
+
+        server_log('Pilot {0} deleted'.format(pilot.id))
+        emit_heat_data(noself=True)
+
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
-    '''Adds new profile in the database.'''
+    '''Adds new profile (frequency set) in the database.'''
     profile = getCurrentProfile()
     new_freqs = {}
     new_freqs["f"] = default_frequencies()
@@ -1283,6 +1331,18 @@ def on_add_profile():
     DB.session.commit()
     on_set_profile(data={ 'profile': new_profile.id })
 
+@SOCKET_IO.on('alter_profile')
+def on_alter_profile(data):
+    ''' update profile '''
+    profile = getCurrentProfile()
+    if 'profile_name' in data:
+        profile.name = data['profile_name']
+    if 'profile_description' in data:
+        profile.description = data['profile_description']
+    DB.session.commit()
+    server_log('Altered current profile to %s' % (data))
+    emit_node_tuning(noself=True)
+
 @SOCKET_IO.on('delete_profile')
 def on_delete_profile():
     '''Delete profile'''
@@ -1295,18 +1355,6 @@ def on_delete_profile():
         on_set_profile(data={ 'profile': first_profile_id })
     else:
         server_log('Refusing to delete only profile')
-
-@SOCKET_IO.on('alter_profile')
-def on_alter_profile(data):
-    ''' update profile '''
-    profile = getCurrentProfile()
-    if 'profile_name' in data:
-        profile.name = data['profile_name']
-    if 'profile_description' in data:
-        profile.description = data['profile_description']
-    DB.session.commit()
-    server_log('Altered current profile to %s' % (data))
-    emit_node_tuning(noself=True)
 
 @SOCKET_IO.on("set_profile")
 def on_set_profile(data, emit_vals=True):
