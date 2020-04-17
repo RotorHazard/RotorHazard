@@ -8,7 +8,7 @@ from eventmanager import Evt
 
 # ClearView API
 # cd ~
-# git clone https://github.com/ryaniftron/clearview_interface_public.git
+# git clone https://github.com/ryaniftron/clearview_interface_public.git --depth 1
 # cd ~/clearview_interface_public/src/clearview-py
 # python2 -m pip install -e .
 import clearview 
