@@ -1185,7 +1185,7 @@ def on_delete_heat(data):
                 RACE.current_heat = Database.Heat.query.first()
 
             server_log('Heat {0} deleted'.format(heat.id))
-            emit_heat_data(noself=True)
+            emit_heat_data()
 
     else:
         server_log('Refusing to delete only heat')
@@ -1245,8 +1245,8 @@ def on_delete_class(data):
         DB.session.commit()
 
         server_log('Class {0} deleted'.format(race_class.id))
-        emit_class_data(noself=True)
-        emit_heat_data(noself=True)
+        emit_class_data()
+        emit_heat_data()
 
 @SOCKET_IO.on('add_pilot')
 def on_add_pilot():
@@ -1304,12 +1304,13 @@ def on_delete_pilot(data):
     else:
         DB.session.delete(pilot)
         for heatNode in Database.HeatNode.query.all():
-            if heatNode.pilot_id == race_class.id:
+            if heatNode.pilot_id == pilot.id:
                 heatNode.pilot_id = PILOT_ID_NONE
         DB.session.commit()
 
         server_log('Pilot {0} deleted'.format(pilot.id))
-        emit_heat_data(noself=True)
+        emit_pilot_data()
+        emit_heat_data()
 
 @SOCKET_IO.on('add_profile')
 def on_add_profile():
@@ -3294,13 +3295,21 @@ def emit_pilot_data(**params):
                 opts_str += ' selected'
             opts_str += '>' + name + '</option>'
 
+        has_race = Database.SavedPilotRace.query.filter_by(pilot_id=pilot.id).first()
+
+        if has_race:
+            locked = True
+        else:
+            locked = False
+
         pilots_list.append({
             'pilot_id': pilot.id,
             'callsign': pilot.callsign,
             'team': pilot.team,
             'phonetic': pilot.phonetic,
             'name': pilot.name,
-            'team_options': opts_str
+            'team_options': opts_str,
+            'locked': locked,
         })
 
     emit_payload = {
