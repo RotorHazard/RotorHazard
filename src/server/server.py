@@ -1306,7 +1306,7 @@ def on_alter_pilot(data):
 
     DB.session.commit()
 
-    Events.trigger(Evt.ALTER_PILOT, {
+    Events.trigger(Evt.PILOT_ALTER, {
         'pilot_id': pilot_id,
         })
 
