@@ -4301,7 +4301,7 @@ def assign_frequencies():
         INTERFACE.set_frequency(idx, freqs["f"][idx])
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
-            'frequency': freqs[idx],
+            'frequency': freqs["f"][idx],
             })
 
         server_log('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs["f"][idx]))
