@@ -955,9 +955,14 @@ def on_set_frequency(data):
 
     DB.session.commit()
 
-    '''Set node frequency.'''
     server_log('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
     INTERFACE.set_frequency(node_index, frequency)
+
+    Events.trigger(Evt.FREQUENCY_SET, {
+        'nodeIndex': node_index,
+        'frequency': frequency,
+        })
+
     if session.get('LiveTime', False):
         emit('frequency_set', data)
     else:
@@ -1006,6 +1011,12 @@ def hardware_set_all_frequencies(freqs):
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs[idx])
 
+        Events.trigger(Evt.FREQUENCY_SET, {
+            'nodeIndex': idx,
+            'frequency': freqs[idx],
+            })
+
+
 def restore_node_frequency(node_index):
     ''' Restore frequency for given node index (update hardware) '''
     gevent.sleep(0.250)  # pause to get clear of heartbeat actions for scanner
@@ -1032,6 +1043,12 @@ def on_set_enter_at_level(data):
     DB.session.commit()
 
     INTERFACE.set_enter_at_level(node_index, enter_at_level)
+
+    Events.trigger(Evt.ENTER_AT_LEVEL_SET, {
+        'nodeIndex': node_index,
+        'enter_at_level': enter_at_level,
+        })
+
     server_log('Node enter-at set: Node {0} Level {1}'.format(node_index+1, enter_at_level))
 
 @SOCKET_IO.on('set_exit_at_level')
@@ -1051,6 +1068,12 @@ def on_set_exit_at_level(data):
     DB.session.commit()
 
     INTERFACE.set_exit_at_level(node_index, exit_at_level)
+
+    Events.trigger(Evt.EXIT_AT_LEVEL_SET, {
+        'nodeIndex': node_index,
+        'exit_at_level': exit_at_level,
+        })
+
     server_log('Node exit-at set: Node {0} Level {1}'.format(node_index+1, exit_at_level))
 
 def hardware_set_all_enter_ats(enter_at_levels):
@@ -1125,6 +1148,11 @@ def on_add_heat():
         DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=PILOT_ID_NONE))
 
     DB.session.commit()
+
+    Events.trigger(Evt.HEAT_ADD, {
+        'heat_id': new_heat.id,
+        })
+
     server_log('Heat added: Heat {0}'.format(new_heat.id))
     emit_heat_data()
 
@@ -1158,6 +1186,10 @@ def on_alter_heat(data):
             else:
                 RACE.node_teams[heatNode.node_index] = None
 
+    Events.trigger(Evt.HEAT_ALTER, {
+        'heat_id': heat_id,
+        })
+
     server_log('Heat {0} altered with {1}'.format(heat_id, data))
     emit_heat_data(noself=True)
     if 'note' in data:
@@ -1178,6 +1210,10 @@ def on_delete_heat(data):
         if RACE.current_heat == heat:
             RACE.current_heat = Database.Heat.query.first()
 
+        Events.trigger(Evt.HEAT_DELETE, {
+            'heat_id': heat_id,
+            })
+
         server_log('Heat {0} deleted'.format(heat))
         emit_heat_data(noself=True)
     else:
@@ -1193,6 +1229,11 @@ def on_add_race_class():
     new_race_class.name = ''
     new_race_class.description = ''
     DB.session.commit()
+
+    Events.trigger(Evt.CLASS_ADD, {
+        'class_id': new_race_class.id,
+        })
+
     server_log('Class added: Class {0}'.format(new_race_class))
     emit_class_data()
     emit_heat_data() # Update class selections in heat displays
@@ -1211,6 +1252,11 @@ def on_alter_race_class(data):
     if 'class_description' in data:
         db_update.description = data['class_description']
     DB.session.commit()
+
+    Events.trigger(Evt.CLASS_ALTER, {
+        'class_id': race_class,
+        })
+
     server_log('Altered race class {0} to {1}'.format(race_class, data))
     emit_class_data(noself=True)
     if 'class_name' in data:
@@ -1235,6 +1281,11 @@ def on_add_pilot():
     new_pilot.team = DEF_TEAM_NAME
     new_pilot.phonetic = ''
     DB.session.commit()
+
+    Events.trigger(Evt.PILOT_ADD, {
+        'pilot_id': new_pilot.id,
+        })
+
     server_log('Pilot added: Pilot {0}'.format(new_pilot.id))
     emit_pilot_data()
 
@@ -1254,6 +1305,11 @@ def on_alter_pilot(data):
         db_update.name = data['name']
 
     DB.session.commit()
+
+    Events.trigger(Evt.ALTER_PILOT, {
+        'pilot_id': pilot_id,
+        })
+
     server_log('Altered pilot {0} to {1}'.format(pilot_id, data))
     emit_pilot_data(noself=True) # Settings page, new pilot settings
     if 'callsign' in data:
@@ -1281,20 +1337,12 @@ def on_add_profile():
     DB.session.refresh(new_profile)
     new_profile.name = __('Profile %s') % new_profile.id
     DB.session.commit()
-    on_set_profile(data={ 'profile': new_profile.id })
 
-@SOCKET_IO.on('delete_profile')
-def on_delete_profile():
-    '''Delete profile'''
-    if (DB.session.query(Database.Profiles).count() > 1): # keep one profile
-        profile = getCurrentProfile()
-        DB.session.delete(profile)
-        DB.session.commit()
-        first_profile_id = Database.Profiles.query.first().id
-        Options.set("currentProfile", first_profile_id)
-        on_set_profile(data={ 'profile': first_profile_id })
-    else:
-        server_log('Refusing to delete only profile')
+    Events.trigger(Evt.PROFILE_ADD, {
+        'profile_id': new_profile.id,
+        })
+
+    on_set_profile(data={ 'profile': new_profile.id })
 
 @SOCKET_IO.on('alter_profile')
 def on_alter_profile(data):
@@ -1305,8 +1353,32 @@ def on_alter_profile(data):
     if 'profile_description' in data:
         profile.description = data['profile_description']
     DB.session.commit()
+
+    Events.trigger(Evt.PROFILE_ALTER, {
+        'profile_id': profile.id,
+        })
+
     server_log('Altered current profile to %s' % (data))
     emit_node_tuning(noself=True)
+
+@SOCKET_IO.on('delete_profile')
+def on_delete_profile():
+    '''Delete profile'''
+    if (DB.session.query(Database.Profiles).count() > 1): # keep one profile
+        profile = getCurrentProfile()
+        profile_id = profile.id
+        DB.session.delete(profile)
+        DB.session.commit()
+        first_profile_id = Database.Profiles.query.first().id
+
+        Events.trigger(Evt.PROFILE_DELETE, {
+            'profile_id': profile_id,
+            })
+
+        Options.set("currentProfile", first_profile_id)
+        on_set_profile(data={ 'profile': first_profile_id })
+    else:
+        server_log('Refusing to delete only profile')
 
 @SOCKET_IO.on("set_profile")
 def on_set_profile(data, emit_vals=True):
@@ -1342,6 +1414,11 @@ def on_set_profile(data, emit_vals=True):
             exit_ats = exit_at_levels["v"]
 
         DB.session.commit()
+
+        Events.trigger(Evt.PROFILE_SET, {
+            'profile_id': profile_val,
+            })
+
         if emit_vals:
             emit_node_tuning()
             emit_enter_and_exit_at_levels()
@@ -1365,6 +1442,11 @@ def on_backup_database():
         'file_name': os.path.basename(bkp_name),
         'file_data' : file_content
     }
+
+    Events.trigger(Evt.BACKUP_DATABASE, {
+        'file_name': emit_payload['file_name'],
+        })
+
     SOCKET_IO.emit('database_bkp_done', emit_payload)
 
 @SOCKET_IO.on('reset_database')
@@ -1405,10 +1487,13 @@ def on_reset_database(data):
     emit_round_data_notify()
     emit('reset_confirm')
 
+    Events.trigger(Evt.DATABASE_RESET)
+
+
 @SOCKET_IO.on('shutdown_pi')
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
-    Events.trigger(Evt.SHUTDOWN)  # server is shutting down, so shut off LEDs
+    Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
     server_log('Shutdown pi')
@@ -1417,8 +1502,8 @@ def on_shutdown_pi():
 
 @SOCKET_IO.on('reboot_pi')
 def on_reboot_pi():
-    '''Shutdown the raspberry pi.'''
-    Events.trigger(Evt.SHUTDOWN)  # server is shutting down, so shut off LEDs
+    '''Reboot the raspberry pi.'''
+    Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('reboot_pi')
     emit_priority_message(__('Server is rebooting.'), True)
     server_log('Rebooting pi')
@@ -1429,6 +1514,11 @@ def on_reboot_pi():
 def on_set_min_lap(data):
     min_lap = data['min_lap']
     Options.set("MinLapSec", data['min_lap'])
+
+    Events.trigger(Evt.MIN_LAP_TIME_SET, {
+        'min_lap': min_lap,
+        })
+
     server_log("set min lap time to %s seconds" % min_lap)
     emit_min_lap(noself=True)
 
@@ -1436,6 +1526,11 @@ def on_set_min_lap(data):
 def on_set_min_lap_behavior(data):
     min_lap_behavior = data['min_lap_behavior']
     Options.set("MinLapBehavior", data['min_lap_behavior'])
+
+    Events.trigger(Evt.MIN_LAP_BEHAVIOR_SET, {
+        'min_lap_behavior': min_lap_behavior,
+        })
+
     server_log("set min lap behavior to %s" % min_lap_behavior)
     emit_min_lap(noself=True)
 
@@ -1448,6 +1543,11 @@ def on_set_race_format(data):
         DB.session.flush()
         setCurrentRaceFormat(race_format)
         DB.session.commit()
+
+        Events.trigger(Evt.RACE_FORMAT_SET, {
+            'race_format': race_format_val,
+            })
+
         emit_race_format()
         server_log("set race format to '%s' (%s)" % (race_format.name, race_format.id))
         CLUSTER.emitToMirrors('set_race_format', data)
@@ -1474,24 +1574,12 @@ def on_add_race_format():
     DB.session.flush()
     DB.session.refresh(new_format)
     DB.session.commit()
-    on_set_race_format(data={ 'race_format': new_format.id })
 
-@SOCKET_IO.on('delete_race_format')
-def on_delete_race_format():
-    '''Delete profile'''
-    if RACE.race_status == RaceStatus.READY: # prevent format change if race running
-        raceformat = getCurrentDbRaceFormat()
-        if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
-            DB.session.delete(raceformat)
-            DB.session.commit()
-            first_raceFormat = Database.RaceFormat.query.first()
-            setCurrentRaceFormat(first_raceFormat)
-            emit_race_format()
-        else:
-            server_log('Refusing to delete only format')
-    else:
-        emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
-        server_log("Format change prevented by active race")
+    Events.trigger(Evt.RACE_FORMAT_ADD, {
+        'race_format': new_format.id,
+        })
+
+    on_set_race_format(data={ 'race_format': new_format.id })
 
 @SOCKET_IO.on('alter_race_format')
 def on_alter_race_format(data):
@@ -1519,11 +1607,39 @@ def on_alter_race_format(data):
         if 'team_racing_mode' in data:
             race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
         DB.session.commit()
+
+        Events.trigger(Evt.RACE_FORMAT_ALTER, {
+            'race_format': race_format.id,
+            })
+
         setCurrentRaceFormat(race_format)
         server_log('Altered race format to %s' % (data))
         if emit:
             emit_race_format()
             emit_class_data()
+
+@SOCKET_IO.on('delete_race_format')
+def on_delete_race_format():
+    '''Delete profile'''
+    if RACE.race_status == RaceStatus.READY: # prevent format change if race running
+        raceformat = getCurrentDbRaceFormat()
+        raceformat_id = raceformat.id
+        if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
+            DB.session.delete(raceformat)
+            DB.session.commit()
+            first_raceFormat = Database.RaceFormat.query.first()
+
+            Events.trigger(Evt.RACE_FORMAT_DELETE, {
+                'race_format': raceformat_id,
+                })
+
+            setCurrentRaceFormat(first_raceFormat)
+            emit_race_format()
+        else:
+            server_log('Refusing to delete only format')
+    else:
+        emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+        server_log("Format change prevented by active race")
 
 # LED Effects
 
@@ -1592,19 +1708,23 @@ def on_set_led_effect(data):
         effects[data['event']] = data['effect']
         Options.set('ledEffects', json.dumps(effects))
 
+        Events.trigger(Evt.LED_EFFECT_SET, {
+            'effect': data['event'],
+            })
+
         server_log('Set LED event {0} to effect {1}'.format(data['event'], data['effect']))
 
 @SOCKET_IO.on('use_led_effect')
 def on_use_led_effect(data):
     '''Activate arbitrary LED Effect.'''
     if led_manager.isEnabled() and 'effect' in data:
-        led_manager.setEventEffect(Evt.MANUAL, data['effect'])
+        led_manager.setEventEffect(Evt.LED_MANUAL, data['effect'])
 
         args = None
         if 'args' in data:
             args = data['args']
 
-        Events.trigger(Evt.MANUAL, args)
+        Events.trigger(Evt.LED_MANUAL, args)
 
 # Race management socket io events
 
@@ -1614,6 +1734,10 @@ def on_schedule_race(data):
 
     RACE.scheduled_time = monotonic() + (data['m'] * 60) + data['s']
     RACE.scheduled = True
+
+    Events.trigger(Evt.RACE_SCHEDULE, {
+        'scheduled_at': RACE.scheduled_time
+        })
 
     SOCKET_IO.emit('RACE.scheduled', {
         'scheduled': RACE.scheduled,
@@ -1627,6 +1751,8 @@ def cancel_schedule_race():
     global RACE
 
     RACE.scheduled = False
+
+    Events.trigger(Evt.RACE_SCHEDULE_CANCEL)
 
     SOCKET_IO.emit('RACE.scheduled', {
         'scheduled': RACE.scheduled,
@@ -1662,7 +1788,7 @@ def on_stage_race():
         global FULL_RESULTS_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        Events.trigger(Evt.RACESTAGE)
+        Events.trigger(Evt.RACE_STAGE)
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
@@ -1800,10 +1926,10 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        Events.trigger(Evt.RACESTART)
+        Events.trigger(Evt.RACE_START)
 
         # do secondary start tasks (small delay is acceptable)
-        RACE.start_time = datetime.now()
+        RACE.start_time = datetime.now() # record standard-formatted time
 
         for node in INTERFACE.nodes:
             node.history_values = [] # clear race history
@@ -1856,7 +1982,7 @@ def on_stop_race():
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    Events.trigger(Evt.RACESTOP)
+    Events.trigger(Evt.RACE_STOP)
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -1930,8 +2056,12 @@ def on_save_laps():
     }
     gevent.spawn(build_race_results_caches, params)
 
+    Events.trigger(Evt.LAPS_SAVE, {
+        'race_id': new_race.id,
+        })
+
     server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
-    on_discard_laps() # Also clear the current laps
+    on_discard_laps(saved=True) # Also clear the current laps
     emit_round_data_notify() # live update rounds page
 
 @SOCKET_IO.on('resave_laps')
@@ -1980,18 +2110,23 @@ def on_resave_laps(data):
 
     # spawn thread for updating results caches
     params = {
-        'race_id': data['race_id'],
-        'heat_id': data['heat_id'],
-        'round_id': data['round_id'],
+        'race_id': race_id,
+        'heat_id': heat_id,
+        'round_id': round_id,
     }
     gevent.spawn(build_race_results_caches, params)
+
+    Events.trigger(Evt.LAPS_RESAVE, {
+        'race_id': race_id,
+        'pilot_id': pilot_id,
+        })
 
     emit_round_data_notify()
     if int(Options.get('calibrationMode')):
         autoUpdateCalibration()
 
 @SOCKET_IO.on('discard_laps')
-def on_discard_laps():
+def on_discard_laps(**kwargs):
     '''Clear the current laps without saving.'''
     CLUSTER.emit('discard_laps')
     clear_laps()
@@ -2005,7 +2140,15 @@ def on_discard_laps():
         check_emit_team_racing_status()  # Show team-racing status info
     else:
         emit_team_racing_status('')  # clear any displayed "Winner is" text
-    Events.trigger(Evt.LAPSCLEAR)
+
+    if 'saved' in kwargs and kwargs['saved'] == True:
+        # discarding follows a save action
+        pass
+    else:
+        # discarding does not follow a save action
+        Events.trigger(Evt.LAPS_DISCARD)
+
+    Events.trigger(Evt.LAPS_CLEAR)
 
 def clear_laps():
     '''Clear the current laps table.'''
@@ -2075,6 +2218,10 @@ def on_set_current_heat(data):
     if int(Options.get('calibrationMode')):
         autoUpdateCalibration()
 
+    Events.trigger(Evt.HEAT_SET, {
+        'heat_id': new_heat_id,
+        })
+
     emit_current_heat() # Race page, to update heat selection button
     emit_leaderboard() # Race page, to update callsigns in leaderboard
     race_format = getCurrentRaceFormat()
@@ -2117,6 +2264,10 @@ def on_delete_lap(data):
         db_next['lap_time'] = db_next['lap_time_stamp']
         db_next['lap_time_formatted'] = time_format(db_next['lap_time'])
 
+    Events.trigger(Evt.LAP_DELETE, {
+        'node': node_index,
+        })
+
     server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
@@ -2140,7 +2291,7 @@ def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
     server_log('Simulated lap: Node {0}'.format(node_index+1))
-    Events.trigger(Evt.CROSSINGEXIT, {
+    Events.trigger(Evt.CROSSING_EXIT, {
         'nodeIndex': node_index,
         'color': hexToColor(Options.get('colorNode_' + str(node_index), '#ffffff'))
         })
@@ -2217,15 +2368,21 @@ def on_LED_brightness(data):
     strip.setBrightness(brightness)
     strip.show()
     Options.set("ledBrightness", brightness)
+    Events.trigger(Evt.LED_BRIGHTNESS_SET, {
+        'level': brightness,
+        })
 
 @SOCKET_IO.on('set_option')
 def on_set_option(data):
     Options.set(data['option'], data['value'])
+    Events.trigger(Evt.OPTION_SET, {
+        'option': data['option'],
+        'value': data['value'],
+        })
 
 @SOCKET_IO.on('get_RACE.scheduled')
 def get_race_elapsed():
-    # never broadcasts to all
-
+    # get current race status; never broadcasts to all
     emit('RACE.scheduled', {
         'scheduled': RACE.scheduled,
         'scheduled_at': RACE.scheduled_time
@@ -2248,6 +2405,10 @@ def emit_priority_message(message, interrupt=False, **params):
     if ('nobroadcast' in params):
         emit('priority_message', emit_payload)
     else:
+        Events.trigger(Evt.SEND_MESSAGE, {
+            'message': message,
+            'interrupt': interrupt
+            })
         SOCKET_IO.emit('priority_message', emit_payload)
 
 def emit_race_status(**params):
@@ -2709,6 +2870,8 @@ def emit_round_data_thread(params, sid):
             FULL_RESULTS_CACHE_VALID = True
             FULL_RESULTS_CACHE_BUILDING = False
 
+            Events.trigger(Evt.CACHE_READY)
+
         if ('nobroadcast' in params):
             emit('round_data', emit_payload, namespace='/', room=sid)
         else:
@@ -2739,6 +2902,8 @@ def invalidate_all_caches():
 
     global FULL_RESULTS_CACHE_VALID
     FULL_RESULTS_CACHE_VALID = False
+
+    Events.trigger(Evt.CACHE_CLEAR)
 
     server_log('All Result caches invalidated')
 
@@ -3657,6 +3822,10 @@ def emit_first_pass_registered(node_idx, **params):
     emit_payload = {
         'node_index': node_idx,
     }
+    Events.trigger(Evt.RACE_FIRST_PASS, {
+        'node_index': node_idx,
+        })
+
     if ('nobroadcast' in params):
         emit('first_pass_registered', emit_payload)
     else:
@@ -3899,7 +4068,7 @@ def check_race_time_expired():
     if race_format and race_format.race_mode == 0: # count down
         if monotonic() >= RACE.start_time_monotonic + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
-            Events.trigger(Evt.RACEFINISH)
+            Events.trigger(Evt.RACE_FINISH)
             if race_format.win_condition == WinCondition.MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
@@ -3971,6 +4140,10 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'source': source,
                             'deleted': False
                         })
+
+                        Events.trigger(Evt.RACE_LAP_RECORDED, {
+                            'node': node.index,
+                            })
 
                         #server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
                         #    .format(node.index+1, lap_number, time_format(lap_time)))
@@ -4087,14 +4260,14 @@ def node_crossing_callback(node):
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
-                Events.trigger(Evt.CROSSINGENTER, {
+                Events.trigger(Evt.CROSSING_ENTER, {
                     'nodeIndex': node.index,
                     'color': hexToColor(Options.get('colorNode_' + str(node.index), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
-                    Events.trigger(Evt.CROSSINGEXIT, {
+                    Events.trigger(Evt.CROSSING_EXIT, {
                         'nodeIndex': node.index,
                         'color': hexToColor(Options.get('colorNode_' + str(node.index), '#ffffff'))
                         })
@@ -4126,6 +4299,11 @@ def assign_frequencies():
 
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs["f"][idx])
+        Events.trigger(Evt.FREQUENCY_SET, {
+            'nodeIndex': idx,
+            'frequency': freqs[idx],
+            })
+
         server_log('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs["f"][idx]))
     DB.session.commit()
 
@@ -4140,6 +4318,8 @@ def db_init():
     db_reset_race_formats()
     db_reset_options_defaults()
     assign_frequencies()
+    Events.trigger(Evt.DATABASE_INITIALIZE)
+
     server_log('Database initialized')
 
 def db_reset():
@@ -4461,6 +4641,7 @@ def recover_database():
         server_log('Error while writing data from previous database:  ' + str(ex))
 
     DB.session.commit()
+    Events.trigger(Evt.DATABASE_RECOVER)
 
 def expand_heats():
     for heat_ids in Database.Heat.query.all():
@@ -4474,13 +4655,13 @@ def expand_heats():
 def init_LED_effects():
     # start with defaults
     effects = {
-        Evt.RACESTAGE: "stripColorOrange2_1",
-        Evt.RACESTART: "stripColorGreenSolid",
-        Evt.RACEFINISH: "stripColorWhite4_4",
-        Evt.RACESTOP: "stripColorRedSolid",
-        Evt.LAPSCLEAR: "clear",
-        Evt.CROSSINGENTER: "stripColorSolid",
-        Evt.CROSSINGEXIT: "stripColor1_1_4s",
+        Evt.RACE_STAGE: "stripColorOrange2_1",
+        Evt.RACE_START: "stripColorGreenSolid",
+        Evt.RACE_FINISH: "stripColorWhite4_4",
+        Evt.RACE_STOP: "stripColorRedSolid",
+        Evt.LAPS_CLEAR: "clear",
+        Evt.CROSSING_ENTER: "stripColorSolid",
+        Evt.CROSSING_EXIT: "stripColor1_1_4s",
         Evt.STARTUP: "rainbowCycle",
         Evt.SHUTDOWN: "clear"
     }
