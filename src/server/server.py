@@ -22,6 +22,7 @@ PROGRAM_START_TIMESTAMP = int((datetime.now() - EPOCH_START).total_seconds() / 1
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 logger.info('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
 
+# Normal importing resumes here
 import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
@@ -105,6 +106,10 @@ DB.app = APP
 
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'])
+
+# this is the moment where we can forward log-messages to the frontend, and
+# thus set up logging for good.
+log.later_stage_setup(Config.LOGGING)
 
 INTERFACE = None  # initialized later
 CLUSTER = None    # initialized later
