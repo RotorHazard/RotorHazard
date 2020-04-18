@@ -1,9 +1,11 @@
 '''
 Global configurations
 '''
-
+import logging
 import random
 import json
+
+logger = logging.getLogger(__name__)
 
 CONFIG_FILE_NAME = 'config.json'
 
@@ -11,6 +13,7 @@ GENERAL = {}
 SENSORS = {}
 LED = {}
 SERIAL_PORTS = []
+LOGGING = {}
 
 # LED strip configuration:
 LED['LED_COUNT']      = 0       # Number of LED pixels.
@@ -34,13 +37,16 @@ GENERAL['SLAVE_TIMEOUT'] = 300 # seconds
 GENERAL['DEBUG'] = False
 GENERAL['CORS_ALLOWED_HOSTS'] = '*'
 
+
 InitResultStr = None
 
 # override defaults above with config from file
 try:
     with open(CONFIG_FILE_NAME, 'r') as f:
         ExternalConfig = json.load(f)
+
     GENERAL.update(ExternalConfig['GENERAL'])
+    LOGGING.update(ExternalConfig['LOGGING'])
 
     if 'LED' in ExternalConfig:
         LED.update(ExternalConfig['LED'])
@@ -70,7 +76,4 @@ except IOError:
     InitResultStr = "No configuration file found, using defaults"
 except ValueError as ex:
     GENERAL['configFile'] = -1
-    InitResultStr = "Configuration file invalid, using defaults; error is: " + str(ex)
-
-def getInitResultStr():
-    return InitResultStr
+    logger.exception("Configuration file invalid, using defaults; error is: ")
