@@ -1,5 +1,7 @@
 import sys
 import logging.handlers
+import platform
+
 import gevent
 
 ROTORHAZARD_FORMAT = "<-RotorHazard-> %(message)s"
@@ -37,10 +39,14 @@ def early_stage_setup():
 
 
 def handler_for_config(destination):
+    system_logger = logging.handlers.SysLogHandler("/dev/log") \
+      if platform.system() == "Linux" else \
+      logging.handlers.NTEventLogHandler("RotorHazard")
+
     choices = {
         "STDERR": logging.StreamHandler(stream=sys.stderr),
         "STDOUT": logging.StreamHandler(stream=sys.stdout),
-        "SYSLOG": logging.handlers.SysLogHandler("/dev/log")
+        "SYSLOG": system_logger
     }
     if destination in choices:
         return choices[destination]
