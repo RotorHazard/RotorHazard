@@ -898,6 +898,16 @@ main.page-home {
 	box-sizing: border-box;
 }
 
+.heats h3 {
+	position: relative;
+}
+
+.heats h3>button {
+	position: absolute;
+	right: 0.25em;
+	font-size: 0.9rem;
+}
+
 @media (max-width: 68em){
 	.heats>li {
 		width: calc(25% - 0.5em);
@@ -983,6 +993,8 @@ main.page-home {
 	border: solid 0.0625em #d1d3d4;
 	border-radius: 0.5rem;
 	box-sizing: border-box;
+	display: flex;
+	flex-wrap: wrap;
 }
 
 @media (max-width: 68em){
@@ -1010,10 +1022,11 @@ main.page-home {
 }
 
 .pilots li .callsign {
-
+	flex-basis: 100%;
 }
 
 .pilots li .name {
+	flex-basis: 100%;
 	font-size: 0.75em;
 	color: hsl(213.8, 53.8%, 46.7%);
 	color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
@@ -1048,6 +1061,16 @@ main.page-home {
 
 .page-settings .race_classes ol {
 	justify-content: center;
+}
+
+.race_classes h3 {
+	position: relative;
+}
+
+.race_classes h3>button {
+	position: absolute;
+	right: 0.25em;
+	font-size: 0.9rem;
 }
 
 .race_classes>ol>li {
@@ -1307,6 +1330,7 @@ td.speak {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	flex: 1;
 }
 
 .pilot-team label {
