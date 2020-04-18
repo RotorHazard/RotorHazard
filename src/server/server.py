@@ -5,6 +5,24 @@ NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 23 # Most recent node API
 JSON_API = 3 # JSON API version
 
+# This must be the first import for the time being. It is
+# necessary to set up logging *before* anything else
+# because there is a lot of code run through imports, and
+# we would miss messages otherwise.
+import logging
+import log
+from datetime import datetime
+
+log.early_stage_setup()
+logger = logging.getLogger(__name__)
+
+EPOCH_START = datetime(1970, 1, 1)
+PROGRAM_START_TIMESTAMP = int((datetime.now() - EPOCH_START).total_seconds() / 1000)
+
+logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
+logger.info('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
+
+# Normal importing resumes here
 import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
@@ -12,6 +30,7 @@ gevent.monkey.patch_all()
 import io
 import os
 import sys
+import traceback
 import platform
 import glob
 import re
@@ -21,7 +40,6 @@ import subprocess
 import importlib
 import socketio
 from monotonic import monotonic
-from datetime import datetime
 from functools import wraps
 from collections import OrderedDict
 
@@ -40,6 +58,7 @@ from Language import __
 
 # Events manager
 from eventmanager import Evt, EventManager
+
 Events = EventManager()
 
 # LED imports
@@ -88,19 +107,16 @@ DB.app = APP
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'])
 
+# this is the moment where we can forward log-messages to the frontend, and
+# thus set up logging for good.
+log.later_stage_setup(Config.LOGGING, SOCKET_IO)
+
 INTERFACE = None  # initialized later
 CLUSTER = None    # initialized later
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 
 RACE = get_race_state() # For storing race management variables
 
-def diff_milliseconds(t2, t1):
-    dt = t2 - t1
-    ms = round((dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0)
-    return ms
-
-EPOCH_START = datetime(1970, 1, 1)
-PROGRAM_START_TIMESTAMP = diff_milliseconds(datetime.now(), EPOCH_START)
 PROGRAM_START = monotonic()
 PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
 
@@ -136,15 +152,15 @@ class Slave:
     def reconnect(self):
         if self.lastContact == -1:
             startConnectTime = monotonic()
-            print "Slave {0}: connecting to {1}...".format(self.id+1, self.address)
+            logger.info("Slave {0}: connecting to {1}...".format(self.id+1, self.address))
             while monotonic() < startConnectTime + self.info['timeout']:
                 try:
                     self.sio.connect(self.address)
-                    print "Slave {0}: connected to {1}".format(self.id+1, self.address)
+                    logger.info("Slave {0}: connected to {1}".format(self.id+1, self.address))
                     return True
                 except socketio.exceptions.ConnectionError:
                     gevent.sleep(0.1)
-            print "Slave {0}: connection to {1} failed!".format(self.id+1, self.address)
+            logger.info("Slave {0}: connection to {1} failed!".format(self.id+1, self.address))
             return False
 
     def emit(self, event, data = None):
@@ -179,21 +195,21 @@ class Slave:
             last_split_id = DB.session.query(DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=lap_count).scalar()
             if last_split_id is None: # first split for this lap
                 if split_id > 0:
-                    server_log('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
+                    logger.info('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
                 last_split_ts = last_lap_ts
             else:
                 if split_id > last_split_id:
                     if split_id > last_split_id + 1:
-                        server_log('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
+                        logger.info('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
                     last_split_ts = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=lap_count, split_id=last_split_id).one().split_time_stamp
                 else:
-                    server_log('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
+                    logger.info('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
                     last_split_ts = None
 
             if last_split_ts is not None:
                 split_time = split_ts - last_split_ts
                 split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
-                server_log('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
+                logger.info('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
                     .format(node_index+1, lap_count+1, time_format(split_time), \
                     ('{0:.2f}'.format(split_speed) if split_speed <> None else 'None')))
 
@@ -203,7 +219,7 @@ class Slave:
                 DB.session.commit()
                 emit_current_laps() # update all laps on the race page
         else:
-            server_log('Split pass record dismissed: Node: {0}, Frequency not defined' \
+            logger.info('Split pass record dismissed: Node: {0}, Frequency not defined' \
                 .format(node_index+1))
 
 class Cluster:
@@ -321,10 +337,10 @@ def idAndLogSystemInfo():
             pass
         if modelStr and "raspberry pi" in modelStr.lower():
             IS_SYS_RASPBERRY_PI = True
-            server_log("Host machine: " + modelStr)
-        server_log("Host OS: {0} {1}".format(platform.system(), platform.release()))
+            logger.info("Host machine: " + modelStr)
+        logger.info("Host OS: {0} {1}".format(platform.system(), platform.release()))
     except Exception as ex:
-        print "Error in idAndLogSystemInfo():  " + str(ex)
+        logger.exception("Error in idAndLogSystemInfo():  ")
 
 # Checks if the given file is owned by 'root' and changes owner to 'pi' user if so.
 # Returns True if file owner changed to 'pi' user; False if not.
@@ -336,9 +352,9 @@ def checkSetFileOwnerPi(fileNameStr):
                 subprocess.check_call(["sudo", "chown", "pi:pi", fileNameStr])
                 if os.stat(fileNameStr).st_uid != 0:
                     return True
-                server_log("Unable to change owner in 'checkSetFileOwnerPi()', file: " + fileNameStr)
+                logger.info("Unable to change owner in 'checkSetFileOwnerPi()', file: " + fileNameStr)
     except Exception as ex:
-        server_log("Error in 'checkSetFileOwnerPi()':  " + str(ex))
+        logger.info("Error in 'checkSetFileOwnerPi()':  " + str(ex))
     return False
 
 #
@@ -820,18 +836,18 @@ def api_options():
 @SOCKET_IO.on('connect')
 def connect_handler():
     '''Starts the interface and a heartbeat thread for rssi.'''
-    server_log('Client connected')
+    logger.info('Client connected')
     INTERFACE.start()
     global HEARTBEAT_THREAD
     if HEARTBEAT_THREAD is None:
         HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
-        server_log('Heartbeat thread started')
+        logger.info('Heartbeat thread started')
     emit_heat_data(nobroadcast=True)
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
     '''Emit disconnect event.'''
-    server_log('Client disconnected')
+    logger.info('Client disconnected')
 
 # LiveTime compatible events
 
@@ -875,7 +891,7 @@ def on_join_cluster():
     emit_race_format()
     Options.set("MinLapSec", "0")
     Options.set("MinLapBehavior", "0")
-    server_log('Joined cluster')
+    logger.info('Joined cluster')
 
 # RotorHazard events
 
@@ -955,9 +971,14 @@ def on_set_frequency(data):
 
     DB.session.commit()
 
-    '''Set node frequency.'''
-    server_log('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
+    logger.info('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
     INTERFACE.set_frequency(node_index, frequency)
+
+    Events.trigger(Evt.FREQUENCY_SET, {
+        'nodeIndex': node_index,
+        'frequency': frequency,
+        })
+
     if session.get('LiveTime', False):
         emit('frequency_set', data)
     else:
@@ -996,7 +1017,7 @@ def set_all_frequencies(freqs):
 
     for idx in range(RACE.num_nodes):
         profile_freqs["f"][idx] = freqs[idx]
-        server_log('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs[idx]))
+        logger.info('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs[idx]))
 
     profile.frequencies = json.dumps(profile_freqs)
     DB.session.commit()
@@ -1006,6 +1027,12 @@ def hardware_set_all_frequencies(freqs):
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs[idx])
 
+        Events.trigger(Evt.FREQUENCY_SET, {
+            'nodeIndex': idx,
+            'frequency': freqs[idx],
+            })
+
+
 def restore_node_frequency(node_index):
     ''' Restore frequency for given node index (update hardware) '''
     gevent.sleep(0.250)  # pause to get clear of heartbeat actions for scanner
@@ -1013,7 +1040,7 @@ def restore_node_frequency(node_index):
     profile_freqs = json.loads(profile.frequencies)
     freq = profile_freqs["f"][node_index]
     INTERFACE.set_frequency(node_index, freq)
-    server_log('Frequency restored: Node {0} Frequency {1}'.format(node_index+1, freq))
+    logger.info('Frequency restored: Node {0} Frequency {1}'.format(node_index+1, freq))
 
 @SOCKET_IO.on('set_enter_at_level')
 def on_set_enter_at_level(data):
@@ -1022,7 +1049,7 @@ def on_set_enter_at_level(data):
     enter_at_level = data['enter_at_level']
 
     if not enter_at_level:
-        server_log('Node enter-at set null; getting from node: Node {0}'.format(node_index+1))
+        logger.info('Node enter-at set null; getting from node: Node {0}'.format(node_index+1))
         enter_at_level = INTERFACE.nodes[node_index].enter_at_level
 
     profile = getCurrentProfile()
@@ -1032,7 +1059,13 @@ def on_set_enter_at_level(data):
     DB.session.commit()
 
     INTERFACE.set_enter_at_level(node_index, enter_at_level)
-    server_log('Node enter-at set: Node {0} Level {1}'.format(node_index+1, enter_at_level))
+
+    Events.trigger(Evt.ENTER_AT_LEVEL_SET, {
+        'nodeIndex': node_index,
+        'enter_at_level': enter_at_level,
+        })
+
+    logger.info('Node enter-at set: Node {0} Level {1}'.format(node_index+1, enter_at_level))
 
 @SOCKET_IO.on('set_exit_at_level')
 def on_set_exit_at_level(data):
@@ -1041,7 +1074,7 @@ def on_set_exit_at_level(data):
     exit_at_level = data['exit_at_level']
 
     if not exit_at_level:
-        server_log('Node exit-at set null; getting from node: Node {0}'.format(node_index+1))
+        logger.info('Node exit-at set null; getting from node: Node {0}'.format(node_index+1))
         exit_at_level = INTERFACE.nodes[node_index].exit_at_level
 
     profile = getCurrentProfile()
@@ -1051,7 +1084,13 @@ def on_set_exit_at_level(data):
     DB.session.commit()
 
     INTERFACE.set_exit_at_level(node_index, exit_at_level)
-    server_log('Node exit-at set: Node {0} Level {1}'.format(node_index+1, exit_at_level))
+
+    Events.trigger(Evt.EXIT_AT_LEVEL_SET, {
+        'nodeIndex': node_index,
+        'exit_at_level': exit_at_level,
+        })
+
+    logger.info('Node exit-at set: Node {0} Level {1}'.format(node_index+1, exit_at_level))
 
 def hardware_set_all_enter_ats(enter_at_levels):
     '''send update to nodes'''
@@ -1087,14 +1126,14 @@ def on_cap_enter_at_btn(data):
     '''Capture enter-at level.'''
     node_index = data['node_index']
     if INTERFACE.start_capture_enter_at_level(node_index):
-        server_log('Starting capture of enter-at level for node {0}'.format(node_index+1))
+        logger.info('Starting capture of enter-at level for node {0}'.format(node_index+1))
 
 @SOCKET_IO.on('cap_exit_at_btn')
 def on_cap_exit_at_btn(data):
     '''Capture exit-at level.'''
     node_index = data['node_index']
     if INTERFACE.start_capture_exit_at_level(node_index):
-        server_log('Starting capture of exit-at level for node {0}'.format(node_index+1))
+        logger.info('Starting capture of exit-at level for node {0}'.format(node_index+1))
 
 @SOCKET_IO.on('set_scan')
 def on_set_scan(data):
@@ -1125,7 +1164,12 @@ def on_add_heat():
         DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=PILOT_ID_NONE))
 
     DB.session.commit()
-    server_log('Heat added: Heat {0}'.format(new_heat.id))
+
+    Events.trigger(Evt.HEAT_ADD, {
+        'heat_id': new_heat.id,
+        })
+
+    logger.info('Heat added: Heat {0}'.format(new_heat.id))
     emit_heat_data()
 
 @SOCKET_IO.on('alter_heat')
@@ -1158,7 +1202,11 @@ def on_alter_heat(data):
             else:
                 RACE.node_teams[heatNode.node_index] = None
 
-    server_log('Heat {0} altered with {1}'.format(heat_id, data))
+    Events.trigger(Evt.HEAT_ALTER, {
+        'heat_id': heat_id,
+        })
+
+    logger.info('Heat {0} altered with {1}'.format(heat_id, data))
     emit_heat_data(noself=True)
     if 'note' in data:
         emit_round_data_notify() # live update rounds page
@@ -1187,8 +1235,14 @@ def on_delete_heat(data):
             server_log('Heat {0} deleted'.format(heat.id))
             emit_heat_data()
 
+        Events.trigger(Evt.HEAT_DELETE, {
+            'heat_id': heat_id,
+            })
+
+        logger.info('Heat {0} deleted'.format(heat))
+        emit_heat_data(noself=True)
     else:
-        server_log('Refusing to delete only heat')
+        logger.info('Refusing to delete only heat')
 
 @SOCKET_IO.on('add_race_class')
 def on_add_race_class():
@@ -1200,7 +1254,12 @@ def on_add_race_class():
     new_race_class.name = ''
     new_race_class.description = ''
     DB.session.commit()
-    server_log('Class added: Class {0}'.format(new_race_class))
+
+    Events.trigger(Evt.CLASS_ADD, {
+        'class_id': new_race_class.id,
+        })
+
+    logger.info('Class added: Class {0}'.format(new_race_class))
     emit_class_data()
     emit_heat_data() # Update class selections in heat displays
 
@@ -1218,7 +1277,12 @@ def on_alter_race_class(data):
     if 'class_description' in data:
         db_update.description = data['class_description']
     DB.session.commit()
-    server_log('Altered race class {0} to {1}'.format(race_class, data))
+
+    Events.trigger(Evt.CLASS_ALTER, {
+        'class_id': race_class,
+        })
+
+    logger.info('Altered race class {0} to {1}'.format(race_class, data))
     emit_class_data(noself=True)
     if 'class_name' in data:
         emit_heat_data() # Update class names in heat displays
@@ -1263,7 +1327,12 @@ def on_add_pilot():
     new_pilot.team = DEF_TEAM_NAME
     new_pilot.phonetic = ''
     DB.session.commit()
-    server_log('Pilot added: Pilot {0}'.format(new_pilot.id))
+
+    Events.trigger(Evt.PILOT_ADD, {
+        'pilot_id': new_pilot.id,
+        })
+
+    logger.info('Pilot added: Pilot {0}'.format(new_pilot.id))
     emit_pilot_data()
 
 @SOCKET_IO.on('alter_pilot')
@@ -1282,7 +1351,12 @@ def on_alter_pilot(data):
         db_update.name = data['name']
 
     DB.session.commit()
-    server_log('Altered pilot {0} to {1}'.format(pilot_id, data))
+
+    Events.trigger(Evt.PILOT_ALTER, {
+        'pilot_id': pilot_id,
+        })
+
+    logger.info('Altered pilot {0} to {1}'.format(pilot_id, data))
     emit_pilot_data(noself=True) # Settings page, new pilot settings
     if 'callsign' in data:
         invalidate_all_caches() # wipe caches (all have stored pilot names)
@@ -1330,6 +1404,11 @@ def on_add_profile():
     DB.session.refresh(new_profile)
     new_profile.name = __('Profile %s') % new_profile.id
     DB.session.commit()
+
+    Events.trigger(Evt.PROFILE_ADD, {
+        'profile_id': new_profile.id,
+        })
+
     on_set_profile(data={ 'profile': new_profile.id })
 
 @SOCKET_IO.on('alter_profile')
@@ -1341,7 +1420,12 @@ def on_alter_profile(data):
     if 'profile_description' in data:
         profile.description = data['profile_description']
     DB.session.commit()
-    server_log('Altered current profile to %s' % (data))
+
+    Events.trigger(Evt.PROFILE_ALTER, {
+        'profile_id': profile.id,
+        })
+
+    logger.info('Altered current profile to %s' % (data))
     emit_node_tuning(noself=True)
 
 @SOCKET_IO.on('delete_profile')
@@ -1349,13 +1433,19 @@ def on_delete_profile():
     '''Delete profile'''
     if (DB.session.query(Database.Profiles).count() > 1): # keep one profile
         profile = getCurrentProfile()
+        profile_id = profile.id
         DB.session.delete(profile)
         DB.session.commit()
         first_profile_id = Database.Profiles.query.first().id
+
+        Events.trigger(Evt.PROFILE_DELETE, {
+            'profile_id': profile_id,
+            })
+
         Options.set("currentProfile", first_profile_id)
         on_set_profile(data={ 'profile': first_profile_id })
     else:
-        server_log('Refusing to delete only profile')
+        logger.info('Refusing to delete only profile')
 
 @SOCKET_IO.on("set_profile")
 def on_set_profile(data, emit_vals=True):
@@ -1365,7 +1455,7 @@ def on_set_profile(data, emit_vals=True):
     profile = Database.Profiles.query.get(profile_val)
     if profile:
         Options.set("currentProfile", data['profile'])
-        server_log("Set Profile to '%s'" % profile_val)
+        logger.info("Set Profile to '%s'" % profile_val)
         # set freqs, enter_ats, and exit_ats
         freqs_loaded = json.loads(profile.frequencies)
         freqs = freqs_loaded["f"]
@@ -1391,6 +1481,11 @@ def on_set_profile(data, emit_vals=True):
             exit_ats = exit_at_levels["v"]
 
         DB.session.commit()
+
+        Events.trigger(Evt.PROFILE_SET, {
+            'profile_id': profile_val,
+            })
+
         if emit_vals:
             emit_node_tuning()
             emit_enter_and_exit_at_levels()
@@ -1401,7 +1496,7 @@ def on_set_profile(data, emit_vals=True):
         hardware_set_all_exit_ats(exit_ats)
 
     else:
-        server_log('Invalid set_profile value: ' + str(profile_val))
+        logger.info('Invalid set_profile value: ' + str(profile_val))
 
 @SOCKET_IO.on('backup_database')
 def on_backup_database():
@@ -1414,6 +1509,11 @@ def on_backup_database():
         'file_name': os.path.basename(bkp_name),
         'file_data' : file_content
     }
+
+    Events.trigger(Evt.DATABASE_BACKUP, {
+        'file_name': emit_payload['file_name'],
+        })
+
     SOCKET_IO.emit('database_bkp_done', emit_payload)
 
 @SOCKET_IO.on('reset_database')
@@ -1454,23 +1554,26 @@ def on_reset_database(data):
     emit_round_data_notify()
     emit('reset_confirm')
 
+    Events.trigger(Evt.DATABASE_RESET)
+
+
 @SOCKET_IO.on('shutdown_pi')
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
-    Events.trigger(Evt.SHUTDOWN)  # server is shutting down, so shut off LEDs
+    Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
-    server_log('Shutdown pi')
+    logger.info('Shutdown pi')
     gevent.sleep(1);
     os.system("sudo shutdown now")
 
 @SOCKET_IO.on('reboot_pi')
 def on_reboot_pi():
-    '''Shutdown the raspberry pi.'''
-    Events.trigger(Evt.SHUTDOWN)  # server is shutting down, so shut off LEDs
+    '''Reboot the raspberry pi.'''
+    Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('reboot_pi')
     emit_priority_message(__('Server is rebooting.'), True)
-    server_log('Rebooting pi')
+    logger.info('Rebooting pi')
     gevent.sleep(1);
     os.system("sudo reboot now")
 
@@ -1478,14 +1581,24 @@ def on_reboot_pi():
 def on_set_min_lap(data):
     min_lap = data['min_lap']
     Options.set("MinLapSec", data['min_lap'])
-    server_log("set min lap time to %s seconds" % min_lap)
+
+    Events.trigger(Evt.MIN_LAP_TIME_SET, {
+        'min_lap': min_lap,
+        })
+
+    logger.info("set min lap time to %s seconds" % min_lap)
     emit_min_lap(noself=True)
 
 @SOCKET_IO.on("set_min_lap_behavior")
 def on_set_min_lap_behavior(data):
     min_lap_behavior = data['min_lap_behavior']
     Options.set("MinLapBehavior", data['min_lap_behavior'])
-    server_log("set min lap behavior to %s" % min_lap_behavior)
+
+    Events.trigger(Evt.MIN_LAP_BEHAVIOR_SET, {
+        'min_lap_behavior': min_lap_behavior,
+        })
+
+    logger.info("set min lap behavior to %s" % min_lap_behavior)
     emit_min_lap(noself=True)
 
 @SOCKET_IO.on("set_race_format")
@@ -1497,12 +1610,17 @@ def on_set_race_format(data):
         DB.session.flush()
         setCurrentRaceFormat(race_format)
         DB.session.commit()
+
+        Events.trigger(Evt.RACE_FORMAT_SET, {
+            'race_format': race_format_val,
+            })
+
         emit_race_format()
-        server_log("set race format to '%s' (%s)" % (race_format.name, race_format.id))
+        logger.info("set race format to '%s' (%s)" % (race_format.name, race_format.id))
         CLUSTER.emitToMirrors('set_race_format', data)
     else:
         emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
-        server_log("Format change prevented by active race")
+        logger.info("Format change prevented by active race")
         emit_race_format()
 
 @SOCKET_IO.on('add_race_format')
@@ -1523,24 +1641,12 @@ def on_add_race_format():
     DB.session.flush()
     DB.session.refresh(new_format)
     DB.session.commit()
-    on_set_race_format(data={ 'race_format': new_format.id })
 
-@SOCKET_IO.on('delete_race_format')
-def on_delete_race_format():
-    '''Delete profile'''
-    if RACE.race_status == RaceStatus.READY: # prevent format change if race running
-        raceformat = getCurrentDbRaceFormat()
-        if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
-            DB.session.delete(raceformat)
-            DB.session.commit()
-            first_raceFormat = Database.RaceFormat.query.first()
-            setCurrentRaceFormat(first_raceFormat)
-            emit_race_format()
-        else:
-            server_log('Refusing to delete only format')
-    else:
-        emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
-        server_log("Format change prevented by active race")
+    Events.trigger(Evt.RACE_FORMAT_ADD, {
+        'race_format': new_format.id,
+        })
+
+    on_set_race_format(data={ 'race_format': new_format.id })
 
 @SOCKET_IO.on('alter_race_format')
 def on_alter_race_format(data):
@@ -1568,11 +1674,39 @@ def on_alter_race_format(data):
         if 'team_racing_mode' in data:
             race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
         DB.session.commit()
+
+        Events.trigger(Evt.RACE_FORMAT_ALTER, {
+            'race_format': race_format.id,
+            })
+
         setCurrentRaceFormat(race_format)
-        server_log('Altered race format to %s' % (data))
+        logger.info('Altered race format to %s' % (data))
         if emit:
             emit_race_format()
             emit_class_data()
+
+@SOCKET_IO.on('delete_race_format')
+def on_delete_race_format():
+    '''Delete profile'''
+    if RACE.race_status == RaceStatus.READY: # prevent format change if race running
+        raceformat = getCurrentDbRaceFormat()
+        raceformat_id = raceformat.id
+        if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
+            DB.session.delete(raceformat)
+            DB.session.commit()
+            first_raceFormat = Database.RaceFormat.query.first()
+
+            Events.trigger(Evt.RACE_FORMAT_DELETE, {
+                'race_format': raceformat_id,
+                })
+
+            setCurrentRaceFormat(first_raceFormat)
+            emit_race_format()
+        else:
+            server_log('Refusing to delete only format')
+    else:
+        emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+        logger.info("Format change prevented by active race")
 
 # LED Effects
 
@@ -1641,19 +1775,23 @@ def on_set_led_effect(data):
         effects[data['event']] = data['effect']
         Options.set('ledEffects', json.dumps(effects))
 
-        server_log('Set LED event {0} to effect {1}'.format(data['event'], data['effect']))
+        Events.trigger(Evt.LED_EFFECT_SET, {
+            'effect': data['event'],
+            })
+
+        logger.info('Set LED event {0} to effect {1}'.format(data['event'], data['effect']))
 
 @SOCKET_IO.on('use_led_effect')
 def on_use_led_effect(data):
     '''Activate arbitrary LED Effect.'''
     if led_manager.isEnabled() and 'effect' in data:
-        led_manager.setEventEffect(Evt.MANUAL, data['effect'])
+        led_manager.setEventEffect(Evt.LED_MANUAL, data['effect'])
 
         args = None
         if 'args' in data:
             args = data['args']
 
-        Events.trigger(Evt.MANUAL, args)
+        Events.trigger(Evt.LED_MANUAL, args)
 
 # Race management socket io events
 
@@ -1663,6 +1801,10 @@ def on_schedule_race(data):
 
     RACE.scheduled_time = monotonic() + (data['m'] * 60) + data['s']
     RACE.scheduled = True
+
+    Events.trigger(Evt.RACE_SCHEDULE, {
+        'scheduled_at': RACE.scheduled_time
+        })
 
     SOCKET_IO.emit('RACE.scheduled', {
         'scheduled': RACE.scheduled,
@@ -1676,6 +1818,8 @@ def cancel_schedule_race():
     global RACE
 
     RACE.scheduled = False
+
+    Events.trigger(Evt.RACE_SCHEDULE_CANCEL)
 
     SOCKET_IO.emit('RACE.scheduled', {
         'scheduled': RACE.scheduled,
@@ -1711,7 +1855,7 @@ def on_stage_race():
         global FULL_RESULTS_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        Events.trigger(Evt.RACESTAGE)
+        Events.trigger(Evt.RACE_STAGE)
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         LAST_RACE_CACHE_VALID = False # invalidate last race results cache
@@ -1770,7 +1914,7 @@ def findBestValues(node, node_index):
 
     # test for disabled node
     if pilot is PILOT_ID_NONE or node.frequency is FREQUENCY_ID_NONE:
-        server_log('Node {0} calibration: skipping disabled node'.format(node.index+1))
+        logger.info('Node {0} calibration: skipping disabled node'.format(node.index+1))
         return {
             'enter_at_level': node.enter_at_level,
             'exit_at_level': node.exit_at_level
@@ -1782,7 +1926,7 @@ def findBestValues(node, node_index):
     if race_query:
         pilotrace_query = Database.SavedPilotRace.query.filter_by(race_id=race_query.id, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
         if pilotrace_query:
-            server_log('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
+            logger.info('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
             return {
                 'enter_at_level': pilotrace_query.enter_at,
                 'exit_at_level': pilotrace_query.exit_at
@@ -1793,7 +1937,7 @@ def findBestValues(node, node_index):
     if race_query:
         pilotrace_query = Database.SavedPilotRace.query.filter_by(race_id=race_query.id, node_index=node_index, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
         if pilotrace_query:
-            server_log('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
+            logger.info('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
             return {
                 'enter_at_level': pilotrace_query.enter_at,
                 'exit_at_level': pilotrace_query.exit_at
@@ -1802,7 +1946,7 @@ def findBestValues(node, node_index):
     # test for same pilot, same node
     pilotrace_query = Database.SavedPilotRace.query.filter_by(node_index=node_index, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
     if pilotrace_query:
-        server_log('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
+        logger.info('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
         return {
             'enter_at_level': pilotrace_query.enter_at,
             'exit_at_level': pilotrace_query.exit_at
@@ -1811,14 +1955,14 @@ def findBestValues(node, node_index):
     # test for same node
     pilotrace_query = Database.SavedPilotRace.query.filter_by(node_index=node_index).order_by(-Database.SavedPilotRace.id).first()
     if pilotrace_query:
-        server_log('Node {0} calibration: found same node in other heat'.format(node.index+1))
+        logger.info('Node {0} calibration: found same node in other heat'.format(node.index+1))
         return {
             'enter_at_level': pilotrace_query.enter_at,
             'exit_at_level': pilotrace_query.exit_at
         }
 
     # fallback
-    server_log('Node {0} calibration: no calibration hints found, no change.format(node.index+1)')
+    logger.info('Node {0} calibration: no calibration hints found, no change.format(node.index+1)')
     return {
         'enter_at_level': node.enter_at_level,
         'exit_at_level': node.exit_at_level
@@ -1831,7 +1975,7 @@ def race_start_thread(start_token):
     for node in INTERFACE.nodes:
         if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != PILOT_ID_NONE and \
                     node.current_rssi < node.enter_at_level:
-            server_log("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
+            logger.info("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
                        format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
             INTERFACE.force_end_crossing(node.index)
 
@@ -1849,10 +1993,10 @@ def race_start_thread(start_token):
             pass
 
         # do time-critical tasks
-        Events.trigger(Evt.RACESTART)
+        Events.trigger(Evt.RACE_START)
 
         # do secondary start tasks (small delay is acceptable)
-        RACE.start_time = datetime.now()
+        RACE.start_time = datetime.now() # record standard-formatted time
 
         for node in INTERFACE.nodes:
             node.history_values = [] # clear race history
@@ -1860,7 +2004,7 @@ def race_start_thread(start_token):
             node.under_min_lap_count = 0
             # clear any lingering crossing (if rssi>enterAt then first crossing starts now)
             if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != PILOT_ID_NONE:
-                server_log("Forcing end crossing for node {0} at start (rssi={1}, enterAt={2}, exitAt={3})".\
+                logger.info("Forcing end crossing for node {0} at start (rssi={1}, enterAt={2}, exitAt={3})".\
                            format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
                 INTERFACE.force_end_crossing(node.index)
 
@@ -1869,7 +2013,7 @@ def race_start_thread(start_token):
         RACE.timer_running = 1 # indicate race timer is running
         RACE.laps_winner_name = None  # name of winner in first-to-X-laps race
         emit_race_status() # Race page, to set race button states
-        server_log('Race started at {0} ({1:13f})'.format(RACE.start_time_monotonic, monotonic_to_milliseconds(RACE.start_time_monotonic)))
+        logger.info('Race started at {0} ({1:13f})'.format(RACE.start_time_monotonic, monotonic_to_milliseconds(RACE.start_time_monotonic)))
 
 @SOCKET_IO.on('stop_race')
 def on_stop_race():
@@ -1883,19 +2027,19 @@ def on_stop_race():
         milli_sec = delta_time * 1000.0
         RACE.duration_ms = milli_sec
 
-        server_log('Race stopped at {0} ({1:13f}), duration {2}ms'.format(RACE.end_time, monotonic_to_milliseconds(RACE.end_time), RACE.duration_ms))
+        logger.info('Race stopped at {0} ({1:13f}), duration {2}ms'.format(RACE.end_time, monotonic_to_milliseconds(RACE.end_time), RACE.duration_ms))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
             if node.under_min_lap_count > 0:
                 min_laps_list.append('Node {0} Count={1}'.format(node.index+1, node.under_min_lap_count))
         if len(min_laps_list) > 0:
-            server_log('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
+            logger.info('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
         RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
         INTERFACE.set_race_status(RaceStatus.DONE)
     else:
-        server_log('No active race to stop')
+        logger.info('No active race to stop')
         RACE.race_status = RaceStatus.READY # Go back to ready state
         INTERFACE.set_race_status(RaceStatus.READY)
         led_manager.clear()
@@ -1905,7 +2049,7 @@ def on_stop_race():
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    Events.trigger(Evt.RACESTOP)
+    Events.trigger(Evt.RACE_STOP)
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
@@ -1979,8 +2123,12 @@ def on_save_laps():
     }
     gevent.spawn(build_race_results_caches, params)
 
-    server_log('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
-    on_discard_laps() # Also clear the current laps
+    Events.trigger(Evt.LAPS_SAVE, {
+        'race_id': new_race.id,
+        })
+
+    logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
+    on_discard_laps(saved=True) # Also clear the current laps
     emit_round_data_notify() # live update rounds page
 
 @SOCKET_IO.on('resave_laps')
@@ -2025,22 +2173,27 @@ def on_resave_laps(data):
     DB.session.commit()
     message = __('Race times adjusted for: Heat {0} Round {1} / {2}').format(heat_id, round_id, callsign)
     emit_priority_message(message, False)
-    server_log(message)
+    logger.info(message)
 
     # spawn thread for updating results caches
     params = {
-        'race_id': data['race_id'],
-        'heat_id': data['heat_id'],
-        'round_id': data['round_id'],
+        'race_id': race_id,
+        'heat_id': heat_id,
+        'round_id': round_id,
     }
     gevent.spawn(build_race_results_caches, params)
+
+    Events.trigger(Evt.LAPS_RESAVE, {
+        'race_id': race_id,
+        'pilot_id': pilot_id,
+        })
 
     emit_round_data_notify()
     if int(Options.get('calibrationMode')):
         autoUpdateCalibration()
 
 @SOCKET_IO.on('discard_laps')
-def on_discard_laps():
+def on_discard_laps(**kwargs):
     '''Clear the current laps without saving.'''
     CLUSTER.emit('discard_laps')
     clear_laps()
@@ -2054,7 +2207,15 @@ def on_discard_laps():
         check_emit_team_racing_status()  # Show team-racing status info
     else:
         emit_team_racing_status('')  # clear any displayed "Winner is" text
-    Events.trigger(Evt.LAPSCLEAR)
+
+    if 'saved' in kwargs and kwargs['saved'] == True:
+        # discarding follows a save action
+        pass
+    else:
+        # discarding does not follow a save action
+        Events.trigger(Evt.LAPS_DISCARD)
+
+    Events.trigger(Evt.LAPS_CLEAR)
 
 def clear_laps():
     '''Clear the current laps table.'''
@@ -2067,7 +2228,7 @@ def clear_laps():
     db_reset_current_laps() # Clear out the current laps table
     DB.session.query(Database.LapSplit).delete()
     DB.session.commit()
-    server_log('Current laps cleared')
+    logger.info('Current laps cleared')
 
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
@@ -2119,10 +2280,14 @@ def on_set_current_heat(data):
         else:
             RACE.node_teams[heatNode.node_index] = None
 
-    server_log('Current heat set: Heat {0}'.format(new_heat_id))
+    logger.info('Current heat set: Heat {0}'.format(new_heat_id))
 
     if int(Options.get('calibrationMode')):
         autoUpdateCalibration()
+
+    Events.trigger(Evt.HEAT_SET, {
+        'heat_id': new_heat_id,
+        })
 
     emit_current_heat() # Race page, to update heat selection button
     emit_leaderboard() # Race page, to update callsigns in leaderboard
@@ -2166,7 +2331,11 @@ def on_delete_lap(data):
         db_next['lap_time'] = db_next['lap_time_stamp']
         db_next['lap_time_formatted'] = time_format(db_next['lap_time'])
 
-    server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
+    Events.trigger(Evt.LAP_DELETE, {
+        'node': node_index,
+        })
+
+    logger.info('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
     race_format = getCurrentRaceFormat()
@@ -2188,7 +2357,7 @@ def on_delete_lap(data):
 def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
-    server_log('Simulated lap: Node {0}'.format(node_index+1))
+    logger.info('Simulated lap: Node {0}'.format(node_index+1))
     Events.trigger(Evt.CROSSINGEXIT, {
         'nodeIndex': node_index,
         'color': hexToColor(Options.get('colorNode_' + str(node_index), '#ffffff'))
@@ -2266,15 +2435,21 @@ def on_LED_brightness(data):
     strip.setBrightness(brightness)
     strip.show()
     Options.set("ledBrightness", brightness)
+    Events.trigger(Evt.LED_BRIGHTNESS_SET, {
+        'level': brightness,
+        })
 
 @SOCKET_IO.on('set_option')
 def on_set_option(data):
     Options.set(data['option'], data['value'])
+    Events.trigger(Evt.OPTION_SET, {
+        'option': data['option'],
+        'value': data['value'],
+        })
 
 @SOCKET_IO.on('get_RACE.scheduled')
 def get_race_elapsed():
-    # never broadcasts to all
-
+    # get current race status; never broadcasts to all
     emit('RACE.scheduled', {
         'scheduled': RACE.scheduled,
         'scheduled_at': RACE.scheduled_time
@@ -2297,6 +2472,10 @@ def emit_priority_message(message, interrupt=False, **params):
     if ('nobroadcast' in params):
         emit('priority_message', emit_payload)
     else:
+        Events.trigger(Evt.SEND_MESSAGE, {
+            'message': message,
+            'interrupt': interrupt
+            })
         SOCKET_IO.emit('priority_message', emit_payload)
 
 def emit_race_status(**params):
@@ -2758,6 +2937,8 @@ def emit_round_data_thread(params, sid):
             FULL_RESULTS_CACHE_VALID = True
             FULL_RESULTS_CACHE_BUILDING = False
 
+            Events.trigger(Evt.CACHE_READY)
+
         if ('nobroadcast' in params):
             emit('round_data', emit_payload, namespace='/', room=sid)
         else:
@@ -2789,7 +2970,9 @@ def invalidate_all_caches():
     global FULL_RESULTS_CACHE_VALID
     FULL_RESULTS_CACHE_VALID = False
 
-    server_log('All Result caches invalidated')
+    Events.trigger(Evt.CACHE_CLEAR)
+
+    logger.info('All Result caches invalidated')
 
 def normalize_cache_status():
     ''' Check all caches and invalidate any paused builds '''
@@ -2813,7 +2996,7 @@ def normalize_cache_status():
     global FULL_RESULTS_CACHE_VALID
     FULL_RESULTS_CACHE_VALID = False
 
-    server_log('All Result caches normalized')
+    logger.info('All Result caches normalized')
 
 def build_race_results_caches(params):
     global FULL_RESULTS_CACHE
@@ -2859,7 +3042,7 @@ def build_race_results_caches(params):
     Options.set("eventResults", json.dumps(calc_leaderboard()))
     Options.set("eventResults_cacheStatus", CacheStatus.VALID)
 
-    server_log('Built result caches: Race {0}, Heat {1}, Class {2}, Event'.format(params['race_id'], params['heat_id'], heat.class_id))
+    logger.info('Built result caches: Race {0}, Heat {1}, Class {2}, Event'.format(params['race_id'], params['heat_id'], heat.class_id))
 
 def calc_leaderboard(**params):
     ''' Generates leaderboards '''
@@ -3375,7 +3558,7 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
             pilot_id = node_pilot_dict.get(node.index)
             if pilot_id:
                 pilot_team_dict[pilot_id] = Database.Pilot.query.filter_by(id=pilot_id).one().team
-    #server_log('DEBUG get_team_laps_info pilot_team_dict: {0}'.format(pilot_team_dict))
+    #logger.info('DEBUG get_team_laps_info pilot_team_dict: {0}'.format(pilot_team_dict))
 
     t_laps_dict = {}  # create dictionary (key=team_name, value=[lapCount,timestamp]) with initial zero laps
     for team_name in pilot_team_dict.values():
@@ -3397,8 +3580,8 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
                 t_laps_dict[team_name][0] += 1       # increment lap count for team
                 if num_laps_win == 0 or t_laps_dict[team_name][0] <= num_laps_win:
                     t_laps_dict[team_name][1] = item['lap_time_stamp']  # update lap_time_stamp (if not past winning lap)
-                #server_log('DEBUG get_team_laps_info team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
-    #server_log('DEBUG get_team_laps_info t_laps_dict: {0}'.format(t_laps_dict))
+                #logger.info('DEBUG get_team_laps_info team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
+    #logger.info('DEBUG get_team_laps_info t_laps_dict: {0}'.format(t_laps_dict))
 
     if cur_pilot_id >= 0:  # determine name for 'cur_pilot_id' if given
         cur_team_name = pilot_team_dict[cur_pilot_id]
@@ -3421,7 +3604,7 @@ def check_emit_team_racing_status(t_laps_dict=None, **params):
             disp_str += '<span class="team-winner">Winner is Team ' + RACE.laps_winner_name + '</span>'
         else:
             disp_str += '<span class="team-winner">' + RACE.laps_winner_name + '</span>'
-    #server_log('Team racing status: ' + disp_str)
+    #logger.info('Team racing status: ' + disp_str)
     emit_team_racing_status(disp_str)
 
 def emit_team_racing_stat_if_enb(**params):
@@ -3458,16 +3641,16 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
                             # if (other) pilot crossing for possible winning lap then wait
                             #  in case lap time turns out to be earliest:
                 if node.crossing_flag and node.index != pass_node_index and lap_count == num_laps_win - 1:
-                    server_log('check_pilot_laps_win waiting for crossing, Node {0}'.format(node.index+1))
+                    logger.info('check_pilot_laps_win waiting for crossing, Node {0}'.format(node.index+1))
                     return -1
                 if lap_count >= num_laps_win:
                     lap_data = filter(lambda lap : lap['lap_number']==num_laps_win, RACE.get_active_laps()[node.index])
-                    #server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
+                    #logger.info('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
                              # save pilot_id for earliest lap time:
-                    if win_pilot_id < 0 or lap_data.lap_time_stamp < win_lap_tstamp:
+                    if win_pilot_id < 0 or lap_data[0]['lap_time_stamp'] < win_lap_tstamp:
                         win_pilot_id = pilot_id
-                        win_lap_tstamp = lap_data.lap_time_stamp
-    #server_log('DEBUG check_pilot_laps_win returned win_pilot_id={0}'.format(win_pilot_id))
+                        win_lap_tstamp = lap_data[0]['lap_time_stamp']
+    #logger.info('DEBUG check_pilot_laps_win returned win_pilot_id={0}'.format(win_pilot_id))
     return win_pilot_id
 
 def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_index=-1):
@@ -3493,7 +3676,7 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
                                         # if pilot crossing for possible winning lap then wait
                                         #  in case lap time turns out to be earliest:
                             if ent and ent[0] == num_laps_win - 1:
-                                server_log('check_team_laps_win waiting for crossing, Node {0}'.format(node.index+1))
+                                logger.info('check_team_laps_win waiting for crossing, Node {0}'.format(node.index+1))
                                 return
     win_name = None
     win_tstamp = -1
@@ -3504,7 +3687,7 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
         if ent[0] >= num_laps_win and (win_tstamp < 0 or ent[1] < win_tstamp):
             win_name = team_name
             win_tstamp = ent[1]
-    #server_log('DEBUG check_team_laps_win win_name={0} tstamp={1}'.format(win_name,win_tstamp))
+    #logger.info('DEBUG check_team_laps_win win_name={0} tstamp={1}'.format(win_name,win_tstamp))
     RACE.laps_winner_name = win_name
 
 def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=None):
@@ -3543,7 +3726,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                             win_tstamp = ent[1]
                     else:  # waiting for crossing
                         tied_flag = True
-        #server_log('DEBUG check_most_laps_win tied={0} win_name={1} tstamp={2}'.format(tied_flag,win_name,win_tstamp))
+        #logger.info('DEBUG check_most_laps_win tied={0} win_name={1} tstamp={2}'.format(tied_flag,win_name,win_tstamp))
 
         if tied_flag or max_lap_count <= 0:
             RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
@@ -3581,7 +3764,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                                                 RACE.laps_winner_name = RACE.status_crossing
                                             else:  # if called from 'pass_record_callback()' then no more ties
                                                 RACE.laps_winner_name = RACE.status_tied_str
-                                            server_log('check_most_laps_win waiting for crossing, Node {0}'.\
+                                            logger.info('check_most_laps_win waiting for crossing, Node {0}'.\
                                                                                   format(node.index+1))
                                             return
 
@@ -3614,13 +3797,13 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                         lap_data = filter(lambda lap : lap['lap_number']==lap_count, RACE.get_active_laps()[node.index])
 
                         if lap_data:
-                            pilots_list.append((lap_count, lap_data.lap_time_stamp, pilot_id, node))
+                            pilots_list.append((lap_count, lap_data[0]['lap_time_stamp'], pilot_id, node))
                             if lap_count > max_lap_id:
                                 max_lap_id = lap_count
                                 num_max_lap = 1
                             elif lap_count == max_lap_id:
                                 num_max_lap += 1  # count number of nodes at max lap
-        #server_log('DEBUG check_most_laps_win pass_node_index={0} max_lap={1}'.format(pass_node_index, max_lap_id))
+        #logger.info('DEBUG check_most_laps_win pass_node_index={0} max_lap={1}'.format(pass_node_index, max_lap_id))
 
         if max_lap_id <= 0:  # if no laps then bail out
             RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
@@ -3640,7 +3823,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                         RACE.laps_winner_name = RACE.status_crossing
                     else:  # if called from 'pass_record_callback()' then no more ties
                         RACE.laps_winner_name = RACE.status_tied_str
-                    server_log('check_most_laps_win waiting for crossing, Node {0}'.format(item[3].index+1))
+                    logger.info('check_most_laps_win waiting for crossing, Node {0}'.format(item[3].index+1))
                     return
             else:
                 pass_node_lap_id = item[0]  # save 'lap_id' for node/pilot that caused current lap pass
@@ -3674,7 +3857,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                             emit_team_racing_status(RACE.laps_winner_name)
                             emit_phonetic_text('Race tied', 'race_winner')
                         return  # wait for next 'pass_record_callback()' event
-        #server_log('DEBUG check_most_laps_win win_pilot_id={0}'.format(win_pilot_id))
+        #logger.info('DEBUG check_most_laps_win win_pilot_id={0}'.format(win_pilot_id))
 
         if win_pilot_id >= 0:
             win_callsign = Database.Pilot.query.filter_by(id=win_pilot_id).one().callsign
@@ -3714,6 +3897,10 @@ def emit_first_pass_registered(node_idx, **params):
     emit_payload = {
         'node_index': node_idx,
     }
+    Events.trigger(Evt.RACE_FIRST_PASS, {
+        'node_index': node_idx,
+        })
+
     if ('nobroadcast' in params):
         emit('first_pass_registered', emit_payload)
     else:
@@ -3777,7 +3964,7 @@ def emit_imdtabler_page(**params):
                     fs_list.append(str(val))
             emit_imdtabler_data(fs_list, imdtabler_ver)
         except Exception as ex:
-            server_log('emit_imdtabler_page exception:  ' + str(ex))
+            logger.info('emit_imdtabler_page exception:  ' + str(ex))
 
 def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
     '''Emits IMDTabler data for given frequencies.'''
@@ -3788,7 +3975,7 @@ def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -t ' + ' '.join(fs_list), shell=True)
     except Exception as ex:
         imdtabler_data = None
-        server_log('emit_imdtabler_data exception:  ' + str(ex))
+        logger.info('emit_imdtabler_data exception:  ' + str(ex))
     emit_payload = {
         'freq_list': ' '.join(fs_list),
         'table_data': imdtabler_data,
@@ -3814,7 +4001,7 @@ def emit_imdtabler_rating():
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -r ' + ' '.join(fs_list), shell=True).rstrip()
     except Exception as ex:
         imd_val = None
-        server_log('emit_imdtabler_rating exception:  ' + str(ex))
+        logger.info('emit_imdtabler_rating exception:  ' + str(ex))
     emit_payload = {
             'imd_rating': imd_val
         }
@@ -3875,7 +4062,7 @@ def heartbeat_thread_function():
                         else ERROR_REPORT_INTERVAL_SECS/10):
                 heartbeat_thread_function.last_error_rep_time = time_now
                 if INTERFACE.get_intf_total_error_count() > 0:
-                    server_log(INTERFACE.get_intf_error_report_str())
+                    logger.info(INTERFACE.get_intf_error_report_str())
 
             gevent.sleep(0.500/HEARTBEAT_DATA_RATE_FACTOR)
 
@@ -3883,7 +4070,8 @@ def heartbeat_thread_function():
             print("Heartbeat thread terminated by keyboard interrupt")
             return
         except Exception as ex:
-            server_log('Exception in Heartbeat thread loop:  ' + str(ex))
+            logger.info('Exception in Heartbeat thread loop:  ' + str(ex))
+            logger.info(traceback.format_exc())
             gevent.sleep(0.500)
 
 # declare/initialize variables for heartbeat functions
@@ -3956,14 +4144,14 @@ def check_race_time_expired():
     if race_format and race_format.race_mode == 0: # count down
         if monotonic() >= RACE.start_time_monotonic + race_format.race_time_sec:
             RACE.timer_running = 0 # indicate race timer no longer running
-            Events.trigger(Evt.RACEFINISH)
+            Events.trigger(Evt.RACE_FINISH)
             if race_format.win_condition == WinCondition.MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
 def pass_record_callback(node, lap_timestamp_absolute, source):
     '''Handles pass records from the nodes.'''
 
-    server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, lap_timestamp_absolute))
+    logger.info('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, lap_timestamp_absolute))
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
@@ -4008,7 +4196,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
                         if lap_time < (min_lap * 1000):  # if lap time less than minimum
                             node.under_min_lap_count += 1
-                            server_log('Pass record under lap minimum ({3}): Node={0}, Lap={1}, LapTime={2}, Count={4}' \
+                            logger.info('Pass record under lap minimum ({3}): Node={0}, Lap={1}, LapTime={2}, Count={4}' \
                                        .format(node.index+1, lap_number, time_format(lap_time), min_lap, node.under_min_lap_count))
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
@@ -4029,7 +4217,11 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'deleted': False
                         })
 
-                        #server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
+                        Events.trigger(Evt.RACE_LAP_RECORDED, {
+                            'node': node.index,
+                            })
+
+                        #logger.info('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
                         #    .format(node.index+1, lap_number, time_format(lap_time)))
                         emit_current_laps() # update all laps on the race page
                         emit_leaderboard() # update leaderboard
@@ -4109,25 +4301,25 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'deleted': True
                         })
                 else:
-                    server_log('Pass record dismissed: Node: {0}, Race not started' \
+                    logger.info('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
             else:
-                server_log('Pass record dismissed: Node: {0}, Pilot not defined' \
+                logger.info('Pass record dismissed: Node: {0}, Pilot not defined' \
                     .format(node.index+1))
     else:
-        server_log('Pass record dismissed: Node: {0}, Frequency not defined' \
+        logger.info('Pass record dismissed: Node: {0}, Frequency not defined' \
             .format(node.index+1))
 
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
     if is_enter_at_flag:
-        server_log('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
+        logger.info('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
         on_set_enter_at_level({
             'node': node.index,
             'enter_at_level': node.enter_at_level
         })
         emit_enter_at_level(node)
     else:
-        server_log('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.exit_at_level, node.cap_exit_at_count))
+        logger.info('Finished capture of exit-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.exit_at_level, node.cap_exit_at_count))
         on_set_exit_at_level({
             'node': node.index,
             'exit_at_level': node.exit_at_level
@@ -4144,29 +4336,19 @@ def node_crossing_callback(node):
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
-                Events.trigger(Evt.CROSSINGENTER, {
+                Events.trigger(Evt.CROSSING_ENTER, {
                     'nodeIndex': node.index,
                     'color': hexToColor(Options.get('colorNode_' + str(node.index), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
-                    Events.trigger(Evt.CROSSINGEXIT, {
+                    Events.trigger(Evt.CROSSING_EXIT, {
                         'nodeIndex': node.index,
                         'color': hexToColor(Options.get('colorNode_' + str(node.index), '#ffffff'))
                         })
                 else:
                     node.show_crossing_flag = True
-
-def server_log(message):
-    '''Messages emitted from the server script.'''
-    print message
-    SOCKET_IO.emit('hardware_log', message)
-
-def hardware_log_callback(message):
-    '''Message emitted from the interface class.'''
-    print message
-    SOCKET_IO.emit('hardware_log', message)
 
 def default_frequencies():
     '''Set node frequencies, R1367 for 4, IMD6C+ for 5+.'''
@@ -4183,7 +4365,12 @@ def assign_frequencies():
 
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs["f"][idx])
-        server_log('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs["f"][idx]))
+        Events.trigger(Evt.FREQUENCY_SET, {
+            'nodeIndex': idx,
+            'frequency': freqs["f"][idx],
+            })
+
+        logger.info('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs["f"][idx]))
     DB.session.commit()
 
 def db_init():
@@ -4197,7 +4384,8 @@ def db_init():
     db_reset_race_formats()
     db_reset_options_defaults()
     assign_frequencies()
-    server_log('Database initialized')
+    Events.trigger(Evt.DATABASE_INITIALIZE)
+    logger.info('Database initialized')
 
 def db_reset():
     '''Resets database.'''
@@ -4208,7 +4396,7 @@ def db_reset():
     db_reset_profile()
     db_reset_race_formats()
     assign_frequencies()
-    server_log('Database reset')
+    logger.info('Database reset')
 
 def db_reset_pilots():
     '''Resets database pilots to default.'''
@@ -4217,7 +4405,7 @@ def db_reset_pilots():
         DB.session.add(Database.Pilot(callsign='Callsign {0}'.format(node+1), \
             name='Pilot {0} Name'.format(node+1), team=DEF_TEAM_NAME, phonetic=''))
     DB.session.commit()
-    server_log('Database pilots reset')
+    logger.info('Database pilots reset')
 
 def db_reset_heats():
     '''Resets database heats to default.'''
@@ -4226,13 +4414,13 @@ def db_reset_heats():
     on_add_heat()
     DB.session.commit()
     RACE.current_heat = 1
-    server_log('Database heats reset')
+    logger.info('Database heats reset')
 
 def db_reset_classes():
     '''Resets database race classes to default.'''
     DB.session.query(Database.RaceClass).delete()
     DB.session.commit()
-    server_log('Database race classes reset')
+    logger.info('Database race classes reset')
 
 def db_reset_current_laps():
     '''Resets database current laps to default.'''
@@ -4240,7 +4428,7 @@ def db_reset_current_laps():
     for idx in range(RACE.num_nodes):
         RACE.node_laps[idx] = []
 
-    server_log('Database current laps reset')
+    logger.info('Database current laps reset')
 
 def db_reset_saved_races():
     '''Resets database saved races to default.'''
@@ -4248,7 +4436,7 @@ def db_reset_saved_races():
     DB.session.query(Database.SavedPilotRace).delete()
     DB.session.query(Database.SavedRaceLap).delete()
     DB.session.commit()
-    server_log('Database saved races reset')
+    logger.info('Database saved races reset')
 
 def db_reset_profile():
     '''Set default profile'''
@@ -4266,7 +4454,7 @@ def db_reset_profile():
                              exit_ats = json.dumps(template)))
     DB.session.commit()
     Options.set("currentProfile", 1)
-    server_log("Database set default profiles")
+    logger.info("Database set default profiles")
 
 def db_reset_race_formats():
     DB.session.query(Database.RaceFormat).delete()
@@ -4335,7 +4523,7 @@ def db_reset_race_formats():
                              team_racing_mode=True))
     DB.session.commit()
     setCurrentRaceFormat(Database.RaceFormat.query.first())
-    server_log("Database reset race formats")
+    logger.info("Database reset race formats")
 
 def db_reset_options_defaults():
     DB.session.query(Database.GlobalSettings).delete()
@@ -4382,7 +4570,7 @@ def db_reset_options_defaults():
     # Event results cache
     Options.set("eventResults_cacheStatus", CacheStatus.INVALID)
 
-    server_log("Reset global settings")
+    logger.info("Reset global settings")
 
 def backup_db_file(copy_flag):
     DB.session.close()
@@ -4400,12 +4588,12 @@ def backup_db_file(copy_flag):
             bkp_name = DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
         if copy_flag:
             shutil.copy2(DB_FILE_NAME, bkp_name);
-            server_log('Copied database file to:  ' + bkp_name)
+            logger.info('Copied database file to:  ' + bkp_name)
         else:
             os.renames(DB_FILE_NAME, bkp_name);
-            server_log('Moved old database file to:  ' + bkp_name)
+            logger.info('Moved old database file to:  ' + bkp_name)
     except Exception as ex:
-        server_log('Error backing up database file:  ' + str(ex))
+        logger.info('Error backing up database file:  ' + str(ex))
     return bkp_name
 
 def query_table_data(class_type, filter_crit=None, filter_value=0):
@@ -4414,7 +4602,7 @@ def query_table_data(class_type, filter_crit=None, filter_value=0):
             return class_type.query.all()
         return class_type.query.filter(filter_crit==filter_value).all()
     except Exception as ex:
-        server_log('Unable to read "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
+        logger.info('Unable to read "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
 
 def restore_table(class_type, table_query_data, match_name='name'):
     if table_query_data:
@@ -4428,21 +4616,21 @@ def restore_table(class_type, table_query_data, match_name='name'):
                         for col in class_type.__table__.columns.keys():
                             if col != 'id':
                                 setattr(new_data, col, getattr(row_data, col))
-                        #server_log('DEBUG row_data add:  ' + str(getattr(new_data, match_name)))
+                        #logger.info('DEBUG row_data add:  ' + str(getattr(new_data, match_name)))
                         DB.session.add(new_data)
                     else:
-                        #server_log('DEBUG row_data update:  ' + str(getattr(row_data, match_name)))
+                        #logger.info('DEBUG row_data update:  ' + str(getattr(row_data, match_name)))
                         for col in class_type.__table__.columns.keys():
                             if col != 'id':
                                 setattr(db_update, col, getattr(row_data, col))
                     DB.session.flush()
-            server_log('Database table "{0}" restored'.format(class_type.__name__))
+            logger.info('Database table "{0}" restored'.format(class_type.__name__))
         except Exception as ex:
-            server_log('Error restoring "{0}" table from previous database:  {1}'.format(class_type.__name__, ex))
+            logger.info('Error restoring "{0}" table from previous database:  {1}'.format(class_type.__name__, ex))
 
 def recover_database():
     try:
-        server_log('Recovering data from previous database')
+        logger.info('Recovering data from previous database')
         pilot_query_data = query_table_data(Database.Pilot)
         raceFormat_query_data = query_table_data(Database.RaceFormat)
         profiles_query_data = query_table_data(Database.Profiles)
@@ -4498,7 +4686,7 @@ def recover_database():
                     profile.exit_ats = json.dumps(exit_ats)
 
     except Exception as ex:
-        server_log('Error reading data from previous database:  ' + str(ex))
+        logger.info('Error reading data from previous database:  ' + str(ex))
 
     backup_db_file(False)  # rename and move DB file
     db_init()
@@ -4512,12 +4700,13 @@ def recover_database():
 
         for opt in carryOver:
             Options.set(opt, carryOver[opt])
-        server_log('UI Options restored')
+        logger.info('UI Options restored')
 
     except Exception as ex:
-        server_log('Error while writing data from previous database:  ' + str(ex))
+        logger.info('Error while writing data from previous database:  ' + str(ex))
 
     DB.session.commit()
+    Events.trigger(Evt.DATABASE_RECOVER)
 
 def expand_heats():
     for heat_ids in Database.Heat.query.all():
@@ -4531,13 +4720,13 @@ def expand_heats():
 def init_LED_effects():
     # start with defaults
     effects = {
-        Evt.RACESTAGE: "stripColorOrange2_1",
-        Evt.RACESTART: "stripColorGreenSolid",
-        Evt.RACEFINISH: "stripColorWhite4_4",
-        Evt.RACESTOP: "stripColorRedSolid",
-        Evt.LAPSCLEAR: "clear",
-        Evt.CROSSINGENTER: "stripColorSolid",
-        Evt.CROSSINGEXIT: "stripColor1_1_4s",
+        Evt.RACE_STAGE: "stripColorOrange2_1",
+        Evt.RACE_START: "stripColorGreenSolid",
+        Evt.RACE_FINISH: "stripColorWhite4_4",
+        Evt.RACE_STOP: "stripColorRedSolid",
+        Evt.LAPS_CLEAR: "clear",
+        Evt.CROSSING_ENTER: "stripColorSolid",
+        Evt.CROSSING_EXIT: "stripColor1_1_4s",
         Evt.STARTUP: "rainbowCycle",
         Evt.SHUTDOWN: "clear"
     }
@@ -4554,18 +4743,13 @@ def init_LED_effects():
 # Program Initialize
 #
 
-server_log('RotorHazard v{0}'.format(RELEASE_VERSION))
 idAndLogSystemInfo()
-server_log('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
-server_log(Config.getInitResultStr())
-server_log(Language.getInitResultStr())
-
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
     interfaceModule = importlib.import_module(interface_type + 'Interface')
     INTERFACE = interfaceModule.get_hardware_interface(config=Config)
 except (ImportError, RuntimeError, IOError) as ex:
-    print 'Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex)
+    logger.info('Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex))
 if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
     if not Config.SERIAL_PORTS or len(Config.SERIAL_PORTS) <= 0:
         interfaceModule = importlib.import_module('MockInterface')
@@ -4597,14 +4781,13 @@ for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
 INTERFACE.pass_record_callback = pass_record_callback
 INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
 INTERFACE.node_crossing_callback = node_crossing_callback
-INTERFACE.hardware_log_callback = hardware_log_callback
 
 # Save number of nodes found
 RACE.num_nodes = len(INTERFACE.nodes)
 if RACE.num_nodes == 0:
-    print '*** WARNING: NO RECEIVER NODES FOUND ***'
+    logger.warn('*** WARNING: NO RECEIVER NODES FOUND ***')
 else:
-    print 'Number of nodes found: {0}'.format(RACE.num_nodes)
+    logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
 
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
@@ -4612,46 +4795,46 @@ gevent.sleep(0.500)
 # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
 db_inited_flag = False
 if not os.path.exists(DB_FILE_NAME):
-    server_log('No database.db file found; creating initial database')
+    logger.info('No database.db file found; creating initial database')
     db_init()
     db_inited_flag = True
 
 # check if DB file owned by 'root' and change owner to 'pi' user if so
 if checkSetFileOwnerPi(DB_FILE_NAME):
-    server_log("Changed DB-file owner from 'root' to 'pi' (file: '{0}')".format(DB_FILE_NAME))
+    logger.info("Changed DB-file owner from 'root' to 'pi' (file: '{0}')".format(DB_FILE_NAME))
 
 Options.primeGlobalsCache()
 
 # collect server info for About panel
 serverInfo = buildServerInfo()
-server_log('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
+logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 if serverInfo['node_api_match'] is False:
-    server_log('** WARNING: Node API mismatch. **')
+    logger.info('** WARNING: Node API mismatch. **')
 
 if RACE.num_nodes > 0:
     if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
-        server_log('** WARNING: Node firmware is out of date and may not function properly **')
+        logger.info('** WARNING: Node firmware is out of date and may not function properly **')
     elif serverInfo['node_api_lowest'] < NODE_API_BEST:
-        server_log('** NOTICE: Node firmware update is available **')
+        logger.info('** NOTICE: Node firmware update is available **')
     elif serverInfo['node_api_lowest'] > NODE_API_BEST:
-        server_log('** WARNING: Node firmware is newer than this server version supports **')
+        logger.info('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
     try:
         if int(Options.get('server_api')) < SERVER_API:
-            server_log('Old server API version; resetting database')
+            logger.info('Old server API version; resetting database')
             recover_database()
         elif not Database.Heat.query.count():
-            server_log('Heats are empty; resetting database')
+            logger.info('Heats are empty; resetting database')
             recover_database()
         elif not Database.Profiles.query.count():
-            server_log('Profiles are empty; resetting database')
+            logger.info('Profiles are empty; resetting database')
             recover_database()
         elif not Database.RaceFormat.query.count():
-            server_log('Formats are empty; resetting database')
+            logger.info('Formats are empty; resetting database')
             recover_database()
     except Exception as ex:
-        server_log('Resetting data after DB-check exception:  ' + str(ex))
+        logger.info('Resetting data after DB-check exception:  ' + str(ex))
         recover_database()
 
 # Expand heats (if number of nodes increases)
@@ -4673,22 +4856,22 @@ SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     try:
         java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True)
-        server_log('Found installed:  ' + java_ver.split('\n')[0])
+        logger.info('Found installed:  ' + java_ver.split('\n')[0])
     except:
         java_ver = None
-        server_log('Unable to find java; for IMDTabler functionality try:')
-        server_log('sudo apt-get install openjdk-8-jdk')
+        logger.info('Unable to find java; for IMDTabler functionality try:')
+        logger.info('sudo apt-get install openjdk-8-jdk')
     if java_ver:
         try:
             imdtabler_ver = subprocess.check_output( \
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
                         stderr=subprocess.STDOUT, shell=True).rstrip()
             Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
-            server_log('Found installed:  ' + imdtabler_ver)
+            logger.info('Found installed:  ' + imdtabler_ver)
         except Exception as ex:
-            server_log('Error checking IMDTabler:  ' + str(ex))
+            logger.exception('Error checking IMDTabler:  ')
 else:
-    server_log('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
+    logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
 
 
 # Clear any current laps from the database on each program start
@@ -4731,9 +4914,9 @@ if Config.LED['LED_COUNT'] > 0:
             strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
         except ImportError:
             ledModule = None
-            print 'LED: disabled (no modules available)'
+            logger.info('LED: disabled (no modules available)')
 else:
-    print 'LED: disabled (configured LED_COUNT is <= 0)'
+    logger.info('LED: disabled (configured LED_COUNT is <= 0)')
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
@@ -4744,7 +4927,7 @@ if strip:
             lib = importlib.import_module(handlerFile)
             lib.registerEffects(led_manager)
         except ImportError:
-            print 'Handler {0} not imported (may require additional dependencies)'.format(handlerFile)
+            logger.info('Handler {0} not imported (may require additional dependencies)'.format(handlerFile))
     init_LED_effects()
 else:
     led_manager = NoLEDManager()
@@ -4755,7 +4938,7 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
 
     APP.config['SECRET_KEY'] = Options.get("secret_key")
 
-    print "Running http server at port " + str(port_val)
+    logger.info("Running http server at port " + str(port_val))
 
     Events.trigger(Evt.STARTUP)
 
@@ -4763,9 +4946,9 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
     except KeyboardInterrupt:
-        print "Server terminated by keyboard interrupt"
+        logger.info("Server terminated by keyboard interrupt")
     except Exception as ex:
-        print "Server exception:  " + str(ex)
+        logger.exception("Server exception:  ")
 
     Events.trigger(Evt.SHUTDOWN)
     print INTERFACE.get_intf_error_report_str(True)

@@ -1,5 +1,9 @@
+import logging
 from sensor import I2CSensor, Reading
 import ina219
+
+logger = logging.getLogger(__name__)
+
 
 class INA219Sensor(I2CSensor):
     def __init__(self, name, addr, i2c_helper, config={}):
@@ -43,7 +47,7 @@ def discover(idxOffset, config, *args, **kwargs):
         name = sensor_config.get('name', url)
         try:
             sensors.append(INA219Sensor(name, addr, i2c_helper, sensor_config))
-            print "INA219 found at address {0}".format(addr)
+            logger.info("INA219 found at address {0}".format(addr))
         except IOError:
-            print "No INA219 at address {0}".format(addr)
+            logger.info("No INA219 at address {0}".format(addr))
     return sensors
