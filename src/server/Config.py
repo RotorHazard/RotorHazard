@@ -46,8 +46,9 @@ try:
         ExternalConfig = json.load(f)
 
     GENERAL.update(ExternalConfig['GENERAL'])
-    LOGGING.update(ExternalConfig['LOGGING'])
 
+    if 'LOGGING' in ExternalConfig:
+        LOGGING.update(ExternalConfig['LOGGING'])
     if 'LED' in ExternalConfig:
         LED.update(ExternalConfig['LED'])
 
