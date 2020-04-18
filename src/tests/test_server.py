@@ -48,9 +48,13 @@ class ServerTest(unittest.TestCase):
             self.client.emit('alter_pilot', data)
             self.client.emit('load_data', {'load_types': ['pilot_data']})
             resp = self.get_response('pilot_data')
-            self.assertEquals(resp['pilots'][i-1]['callsign'], data['callsign'])
-            self.assertEquals(resp['pilots'][i-1]['phonetic'], data['phonetic'])
-            self.assertEquals(resp['pilots'][i-1]['name'], data['name'])
+            for item in resp['pilots']:
+                if item['pilot_id'] == i:
+                    pilot = item
+                    break
+            self.assertEquals(pilot['callsign'], data['callsign'])
+            self.assertEquals(pilot['phonetic'], data['phonetic'])
+            self.assertEquals(pilot['name'], data['name'])
 
     def test_add_profile(self):
         self.client.emit('load_data', {'load_types': ['node_tuning']})

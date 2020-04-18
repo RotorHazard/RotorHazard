@@ -97,6 +97,10 @@
 			$('#set_calibrationMode').val(1);
 		}
 
+		if ('{{ getOption('pilotSort') }}' == 'callsign') {
+			$('#set_pilotSort').val('callsign');
+		}
+
 		// populate frequency selects
 		$('.frequency_table').each(function(){
 			$(this).html(freq.buildSelect());
@@ -472,14 +476,6 @@
 
 		/* Heats */
 		socket.on('heat_data', function (msg) {
-			msg.pilot_data.sort(function(a, b){
-				if (a.name < b.name)
-					return -1;
-				if (a.name > b.name)
-					return 1;
-				return 0;
-			});
-
 			$(".heats").empty();
 			for (var i in msg.heats) {
 				var heats = msg.heats[i];
@@ -507,7 +503,12 @@
 					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" >')
 					selectbox.append('<option value="0">None</option>')
 						for (var k in msg.pilot_data) {
-							selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+							if (msg.pilotSort == 'callsign') {
+								selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+
+							} else {
+								selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].name + ' (' + msg.pilot_data[k].callsign + ')</option>')
+							}
 						}
 					selectbox.val(heatpilot);
 					selectbox.prop('disabled', heats.locked);
@@ -1591,6 +1592,18 @@
 		<div class="control-set">
 			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
 		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_pilotSort">{{ __('Pilot Sort') }}</label>
+				</div>
+				<select id="set_pilotSort" class="set-option" data-option="pilotSort">
+					<option value="name">{{ __('Name') }}</option>
+					<option value="callsign">{{ __('Callsign') }}</option>
+				</select>
+			</li>
+		</ol>
 	</div>
 </div>
 

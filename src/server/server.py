@@ -778,6 +778,11 @@ def api_race(heat_id, round_id):
         else:
             nodepilot = None
 
+        if Options.get('pilotSort') == 'callsign':
+            pilot_data.sort(key=lambda x: (x['callsign'], x['name']))
+        else:
+            pilot_data.sort(key=lambda x: (x['name'], x['callsign']))
+
         pilotraces.append({
             'callsign': nodepilot,
             'pilot_id': pilotrace.pilot_id,
@@ -787,6 +792,7 @@ def api_race(heat_id, round_id):
     payload = {
         'start_time_formatted': race.start_time_formatted,
         'nodes': pilotraces,
+        'sort': Options.get('pilotSort'),
         'leaderboard': calc_leaderboard(heat_id=heat_id, round_id=round_id)
     }
 
@@ -1322,8 +1328,8 @@ def on_add_pilot():
     DB.session.add(new_pilot)
     DB.session.flush()
     DB.session.refresh(new_pilot)
-    new_pilot.name = __('Pilot %d Name') % (new_pilot.id)
-    new_pilot.callsign = __('Callsign %d') % (new_pilot.id)
+    new_pilot.name = __('~Pilot %d Name') % (new_pilot.id)
+    new_pilot.callsign = __('~Callsign %d') % (new_pilot.id)
     new_pilot.team = DEF_TEAM_NAME
     new_pilot.phonetic = ''
     DB.session.commit()
@@ -3465,10 +3471,16 @@ def emit_heat_data(**params):
             'name': pilot.name
             })
 
+    if Options.get('pilotSort') == 'callsign':
+        pilots.sort(key=lambda x: (x['callsign'], x['name']))
+    else:
+        pilots.sort(key=lambda x: (x['name'], x['callsign']))
+
     emit_payload = {
         'heats': current_heats,
         'pilot_data': pilots,
         'classes': current_classes,
+        'pilotSort': Options.get('pilotSort'),
     }
     if ('nobroadcast' in params):
         emit('heat_data', emit_payload)
@@ -3540,6 +3552,11 @@ def emit_pilot_data(**params):
             'team_options': opts_str,
             'locked': locked,
         })
+
+        if Options.get('pilotSort') == 'callsign':
+            pilots_list.sort(key=lambda x: (x['callsign'], x['name']))
+        else:
+            pilots_list.sort(key=lambda x: (x['name'], x['callsign']))
 
     emit_payload = {
         'pilots': pilots_list
