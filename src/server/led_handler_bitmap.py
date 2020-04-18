@@ -47,18 +47,18 @@ def showBitmap(args):
 
 def registerEffects(manager):
     # register state bitmaps
-    manager.registerEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, [Evt.STARTUP, Evt.RACESTAGE, Evt.RACESTART, Evt.RACEFINISH, Evt.RACESTOP, Evt.SHUTDOWN], {'bitmaps': [
+    manager.registerEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, [Evt.STARTUP, Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.SHUTDOWN], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-RotorHazard.png", "delay": 0}
         ]})
-    manager.registerEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, [Evt.RACESTAGE], {'bitmaps': [
+    manager.registerEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, [Evt.RACE_STAGE], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-pause.png", "delay": 0}
         ]})
-    manager.registerEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, [Evt.RACESTART], {'bitmaps': [
+    manager.registerEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, [Evt.RACE_START], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-arrow.png", "delay": 0}
         ]})
-    manager.registerEffect("bitmapRedX", "Image: Red X", showBitmap, [Evt.RACESTOP], {'bitmaps': [
+    manager.registerEffect("bitmapRedX", "Image: Red X", showBitmap, [Evt.RACE_STOP], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-X.png", "delay": 0}
         ]})
-    manager.registerEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, [Evt.RACEFINISH, Evt.RACESTOP], {'bitmaps': [
+    manager.registerEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, [Evt.RACE_FINISH, Evt.RACE_STOP], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-checkerboard.png", "delay": 0}
         ]})

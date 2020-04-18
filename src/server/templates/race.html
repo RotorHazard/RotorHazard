@@ -440,7 +440,7 @@
 					if(rotorhazard.display_lap_id) {
 						local_colspan = 1;
 						$tr.append(
-							$('<td class="display_lap_number">').text(lap_number)
+							$('<td class="display_lap_number">').text(lap.lap_number)
 						);
 					}
 					$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ').append(

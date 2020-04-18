@@ -2,6 +2,7 @@
 
 import os
 import io
+import logging
 import gevent # For threads and timing
 from monotonic import monotonic # to capture read timing
 
@@ -31,6 +32,9 @@ LAPSTATS_FLAG_PEAK = 0x02      # reported extremum is peak
 UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
+
+logger = logging.getLogger(__name__)
+
 
 def unpack_8(data):
     return data[0]
@@ -123,15 +127,15 @@ class RHInterface(BaseHardwareInterface):
                     node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
                 node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
                 node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
-                print "Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level)
+                logger.info("Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level))
 
                 if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
                     self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
-                    print("Data logging enabled for node {0}".format(node.index+1))
+                    logger.info("Data logging enabled for node {0}".format(node.index+1))
                 else:
                     self.data_loggers.append(None)
             else:
-                print("Node {0}: API_level={1}".format(node.index+1, node.api_level))
+                logger.info("Node {0}: API_level={1}".format(node.index+1, node.api_level))
 
         sensorKwargs = {}
         sensorKwargs.update(extKwargs)
@@ -159,10 +163,10 @@ class RHInterface(BaseHardwareInterface):
                     self.update()
                     gevent.sleep(UPDATE_SLEEP)
             except KeyboardInterrupt:
-                print("Update thread terminated by keyboard interrupt")
+                logger.info("Update thread terminated by keyboard interrupt")
                 return
             except Exception as ex:
-                self.log('Exception in RHInterface update_loop():  ' + str(ex))
+                logger.exception('Exception in RHInterface update_loop():')
                 gevent.sleep(UPDATE_SLEEP*10)
 
     def update(self):

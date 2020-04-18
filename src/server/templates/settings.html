@@ -480,7 +480,14 @@
 			for (var i in msg.heats) {
 				var heats = msg.heats[i];
 				var el = $('<li>');
-				el.append('<h3>Heat ' + heats.heat_id + '</h3>');
+
+				var header = $('<h3>Heat ' + heats.heat_id + '</h3>')
+
+				if (!heats.locked) {
+					header.append('<button class="delete_heat btn-danger" data-id="' + heats.heat_id + '" title="Delete Heat ' + heats.heat_id + '">&#215;</button>');
+				}
+				el.append(header);
+
 				var input = $('<input type="text" id="heat-note-' + heats.heat_id + '" class="set_heat_note" data-heat="' + heats.heat_id + '" placeholder="' + __('Name') + ' (' + __('Heat') + ' ' + heats.heat_id + ')" maxlength="80">');
 				input.val(heats.note);
 				el.append(input);
@@ -566,6 +573,13 @@
 			return false;
 		});
 
+		$(document).on("click", '.delete_heat', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_heat', data);
+		});
+
 		socket.on('class_data', function (msg) {
 			$(".race_classes").empty();
 
@@ -576,7 +590,13 @@
 				for (var i in msg.classes) {
 					var race_class = msg.classes[i];
 					var el = $('<li>');
-					el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');
+					var header = $('<h3>' + __('Class') + ' ' + race_class.id + '</h3>')
+
+					if (!race_class.locked) {
+						header.append('<button class="delete_class btn-danger" data-id="' + race_class.id + '" title="Delete Class '+ race_class.id +'">&#215;</button>');
+					}
+					el.append(header);
+
 					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
 					input.val(race_class.name);
 					el.append(input);
@@ -631,22 +651,34 @@
 			return false;
 		});
 
+		$(document).on("click", '.delete_class', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_class', data);
+		});
+
 		/* Pilots */
 		socket.on('pilot_data', function (msg) {
 			$(".pilots").empty();
 			for (var i in msg.pilots) {
-				if (msg.pilots[i].pilot_id != 0) {
-					var el = $('<li data-id="' + msg.pilots[i].pilot_id + '">');
-					el.append('<label for="name_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
-					el.append('<input type="text" class="set_pilot_name" id="name_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].name + '" placeholder="' + __('Name') +'">');
-					el.append('<label for="callsign_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
-					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].callsign + '" placeholder="' + __('Callsign') +'">');
-					el.append('<label for="phonetic_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
+				var pilot = msg.pilots[i];
+				if (pilot.pilot_id != 0) {
+					var el = $('<li data-id="' + pilot.pilot_id + '">');
+					el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
+					el.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
+					el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
+					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
+					el.append('<label for="phonetic_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
 					var phonetic = $('<div class="phonetic">');
-					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].phonetic + '" placeholder="' + __('Phonetic') + '">');
-					phonetic.append('<button class="speak_pilot" data-pilot_id="' + msg.pilots[i].pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
+					phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
-					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilots[i].pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '">' + msg.pilots[i].team_options + '</select></div>');
+					el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
+
+					if (!pilot.locked) {
+						el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
+					}
 
 					el.appendTo($('.pilots'));
 				}
@@ -729,6 +761,13 @@
 		$('button#add_pilot').click(function (event) {
 			socket.emit('add_pilot');
 			return false;
+		});
+
+		$(document).on("click", '.delete_pilot', function (event) {
+			var data = {
+				pilot: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_pilot', data);
 		});
 
 		/* Voice */
