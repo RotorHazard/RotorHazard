@@ -1,26 +1,26 @@
 #
 # Translation functions
 #
-
-import Options
+import logging
 import json
+import Options
+
+logger = logging.getLogger(__name__)
+
 
 LANGUAGE_FILE_NAME = 'language.json'
 
 Languages = {}
-InitResultStr = None
 # Load language file
 try:
     with open(LANGUAGE_FILE_NAME, 'r') as f:
         Languages = json.load(f)
-    InitResultStr = 'Language file imported'
+    logger.info('Language file imported')
 except IOError:
-    InitResultStr = 'No language file found, using defaults'
+    logger.warn('No language file found, using defaults')
 except ValueError:
-    InitResultStr = 'Language file invalid, using defaults'
+    logger.error('Language file invalid, using defaults')
 
-def getInitResultStr():
-    return InitResultStr
 
 def __(text, domain=''):
     # return translated string
