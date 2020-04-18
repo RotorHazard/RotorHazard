@@ -1,10 +1,13 @@
 import gevent
+import logging
 import importlib
 import pkgutil
 from monotonic import monotonic
 
 ENTER_AT_PEAK_MARGIN = 5 # closest that captured enter-at level can be to node peak RSSI
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
+
+logger = logging.getLogger(__name__)
 
 
 def discover_modules(type):
@@ -14,7 +17,7 @@ def discover_modules(type):
             try:
                 plugin_module = importlib.import_module(name)
                 plugin_modules.append(plugin_module)
-                print('Loaded module {0}'.format(name))
+                logger.info('Loaded module {0}'.format(name))
             except ImportError:
                 pass
     return plugin_modules
@@ -25,7 +28,7 @@ def discover_plugins(mod_type, *args, **kwargs):
         try:
             plugins.extend(plugin_module.discover(len(plugins), *args, **kwargs))
         except AttributeError as err:
-            print('Error loading plugin {0}: {1}'.format(plugin_module.__name__, err))
+            logger.info('Error loading plugin {0}: {1}'.format(plugin_module.__name__, err))
             pass
     return plugins
 
@@ -67,7 +70,7 @@ class BaseHardwareInterface(object):
             string = 'Interface: {0}'.format(message)
             gevent.spawn(self.hardware_log_callback, string)
         else:
-            print 'Interface: {0}'.format(message)
+            logger.info('Interface: {0}'.format(message))
 
     def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list):
         if node.scan_interval == 0:
@@ -75,18 +78,18 @@ class BaseHardwareInterface(object):
                 node.crossing_flag = cross_flag
                 if callable(self.node_crossing_callback):
                     cross_list.append(node)
-    
+
             # calc lap timestamp
             if ms_val < 0 or ms_val > 9999999:
                 ms_val = 0  # don't allow negative or too-large value
                 node.lap_timestamp = 0
             else:
                 node.lap_timestamp = readtime - (ms_val / 1000.0)
-    
+
             # if new lap detected for node then append item to updates list
             if lap_id != node.node_lap_id:
                 upd_list.append((node, lap_id, node.lap_timestamp))
-    
+
             # check if capturing enter-at level for node
             if node.cap_enter_at_flag:
                 node.cap_enter_at_total += node.current_rssi
@@ -99,7 +102,7 @@ class BaseHardwareInterface(object):
                         node.enter_at_level = node.node_peak_rssi - ENTER_AT_PEAK_MARGIN
                     if callable(self.new_enter_or_exit_at_callback):
                         gevent.spawn(self.new_enter_or_exit_at_callback, node, True)
-    
+
             # check if capturing exit-at level for node
             if node.cap_exit_at_flag:
                 node.cap_exit_at_total += node.current_rssi

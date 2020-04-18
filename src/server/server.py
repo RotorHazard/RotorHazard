@@ -5,6 +5,23 @@ NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 23 # Most recent node API
 JSON_API = 3 # JSON API version
 
+# This must be the first import for the time being. It is
+# necessary to set up logging *before* anything else
+# because there is a lot of code run through imports, and
+# we would miss messages otherwise.
+import logging
+import log
+from datetime import datetime
+
+log.early_stage_setup()
+logger = logging.getLogger(__name__)
+
+EPOCH_START = datetime(1970, 1, 1)
+PROGRAM_START_TIMESTAMP = int((datetime.now() - EPOCH_START).total_seconds() / 1000)
+
+logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
+logger.info('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
+
 import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
@@ -22,7 +39,6 @@ import subprocess
 import importlib
 import socketio
 from monotonic import monotonic
-from datetime import datetime
 from functools import wraps
 from collections import OrderedDict
 
@@ -41,6 +57,7 @@ from Language import __
 
 # Events manager
 from eventmanager import Evt, EventManager
+
 Events = EventManager()
 
 # LED imports
@@ -95,13 +112,6 @@ Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 
 RACE = get_race_state() # For storing race management variables
 
-def diff_milliseconds(t2, t1):
-    dt = t2 - t1
-    ms = round((dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0)
-    return ms
-
-EPOCH_START = datetime(1970, 1, 1)
-PROGRAM_START_TIMESTAMP = diff_milliseconds(datetime.now(), EPOCH_START)
 PROGRAM_START = monotonic()
 PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
 
@@ -137,15 +147,15 @@ class Slave:
     def reconnect(self):
         if self.lastContact == -1:
             startConnectTime = monotonic()
-            print "Slave {0}: connecting to {1}...".format(self.id+1, self.address)
+            logger.info("Slave {0}: connecting to {1}...".format(self.id+1, self.address))
             while monotonic() < startConnectTime + self.info['timeout']:
                 try:
                     self.sio.connect(self.address)
-                    print "Slave {0}: connected to {1}".format(self.id+1, self.address)
+                    logger.info("Slave {0}: connected to {1}".format(self.id+1, self.address))
                     return True
                 except socketio.exceptions.ConnectionError:
                     gevent.sleep(0.1)
-            print "Slave {0}: connection to {1} failed!".format(self.id+1, self.address)
+            logger.info("Slave {0}: connection to {1} failed!".format(self.id+1, self.address))
             return False
 
     def emit(self, event, data = None):
@@ -325,7 +335,7 @@ def idAndLogSystemInfo():
             server_log("Host machine: " + modelStr)
         server_log("Host OS: {0} {1}".format(platform.system(), platform.release()))
     except Exception as ex:
-        print "Error in idAndLogSystemInfo():  " + str(ex)
+        logger.exception("Error in idAndLogSystemInfo():  ")
 
 # Checks if the given file is owned by 'root' and changes owner to 'pi' user if so.
 # Returns True if file owner changed to 'pi' user; False if not.
@@ -4105,12 +4115,12 @@ def node_crossing_callback(node):
 
 def server_log(message):
     '''Messages emitted from the server script.'''
-    print message
+    logger.info(message)
     SOCKET_IO.emit('hardware_log', message)
 
 def hardware_log_callback(message):
     '''Message emitted from the interface class.'''
-    print message
+    logger.info(message)
     SOCKET_IO.emit('hardware_log', message)
 
 def default_frequencies():
@@ -4499,18 +4509,13 @@ def init_LED_effects():
 # Program Initialize
 #
 
-server_log('RotorHazard v{0}'.format(RELEASE_VERSION))
 idAndLogSystemInfo()
-server_log('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
-server_log(Config.getInitResultStr())
-server_log(Language.getInitResultStr())
-
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
     interfaceModule = importlib.import_module(interface_type + 'Interface')
     INTERFACE = interfaceModule.get_hardware_interface(config=Config)
 except (ImportError, RuntimeError, IOError) as ex:
-    print 'Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex)
+    logger.info('Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex))
 if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
     if not Config.SERIAL_PORTS or len(Config.SERIAL_PORTS) <= 0:
         interfaceModule = importlib.import_module('MockInterface')
@@ -4547,9 +4552,9 @@ INTERFACE.hardware_log_callback = hardware_log_callback
 # Save number of nodes found
 RACE.num_nodes = len(INTERFACE.nodes)
 if RACE.num_nodes == 0:
-    print '*** WARNING: NO RECEIVER NODES FOUND ***'
+    logger.warn('*** WARNING: NO RECEIVER NODES FOUND ***')
 else:
-    print 'Number of nodes found: {0}'.format(RACE.num_nodes)
+    logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
 
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
@@ -4676,9 +4681,9 @@ if Config.LED['LED_COUNT'] > 0:
             strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
         except ImportError:
             ledModule = None
-            print 'LED: disabled (no modules available)'
+            logger.info('LED: disabled (no modules available)')
 else:
-    print 'LED: disabled (configured LED_COUNT is <= 0)'
+    logger.info('LED: disabled (configured LED_COUNT is <= 0)')
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
@@ -4689,7 +4694,7 @@ if strip:
             lib = importlib.import_module(handlerFile)
             lib.registerEffects(led_manager)
         except ImportError:
-            print 'Handler {0} not imported (may require additional dependencies)'.format(handlerFile)
+            logger.info('Handler {0} not imported (may require additional dependencies)'.format(handlerFile))
     init_LED_effects()
 else:
     led_manager = NoLEDManager()
@@ -4700,7 +4705,7 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
 
     APP.config['SECRET_KEY'] = Options.get("secret_key")
 
-    print "Running http server at port " + str(port_val)
+    logger.info("Running http server at port " + str(port_val))
 
     Events.trigger(Evt.STARTUP)
 
@@ -4708,10 +4713,9 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
     except KeyboardInterrupt:
-        print "Server terminated by keyboard interrupt"
+        logger.info("Server terminated by keyboard interrupt")
     except Exception as ex:
-        print "Server exception:  " + str(ex)
-        traceback.print_exc()
+        logger.exception("Server exception:  ")
 
     Events.trigger(Evt.SHUTDOWN)
     print INTERFACE.get_intf_error_report_str(True)
