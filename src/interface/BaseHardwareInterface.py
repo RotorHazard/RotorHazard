@@ -53,7 +53,6 @@ class BaseHardwareInterface(object):
         self.environmental_data_update_tracker = 0
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
         self.pass_record_callback = None # Function added in server.py
-        self.hardware_log_callback = None # Function added in server.py
         self.new_enter_or_exit_at_callback = None # Function added in server.py
         self.node_crossing_callback = None # Function added in server.py
 
@@ -65,12 +64,7 @@ class BaseHardwareInterface(object):
         return 1000*monotonic() - self.start_time
 
     def log(self, message):
-        '''Hardware log of messages.'''
-        if callable(self.hardware_log_callback):
-            string = 'Interface: {0}'.format(message)
-            gevent.spawn(self.hardware_log_callback, string)
-        else:
-            logger.info('Interface: {0}'.format(message))
+        logger.info('Interface: {0}'.format(message))
 
     def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list):
         if node.scan_interval == 0:

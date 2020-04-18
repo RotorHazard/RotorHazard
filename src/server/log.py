@@ -1,7 +1,18 @@
 import sys
 import logging.handlers
+import gevent
 
 ROTORHAZARD_FORMAT = "<-RotorHazard-> %(message)s"
+
+
+class GEventDeferredHandler(logging.Handler):
+
+    def __init__(self, handler):
+        super(GEventDeferredHandler, self).__init__()
+        self._handler = handler
+
+    def emit(self, record):
+        gevent.spawn(self._handler.emit(record))
 
 
 class SocketForwardHandler(logging.Handler):
@@ -60,4 +71,4 @@ def later_stage_setup(config, socket):
 
     for handler in handlers:
         handler.setFormatter(logging.Formatter(ROTORHAZARD_FORMAT))
-        root.addHandler(handler)
+        root.addHandler(GEventDeferredHandler(handler))

@@ -4118,11 +4118,6 @@ def node_crossing_callback(node):
                 else:
                     node.show_crossing_flag = True
 
-def hardware_log_callback(message):
-    '''Message emitted from the interface class.'''
-    logger.info(message)
-    SOCKET_IO.emit('hardware_log', message)
-
 def default_frequencies():
     '''Set node frequencies, R1367 for 4, IMD6C+ for 5+.'''
     if RACE.num_nodes < 5:
@@ -4547,7 +4542,6 @@ for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
 INTERFACE.pass_record_callback = pass_record_callback
 INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
 INTERFACE.node_crossing_callback = node_crossing_callback
-INTERFACE.hardware_log_callback = hardware_log_callback
 
 # Save number of nodes found
 RACE.num_nodes = len(INTERFACE.nodes)
