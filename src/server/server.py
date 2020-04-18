@@ -12,6 +12,7 @@ gevent.monkey.patch_all()
 import io
 import os
 import sys
+import traceback
 import platform
 import glob
 import re
@@ -3407,9 +3408,9 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
                     lap_data = filter(lambda lap : lap['lap_number']==num_laps_win, RACE.get_active_laps()[node.index])
                     #server_log('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
                              # save pilot_id for earliest lap time:
-                    if win_pilot_id < 0 or lap_data.lap_time_stamp < win_lap_tstamp:
+                    if win_pilot_id < 0 or lap_data[0]['lap_time_stamp'] < win_lap_tstamp:
                         win_pilot_id = pilot_id
-                        win_lap_tstamp = lap_data.lap_time_stamp
+                        win_lap_tstamp = lap_data[0]['lap_time_stamp']
     #server_log('DEBUG check_pilot_laps_win returned win_pilot_id={0}'.format(win_pilot_id))
     return win_pilot_id
 
@@ -3557,7 +3558,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                         lap_data = filter(lambda lap : lap['lap_number']==lap_count, RACE.get_active_laps()[node.index])
 
                         if lap_data:
-                            pilots_list.append((lap_count, lap_data.lap_time_stamp, pilot_id, node))
+                            pilots_list.append((lap_count, lap_data[0]['lap_time_stamp'], pilot_id, node))
                             if lap_count > max_lap_id:
                                 max_lap_id = lap_count
                                 num_max_lap = 1
@@ -3827,6 +3828,7 @@ def heartbeat_thread_function():
             return
         except Exception as ex:
             server_log('Exception in Heartbeat thread loop:  ' + str(ex))
+            server_log(traceback.format_exc())
             gevent.sleep(0.500)
 
 # declare/initialize variables for heartbeat functions
@@ -4709,6 +4711,7 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         print "Server terminated by keyboard interrupt"
     except Exception as ex:
         print "Server exception:  " + str(ex)
+        traceback.print_exc()
 
     Events.trigger(Evt.SHUTDOWN)
     print INTERFACE.get_intf_error_report_str(True)
