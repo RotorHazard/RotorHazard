@@ -1,5 +1,5 @@
 '''RotorHazard hardware interface layer.'''
-
+import logging
 import serial # For serial comms
 import gevent
 from monotonic import monotonic
@@ -8,6 +8,9 @@ from Node import Node
 from RHInterface import MAX_RETRY_COUNT, validate_checksum, calculate_checksum
 
 BOOTLOADER_CHILL_TIME = 2 # Delay for USB to switch from bootloader to serial mode
+
+logger = logging.getLogger(__name__)
+
 
 class SerialNode(Node):
     def __init__(self, index, port):
@@ -19,7 +22,7 @@ class SerialNode(Node):
         if interface:
             interface.log(message)
         else:
-            print(message)
+            logger.info(message)
 
     #
     # Serial Common Functions
@@ -112,7 +115,7 @@ def discover(idxOffset, *args, **kwargs):
     config = kwargs['config']
     for index, comm in enumerate(getattr(config, 'SERIAL_PORTS', [])):
         node = SerialNode(index+idxOffset, comm)
-        print("Serial node {0} found at port {1}".format(index+idxOffset+1, node.serial.name))
+        logger.info("Serial node {0} found at port {1}".format(index+idxOffset+1, node.serial.name))
         nodes.append(node)
 
     gevent.sleep(BOOTLOADER_CHILL_TIME)
