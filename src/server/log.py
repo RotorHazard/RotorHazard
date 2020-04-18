@@ -4,6 +4,16 @@ import logging.handlers
 ROTORHAZARD_FORMAT = "<-RotorHazard-> %(message)s"
 
 
+class SocketForwardHandler(logging.Handler):
+
+    def __init__(self, socket, *a, **kw):
+        super(SocketForwardHandler, self).__init__(*a, **kw)
+        self._socket = socket
+
+    def emit(self, record):
+        self._socket.emit("hardware_log", record.getMessage())
+
+
 def early_stage_setup():
     logging.basicConfig(
         stream=sys.stderr,
@@ -28,7 +38,7 @@ def handler_for_config(destination):
     return logging.FileHandler(destination)
 
 
-def later_stage_setup(config):
+def later_stage_setup(config, socket):
     logging_config = dict(
         LEVEL="INFO",
         DESTINATION="STDERR",
@@ -39,10 +49,15 @@ def later_stage_setup(config):
     # empty out the already configured handler
     # from basicConfig
     root.handlers[:] = []
-    handler = handler_for_config(
-        logging_config["DESTINATION"]
-    )
-    handler.setFormatter(logging.Formatter(ROTORHAZARD_FORMAT))
+    handlers = [
+        SocketForwardHandler(socket),
+        handler_for_config(
+            logging_config["DESTINATION"]
+        )
+    ]
     level = getattr(logging, logging_config["LEVEL"])
     root.setLevel(level)
-    root.addHandler(handler)
+
+    for handler in handlers:
+        handler.setFormatter(logging.Formatter(ROTORHAZARD_FORMAT))
+        root.addHandler(handler)
