@@ -1443,7 +1443,7 @@ def on_backup_database():
         'file_data' : file_content
     }
 
-    Events.trigger(Evt.BACKUP_DATABASE, {
+    Events.trigger(Evt.DATABASE_BACKUP, {
         'file_name': emit_payload['file_name'],
         })
 
