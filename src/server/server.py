@@ -1228,7 +1228,7 @@ def on_delete_heat(data):
         has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
 
         if has_race:
-            server_log('Refusing to delete heat {0}: is in use'.format(heat.id))
+            logger.info('Refusing to delete heat {0}: is in use'.format(heat.id))
         else:
             DB.session.delete(heat)
             for heatnode in heatnodes:
@@ -1238,7 +1238,7 @@ def on_delete_heat(data):
             if RACE.current_heat == heat:
                 RACE.current_heat = Database.Heat.query.first()
 
-            server_log('Heat {0} deleted'.format(heat.id))
+            logger.info('Heat {0} deleted'.format(heat.id))
             emit_heat_data()
 
         Events.trigger(Evt.HEAT_DELETE, {
@@ -1305,7 +1305,7 @@ def on_delete_class(data):
     has_race = Database.SavedRaceMeta.query.filter_by(class_id=race_class.id).first()
 
     if has_race:
-        server_log('Refusing to delete class {0}: is in use'.format(race_class.id))
+        logger.info('Refusing to delete class {0}: is in use'.format(race_class.id))
     else:
         DB.session.delete(race_class)
         for heat in Database.Heat.query.all():
@@ -1314,7 +1314,7 @@ def on_delete_class(data):
 
         DB.session.commit()
 
-        server_log('Class {0} deleted'.format(race_class.id))
+        logger.info('Class {0} deleted'.format(race_class.id))
         emit_class_data()
         emit_heat_data()
 
@@ -1380,7 +1380,7 @@ def on_delete_pilot(data):
     has_race = Database.SavedPilotRace.query.filter_by(pilot_id=pilot.id).first()
 
     if has_race:
-        server_log('Refusing to delete pilot {0}: is in use'.format(pilot.id))
+        logger.info('Refusing to delete pilot {0}: is in use'.format(pilot.id))
     else:
         DB.session.delete(pilot)
         for heatNode in Database.HeatNode.query.all():
@@ -1388,7 +1388,7 @@ def on_delete_pilot(data):
                 heatNode.pilot_id = PILOT_ID_NONE
         DB.session.commit()
 
-        server_log('Pilot {0} deleted'.format(pilot.id))
+        logger.info('Pilot {0} deleted'.format(pilot.id))
         emit_pilot_data()
         emit_heat_data()
 
@@ -1709,7 +1709,7 @@ def on_delete_race_format():
             setCurrentRaceFormat(first_raceFormat)
             emit_race_format()
         else:
-            server_log('Refusing to delete only format')
+            logger.info('Refusing to delete only format')
     else:
         emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
         logger.info("Format change prevented by active race")
@@ -4130,7 +4130,7 @@ def heartbeat_thread_function():
             gevent.sleep(0.500/HEARTBEAT_DATA_RATE_FACTOR)
 
         except KeyboardInterrupt:
-            print("Heartbeat thread terminated by keyboard interrupt")
+            logger.info("Heartbeat thread terminated by keyboard interrupt")
             return
         except Exception as ex:
             logger.info('Exception in Heartbeat thread loop:  ' + str(ex))
