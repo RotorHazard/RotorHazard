@@ -35,13 +35,13 @@
 #define RX5808_SEL_PIN 11              //CLK output line to RX5808 module
 #define RX5808_CLK_PIN 12              //SEL output line to RX5808 module
 #define RSSI_INPUT_PIN A7              //RSSI input from RX5808
-#define NODE_RESET_PIN 13              //Pin to reset paired Arduino via command for ISP
+#define NODE_RESET_PIN A1              //Pin to reset paired Arduino via command for ISP
 #elif CHORUS_WIRING_FLAG
 #define RX5808_DATA_PIN 10             //DATA output line to RX5808 module
 #define RX5808_SEL_PIN 11              //CLK output line to RX5808 module
 #define RX5808_CLK_PIN 12              //SEL output line to RX5808 module
 #define RSSI_INPUT_PIN A3              //RSSI input from RX5808
-#define NODE_RESET_PIN 13              //Pin to reset paired Arduino via command for ISP
+#define NODE_RESET_PIN A1              //Pin to reset paired Arduino via command for ISP
 #else
 #define RX5808_DATA_PIN 11             //DATA output line to RX5808 module
 #define RX5808_SEL_PIN 10              //CLK output line to RX5808 module
