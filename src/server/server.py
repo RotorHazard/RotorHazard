@@ -2364,7 +2364,7 @@ def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
     logger.info('Simulated lap: Node {0}'.format(node_index+1))
-    Events.trigger(Evt.CROSSINGEXIT, {
+    Events.trigger(Evt.CROSSING_EXIT, {
         'nodeIndex': node_index,
         'color': hexToColor(Options.get('colorNode_' + str(node_index), '#ffffff'))
         })
