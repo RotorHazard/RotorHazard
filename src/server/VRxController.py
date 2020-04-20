@@ -201,17 +201,6 @@ class VRxController:
             print(topics)
             topic_tuple = topics["receiver_response_node"]
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_node)
-<<<<<<< HEAD
-
-            # Connection
-            topic_tuple  = topics["receiver_connection"]
-            self._add_subscribe_callback(topic_tuple, self.on_message_connection)
-
-            # Targetted Response
-            topic_tuple = topics["receiver_response_targeted"]
-            self._add_subscribe_callback(topic_tuple, self.on_message_resp_targeted)
-=======
->>>>>>> Support subscriptions and messages
 
             # Connection
             topic_tuple  = topics["receiver_connection"]
@@ -222,11 +211,8 @@ class VRxController:
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_targeted)
 
 
-<<<<<<< HEAD
-=======
 
 
->>>>>>> Support subscriptions and messages
     def _add_subscribe_callback(self, topic_tuple, callback):     
         formatter_name = topic_tuple[1]
         
@@ -503,7 +489,7 @@ class packet_formatter:
         #todo check against limit each addition and truncate based on field priority
         pass
 
-    
+
 def main():
     # vrxc = VRxController("192.168.0.110",
     #                      [5740,
