@@ -4129,7 +4129,9 @@ def heartbeat_thread_function():
 
         except KeyboardInterrupt:
             logger.info("Heartbeat thread terminated by keyboard interrupt")
-            return
+            raise
+        except SystemExit:
+            raise
         except Exception as ex:
             logger.info('Exception in Heartbeat thread loop:  ' + str(ex))
             logger.info(traceback.format_exc())
@@ -5008,6 +5010,8 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
     except KeyboardInterrupt:
         logger.info("Server terminated by keyboard interrupt")
+    except SystemExit:
+        logger.info("Server terminated by system exit")
     except Exception as ex:
         logger.exception("Server exception:  ")
 

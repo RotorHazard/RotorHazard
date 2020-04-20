@@ -164,8 +164,10 @@ class RHInterface(BaseHardwareInterface):
                     gevent.sleep(UPDATE_SLEEP)
             except KeyboardInterrupt:
                 logger.info("Update thread terminated by keyboard interrupt")
-                return
-            except Exception as ex:
+                raise
+            except SystemExit:
+                raise
+            except Exception:
                 logger.exception('Exception in RHInterface update_loop():')
                 gevent.sleep(UPDATE_SLEEP*10)
 
