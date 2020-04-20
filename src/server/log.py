@@ -34,8 +34,12 @@ def early_stage_setup():
         format=ROTORHAZARD_FORMAT,
     )
     # some 3rd party packages use logging. Good for them. Now be quiet.
-    logging.getLogger("socketio.server").setLevel(logging.WARN)
-    logging.getLogger("engineio.server").setLevel(logging.WARN)
+    for name in [
+            "geventwebsocket.handler",
+            "socketio.server",
+            "engineio.server"
+            ]:
+        logging.getLogger(name).setLevel(logging.WARN)
 
 
 def handler_for_config(destination):
