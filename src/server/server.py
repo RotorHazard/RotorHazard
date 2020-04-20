@@ -1239,14 +1239,12 @@ def on_delete_heat(data):
                 RACE.current_heat = Database.Heat.query.first()
 
             logger.info('Heat {0} deleted'.format(heat.id))
+
+            Events.trigger(Evt.HEAT_DELETE, {
+                'heat_id': heat_id,
+                })
+
             emit_heat_data()
-
-        Events.trigger(Evt.HEAT_DELETE, {
-            'heat_id': heat_id,
-            })
-
-        logger.info('Heat {0} deleted'.format(heat))
-        emit_heat_data(noself=True)
     else:
         logger.info('Refusing to delete only heat')
 
