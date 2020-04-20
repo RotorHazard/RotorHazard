@@ -8,7 +8,7 @@
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	$(document).ready(function () {
- 		socket.emit('load_data', {'load_types': [
+		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',
 			'node_data',
@@ -309,7 +309,7 @@
 
 		function show_imd_rating(val) {
 			$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +
-                  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
+				  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
 		};
 
 		function show_imd_rating_dashes() {
@@ -580,8 +580,24 @@
 			socket.emit('delete_heat', data);
 		});
 
+		$('button#generate_heats').click(function (event) {
+			var data = {
+				input_class: parseInt($('#generator_input_class').val()),
+				output_class: parseInt($('#generator_output_class').val()),
+				suffix: $('#generator_suffix').val(),
+				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
+				win_condition: parseInt($('#generator_win_condition').val()),
+			};
+			// $('button#generate_heats').prop('disabled', true);
+			socket.emit('generate_heats', data);
+			return false;
+		});
+
+		/* Classes */
 		socket.on('class_data', function (msg) {
 			$(".race_classes").empty();
+			$('#generator_input_class').empty().append($('<option value="0">Unclassified</option>'));
+			$('#generator_output_class').empty().append($('<option value="0">Unclassified</option>'));
 
 			if (msg.classes.length) {
 				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '</p>');
@@ -615,6 +631,9 @@
 					el.append(selectbox);
 
 					el.appendTo(classlist);
+
+					$('#generator_input_class').append($('<option value="' + msg.classes[i].id + '">' + msg.classes[i].name + '</option>'));
+					$('#generator_output_class').append($('<option value="' + msg.classes[i].id + '">' + msg.classes[i].name + '</option>'));
 				}
 				classlist.appendTo($('.race_classes'));
 			} else {
@@ -912,9 +931,9 @@
 		});
 
 		$("#voice_test_text").keyup(function(event) {
-		    if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
-		        $("#play_voice_test").click();
-		    }
+			if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
+				$("#play_voice_test").click();
+			}
 		});
 
 		/* Race Format */
@@ -1065,7 +1084,7 @@
 			// convert decoded data to byte array
 			var byteNumbers = new Array(msgArray.length);
 			for (var i = 0; i < msgArray.length; i++) {
-			    byteNumbers[i] = msgArray.charCodeAt(i);
+				byteNumbers[i] = msgArray.charCodeAt(i);
 			}
 			var byteArray = new Uint8Array(byteNumbers);
 			// construct blob from byte array and initiate browser save-as
@@ -1574,6 +1593,41 @@
 		</ol>
 		<div class="control-set">
 			<button id="add_heat">+ {{ __('Add Heat') }}</button>
+		</div>
+
+		<h3>Heat generator</h3>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="generator_input_class">{{ __('Input Class') }}</label>
+				</div>
+				<select id="generator_input_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_pilots_per_heat">{{ __('Pilots per Heat') }}</label>
+				</div>
+				<input type="number" id="generator_pilots_per_heat" min="1" max="{{ num_nodes }}" value="{{ num_nodes }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_suffix">{{ __('Suffix') }}</label>
+				</div>
+				<input type="text" id="generator_suffix" value="{{ __('Main') }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_output_class">{{ __('Output Class') }}</label>
+				</div>
+				<select id="generator_output_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<button id="generate_heats">{{ __('Generate Heats') }}</button>
 		</div>
 	</div>
 </div>

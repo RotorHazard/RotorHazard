@@ -1564,7 +1564,6 @@ def on_reset_database(data):
 
     Events.trigger(Evt.DATABASE_RESET)
 
-
 @SOCKET_IO.on('shutdown_pi')
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
@@ -2301,6 +2300,94 @@ def on_set_current_heat(data):
     race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         check_emit_team_racing_status()  # Show initial team-racing status info
+
+@SOCKET_IO.on('generate_heats')
+def on_generate_heats(data):
+    '''Generate heats from qualifying class'''
+    input_class = int(data['input_class'])
+    output_class = int(data['output_class'])
+    suffix = data['suffix']
+    pilots_per_heat = min(int(data['pilots_per_heat']), RACE.num_nodes)
+    win_condition = data['win_condition']
+
+    race_class = Database.RaceClass.query.get(input_class)
+    # test for unclassified input ***
+
+    race_format = Database.RaceFormat.query.get(race_class.format_id)
+    if race_format:
+        win_condition = race_format.win_condition
+    else:
+        win_condition = WinCondition.MOST_LAPS
+
+#    if race_class.cacheStatus != CacheStatus.VALID: ***
+#        pass
+        # build results
+        # wait for cache to build? trigger cache build? timeout?
+
+    if race_class.cacheStatus == CacheStatus.VALID:
+        if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+            leaderboard = race_class.results['by_consecutives']
+        elif win_condition == WinCondition.FASTEST_LAP:
+            leaderboard = race_class.results['by_fastest_lap']
+        else:
+            # WinCondition.MOST_LAPS
+            # WinCondition.FIRST_TO_LAP_X
+            leaderboard = race_class.results['by_race_time']
+
+        generated_heats = []
+        unplaced_pilots = []
+        new_heat = {}
+        assigned_pilots = 0
+
+        for i,row in enumerate(leaderboard, start=1):
+            if row['node'] in new_heat:
+                unplaced_pilots.append(row['pilot_id'])
+            else:
+                # *** don't place into unassigned nodes
+                new_heat[row['node']] = row['pilot_id']
+
+            assigned_pilots += 1
+
+            if assigned_pilots >= pilots_per_heat or i == len(leaderboard):
+                # find slots for unassigned pilots
+                # *** don't place into unassigned nodes
+                if len(unplaced_pilots):
+                    for pilot in unplaced_pilots:
+                        for index in range(RACE.num_nodes):
+                            if index in new_heat:
+                                continue
+                            else:
+                                new_heat[index] = pilot
+                                break
+
+                # heat is full, flush and start next heat
+                generated_heats.append(new_heat)
+                unplaced_pilots = []
+                new_heat = {}
+                assigned_pilots = 0
+
+        # commit generated heats to database, lower seeds first
+        letters = __('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+        for idx, heat in enumerate(reversed(generated_heats), start=1):
+            ladder = letters[len(generated_heats) - idx]
+            new_heat = Database.Heat(class_id=output_class, cacheStatus=CacheStatus.INVALID, note=ladder + ' ' + suffix)
+            DB.session.add(new_heat)
+            DB.session.flush()
+            DB.session.refresh(new_heat)
+
+            for node in range(RACE.num_nodes): # Add pilots
+                if node in heat:
+                    DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=heat[node]))
+                else:
+                    DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=PILOT_ID_NONE))
+
+            DB.session.commit()
+
+        logger.info("Generated {0} heats from class {1}".format(len(generated_heats), input_class))
+
+        emit_heat_data()
+    else:
+        logger.warn("Unable to generate heats from class {0}: can't get valid cache".format(input_class))
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -3117,6 +3204,7 @@ def calc_leaderboard(**params):
     # Get hole shot laps
     pilot_ids = []
     callsigns = []
+    nodes = []
     team_names = []
     max_laps = []
     current_laps = []
@@ -3140,6 +3228,7 @@ def calc_leaderboard(**params):
             if current_heat and profile_freqs["f"][current_heat.node_index] != FREQUENCY_ID_NONE:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
+                nodes.append(current_heat.node_index)
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
                 current_laps.append(laps)
@@ -3173,6 +3262,7 @@ def calc_leaderboard(**params):
             if max_lap > 0:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
+                nodes.append(holeshot_lap.node_index)
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
                 holeshots.append(holeshot_laps)
@@ -3297,8 +3387,9 @@ def calc_leaderboard(**params):
                     gevent.sleep()
                     all_consecutives.append({
                         'time': thisrace[j]['lap_time'] + thisrace[j+1]['lap_time'] + thisrace[j+2]['lap_time'],
-                        'race_id': None
+                        'race_id': None,
                     })
+
             else:
                 for race_id in racelist:
                     gevent.sleep()
@@ -3328,16 +3419,19 @@ def calc_leaderboard(**params):
                     consecutives_source.append(None)
                 else:
                     source_query = Database.SavedRaceMeta.query.get(all_consecutives[0]['race_id'])
-                    fast_lap_round = source_query.round_id
-                    fast_lap_heat = source_query.heat_id
-                    fast_lap_heatnote = Database.Heat.query.get(fast_lap_heat).note
+                    if source_query:
+                        fast_lap_round = source_query.round_id
+                        fast_lap_heat = source_query.heat_id
+                        fast_lap_heatnote = Database.Heat.query.get(fast_lap_heat).note
 
-                    if fast_lap_heatnote:
-                        source_text = fast_lap_heatnote + ' / ' + __('Round') + ' ' + str(fast_lap_round)
+                        if fast_lap_heatnote:
+                            source_text = fast_lap_heatnote + ' / ' + __('Round') + ' ' + str(fast_lap_round)
+                        else:
+                            source_text = __('Heat') + ' ' + str(fast_lap_heat) + ' / ' + __('Round') + ' ' + str(fast_lap_round)
+
+                        consecutives_source.append(source_text)
                     else:
-                        source_text = __('Heat') + ' ' + str(fast_lap_heat) + ' / ' + __('Round') + ' ' + str(fast_lap_round)
-
-                    consecutives_source.append(source_text)
+                        consecutives_source.append(None)
 
             else:
                 consecutives.append(None)
@@ -3345,7 +3439,7 @@ def calc_leaderboard(**params):
 
     gevent.sleep()
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source, last_lap)
+    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source, last_lap, pilot_ids, nodes)
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
@@ -3365,6 +3459,8 @@ def calc_leaderboard(**params):
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
             'last_lap': row[9],
+            'pilot_id': row[10],
+            'node': row[11],
         })
 
     gevent.sleep()
@@ -3384,6 +3480,8 @@ def calc_leaderboard(**params):
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
             'last_lap': row[9],
+            'pilot_id': row[10],
+            'node': row[11],
         })
 
     gevent.sleep()
@@ -3403,6 +3501,8 @@ def calc_leaderboard(**params):
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
             'last_lap': row[9],
+            'pilot_id': row[10],
+            'node': row[11],
         })
 
     leaderboard_output = {
