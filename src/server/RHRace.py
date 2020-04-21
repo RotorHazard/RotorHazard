@@ -5,6 +5,8 @@ class RHRace():
     def __init__(self):
         self.num_nodes = 0
         self.current_heat = 1
+        self.current_format = None
+        self.win_condition = None
         self.race_status = 0
         self.timer_running = 0
         self.start_time = 0 # datetime
@@ -25,6 +27,11 @@ class RHRace():
         self.node_laps = {} # current race laps, by node
         self.node_pilots = {} # current race pilots, by node, filled on heat change
         self.node_teams = {} # current race teams, by node, filled on heat change
+
+        self.results = None
+        self.cacheStatus = CacheStatus.INVALID
+        self.last_race_results
+        self.last_race_cacheStatus = CacheStatus.INVALID
 
         '''
         Lap Object (dict):
