@@ -3339,7 +3339,7 @@ def calc_leaderboard(**params):
 
     gevent.sleep()
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source)
+    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source, last_lap)
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
@@ -3358,6 +3358,7 @@ def calc_leaderboard(**params):
             'consecutives': time_format(row[6]),
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
+            'last_lap': row[9],
         })
 
     gevent.sleep()
@@ -3376,6 +3377,7 @@ def calc_leaderboard(**params):
             'consecutives': time_format(row[6]),
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
+            'last_lap': row[9],
         })
 
     gevent.sleep()
@@ -3394,6 +3396,7 @@ def calc_leaderboard(**params):
             'consecutives': time_format(row[6]),
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
+            'last_lap': row[9],
         })
 
     leaderboard_output = {
