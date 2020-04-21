@@ -46,6 +46,7 @@ from collections import OrderedDict
 from flask import Flask, render_template, send_file, request, Response, session
 from flask_socketio import SocketIO, emit
 from sqlalchemy.ext.declarative import DeclarativeMeta
+from sqlalchemy import create_engine, MetaData, Table
 
 import random
 import json
@@ -4667,6 +4668,15 @@ def query_table_data(class_type, filter_crit=None, filter_value=0):
     except Exception as ex:
         logger.info('Unable to read "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
 
+def get_legacy_table_data(metadata, table_name):
+    try:
+        table = Table(table_name, metadata, autoload=True)
+        data = table.select().execute().fetchall()
+        return data
+    except Exception as ex:
+        logger.info('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
+
+
 def restore_table(class_type, table_query_data, match_name='name'):
     if table_query_data:
         try:
@@ -4694,10 +4704,18 @@ def restore_table(class_type, table_query_data, match_name='name'):
 def recover_database():
     try:
         logger.info('Recovering data from previous database')
-        pilot_query_data = query_table_data(Database.Pilot)
-        raceFormat_query_data = query_table_data(Database.RaceFormat)
-        profiles_query_data = query_table_data(Database.Profiles)
-        raceClass_query_data = query_table_data(Database.RaceClass)
+
+        # load file directly
+        engine = create_engine('sqlite:///%s' % DB_FILE_NAME, convert_unicode=True)
+        metadata = MetaData(bind=engine)
+        pilot_query_data = get_legacy_table_data(metadata, 'pilot')
+        pilot_heat_data = get_legacy_table_data(metadata, 'heat')
+        pilot_heatnode_data = get_legacy_table_data(metadata, 'heatnode')
+        raceFormat_query_data = get_legacy_table_data(metadata, 'race_format')
+        profiles_query_data = get_legacy_table_data(metadata, 'profiles')
+        raceClass_query_data = get_legacy_table_data(metadata, 'race_class')
+
+        engine.dispose() # close connection after loading
 
         carryoverOpts = [
             "timerName",
