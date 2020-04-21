@@ -2307,7 +2307,7 @@ def on_generate_heats(data):
     input_class = int(data['input_class'])
     output_class = int(data['output_class'])
     suffix = data['suffix']
-    pilots_per_heat = min(int(data['pilots_per_heat']), RACE.num_nodes)
+    pilots_per_heat = int(data['pilots_per_heat'])
     win_condition = data['win_condition']
 
     race_class = Database.RaceClass.query.get(input_class)
@@ -2315,45 +2315,56 @@ def on_generate_heats(data):
 
     race_format = Database.RaceFormat.query.get(race_class.format_id)
     if race_format:
+        results = race_class.results
         win_condition = race_format.win_condition
+        cacheStatus = race_class.cacheStatus
     else:
+        results = json.loads(Options.get("eventResults"))
         win_condition = WinCondition.MOST_LAPS
+        cacheStatus = Options.get("eventResults_cacheStatus")
 
-#    if race_class.cacheStatus != CacheStatus.VALID: ***
+#    if cacheStatus != CacheStatus.VALID: ***
 #        pass
         # build results
         # wait for cache to build? trigger cache build? timeout?
 
-    if race_class.cacheStatus == CacheStatus.VALID:
+    if cacheStatus == CacheStatus.VALID:
         if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-            leaderboard = race_class.results['by_consecutives']
+            leaderboard = results['by_consecutives']
         elif win_condition == WinCondition.FASTEST_LAP:
-            leaderboard = race_class.results['by_fastest_lap']
+            leaderboard = results['by_fastest_lap']
         else:
             # WinCondition.MOST_LAPS
             # WinCondition.FIRST_TO_LAP_X
-            leaderboard = race_class.results['by_race_time']
+            leaderboard = results['by_race_time']
 
         generated_heats = []
         unplaced_pilots = []
         new_heat = {}
         assigned_pilots = 0
 
+        available_nodes = []
+
+        profile_freqs = json.loads(getCurrentProfile().frequencies)
+        for node_index in RACE.num_nodes:
+            if profile_freqs["f"][node_index] != FREQUENCY_ID_NONE:
+                available_nodes.append(node_index)
+
+        pilots_per_heat = min(pilots_per_heat, RACE.num_nodes, len(available_nodes))
+
         for i,row in enumerate(leaderboard, start=1):
-            if row['node'] in new_heat:
+            if row['node'] in new_heat or row['node'] not in available_nodes:
                 unplaced_pilots.append(row['pilot_id'])
             else:
-                # *** don't place into unassigned nodes
                 new_heat[row['node']] = row['pilot_id']
 
             assigned_pilots += 1
 
             if assigned_pilots >= pilots_per_heat or i == len(leaderboard):
                 # find slots for unassigned pilots
-                # *** don't place into unassigned nodes
                 if len(unplaced_pilots):
                     for pilot in unplaced_pilots:
-                        for index in range(RACE.num_nodes):
+                        for index in available_nodes:
                             if index in new_heat:
                                 continue
                             else:
