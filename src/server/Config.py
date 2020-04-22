@@ -14,6 +14,7 @@ SENSORS = {}
 LED = {}
 SERIAL_PORTS = []
 LOGGING = {}
+VRX_SERVER = {}
 
 # LED strip configuration:
 LED['LED_COUNT']      = 0       # Number of LED pixels.
@@ -26,6 +27,9 @@ LED['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
 LED['LED_ROWS']       = 1       # Number of rows in LED array
 LED['PANEL_ROTATE']   = 0
 LED['INVERTED_PANEL_ROWS'] = False
+
+# Video Receiver Configuration
+VRX_SERVER['HOST']    = 'localhost'     # MQTT broker IP Address
 
 # other default configurations
 GENERAL['HTTP_PORT'] = 5000
@@ -51,6 +55,9 @@ try:
         LOGGING.update(ExternalConfig['LOGGING'])
     if 'LED' in ExternalConfig:
         LED.update(ExternalConfig['LED'])
+    if 'VRX_SERVER' in ExternalConfig:
+        VRX_SERVER.update(ExternalConfig['VRX_SERVER'])
+
 
     '''
     # Subtree updating
