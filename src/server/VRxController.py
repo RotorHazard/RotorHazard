@@ -201,17 +201,7 @@ class VRxController:
             print(topics)
             topic_tuple = topics["receiver_response_node"]
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_node)
-<<<<<<< HEAD
 
-            # Connection
-            topic_tuple  = topics["receiver_connection"]
-            self._add_subscribe_callback(topic_tuple, self.on_message_connection)
-
-            # Targetted Response
-            topic_tuple = topics["receiver_response_targeted"]
-            self._add_subscribe_callback(topic_tuple, self.on_message_resp_targeted)
-=======
->>>>>>> Support subscriptions and messages
 
             # Connection
             topic_tuple  = topics["receiver_connection"]
@@ -222,11 +212,6 @@ class VRxController:
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_targeted)
 
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> Support subscriptions and messages
     def _add_subscribe_callback(self, topic_tuple, callback):     
         formatter_name = topic_tuple[1]
         
@@ -519,14 +504,9 @@ def main():
     # vrxc.set_node_frequency(3,5781)
     pass
 
-    # Set node 3's frequency to 5781
-    vrxc.set_node_frequency(3,5781)
-
 
 if __name__ == "__main__":
     main()
-
-
 
 
 
