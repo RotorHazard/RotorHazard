@@ -106,83 +106,9 @@ DEF_TEAM_NAME = 'A'  # default team
 BASEDIR = os.getcwd()
 APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-<<<<<<< HEAD
 DB = Database.DB
 DB.init_app(APP)
 DB.app = APP
-=======
-DB = SQLAlchemy(APP)
-
-Config = {}
-Config['GENERAL'] = {}
-Config['SENSORS'] = {}
-Config['LED'] = {}
-Config['SERIAL_PORTS'] = []
-Config['VRX_SERVER'] = {}
-
-# LED strip configuration:
-Config['LED']['LED_COUNT']      = 0       # Number of LED pixels.
-Config['LED']['LED_PIN']        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
-Config['LED']['LED_FREQ_HZ']    = 800000  # LED signal frequency in hertz (usually 800khz)
-Config['LED']['LED_DMA']        = 10      # DMA channel to use for generating signal (try 10)
-Config['LED']['LED_INVERT']     = False   # True to invert the signal (when using NPN transistor level shift)
-Config['LED']['LED_CHANNEL']    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
-Config['LED']['LED_STRIP']      = 'GRB'   # Strip type and colour ordering
-Config['LED']['LED_ROWS']       = 1       # Number of rows in LED array
-Config['LED']['PANEL_ROTATE']   = 0
-Config['LED']['INVERTED_PANEL_ROWS'] = False
-
-
-# other default configurations
-Config['GENERAL']['HTTP_PORT'] = 5000
-Config['GENERAL']['SECRET_KEY'] = random.random()
-Config['GENERAL']['ADMIN_USERNAME'] = 'admin'
-Config['GENERAL']['ADMIN_PASSWORD'] = 'rotorhazard'
-Config['GENERAL']['SLAVES'] = []
-Config['GENERAL']['SLAVE_TIMEOUT'] = 300 # seconds
-Config['GENERAL']['DEBUG'] = False
-Config['GENERAL']['CORS_ALLOWED_HOSTS'] = '*'
-
-Config['GENERAL']['NODE_DRIFT_CALC_TIME'] = 10
-
-Config['VRX_SERVER']['HOST'] = 'localhost'  # MQTT broker runs on same IP as RH server
-
-# override defaults above with config from file
-try:
-    with open(CONFIG_FILE_NAME, 'r') as f:
-        ExternalConfig = json.load(f)
-    Config['GENERAL'].update(ExternalConfig['GENERAL'])
-
-    if 'LED' in ExternalConfig:
-        Config['LED'].update(ExternalConfig['LED'])
-
-#    try:
-#        bitmaptree = Config['LED']['BITMAPS']
-#        Config['LED'].update(ExternalConfig['LED'])
-#        Config['LED']['BITMAPS'] = bitmaptree
-#        Config['LED']['BITMAPS'].update(ExternalConfig['LED']['BITMAPS'])
-#    except KeyError:
-#        if 'LED' in ExternalConfig:
-#            Config['LED'].update(ExternalConfig['LED'])
-#        else:
-#            print "No 'LED' entry found in configuration file "
-
-    if 'SENSORS' in ExternalConfig:
-        Config['SENSORS'].update(ExternalConfig['SENSORS'])
-    if 'SERIAL_PORTS' in ExternalConfig:
-        Config['SERIAL_PORTS'].extend(ExternalConfig['SERIAL_PORTS'])
-    if 'VRX_SERVER' in ExternalConfig:
-        Config['VRX_SERVER'].update(ExternalConfig['VRX_SERVER'])
-
-    Config['GENERAL']['configFile'] = 1
-    print 'Configuration file imported'
-except IOError:
-    Config['GENERAL']['configFile'] = 0
-    print 'No configuration file found, using defaults'
-except ValueError as ex:
-    Config['GENERAL']['configFile'] = -1
-    print 'Configuration file invalid, using defaults; error is: ' + str(ex)
->>>>>>> b46858fc933a6791ca619debe35ef74b1060fa9b
 
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'])
@@ -1113,15 +1039,12 @@ def hardware_set_all_frequencies(freqs):
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs[idx])
     
-<<<<<<< HEAD
 
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
             'frequency': freqs[idx],
             })
 
-=======
->>>>>>> b46858fc933a6791ca619debe35ef74b1060fa9b
 
 def restore_node_frequency(node_index):
     ''' Restore frequency for given node index (update hardware) '''
@@ -5079,16 +5002,13 @@ if strip:
 else:
     led_manager = NoLEDManager()
 
-<<<<<<< HEAD
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
         Options.set("secret_key", unicode(os.urandom(50), errors='ignore'))
-=======
->>>>>>> b46858fc933a6791ca619debe35ef74b1060fa9b
 
-if 'HOST' in Config['VRX_SERVER']:
+if 'HOST' in Config.VRX_SERVER:
     vrx_controller = VRxController(Events, 
-                                   Config['VRX_SERVER']['HOST'],
+                                   Config.VRX_SERVER['HOST'],
                                    [5740,
                                     5760,
                                     5780,
@@ -5103,11 +5023,11 @@ if 'HOST' in Config['VRX_SERVER']:
 else:
     print("Video Receiver: Communcation Disabled")
 
-def start(port_val = Config['GENERAL']['HTTP_PORT']):
-    if not getOption("secret_key"):
-        setOption("secret_key", unicode(os.urandom(50), errors='ignore'))
+def start(port_val = Config.GENERAL['HTTP_PORT']):
+    if not Options.get("secret_key"):
+        Options.set("secret_key", unicode(os.urandom(50), errors='ignore'))
 
-    APP.config['SECRET_KEY'] = getOption("secret_key")
+    APP.config['SECRET_KEY'] = Options.get("secret_key")
 
     logger.info("Running http server at port " + str(port_val))
 
