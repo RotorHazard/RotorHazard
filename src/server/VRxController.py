@@ -1,6 +1,7 @@
 import paho.mqtt.client as mqtt_client
 import time
 import json
+import logging
 
 from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics
 from VRxCV1_emulator import MQTT_Client
@@ -15,11 +16,10 @@ import clearview
 
 VRxALL = -1
 
-#TODO import clearview communcation protocol and use it here
-
-
+# logger = logging.getLogger(__name__) 
 
 class VRxController:
+    
     """Every video receiver has the following methods and data attributes"""
     controllers = {}
     '''
@@ -38,15 +38,19 @@ class VRxController:
     
     def __init__(self, eventmanager, VRxServer, node_frequencies):
         self.Events = eventmanager
-
+        self.logger = logging.getLogger(self.__class__.__name__)
         self._cv = clearview.ClearView(return_formatted_commands=True)
 
-        #TODO the subscribe topics subscribe it to a node number by default
-        #Don't hack by making node number *
+        # TODO the subscribe topics subscribe it to a node number by default
+        # Don't hack by making node number a wildcard
 
-        #TODO: pass in "CV1 to the MQTT_CLIENT maybe. "
-        # There will be multiple clients, one for each protocol"
-        # Probably best to manually add the subscriptions and callbacks
+        # TODO: pass in "CV1 to the MQTT_CLIENT because
+        # there can be multiple clients, one for each protocol.
+        # The MQTT_CLIENT should not know about what it is supposed to be doing
+        # The VRxController can then run multiple clients, but duplicate messaging will have to be avoided
+        # This could be done in the publisher by only passing messages to the clients that need it
+
+
         self._mqttc = MQTT_Client(client_id="VRxController",
                                  broker_ip=VRxServer,
                                  subscribe_topics = None)
@@ -68,17 +72,20 @@ class VRxController:
         # Events
         self.Events.on(Evt.STARTUP, 'VRx', self.do_startup, {}, 200)
         self.Events.on(Evt.RACESTART, 'VRx', self.do_racestart, {}, 200)
+        self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200)
+
+        # Stored receiver data
         self.rxdata = {}
 
     def do_startup(self,arg):
-        print("vrxc: Doing startup")
+        self.logger.info("VRxC Starting up")
 
         # Request status of all receivers (static and variable)
         self.request_static_status(all=True)
         self.request_variable_status(all=True)
 
         for n in range(8):
-            print("LOCK STATUS ",n)
+            self.logger.debug("LOCK STATUS ",n)
             self.get_node_lock_status(n)
 
         # Update the DB with receivers that exist and their status
@@ -88,7 +95,23 @@ class VRxController:
         # Set the receiver's frequencies based on band/channel
     
     def do_racestart(self, arg):
+        self.logger.info("VRx Signaling Race Start")
         self.set_message_direct(VRxALL,"GO!")
+
+    def do_frequency_set(self, arg):
+        self.logger.info("Setting frequency from event")
+        try:
+            node_index = arg["nodeIndex"]
+        except KeyError:
+            self.logger.error("Unable to set frequency. nodeIndex not found in event")
+            return
+        try:
+            frequency = arg["frequency"]
+        except KeyError:
+            self.logger.error("unable to set frequency. frequency not found in event")
+            return
+        
+        self.set_node_frequency(node_index, frequency)
 
     
     ##############
@@ -184,6 +207,7 @@ class VRxController:
 
     def set_message_direct(self, node_number, message):
         """set a message directly. Truncated if over length"""
+        self._nodes[node_number].set_message(message)
     
     #############################
     # Private Functions for MQTT
@@ -198,7 +222,6 @@ class VRxController:
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_all)
             
             # Node response
-            print(topics)
             topic_tuple = topics["receiver_response_node"]
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_node)
 
@@ -233,7 +256,7 @@ class VRxController:
     def on_message_connection(self, client, userdata, message):
         rx_name = message.topic
         connection_status = message.payload
-        printc("Connection message received:", rx_name,"=>", connection_status)
+        self.logger.info("Connection message received: %s => %s" % (rx_name,connection_status))
         try:
             self.rxdata[rx_name]["connection"] = connection_status
         except KeyError:
@@ -241,19 +264,19 @@ class VRxController:
 
     def on_message_resp_all(self, client, userdata, message):
         payload = message.payload
-        printc("TODO on_message_resp_all => %s"%(payload))
+        self.logger.debug("TODO on_message_resp_all => %s"%(payload))
 
     def on_message_resp_node(self, client, userdata, message):
         topic = message.topic
         node_number = topic[-1]
         payload = message.payload
-        printc("TODO on_message_resp_node for node %s => %s"%(node_number, payload))
+        self.logger.debug("TODO on_message_resp_node for node %s => %s"%(node_number, payload))
 
     def on_message_resp_targeted(self, client, userdata, message):
         topic = message.topic
         rx_name = topic.split('/')[-1]
         payload = message.payload
-        printc("TODO on_message_resp_targeted for receiver %s => %s"%(rx_name, payload))
+        self.logger.debug("TODO on_message_resp_targeted for receiver %s => %s"%(rx_name, payload))
 
 CRED = '\033[91m'
 CEND = '\033[0m'
@@ -273,6 +296,7 @@ class VRxNode:
                  ):
         self._mqttc = mqtt_client
         self._cv = cv
+        self.logger = logging.getLogger(self.__class__.__name__)
 
         self.MIN_NODE_NUM = 0
         self.MAX_NODE_NUM = 7
@@ -303,10 +327,13 @@ class VRxNode:
         self._osd_field_data = {}
         self._osd_field_order = {}
 
+        # TODO specify the return value for commands. 
+        #   Do we return the command sent or some sort of result from mqtt?
+
     @property
     def node_number(self):
         """Get the node number"""
-        print("node property get")
+        self.logger.debug("node property get")
         return self.__node_number
 
     @node_number.setter
@@ -314,7 +341,6 @@ class VRxNode:
         if self.MIN_NODE_NUM <= node_number <= self.MAX_NODE_NUM:
             # TODO change the node number of all receivers and apply the settings of the other node number
             raise NotImplementedError
-            print("x")
             # self._node_number = node_number
         else:
             raise Exception("node_number out of range")
@@ -322,21 +348,20 @@ class VRxNode:
     @property
     def node_frequency(self, ):
         """Gets the frequency of a node"""
-        #print("getfrequency of", self.__node_number)
         return self._node_frequency
 
     @node_frequency.setter
     def node_frequency(self, frequency):
         """Sets all receivers at this node number to the new frequency"""
-        print("setfrequency")
         raise NotImplementedError
 
     def set_node_frequency(self, frequency):
         """Sets all receivers at this node number to the new frequency"""
         topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self.__node_number
         messages = self._cv.set_custom_frequency(self._cv.bc_id, frequency)
+
+        # set_custom_frequency returns multiple commands (one for channel and one for band)
         for m in messages:
-            print(topic,m)
             self._mqttc.publish(topic,m)
 
     @property
@@ -370,36 +395,10 @@ class VRxNode:
 
     def set_message(self, message):
         """Send a raw message to the OSD"""
-
-
-    def set_osd_field(self, field_data):
-        """sets an  osd field data object. Updates OSD.
-        That field must also be shown on the OSD
-        
-        Input:
-            field_data: dictionary 
-                *keys = field names (str), value = field value (str)
-        """
-
-        for field in field_data:
-            if field not in self._osd_field_data:
-                self.set_field_order({field: -1})
-
-            self._osd_field_data[field] = field_data[field]
-
-    def set_field_order(self, field_order):
-        """sets an  osd field data order. Updates OSD.
-        That field must also be shown on the OSD
-        
-        Input:
-            field_data: dictionary 
-                *keys = field names (str), value = field order (int)
-                A field order of -1 disables it. 
-                Field orders must be unique
-        """
-        for field in field_order:
-                self._osd_field_order[field] = field_order
-        self._update_osd_by_fields()
+        topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self.__node_number
+        cmd = self._cv.set_user_message(self.__node_number+1, message)
+        self._mqttc.publish(topic, cmd)
+        return cmd
 
     def _update_osd_by_fields(self):
         #todo
@@ -478,15 +477,6 @@ class packet_formatter:
         for field in field_order:
                 self._osd_field_order[field] = field_order
         self._update_osd_by_fields()
-
-    def _update_osd_by_fields(self):
-        #todo
-        # Get a list of keys sorted by field_order
-        # concatenate the data togeter with a " " separator
-        # send the OSD an update command
-
-        #todo check against limit each addition and truncate based on field priority
-        pass
 
     
 def main():
