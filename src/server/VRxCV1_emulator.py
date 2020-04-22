@@ -4,6 +4,7 @@ import paho.mqtt.client as mqtt_client
 import socket
 import argparse
 import sys
+import logging
 
 import json
 
@@ -152,7 +153,7 @@ class MQTT_Client:
         if rc != 0:
             raise("Connection error %i to broker"%rc)
         else:
-            print("\tConnected to broker with flags"+str(flags)+"result code "\
+            self.logger.info("\tConnected to broker with flags"+str(flags)+"result code "\
                    +str(rc))
 
           
@@ -168,7 +169,7 @@ class MQTT_Client:
         self._client.publish( topic, payload, qos, retain, properties)
 
     def disconnect_gracefully(self):
-        print("Gracefully disconnecting from broker")
+        self.logger.info("Gracefully disconnecting from broker")
         topic = self._last_will["topic"]
         payload = 0 #graceful disconnect
 
