@@ -4,7 +4,7 @@ import platform
 
 import gevent
 
-ROTORHAZARD_FORMAT = "<-RotorHazard-> %(message)s"
+ROTORHAZARD_FORMAT = "<-RotorHazard: %(name)s-> %(message)s"
 
 
 class GEventDeferredHandler(logging.Handler):
