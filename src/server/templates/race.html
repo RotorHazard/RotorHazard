@@ -412,7 +412,7 @@
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap_id is json object
-					var $tr = '';
+					var tr = '';
 					var lapTime = lap.lap_time;
 					if (lap.splits.length > 0) {
 						lapTime += ' (';
@@ -431,44 +431,44 @@
 
 					var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
 
-					$tr = $('<tr>')
+					tr = $('<tr>')
 					if (lap.lap_number == 0) {
-						$tr.addClass('lap_0');
+						tr.addClass('lap_0');
 					}
 
 					var local_colspan = 2;
 					if(rotorhazard.display_lap_id) {
 						local_colspan = 1;
-						$tr.append(
+						tr.append(
 							$('<td class="display_lap_number">').text(lap.lap_number)
 						);
 					}
-					$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ').append(
+					time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ').append(
 							$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">&#215;</button>')
 							);
-					$local_prepend = $('<span class="from_start">');
+					local_prepend = $('<span class="from_start">');
 
 					if(rotorhazard.display_time_first_pass) {
-						$local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp));
+						local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp));
 						if(rotorhazard.display_time_start){
-							$local_prepend.append(" / ");
+							local_prepend.append(" / ");
 						}
 					}
 
 					if(rotorhazard.display_time_start) {
-						$local_prepend.append(formatTimeMillis(lap.lap_time_stamp));
+						local_prepend.append(formatTimeMillis(lap.lap_time_stamp));
 					}
 
-					$time_td.prepend($local_prepend);
-					$tr.append($time_td);
+					time_td.prepend(local_prepend);
+					tr.append(time_td);
 
 					if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
-						$tr.addClass('min-lap-warning');
+						tr.addClass('min-lap-warning');
 					}
 					if (!rotorhazard.race_formats.race_mode && lap.lap_time_stamp > (rotorhazard.race_formats.race_time_sec * 1000)) {
-						$tr.addClass('after-time-expired');
+						tr.addClass('after-time-expired');
 					}
-					$tr.appendTo('#current_laps_' + i);
+					tr.appendTo('#current_laps_' + i);
 				});
 			});
 		}
