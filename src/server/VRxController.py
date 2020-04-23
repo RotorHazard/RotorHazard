@@ -3,7 +3,7 @@ import time
 import json
 import logging
 
-from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics
+from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics, ESP_COMMANDS
 from VRxCV1_emulator import MQTT_Client
 from eventmanager import Evt
 
@@ -82,8 +82,8 @@ class VRxController:
         self.logger.info("VRxC Starting up")
 
         # Request status of all receivers (static and variable)
-        self.request_static_status(all=True)
-        self.request_variable_status(all=True)
+        self.request_static_status()
+        self.request_variable_status()
 
         for n in range(8):
             self.logger.debug("LOCK STATUS ",n)
@@ -118,19 +118,20 @@ class VRxController:
     ##############
     ## MQTT Status
     ##############
-    def request_static_status(self, node_number=VRxALL, all=False):
-        #self._mqttc.publish()
-        #TODO 
-        print("TODO request static status")
-        #raise NotImplementedError
+    def request_static_status(self, node_number=VRxALL):
+        if node_number == VRxALL:
+            for node in self._nodes:
+                node.request_static_status()
+        else:
+            self._nodes[node_number].request_static_status()
 
-    def request_variable_status(self, node_number=VRxALL, all=False):
-        #self._mqttc.publish()
-        #TODO 
-        print("TODO request variable status")
-        #raise NotImplementedError
+    def request_variable_status(self, node_number=VRxALL):
+        if node_number == VRxALL:
+            for node in self._nodes:
+                node.request_variable_status()
+        else:
+            self._nodes[node_number].request_variable_status()
 
-    
 
 
     ###########
@@ -398,7 +399,7 @@ class VRxNode:
         self.MAX_NODE_NUM = 7
 
         if self.MIN_NODE_NUM <= node_number <= self.MAX_NODE_NUM:
-            self.__node_number = node_number
+            self._node_number = node_number
         elif node_number == -1:
             print("todo this is the broadcast node. May have special methods")
         else:
@@ -430,7 +431,7 @@ class VRxNode:
     def node_number(self):
         """Get the node number"""
         self.logger.debug("node property get")
-        return self.__node_number
+        return self._node_number
 
     @node_number.setter
     def node_number(self, node_number):
@@ -453,7 +454,7 @@ class VRxNode:
 
     def set_node_frequency(self, frequency):
         """Sets all receivers at this node number to the new frequency"""
-        topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self.__node_number
+        topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self._node_number
         messages = self._cv.set_custom_frequency(self._cv.bc_id, frequency)
 
         # set_custom_frequency returns multiple commands (one for channel and one for band)
@@ -475,7 +476,7 @@ class VRxNode:
 
     @property
     def node_lock_status(self, ):
-        # topic = mqtt_publish_topics["cv1"]["receiver_request_node_active_topic"][0]%self.__node_number
+        # topic = mqtt_publish_topics["cv1"]["receiver_request_node_active_topic"][0]%self._node_number
         # self._mqttc.publish(topic,
         #                    "?")
         # time.sleep(0.1)
@@ -484,15 +485,25 @@ class VRxNode:
         print("TODO node_lock_status property")
 
     def get_node_lock_status(self,):
-        topic = mqtt_publish_topics["cv1"]["receiver_request_node_all_topic"][0]%self.__node_number
-        report_req = self._cv.get_lock_format(self.__node_number+1)
+        topic = mqtt_publish_topics["cv1"]["receiver_request_node_all_topic"][0]%self._node_number
+        report_req = self._cv.get_lock_format(self._node_number+1)
         self._mqttc.publish(topic,report_req[0])
         return report_req
 
+    def request_static_status(self):
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_node_topic"][0]%self._node_number
+        msg = ESP_COMMANDS["Request Static Status"]
+        self._mqttc.publish(topic,msg)
+
+    def request_variable_status(self):
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_node_topic"][0]%self._node_number
+        msg = ESP_COMMANDS["Request Variable Status"]
+        self._mqttc.publish(topic,msg)
+
     def set_message(self, message):
         """Send a raw message to the OSD"""
-        topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self.__node_number
-        cmd = self._cv.set_user_message(self.__node_number+1, message)
+        topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self._node_number
+        cmd = self._cv.set_user_message(self._node_number+1, message)
         self._mqttc.publish(topic, cmd)
         return cmd
 
