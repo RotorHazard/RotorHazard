@@ -5,12 +5,11 @@ class RHRace():
     def __init__(self):
         self.num_nodes = 0
         self.current_heat = 1
-        self.current_format = None
+        self.format = None
         self.win_condition = None
         self.race_status = 0
         self.timer_running = 0
         self.start_time = 0 # datetime
-        self.format = None
 
         self.start_time_monotonic = 0
         self.start_token = False # Check start thread matches correct stage sequence
