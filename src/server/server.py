@@ -1867,7 +1867,7 @@ def on_stage_race():
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         RACE.last_race_cacheStatus = CacheStatus.INVALID # invalidate last race results cache
-        RACE.timer_running = 0 # indicate race timer not running
+        RACE.timer_running = False # indicate race timer not running
         RACE.race_status = RaceStatus.STAGING
         INTERFACE.set_race_status(RaceStatus.STAGING)
         emit_current_laps() # Race page, blank laps to the web client
@@ -2018,7 +2018,7 @@ def race_start_thread(start_token):
 
         RACE.race_status = RaceStatus.RACING # To enable registering passed laps
         INTERFACE.set_race_status(RaceStatus.RACING)
-        RACE.timer_running = 1 # indicate race timer is running
+        RACE.timer_running = True # indicate race timer is running
         RACE.laps_winner_name = None  # name of winner in first-to-X-laps race
         emit_race_status() # Race page, to set race button states
         logger.info('Race started at {0} ({1:13f})'.format(RACE.start_time_monotonic, monotonic_to_milliseconds(RACE.start_time_monotonic)))
@@ -2052,7 +2052,7 @@ def on_stop_race():
         INTERFACE.set_race_status(RaceStatus.READY)
         led_manager.clear()
 
-    RACE.timer_running = 0 # indicate race timer not running
+    RACE.timer_running = False # indicate race timer not running
     RACE.scheduled = False # also stop any deferred start
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
@@ -4217,7 +4217,7 @@ def check_race_time_expired():
     race_format = getCurrentRaceFormat()
     if race_format and race_format.race_mode == 0: # count down
         if monotonic() >= RACE.start_time_monotonic + race_format.race_time_sec:
-            RACE.timer_running = 0 # indicate race timer no longer running
+            RACE.timer_running = False # indicate race timer no longer running
             Events.trigger(Evt.RACE_FINISH)
             if race_format.win_condition == WinCondition.MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
