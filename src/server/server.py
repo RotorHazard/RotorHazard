@@ -728,9 +728,9 @@ def api_profile(profile_id):
 @APP.route('/api/race/current')
 def api_race_current():
     global RACE
-    if RACE.cacheStatus == CacheStatus.VALID
+    if RACE.cacheStatus == CacheStatus.VALID:
         results = RACE.results
-    else
+    else:
         results = calc_leaderboard(current_race=True)
         RACE.results = results
         RACE.cacheStatus = CacheStatus.VALID
@@ -1910,6 +1910,7 @@ def autoUpdateCalibration():
                 'exit_at_level': calibration['exit_at_level']
             })
 
+    logger.info('Updated calibration with best discovered values')
     emit_enter_and_exit_at_levels()
 
 def findBestValues(node, node_index):
@@ -1922,7 +1923,7 @@ def findBestValues(node, node_index):
 
     # test for disabled node
     if pilot is PILOT_ID_NONE or node.frequency is FREQUENCY_ID_NONE:
-        logger.info('Node {0} calibration: skipping disabled node'.format(node.index+1))
+        logger.debug('Node {0} calibration: skipping disabled node'.format(node.index+1))
         return {
             'enter_at_level': node.enter_at_level,
             'exit_at_level': node.exit_at_level
@@ -1934,7 +1935,7 @@ def findBestValues(node, node_index):
     if race_query:
         pilotrace_query = Database.SavedPilotRace.query.filter_by(race_id=race_query.id, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
         if pilotrace_query:
-            logger.info('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
+            logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
             return {
                 'enter_at_level': pilotrace_query.enter_at,
                 'exit_at_level': pilotrace_query.exit_at
@@ -1945,7 +1946,7 @@ def findBestValues(node, node_index):
     if race_query:
         pilotrace_query = Database.SavedPilotRace.query.filter_by(race_id=race_query.id, node_index=node_index, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
         if pilotrace_query:
-            logger.info('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
+            logger.debug('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
             return {
                 'enter_at_level': pilotrace_query.enter_at,
                 'exit_at_level': pilotrace_query.exit_at
@@ -1954,7 +1955,7 @@ def findBestValues(node, node_index):
     # test for same pilot, same node
     pilotrace_query = Database.SavedPilotRace.query.filter_by(node_index=node_index, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
     if pilotrace_query:
-        logger.info('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
+        logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
         return {
             'enter_at_level': pilotrace_query.enter_at,
             'exit_at_level': pilotrace_query.exit_at
@@ -1963,14 +1964,14 @@ def findBestValues(node, node_index):
     # test for same node
     pilotrace_query = Database.SavedPilotRace.query.filter_by(node_index=node_index).order_by(-Database.SavedPilotRace.id).first()
     if pilotrace_query:
-        logger.info('Node {0} calibration: found same node in other heat'.format(node.index+1))
+        logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
         return {
             'enter_at_level': pilotrace_query.enter_at,
             'exit_at_level': pilotrace_query.exit_at
         }
 
     # fallback
-    logger.info('Node {0} calibration: no calibration hints found, no change.format(node.index+1)')
+    logger.debug('Node {0} calibration: no calibration hints found, no change.format(node.index+1)')
     return {
         'enter_at_level': node.enter_at_level,
         'exit_at_level': node.exit_at_level
@@ -3293,8 +3294,10 @@ def calc_leaderboard(**params):
 
                 for j in range(len(thisrace) - 2):
                     gevent.sleep()
-                    all_consecutives.append(thisrace[j]['lap_time'] + thisrace[j+1]['lap_time'] + thisrace[j+2]['lap_time'])
-
+                    all_consecutives.append({
+                        'time': thisrace[j]['lap_time'] + thisrace[j+1]['lap_time'] + thisrace[j+2]['lap_time'],
+                        'race_id': None
+                    })
             else:
                 for race_id in racelist:
                     gevent.sleep()
@@ -3314,13 +3317,13 @@ def calc_leaderboard(**params):
                             })
 
             # Sort consecutives
-            all_consecutives = sorted(all_consecutives, key = lambda x: (x['time'] is None, x['time']))
+            all_consecutives.sort(key = lambda x: (x['time'] is None, x['time']))
             # Get lowest not-none value (if any)
 
             if all_consecutives:
                 consecutives.append(all_consecutives[0]['time'])
 
-                if USE_HEAT:
+                if USE_CURRENT:
                     consecutives_source.append(None)
                 else:
                     source_query = Database.SavedRaceMeta.query.get(all_consecutives[0]['race_id'])
