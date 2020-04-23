@@ -240,12 +240,11 @@ class VRxController:
             time_now = monotonic.monotonic()
             gevent.sleep()
 
-        if RACE.cacheStatus != CacheStatus.VALID:
+        if RACE.cacheStatus == CacheStatus.VALID:
             results = RACE.results
 
             # select correct results
-            format = RACE.current_format
-            win_condition = RACE.win_condition
+            win_condition = RACE.format.win_condition
 
             if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
                 leaderboard = results['by_consecutives']
@@ -604,7 +603,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
