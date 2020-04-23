@@ -36,6 +36,15 @@ receiver_request_node_active_topic = ("rx/cv1/req_node_active/%d", "node_number"
 # Make a request to a specific receiver
 receiver_request_targeted_topic = ("rx/cv1/req_target/%s","receiver_serial_num")
 
+# All command topic for ESP commands
+receiver_command_esp_all = "rx/cv1/cmd_esp_all"
+
+# Send command to a node_number
+receiver_command_esp_node_topic = ("rx/cv1/cmd_esp_node/%d","node_number")
+
+# Send command to a specific receiver
+receiver_command_esp_targeted_topic = ("rx/cv1/cmd_esp_target/%s","receiver_serial_num")
+
 
 
         # Subscribe Topics
@@ -52,7 +61,11 @@ receiver_response_targeted_topic = ("rx/cv1/resp_target/%s", "+")
 # Connection status for receivers
 receiver_connection_topic = ("rxcn/%s", "+")
 
-# TODO status topics
+# Receiver static status
+receiver_status_static_topic = ("status_static/%s", "+")
+
+# Request variable status
+receiver_status_variable_fmt = ("status_variable/%s", "+")
 
 mqtt_publish_topics = {
     "cv1" :
@@ -63,7 +76,10 @@ mqtt_publish_topics = {
             "receiver_request_node_all_topic":receiver_request_node_all_topic,
             "receiver_request_node_active_topic":receiver_request_node_active_topic,
             "receiver_request_targeted_topic":receiver_request_targeted_topic,
-            "receiver_kick_topic":receiver_kick_topic
+            "receiver_kick_topic":receiver_kick_topic,
+            "receiver_command_esp_all": receiver_command_esp_all, 
+            "receiver_command_esp_node_topic":receiver_command_esp_node_topic,  
+            "receiver_command_esp_targeted_topic": receiver_command_esp_targeted_topic, 
         }
 }
 
@@ -75,4 +91,9 @@ mqtt_subscribe_topics = {
             "receiver_connection":receiver_connection_topic,
             "receiver_response_targeted":receiver_response_targeted_topic
         }
+}
+
+ESP_COMMANDS = {
+    "Request Static Status": "status_static?",
+    "Request Variable Status": "status_var?",
 }
