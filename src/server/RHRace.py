@@ -29,7 +29,7 @@ class RHRace():
 
         self.results = None
         self.cacheStatus = CacheStatus.INVALID
-        self.last_race_results
+        self.last_race_results = None
         self.last_race_cacheStatus = CacheStatus.INVALID
 
         '''
@@ -65,3 +65,7 @@ class RaceStatus():
     STAGING = 3
     RACING = 1
     DONE = 2
+
+class CacheStatus:
+    INVALID = 'invalid'
+    VALID = 'valid'

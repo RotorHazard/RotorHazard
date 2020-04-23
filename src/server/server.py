@@ -86,10 +86,6 @@ FULL_RESULTS_CACHE = {} # Cache of complete results page
 FULL_RESULTS_CACHE_BUILDING = False # Whether results are being calculated
 FULL_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
 
-LAST_RACE_CACHE = {} # Cache of current race after clearing
-LAST_RACE_LAPS_CACHE = {} # Cache of current race after clearing
-LAST_RACE_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
-
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
 IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
@@ -731,9 +727,17 @@ def api_profile(profile_id):
 
 @APP.route('/api/race/current')
 def api_race_current():
+    global RACE
+    if RACE.cacheStatus == CacheStatus.VALID
+        results = RACE.results
+    else
+        results = calc_leaderboard(current_race=True)
+        RACE.results = results
+        RACE.cacheStatus = CacheStatus.VALID
+
     payload = {
         "raw_laps": RACE.node_laps,
-        "leaderboard": calc_leaderboard(current_race=True)
+        "leaderboard": results
     }
 
     return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
@@ -929,9 +933,9 @@ def on_load_data(data):
         elif load_type == 'min_lap':
             emit_min_lap(nobroadcast=True)
         elif load_type == 'leaderboard':
-            emit_leaderboard(nobroadcast=True)
+            emit_current_leaderboard(nobroadcast=True)
         elif load_type == 'leaderboard_cache':
-            emit_leaderboard(nobroadcast=True, use_cache=True)
+            emit_current_leaderboard(nobroadcast=True, use_cache=True)
         elif load_type == 'current_laps':
             emit_current_laps(nobroadcast=True)
         elif load_type == 'race_status':
@@ -1862,12 +1866,12 @@ def on_stage_race():
         Events.trigger(Evt.RACE_STAGE)
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
-        LAST_RACE_CACHE_VALID = False # invalidate last race results cache
+        RACE.last_race_cacheStatus = CacheStatus.INVALID # invalidate last race results cache
         RACE.timer_running = 0 # indicate race timer not running
         RACE.race_status = RaceStatus.STAGING
         INTERFACE.set_race_status(RaceStatus.STAGING)
         emit_current_laps() # Race page, blank laps to the web client
-        emit_leaderboard() # Race page, blank leaderboard to the web client
+        emit_current_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
 
         race_format = getCurrentRaceFormat()
@@ -2204,7 +2208,7 @@ def on_discard_laps(**kwargs):
     RACE.race_status = RaceStatus.READY # Flag status as ready to start next race
     INTERFACE.set_race_status(RaceStatus.READY)
     emit_current_laps() # Race page, blank laps to the web client
-    emit_leaderboard() # Race page, blank leaderboard to the web client
+    emit_current_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
     race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
@@ -2223,11 +2227,9 @@ def on_discard_laps(**kwargs):
 
 def clear_laps():
     '''Clear the current laps table.'''
-    global LAST_RACE_CACHE
-    global LAST_RACE_CACHE_VALID
     global RACE
-    LAST_RACE_CACHE = calc_leaderboard(current_race=True)
-    LAST_RACE_CACHE_VALID = True
+    RACE.last_race_results = calc_leaderboard(current_race=True)
+    RACE.last_race_cacheStatus = CacheStatus.VALID
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
     db_reset_current_laps() # Clear out the current laps table
     DB.session.query(Database.LapSplit).delete()
@@ -2294,7 +2296,7 @@ def on_set_current_heat(data):
         })
 
     emit_current_heat() # Race page, to update heat selection button
-    emit_leaderboard() # Race page, to update callsigns in leaderboard
+    emit_current_leaderboard() # Race page, to update callsigns in leaderboard
     race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         check_emit_team_racing_status()  # Show initial team-racing status info
@@ -2341,7 +2343,7 @@ def on_delete_lap(data):
 
     logger.info('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
     emit_current_laps() # Race page, update web client
-    emit_leaderboard() # Race page, update web client
+    emit_current_leaderboard() # Race page, update web client
     race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode:
         # update team-racing status info
@@ -2631,13 +2633,13 @@ def emit_race_format(**params):
     else:
         SOCKET_IO.emit('race_format', emit_payload)
         emit_team_racing_stat_if_enb()
-        emit_leaderboard()
+        emit_current_leaderboard()
 
 def emit_current_laps(**params):
     '''Emits current laps.'''
-    global LAST_RACE_LAPS_CACHE
-    if 'use_cache' in params and LAST_RACE_CACHE_VALID:
-        emit_payload = LAST_RACE_LAPS_CACHE
+    global RACE
+    if 'use_cache' in params and RACE.last_race_cacheStatus == CacheStatus.VALID:
+        emit_payload = RACE.last_race_laps
     else:
         current_laps = []
         for node in range(RACE.num_nodes):
@@ -2668,7 +2670,7 @@ def emit_current_laps(**params):
             })
         current_laps = {'node_index': current_laps}
         emit_payload = current_laps
-        LAST_RACE_LAPS_CACHE = current_laps
+        RACE.last_race_laps = current_laps
 
     if ('nobroadcast' in params):
         emit('current_laps', emit_payload)
@@ -3418,12 +3420,18 @@ def calc_leaderboard(**params):
 
     return leaderboard_output
 
-def emit_leaderboard(**params):
+def emit_current_leaderboard(**params):
     '''Emits leaderboard.'''
-    if 'use_cache' in params and LAST_RACE_CACHE_VALID:
-        emit_payload = LAST_RACE_CACHE
+    global RACE
+    if 'use_cache' in params and RACE.last_race_cacheStatus == CacheStatus.VALID:
+        emit_payload = RACE.last_race_results
+    elif RACE.cacheStatus == CacheStatus.VALID:
+        emit_payload = RACE.results
     else:
-        emit_payload = calc_leaderboard(current_race=True)
+        results = calc_leaderboard(current_race=True)
+        RACE.results = results
+        RACE.cacheStatus = CacheStatus.VALID
+        emit_payload = results
 
     if ('nobroadcast' in params):
         emit('leaderboard', emit_payload)
@@ -4283,6 +4291,9 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'deleted': False
                         })
 
+                        RACE.results = calc_leaderboard(current_race=True)
+                        RACE.cacheStatus = CacheStatus.VALID
+
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node': node.index,
                             })
@@ -4290,7 +4301,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         #logger.info('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
                         #    .format(node.index+1, lap_number, time_format(lap_time)))
                         emit_current_laps() # update all laps on the race page
-                        emit_leaderboard() # update leaderboard
+                        emit_current_leaderboard() # update leaderboard
 
                         if race_format.team_racing_mode: # team racing mode enabled
 
@@ -4494,6 +4505,7 @@ def db_reset_current_laps():
     for idx in range(RACE.num_nodes):
         RACE.node_laps[idx] = []
 
+    RACE.cacheStatus = CacheStatus.INVALID
     logger.info('Database current laps reset')
 
 def db_reset_saved_races():
