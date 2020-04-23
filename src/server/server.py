@@ -64,12 +64,6 @@ Events = EventManager()
 # LED imports
 from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorPattern, hexToColor
 
-# VRx
-from VRxController import VRxController
-
-# VRx
-from VRxController import VRxController
-
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
@@ -5006,9 +5000,33 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
         Options.set("secret_key", unicode(os.urandom(50), errors='ignore'))
 
-if 'HOST' in Config.VRX_SERVER:
+
+def initVRxController():
+    try:
+        vrx_config = Config.VRX_SERVER
+        try:
+            vrx_enabled = vrx_config["ENABLED"]
+            if vrx_enabled:
+                try: 
+                    from VRxController import VRxController
+                except ImportError as e:
+                    logger.error("VRxController unable to be imported")
+                    logger.error(e)
+                    return False
+            else:
+                logger.info('VRxController Disabled by config option')
+                return False
+        except KeyError:
+            logger.error('VRxController config needs "ENABLED" key.')
+            return False
+    except AttributeError:
+        logger.info('VRxController: Disabled because no VRX_SERVER config option')
+        return False
+
+    # If got through import success, create the VRxController object
+    host = Config.VRX_SERVER["HOST"]
     vrx_controller = VRxController(Events, 
-                                   Config.VRX_SERVER['HOST'],
+                                   host,
                                    [5740,
                                     5760,
                                     5780,
@@ -5018,10 +5036,8 @@ if 'HOST' in Config.VRX_SERVER:
                                     5860,
                                     5880,])
 
-    # test command:
-    vrx_controller.set_node_frequency(1, 5800)
-else:
-    print("Video Receiver: Communcation Disabled")
+initVRxController()   
+
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
