@@ -3286,6 +3286,7 @@ def calc_leaderboard(**params):
         # find best consecutive 3 laps
         if max_laps[i] < 3:
             consecutives.append(None)
+            consecutives_source.append(None)
         else:
             all_consecutives = []
 
