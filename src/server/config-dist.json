@@ -10,7 +10,9 @@
 	},
 	"SERIAL_PORTS": [],
 	"VRX_SERVER": {
-		"HOST": "localhost"
+		"HOST": "localhost",
+		"ENABLED": false
+
 	},
 	"LED": {
 		"LED_COUNT": 0,
