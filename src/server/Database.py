@@ -64,24 +64,6 @@ class RaceClass(DB.Model):
     def __repr__(self):
         return '<RaceClass %r>' % self.id
 
-class CurrentLap(DB.Model):
-    __tablename__ = 'current_lap'
-    __table_args__ = (
-        DB.UniqueConstraint('node_index', 'lap_id'),
-    )
-    id = DB.Column(DB.Integer, primary_key=True)
-    node_index = DB.Column(DB.Integer, nullable=False)
-    pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
-    lap_id = DB.Column(DB.Integer, nullable=False)
-    lap_time_stamp = DB.Column(DB.Integer, nullable=False)
-    lap_time = DB.Column(DB.Integer, nullable=False)
-    lap_time_formatted = DB.Column(DB.Integer, nullable=False)
-    source = DB.Column(DB.Integer, nullable=False)
-    deleted = DB.Column(DB.Boolean, nullable=False)
-
-    def __repr__(self):
-        return '<CurrentLap %r>' % self.pilot_id
-
 class LapSplit(DB.Model):
     __tablename__ = 'lap_split'
     __table_args__ = (
