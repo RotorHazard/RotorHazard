@@ -4660,46 +4660,54 @@ def backup_db_file(copy_flag):
         logger.info('Error backing up database file:  ' + str(ex))
     return bkp_name
 
-def query_table_data(class_type, filter_crit=None, filter_value=0):
-    try:
-        if filter_crit is None:
-            return class_type.query.all()
-        return class_type.query.filter(filter_crit==filter_value).all()
-    except Exception as ex:
-        logger.info('Unable to read "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
-
-def get_legacy_table_data(metadata, table_name):
+def get_legacy_table_data(metadata, table_name, filter_crit=None, filter_value=None):
     try:
         table = Table(table_name, metadata, autoload=True)
-        data = table.select().execute().fetchall()
-        return data
+        if filter_crit is None:
+            return table.select().execute().fetchall()
+        return table.select().execute().filter(filter_crit==filter_value).fetchall()
     except Exception as ex:
         logger.info('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
 
-
-def restore_table(class_type, table_query_data, match_name='name'):
+def restore_table(class_type, table_query_data, **kwargs):
     if table_query_data:
         try:
             for row_data in table_query_data:
                 if (class_type is not Database.Pilot) or getattr(row_data, 'callsign', '') != '-' or \
                                               getattr(row_data, 'name', '') != '-None-':
-                    db_update = class_type.query.filter(getattr(class_type,match_name)==getattr(row_data,match_name)).first()
+                    if 'id' in class_type.__table__.columns.keys() and \
+                        'id' in row_data.keys():
+                        db_update = class_type.query.filter(getattr(class_type,'id')==row_data['id']).first()
+                    else:
+                        db_update = None
+
                     if db_update is None:
                         new_data = class_type()
                         for col in class_type.__table__.columns.keys():
-                            if col != 'id':
-                                setattr(new_data, col, getattr(row_data, col))
+                            if col in row_data.keys():
+                                if col != 'id':
+                                    setattr(new_data, col, row_data[col])
+                            else:
+                                if col != 'id':
+                                    setattr(new_data, col, kwargs['defaults'][col])
+
                         #logger.info('DEBUG row_data add:  ' + str(getattr(new_data, match_name)))
                         DB.session.add(new_data)
                     else:
                         #logger.info('DEBUG row_data update:  ' + str(getattr(row_data, match_name)))
                         for col in class_type.__table__.columns.keys():
-                            if col != 'id':
-                                setattr(db_update, col, getattr(row_data, col))
+                            if col in row_data.keys():
+                                setattr(db_update, col, row_data[col])
+                            else:
+                                if col != 'id':
+                                    setattr(db_update, col, kwargs['defaults'][col])
+
                     DB.session.flush()
             logger.info('Database table "{0}" restored'.format(class_type.__name__))
         except Exception as ex:
-            logger.info('Error restoring "{0}" table from previous database:  {1}'.format(class_type.__name__, ex))
+            logger.info('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
+            logger.debug(traceback.format_exc())
+
 
 def recover_database():
     try:
@@ -4709,13 +4717,15 @@ def recover_database():
         engine = create_engine('sqlite:///%s' % DB_FILE_NAME, convert_unicode=True)
         metadata = MetaData(bind=engine)
         pilot_query_data = get_legacy_table_data(metadata, 'pilot')
-        pilot_heat_data = get_legacy_table_data(metadata, 'heat')
-        pilot_heatnode_data = get_legacy_table_data(metadata, 'heatnode')
+        heat_query_data = get_legacy_table_data(metadata, 'heat')
+        heatnode_query_data = get_legacy_table_data(metadata, 'heatnode')
         raceFormat_query_data = get_legacy_table_data(metadata, 'race_format')
         profiles_query_data = get_legacy_table_data(metadata, 'profiles')
         raceClass_query_data = get_legacy_table_data(metadata, 'race_class')
 
         engine.dispose() # close connection after loading
+
+        migrate_db_api = int(Options.get('server_api'))
 
         carryoverOpts = [
             "timerName",
@@ -4755,7 +4765,7 @@ def recover_database():
                 carryOver[opt] = val
 
         # RSSI reduced by half for 2.0.0
-        if int(Options.get('server_api')) < 23:
+        if migrate_db_api < 23:
             for profile in profiles_query_data:
                 if profile.enter_ats:
                     enter_ats = json.loads(profile.enter_ats)
@@ -4774,10 +4784,75 @@ def recover_database():
     try:
         if pilot_query_data:
             DB.session.query(Database.Pilot).delete()
-            restore_table(Database.Pilot, pilot_query_data, 'callsign')
-        restore_table(Database.RaceFormat, raceFormat_query_data)
-        restore_table(Database.Profiles, profiles_query_data)
-        restore_table(Database.RaceClass, raceClass_query_data)
+            restore_table(Database.Pilot, pilot_query_data, defaults={
+                    'name': 'New Pilot',
+                    'callsign': 'New Callsign',
+                    'team': DEF_TEAM_NAME,
+                    'phonetic': ''
+                })
+
+        if migrate_db_api < 27:
+            # old heat DB structure; migrate node 0 to heat table
+
+            # build list of heat meta
+            heat_extracted_meta = []
+            for row in heat_query_data:
+                if row['node_index'] == 0:
+                    heat_extracted_meta.append(row)
+
+            restore_table(Database.Heat, heat_extracted_meta, defaults={
+                    'class_id': CLASS_ID_NONE,
+                    'results': None,
+                    'cacheStatus': CacheStatus.INVALID
+                })
+
+            # extract pilots from hets and load into heatnode
+            heatnode_extracted_data = []
+            for row in heat_query_data:
+                heatnode_row = {}
+                heatnode_row['heat_id'] = int(row['heat_id'])
+                heatnode_row['node_index'] = int(row['node_index'])
+                heatnode_row['pilot_id'] = int(row['pilot_id'])
+                heatnode_extracted_data.append(heatnode_row)
+
+            DB.session.query(Database.HeatNode).delete()
+            restore_table(Database.HeatNode, heatnode_extracted_data, defaults={
+                    'pilot_id': PILOT_ID_NONE
+                })
+        else:
+            # current heat structure; use basic migration
+            restore_table(Database.Heat, heat_query_data, defaults={
+                    'class_id': CLASS_ID_NONE,
+                    'results': None,
+                    'cacheStatus': CacheStatus.INVALID
+                })
+            restore_table(Database.HeatNode, heatnode_query_data, defaults={
+                    'pilot_id': PILOT_ID_NONE
+                })
+
+        restore_table(Database.RaceFormat, raceFormat_query_data, defaults={
+                'name': __("Migrated Format"),
+                'race_mode': 0,
+                'race_time_sec': 120,
+                'start_delay_min': 2,
+                'start_delay_max': 5,
+                'staging_tones': 2,
+                'number_laps_win': 0,
+                'win_condition': WinCondition.MOST_LAPS,
+                'team_racing_mode': False
+            })
+        restore_table(Database.Profiles, profiles_query_data, defaults={
+                'name': __("Migrated Profile"),
+                'frequencies': json.dumps(default_frequencies()),
+                'enter_ats': json.dumps({'v': [None, None, None, None, None, None, None, None]}),
+                'exit_ats': json.dumps({'v': [None, None, None, None, None, None, None, None]})
+            })
+        restore_table(Database.RaceClass, raceClass_query_data, defaults={
+                'name': 'New class',
+                'format_id': 0,
+                'results': None,
+                'cacheStatus': CacheStatus.INVALID
+            })
 
         for opt in carryOver:
             Options.set(opt, carryOver[opt])
@@ -4785,6 +4860,7 @@ def recover_database():
 
     except Exception as ex:
         logger.info('Error while writing data from previous database:  ' + str(ex))
+        logger.debug(traceback.format_exc())
 
     DB.session.commit()
     Events.trigger(Evt.DATABASE_RECOVER)
