@@ -4903,20 +4903,20 @@ if RACE.num_nodes > 0:
 if not db_inited_flag:
     try:
         if int(Options.get('server_api')) < SERVER_API:
-            logger.info('Old server API version; resetting database')
+            logger.info('Old server API version; rcovering database')
             recover_database()
         elif not Database.Heat.query.count():
-            logger.info('Heats are empty; resetting database')
+            logger.info('Heats are empty; rcovering database')
             recover_database()
         elif not Database.Profiles.query.count():
-            logger.info('Profiles are empty; resetting database')
+            logger.info('Profiles are empty; rcovering database')
             recover_database()
         elif not Database.RaceFormat.query.count():
-            logger.info('Formats are empty; resetting database')
+            logger.info('Formats are empty; rcovering database')
             recover_database()
     except Exception as ex:
-        logger.info('Resetting data after DB-check exception:  ' + str(ex))
-        recover_database()
+        logger.info('Clearing all data after recovery failure:  ' + str(ex))
+        db_reset()
 
 # Expand heats (if number of nodes increases)
 expand_heats()
