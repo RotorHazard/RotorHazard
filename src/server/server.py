@@ -4722,6 +4722,9 @@ def recover_database():
         raceFormat_query_data = get_legacy_table_data(metadata, 'race_format')
         profiles_query_data = get_legacy_table_data(metadata, 'profiles')
         raceClass_query_data = get_legacy_table_data(metadata, 'race_class')
+        raceMeta_query_data = get_legacy_table_data(metadata, 'saved_race_meta')
+        racePilot_query_data = get_legacy_table_data(metadata, 'saved_pilot_race')
+        raceLap_query_data = get_legacy_table_data(metadata, 'saved_race_lap')
 
         engine.dispose() # close connection after loading
 
@@ -4781,6 +4784,8 @@ def recover_database():
 
     backup_db_file(False)  # rename and move DB file
     db_init()
+
+    # primary data recovery
     try:
         if pilot_query_data:
             DB.session.query(Database.Pilot).delete()
@@ -4862,7 +4867,36 @@ def recover_database():
         logger.info('Error while writing data from previous database:  ' + str(ex))
         logger.debug(traceback.format_exc())
 
+    # secondary data recovery
+
+    try:
+        if migrate_db_api < 23:
+            # don't attempt to migrate race data older than 2.0
+            pass
+        else:
+            restore_table(Database.SavedRaceMeta, raceMeta_query_data, defaults={
+                'results': None,
+                'cacheStatus': CacheStatus.INVALID
+            })
+            restore_table(Database.SavedPilotRace, racePilot_query_data, defaults={
+                'history_values': None,
+                'history_times': None,
+                'penalty_time': None,
+                'penalty_desc': None,
+                'enter_at': None,
+                'exit_at': None
+            })
+            restore_table(Database.SavedRaceLap, raceLap_query_data, defaults={
+                'source': None,
+                'deleted': False
+            })
+
+    except Exception as ex:
+        logger.info('Error while writing data from previous database:  ' + str(ex))
+        logger.debug(traceback.format_exc())
+
     DB.session.commit()
+
     Events.trigger(Evt.DATABASE_RECOVER)
 
 def expand_heats():
