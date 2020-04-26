@@ -135,6 +135,8 @@ void setup()
     pinMode(RX5808_DATA_PIN, OUTPUT);
     pinMode(RX5808_CLK_PIN, OUTPUT);
     digitalWrite(RX5808_SEL_PIN, HIGH);
+    digitalWrite(RX5808_DATA_PIN, LOW);
+    digitalWrite(RX5808_CLK_PIN, LOW);
 
     // init pin used to reset paired Arduino via RESET_PAIRED_NODE command
     pinMode(NODE_RESET_PIN, INPUT_PULLUP);
@@ -177,7 +179,6 @@ void setup()
     }
 
     resetRxModule(); 
-
     if (settings.vtxFreq == 1111) // frequency value to power down rx module
     {
         powerDownRxModule();
@@ -187,7 +188,7 @@ void setup()
     {
         setRxModule(settings.vtxFreq);  // Setup rx module to default frequency
     }
-
+            
     rssiInit();
 }
 
@@ -195,8 +196,6 @@ void setup()
 
 void SERIAL_SENDBIT1()
 {
-    digitalWrite(RX5808_CLK_PIN, LOW);
-    delayMicroseconds(300);
     digitalWrite(RX5808_DATA_PIN, HIGH);
     delayMicroseconds(300);
     digitalWrite(RX5808_CLK_PIN, HIGH);
@@ -207,8 +206,6 @@ void SERIAL_SENDBIT1()
 
 void SERIAL_SENDBIT0()
 {
-    digitalWrite(RX5808_CLK_PIN, LOW);
-    delayMicroseconds(300);
     digitalWrite(RX5808_DATA_PIN, LOW);
     delayMicroseconds(300);
     digitalWrite(RX5808_CLK_PIN, HIGH);
@@ -219,16 +216,14 @@ void SERIAL_SENDBIT0()
 
 void SERIAL_ENABLE_LOW()
 {
-    delayMicroseconds(100);
     digitalWrite(RX5808_SEL_PIN, LOW);
-    delayMicroseconds(100);
+    delayMicroseconds(200);
 }
 
 void SERIAL_ENABLE_HIGH()
 {
-    delayMicroseconds(100);
     digitalWrite(RX5808_SEL_PIN, HIGH);
-    delayMicroseconds(100);
+    delayMicroseconds(200);
 }
 
 // Calculate rx5808 register hex value for given frequency in MHz
@@ -249,24 +244,8 @@ void setRxModule(uint16_t frequency)
     // Get the hex value to send to the rx module
     uint16_t vtxHex = freqMhzToRegVal(frequency);
 
-    // bit bash out 25 bits of data / Order: A0-3, !R/W, D0-D19 / A0=0, A1=0, A2=0, A3=1, RW=0, D0-19=0
-    SERIAL_ENABLE_HIGH();
-    delay(2);
-    SERIAL_ENABLE_LOW();
-    SERIAL_SENDBIT0();
-    SERIAL_SENDBIT0();
-    SERIAL_SENDBIT0();
-    SERIAL_SENDBIT1();
-    SERIAL_SENDBIT0();
 
-    for (i = 20; i > 0; i--)
-        SERIAL_SENDBIT0();  // Remaining zeros
-
-    SERIAL_ENABLE_HIGH();  // Clock the data in
-    delay(2);
-    SERIAL_ENABLE_LOW();
-
-    // Second is the channel data from the lookup table, 20 bytes of register data are sent, but the
+    //Channel data from the lookup table, 20 bytes of register data are sent, but the
     // MSB 4 bits are zeros register address = 0x1, write, data0-15=vtxHex data15-19=0x0
     SERIAL_ENABLE_HIGH();
     SERIAL_ENABLE_LOW();
@@ -296,20 +275,14 @@ void setRxModule(uint16_t frequency)
         SERIAL_SENDBIT0();
 
     SERIAL_ENABLE_HIGH();  // Finished clocking data in
-    delay(2);
 
-    digitalWrite(RX5808_SEL_PIN, LOW);
-    digitalWrite(RX5808_CLK_PIN, LOW);
-    digitalWrite(RX5808_DATA_PIN, LOW);
-
-    setupRxModule();
 }
 
 // Reset rx5808 module to wake up from power down
 void resetRxModule()
 {  
     uint8_t i;  // Used in the for loops
-
+  
     SERIAL_ENABLE_HIGH();
     SERIAL_ENABLE_LOW();
 
@@ -451,6 +424,7 @@ void loop()
                 }
                 setRxModule(newVtxFreq);
             }
+            
             state.activatedFlag = true;
 
             if (changeFlags & FREQ_CHANGED)
