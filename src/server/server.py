@@ -2303,6 +2303,12 @@ def on_set_current_heat(data):
 
 @SOCKET_IO.on('generate_heats')
 def on_generate_heats(data):
+    '''Spawn heat generator thread'''
+    gevent.spawn(generate_heats, data)
+
+def generate_heats(data):
+    RESULTS_TIMEOUT = 5 # maximum time to wait for results to generate
+
     '''Generate heats from qualifying class'''
     input_class = int(data['input_class'])
     output_class = int(data['output_class'])
@@ -2310,25 +2316,48 @@ def on_generate_heats(data):
     pilots_per_heat = int(data['pilots_per_heat'])
     win_condition = data['win_condition']
 
-    race_class = Database.RaceClass.query.get(input_class)
-    # test for unclassified input ***
+    if input_class == CLASS_ID_NONE:
+        results = {
+            'by_race_time': []
+        }
+        for pilot in Database.Pilot.query.all():
+            # *** if pilot is active
+            entry = {}
+            entry['pilot_id'] = pilot.id
 
-    race_format = Database.RaceFormat.query.get(race_class.format_id)
-    if race_format:
-        results = race_class.results
-        win_condition = race_format.win_condition
-        cacheStatus = race_class.cacheStatus
+            pilot_node = Database.HeatNode.query.filter_by(pilot_id=pilot.id).first()
+            if pilot_node:
+                entry['node'] = pilot_node.node_index
+            else:
+                entry['node'] = -1
+
+            results['by_race_time'].append(entry)
+
+        win_condition = WinCondition.NONE
+        cacheStatus = CacheStatus.VALID
     else:
-        results = json.loads(Options.get("eventResults"))
-        win_condition = WinCondition.MOST_LAPS
-        cacheStatus = Options.get("eventResults_cacheStatus")
+        race_class = Database.RaceClass.query.get(input_class)
+        race_format = Database.RaceFormat.query.get(race_class.format_id)
+        if race_format:
+            results = race_class.results
+            win_condition = race_format.win_condition
+            cacheStatus = race_class.cacheStatus
+        else:
+            logger.error('Unable to fetch format from race class {0}'.format(input_class))
 
-#    if cacheStatus != CacheStatus.VALID: ***
-#        pass
-        # build results
-        # wait for cache to build? trigger cache build? timeout?
+    if cacheStatus != CacheStatus.VALID:
+        pass
+        # build results ***
+
+    time_now = monotonic()
+    timeout = time_now + RESULTS_TIMEOUT
+    while cacheStatus != CacheStatus.VALID and time_now < timeout:
+        gevent.sleep()
+        time_now = monotonic()
 
     if cacheStatus == CacheStatus.VALID:
+        if win_condition == WinCondition.NONE:
+            leaderboard = random.shuffle(results['by_race_time'])
         if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
             leaderboard = results['by_consecutives']
         elif win_condition == WinCondition.FASTEST_LAP:
@@ -2346,13 +2375,15 @@ def on_generate_heats(data):
         available_nodes = []
 
         profile_freqs = json.loads(getCurrentProfile().frequencies)
-        for node_index in RACE.num_nodes:
+        for node_index in range(RACE.num_nodes):
             if profile_freqs["f"][node_index] != FREQUENCY_ID_NONE:
                 available_nodes.append(node_index)
 
         pilots_per_heat = min(pilots_per_heat, RACE.num_nodes, len(available_nodes))
 
         for i,row in enumerate(leaderboard, start=1):
+            logger.debug("Placing {0} into heat {1}".format(row['pilot_id'], len(generated_heats)))
+
             if row['node'] in new_heat or row['node'] not in available_nodes:
                 unplaced_pilots.append(row['pilot_id'])
             else:
@@ -2398,7 +2429,7 @@ def on_generate_heats(data):
 
         emit_heat_data()
     else:
-        logger.warn("Unable to generate heats from class {0}: can't get valid cache".format(input_class))
+        logger.warning("Unable to generate heats from class {0}: can't get valid results".format(input_class))
 
 @SOCKET_IO.on('delete_lap')
 def on_delete_lap(data):
@@ -4978,7 +5009,7 @@ INTERFACE.node_crossing_callback = node_crossing_callback
 # Save number of nodes found
 RACE.num_nodes = len(INTERFACE.nodes)
 if RACE.num_nodes == 0:
-    logger.warn('*** WARNING: NO RECEIVER NODES FOUND ***')
+    logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
 else:
     logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
 

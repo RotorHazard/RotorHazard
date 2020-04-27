@@ -596,8 +596,8 @@
 		/* Classes */
 		socket.on('class_data', function (msg) {
 			$(".race_classes").empty();
-			$('#generator_input_class').empty().append($('<option value="0">Unclassified</option>'));
-			$('#generator_output_class').empty().append($('<option value="0">Unclassified</option>'));
+			$('#generator_input_class').empty();
+			$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
 
 			if (msg.classes.length) {
 				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '</p>');
@@ -639,6 +639,9 @@
 			} else {
 				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
 			}
+
+			$('#generator_input_class').append($('<option value="0">' + __('Randomize All') + '</option>'));
+
 		});
 
 		$(document).on("change", '.set_race_class_name', function (event) {
@@ -1599,7 +1602,7 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="generator_input_class">{{ __('Input Class') }}</label>
+					<label for="generator_input_class">{{ __('Input (Class)') }}</label>
 				</div>
 				<select id="generator_input_class">
 					<option>{{ __('Loading...') }}</option>
@@ -1832,13 +1835,11 @@
 					<label for="set_win_condition">{{ __('Win Condition') }}</label>
 				</div>
 				<select id="set_win_condition">
-					<option value="0">{{ __('None') }}</option>
 					<option value="1">{{ __('Most Laps') }}</option>
 					<option value="2">{{ __('First to X Laps') }}</option>
-					<!-- Yet to be implemented in server.py
 					<option value="3">{{ __('Fastest Lap') }}</option>
 					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
-					-->
+					<option value="0">{{ __('None') }}</option>
 				</select>
 			</li>
 			<li>
