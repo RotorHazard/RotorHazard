@@ -4183,7 +4183,7 @@ def time_format(millis):
     if millis is None:
         return None
 
-    millis = int(millis)
+    millis = int(round(millis, 0))
     minutes = millis / 60000
     over = millis % 60000
     seconds = over / 1000
