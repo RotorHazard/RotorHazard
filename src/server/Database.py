@@ -7,6 +7,9 @@ from flask_sqlalchemy import SQLAlchemy
 DB = SQLAlchemy()
 
 DEF_TEAM_NAME = 'A'  # default team
+PILOT_ID_NONE = 0  # indicator value for no pilot configured
+HEAT_ID_NONE = 0  # indicator value for practice heat
+CLASS_ID_NONE = 0  # indicator value for unclassified heat
 
 #
 # Database Models
