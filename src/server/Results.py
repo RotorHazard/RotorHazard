@@ -2,6 +2,7 @@
 # Results generators and caching
 #
 
+import json
 import gevent
 import Database
 import Options
@@ -12,6 +13,8 @@ from RHRace import WinCondition
 Events = EventManager()
 
 logger = logging.getLogger(__name__)
+
+FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
 class CacheStatus:
     INVALID = 'invalid'
@@ -139,9 +142,10 @@ def calc_leaderboard(DB, **params):
 
     # Get profile (current), frequencies (current), race query (saved), and race format (all)
     if USE_CURRENT:
-        profile = getCurrentProfile()
+        profile = params['current_profile']
         profile_freqs = json.loads(profile.frequencies)
-        race_format = getCurrentRaceFormat()
+        RACE = params['current_race']
+        race_format = RACE.format
     else:
         if USE_CLASS:
             race_query = Database.SavedRaceMeta.query.filter_by(class_id=USE_CLASS)

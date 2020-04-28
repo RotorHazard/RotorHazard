@@ -729,7 +729,7 @@ def api_race_current():
     if RACE.cacheStatus == Results.CacheStatus.VALID:
         results = RACE.results
     else:
-        results = Results.calc_leaderboard(DB, current_race=True)
+        results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
         RACE.results = results
         RACE.cacheStatus = Results.CacheStatus.VALID
 
@@ -2226,7 +2226,7 @@ def on_discard_laps(**kwargs):
 def clear_laps():
     '''Clear the current laps table.'''
     global RACE
-    RACE.last_race_results = Results.calc_leaderboard(DB, current_race=True)
+    RACE.last_race_results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
     RACE.last_race_cacheStatus = Results.CacheStatus.VALID
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
     db_reset_current_laps() # Clear out the current laps table
@@ -2603,6 +2603,10 @@ def imdtabler_update_freqs(data):
     ''' Update IMDTabler page with new frequencies list '''
     emit_imdtabler_data(data['freq_list'].replace(',',' ').split())
 
+@SOCKET_IO.on('clean_cache')
+def clean_results_cache():
+    ''' expose cach wiping for frontend debugging '''
+    Results.invalidate_all_caches(DB)
 
 # Socket io emit functions
 
@@ -3087,11 +3091,6 @@ def emit_round_data_thread(params, sid):
         else:
             SOCKET_IO.emit('round_data', emit_payload, namespace='/')
 
-@SOCKET_IO.on('clean_cache')
-def clean_results_cache():
-    ''' expose for frontend debugging '''
-    Results.invalidate_all_caches(DB)
-
 def emit_current_leaderboard(**params):
     '''Emits leaderboard.'''
     global RACE
@@ -3100,7 +3099,7 @@ def emit_current_leaderboard(**params):
     elif RACE.cacheStatus == Results.CacheStatus.VALID:
         emit_payload = RACE.results
     else:
-        results = Results.calc_leaderboard(DB, current_race=True)
+        results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
         RACE.results = results
         RACE.cacheStatus = Results.CacheStatus.VALID
         emit_payload = results
@@ -3963,7 +3962,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'deleted': False
                         })
 
-                        RACE.results = Results.calc_leaderboard(DB, current_race=True)
+                        RACE.results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
                         RACE.cacheStatus = Results.CacheStatus.VALID
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
