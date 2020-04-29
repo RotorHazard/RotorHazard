@@ -1599,8 +1599,8 @@ def on_set_min_lap(data):
 
 @SOCKET_IO.on("set_min_lap_behavior")
 def on_set_min_lap_behavior(data):
-    min_lap_behavior = data['min_lap_behavior']
-    Options.set("MinLapBehavior", data['min_lap_behavior'])
+    min_lap_behavior = int(data['min_lap_behavior'])
+    Options.set("MinLapBehavior", min_lap_behavior)
 
     Events.trigger(Evt.MIN_LAP_BEHAVIOR_SET, {
         'min_lap_behavior': min_lap_behavior,
@@ -2597,7 +2597,7 @@ def emit_min_lap(**params):
     '''Emits current minimum lap.'''
     emit_payload = {
         'min_lap': Options.get('MinLapSec'),
-        'min_lap_behavior': Options.get("MinLapBehavior")
+        'min_lap_behavior': int(Options.get("MinLapBehavior"))
     }
     if ('nobroadcast' in params):
         emit('min_lap', emit_payload)
