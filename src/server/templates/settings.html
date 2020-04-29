@@ -479,6 +479,13 @@
 			$(".heats").empty();
 			for (var i in msg.heats) {
 				var heats = msg.heats[i];
+
+				if (heats.note) {
+					heat_note = heats.note
+				} else {
+					heat_note = __('Heat') + ' ' + heats.heat_id
+				}
+
 				var el = $('<li>');
 
 				var header = $('<h3>Heat ' + heats.heat_id + '</h3>')
@@ -538,6 +545,8 @@
 					el.append(selectbox);
 				}
 
+				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="Duplicate ' + heat_note + '">+</button>');
+
 				el.appendTo($('.heats'));
 			}
 			freq.updateBlocks();
@@ -580,6 +589,13 @@
 			socket.emit('delete_heat', data);
 		});
 
+		$(document).on("click", '.duplicate_heat', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('duplicate_heat', data);
+		});
+
 		$('button#generate_heats').click(function (event) {
 			var data = {
 				input_class: parseInt($('#generator_input_class').val()),
@@ -604,11 +620,18 @@
 			$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
 
 			if (msg.classes.length) {
-				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '</p>');
+				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '<br />' + __('Duplicating a class also duplicates its assigned heats.') + '</p>');
 
 				var classlist = $('<ol>');
 				for (var i in msg.classes) {
 					var race_class = msg.classes[i];
+
+					if (race_class.name) {
+						race_class_name = race_class.name
+					} else {
+						race_class_name = __('Class') + ' ' + race_class.id
+					}
+
 					var el = $('<li>');
 					var header = $('<h3>' + __('Class') + ' ' + race_class.id + '</h3>')
 
@@ -634,6 +657,8 @@
 					selectbox.prop('disabled', race_class.locked);
 					el.append(selectbox);
 
+					el.append('<button class="duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
+
 					el.appendTo(classlist);
 
 					if (race_class.name) {
@@ -643,7 +668,6 @@
 						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + '</option>'));
 						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + '</option>'));
 					}
-
 				}
 				classlist.appendTo($('.race_classes'));
 			} else {
@@ -688,6 +712,13 @@
 				class: parseInt($(this).data('id')),
 			};
 			socket.emit('delete_class', data);
+		});
+
+		$(document).on("click", '.duplicate_class', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('duplicate_race_class', data);
 		});
 
 		/* Pilots */

@@ -79,10 +79,12 @@ class Evt:
     PILOT_DELETE = 'pilotDelete'
     HEAT_SET = 'heatSet'
     HEAT_ADD = 'heatAdd'
+    HEAT_DUPLICATE = 'heatDuplicate'
     HEAT_ALTER = 'heatAlter'
     HEAT_DELETE = 'heatDelete'
     HEAT_GENERATE = 'heatGenerate'
     CLASS_ADD = 'classAdd'
+    CLASS_DUPLICATE = 'classDuplicate'
     CLASS_ALTER = 'classAlter'
     CLASS_DELETE = 'classDelete'
     # Database
