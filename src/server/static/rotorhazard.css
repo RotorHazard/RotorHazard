@@ -1122,12 +1122,12 @@ main.page-home {
 	font-size: 0.75em;
 }
 
-.lap-deleted {
+.after-time-expired {
 	background: #eee;
 }
 
-.after-time-expired {
-	background: #eee;
+.lap-deleted {
+	background: #d1d3d4;
 }
 
 .btn-danger {

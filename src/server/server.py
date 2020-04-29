@@ -925,6 +925,8 @@ def on_load_data(data):
             emit_round_data(nobroadcast=True)
         elif load_type == 'race_format':
             emit_race_format(nobroadcast=True)
+        elif load_type == 'race_formats':
+            emit_race_formats(nobroadcast=True)
         elif load_type == 'node_tuning':
             emit_node_tuning(nobroadcast=True)
         elif load_type == 'enter_and_exit_at_levels':
@@ -2776,6 +2778,37 @@ def emit_race_format(**params):
         SOCKET_IO.emit('race_format', emit_payload)
         emit_team_racing_stat_if_enb()
         emit_current_leaderboard()
+
+def emit_race_formats(**params):
+    '''Emits all race formats.'''
+    formats = Database.RaceFormat.query.all()
+    emit_payload = {}
+    for race_format in formats:
+        format_copy = {
+            'format_name': race_format.name,
+            'race_mode': race_format.race_mode,
+            'race_time_sec': race_format.race_time_sec,
+            'start_delay_min': race_format.start_delay_min,
+            'start_delay_max': race_format.start_delay_max,
+            'staging_tones': race_format.staging_tones,
+            'number_laps_win': race_format.number_laps_win,
+            'win_condition': race_format.win_condition,
+            'team_racing_mode': 1 if race_format.team_racing_mode else 0,
+        }
+
+        has_race = Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first()
+
+        if has_race:
+            format_copy['locked'] = True
+        else:
+            format_copy['locked'] = False
+
+        emit_payload[race_format.id] = format_copy
+
+    if ('nobroadcast' in params):
+        emit('race_formats', emit_payload)
+    else:
+        SOCKET_IO.emit('race_formats', emit_payload)
 
 def emit_current_laps(**params):
     '''Emits current laps.'''
