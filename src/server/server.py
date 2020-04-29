@@ -4492,9 +4492,9 @@ def recover_database():
                     heat_extracted_meta.append(row)
 
             restore_table(Database.Heat, heat_extracted_meta, defaults={
-                    'class_id': CLASS_ID_NONE,
+                    'class_id': Database.CLASS_ID_NONE,
                     'results': None,
-                    'cacheStatus': CacheStatus.INVALID
+                    'cacheStatus': Results.CacheStatus.INVALID
                 })
 
             # extract pilots from hets and load into heatnode
@@ -4508,17 +4508,17 @@ def recover_database():
 
             DB.session.query(Database.HeatNode).delete()
             restore_table(Database.HeatNode, heatnode_extracted_data, defaults={
-                    'pilot_id': PILOT_ID_NONE
+                    'pilot_id': Database.PILOT_ID_NONE
                 })
         else:
             # current heat structure; use basic migration
             restore_table(Database.Heat, heat_query_data, defaults={
-                    'class_id': CLASS_ID_NONE,
+                    'class_id': Database.CLASS_ID_NONE,
                     'results': None,
-                    'cacheStatus': CacheStatus.INVALID
+                    'cacheStatus': Results.CacheStatus.INVALID
                 })
             restore_table(Database.HeatNode, heatnode_query_data, defaults={
-                    'pilot_id': PILOT_ID_NONE
+                    'pilot_id': Database.PILOT_ID_NONE
                 })
 
         restore_table(Database.RaceFormat, raceFormat_query_data, defaults={
@@ -4542,7 +4542,7 @@ def recover_database():
                 'name': 'New class',
                 'format_id': 0,
                 'results': None,
-                'cacheStatus': CacheStatus.INVALID
+                'cacheStatus': Results.CacheStatus.INVALID
             })
 
         for opt in carryOver:
@@ -4562,7 +4562,7 @@ def recover_database():
         else:
             restore_table(Database.SavedRaceMeta, raceMeta_query_data, defaults={
                 'results': None,
-                'cacheStatus': CacheStatus.INVALID
+                'cacheStatus': Results.CacheStatus.INVALID
             })
             restore_table(Database.SavedPilotRace, racePilot_query_data, defaults={
                 'history_values': None,
