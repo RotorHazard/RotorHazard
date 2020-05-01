@@ -44,7 +44,8 @@
 			'current_laps',
 			'race_status',
 			'team_racing_stat_if_enb',
-			'led_effects'
+			'led_effects',
+			'callouts'
 		]});
 
 		$('#about>.popup-content').append('<p id="server-lag">Sync quality: [calculating]</p>');
@@ -1064,15 +1065,14 @@
 		});
 
 		/* Callouts */
-
-		function add_callout(id, content=null) {
+		function add_callout(id, content='') {
 			new_callout = $('<li>');
 			new_callout_label = $('<div class="label-block">');
 			new_callout_label.html('<label for="callout_text_'+ id +'">' + __('Callout') + ' ' + id + '</label>');
 
 			new_callout_control = $('<div class="control-block">');
-			new_callout_control.append('<input type="text" id="callout_text_' + id + '" class="callout_text" vlaue="' + content + '">');
-			new_callout_control.append('<button class="button play_callout">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+			new_callout_control.append('<input type="text" id="callout_text_' + id + '" class="callout_text" value="' + content + '">');
+			new_callout_control.append('<button class="button play_callout" id="play_callout_' + id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 
 			new_callout.append(new_callout_label);
 			new_callout.append(new_callout_control);
@@ -1119,7 +1119,7 @@
 					first = false;
 				}
 			}
-			callout = callout.replace('%FREQS:PILOTS%', pilots)
+			callout = callout.replace('%FREQS%', pilots)
 
 			speak('<div class="speech">' + callout + '</div>');
 			return false;
@@ -1131,6 +1131,28 @@
 				//
 				$(this).siblings(".play_callout").click();
 			}
+		});
+
+		// load callouts
+		socket.on('callouts', function(msg){
+			for (i in msg) {
+				add_callout(i, msg[i]);
+			}
+		})
+
+		// save callouts
+		$(document).on('change', '.callout_text', function (event) {
+			var data = [];
+
+			$('.callout-items>li').each(function(index){
+				text = $(this).find('.callout_text').val();
+				if (text)
+					data.push(text);
+			})
+
+			socket.emit('save_callouts', {
+				'callouts': data
+			});
 		});
 
 		/* Other */

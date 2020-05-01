@@ -953,6 +953,8 @@ def on_load_data(data):
             emit_led_effect_setup()
         elif load_type == 'led_effects':
             emit_led_effects()
+        elif load_type == 'callouts':
+            emit_callouts()
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
         elif load_type == 'cluster_status':
@@ -2591,13 +2593,21 @@ def on_set_option(data):
         'value': data['value'],
         })
 
-@SOCKET_IO.on('get_RACE.scheduled')
+@SOCKET_IO.on('get_race_scheduled')
 def get_race_elapsed():
     # get current race status; never broadcasts to all
-    emit('RACE.scheduled', {
+    emit('race_scheduled', {
         'scheduled': RACE.scheduled,
         'scheduled_at': RACE.scheduled_time
     })
+
+@SOCKET_IO.on('save_callouts')
+def save_callouts(data):
+    # save callouts to Options
+    callouts = json.dumps(data['callouts'])
+    Options.set('voiceCallouts', callouts)
+    logger.info('Set all voice callouts')
+    logger.debug('Voice callouts set to: {0}'.format(callouts))
 
 @SOCKET_IO.on('imdtabler_update_freqs')
 def imdtabler_update_freqs(data):
@@ -3693,6 +3703,11 @@ def emit_node_crossing_change(node, **params):
         emit('node_crossing_change', emit_payload)
     else:
         SOCKET_IO.emit('node_crossing_change', emit_payload)
+
+def emit_callouts():
+    callouts = Options.get('voiceCallouts')
+    if callouts:
+        emit('callouts', json.loads(callouts))
 
 def emit_imdtabler_page(**params):
     '''Emits IMDTabler page, using current profile frequencies.'''
