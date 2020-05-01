@@ -1065,7 +1065,9 @@
 		});
 
 		/* Callouts */
-		function add_callout(id, content='') {
+		function add_callout(content='') {
+			id = $('.callout-items>li').length + 1;
+
 			new_callout = $('<li>');
 			new_callout_label = $('<div class="label-block">');
 			new_callout_label.html('<label for="callout_text_'+ id +'">' + __('Callout') + ' ' + id + '</label>');
@@ -1081,8 +1083,7 @@
 		}
 
 		$('#add_callout').click(function (event) {
-			new_id = $('.callout-items>li').length + 1;
-			add_callout(new_id);
+			add_callout();
 		});
 
 		$(document).on('click', '.play_callout', function (event) {
@@ -1136,7 +1137,7 @@
 		// load callouts
 		socket.on('callouts', function(msg){
 			for (i in msg) {
-				add_callout(i, msg[i]);
+				add_callout(msg[i]);
 			}
 		})
 
@@ -1181,24 +1182,44 @@
 			// keyboard shortcuts
 			switch (e.which) {
 				case 90:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// race start: z
 						$('#start_race').trigger('click');
 					}
 					break;
 				case 88:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// race stop: x
 						$('#stop_race').trigger('click');
 					}
 					break;
 				case 67:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// save laps: c
 						$('#save_laps').trigger('click');
 					}
 					break;
 				case 86:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// discard laps: v
 						$('#discard_laps').trigger('click');
@@ -1208,48 +1229,87 @@
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 1: alt+1
 						$('#manual_lap_0').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+1
+						if ($('#play_callout_1').length)
+							$('#play_callout_1').trigger('click');
 					}
 					break;
 				case 50:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 2: alt+2
 						$('#manual_lap_1').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+2
+						if ($('#play_callout_2').length)
+							$('#play_callout_2').trigger('click');
 					}
 					break;
 				case 51:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 3: alt+3
 						$('#manual_lap_2').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+3
+						if ($('#play_callout_3').length)
+							$('#play_callout_3').trigger('click');
 					}
 					break;
 				case 52:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 4: alt+4
 						$('#manual_lap_3').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+4
+						if ($('#play_callout_4').length)
+							$('#play_callout_4').trigger('click');
 					}
 					break;
 				case 53:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 5: alt+5
 						$('#manual_lap_4').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+5
+						if ($('#play_callout_5').length)
+							$('#play_callout_5').trigger('click');
 					}
 					break;
 				case 54:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 6: alt+6
 						$('#manual_lap_5').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+6
+						if ($('#play_callout_6').length)
+							$('#play_callout_6').trigger('click');
 					}
 					break;
 				case 55:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 7: alt+7
 						$('#manual_lap_6').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+7
+						if ($('#play_callout_7').length)
+							$('#play_callout_7').trigger('click');
 					}
 					break;
 				case 56:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 8: alt+8
 						$('#manual_lap_7').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+8
+						if ($('#play_callout_8').length)
+							$('#play_callout_8').trigger('click');
+					}
+					break;
+				case 57:
+					if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+9
+						if ($('#play_callout_9').length)
+							$('#play_callout_9').trigger('click');
 					}
 					break;
 			}
