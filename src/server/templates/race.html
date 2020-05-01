@@ -1152,7 +1152,7 @@
 			var data = [];
 
 			$('.callout-items>li').each(function(index){
-				text = $(this).find('.callout_text').val();
+				text = $(this).find('.callout_text').val().trim();
 				if (text)
 					data.push(text);
 			})
