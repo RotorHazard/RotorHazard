@@ -35,14 +35,14 @@
 		socket.on('language', function (msg) {
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
-			for (i = 0; i < msg.languages.length; i++) {
+			for (var i = 0; i < msg.languages.length; i++) {
 				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
 
 			$('#set_voice_string_language').empty();
 			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
 			$('#set_voice_string_language').append('<option value="">English</option>')
-			for (i = 0; i < msg.languages.length; i++) {
+			for (var i = 0; i < msg.languages.length; i++) {
 				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
 			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
@@ -107,7 +107,7 @@
 		});
 
 		// set up node local store
-		for (i = 0; i < {{ num_nodes }}; i++) {
+		for (var i = 0; i < {{ num_nodes }}; i++) {
 			rotorhazard.nodes[i] = new nodeModel();
 			// start RSSI graphing
 			rotorhazard.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
@@ -155,7 +155,7 @@
 		socket.on('heartbeat', function (msg) {
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
 				heartbeatCounter = 0;
-				for (i = 0; i < msg.current_rssi.length; i++) {
+				for (var i = 0; i < msg.current_rssi.length; i++) {
 					var rssiValue = msg.current_rssi[i];
 
 					if (rotorhazard.nodes[i].frequency == 0) {
@@ -266,7 +266,7 @@
 		/* Profiles */
 		socket.on('node_tuning', function (msg) {
 			$('#set_profile').empty();
-			for (i = 0; i < msg.profile_ids.length; i++) {
+			for (var i = 0; i < msg.profile_ids.length; i++) {
 				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
 			}
 			$('#set_profile').val(msg.current_profile);
@@ -299,7 +299,7 @@
 
 		/* Frequency Setup */
 		socket.on('frequency_data', function (msg) {
-			for (i = 0; i < msg.frequency.length; i++) {
+			for (var i = 0; i < msg.frequency.length; i++) {
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				rotorhazard.nodes[i].frequency = msg.frequency[i];
 				freq.updateSelects();
@@ -337,7 +337,7 @@
 
 		/* Nodes */
 		socket.on('node_data', function (msg) {
-			for (i = 0; i < msg.node_peak_rssi.length; i++) {
+			for (var i = 0; i < msg.node_peak_rssi.length; i++) {
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
 				$('.node_nadir_rssi_' + i).html(msg.node_nadir_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
@@ -363,7 +363,7 @@
 		});
 
 		socket.on('enter_and_exit_at_levels', function (msg) {
-			for (i = 0; i < msg.enter_at_levels.length; i++) {
+			for (var i = 0; i < msg.enter_at_levels.length; i++) {
 				$('#set_enter_at_level_' + i).val(msg.enter_at_levels[i]);
 				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
@@ -981,7 +981,7 @@
 
 		socket.on('race_format', function (msg) {
 			$('#set_race_format').empty();
-			for (i = 0; i < msg.format_ids.length; i++) {
+			for (var i = 0; i < msg.format_ids.length; i++) {
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
 			}
 			$('#set_race_format').val(msg.current_format);
