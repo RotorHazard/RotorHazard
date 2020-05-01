@@ -517,6 +517,13 @@ def scanner():
     return render_template('scanner.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
+@APP.route('/decoder')
+@requires_auth
+def decoder():
+    '''Route to race management page.'''
+    return render_template('decoder.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        num_nodes=RACE.num_nodes)
+
 @APP.route('/imdtabler')
 def imdtabler():
     '''Route to IMDTabler page.'''
