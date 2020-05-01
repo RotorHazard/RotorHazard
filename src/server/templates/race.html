@@ -1070,7 +1070,13 @@
 
 			new_callout = $('<li>');
 			new_callout_label = $('<div class="label-block">');
-			new_callout_label.html('<label for="callout_text_'+ id +'">' + __('Callout') + ' ' + id + '</label>');
+
+			label = '<label for="callout_text_'+ id +'">' + __('Callout') + ' ' + id + '</label>';
+			if (id <= 9) {
+				label += '<p class="desc">' + __('Ctrl') + '+' + __('Alt') + '+' + id + '</p>';
+			}
+
+			new_callout_label.html(label)
 
 			new_callout_control = $('<div class="control-block">');
 			new_callout_control.append('<input type="text" id="callout_text_' + id + '" class="callout_text" value="' + content + '">');
