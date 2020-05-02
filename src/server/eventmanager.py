@@ -81,6 +81,7 @@ class Evt:
     HEAT_ADD = 'heatAdd'
     HEAT_ALTER = 'heatAlter'
     HEAT_DELETE = 'heatDelete'
+    HEAT_GENERATE = 'heatGenerate'
     CLASS_ADD = 'classAdd'
     CLASS_ALTER = 'classAlter'
     CLASS_DELETE = 'classDelete'

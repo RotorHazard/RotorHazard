@@ -943,7 +943,8 @@
 			var data = {
 				race_format: $(this).val()
 			};
-			socket.emit('set_race_format', data);
+			if ($(this).find('option').length > 1)
+				socket.emit('set_race_format', data);
 		});
 
 		/* Calibration Profiles */
