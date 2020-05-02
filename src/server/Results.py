@@ -7,9 +7,11 @@ import gevent
 import Database
 import Options
 import logging
+from monotonic import monotonic
 from Language import __
 from eventmanager import Evt, EventManager
 from RHRace import WinCondition
+
 Events = EventManager()
 
 logger = logging.getLogger(__name__)
@@ -66,9 +68,9 @@ def normalize_cache_status(DB):
 
     logger.info('All Result caches normalized')
 
-def build_result_cache(results, cacheStatus, **params):
+def build_result_cache(DB, **params):
     return {
-        'results': calc_leaderboard(**params),
+        'results': calc_leaderboard(DB, **params),
         'cacheStatus': CacheStatus.VALID
     }
 
@@ -79,12 +81,12 @@ def build_race_results_caches(DB, params):
 
     race = Database.SavedRaceMeta.query.get(params['race_id'])
     heat = Database.Heat.query.get(params['heat_id'])
-    if heat.class_id != CLASS_ID_NONE:
+    if heat.class_id != Database.CLASS_ID_NONE:
         race_class = Database.RaceClass.query.get(heat.class_id)
 
     race.cacheStatus = token
     heat.cacheStatus = token
-    if heat.class_id != CLASS_ID_NONE:
+    if heat.class_id != Database.CLASS_ID_NONE:
         race_class.cacheStatus = token
     Options.set("eventResults_cacheStatus", token)
     DB.session.commit()
@@ -92,31 +94,31 @@ def build_race_results_caches(DB, params):
     # rebuild race result
     gevent.sleep()
     if race.cacheStatus == token:
-        raceResult = build_result_cache(heat_id=params['heat_id'], round_id=params['round_id'])
-        race.results = raceResult.results
-        race.cacheStatus = raceResult.cacheStatus
+        raceResult = build_result_cache(DB, heat_id=params['heat_id'], round_id=params['round_id'])
+        race.results = raceResult['results']
+        race.cacheStatus = raceResult['cacheStatus']
         DB.session.commit()
 
     # rebuild heat summary
     gevent.sleep()
     if heat.cacheStatus == token:
-        heatResult = build_result_cache(heat_id=params['heat_id'])
-        heat.results = heatResult.results
-        heat.cacheStatus = heatResult.cacheStatus
+        heatResult = build_result_cache(DB, heat_id=params['heat_id'])
+        heat.results = heatResult['results']
+        heat.cacheStatus = heatResult['cacheStatus']
         DB.session.commit()
 
     # rebuild class summary
-    if heat.class_id != CLASS_ID_NONE:
+    if heat.class_id != Database.CLASS_ID_NONE:
         if race_class.cacheStatus == token:
             gevent.sleep()
-            classResult = build_result_cache(class_id=heat.class_id)
-            race_class.results = classResult.results
-            race_class.cacheStatus = classResult.cacheStatus
+            classResult = build_result_cache(DB, class_id=heat.class_id)
+            race_class.results = classResult['results']
+            race_class.cacheStatus = classResult['cacheStatus']
             DB.session.commit()
 
     # rebuild event summary
     gevent.sleep()
-    Options.set("eventResults", json.dumps(calc_leaderboard()))
+    Options.set("eventResults", json.dumps(calc_leaderboard(DB)))
     Options.set("eventResults_cacheStatus", CacheStatus.VALID)
 
     logger.info('Built result caches: Race {0}, Heat {1}, Class {2}, Event'.format(params['race_id'], params['heat_id'], heat.class_id))
