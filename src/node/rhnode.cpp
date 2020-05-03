@@ -51,6 +51,7 @@ uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 #define LOG_ERROR(...)
 
 static Message_t i2cMessage, serialMessage;
+static bool rxPoweredDown = false;
 
 // Defines for fast ADC reads
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
@@ -64,7 +65,6 @@ void setRxModule(uint16_t frequency);
 void resetRxModule();
 void setupRxModule();
 void powerDownRxModule();
-static bool rxPoweredDown = false;
 
 #if (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
 // Configure the I2C address based on input-pin level.
@@ -293,9 +293,8 @@ void resetRxModule()
 
     SERIAL_SENDBIT1();  // Write to register
 
-    for (int i = 20; i > 0; i--) {
+    for (i = 20; i > 0; i--)
         SERIAL_SENDBIT0();
-    }
 
     SERIAL_ENABLE_HIGH();  // Finished clocking data in
 
@@ -341,7 +340,7 @@ void powerDownRxModule()
     setRxModulePower(0b11111111111111111111);
 }
 
-// Power down rx5808 module unused features to save some power
+// Set up rx5808 module (disabling unused features to save some power)
 void setupRxModule() 
 {   
     setRxModulePower(0b11010000110111110011);

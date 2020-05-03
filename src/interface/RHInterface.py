@@ -444,7 +444,7 @@ class RHInterface(BaseHardwareInterface):
             self.set_and_validate_value_16(node,
                 WRITE_FREQUENCY,
                 READ_FREQUENCY,
-                1111)
+                1111 if node.api_level >= 24 else 5800)
             node.frequency = 0
 
     def transmit_enter_at_level(self, node, level):
