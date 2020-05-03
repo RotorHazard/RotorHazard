@@ -1210,6 +1210,7 @@ def on_alter_heat(data):
                 RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
             else:
                 RACE.node_teams[heatNode.node_index] = None
+        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
     Events.trigger(Evt.HEAT_ALTER, {
         'heat_id': heat_id,
@@ -2480,6 +2481,7 @@ def on_delete_lap(data):
         })
 
     logger.info('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
+    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
     emit_current_laps() # Race page, update web client
     emit_current_leaderboard() # Race page, update web client
     race_format = getCurrentRaceFormat()
