@@ -56,6 +56,7 @@ import Options
 import Database
 import Results
 import Language
+import RHUtils
 from Language import __
 
 # Events manager
@@ -205,11 +206,11 @@ class Slave:
                 split_time = split_ts - last_split_ts
                 split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
                 logger.info('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
-                    .format(node_index+1, lap_count+1, time_format(split_time), \
+                    .format(node_index+1, lap_count+1, RHUtils.time_format(split_time), \
                     ('{0:.2f}'.format(split_speed) if split_speed <> None else 'None')))
 
                 DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=lap_count, split_id=split_id, \
-                    split_time_stamp=split_ts, split_time=split_time, split_time_formatted=time_format(split_time), \
+                    split_time_stamp=split_ts, split_time=split_time, split_time_formatted=RHUtils.time_format(split_time), \
                     split_speed=split_speed))
                 DB.session.commit()
                 emit_current_laps() # update all laps on the race page
@@ -2164,7 +2165,7 @@ def on_resave_laps(data):
     for lap in laps:
         tmp_lap_time_formatted = lap['lap_time']
         if isinstance(tmp_lap_time_formatted, float):
-            tmp_lap_time_formatted = time_format(lap['lap_time'])
+            tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'])
         DB.session.add(Database.SavedRaceLap( \
             race_id=race_id, \
             pilotrace_id=pilotrace_id, \
@@ -2470,10 +2471,10 @@ def on_delete_lap(data):
 
     if db_next and db_last:
         db_next['lap_time'] = db_next['lap_time_stamp'] - db_last['lap_time_stamp']
-        db_next['lap_time_formatted'] = time_format(db_next['lap_time'])
+        db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'])
     elif db_next:
         db_next['lap_time'] = db_next['lap_time_stamp']
-        db_next['lap_time_formatted'] = time_format(db_next['lap_time'])
+        db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'])
 
     Events.trigger(Evt.LAP_DELETE, {
         'node': node_index,
@@ -3617,7 +3618,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
 def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **params):
     '''Emits phonetic data.'''
     raw_time = lap_time
-    phonetic_time = phonetictime_format(lap_time)
+    phonetic_time = RHUtils.phonetictime_format(lap_time)
     phonetic_name = Database.Pilot.query.get(pilot_id).phonetic
     callsign = Database.Pilot.query.get(pilot_id).callsign
     pilot_id = Database.Pilot.query.get(pilot_id).id
@@ -3846,33 +3847,6 @@ def ms_from_program_start():
     milli_sec = delta_time * 1000.0
     return milli_sec
 
-def time_format(millis):
-    '''Convert milliseconds to 00:00.000'''
-    if millis is None:
-        return None
-
-    millis = int(round(millis, 0))
-    minutes = millis / 60000
-    over = millis % 60000
-    seconds = over / 1000
-    over = over % 1000
-    milliseconds = over
-    return '{0:01d}:{1:02d}.{2:03d}'.format(minutes, seconds, milliseconds)
-
-def phonetictime_format(millis):
-    '''Convert milliseconds to phonetic'''
-    millis = int(millis + 50)  # round to nearest tenth of a second
-    minutes = millis / 60000
-    over = millis % 60000
-    seconds = over / 1000
-    over = over % 1000
-    tenths = over / 100
-
-    if minutes > 0:
-        return '{0:01d} {1:02d}.{2:01d}'.format(minutes, seconds, tenths)
-    else:
-        return '{0:01d}.{1:01d}'.format(seconds, tenths)
-
 def time_format_mmss(millis):
     '''Convert milliseconds to 00:00'''
     if millis is None:
@@ -3943,7 +3917,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         if lap_time < (min_lap * 1000):  # if lap time less than minimum
                             node.under_min_lap_count += 1
                             logger.info('Pass record under lap minimum ({3}): Node={0}, Lap={1}, LapTime={2}, Count={4}' \
-                                       .format(node.index+1, lap_number, time_format(lap_time), min_lap, node.under_min_lap_count))
+                                       .format(node.index+1, lap_number, RHUtils.time_format(lap_time), min_lap, node.under_min_lap_count))
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
 
@@ -3958,7 +3932,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
-                            'lap_time_formatted': time_format(lap_time),
+                            'lap_time_formatted': RHUtils.time_format(lap_time),
                             'source': source,
                             'deleted': False
                         })
@@ -3971,7 +3945,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             })
 
                         #logger.info('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
-                        #    .format(node.index+1, lap_number, time_format(lap_time)))
+                        #    .format(node.index+1, lap_number, RHUtils.time_format(lap_time)))
                         emit_current_laps() # update all laps on the race page
                         emit_current_leaderboard() # update leaderboard
 
@@ -4045,7 +4019,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
-                            'lap_time_formatted': time_format(lap_time),
+                            'lap_time_formatted': RHUtils.time_format(lap_time),
                             'source': source,
                             'deleted': True
                         })
