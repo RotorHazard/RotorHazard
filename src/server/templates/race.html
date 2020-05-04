@@ -44,7 +44,8 @@
 			'current_laps',
 			'race_status',
 			'team_racing_stat_if_enb',
-			'led_effects'
+			'led_effects',
+			'callouts'
 		]});
 
 		$('#about>.popup-content').append('<p id="server-lag">Sync quality: [calculating]</p>');
@@ -339,13 +340,17 @@
 			$('#set_current_heat').empty();
 			for (var i in msg.heats) {
 				var heat = msg.heats[i];
-				var opt = $('<option value="' + heat.heat_id + '" data-class="' + heat.class_id + '">');
 
 				if (heat.note) {
-					opt.html(heat.note);
+					var heatname = heat.note;
 				} else {
-					opt.html(__('Heat') + ' ' + heat.heat_id);
+					var heatname = __('Heat') + ' ' + heat.heat_id;
 				}
+				rotorhazard.heats[i].heatname = heatname;
+
+				var opt = $('<option value="' + heat.heat_id + '" data-class="' + heat.class_id + '">');
+
+				opt.html(heatname);
 				$('#set_current_heat').append(opt);
 			}
 
@@ -539,7 +544,10 @@
 		})
 
 		socket.on('current_heat', function (msg) {
+			rotorhazard.current_heat = msg.current_heat;
 			$('#set_current_heat').val(msg.current_heat);
+
+			rotorhazard.current_pilots = msg.callsign;
 			for (i = 0; i < msg.callsign.length; i++) {
 				$('.callsign_' + i).html(msg.callsign[i] ? msg.callsign[i] : 'None');
 			}
@@ -1057,6 +1065,104 @@
 			socket.emit('LED_brightness', data);
 		});
 
+		/* Callouts */
+		function add_callout(content='') {
+			id = $('.callout-items>li').length + 1;
+
+			new_callout = $('<li>');
+			new_callout_label = $('<div class="label-block">');
+
+			label = '<label for="callout_text_'+ id +'">' + __('Callout') + ' ' + id + '</label>';
+			if (id <= 9) {
+				label += '<p class="desc">' + __('Ctrl') + '+' + __('Alt') + '+' + id + '</p>';
+			}
+
+			new_callout_label.html(label)
+
+			new_callout_control = $('<div class="control-block">');
+			new_callout_control.append('<input type="text" id="callout_text_' + id + '" class="callout_text" value="' + content + '">');
+			new_callout_control.append('<button class="button play_callout" id="play_callout_' + id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+
+			new_callout.append(new_callout_label);
+			new_callout.append(new_callout_control);
+
+			$('.callout-items').append(new_callout)
+		}
+
+		$('#add_callout').click(function (event) {
+			add_callout();
+		});
+
+		$(document).on('click', '.play_callout', function (event) {
+			var callout = $(this).siblings('.callout_text').val();
+
+			// %HEAT% : Current heat name
+			callout = callout.replace('%HEAT%', rotorhazard.heats[rotorhazard.current_heat].heatname);
+
+			// %PILOTS% : Current pilot names
+			var pilots = '';
+			var first = true;
+			for (i in rotorhazard.current_pilots) {
+				pilot = rotorhazard.current_pilots[i];
+				if (pilot) {
+					if (!first) {
+						pilots += ', ';
+					}
+					pilots += pilot;
+					first = false;
+				}
+			}
+			callout = callout.replace('%PILOTS%', pilots)
+
+			// %FREQS% : Frequencies with current pilot assignments
+			var pilots = '';
+			var first = true;
+			for (i in rotorhazard.current_pilots) {
+				pilot = rotorhazard.current_pilots[i];
+				if (pilot) {
+					if (!first) {
+						pilots += ', ';
+					}
+					pilots += freq.findByFreq(rotorhazard.nodes[i].frequency) + ': ' + pilot;
+					first = false;
+				}
+			}
+			callout = callout.replace('%FREQS%', pilots)
+
+			speak('<div class="speech">' + callout + '</div>');
+			return false;
+		});
+
+		// make 'Enter' key on input field trigger button
+		$(document).on('keyup', '.callout_text', function(event) {
+			if (event.keyCode === 13) {
+				//
+				$(this).siblings(".play_callout").click();
+			}
+		});
+
+		// load callouts
+		socket.on('callouts', function(msg){
+			for (i in msg) {
+				add_callout(msg[i]);
+			}
+		})
+
+		// save callouts
+		$(document).on('change', '.callout_text', function (event) {
+			var data = [];
+
+			$('.callout-items>li').each(function(index){
+				text = $(this).find('.callout_text').val().trim();
+				if (text)
+					data.push(text);
+			})
+
+			socket.emit('save_callouts', {
+				'callouts': data
+			});
+		});
+
 		/* Other */
 		$('.open-mfp-popup-tuning').magnificPopup({
 			type:'inline',
@@ -1083,24 +1189,44 @@
 			// keyboard shortcuts
 			switch (e.which) {
 				case 90:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// race start: z
 						$('#start_race').trigger('click');
 					}
 					break;
 				case 88:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// race stop: x
 						$('#stop_race').trigger('click');
 					}
 					break;
 				case 67:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// save laps: c
 						$('#save_laps').trigger('click');
 					}
 					break;
 				case 86:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// discard laps: v
 						$('#discard_laps').trigger('click');
@@ -1110,48 +1236,87 @@
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 1: alt+1
 						$('#manual_lap_0').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+1
+						if ($('#play_callout_1').length)
+							$('#play_callout_1').trigger('click');
 					}
 					break;
 				case 50:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 2: alt+2
 						$('#manual_lap_1').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+2
+						if ($('#play_callout_2').length)
+							$('#play_callout_2').trigger('click');
 					}
 					break;
 				case 51:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 3: alt+3
 						$('#manual_lap_2').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+3
+						if ($('#play_callout_3').length)
+							$('#play_callout_3').trigger('click');
 					}
 					break;
 				case 52:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 4: alt+4
 						$('#manual_lap_3').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+4
+						if ($('#play_callout_4').length)
+							$('#play_callout_4').trigger('click');
 					}
 					break;
 				case 53:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 5: alt+5
 						$('#manual_lap_4').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+5
+						if ($('#play_callout_5').length)
+							$('#play_callout_5').trigger('click');
 					}
 					break;
 				case 54:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 6: alt+6
 						$('#manual_lap_5').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+6
+						if ($('#play_callout_6').length)
+							$('#play_callout_6').trigger('click');
 					}
 					break;
 				case 55:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 7: alt+7
 						$('#manual_lap_6').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+7
+						if ($('#play_callout_7').length)
+							$('#play_callout_7').trigger('click');
 					}
 					break;
 				case 56:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 8: alt+8
 						$('#manual_lap_7').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+8
+						if ($('#play_callout_8').length)
+							$('#play_callout_8').trigger('click');
+					}
+					break;
+				case 57:
+					if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+9
+						if ($('#play_callout_9').length)
+							$('#play_callout_9').trigger('click');
 					}
 					break;
 			}
@@ -1493,5 +1658,25 @@
 </div>
 {% endif %}
 
+<!--Voice Callouts-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Callouts') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form callout-items">
+		</ol>
+
+		<div class="control-set">
+			<button class="button" id="add_callout">Add Callout</button>
+		</div>
+
+		<p class="form-note">
+			%HEAT% : Current heat name<br />
+			%PILOTS% : Current pilot names<br />
+			%FREQS% : Frequencies with current pilot assignments
+		</p>
+	</div>
+</div>
 </main>
 {% endblock %}
