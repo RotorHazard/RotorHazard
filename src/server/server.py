@@ -353,10 +353,6 @@ def checkSetFileOwnerPi(fileNameStr):
         logger.info("Error in 'checkSetFileOwnerPi()':  " + str(ex))
     return False
 
-#
-# Option helpers
-#
-
 def getCurrentProfile():
     current_profile = int(Options.get('currentProfile'))
     return Database.Profiles.query.get(current_profile)
@@ -1042,7 +1038,6 @@ def hardware_set_all_frequencies(freqs):
             'frequency': freqs[idx],
             })
 
-
 def restore_node_frequency(node_index):
     ''' Restore frequency for given node index (update hardware) '''
     gevent.sleep(0.250)  # pause to get clear of heartbeat actions for scanner
@@ -1123,7 +1118,6 @@ def hardware_set_all_exit_ats(exit_at_levels):
                 'node': idx,
                 'exit_at_level': INTERFACE.nodes[idx].exit_at_level
                 })
-
 
 @SOCKET_IO.on('set_language')
 def on_set_language(data):
@@ -3847,18 +3841,6 @@ def ms_from_program_start():
     milli_sec = delta_time * 1000.0
     return milli_sec
 
-def time_format_mmss(millis):
-    '''Convert milliseconds to 00:00'''
-    if millis is None:
-        return None
-
-    millis = int(millis)
-    minutes = millis / 60000
-    over = millis % 60000
-    seconds = over / 1000
-    over = over % 1000
-    return '{0:01d}:{1:02d}'.format(minutes, seconds)
-
 def check_race_time_expired():
     race_format = getCurrentRaceFormat()
     if race_format and race_format.race_mode == 0: # count down
@@ -4368,7 +4350,6 @@ def restore_table(class_type, table_query_data, **kwargs):
             logger.info('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
             logger.debug(traceback.format_exc())
 
-
 def recover_database():
     try:
         logger.info('Recovering data from previous database')
@@ -4723,7 +4704,6 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
             logger.exception('Error checking IMDTabler:  ')
 else:
     logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
-
 
 # Clear any current laps from the database on each program start
 # DB session commit needed to prevent 'application context' errors
