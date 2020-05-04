@@ -1171,12 +1171,57 @@ def on_add_heat():
 
     DB.session.commit()
 
-    Events.trigger(Evt.HEAT_ADD, {
+    Events.trigger(Evt.HEAT_DUPLICATE, {
         'heat_id': new_heat.id,
         })
 
     logger.info('Heat added: Heat {0}'.format(new_heat.id))
     emit_heat_data()
+
+@SOCKET_IO.on('duplicate_heat')
+def on_duplicate_heat(data):
+    new_heat_id = duplicate_heat(data['heat'])
+    DB.session.commit()
+
+    Events.trigger(Evt.HEAT_DUPLICATE, {
+        'heat_id': new_heat_id,
+        })
+
+    logger.info('Heat {0} duplicated to heat {1}'.format(data['heat'], new_heat_id))
+
+    emit_heat_data()
+
+def duplicate_heat(source, **kwargs):
+    '''Adds new heat by duplicating an existing one.'''
+    source_heat = Database.Heat.query.get(source)
+
+    if source_heat.note:
+        all_heat_notes = [heat.note for heat in Database.Heat.query.all()]
+        new_heat_note = uniqueName(source_heat.note, all_heat_notes)
+    else:
+        new_heat_note = ''
+
+    if 'dest_class' in kwargs:
+        new_class = kwargs['dest_class']
+    else:
+        new_class = source_heat.class_id
+
+    new_heat = Database.Heat(note=new_heat_note,
+        class_id=new_class,
+        results=None,
+        cacheStatus=Results.CacheStatus.INVALID)
+
+    DB.session.add(new_heat)
+    DB.session.flush()
+    DB.session.refresh(new_heat)
+
+    for source_heatnode in Database.HeatNode.query.filter_by(heat_id=source_heat.id).all():
+        new_heatnode = Database.HeatNode(heat_id=new_heat.id,
+            node_index=source_heatnode.node_index,
+            pilot_id=source_heatnode.pilot_id)
+        DB.session.add(new_heatnode)
+
+    return new_heat.id
 
 @SOCKET_IO.on('alter_heat')
 def on_alter_heat(data):
@@ -1267,6 +1312,41 @@ def on_add_race_class():
     logger.info('Class added: Class {0}'.format(new_race_class))
     emit_class_data()
     emit_heat_data() # Update class selections in heat displays
+
+@SOCKET_IO.on('duplicate_race_class')
+def on_duplicate_race_class(data):
+    '''Adds new race class by duplicating an existing one.'''
+    source_class_id = data['class']
+    source_class = Database.RaceClass.query.get(source_class_id)
+
+    if source_class.name:
+        all_class_names = [race_class.name for race_class in Database.RaceClass.query.all()]
+        new_class_name = uniqueName(source_class.name, all_class_names)
+    else:
+        new_class_name = ''
+
+    new_class = Database.RaceClass(name=new_class_name,
+        description=source_class.description,
+        format_id=source_class.format_id,
+        results=None,
+        cacheStatus=Results.CacheStatus.INVALID)
+
+    DB.session.add(new_class)
+    DB.session.flush()
+    DB.session.refresh(new_class)
+
+    for heat in Database.Heat.query.filter_by(class_id=source_class.id).all():
+        duplicate_heat(heat.id, dest_class=new_class.id)
+
+    DB.session.commit()
+
+    Events.trigger(Evt.CLASS_DUPLICATE, {
+        'class_id': new_class.id,
+        })
+
+    logger.info('Class {0} duplicated to class {1}'.format(source_class.id, new_class.id))
+    emit_class_data()
+    emit_heat_data()
 
 @SOCKET_IO.on('alter_race_class')
 def on_alter_race_class(data):
