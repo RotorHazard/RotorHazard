@@ -3,8 +3,8 @@
 
 #include "io.h"
 
-// API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 23
+// API level for node; increment when commands are modified
+#define NODE_API_LEVEL 24
 
 class Message
 {

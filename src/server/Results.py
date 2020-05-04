@@ -6,6 +6,7 @@ import json
 import gevent
 import Database
 import Options
+import RHUtils
 import logging
 from monotonic import monotonic
 from Language import __
@@ -220,11 +221,15 @@ def calc_leaderboard(DB, **params):
         else:
             # find hole shots
             holeshot_laps = []
+            pilotnode = None
             for race in racelist:
                 pilotraces = Database.SavedPilotRace.query \
                     .filter(Database.SavedPilotRace.pilot_id == pilot.id, \
                     Database.SavedPilotRace.race_id == race \
                     ).all()
+
+                if len(pilotraces):
+                    pilotnode = pilotraces[-1].node_index
 
                 for pilotrace in pilotraces:
                     gevent.sleep()
@@ -247,10 +252,10 @@ def calc_leaderboard(DB, **params):
             if max_lap > 0:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
-                nodes.append(holeshot_lap.node_index)
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
                 holeshots.append(holeshot_laps)
+                nodes.append(pilotnode)
 
     total_time = []
     last_lap = []
@@ -436,11 +441,11 @@ def calc_leaderboard(DB, **params):
             'callsign': row[0],
             'laps': row[1],
             'behind': (leaderboard_by_race_time[0][1] - row[1]),
-            'total_time': time_format(row[2]),
-            'average_lap': time_format(row[3]),
-            'fastest_lap': time_format(row[4]),
+            'total_time': RHUtils.time_format(row[2]),
+            'average_lap': RHUtils.time_format(row[3]),
+            'fastest_lap': RHUtils.time_format(row[4]),
             'team_name': row[5],
-            'consecutives': time_format(row[6]),
+            'consecutives': RHUtils.time_format(row[6]),
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
             'last_lap': row[9],
@@ -457,11 +462,11 @@ def calc_leaderboard(DB, **params):
         leaderboard_fast_lap_data.append({
             'position': i,
             'callsign': row[0],
-            'total_time': time_format(row[2]),
-            'average_lap': time_format(row[3]),
-            'fastest_lap': time_format(row[4]),
+            'total_time': RHUtils.time_format(row[2]),
+            'average_lap': RHUtils.time_format(row[3]),
+            'fastest_lap': RHUtils.time_format(row[4]),
             'team_name': row[5],
-            'consecutives': time_format(row[6]),
+            'consecutives': RHUtils.time_format(row[6]),
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
             'last_lap': row[9],
@@ -478,11 +483,11 @@ def calc_leaderboard(DB, **params):
         leaderboard_consecutives_data.append({
             'position': i,
             'callsign': row[0],
-            'total_time': time_format(row[2]),
-            'average_lap': time_format(row[3]),
-            'fastest_lap': time_format(row[4]),
+            'total_time': RHUtils.time_format(row[2]),
+            'average_lap': RHUtils.time_format(row[3]),
+            'fastest_lap': RHUtils.time_format(row[4]),
             'team_name': row[5],
-            'consecutives': time_format(row[6]),
+            'consecutives': RHUtils.time_format(row[6]),
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
             'last_lap': row[9],
@@ -508,16 +513,3 @@ def calc_leaderboard(DB, **params):
         }
 
     return leaderboard_output
-
-def time_format(millis):
-    '''Convert milliseconds to 00:00.000'''
-    if millis is None:
-        return None
-
-    millis = int(millis)
-    minutes = millis / 60000
-    over = millis % 60000
-    seconds = over / 1000
-    over = over % 1000
-    milliseconds = over
-    return '{0:01d}:{1:02d}.{2:03d}'.format(minutes, seconds, milliseconds)
