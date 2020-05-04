@@ -2,7 +2,7 @@
 RELEASE_VERSION = "2.2.0 (dev 4)" # Public release version code
 SERVER_API = 27 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 23 # Most recent node API
+NODE_API_BEST = 24 # Most recent node API
 JSON_API = 3 # JSON API version
 
 # This must be the first import for the time being. It is
@@ -1205,6 +1205,7 @@ def on_alter_heat(data):
                 RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
             else:
                 RACE.node_teams[heatNode.node_index] = None
+        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
     Events.trigger(Evt.HEAT_ALTER, {
         'heat_id': heat_id,
@@ -2475,6 +2476,7 @@ def on_delete_lap(data):
         })
 
     logger.info('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
+    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
     emit_current_laps() # Race page, update web client
     emit_current_leaderboard() # Race page, update web client
     race_format = getCurrentRaceFormat()

@@ -440,11 +440,11 @@ class RHInterface(BaseHardwareInterface):
                 WRITE_FREQUENCY,
                 READ_FREQUENCY,
                 frequency)
-        else:  # if freq=0 (node disabled) then write default freq, but save 0 value
+        else:  # if freq=0 (node disabled) then write frequency value to power down rx module, but save 0 value
             self.set_and_validate_value_16(node,
                 WRITE_FREQUENCY,
                 READ_FREQUENCY,
-                5800)
+                1111 if node.api_level >= 24 else 5800)
             node.frequency = 0
 
     def transmit_enter_at_level(self, node, level):
