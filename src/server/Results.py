@@ -221,11 +221,15 @@ def calc_leaderboard(DB, **params):
         else:
             # find hole shots
             holeshot_laps = []
+            pilotnode = None
             for race in racelist:
                 pilotraces = Database.SavedPilotRace.query \
                     .filter(Database.SavedPilotRace.pilot_id == pilot.id, \
                     Database.SavedPilotRace.race_id == race \
                     ).all()
+
+                if len(pilotraces):
+                    pilotnode = pilotraces[-1].node_index
 
                 for pilotrace in pilotraces:
                     gevent.sleep()
@@ -248,10 +252,10 @@ def calc_leaderboard(DB, **params):
             if max_lap > 0:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
-                nodes.append(holeshot_lap.node_index)
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
                 holeshots.append(holeshot_laps)
+                nodes.append(pilotnode)
 
     total_time = []
     last_lap = []
