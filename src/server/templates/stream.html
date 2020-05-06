@@ -1,6 +1,6 @@
-{% extends "layout.html" %} {% block title %}Race{% endblock %}{% block head %}
+{% extends "layout-no-header.html" %} {% block title %}Race{% endblock %}{% block head %}
 <script type="text/javascript" charset="utf-8">
-	rotorhazard.disable_messages = false;
+	rotorhazard.show_messages = false;
 
 	var request_time;
 	var request_pi_time;
@@ -165,19 +165,6 @@
 		});
 
 		socket.on('heartbeat', function (msg) {
-			if (speakObjsQueue.length > 0) {
-				var isSpeakingFlag = $().articulate('isSpeaking');
-				if (checkSpeakQueueFlag) {
-					if (!isSpeakingFlag) {
-						var obj = speakObjsQueue.shift();
-						if (speakObjsQueue.length > 0)
-							checkSpeakQueueFlag = false;
-						doSpeak(obj);
-					}
-				}  //make sure previous speak has started before checking queue again
-				else if (isSpeakingFlag)
-					checkSpeakQueueFlag = true;
-			}
 		});
 
 		socket.on('frequency_data', function (msg) {
@@ -187,74 +174,6 @@
 				freq.updateBlocks();
 			}
 		});
-
-		socket.on('current_laps', function (msg) {
-			current_laps = msg;
-			show_current_laps();
-		});
-
-		function show_current_laps() {
-			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
-				$('#current_laps_' + i + ' tbody > tr').remove();
-
-				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
-					var $tr = '';
-					var lapTime = lap.lap_time;
-					if (lap.splits.length > 0) {
-						lapTime += ' (';
-						for (k=0; k<lap.splits.length; k++) {
-							var split = lap.splits[k];
-							if (k > 0) {
-								lapTime += ', ';
-							}
-							lapTime += split.split_time;
-							if (split.split_speed) {
-								lapTime += '/' + split.split_speed;
-							}
-						}
-						lapTime += ')';
-					}
-
-					var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
-
-					$tr = $('<tr>')
-					if (lap.lap_number == 0) {
-						$tr.addClass('lap_0');
-					}
-
-					var local_colspan = 2;
-					if(rotorhazard.display_lap_number) {
-						local_colspan = 1;
-						$tr.append(
-							$('<td class="display_lap_number">').text(lap.lap_number)
-						);
-					}
-					$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ');
-					$local_prepend = $('<span class="from_start">');
-
-					if(rotorhazard.display_time_first_pass) {
-						$local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp));
-						if(rotorhazard.display_time_start){
-							$local_prepend.append(" / ");
-						}
-					}
-
-					if(rotorhazard.display_time_start){
-						$local_prepend.append(formatTimeMillis(lap.lap_time_stamp));
-					}
-					$time_td.prepend($local_prepend);
-					$tr.append($time_td);
-
-					if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
-						$tr.addClass('min-lap-warning');
-					}
-					if (!rotorhazard.race_formats.race_mode && lap.lap_time_stamp > (rotorhazard.race_formats.race_time_sec * 1000)) {
-						$tr.addClass('after-time-expired');
-					}
-					$tr.appendTo('#current_laps_' + i);
-				});
-			});
-		}
 
 		socket.on('leaderboard', function (msg) {
 			$('#leaderboard').empty();
@@ -333,20 +252,6 @@
 		<div id="leaderboard"></div>
 
 		<div class="team_racing_status"></div>
-
-		<!--Display the current laps-->
-		<div class="race-results">
-			{% for node in nodes %}
-			<div class="node" data-id="{{ node.index }}">
-				<h4 class="callsign_{{ node.index }}">{{ __('Loading...') }}</h4>
-				<div class="channel-block" data-node="{{ node.index }}"><span class="ch"></span> <span class="fr"></span></div>
-				<table class="laps" id="current_laps_{{ node.index }}">
-					<tbody>
-					</tbody>
-				</table>
-			</div>
-			{% endfor %}
-		</div>
 	</div>
 </div>
 
