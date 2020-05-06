@@ -220,6 +220,8 @@
 						values += __('Humidity: ') + Number(value).toFixed(1)+units;
 					} else if(reading == 'pressure') {
 						values += __('Pressure: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'capacity') {
+						values += __('Capacity: ') + Number(value).toFixed(0)+units;
 					} else {
 						values += __('Unknown: ') + value;
 					}

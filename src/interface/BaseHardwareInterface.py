@@ -1,36 +1,12 @@
 import gevent
 import logging
-import importlib
-import pkgutil
+from Plugins import Plugins
 from monotonic import monotonic
 
 ENTER_AT_PEAK_MARGIN = 5 # closest that captured enter-at level can be to node peak RSSI
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
 
 logger = logging.getLogger(__name__)
-
-
-def discover_modules(type):
-    plugin_modules = []
-    for loader, name, ispkg in pkgutil.iter_modules():
-        if name.endswith('_'+type):
-            try:
-                plugin_module = importlib.import_module(name)
-                plugin_modules.append(plugin_module)
-                logger.info('Loaded module {0}'.format(name))
-            except ImportError:
-                pass
-    return plugin_modules
-
-def discover_plugins(mod_type, *args, **kwargs):
-    plugins = []
-    for plugin_module in discover_modules(mod_type):
-        try:
-            plugins.extend(plugin_module.discover(len(plugins), *args, **kwargs))
-        except AttributeError as err:
-            logger.info('Error loading plugin {0}: {1}'.format(plugin_module.__name__, err))
-            pass
-    return plugins
 
 
 class BaseHardwareInterface(object):
@@ -49,7 +25,7 @@ class BaseHardwareInterface(object):
         self.calibration_offset = 10
         self.trigger_threshold = 20
         self.start_time = 1000*monotonic() # millis
-        self.sensors = []
+        self.sensors = Plugins(suffix='sensor')
         self.environmental_data_update_tracker = 0
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
         self.pass_record_callback = None # Function added in server.py
@@ -57,7 +33,7 @@ class BaseHardwareInterface(object):
         self.node_crossing_callback = None # Function added in server.py
 
     def discover_sensors(self, *args, **kwargs):
-        self.sensors.extend(discover_plugins('sensor', *args, **kwargs))
+        self.sensors.discover(*args, **kwargs)
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):

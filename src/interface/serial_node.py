@@ -110,9 +110,8 @@ class SerialNode(Node):
         return success
 
 
-def discover(idxOffset, *args, **kwargs):
+def discover(idxOffset, config, *args, **kwargs):
     nodes = []
-    config = kwargs['config']
     for index, comm in enumerate(getattr(config, 'SERIAL_PORTS', [])):
         node = SerialNode(index+idxOffset, comm)
         logger.info("Serial node {0} found at port {1}".format(index+idxOffset+1, node.serial.name))

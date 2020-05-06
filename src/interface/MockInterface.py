@@ -42,6 +42,8 @@ class MockInterface(BaseHardwareInterface):
                 f = None
             self.data.append(f)
 
+        self.discover_sensors()
+
 
     #
     # Update Loop

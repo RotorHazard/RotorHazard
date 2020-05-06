@@ -5,6 +5,7 @@ Wires events to handlers
 
 import gevent
 from eventmanager import Evt
+from UserDict import UserDict
 
 class LEDEventManager:
     processEventObj = gevent.event.Event()
@@ -18,23 +19,18 @@ class LEDEventManager:
         self.strip = strip
 
         # hold
-        self.registerEffect("hold", "Hold", lambda *args: None,
-            [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN])
+        self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None,
+            [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
 
         # do nothing
-        self.registerEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN])
+        self.registerEffect(LEDEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
 
 
     def isEnabled(self):
         return True
 
-    def registerEffect(self, name, label, handlerFn, validEvents, defaultArgs=None):
-        self.eventEffects[name] = {
-            "label": label,
-            "handlerFn": handlerFn,
-            "validEvents": validEvents,
-            "defaultArgs": defaultArgs
-        }
+    def registerEffect(self, effect):
+        self.eventEffects[effect['name']] = effect
         return True
 
     def getRegisteredEffects(self):
@@ -161,3 +157,13 @@ class LEDEvent:
             "label": "Server Shutdown"
         }
     ]
+
+class LEDEffect(UserDict):
+    def __init__(self, name, label, handlerFn, validEvents, defaultArgs=None):
+        UserDict.__init__(self, {
+            "name": name,
+            "label": label,
+            "handlerFn": handlerFn,
+            "validEvents": validEvents,
+            "defaultArgs": defaultArgs
+        })
