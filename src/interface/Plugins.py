@@ -3,7 +3,7 @@
 import logging
 import importlib
 import pkgutil
-from UserList import UserList
+from six.moves import UserList
 
 logger = logging.getLogger(__name__)
 

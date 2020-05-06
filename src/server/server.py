@@ -42,6 +42,7 @@ import socketio
 from monotonic import monotonic
 from functools import wraps
 from collections import OrderedDict
+from six import unichr, string_types
 
 from flask import Flask, render_template, send_file, request, Response, session
 from flask_socketio import SocketIO, emit
@@ -208,7 +209,7 @@ class Slave:
                 split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
                 logger.info('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
                     .format(node_index+1, lap_count+1, RHUtils.time_format(split_time), \
-                    ('{0:.2f}'.format(split_speed) if split_speed <> None else 'None')))
+                    ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
 
                 DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=lap_count, split_id=split_id, \
                     split_time_stamp=split_ts, split_time=split_time, split_time_formatted=RHUtils.time_format(split_time), \
@@ -616,13 +617,13 @@ class AlchemyEncoder(json.JSONEncoder):
             fields = {}
             for field in [x for x in dir(obj) if not x.startswith('_') and x != 'metadata']:
                 data = obj.__getattribute__(field)
-                if field is not "query" \
-                    and field is not "query_class":
+                if field != "query" \
+                    and field != "query_class":
                     try:
                         json.dumps(data) # this will fail on non-encodable values, like other classes
-                        if field is "frequencies":
+                        if field == "frequencies":
                             fields[field] = json.loads(data)["f"]
-                        elif field is "enter_ats" or field is "exit_ats":
+                        elif field == "enter_ats" or field == "exit_ats":
                             fields[field] = json.loads(data)["v"]
                         else:
                             fields[field] = data
@@ -1007,7 +1008,7 @@ def on_broadcast_message(data):
 def on_set_frequency(data):
     '''Set node frequency.'''
     CLUSTER.emit('set_frequency', data)
-    if isinstance(data, basestring): # LiveTime compatibility
+    if isinstance(data, string_types): # LiveTime compatibility
         data = json.loads(data)
     node_index = data['node']
     frequency = data['frequency']
@@ -2988,7 +2989,7 @@ def get_splits(node, lap_id, lapCompleted):
                 'split_id': slave_index,
                 'split_raw': split.split_time,
                 'split_time': split.split_time_formatted,
-                'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed <> None else '-'
+                'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else '-'
             }
         elif lapCompleted:
             split_payload = {
@@ -4760,22 +4761,22 @@ if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
     else:
         try:
             importlib.import_module('serial')
-            print 'Unable to initialize specified serial node(s): {0}'.format(Config.SERIAL_PORTS)
+            logger.info('Unable to initialize specified serial node(s): {0}'.format(Config.SERIAL_PORTS))
         except ImportError:
-            print "Unable to import library for serial node(s) - is 'pyserial' installed?"
+            logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
         sys.exit()
 
 CLUSTER = Cluster()
 hasMirrors = False
 for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
-    if isinstance(slave_info, basestring):
+    if isinstance(slave_info, string_types):
         slave_info = {'address': slave_info, 'mode': Slave.TIMER_MODE}
     if 'timeout' not in slave_info:
         slave_info['timeout'] = Config.GENERAL['SLAVE_TIMEOUT']
     if 'mode' in slave_info and slave_info['mode'] == Slave.MIRROR_MODE:
         hasMirrors = True
     elif hasMirrors:
-        print '** Mirror slaves must be last - ignoring remaining slave config **'
+        logger.info('** Mirror slaves must be last - ignoring remaining slave config **')
         break
     slave = Slave(index, slave_info)
     CLUSTER.addSlave(slave)
@@ -4952,7 +4953,7 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         logger.exception("Server exception:  ")
 
     Events.trigger(Evt.SHUTDOWN)
-    print INTERFACE.get_intf_error_report_str(True)
+    print(INTERFACE.get_intf_error_report_str(True))
 
 # Start HTTP server
 if __name__ == '__main__':

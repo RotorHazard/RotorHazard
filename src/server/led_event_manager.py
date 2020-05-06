@@ -5,7 +5,7 @@ Wires events to handlers
 
 import gevent
 from eventmanager import Evt
-from UserDict import UserDict
+from six.moves import UserDict
 
 class LEDEventManager:
     processEventObj = gevent.event.Event()

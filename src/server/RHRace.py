@@ -46,7 +46,7 @@ class RHRace():
         # return active (non-deleted) laps objects
         filtered = {}
         for node_index in self.node_laps:
-            filtered[node_index] = filter(lambda lap : lap['deleted'] == False, self.node_laps[node_index])
+            filtered[node_index] = list(filter(lambda lap : lap['deleted'] == False, self.node_laps[node_index]))
 
         return filtered
 

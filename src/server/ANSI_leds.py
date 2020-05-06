@@ -8,7 +8,7 @@ class ANSIPixel:
     def __init__(self, count, rows=1):
         '''Constructor'''
         self.pixels = [0 for i in range(count)]
-        self.width = count/rows
+        self.width = count//rows
 
     def begin(self):
         init(autoreset=True)
@@ -27,7 +27,7 @@ class ANSIPixel:
         row = 1
         while start < len(self.pixels):
             end = start + self.width
-            print Cursor.POS(1, row) + ''.join(self.getANSIPx(px) for px in self.pixels[start:end])
+            print(Cursor.POS(1, row) + ''.join(self.getANSIPx(px) for px in self.pixels[start:end]))
             start = end
             row += 1
 
