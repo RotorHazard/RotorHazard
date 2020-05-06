@@ -792,6 +792,7 @@ var rotorhazard = {
 
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
+	show_messages: true, // whether to display messages
 	graphing: false, // currently graphing RSSI
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array
@@ -1087,31 +1088,35 @@ var standard_message_queue = [];
 var interrupt_message_queue = [];
 
 function get_standard_message() {
-	msg = standard_message_queue[0];
-	$('#banner-msg .message').html(msg);
-	$('#banner-msg').slideDown();
+	if (rotorhazard.show_messages) {
+		msg = standard_message_queue[0];
+		$('#banner-msg .message').html(msg);
+		$('#banner-msg').slideDown();
+	}
 }
 
 function get_interrupt_message() {
-	msg = interrupt_message_queue[0];
+	if (rotorhazard.show_messages) {
+		msg = interrupt_message_queue[0];
 
-	var message_el = $('<div class="priority-message-interrupt popup">');
-	message_el.append('<h2>' + __('Alert') + '</h2>');
-	message_el.append('<div class="popup-content"><p>' + msg + '</p></div>');
+		var message_el = $('<div class="priority-message-interrupt popup">');
+		message_el.append('<h2>' + __('Alert') + '</h2>');
+		message_el.append('<div class="popup-content"><p>' + msg + '</p></div>');
 
-	$.magnificPopup.open({
-		items: {
-			src: message_el,
-			type: 'inline',
-		},
-		callbacks: {
-			afterClose: function(){
-				interrupt_message_queue.shift()
-				if (interrupt_message_queue.length)
-					get_interrupt_message()
+		$.magnificPopup.open({
+			items: {
+				src: message_el,
+				type: 'inline',
+			},
+			callbacks: {
+				afterClose: function(){
+					interrupt_message_queue.shift()
+					if (interrupt_message_queue.length)
+						get_interrupt_message()
+				}
 			}
-		}
-	});
+		});
+	}
 }
 
 // restore local settings

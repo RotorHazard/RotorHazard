@@ -506,6 +506,22 @@ def settings():
         ConfigFile=Config.GENERAL['configFile'],
         Debug=Config.GENERAL['DEBUG'])
 
+@APP.route('/stream')
+def racepublic():
+    '''Route to race management page.'''
+    frequencies = [node.frequency for node in INTERFACE.nodes]
+    nodes = []
+    for idx, freq in enumerate(frequencies):
+        if freq:
+            nodes.append({
+                'freq': freq,
+                'index': idx
+            })
+
+    return render_template('stream.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        num_nodes=RACE.num_nodes,
+        nodes=nodes)
+
 @APP.route('/scanner')
 @requires_auth
 def scanner():
@@ -2172,33 +2188,32 @@ def on_save_laps():
             pilot_id = Database.HeatNode.query.filter_by( \
                 heat_id=RACE.current_heat, node_index=node_index).one().pilot_id
 
-            if pilot_id != Database.PILOT_ID_NONE:
-                new_pilotrace = Database.SavedPilotRace( \
+            new_pilotrace = Database.SavedPilotRace( \
+                race_id=new_race.id, \
+                node_index=node_index, \
+                pilot_id=pilot_id, \
+                history_values=json.dumps(INTERFACE.nodes[node_index].history_values), \
+                history_times=json.dumps(INTERFACE.nodes[node_index].history_times), \
+                penalty_time=0, \
+                enter_at=INTERFACE.nodes[node_index].enter_at_level, \
+                exit_at=INTERFACE.nodes[node_index].exit_at_level
+            )
+            DB.session.add(new_pilotrace)
+            DB.session.flush()
+            DB.session.refresh(new_pilotrace)
+
+            for lap in RACE.node_laps[node_index]:
+                DB.session.add(Database.SavedRaceLap( \
                     race_id=new_race.id, \
+                    pilotrace_id=new_pilotrace.id, \
                     node_index=node_index, \
                     pilot_id=pilot_id, \
-                    history_values=json.dumps(INTERFACE.nodes[node_index].history_values), \
-                    history_times=json.dumps(INTERFACE.nodes[node_index].history_times), \
-                    penalty_time=0, \
-                    enter_at=INTERFACE.nodes[node_index].enter_at_level, \
-                    exit_at=INTERFACE.nodes[node_index].exit_at_level
-                )
-                DB.session.add(new_pilotrace)
-                DB.session.flush()
-                DB.session.refresh(new_pilotrace)
-
-                for lap in RACE.node_laps[node_index]:
-                    DB.session.add(Database.SavedRaceLap( \
-                        race_id=new_race.id, \
-                        pilotrace_id=new_pilotrace.id, \
-                        node_index=node_index, \
-                        pilot_id=pilot_id, \
-                        lap_time_stamp=lap['lap_time_stamp'], \
-                        lap_time=lap['lap_time'], \
-                        lap_time_formatted=lap['lap_time_formatted'], \
-                        source = lap['source'], \
-                        deleted = lap['deleted']
-                    ))
+                    lap_time_stamp=lap['lap_time_stamp'], \
+                    lap_time=lap['lap_time'], \
+                    lap_time_formatted=lap['lap_time_formatted'], \
+                    source = lap['source'], \
+                    deleted = lap['deleted']
+                ))
 
     DB.session.commit()
 
