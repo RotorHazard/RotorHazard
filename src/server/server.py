@@ -507,7 +507,7 @@ def settings():
         Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/stream')
-def racepublic():
+def stream():
     '''Route to race management page.'''
     frequencies = [node.frequency for node in INTERFACE.nodes]
     nodes = []
