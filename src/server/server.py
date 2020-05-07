@@ -509,18 +509,18 @@ def settings():
 @APP.route('/stream')
 def stream():
     '''Route to race management page.'''
-    frequencies = [node.frequency for node in INTERFACE.nodes]
-    nodes = []
-    for idx, freq in enumerate(frequencies):
-        if freq:
-            nodes.append({
-                'freq': freq,
-                'index': idx
-            })
-
     return render_template('stream.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        num_nodes=RACE.num_nodes)
+
+@APP.route('/stream/<int:node_id>')
+def stream_node(node_id):
+    if node_id <= RACE.num_nodes:
+        return render_template('streamnode.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes,
-        nodes=nodes)
+        node_id=node_id-1
+        )
+    else:
+        return False
 
 @APP.route('/scanner')
 @requires_auth

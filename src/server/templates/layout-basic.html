@@ -20,23 +20,16 @@
 	<meta name="msapplication-config" content="/static/image/browserconfig.xml">
 	<meta name="theme-color" content="#224873">
 
-	<audio id="sound_buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
-	<audio id="sound_beep" src="./static/audio/beep.mp3" type="audio/mp3"></audio>
-	<audio id="sound_stage" src="./static/audio/stage.mp3" type="audio/mp3"></audio>
-	<audio id="sound_enter" src="./static/audio/enter.mp3" type="audio/mp3"></audio>
-	<audio id="sound_exit" src="./static/audio/exit.mp3" type="audio/mp3"></audio>
-
 	<!-- Scripts -->
-	<script type="text/javascript" src="./static/jquery-3.2.1/jquery.min.js"></script>
-	<script type="text/javascript" src="./static/articulate/articulate.min.js"></script>
-	<script type="text/javascript" src="./static/socket.io-2.2.0/socket.io.min.js"></script>
-	<script type="text/javascript" src="./static/smoothie/smoothie.js"></script>
-	<script type="text/javascript" src="./static/magnific-1.1.0/magnific-inline-min.js"></script>
-	<script type="text/javascript" src="./static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
+	<script type="text/javascript" src="/static/jquery-3.2.1/jquery.min.js"></script>
+	<script type="text/javascript" src="/static/articulate/articulate.min.js"></script>
+	<script type="text/javascript" src="/static/socket.io-2.2.0/socket.io.min.js"></script>
+	<script type="text/javascript" src="/static/smoothie/smoothie.js"></script>
+	<script type="text/javascript" src="/static/magnific-1.1.0/magnific-inline-min.js"></script>
+	<script type="text/javascript" src="/static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 
 	<!-- CSS -->
-	<link rel="stylesheet" href="./static/magnific-1.1.0/magnific-popup.css"></link>
-	<link rel="stylesheet" href="./static/rotorhazard.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+	<link rel="stylesheet" href="/static/magnific-1.1.0/magnific-popup.css"></link>
 
 	<style>
 
@@ -62,20 +55,8 @@
 </head>
 
 <body>
-	<div id="banner-msg">
-		<div class="message"></div>
-		<button id="banner-dismiss" class="no-style">×<span class="screen-reader-text"> Close</span></button>
-	</div>
-
 	<!--Child template content-->
 	{% block content %}{% endblock %}
-
-	<div id="about" class="mfp-hide popup">
-		<h2>{{ __("About RotorHazard") }}</h2>
-		<div class="popup-content">
-			{{ serverInfo['about_html'] | safe }}
-		</div>
-	</div>
 </body>
 
 </html>

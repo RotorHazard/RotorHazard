@@ -435,13 +435,15 @@ def calc_leaderboard(DB, **params):
     leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2] if x[2] > 0 else float('inf')))
 
     leaderboard_total_data = []
+    last_rank = '-'
     last_rank_laps = 0
     last_rank_time = RHUtils.time_format(0)
     for i, row in enumerate(leaderboard_by_race_time, start=1):
         pos = i
         total_time = RHUtils.time_format(row[2])
         if last_rank_laps == row[1] and last_rank_time == total_time:
-            pos = '='
+            pos = last_rank
+        last_rank = pos
         last_rank_laps = row[1]
         last_rank_time = total_time
 
@@ -467,12 +469,14 @@ def calc_leaderboard(DB, **params):
     leaderboard_by_fastest_lap = sorted(leaderboard, key = lambda x: (x[4] if x[4] > 0 else float('inf')))
 
     leaderboard_fast_lap_data = []
+    last_rank = '-'
     last_rank_lap = 0
     for i, row in enumerate(leaderboard_by_fastest_lap, start=1):
         pos = i
         fast_lap = RHUtils.time_format(row[4])
         if last_rank_lap == fast_lap:
-            pos = '='
+            pos = last_rank
+        last_rank = pos
         last_rank_laps = fast_lap
 
         leaderboard_fast_lap_data.append({
@@ -495,12 +499,14 @@ def calc_leaderboard(DB, **params):
     leaderboard_by_consecutives = sorted(leaderboard, key = lambda x: (x[6] if x[6] > 0 else float('inf')))
 
     leaderboard_consecutives_data = []
+    last_rank = '-'
     last_rank_consecutive = 0
     for i, row in enumerate(leaderboard_by_consecutives, start=1):
         pos = i
         fast_consecutive = RHUtils.time_format(row[4])
         if last_rank_consecutive == fast_consecutive:
-            pos = '='
+            pos = last_rank
+        last_rank = pos
         last_rank_consecutive = fast_consecutive
 
         leaderboard_consecutives_data.append({
