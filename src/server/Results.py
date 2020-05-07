@@ -268,23 +268,23 @@ def calc_leaderboard(DB, **params):
     for i, pilot in enumerate(pilot_ids):
         gevent.sleep()
         # Get the total race time for each pilot
-        if max_laps[i] is 0:
-            total_time.append(0) # Add zero if no laps completed
+        if USE_CURRENT:
+            race_total = 0
+            for lap in current_laps[i]:
+                race_total += lap['lap_time']
+
+            total_time.append(race_total)
+
         else:
-            if USE_CURRENT:
-                race_total = 0
-                for lap in current_laps[i]:
-                    race_total += lap['lap_time']
+            stat_query = DB.session.query(DB.func.sum(Database.SavedRaceLap.lap_time)) \
+                .filter(Database.SavedRaceLap.pilot_id == pilot, \
+                    Database.SavedRaceLap.deleted != 1, \
+                    Database.SavedRaceLap.race_id.in_(racelist))
 
-                total_time.append(race_total)
-
-            else:
-                stat_query = DB.session.query(DB.func.sum(Database.SavedRaceLap.lap_time)) \
-                    .filter(Database.SavedRaceLap.pilot_id == pilot, \
-                        Database.SavedRaceLap.deleted != 1, \
-                        Database.SavedRaceLap.race_id.in_(racelist))
-
+            if stat_query.scalar():
                 total_time.append(stat_query.scalar())
+            else:
+                total_time.append(0)
 
         gevent.sleep()
         # Get the last lap for each pilot (current race only)
@@ -432,12 +432,21 @@ def calc_leaderboard(DB, **params):
     leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source, last_lap, pilot_ids, nodes)
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
-    leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
+    leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2] if x[2] > 0 else float('inf')))
 
     leaderboard_total_data = []
+    last_rank_laps = 0
+    last_rank_time = RHUtils.time_format(0)
     for i, row in enumerate(leaderboard_by_race_time, start=1):
+        pos = i
+        total_time = RHUtils.time_format(row[2])
+        if last_rank_laps == row[1] and last_rank_time == total_time:
+            pos = '='
+        last_rank_laps = row[1]
+        last_rank_time = total_time
+
         leaderboard_total_data.append({
-            'position': i,
+            'position': pos,
             'callsign': row[0],
             'laps': row[1],
             'behind': (leaderboard_by_race_time[0][1] - row[1]),
@@ -458,9 +467,16 @@ def calc_leaderboard(DB, **params):
     leaderboard_by_fastest_lap = sorted(leaderboard, key = lambda x: (x[4] if x[4] > 0 else float('inf')))
 
     leaderboard_fast_lap_data = []
+    last_rank_lap = 0
     for i, row in enumerate(leaderboard_by_fastest_lap, start=1):
+        pos = i
+        fast_lap = RHUtils.time_format(row[4])
+        if last_rank_lap == fast_lap:
+            pos = '='
+        last_rank_laps = fast_lap
+
         leaderboard_fast_lap_data.append({
-            'position': i,
+            'position': pos,
             'callsign': row[0],
             'total_time': RHUtils.time_format(row[2]),
             'average_lap': RHUtils.time_format(row[3]),
@@ -479,7 +495,14 @@ def calc_leaderboard(DB, **params):
     leaderboard_by_consecutives = sorted(leaderboard, key = lambda x: (x[6] if x[6] > 0 else float('inf')))
 
     leaderboard_consecutives_data = []
+    last_rank_consecutive = 0
     for i, row in enumerate(leaderboard_by_consecutives, start=1):
+        pos = i
+        fast_consecutive = RHUtils.time_format(row[4])
+        if last_rank_consecutive == fast_consecutive:
+            pos = '='
+        last_rank_consecutive = fast_consecutive
+
         leaderboard_consecutives_data.append({
             'position': i,
             'callsign': row[0],
