@@ -2915,6 +2915,8 @@ def emit_current_laps(**params):
         current_laps = []
         for node in range(RACE.num_nodes):
             node_laps = []
+            fastest_lap_time = float("inf")
+            fastest_lap_index = None
             last_lap_id = -1
             for idx, lap in enumerate(RACE.node_laps[node]):
                 if not lap['deleted']:
@@ -2928,6 +2930,10 @@ def emit_current_laps(**params):
                         'splits': splits
                     })
                     last_lap_id = lap['lap_number']
+                    if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
+                        fastest_lap_time = lap['lap_time']
+                        fastest_lap_index = idx
+
             splits = get_splits(node, last_lap_id+1, False)
             if splits:
                 node_laps.append({
@@ -2937,9 +2943,12 @@ def emit_current_laps(**params):
                     'splits': splits
                 })
             current_laps.append({
-                'laps': node_laps
+                'laps': node_laps,
+                'fastest_lap_index': fastest_lap_index,
             })
-        current_laps = {'node_index': current_laps}
+        current_laps = {
+            'node_index': current_laps
+        }
         emit_payload = current_laps
         RACE.last_race_laps = current_laps
 

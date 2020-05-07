@@ -81,17 +81,32 @@ body>* {
 	font-size: 1.5rem;
 	color: #fff;
 	text-shadow:
-       0.05em 0.05em 0 #000,
-       0.15em 0.05em 0 #000,
-       0.05em 0.15em 0 #000,
-       0.15em 0.15em 0 #000,
-     -0.05em -0.05em 0 #000,
-      0.05em -0.05em 0 #000,
-      -0.05em 0.05em 0 #000,
-       0.05em 0.05em 0 #000;
+		0.07em 0.07em 0 #000,
+		0.13em 0.07em 0 #000,
+		0.07em 0.13em 0 #000,
+		0.13em 0.13em 0 #000,
+		-0.03em -0.03em 0 #000,
+		0.03em -0.03em 0 #000,
+		-0.03em 0.03em 0 #000,
+		0.03em 0.03em 0 #000;
 }
 
 .display_lap_number {
 	padding-right: 0.5em;
 	font-size: 0.8em;
+}
+
+.fastest_lap {
+	color: hsl(25, 85%, 55%);
+	color: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
+
+	text-shadow:
+		0.07em 0.07em 0 var(--contrast_1_high),
+		0.13em 0.07em 0 var(--contrast_1_high),
+		0.07em 0.13em 0 var(--contrast_1_high),
+		0.13em 0.13em 0 var(--contrast_1_high),
+		-0.03em -0.03em 0 var(--contrast_1_high),
+		0.03em -0.03em 0 var(--contrast_1_high),
+		-0.03em 0.03em 0 var(--contrast_1_high),
+		0.03em 0.03em 0 var(--contrast_1_high);
 }

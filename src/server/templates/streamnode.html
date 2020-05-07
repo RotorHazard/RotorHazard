@@ -70,6 +70,11 @@
 				tr = $('<tr>')
 				if (lap.lap_number == 0) {
 					tr.addClass('lap_0');
+					lap.lap_number = __('HS');
+				}
+
+				if (lap.lap_index == node_index.fastest_lap_index) {
+					tr.addClass('fastest_lap');
 				}
 
 				tr.append(
@@ -111,10 +116,10 @@
 					} else if (primary_leaderboard == 'by_consecutives') {
 						rank_stat = pilot_data.consecutives
 					} else {
-						rank_stat = pilot_data.total_time
+						rank_stat = pilot_data.laps + " / " + pilot_data.total_time
 					}
 
-					$('#rank_stat').html(pilot_data.laps + " / " + rank_stat);
+					$('#rank_stat').html(rank_stat);
 				}
 			}
 
