@@ -2457,14 +2457,8 @@ def generate_heats(data):
     if cacheStatus == Results.CacheStatus.VALID:
         if win_condition == WinCondition.NONE:
             leaderboard = random.shuffle(results['by_race_time'])
-        if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-            leaderboard = results['by_consecutives']
-        elif win_condition == WinCondition.FASTEST_LAP:
-            leaderboard = results['by_fastest_lap']
         else:
-            # WinCondition.MOST_LAPS
-            # WinCondition.FIRST_TO_LAP_X
-            leaderboard = results['by_race_time']
+            leaderboard = results[results['meta']['primary_leaderboard']]
 
         generated_heats = []
         unplaced_pilots = []

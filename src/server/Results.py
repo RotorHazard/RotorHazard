@@ -502,12 +502,24 @@ def calc_leaderboard(DB, **params):
     }
 
     if race_format:
+        if race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+            primary_leaderboard = 'by_consecutives'
+        elif race_format.win_condition == WinCondition.FASTEST_LAP:
+            primary_leaderboard = 'by_fastest_lap'
+        else:
+            # WinCondition.NONE
+            # WinCondition.MOST_LAPS
+            # WinCondition.FIRST_TO_LAP_X
+            primary_leaderboard = 'by_race_time'
+
         leaderboard_output['meta'] = {
+            'primary_leaderboard': primary_leaderboard,
             'win_condition': race_format.win_condition,
             'team_racing_mode': race_format.team_racing_mode,
         }
     else:
         leaderboard_output['meta'] = {
+            'primary_leaderboard': 'by_race_time',
             'win_condition': WinCondition.NONE,
             'team_racing_mode': False
         }
