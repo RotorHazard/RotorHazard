@@ -60,8 +60,8 @@ class VRxController:
         num_nodes = len(node_frequencies)
 
         
-        self._nodes = [VRxNode(self._mqttc, n, node_frequencies[n], self._cv) for n in range(8)]
-        self._node_broadcast = VRxBroadcastNode(self._mqttc, -1, None, self._cv)
+        self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n]) for n in range(8)]
+        self._node_broadcast = VRxBroadcastNode(self._mqttc, self._cv)
 
         #TODO is this the right way. Store data twice? Maybe it should be a member var.
         # If the decorators worked...
@@ -71,8 +71,10 @@ class VRxController:
 
         # Events
         self.Events.on(Evt.STARTUP, 'VRx', self.do_startup, {}, 200)
-        self.Events.on(Evt.RACESTART, 'VRx', self.do_racestart, {}, 200)
+        self.Events.on(Evt.RACESTART, 'VRx', self.do_race_start, {}, 200)
+        self.Events.on(Evt.RACE_FINISH, 'VRx', self.do_race_finish, {}, 200)
         self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200)
+        self.Events.on(Evt.SEND_MESSAGE, 'VRx', self.do_send_message, {}, 200)
         # self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.send_results_update, {}, 200)
 
         # Stored receiver data
@@ -84,20 +86,25 @@ class VRxController:
         # Request status of all receivers (static and variable)
         self.request_static_status()
         self.request_variable_status()
-
-        for n in range(8):
-            self.logger.debug("LOCK STATUS ",n)
-            self.get_node_lock_status(n)
+        self._node_broadcast.turn_off_osd()
 
         # Update the DB with receivers that exist and their status
         # (Because the pi was already running, they should all be connected to the broker)
         # Even if the server.py is restarted, the broker continues to run:) 
 
         # Set the receiver's frequencies based on band/channel
+
     
-    def do_racestart(self, arg):
+    def do_race_start(self, arg):
         self.logger.info("VRx Signaling Race Start")
-        self.set_message_direct(VRxALL,"GO!")
+        self.set_message_direct(VRxALL, "GO")
+    
+    def do_race_finish(self, arg):
+        self.logger.info("VRx Signaling Race Finish")
+        self.set_message_direct(VRxALL, "FINISH")
+
+    def do_send_message(self, arg):
+        self.set_message_direct(VRxALL, arg['message'])
 
     def do_frequency_set(self, arg):
         self.logger.info("Setting frequency from event")
@@ -209,7 +216,9 @@ class VRxController:
 
     def set_message_direct(self, node_number, message):
         """set a message directly. Truncated if over length"""
-        self._nodes[node_number].set_message(message)
+        if node_number == VRxALL:
+            node = self._node_broadcast
+            node.set_message(message)
     
 
     """
@@ -351,13 +360,20 @@ class VRxController:
             
 
     def on_message_connection(self, client, userdata, message):
-        rx_name = message.topic
+        rx_name = message.topic.split('/')[1]
         connection_status = message.payload
         self.logger.info("Connection message received: %s => %s" % (rx_name,connection_status))
         try:
             self.rxdata[rx_name]["connection"] = connection_status
         except KeyError:
             self.rxdata[rx_name] = {"connection": connection_status}
+
+        if int(connection_status) == 1:
+            self.logger.warning("Receiver %s is not yet configured by the server after a successful connection" % rx_name)
+
+            # TODO Do we set the receiver's settings now? What if they are flying?
+            # We don't want to waste time if they just plugged in the ESP32 though
+
 
     def on_message_resp_all(self, client, userdata, message):
         payload = message.payload
@@ -380,30 +396,39 @@ CEND = '\033[0m'
 def printc(*args):
     print(CRED + ' '.join(args) + CEND)
 
-    
-
-class VRxNode:
-    """Commands and Requests apply to all receivers at a node number"""
+class BaseVRxNode:
+    """Node controller for both the broadcast and individual nodes"""
     def __init__(self, 
                  mqtt_client,
-                 node_number, 
-                 node_frequency, 
                  cv,
-                 node_camera_type = 'A',
                  ):
+
         self._mqttc = mqtt_client
         self._cv = cv
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        self.MIN_NODE_NUM = 0
-        self.MAX_NODE_NUM = 7
+
+class VRxNode(BaseVRxNode):
+    """Commands and Requests apply to all receivers at a node number"""
+    def __init__(self, 
+                 mqtt_client,
+                 cv,
+                 node_number, 
+                 node_frequency, 
+                 node_camera_type = 'A'
+                 ):
+        BaseVRxNode.__init__(self, mqtt_client, cv)
+
+        # RH refers to nodes 0 to 7
+        self.MIN_NODE_NUM = 0 
+        self.MAX_NODE_NUM = 7  
 
         if self.MIN_NODE_NUM <= node_number <= self.MAX_NODE_NUM:
             self._node_number = node_number
-        elif node_number == -1:
-            print("todo this is the broadcast node. May have special methods")
+        elif node_number == VRxALL:
+            raise Exception("Use the broadcast node")
         else:
-            raise Exception("node_number out of range")
+            raise Exception("node_number %d out of range", node_number)
 
         self._node_frequency = node_frequency
         self._node_camera_type = node_camera_type
@@ -517,11 +542,30 @@ class VRxNode:
         pass
 
 
-class VRxBroadcastNode(VRxNode):
-    pass
-    #Todo broadcast node may look a bit different, but similar to VRxNode
+class VRxBroadcastNode(BaseVRxNode):
+    def __init__(self, 
+                 mqtt_client,
+                 cv
+                 ):
+        BaseVRxNode.__init__(self, mqtt_client, cv)
+        self._cv_broadcast_id = clearview.comspecs.clearview_specs['bc_id']
+        self._broadcast_cmd_topic = mqtt_publish_topics["cv1"]["receiver_command_all"][0]
 
+    def set_message(self, message):
+        """Send a raw message to all OSD's"""
+        topic = self._broadcast_cmd_topic
+        cmd = self._cv.set_user_message(self._cv_broadcast_id, message)
+        self._mqttc.publish(topic, cmd)
+        return cmd
+    
+    def turn_off_osd(self):
+        """Turns off all OSD elements except user message"""
+        topic = self._broadcast_cmd_topic
+        cmd = self._cv.hide_osd(self._cv_broadcast_id)
+        self._mqttc.publish(topic, cmd)
+        return cmd
 
+        
 class packet_formatter:
     def __init__(self):
         pass
