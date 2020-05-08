@@ -1,4 +1,6 @@
 {% extends "layout-basic.html" %} {% block title %}Race{% endblock %}{% block head %}
+<link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+
 <script type="text/javascript" charset="utf-8">
 	rotorhazard.show_messages = false;
 
@@ -206,24 +208,20 @@
 		});
 	});
 
+	function speak(obj, priority) {} // stub to prevent crashing
 
 </script>
 {% endblock %} {% block content %}
 <main class="page-stream">
-
-<div class="panel">
-	<div class="panel-content">
-		<div class="timer">
+	<div id="header">
+		<h2 class="current_heat">{{ __('Loading...') }}</h2>
+		<div id="timer">
 			<div class="timing-clock"><div class="warning" title="{{ __('Browser Sync Loss') }}">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
 		</div>
-
-		<h2 class="current_heat">{{ __('Loading...') }}</h2>
-
-		<!--Display the race leaderboard-->
-		<div id="leaderboard"></div>
-
-		<div class="team_racing_status"></div>
 	</div>
+
+	<!--Display the race leaderboard-->
+	<div id="leaderboard"></div>
 </div>
 
 </main>
