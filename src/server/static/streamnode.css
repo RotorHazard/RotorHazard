@@ -3,7 +3,6 @@ html {
 	color: #000;
 	margin: 0;
 	padding: 0;
-	overflow-x: hidden;
 }
 
 body {
@@ -11,9 +10,6 @@ body {
 	font-family: sans-serif;
 	margin: 0;
 	padding: 0;
-	display: flex;
-	flex-direction: column;
-	height: 100vh;
 }
 
 body>* {
@@ -27,13 +23,15 @@ body>* {
 	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
 	color: var(--contrast_1_high);
 
-	font-size: 3rem;
+	font-size: 5rem;
 	line-height: 1;
-	padding: 0.75rem;
-	width: 3rem;
-	height: 3rem;
+	padding: 0.5rem 0;
+	width: 6rem;
+	height: 6rem;
 	display: inline-block;
 	text-align: center;
+	overflow: hidden;
+	box-sizing: border-box;
 
 	position: absolute;
 	top: 0;
@@ -46,14 +44,14 @@ body>* {
 	background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
 	color: var(--contrast_0_low);
 
-	font-size: 2rem;
+	font-size: 2.5rem;
 	line-height: 1;
 	padding: 0.25em;
 	height: 1em;
 
 	position: absolute;
 	top: 0;
-	left: 4.5rem;
+	left: 6rem;
 	right: 0;
 
 	display: flex;
@@ -74,11 +72,11 @@ body>* {
 
 #current_laps {
 	position: absolute;
-	top: 3rem;
+	top: 4rem;
 	padding: 0.25rem 0.5rem;
 	right: 0;
 	text-align: right;
-	font-size: 1.5rem;
+	font-size: 2rem;
 	color: #fff;
 	text-shadow:
 		0.07em 0.07em 0 #000,
