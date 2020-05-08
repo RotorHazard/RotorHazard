@@ -686,6 +686,10 @@ main.page-home {
 	margin: 0 -0.25rem;
 }
 
+.leaderboard .pilot {
+	text-align: left;
+}
+
 .node {
 	box-sizing: border-box;
 	min-width: 7em;
