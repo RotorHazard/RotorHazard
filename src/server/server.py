@@ -4054,7 +4054,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         RACE.cacheStatus = Results.CacheStatus.VALID
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
-                            'node': node.index,
+                            'race': RACE,
+                            'node_index': node.index,
                             })
 
                         #logger.info('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \

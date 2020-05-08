@@ -2,10 +2,15 @@ import paho.mqtt.client as mqtt_client
 import time
 import json
 import logging
+from monotonic import monotonic
 
 from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics, ESP_COMMANDS
 from VRxCV1_emulator import MQTT_Client
 from eventmanager import Evt
+from Language import __
+import Results
+from RHRace import WinCondition
+import RHUtils
 
 # ClearView API
 # cd ~
@@ -71,11 +76,11 @@ class VRxController:
 
         # Events
         self.Events.on(Evt.STARTUP, 'VRx', self.do_startup, {}, 200)
-        self.Events.on(Evt.RACESTART, 'VRx', self.do_race_start, {}, 200)
+        self.Events.on(Evt.RACE_START, 'VRx', self.do_race_start, {}, 200)
         self.Events.on(Evt.RACE_FINISH, 'VRx', self.do_race_finish, {}, 200)
         self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200)
         self.Events.on(Evt.SEND_MESSAGE, 'VRx', self.do_send_message, {}, 200)
-        # self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.send_results_update, {}, 200)
+        self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.do_lap_recorded, {}, 200)
 
         # Stored receiver data
         self.rxdata = {}
@@ -120,6 +125,109 @@ class VRxController:
             return
 
         self.set_node_frequency(node_index, frequency)
+
+    def do_lap_recorded(self, args):
+        '''
+        *** TODO: Formatting for hardware (OSD length, etc.)
+        '''
+
+        RESULTS_TIMEOUT = 5 # maximum time to wait for results to generate
+
+        if 'race' in args:
+            RACE = args['race']
+        else:
+            self.logger.warn('Failed to send results: Race not specified')
+            return False
+
+        if 'node_index' in args:
+            node_index = args['node_index']
+        else:
+            self.logger.warn('Failed to send results: Node not specified')
+            return False
+
+        # wait for results to generate
+        timeout = monotonic() + RESULTS_TIMEOUT
+        while RACE.cacheStatus != Results.CacheStatus.VALID and time_now < timeout:
+            time_now = monotonic()
+            gevent.sleep()
+
+        if RACE.cacheStatus == Results.CacheStatus.VALID:
+            results = RACE.results
+
+            # select correct results
+            # *** leaderboard = results[results['meta']['primary_leaderboard']]
+            win_condition = RACE.format.win_condition
+
+            if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                leaderboard = results['by_consecutives']
+            elif win_condition == WinCondition.FASTEST_LAP:
+                leaderboard = results['by_fastest_lap']
+            else:
+                # WinCondition.MOST_LAPS
+                # WinCondition.FIRST_TO_LAP_X
+                leaderboard = results['by_race_time']
+
+            # get this node's results
+            for index, result in enumerate(leaderboard):
+                if result['node'] == node_index:
+                    current_result = result
+                    result_index = index
+                    break
+
+            # send the crossing node's result to this node's VRx
+            if result['last_lap']:
+                message = str(result['position']) + ': ' + result['last_lap']
+                node_dest = node_index
+                self.set_message_direct(node_dest, message)
+                self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+
+            # get the next faster results
+            if result['position'] > 1:
+                split_result = leaderboard[result['position']-2]
+
+                if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                    split = result['consecutives_raw'] - split_result['consecutives_raw']
+                elif win_condition == WinCondition.FASTEST_LAP:
+                    split = result['last_lap_raw'] - split_result['fastest_lap_raw']
+                else:
+                    # WinCondition.MOST_LAPS
+                    # WinCondition.FIRST_TO_LAP_X
+                    split = result['total_time_raw'] - split_result['total_time_raw']
+
+                # send next faster result to this node's VRx
+                message = __('Next') + ' (' + str(split_result['position']) + '): -' + RHUtils.time_format(split) + ' ' + split_result['callsign']
+                node_dest = node_index
+                self.set_message_direct(node_dest, message)
+                self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+
+                # send this result to next faster VRx
+                message = str(node_index) + ': +' + RHUtils.time_format(split) + ' ' + result['callsign']
+                node_dest = leaderboard[result['position']-2]['node']
+                self.set_message_direct(node_dest, message)
+                self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+
+            # get the fastest result
+            if result['position'] > 2:
+                split_result = leaderboard[0]
+
+                if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                    split = result['consecutives'] - split_result['consecutives']
+                elif win_condition == WinCondition.FASTEST_LAP:
+                    split = result['last_lap_raw'] - split_result['fastest_lap']
+                else:
+                    # WinCondition.MOST_LAPS
+                    # WinCondition.FIRST_TO_LAP_X
+                    split = result['total_time_raw'] - split_result['total_time_raw']
+
+                # send the fastest result to this node's VRx
+                message = __('First') + ': -' + RHUtils.time_format(split) + ' ' + split_result['callsign']
+                node_dest = node_index
+                self.set_message_direct(node_dest, message)
+                self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+
+        else:
+            self.logger.warn('Failed to send results: Results not available')
+            return False
 
 
     ##############
@@ -219,100 +327,7 @@ class VRxController:
         if node_number == VRxALL:
             node = self._node_broadcast
             node.set_message(message)
-    
 
-    """
-    def send_results_update(self, args):
-        '''
-        *** NOTE: Still in progress and not expected to be functional.
-        *** Relies on changes to server that do not yet exist in this branch.
-        *** Formatting still required for hardware (OSD length, etc.)
-        '''
-
-        RESULTS_TIMEOUT = 5 # maximum time to wait for results to generate
-
-        if race in args:
-            RACE = args['race']
-        else:
-            logger.warn('Failed to send results: Race not specified')
-            return False
-
-        if node_index in args:
-            node_index = args['node_index']
-        else:
-            logger.warn('Failed to send results: Node not specified')
-            return False
-
-        # wait for results to generate
-        timeout = monotonic.monotonic() + RESULTS_TIMEOUT
-        while RACE.cacheStatus != CacheStatus.VALID and time_now < timeout:
-            time_now = monotonic.monotonic()
-            gevent.sleep()
-
-        if RACE.cacheStatus == CacheStatus.VALID:
-            results = RACE.results
-
-            # select correct results
-            win_condition = RACE.format.win_condition
-
-            if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                leaderboard = results['by_consecutives']
-            elif win_condition == WinCondition.FASTEST_LAP:
-                leaderboard = results['by_fastest_lap']
-            else:
-                # WinCondition.MOST_LAPS
-                # WinCondition.FIRST_TO_LAP_X
-                leaderboard = results['by_race_time']
-
-            # get this node's results
-            for index, result in enumerate(leaderboard):
-                if result['node'] == node_index:
-                    current_result = result
-                    result_index = index
-                    break
-
-            # send the crossing node's result to this node's VRx
-            self.set_message_direct(node_index, result['position'] + ': ' + result['last_lap'])
-
-            # get the next faster results
-            if result['position'] > 1:
-                split_result = leaderboard[result['position']-2]
-
-                if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                    split = result['consecutives'] - split_result['consecutives']
-                elif win_condition == WinCondition.FASTEST_LAP:
-                    split = result['last_lap'] - split_result['fastest_lap']
-                else:
-                    # WinCondition.MOST_LAPS
-                    # WinCondition.FIRST_TO_LAP_X
-                    split = split_result['total_time'] - result['total_time']
-
-                # send next faster result to this node's VRx
-                self.set_message_direct(str(node_index), __('Next') + ' (' + split_result['position'] + '): -' + str(split) + ' ' + split_result['callsign'])
-
-                # send this result to next faster VRx
-                self.set_message_direct(leaderboard[result['position']-2]['node'], str(node_index) + ': +' + str(split) + ' ' + result['callsign'])
-
-            # get the fastest result
-            if result['position'] > 2:
-                split_result = leaderboard[0]
-
-                if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                    split = result['consecutives'] - split_result['consecutives']
-                elif win_condition == WinCondition.FASTEST_LAP:
-                    split = result['last_lap'] - split_result['fastest_lap']
-                else:
-                    # WinCondition.MOST_LAPS
-                    # WinCondition.FIRST_TO_LAP_X
-                    split = result['behind']
-
-                # send the fastest result to this node's VRx
-                self.set_message_direct(node_index, __('First') + ': -' + str(split) + ' ' + split_result['callsign'])
-
-        else:
-            logger.warn('Failed to send results: Results not available')
-            return False
-    """
 
     #############################
     # Private Functions for MQTT
