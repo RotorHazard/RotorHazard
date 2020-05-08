@@ -4,7 +4,6 @@
 unittest(median)
 {
   FastRunningMedian<uint16_t, 5, 0> median;
-  median.init();
   assertFalse(median.isFilled());
   while(!median.isFilled()) {
       median.addValue(1);

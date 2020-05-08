@@ -12,14 +12,14 @@ from eventmanager import Evt
 # git clone https://github.com/ryaniftron/clearview_interface_public.git --depth 1
 # cd ~/clearview_interface_public/src/clearview-py
 # python2 -m pip install -e .
-import clearview 
+import clearview
 
 VRxALL = -1
 
-# logger = logging.getLogger(__name__) 
+# logger = logging.getLogger(__name__)
 
 class VRxController:
-    
+
     """Every video receiver has the following methods and data attributes"""
     controllers = {}
     '''
@@ -35,7 +35,7 @@ class VRxController:
     [address, address, None, ... ]
     '''
 
-    
+
     def __init__(self, eventmanager, VRxServer, node_frequencies):
         self.Events = eventmanager
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -59,9 +59,15 @@ class VRxController:
         self._mqttc.loop_start()
         num_nodes = len(node_frequencies)
 
+<<<<<<< HEAD
         
         self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n]) for n in range(8)]
         self._node_broadcast = VRxBroadcastNode(self._mqttc, self._cv)
+=======
+
+        self._nodes = [VRxNode(self._mqttc, n, node_frequencies[n], self._cv) for n in range(8)]
+        self._node_broadcast = VRxBroadcastNode(self._mqttc, -1, None, self._cv)
+>>>>>>> 73dc662cf7cabeee042f9051208f38df63b4dfe5
 
         #TODO is this the right way. Store data twice? Maybe it should be a member var.
         # If the decorators worked...
@@ -90,12 +96,16 @@ class VRxController:
 
         # Update the DB with receivers that exist and their status
         # (Because the pi was already running, they should all be connected to the broker)
-        # Even if the server.py is restarted, the broker continues to run:) 
+        # Even if the server.py is restarted, the broker continues to run:)
 
         # Set the receiver's frequencies based on band/channel
 
+<<<<<<< HEAD
     
     def do_race_start(self, arg):
+=======
+    def do_racestart(self, arg):
+>>>>>>> 73dc662cf7cabeee042f9051208f38df63b4dfe5
         self.logger.info("VRx Signaling Race Start")
         self.set_message_direct(VRxALL, "GO")
     
@@ -118,10 +128,10 @@ class VRxController:
         except KeyError:
             self.logger.error("unable to set frequency. frequency not found in event")
             return
-        
+
         self.set_node_frequency(node_index, frequency)
 
-    
+
     ##############
     ## MQTT Status
     ##############
@@ -172,7 +182,7 @@ class VRxController:
 
     @property
     def lock_status(self):
-        self._lock_status = [node.node_lock_status for node in self._nodes]  
+        self._lock_status = [node.node_lock_status for node in self._nodes]
         return self._lock_status
 
     def get_node_lock_status(self, node_number):
@@ -216,10 +226,15 @@ class VRxController:
 
     def set_message_direct(self, node_number, message):
         """set a message directly. Truncated if over length"""
+<<<<<<< HEAD
         if node_number == VRxALL:
             node = self._node_broadcast
             node.set_message(message)
     
+=======
+        self._nodes[node_number].set_message(message)
+
+>>>>>>> 73dc662cf7cabeee042f9051208f38df63b4dfe5
 
     """
     def send_results_update(self, args):
@@ -249,12 +264,11 @@ class VRxController:
             time_now = monotonic.monotonic()
             gevent.sleep()
 
-        if RACE.cacheStatus != CacheStatus.VALID:
+        if RACE.cacheStatus == CacheStatus.VALID:
             results = RACE.results
 
             # select correct results
-            format = RACE.current_format
-            win_condition = RACE.win_condition
+            win_condition = RACE.format.win_condition
 
             if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
                 leaderboard = results['by_consecutives']
@@ -326,7 +340,7 @@ class VRxController:
             # All response
             topic_tuple = topics["receiver_response_all"]
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_all)
-            
+
             # Node response
             topic_tuple = topics["receiver_response_node"]
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_node)
@@ -341,9 +355,9 @@ class VRxController:
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_targeted)
 
 
-    def _add_subscribe_callback(self, topic_tuple, callback):     
+    def _add_subscribe_callback(self, topic_tuple, callback):
         formatter_name = topic_tuple[1]
-        
+
         if formatter_name in ["#","+"]:   # subscibe to all at single level (+) or recursively all (#)
             topic = topic_tuple[0]%formatter_name
         elif formatter_name is None:
@@ -354,10 +368,10 @@ class VRxController:
             topic = topic_tuple
         else:
             raise TypeError("topic_tuple not of correct type: %s"%topic_tuple)
-        
+
         self._mqttc.message_callback_add(topic, callback)
         self._mqttc.subscribe(topic)
-            
+
 
     def on_message_connection(self, client, userdata, message):
         rx_name = message.topic.split('/')[1]
@@ -396,10 +410,21 @@ CEND = '\033[0m'
 def printc(*args):
     print(CRED + ' '.join(args) + CEND)
 
+<<<<<<< HEAD
 class BaseVRxNode:
     """Node controller for both the broadcast and individual nodes"""
     def __init__(self, 
                  mqtt_client,
+=======
+
+
+class VRxNode:
+    """Commands and Requests apply to all receivers at a node number"""
+    def __init__(self,
+                 mqtt_client,
+                 node_number,
+                 node_frequency,
+>>>>>>> 73dc662cf7cabeee042f9051208f38df63b4dfe5
                  cv,
                  ):
 
@@ -449,7 +474,7 @@ class VRxNode(BaseVRxNode):
         self._osd_field_data = {}
         self._osd_field_order = {}
 
-        # TODO specify the return value for commands. 
+        # TODO specify the return value for commands.
         #   Do we return the command sent or some sort of result from mqtt?
 
     @property
@@ -586,11 +611,11 @@ class packet_formatter:
             'bc_id': 0
         }
 
-        # base_format = (clearview_specs[message_start_char] + 
-        #        '%i' + 
-        #        str(clearview_specs[mess_src] + 
-        #        '%s' + 
-        #        clearview_specs[message_csum] + 
+        # base_format = (clearview_specs[message_start_char] +
+        #        '%i' +
+        #        str(clearview_specs[mess_src] +
+        #        '%s' +
+        #        clearview_specs[message_csum] +
         #        clearview_specs[message_end_char])
 
         # return base_format
@@ -603,9 +628,9 @@ class packet_formatter:
     def set_osd_field(self, field_data):
         """sets an  osd field data object. Updates OSD.
         That field must also be shown on the OSD
-        
+
         Input:
-            field_data: dictionary 
+            field_data: dictionary
                 *keys = field names (str), value = field value (str)
         """
 
@@ -618,18 +643,18 @@ class packet_formatter:
     def set_field_order(self, field_order):
         """sets an  osd field data order. Updates OSD.
         That field must also be shown on the OSD
-        
+
         Input:
-            field_data: dictionary 
+            field_data: dictionary
                 *keys = field names (str), value = field order (int)
-                A field order of -1 disables it. 
+                A field order of -1 disables it.
                 Field orders must be unique
         """
         for field in field_order:
                 self._osd_field_order[field] = field_order
         self._update_osd_by_fields()
 
-    
+
 def main():
     # vrxc = VRxController("192.168.0.110",
     #                      [5740,
@@ -648,8 +673,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
- 

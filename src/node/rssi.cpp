@@ -1,20 +1,60 @@
 #include "config.h"
-#include "FastRunningMedian.h"
 #include "rssi.h"
+#include "median-filter.h"
+#include "lowpass20hz-filter.h"
+#include "lowpass50hz-filter.h"
+#include "lowpass100hz-filter.h"
+#include "no-filter.h"
+#include "single-sendbuffer.h"
+#include "multi-sendbuffer.h"
+
+#define FILTER_NONE NoFilter<rssi_t>
+#define FILTER_MEDIAN MedianFilter<rssi_t, SmoothingSamples, 0>
+#define FILTER_100 LowPassFilter100Hz
+#define FILTER_50 LowPassFilter50Hz
+#define FILTER_20 LowPassFilter20Hz
+
+//select the filter to use here
+#define FILTER_IMPL FILTER_MEDIAN
+
+#define PEAK_SENDBUFFER_SINGLE SinglePeakSendBuffer
+#define PEAK_SENDBUFFFER_MULTI MultiSendBuffer<Extremum,10>
+#define NADIR_SENDBUFFER_SINGLE SingleNadirSendBuffer
+#define NADIR_SENDBUFFFER_MULTI MultiSendBuffer<Extremum,10>
+
+//select the send buffer to use here
+#define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_SINGLE
+#define NADIR_SENDBUFFER_IMPL NADIR_SENDBUFFER_SINGLE
+
+
+FILTER_IMPL defaultFilter;
+PEAK_SENDBUFFER_IMPL defaultPeakSendBuffer;
+NADIR_SENDBUFFER_IMPL defaultNadirSendBuffer;
 
 struct Settings settings;
 struct State state;
-struct History history;
+struct History history = {
+    {0, 0, 0}, false, &defaultPeakSendBuffer,
+    {MAX_RSSI, 0, 0}, false, &defaultNadirSendBuffer,
+    0
+};
 struct LastPass lastPass;
 
-FastRunningMedian<rssi_t, SmoothingSamples, 0> rssiMedian;
+static Filter<rssi_t> *filter = &defaultFilter;
 
-mtime_t SmoothingTimestamps[SmoothingTimestampSize];
-uint8_t SmoothingTimestampsIndex = 0;
+void rssiSetFilter(Filter<rssi_t> *f)
+{
+    filter = f;
+}
+
+void rssiSetSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir)
+{
+    history.peakSend = peak;
+    history.nadirSend = nadir;
+}
 
 void rssiInit()
 {
-    rssiMedian.init();
     state.lastloopMicros = micros();
 }
 
@@ -26,14 +66,16 @@ bool rssiStateValid()
 void rssiStateReset()
 {
     state.crossing = false;
-    state.passPeak.rssi = 0;
+    invalidatePeak(state.passPeak);
     state.passRssiNadir = MAX_RSSI;
     state.nodeRssiPeak = 0;
     state.nodeRssiNadir = MAX_RSSI;
+    invalidatePeak(history.peak);
     history.hasPendingPeak = false;
-    history.peakSend.rssi = 0;
+    history.peakSend->clear();
+    invalidateNadir(history.nadir);
     history.hasPendingNadir = false;
-    history.nadirSend.rssi = MAX_RSSI;
+    history.nadirSend->clear();
 }
 
 static void bufferHistoricPeak(bool force)
@@ -42,25 +84,14 @@ static void bufferHistoricPeak(bool force)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            if (!isPeakValid(history.peakSend))
+            bool buffered = history.peakSend->addIfAvailable(history.peak);
+            if (buffered)
             {
-                // no current peak to send so just overwrite
-                history.peakSend = history.peak;
                 history.hasPendingPeak = false;
             }
             else if (force)
             {
-                // must do something
-                if (history.peak.rssi > history.peakSend.rssi)
-                {
-                    // prefer higher peak
-                    history.peakSend = history.peak;
-                }
-                else if (history.peak.rssi == history.peakSend.rssi)
-                {
-                    // merge
-                    history.peakSend.duration = endTime(history.peak) - history.peakSend.firstTime;
-                }
+                history.peakSend->addOrDiscard(history.peak);
                 history.hasPendingPeak = false;
             }
         }
@@ -73,25 +104,14 @@ static void bufferHistoricNadir(bool force)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            if (!isNadirValid(history.nadirSend))
+            bool buffered = history.nadirSend->addIfAvailable(history.nadir);
+            if (buffered)
             {
-                // no current nadir to send so just overwrite
-                history.nadirSend = history.nadir;
                 history.hasPendingNadir = false;
             }
             else if (force)
             {
-                // must do something
-                if (history.nadir.rssi < history.nadirSend.rssi)
-                {
-                    // prefer lower nadir
-                    history.nadirSend = history.nadir;
-                }
-                else if (history.nadir.rssi == history.nadirSend.rssi)
-                {
-                    // merge
-                    history.nadirSend.duration = endTime(history.nadir) - history.nadirSend.firstTime;
-                }
+                history.nadirSend->addOrDiscard(history.nadir);
                 history.hasPendingNadir = false;
             }
         }
@@ -107,25 +127,18 @@ static void initExtremum(Extremum *e)
 
 bool rssiProcess(rssi_t rssi, mtime_t millis)
 {
-    rssiMedian.addValue(rssi);
+    filter->addRawValue(millis, rssi);
 
-    SmoothingTimestamps[SmoothingTimestampsIndex] = millis;
-    SmoothingTimestampsIndex++;
-    if (SmoothingTimestampsIndex >= SmoothingTimestampSize)
-    {
-        SmoothingTimestampsIndex = 0;
-    }
-
-    if (rssiMedian.isFilled() && state.activatedFlag)
+    if (filter->isFilled() && state.activatedFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received
 
         state.lastRssi = state.rssi;
-        state.rssi = rssiMedian.getMedian();  // retrieve the median
-        state.rssiTimestamp = SmoothingTimestamps[SmoothingTimestampsIndex];
+        state.rssi = filter->getFilteredValue();
+        state.rssiTimestamp = filter->getFilterTimestamp();
 
         /*** update history ***/
 
-        int rssiChange = state.rssi - state.lastRssi;
+        const int rssiChange = state.rssi - state.lastRssi;
         if (rssiChange > 0)
         {  // RSSI is rising
             // must buffer latest peak to prevent losing it (overwriting any unsent peak)

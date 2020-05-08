@@ -30,6 +30,8 @@
 //   See here for an ArduVidRx example: http://www.etheli.com/ArduVidRx/hw/index.html#promini
 #define ARDUVIDRX_WIRING_FLAG 0
 
+#define CHORUS_WIRING_FLAG 0
+
 #if ARDUVIDRX_WIRING_FLAG
 #define RX5808_DATA_PIN 10             //DATA output line to RX5808 module
 #define RX5808_SEL_PIN 11              //CLK output line to RX5808 module

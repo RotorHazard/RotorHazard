@@ -37,7 +37,8 @@ def early_stage_setup():
     for name in [
             "geventwebsocket.handler",
             "socketio.server",
-            "engineio.server"
+            "engineio.server",
+            "sqlalchemy",
             ]:
         logging.getLogger(name).setLevel(logging.WARN)
 

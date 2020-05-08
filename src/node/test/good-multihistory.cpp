@@ -2,13 +2,18 @@
 #include <Godmode.h>
 #include "../rssi.h"
 #include "util.h"
+#include "multi-sendbuffer.h"
+
+MultiSendBuffer<Extremum,1> testPeakBuffer1;
+MultiSendBuffer<Extremum,1> testNadirBuffer1;
 
 /**
  * Tests history buffer.
  */
-unittest(historyBuffer_withoutReads) {
+unittest(historyBuffer_multi1_withoutReads) {
   GodmodeState* nano = GODMODE();
   nano->reset();
+  rssiSetSendBuffers(&testPeakBuffer1, &testNadirBuffer1);
   rssiSetFilter(&testFilter);
   rssiInit();
   rssiStateReset();
@@ -52,32 +57,32 @@ unittest(historyBuffer_withoutReads) {
   sendSignal(nano, 60);
   assertEqual(60, (int)history.peak.rssi);
   assertEqual(80, (int)history.peakSend->first().rssi);
-  // merged with current peakSend
-  assertEqual(time(3)-1, (int)history.peakSend->first().duration);
+  // overwrite
+  assertEqual(time(1)-1, (int)history.peakSend->first().duration);
   // small extremum nadir
   sendSignal(nano, 40);
   assertEqual(40, (int)history.nadir.rssi);
   assertEqual(20, (int)history.nadirSend->first().rssi);
-  // merged with current nadirSend
-  assertEqual(time(3)-1, (int)history.nadirSend->first().duration);
+  // overwrite
+  assertEqual(time(1)-1, (int)history.nadirSend->first().duration);
 
   sendSignal(nano, 60);
   assertEqual(60, (int)history.peak.rssi);
-  // current large peak in peakSend is kept over new smaller peak
-  assertEqual(80, (int)history.peakSend->first().rssi);
+  // overwrite
+  assertEqual(60, (int)history.peakSend->first().rssi);
   sendSignal(nano, 40);
   assertEqual(40, (int)history.nadir.rssi);
-  // current large nadir in nadirSend is kept over new smaller nadir
-  assertEqual(20, (int)history.nadirSend->first().rssi);
+  // overwrite
+  assertEqual(40, (int)history.nadirSend->first().rssi);
 }
 
 /**
  * Tests history buffer.
  */
-unittest(historyBuffer_withReads) {
+unittest(historyBuffer_multi1_withReads) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiSetFilter(&testFilter);
+  rssiSetSendBuffers(&testPeakBuffer1, &testNadirBuffer1);
   rssiInit();
   rssiStateReset();
 

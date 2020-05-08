@@ -8,7 +8,7 @@
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	$(document).ready(function () {
- 		socket.emit('load_data', {'load_types': [
+		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',
 			'node_data',
@@ -35,14 +35,14 @@
 		socket.on('language', function (msg) {
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
-			for (i = 0; i < msg.languages.length; i++) {
+			for (var i = 0; i < msg.languages.length; i++) {
 				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
 
 			$('#set_voice_string_language').empty();
 			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
 			$('#set_voice_string_language').append('<option value="">English</option>')
-			for (i = 0; i < msg.languages.length; i++) {
+			for (var i = 0; i < msg.languages.length; i++) {
 				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
 			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
@@ -107,7 +107,7 @@
 		});
 
 		// set up node local store
-		for (i = 0; i < {{ num_nodes }}; i++) {
+		for (var i = 0; i < {{ num_nodes }}; i++) {
 			rotorhazard.nodes[i] = new nodeModel();
 			// start RSSI graphing
 			rotorhazard.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
@@ -155,7 +155,7 @@
 		socket.on('heartbeat', function (msg) {
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
 				heartbeatCounter = 0;
-				for (i = 0; i < msg.current_rssi.length; i++) {
+				for (var i = 0; i < msg.current_rssi.length; i++) {
 					var rssiValue = msg.current_rssi[i];
 
 					if (rotorhazard.nodes[i].frequency == 0) {
@@ -266,7 +266,7 @@
 		/* Profiles */
 		socket.on('node_tuning', function (msg) {
 			$('#set_profile').empty();
-			for (i = 0; i < msg.profile_ids.length; i++) {
+			for (var i = 0; i < msg.profile_ids.length; i++) {
 				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
 			}
 			$('#set_profile').val(msg.current_profile);
@@ -299,7 +299,7 @@
 
 		/* Frequency Setup */
 		socket.on('frequency_data', function (msg) {
-			for (i = 0; i < msg.frequency.length; i++) {
+			for (var i = 0; i < msg.frequency.length; i++) {
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				rotorhazard.nodes[i].frequency = msg.frequency[i];
 				freq.updateSelects();
@@ -309,7 +309,7 @@
 
 		function show_imd_rating(val) {
 			$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +
-                  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
+				  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
 		};
 
 		function show_imd_rating_dashes() {
@@ -337,7 +337,7 @@
 
 		/* Nodes */
 		socket.on('node_data', function (msg) {
-			for (i = 0; i < msg.node_peak_rssi.length; i++) {
+			for (var i = 0; i < msg.node_peak_rssi.length; i++) {
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
 				$('.node_nadir_rssi_' + i).html(msg.node_nadir_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
@@ -363,7 +363,7 @@
 		});
 
 		socket.on('enter_and_exit_at_levels', function (msg) {
-			for (i = 0; i < msg.enter_at_levels.length; i++) {
+			for (var i = 0; i < msg.enter_at_levels.length; i++) {
 				$('#set_enter_at_level_' + i).val(msg.enter_at_levels[i]);
 				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
@@ -479,6 +479,13 @@
 			$(".heats").empty();
 			for (var i in msg.heats) {
 				var heats = msg.heats[i];
+
+				if (heats.note) {
+					heat_note = heats.note
+				} else {
+					heat_note = __('Heat') + ' ' + heats.heat_id
+				}
+
 				var el = $('<li>');
 
 				var header = $('<h3>Heat ' + heats.heat_id + '</h3>')
@@ -538,6 +545,8 @@
 					el.append(selectbox);
 				}
 
+				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="Duplicate ' + heat_note + '">+</button>');
+
 				el.appendTo($('.heats'));
 			}
 			freq.updateBlocks();
@@ -580,15 +589,49 @@
 			socket.emit('delete_heat', data);
 		});
 
+		$(document).on("click", '.duplicate_heat', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('duplicate_heat', data);
+		});
+
+		$('button#generate_heats').click(function (event) {
+			var data = {
+				input_class: parseInt($('#generator_input_class').val()),
+				output_class: parseInt($('#generator_output_class').val()),
+				suffix: $('#generator_suffix').val(),
+				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
+				win_condition: parseInt($('#generator_win_condition').val()),
+			};
+			$('button#generate_heats').prop('disabled', true);
+			socket.emit('generate_heats', data);
+			return false;
+		});
+
+		socket.on('heat_generate_done', function (msg) {
+			$('button#generate_heats').prop('disabled', false);
+		});
+
+		/* Classes */
 		socket.on('class_data', function (msg) {
 			$(".race_classes").empty();
+			$('#generator_input_class').empty();
+			$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
 
 			if (msg.classes.length) {
-				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '</p>');
+				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '<br />' + __('Duplicating a class also duplicates its assigned heats.') + '</p>');
 
 				var classlist = $('<ol>');
 				for (var i in msg.classes) {
 					var race_class = msg.classes[i];
+
+					if (race_class.name) {
+						race_class_name = race_class.name
+					} else {
+						race_class_name = __('Class') + ' ' + race_class.id
+					}
+
 					var el = $('<li>');
 					var header = $('<h3>' + __('Class') + ' ' + race_class.id + '</h3>')
 
@@ -614,12 +657,25 @@
 					selectbox.prop('disabled', race_class.locked);
 					el.append(selectbox);
 
+					el.append('<button class="duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
+
 					el.appendTo(classlist);
+
+					if (race_class.name) {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + '</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + '</option>'));
+					} else {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + '</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + '</option>'));
+					}
 				}
 				classlist.appendTo($('.race_classes'));
 			} else {
 				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
 			}
+
+			$('#generator_input_class').append($('<option value="0">' + __('Randomize All') + '</option>'));
+
 		});
 
 		$(document).on("change", '.set_race_class_name', function (event) {
@@ -656,6 +712,13 @@
 				class: parseInt($(this).data('id')),
 			};
 			socket.emit('delete_class', data);
+		});
+
+		$(document).on("click", '.duplicate_class', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('duplicate_race_class', data);
 		});
 
 		/* Pilots */
@@ -912,9 +975,9 @@
 		});
 
 		$("#voice_test_text").keyup(function(event) {
-		    if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
-		        $("#play_voice_test").click();
-		    }
+			if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
+				$("#play_voice_test").click();
+			}
 		});
 
 		/* Race Format */
@@ -949,7 +1012,7 @@
 
 		socket.on('race_format', function (msg) {
 			$('#set_race_format').empty();
-			for (i = 0; i < msg.format_ids.length; i++) {
+			for (var i = 0; i < msg.format_ids.length; i++) {
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
 			}
 			$('#set_race_format').val(msg.current_format);
@@ -1065,7 +1128,7 @@
 			// convert decoded data to byte array
 			var byteNumbers = new Array(msgArray.length);
 			for (var i = 0; i < msgArray.length; i++) {
-			    byteNumbers[i] = msgArray.charCodeAt(i);
+				byteNumbers[i] = msgArray.charCodeAt(i);
 			}
 			var byteArray = new Uint8Array(byteNumbers);
 			// construct blob from byte array and initiate browser save-as
@@ -1575,6 +1638,41 @@
 		<div class="control-set">
 			<button id="add_heat">+ {{ __('Add Heat') }}</button>
 		</div>
+
+		<h3>Heat generator</h3>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="generator_input_class">{{ __('Input (Class)') }}</label>
+				</div>
+				<select id="generator_input_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_pilots_per_heat">{{ __('Pilots per Heat') }}</label>
+				</div>
+				<input type="number" id="generator_pilots_per_heat" min="1" max="{{ num_nodes }}" value="{{ num_nodes }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_suffix">{{ __('Suffix') }}</label>
+				</div>
+				<input type="text" id="generator_suffix" value="{{ __('Main') }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_output_class">{{ __('Output Class') }}</label>
+				</div>
+				<select id="generator_output_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<button id="generate_heats">{{ __('Generate Heats') }}</button>
+		</div>
 	</div>
 </div>
 
@@ -1778,13 +1876,11 @@
 					<label for="set_win_condition">{{ __('Win Condition') }}</label>
 				</div>
 				<select id="set_win_condition">
-					<option value="0">{{ __('None') }}</option>
 					<option value="1">{{ __('Most Laps') }}</option>
 					<option value="2">{{ __('First to X Laps') }}</option>
-					<!-- Yet to be implemented in server.py
 					<option value="3">{{ __('Fastest Lap') }}</option>
 					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
-					-->
+					<option value="0">{{ __('None') }}</option>
 				</select>
 			</li>
 			<li>
