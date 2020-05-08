@@ -175,55 +175,92 @@ class VRxController:
                     break
 
             # send the crossing node's result to this node's VRx
+            current_lap = None
             if result['last_lap']:
+                current_lap = result['last_lap']
+
+                '''
+                Re-implement after message queue exists
+
                 message = str(result['position']) + ': ' + result['last_lap']
                 node_dest = node_index
                 self.set_message_direct(node_dest, message)
                 self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+                '''
 
             # get the next faster results
+            next_rank_split = None
+            next_rank_split_result = None
             if result['position'] > 1:
-                split_result = leaderboard[result['position']-2]
+                next_rank_split_result = leaderboard[result['position']-2]
 
-                if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                    split = result['consecutives_raw'] - split_result['consecutives_raw']
-                elif win_condition == WinCondition.FASTEST_LAP:
-                    split = result['last_lap_raw'] - split_result['fastest_lap_raw']
-                else:
-                    # WinCondition.MOST_LAPS
-                    # WinCondition.FIRST_TO_LAP_X
-                    split = result['total_time_raw'] - split_result['total_time_raw']
+                if next_rank_split_result['total_time_raw']:
+                    if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                        next_rank_split = result['consecutives_raw'] - next_rank_split_result['consecutives_raw']
+                    elif win_condition == WinCondition.FASTEST_LAP:
+                        next_rank_split = result['last_lap_raw'] - next_rank_split_result['fastest_lap_raw']
+                    else:
+                        # WinCondition.MOST_LAPS
+                        # WinCondition.FIRST_TO_LAP_X
+                        next_rank_split = result['total_time_raw'] - next_rank_split_result['total_time_raw']
 
-                # send next faster result to this node's VRx
-                message = __('Next') + ' (' + str(split_result['position']) + '): -' + RHUtils.time_format(split) + ' ' + split_result['callsign']
-                node_dest = node_index
-                self.set_message_direct(node_dest, message)
-                self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+                    # send next faster result to this node's VRx
+                    '''
+                    Re-implement after message queue exists
+                    message = __('Next') + ' (' + str(split_result['position']) + '): -' + RHUtils.time_format(split) + ' ' + split_result['callsign']
+                    node_dest = node_index
+                    self.set_message_direct(node_dest, message)
+                    self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+                    '''
 
-                # send this result to next faster VRx
-                message = str(node_index) + ': +' + RHUtils.time_format(split) + ' ' + result['callsign']
-                node_dest = leaderboard[result['position']-2]['node']
-                self.set_message_direct(node_dest, message)
-                self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+                    '''
+                    Re-implement after message queue exists
+                    # send this result to next faster VRx
+                    message = str(node_index) + ': +' + RHUtils.time_format(split) + ' ' + result['callsign']
+                    node_dest = leaderboard[result['position']-2]['node']
+                    self.set_message_direct(node_dest, message)
+                    self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+                    '''
 
             # get the fastest result
+            first_rank_split = None
+            first_rank_split_result = None
             if result['position'] > 2:
-                split_result = leaderboard[0]
+                first_rank_split_result = leaderboard[0]
 
-                if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                    split = result['consecutives'] - split_result['consecutives']
-                elif win_condition == WinCondition.FASTEST_LAP:
-                    split = result['last_lap_raw'] - split_result['fastest_lap']
-                else:
-                    # WinCondition.MOST_LAPS
-                    # WinCondition.FIRST_TO_LAP_X
-                    split = result['total_time_raw'] - split_result['total_time_raw']
+                if next_rank_split_result['total_time_raw']:
+                    if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                        first_rank_split = result['consecutives'] - first_rank_split_result['consecutives']
+                    elif win_condition == WinCondition.FASTEST_LAP:
+                        first_rank_split = result['last_lap_raw'] - first_rank_split_result['fastest_lap']
+                    else:
+                        # WinCondition.MOST_LAPS
+                        # WinCondition.FIRST_TO_LAP_X
+                        first_rank_split = result['total_time_raw'] - first_rank_split_result['total_time_raw']
 
-                # send the fastest result to this node's VRx
-                message = __('First') + ': -' + RHUtils.time_format(split) + ' ' + split_result['callsign']
-                node_dest = node_index
-                self.set_message_direct(node_dest, message)
-                self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+                    '''
+                    Re-implement after message queue exists
+                    # send the fastest result to this node's VRx
+                    message = __('First') + ': -' + RHUtils.time_format(split) + ' ' + split_result['callsign']
+                    node_dest = node_index
+                    self.set_message_direct(node_dest, message)
+                    self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+                    '''
+
+            # *** temporary: one-line lap readout ***
+            # "Pilot1 L2 t:18.64  s-0.68"
+
+            if result['laps']:
+                message = result['callsign'][:12] + ':' + str(result['position']) + ' | L' + str(result['laps']) + ': ' + result['last_lap']
+            else:
+                message = result['callsign'][:12] + ':' + str(result['position']) + ' | HS: ' + result['total_time']
+
+            if next_rank_split:
+                message += ' / +' + RHUtils.time_format(next_rank_split) + ' (' + next_rank_split_result['callsign'][:12] + ')'
+
+            node_dest = node_index
+            self.set_message_direct(node_dest, message)
+            self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
 
         else:
             self.logger.warn('Failed to send results: Results not available')
