@@ -26,11 +26,6 @@
 			}
 		});
 
-		// set up node local store
-		for (i = 0; i < {{ num_nodes }}; i++) {
-			rotorhazard.nodes[i] = new nodeModel();
-		}
-
 		socket.on('current_laps', function (msg) {
 			current_laps = msg;
 			show_current_laps();

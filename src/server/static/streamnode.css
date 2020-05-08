@@ -12,11 +12,6 @@ body {
 	padding: 0;
 }
 
-body>* {
-	width: 100%;
-	box-sizing: border-box;
-}
-
 #position {
 	background: background: hsl(25, 85%, 55%);
 	color: #000;
