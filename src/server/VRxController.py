@@ -59,15 +59,9 @@ class VRxController:
         self._mqttc.loop_start()
         num_nodes = len(node_frequencies)
 
-<<<<<<< HEAD
         
         self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n]) for n in range(8)]
         self._node_broadcast = VRxBroadcastNode(self._mqttc, self._cv)
-=======
-
-        self._nodes = [VRxNode(self._mqttc, n, node_frequencies[n], self._cv) for n in range(8)]
-        self._node_broadcast = VRxBroadcastNode(self._mqttc, -1, None, self._cv)
->>>>>>> 73dc662cf7cabeee042f9051208f38df63b4dfe5
 
         #TODO is this the right way. Store data twice? Maybe it should be a member var.
         # If the decorators worked...
@@ -100,12 +94,8 @@ class VRxController:
 
         # Set the receiver's frequencies based on band/channel
 
-<<<<<<< HEAD
     
     def do_race_start(self, arg):
-=======
-    def do_racestart(self, arg):
->>>>>>> 73dc662cf7cabeee042f9051208f38df63b4dfe5
         self.logger.info("VRx Signaling Race Start")
         self.set_message_direct(VRxALL, "GO")
     
@@ -226,15 +216,10 @@ class VRxController:
 
     def set_message_direct(self, node_number, message):
         """set a message directly. Truncated if over length"""
-<<<<<<< HEAD
         if node_number == VRxALL:
             node = self._node_broadcast
             node.set_message(message)
     
-=======
-        self._nodes[node_number].set_message(message)
-
->>>>>>> 73dc662cf7cabeee042f9051208f38df63b4dfe5
 
     """
     def send_results_update(self, args):
@@ -410,21 +395,10 @@ CEND = '\033[0m'
 def printc(*args):
     print(CRED + ' '.join(args) + CEND)
 
-<<<<<<< HEAD
 class BaseVRxNode:
     """Node controller for both the broadcast and individual nodes"""
     def __init__(self, 
                  mqtt_client,
-=======
-
-
-class VRxNode:
-    """Commands and Requests apply to all receivers at a node number"""
-    def __init__(self,
-                 mqtt_client,
-                 node_number,
-                 node_frequency,
->>>>>>> 73dc662cf7cabeee042f9051208f38df63b4dfe5
                  cv,
                  ):
 
