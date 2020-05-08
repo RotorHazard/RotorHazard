@@ -9,7 +9,7 @@
         # Publish Topics
 
 # Send command to all receivers
-receiver_command_all = "rx/cv1/cmd_all"
+receiver_command_all = ("rx/cv1/cmd_all", None)
 
 # Send command to a node_number
 receiver_command_node_topic = ("rx/cv1/cmd_node/%d","node_number")
@@ -37,7 +37,7 @@ receiver_request_node_active_topic = ("rx/cv1/req_node_active/%d", "node_number"
 receiver_request_targeted_topic = ("rx/cv1/req_target/%s","receiver_serial_num")
 
 # All command topic for ESP commands
-receiver_command_esp_all = "rx/cv1/cmd_esp_all"
+receiver_command_esp_all = ("rx/cv1/cmd_esp_all", None)
 
 # Send command to a node_number
 receiver_command_esp_node_topic = ("rx/cv1/cmd_esp_node/%d","node_number")
