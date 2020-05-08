@@ -516,11 +516,16 @@ def stream():
 def stream_node(node_id):
     if node_id <= RACE.num_nodes:
         return render_template('streamnode.html', serverInfo=serverInfo, getOption=Options.get, __=__,
-        num_nodes=RACE.num_nodes,
-        node_id=node_id-1
+            node_id=node_id-1
         )
     else:
         return False
+
+@APP.route('/stream/class/<int:class_id>')
+def stream_class(class_id):
+    return render_template('streamclass.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        class_id=class_id
+    )
 
 @APP.route('/scanner')
 @requires_auth
