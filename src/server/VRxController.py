@@ -64,7 +64,7 @@ class VRxController:
         self._mqttc.loop_start()
         num_nodes = len(node_frequencies)
 
-        
+
         self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n]) for n in range(8)]
         self._node_broadcast = VRxBroadcastNode(self._mqttc, self._cv)
 
@@ -99,11 +99,11 @@ class VRxController:
 
         # Set the receiver's frequencies based on band/channel
 
-    
+
     def do_race_start(self, arg):
         self.logger.info("VRx Signaling Race Start")
         self.set_message_direct(VRxALL, "GO")
-    
+
     def do_race_finish(self, arg):
         self.logger.info("VRx Signaling Race Finish")
         self.set_message_direct(VRxALL, "FINISH")
@@ -412,7 +412,7 @@ def printc(*args):
 
 class BaseVRxNode:
     """Node controller for both the broadcast and individual nodes"""
-    def __init__(self, 
+    def __init__(self,
                  mqtt_client,
                  cv,
                  ):
@@ -424,18 +424,18 @@ class BaseVRxNode:
 
 class VRxNode(BaseVRxNode):
     """Commands and Requests apply to all receivers at a node number"""
-    def __init__(self, 
+    def __init__(self,
                  mqtt_client,
                  cv,
-                 node_number, 
-                 node_frequency, 
+                 node_number,
+                 node_frequency,
                  node_camera_type = 'A'
                  ):
         BaseVRxNode.__init__(self, mqtt_client, cv)
 
         # RH refers to nodes 0 to 7
-        self.MIN_NODE_NUM = 0 
-        self.MAX_NODE_NUM = 7  
+        self.MIN_NODE_NUM = 0
+        self.MAX_NODE_NUM = 7
 
         if self.MIN_NODE_NUM <= node_number <= self.MAX_NODE_NUM:
             self._node_number = node_number
@@ -557,7 +557,7 @@ class VRxNode(BaseVRxNode):
 
 
 class VRxBroadcastNode(BaseVRxNode):
-    def __init__(self, 
+    def __init__(self,
                  mqtt_client,
                  cv
                  ):
@@ -571,7 +571,7 @@ class VRxBroadcastNode(BaseVRxNode):
         cmd = self._cv.set_user_message(self._cv_broadcast_id, message)
         self._mqttc.publish(topic, cmd)
         return cmd
-    
+
     def turn_off_osd(self):
         """Turns off all OSD elements except user message"""
         topic = self._broadcast_cmd_topic
@@ -579,7 +579,7 @@ class VRxBroadcastNode(BaseVRxNode):
         self._mqttc.publish(topic, cmd)
         return cmd
 
-        
+
 class packet_formatter:
     def __init__(self):
         pass

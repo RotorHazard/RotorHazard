@@ -1036,7 +1036,7 @@ def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs[idx])
-    
+
 
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
@@ -4906,7 +4906,7 @@ def initVRxController():
         try:
             vrx_enabled = vrx_config["ENABLED"]
             if vrx_enabled:
-                try: 
+                try:
                     from VRxController import VRxController
                 except ImportError as e:
                     logger.error("VRxController unable to be imported")
@@ -4924,7 +4924,7 @@ def initVRxController():
 
     # If got through import success, create the VRxController object
     host = Config.VRX_SERVER["HOST"]
-    vrx_controller = VRxController(Events, 
+    vrx_controller = VRxController(Events,
                                    host,
                                    [5740,
                                     5760,
@@ -4935,7 +4935,7 @@ def initVRxController():
                                     5860,
                                     5880,])
 
-initVRxController()   
+initVRxController()
 
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
