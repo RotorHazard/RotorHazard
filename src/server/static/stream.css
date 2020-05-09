@@ -65,6 +65,33 @@ main {
 	position: absolute;
 }
 
+.channel-block {
+	background: #9e3d22;
+	color: #fff;
+	line-height: 1;
+	vertical-align: top;
+	text-align: center;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-around;
+	align-items: center;
+	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_low));
+	color: var(--contrast_1_low);
+	height: 100%;
+}
+
+.channel-block .ch {
+	font-size: 1.2em;
+	font-weight: bold;
+	margin: 0.25rem;
+}
+
+.channel-block .fr {
+	font-size: 0.75em;
+	margin-top: 0;
+	margin: 0 0.25rem 0.25rem;
+}
+
 #header {
 	flex: 0 0 auto;
 	display: flex;
@@ -127,6 +154,15 @@ main {
 	height: 100%;
 }
 
-.leaderboard .pilot {
+.leaderboard .pilot,
+.leaderboard .race_class {
 	text-align: left;
+}
+
+.leaderboard .race_class {
+	text-align: left;
+}
+
+.leaderboard .channel {
+	width: 5em;
 }

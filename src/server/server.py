@@ -506,14 +506,21 @@ def settings():
         ConfigFile=Config.GENERAL['configFile'],
         Debug=Config.GENERAL['DEBUG'])
 
-@APP.route('/stream')
+@APP.route('/stream/')
 def stream():
-    '''Route to race management page.'''
+    '''Route to stream index.'''
     return render_template('stream.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
-@APP.route('/stream/<int:node_id>')
+@APP.route('/stream/results')
+def stream_results():
+    '''Route to current race leaderboard stream.'''
+    return render_template('streamresults.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        num_nodes=RACE.num_nodes)
+
+@APP.route('/stream/node/<int:node_id>')
 def stream_node(node_id):
+    '''Route to single node overlay for streaming.'''
     if node_id <= RACE.num_nodes:
         return render_template('streamnode.html', serverInfo=serverInfo, getOption=Options.get, __=__,
             node_id=node_id-1
@@ -523,8 +530,17 @@ def stream_node(node_id):
 
 @APP.route('/stream/class/<int:class_id>')
 def stream_class(class_id):
+    '''Route to class leaderboard display for streaming.'''
     return render_template('streamclass.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         class_id=class_id
+    )
+
+@APP.route('/stream/heat/<int:heat_id>')
+def stream_heat(heat_id):
+    '''Route to heat display for streaming.'''
+    return render_template('streamheat.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        num_nodes=RACE.num_nodes,
+        heat_id=heat_id
     )
 
 @APP.route('/scanner')
