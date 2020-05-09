@@ -1,5 +1,4 @@
 #include "config.h"
-#include "rhtypes.h"
 #include "rssi.h"
 #include "commands.h"
 

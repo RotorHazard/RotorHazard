@@ -1,7 +1,7 @@
 #ifndef config_h
 #define config_h
 
-#include "rhtypes.h"
+#include "util/rhtypes.h"
 
 // ******************************************************************** //
 

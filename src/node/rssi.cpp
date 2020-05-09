@@ -1,12 +1,12 @@
 #include "config.h"
 #include "rssi.h"
-#include "median-filter.h"
-#include "lowpass20hz-filter.h"
-#include "lowpass50hz-filter.h"
-#include "lowpass100hz-filter.h"
-#include "no-filter.h"
-#include "single-sendbuffer.h"
-#include "multi-sendbuffer.h"
+#include "util/median-filter.h"
+#include "util/lowpass20hz-filter.h"
+#include "util/lowpass50hz-filter.h"
+#include "util/lowpass100hz-filter.h"
+#include "util/no-filter.h"
+#include "util/single-sendbuffer.h"
+#include "util/multi-sendbuffer.h"
 
 #define FILTER_NONE NoFilter<rssi_t>
 #define FILTER_MEDIAN MedianFilter<rssi_t, SmoothingSamples, 0>
