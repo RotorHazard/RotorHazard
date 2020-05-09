@@ -78,7 +78,7 @@ class VRxController:
         self.Events.on(Evt.STARTUP, 'VRx', self.do_startup, {}, 200)
         self.Events.on(Evt.RACE_START, 'VRx', self.do_race_start, {}, 200)
         self.Events.on(Evt.RACE_FINISH, 'VRx', self.do_race_finish, {}, 200)
-        self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200)
+        self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 50)
         self.Events.on(Evt.SEND_MESSAGE, 'VRx', self.do_send_message, {}, 200)
         self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.do_lap_recorded, {}, 200)
 
