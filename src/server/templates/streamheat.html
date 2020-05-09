@@ -114,23 +114,6 @@
 				}
 			}
 			freq.updateBlocks();
-
-				/*
-					var table = $('<table>');
-					var thead = $('<thead>');
-					var head_row = $('<tr>');
-					head_row.append('<th>' + __('Callsign') + '</th>');
-					head_row.append('<th>' + __('Name') + '</th>');
-					thread.append(head_row);
-					var tbody = $('<tbody>');
-
-					for (var j in heat.pilots) {
-						var body_row = $('<tr>');
-						body_row.append('<td>' + __('Callsign') + '</td>');
-						body_row.append('<td>' + __('Name') + '</td>');
-
-					}
-				*/
 		}
 
 		socket.on('heat_data', function (msg) {

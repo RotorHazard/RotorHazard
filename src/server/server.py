@@ -506,10 +506,10 @@ def settings():
         ConfigFile=Config.GENERAL['configFile'],
         Debug=Config.GENERAL['DEBUG'])
 
-@APP.route('/stream/')
+@APP.route('/streams')
 def stream():
     '''Route to stream index.'''
-    return render_template('stream.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('streams.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/stream/results')

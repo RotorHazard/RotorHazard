@@ -541,7 +541,6 @@ def calc_leaderboard(DB, **params):
             # WinCondition.FIRST_TO_LAP_X
             primary_leaderboard = 'by_race_time'
 
-        logger.debug(primary_leaderboard)
         leaderboard_output['meta'] = {
             'primary_leaderboard': primary_leaderboard,
             'win_condition': race_format.win_condition,
