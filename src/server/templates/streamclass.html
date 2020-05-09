@@ -1,8 +1,9 @@
-{% extends "layout-basic.html" %} {% block title %}Race{% endblock %}{% block head %}
-<link rel="stylesheet" href="/static/streamclass.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+{% extends "layout-basic.html" %} {% block title %}Stream: Class{% endblock %}{% block head %}
+<link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
-	streamclass = {{ class_id }}
+	var round_data;
+	var streamclass = {{ class_id }}
 
 	$(document).ready(function () {
 		socket.emit('load_data', {'load_types': [
@@ -10,6 +11,12 @@
 			'language',
 			'round_data',
 		]});
+
+		if (!{{ class_id }}) {
+			socket.emit('load_data', {'load_types': [
+				'current_heat',
+			]});
+		}
 
 		socket.on('all_languages', function (msg) {
 			rotorhazard.language_strings = msg.languages;
@@ -27,84 +34,66 @@
 			]});
 		});
 
-		socket.on('round_data', function (msg) {
-			var page = $('.page-streamclass')
-			page.empty();
-
-			if (!$.isEmptyObject(msg.heats)) {
-				for (var class_id in msg.heats_by_class) {
-					if (class_id == streamclass) {
-						var race_class = class_id;
-						var valid_heats = false;
-						if (msg.heats_by_class[race_class].length) {
-							for (var class_heat in msg.heats_by_class[race_class]) {
-								if (msg.heats[msg.heats_by_class[race_class][class_heat]]) {
-									valid_heats = true;
-									break;
-								}
-							}
-						}
-
-						if (valid_heats) {
-							var class_panel = $('<div id="class_' + class_id + '" class="panel collapsing">');
-							var class_panel_header = $('<div class="panel-header">');
-							var class_panel_content = $('<div class="panel-content">');
-
-							var current_class = msg.classes[race_class];
-							if (current_class) {
-								if (current_class.name) {
-									class_panel_header.append('<h2>' + current_class.name + '</h2>');
-								} else {
-									class_panel_header.append('<h2>' + __('Class') + ' ' + current_class.id + '</h2>');
-								}
-
-								var class_leaderboard = $('<div id="class_' + class_id + '_leaderboard" class="panel collapsing class-leaderboard">');
-
-								var class_leaderboard_header = $('<div class="panel-header">');
-								class_leaderboard_header.append('<h3>' + __('Class Summary') + '</h3>');
-								class_leaderboard.append(class_leaderboard_header);
-
-								var class_leaderboard_content = $('<div class="panel-content">');
-
-								class_leaderboard_content.append(build_leaderboard(current_class.leaderboard[current_class.leaderboard.meta.primary_leaderboard], current_class.leaderboard.meta.primary_leaderboard, msg.meta));
-
-								class_leaderboard.append(class_leaderboard_content);
-								class_panel_content.append(class_leaderboard);
-							} else {
-								if ($.isEmptyObject(msg.classes)) {
-									class_panel_header.append('<h2>' + __('Heats') + '</h2>')
-								} else {
-									class_panel_header.append('<h2>' + __('Unclassified') + '</h2>')
-								}
-							}
-
-							class_panel.append(class_panel_header);
-							class_panel.append(class_panel_content);
-							page.append(class_panel);
-						}
-					}
+		socket.on('current_heat', function (msg) {
+			if (!{{ class_id }}) {
+				if (msg.heat_class) {
+					streamclass = msg.heat_class;
+					display_round_data(round_data);
+				} else {
+					display_nothing()
 				}
-
-			} else {
-				page.append('<p>' + __('There is no saved race data available to view.') + '</p>');
 			}
 		});
 
-		$(document).on('click', '.leaderboard tr', function(){
-			el = $(this);
-			source = el.data('source');
-			if (source) {
-				pilot = el.children('.pilot').html()
-				standard_message_queue.push(__('Source for') + " " + pilot + ": " + source);
-				if (standard_message_queue.length == 1) {
-					get_standard_message()
+		function display_nothing() {
+			$('#header h1').html(__('No Data'))
+			$('#leaderboard').html('<p>' + __('There is no saved race data available to view.') + '</p>');
+		}
+
+		function display_round_data(msg) {
+			if (!$.isEmptyObject(msg.heats)) {
+				for (var class_id in msg.heats_by_class) {
+					if (class_id == streamclass) {
+						var current_class = msg.classes[class_id];
+						if (current_class) {
+							if (current_class.name) {
+								class_name = current_class.name;
+							} else {
+								class_name = __('Class') + ' ' + current_class.id;
+							}
+							$('#header h1').html(class_name)
+
+							if (current_class.leaderboard[current_class.leaderboard.meta.primary_leaderboard].length) {
+								leaderboard = build_leaderboard(current_class.leaderboard[current_class.leaderboard.meta.primary_leaderboard], current_class.leaderboard.meta.primary_leaderboard, msg.meta);
+
+								leaderboard.find('tbody tr').filter(':nth-child(n+11)').remove();
+
+								$('#leaderboard').html(leaderboard);
+							} else {
+								display_nothing()
+							}
+						}
+					}
 				}
+			} else {
+				display_nothing()
 			}
-		})
+		}
+
+		socket.on('round_data', function (msg) {
+			round_data = msg;
+			display_round_data(round_data);
+		});
 	});
 
 </script>
 {% endblock %} {% block content %}
 <main class="page-streamclass">
+	<div id="header">
+		<h1>{{ __('Loading...') }}</h1>
+	</div>
+
+	<!--Display the race leaderboard-->
+	<div id="leaderboard"></div>
 </main>
 {% endblock %}

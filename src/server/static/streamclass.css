@@ -60,11 +60,6 @@ main {
 	height: calc(100vh - 1rem);
 }
 
-.screen-reader-text {
-	clip: rect(1px, 1px, 1px, 1px);
-	position: absolute;
-}
-
 #header {
 	flex: 0 0 auto;
 	display: flex;
@@ -77,46 +72,6 @@ main {
 	overflow: hidden;
 	white-space: nowrap;
 	display: block;
-}
-
-#timer {
-	flex: 0 0 17rem;
-	margin-left: 0.5rem;
-}
-
-.timing-clock {
-	font-size: 3rem;
-	line-height: 1;
-	background: #000;
-	color: #fff;
-	border-radius: 0.5rem;
-	padding: 1rem 0;
-	display: block;
-	text-align: center;
-	font-family: monospace;
-	font-weight: bold;
-	margin: 0;
-	position: relative;
-}
-
-.race-running .timing-clock {
-	background: hsl(92.7, 67.8%, 29.2%);
-}
-
-.race-stopped .timing-clock {
-	background: #9e3d22;
-}
-
-.timing-clock.staging {
-	background: hsl(25, 85%, 55%);
-	color: #000;
-}
-
-.timing-clock .warning {
-	position: absolute;
-	left: 0.25em;
-	line-height: 1.3;
-	display: none;
 }
 
 #leaderboard {

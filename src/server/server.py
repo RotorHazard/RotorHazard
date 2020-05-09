@@ -3424,7 +3424,8 @@ def emit_current_heat(**params):
         'current_heat': RACE.current_heat,
         'callsign': callsigns,
         'heat_note': heat_note,
-        'heat_format': heat_format
+        'heat_format': heat_format,
+        'heat_class': heat_data.class_id
     }
     if ('nobroadcast' in params):
         emit('current_heat', emit_payload)

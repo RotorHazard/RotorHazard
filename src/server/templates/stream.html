@@ -1,4 +1,4 @@
-{% extends "layout-basic.html" %} {% block title %}Race{% endblock %}{% block head %}
+{% extends "layout-basic.html" %} {% block title %}Stream: Current{% endblock %}{% block head %}
 <link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
@@ -214,7 +214,7 @@
 {% endblock %} {% block content %}
 <main class="page-stream">
 	<div id="header">
-		<h2 class="current_heat">{{ __('Loading...') }}</h2>
+		<h1 class="current_heat">{{ __('Loading...') }}</h1>
 		<div id="timer">
 			<div class="timing-clock"><div class="warning" title="{{ __('Browser Sync Loss') }}">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
 		</div>
