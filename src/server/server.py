@@ -77,8 +77,6 @@ APP = Flask(__name__, static_url_path='/static')
 HEARTBEAT_THREAD = None
 HEARTBEAT_DATA_RATE_FACTOR = 5
 
-FREQUENCY_ID_NONE = 0  # indicator value for node disabled
-
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 IS_SYS_RASPBERRY_PI = False       # may be set by 'idAndLogSystemInfo()'
 
@@ -1007,13 +1005,13 @@ def on_set_frequency_preset(data):
             freqs.append(frequency)
     else:
         if data['preset'] == 'RB-4':
-            freqs = [5658, 5732, 5843, 5880, FREQUENCY_ID_NONE, FREQUENCY_ID_NONE, FREQUENCY_ID_NONE, FREQUENCY_ID_NONE]
+            freqs = [5658, 5732, 5843, 5880, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
         elif data['preset'] == 'RB-8':
             freqs = [5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917]
         elif data['preset'] == 'IMD5C':
-            freqs = [5658, 5695, 5760, 5800, 5885, FREQUENCY_ID_NONE, FREQUENCY_ID_NONE, FREQUENCY_ID_NONE]
+            freqs = [5658, 5695, 5760, 5800, 5885, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
         else: #IMD6C is default
-            freqs = [5658, 5695, 5760, 5800, 5880, 5917, FREQUENCY_ID_NONE, FREQUENCY_ID_NONE]
+            freqs = [5658, 5695, 5760, 5800, 5880, 5917, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
 
     set_all_frequencies(freqs)
     emit_frequency_data()
@@ -1036,7 +1034,6 @@ def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs[idx])
-
 
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
@@ -2001,7 +1998,7 @@ def findBestValues(node, node_index):
     current_class = heat.class_id
 
     # test for disabled node
-    if pilot is Database.PILOT_ID_NONE or node.frequency is FREQUENCY_ID_NONE:
+    if pilot is Database.PILOT_ID_NONE or node.frequency is RHUtils.FREQUENCY_ID_NONE:
         logger.debug('Node {0} calibration: skipping disabled node'.format(node.index+1))
         return {
             'enter_at_level': node.enter_at_level,
@@ -2169,7 +2166,7 @@ def on_save_laps():
     DB.session.refresh(new_race)
 
     for node_index in range(RACE.num_nodes):
-        if profile_freqs["f"][node_index] != FREQUENCY_ID_NONE:
+        if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
             pilot_id = Database.HeatNode.query.filter_by( \
                 heat_id=RACE.current_heat, node_index=node_index).one().pilot_id
 
@@ -2461,7 +2458,7 @@ def generate_heats(data):
 
         profile_freqs = json.loads(getCurrentProfile().frequencies)
         for node_index in range(RACE.num_nodes):
-            if profile_freqs["f"][node_index] != FREQUENCY_ID_NONE:
+            if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
                 available_nodes.append(node_index)
 
         pilots_per_heat = min(pilots_per_heat, RACE.num_nodes, len(available_nodes))
@@ -3419,7 +3416,7 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
                       filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
 
     for node in INTERFACE.nodes:
-        if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
+        if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
             if pilot_id:
                 pilot_team_dict[pilot_id] = Database.Pilot.query.filter_by(id=pilot_id).one().team
@@ -3498,7 +3495,7 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
                       filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
 
     for node in INTERFACE.nodes:
-        if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
+        if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
             pilot_id = node_pilot_dict.get(node.index)
             if pilot_id:
                 lap_count = max(0, len(RACE.get_active_laps()[node.index]) - 1)
@@ -3532,7 +3529,7 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
             if node.crossing_flag and node.index != pass_node_index:
                 if not profile_freqs:
                     profile_freqs = json.loads(getCurrentProfile().frequencies)
-                if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
+                if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:  # node is enabled
                     pilot_id = node_pilot_dict.get(node.index)
                     if pilot_id:  # node has pilot assigned to it
                         team_name = pilot_team_dict[pilot_id]
@@ -3611,7 +3608,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                         if node.crossing_flag:
                             if not profile_freqs:
                                 profile_freqs = json.loads(getCurrentProfile().frequencies)
-                            if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:  # node is enabled
+                            if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:  # node is enabled
                                 if not node_pilot_dict:
                                     node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
                                               filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
@@ -3654,7 +3651,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                           filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
 
         for node in INTERFACE.nodes:  # load per-pilot data into 'pilots_list'
-            if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
+            if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
                 pilot_id = node_pilot_dict.get(node.index)
                 if pilot_id:
                     lap_count = max(0, len(RACE.get_active_laps()[node.index]) - 1)
@@ -3990,7 +3987,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
     global RACE
     profile_freqs = json.loads(getCurrentProfile().frequencies)
-    if profile_freqs["f"][node.index] != FREQUENCY_ID_NONE:
+    if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end (RACE.duration_ms is invalid while race is in progress)
         if RACE.race_status is RaceStatus.RACING \
             or (RACE.race_status is RaceStatus.DONE and \
@@ -4190,9 +4187,9 @@ def node_crossing_callback(node):
 def default_frequencies():
     '''Set node frequencies, R1367 for 4, IMD6C+ for 5+.'''
     if RACE.num_nodes < 5:
-        freqs = [5658, 5732, 5843, 5880, FREQUENCY_ID_NONE, FREQUENCY_ID_NONE, FREQUENCY_ID_NONE, FREQUENCY_ID_NONE]
+        freqs = [5658, 5732, 5843, 5880, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
     else:
-        freqs = [5658, 5695, 5760, 5800, 5880, 5917, FREQUENCY_ID_NONE, FREQUENCY_ID_NONE]
+        freqs = [5658, 5695, 5760, 5800, 5880, 5917, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
     return freqs
 
 def assign_frequencies():

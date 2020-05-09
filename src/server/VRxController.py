@@ -530,12 +530,13 @@ class VRxNode(BaseVRxNode):
 
     def set_node_frequency(self, frequency):
         """Sets all receivers at this node number to the new frequency"""
-        topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self._node_number
-        messages = self._cv.set_custom_frequency(self._cv.bc_id, frequency)
+        if frequency != RHUtils.FREQUENCY_ID_NONE:
+            topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self._node_number
+            messages = self._cv.set_custom_frequency(self._cv.bc_id, frequency)
 
-        # set_custom_frequency returns multiple commands (one for channel and one for band)
-        for m in messages:
-            self._mqttc.publish(topic,m)
+            # set_custom_frequency returns multiple commands (one for channel and one for band)
+            for m in messages:
+                self._mqttc.publish(topic,m)
 
     @property
     def node_camera_type(self, ):

@@ -17,8 +17,6 @@ Events = EventManager()
 
 logger = logging.getLogger(__name__)
 
-FREQUENCY_ID_NONE = 0  # indicator value for node disabled
-
 class CacheStatus:
     INVALID = 'invalid'
     VALID = 'valid'
@@ -211,7 +209,7 @@ def calc_leaderboard(DB, **params):
                 max_lap = 0
 
             current_heat = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, pilot_id=pilot.id).first()
-            if current_heat and profile_freqs["f"][current_heat.node_index] != FREQUENCY_ID_NONE:
+            if current_heat and profile_freqs["f"][current_heat.node_index] != RHUtils.FREQUENCY_ID_NONE:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
                 nodes.append(current_heat.node_index)
