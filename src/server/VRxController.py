@@ -364,6 +364,8 @@ class VRxController:
         if node_number == VRxALL:
             node = self._node_broadcast
             node.set_message(message)
+        else:
+            self._nodes[node_number].set_message(message)
 
 
     #############################
