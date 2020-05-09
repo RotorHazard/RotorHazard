@@ -165,7 +165,7 @@ class MQTT_Client:
         # print("Disconnected!")
         pass
 
-    def publish(self, topic, payload=None, qos=0, retain=False, properties=None):
+    def publish(self, topic, payload=None, qos=1, retain=False, properties=None):
         self._client.publish( topic, payload, qos, retain, properties)
 
     def disconnect_gracefully(self):
