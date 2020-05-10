@@ -506,6 +506,43 @@ def settings():
         ConfigFile=Config.GENERAL['configFile'],
         Debug=Config.GENERAL['DEBUG'])
 
+@APP.route('/streams')
+def stream():
+    '''Route to stream index.'''
+    return render_template('streams.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        num_nodes=RACE.num_nodes)
+
+@APP.route('/stream/results')
+def stream_results():
+    '''Route to current race leaderboard stream.'''
+    return render_template('streamresults.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        num_nodes=RACE.num_nodes)
+
+@APP.route('/stream/node/<int:node_id>')
+def stream_node(node_id):
+    '''Route to single node overlay for streaming.'''
+    if node_id <= RACE.num_nodes:
+        return render_template('streamnode.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+            node_id=node_id-1
+        )
+    else:
+        return False
+
+@APP.route('/stream/class/<int:class_id>')
+def stream_class(class_id):
+    '''Route to class leaderboard display for streaming.'''
+    return render_template('streamclass.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        class_id=class_id
+    )
+
+@APP.route('/stream/heat/<int:heat_id>')
+def stream_heat(heat_id):
+    '''Route to heat display for streaming.'''
+    return render_template('streamheat.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        num_nodes=RACE.num_nodes,
+        heat_id=heat_id
+    )
+
 @APP.route('/scanner')
 @requires_auth
 def scanner():
@@ -2172,33 +2209,32 @@ def on_save_laps():
             pilot_id = Database.HeatNode.query.filter_by( \
                 heat_id=RACE.current_heat, node_index=node_index).one().pilot_id
 
-            if pilot_id != Database.PILOT_ID_NONE:
-                new_pilotrace = Database.SavedPilotRace( \
+            new_pilotrace = Database.SavedPilotRace( \
+                race_id=new_race.id, \
+                node_index=node_index, \
+                pilot_id=pilot_id, \
+                history_values=json.dumps(INTERFACE.nodes[node_index].history_values), \
+                history_times=json.dumps(INTERFACE.nodes[node_index].history_times), \
+                penalty_time=0, \
+                enter_at=INTERFACE.nodes[node_index].enter_at_level, \
+                exit_at=INTERFACE.nodes[node_index].exit_at_level
+            )
+            DB.session.add(new_pilotrace)
+            DB.session.flush()
+            DB.session.refresh(new_pilotrace)
+
+            for lap in RACE.node_laps[node_index]:
+                DB.session.add(Database.SavedRaceLap( \
                     race_id=new_race.id, \
+                    pilotrace_id=new_pilotrace.id, \
                     node_index=node_index, \
                     pilot_id=pilot_id, \
-                    history_values=json.dumps(INTERFACE.nodes[node_index].history_values), \
-                    history_times=json.dumps(INTERFACE.nodes[node_index].history_times), \
-                    penalty_time=0, \
-                    enter_at=INTERFACE.nodes[node_index].enter_at_level, \
-                    exit_at=INTERFACE.nodes[node_index].exit_at_level
-                )
-                DB.session.add(new_pilotrace)
-                DB.session.flush()
-                DB.session.refresh(new_pilotrace)
-
-                for lap in RACE.node_laps[node_index]:
-                    DB.session.add(Database.SavedRaceLap( \
-                        race_id=new_race.id, \
-                        pilotrace_id=new_pilotrace.id, \
-                        node_index=node_index, \
-                        pilot_id=pilot_id, \
-                        lap_time_stamp=lap['lap_time_stamp'], \
-                        lap_time=lap['lap_time'], \
-                        lap_time_formatted=lap['lap_time_formatted'], \
-                        source = lap['source'], \
-                        deleted = lap['deleted']
-                    ))
+                    lap_time_stamp=lap['lap_time_stamp'], \
+                    lap_time=lap['lap_time'], \
+                    lap_time_formatted=lap['lap_time_formatted'], \
+                    source = lap['source'], \
+                    deleted = lap['deleted']
+                ))
 
     DB.session.commit()
 
@@ -2442,14 +2478,8 @@ def generate_heats(data):
     if cacheStatus == Results.CacheStatus.VALID:
         if win_condition == WinCondition.NONE:
             leaderboard = random.shuffle(results['by_race_time'])
-        if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-            leaderboard = results['by_consecutives']
-        elif win_condition == WinCondition.FASTEST_LAP:
-            leaderboard = results['by_fastest_lap']
         else:
-            # WinCondition.MOST_LAPS
-            # WinCondition.FIRST_TO_LAP_X
-            leaderboard = results['by_race_time']
+            leaderboard = results[results['meta']['primary_leaderboard']]
 
         generated_heats = []
         unplaced_pilots = []
@@ -2906,6 +2936,8 @@ def emit_current_laps(**params):
         current_laps = []
         for node in range(RACE.num_nodes):
             node_laps = []
+            fastest_lap_time = float("inf")
+            fastest_lap_index = None
             last_lap_id = -1
             for idx, lap in enumerate(RACE.node_laps[node]):
                 if not lap['deleted']:
@@ -2919,6 +2951,10 @@ def emit_current_laps(**params):
                         'splits': splits
                     })
                     last_lap_id = lap['lap_number']
+                    if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
+                        fastest_lap_time = lap['lap_time']
+                        fastest_lap_index = idx
+
             splits = get_splits(node, last_lap_id+1, False)
             if splits:
                 node_laps.append({
@@ -2928,9 +2964,12 @@ def emit_current_laps(**params):
                     'splits': splits
                 })
             current_laps.append({
-                'laps': node_laps
+                'laps': node_laps,
+                'fastest_lap_index': fastest_lap_index,
             })
-        current_laps = {'node_index': current_laps}
+        current_laps = {
+            'node_index': current_laps
+        }
         emit_payload = current_laps
         RACE.last_race_laps = current_laps
 
@@ -3401,7 +3440,8 @@ def emit_current_heat(**params):
         'current_heat': RACE.current_heat,
         'callsign': callsigns,
         'heat_note': heat_note,
-        'heat_format': heat_format
+        'heat_format': heat_format,
+        'heat_class': heat_data.class_id
     }
     if ('nobroadcast' in params):
         emit('current_heat', emit_payload)

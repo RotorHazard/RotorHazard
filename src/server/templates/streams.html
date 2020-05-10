@@ -1,0 +1,83 @@
+{% extends "layout.html" %} {% block title %}Streams{% endblock %}{% block head %}
+
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function () {
+		socket.emit('load_data', {'load_types': [
+			'all_languages',
+			'language',
+			'heat_data',
+			'class_data',
+		]});
+
+		socket.on('all_languages', function (msg) {
+			rotorhazard.language_strings = msg.languages;
+		});
+
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				rotorhazard.interface_language = msg.language;
+			}
+		});
+
+		socket.on('heat_data', function (msg) {
+			$('.heat_list').empty();
+			$('.heat_list').append('<li><a href="/stream/heat/0">' + __("Current Heat") + '</a></li>');
+
+			for (var i in msg.heats) {
+				var heat = msg.heats[i];
+
+				if (heat.note) {
+					heatname = heat.note;
+				} else {
+					heatname = __('Heat') + ' ' + heat.heat_id;
+				}
+
+				$('.heat_list').append('<li><a href="/stream/heat/' + heat.heat_id + '">' + heatname + '</a></li>');
+			}
+		});
+
+		socket.on('class_data', function (msg) {
+			$('.race_class_list').empty();
+			$('.race_class_list').append('<li><a href="/stream/class/0">' + __("Current Class") + '</a></li>');
+
+			for (var i in msg.classes) {
+				var race_class = msg.classes[i];
+
+				if (race_class.name) {
+					classname = race_class.name;
+				} else {
+					classname = __('Class') + ' ' + race_class.id;
+				}
+
+				$('.race_class_list').append('<li><a href="/stream/class/' + race_class.id + '">' + classname + '</a></li>');
+			}
+		});
+	});
+
+</script>
+{% endblock %} {% block content %}
+<main class="page-streamlist">
+	<div class="panel">
+		<div class="panel-header">
+			<h1>{{ __("Streams") }}</h1>
+		</div>
+		<div class="panel-content">
+			<h2>{{ __("Current Race Results") }}</h2>
+			<ul><li><a href="/stream/results">{{ __("Current Race Results") }}</a></li></ul>
+
+			<h2>{{ __("Node Overlays") }}</h2>
+			<ul>
+				{% for node in range(num_nodes) %}
+					<li><a href="/stream/node/{{node + 1}}">{{ __("Node overlay") }} {{node + 1}}</a></li>
+				{% endfor %}
+			</ul>
+
+			<h2>{{ __("Heat Displays") }}</h2>
+			<ul class="heat_list"></ul>
+
+			<h2>{{ __("Class Displays") }}</h2>
+			<ul class="race_class_list"></ul>
+		</div>
+	</div>
+</main>
+{% endblock %}
