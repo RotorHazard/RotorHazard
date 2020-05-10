@@ -161,7 +161,7 @@ class VRxController:
         try:
             frequency = arg["frequency"]
         except KeyError:
-            self.logger.error("unable to set frequency. frequency not found in event")
+            self.logger.error("Unable to set frequency. frequency not found in event")
             return
 
         self.set_node_frequency(node_index, frequency)
@@ -288,20 +288,42 @@ class VRxController:
                     self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
                     '''
 
-            # *** temporary: one-line lap readout ***
-            # "Pilot1 L2 t:18.64  s-0.68"
+            # One-line readout
+            # Show callsign,
+            # "Callsign : Pos | L[n]: 0:00:00"
 
             if result['laps']:
                 message = result['callsign'][:12] + ':' + str(result['position']) + ' | L' + str(result['laps']) + ': ' + result['last_lap']
             else:
                 message = result['callsign'][:12] + ':' + str(result['position']) + ' | HS: ' + result['total_time']
 
+            # "Callsign : Pos | L[n]: 0:00:00 / -0:00.000 (Callsign)"
             if next_rank_split:
-                message += ' / +' + RHUtils.time_format(next_rank_split) + ' (' + next_rank_split_result['callsign'][:12] + ')'
+                message += ' / -' + RHUtils.time_format(next_rank_split) + ' (' + next_rank_split_result['callsign'][:12] + ')'
 
             node_dest = node_index
             self.set_message_direct(node_dest, message)
-            self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
+            self.logger.debug('msg node {1}:  {0}'.format(message, node_dest))
+
+
+            # show back split when next pilot crosses
+            if result['position'] > 1:
+                last_result = leaderboard[result['position']-2]
+
+                # keep lap info
+                # "Callsign : Pos | L[n]: 0:00:00"
+                if last_result['laps']:
+                    message = last_result['callsign'][:12] + ':' + str(last_result['position']) + ' | L' + str(last_result['laps']) + ': ' + last_result['last_lap']
+                else:
+                    message = last_result['callsign'][:12] + ':' + str(last_result['position']) + ' | HS: ' + last_result['total_time']
+
+                # "Callsign : Pos | L[n]: 0:00:00 / +0:00.000 (Callsign)"
+                if next_rank_split:
+                    message += ' / +' + RHUtils.time_format(next_rank_split) + ' (' + result['callsign'][:12] + ')'
+
+                node_dest = leaderboard[result['position']-2]['node']
+                self.set_message_direct(node_dest, message)
+                self.logger.debug('msg node {1}:  {0}'.format(message, node_dest))
 
         else:
             self.logger.warn('Failed to send results: Results not available')
@@ -347,6 +369,7 @@ class VRxController:
 
     def set_node_frequency(self, node_number, frequency):
         node = self._nodes[node_number]
+        node.set_message_direct(node_number, __("Frequency Change: ") + frequency)
         node.set_node_frequency(frequency)
 
     def get_node_frequency(self, node_number, frequency):
@@ -465,7 +488,13 @@ class VRxController:
         if int(connection_status) == 1:
             self.logger.warning("Receiver %s is not yet configured by the server after a successful connection" % rx_name)
 
-            # TODO Do we set the receiver's settings now? What if they are flying?
+            # TODO Do we set the receiver's settings now?
+               # MN: Yes.
+            # What if they are flying?
+               # MN: ESP can wait for lock loss;
+               # publish message to notify change coming;
+               # race operator's responsibility to do safely
+               # or pilot's responsibility to disconnect.
             # We don't want to waste time if they just plugged in the ESP32 though
 
 
