@@ -70,6 +70,7 @@ from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, Co
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
+from Plugins import Plugins
 from RHRace import get_race_state, WinCondition, RaceStatus
 
 APP = Flask(__name__, static_url_path='/static')
@@ -4922,13 +4923,10 @@ if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
     led_manager = LEDEventManager(Events, strip)
-    LEDHandlerFiles = [item.replace('.py', '') for item in glob.glob("led_handler_*.py")]
-    for handlerFile in LEDHandlerFiles:
-        try:
-            lib = importlib.import_module(handlerFile)
-            lib.registerEffects(led_manager)
-        except ImportError:
-            logger.info('Handler {0} not imported (may require additional dependencies)'.format(handlerFile))
+    led_effects = Plugins(prefix='led_handler')
+    led_effects.discover()
+    for led_effect in led_effects:
+        led_manager.registerEffect(led_effect)
     init_LED_effects()
 else:
     led_manager = NoLEDManager()

@@ -6,7 +6,7 @@
 
 import Config
 from eventmanager import Evt
-from led_event_manager import LEDEvent, Color
+from led_event_manager import LEDEffect, LEDEvent, Color
 import gevent
 from PIL import Image
 
@@ -45,20 +45,22 @@ def showBitmap(args):
             gevent.sleep(delay/1000.0)
 
 
-def registerEffects(manager):
-    # register state bitmaps
-    manager.registerEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, [Evt.STARTUP, Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.SHUTDOWN], {'bitmaps': [
+def discover(*args, **kwargs):
+    # state bitmaps
+    return [
+    LEDEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, [Evt.STARTUP, Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.SHUTDOWN], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-RotorHazard.png", "delay": 0}
-        ]})
-    manager.registerEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, [Evt.RACE_STAGE], {'bitmaps': [
+        ]}),
+    LEDEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, [Evt.RACE_STAGE], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-pause.png", "delay": 0}
-        ]})
-    manager.registerEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, [Evt.RACE_START], {'bitmaps': [
+        ]}),
+    LEDEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, [Evt.RACE_START], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-arrow.png", "delay": 0}
-        ]})
-    manager.registerEffect("bitmapRedX", "Image: Red X", showBitmap, [Evt.RACE_STOP], {'bitmaps': [
+        ]}),
+    LEDEffect("bitmapRedX", "Image: Red X", showBitmap, [Evt.RACE_STOP], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-X.png", "delay": 0}
-        ]})
-    manager.registerEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, [Evt.RACE_FINISH, Evt.RACE_STOP], {'bitmaps': [
+        ]}),
+    LEDEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, [Evt.RACE_FINISH, Evt.RACE_STOP], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-checkerboard.png", "delay": 0}
         ]})
+    ]
