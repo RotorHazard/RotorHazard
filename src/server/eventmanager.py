@@ -65,7 +65,8 @@ class Evt:
     STARTUP = 'startup'
     SHUTDOWN = 'shutdown'
     OPTION_SET = 'optionSet'
-    SEND_MESSAGE = 'sendMessage'
+    MESSAGE_STANDARD = 'messageStandard'
+    MESSAGE_INTERRUPT = 'messageInterrupt'
     # Event setup
     FREQUENCY_SET = 'frequencySet'
     ENTER_AT_LEVEL_SET = 'enterAtLevelSet'

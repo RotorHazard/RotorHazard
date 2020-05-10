@@ -2369,6 +2369,7 @@ def on_set_current_heat(data):
         autoUpdateCalibration()
 
     Events.trigger(Evt.HEAT_SET, {
+        'race': RACE,
         'heat_id': new_heat_id,
         })
 
@@ -2554,7 +2555,8 @@ def on_delete_lap(data):
         db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'])
 
     Events.trigger(Evt.LAP_DELETE, {
-        'node': node_index,
+        'race': RACE,
+        'node_index': node_index,
         })
 
     logger.info('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
@@ -2707,10 +2709,17 @@ def emit_priority_message(message, interrupt=False, **params):
     if ('nobroadcast' in params):
         emit('priority_message', emit_payload)
     else:
-        Events.trigger(Evt.SEND_MESSAGE, {
-            'message': message,
-            'interrupt': interrupt
-            })
+        if interrupt:
+            Events.trigger(Evt.MESSAGE_INTERRUPT, {
+                'message': message,
+                'interrupt': interrupt
+                })
+        else:
+            Events.trigger(Evt.MESSAGE_STANDARD, {
+                'message': message,
+                'interrupt': interrupt
+                })
+
         SOCKET_IO.emit('priority_message', emit_payload)
 
 def emit_race_status(**params):

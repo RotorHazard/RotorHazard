@@ -2,6 +2,7 @@ import paho.mqtt.client as mqtt_client
 import time
 import json
 import logging
+import gevent
 from monotonic import monotonic
 
 from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics, ESP_COMMANDS
@@ -11,6 +12,7 @@ from Language import __
 import Results
 from RHRace import WinCondition
 import RHUtils
+import Database
 
 # ClearView API
 # cd ~
@@ -76,11 +78,17 @@ class VRxController:
 
         # Events
         self.Events.on(Evt.STARTUP, 'VRx', self.do_startup, {}, 200)
-        self.Events.on(Evt.RACE_START, 'VRx', self.do_race_start, {}, 200)
+        self.Events.on(Evt.HEAT_SET, 'VRx', self.do_heat_set, {}, 200)
+        self.Events.on(Evt.RACE_STAGE, 'VRx', self.do_race_stage, {}, 75)
+        self.Events.on(Evt.RACE_START, 'VRx', self.do_race_start, {}, 75)
         self.Events.on(Evt.RACE_FINISH, 'VRx', self.do_race_finish, {}, 200)
-        self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 50)
-        self.Events.on(Evt.SEND_MESSAGE, 'VRx', self.do_send_message, {}, 200)
+        self.Events.on(Evt.RACE_STOP, 'VRx', self.do_race_stop, {}, 200)
         self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.do_lap_recorded, {}, 200)
+        self.Events.on(Evt.LAPS_CLEAR, 'VRx', self.do_laps_clear, {}, 200)
+        self.Events.on(Evt.LAP_DELETE, 'VRx', self.do_lap_recorded, {}, 200)
+        self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 50)
+        self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.do_send_message, {}, 200)
+
 
         # Stored receiver data
         self.rxdata = {}
@@ -100,16 +108,48 @@ class VRxController:
         # Set the receiver's frequencies based on band/channel
 
 
+    def do_heat_set(self, arg):
+        self.logger.info("VRx Signaling Heat Set")
+        try:
+            heat_id = arg["heat_id"]
+        except KeyError:
+            self.logger.error("Unable to send callsigns. heat_id not found in event.")
+            return
+        try:
+            RACE = arg["race"]
+        except KeyError:
+            self.logger.error("Unable to send callsigns. RACE not found in event")
+            return
+
+        for heatnode in Database.HeatNode.query.filter_by(heat_id=heat_id).all():
+            if heatnode.pilot_id != Database.PILOT_ID_NONE:
+                pilot = Database.Pilot.query.get(heatnode.pilot_id)
+                self.set_message_direct(heatnode.node_index, pilot.callsign)
+            else:
+                self.set_message_direct(heatnode.node_index, __("-None-"))
+
+    def do_race_stage(self, arg):
+        self.logger.info("VRx Signaling Race Stage")
+        self.set_message_direct(VRxALL, __("Ready"))
+
     def do_race_start(self, arg):
         self.logger.info("VRx Signaling Race Start")
-        self.set_message_direct(VRxALL, "GO")
+        self.set_message_direct(VRxALL, __("Go"))
 
     def do_race_finish(self, arg):
         self.logger.info("VRx Signaling Race Finish")
-        self.set_message_direct(VRxALL, "FINISH")
+        self.set_message_direct(VRxALL, __("Finish"))
+
+    def do_race_stop(self, arg):
+        self.logger.info("VRx Signaling Race Stop")
+        self.set_message_direct(VRxALL, __("Stop"))
 
     def do_send_message(self, arg):
         self.set_message_direct(VRxALL, arg['message'])
+
+    def do_laps_clear(self, arg):
+        self.logger.info("VRx Signaling Laps Clear")
+        self.set_message_direct(VRxALL, "---")
 
     def do_frequency_set(self, arg):
         self.logger.info("Setting frequency from event")
@@ -146,7 +186,8 @@ class VRxController:
             return False
 
         # wait for results to generate
-        timeout = monotonic() + RESULTS_TIMEOUT
+        time_now = monotonic()
+        timeout = time_now + RESULTS_TIMEOUT
         while RACE.cacheStatus != Results.CacheStatus.VALID and time_now < timeout:
             time_now = monotonic()
             gevent.sleep()
