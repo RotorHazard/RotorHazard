@@ -1,4 +1,4 @@
-#include "../median-filter.h"
+#include "../util/median-filter.h"
 
 MedianFilter<rssi_t, SmoothingSamples, 0> testFilter;
 

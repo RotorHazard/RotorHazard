@@ -28,7 +28,6 @@
 
 #include "config.h"
 #include <Wire.h>
-#include "rhtypes.h"
 #include "rssi.h"
 #include "commands.h"
 #include "rheeprom.h"

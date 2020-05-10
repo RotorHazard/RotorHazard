@@ -2,7 +2,7 @@
 #include <Godmode.h>
 #include "../rssi.h"
 #include "util.h"
-#include "multi-sendbuffer.h"
+#include "../util/multi-sendbuffer.h"
 
 MultiSendBuffer<Extremum,1> testPeakBuffer1;
 MultiSendBuffer<Extremum,1> testNadirBuffer1;

@@ -1,9 +1,9 @@
 #ifndef rssi_h
 #define rssi_h
 
-#include "rhtypes.h"
-#include "filter.h"
-#include "sendbuffer.h"
+#include "config.h"
+#include "util/filter.h"
+#include "util/sendbuffer.h"
 
 #define MAX_DURATION 0xFFFF
 

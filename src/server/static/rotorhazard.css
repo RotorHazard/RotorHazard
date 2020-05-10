@@ -384,7 +384,7 @@ ol.form li+li {
 }
 
 #banner-msg {
-	border-bottom: solid 0.125em hsl(23.1, 64.6%, 37.6%);
+	border-top: solid 0.125em hsl(23.1, 64.6%, 37.6%);
 	background: hsl(25, 85%, 55%);
 	color: #000;
 	padding: 0.5rem;
@@ -684,6 +684,10 @@ main.page-home {
 	display: flex;
 	flex-wrap: wrap;
 	margin: 0 -0.25rem;
+}
+
+.leaderboard .pilot {
+	text-align: left;
 }
 
 .node {

@@ -10,12 +10,12 @@
 //Low pass bessel filter order=2 alpha1=0.02
 class LowPassFilter20Hz : public Filter<rssi_t>
 {
-	private:
-		uint8_t unfilled = 3;
-		float v[3];
-		rssi_t nextValue;
-		CircularBuffer<mtime_t,2> timestamps;
-	public:
+    private:
+        uint8_t unfilled = 3;
+        float v[3];
+        rssi_t nextValue;
+        CircularBuffer<mtime_t,2> timestamps;
+    public:
         LowPassFilter20Hz()
         {
             v[0] = 0.0;
@@ -23,29 +23,29 @@ class LowPassFilter20Hz : public Filter<rssi_t>
         }
 
         bool isFilled() {
-		    return unfilled == 0;
-		}
+            return unfilled == 0;
+        }
 
-		void addRawValue(mtime_t ts, rssi_t x)
-		{
-			if (unfilled != 0)
-				unfilled--;
+        void addRawValue(mtime_t ts, rssi_t x)
+        {
+            if (unfilled != 0)
+                unfilled--;
 
-			v[0] = v[1];
-			v[1] = v[2];
+            v[0] = v[1];
+            v[1] = v[2];
             v[2] = (5.593440209108096160e-3 * x)
                  + (-0.75788377219702429688 * v[0])
                  + (1.73551001136059190877 * v[1]);
             nextValue = (rssi_t)((v[0] + v[2]) + 2 * v[1]); // 2^
 
             timestamps.push(ts);
-		}
+        }
 
-		rssi_t getFilteredValue() {
-		  return nextValue;
-		}
+        rssi_t getFilteredValue() {
+            return nextValue;
+        }
 
-		mtime_t getFilterTimestamp() {
-		  return timestamps.first();
-		}
+        mtime_t getFilterTimestamp() {
+            return timestamps.first();
+        }
 };
