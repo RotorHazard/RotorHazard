@@ -1,5 +1,5 @@
 #include <ArduinoUnitTests.h>
-#include "../FastRunningMedian.h"
+#include "../util/FastRunningMedian.h"
 
 unittest(median)
 {
