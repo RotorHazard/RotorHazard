@@ -46,6 +46,8 @@ class VRxController:
     def __init__(self, eventmanager, VRxServer, node_frequencies):
         self.Events = eventmanager
         self.logger = logging.getLogger(self.__class__.__name__)
+        # Stored receiver data
+        self.rx_data = {}
         self._cv = clearview.ClearView(return_formatted_commands=True)
 
         # TODO the subscribe topics subscribe it to a node number by default
@@ -70,12 +72,6 @@ class VRxController:
         self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n]) for n in range(8)]
         self._node_broadcast = VRxBroadcastNode(self._mqttc, self._cv)
 
-        #TODO is this the right way. Store data twice? Maybe it should be a member var.
-        # If the decorators worked...
-        self._frequency = [node.node_frequency for node in self._nodes]
-        self._lock_status = [node.node_lock_status for node in self._nodes]
-        self._camera_type = [node.node_camera_type for node in self._nodes]
-
         # Events
         self.Events.on(Evt.STARTUP, 'VRx', self.do_startup)
         self.Events.on(Evt.HEAT_SET, 'VRx', self.do_heat_set)
@@ -89,16 +85,18 @@ class VRxController:
         self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200, True)
         self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.do_send_message)
 
-        # Stored receiver data
-        self.rxdata = {}
+
 
     def do_startup(self,arg):
         self.logger.info("VRxC Starting up")
 
         # Request status of all receivers (static and variable)
-        self.request_static_status()
-        self.request_variable_status()
-        self._node_broadcast.turn_off_osd()
+        # self.request_static_status()
+        # self.request_variable_status()
+        # self._node_broadcast.turn_off_osd()
+        
+        for i in range(8):
+            self.get_node_lock_status(i)
 
         # Update the DB with receivers that exist and their status
         # (Because the pi was already running, they should all be connected to the broker)
@@ -367,8 +365,11 @@ class VRxController:
             self._nodes[node_number].node_frequency = f
 
     def set_node_frequency(self, node_number, frequency):
+        print("node num", node_number)
+        fmsg = "Frequency Change: " + str(frequency)
+        print("node_f", fmsg)
         node = self._nodes[node_number]
-        node.set_message_direct(node_number, __("Frequency Change: ") + frequency)
+        node.set_message_direct(fmsg )
         node.set_node_frequency(frequency)
 
     def get_node_frequency(self, node_number, frequency):
@@ -378,14 +379,14 @@ class VRxController:
     # Lock Status
     #############
 
-    @property
-    def lock_status(self):
-        self._lock_status = [node.node_lock_status for node in self._nodes]
-        return self._lock_status
+    # @property
+    # def lock_status(self):
+    #     self._lock_status = [node.node_lock_status for node in self._nodes]
+    #     return self._lock_status
 
     def get_node_lock_status(self, node_number):
         node = self._nodes[node_number]
-        report_req = node.get_node_lock_status()
+        node.get_node_lock_status()
 
         #return self._nodes[node_number].node_lock_status
 
@@ -426,9 +427,9 @@ class VRxController:
         """set a message directly. Truncated if over length"""
         if node_number == VRxALL:
             node = self._node_broadcast
-            node.set_message(message)
+            node.set_message_direct(message)
         else:
-            self._nodes[node_number].set_message(message)
+            self._nodes[node_number].set_message_direct(message)
 
 
     #############################
@@ -480,9 +481,9 @@ class VRxController:
         connection_status = message.payload
         self.logger.info("Connection message received: %s => %s" % (rx_name,connection_status))
         try:
-            self.rxdata[rx_name]["connection"] = connection_status
+            self.rx_data[rx_name]["connection"] = connection_status
         except KeyError:
-            self.rxdata[rx_name] = {"connection": connection_status}
+            self.rx_data[rx_name] = {"connection": connection_status}
 
         if int(connection_status) == 1:
             self.logger.warning("Receiver %s is not yet configured by the server after a successful connection" % rx_name)
@@ -499,19 +500,33 @@ class VRxController:
 
     def on_message_resp_all(self, client, userdata, message):
         payload = message.payload
-        self.logger.debug("TODO on_message_resp_all => %s"%(payload))
+        self.logger.info("TODO on_message_resp_all => %s"%(payload.strip()))
 
     def on_message_resp_node(self, client, userdata, message):
         topic = message.topic
         node_number = topic[-1]
         payload = message.payload
-        self.logger.debug("TODO on_message_resp_node for node %s => %s"%(node_number, payload))
+        self.logger.info("TODO on_message_resp_node for node %s => %s"%(node_number, payload.strip()))
 
     def on_message_resp_targeted(self, client, userdata, message):
         topic = message.topic
         rx_name = topic.split('/')[-1]
         payload = message.payload
-        self.logger.debug("TODO on_message_resp_targeted for receiver %s => %s"%(rx_name, payload))
+        try:
+            rx_data = self.rx_data[rx_name]
+        except KeyError:
+            self.rx_data[rx_name] = {"connection": "1"}
+            rx_data = self.rx_data[rx_name]
+
+        nt, pattern_response = clearview.formatter.match_response(payload)
+        extracted_data = clearview.formatter.extract_data(nt, pattern_response)
+        if extracted_data is not None:
+                rx_data.update(extracted_data)
+                self.rx_data[rx_name] = rx_data
+            
+       
+        self.logger.info("Receiver Reply %s => %s"%(rx_name, payload.strip()))
+        self.logger.info("Receiver Data Updated: %s"%self.rx_data[rx_name])
 
 CRED = '\033[91m'
 CEND = '\033[0m'
@@ -621,7 +636,6 @@ class VRxNode(BaseVRxNode):
         else:
             raise Exception("camera_type out of range")
 
-
     @property
     def node_lock_status(self, ):
         # topic = mqtt_publish_topics["cv1"]["receiver_request_node_active_topic"][0]%self._node_number
@@ -648,7 +662,7 @@ class VRxNode(BaseVRxNode):
         msg = ESP_COMMANDS["Request Variable Status"]
         self._mqttc.publish(topic,msg)
 
-    def set_message(self, message):
+    def set_message_direct(self, message):
         """Send a raw message to the OSD"""
         topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self._node_number
         cmd = self._cv.set_user_message(self._node_number+1, message)
@@ -674,7 +688,7 @@ class VRxBroadcastNode(BaseVRxNode):
         self._cv_broadcast_id = clearview.comspecs.clearview_specs['bc_id']
         self._broadcast_cmd_topic = mqtt_publish_topics["cv1"]["receiver_command_all"][0]
 
-    def set_message(self, message):
+    def set_message_direct(self, message):
         """Send a raw message to all OSD's"""
         topic = self._broadcast_cmd_topic
         cmd = self._cv.set_user_message(self._cv_broadcast_id, message)
@@ -719,8 +733,6 @@ class packet_formatter:
         # return base_format
 
 
-    def set_message(self, message):
-        """Send a raw message to the OSD"""
 
 
     def set_osd_field(self, field_data):
