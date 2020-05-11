@@ -289,20 +289,20 @@ class VRxController:
 
             # One-line readout
             # Show callsign,
-            # "Callsign : Pos | L[n]: 0:00:00"
+            # "Pos:Callsign | L[n]:0:00:00"
 
             if result['laps']:
-                message = result['callsign'][:12] + ':' + str(result['position']) + ' | L' + str(result['laps']) + ': ' + result['last_lap']
+                message = str(result['position']) + ':' + result['callsign'][:12] + ' | L' + str(result['laps']) + ': ' + result['last_lap']
             else:
-                message = result['callsign'][:12] + ':' + str(result['position']) + ' | HS: ' + result['total_time']
+                message = str(result['position']) + ':' + result['callsign'][:12] + ' | HS: ' + result['total_time']
 
-            # "Callsign : Pos | L[n]: 0:00:00 / -0:00.000 (Callsign)"
+            # "Pos:Callsign | L[n]:0:00:00 / +0:00.000 Pos:Callsign"
             if next_rank_split:
-                message += ' / -' + RHUtils.time_format(next_rank_split) + ' (' + next_rank_split_result['callsign'][:12] + ')'
+                message += ' / +' + RHUtils.time_format(next_rank_split) + ' ' + str(next_rank_split_result['position']) + ':' + next_rank_split_result['callsign'][:12]
 
             node_dest = node_index
             self.set_message_direct(node_dest, message)
-            self.logger.debug('msg node {1}:  {0}'.format(message, node_dest))
+            self.logger.debug('msg n{1}:  {0}'.format(message, node_dest))
 
 
             # show back split when next pilot crosses
@@ -310,19 +310,19 @@ class VRxController:
                 last_result = leaderboard[result['position']-2]
 
                 # keep lap info
-                # "Callsign : Pos | L[n]: 0:00:00"
+                # "Pos:Callsign | L[n]:0:00:00"
                 if last_result['laps']:
-                    message = last_result['callsign'][:12] + ':' + str(last_result['position']) + ' | L' + str(last_result['laps']) + ': ' + last_result['last_lap']
+                    message = str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | L' + str(last_result['laps']) + ': ' + last_result['last_lap']
                 else:
-                    message = last_result['callsign'][:12] + ':' + str(last_result['position']) + ' | HS: ' + last_result['total_time']
+                    message = str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | HS: ' + last_result['total_time']
 
-                # "Callsign : Pos | L[n]: 0:00:00 / +0:00.000 (Callsign)"
+                # "Pos:Callsign | L[n]:0:00:00 / -0:00.000 Pos:Callsign"
                 if next_rank_split:
-                    message += ' / +' + RHUtils.time_format(next_rank_split) + ' (' + result['callsign'][:12] + ')'
+                    message += ' / -' + RHUtils.time_format(next_rank_split) + ' ' + str(result['position']) + ':' + result['callsign'][:12]
 
                 node_dest = leaderboard[result['position']-2]['node']
                 self.set_message_direct(node_dest, message)
-                self.logger.debug('msg node {1}:  {0}'.format(message, node_dest))
+                self.logger.debug('msg n{1}:  {0}'.format(message, node_dest))
 
         else:
             self.logger.warn('Failed to send results: Results not available')
