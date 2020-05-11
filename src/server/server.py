@@ -2161,6 +2161,7 @@ def on_stop_race():
 
         RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
         INTERFACE.set_race_status(RaceStatus.DONE)
+        Events.trigger(Evt.RACE_STOP)
     else:
         logger.info('No active race to stop')
         RACE.race_status = RaceStatus.READY # Go back to ready state
@@ -2172,7 +2173,6 @@ def on_stop_race():
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
-    Events.trigger(Evt.RACE_STOP)
 
 @SOCKET_IO.on('save_laps')
 def on_save_laps():
