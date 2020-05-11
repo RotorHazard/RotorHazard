@@ -3,6 +3,7 @@ RotorHazard event manager
 '''
 
 import gevent
+from monotonic import monotonic
 
 class EventManager:
     processEventObj = gevent.event.Event()
@@ -14,14 +15,15 @@ class EventManager:
     def __init__(self):
         pass
 
-    def on(self, event, name, handlerFn, defaultArgs=None, priority=200):
+    def on(self, event, name, handlerFn, defaultArgs=None, priority=200, unique=False):
         if event not in self.events:
             self.events[event] = {}
 
         self.events[event][name] = {
             "handlerFn": handlerFn,
             "defaultArgs": defaultArgs,
-            "priority": priority
+            "priority": priority,
+            "unique": unique
         }
 
         self.eventOrder[event] = sorted(self.events[event].items(), key=lambda x: x[1]['priority'])
@@ -55,7 +57,11 @@ class EventManager:
                             if self.eventThreads[name] is not None:
                                 self.eventThreads[name].kill()
 
-                        self.eventThreads[name] = gevent.spawn(handler['handlerFn'], args)
+                        if handler['unique']:
+                            token = monotonic()
+                            self.eventThreads[name + str(token)] = gevent.spawn(handler['handlerFn'], args)
+                        else:
+                            self.eventThreads[name] = gevent.spawn(handler['handlerFn'], args)
 
                     return True
         return False

@@ -77,18 +77,17 @@ class VRxController:
         self._camera_type = [node.node_camera_type for node in self._nodes]
 
         # Events
-        self.Events.on(Evt.STARTUP, 'VRx', self.do_startup, {}, 200)
-        self.Events.on(Evt.HEAT_SET, 'VRx', self.do_heat_set, {}, 200)
+        self.Events.on(Evt.STARTUP, 'VRx', self.do_startup)
+        self.Events.on(Evt.HEAT_SET, 'VRx', self.do_heat_set)
         self.Events.on(Evt.RACE_STAGE, 'VRx', self.do_race_stage, {}, 75)
         self.Events.on(Evt.RACE_START, 'VRx', self.do_race_start, {}, 75)
-        self.Events.on(Evt.RACE_FINISH, 'VRx', self.do_race_finish, {}, 200)
-        self.Events.on(Evt.RACE_STOP, 'VRx', self.do_race_stop, {}, 200)
-        self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.do_lap_recorded, {}, 200)
-        self.Events.on(Evt.LAPS_CLEAR, 'VRx', self.do_laps_clear, {}, 200)
-        self.Events.on(Evt.LAP_DELETE, 'VRx', self.do_lap_recorded, {}, 200)
-        self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 50)
-        self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.do_send_message, {}, 200)
-
+        self.Events.on(Evt.RACE_FINISH, 'VRx', self.do_race_finish)
+        self.Events.on(Evt.RACE_STOP, 'VRx', self.do_race_stop)
+        self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.do_lap_recorded, {}, 200, True)
+        self.Events.on(Evt.LAPS_CLEAR, 'VRx', self.do_laps_clear)
+        self.Events.on(Evt.LAP_DELETE, 'VRx', self.do_lap_recorded)
+        self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200, True)
+        self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.do_send_message)
 
         # Stored receiver data
         self.rxdata = {}
