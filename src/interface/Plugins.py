@@ -17,7 +17,7 @@ def search_modules(prefix=None, suffix=None):
                 plugin_modules.append(plugin_module)
                 logger.info('Loaded module {0}'.format(name))
             except ImportError:
-                logger.info('Module {0} not imported (not supported or may require additional dependencies)'.format(name))
+                logger.debug('Module {0} not imported (not supported or may require additional dependencies)'.format(name))
     return plugin_modules
 
 class Plugins(UserList):
@@ -25,7 +25,7 @@ class Plugins(UserList):
         UserList.__init__(self)
         self.prefix = prefix
         self.suffix = suffix
-    
+
     def discover(self, includeOffset=False, *args, **kwargs):
         for plugin_module in search_modules(prefix = self.prefix, suffix = self.suffix):
             if includeOffset:
@@ -33,4 +33,4 @@ class Plugins(UserList):
             try:
                 self.data.extend(plugin_module.discover(*args, **kwargs))
             except AttributeError as err:
-                logger.info('Error loading plugin {0}: {1}'.format(plugin_module.__name__, err))
+                logger.error('Error loading plugin {0}: {1}'.format(plugin_module.__name__, err))

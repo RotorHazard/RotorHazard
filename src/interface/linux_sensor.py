@@ -59,7 +59,7 @@ def discover(*args, **kwargs):
             sensors.append(TemperatureSensor('Core'))
         logger.info('Core temperature available')
     except IOError as err:
-        logger.info('Core temperature not available ({0})'.format(err))
+        logger.debug('Core temperature not available ({0})'.format(err))
 
     try:
         with open('/sys/class/power_supply/battery/present', 'r') as f:
@@ -67,6 +67,6 @@ def discover(*args, **kwargs):
                 sensors.append(BatterySensor('Battery'))
                 logger.info('Battery status available')
     except IOError as err:
-        logger.info('Battery status not available ({0})'.format(err))
+        logger.debug('Battery status not available ({0})'.format(err))
 
     return sensors
