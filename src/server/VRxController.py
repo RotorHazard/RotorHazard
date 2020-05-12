@@ -43,12 +43,16 @@ class VRxController:
     '''
 
 
-    def __init__(self, eventmanager, VRxServer, node_frequencies):
+    def __init__(self, eventmanager, vrx_config, node_frequencies):
         self.Events = eventmanager
         self.logger = logging.getLogger(self.__class__.__name__)
         # Stored receiver data
         self.rx_data = {}
+
+        #ClearView API object
         self._cv = clearview.ClearView(return_formatted_commands=True)
+
+        self.config = self.validate_config(vrx_config)
 
         # TODO the subscribe topics subscribe it to a node number by default
         # Don't hack by making node number a wildcard
@@ -61,7 +65,7 @@ class VRxController:
 
 
         self._mqttc = MQTT_Client(client_id="VRxController",
-                                 broker_ip=VRxServer,
+                                 broker_ip=self.config["HOST"],
                                  subscribe_topics = None)
 
         self._add_subscribe_callbacks()
@@ -85,11 +89,41 @@ class VRxController:
         self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200, True)
         self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.do_send_message)
 
+    def validate_config(self, supplied_config):
+        """Ensure config values are within range and reasonable values"""
 
+        default_config = {
+            'HOST': 'localhost',
+            'OSD_LAP_HEADER' : '#',
+        }
+        saved_config = default_config
+
+        for k, v_default in default_config.items():
+            if k not in supplied_config:
+                self.logger.warning("VRX Config does not include config key '%s'. Using '%s'"%(k, v_default))
+            else:
+                saved_config[k] = supplied_config[k]
+
+        cv_csum = clearview.comspecs.clearview_specs["message_csum"]
+        config_osd_lap_header = saved_config["OSD_LAP_HEADER"]
+
+        if len(config_osd_lap_header) == 1:
+            print("SINGLE CHAR")
+            if config_osd_lap_header == cv_csum:
+                self.logger.error("Cannot use reserved character '%s' in lap header"%cv_csum)
+                saved_config['OSD_LAP_HEADER'] = default_config['OSD_LAP_HEADER']
+        elif cv_csum in config_osd_lap_header:
+            self.logger.error("Cannot use reserved character '%s' in lap header"%cv_csum)
+            saved_config['OSD_LAP_HEADER'] = default_config['OSD_LAP_HEADER']
+
+        return saved_config
+
+        
 
     def do_startup(self,arg):
         self.logger.info("VRxC Starting up")
 
+        self._node_broadcast.reset_lock()
         # Request status of all receivers (static and variable)
         # self.request_static_status()
         # self.request_variable_status()
@@ -290,7 +324,7 @@ class VRxController:
             # "Pos:Callsign | L[n]:0:00:00"
 
             if result['laps']:
-                message = str(result['position']) + ':' + result['callsign'][:12] + ' | L' + str(result['laps']) + ': ' + result['last_lap']
+                message = str(result['position']) + ':' + result['callsign'][:12] + ' | ' + self.config["OSD_LAP_HEADER"] + str(result['laps']) + ': ' + result['last_lap']
             else:
                 message = str(result['position']) + ':' + result['callsign'][:12] + ' | HS: ' + result['total_time']
 
@@ -310,7 +344,7 @@ class VRxController:
                 # keep lap info
                 # "Pos:Callsign | L[n]:0:00:00"
                 if last_result['laps']:
-                    message = str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | L' + str(last_result['laps']) + ': ' + last_result['last_lap']
+                    message = str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | ' + self.config["OSD_LAP_HEADER"] + str(last_result['laps']) + ': ' + last_result['last_lap']
                 else:
                     message = str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | HS: ' + last_result['total_time']
 
@@ -699,6 +733,13 @@ class VRxBroadcastNode(BaseVRxNode):
         """Turns off all OSD elements except user message"""
         topic = self._broadcast_cmd_topic
         cmd = self._cv.hide_osd(self._cv_broadcast_id)
+        self._mqttc.publish(topic, cmd)
+        return cmd
+    
+    def reset_lock(self):
+        """ Resets lock of all receivers"""
+        topic = self._broadcast_cmd_topic
+        cmd = self._cv.reset_lock(self._cv_broadcast_id)
         self._mqttc.publish(topic, cmd)
         return cmd
 
