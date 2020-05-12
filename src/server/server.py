@@ -994,6 +994,8 @@ def on_load_data(data):
             emit_imdtabler_page(nobroadcast=True)
         elif load_type == 'vrx_locks':
             emit_vrx_locks(nobroadcast=True)
+        elif load_type == 'vrx_list':
+            emit_vrx_list(nobroadcast=True)
         elif load_type == 'cluster_status':
             CLUSTER.emitStatus()
 
@@ -3931,11 +3933,12 @@ def emit_vrx_locks(*args, **params):
     if vrx_controller != False:
         # if vrx_controller.has_connection:
             any_locks = False
-            for data in vrx_controller.rx_data:
-                lock = vrx_controller.rx_data[data]['lock_status']
-                if lock == 'L':
-                    any_locks = True
-                    break
+            for vrx in vrx_controller.rx_data:
+                if 'lock_status' in vrx_controller.rx_data[vrx]:
+                    lock = vrx_controller.rx_data[vrx]['lock_status']
+                    if lock == 'L':
+                        any_locks = True
+                        break
 
             emit_payload = {
                 'connection': True,
@@ -3953,6 +3956,23 @@ def emit_vrx_locks(*args, **params):
     else:
         SOCKET_IO.emit('vrx_locks', emit_payload)
 
+def emit_vrx_list(*args, **params):
+    ''' get list of connected VRx devices '''
+    if vrx_controller != False:
+        # if vrx_controller.has_connection:
+            vrx_list = []
+            for vrx in vrx_controller.rx_data:
+                vrx_list.append(vrx)
+
+            emit_payload = {
+                'vrx': vrx_list,
+            }
+
+            logger.info(emit_payload)
+            if ('nobroadcast' in params):
+                emit('vrx_list', emit_payload)
+            else:
+                SOCKET_IO.emit('vrx_list', emit_payload)
 #
 # Program Functions
 #
@@ -3993,6 +4013,10 @@ def heartbeat_thread_function():
                 if vrx_controller:
                     # if vrx_controller.has_connection
                     vrx_controller.get_all_lock_status()
+
+            if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 4:
+                # emit display status with offset
+                emit_vrx_locks()
 
             # emit environment data less often:
             if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
@@ -4784,6 +4808,34 @@ def init_LED_effects():
     for item in effects:
         led_manager.setEventEffect(item, effects[item])
 
+def initVRxController():
+    try:
+        vrx_config = Config.VRX_SERVER
+        try:
+            vrx_enabled = vrx_config["ENABLED"]
+            if vrx_enabled:
+                try:
+                    from VRxController import VRxController
+                except ImportError as e:
+                    logger.error("VRxController unable to be imported")
+                    logger.error(e)
+                    return False
+            else:
+                logger.info('VRxController Disabled by config option')
+                return False
+        except KeyError:
+            logger.error('VRxController config needs "ENABLED" key.')
+            return False
+    except AttributeError:
+        logger.info('VRxController: Disabled because no VRX_SERVER config option')
+        return False
+
+    # If got through import success, create the VRxController object
+    vrx_config = Config.VRX_SERVER
+    return VRxController(Events,
+       vrx_config,
+       [node.frequency for node in INTERFACE.nodes])
+
 #
 # Program Initialize
 #
@@ -4977,40 +5029,11 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
         Options.set("secret_key", unicode(os.urandom(50), errors='ignore'))
 
-
-def initVRxController():
-    try:
-        vrx_config = Config.VRX_SERVER
-        try:
-            vrx_enabled = vrx_config["ENABLED"]
-            if vrx_enabled:
-                try:
-                    from VRxController import VRxController
-                except ImportError as e:
-                    logger.error("VRxController unable to be imported")
-                    logger.error(e)
-                    return False
-            else:
-                logger.info('VRxController Disabled by config option')
-                return False
-        except KeyError:
-            logger.error('VRxController config needs "ENABLED" key.')
-            return False
-    except AttributeError:
-        logger.info('VRxController: Disabled because no VRX_SERVER config option')
-        return False
-
-    # If got through import success, create the VRxController object
-    vrx_config = Config.VRX_SERVER
-    return VRxController(Events,
-       vrx_config,
-       [node.frequency for node in INTERFACE.nodes])
-
+# start up VRx Control
 vrx_controller = initVRxController()
 
-
-if vrx_controller:
-    Events.on(Evt.VRX_DATA_RECEIVE, 'VRx', emit_vrx_locks, {}, 200, True)
+#if vrx_controller:
+#    Events.on(Evt.VRX_DATA_RECEIVE, 'VRx', emit_vrx_locks, {}, 200, True)
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
