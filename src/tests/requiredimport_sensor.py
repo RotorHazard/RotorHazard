@@ -1,4 +1,4 @@
 import testNoSuchModule
 
-def discover():
-    return []
+def discover(*args, **kwargs):
+    raise AssertionError("This module is expected not to be loaded")

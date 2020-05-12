@@ -93,22 +93,19 @@ class I2CNode(Node):
         return success
 
 
-def discover(idxOffset, *args, **kwargs):
-    if 'i2c_helper' not in kwargs:
-        return []
-
+def discover(idxOffset, i2c_helper, *args, **kwargs):
+    logger.info("Searching for I2C nodes...")
     nodes = []
-    i2c_helper = kwargs['i2c_helper']
     # Scans all i2c_addrs to populate nodes array
     i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
     for index, addr in enumerate(i2c_addrs):
         try:
             i2c_helper.i2c.read_i2c_block_data(addr, READ_ADDRESS, 1)
-            logger.info("I2C node {0} found at address {1}".format(index+idxOffset+1, addr))
+            logger.info("...I2C node {0} found at address {1}".format(index+idxOffset+1, addr))
             node = I2CNode(index+idxOffset, addr, i2c_helper) # New node instance
             nodes.append(node) # Add new node to RHInterface
         except IOError as err:
-            logger.info("No I2C node at address {0}".format(addr))
+            logger.info("...No I2C node at address {0}".format(addr))
         i2c_helper.i2c_end()
         i2c_helper.i2c_sleep()
     return nodes

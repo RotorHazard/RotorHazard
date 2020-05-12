@@ -99,20 +99,15 @@ class RHInterface(BaseHardwareInterface):
         self.intf_write_block_count = 0  # number of blocks write by all nodes
         self.intf_write_error_count = 0  # number of write errors for all nodes
 
-        extKwargs = {}
-        for helper in search_modules(suffix='helper'):
-            extKwargs[helper.__name__] = helper.create(self, *args, **kwargs)
-        extKwargs.update(kwargs)
-
         self.nodes = Plugins(suffix='node')
-        self.discover_nodes(*args, **extKwargs)
+        self.discover_nodes(*args, **kwargs)
 
         self.data_loggers = []
         for node in self.nodes:
             node.frequency = self.get_value_16(node, READ_FREQUENCY)
             if not node.frequency:
                 raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
-                   # read NODE_API_LEVEL and verification value:
+            # read NODE_API_LEVEL and verification value:
             rev_val = self.get_value_16(node, READ_REVISION_CODE)
             if not rev_val:
                 raise RuntimeError('Unable to read revision code from node {0}'.format(node.index+1))
@@ -136,11 +131,6 @@ class RHInterface(BaseHardwareInterface):
                     self.data_loggers.append(None)
             else:
                 logger.info("Node {0}: API_level={1}".format(node.index+1, node.api_level))
-
-        sensorKwargs = {}
-        sensorKwargs.update(extKwargs)
-        del sensorKwargs['config']
-        self.discover_sensors(config=kwargs['config'].SENSORS, *args, **sensorKwargs)
 
 
     def discover_nodes(self, *args, **kwargs):
