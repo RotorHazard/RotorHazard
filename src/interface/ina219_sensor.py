@@ -1,12 +1,11 @@
 import logging
 from sensor import I2CSensor, Reading
-import ina219
 
 logger = logging.getLogger(__name__)
 
 
 class INA219Sensor(I2CSensor):
-    def __init__(self, name, addr, i2c_helper, config={}):
+    def __init__(self, name, addr, ina219, i2c_helper, config={}):
         I2CSensor.__init__(self, name, i2c_helper)
         max_current = float(config['max_current']) if 'max_current' in config else None
         self.device = ina219.INA219(0.1, address=addr, max_expected_amps=max_current)
@@ -36,8 +35,10 @@ class INA219Sensor(I2CSensor):
 
 def discover(config, *args, **kwargs):
     if 'i2c_helper' not in kwargs:
+        logger.debug("I2C bus not present")
         return []
 
+    import ina219
     sensors = []
     i2c_helper = kwargs['i2c_helper']
     supported_ina219_addrs = [0x40, 0x41, 0x44, 0x45]
@@ -46,7 +47,7 @@ def discover(config, *args, **kwargs):
         sensor_config = config.get(url, {})
         name = sensor_config.get('name', url)
         try:
-            sensors.append(INA219Sensor(name, addr, i2c_helper, sensor_config))
+            sensors.append(INA219Sensor(name, addr, ina219, i2c_helper, sensor_config))
             logger.info("INA219 found at address {0}".format(addr))
         except IOError:
             logger.info("No INA219 at address {0}".format(addr))

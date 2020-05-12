@@ -42,7 +42,7 @@ class MockInterface(BaseHardwareInterface):
                 f = None
             self.data.append(f)
 
-        self.discover_sensors()
+        self.discover_sensors(*args, **kwargs)
 
 
     #
