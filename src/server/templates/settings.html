@@ -25,7 +25,8 @@
 			'team_racing_mode',
 			'led_effects',
 			'led_effect_setup',
-			'cluster_status'
+			'cluster_status',
+			'vrx_locks',
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -335,6 +336,19 @@
 				preset: $(this).data('preset')
 			};
 			socket.emit('set_frequency_preset', data);
+		});
+
+		socket.on('vrx_locks', function (msg) {
+			if (msg.connection) {
+				if (msg.locks) {
+					$('#vrx-warning').html(__("WARNING: Locked video receivers detected.") + " " + __("Frequency changes may cause pilots to lose video on reconnect."));
+				} else {
+					$('#vrx-warning').html(__("All connected video receivers are clear."));
+				}
+			} else {
+				$('#vrx-warning').empty();
+				// $('#vrx-warning').html(__('Unable to connect to VRx control system.") + " " + __("Frequency changes may cause pilots to lose video on reconnect."));
+			}
 		});
 
 		/* Nodes */
@@ -1498,6 +1512,7 @@
 			{% endfor %}
 		</div>
 		<div class="control-set" id="imd_rating_label"></div>
+		<div class="control-set" id="vrx-warning"></div>
 	</div>
 </div>
 

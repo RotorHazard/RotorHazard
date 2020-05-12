@@ -128,7 +128,7 @@ class VRxController:
         # self.request_static_status()
         # self.request_variable_status()
         # self._node_broadcast.turn_off_osd()
-        
+
         for i in range(8):
             self.get_node_lock_status(i)
 
@@ -418,6 +418,10 @@ class VRxController:
     #     self._lock_status = [node.node_lock_status for node in self._nodes]
     #     return self._lock_status
 
+    def get_all_lock_status(self):
+        for i in range(8):
+            self.get_node_lock_status(i)
+
     def get_node_lock_status(self, node_number):
         node = self._nodes[node_number]
         node.get_node_lock_status()
@@ -557,10 +561,15 @@ class VRxController:
         if extracted_data is not None:
                 rx_data.update(extracted_data)
                 self.rx_data[rx_name] = rx_data
-            
-       
+
+
         self.logger.info("Receiver Reply %s => %s"%(rx_name, payload.strip()))
         self.logger.info("Receiver Data Updated: %s"%self.rx_data[rx_name])
+
+        self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
+            'rx_name': rx_name,
+            })
+
 
 CRED = '\033[91m'
 CEND = '\033[0m'
