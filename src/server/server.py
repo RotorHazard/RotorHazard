@@ -992,6 +992,8 @@ def on_load_data(data):
             emit_callouts()
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
+        elif load_type == 'vrx_locks':
+            emit_vrx_locks(nobroadcast=True)
         elif load_type == 'cluster_status':
             CLUSTER.emitStatus()
 
@@ -2695,35 +2697,6 @@ def on_LED_brightness(data):
         'level': brightness,
         })
 
-@SOCKET_IO.on('get_VRX_locks')
-def on_get_VRX_locks():
-    '''get lock status of any connected VRx'''
-    logger.info(vrx_controller)
-    if vrx_controller != False:
-        # if vrx_controller.has_connection:
-            logger.info(vrx_controller.rx_data)
-            for data in vrx_controller.rx_data:
-                logger.info(data)
-                logger.info(data._node_frequency)
-                logger.info(data._node_camera_type)
-                logger.info(data._node_lock_status)
-                logger.info(data.node_lock_status())
-                logger.info(data.node_lock_status())
-
-        # else:
-            # no valid VRx broker
-
-        #    if ('nobroadcast' in params):
-        #        emit('race_status', emit_payload)
-        #    else:
-        #        SOCKET_IO.emit('race_status', emit_payload)
-
-@SOCKET_IO.on('VRX_status')
-def on_VRX_status(data):
-    '''Get VRX status'''
-    pass
-
-
 @SOCKET_IO.on('set_option')
 def on_set_option(data):
     Options.set(data['option'], data['value'])
@@ -3953,6 +3926,32 @@ def emit_imdtabler_rating():
         }
     SOCKET_IO.emit('imdtabler_rating', emit_payload)
 
+def emit_vrx_locks(*args, **params):
+    ''' emit if any VRx have lock '''
+    if vrx_controller != False:
+        # if vrx_controller.has_connection:
+            any_locks = False
+            for data in vrx_controller.rx_data:
+                lock = vrx_controller.rx_data[data]['lock_status']
+                if lock == 'L':
+                    any_locks = True
+                    break
+
+            emit_payload = {
+                'connection': True,
+                'locks': any_locks
+            }
+    else:
+        # no valid VRx broker
+        emit_payload = {
+            'connection': False,
+            'locks': any_locks
+        }
+
+    if ('nobroadcast' in params):
+        emit('vrx_locks', emit_payload)
+    else:
+        SOCKET_IO.emit('vrx_locks', emit_payload)
 
 #
 # Program Functions
@@ -3988,6 +3987,12 @@ def heartbeat_thread_function():
             # emit cluster status less often:
             if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == (2*HEARTBEAT_DATA_RATE_FACTOR):
                 CLUSTER.emitStatus()
+
+            # collect vrx lock status
+            if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
+                if vrx_controller:
+                    # if vrx_controller.has_connection
+                    vrx_controller.get_all_lock_status()
 
             # emit environment data less often:
             if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
@@ -5003,6 +5008,8 @@ def initVRxController():
 
 vrx_controller = initVRxController()
 
+if vrx_controller:
+    Events.on(Evt.VRX_DATA_RECEIVE, 'VRx', emit_vrx_locks, {}, 200, True)
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):

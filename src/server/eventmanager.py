@@ -127,9 +127,11 @@ class Evt:
     # Results cache
     CACHE_CLEAR = 'cacheClear'
     CACHE_READY = 'cacheReady'
-    # Other
+    # LED
     LED_EFFECT_SET = 'LedEffectSet'
     LED_BRIGHTNESS_SET = 'LedBrightnessSet'
     LED_MANUAL = 'LedManual'
+    # VRX Controller
+    VRX_DATA_RECEIVE = 'VrxDataRecieve'
 
 
