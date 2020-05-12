@@ -31,6 +31,7 @@ LED['INVERTED_PANEL_ROWS'] = False
 # Video Receiver Configuration
 VRX_SERVER['HOST']    = 'localhost'     # MQTT broker IP Address
 VRX_SERVER['ENABLED'] = False
+VRX_SERVER['OSD_LAP_HEADER'] = 'L'
 
 # other default configurations
 GENERAL['HTTP_PORT'] = 5000

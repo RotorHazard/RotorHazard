@@ -4967,9 +4967,9 @@ def initVRxController():
         return False
 
     # If got through import success, create the VRxController object
-    host = Config.VRX_SERVER["HOST"]
+    print("Using config:", vrx_config)
     vrx_controller = VRxController(Events,
-                                   host,
+                                   vrx_config,
                                    [5740,
                                     5760,
                                     5780,
