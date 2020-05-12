@@ -2695,6 +2695,35 @@ def on_LED_brightness(data):
         'level': brightness,
         })
 
+@SOCKET_IO.on('get_VRX_locks')
+def on_get_VRX_locks():
+    '''get lock status of any connected VRx'''
+    logger.info(vrx_controller)
+    if vrx_controller != False:
+        # if vrx_controller.has_connection:
+            logger.info(vrx_controller.rx_data)
+            for data in vrx_controller.rx_data:
+                logger.info(data)
+                logger.info(data._node_frequency)
+                logger.info(data._node_camera_type)
+                logger.info(data._node_lock_status)
+                logger.info(data.node_lock_status())
+                logger.info(data.node_lock_status())
+
+        # else:
+            # no valid VRx broker
+
+        #    if ('nobroadcast' in params):
+        #        emit('race_status', emit_payload)
+        #    else:
+        #        SOCKET_IO.emit('race_status', emit_payload)
+
+@SOCKET_IO.on('VRX_status')
+def on_VRX_status(data):
+    '''Get VRX status'''
+    pass
+
+
 @SOCKET_IO.on('set_option')
 def on_set_option(data):
     Options.set(data['option'], data['value'])
@@ -4968,18 +4997,11 @@ def initVRxController():
 
     # If got through import success, create the VRxController object
     host = Config.VRX_SERVER["HOST"]
-    vrx_controller = VRxController(Events,
-                                   host,
-                                   [5740,
-                                    5760,
-                                    5780,
-                                    5800,
-                                    5820,
-                                    5840,
-                                    5860,
-                                    5880,])
+    return VRxController(Events,
+       host,
+       [node.frequency for node in INTERFACE.nodes])
 
-initVRxController()
+vrx_controller = initVRxController()
 
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
