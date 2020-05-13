@@ -579,6 +579,16 @@ def database():
         race_format=Database.RaceFormat,
         globalSettings=Database.GlobalSettings)
 
+@APP.route('/vrxstatus')
+@requires_auth
+def vrxstatus():
+    '''Route to database page.'''
+    if vrx_controller:
+        return render_template('vrxstatus.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+            vrxstatus=vrx_controller.rx_data)
+    else:
+        return False
+
 @APP.route('/docs')
 def viewDocs():
     '''Route to doc viewer.'''
@@ -3962,9 +3972,9 @@ def emit_vrx_list(*args, **params):
     ''' get list of connected VRx devices '''
     if vrx_controller != False:
         # if vrx_controller.has_connection:
-            vrx_list = []
+            vrx_list = {}
             for vrx in vrx_controller.rx_data:
-                vrx_list.append(vrx)
+                vrx_list[vrx] = vrx_controller.rx_data[vrx]
 
             emit_payload = {
                 'vrx': vrx_list,
@@ -3975,6 +3985,7 @@ def emit_vrx_list(*args, **params):
                 emit('vrx_list', emit_payload)
             else:
                 SOCKET_IO.emit('vrx_list', emit_payload)
+
 #
 # Program Functions
 #
