@@ -3936,7 +3936,6 @@ def emit_vrx_locks(*args, **params):
     if vrx_controller != False:
         # if vrx_controller.has_connection:
             any_locks = False
-<<<<<<< HEAD
             rx_id = __("Receivers Empty")
             rx_data = vrx_controller.rx_data
 
@@ -3957,14 +3956,6 @@ def emit_vrx_locks(*args, **params):
             locked_nodes = set(v.get("node_number",'-1') 
                                  for k,v in rx_data.items() 
                                  if k in lock_rx_list)
-=======
-            for vrx in vrx_controller.rx_data:
-                if 'lock_status' in vrx_controller.rx_data[vrx]:
-                    lock = vrx_controller.rx_data[vrx]['lock_status']
-                    if lock == 'L':
-                        any_locks = True
-                        break
->>>>>>> a5d9a40608ef4ecb124ece5448f1b3e85d7e9c47
 
             emit_payload = {
                 'connection': True,
