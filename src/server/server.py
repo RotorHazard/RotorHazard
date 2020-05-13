@@ -3940,7 +3940,7 @@ def emit_vrx_locks(*args, **params):
             rx_data = vrx_controller.rx_data
 
             def is_locked_and_connected(v):
-                return v["connection"] == "1" and v["lock_status"] == 'L'
+                return v["connection"] == "1" and v.get("lock_status",None) == 'L'
             
             lock_rx_list = [k  
                             for k,v in rx_data.items() 
