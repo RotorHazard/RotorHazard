@@ -112,12 +112,11 @@ class VRxController:
 
         for i in range(8):
             self.get_node_lock_status(i)
+            gevent.spawn(self.set_node_frequency, i, self._nodes[i]._node_frequency)
 
         # Update the DB with receivers that exist and their status
         # (Because the pi was already running, they should all be connected to the broker)
         # Even if the server.py is restarted, the broker continues to run:)
-
-        # Set the receiver's frequencies based on band/channel
 
 
     def do_heat_set(self, arg):
