@@ -127,6 +127,8 @@ class Evt:
     # Results cache
     CACHE_CLEAR = 'cacheClear'
     CACHE_READY = 'cacheReady'
+    # CLUSTER
+    CLUSTER_JOIN = 'clusterJoin'
     # LED
     LED_EFFECT_SET = 'LedEffectSet'
     LED_BRIGHTNESS_SET = 'LedBrightnessSet'

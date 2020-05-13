@@ -27,22 +27,6 @@ VRxALL = -1
 
 class VRxController:
 
-    """Every video receiver has the following methods and data attributes"""
-    controllers = {}
-    '''
-    list of vcs
-    [address] = {
-        (status)
-    }
-    '''
-
-    primary = []
-    '''
-    maps specific VRx to nodes (primary assignments)
-    [address, address, None, ... ]
-    '''
-
-
     def __init__(self, eventmanager, vrx_config, node_frequencies):
         self.Events = eventmanager
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -71,7 +55,6 @@ class VRxController:
         self._add_subscribe_callbacks()
         self._mqttc.loop_start()
         num_nodes = len(node_frequencies)
-
 
         self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n]) for n in range(8)]
         self._node_broadcast = VRxBroadcastNode(self._mqttc, self._cv)
@@ -117,8 +100,6 @@ class VRxController:
 
         return saved_config
 
-        
-
     def do_startup(self,arg):
         self.logger.info("VRxC Starting up")
 
@@ -130,13 +111,11 @@ class VRxController:
 
         for i in range(8):
             self.get_node_lock_status(i)
-            self.set_node_frequency(i, self._nodes[i].node_frequency)
+            gevent.spawn(self.set_node_frequency, i, self._nodes[i]._node_frequency)
 
         # Update the DB with receivers that exist and their status
         # (Because the pi was already running, they should all be connected to the broker)
         # Even if the server.py is restarted, the broker continues to run:)
-
-        # Set the receiver's frequencies based on band/channel
 
 
     def do_heat_set(self, arg):
@@ -401,7 +380,6 @@ class VRxController:
     def set_node_frequency(self, node_number, frequency):
         fmsg = __("Frequency Change: ") + str(frequency)
         node = self._nodes[node_number]
-        node.set_message_direct(fmsg )
         node.set_node_frequency(frequency)
 
     def get_node_frequency(self, node_number, frequency):
@@ -654,6 +632,18 @@ class VRxNode(BaseVRxNode):
         raise NotImplementedError
 
     def set_node_frequency(self, frequency):
+        FREQUENCY_TIMEOUT = 10
+
+        time_now = monotonic()
+        time_expires = time_now + FREQUENCY_TIMEOUT
+        for i in range(10, 0, -1):
+            self.set_message_direct(__("!!! Frequency changing to {0} in {1}s !!!").format(frequency, i))
+            gevent.sleep(1)
+
+        self.set_node_frequency_direct(frequency)
+        self.set_message_direct(__(""))
+
+    def set_node_frequency_direct(self, frequency):
         """Sets all receivers at this node number to the new frequency"""
         if frequency != RHUtils.FREQUENCY_ID_NONE:
             topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self._node_number
@@ -740,7 +730,7 @@ class VRxBroadcastNode(BaseVRxNode):
         cmd = self._cv.hide_osd(self._cv_broadcast_id)
         self._mqttc.publish(topic, cmd)
         return cmd
-    
+
     def reset_lock(self):
         """ Resets lock of all receivers"""
         topic = self._broadcast_cmd_topic
