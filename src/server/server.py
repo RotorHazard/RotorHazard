@@ -4025,7 +4025,7 @@ def heartbeat_thread_function():
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
                 if vrx_controller:
                     # if vrx_controller.has_connection
-                    vrx_controller.get_all_lock_status()
+                    vrx_controller.get_node_lock_status()
 
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 4:
                 # emit display status with offset

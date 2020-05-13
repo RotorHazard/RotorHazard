@@ -394,13 +394,13 @@ class VRxController:
     #     self._lock_status = [node.node_lock_status for node in self._nodes]
     #     return self._lock_status
 
-    def get_all_lock_status(self):
-        for i in range(8):
-            self.get_node_lock_status(i)
-
-    def get_node_lock_status(self, node_number):
-        node = self._nodes[node_number]
-        node.get_node_lock_status()
+    def get_node_lock_status(self, node_number=VRxALL):
+        if node_number == VRxALL:
+            for node in self._nodes:
+                node.get_node_lock_status()
+        else:
+            node = self._nodes[node_number]
+            node.get_node_lock_status()
 
         #return self._nodes[node_number].node_lock_status
 
