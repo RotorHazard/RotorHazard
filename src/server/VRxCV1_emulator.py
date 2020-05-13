@@ -13,6 +13,12 @@ from mqtt_topics import mqtt_publish_topics as mqtt_sub_topics
 from mqtt_topics import mqtt_subscribe_topics as mqtt_pub_topics
 
 from paho.mqtt.client import topic_matches_sub
+from paho.mqtt.client import CONNACK_ACCEPTED
+from paho.mqtt.client import CONNACK_REFUSED_PROTOCOL_VERSION
+from paho.mqtt.client import CONNACK_REFUSED_IDENTIFIER_REJECTED
+from paho.mqtt.client import CONNACK_REFUSED_SERVER_UNAVAILABLE
+from paho.mqtt.client import CONNACK_REFUSED_BAD_USERNAME_PASSWORD
+from paho.mqtt.client import CONNACK_REFUSED_NOT_AUTHORIZED
 
 
 
@@ -30,6 +36,8 @@ class MQTT_Client:
         #TODO I don't think the node number should be in here.
         # subscribed topics should be supplied preformatted using a helper written here
 
+        self.logger = logging.getLogger(self.__class__.__name__)
+
         if 0 <= node_number <= 7:
             self._node_number = node_number
         else:
@@ -43,7 +51,31 @@ class MQTT_Client:
 
         self._bind_message_callbacks()
         
-        self.initialize()
+        self.initialize_mqtt() 
+
+        
+
+    # call this once
+    def initialize_mqtt(self):
+        self._client.on_connect = self.on_connect
+        self._client.on_disconnect = self.on_disconnect
+        # self._client.on_subscribe = self.on_subscribe
+
+        self._connected_mqtt = False
+        while not self._connected_mqtt:
+            try:
+                self._client.connect(self._broker_ip)
+                self._subscribe_start()
+
+            except socket.gaierror as e:
+                self.logger.error("No device at '{0}'".format(self._broker_ip))
+                raise e
+            except socket.error as e:
+                retry_time = 5
+                self.logger.error("MQTT broker not alive at '{0}'. Waiting {1} seconds...".format(self._broker_ip, retry_time))  
+                time.sleep(retry_time)                
+            else:
+                self._connected_mqtt = True
 
         self.loop_start = self._client.loop_start
         self.loop_forever = self._client.loop_forever
@@ -51,30 +83,15 @@ class MQTT_Client:
         self.message_callback_remove = self._client.message_callback_remove
         self.subscribe = self._client.subscribe
 
-    def initialize(self):
-        self._client.on_connect = self.on_connect
-        self._client.on_disconnect = self.on_disconnect
-        # self._client.on_subscribe = self.on_subscribe
-
-        try:
-            self._client.connect(self._broker_ip)
-            self._subscribe_start()
-
-        except socket.gaierror as e:
-            print("No device at '{0}'".format(self._broker_ip))
-            raise e
-        except socket.error as e:
-            print("MQTT broker not alive at '{0}'".format(self._broker_ip))  
-            raise e
      
 
     def on_message(self,client, userdata, message):
-        print("Warning: Uncaptured message topic received: \n\t*Topic '%s'\n\t*Message:'%s'"%(message.topic,message.payload.strip()))
-        print("\tIf this happens, make sure to bind the message to a function if subscribed to it.")
+        self.logger.warning("Warning: Uncaptured message topic received: \n\t*Topic '%s'\n\t*Message:'%s'"%(message.topic,message.payload.strip()))
+        self.logger.warning("\tIf this happens, make sure to bind the message to a function if subscribed to it.")
 
         # client.topic_matches_sub("cv/+","cv/a")
         if topic_matches_sub(self._subscribed_topics["receiver_response_targeted"] , message.topic):
-            print("on_message TODO sloppy fallback. Captured direct response from ", message.topic.split('/')[-1])
+            self.logger.info("on_message TODO sloppy fallback. Captured direct response from ", message.topic.split('/')[-1])
             #try parsing
 
 
@@ -85,7 +102,7 @@ class MQTT_Client:
 
     def on_log(self, mqttc, obj, level, string):
         if self.debug == True:
-            print("~MQTT_LOG: %s %s %s"%(obj,level,string))
+            self.logger.debug("%s %s %s"%(obj,level,string))
 
     def _set_will(self):
         self._last_will = {
@@ -143,7 +160,7 @@ class MQTT_Client:
                     #
                     # For now, use on_message by comparing a list of topics and performing actions
                     # or see _add_message_callbacks in VRxCV_emulator
-                    print("\tSubscribing to %s"% rec_topic)
+                    self.logger.info("Subscribing to %s"% rec_topic)
                     self._subscribed_topics[topic_key] = rec_topic
 
 
@@ -151,19 +168,22 @@ class MQTT_Client:
 
     def on_connect(self, client, userdata, flags, rc, properties=None):
         if rc != 0:
-            raise("Connection error %i to broker"%rc)
+            raise("Connection error '%s' to broker"%self._get_rc_reason(rc))
         else:
-            self.logger.info("\tConnected to broker with flags"+str(flags)+"result code "\
-                   +str(rc))
-
+            self.logger.info("Connected to mqtt broker with flags"+str(flags)+": result code "\
+                   +self._get_rc_reason(rc))
           
         topic = self._last_will["topic"]
         payload = 1
         self.publish(topic,payload)
 
+        
+
     def on_disconnect(self, client, userdata, rc):
-        # print("Disconnected!")
-        pass
+        rc_name = self._get_rc_reason(rc)
+
+        self.logger.warning("Disconnected from broker under result code %s"%rc_name)
+        self._connected_mqtt = False
 
     def publish(self, topic, payload=None, qos=1, retain=False, properties=None):
         self._client.publish( topic, payload, qos, retain, properties)
@@ -177,6 +197,16 @@ class MQTT_Client:
         self._client.disconnect()
         self._client.loop_stop()
 
+    def _get_rc_reason(self, rc_code):
+        rc_dict = {
+            CONNACK_ACCEPTED: "CONNACK_ACCEPTED",
+            CONNACK_REFUSED_PROTOCOL_VERSION:"CONNACK_REFUSED_PROTOCOL_VERSION",
+            CONNACK_REFUSED_IDENTIFIER_REJECTED:"CONNACK_REFUSED_IDENTIFIER_REJECTED",
+            CONNACK_REFUSED_SERVER_UNAVAILABLE:"CONNACK_REFUSED_SERVER_UNAVAILABLE",
+            CONNACK_REFUSED_BAD_USERNAME_PASSWORD:"CONNACK_REFUSED_BAD_USERNAME_PASSWORD",
+            CONNACK_REFUSED_NOT_AUTHORIZED:"CONNACK_REFUSED_NOT_AUTHORIZED",
+        }
+        return rc_dict.get(int(rc_code),"Unknown MQTT RC Code")
 
 
 """
@@ -237,7 +267,7 @@ class VRxCV_emulator:
             else:
                 raise TypeError("rec_topic not of correct type: %s"%rec_topic)
                     
-            print("\tBinding callback \n\t\t*Function: 'self.%s'\n\t\t*Topic: '%s'"%(callback.__name__,rec_topic))
+            self.logger.debug("\tBinding callback \n\t\t*Function: 'self.%s'\n\t\t*Topic: '%s'"%(callback.__name__,rec_topic))
             self._mqttc.message_callback_add(rec_topic, 
                                              callback)
         
