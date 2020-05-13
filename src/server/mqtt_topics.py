@@ -65,7 +65,7 @@ receiver_connection_topic = ("rxcn/%s", "+")
 receiver_status_static_topic = ("status_static/%s", "+")
 
 # Request variable status
-receiver_status_variable_fmt = ("status_variable/%s", "+")
+receiver_status_variable_topic = ("status_variable/%s", "+")
 
 mqtt_publish_topics = {
     "cv1" :
@@ -89,7 +89,9 @@ mqtt_subscribe_topics = {
             "receiver_response_all":receiver_response_all_topic,
             "receiver_response_node":receiver_response_node_topic,
             "receiver_connection":receiver_connection_topic,
-            "receiver_response_targeted":receiver_response_targeted_topic
+            "receiver_response_targeted":receiver_response_targeted_topic,
+            "receiver_static_status":receiver_status_static_topic,
+            "receiver_variable_status":receiver_status_static_topic
         }
 }
 
