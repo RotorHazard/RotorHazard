@@ -18,48 +18,41 @@
 		});
 
 		socket.on('vrx_list', function (msg) {
-			$('#vrx-table').empty;
-			var table = $('<table>');
+			$('#vrx-items').empty;
 
-			var thead = $('<thead>');
-			var header_row = $('<tr>');
-			var tbody = $('<tbody>');
-
-			var first_obj = true;
 			for (var i in msg.vrx) {
-				var body_row = $('<tr>');
+				var item = $('<li>');
+				var properties = $('<dl>')
 
-				if (first_obj) {
-					header_row.append('<th>id</th>');
-				}
-				body_row.append('<td>' + i + '</td>');
+				item.append('<dt>id</dt>');
+				item.append('<dd>' + i + '</dd>');
 
 				$.each(msg.vrx[i], function(key, val){
-					if (first_obj) {
-						header_row.append('<th>' + key + '</th>');
-					}
-					body_row.append('<td>' + val + '</td>');
+					item.append('<dt>' + key + '</dt>');
+					item.append('<dd>' + val + '</dd>');
 				})
-
-				tbody.append(body_row);
+				$('#vrx-items').append(item);
 			}
-
-			thead.append(header_row);
-			table.append(thead);
-			table.append(tbody);
-			$('#vrx-table').append(table);
 		});
 	});
 </script>
 <style>
-table {
-	font-size: 0.75rem;
+#vrx-items {
+	list-style: none;
+	padding: 0;
+	display: flex;
+}
+
+#vrx-items>li {
+	margin: 0.5em;
+	padding: 1em;
+	border: solid 1px #eee;
 }
 </style>
 {% endblock %} {% block content %}
 <main class="page-database">
 <h1>{{ __('VRx Status') }}</h1>
-<div id="vrx-table"></div>
+<ul id="vrx-items"></ul>
 
 </main>
 {% endblock %}
