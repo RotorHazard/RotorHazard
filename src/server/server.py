@@ -935,6 +935,8 @@ def on_join_cluster():
     Options.set("MinLapBehavior", "0")
     logger.info('Joined cluster')
 
+    Events.trigger(Evt.CLUSTER_JOIN)
+
 # RotorHazard events
 
 @SOCKET_IO.on('load_data')
@@ -3948,7 +3950,7 @@ def emit_vrx_locks(*args, **params):
         # no valid VRx broker
         emit_payload = {
             'connection': False,
-            'locks': any_locks
+            'locks': False
         }
 
     if ('nobroadcast' in params):
@@ -4821,13 +4823,13 @@ def initVRxController():
                     logger.error(e)
                     return False
             else:
-                logger.info('VRxController Disabled by config option')
+                logger.info('VRxController disabled by config option')
                 return False
         except KeyError:
-            logger.error('VRxController config needs "ENABLED" key.')
+            logger.error('VRxController disabled: config needs "ENABLED" key.')
             return False
     except AttributeError:
-        logger.info('VRxController: Disabled because no VRX_SERVER config option')
+        logger.info('VRxController disabled: No VRX_SERVER config option')
         return False
 
     # If got through import success, create the VRxController object
@@ -4835,6 +4837,10 @@ def initVRxController():
     return VRxController(Events,
        vrx_config,
        [node.frequency for node in INTERFACE.nodes])
+
+def killVRxController(*args):
+    logger.info('Killing VRxController')
+    vrx_controller = False
 
 #
 # Program Initialize
@@ -5032,8 +5038,8 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
 # start up VRx Control
 vrx_controller = initVRxController()
 
-#if vrx_controller:
-#    Events.on(Evt.VRX_DATA_RECEIVE, 'VRx', emit_vrx_locks, {}, 200, True)
+if vrx_controller:
+    Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
