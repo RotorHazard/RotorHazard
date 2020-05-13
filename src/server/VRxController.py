@@ -105,8 +105,8 @@ class VRxController:
 
         self._node_broadcast.reset_lock()
         # Request status of all receivers (static and variable)
-        # self.request_static_status()
-        # self.request_variable_status()
+        self.request_static_status()
+        self.request_variable_status()
         # self._node_broadcast.turn_off_osd()
 
         for i in range(8):
@@ -345,15 +345,15 @@ class VRxController:
     ##############
     def request_static_status(self, node_number=VRxALL):
         if node_number == VRxALL:
-            for node in self._nodes:
-                node.request_static_status()
+            node = self._node_broadcast
+            node.request_static_status()
         else:
             self._nodes[node_number].request_static_status()
 
     def request_variable_status(self, node_number=VRxALL):
         if node_number == VRxALL:
-            for node in self._nodes:
-                node.request_variable_status()
+            node = self._node_broadcast
+            node.request_variable_status()
         else:
             self._nodes[node_number].request_variable_status()
 
@@ -471,6 +471,14 @@ class VRxController:
             topic_tuple = topics["receiver_response_targeted"]
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_targeted)
 
+            # Status Static
+            topic_tuple = topics["receiver_static_status"]
+            self._add_subscribe_callback(topic_tuple, self.on_message_status)
+
+            # Status Variable
+            topic_tuple = topics["receiver_variable_status"]
+            self._add_subscribe_callback(topic_tuple, self.on_message_status)
+
 
     def _add_subscribe_callback(self, topic_tuple, callback):
         formatter_name = topic_tuple[1]
@@ -500,7 +508,7 @@ class VRxController:
             self.rx_data[rx_name] = {"connection": connection_status}
 
         if int(connection_status) == 1:
-            self.logger.warning("Receiver %s is not yet configured by the server after a successful connection" % rx_name)
+            self.logger.warning("Device %s is not yet configured by the server after a successful connection. Conducting some config now" % rx_name)
 
             # TODO Do we set the receiver's settings now?
                # MN: Yes.
@@ -510,6 +518,13 @@ class VRxController:
                # race operator's responsibility to do safely
                # or pilot's responsibility to disconnect.
             # We don't want to waste time if they just plugged in the ESP32 though
+
+            # Start by requesting the status of the device that just joined. 
+            # At this point, it could be any MQTT device becaue we haven't filtered by receivers. 
+            # See TODO in on_message_status
+            self.req_status_targeted("variable", rx_name)
+            self.req_status_targeted("static", rx_name)
+            
 
 
     def on_message_resp_all(self, client, userdata, message):
@@ -534,15 +549,65 @@ class VRxController:
         extracted_data = clearview.formatter.extract_data(nt, pattern_response)
         if extracted_data is not None:
                 rx_data.update(extracted_data)
-                self.rx_data[rx_name] = rx_data
-
 
         self.logger.debug("Receiver Reply %s => %s"%(rx_name, payload.strip()))
         self.logger.debug("Receiver Data Updated: %s"%self.rx_data[rx_name])
 
+        #TODO only fire event if the data changed
         self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
             'rx_name': rx_name,
             })
+
+    def on_message_status(self, client, userdata, message):
+
+        #TODO the device replying here may not even be a receiver.
+        # If it isn't a receiver, the logic may change. 
+        # Use the 'dev' key to see if its is a 'rx'
+
+        topic = message.topic
+        status_type,rx_name = topic.split('/')
+        payload = message.payload
+        self.logger.debug("%s data: %s => %s"%(status_type, rx_name, payload))
+
+        try:
+            rx_newdata = json.loads(payload)
+        except ValueError:
+            self.logger.error("Unable to json.load on_message_status payload")
+            return
+        rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"})
+        rx_data.update(rx_newdata)
+
+        #TODO only fire event if the data changed
+        self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
+            'rx_name': rx_name,
+            })
+
+
+    def req_status_targeted(self, mode = "variable",serial_num = None):
+        """Ask a targeted receiver for its status. 
+        Inputs:
+            *mode: ["variable","static"]
+            *serial_num: The devices's unique serial number to target it
+        """
+
+        if mode not in ["variable", "static"]:
+            self.logger.error("Incorrect mode in req_status_targeted")
+            return None
+        if serial_num not in self.rx_data.keys():
+            self.logger.error("RX %s does not exist", serial_num)
+            return None
+
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_targeted_topic"][0]%serial_num
+        if mode == "variable":
+            cmd = ESP_COMMANDS["Request Static Status"]
+        elif mode == "static":
+            cmd = ESP_COMMANDS["Request Variable Status"]
+        else:
+            raise Exception("Error checking mode has failed")
+        self._mqttc.publish(topic,cmd)
+        
+
+        
 
 
 CRED = '\033[91m'
@@ -716,6 +781,7 @@ class VRxBroadcastNode(BaseVRxNode):
         BaseVRxNode.__init__(self, mqtt_client, cv)
         self._cv_broadcast_id = clearview.comspecs.clearview_specs['bc_id']
         self._broadcast_cmd_topic = mqtt_publish_topics["cv1"]["receiver_command_all"][0]
+        self._rx_cmd_esp_all_topic = mqtt_publish_topics["cv1"]["receiver_command_esp_all"][0]
 
     def set_message_direct(self, message):
         """Send a raw message to all OSD's"""
@@ -737,6 +803,17 @@ class VRxBroadcastNode(BaseVRxNode):
         cmd = self._cv.reset_lock(self._cv_broadcast_id)
         self._mqttc.publish(topic, cmd)
         return cmd
+    
+    def request_static_status(self):
+        topic = self._rx_cmd_esp_all_topic
+        cmd = ESP_COMMANDS["Request Static Status"]
+        self._mqttc.publish(topic,cmd)
+
+    def request_variable_status(self):
+        topic = self._rx_cmd_esp_all_topic
+        cmd = ESP_COMMANDS["Request Variable Status"]
+        self._mqttc.publish(topic,cmd)
+
 
 class ClearViewValInterpret:
     """Holds constants of the protocols"""
