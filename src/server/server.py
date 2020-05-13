@@ -26,6 +26,7 @@ logger.info('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
 import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
+GEVENT_SUPPORT = True   # For Python Debugger
 
 import io
 import os
@@ -3931,21 +3932,37 @@ def emit_vrx_locks(*args, **params):
     if vrx_controller != False:
         # if vrx_controller.has_connection:
             any_locks = False
-            for data in vrx_controller.rx_data:
-                lock = vrx_controller.rx_data[data]['lock_status']
-                if lock == 'L':
-                    any_locks = True
-                    break
+            rx_id = __("Receivers Empty")
+            rx_data = vrx_controller.rx_data
+
+            def is_locked_and_connected(v):
+                return v["connection"] == "1" and v["lock_status"] == 'L'
+            
+            lock_rx_list = [k  
+                            for k,v in rx_data.items() 
+                            if is_locked_and_connected(v)]
+
+            # Returns true if there are any connected and locked receivers
+            any_locks = bool(lock_rx_list) 
+
+            # Return which node numbers have receivers locked.
+            # If the receiver hasn't reported node_number,
+            # the set will include None. If the set includes None,
+            # best warn heavily before allowing settings change.
+            locked_nodes = set(v.get("node_number",'-1') 
+                                 for k,v in rx_data.items() 
+                                 if k in lock_rx_list)
 
             emit_payload = {
                 'connection': True,
-                'locks': any_locks
+                'locks': any_locks,
+                'locked_nodes': json.dumps(list(locked_nodes))
             }
     else:
         # no valid VRx broker
         emit_payload = {
             'connection': False,
-            'locks': any_locks
+            'locks': False
         }
 
     if ('nobroadcast' in params):

@@ -108,7 +108,6 @@ class VRxController:
         config_osd_lap_header = saved_config["OSD_LAP_HEADER"]
 
         if len(config_osd_lap_header) == 1:
-            print("SINGLE CHAR")
             if config_osd_lap_header == cv_csum:
                 self.logger.error("Cannot use reserved character '%s' in lap header"%cv_csum)
                 saved_config['OSD_LAP_HEADER'] = default_config['OSD_LAP_HEADER']
@@ -131,6 +130,7 @@ class VRxController:
 
         for i in range(8):
             self.get_node_lock_status(i)
+            self.set_node_frequency(i, self._nodes[i].node_frequency)
 
         # Update the DB with receivers that exist and their status
         # (Because the pi was already running, they should all be connected to the broker)
@@ -399,9 +399,7 @@ class VRxController:
             self._nodes[node_number].node_frequency = f
 
     def set_node_frequency(self, node_number, frequency):
-        print("node num", node_number)
-        fmsg = "Frequency Change: " + str(frequency)
-        print("node_f", fmsg)
+        fmsg = __("Frequency Change: ") + str(frequency)
         node = self._nodes[node_number]
         node.set_message_direct(fmsg )
         node.set_node_frequency(frequency)
@@ -550,11 +548,9 @@ class VRxController:
         topic = message.topic
         rx_name = topic.split('/')[-1]
         payload = message.payload
-        try:
-            rx_data = self.rx_data[rx_name]
-        except KeyError:
-            self.rx_data[rx_name] = {"connection": "1"}
-            rx_data = self.rx_data[rx_name]
+
+        # Set connection to true if it doesn't exist yet
+        rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"})
 
         nt, pattern_response = clearview.formatter.match_response(payload)
         extracted_data = clearview.formatter.extract_data(nt, pattern_response)
@@ -563,8 +559,8 @@ class VRxController:
                 self.rx_data[rx_name] = rx_data
 
 
-        self.logger.info("Receiver Reply %s => %s"%(rx_name, payload.strip()))
-        self.logger.info("Receiver Data Updated: %s"%self.rx_data[rx_name])
+        self.logger.debug("Receiver Reply %s => %s"%(rx_name, payload.strip()))
+        self.logger.debug("Receiver Data Updated: %s"%self.rx_data[rx_name])
 
         self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
             'rx_name': rx_name,
@@ -692,7 +688,7 @@ class VRxNode(BaseVRxNode):
     def get_node_lock_status(self,):
         topic = mqtt_publish_topics["cv1"]["receiver_request_node_all_topic"][0]%self._node_number
         report_req = self._cv.get_lock_format(self._node_number+1)
-        self._mqttc.publish(topic,report_req[0])
+        self._mqttc.publish(topic,report_req)
         return report_req
 
     def request_static_status(self):
@@ -752,6 +748,13 @@ class VRxBroadcastNode(BaseVRxNode):
         self._mqttc.publish(topic, cmd)
         return cmd
 
+class ClearViewValInterpret:
+    """Holds constants of the protocols"""
+    def __init__(self):
+        self.CONNECTED = '1'
+        self.DISCONNECTED = '0'
+        self.LOCKED = 'L'
+        self.UNLOCKED = 'U'
 
 class packet_formatter:
     def __init__(self):
