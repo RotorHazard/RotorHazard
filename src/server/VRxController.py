@@ -76,9 +76,9 @@ class VRxController:
         self.Events.on(Evt.OPTION_SET, 'VRx', self.validate_option)
 
         # Options
-        if Options.get('osd_lapHeader') == False:
+        if Options.get('osd_lapHeader') is False:
             Options.set('osd_lapHeader', 'L')
-        if Options.get('osd_positionHeader') == False:
+        if Options.get('osd_positionHeader') is False:
             Options.set('osd_positionHeader', '')
 
     def validate_config(self, supplied_config):
