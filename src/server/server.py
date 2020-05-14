@@ -1006,8 +1006,6 @@ def on_load_data(data):
             emit_callouts()
         elif load_type == 'imdtabler_page':
             emit_imdtabler_page(nobroadcast=True)
-        elif load_type == 'vrx_locks':
-            emit_vrx_locks(nobroadcast=True)
         elif load_type == 'vrx_list':
             emit_vrx_list(nobroadcast=True)
         elif load_type == 'cluster_status':
@@ -3942,49 +3940,6 @@ def emit_imdtabler_rating():
         }
     SOCKET_IO.emit('imdtabler_rating', emit_payload)
 
-def emit_vrx_locks(*args, **params):
-    ''' emit if any VRx have lock '''
-    if vrx_controller != False:
-        # if vrx_controller.has_connection:
-            any_locks = False
-            rx_id = __("Receivers Empty")
-            rx_data = vrx_controller.rx_data
-
-            def is_locked_and_connected(v):
-                return v["connection"] == "1" and v.get("lock_status",None) == 'L'
-
-            lock_rx_list = [k
-                            for k,v in rx_data.items()
-                            if is_locked_and_connected(v)]
-
-            # Returns true if there are any connected and locked receivers
-            any_locks = bool(lock_rx_list)
-
-            # Return which node numbers have receivers locked.
-            # If the receiver hasn't reported node_number,
-            # the set will include None. If the set includes None,
-            # best warn heavily before allowing settings change.
-            locked_nodes = set(v.get("node_number",'-1')
-                                 for k,v in rx_data.items()
-                                 if k in lock_rx_list)
-
-            emit_payload = {
-                'connection': True,
-                'locks': any_locks,
-                'locked_nodes': json.dumps(list(locked_nodes))
-            }
-    else:
-        # no valid VRx broker
-        emit_payload = {
-            'connection': False,
-            'locks': False
-        }
-
-    if ('nobroadcast' in params):
-        emit('vrx_locks', emit_payload)
-    else:
-        SOCKET_IO.emit('vrx_locks', emit_payload)
-
 def emit_vrx_list(*args, **params):
     ''' get list of connected VRx devices '''
     if vrx_controller != False:
@@ -4057,7 +4012,7 @@ def heartbeat_thread_function():
 
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 4:
                 # emit display status with offset
-                emit_vrx_locks()
+                emit_vrx_list()
 
             # emit environment data less often:
             if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
