@@ -502,6 +502,7 @@ def settings():
     '''Route to settings page.'''
     return render_template('settings.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         led_enabled=led_manager.isEnabled(),
+        vrx_enabled=vrx_controller!=False,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config.GENERAL['configFile'],
         Debug=Config.GENERAL['DEBUG'])
@@ -3951,20 +3952,20 @@ def emit_vrx_locks(*args, **params):
 
             def is_locked_and_connected(v):
                 return v["connection"] == "1" and v.get("lock_status",None) == 'L'
-            
-            lock_rx_list = [k  
-                            for k,v in rx_data.items() 
+
+            lock_rx_list = [k
+                            for k,v in rx_data.items()
                             if is_locked_and_connected(v)]
 
             # Returns true if there are any connected and locked receivers
-            any_locks = bool(lock_rx_list) 
+            any_locks = bool(lock_rx_list)
 
             # Return which node numbers have receivers locked.
             # If the receiver hasn't reported node_number,
             # the set will include None. If the set includes None,
             # best warn heavily before allowing settings change.
-            locked_nodes = set(v.get("node_number",'-1') 
-                                 for k,v in rx_data.items() 
+            locked_nodes = set(v.get("node_number",'-1')
+                                 for k,v in rx_data.items()
                                  if k in lock_rx_list)
 
             emit_payload = {
@@ -3993,14 +3994,25 @@ def emit_vrx_list(*args, **params):
                 vrx_list[vrx] = vrx_controller.rx_data[vrx]
 
             emit_payload = {
-                'vrx': vrx_list,
+                'enabled': True,
+                'connection': True,
+                'vrx': vrx_list
             }
+        # else:
+            # emit_payload = {
+            #     'enabled': True,
+            #     'connection': False,
+            # }
+    else:
+        emit_payload = {
+            'enabled': False,
+            'connection': False
+        }
 
-            logger.info(emit_payload)
-            if ('nobroadcast' in params):
-                emit('vrx_list', emit_payload)
-            else:
-                SOCKET_IO.emit('vrx_list', emit_payload)
+    if ('nobroadcast' in params):
+        emit('vrx_list', emit_payload)
+    else:
+        SOCKET_IO.emit('vrx_list', emit_payload)
 
 #
 # Program Functions

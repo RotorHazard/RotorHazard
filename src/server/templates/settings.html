@@ -26,7 +26,7 @@
 			'led_effects',
 			'led_effect_setup',
 			'cluster_status',
-			'vrx_locks',
+			'vrx_list',
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -338,16 +338,37 @@
 			socket.emit('set_frequency_preset', data);
 		});
 
-		socket.on('vrx_locks', function (msg) {
-			if (msg.connection) {
-				if (msg.locks) {
-					$('#vrx-warning').html(__("WARNING: Locked video receivers detected.") + " " + __("Frequency changes may cause pilots to lose video on reconnect."));
+		socket.on('vrx_list', function (msg) {
+			if (msg.enabled) {
+				// UI
+				if (msg.connection) {
+					$('#vrx-control-setup').empty();
+
+					vrx_header = '<h3>' + __('Connected Receivers') + '</h3>';
+
+					var vrx_list = $('<ul>')
+					for (var vrx in msg.vrx) {
+						if (vrx != 'VRxController') {
+							var item = $('<li>');
+							item.append(vrx)
+							vrx_list.append(item);
+						}
+					}
+
+					$('#vrx-control-setup').append(vrx_header)
+					$('#vrx-control-setup').append(vrx_list)
 				} else {
-					$('#vrx-warning').html(__("All connected video receivers are clear."));
+					$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
+				}
+
+				// Frequency warning
+				if (msg.connection) {
+					$('#vrx-warning').html(__("WARNING: Video receivers connected.") + " " + __("Frequency changes may cause pilots to lose video."));
+				} else {
+					$('#vrx-warning').empty();
 				}
 			} else {
 				$('#vrx-warning').empty();
-				// $('#vrx-warning').html(__('Unable to connect to VRx control system.") + " " + __("Frequency changes may cause pilots to lose video on reconnect."));
 			}
 		});
 
@@ -1983,6 +2004,18 @@
 		</ol>
 
 		<div id="LED-effects"></div>
+	</div>
+</div>
+{% endif %}
+
+<!--VRx Control-->
+{% if vrx_enabled %}
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('VRx Control') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div id="vrx-control-setup"></div>
 	</div>
 </div>
 {% endif %}
