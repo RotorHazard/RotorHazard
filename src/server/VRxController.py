@@ -13,6 +13,7 @@ import Results
 from RHRace import WinCondition
 import RHUtils
 import Database
+import Options
 
 # ClearView API
 # cd ~
@@ -71,6 +72,10 @@ class VRxController:
         self.Events.on(Evt.LAP_DELETE, 'VRx', self.do_lap_recorded)
         self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200, True)
         self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.do_send_message)
+
+        # Options
+        if Options.get('osd_lapHeader') == False:
+            Options.set('osd_lapHeader', '#')
 
     def validate_config(self, supplied_config):
         """Ensure config values are within range and reasonable values"""
@@ -182,6 +187,7 @@ class VRxController:
         '''
 
         RESULTS_TIMEOUT = 5 # maximum time to wait for results to generate
+        LAP_HEADER = Options.get('osd_lapHeader')
 
         if 'race' in args:
             RACE = args['race']
@@ -303,7 +309,7 @@ class VRxController:
             # "Pos:Callsign | L[n]:0:00:00"
 
             if result['laps']:
-                message = str(result['position']) + ':' + result['callsign'][:12] + ' | ' + self.config["OSD_LAP_HEADER"] + str(result['laps']) + ': ' + result['last_lap']
+                message = str(result['position']) + ':' + result['callsign'][:12] + ' | ' + LAP_HEADER + str(result['laps']) + ': ' + result['last_lap']
             else:
                 message = str(result['position']) + ':' + result['callsign'][:12] + ' | HS: ' + result['total_time']
 
@@ -323,7 +329,7 @@ class VRxController:
                 # keep lap info
                 # "Pos:Callsign | L[n]:0:00:00"
                 if last_result['laps']:
-                    message = str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | ' + self.config["OSD_LAP_HEADER"] + str(last_result['laps']) + ': ' + last_result['last_lap']
+                    message = str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | ' + LAP_HEADER + str(last_result['laps']) + ': ' + last_result['last_lap']
                 else:
                     message = str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | HS: ' + last_result['total_time']
 
@@ -519,12 +525,12 @@ class VRxController:
                # or pilot's responsibility to disconnect.
             # We don't want to waste time if they just plugged in the ESP32 though
 
-            # Start by requesting the status of the device that just joined. 
-            # At this point, it could be any MQTT device becaue we haven't filtered by receivers. 
+            # Start by requesting the status of the device that just joined.
+            # At this point, it could be any MQTT device becaue we haven't filtered by receivers.
             # See TODO in on_message_status
             self.req_status_targeted("variable", rx_name)
             self.req_status_targeted("static", rx_name)
-            
+
 
 
     def on_message_resp_all(self, client, userdata, message):
@@ -561,7 +567,7 @@ class VRxController:
     def on_message_status(self, client, userdata, message):
 
         #TODO the device replying here may not even be a receiver.
-        # If it isn't a receiver, the logic may change. 
+        # If it isn't a receiver, the logic may change.
         # Use the 'dev' key to see if its is a 'rx'
 
         topic = message.topic
@@ -584,7 +590,7 @@ class VRxController:
 
 
     def req_status_targeted(self, mode = "variable",serial_num = None):
-        """Ask a targeted receiver for its status. 
+        """Ask a targeted receiver for its status.
         Inputs:
             *mode: ["variable","static"]
             *serial_num: The devices's unique serial number to target it
@@ -605,9 +611,9 @@ class VRxController:
         else:
             raise Exception("Error checking mode has failed")
         self._mqttc.publish(topic,cmd)
-        
 
-        
+
+
 
 
 CRED = '\033[91m'
@@ -803,7 +809,7 @@ class VRxBroadcastNode(BaseVRxNode):
         cmd = self._cv.reset_lock(self._cv_broadcast_id)
         self._mqttc.publish(topic, cmd)
         return cmd
-    
+
     def request_static_status(self):
         topic = self._rx_cmd_esp_all_topic
         cmd = ESP_COMMANDS["Request Static Status"]

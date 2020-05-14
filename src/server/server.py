@@ -4679,6 +4679,7 @@ def recover_database():
             "colorNode_5",
             "colorNode_6",
             "colorNode_7",
+            "osd_lapHeader"
         ]
         carryOver = {}
         for opt in carryoverOpts:
