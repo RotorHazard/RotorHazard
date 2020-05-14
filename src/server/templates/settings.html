@@ -2020,7 +2020,13 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="set_osd_lap_header">{{ __('OSD Lap Header') }}</label>
+					<label for="set_osd_pos_header">{{ __('OSD Position Prefix') }}</label>
+				</div>
+				<input type="text" id="set_osd_pos_header" class="set-option" data-option="osd_positionHeader" value="{{ getOption('osd_positionHeader') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_osd_lap_header">{{ __('OSD Lap Prefix') }}</label>
 				</div>
 				<input type="text" id="set_osd_lap_header" class="set-option" data-option="osd_lapHeader" value="{{ getOption('osd_lapHeader') }}">
 			</li>

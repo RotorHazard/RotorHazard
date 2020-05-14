@@ -73,16 +73,19 @@ class VRxController:
         self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200, True)
         self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.do_send_message)
 
+        self.Events.on(Evt.OPTION_SET, 'VRx', self.validate_option)
+
         # Options
         if Options.get('osd_lapHeader') == False:
-            Options.set('osd_lapHeader', '#')
+            Options.set('osd_lapHeader', 'L')
+        if Options.get('osd_positionHeader') == False:
+            Options.set('osd_positionHeader', '')
 
     def validate_config(self, supplied_config):
         """Ensure config values are within range and reasonable values"""
 
         default_config = {
             'HOST': 'localhost',
-            'OSD_LAP_HEADER' : '#',
         }
         saved_config = default_config
 
@@ -92,18 +95,22 @@ class VRxController:
             else:
                 saved_config[k] = supplied_config[k]
 
-        cv_csum = clearview.comspecs.clearview_specs["message_csum"]
-        config_osd_lap_header = saved_config["OSD_LAP_HEADER"]
-
-        if len(config_osd_lap_header) == 1:
-            if config_osd_lap_header == cv_csum:
-                self.logger.error("Cannot use reserved character '%s' in lap header"%cv_csum)
-                saved_config['OSD_LAP_HEADER'] = default_config['OSD_LAP_HEADER']
-        elif cv_csum in config_osd_lap_header:
-            self.logger.error("Cannot use reserved character '%s' in lap header"%cv_csum)
-            saved_config['OSD_LAP_HEADER'] = default_config['OSD_LAP_HEADER']
-
         return saved_config
+
+    def validate_option(self, args):
+        """Ensure config values are within range and reasonable values"""
+        if 'option' in args:
+            if args['option'] in ['osd_lapHeader', 'osd_positionHeader']:
+                cv_csum = clearview.comspecs.clearview_specs["message_csum"]
+                config_osd_lap_header = args['value']
+
+                if len(config_osd_lap_header) == 1:
+                    if config_osd_lap_header == cv_csum:
+                        self.logger.error("Cannot use reserved character '%s' in '%s'"%(cv_csum, args['option']))
+                        Options.set(args['option'], '')
+                elif cv_csum in config_osd_lap_header:
+                    self.logger.error("Cannot use reserved character '%s' in '%s'"%(cv_csum, args['option']))
+                    Options.set(args['option'], '')
 
     def do_startup(self,arg):
         self.logger.info("VRxC Starting up")
@@ -188,6 +195,7 @@ class VRxController:
 
         RESULTS_TIMEOUT = 5 # maximum time to wait for results to generate
         LAP_HEADER = Options.get('osd_lapHeader')
+        POS_HEADER = Options.get('osd_positionHeader')
 
         if 'race' in args:
             RACE = args['race']
@@ -309,9 +317,9 @@ class VRxController:
             # "Pos:Callsign | L[n]:0:00:00"
 
             if result['laps']:
-                message = str(result['position']) + ':' + result['callsign'][:12] + ' | ' + LAP_HEADER + str(result['laps']) + ': ' + result['last_lap']
+                message = POS_HEADER + str(result['position']) + ':' + result['callsign'][:12] + ' | ' + LAP_HEADER + str(result['laps']) + ': ' + result['last_lap']
             else:
-                message = str(result['position']) + ':' + result['callsign'][:12] + ' | HS: ' + result['total_time']
+                message = POS_HEADER + str(result['position']) + ':' + result['callsign'][:12] + ' | HS: ' + result['total_time']
 
             # "Pos:Callsign | L[n]:0:00:00 / +0:00.000 Pos:Callsign"
             if next_rank_split:
@@ -329,13 +337,13 @@ class VRxController:
                 # keep lap info
                 # "Pos:Callsign | L[n]:0:00:00"
                 if last_result['laps']:
-                    message = str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | ' + LAP_HEADER + str(last_result['laps']) + ': ' + last_result['last_lap']
+                    message = POS_HEADER + str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | ' + LAP_HEADER + str(last_result['laps']) + ': ' + last_result['last_lap']
                 else:
-                    message = str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | HS: ' + last_result['total_time']
+                    message = POS_HEADER + str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | HS: ' + last_result['total_time']
 
                 # "Pos:Callsign | L[n]:0:00:00 / -0:00.000 Pos:Callsign"
                 if next_rank_split:
-                    message += ' / -' + RHUtils.time_format(next_rank_split) + ' ' + str(result['position']) + ':' + result['callsign'][:12]
+                    message += ' / -' + RHUtils.time_format(next_rank_split) + ' ' + POS_HEADER + str(result['position']) + ':' + result['callsign'][:12]
 
                 node_dest = leaderboard[result['position']-2]['node']
                 self.set_message_direct(node_dest, message)
