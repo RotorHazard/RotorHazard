@@ -18,7 +18,7 @@
 		});
 
 		socket.on('vrx_list', function (msg) {
-			$('#vrx-items').empty;
+			$('#vrx-items').empty();
 
 			for (var i in msg.vrx) {
 				var item = $('<li>');
