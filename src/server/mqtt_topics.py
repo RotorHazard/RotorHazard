@@ -77,9 +77,9 @@ mqtt_publish_topics = {
             "receiver_request_node_active_topic":receiver_request_node_active_topic,
             "receiver_request_targeted_topic":receiver_request_targeted_topic,
             "receiver_kick_topic":receiver_kick_topic,
-            "receiver_command_esp_all": receiver_command_esp_all, 
-            "receiver_command_esp_node_topic":receiver_command_esp_node_topic,  
-            "receiver_command_esp_targeted_topic": receiver_command_esp_targeted_topic, 
+            "receiver_command_esp_all": receiver_command_esp_all,
+            "receiver_command_esp_node_topic":receiver_command_esp_node_topic,
+            "receiver_command_esp_targeted_topic": receiver_command_esp_targeted_topic,
         }
 }
 
@@ -91,7 +91,7 @@ mqtt_subscribe_topics = {
             "receiver_connection":receiver_connection_topic,
             "receiver_response_targeted":receiver_response_targeted_topic,
             "receiver_static_status":receiver_status_static_topic,
-            "receiver_variable_status":receiver_status_static_topic
+            "receiver_variable_status":receiver_status_variable_topic
         }
 }
 
