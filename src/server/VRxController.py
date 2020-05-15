@@ -518,8 +518,11 @@ class VRxController:
         self.logger.info("Connection message received: %s => %s" % (rx_name,connection_status))
         try:
             self.rx_data[rx_name]["connection"] = connection_status
+            self.rx_data[rx_name]["valid_rx"] = "0"
+
         except KeyError:
-            self.rx_data[rx_name] = {"connection": connection_status}
+            self.rx_data[rx_name] = {"connection": connection_status,
+                                     "valid_rx": "0"}
 
         if int(connection_status) == 1:
             self.logger.warning("Device %s is not yet configured by the server after a successful connection. Conducting some config now" % rx_name)
@@ -544,8 +547,6 @@ class VRxController:
             'rx_name': rx_name,
             })
 
-
-
     def on_message_resp_all(self, client, userdata, message):
         payload = message.payload
         self.logger.info("TODO on_message_resp_all => %s"%(payload.strip()))
@@ -561,18 +562,26 @@ class VRxController:
         rx_name = topic.split('/')[-1]
         payload = message.payload
 
-        # Set connection to true if it doesn't exist yet
-        rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"})
+        if len(payload) >= MINIMUM_PAYLOAD:
+            rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"})
 
-        nt, pattern_response = clearview.formatter.match_response(payload)
-        extracted_data = clearview.formatter.extract_data(nt, pattern_response)
-        if extracted_data is not None:
-                rx_data.update(extracted_data)
+            try:
+                nt, pattern_response = clearview.formatter.match_response(payload)
+                extracted_data = clearview.formatter.extract_data(nt, pattern_response)
+                if extracted_data is not None:
+                    rx_data["valid_rx"] = "1"
+                    rx_data.update(extracted_data)
 
-        self.logger.debug("Receiver Reply %s => %s"%(rx_name, payload.strip()))
-        self.logger.debug("Receiver Data Updated: %s"%self.rx_data[rx_name])
+                self.logger.debug("Receiver Reply %s => %s"%(rx_name, payload.strip()))
+            except:
+                self.rx_data[rx_name]["valid_rx"] = "0"
+                self.logger.warning("Receiver Reply %s => Unparseable"%(rx_name))
+        else:
+            self.rx_data[rx_name]["valid_rx"] = "0"
+            self.logger.debug("Receiver Reply %s => No payload"%(rx_name))
 
         #TODO only fire event if the data changed
+        self.logger.debug("Receiver Data Updated: %s"%self.rx_data[rx_name])
         self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
             'rx_name': rx_name,
             })

@@ -349,9 +349,17 @@
 					var vrx_list = $('<ul>')
 					for (var vrx_id in msg.vrx) {
 						var vrx = msg.vrx[vrx_id]
-						if (vrx.dev == 'rx') {
+						if (vrx_id != 'VRxController') {
 							var item = $('<li>');
-							item.append(vrx_id + ": " + __("Node") + " " + vrx.node_number);
+							if (vrx.dev == 'rx' && parseInt(vrx.connection)) {
+								if (parseInt(vrx.valid_rx)) {
+									item.append(vrx_id + ": " + __("Node") + " " + vrx.node_number);
+								} else {
+									item.append(vrx_id + ": " + __("No receiver"));
+								}
+							} else {
+								item.append(vrx_id + ": " + __("No connection"));
+							}
 							vrx_list.append(item);
 						}
 					}
