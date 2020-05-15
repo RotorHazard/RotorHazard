@@ -539,6 +539,11 @@ class VRxController:
             self.req_status_targeted("variable", rx_name)
             self.req_status_targeted("static", rx_name)
 
+        #TODO only fire event if the data changed
+        self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
+            'rx_name': rx_name,
+            })
+
 
 
     def on_message_resp_all(self, client, userdata, message):
