@@ -469,6 +469,7 @@ def race():
 
     return render_template('race.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         led_enabled=led_manager.isEnabled(),
+        vrx_enabled=vrx_controller!=False,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat, pilots=Database.Pilot,
         nodes=nodes)

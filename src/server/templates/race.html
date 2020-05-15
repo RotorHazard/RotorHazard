@@ -45,7 +45,8 @@
 			'race_status',
 			'team_racing_stat_if_enb',
 			'led_effects',
-			'callouts'
+			'callouts',
+			'vrx_list'
 		]});
 
 		$('#about>.popup-content').append('<p id="server-lag">Sync quality: [calculating]</p>');
@@ -1066,6 +1067,56 @@
 			socket.emit('LED_brightness', data);
 		});
 
+		/* VRx */
+		socket.on('vrx_list', function (msg) {
+			if (msg.enabled) {
+				// UI
+				if (msg.connection) {
+					vrx_by_node = {}
+
+					for (var vrx_id in msg.vrx) {
+						var vrx = msg.vrx[vrx_id]
+						if (vrx.dev == 'rx') {
+							if (!vrx_by_node[vrx.node_number]) {
+								vrx_by_node[vrx.node_number] = [];
+							}
+							vrx_by_node[vrx.node_number].push(vrx_id)
+						}
+					}
+
+					for (i = 0; i < {{ num_nodes }}; i++) {
+						var header = $('#node-' + i + ' .vrx-header');
+						header.empty();
+
+						var locks = 0;
+						if (i in vrx_by_node) {
+							for (j in vrx_by_node[i]) {
+								var vrx_id = vrx_by_node[i][j];
+								var vrx = msg.vrx[vrx_id];
+								if (parseInt(vrx.connection) &&
+									vrx.lock_status == 'L') {
+									locks++;
+								}
+							}
+
+							if (locks == vrx_by_node[i].length) {
+								header.append(__('Locked:') + ' ' + __('Yes') );
+							} else {
+								header.append(__('Locked:') + ' ' + __('No') );
+							}
+						} else {
+							header.append(__('No Receivers'));
+						}
+					}
+
+					$('#vrx-control-setup').append(vrx_header)
+					$('#vrx-control-setup').append(vrx_list)
+				} else {
+					$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
+				}
+			}
+		});
+
 		/* Callouts */
 		function add_callout(content='') {
 			id = $('.callout-items>li').length + 1;
@@ -1369,6 +1420,11 @@
 		<div class="race-results">
 			{% for node in nodes %}
 			<div class="node" id="node-{{ node.index }}">
+				{% if vrx_enabled %}
+					<div class="vrx-header">
+
+					</div>
+				{% endif %}
 				<div class="race-header">
 					<a href="#tuning-detail-{{node.index}}" data-node="{{ node.index }}" class="open-mfp-popup-tuning button-like btn-warning" title="{{ __('Tuning') }}">&#9888;&#xFE0E;</a>
 					<div class="channel-block" data-node="{{ node.index }}"><span class="ch"></span> <span class="fr">{{ node.freq }}</span></div>
