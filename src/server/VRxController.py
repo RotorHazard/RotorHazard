@@ -573,9 +573,12 @@ class VRxController:
                     rx_data.update(extracted_data)
 
                 self.logger.debug("Receiver Reply %s => %s"%(rx_name, payload.strip()))
-            except:
+            except Exception as ex:
                 self.rx_data[rx_name]["valid_rx"] = "0"
                 self.logger.warning("Receiver Reply %s => Unparseable"%(rx_name))
+                self.logger.debug("Receiver Error: " + str(ex))
+                self.logger.debug(traceback.format_exc())
+
         else:
             self.rx_data[rx_name]["valid_rx"] = "0"
             self.logger.debug("Receiver Reply %s => No payload"%(rx_name))
