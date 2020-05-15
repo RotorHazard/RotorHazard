@@ -347,10 +347,11 @@
 					vrx_header = '<h3>' + __('Connected Receivers') + '</h3>';
 
 					var vrx_list = $('<ul>')
-					for (var vrx in msg.vrx) {
-						if (vrx != 'VRxController') {
+					for (var vrx_id in msg.vrx) {
+						var vrx = msg.vrx[vrx_id]
+						if (vrx.dev == 'rx') {
 							var item = $('<li>');
-							item.append(vrx)
+							item.append(vrx_id + ": " + __("Node") + " " + vrx.node_number);
 							vrx_list.append(item);
 						}
 					}
