@@ -1070,49 +1070,43 @@
 		/* VRx */
 		socket.on('vrx_list', function (msg) {
 			if (msg.enabled) {
-				// UI
-				if (msg.connection) {
-					vrx_by_node = {}
+				vrx_by_node = {}
 
-					for (var vrx_id in msg.vrx) {
-						var vrx = msg.vrx[vrx_id]
-						if (vrx.dev == 'rx') {
-							if (!vrx_by_node[vrx.node_number]) {
-								vrx_by_node[vrx.node_number] = [];
-							}
-							vrx_by_node[vrx.node_number].push(vrx_id)
+				for (var vrx_id in msg.vrx) {
+					var vrx = msg.vrx[vrx_id]
+					if (vrx.dev == 'rx' && parseInt(vrx.connection)) {
+						if (!vrx_by_node[vrx.node_number]) {
+							vrx_by_node[vrx.node_number] = [];
 						}
+						vrx_by_node[vrx.node_number].push(vrx_id)
 					}
+				}
 
-					for (i = 0; i < {{ num_nodes }}; i++) {
-						var header = $('#node-' + i + ' .vrx-header');
-						header.empty();
+				for (i = 0; i < {{ num_nodes }}; i++) {
+					var header = $('#node-' + i + ' .vrx-header');
+					header.empty();
 
-						var locks = 0;
-						if (i in vrx_by_node) {
-							for (j in vrx_by_node[i]) {
-								var vrx_id = vrx_by_node[i][j];
-								var vrx = msg.vrx[vrx_id];
-								if (parseInt(vrx.connection) &&
-									vrx.lock_status == 'L') {
-									locks++;
-								}
+					var locks = 0;
+					if (i in vrx_by_node) {
+						for (j in vrx_by_node[i]) {
+							var vrx_id = vrx_by_node[i][j];
+							var vrx = msg.vrx[vrx_id];
+							if (vrx.lock_status == 'L') {
+								locks++;
 							}
+						}
 
-							if (locks == vrx_by_node[i].length) {
-								header.append(__('Locked:') + ' ' + __('Yes') );
-							} else {
-								header.append(__('Locked:') + ' ' + __('No') );
-							}
+						if (locks == vrx_by_node[i].length) {
+							header.removeClass('has-unlocked')
 						} else {
-							header.append(__('No Receivers'));
+							header.addClass('has-unlocked')
 						}
-					}
 
-					$('#vrx-control-setup').append(vrx_header)
-					$('#vrx-control-setup').append(vrx_list)
-				} else {
-					$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
+						header.append(__('VRx locks') + ': ' + locks + '/' + vrx_by_node[i].length);
+					} else {
+						header.removeClass('has-unlocked')
+						header.append(__('VRx locks') + ': 0/0');
+					}
 				}
 			}
 		});
