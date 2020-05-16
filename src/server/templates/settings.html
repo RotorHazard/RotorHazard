@@ -346,21 +346,62 @@
 
 					vrx_header = '<h3>' + __('Connected Receivers') + '</h3>';
 
-					var vrx_list = $('<ul>')
+					var vrx_list = $('<ul class="vrx-list">')
 					for (var vrx_id in msg.vrx) {
 						var vrx = msg.vrx[vrx_id]
 						if (vrx_id != 'VRxController') {
-							var item = $('<li>');
+							var li = $('<li>')
+							var table = $('<table>');
+
+							table_items = {};
+
+							table_items['ID'] = vrx_id;
+
+							if (vrx.nn) {
+								table_items['Name'] = vrx.nn;
+							}
+
 							if (vrx.dev == 'rx' && parseInt(vrx.connection)) {
 								if (parseInt(vrx.valid_rx)) {
-									item.append(vrx_id + ": " + __("Node") + " " + vrx.node_number);
+									table_items['Status'] = __("Connected");
+
+									table_items['Node'] = vrx.node_number;
+
+									if ('cam_forced_or_auto' in vrx
+										&& 'chosen_camera_type' in vrx) {
+										var cam_labels = {
+											"A": __("Auto"),
+											"F": __("Forced")
+										}
+										var cam_types = {
+											"N": __("NTSC"),
+											"P": __("PAL")
+										}
+
+										table_items['Format'] = cam_labels[vrx.cam_forced_or_auto] + ": " + cam_types[vrx.chosen_camera_type];
+									}
+
+									if ('lock_status' in vrx) {
+										if(vrx.lock_status == 'L') {
+											table_items['Lock'] = __('Locked');
+										} else {
+											table_items['Lock'] = __('Unlocked');
+										}
+									}
+
 								} else {
-									item.append(vrx_id + ": " + __("No receiver"));
+									table_items['Status'] = __("No receiver");
 								}
 							} else {
-								item.append(vrx_id + ": " + __("No connection"));
+								table_items['Status'] = __("No connection");
 							}
-							vrx_list.append(item);
+
+							for (var item in table_items) {
+								table.append('<tr><th>' + __(item) + '</th><td>' + table_items[item] + '</td></tr>');
+							}
+
+							li.append(table)
+							vrx_list.append(li);
 						}
 					}
 

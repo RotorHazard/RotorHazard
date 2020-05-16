@@ -1549,6 +1549,29 @@ footer img {
 	color: var(--contrast_1_high);
 }
 
+.vrx-list {
+	list-style: none;
+	padding: 0;
+	margin: 1rem -0.5rem;
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.vrx-list>li {
+	margin: 0.5rem;
+	padding: 0;
+	font-size: 0.9rem;
+}
+
+.vrx-list td {
+	text-align: left;
+}
+
+.vrx-list table>tr:first-child>th,
+.vrx-list table>tr:first-child>td {
+	border-top: 0;
+}
+
 /* ************* */
 /* Print Styling */
 /* ************* */
