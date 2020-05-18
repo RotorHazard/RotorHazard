@@ -1,5 +1,23 @@
 {% extends "layout.html" %} {% block title %}Hardware Log{% endblock %} {% block head %}
 <script type="text/javascript" charset="utf-8">
+	function selectText(element) {
+		var doc = document
+			, text = doc.getElementById(element)
+			, range, selection
+		;
+		if (doc.body.createTextRange) { //ms
+			range = doc.body.createTextRange();
+			range.moveToElementText(text);
+			range.select();
+		} else if (window.getSelection) { //all others
+			selection = window.getSelection();
+			range = doc.createRange();
+			range.selectNodeContents(text);
+			selection.removeAllRanges();
+			selection.addRange(range);
+		}
+	}
+
 	$(document).ready(function () {
 		socket.emit('load_data', {'load_types': [
 			'hardware_log_init'
@@ -11,7 +29,7 @@
 		}
 
 		function append_to_log(text) {
-			$('#log').append('<br>' + $('<div/>').text(text).html());
+			$('#log').append(text + "\n");
 			window.scrollTo(0,document.body.scrollHeight);
 		}
 
@@ -21,6 +39,10 @@
 
 		socket.on('hardware_log', function (msg) {
 			append_to_log(msg);
+		});
+
+		$(document).on('click', '#select-log', function(){
+			selectText('log');
 		});
 	});
 
@@ -32,5 +54,6 @@
 <pre>
 <div id="log"></div>
 </pre>
+<div class="control-set"><button id="select-log">{{ __('Select Log') }}</button></div>
 </main>
 {% endblock %}
