@@ -55,7 +55,7 @@ class SocketForwardHandler(logging.Handler):
         self._socket = socket
 
     def emit(self, record):
-        self._socket.emit("hardware_log", record.getMessage())
+        self._socket.emit("hardware_log", self.format(record))
 
 
 def early_stage_setup():
@@ -93,8 +93,8 @@ def later_stage_setup(config, socket):
     # from basicConfig
     root.handlers[:] = []
 
-    # TODO: log level and format for socket handler?
-    handlers = [ SocketForwardHandler(socket) ]
+
+    handlers = []
     
     min_level = logging.CRITICAL  # track minimum specified log level
 
@@ -139,6 +139,15 @@ def later_stage_setup(config, socket):
     else:
         num_old_del = 0
         log_path_name = None
+
+    hdlr_obj = SocketForwardHandler(socket)
+    # use same configuration as log file
+    lvl = logging.getLevelName(logging_config[FILELOG_LEVEL_STR])
+    if lvl > 0:
+        hdlr_obj.setLevel(lvl)
+    # configure log format with milliseconds as ".###" (not ",###")
+    hdlr_obj.setFormatter(logging.Formatter(fmt=FILELOG_FORMAT_STR, datefmt='%Y-%m-%d %H:%M:%S'))
+    handlers.append(hdlr_obj)
 
     root.setLevel(min_level)
 
