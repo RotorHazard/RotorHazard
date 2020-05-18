@@ -106,7 +106,7 @@ SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENER
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.
-log.later_stage_setup(Config.LOGGING, SOCKET_IO)
+Current_log_path_name = log.later_stage_setup(Config.LOGGING, SOCKET_IO)
 
 INTERFACE = None  # initialized later
 CLUSTER = None    # initialized later
@@ -4746,7 +4746,13 @@ def init_LED_effects():
 # Program Initialize
 #
 
+logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 idAndLogSystemInfo()
+
+# check if current log file owned by 'root' and change owner to 'pi' user if so
+if Current_log_path_name and checkSetFileOwnerPi(Current_log_path_name):
+    logger.debug("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
+
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
     interfaceModule = importlib.import_module(interface_type + 'Interface')
@@ -4810,7 +4816,6 @@ Options.primeGlobalsCache()
 
 # collect server info for About panel
 serverInfo = buildServerInfo()
-logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 if serverInfo['node_api_match'] is False:
     logger.info('** WARNING: Node API mismatch. **')
 
@@ -4859,7 +4864,7 @@ SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     try:
         java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True)
-        logger.info('Found installed:  ' + java_ver.split('\n')[0])
+        logger.info('Found installed: ' + java_ver.split('\n')[0].strip())
     except:
         java_ver = None
         logger.info('Unable to find java; for IMDTabler functionality try:')
@@ -4870,7 +4875,7 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
                         stderr=subprocess.STDOUT, shell=True).rstrip()
             Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
-            logger.info('Found installed:  ' + imdtabler_ver)
+            logger.info('Found installed: ' + imdtabler_ver)
         except Exception as ex:
             logger.exception('Error checking IMDTabler:  ')
 else:

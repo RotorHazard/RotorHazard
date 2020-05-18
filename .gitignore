@@ -3,3 +3,4 @@
 config.json
 db_bkp
 /src/libraries
+logs
