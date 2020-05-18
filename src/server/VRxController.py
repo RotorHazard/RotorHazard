@@ -734,9 +734,8 @@ class VRxNode(BaseVRxNode):
 
         time_now = monotonic()
         time_expires = time_now + FREQUENCY_TIMEOUT
-        for i in range(10, 0, -1):
-            self.set_message_direct(__("!!! Frequency changing to {0} in {1}s !!!").format(frequency, i))
-            gevent.sleep(1)
+        self.set_message_direct(__("!!! Frequency changing to {0} in <10s !!!").format(frequency))
+        gevent.sleep(10)
 
         self.set_node_frequency_direct(frequency)
         self.set_message_direct(__(""))
