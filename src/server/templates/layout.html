@@ -89,6 +89,9 @@
 						<li><a href="/imdtabler">{{ __("IMDTabler") }}</a></li>
 
 						{% if Debug %}<li><a href="/scanner">{{ __("Band Scanner") }}</a></li>{% endif %}
+
+						<li><a href="/hardwarelog" class="admin-hide">{{ __('View Server Log') }}</a></li>
+
 						<li><a href="https://github.com/RotorHazard/RotorHazard/" target="_blank">{{ __("RotorHazard on GitHub") }} &#10132;&#xFE0E;</a></li>
 						<li><a href="#about" class="open-mfp-popup">{{ __("About RotorHazard") }}</a></li>
 					</ul>
@@ -108,7 +111,6 @@
 		<h2>{{ __("About RotorHazard") }}</h2>
 		<div class="popup-content">
 			{{ serverInfo['about_html'] | safe }}
-			<p><a href="/hardwarelog" class="admin-hide">{{ __('View Server Log') }}</a></p>
 		</div>
 	</div>
 </body>

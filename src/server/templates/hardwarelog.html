@@ -1,4 +1,4 @@
-{% extends "layout.html" %} {% block title %}Hardware Log{% endblock %} {% block head %}
+{% extends "layout.html" %} {% block title %}Server Log{% endblock %} {% block head %}
 <script type="text/javascript" charset="utf-8">
 	function selectText(element) {
 		var doc = document
@@ -50,7 +50,7 @@
 {% endblock %} {% block content %}
 <main class="page-status">
 <!--Status messages from the timing system-->
-<h2>{{ __('Hardware Log') }}</h2>
+<h2>{{ __('Server Log') }}</h2>
 <pre>
 <div id="log"></div>
 </pre>
