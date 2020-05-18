@@ -1,16 +1,23 @@
+# RotorHazard Documentation
 
-## RotorHazard Documentation
+## Timing Guides
+* [User Guide](User%20Guide.md)
+* [Calibration Guide](Tuning%20Parameters.md)
+* [Shielding and Course Position](Shielding%20and%20Course%20Position.md)
+* [Event Setup Guide](Event%20Setup%20Guide.md)
 
-#### [User Guide](User%20Guide.md)
-#### [Calibration Guide](Tuning%20Parameters.md)
-#### [Shielding and Course Position](Shielding%20and%20Course%20Position.md)
-#### [Event Setup Guide](Event%20Setup%20Guide.md)
-#### [Split Timing Guide](Cluster.md)
-#### [Hardware Setup Instructions](Hardware%20Setup.md)
-#### [Software Setup Instructions](Software%20Setup.md)
-#### [USB Nodes](USB%20Nodes.md)
-#### [Raspberry Pi Reference](Raspberry%20Pi%20Reference.md)
-<br/>
+## System Reference
+* [Hardware Setup Instructions](Hardware%20Setup.md)
+* [Software Setup Instructions](Software%20Setup.md)
+* [Raspberry Pi Reference](Raspberry%20Pi%20Reference.md)
 
-#### [Developer Documentation](Development.md)
-#### <a href="https://github.com/RotorHazard/RotorHazard" target="_blank">RotorHazard on GitHub</a> &#10132;&#xFE0E;
+## Optional Features
+* [Split Timing Guide](Cluster.md)
+* [USB Nodes](USB%20Nodes.md)
+
+<br />
+
+---
+
+* [Developer Documentation](Development.md)
+* <a href="https://github.com/RotorHazard/RotorHazard" target="_blank">RotorHazard on GitHub</a> &#10132;&#xFE0E;
