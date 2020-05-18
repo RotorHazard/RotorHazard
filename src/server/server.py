@@ -996,6 +996,8 @@ def on_load_data(data):
             emit_imdtabler_page(nobroadcast=True)
         elif load_type == 'cluster_status':
             CLUSTER.emitStatus()
+        elif load_type == 'hardware_log_init':
+            emit_current_log_file_to_socket()
 
 @SOCKET_IO.on('broadcast_message')
 def on_broadcast_message(data):
@@ -4249,6 +4251,14 @@ def assign_frequencies():
         logger.info('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs["f"][idx]))
     DB.session.commit()
 
+def emit_current_log_file_to_socket():
+    if Current_log_path_name:
+        try:
+            with io.open(Current_log_path_name, 'r') as f:
+                SOCKET_IO.emit("hardware_log_init", f.read())
+        except Exception as ex:
+            logger.error("Error sending current log file to socket: {0}".format(ex))
+
 def db_init():
     '''Initialize database.'''
     DB.create_all() # Creates tables from database classes/models
@@ -4751,7 +4761,9 @@ idAndLogSystemInfo()
 
 # check if current log file owned by 'root' and change owner to 'pi' user if so
 if Current_log_path_name and checkSetFileOwnerPi(Current_log_path_name):
-    logger.debug("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
+    logger.info("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
+else:
+    logger.info("Using log file: {0}".format(Current_log_path_name))
 
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
