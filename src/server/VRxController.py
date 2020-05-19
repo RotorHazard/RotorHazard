@@ -57,9 +57,9 @@ class VRxController:
 
         self._add_subscribe_callbacks()
         self._mqttc.loop_start()
-        num_nodes = len(node_frequencies)
+        self.num_nodes = len(node_frequencies)
 
-        self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n]) for n in range(8)]
+        self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n]) for n in range(self.num_nodes)]
         self._node_broadcast = VRxBroadcastNode(self._mqttc, self._cv)
 
         # Events
@@ -123,7 +123,7 @@ class VRxController:
         self.request_variable_status()
         # self._node_broadcast.turn_off_osd()
 
-        for i in range(8):
+        for i in range(self.num_nodes):
             self.get_node_lock_status(i)
             gevent.spawn(self.set_node_frequency, i, self._nodes[i]._node_frequency)
 
