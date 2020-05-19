@@ -105,7 +105,7 @@ SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENER
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.
-log.later_stage_setup(Config.LOGGING, SOCKET_IO)
+Current_log_path_name = log.later_stage_setup(Config.LOGGING, SOCKET_IO)
 
 INTERFACE = None  # initialized later
 CLUSTER = None    # initialized later
@@ -1011,6 +1011,8 @@ def on_load_data(data):
             emit_vrx_list(nobroadcast=True)
         elif load_type == 'cluster_status':
             CLUSTER.emitStatus()
+        elif load_type == 'hardware_log_init':
+            emit_current_log_file_to_socket()
 
 @SOCKET_IO.on('broadcast_message')
 def on_broadcast_message(data):
@@ -4324,6 +4326,14 @@ def assign_frequencies():
         logger.info('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs["f"][idx]))
     DB.session.commit()
 
+def emit_current_log_file_to_socket():
+    if Current_log_path_name:
+        try:
+            with io.open(Current_log_path_name, 'r') as f:
+                SOCKET_IO.emit("hardware_log_init", f.read())
+        except Exception as ex:
+            logger.error("Error sending current log file to socket: {0}".format(ex))
+
 def db_init():
     '''Initialize database.'''
     DB.create_all() # Creates tables from database classes/models
@@ -4855,7 +4865,15 @@ def killVRxController(*args):
 # Program Initialize
 #
 
+logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 idAndLogSystemInfo()
+
+# check if current log file owned by 'root' and change owner to 'pi' user if so
+if Current_log_path_name and checkSetFileOwnerPi(Current_log_path_name):
+    logger.info("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
+else:
+    logger.info("Using log file: {0}".format(Current_log_path_name))
+
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
     interfaceModule = importlib.import_module(interface_type + 'Interface')
@@ -4919,7 +4937,6 @@ Options.primeGlobalsCache()
 
 # collect server info for About panel
 serverInfo = buildServerInfo()
-logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 if serverInfo['node_api_match'] is False:
     logger.info('** WARNING: Node API mismatch. **')
 
@@ -4968,7 +4985,7 @@ SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     try:
         java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True)
-        logger.info('Found installed:  ' + java_ver.split('\n')[0])
+        logger.info('Found installed: ' + java_ver.split('\n')[0].strip())
     except:
         java_ver = None
         logger.info('Unable to find java; for IMDTabler functionality try:')
@@ -4979,7 +4996,7 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
                         stderr=subprocess.STDOUT, shell=True).rstrip()
             Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
-            logger.info('Found installed:  ' + imdtabler_ver)
+            logger.info('Found installed: ' + imdtabler_ver)
         except Exception as ex:
             logger.exception('Error checking IMDTabler:  ')
 else:
