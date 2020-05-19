@@ -68,7 +68,7 @@ class VRxController:
         self.num_nodes = len(node_frequencies)
 
         self.node_number_range = (0,7)
-        self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n], node_number_range=self.node_number_range) for n in range(8)]
+        self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n], node_number_range=self.node_number_range) for n in range(self.num_nodes)]
         self._node_broadcast = VRxBroadcastNode(self._mqttc, self._cv)
 
         # Events
