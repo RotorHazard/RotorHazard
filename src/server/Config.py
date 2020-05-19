@@ -14,7 +14,7 @@ SENSORS = {}
 LED = {}
 SERIAL_PORTS = []
 LOGGING = {}
-VRX_SERVER = {}
+VRX_CONTROL = {}
 
 # LED strip configuration:
 LED['LED_COUNT']      = 0       # Number of LED pixels.
@@ -29,9 +29,9 @@ LED['PANEL_ROTATE']   = 0
 LED['INVERTED_PANEL_ROWS'] = False
 
 # Video Receiver Configuration
-VRX_SERVER['HOST']    = 'localhost'     # MQTT broker IP Address
-VRX_SERVER['ENABLED'] = False
-VRX_SERVER['OSD_LAP_HEADER'] = 'L'
+VRX_CONTROL['HOST']    = 'localhost'     # MQTT broker IP Address
+VRX_CONTROL['ENABLED'] = False
+VRX_CONTROL['OSD_LAP_HEADER'] = 'L'
 
 # other default configurations
 GENERAL['HTTP_PORT'] = 5000
@@ -57,8 +57,8 @@ try:
         LOGGING.update(ExternalConfig['LOGGING'])
     if 'LED' in ExternalConfig:
         LED.update(ExternalConfig['LED'])
-    if 'VRX_SERVER' in ExternalConfig:
-        VRX_SERVER.update(ExternalConfig['VRX_SERVER'])
+    if 'VRX_CONTROL' in ExternalConfig:
+        VRX_CONTROL.update(ExternalConfig['VRX_CONTROL'])
 
 
     '''
