@@ -16,6 +16,17 @@ import RHUtils
 import Database
 import Options
 
+# Sample configuration:
+#     "VRX_CONTROL": {
+#         "HOST": "localhost",
+#         "ENABLED": true
+#     }
+#
+# HOST domain or IP address of MQTT server for VRx Control messages
+# ENABLED:true is required.
+# ONLY ONE server may use VRx Control on a given network at a time. Setting ENABLED to false
+# is useful to store configuration settings when disabling a timer from VRx Control.
+
 # ClearView API
 # cd ~
 # git clone https://github.com/ryaniftron/clearview_interface_public.git --depth 1

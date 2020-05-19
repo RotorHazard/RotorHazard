@@ -11,8 +11,7 @@
 	"SERIAL_PORTS": [],
 	"VRX_SERVER": {
 		"HOST": "localhost",
-		"ENABLED": false,
-		"OSD_LAP_HEADER": "L"
+		"ENABLED": false
 	},
 	"LED": {
 		"LED_COUNT": 0,

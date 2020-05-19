@@ -4809,7 +4809,7 @@ def init_LED_effects():
 
 def initVRxController():
     try:
-        vrx_config = Config.VRX_SERVER
+        vrx_config = Config.VRX_CONTROL
         try:
             vrx_enabled = vrx_config["ENABLED"]
             if vrx_enabled:
@@ -4826,11 +4826,11 @@ def initVRxController():
             logger.error('VRxController disabled: config needs "ENABLED" key.')
             return False
     except AttributeError:
-        logger.info('VRxController disabled: No VRX_SERVER config option')
+        logger.info('VRxController disabled: No VRX_CONTROL config option')
         return False
 
     # If got through import success, create the VRxController object
-    vrx_config = Config.VRX_SERVER
+    vrx_config = Config.VRX_CONTROL
     return VRxController(Events,
        vrx_config,
        [node.frequency for node in INTERFACE.nodes])
