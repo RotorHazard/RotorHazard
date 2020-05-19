@@ -636,9 +636,12 @@ class VRxController:
             rx_newdata = json.loads(payload)
         except ValueError:
             self.logger.error("Unable to json.load on_message_status payload")
+            self.rx_data[rx_name]["valid_rx"] = "0"
             return
+
         rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"})
         rx_data.update(rx_newdata)
+        rx_data["valid_rx"] = "1"
 
         #TODO only fire event if the data changed
         self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
