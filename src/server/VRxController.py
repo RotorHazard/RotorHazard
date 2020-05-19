@@ -59,7 +59,8 @@ class VRxController:
         self._mqttc.loop_start()
         num_nodes = len(node_frequencies)
 
-        self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n]) for n in range(8)]
+        self.node_number_range = (0,7)
+        self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n], node_number_range=self.node_number_range) for n in range(8)]
         self._node_broadcast = VRxBroadcastNode(self._mqttc, self._cv)
 
         # Events
@@ -123,8 +124,9 @@ class VRxController:
         self.request_variable_status()
         # self._node_broadcast.turn_off_osd()
 
+        
+        self.get_node_lock_status()
         for i in range(8):
-            self.get_node_lock_status(i)
             gevent.spawn(self.set_node_frequency, i, self._nodes[i]._node_frequency)
 
         # Update the DB with receivers that exist and their status
@@ -373,6 +375,38 @@ class VRxController:
         else:
             self._nodes[node_number].request_variable_status()
 
+    ##############
+    ## Node Number 
+    ##############
+
+    def set_node_number(self, desired_node_num=None, current_node_num=None, serial_num=None ):
+        """Sets the node subscription number to desired_number
+
+        If targetting all devices at a certain node, use 'current_node_num'
+        If targetting a single receiver serial number, use 'serial_num'
+        If targetting all receivers, don't supply either 'current_node_num' or 'serial_num'
+        """
+        MIN_NODE_NUM = self.node_number_range[0]
+        MAX_NODE_NUM = self.node_number_range[1]
+        desired_node_num = int(desired_node_num)
+        if not MIN_NODE_NUM <= desired_node_num <= MAX_NODE_NUM:
+            return ValueError("Desired Node Number %s out of range in set_node_number"%desired_node_num)
+
+        if current_node_num is not None:
+            current_node_num = int(current_node_num)
+            if not MIN_NODE_NUM <= current_node_num <= MAX_NODE_NUM:
+                return ValueError("Desired Node Number %s out of range in set_node_number"%current_node_num)
+            self._nodes[current_node_num].set_node_number(desired_node_num)
+            return
+
+        if serial_num is not None:
+            topic = mqtt_publish_topics["cv1"]["receiver_command_esp_targeted_topic"][0]%serial_num
+            cmd = ESP_COMMANDS["Set Node Number"] % desired_node_num
+            self._mqttc.publish(topic,cmd)
+            return
+
+        
+        raise NotImplementedError("TODO Broadcast set all node number")
 
 
     ###########
@@ -412,8 +446,8 @@ class VRxController:
 
     def get_node_lock_status(self, node_number=VRxALL):
         if node_number == VRxALL:
-            for node in self._nodes:
-                node.get_node_lock_status()
+            node = self._node_broadcast
+            node.get_node_lock_status()
         else:
             node = self._nodes[node_number]
             node.get_node_lock_status()
@@ -544,6 +578,7 @@ class VRxController:
             self.req_status_targeted("variable", rx_name)
             self.req_status_targeted("static", rx_name)
 
+
         #TODO only fire event if the data changed
         self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
             'rx_name': rx_name,
@@ -667,13 +702,14 @@ class VRxNode(BaseVRxNode):
                  cv,
                  node_number,
                  node_frequency,
+                 node_number_range = (0,7), #(min,max)
                  node_camera_type = 'A'
                  ):
         BaseVRxNode.__init__(self, mqtt_client, cv)
 
         # RH refers to nodes 0 to 7
-        self.MIN_NODE_NUM = 0
-        self.MAX_NODE_NUM = 7
+        self.MIN_NODE_NUM = node_number_range[0]
+        self.MAX_NODE_NUM = node_number_range[1]
 
         if self.MIN_NODE_NUM <= node_number <= self.MAX_NODE_NUM:
             self._node_number = node_number
@@ -718,6 +754,12 @@ class VRxNode(BaseVRxNode):
             # self._node_number = node_number
         else:
             raise Exception("node_number out of range")
+
+    def set_node_number(self, new_node_number):
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_node_topic"][0]%self._node_number
+        cmd = ESP_COMMANDS["Set Node Number"] % new_node_number
+        self._mqttc.publish(topic,cmd)
+        return
 
     @property
     def node_frequency(self, ):
@@ -846,6 +888,12 @@ class VRxBroadcastNode(BaseVRxNode):
         topic = self._rx_cmd_esp_all_topic
         cmd = ESP_COMMANDS["Request Variable Status"]
         self._mqttc.publish(topic,cmd)
+
+    def get_node_lock_status(self,):
+        topic = mqtt_publish_topics["cv1"]["receiver_request_all_topic"][0]
+        report_req = self._cv.get_lock_format(self._cv_broadcast_id)
+        self._mqttc.publish(topic,report_req)
+        return report_req
 
 
 class ClearViewValInterpret:
