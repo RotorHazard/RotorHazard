@@ -411,7 +411,17 @@
 								if (parseInt(vrx.valid_rx)) {
 									table_items['Status'] = __("Connected");
 
-									table_items['Node'] = vrx.node_number;
+									if ('node_number' in vrx) {
+										var selectbox = $('<select class="vrx-node" data-vrx-id="' + vrx_id + '">')
+										for (var i = 0; i < {{ num_nodes }}; i++) {
+											var opt = $('<option value="' + i '">' + i + '</option>')
+											if (vrx.node_number) {
+												opt.attr('selected', 'selected');
+											}
+											selectbox.append(opt);
+										}
+										table_items['Node'] = selectbox;
+									}
 
 									if ('cam_forced_or_auto' in vrx
 										&& 'chosen_camera_type' in vrx) {
@@ -463,6 +473,15 @@
 			} else {
 				$('#vrx-warning').empty();
 			}
+		});
+
+		$(document).on('change', '.vrx-node', function (msg) {
+			var vrx_id = $(this).data('vrx-id');
+			var node = parseInt($(this).val());
+			socket.emit('set_vrx_node', {
+				'id': vrx_id,
+				'node': node
+			});
 		});
 
 		/* Nodes */

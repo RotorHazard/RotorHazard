@@ -3970,6 +3970,17 @@ def emit_vrx_list(*args, **params):
     else:
         SOCKET_IO.emit('vrx_list', emit_payload)
 
+@SOCKET_IO.on('set_vrx_node')
+def set_vrx_node(data):
+    vrx_id = data['vrx_id']
+    node = data['node']
+
+    if vrx_controller != False:
+        vrx_controller.set_node_number(serial_num=vrx_id, desired_node_num=node)
+        logger.info("Set VRx {0} to node {1}".format(vrx_id, node))
+    else:
+        logger.error("Can't set VRx {0} to node {1}: Controller unavailable".format(vrx_id, node))
+
 #
 # Program Functions
 #
