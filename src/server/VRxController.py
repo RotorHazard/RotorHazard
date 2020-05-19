@@ -37,8 +37,6 @@ import clearview
 VRxALL = -1
 MINIMUM_PAYLOAD = 7
 
-# logger = logging.getLogger(__name__)
-
 class VRxController:
 
     def __init__(self, eventmanager, vrx_config, node_frequencies):
@@ -60,7 +58,6 @@ class VRxController:
         # The MQTT_CLIENT should not know about what it is supposed to be doing
         # The VRxController can then run multiple clients, but duplicate messaging will have to be avoided
         # This could be done in the publisher by only passing messages to the clients that need it
-
 
         self._mqttc = MQTT_Client(client_id="VRxController",
                                  broker_ip=self.config["HOST"],
@@ -86,7 +83,6 @@ class VRxController:
         self.Events.on(Evt.LAP_DELETE, 'VRx', self.do_lap_recorded)
         self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200, True)
         self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.do_send_message)
-
         self.Events.on(Evt.OPTION_SET, 'VRx', self.validate_option)
 
         # Options
@@ -116,18 +112,18 @@ class VRxController:
         if 'option' in args:
             if args['option'] in ['osd_lapHeader', 'osd_positionHeader']:
                 cv_csum = clearview.comspecs.clearview_specs["message_csum"]
-                config_osd_lap_header = args['value']
+                config_item = args['value']
 
-                if len(config_osd_lap_header) == 1:
-                    if config_osd_lap_header == cv_csum:
+                if len(config_item) == 1:
+                    if config_item == cv_csum:
                         self.logger.error("Cannot use reserved character '%s' in '%s'"%(cv_csum, args['option']))
                         Options.set(args['option'], '')
-                elif cv_csum in config_osd_lap_header:
+                elif cv_csum in config_item:
                     self.logger.error("Cannot use reserved character '%s' in '%s'"%(cv_csum, args['option']))
                     Options.set(args['option'], '')
 
     def do_startup(self,arg):
-        self.logger.info("VRxC Starting up")
+        self.logger.info("VRx Control Starting up")
 
         self._node_broadcast.reset_lock()
         # Request status of all receivers (static and variable)
@@ -142,7 +138,6 @@ class VRxController:
         # Update the DB with receivers that exist and their status
         # (Because the pi was already running, they should all be connected to the broker)
         # Even if the server.py is restarted, the broker continues to run:)
-
 
     def do_heat_set(self, arg):
         self.logger.info("VRx Signaling Heat Set")
@@ -327,7 +322,6 @@ class VRxController:
                     '''
 
             # One-line readout
-            # Show callsign,
             # "Pos:Callsign | L[n]:0:00:00"
 
             if result['laps']:
@@ -342,7 +336,6 @@ class VRxController:
             node_dest = node_index
             self.set_message_direct(node_dest, message)
             self.logger.debug('msg n{1}:  {0}'.format(message, node_dest))
-
 
             # show back split when next pilot crosses
             if result['position'] > 1:
@@ -367,10 +360,10 @@ class VRxController:
             self.logger.warn('Failed to send results: Results not available')
             return False
 
-
     ##############
     ## MQTT Status
     ##############
+
     def request_static_status(self, node_number=VRxALL):
         if node_number == VRxALL:
             node = self._node_broadcast
@@ -386,7 +379,7 @@ class VRxController:
             self._nodes[node_number].request_variable_status()
 
     ##############
-    ## Node Number 
+    ## Node Number
     ##############
 
     def set_node_number(self, desired_node_num=None, current_node_num=None, serial_num=None ):
@@ -415,13 +408,12 @@ class VRxController:
             self._mqttc.publish(topic,cmd)
             return
 
-        
         raise NotImplementedError("TODO Broadcast set all node number")
-
 
     ###########
     # Frequency
     ###########
+
     @property
     def frequency(self):
         return [node.node_frequency for node in self._nodes]
@@ -464,7 +456,6 @@ class VRxController:
 
         #return self._nodes[node_number].node_lock_status
 
-
     #############
     # Camera Type
     #############
@@ -485,8 +476,6 @@ class VRxController:
             c = camera_types[node_index]
             self._nodes[node_index].node_camera_type = c
 
-
-
     def set_node_camera_type(self, node_number, camera_type):
         self._nodes[node_number].node_camera_type = camera_type
 
@@ -504,7 +493,6 @@ class VRxController:
             node.set_message_direct(message)
         else:
             self._nodes[node_number].set_message_direct(message)
-
 
     #############################
     # Private Functions for MQTT
@@ -539,7 +527,6 @@ class VRxController:
             topic_tuple = topics["receiver_variable_status"]
             self._add_subscribe_callback(topic_tuple, self.on_message_status)
 
-
     def _add_subscribe_callback(self, topic_tuple, callback):
         formatter_name = topic_tuple[1]
 
@@ -556,7 +543,6 @@ class VRxController:
 
         self._mqttc.message_callback_add(topic, callback)
         self._mqttc.subscribe(topic)
-
 
     def on_message_connection(self, client, userdata, message):
         rx_name = message.topic.split('/')[1]
@@ -587,7 +573,6 @@ class VRxController:
             # See TODO in on_message_status
             self.req_status_targeted("variable", rx_name)
             self.req_status_targeted("static", rx_name)
-
 
         #TODO only fire event if the data changed
         self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
@@ -660,7 +645,6 @@ class VRxController:
             'rx_name': rx_name,
             })
 
-
     def req_status_targeted(self, mode = "variable",serial_num = None):
         """Ask a targeted receiver for its status.
         Inputs:
@@ -703,7 +687,6 @@ class BaseVRxNode:
         self._mqttc = mqtt_client
         self._cv = cv
         self.logger = logging.getLogger(self.__class__.__name__)
-
 
 class VRxNode(BaseVRxNode):
     """Commands and Requests apply to all receivers at a node number"""
@@ -856,7 +839,6 @@ class VRxNode(BaseVRxNode):
         #todo check against limit each addition and truncate based on field priority
         pass
 
-
 class VRxBroadcastNode(BaseVRxNode):
     def __init__(self,
                  mqtt_client,
@@ -904,7 +886,6 @@ class VRxBroadcastNode(BaseVRxNode):
         self._mqttc.publish(topic,report_req)
         return report_req
 
-
 class ClearViewValInterpret:
     """Holds constants of the protocols"""
     def __init__(self):
@@ -942,9 +923,6 @@ class packet_formatter:
 
         # return base_format
 
-
-
-
     def set_osd_field(self, field_data):
         """sets an  osd field data object. Updates OSD.
         That field must also be shown on the OSD
@@ -973,7 +951,6 @@ class packet_formatter:
         for field in field_order:
                 self._osd_field_order[field] = field_order
         self._update_osd_by_fields()
-
 
 def main():
     # vrxc = VRxController("192.168.0.110",
