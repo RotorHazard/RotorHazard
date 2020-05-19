@@ -73,6 +73,7 @@ mqtt_publish_topics = {
             "receiver_command_all":receiver_command_all,
             "receiver_command_node_topic":receiver_command_node_topic,
             "receiver_command_targeted_topic":receiver_command_targeted_topic,
+            "receiver_request_all_topic":receiver_request_all_topic,
             "receiver_request_node_all_topic":receiver_request_node_all_topic,
             "receiver_request_node_active_topic":receiver_request_node_active_topic,
             "receiver_request_targeted_topic":receiver_request_targeted_topic,
@@ -98,4 +99,5 @@ mqtt_subscribe_topics = {
 ESP_COMMANDS = {
     "Request Static Status": "status_static?",
     "Request Variable Status": "status_var?",
+    "Set Node Number": "node_number=%d",
 }
