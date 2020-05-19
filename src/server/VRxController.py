@@ -57,7 +57,7 @@ class VRxController:
 
         self._add_subscribe_callbacks()
         self._mqttc.loop_start()
-        num_nodes = len(node_frequencies)
+        self.num_nodes = len(node_frequencies)
 
         self.node_number_range = (0,7)
         self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n], node_number_range=self.node_number_range) for n in range(8)]
@@ -124,9 +124,8 @@ class VRxController:
         self.request_variable_status()
         # self._node_broadcast.turn_off_osd()
 
-        
-        self.get_node_lock_status()
-        for i in range(8):
+        for i in range(self.num_nodes):
+            self.get_node_lock_status(i)
             gevent.spawn(self.set_node_frequency, i, self._nodes[i]._node_frequency)
 
         # Update the DB with receivers that exist and their status
@@ -776,9 +775,8 @@ class VRxNode(BaseVRxNode):
 
         time_now = monotonic()
         time_expires = time_now + FREQUENCY_TIMEOUT
-        for i in range(10, 0, -1):
-            self.set_message_direct(__("!!! Frequency changing to {0} in {1}s !!!").format(frequency, i))
-            gevent.sleep(1)
+        self.set_message_direct(__("!!! Frequency changing to {0} in <10s !!!").format(frequency))
+        gevent.sleep(10)
 
         self.set_node_frequency_direct(frequency)
         self.set_message_direct(__(""))

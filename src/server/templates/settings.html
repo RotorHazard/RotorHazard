@@ -340,7 +340,53 @@
 
 		socket.on('vrx_list', function (msg) {
 			if (msg.enabled) {
-				// UI
+				vrx_by_node = {}
+
+				for (var vrx_id in msg.vrx) {
+					var vrx = msg.vrx[vrx_id]
+					if (vrx.dev == 'rx' && parseInt(vrx.valid_rx)) {
+						if (!vrx_by_node[vrx.node_number]) {
+							vrx_by_node[vrx.node_number] = [];
+						}
+						vrx_by_node[vrx.node_number].push(vrx_id)
+					}
+				}
+
+				// Frequency panel
+				for (i = 0; i < {{ num_nodes }}; i++) {
+					var header = $('.node[data-node=' + i + '] .vrx-header');
+					header.empty();
+
+					var locks = 0;
+					if (i in vrx_by_node) {
+						for (j in vrx_by_node[i]) {
+							var vrx_id = vrx_by_node[i][j];
+							var vrx = msg.vrx[vrx_id];
+							if (vrx.lock_status == 'L') {
+								locks++;
+							}
+						}
+
+						if (locks == vrx_by_node[i].length) {
+							header.removeClass('has-unlocked')
+						} else {
+							header.addClass('has-unlocked')
+						}
+
+						header.append(__('VRx locks') + ': ' + locks + '/' + vrx_by_node[i].length);
+					} else {
+						header.removeClass('has-unlocked')
+						header.append(__('VRx locks') + ': 0/0');
+					}
+				}
+
+				if (msg.connection) {
+					$('#vrx-warning').html(__("WARNING: Video receivers connected.") + " " + __("Frequency changes may cause pilots to lose video."));
+				} else {
+					$('#vrx-warning').empty();
+				}
+
+				// VRx Control Panel
 				if (msg.connection) {
 					$('#vrx-control-setup').empty();
 
@@ -397,7 +443,11 @@
 							}
 
 							for (var item in table_items) {
-								table.append('<tr><th>' + __(item) + '</th><td>' + table_items[item] + '</td></tr>');
+								if (item == 'ID' && vrx.ip) {
+									table.append('<tr><th>' + __(item) + '</th><td><a href="http://' + vrx.ip + '">' + table_items[item] + '</a></td></tr>');
+								} else {
+									table.append('<tr><th>' + __(item) + '</th><td>' + table_items[item] + '</td></tr>');
+								}
 							}
 
 							li.append(table)
@@ -409,13 +459,6 @@
 					$('#vrx-control-setup').append(vrx_list)
 				} else {
 					$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
-				}
-
-				// Frequency warning
-				if (msg.connection) {
-					$('#vrx-warning').html(__("WARNING: Video receivers connected.") + " " + __("Frequency changes may cause pilots to lose video."));
-				} else {
-					$('#vrx-warning').empty();
 				}
 			} else {
 				$('#vrx-warning').empty();
@@ -1532,7 +1575,7 @@
 	<div class="panel-content">
 		<p><label for="message_body" class="screen-reader-text">{{ __('Message Body') }}</label>
 		<input type="text" id="message_body" maxlength="256" placeholder="Message">{{ getOption('eventDescription') }}</textarea></p>
-		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}</label></p>
+		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}{% if vrx_enabled %} {{ __('and Send to VRx') }}{% endif %}</label></p>
 		<p><button id="send_message">{{ __('Send Message') }}</button></p>
 	</div>
 </div>
@@ -1575,6 +1618,9 @@
 		<div class="node-list">
 			{% for node in range(num_nodes) %}
 				<div class="node" data-node="{{ node }}">
+					{% if vrx_enabled %}
+						<div class="vrx-header"></div>
+					{% endif %}
 					<h3><label for="set_freq_node_{{ node }}">{{ __('Node') }} {{ node + 1 }}</label></h3>
 					<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
 					<label for="s_channel_{{ node }}" class="screen-reader-text">Frequency</label>
