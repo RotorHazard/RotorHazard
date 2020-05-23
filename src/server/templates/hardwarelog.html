@@ -1,4 +1,6 @@
 {% extends "layout.html" %} {% block title %}Server Log{% endblock %} {% block head %}
+<script type="text/javascript" src="./static/Blob.js"></script>
+<script type="text/javascript" src="./static/FileSaver.min.js"></script>
 <script type="text/javascript" charset="utf-8">
 	function selectText(element) {
 		var doc = document
@@ -44,6 +46,23 @@
 		$(document).on('click', '#select-log', function(){
 			selectText('log');
 		});
+
+		$('button#download_logs').click(function (event) {
+			socket.emit('download_logs', {'emit_fn_name': 'logpg_save_logs'});
+			return false;
+		});
+
+		socket.on('logpg_save_logs', function (msg) {
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+				byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			// construct blob from byte array and initiate browser save-as
+			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
+		});
 	});
 
 </script>
@@ -54,6 +73,7 @@
 <pre>
 <div id="log"></div>
 </pre>
-<div class="control-set"><button id="select-log">{{ __('Select Log') }}</button></div>
+<div class="control-set"><button id="select-log">{{ __('Select Text') }}</button>
+<button id="download_logs">{{ __('Download Logs') }}</button></div>
 </main>
 {% endblock %}

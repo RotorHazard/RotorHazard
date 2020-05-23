@@ -3,6 +3,7 @@ import os
 import glob
 import logging.handlers
 import platform
+import zipfile
 import gevent
 from datetime import datetime
 
@@ -176,3 +177,33 @@ def deleteOldLogfiles(num_keep_val, lfname, lfext):
     except Exception as ex:
         print("Error removing old log files: " + str(ex))
     return num_del
+
+
+def create_log_files_zip(logger, config_file, db_file):
+    zip_file_obj = None
+    try:
+        if os.path.exists(LOG_DIR_NAME):
+            zip_dir = LOG_DIR_NAME + "/zip"
+            if not os.path.exists(zip_dir):
+                os.makedirs(zip_dir)
+            time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+            zip_path_name = zip_dir + "/rh_logs_" + time_str + ".zip"
+            logger.info("Creating logs .zip file: {0}".format(zip_path_name))
+            gevent.sleep(0.1)  # pause to let log message get written
+            zip_file_obj = zipfile.ZipFile(zip_path_name, 'w', zipfile.ZIP_DEFLATED)
+            for root, dirs, files in os.walk(LOG_DIR_NAME):  # @UnusedVariable
+                if root == LOG_DIR_NAME:  # don't include sub-directories
+                    for fname in files:
+                        zip_file_obj.write(os.path.join(root, fname))
+            # also include configuration and database files
+            if config_file and os.path.isfile(config_file):
+                zip_file_obj.write(config_file)
+            if db_file and os.path.isfile(db_file):
+                zip_file_obj.write(db_file)
+            zip_file_obj.close()
+            return zip_path_name
+    except Exception:
+        logger.exception("Error creating log-files .zip file")
+        if zip_file_obj:
+            zip_file_obj.close()
+        return None
