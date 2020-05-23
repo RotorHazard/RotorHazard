@@ -2413,6 +2413,7 @@ def on_set_current_heat(data):
         'heat_id': new_heat_id,
         })
 
+    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
     emit_current_heat() # Race page, to update heat selection button
     emit_current_leaderboard() # Race page, to update callsigns in leaderboard
     race_format = getCurrentRaceFormat()
