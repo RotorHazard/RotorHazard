@@ -336,8 +336,8 @@ def idAndLogSystemInfo():
             IS_SYS_RASPBERRY_PI = True
             logger.info("Host machine: " + modelStr)
         logger.info("Host OS: {0} {1}".format(platform.system(), platform.release()))
-    except Exception as ex:
-        logger.exception("Error in idAndLogSystemInfo():  ")
+    except Exception:
+        logger.exception("Error in 'idAndLogSystemInfo()'")
 
 # Checks if the given file is owned by 'root' and changes owner to 'pi' user if so.
 # Returns True if file owner changed to 'pi' user; False if not.
@@ -345,13 +345,13 @@ def checkSetFileOwnerPi(fileNameStr):
     try:
         if IS_SYS_RASPBERRY_PI:
             # check that 'pi' user exists, file exists, and file owner is 'root'
-            if os.getlogin() == 'pi' and os.path.isfile(fileNameStr) and os.stat(fileNameStr).st_uid == 0:
+            if os.path.isdir("/home/pi") and os.path.isfile(fileNameStr) and os.stat(fileNameStr).st_uid == 0:
                 subprocess.check_call(["sudo", "chown", "pi:pi", fileNameStr])
                 if os.stat(fileNameStr).st_uid != 0:
                     return True
                 logger.info("Unable to change owner in 'checkSetFileOwnerPi()', file: " + fileNameStr)
-    except Exception as ex:
-        logger.info("Error in 'checkSetFileOwnerPi()':  " + str(ex))
+    except Exception:
+        logger.exception("Error in 'checkSetFileOwnerPi()'")
     return False
 
 def getCurrentProfile():
@@ -4761,9 +4761,8 @@ idAndLogSystemInfo()
 
 # check if current log file owned by 'root' and change owner to 'pi' user if so
 if Current_log_path_name and checkSetFileOwnerPi(Current_log_path_name):
-    logger.info("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
-else:
-    logger.info("Using log file: {0}".format(Current_log_path_name))
+    logger.debug("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
+logger.info("Using log file: {0}".format(Current_log_path_name))
 
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
@@ -4822,7 +4821,7 @@ if not os.path.exists(DB_FILE_NAME):
 
 # check if DB file owned by 'root' and change owner to 'pi' user if so
 if checkSetFileOwnerPi(DB_FILE_NAME):
-    logger.info("Changed DB-file owner from 'root' to 'pi' (file: '{0}')".format(DB_FILE_NAME))
+    logger.debug("Changed DB-file owner from 'root' to 'pi' (file: '{0}')".format(DB_FILE_NAME))
 
 Options.primeGlobalsCache()
 
