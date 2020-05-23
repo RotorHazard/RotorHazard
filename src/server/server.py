@@ -20,7 +20,7 @@ EPOCH_START = datetime(1970, 1, 1)
 PROGRAM_START_TIMESTAMP = int((datetime.now() - EPOCH_START).total_seconds() / 1000)
 
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
-logger.info('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
+logger.debug('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
 
 # Normal importing resumes here
 import gevent
@@ -90,6 +90,19 @@ FULL_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate ca
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
 IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
+
+# command-line arguments:
+CMDARG_VERSION_LONG_STR = '--version'  # show program version and exit
+CMDARG_VERSION_SHORT_STR = '-v'        # show program version and exit
+CMDARG_ZIP_LOGS_STR = '--ziplogs'      # create logs .zip file
+
+if __name__ == '__main__' and len(sys.argv) > 1:
+    if CMDARG_VERSION_LONG_STR in sys.argv or CMDARG_VERSION_SHORT_STR in sys.argv:
+        sys.exit(0)
+    if CMDARG_ZIP_LOGS_STR in sys.argv:
+        log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
+        sys.exit(0)
+    print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
 
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 DEF_TEAM_NAME = 'A'  # default team
@@ -1702,6 +1715,26 @@ def on_reboot_pi():
     logger.info('Rebooting pi')
     gevent.sleep(1);
     os.system("sudo reboot now")
+
+@SOCKET_IO.on('download_logs')
+def on_download_logs(data):
+    '''Download logs (as .zip file).'''
+    zip_path_name = log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
+    if zip_path_name:
+        try:
+            # read logs-zip file data and convert to Base64
+            with open(zip_path_name, mode='rb') as file_obj:
+                file_content = base64.encodestring(file_obj.read())
+            emit_payload = {
+                'file_name': os.path.basename(zip_path_name),
+                'file_data' : file_content
+            }
+            Events.trigger(Evt.DATABASE_BACKUP, {
+                'file_name': emit_payload['file_name'],
+                })
+            SOCKET_IO.emit(data['emit_fn_name'], emit_payload)
+        except Exception:
+            logger.exception("Error downloading logs-zip file")
 
 @SOCKET_IO.on("set_min_lap")
 def on_set_min_lap(data):
@@ -4257,8 +4290,8 @@ def emit_current_log_file_to_socket():
         try:
             with io.open(Current_log_path_name, 'r') as f:
                 SOCKET_IO.emit("hardware_log_init", f.read())
-        except Exception as ex:
-            logger.error("Error sending current log file to socket: {0}".format(ex))
+        except Exception:
+            logger.exception("Error sending current log file to socket")
 
 def db_init():
     '''Initialize database.'''
