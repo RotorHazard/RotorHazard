@@ -1721,6 +1721,7 @@ def on_download_logs(data):
     '''Download logs (as .zip file).'''
     zip_path_name = log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
     if zip_path_name:
+        checkSetFileOwnerPi(zip_path_name)
         try:
             # read logs-zip file data and convert to Base64
             with open(zip_path_name, mode='rb') as file_obj:
