@@ -469,7 +469,7 @@ def race():
 
     return render_template('race.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         led_enabled=led_manager.isEnabled(),
-        vrx_enabled=vrx_controller!=False,
+        vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat, pilots=Database.Pilot,
         nodes=nodes)
@@ -503,7 +503,7 @@ def settings():
     '''Route to settings page.'''
     return render_template('settings.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         led_enabled=led_manager.isEnabled(),
-        vrx_enabled=vrx_controller!=False,
+        vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config.GENERAL['configFile'],
         Debug=Config.GENERAL['DEBUG'])
@@ -3945,7 +3945,7 @@ def emit_imdtabler_rating():
 
 def emit_vrx_list(*args, **params):
     ''' get list of connected VRx devices '''
-    if vrx_controller != False:
+    if vrx_controller:
         # if vrx_controller.has_connection:
             vrx_list = {}
             for vrx in vrx_controller.rx_data:
@@ -4027,7 +4027,8 @@ def heartbeat_thread_function():
 
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 4:
                 # emit display status with offset
-                emit_vrx_list()
+                if vrx_controller:
+                    emit_vrx_list()
 
             # emit environment data less often:
             if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
@@ -4859,7 +4860,7 @@ def initVRxController():
 
 def killVRxController(*args):
     logger.info('Killing VRxController')
-    vrx_controller = False
+    vrx_controller = None
 
 #
 # Program Initialize
