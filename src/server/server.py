@@ -2123,7 +2123,7 @@ def findBestValues(node, node_index):
         }
 
     # fallback
-    logger.debug('Node {0} calibration: no calibration hints found, no change.format(node.index+1)')
+    logger.debug('Node {0} calibration: no calibration hints found, no change'.format(node.index+1))
     return {
         'enter_at_level': node.enter_at_level,
         'exit_at_level': node.exit_at_level
