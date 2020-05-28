@@ -664,11 +664,11 @@
 					el.appendTo(classlist);
 
 					if (race_class.name) {
-						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + '</option>'));
-						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + '</option>'));
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' +race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
 					} else {
-						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + '</option>'));
-						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + '</option>'));
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
 					}
 				}
 				classlist.appendTo($('.race_classes'));

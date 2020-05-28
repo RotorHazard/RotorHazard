@@ -1328,16 +1328,13 @@ def on_delete_heat(data):
 
         has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
 
-        if has_race:
+        if has_race or (RACE.current_heat == heat.id and RACE.race_status != RaceStatus.READY):
             logger.info('Refusing to delete heat {0}: is in use'.format(heat.id))
         else:
             DB.session.delete(heat)
             for heatnode in heatnodes:
                 DB.session.delete(heatnode)
             DB.session.commit()
-
-            if RACE.current_heat == heat:
-                RACE.current_heat = Database.Heat.query.first()
 
             logger.info('Heat {0} deleted'.format(heat.id))
 
@@ -1346,6 +1343,10 @@ def on_delete_heat(data):
                 })
 
             emit_heat_data()
+            if RACE.current_heat == heat.id:
+                RACE.current_heat = Database.Heat.query.first().id
+                emit_current_heat()
+
     else:
         logger.info('Refusing to delete only heat')
 
