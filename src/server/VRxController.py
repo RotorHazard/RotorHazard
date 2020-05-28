@@ -153,11 +153,12 @@ class VRxController:
             return
 
         for heatnode in Database.HeatNode.query.filter_by(heat_id=heat_id).all():
-            if heatnode.pilot_id != Database.PILOT_ID_NONE:
-                pilot = Database.Pilot.query.get(heatnode.pilot_id)
-                self.set_message_direct(heatnode.node_index, pilot.callsign)
-            else:
-                self.set_message_direct(heatnode.node_index, __("-None-"))
+            if heatnode.node_index < self.num_nodes:
+                if heatnode.pilot_id != Database.PILOT_ID_NONE:
+                    pilot = Database.Pilot.query.get(heatnode.pilot_id)
+                    self.set_message_direct(heatnode.node_index, pilot.callsign)
+                else:
+                    self.set_message_direct(heatnode.node_index, __("-None-"))
 
     def do_race_stage(self, arg):
         self.logger.info("VRx Signaling Race Stage")
@@ -173,7 +174,7 @@ class VRxController:
 
     def do_race_stop(self, arg):
         self.logger.info("VRx Signaling Race Stop")
-        self.set_message_direct(VRxALL, __("Stop"))
+        self.set_message_direct(VRxALL, __("Race Stopped. Land Now."))
 
     def do_send_message(self, arg):
         self.set_message_direct(VRxALL, arg['message'])
@@ -226,6 +227,10 @@ class VRxController:
             gevent.sleep()
 
         if RACE.cacheStatus == Results.CacheStatus.VALID:
+            '''
+            Get relevant results
+            '''
+
             results = RACE.results
 
             # select correct results
@@ -253,15 +258,6 @@ class VRxController:
             if result['last_lap']:
                 current_lap = result['last_lap']
 
-                '''
-                Re-implement after message queue exists
-
-                message = str(result['position']) + ': ' + result['last_lap']
-                node_dest = node_index
-                self.set_message_direct(node_dest, message)
-                self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
-                '''
-
             # get the next faster results
             next_rank_split = None
             next_rank_split_result = None
@@ -277,24 +273,6 @@ class VRxController:
                         # WinCondition.MOST_LAPS
                         # WinCondition.FIRST_TO_LAP_X
                         next_rank_split = result['total_time_raw'] - next_rank_split_result['total_time_raw']
-
-                    # send next faster result to this node's VRx
-                    '''
-                    Re-implement after message queue exists
-                    message = __('Next') + ' (' + str(split_result['position']) + '): -' + RHUtils.time_format(split) + ' ' + split_result['callsign']
-                    node_dest = node_index
-                    self.set_message_direct(node_dest, message)
-                    self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
-                    '''
-
-                    '''
-                    Re-implement after message queue exists
-                    # send this result to next faster VRx
-                    message = str(node_index) + ': +' + RHUtils.time_format(split) + ' ' + result['callsign']
-                    node_dest = leaderboard[result['position']-2]['node']
-                    self.set_message_direct(node_dest, message)
-                    self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
-                    '''
 
             # get the fastest result
             first_rank_split = None
@@ -312,45 +290,87 @@ class VRxController:
                         # WinCondition.FIRST_TO_LAP_X
                         first_rank_split = result['total_time_raw'] - first_rank_split_result['total_time_raw']
 
-                    '''
-                    Re-implement after message queue exists
-                    # send the fastest result to this node's VRx
-                    message = __('First') + ': -' + RHUtils.time_format(split) + ' ' + split_result['callsign']
-                    node_dest = node_index
-                    self.set_message_direct(node_dest, message)
-                    self.logger.debug('msg node {1} | {0}'.format(message, node_dest))
-                    '''
+            '''
+            Set up output objects
+            '''
 
-            # One-line readout
-            # "Pos:Callsign | L[n]:0:00:00"
+            osd = {
+                'position_prefix': POS_HEADER,
+                'position': str(result['position']),
+                'callsign': result['callsign'],
+                'lap_prefix': LAP_HEADER,
+                'lap_number': '',
+                'last_lap_time': '',
+                'total_time': result['total_time'],
+            }
 
             if result['laps']:
-                message = POS_HEADER + str(result['position']) + ':' + result['callsign'][:12] + ' | ' + LAP_HEADER + str(result['laps']) + ': ' + result['last_lap']
+                osd['lap_number'] = str(result['laps'])
+                osd['last_lap_time'] = result['last_lap']
             else:
-                message = POS_HEADER + str(result['position']) + ':' + result['callsign'][:12] + ' | HS: ' + result['total_time']
+                osd['lap_prefix'] = ''
+                osd['lap_number'] = __('HS')
+                osd['last_lap_time'] = result['total_time']
 
-            # "Pos:Callsign | L[n]:0:00:00 / +0:00.000 Pos:Callsign"
             if next_rank_split:
-                message += ' / +' + RHUtils.time_format(next_rank_split) + ' ' + str(next_rank_split_result['position']) + ':' + next_rank_split_result['callsign'][:12]
+                osd_split = {
+                    'position_prefix': POS_HEADER,
+                    'position': str(next_rank_split_result['position']),
+                    'callsign': next_rank_split_result['callsign'],
+                    'split_time': RHUtils.time_format(next_rank_split),
+                }
+
+                osd_next_rank = {
+                    'position_prefix': POS_HEADER,
+                    'position': str(next_rank_split_result['position']),
+                    'callsign': next_rank_split_result['callsign'],
+                    'lap_prefix': LAP_HEADER,
+                    'lap_number': '',
+                    'last_lap_time': '',
+                    'total_time': result['total_time'],
+                }
+
+                if next_rank_split_result['laps']:
+                    osd_next_rank['lap_number'] = str(next_rank_split_result['laps'])
+                    osd_next_rank['last_lap_time'] = next_rank_split_result['last_lap']
+                else:
+                    osd_next_rank['lap_prefix'] = ''
+                    osd_next_rank['lap_number'] = __('HS')
+                    osd_next_rank['last_lap_time'] = next_rank_split_result['total_time']
+
+            if first_rank_split:
+                osd_first_split = {
+                    'position_prefix': POS_HEADER,
+                    'position': str(first_rank_split_result['position']),
+                    'callsign': first_rank_split_result['callsign'],
+                    'split_time': RHUtils.time_format(first_rank_split),
+                }
+
+            '''
+            Format and send messages
+            '''
+
+            # One-line readout
+            # "Pos:Callsign L[n]:0:00:00"
+            message = osd['position_prefix'] + osd['position'] + ':' + osd['callsign'][:10] + ' ' + osd['lap_prefix'] + osd['lap_number'] + ': ' + osd['last_lap_time']
+
+            # "Pos:Callsign L[n]:0:00:00 / +0:00.000 Callsign"
+            if next_rank_split:
+                message += ' / +' + osd_split['split_time'] + ' ' + osd_split['callsign'][:10]
 
             node_dest = node_index
             self.set_message_direct(node_dest, message)
             self.logger.debug('msg n{1}:  {0}'.format(message, node_dest))
 
-            # show back split when next pilot crosses
-            if result['position'] > 1:
-                last_result = leaderboard[result['position']-2]
-
+            # show split when next pilot crosses
+            if next_rank_split_result:
                 # keep lap info
-                # "Pos:Callsign | L[n]:0:00:00"
-                if last_result['laps']:
-                    message = POS_HEADER + str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | ' + LAP_HEADER + str(last_result['laps']) + ': ' + last_result['last_lap']
-                else:
-                    message = POS_HEADER + str(last_result['position']) + ':' + last_result['callsign'][:12] + ' | HS: ' + last_result['total_time']
+                # "Pos:Callsign L[n]:0:00:00"
+                message = osd_next_rank['position_prefix'] + osd_next_rank['position'] + ':' + osd_next_rank['callsign'][:10] + ' ' + osd_next_rank['lap_prefix'] + osd_next_rank['lap_number'] + ': ' + osd_next_rank['last_lap_time']
 
-                # "Pos:Callsign | L[n]:0:00:00 / -0:00.000 Pos:Callsign"
+                # "Pos:Callsign L[n]:0:00:00 / -0:00.000 Callsign"
                 if next_rank_split:
-                    message += ' / -' + RHUtils.time_format(next_rank_split) + ' ' + POS_HEADER + str(result['position']) + ':' + result['callsign'][:12]
+                    message += ' / -' + osd_split['split_time'] + ' ' + osd['callsign'][:10]
 
                 node_dest = leaderboard[result['position']-2]['node']
                 self.set_message_direct(node_dest, message)
@@ -547,7 +567,7 @@ class VRxController:
     def on_message_connection(self, client, userdata, message):
         rx_name = message.topic.split('/')[1]
         connection_status = message.payload
-        self.logger.info("Connection message received: %s => %s" % (rx_name,connection_status))
+        self.logger.info("Found MQTT device: %s => %s" % (rx_name,connection_status))
         try:
             self.rx_data[rx_name]["connection"] = connection_status
             self.rx_data[rx_name]["valid_rx"] = "0"
@@ -557,16 +577,7 @@ class VRxController:
                                      "valid_rx": "0"}
 
         if int(connection_status) == 1:
-            self.logger.warning("Device %s is not yet configured by the server after a successful connection. Conducting some config now" % rx_name)
-
-            # TODO Do we set the receiver's settings now?
-               # MN: Yes.
-            # What if they are flying?
-               # MN: ESP can wait for lock loss;
-               # publish message to notify change coming;
-               # race operator's responsibility to do safely
-               # or pilot's responsibility to disconnect.
-            # We don't want to waste time if they just plugged in the ESP32 though
+            self.logger.info("Device %s is not yet configured by the server after a successful connection. Conducting some config now" % rx_name)
 
             # Start by requesting the status of the device that just joined.
             # At this point, it could be any MQTT device becaue we haven't filtered by receivers.
