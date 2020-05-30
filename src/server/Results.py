@@ -256,6 +256,7 @@ def calc_leaderboard(DB, **params):
                 nodes.append(pilotnode)
 
     total_time = []
+    total_time_laps = []
     last_lap = []
     average_lap = []
     fastest_lap = []
@@ -268,10 +269,14 @@ def calc_leaderboard(DB, **params):
         # Get the total race time for each pilot
         if USE_CURRENT:
             race_total = 0
+            laps_total = 0
             for lap in current_laps[i]:
                 race_total += lap['lap_time']
+                if lap > 0:
+                    laps_total += lap['lap_time']
 
             total_time.append(race_total)
+            total_time_laps.append(laps_total)
 
         else:
             stat_query = DB.session.query(DB.func.sum(Database.SavedRaceLap.lap_time)) \
@@ -283,6 +288,18 @@ def calc_leaderboard(DB, **params):
                 total_time.append(stat_query.scalar())
             else:
                 total_time.append(0)
+
+            stat_query = DB.session.query(DB.func.sum(Database.SavedRaceLap.lap_time)) \
+                .filter(Database.SavedRaceLap.pilot_id == pilot, \
+                    Database.SavedRaceLap.deleted != 1, \
+                    Database.SavedRaceLap.race_id.in_(racelist), \
+                    ~Database.SavedRaceLap.id.in_(holeshots[i]))
+
+            if stat_query.scalar():
+                total_time_laps.append(stat_query.scalar())
+            else:
+                total_time_laps.append(0)
+
 
         gevent.sleep()
         # Get the last lap for each pilot (current race only)
@@ -427,7 +444,7 @@ def calc_leaderboard(DB, **params):
 
     gevent.sleep()
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source, last_lap, pilot_ids, nodes)
+    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source, last_lap, pilot_ids, nodes, total_time_laps)
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
     leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2] if x[2] > 0 else float('inf')))
@@ -452,6 +469,8 @@ def calc_leaderboard(DB, **params):
             'behind': (leaderboard_by_race_time[0][1] - row[1]),
             'total_time': RHUtils.time_format(row[2]),
             'total_time_raw': row[2],
+            'total_time_laps': RHUtils.time_format(row[12]),
+            'total_time_laps_raw': row[12],
             'average_lap': RHUtils.time_format(row[3]),
             'fastest_lap': RHUtils.time_format(row[4]),
             'fastest_lap_raw': row[4],
@@ -484,14 +503,21 @@ def calc_leaderboard(DB, **params):
         leaderboard_fast_lap_data.append({
             'position': pos,
             'callsign': row[0],
+            'laps': row[1],
             'total_time': RHUtils.time_format(row[2]),
+            'total_time_raw': row[2],
+            'total_time_laps': RHUtils.time_format(row[12]),
+            'total_time_laps_raw': row[12],
             'average_lap': RHUtils.time_format(row[3]),
             'fastest_lap': RHUtils.time_format(row[4]),
+            'fastest_lap_raw': row[4],
             'team_name': row[5],
             'consecutives': RHUtils.time_format(row[6]),
+            'consecutives_raw': row[6],
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
-            'last_lap': row[9],
+            'last_lap': RHUtils.time_format(row[9]),
+            'last_lap_raw': row[9],
             'pilot_id': row[10],
             'node': row[11],
         })
@@ -514,14 +540,21 @@ def calc_leaderboard(DB, **params):
         leaderboard_consecutives_data.append({
             'position': i,
             'callsign': row[0],
+            'laps': row[1],
             'total_time': RHUtils.time_format(row[2]),
+            'total_time_raw': row[2],
+            'total_time_laps': RHUtils.time_format(row[12]),
+            'total_time_laps_raw': row[12],
             'average_lap': RHUtils.time_format(row[3]),
             'fastest_lap': RHUtils.time_format(row[4]),
+            'fastest_lap_raw': row[4],
             'team_name': row[5],
             'consecutives': RHUtils.time_format(row[6]),
+            'consecutives_raw': row[6],
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
-            'last_lap': row[9],
+            'last_lap': RHUtils.time_format(row[9]),
+            'last_lap_raw': row[9],
             'pilot_id': row[10],
             'node': row[11],
         })
