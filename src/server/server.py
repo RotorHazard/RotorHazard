@@ -3977,7 +3977,7 @@ def set_vrx_node(data):
     vrx_id = data['vrx_id']
     node = data['node']
 
-    if vrx_controller != False:
+    if vrx_controller:
         vrx_controller.set_node_number(serial_num=vrx_id, desired_node_num=node)
         logger.info("Set VRx {0} to node {1}".format(vrx_id, node))
     else:

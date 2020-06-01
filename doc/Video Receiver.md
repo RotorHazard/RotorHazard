@@ -11,17 +11,21 @@ RotorHazard supports wireless communications with video receivers. Initial suppo
 
 ## Software Setup in RotorHazard
 
-1. In your server config file, edit VRX_SERVER "ENABLED" to true
-   
+1. Install and configure an MQTT broker. The MQTT broker does not need to be installed on the same system as the RorotHazard server, though it does simplify setup and maintenance. To install on a Raspberry Pi, from the terminal:
+   * `sudo apt update`
+   * `sudo apt install -y mosquitto mosquitto-clients`
+   * `sudo systemctl enable mosquitto.service`
+
+1. Add the VRX_CONTROL block to config.json. Set "ENABLED" to "true" and "HOST" to the IP address of your MQTT broker (use "localhost" if it is on the same system as the RotorHazard server).
    * 
 	```json
-		"VRX_SERVER": {
+		"VRX_CONTROL": {
 				"HOST": "localhost",
 				"ENABLED": true
 			},	
 	```	
    * The default config file is located at `RotorHazard/src/server/config.json`,
-1. Install the ClearView Receviers  
+1. Install the ClearView Recevier Library.
    * `cd ~`
    * `git clone https://github.com/ryaniftron/clearview_interface_public.git --depth 1`
    * `cd ~/clearview_interface_public/src/clearview-py`

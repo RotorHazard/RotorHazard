@@ -9,10 +9,6 @@
 	"SENSORS": {
 	},
 	"SERIAL_PORTS": [],
-	"VRX_SERVER": {
-		"HOST": "localhost",
-		"ENABLED": false
-	},
 	"LED": {
 		"LED_COUNT": 0,
 		"LED_PIN": 10,
@@ -22,7 +18,7 @@
 		"LED_CHANNEL": 0,
 		"PANEL_ROTATE": 0,
 		"INVERTED_PANEL_ROWS": false
-	}
+	},
 	"LOGGING": {
 		"CONSOLE_LEVEL": "INFO",
 		"SYSLOG_LEVEL": "NONE",
