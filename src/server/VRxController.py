@@ -502,25 +502,22 @@ class VRxController:
     # Frequency
     ###########
 
-    @property
-    def frequency(self):
-        return [node.node_frequency for node in self._nodes]
-
-    @frequency.setter
-    def frequency(self, frequencies):
-        """ set the receiver frequencies
-        frequencies: dict
-            key: node_number
-            value: desired frequency
-        """
-        for node_number in frequencies:
-            f = frequencies[node_number]
-            self._nodes[node_number].node_frequency = f
-
     def set_node_frequency(self, node_number, frequency):
         fmsg = __("Frequency Change: ") + str(frequency)
         node = self._nodes[node_number]
         node.set_node_frequency(frequency)
+
+    def set_target_frequency(self, target, frequency):
+        fmg = __("Frequency Change: ") + str(frequency)
+        
+        if frequency != RHUtils.FREQUENCY_ID_NONE:
+            topic = mqtt_publish_topics["cv1"]["receiver_command_targeted_topic"][0]%target
+            messages = self._cv.set_custom_frequency(self._cv.bc_id, frequency)
+
+            # set_custom_frequency returns multiple commands (one for channel and one for band)
+            for m in messages:
+                self._mqttc.publish(topic,m)
+
 
     def get_node_frequency(self, node_number, frequency):
         self._nodes[node_number].node_frequency
@@ -632,26 +629,48 @@ class VRxController:
         self._mqttc.message_callback_add(topic, callback)
         self._mqttc.subscribe(topic)
 
+    def perform_initial_receiver_config(self, target):
+        """ Given the unique identifier of a receiver, perform the initial config"""
+        initial_config_success = False
+
+        try:
+            nn = self.rx_data[target]["node_number"]
+        except KeyError:
+            self.logger.info("No node number available for %s yet", target)
+        else:
+            print("TODO get the freqeuncy this RX is supposed to be set at")
+            freq_to_set = 5880
+            self.set_target_frequency(target, freq_to_set)
+
+            self.rx_data[target]["needs_config"] = False
+            initial_config_success = True
+
+        return initial_config_success
+
+
+
+
     def on_message_connection(self, client, userdata, message):
         rx_name = message.topic.split('/')[1]
+        
+        if rx_name == 'VRxController':
+            return 
+
         connection_status = message.payload
         self.logger.info("Found MQTT device: %s => %s" % (rx_name,connection_status))
-        try:
-            self.rx_data[rx_name]["connection"] = connection_status
-            self.rx_data[rx_name]["valid_rx"] = "0"
-
-        except KeyError:
-            self.rx_data[rx_name] = {"connection": connection_status,
-                                     "valid_rx": "0"}
+        rx_data = self.rx_data.setdefault(rx_name,{"connection": connection_status})
 
         if int(connection_status) == 1:
             self.logger.info("Device %s is not yet configured by the server after a successful connection. Conducting some config now" % rx_name)
+            rx_data["needs_config"] = True
 
             # Start by requesting the status of the device that just joined.
             # At this point, it could be any MQTT device becaue we haven't filtered by receivers.
             # See TODO in on_message_status
             self.req_status_targeted("variable", rx_name)
             self.req_status_targeted("static", rx_name)
+
+
 
         #TODO only fire event if the data changed
         self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
@@ -674,7 +693,7 @@ class VRxController:
         payload = message.payload
 
         if len(payload) >= MINIMUM_PAYLOAD:
-            rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"})
+            rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"}) #TODO this is probably not needed
 
             try:
                 nt, pattern_response = clearview.formatter.match_response(payload)
@@ -717,10 +736,18 @@ class VRxController:
             self.logger.error("Unable to json.load on_message_status payload")
             self.rx_data[rx_name]["valid_rx"] = "0"
             return
+        
+        #TODO skip storing data if it's not a video receiver. Have to check both rx_newdata and rx_data for the "dev" key as it may not be in both
 
-        rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"})
+        rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"}) #Todo this may not be needed now that connection works?
         rx_data.update(rx_newdata)
-        rx_data["valid_rx"] = "1"
+        rx_data["valid_rx"] = "1" #TODO is this needed?
+
+        if rx_data["needs_config"] == True:
+            self.perform_initial_receiver_config(rx_name)
+        else:
+            self.logger.debug("RX %s is already configured"%rx_name)
+
 
         #TODO only fire event if the data changed
         self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
