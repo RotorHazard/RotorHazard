@@ -388,11 +388,11 @@ class VRxController:
             Format and send messages
             '''
 
-            # "Pos:Callsign L[n]:0:00:00"
-            message = osd['position_prefix'] + osd['position'] + ':' + osd['callsign'][:10] + ' ' + osd['lap_prefix'] + osd['lap_number'] + ': ' + osd['last_lap_time']
+            # "Pos:Callsign L[n]|0:00:00"
+            message = osd['position_prefix'] + osd['position'] + ':' + osd['callsign'][:10] + ' ' + osd['lap_prefix'] + osd['lap_number'] + '|' + osd['last_lap_time']
 
             if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                # "Pos:Callsign L[n]:0:00:00 | #/0:00.000" (current | best consecutives)
+                # "Pos:Callsign L[n]|0:00:00 | #/0:00.000" (current | best consecutives)
                 if result['laps'] >= 3:
                     message += ' | 3/' + osd['consecutives']
                 elif result['laps'] == 2:
@@ -401,7 +401,7 @@ class VRxController:
             elif win_condition == WinCondition.FASTEST_LAP:
                 if next_rank_split:
                     # pilot in 2nd or lower
-                    # "Pos:Callsign L[n]:0:00:00 / +0:00.000 Callsign"
+                    # "Pos:Callsign L[n]|0:00:00 / +0:00.000 Callsign"
                     message += ' / +' + osd_next_split['split_time'] + ' ' + osd_next_split['callsign'][:10]
                 elif osd['is_best_lap']:
                     # pilot in 1st and is best lap
@@ -412,7 +412,7 @@ class VRxController:
                 # WinCondition.FIRST_TO_LAP_X
                 # WinCondition.NONE
 
-                # "Pos:Callsign L[n]:0:00:00 / +0:00.000 Callsign"
+                # "Pos:Callsign L[n]|0:00:00 / +0:00.000 Callsign"
                 if next_rank_split:
                     message += ' / +' + osd_next_split['split_time'] + ' ' + osd_next_split['callsign'][:10]
 
@@ -434,10 +434,10 @@ class VRxController:
 
                     # update pilot ahead with split-behind
 
-                    # "Pos:Callsign L[n]:0:00:00"
-                    message = osd_next_rank['position_prefix'] + osd_next_rank['position'] + ':' + osd_next_rank['callsign'][:10] + ' ' + osd_next_rank['lap_prefix'] + osd_next_rank['lap_number'] + ': ' + osd_next_rank['last_lap_time']
+                    # "Pos:Callsign L[n]|0:00:00"
+                    message = osd_next_rank['position_prefix'] + osd_next_rank['position'] + ':' + osd_next_rank['callsign'][:10] + ' ' + osd_next_rank['lap_prefix'] + osd_next_rank['lap_number'] + '|' + osd_next_rank['last_lap_time']
 
-                    # "Pos:Callsign L[n]:0:00:00 / -0:00.000 Callsign"
+                    # "Pos:Callsign L[n]|0:00:00 / -0:00.000 Callsign"
                     message += ' / -' + osd_next_split['split_time'] + ' ' + osd['callsign'][:10]
 
                     node_dest = leaderboard[rank_index - 1]['node']
