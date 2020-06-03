@@ -381,9 +381,9 @@
 				}
 
 				if (msg.connection) {
-					$('#vrx-warning').html(__("WARNING: Video receivers connected.") + " " + __("Frequency changes may cause pilots to lose video."));
+					$('.vrx-warning').html(__("WARNING: Video receivers connected.") + " " + __("Changes may cause pilots to lose video."));
 				} else {
-					$('#vrx-warning').empty();
+					$('.vrx-warning').empty();
 				}
 
 				// VRx Control Panel
@@ -472,7 +472,7 @@
 					$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
 				}
 			} else {
-				$('#vrx-warning').empty();
+				$('.vrx-warning').empty();
 			}
 		});
 
@@ -1649,7 +1649,7 @@
 			{% endfor %}
 		</div>
 		<div class="control-set" id="imd_rating_label"></div>
-		<div class="control-set" id="vrx-warning"></div>
+		<div class="control-set vrx-warning"></div>
 	</div>
 </div>
 
@@ -2132,6 +2132,8 @@
 	</div>
 	<div class="panel-content">
 		<div id="vrx-control-setup"></div>
+
+		<div class="control-set vrx-warning"></div>
 
 		<ol class="form">
 			<li>
