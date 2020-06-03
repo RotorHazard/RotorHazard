@@ -638,9 +638,14 @@ class VRxController:
         except KeyError:
             self.logger.info("No node number available for %s yet", target)
         else:
-            print("TODO get the freqeuncy this RX is supposed to be set at")
-            freq_to_set = 5880
-            self.set_target_frequency(target, freq_to_set)
+            self.logger.info("Performing initial configuration for %s", target)
+
+            node_number = int(self.rx_data[target]['node_number'])
+            node = self._nodes[node_number]
+            frequency = node.node_frequency
+            self.set_target_frequency(target, frequency)
+
+            # TODO: send most relevant OSD information
 
             self.rx_data[target]["needs_config"] = False
             initial_config_success = True
@@ -746,8 +751,8 @@ class VRxController:
         if rx_data["needs_config"] == True and rx_data["valid_rx"]:
             self.perform_initial_receiver_config(rx_name)
         else:
-            self.logger.debug("RX %s is already configured"%rx_name)
-
+            pass
+            # self.logger.debug("RX %s is already configured"%rx_name)
 
         #TODO only fire event if the data changed
         self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
@@ -886,6 +891,7 @@ class VRxNode(BaseVRxNode):
 
     def set_node_frequency_direct(self, frequency):
         """Sets all receivers at this node number to the new frequency"""
+        self._node_frequency = frequency
         if frequency != RHUtils.FREQUENCY_ID_NONE:
             topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self._node_number
             messages = self._cv.set_custom_frequency(self._cv.bc_id, frequency)
