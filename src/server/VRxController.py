@@ -494,6 +494,7 @@ class VRxController:
             topic = mqtt_publish_topics["cv1"]["receiver_command_esp_targeted_topic"][0]%serial_num
             cmd = ESP_COMMANDS["Set Node Number"] % desired_node_num
             self._mqttc.publish(topic,cmd)
+            self.rx_data[serial_num]["needs_config"] = True
             return
 
         raise NotImplementedError("TODO Broadcast set all node number")
@@ -508,8 +509,6 @@ class VRxController:
         node.set_node_frequency(frequency)
 
     def set_target_frequency(self, target, frequency):
-        fmg = __("Frequency Change: ") + str(frequency)
-        
         if frequency != RHUtils.FREQUENCY_ID_NONE:
             topic = mqtt_publish_topics["cv1"]["receiver_command_targeted_topic"][0]%target
             messages = self._cv.set_custom_frequency(self._cv.bc_id, frequency)
@@ -518,6 +517,7 @@ class VRxController:
             for m in messages:
                 self._mqttc.publish(topic,m)
 
+            self.logger.debug("Set frequency for %s to %d", target, frequency)
 
     def get_node_frequency(self, node_number, frequency):
         self._nodes[node_number].node_frequency
