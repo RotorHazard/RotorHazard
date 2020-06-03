@@ -14,6 +14,7 @@
 ## Optional Features
 * [Split Timing Guide](Cluster.md)
 * [USB Nodes](USB%20Nodes.md)
+* [Video Receiver Control](Video%20Receiver.md)
 
 <br />
 
