@@ -344,7 +344,7 @@
 
 				for (var vrx_id in msg.vrx) {
 					var vrx = msg.vrx[vrx_id]
-					if (vrx.dev == 'rx' && parseInt(vrx.valid_rx)) {
+					if (vrx.dev == 'rx' && vrx.valid_rx) {
 						if (!vrx_by_node[vrx.node_number]) {
 							vrx_by_node[vrx.node_number] = [];
 						}
@@ -408,7 +408,7 @@
 							}
 
 							if (vrx.dev == 'rx' && parseInt(vrx.connection)) {
-								if (parseInt(vrx.valid_rx)) {
+								if (vrx.valid_rx) {
 									table_items['Status'] = __("Connected");
 
 									if ('node_number' in vrx) {

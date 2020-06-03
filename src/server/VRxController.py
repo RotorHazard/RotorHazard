@@ -699,18 +699,18 @@ class VRxController:
                 nt, pattern_response = clearview.formatter.match_response(payload)
                 extracted_data = clearview.formatter.extract_data(nt, pattern_response)
                 if extracted_data is not None:
-                    rx_data["valid_rx"] = "1"
+                    rx_data["valid_rx"] = True
                     rx_data.update(extracted_data)
 
                 self.logger.debug("Receiver Reply %s => %s"%(rx_name, payload.strip()))
             except Exception as ex:
-                self.rx_data[rx_name]["valid_rx"] = "0"
+                self.rx_data[rx_name]["valid_rx"] = False
                 self.logger.warning("Receiver Reply %s => Unparseable"%(rx_name))
                 self.logger.debug("Receiver Error: " + str(ex))
                 self.logger.debug(traceback.format_exc())
 
         else:
-            self.rx_data[rx_name]["valid_rx"] = "0"
+            self.rx_data[rx_name]["valid_rx"] = False
             self.logger.debug("Receiver Reply %s => No payload"%(rx_name))
 
         #TODO only fire event if the data changed
@@ -734,16 +734,16 @@ class VRxController:
             rx_newdata = json.loads(payload)
         except ValueError:
             self.logger.error("Unable to json.load on_message_status payload")
-            self.rx_data[rx_name]["valid_rx"] = "0"
+            self.rx_data[rx_name]["valid_rx"] = False
             return
         
         #TODO skip storing data if it's not a video receiver. Have to check both rx_newdata and rx_data for the "dev" key as it may not be in both
 
         rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"}) #Todo this may not be needed now that connection works?
         rx_data.update(rx_newdata)
-        rx_data["valid_rx"] = "1" #TODO is this needed?
+        rx_data["valid_rx"] = True
 
-        if rx_data["needs_config"] == True:
+        if rx_data["needs_config"] == True and rx_data["valid_rx"]:
             self.perform_initial_receiver_config(rx_name)
         else:
             self.logger.debug("RX %s is already configured"%rx_name)
