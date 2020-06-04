@@ -4,6 +4,8 @@ RotorHazard Helper and utility functions
 
 from monotonic import monotonic
 
+FREQUENCY_ID_NONE = 0  # indicator value for node disabled
+
 def time_format(millis):
     '''Convert milliseconds to 00:00.000'''
     if millis is None:

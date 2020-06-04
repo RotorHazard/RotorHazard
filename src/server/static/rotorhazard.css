@@ -1536,6 +1536,46 @@ footer img {
 	margin: 0;
 }
 
+.vrx-header {
+	font-size: 0.8rem;
+	padding: 0.25em;
+	text-align: center;
+	color: #fff;
+	background: hsl(212.7, 67.8%, 29.2%);
+	background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
+	color: var(--contrast_0_low);
+}
+
+.vrx-header.has-unlocked {
+	background: hsl(25, 85%, 55%);
+	color: #000;
+	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
+	color: var(--contrast_1_high);
+}
+
+.vrx-list {
+	list-style: none;
+	padding: 0;
+	margin: 1rem -0.5rem;
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.vrx-list>li {
+	margin: 0.5rem;
+	padding: 0;
+	font-size: 0.9rem;
+}
+
+.vrx-list td {
+	text-align: left;
+}
+
+.vrx-list table>tr:first-child>th,
+.vrx-list table>tr:first-child>td {
+	border-top: 0;
+}
+
 /* ************* */
 /* Print Styling */
 /* ************* */

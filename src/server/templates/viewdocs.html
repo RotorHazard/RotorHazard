@@ -17,7 +17,7 @@
 		// internal link rerouting
 		var root = new RegExp(location.host);
 		var is_http = new RegExp('^https?://');
-		var is_anchor = new RegExp('#');
+		var is_anchor = new RegExp('^#');
 		var is_mail = new RegExp('^mailto:');
 
 		output.find('a').each(function(){

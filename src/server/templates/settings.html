@@ -25,7 +25,8 @@
 			'team_racing_mode',
 			'led_effects',
 			'led_effect_setup',
-			'cluster_status'
+			'cluster_status',
+			'vrx_list',
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -335,6 +336,153 @@
 				preset: $(this).data('preset')
 			};
 			socket.emit('set_frequency_preset', data);
+		});
+
+		socket.on('vrx_list', function (msg) {
+			if (msg.enabled) {
+				vrx_by_node = {}
+
+				for (var vrx_id in msg.vrx) {
+					var vrx = msg.vrx[vrx_id]
+					if (vrx.dev == 'rx' && vrx.valid_rx) {
+						if (!vrx_by_node[vrx.node_number]) {
+							vrx_by_node[vrx.node_number] = [];
+						}
+						vrx_by_node[vrx.node_number].push(vrx_id)
+					}
+				}
+
+				// Frequency panel
+				for (i = 0; i < {{ num_nodes }}; i++) {
+					var header = $('.node[data-node=' + i + '] .vrx-header');
+					header.empty();
+
+					var locks = 0;
+					if (i in vrx_by_node) {
+						for (j in vrx_by_node[i]) {
+							var vrx_id = vrx_by_node[i][j];
+							var vrx = msg.vrx[vrx_id];
+							if (vrx.lock_status == 'L') {
+								locks++;
+							}
+						}
+
+						if (locks == vrx_by_node[i].length) {
+							header.removeClass('has-unlocked')
+						} else {
+							header.addClass('has-unlocked')
+						}
+
+						header.append(__('VRx locks') + ': ' + locks + '/' + vrx_by_node[i].length);
+					} else {
+						header.removeClass('has-unlocked')
+						header.append(__('VRx locks') + ': 0/0');
+					}
+				}
+
+				if (msg.connection) {
+					$('.vrx-warning').html(__("WARNING: Video receivers connected.") + " " + __("Changes may cause pilots to lose video."));
+				} else {
+					$('.vrx-warning').empty();
+				}
+
+				// VRx Control Panel
+				if (msg.connection) {
+					$('#vrx-control-setup').empty();
+
+					vrx_header = '<h3>' + __('Connected Receivers') + '</h3>';
+
+					var vrx_list = $('<ul class="vrx-list">')
+					for (var vrx_id in msg.vrx) {
+						var vrx = msg.vrx[vrx_id]
+						if (vrx_id != 'VRxController') {
+							var li = $('<li>')
+							var table = $('<table>');
+
+							table_items = {};
+
+							table_items['ID'] = vrx_id;
+
+							if (vrx.nn) {
+								table_items['Name'] = vrx.nn;
+							}
+
+							if (vrx.dev == 'rx' && parseInt(vrx.connection)) {
+								if (vrx.valid_rx) {
+									table_items['Status'] = __("Connected");
+
+									if ('node_number' in vrx) {
+										var selectbox = '<select class="vrx-node" data-vrx-id="' + vrx_id + '">'
+										for (var i = 0; i < {{ num_nodes }}; i++) {
+											var opt = '<option value="' + i + '"';
+											if (i == vrx.node_number) {
+												opt += 'selected="selected"';
+											}
+											opt += '>' + (parseInt(i)+1) + '</option>';
+											selectbox += opt;
+										}
+										table_items['Node'] = selectbox;
+									}
+
+									if ('cam_forced_or_auto' in vrx
+										&& 'chosen_camera_type' in vrx) {
+										var cam_labels = {
+											"A": __("Auto"),
+											"F": __("Forced")
+										}
+										var cam_types = {
+											"N": __("NTSC"),
+											"P": __("PAL")
+										}
+
+										table_items['Format'] = cam_labels[vrx.cam_forced_or_auto] + ": " + cam_types[vrx.chosen_camera_type];
+									}
+
+									if ('lock_status' in vrx) {
+										if(vrx.lock_status == 'L') {
+											table_items['Lock'] = __('Locked');
+										} else {
+											table_items['Lock'] = __('Unlocked');
+										}
+									}
+
+								} else {
+									table_items['Status'] = __("No receiver");
+								}
+							} else {
+								table_items['Status'] = __("No connection");
+							}
+
+							for (var item in table_items) {
+								if (item == 'ID' && vrx.ip) {
+									table.append('<tr><th>' + __(item) + '</th><td><a href="http://' + vrx.ip + '">' + table_items[item] + '</a></td></tr>');
+								} else {
+									table.append('<tr><th>' + __(item) + '</th><td>' + table_items[item] + '</td></tr>');
+								}
+							}
+
+							li.append(table)
+							vrx_list.append(li);
+						}
+					}
+
+					$('#vrx-control-setup').append(vrx_header)
+					$('#vrx-control-setup').append(vrx_list)
+				} else {
+					$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
+				}
+			} else {
+				$('.vrx-warning').empty();
+			}
+		});
+
+		$(document).on('change', '.vrx-node', function (msg) {
+			var vrx_id = $(this).data('vrx-id');
+			var node = parseInt($(this).val());
+			socket.emit('set_vrx_node', {
+				'vrx_id': vrx_id,
+				'node': node
+			});
 		});
 
 		/* Nodes */
@@ -1464,7 +1612,7 @@
 	<div class="panel-content">
 		<p><label for="message_body" class="screen-reader-text">{{ __('Message Body') }}</label>
 		<input type="text" id="message_body" maxlength="256" placeholder="Message">{{ getOption('eventDescription') }}</textarea></p>
-		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}</label></p>
+		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}{% if vrx_enabled %} {{ __('and Send to VRx') }}{% endif %}</label></p>
 		<p><button id="send_message">{{ __('Send Message') }}</button></p>
 	</div>
 </div>
@@ -1507,6 +1655,9 @@
 		<div class="node-list">
 			{% for node in range(num_nodes) %}
 				<div class="node" data-node="{{ node }}">
+					{% if vrx_enabled %}
+						<div class="vrx-header"></div>
+					{% endif %}
 					<h3><label for="set_freq_node_{{ node }}">{{ __('Node') }} {{ node + 1 }}</label></h3>
 					<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
 					<label for="s_channel_{{ node }}" class="screen-reader-text">Frequency</label>
@@ -1515,6 +1666,7 @@
 			{% endfor %}
 		</div>
 		<div class="control-set" id="imd_rating_label"></div>
+		<div class="control-set vrx-warning"></div>
 	</div>
 </div>
 
@@ -1985,6 +2137,35 @@
 		</ol>
 
 		<div id="LED-effects"></div>
+	</div>
+</div>
+{% endif %}
+
+<!--VRx Control-->
+{% if vrx_enabled %}
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('VRx Control') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div id="vrx-control-setup"></div>
+
+		<div class="control-set vrx-warning"></div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_osd_pos_header">{{ __('OSD Rank Prefix') }}</label>
+				</div>
+				<input type="text" id="set_osd_pos_header" class="set-option" data-option="osd_positionHeader" value="{{ getOption('osd_positionHeader') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_osd_lap_header">{{ __('OSD Lap Prefix') }}</label>
+				</div>
+				<input type="text" id="set_osd_lap_header" class="set-option" data-option="osd_lapHeader" value="{{ getOption('osd_lapHeader') }}">
+			</li>
+		</ol>
 	</div>
 </div>
 {% endif %}
