@@ -2530,16 +2530,11 @@ def generate_heats(data):
         time_now = monotonic()
 
     if cacheStatus == Results.CacheStatus.VALID:
-        logger.debug('----')
-        logger.debug(results)
-
         if win_condition == WinCondition.NONE:
 
             leaderboard = random.sample(results['by_race_time'], len(results['by_race_time']))
         else:
             leaderboard = results[results['meta']['primary_leaderboard']]
-
-        logger.debug(leaderboard)
 
         generated_heats = []
         unplaced_pilots = []
