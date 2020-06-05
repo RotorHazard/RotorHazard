@@ -3476,7 +3476,9 @@ def emit_pilot_data(**params):
 def emit_current_heat(**params):
     '''Emits the current heat.'''
     callsigns = []
-                             # dict for current heat with key=node_index, value=pilot_id
+    pilot_ids = []
+
+    # dict for current heat with key=node_index, value=pilot_id
     node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
         filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
 
@@ -3485,8 +3487,10 @@ def emit_current_heat(**params):
         if pilot_id:
             pilot = Database.Pilot.query.get(pilot_id)
             if pilot:
+                pilot_ids.append(pilot_id)
                 callsigns.append(pilot.callsign)
             else:
+                pilot_ids.append(None)
                 callsigns.append(None)
         else:
             callsigns.append(None)
@@ -3502,6 +3506,7 @@ def emit_current_heat(**params):
     emit_payload = {
         'current_heat': RACE.current_heat,
         'callsign': callsigns,
+        'pilot_ids': pilot_ids,
         'heat_note': heat_note,
         'heat_format': heat_format,
         'heat_class': heat_data.class_id

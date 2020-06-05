@@ -36,6 +36,7 @@
 			'node_data',
 			'frequency_data',
 			'heat_data',
+			'pilot_data',
 			'race_format',
 			'node_tuning',
 			'enter_and_exit_at_levels',
@@ -549,7 +550,7 @@
 			rotorhazard.current_heat = msg.current_heat;
 			$('#set_current_heat').val(msg.current_heat);
 
-			rotorhazard.current_pilots = msg.callsign;
+			rotorhazard.current_pilots = msg.pilot_ids;
 			for (i = 0; i < msg.callsign.length; i++) {
 				$('.callsign_' + i).html(msg.callsign[i] ? msg.callsign[i] : 'None');
 			}
@@ -1112,6 +1113,11 @@
 		});
 
 		/* Callouts */
+		/* Pilots */
+		socket.on('pilot_data', function (msg) {
+			rotorhazard.pilot_data = msg.pilots;
+		});
+
 		function add_callout(content='') {
 			id = $('.callout-items>li').length + 1;
 
@@ -1154,7 +1160,17 @@
 					if (!first) {
 						pilots += ', ';
 					}
-					pilots += pilot;
+					for (var p in rotorhazard.pilot_data) {
+						pdata = rotorhazard.pilot_data[p];
+						if (pdata.pilot_id == pilot) {
+							if (pdata.phonetic) {
+								pilots += pdata.phonetic;
+							} else {
+								pilots += pdata.callsign;
+							}
+							break;
+						}
+					}
 					first = false;
 				}
 			}
@@ -1169,7 +1185,18 @@
 					if (!first) {
 						pilots += ', ';
 					}
-					pilots += freq.findByFreq(rotorhazard.nodes[i].frequency) + ': ' + pilot;
+					pilots += freq.findByFreq(rotorhazard.nodes[i].frequency) + ': '
+					for (var p in rotorhazard.pilot_data) {
+						pdata = rotorhazard.pilot_data[p];
+						if (pdata.pilot_id == pilot) {
+							if (pdata.phonetic) {
+								pilots += pdata.phonetic;
+							} else {
+								pilots += pdata.callsign;
+							}
+							break;
+						}
+					}
 					first = false;
 				}
 			}
