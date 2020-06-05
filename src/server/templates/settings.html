@@ -752,7 +752,6 @@
 				output_class: parseInt($('#generator_output_class').val()),
 				suffix: $('#generator_suffix').val(),
 				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
-				win_condition: parseInt($('#generator_win_condition').val()),
 			};
 			$('button#generate_heats').prop('disabled', true);
 			socket.emit('generate_heats', data);

@@ -2484,7 +2484,6 @@ def generate_heats(data):
     output_class = int(data['output_class'])
     suffix = data['suffix']
     pilots_per_heat = int(data['pilots_per_heat'])
-    win_condition = data['win_condition']
 
     if input_class == Database.CLASS_ID_NONE:
         results = {
@@ -2531,10 +2530,16 @@ def generate_heats(data):
         time_now = monotonic()
 
     if cacheStatus == Results.CacheStatus.VALID:
+        logger.debug('----')
+        logger.debug(results)
+
         if win_condition == WinCondition.NONE:
-            leaderboard = random.shuffle(results['by_race_time'])
+
+            leaderboard = random.sample(results['by_race_time'], len(results['by_race_time']))
         else:
             leaderboard = results[results['meta']['primary_leaderboard']]
+
+        logger.debug(leaderboard)
 
         generated_heats = []
         unplaced_pilots = []
