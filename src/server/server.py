@@ -2507,13 +2507,14 @@ def generate_heats(data):
     else:
         race_class = Database.RaceClass.query.get(input_class)
         race_format = Database.RaceFormat.query.get(race_class.format_id)
+        results = race_class.results
         if race_format:
-            results = race_class.results
             win_condition = race_format.win_condition
             cacheStatus = race_class.cacheStatus
         else:
-            logger.error('Unable to fetch format from race class {0}'.format(input_class))
-            return False
+            win_condition = WinCondition.NONE
+            cacheStatus = Results.CacheStatus.VALID
+            logger.info('Unable to fetch format from race class {0}'.format(input_class))
 
     if cacheStatus == Results.CacheStatus.INVALID:
         # build new results if needed
