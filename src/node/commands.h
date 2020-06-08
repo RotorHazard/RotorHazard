@@ -3,16 +3,19 @@
 
 #include "io.h"
 
-// API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 23
+// API level for node; increment when commands are modified
+#define NODE_API_LEVEL 25
 
-struct Message_s
+class Message
 {
+public:
     uint8_t command;  // code to identify messages
-    Buffer_t buffer;  // request/response payload
-};
+    Buffer buffer;  // request/response payload
 
-typedef struct Message_s Message_t;
+    byte getPayloadSize();
+    void handleWriteCommand(bool serialFlag);
+    void handleReadCommand(bool serialFlag);
+};
 
 #define MIN_FREQ 100
 #define MAX_FREQ 9999
@@ -44,10 +47,6 @@ typedef struct Message_s Message_t;
 
 #define LAPSTATS_FLAG_CROSSING 0x01  // crossing is in progress
 #define LAPSTATS_FLAG_PEAK 0x02      // reported extremum is peak
-
-byte getPayloadSize(uint8_t command);
-void handleWriteCommand(Message_t *msg, bool serialFlag);
-void handleReadCommand(Message_t *msg, bool serialFlag);
 
 extern uint8_t settingChangedFlags;
 

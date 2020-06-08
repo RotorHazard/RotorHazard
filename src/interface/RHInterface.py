@@ -6,8 +6,9 @@ import logging
 import gevent # For threads and timing
 from monotonic import monotonic # to capture read timing
 
+from Plugins import Plugins, search_modules
 from Node import Node
-from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory, discover_modules, discover_plugins
+from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
@@ -100,11 +101,11 @@ class RHInterface(BaseHardwareInterface):
         self.intf_write_error_count = 0  # number of write errors for all nodes
 
         extKwargs = {}
-        for helper in discover_modules('helper'):
+        for helper in search_modules(suffix='helper'):
             extKwargs[helper.__name__] = helper.create(self, *args, **kwargs)
         extKwargs.update(kwargs)
 
-        self.nodes = []
+        self.nodes = Plugins(suffix='node')
         self.discover_nodes(*args, **extKwargs)
 
         self.data_loggers = []
@@ -144,7 +145,7 @@ class RHInterface(BaseHardwareInterface):
 
 
     def discover_nodes(self, *args, **kwargs):
-        self.nodes.extend(discover_plugins('node', *args, **kwargs))
+        self.nodes.discover(includeOffset=True, *args, **kwargs)
 
 
     #
@@ -440,11 +441,11 @@ class RHInterface(BaseHardwareInterface):
                 WRITE_FREQUENCY,
                 READ_FREQUENCY,
                 frequency)
-        else:  # if freq=0 (node disabled) then write default freq, but save 0 value
+        else:  # if freq=0 (node disabled) then write frequency value to power down rx module, but save 0 value
             self.set_and_validate_value_16(node,
                 WRITE_FREQUENCY,
                 READ_FREQUENCY,
-                5800)
+                1111 if node.api_level >= 24 else 5800)
             node.frequency = 0
 
     def transmit_enter_at_level(self, node, level):

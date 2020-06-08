@@ -6,15 +6,16 @@ import json
 import gevent
 import Database
 import Options
+import RHUtils
 import logging
+from monotonic import monotonic
 from Language import __
 from eventmanager import Evt, EventManager
 from RHRace import WinCondition
+
 Events = EventManager()
 
 logger = logging.getLogger(__name__)
-
-FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 
 class CacheStatus:
     INVALID = 'invalid'
@@ -66,9 +67,9 @@ def normalize_cache_status(DB):
 
     logger.info('All Result caches normalized')
 
-def build_result_cache(results, cacheStatus, **params):
+def build_result_cache(DB, **params):
     return {
-        'results': calc_leaderboard(**params),
+        'results': calc_leaderboard(DB, **params),
         'cacheStatus': CacheStatus.VALID
     }
 
@@ -79,12 +80,12 @@ def build_race_results_caches(DB, params):
 
     race = Database.SavedRaceMeta.query.get(params['race_id'])
     heat = Database.Heat.query.get(params['heat_id'])
-    if heat.class_id != CLASS_ID_NONE:
+    if heat.class_id != Database.CLASS_ID_NONE:
         race_class = Database.RaceClass.query.get(heat.class_id)
 
     race.cacheStatus = token
     heat.cacheStatus = token
-    if heat.class_id != CLASS_ID_NONE:
+    if heat.class_id != Database.CLASS_ID_NONE:
         race_class.cacheStatus = token
     Options.set("eventResults_cacheStatus", token)
     DB.session.commit()
@@ -92,31 +93,31 @@ def build_race_results_caches(DB, params):
     # rebuild race result
     gevent.sleep()
     if race.cacheStatus == token:
-        raceResult = build_result_cache(heat_id=params['heat_id'], round_id=params['round_id'])
-        race.results = raceResult.results
-        race.cacheStatus = raceResult.cacheStatus
+        raceResult = build_result_cache(DB, heat_id=params['heat_id'], round_id=params['round_id'])
+        race.results = raceResult['results']
+        race.cacheStatus = raceResult['cacheStatus']
         DB.session.commit()
 
     # rebuild heat summary
     gevent.sleep()
     if heat.cacheStatus == token:
-        heatResult = build_result_cache(heat_id=params['heat_id'])
-        heat.results = heatResult.results
-        heat.cacheStatus = heatResult.cacheStatus
+        heatResult = build_result_cache(DB, heat_id=params['heat_id'])
+        heat.results = heatResult['results']
+        heat.cacheStatus = heatResult['cacheStatus']
         DB.session.commit()
 
     # rebuild class summary
-    if heat.class_id != CLASS_ID_NONE:
+    if heat.class_id != Database.CLASS_ID_NONE:
         if race_class.cacheStatus == token:
             gevent.sleep()
-            classResult = build_result_cache(class_id=heat.class_id)
-            race_class.results = classResult.results
-            race_class.cacheStatus = classResult.cacheStatus
+            classResult = build_result_cache(DB, class_id=heat.class_id)
+            race_class.results = classResult['results']
+            race_class.cacheStatus = classResult['cacheStatus']
             DB.session.commit()
 
     # rebuild event summary
     gevent.sleep()
-    Options.set("eventResults", json.dumps(calc_leaderboard()))
+    Options.set("eventResults", json.dumps(calc_leaderboard(DB)))
     Options.set("eventResults_cacheStatus", CacheStatus.VALID)
 
     logger.info('Built result caches: Race {0}, Heat {1}, Class {2}, Event'.format(params['race_id'], params['heat_id'], heat.class_id))
@@ -208,7 +209,7 @@ def calc_leaderboard(DB, **params):
                 max_lap = 0
 
             current_heat = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, pilot_id=pilot.id).first()
-            if current_heat and profile_freqs["f"][current_heat.node_index] != FREQUENCY_ID_NONE:
+            if current_heat and profile_freqs["f"][current_heat.node_index] != RHUtils.FREQUENCY_ID_NONE:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
                 nodes.append(current_heat.node_index)
@@ -218,11 +219,15 @@ def calc_leaderboard(DB, **params):
         else:
             # find hole shots
             holeshot_laps = []
+            pilotnode = None
             for race in racelist:
                 pilotraces = Database.SavedPilotRace.query \
                     .filter(Database.SavedPilotRace.pilot_id == pilot.id, \
                     Database.SavedPilotRace.race_id == race \
                     ).all()
+
+                if len(pilotraces):
+                    pilotnode = pilotraces[-1].node_index
 
                 for pilotrace in pilotraces:
                     gevent.sleep()
@@ -245,12 +250,13 @@ def calc_leaderboard(DB, **params):
             if max_lap > 0:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
-                nodes.append(holeshot_lap.node_index)
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
                 holeshots.append(holeshot_laps)
+                nodes.append(pilotnode)
 
     total_time = []
+    total_time_laps = []
     last_lap = []
     average_lap = []
     fastest_lap = []
@@ -261,23 +267,39 @@ def calc_leaderboard(DB, **params):
     for i, pilot in enumerate(pilot_ids):
         gevent.sleep()
         # Get the total race time for each pilot
-        if max_laps[i] is 0:
-            total_time.append(0) # Add zero if no laps completed
+        if USE_CURRENT:
+            race_total = 0
+            laps_total = 0
+            for lap in current_laps[i]:
+                race_total += lap['lap_time']
+                if lap > 0:
+                    laps_total += lap['lap_time']
+
+            total_time.append(race_total)
+            total_time_laps.append(laps_total)
+
         else:
-            if USE_CURRENT:
-                race_total = 0
-                for lap in current_laps[i]:
-                    race_total += lap['lap_time']
+            stat_query = DB.session.query(DB.func.sum(Database.SavedRaceLap.lap_time)) \
+                .filter(Database.SavedRaceLap.pilot_id == pilot, \
+                    Database.SavedRaceLap.deleted != 1, \
+                    Database.SavedRaceLap.race_id.in_(racelist))
 
-                total_time.append(race_total)
-
-            else:
-                stat_query = DB.session.query(DB.func.sum(Database.SavedRaceLap.lap_time)) \
-                    .filter(Database.SavedRaceLap.pilot_id == pilot, \
-                        Database.SavedRaceLap.deleted != 1, \
-                        Database.SavedRaceLap.race_id.in_(racelist))
-
+            if stat_query.scalar():
                 total_time.append(stat_query.scalar())
+            else:
+                total_time.append(0)
+
+            stat_query = DB.session.query(DB.func.sum(Database.SavedRaceLap.lap_time)) \
+                .filter(Database.SavedRaceLap.pilot_id == pilot, \
+                    Database.SavedRaceLap.deleted != 1, \
+                    Database.SavedRaceLap.race_id.in_(racelist), \
+                    ~Database.SavedRaceLap.id.in_(holeshots[i]))
+
+            if stat_query.scalar():
+                total_time_laps.append(stat_query.scalar())
+            else:
+                total_time_laps.append(0)
+
 
         gevent.sleep()
         # Get the last lap for each pilot (current race only)
@@ -422,26 +444,43 @@ def calc_leaderboard(DB, **params):
 
     gevent.sleep()
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source, last_lap, pilot_ids, nodes)
+    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source, last_lap, pilot_ids, nodes, total_time_laps)
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
-    leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2]))
+    leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2] if x[2] > 0 else float('inf')))
 
     leaderboard_total_data = []
+    last_rank = '-'
+    last_rank_laps = 0
+    last_rank_time = RHUtils.time_format(0)
     for i, row in enumerate(leaderboard_by_race_time, start=1):
+        pos = i
+        total_time = RHUtils.time_format(row[2])
+        if last_rank_laps == row[1] and last_rank_time == total_time:
+            pos = last_rank
+        last_rank = pos
+        last_rank_laps = row[1]
+        last_rank_time = total_time
+
         leaderboard_total_data.append({
-            'position': i,
+            'position': pos,
             'callsign': row[0],
             'laps': row[1],
             'behind': (leaderboard_by_race_time[0][1] - row[1]),
-            'total_time': time_format(row[2]),
-            'average_lap': time_format(row[3]),
-            'fastest_lap': time_format(row[4]),
+            'total_time': RHUtils.time_format(row[2]),
+            'total_time_raw': row[2],
+            'total_time_laps': RHUtils.time_format(row[12]),
+            'total_time_laps_raw': row[12],
+            'average_lap': RHUtils.time_format(row[3]),
+            'fastest_lap': RHUtils.time_format(row[4]),
+            'fastest_lap_raw': row[4],
             'team_name': row[5],
-            'consecutives': time_format(row[6]),
+            'consecutives': RHUtils.time_format(row[6]),
+            'consecutives_raw': row[6],
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
-            'last_lap': row[9],
+            'last_lap': RHUtils.time_format(row[9]),
+            'last_lap_raw': row[9],
             'pilot_id': row[10],
             'node': row[11],
         })
@@ -451,18 +490,34 @@ def calc_leaderboard(DB, **params):
     leaderboard_by_fastest_lap = sorted(leaderboard, key = lambda x: (x[4] if x[4] > 0 else float('inf')))
 
     leaderboard_fast_lap_data = []
+    last_rank = '-'
+    last_rank_lap = 0
     for i, row in enumerate(leaderboard_by_fastest_lap, start=1):
+        pos = i
+        fast_lap = RHUtils.time_format(row[4])
+        if last_rank_lap == fast_lap:
+            pos = last_rank
+        last_rank = pos
+        last_rank_laps = fast_lap
+
         leaderboard_fast_lap_data.append({
-            'position': i,
+            'position': pos,
             'callsign': row[0],
-            'total_time': time_format(row[2]),
-            'average_lap': time_format(row[3]),
-            'fastest_lap': time_format(row[4]),
+            'laps': row[1],
+            'total_time': RHUtils.time_format(row[2]),
+            'total_time_raw': row[2],
+            'total_time_laps': RHUtils.time_format(row[12]),
+            'total_time_laps_raw': row[12],
+            'average_lap': RHUtils.time_format(row[3]),
+            'fastest_lap': RHUtils.time_format(row[4]),
+            'fastest_lap_raw': row[4],
             'team_name': row[5],
-            'consecutives': time_format(row[6]),
+            'consecutives': RHUtils.time_format(row[6]),
+            'consecutives_raw': row[6],
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
-            'last_lap': row[9],
+            'last_lap': RHUtils.time_format(row[9]),
+            'last_lap_raw': row[9],
             'pilot_id': row[10],
             'node': row[11],
         })
@@ -472,18 +527,34 @@ def calc_leaderboard(DB, **params):
     leaderboard_by_consecutives = sorted(leaderboard, key = lambda x: (x[6] if x[6] > 0 else float('inf')))
 
     leaderboard_consecutives_data = []
+    last_rank = '-'
+    last_rank_consecutive = 0
     for i, row in enumerate(leaderboard_by_consecutives, start=1):
+        pos = i
+        fast_consecutive = RHUtils.time_format(row[4])
+        if last_rank_consecutive == fast_consecutive:
+            pos = last_rank
+        last_rank = pos
+        last_rank_consecutive = fast_consecutive
+
         leaderboard_consecutives_data.append({
             'position': i,
             'callsign': row[0],
-            'total_time': time_format(row[2]),
-            'average_lap': time_format(row[3]),
-            'fastest_lap': time_format(row[4]),
+            'laps': row[1],
+            'total_time': RHUtils.time_format(row[2]),
+            'total_time_raw': row[2],
+            'total_time_laps': RHUtils.time_format(row[12]),
+            'total_time_laps_raw': row[12],
+            'average_lap': RHUtils.time_format(row[3]),
+            'fastest_lap': RHUtils.time_format(row[4]),
+            'fastest_lap_raw': row[4],
             'team_name': row[5],
-            'consecutives': time_format(row[6]),
+            'consecutives': RHUtils.time_format(row[6]),
+            'consecutives_raw': row[6],
             'fastest_lap_source': row[7],
             'consecutives_source': row[8],
-            'last_lap': row[9],
+            'last_lap': RHUtils.time_format(row[9]),
+            'last_lap_raw': row[9],
             'pilot_id': row[10],
             'node': row[11],
         })
@@ -495,27 +566,26 @@ def calc_leaderboard(DB, **params):
     }
 
     if race_format:
+        if race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+            primary_leaderboard = 'by_consecutives'
+        elif race_format.win_condition == WinCondition.FASTEST_LAP:
+            primary_leaderboard = 'by_fastest_lap'
+        else:
+            # WinCondition.NONE
+            # WinCondition.MOST_LAPS
+            # WinCondition.FIRST_TO_LAP_X
+            primary_leaderboard = 'by_race_time'
+
         leaderboard_output['meta'] = {
+            'primary_leaderboard': primary_leaderboard,
             'win_condition': race_format.win_condition,
             'team_racing_mode': race_format.team_racing_mode,
         }
     else:
         leaderboard_output['meta'] = {
+            'primary_leaderboard': 'by_race_time',
             'win_condition': WinCondition.NONE,
             'team_racing_mode': False
         }
 
     return leaderboard_output
-
-def time_format(millis):
-    '''Convert milliseconds to 00:00.000'''
-    if millis is None:
-        return None
-
-    millis = int(millis)
-    minutes = millis / 60000
-    over = millis % 60000
-    seconds = over / 1000
-    over = over % 1000
-    milliseconds = over
-    return '{0:01d}:{1:02d}.{2:03d}'.format(minutes, seconds, milliseconds)

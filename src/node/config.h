@@ -1,7 +1,7 @@
 #ifndef config_h
 #define config_h
 
-#include "rhtypes.h"
+#include "util/rhtypes.h"
 
 // ******************************************************************** //
 
@@ -29,6 +29,8 @@
 // Set to 0 for standard RotorHazard USB node wiring; set to 1 for ArduVidRx USB node wiring
 //   See here for an ArduVidRx example: http://www.etheli.com/ArduVidRx/hw/index.html#promini
 #define ARDUVIDRX_WIRING_FLAG 0
+
+#define CHORUS_WIRING_FLAG 0
 
 #if ARDUVIDRX_WIRING_FLAG
 #define RX5808_DATA_PIN 10             //DATA output line to RX5808 module

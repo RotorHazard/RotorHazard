@@ -15,7 +15,7 @@ Languages = {}
 try:
     with open(LANGUAGE_FILE_NAME, 'r') as f:
         Languages = json.load(f)
-    logger.info('Language file imported')
+    logger.debug('Language file imported')
 except IOError:
     logger.warn('No language file found, using defaults')
 except ValueError:
