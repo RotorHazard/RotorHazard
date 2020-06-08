@@ -941,7 +941,7 @@ class VRxNode(BaseVRxNode):
     def set_message_direct(self, message):
         """Send a raw message to the OSD"""
         topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self._node_number
-        cmd = self._cv.set_user_message(self._node_number+1, message)
+        cmd = self._cv.set_user_message(self._cv.bc_id, message)
         self._mqttc.publish(topic, cmd)
         return cmd
 
