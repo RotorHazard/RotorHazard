@@ -2,11 +2,13 @@
 
 import os
 import io
+import logging
 import gevent # For threads and timing
 from monotonic import monotonic # to capture read timing
 
+from Plugins import Plugins, search_modules
 from Node import Node
-from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory, discover_modules, discover_plugins
+from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
@@ -29,8 +31,11 @@ LAPSTATS_FLAG_CROSSING = 0x01  # crossing is in progress
 LAPSTATS_FLAG_PEAK = 0x02      # reported extremum is peak
 
 UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
-RETRY_COUNT = 5 # Limit of I/O retries
+MAX_RETRY_COUNT = 4 # Limit of I/O retries
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
+
+logger = logging.getLogger(__name__)
+
 
 def unpack_8(data):
     return data[0]
@@ -90,12 +95,17 @@ class RHInterface(BaseHardwareInterface):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
 
+        self.intf_read_block_count = 0  # number of blocks read by all nodes
+        self.intf_read_error_count = 0  # number of read errors for all nodes
+        self.intf_write_block_count = 0  # number of blocks write by all nodes
+        self.intf_write_error_count = 0  # number of write errors for all nodes
+
         extKwargs = {}
-        for helper in discover_modules('helper'):
+        for helper in search_modules(suffix='helper'):
             extKwargs[helper.__name__] = helper.create(self, *args, **kwargs)
         extKwargs.update(kwargs)
 
-        self.nodes = []
+        self.nodes = Plugins(suffix='node')
         self.discover_nodes(*args, **extKwargs)
 
         self.data_loggers = []
@@ -118,24 +128,24 @@ class RHInterface(BaseHardwareInterface):
                     node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
                 node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
                 node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
-                print "Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level)
+                logger.info("Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level))
 
                 if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
                     self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
-                    print("Data logging enabled for node {0}".format(node.index+1))
+                    logger.info("Data logging enabled for node {0}".format(node.index+1))
                 else:
                     self.data_loggers.append(None)
             else:
-                print("Node {0}: API_level={1}".format(node.index+1, node.api_level))
+                logger.info("Node {0}: API_level={1}".format(node.index+1, node.api_level))
 
         sensorKwargs = {}
         sensorKwargs.update(extKwargs)
         del sensorKwargs['config']
-        self.discover_sensors(config=kwargs['config'].get('SENSORS', {}), *args, **sensorKwargs)
+        self.discover_sensors(config=kwargs['config'].SENSORS, *args, **sensorKwargs)
 
 
     def discover_nodes(self, *args, **kwargs):
-        self.nodes.extend(discover_plugins('node', *args, **kwargs))
+        self.nodes.discover(includeOffset=True, *args, **kwargs)
 
 
     #
@@ -154,10 +164,12 @@ class RHInterface(BaseHardwareInterface):
                     self.update()
                     gevent.sleep(UPDATE_SLEEP)
             except KeyboardInterrupt:
-                print("Update thread terminated by keyboard interrupt")
-                return
-            except Exception as ex:
-                self.log('Exception in RHInterface update_loop():  ' + str(ex))
+                logger.info("Update thread terminated by keyboard interrupt")
+                raise
+            except SystemExit:
+                raise
+            except Exception:
+                logger.exception('Exception in RHInterface update_loop():')
                 gevent.sleep(UPDATE_SLEEP*10)
 
     def update(self):
@@ -331,7 +343,7 @@ class RHInterface(BaseHardwareInterface):
         success = False
         retry_count = 0
         out_value = None
-        while success is False and retry_count < RETRY_COUNT:
+        while success is False and retry_count <= MAX_RETRY_COUNT:
             node.write_block(self, write_command, pack_8(in_value))
             out_value = self.get_value_8(node, read_command)
             if out_value == in_value:
@@ -348,7 +360,7 @@ class RHInterface(BaseHardwareInterface):
         success = False
         retry_count = 0
         out_value = None
-        while success is False and retry_count < RETRY_COUNT:
+        while success is False and retry_count <= MAX_RETRY_COUNT:
             node.write_block(self, write_command, pack_16(in_value))
             out_value = self.get_value_16(node, read_command)
                    # confirm same value (also handle negative value)
@@ -366,7 +378,7 @@ class RHInterface(BaseHardwareInterface):
         success = False
         retry_count = 0
         out_value = None
-        while success is False and retry_count < RETRY_COUNT:
+        while success is False and retry_count <= MAX_RETRY_COUNT:
             node.write_block(self, write_command, pack_32(in_value))
             out_value = self.get_value_32(node, read_command)
                    # confirm same value (also handle negative value)
@@ -384,7 +396,7 @@ class RHInterface(BaseHardwareInterface):
         success = False
         retry_count = 0
         out_value = None
-        while success is False and retry_count < RETRY_COUNT:
+        while success is False and retry_count <= MAX_RETRY_COUNT:
             if node.write_block(self, write_command, pack_8(in_value)):
                 success = True
             else:
@@ -396,7 +408,7 @@ class RHInterface(BaseHardwareInterface):
         success = False
         retry_count = 0
         out_value = None
-        while success is False and retry_count < RETRY_COUNT:
+        while success is False and retry_count <= MAX_RETRY_COUNT:
             if node.write_block(self, write_command, pack_32(in_value)):
                 success = True
             else:
@@ -429,11 +441,11 @@ class RHInterface(BaseHardwareInterface):
                 WRITE_FREQUENCY,
                 READ_FREQUENCY,
                 frequency)
-        else:  # if freq=0 (node disabled) then write default freq, but save 0 value
+        else:  # if freq=0 (node disabled) then write frequency value to power down rx module, but save 0 value
             self.set_and_validate_value_16(node,
                 WRITE_FREQUENCY,
                 READ_FREQUENCY,
-                5800)
+                1111 if node.api_level >= 24 else 5800)
             node.frequency = 0
 
     def transmit_enter_at_level(self, node, level):
@@ -465,6 +477,31 @@ class RHInterface(BaseHardwareInterface):
         if node.api_level >= 14:
             self.set_value_8(node, FORCE_END_CROSSING, 0)
 
+    def inc_intf_read_block_count(self):
+        self.intf_read_block_count += 1
+
+    def inc_intf_read_error_count(self):
+        self.intf_read_error_count += 1
+
+    def inc_intf_write_block_count(self):
+        self.intf_write_block_count += 1
+
+    def inc_intf_write_error_count(self):
+        self.intf_write_error_count += 1
+
+    def get_intf_total_error_count(self):
+        return self.intf_read_error_count + self.intf_write_error_count
+
+    def get_intf_error_report_str(self, showWriteFlag=False):
+        retStr = "CommErrors:"
+        if showWriteFlag or self.intf_write_error_count > 0:
+            retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, self.intf_write_block_count, \
+                            (float(self.intf_write_error_count) / float(self.intf_write_block_count)))
+        retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count, self.intf_read_block_count, \
+                            (float(self.intf_read_error_count) / float(self.intf_read_block_count)))
+        for node in self.nodes:
+            retStr += ", " + node.get_read_error_report_str()
+        return retStr
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the RotorHazard interface object.'''

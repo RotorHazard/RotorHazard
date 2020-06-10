@@ -29,6 +29,8 @@ To build and configure the system, follow the instructions here:<br />
 [doc/Hardware Setup.md](doc/Hardware%20Setup.md)<br />
 [doc/Software Setup.md](doc/Software%20Setup.md)
 
+View the RotorHazard documentation here: [doc/README.md](doc/README.md)
+
 An easy-to-build single node version of RotorHazard may also be constructed -- see [doc/USB Nodes.md](doc/USB%20Nodes.md) for more info.
 
 **Note:** The 'master' branch in the GitHub repository will usually contain the latest development code, which may not be stable. To install the latest stable release, please follow the instructions in the [doc/Software Setup.md](doc/Software%20Setup.md) document (for version upgrading see the '[Updating an existing installation](doc/Software%20Setup.md#update)' section at the end).
@@ -48,6 +50,7 @@ Links to external resources are available from the [Wiki](https://github.com/Rot
 * Klaus Michael Schneider
 * Mark Hale
 * Cerberus Velvet
+* David Just
 * Scott Chin and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
 
 ### Supported by:
@@ -58,7 +61,7 @@ Links to external resources are available from the [Wiki](https://github.com/Rot
 * German: Klaus Michael Schneider
 * Spanish: Ramon Hernandez Roldan
 * French: Yannick M.
-* Polish: Mariusz Misiurek
+* Polish: Mariusz Misiurek and Paweł Fabiszewski
 
 ## Feedback
 

@@ -4,11 +4,18 @@
 #    sudo apt-get install libjpeg-dev
 #    sudo pip install pillow
 
-from led_event_manager import LEDEvent, Color
+import Config
+from eventmanager import Evt
+from led_event_manager import LEDEffect, LEDEvent, Color
 import gevent
 from PIL import Image
 
-def showBitmap(strip, config, args):
+def showBitmap(args):
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
     def setPixels(img):
         pos = 0
         for row in range(0, img.height):
@@ -17,7 +24,7 @@ def showBitmap(strip, config, args):
                     return
 
                 c = col
-                if config['INVERTED_PANEL_ROWS']:
+                if Config.LED['INVERTED_PANEL_ROWS']:
                     if row % 2 == 0:
                         c = 15 - col
 
@@ -31,27 +38,29 @@ def showBitmap(strip, config, args):
             img = Image.open(bitmap['image'])
             delay = bitmap['delay']
 
-            img = img.rotate(90 * config['PANEL_ROTATE'])
+            img = img.rotate(90 * Config.LED['PANEL_ROTATE'])
 
             setPixels(img)
             strip.show()
             gevent.sleep(delay/1000.0)
 
 
-def registerEffects(manager):
-    # register state bitmaps
-    manager.registerEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, [LEDEvent.STARTUP, LEDEvent.RACESTAGE, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.SHUTDOWN], {'bitmaps': [
+def discover(*args, **kwargs):
+    # state bitmaps
+    return [
+    LEDEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, [Evt.STARTUP, Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.SHUTDOWN], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-RotorHazard.png", "delay": 0}
-        ]})
-    manager.registerEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, [LEDEvent.RACESTAGE], {'bitmaps': [
+        ]}),
+    LEDEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, [Evt.RACE_STAGE], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-pause.png", "delay": 0}
-        ]})
-    manager.registerEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, [LEDEvent.RACESTART], {'bitmaps': [
+        ]}),
+    LEDEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, [Evt.RACE_START], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-arrow.png", "delay": 0}
-        ]})
-    manager.registerEffect("bitmapRedX", "Image: Red X", showBitmap, [LEDEvent.RACESTOP], {'bitmaps': [
+        ]}),
+    LEDEffect("bitmapRedX", "Image: Red X", showBitmap, [Evt.RACE_STOP], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-X.png", "delay": 0}
-        ]})
-    manager.registerEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, [LEDEvent.RACEFINISH, LEDEvent.RACESTOP], {'bitmaps': [
+        ]}),
+    LEDEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, [Evt.RACE_FINISH, Evt.RACE_STOP], {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-checkerboard.png", "delay": 0}
         ]})
+    ]

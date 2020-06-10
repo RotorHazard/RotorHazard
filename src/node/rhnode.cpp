@@ -26,54 +26,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <Arduino.h>
-#include <util/atomic.h>
+#include "config.h"
 #include <Wire.h>
-#include "rhtypes.h"
 #include "rssi.h"
 #include "commands.h"
 #include "rheeprom.h"
-
-// ******************************************************************** //
-
-// *** Node Setup - Set node number here (1-8): ***
-#define NODE_NUMBER 0
-
-// Set to 1-8 for manual selection.
-// Leave at 0 for automatic selection via hardware pin.
-// For automatic selection, ground pins for each node:
-//                pin D4 open   pin D4 grounded
-// ground pin D5  node 1        node 5
-// ground pin D6  node 2        node 6
-// ground pin D7  node 3        node 7
-// ground pin D8  node 4        node 8
-
-// See https://github.com/RotorHazard/RotorHazard/blob/master/doc/Software%20Setup.md#receiver-nodes-arduinos
-
-// ******************************************************************** //
-
 
 // i2c address for node
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
 uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
-
-// Set to 0 for standard RotorHazard node wiring; set to 1 for ArduVidRx node wiring
-//   See here for an ArduVidRx example: http://www.etheli.com/ArduVidRx/hw/index.html#promini
-#define ARDUVIDRX_WIRING_FLAG 0
-
-#if !ARDUVIDRX_WIRING_FLAG
-#define RX5808_DATA_PIN 11             //DATA output line to RX5808 module
-#define RX5808_SEL_PIN 10              //CLK output line to RX5808 module
-#define RX5808_CLK_PIN 13              //SEL output line to RX5808 module
-#define RSSI_INPUT_PIN 0               //RSSI input from RX5808 (primary)
-#else
-#define RX5808_DATA_PIN 10             //DATA output line to RX5808 module
-#define RX5808_SEL_PIN 11              //CLK output line to RX5808 module
-#define RX5808_CLK_PIN 12              //SEL output line to RX5808 module
-#define RSSI_INPUT_PIN A7              //RSSI input from RX5808 (primary)
-#endif
-
 
 #define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
 #define EEPROM_ADRW_ENTERAT 2      //address for stored 'enterAtLevel'
@@ -87,8 +49,8 @@ uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 // dummy macro
 #define LOG_ERROR(...)
 
-
-static Message_t i2cMessage, serialMessage;
+Message i2cMessage, serialMessage;
+static bool rxPoweredDown = false;
 
 // Defines for fast ADC reads
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
@@ -99,68 +61,99 @@ void i2cReceive(int byteCount);
 bool i2cReadAndValidateIoBuffer(byte expectedSize);
 void i2cTransmit();
 void setRxModule(uint16_t frequency);
+void resetRxModule();
+void setupRxModule();
+void powerDownRxModule();
+
+#if (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
+// Configure the I2C address based on input-pin level.
+void configI2cSlaveAddress()
+{
+    // current hardware selection
+    pinMode(HARDWARE_SELECT_PIN_1, INPUT_PULLUP);
+    pinMode(HARDWARE_SELECT_PIN_2, INPUT_PULLUP);
+    pinMode(HARDWARE_SELECT_PIN_3, INPUT_PULLUP);
+    // legacy selection - DEPRECATED
+    pinMode(LEGACY_HARDWARE_SELECT_PIN_1, INPUT_PULLUP);
+    pinMode(LEGACY_HARDWARE_SELECT_PIN_2, INPUT_PULLUP);
+    pinMode(LEGACY_HARDWARE_SELECT_PIN_3, INPUT_PULLUP);
+    pinMode(LEGACY_HARDWARE_SELECT_PIN_4, INPUT_PULLUP);
+    pinMode(LEGACY_HARDWARE_SELECT_PIN_5, INPUT_PULLUP);
+
+    delay(100);  // delay a bit a let pin levels settle before reading inputs
+
+    // check if legacy spec pins are in use (2-5 only)
+    if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == LOW ||
+        digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == LOW ||
+        digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == LOW ||
+        digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == LOW)
+    {
+        // legacy spec
+        if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_1) == HIGH)
+        {
+            if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == LOW)
+                i2cSlaveAddress = 8;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == LOW)
+                i2cSlaveAddress = 10;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == LOW)
+                i2cSlaveAddress = 12;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == LOW)
+                i2cSlaveAddress = 14;
+        }
+        else
+        {
+            if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == LOW)
+                i2cSlaveAddress = 16;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == LOW)
+                i2cSlaveAddress = 18;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == LOW)
+                i2cSlaveAddress = 20;
+            else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == LOW)
+                i2cSlaveAddress = 22;
+        }
+    }
+    else
+    {   // use standard selection
+        i2cSlaveAddress = 0;
+        if (digitalRead(HARDWARE_SELECT_PIN_1) == LOW)
+            i2cSlaveAddress |= 1;
+        if (digitalRead(HARDWARE_SELECT_PIN_2) == LOW)
+            i2cSlaveAddress |= 2;
+        if (digitalRead(HARDWARE_SELECT_PIN_3) == LOW)
+            i2cSlaveAddress |= 4;
+        i2cSlaveAddress = 8 + (i2cSlaveAddress * 2);
+    }
+}
+#endif  // (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
 
 // Initialize program
 void setup()
 {
-    if (!NODE_NUMBER)
-    {
-        pinMode(4, INPUT_PULLUP);
-        pinMode(5, INPUT_PULLUP);
-        pinMode(6, INPUT_PULLUP);
-        pinMode(7, INPUT_PULLUP);
-        pinMode(8, INPUT_PULLUP);
-
-        if (digitalRead(4) == HIGH)
-        {
-            if (digitalRead(5) == LOW)
-            {
-                i2cSlaveAddress = 8;
-            }
-            else if (digitalRead(6) == LOW)
-            {
-                i2cSlaveAddress = 10;
-            }
-            else if (digitalRead(7) == LOW)
-            {
-                i2cSlaveAddress = 12;
-            }
-            else if (digitalRead(8) == LOW)
-            {
-                i2cSlaveAddress = 14;
-            }
-        }
-        else
-        {
-            if (digitalRead(5) == LOW)
-            {
-                i2cSlaveAddress = 16;
-            }
-            else if (digitalRead(6) == LOW)
-            {
-                i2cSlaveAddress = 18;
-            }
-            else if (digitalRead(7) == LOW)
-            {
-                i2cSlaveAddress = 20;
-            }
-            else if (digitalRead(8) == LOW)
-            {
-                i2cSlaveAddress = 22;
-            }
-        }
-    }
-
-    Serial.begin(115200);  // Start serial interface
-
-    pinMode(RX5808_SEL_PIN, OUTPUT);  // RX5808 comms
+    // initialize pins for RX5808 module communications
+    pinMode(RX5808_SEL_PIN, OUTPUT);
     pinMode(RX5808_DATA_PIN, OUTPUT);
     pinMode(RX5808_CLK_PIN, OUTPUT);
     digitalWrite(RX5808_SEL_PIN, HIGH);
+    digitalWrite(RX5808_DATA_PIN, LOW);
+    digitalWrite(RX5808_CLK_PIN, LOW);
 
-    while (!Serial)
+    // init pin used to reset paired Arduino via RESET_PAIRED_NODE command
+    pinMode(NODE_RESET_PIN, INPUT_PULLUP);
+
+    // init pin that can be pulled low (to GND) to disable serial port
+    pinMode(DISABLE_SERIAL_PIN, INPUT_PULLUP);
+
+#if (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
+    configI2cSlaveAddress();
+#else
+    delay(100);  // delay a bit a let pin level settle before reading input
+#endif
+
+    if (digitalRead(DISABLE_SERIAL_PIN) == HIGH)
     {
-    };  // Wait for the Serial port to initialise
+        Serial.begin(SERIAL_BAUD_RATE);  // Start serial interface
+        while (!Serial) {};  // Wait for the Serial port to initialize
+    }
 
     i2cInitialize(false);  // setup I2C slave address and callbacks
 
@@ -184,8 +177,17 @@ void setup()
         eepromWriteWord(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
     }
 
-    setRxModule(settings.vtxFreq);  // Setup rx module to default frequency
-
+    resetRxModule(); 
+    if (settings.vtxFreq == 1111) // frequency value to power down rx module
+    {
+        powerDownRxModule();
+        rxPoweredDown = true;
+    }
+    else
+    {
+        setRxModule(settings.vtxFreq);  // Setup rx module to default frequency
+    }
+            
     rssiInit();
 }
 
@@ -193,8 +195,6 @@ void setup()
 
 void SERIAL_SENDBIT1()
 {
-    digitalWrite(RX5808_CLK_PIN, LOW);
-    delayMicroseconds(300);
     digitalWrite(RX5808_DATA_PIN, HIGH);
     delayMicroseconds(300);
     digitalWrite(RX5808_CLK_PIN, HIGH);
@@ -205,8 +205,6 @@ void SERIAL_SENDBIT1()
 
 void SERIAL_SENDBIT0()
 {
-    digitalWrite(RX5808_CLK_PIN, LOW);
-    delayMicroseconds(300);
     digitalWrite(RX5808_DATA_PIN, LOW);
     delayMicroseconds(300);
     digitalWrite(RX5808_CLK_PIN, HIGH);
@@ -217,16 +215,14 @@ void SERIAL_SENDBIT0()
 
 void SERIAL_ENABLE_LOW()
 {
-    delayMicroseconds(100);
     digitalWrite(RX5808_SEL_PIN, LOW);
-    delayMicroseconds(100);
+    delayMicroseconds(200);
 }
 
 void SERIAL_ENABLE_HIGH()
 {
-    delayMicroseconds(100);
     digitalWrite(RX5808_SEL_PIN, HIGH);
-    delayMicroseconds(100);
+    delayMicroseconds(200);
 }
 
 // Calculate rx5808 register hex value for given frequency in MHz
@@ -247,24 +243,8 @@ void setRxModule(uint16_t frequency)
     // Get the hex value to send to the rx module
     uint16_t vtxHex = freqMhzToRegVal(frequency);
 
-    // bit bash out 25 bits of data / Order: A0-3, !R/W, D0-D19 / A0=0, A1=0, A2=0, A3=1, RW=0, D0-19=0
-    SERIAL_ENABLE_HIGH();
-    delay(2);
-    SERIAL_ENABLE_LOW();
-    SERIAL_SENDBIT0();
-    SERIAL_SENDBIT0();
-    SERIAL_SENDBIT0();
-    SERIAL_SENDBIT1();
-    SERIAL_SENDBIT0();
 
-    for (i = 20; i > 0; i--)
-        SERIAL_SENDBIT0();  // Remaining zeros
-
-    SERIAL_ENABLE_HIGH();  // Clock the data in
-    delay(2);
-    SERIAL_ENABLE_LOW();
-
-    // Second is the channel data from the lookup table, 20 bytes of register data are sent, but the
+    //Channel data from the lookup table, 20 bytes of register data are sent, but the
     // MSB 4 bits are zeros register address = 0x1, write, data0-15=vtxHex data15-19=0x0
     SERIAL_ENABLE_HIGH();
     SERIAL_ENABLE_LOW();
@@ -294,11 +274,75 @@ void setRxModule(uint16_t frequency)
         SERIAL_SENDBIT0();
 
     SERIAL_ENABLE_HIGH();  // Finished clocking data in
-    delay(2);
 
-    digitalWrite(RX5808_SEL_PIN, LOW);
-    digitalWrite(RX5808_CLK_PIN, LOW);
+}
+
+// Reset rx5808 module to wake up from power down
+void resetRxModule()
+{  
+    uint8_t i;  // Used in the for loops
+  
+    SERIAL_ENABLE_HIGH();
+    SERIAL_ENABLE_LOW();
+
+    SERIAL_SENDBIT1();  // Register 0xF
+    SERIAL_SENDBIT1();
+    SERIAL_SENDBIT1();
+    SERIAL_SENDBIT1();
+
+    SERIAL_SENDBIT1();  // Write to register
+
+    for (i = 20; i > 0; i--)
+        SERIAL_SENDBIT0();
+
+    SERIAL_ENABLE_HIGH();  // Finished clocking data in
+
+    setupRxModule();
+}
+
+// Set power options on the rx5808 module
+void setRxModulePower(uint32_t options)
+{
+    uint8_t i;  // Used in the for loops
+
+    SERIAL_ENABLE_HIGH();
+    SERIAL_ENABLE_LOW();
+
+    SERIAL_SENDBIT0();  // Register 0xA
+    SERIAL_SENDBIT1();
+    SERIAL_SENDBIT0();
+    SERIAL_SENDBIT1();
+
+    SERIAL_SENDBIT1();  // Write to register
+
+    for (i = 20; i > 0; i--)
+    {
+        if (options & 0x1)
+        {  // Is bit high or low?
+            SERIAL_SENDBIT1();
+        }
+        else
+        {
+            SERIAL_SENDBIT0();
+        }
+        options >>= 1;  // Shift bits along to check the next one
+    }
+
+    SERIAL_ENABLE_HIGH();  // Finished clocking data in
+
     digitalWrite(RX5808_DATA_PIN, LOW);
+}
+
+// Power down rx5808 module
+void powerDownRxModule() 
+{   
+    setRxModulePower(0b11111111111111111111);
+}
+
+// Set up rx5808 module (disabling unused features to save some power)
+void setupRxModule() 
+{   
+    setRxModulePower(0b11010000110111110011);
 }
 
 // Read the RSSI value for the current channel
@@ -364,7 +408,21 @@ void loop()
             {
                 newVtxFreq = settings.vtxFreq;
             }
-            setRxModule(newVtxFreq);
+            if (newVtxFreq == 1111) // frequency value to power down rx module
+            {
+                powerDownRxModule();
+                rxPoweredDown = true;
+            }
+            else
+            {
+                if (rxPoweredDown)
+                {
+                    resetRxModule();
+                    rxPoweredDown = false; 
+                }
+                setRxModule(newVtxFreq);
+            }
+            
             state.activatedFlag = true;
 
             if (changeFlags & FREQ_CHANGED)
@@ -465,10 +523,10 @@ void i2cReceive(int byteCount)
 
     if (i2cMessage.command > 0x50)
     {  // Commands > 0x50 are writes TO this slave
-        byte expectedSize = getPayloadSize(i2cMessage.command);
+        byte expectedSize = i2cMessage.getPayloadSize();
         if (expectedSize > 0 && i2cReadAndValidateIoBuffer(expectedSize))
         {
-            handleWriteCommand(&i2cMessage, false);
+            i2cMessage.handleWriteCommand(false);
         }
         i2cMessage.buffer.size = 0;
     }
@@ -499,7 +557,7 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize)
         i2cMessage.buffer.data[i2cMessage.buffer.size] = Wire.read();
     }
 
-    checksum = ioCalculateChecksum(i2cMessage.buffer.data, expectedSize);
+    checksum = i2cMessage.buffer.calculateChecksum(expectedSize);
 
     if (i2cMessage.buffer.data[i2cMessage.buffer.size-1] == checksum)
     {
@@ -517,7 +575,7 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize)
 // A transmit buffer (ioBuffer) is populated with the data before sending.
 void i2cTransmit()
 {
-    handleReadCommand(&i2cMessage, false);
+    i2cMessage.handleReadCommand(false);
 
     if (i2cMessage.buffer.size > 0)
     {  // If there is pending data, send it
@@ -535,7 +593,7 @@ void serialEvent()
         serialMessage.command = nextByte;
         if (serialMessage.command > 0x50)
         {  // Commands > 0x50 are writes TO this slave
-            byte expectedSize = getPayloadSize(serialMessage.command);
+            byte expectedSize = serialMessage.getPayloadSize();
             if (expectedSize > 0)
             {
                 serialMessage.buffer.index = 0;
@@ -544,7 +602,7 @@ void serialEvent()
         }
         else
         {
-            handleReadCommand(&serialMessage, true);
+            serialMessage.handleReadCommand(true);
 
             if (serialMessage.buffer.size > 0)
             {  // If there is pending data, send it
@@ -559,11 +617,10 @@ void serialEvent()
         serialMessage.buffer.data[serialMessage.buffer.index++] = nextByte;
         if (serialMessage.buffer.index == serialMessage.buffer.size)
         {
-            uint8_t checksum = ioCalculateChecksum(serialMessage.buffer.data,
-                    serialMessage.buffer.size - 1);
+            uint8_t checksum = serialMessage.buffer.calculateChecksum(serialMessage.buffer.size - 1);
             if (serialMessage.buffer.data[serialMessage.buffer.size - 1] == checksum)
             {
-                handleWriteCommand(&serialMessage, true);
+                serialMessage.handleWriteCommand(true);
             }
             else
             {

@@ -1,0 +1,228 @@
+{% extends "layout-basic.html" %} {% block title %}Stream: Current{% endblock %}{% block head %}
+<link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+
+<script type="text/javascript" charset="utf-8">
+	rotorhazard.show_messages = false;
+
+	var request_time;
+	var request_pi_time;
+	var resume_check = true;
+
+	function race_kickoff(msg) {
+		rotorhazard.timer.stopAll();
+
+		rotorhazard.race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
+
+		rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
+		rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
+		rotorhazard.timer.race.duration = msg.race_time_sec;
+
+		rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
+	}
+
+	$(document).ready(function () {
+		// get pi time
+		rotorhazard.pi_time_request = window.performance.now();
+		socket.emit('get_pi_time');
+
+		socket.emit('load_data', {'load_types': [
+			'all_languages',
+			'language',
+			'frequency_data',
+			'pilot_data',
+			'race_format',
+			'leaderboard_cache',
+			'current_laps',
+			'race_status',
+			'current_heat',
+			'team_racing_stat_if_enb'
+		]});
+
+		socket.on('pi_time', function (msg) {
+			var response_time = window.performance.now();
+			var server_delay = response_time - rotorhazard.pi_time_request;
+			var server_oneway = server_delay ? server_delay / 2 : server_delay;
+
+			var pi_time_diff = {
+				'differential': (msg.pi_time_s * 1000) - response_time - server_oneway, // convert seconds (pi) to millis (JS)
+				'response': parseFloat(server_delay)
+			}
+
+			// store sync sample
+			rotorhazard.pi_time_diff_samples.push(pi_time_diff);
+
+			// sort stored samples
+			rotorhazard.pi_time_diff_samples.sort(function(a, b){
+				return a.response - b.response;
+			})
+
+			// remove unusable samples
+			var diff_min = rotorhazard.pi_time_diff_samples[0].differential - rotorhazard.pi_time_diff_samples[0].response
+			var diff_max = rotorhazard.pi_time_diff_samples[0].differential + rotorhazard.pi_time_diff_samples[0].response
+
+			rotorhazard.pi_time_diff_samples = rotorhazard.pi_time_diff_samples.filter(function(value, index, array) {
+				return value.differential >= diff_min && value.differential <= diff_max;
+			});
+
+			// get filtered value
+			var a = [];
+			for (var i in rotorhazard.pi_time_diff_samples) {
+				a.push(rotorhazard.pi_time_diff_samples[i].differential);
+			}
+			rotorhazard.pi_time_diff = median(a);
+
+			// pass current sync to timer
+			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
+
+			// continue sampling for sync to improve accuracy
+			if (rotorhazard.pi_time_diff_samples.length < 10) {
+				setTimeout(function(){
+					rotorhazard.pi_time_request = window.performance.now();
+					socket.emit('get_pi_time');
+				}, (Math.random() * 500) + 250); // 0.25 to 0.75s delay
+			}
+
+			// update server info
+			var a = Infinity;
+			for (var i in rotorhazard.pi_time_diff_samples) {
+				a = Math.min(a, rotorhazard.pi_time_diff_samples[i].response);
+			}
+			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
+		});
+
+		socket.on('all_languages', function (msg) {
+			rotorhazard.language_strings = msg.languages;
+		});
+
+		socket.on('language', function (msg) {
+			if (msg.language) {
+				rotorhazard.interface_language = msg.language;
+			}
+		});
+
+		// set up node local store
+		for (i = 0; i < {{ num_nodes }}; i++) {
+			rotorhazard.nodes[i] = new nodeModel();
+		}
+
+		socket.on('race_scheduled', function (msg) {
+			if (msg.scheduled) {
+				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
+				rotorhazard.timer.deferred.start(deferred_start, rotorhazard.pi_time_diff);
+			} else {
+				rotorhazard.timer.deferred.stop();
+			}
+		});
+
+		socket.on('race_status', function (msg) {
+			switch (msg.race_status) {
+				case 1: // Race running
+					rotorhazard.race_status_go_time = window.performance.now();
+					$('body').addClass('race-running');
+					$('body').removeClass('race-stopped');
+					$('body').removeClass('race-new');
+					$('.timing-clock').removeClass('staging');
+					if (resume_check) {
+						race_kickoff(msg);
+					}
+					break;
+				case 2: // Race stopped, clear or save laps
+					$('body').removeClass('race-running');
+					$('body').addClass('race-stopped');
+					$('body').removeClass('race-new');
+					$('.timing-clock').removeClass('staging');
+					break;
+				case 3: // staging
+					$('body').removeClass('race-stopped');
+					$('body').addClass('race-running');
+					$('body').removeClass('race-new');
+					$('.timing-clock').addClass('staging');
+					if (resume_check) {
+						race_kickoff(msg);
+					}
+					break;
+				default: // Waiting to start new race
+					$('body').removeClass('race-running');
+					$('body').removeClass('race-stopped');
+					$('body').addClass('race-new');
+					$('.timing-clock').removeClass('staging');
+					if (resume_check) {
+						socket.emit('get_race_scheduled');
+					}
+					break;
+			}
+
+			resume_check = false;
+		});
+
+		socket.on('heartbeat', function (msg) {
+		});
+
+		socket.on('frequency_data', function (msg) {
+			for (i = 0; i < msg.frequency.length; i++) {
+				$('#s_channel_' + i).val(msg.frequency[i]);
+				rotorhazard.nodes[i].frequency = msg.frequency[i];
+				freq.updateBlocks();
+			}
+		});
+
+		socket.on('leaderboard', function (msg) {
+			leaderboard = msg.meta.primary_leaderboard;
+			$('#leaderboard').empty();
+			$('#leaderboard').append(build_leaderboard(msg[leaderboard], 'current', msg.meta));
+		});
+
+		socket.on('team_racing_status', function (msg) {
+			$('.team_racing_status').html(msg.team_laps_str);
+		});
+
+		socket.on('current_heat', function (msg) {
+			var heatname = __('Heat') + ' ' + msg.current_heat;
+			if (msg.heat_note)
+				heatname = msg.heat_note;
+
+			$('.current_heat').html(heatname);
+			for (i = 0; i < msg.callsign.length; i++) {
+				$('.callsign_' + i).html(msg.callsign[i]);
+			}
+		});
+
+		socket.on('prestage_ready', function (msg) {
+			request_time = new Date();
+		});
+
+		socket.on('stage_ready', function (msg) {
+			race_kickoff(msg);
+		});
+
+		socket.on('stop_timer', function (msg) {
+			rotorhazard.timer.stopAll();
+		});
+
+		socket.on('stage_ready', function (msg) {
+			race_kickoff(msg);
+		});
+
+		socket.on('race_format', function (msg) {
+			rotorhazard.race_formats = msg;
+		});
+	});
+
+	function speak(obj, priority) {} // stub to prevent crashing
+
+</script>
+{% endblock %} {% block content %}
+<main class="page-stream">
+	<div id="header">
+		<h1 class="current_heat">{{ __('Loading...') }}</h1>
+		<div id="timer">
+			<div class="timing-clock"><div class="warning" title="{{ __('Browser Sync Loss') }}">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
+		</div>
+	</div>
+
+	<!--Display the race leaderboard-->
+	<div id="leaderboard"></div>
+</div>
+
+</main>
+{% endblock %}

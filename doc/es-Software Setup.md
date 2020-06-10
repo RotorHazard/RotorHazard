@@ -69,7 +69,7 @@ Requiere Arduino 1.8 o superior. Descárguelo de https://www.arduino.cc/en/Main/
 
 El código de nodo se puede editar y construir utilizando el[Eclipse IDE](https://www.eclipse.org/eclipseide/) y el "[Eclipse C++ IDE for Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)"plugin (o la forma tradicional usando el IDE de Arduino). En Eclipse, el proyecto de código de nodo se puede cargar a través de "Archivo | Abrir proyectos desde el sistema de archivos ..."
 
-Edite el archivo 'src / node / rhnode.cpp' y configure el valor '#define NODE_NUMBER' para cada nodo antes de cargarlo. Para el primer nodo, configure NODE_NUMBER en 1, para el segundo configúrelo en 2, etc.
+Edite el archivo 'src / node / config.h' y configure el valor '#define NODE_NUMBER' para cada nodo antes de cargarlo. Para el primer nodo, configure NODE_NUMBER en 1, para el segundo configúrelo en 2, etc.
 
 ```
 // Node Setup -- Set node number here (1 - 8)

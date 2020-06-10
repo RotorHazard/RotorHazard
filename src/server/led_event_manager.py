@@ -3,37 +3,31 @@ LED event manager
 Wires events to handlers
 '''
 
-import gevent
+from eventmanager import Evt
+from UserDict import UserDict
 
 class LEDEventManager:
-    processEventObj = gevent.event.Event()
-
     events = {}
     eventEffects = {}
     eventThread = None
 
-    def __init__(self, strip, config):
+    def __init__(self, eventmanager, strip):
+        self.Events = eventmanager
         self.strip = strip
-        self.config = config
 
         # hold
-        self.registerEffect("hold", "Hold", lambda *args: None,
-            [LEDEvent.NOCONTROL, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN])
+        self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None,
+            [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
 
         # do nothing
-        self.registerEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, LEDEvent.RACESTAGE, LEDEvent.CROSSINGENTER, LEDEvent.CROSSINGEXIT, LEDEvent.RACESTART, LEDEvent.RACEFINISH, LEDEvent.RACESTOP, LEDEvent.LAPSCLEAR, LEDEvent.SHUTDOWN])
+        self.registerEffect(LEDEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
 
 
     def isEnabled(self):
         return True
 
-    def registerEffect(self, name, label, handlerFn, validEvents, defaultArgs=None):
-        self.eventEffects[name] = {
-            "label": label,
-            "handlerFn": handlerFn,
-            "validEvents": validEvents,
-            "defaultArgs": defaultArgs
-        }
+    def registerEffect(self, effect):
+        self.eventEffects[effect['name']] = effect
         return True
 
     def getRegisteredEffects(self):
@@ -47,56 +41,25 @@ class LEDEventManager:
 
     def setEventEffect(self, event, name):
         self.events[event] = name
+
+        args = self.eventEffects[name]['defaultArgs']
+        if args is None:
+            args = {}
+
+        args.update({
+            'strip': self.strip,
+            })
+
+        if event in [Evt.SHUTDOWN]:
+            # event is direct (blocking)
+            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 50)
+        else:
+            # event is normal (threaded/non-blocking)
+            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 150)
         return True
 
-    def event(self, event, eventArgs=None):
-        if event in self.events:
-            currentEffect = self.events[event]
-            if currentEffect in self.eventEffects:
-                if currentEffect != 'none':
-                    effect = self.eventEffects[currentEffect]
-                    args = effect['defaultArgs']
-                    if eventArgs:
-                        if args:
-                            args.update(eventArgs)
-                        else:
-                            args = eventArgs
-
-                    # restart thread regardless of status
-                    if self.eventThread is not None:
-                        self.eventThread.kill()
-
-                    self.eventThread = gevent.spawn(effect['handlerFn'], self.strip, self.config, args)
-                return True
-
-        return False
-
-    def eventDirect(self, event, eventArgs=None):
-        """ Do event call using calling thread """
-        if event in self.events:
-            currentEffect = self.events[event]
-            if currentEffect in self.eventEffects:
-                if currentEffect != 'none':
-                    effect = self.eventEffects[currentEffect]
-                    args = effect['defaultArgs']
-                    if eventArgs:
-                        if args:
-                            args.update(eventArgs)
-                        else:
-                            args = eventArgs
-
-                    # stop any current thread
-                    if self.eventThread is not None:
-                        self.eventThread.kill()
-                        self.eventThread = None
-
-                    effect['handlerFn'](self.strip, self.config, args)
-                return True
-
-        return False
-
     def clear(self):
-        self.eventEffects['clear']['handlerFn'](self.strip, self.config)
+        self.eventEffects['clear']['handlerFn'](self.strip)
 
 class NoLEDManager():
     def __init__(self):
@@ -152,53 +115,52 @@ class ColorPattern:
 
 class LEDEvent:
     NOCONTROL = 'noControlDisplay'
-    MANUAL = 'manual'
-    RACESTAGE = 'raceStage'
-    RACESTART = 'raceStart'
-    RACEFINISH = 'raceFinish'
-    RACESTOP = 'raceStop'
-    LAPSCLEAR = 'lapsClear'
-    RACEWIN = 'raceWin'
-    CROSSINGENTER = 'crossingEnter'
-    CROSSINGEXIT = 'crossingExit'
-    STARTUP = 'startup'
-    SHUTDOWN = 'shutdown'
 
     configurable_events = [
         {
-            "event": RACESTAGE,
+            "event": Evt.RACE_STAGE,
             "label": "Race Staging"
         },
         {
-            "event": RACESTART,
+            "event": Evt.RACE_START,
             "label": "Race Start"
         },
         {
-            "event": RACEFINISH,
+            "event": Evt.RACE_FINISH,
             "label": "Race Finish"
         },
         {
-            "event": RACESTOP,
+            "event": Evt.RACE_STOP,
             "label": "Race Stop"
         },
         {
-            "event": LAPSCLEAR,
+            "event": Evt.LAPS_CLEAR,
             "label": "Save/Clear Laps"
         },
         {
-            "event": CROSSINGENTER,
+            "event": Evt.CROSSING_ENTER,
             "label": "Gate Entrance"
         },
         {
-            "event": CROSSINGEXIT,
+            "event": Evt.CROSSING_EXIT,
             "label": "Gate Exit"
         },
         {
-            "event": STARTUP,
+            "event": Evt.STARTUP,
             "label": "Server Startup"
         },
         {
-            "event": SHUTDOWN,
+            "event": Evt.SHUTDOWN,
             "label": "Server Shutdown"
         }
     ]
+
+class LEDEffect(UserDict):
+    def __init__(self, name, label, handlerFn, validEvents, defaultArgs=None):
+        UserDict.__init__(self, {
+            "name": name,
+            "label": label,
+            "handlerFn": handlerFn,
+            "validEvents": validEvents,
+            "defaultArgs": defaultArgs
+        })

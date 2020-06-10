@@ -67,7 +67,7 @@ https://www.arduino.cc/en/Main/Software
 
 Kod dla odnóg może być edytowany i przygotowany używając [Eclipse IDE](https://www.eclipse.org/eclipseide/) i "[Eclipse C++ IDE dla Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)" (albo “po-staremu” używając Arduino IDE). W Eclipse projekt zawierający kod dla odnóg może być otwarty poprzez „Plik”, „Otwórz projekt z pliku systemowego…”
 
-Edytuj plik 'src/node/rhnode.cpp' i skonfiguruj wartość '#define NODE_NUMBER' dla każdej odnogi przed uaktualnieniem. Dla pierwszej odnogi ustaw NODE_NUMBER jako 1, dla drugiej ustaw jako 2, itd.
+Edytuj plik 'src/node/config.h' i skonfiguruj wartość '#define NODE_NUMBER' dla każdej odnogi przed uaktualnieniem. Dla pierwszej odnogi ustaw NODE_NUMBER jako 1, dla drugiej ustaw jako 2, itd.
 ```
 // Node Setup -- Set node number here (1 - 8)
 #define NODE_NUMBER 1

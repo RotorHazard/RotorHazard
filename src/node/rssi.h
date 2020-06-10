@@ -1,15 +1,11 @@
 #ifndef rssi_h
 #define rssi_h
 
-#include "rhtypes.h"
+#include "config.h"
+#include "util/filter.h"
+#include "util/sendbuffer.h"
 
-#define MAX_RSSI 0xFF
 #define MAX_DURATION 0xFFFF
-#define SmoothingSamples 255
-#define SmoothingTimestampSize 128 // half median window, rounded up
-#define isPeakValid(x) ((x).rssi != 0)
-#define isNadirValid(x) ((x).rssi != MAX_RSSI)
-#define endTime(x) ((x).firstTime + (x).duration)
 
 struct Settings
 {
@@ -18,13 +14,6 @@ struct Settings
     rssi_t volatile enterAtLevel = 96;
     // lap pass ends when RSSI goes below this level
     rssi_t volatile exitAtLevel = 80;
-};
-
-struct Extremum
-{
-  rssi_t volatile rssi;
-  mtime_t volatile firstTime;
-  uint16_t volatile duration;
 };
 
 struct State
@@ -49,15 +38,15 @@ struct State
 
 struct History
 {
-    Extremum peak = {0, 0, 0};
-    bool volatile hasPendingPeak = false;
-    Extremum peakSend = {0, 0, 0}; // only valid if peakSend.rssi != 0
+    Extremum peak;
+    bool volatile hasPendingPeak;
+    SendBuffer<Extremum> *peakSend;
 
-    Extremum nadir = {MAX_RSSI, 0, 0};
-    bool volatile hasPendingNadir = false;
-    Extremum nadirSend = {MAX_RSSI, 0, 0}; // only valid if nadirSend.rssi != MAX_RSSI
+    Extremum nadir;
+    bool volatile hasPendingNadir;
+    SendBuffer<Extremum> *nadirSend;
 
-    int8_t rssiChange = 0; // >0 for raising, <0 for falling
+    int8_t rssiChange; // >0 for raising, <0 for falling
 };
 
 struct LastPass
@@ -73,6 +62,8 @@ extern struct State state;
 extern struct History history;
 extern struct LastPass lastPass;
 
+void rssiSetFilter(Filter<rssi_t> *f);
+void rssiSetSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir);
 void rssiInit();
 bool rssiStateValid();
 /**

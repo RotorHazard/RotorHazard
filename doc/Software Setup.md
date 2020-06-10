@@ -21,7 +21,7 @@ sudo apt-get update && sudo apt-get upgrade
 
 Install Python and the Python drivers for the GPIO.
 ```
-sudo apt-get install python-dev python-rpi.gpio libffi-dev python-smbus build-essential python-pip git scons swig
+sudo apt install python-dev libffi-dev python-smbus build-essential python-pip git scons swig python-rpi.gpio
 ```
 
 Install the function interface into Python
@@ -38,6 +38,8 @@ add the following lines to the end of the file:
 dtparam=i2c_baudrate=75000
 core_freq=250
 ```
+Note: The first line sets the transfer rate on the I2C bus (which is used to communicate with the Arduino node processors). The second line fixes a potential variable clock-rate issue, described [here](https://www.abelectronics.co.uk/kb/article/1089/i2c--smbus-and-raspbian-stretch-linux). If a Raspberry Pi 4 is being used, the second line may need to be omitted.
+
 Save and exit the file with Ctrl-X
 
 Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
@@ -70,22 +72,13 @@ Arduino 1.8+ is required. Download from https://www.arduino.cc/en/Main/Software
 
 The node code may be edited and built using the [Eclipse IDE](https://www.eclipse.org/eclipseide/) and the "[Eclipse C++ IDE for Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)" plugin (or the old-fashioned way using the Arduino IDE). In Eclipse, the node-code project may be loaded via "File | Open Projects from File System..."
 
-Edit the 'src/node/rhnode.cpp' file and configure the '#define NODE_NUMBER' value for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
+If you are not using a RotorHazard PCB, edit the 'src/node/config.h' file and configure the '#define NODE_NUMBER' value for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
 ```
 // Node Setup -- Set node number here (1 - 8)
 #define NODE_NUMBER 1
 ```
 
-Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:
-
-node #1: ground pin D5<br/>
-node #2: ground pin D6<br/>
-node #3: ground pin D7<br/>
-node #4: ground pin D8<br/>
-node #5: ground pin D5 and pin D4<br/>
-node #6: ground pin D6 and pin D4<br/>
-node #7: ground pin D7 and pin D4<br/>
-node #8: ground pin D8 and pin D4
+Hardware address selection is also possible by grounding hardware pins following the [published specification](https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing).
 
 ## Install Optional Components
 ### WS2812b LED Support
@@ -105,6 +98,21 @@ Install the Python library:
 cd python
 sudo python setup.py install
 ```
+
+Note: The **LED_COUNT** value will need to be set in the `src/server/config.json` file. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
+```
+LED_COUNT:  Number of LED pixels in strip (or panel)
+LED_PIN:  GPIO pin connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
+LED_FREQ_HZ:  LED signal frequency in hertz (usually 800000)
+LED_DMA:  DMA channel to use for generating signal (default 10)
+LED_INVERT:  True to invert the signal (when using NPN transistor level shift)
+LED_CHANNEL:  Set to '1' for GPIOs 13, 19, 41, 45 or 53
+LED_STRIP:  Strip type and color ordering (default is 'GRB')
+LED_ROWS:  Number of rows in LED-panel array (1 for strip)
+PANEL_ROTATE:  Optional panel-rotation value (default 0)
+INVERTED_PANEL_ROWS:  Optional panel row-inversion (default false)
+```
+If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
 
 ### INA219 Voltage/Current Support
 The ina219 interface is provided by the following project:
@@ -162,7 +170,9 @@ python server.py
 The server may be stopped by hitting Ctrl-C
 
 #### Start on Boot
-Create a service
+To configure the system to automatically start the RotorHazard server when booting up:
+
+Create a service file:
 ```
 sudo nano /lib/systemd/system/rotorhazard.service
 ```
@@ -181,16 +191,25 @@ WantedBy=multi-user.target
 ```
 save and exit (CTRL-X, Y, ENTER).
 
-Update permissions.
+Update permissions:
 ```
 sudo chmod 644 /lib/systemd/system/rotorhazard.service
 ```
 
-Start on boot commands.
+Enable the service:
 ```
 sudo systemctl daemon-reload
 sudo systemctl enable rotorhazard.service
 sudo reboot
+```
+#### Stopping the server service
+If the RotorHazard server was started as a service during the boot, it may be stopped with a command like this:
+```
+sudo systemctl stop rotorhazard
+```
+To disable the service (so it no longer runs when the system starts up), enter:
+```
+sudo systemctl disable rotorhazard.service
 ```
 
 ### Shutting down the System
@@ -202,7 +221,10 @@ sudo shutdown now
 <a id="update"></a>
 ### Updating an existing installation
 
-Before updating, any currently-running RotorHazard server should be stopped. If installed as a service, it may be stopped with a command like: `sudo systemctl stop rotorhazard`
+Before updating, any currently-running RotorHazard server should be stopped. If installed as a service, it may be stopped with a command like:
+```
+sudo systemctl stop rotorhazard
+```
 
 To update an existing RotorHazard installation: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
 ```
@@ -241,10 +263,10 @@ To install the RotorHazard server on these systems:
 
 1. Open up a command prompt and navigate to the ```src/server``` directory in the RotorHazard files (using the 'cd' command).
 
-1. Install the RotorHazard server dependencies using the 'requirements.txt' file, using one of the commands below.
-  * On a Windows system the command to use will likely be:<br/>```python -m pip install -r requirements.txt```
+1. Install the RotorHazard server dependencies using the 'requirements.txt' file, using one of the commands below. (Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
+  * On a Windows system the command to use will likely be:<br/>```python -m pip install -r requirements.txt```<br/><br/>
   * On a Linux system the command to use will likely be:<br/>```sudo pip install -r requirements.txt```<br/>
-(Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
+
 
 To run the RotorHazard server on these systems:
 
