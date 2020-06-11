@@ -4883,16 +4883,16 @@ def initVRxController():
                 except ImportError as e:
                     logger.error("VRxController unable to be imported")
                     logger.error(e)
-                    return False
+                    return None
             else:
                 logger.info('VRxController disabled by config option')
-                return False
+                return None
         except KeyError:
             logger.error('VRxController disabled: config needs "ENABLED" key.')
-            return False
+            return None
     except AttributeError:
         logger.info('VRxController disabled: No VRX_CONTROL config option')
-        return False
+        return None
 
     # If got through import success, create the VRxController object
     vrx_config = Config.VRX_CONTROL
