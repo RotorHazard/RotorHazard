@@ -486,8 +486,8 @@
 			$('#leaderboard').append(build_leaderboard(msg[leaderboard], 'current', msg.meta));
 		});
 
-		socket.on('team_racing_status', function (msg) {
-			$('.team_racing_status').html(msg.team_laps_str);
+		socket.on('race_status_message', function (msg) {
+			$('.race_status_message').html(msg.team_laps_str);
 		});
 
 		socket.on('phonetic_data', function (msg) {
@@ -1435,7 +1435,7 @@
 		<!--Display the race leaderboard-->
 		<div id="leaderboard"></div>
 
-		<div class="team_racing_status"></div>
+		<div class="race_status_message"></div>
 
 		<!--Display the current laps-->
 		<div class="race-results">
