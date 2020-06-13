@@ -9,7 +9,7 @@ FREQUENCY_ID_NONE = 0  # indicator value for node disabled
 def time_format(millis):
     '''Convert milliseconds to 00:00.000'''
     if millis is None:
-        return None
+        return ''
 
     millis = int(round(millis, 0))
     minutes = millis / 60000
@@ -21,6 +21,9 @@ def time_format(millis):
 
 def phonetictime_format(millis):
     '''Convert milliseconds to phonetic'''
+    if millis is None:
+        return ''
+
     millis = int(millis + 50)  # round to nearest tenth of a second
     minutes = millis / 60000
     over = millis % 60000
