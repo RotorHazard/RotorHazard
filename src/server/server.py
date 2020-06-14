@@ -3495,6 +3495,7 @@ def emit_current_heat(**params):
                 callsigns.append(None)
         else:
             callsigns.append(None)
+            pilot_ids.append(None)
 
     heat_data = Database.Heat.query.get(RACE.current_heat)
 
