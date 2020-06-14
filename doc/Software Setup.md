@@ -244,6 +244,15 @@ The RotorHazard server dependencies should also be updated (be patient, this com
 cd ~/RotorHazard/src/server
 sudo pip install --upgrade --no-cache-dir -r requirements.txt
 ```
+
+### Enable Port forwarding
+The RotorHazard server defaults to port 5000. This is necessary for some 3rd party integrations, but requires users to type it into the URL when accessing the system. This looks like this: `http://127.0.0.1:5000`. While you can change the port via the `config.json` file, a better approach is often to forward the web default port of 80 to 5000.
+```
+sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 5000
+sudo iptables-save
+sudo apt-get install iptables-persistent
+```
+After running these commands, RotorHazard will be available from both ports 80 and 5000. When available by port 80, you may leave the port off when access the server: `http://127.0.0.1`
 <br/>
 
 -----------------------------
