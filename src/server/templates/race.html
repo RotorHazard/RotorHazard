@@ -1154,9 +1154,9 @@
 			// %PILOTS% : Current pilot names
 			var pilots = '';
 			var first = true;
-			for (i in rotorhazard.current_pilots``) {
+			for (i in rotorhazard.current_pilots) {
 				pilot = rotorhazard.current_pilots[i];
-				if (pilot) {
+				if (pilot && rotorhazard.nodes[i].frequency) {
 					if (!first) {
 						pilots += ', ';
 					}
@@ -1181,7 +1181,7 @@
 			var first = true;
 			for (i in rotorhazard.current_pilots) {
 				pilot = rotorhazard.current_pilots[i];
-				if (pilot) {
+				if (pilot && rotorhazard.nodes[i].frequency) {
 					if (!first) {
 						pilots += ', ';
 					}
