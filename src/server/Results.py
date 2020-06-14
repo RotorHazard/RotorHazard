@@ -704,24 +704,22 @@ def check_win_condition(RACE, INTERFACE):
         if race_format:
             if race_format.team_racing_mode:
                 if race_format.win_condition == WinCondition.MOST_LAPS:
-                    win_status = check_win_team_most_laps(RACE, INTERFACE)
+                    return check_win_team_most_laps(RACE, INTERFACE)
                 elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
-                    win_status = check_win_team_first_to_x(RACE, INTERFACE)
+                    return check_win_team_first_to_x(RACE, INTERFACE)
                 elif race_format.win_condition == WinCondition.FASTEST_LAP:
-                    win_status = check_win_team_fastest_lap(RACE)
+                    return check_win_team_fastest_lap(RACE)
                 elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                    win_status = check_win_team_fastest_consecutive(RACE)
+                    return check_win_team_fastest_consecutive(RACE)
             else:
                 if race_format.win_condition == WinCondition.MOST_LAPS:
-                    win_status = check_win_most_laps(RACE, INTERFACE)
+                    return check_win_most_laps(RACE, INTERFACE)
                 elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
-                    win_status = check_win_first_to_x(RACE, INTERFACE)
+                    return check_win_first_to_x(RACE, INTERFACE)
                 elif race_format.win_condition == WinCondition.FASTEST_LAP:
-                    win_status = check_win_fastest_lap(RACE)
+                    return check_win_fastest_lap(RACE)
                 elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                    win_status = check_win_fastest_consecutive(RACE)
-
-        return win_status
+                    return check_win_fastest_consecutive(RACE)
     return None
 
 def check_win_most_laps(RACE, INTERFACE):
