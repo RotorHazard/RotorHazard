@@ -168,6 +168,7 @@
 		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
 		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
+		$('#change_heat_on_save').prop("checked", rotorhazard.change_heat_on_save);
 
 		if ('{{ getOption('ledBrightness') }}' != 'False') {
 			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
@@ -598,26 +599,28 @@
 				$('button#discard_laps').prop('disabled', true);
 			}
 
-			var selectedHeat = $('#set_current_heat').val();
-			var selectedClass = rotorhazard.heats[selectedHeat].class_id;
-			var otherHeats = [];
-			for (heat_i in rotorhazard.heats) {
-				if (rotorhazard.heats[heat_i].class_id == selectedClass) {
-					otherHeats.push(heat_i);
-				}
-			}
-
-			if (otherHeats.length > 1) {
-				var newHeat = null;
-				if (otherHeats[otherHeats.length - 1] == selectedHeat) {
-					newHeat = otherHeats[0];
-				} else {
-					while (otherHeats[otherHeats.length - 1] != selectedHeat) {
-						newHeat = otherHeats.pop();
+			if(rotorhazard.change_heat_on_save)
+			{
+				var selectedHeat = $('#set_current_heat').val();
+				var selectedClass = rotorhazard.heats[selectedHeat].class_id;
+				var otherHeats = [];
+				for (heat_i in rotorhazard.heats) {
+					if (rotorhazard.heats[heat_i].class_id == selectedClass) {
+						otherHeats.push(heat_i);
 					}
 				}
 
-				$('#set_current_heat').val(newHeat).change();
+				if (otherHeats.length > 1) {
+					var newHeat = null;
+					if (otherHeats[otherHeats.length - 1] == selectedHeat) {
+						newHeat = otherHeats[0];
+					} else {
+						while (otherHeats[otherHeats.length - 1] != selectedHeat) {
+							newHeat = otherHeats.pop();
+						}
+					}
+					$('#set_current_heat').val(newHeat).change();
+				}
 			}
 
 			return false;
@@ -762,6 +765,11 @@
 			rotorhazard.saveData();
 		});
 
+		$('#change_heat_on_save').change(function (event) {
+			rotorhazard.change_heat_on_save = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+		
 		$('#voice_lap_count').change(function (event) {
 			rotorhazard.voice_lap_count = $(this).prop('checked');
 			rotorhazard.saveData();
@@ -1578,6 +1586,13 @@
 					<option value="0">{{ __('Highlight Short Laps') }}</option>
 					<option value="1">{{ __('Discard New Short Laps') }}</option>
 				</select>
+			</li>
+			<li>				
+				<div class="label-block">					
+				</div>
+				<ul>
+					<label><input type="checkbox" id="change_heat_on_save"> {{ __('Change Heat on Save') }}</label>
+				</ul>
 			</li>
 		</ol>
 	</div>

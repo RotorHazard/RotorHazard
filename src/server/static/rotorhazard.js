@@ -784,6 +784,7 @@ var rotorhazard = {
 	schedule_m: 0, //time in minutes for scheduled races
 	schedule_s: 10, //time in minutes for scheduled races
 	indicator_beep_volume: 0.5, // indicator beep volume
+	change_heat_on_save: false, // Handles if the next heat should be automatically selected on save
 
 	//display options
 	display_lap_id: false, //enables the display of the lap id
@@ -844,6 +845,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.display_lap_id'] = JSON.stringify(this.display_lap_id);
 		localStorage['rotorhazard.display_time_start'] = JSON.stringify(this.display_time_start);
 		localStorage['rotorhazard.display_time_first_pass'] = JSON.stringify(this.display_time_first_pass);
+		localStorage['rotorhazard.change_heat_on_save'] = JSON.stringify(this.change_heat_on_save);
 		return true;
 	},
 	restoreData: function(dataType) {
@@ -925,6 +927,9 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.display_time_first_pass']) {
 				this.display_time_first_pass = JSON.parse(localStorage['rotorhazard.display_time_first_pass']);
+			}
+			if (localStorage['rotorhazard.change_heat_on_save']) {
+				this.change_heat_on_save = JSON.parse(localStorage['rotorhazard.change_heat_on_save']);
 			}
 			return true;
 		}
