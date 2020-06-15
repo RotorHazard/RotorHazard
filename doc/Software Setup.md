@@ -114,6 +114,11 @@ INVERTED_PANEL_ROWS:  Optional panel row-inversion (default false)
 ```
 If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
 
+The LED library requires direct memory and GPIO access. When enabled, RotorHazard must be run with `sudo`.
+```
+sudo python server.py
+```
+
 ### INA219 Voltage/Current Support
 The ina219 interface is provided by the following project:
 https://github.com/chrisb2/pi_ina219
