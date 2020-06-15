@@ -246,13 +246,16 @@ sudo pip install --upgrade --no-cache-dir -r requirements.txt
 ```
 
 ### Enable Port forwarding
-The RotorHazard server defaults to port 5000. This is necessary for some 3rd party integrations, but requires users to type it into the URL when accessing the system. This looks like this: `http://127.0.0.1:5000`. While you can change the port via the `config.json` file, a better approach is often to forward the web default port of 80 to 5000.
+The RotorHazard server defaults to port 5000, as this is necessary for some 3rd party integrations. While you can change the port via `HTTP_PORT` in the `config.json` file, a better approach is often to forward the web default port of 80 to 5000.
+
+By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and reusing it will cause problems. If port 80 is used directly via `HTTP_PORT`, the server may need to be run using the *sudo* command. With the following commands, the server runs on port 5000 but the system sends the traffic from port 80 to it.
+
 ```
 sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 5000
 sudo iptables-save
 sudo apt-get install iptables-persistent
 ```
-After running these commands, RotorHazard will be available from both ports 80 and 5000. When available by port 80, you may leave the port off when access the server: `http://127.0.0.1`
+After running these commands, RotorHazard will be available from both ports 80 and 5000. When available by port 80, you may leave the port off when accessing the server: `http://127.0.0.1`
 <br/>
 
 -----------------------------

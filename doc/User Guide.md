@@ -9,12 +9,9 @@ Follow the instructions here if not done already:
 [RF shielding](Shielding%20and%20Course%20Position.md)
 
 ### Set up Config File
-In the "src/server" directory, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the HTTP_PORT,  ADMIN_USERNAME, and ADMIN_PASSWORD values. Python strictly requires tis file to be valid JSON. A linter utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
-
-HTTP_PORT is the port value the server will run on. By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and the server will fail to start. If port 80 is used, the server may need to be run using the *sudo* command. Port 5000 should be available. Some versions of LiveTime will only connect to a server on port 5000.
+In the "src/server" directory, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the ADMIN_USERNAME and ADMIN_PASSWORD values. Python strictly requires tis file to be valid JSON. A linter utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
 
 ADMIN_USERNAME and ADMIN_PASSWORD are the login credentials you will use to make changes to settings.
-
 
 ### Connect to the Server
 A computer, phone or tablet may be used to interact with the race timer by launching a web browser and entering the IP address of the Raspberry Pi. The Raspberry Pi may be connected using an ethernet cable, or to an available WiFi network. If the IP address of the Pi is not known, it may be viewed using the terminal command "ifconfig", and it can configured to a static value on the Pi desktop via the "Network Preferences." If the Pi is connected to a WiFi network, its IP address may be found in the 'Clients' list on the admin page for the network's router.
