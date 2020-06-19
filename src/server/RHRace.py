@@ -29,7 +29,12 @@ class RHRace():
         self.last_race_laps = None # Cache of current laps list after clearing
         self.last_race_cacheStatus = CacheStatus.INVALID # whether cache is valid
         self.status_message = '' # Race status message (winner, team info)
+
+        self.team_results = None # current race results
+        self.team_cacheStatus = CacheStatus.INVALID # whether cache is valid
         self.win_status = WinStatus.NONE # whether race is won
+        self.last_race_team_results = None # Cache of current race team results after clearing
+        self.last_race_team_cacheStatus = CacheStatus.INVALID # whether team results cache is valid
 
         '''
         Lap Object (dict) for node_laps:
