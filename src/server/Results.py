@@ -749,7 +749,9 @@ def check_win_condition(RACE, INTERFACE):
         race_format = RACE.format
         if race_format:
             if race_format.team_racing_mode:
-                if race_format.win_condition == WinCondition.MOST_LAPS:
+                if race_format.win_condition == WinCondition.MOST_PROGRESS:
+                    return check_win_team_laps_and_time(RACE, INTERFACE)
+                elif race_format.win_condition == WinCondition.MOST_LAPS:
                     return check_win_team_most_laps(RACE, INTERFACE)
                 elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
                     return check_win_team_first_to_x(RACE, INTERFACE)
@@ -758,7 +760,9 @@ def check_win_condition(RACE, INTERFACE):
                 elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
                     return check_win_team_fastest_consecutive(RACE)
             else:
-                if race_format.win_condition == WinCondition.MOST_LAPS:
+                if race_format.win_condition == WinCondition.MOST_PROGRESS:
+                    return check_win_laps_and_time(RACE, INTERFACE)
+                elif race_format.win_condition == WinCondition.MOST_LAPS:
                     return check_win_most_laps(RACE, INTERFACE)
                 elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
                     return check_win_first_to_x(RACE, INTERFACE)
@@ -767,6 +771,46 @@ def check_win_condition(RACE, INTERFACE):
                 elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
                     return check_win_fastest_consecutive(RACE)
     return None
+
+def check_win_laps_and_time(RACE, INTERFACE):
+    race_format = RACE.format
+
+    if RACE.race_status == RaceStatus.DONE or \
+        (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False): # racing must be completed
+        leaderboard = RACE.results['by_race_time']
+        lead_lap = leaderboard[0]['laps']
+        lead_lap_time = leaderboard[0]['total_time_raw']
+
+        if lead_lap > 0: # must have at least one lap
+            if len(leaderboard) > 1:
+                # check for tie
+                if leaderboard[1]['laps'] == lead_lap:
+                    if leaderboard[1]['total_time_raw'] == leaderboard[0]['total_time_raw']:
+                        logger.info('Race tied at %d laps', leaderboard[1]['laps'])
+                        # TODO: DECLARED_TIE ***
+                        return {
+                            'status': WinStatus.TIE
+                        }
+                # prevent win declaration if there are active crossings coming onto lead lap
+                for line in leaderboard[1:]:
+                    if line['laps'] >= lead_lap - 1:
+                        node = INTERFACE.nodes[line['node']]
+                        if node.crossing_flag:
+                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                            return {
+                                'status': WinStatus.PENDING_CROSSING
+                            }
+                    else:
+                        # lower results no longer need checked
+                        break
+            # no tie or active crossings; declare winner
+            return {
+                'status': WinStatus.DECLARED,
+                'data': leaderboard[0]
+            }
+    return {
+        'status': WinStatus.NONE
+    }
 
 def check_win_most_laps(RACE, INTERFACE):
     race_format = RACE.format
@@ -888,6 +932,43 @@ def check_win_fastest_consecutive(RACE):
             return {
                 'status': WinStatus.DECLARED,
                 'data': leaderboard[0]
+            }
+    return {
+        'status': WinStatus.NONE
+    }
+
+def check_win_team_laps_and_time(RACE, INTERFACE):
+    race_format = RACE.format
+    if RACE.race_status == RaceStatus.DONE or \
+        (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False): # racing must be completed
+        team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
+        individual_leaderboard = RACE.results['by_race_time']
+        lead_lap = team_leaderboard[0]['laps']
+        lead_lap_time = team_leaderboard[0]['total_time_raw']
+
+        if lead_lap > 0: # must have at least one lap
+            if len(team_leaderboard) > 1:
+                 # check for tie
+                if team_leaderboard[1]['laps'] == lead_lap:
+                    if team_leaderboard[1]['total_time_raw'] == team_leaderboard[0]['total_time_raw']:
+                        logger.info('Race tied at %d laps', team_leaderboard[1]['laps'])
+                        # TODO: DECLARED_TIE ***
+                        return {
+                            'status': WinStatus.TIE
+                        }
+
+                # prevent win declaration if there are active crossings
+                for line in individual_leaderboard:
+                    node = INTERFACE.nodes[line['node']]
+                    if node.crossing_flag:
+                        logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                        return {
+                            'status': WinStatus.PENDING_CROSSING
+                        }
+            # no tie or active crossings; declare winner
+            return {
+                'status': WinStatus.DECLARED,
+                'data': team_leaderboard[0]
             }
     return {
         'status': WinStatus.NONE

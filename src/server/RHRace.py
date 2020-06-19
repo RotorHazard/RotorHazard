@@ -62,8 +62,9 @@ class WinCondition():
     NONE = 0
     MOST_LAPS = 1
     FIRST_TO_LAP_X = 2
-    FASTEST_LAP = 3 # Not yet implemented
-    FASTEST_3_CONSECUTIVE = 4 # Not yet implemented
+    FASTEST_LAP = 3
+    FASTEST_3_CONSECUTIVE = 4
+    MOST_PROGRESS = 5 # most laps in fastest time
 
 class WinStatus():
     NONE = 0
