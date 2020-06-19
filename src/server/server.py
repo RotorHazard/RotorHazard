@@ -4135,9 +4135,9 @@ def db_reset_race_formats():
                              race_time_sec=120,
                              start_delay_min=2,
                              start_delay_max=5,
-                             staging_tones=2,
+                             staging_tones=1,
                              number_laps_win=0,
-                             win_condition=WinCondition.MOST_LAPS,
+                             win_condition=WinCondition.MOST_PROGRESS,
                              team_racing_mode=False))
     DB.session.add(Database.RaceFormat(name=__("Whoop Sprint"),
                              race_mode=0,
@@ -4146,7 +4146,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=0,
-                             win_condition=WinCondition.MOST_LAPS,
+                             win_condition=WinCondition.MOST_PROGRESS,
                              team_racing_mode=False))
     DB.session.add(Database.RaceFormat(name=__("Limited Class"),
                              race_mode=0,
@@ -4155,7 +4155,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=0,
-                             win_condition=WinCondition.MOST_LAPS,
+                             win_condition=WinCondition.MOST_PROGRESS,
                              team_racing_mode=False))
     DB.session.add(Database.RaceFormat(name=__("First to 3 Laps"),
                              race_mode=1,
@@ -4193,6 +4193,26 @@ def db_reset_race_formats():
                              number_laps_win=7,
                              win_condition=WinCondition.FIRST_TO_LAP_X,
                              team_racing_mode=True))
+    DB.session.add(Database.RaceFormat(name=__("Team / Fastest Lap Average"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             staging_tones=2,
+                             number_laps_win=0,
+                             win_condition=WinCondition.FASTEST_LAP,
+                             team_racing_mode=True))
+    DB.session.add(Database.RaceFormat(name=__("Team / Fastest 3 Consecutive Average"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             staging_tones=2,
+                             number_laps_win=0,
+                             win_condition=WinCondition.FASTEST_3_CONSECUTIVE,
+                             team_racing_mode=True))
+
+
     DB.session.commit()
     setCurrentRaceFormat(Database.RaceFormat.query.first())
     logger.info("Database reset race formats")
