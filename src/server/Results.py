@@ -472,7 +472,7 @@ def calc_leaderboard(DB, **params):
     # Sort by race time
     leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
         -x['laps'], # reverse lap count
-        x['consecutives'] if x['consecutives'] > 0 else float('inf') # total time ascending except 0
+        x['total_time_raw'] if x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
     )))
 
     # determine ranking
