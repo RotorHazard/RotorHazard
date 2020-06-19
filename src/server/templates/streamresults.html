@@ -172,8 +172,17 @@
 			$('#leaderboard').append(build_leaderboard(msg[leaderboard], 'current', msg.meta));
 		});
 
-		socket.on('team_racing_status', function (msg) {
-			$('.team_racing_status').html(msg.team_laps_str);
+		socket.on('team_leaderboard', function (msg) {
+			$('#team_leaderboard').empty();
+
+			if ('meta' in msg) {
+				team_leaderboard = msg.meta.primary_leaderboard;
+				$('#team_leaderboard').append(build_team_leaderboard(msg[team_leaderboard], team_leaderboard, msg.meta));
+			}
+		});
+
+		socket.on('race_status_message', function (msg) {
+			$('.race_status_message').html(msg.team_laps_str);
 		});
 
 		socket.on('current_heat', function (msg) {
@@ -222,6 +231,10 @@
 
 	<!--Display the race leaderboard-->
 	<div id="leaderboard"></div>
+
+	<div id="team_leaderboard"></div>
+
+	<div class="race_status_message"></div>
 </div>
 
 </main>
