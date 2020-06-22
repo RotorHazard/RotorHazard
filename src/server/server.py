@@ -5103,10 +5103,6 @@ if strip:
 else:
     led_manager = NoLEDManager()
 
-def start(port_val = Config.GENERAL['HTTP_PORT']):
-    if not Options.get("secret_key"):
-        Options.set("secret_key", unicode(os.urandom(50), errors='ignore'))
-
 # start up VRx Control
 vrx_controller = initVRxController()
 
