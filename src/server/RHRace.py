@@ -25,6 +25,7 @@ class RHRace():
         self.duration_ms = 0 # Duration in seconds, calculated when race is stopped
         self.end_time = 0 # Monotonic, updated when race is stopped
         self.laps_winner_name = None  # set to name of winner in first-to-X-laps race
+        self.winning_lap_id = 0  # tracks winning lap-id if race tied during first-to-X-laps race
         # leaderboard/cache
         self.results = None # current race results
         self.cacheStatus = CacheStatus.INVALID # whether cache is valid
