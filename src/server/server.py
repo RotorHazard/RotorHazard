@@ -3936,7 +3936,7 @@ def emit_imdtabler_page(**params):
             imdtabler_ver = subprocess.check_output( \
                                 'java -jar ' + IMDTABLER_JAR_NAME + ' -v', shell=True).rstrip()
             profile_freqs = json.loads(getCurrentProfile().frequencies)
-            fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
+            fi_list = list(OrderedDict.fromkeys(profile_freqs['f'][:RACE.num_nodes]))  # remove duplicates
             fs_list = []
             for val in fi_list:  # convert list of integers to list of strings
                 if val > 0:      # drop any zero entries
@@ -3970,7 +3970,7 @@ def emit_imdtabler_rating():
     try:
         profile_freqs = json.loads(getCurrentProfile().frequencies)
         imd_val = None
-        fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
+        fi_list = list(OrderedDict.fromkeys(profile_freqs['f'][:RACE.num_nodes]))  # remove duplicates
         fs_list = []
         for val in fi_list:  # convert list of integers to list of strings
             if val > 0:      # drop any zero entries
