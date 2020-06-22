@@ -41,7 +41,7 @@ def invalidate_all_caches(DB):
 
     Events.trigger(Evt.CACHE_CLEAR)
 
-    logger.info('All Result caches invalidated')
+    logger.debug('All Result caches invalidated')
 
 def normalize_cache_status(DB):
     ''' Check all caches and invalidate any paused builds '''
@@ -65,7 +65,7 @@ def normalize_cache_status(DB):
     global FULL_RESULTS_CACHE_VALID
     FULL_RESULTS_CACHE_VALID = False
 
-    logger.info('All Result caches normalized')
+    logger.debug('All Result caches normalized')
 
 def build_result_cache(DB, **params):
     return {
@@ -120,7 +120,7 @@ def build_race_results_caches(DB, params):
     Options.set("eventResults", json.dumps(calc_leaderboard(DB)))
     Options.set("eventResults_cacheStatus", CacheStatus.VALID)
 
-    logger.info('Built result caches: Race {0}, Heat {1}, Class {2}, Event'.format(params['race_id'], params['heat_id'], heat.class_id))
+    logger.debug('Built result caches: Race {0}, Heat {1}, Class {2}, Event'.format(params['race_id'], params['heat_id'], heat.class_id))
 
 def calc_leaderboard(DB, **params):
     ''' Generates leaderboards '''

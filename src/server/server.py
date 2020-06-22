@@ -169,7 +169,7 @@ class Slave:
                     return True
                 except socketio.exceptions.ConnectionError:
                     gevent.sleep(0.1)
-            logger.info("Slave {0}: connection to {1} failed!".format(self.id+1, self.address))
+            logger.warn("Slave {0}: connection to {1} failed!".format(self.id+1, self.address))
             return False
 
     def emit(self, event, data = None):
@@ -904,18 +904,18 @@ def api_options():
 @SOCKET_IO.on('connect')
 def connect_handler():
     '''Starts the interface and a heartbeat thread for rssi.'''
-    logger.info('Client connected')
+    logger.debug('Client connected')
     INTERFACE.start()
     global HEARTBEAT_THREAD
     if HEARTBEAT_THREAD is None:
         HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
-        logger.info('Heartbeat thread started')
+        logger.debug('Heartbeat thread started')
     emit_heat_data(nobroadcast=True)
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
     '''Emit disconnect event.'''
-    logger.info('Client disconnected')
+    logger.debug('Client disconnected')
 
 # LiveTime compatible events
 
@@ -959,7 +959,7 @@ def on_join_cluster():
     emit_race_format()
     Options.set("MinLapSec", "0")
     Options.set("MinLapBehavior", "0")
-    logger.info('Joined cluster')
+    logger.debug('Joined cluster')
 
     Events.trigger(Evt.CLUSTER_JOIN)
 
@@ -1652,7 +1652,7 @@ def on_set_profile(data, emit_vals=True):
         hardware_set_all_exit_ats(exit_ats)
 
     else:
-        logger.info('Invalid set_profile value: ' + str(profile_val))
+        logger.warn('Invalid set_profile value: ' + str(profile_val))
 
 @SOCKET_IO.on('backup_database')
 def on_backup_database():
@@ -3942,8 +3942,8 @@ def emit_imdtabler_page(**params):
                 if val > 0:      # drop any zero entries
                     fs_list.append(str(val))
             emit_imdtabler_data(fs_list, imdtabler_ver)
-        except Exception as ex:
-            logger.info('emit_imdtabler_page exception:  ' + str(ex))
+        except Exception:
+            logger.exception('emit_imdtabler_page exception')
 
 def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
     '''Emits IMDTabler data for given frequencies.'''
@@ -3952,9 +3952,9 @@ def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
         if len(fs_list) > 2:  # if 3+ then invoke jar; get response
             imdtabler_data = subprocess.check_output( \
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -t ' + ' '.join(fs_list), shell=True)
-    except Exception as ex:
+    except Exception:
         imdtabler_data = None
-        logger.info('emit_imdtabler_data exception:  ' + str(ex))
+        logger.exception('emit_imdtabler_data exception')
     emit_payload = {
         'freq_list': ' '.join(fs_list),
         'table_data': imdtabler_data,
@@ -3978,9 +3978,9 @@ def emit_imdtabler_rating():
         if len(fs_list) > 2:
             imd_val = subprocess.check_output(  # invoke jar; get response
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -r ' + ' '.join(fs_list), shell=True).rstrip()
-    except Exception as ex:
+    except Exception:
         imd_val = None
-        logger.info('emit_imdtabler_rating exception:  ' + str(ex))
+        logger.exception('emit_imdtabler_rating exception')
     emit_payload = {
             'imd_rating': imd_val
         }
@@ -4101,9 +4101,8 @@ def heartbeat_thread_function():
             raise
         except SystemExit:
             raise
-        except Exception as ex:
-            logger.info('Exception in Heartbeat thread loop:  ' + str(ex))
-            logger.info(traceback.format_exc())
+        except Exception:
+            logger.exception('Exception in Heartbeat thread loop')
             gevent.sleep(0.500)
 
 # declare/initialize variables for heartbeat functions
@@ -4144,7 +4143,7 @@ def check_race_time_expired():
 def pass_record_callback(node, lap_timestamp_absolute, source):
     '''Handles pass records from the nodes.'''
 
-    logger.info('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, lap_timestamp_absolute))
+    logger.debug('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, lap_timestamp_absolute))
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
@@ -4298,13 +4297,13 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'deleted': True
                         })
                 else:
-                    logger.info('Pass record dismissed: Node: {0}, Race not started' \
+                    logger.debug('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
             else:
-                logger.info('Pass record dismissed: Node: {0}, Pilot not defined' \
+                logger.debug('Pass record dismissed: Node: {0}, Pilot not defined' \
                     .format(node.index+1))
     else:
-        logger.info('Pass record dismissed: Node: {0}, Frequency not defined' \
+        logger.debug('Pass record dismissed: Node: {0}, Frequency not defined' \
             .format(node.index+1))
 
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
@@ -4434,7 +4433,7 @@ def db_reset_current_laps():
         RACE.node_laps[idx] = []
 
     RACE.cacheStatus = Results.CacheStatus.INVALID
-    logger.info('Database current laps reset')
+    logger.debug('Database current laps reset')
 
 def db_reset_saved_races():
     '''Resets database saved races to default.'''
@@ -4598,8 +4597,8 @@ def backup_db_file(copy_flag):
         else:
             os.renames(DB_FILE_NAME, bkp_name);
             logger.info('Moved old database file to:  ' + bkp_name)
-    except Exception as ex:
-        logger.info('Error backing up database file:  ' + str(ex))
+    except Exception:
+        logger.exception('Error backing up database file')
     return bkp_name
 
 def get_legacy_table_data(metadata, table_name, filter_crit=None, filter_value=None):
@@ -4609,7 +4608,7 @@ def get_legacy_table_data(metadata, table_name, filter_crit=None, filter_value=N
             return table.select().execute().fetchall()
         return table.select().execute().filter(filter_crit==filter_value).fetchall()
     except Exception as ex:
-        logger.info('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
+        logger.warn('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
 
 def restore_table(class_type, table_query_data, **kwargs):
     if table_query_data:
@@ -4647,7 +4646,7 @@ def restore_table(class_type, table_query_data, **kwargs):
                     DB.session.flush()
             logger.info('Database table "{0}" restored'.format(class_type.__name__))
         except Exception as ex:
-            logger.info('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
+            logger.warn('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
             logger.debug(traceback.format_exc())
 
 def recover_database():
@@ -4723,7 +4722,7 @@ def recover_database():
                     profile.exit_ats = json.dumps(exit_ats)
 
     except Exception as ex:
-        logger.info('Error reading data from previous database:  ' + str(ex))
+        logger.warn('Error reading data from previous database:  ' + str(ex))
 
     backup_db_file(False)  # rename and move DB file
     db_init()
@@ -4807,7 +4806,7 @@ def recover_database():
         logger.info('UI Options restored')
 
     except Exception as ex:
-        logger.info('Error while writing data from previous database:  ' + str(ex))
+        logger.warn('Error while writing data from previous database:  ' + str(ex))
         logger.debug(traceback.format_exc())
 
     # secondary data recovery
@@ -4835,7 +4834,7 @@ def recover_database():
             })
 
     except Exception as ex:
-        logger.info('Error while writing data from previous database:  ' + str(ex))
+        logger.warn('Error while writing data from previous database:  ' + str(ex))
         logger.debug(traceback.format_exc())
 
     DB.session.commit()
@@ -4993,24 +4992,24 @@ if RACE.num_nodes > 0:
     elif serverInfo['node_api_lowest'] < NODE_API_BEST:
         logger.info('** NOTICE: Node firmware update is available **')
     elif serverInfo['node_api_lowest'] > NODE_API_BEST:
-        logger.info('** WARNING: Node firmware is newer than this server version supports **')
+        logger.warn('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
     try:
         if int(Options.get('server_api')) < SERVER_API:
-            logger.info('Old server API version; rcovering database')
+            logger.info('Old server API version; recovering database')
             recover_database()
         elif not Database.Heat.query.count():
-            logger.info('Heats are empty; rcovering database')
+            logger.info('Heats are empty; recovering database')
             recover_database()
         elif not Database.Profiles.query.count():
-            logger.info('Profiles are empty; rcovering database')
+            logger.info('Profiles are empty; recovering database')
             recover_database()
         elif not Database.RaceFormat.query.count():
-            logger.info('Formats are empty; rcovering database')
+            logger.info('Formats are empty; recovering database')
             recover_database()
     except Exception as ex:
-        logger.info('Clearing all data after recovery failure:  ' + str(ex))
+        logger.warn('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()
 
 # Expand heats (if number of nodes increases)
@@ -5032,7 +5031,7 @@ SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     try:
         java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True)
-        logger.info('Found installed: ' + java_ver.split('\n')[0].strip())
+        logger.debug('Found installed: ' + java_ver.split('\n')[0].strip())
     except:
         java_ver = None
         logger.info('Unable to find java; for IMDTabler functionality try:')
@@ -5043,8 +5042,8 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
                         stderr=subprocess.STDOUT, shell=True).rstrip()
             Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
-            logger.info('Found installed: ' + imdtabler_ver)
-        except Exception as ex:
+            logger.debug('Found installed: ' + imdtabler_ver)
+        except Exception:
             logger.exception('Error checking IMDTabler:  ')
 else:
     logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
@@ -5091,7 +5090,7 @@ if Config.LED['LED_COUNT'] > 0:
             ledModule = None
             logger.info('LED: disabled (no modules available)')
 else:
-    logger.info('LED: disabled (configured LED_COUNT is <= 0)')
+    logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
@@ -5131,7 +5130,7 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         logger.info("Server terminated by keyboard interrupt")
     except SystemExit:
         logger.info("Server terminated by system exit")
-    except Exception as ex:
+    except Exception:
         logger.exception("Server exception:  ")
 
     Events.trigger(Evt.SHUTDOWN)
