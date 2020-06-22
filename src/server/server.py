@@ -4912,6 +4912,10 @@ def killVRxController(*args):
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 idAndLogSystemInfo()
 
+# log results of module initializations
+Config.logInitResultMessage()
+Language.logInitResultMessage()
+
 # check if current log file owned by 'root' and change owner to 'pi' user if so
 if Current_log_path_name and checkSetFileOwnerPi(Current_log_path_name):
     logger.debug("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
