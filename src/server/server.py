@@ -346,7 +346,7 @@ def idAndLogSystemInfo():
             pass
         if modelStr and "raspberry pi" in modelStr.lower():
             IS_SYS_RASPBERRY_PI = True
-            logger.info("Host machine: " + modelStr)
+            logger.info("Host machine: " + modelStr.strip('\0'))
         logger.info("Host OS: {0} {1}".format(platform.system(), platform.release()))
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
