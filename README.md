@@ -47,11 +47,9 @@ Links to external resources are available from the [Wiki](https://github.com/Rot
 ## Contributors
 * Michael Niggel
 * Eric Thomas
-* Klaus Michael Schneider
 * Mark Hale
-* Cerberus Velvet
-* David Just
-* Scott Chin and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
+
+With support from Ryan Friedman, Klaus Michael Schneider, Cerberus Velvet, David Just, Paweł Fabiszewski, Diez Roggisch, Roger Bess, Kęstutis Strimaitis, Scott Chin, and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
 
 ### Supported by:
 [![Propwashed Logo](doc/img/Propwashed-Logo-200w.png)](https://propwashed.com)
