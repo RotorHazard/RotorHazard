@@ -1850,6 +1850,7 @@ def on_alter_race_format(data):
         if 'team_racing_mode' in data:
             race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
         DB.session.commit()
+        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
         Events.trigger(Evt.RACE_FORMAT_ALTER, {
             'race_format': race_format.id,
