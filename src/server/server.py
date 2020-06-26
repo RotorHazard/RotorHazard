@@ -3625,7 +3625,7 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
                     return -1
                 if lap_count >= num_laps_win:
                     lap_data = filter(lambda lap : lap['lap_number']==num_laps_win, RACE.get_active_laps()[node.index])
-                    logger.debug('check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
+                    logger.debug('check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data[0]['lap_time_stamp']))
                              # save pilot_id for earliest lap time:
                     if win_pilot_id < 0 or lap_data[0]['lap_time_stamp'] < win_lap_tstamp:
                         win_pilot_id = pilot_id
