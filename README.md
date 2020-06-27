@@ -65,6 +65,6 @@ With support from Ryan Friedman, Klaus Michael Schneider, Cerberus Velvet, David
 
 Discuss RotorHazard on Facebook:  https://www.facebook.com/groups/rotorhazard
 
-To report bugs or request features, please post a GitHub issue [here](https://github.com/RotorHazard/RotorHazard/issues).
+To report bugs or request features, please post a GitHub issue [here](https://github.com/RotorHazard/RotorHazard/issues). When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended (see [here](doc/Software%20Setup.md#logging) for more information on logging).
 
 Community contributions are welcome and encouraged; see the [Development.md](doc/Development.md) doc for more info.
