@@ -3,8 +3,10 @@ import os
 import glob
 import logging.handlers
 import platform
+import time
 import zipfile
 import gevent
+import gevent.queue
 from datetime import datetime
 
 # Sample configuration:
@@ -37,16 +39,40 @@ FILELOG_NUM_KEEP_STR = "FILELOG_NUM_KEEP"
 CONSOLE_STREAM_STR = "CONSOLE_STREAM"
 LEVEL_NONE_STR = "NONE"
 
+socket_handler_obj = None
 
-class GEventDeferredHandler(logging.Handler):
+# Log handler that distributes log records to one or more destination handlers via a gevent queue.
+class QueuedLogEventHandler(logging.Handler):
 
-    def __init__(self, handler):
-        super(GEventDeferredHandler, self).__init__()
-        self._handler = handler
+    # Creates queued-log-event handler, with given destination log handler.
+    def __init__(self, dest_hndlr=None):
+        super(QueuedLogEventHandler, self).__init__()
+        self.queue_handlers_list = []
+        self.log_record_queue = gevent.queue.Queue()
+        if dest_hndlr:
+            self.queue_handlers_list.append(dest_hndlr)
+        gevent.spawn(self.queueWorkerFn)
 
-    def emit(self, record):
-        if record.levelno >= self._handler.level:
-            gevent.spawn(self._handler.emit(record))
+    # Adds given destination log handler.
+    def addHandler(self, dest_hndlr):
+        self.queue_handlers_list.append(dest_hndlr)
+
+    def queueWorkerFn(self):
+        while True:
+            try:
+                log_rec = self.log_record_queue.get()  # block until log record put into queue
+                for dest_hndlr in self.queue_handlers_list:
+                    if log_rec.levelno >= dest_hndlr.level:
+                        gevent.sleep(0.001)
+                        dest_hndlr.emit(log_rec)
+            except Exception as ex:
+                print("Error processing log-event queue: " + str(ex))
+
+    def emit(self, log_rec):
+        try:
+            self.log_record_queue.put(log_rec, timeout=1)
+        except Exception as ex:
+            print("Error adding record to log-event queue: " + str(ex))
 
 
 class SocketForwardHandler(logging.Handler):
@@ -77,9 +103,27 @@ def early_stage_setup():
         logging.getLogger(name).setLevel(logging.WARN)
 
 
+# Determines numeric log level for configuration item, or generates error
+#  message if invalid.
+def get_logging_level_for_item(logging_config, cfg_item_name, err_str, def_level=logging.INFO):
+    lvl_name = logging_config[cfg_item_name]
+    try:
+        lvl_num = int(logging.getLevelName(lvl_name))
+    except Exception:
+        lvl_num = def_level
+        if err_str:
+            err_str += ", "
+        else:
+            err_str = ""
+        err_str += "Invalid log-level name specified for '{0}': {1}".format(cfg_item_name, lvl_name)
+    return (lvl_num, err_str)
+
+
 # Completes the logging setup.
 # Returns the path/filename for the current log file in use, or None.
 def later_stage_setup(config, socket):
+    global socket_handler_obj
+
     logging_config = {}
     logging_config[CONSOLE_LEVEL_STR] = logging.getLevelName(logging.INFO)
     logging_config[SYSLOG_LEVEL_STR] = LEVEL_NONE_STR
@@ -90,17 +134,15 @@ def later_stage_setup(config, socket):
     logging_config.update(config)
     
     root = logging.getLogger()
-    # empty out the already configured handler
-    # from basicConfig
+    # empty out the already configured handler from basicConfig
     root.handlers[:] = []
-
 
     handlers = []
     
     min_level = logging.CRITICAL  # track minimum specified log level
 
-    # TODO: handle bogus level names
-    lvl = logging.getLevelName(logging_config[CONSOLE_LEVEL_STR])
+    err_str = None
+    (lvl, err_str) = get_logging_level_for_item(logging_config, CONSOLE_LEVEL_STR, err_str)
     if lvl > 0:
         stm_obj = sys.stdout if sys.stderr.name.find(logging_config[CONSOLE_STREAM_STR]) != 1 else sys.stderr
         hdlr_obj = logging.StreamHandler(stream=stm_obj)
@@ -110,7 +152,7 @@ def later_stage_setup(config, socket):
         if lvl < min_level:
             min_level = lvl
 
-    lvl = logging.getLevelName(logging_config[SYSLOG_LEVEL_STR])
+    (lvl, err_str) = get_logging_level_for_item(logging_config, SYSLOG_LEVEL_STR, err_str, logging.NOTSET)
     if lvl > 0:
         system_logger = logging.handlers.SysLogHandler("/dev/log", level=lvl) \
                         if platform.system() != "Windows" else \
@@ -121,15 +163,24 @@ def later_stage_setup(config, socket):
         if lvl < min_level:
             min_level = lvl
 
-    lvl = logging.getLevelName(logging_config[FILELOG_LEVEL_STR])
+    (lvl, err_str) = get_logging_level_for_item(logging_config, FILELOG_LEVEL_STR, err_str)
     if lvl > 0:
         # put log files in subdirectory, and with date-timestamp in names
         (lfname, lfext) = os.path.splitext(LOG_FILENAME_STR)
-        num_old_del = deleteOldLogfiles(logging_config[FILELOG_NUM_KEEP_STR], lfname, lfext)
+        (num_old_del, err_str) = delete_old_log_files(logging_config[FILELOG_NUM_KEEP_STR], lfname, lfext, err_str)
         if not os.path.exists(LOG_DIR_NAME):
             os.makedirs(LOG_DIR_NAME)
-        time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-        log_path_name = LOG_DIR_NAME + '/' + lfname + '_' + time_str + lfext
+        # if there's already a logfile with the same date/time name then pause and retry
+        num_attempts = 0
+        while True:
+            time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+            log_path_name = LOG_DIR_NAME + '/' + lfname + '_' + time_str + lfext
+            if not os.path.isfile(log_path_name):
+                break
+            num_attempts += 1
+            if num_attempts > 5:
+                break
+            time.sleep(1.1)
         hdlr_obj = logging.FileHandler(log_path_name)
         hdlr_obj.setLevel(lvl)
         # configure log format with milliseconds as ".###" (not ",###")
@@ -141,19 +192,27 @@ def later_stage_setup(config, socket):
         num_old_del = 0
         log_path_name = None
 
-    hdlr_obj = SocketForwardHandler(socket)
+    if err_str:
+        err_str = "Logging configuration error: " + err_str
+        if hdlr_obj:
+            hdlr_obj.stream.write(err_str + "\n")  # write error message to log file
+            hdlr_obj.flush()
+        raise ValueError(err_str)
+
+    socket_handler_obj = SocketForwardHandler(socket)
     # use same configuration as log file
-    lvl = logging.getLevelName(logging_config[FILELOG_LEVEL_STR])
     if lvl > 0:
-        hdlr_obj.setLevel(lvl)
+        socket_handler_obj.setLevel(lvl)
     # configure log format with milliseconds as ".###" (not ",###")
-    hdlr_obj.setFormatter(logging.Formatter(fmt=FILELOG_FORMAT_STR, datefmt='%Y-%m-%d %H:%M:%S'))
-    handlers.append(hdlr_obj)
+    socket_handler_obj.setFormatter(logging.Formatter(fmt=FILELOG_FORMAT_STR, datefmt='%Y-%m-%d %H:%M:%S'))
 
     root.setLevel(min_level)
 
-    for handler in handlers:
-        root.addHandler(GEventDeferredHandler(handler))
+    queued_handler1 = QueuedLogEventHandler()
+    for logHndlr in handlers:
+        queued_handler1.addHandler(logHndlr)
+
+    root.addHandler(queued_handler1)
 
     if num_old_del > 0:
         logging.debug("Deleted {0} old log file(s)".format(num_old_del))
@@ -161,9 +220,19 @@ def later_stage_setup(config, socket):
     return log_path_name
 
 
-def deleteOldLogfiles(num_keep_val, lfname, lfext):
+def start_socket_forward_handler():
+    global socket_handler_obj
+    if socket_handler_obj:
+        # use separate queue for socket forwarder (in case it has trouble because of network issues)
+        queued_handler2 = QueuedLogEventHandler(socket_handler_obj)
+        logging.getLogger().addHandler(queued_handler2)
+        socket_handler_obj = None
+
+
+def delete_old_log_files(num_keep_val, lfname, lfext, err_str):
     num_del = 0
     try:
+        num_keep_val = int(num_keep_val)  # make sure this is numeric
         if num_keep_val > 0:
             num_keep_val -= 1  # account for log file that's about to be created
             file_list = list(filter(os.path.isfile, glob.glob(LOG_DIR_NAME + '/' + lfname + '*' + lfext)))
@@ -174,9 +243,17 @@ def deleteOldLogfiles(num_keep_val, lfname, lfext):
                 for del_path in file_list:
                     os.remove(del_path)
                     num_del += 1
+        elif num_keep_val < 0:
+            raise ValueError("Negative value")
+    except ValueError:
+        if err_str:
+            err_str += ", "
+        else:
+            err_str = ""
+        err_str += "Value for '{0}' in configuration is invalid: {1}".format(FILELOG_NUM_KEEP_STR, num_keep_val)
     except Exception as ex:
         print("Error removing old log files: " + str(ex))
-    return num_del
+    return num_del, err_str
 
 
 def create_log_files_zip(logger, config_file, db_file):

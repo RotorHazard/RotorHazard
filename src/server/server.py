@@ -33,7 +33,6 @@ import os
 import sys
 import traceback
 import platform
-import glob
 import re
 import shutil
 import base64
@@ -4422,6 +4421,7 @@ def emit_current_log_file_to_socket():
                 SOCKET_IO.emit("hardware_log_init", f.read())
         except Exception:
             logger.exception("Error sending current log file to socket")
+    log.start_socket_forward_handler()
 
 def db_init():
     '''Initialize database.'''
