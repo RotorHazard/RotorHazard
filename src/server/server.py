@@ -394,6 +394,8 @@ def setCurrentRaceFormat(race_format):
     else:
         RACE.format = race_format
 
+    emit_current_laps()
+
 class RHRaceFormat():
     def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode):
         self.name = name
