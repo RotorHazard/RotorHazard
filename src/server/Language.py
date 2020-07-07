@@ -7,20 +7,30 @@ import Options
 
 logger = logging.getLogger(__name__)
 
-
 LANGUAGE_FILE_NAME = 'language.json'
 
 Languages = {}
+
+InitResultStr = None
+InitResultLogLevel = logging.INFO
+
 # Load language file
 try:
     with open(LANGUAGE_FILE_NAME, 'r') as f:
         Languages = json.load(f)
-    logger.debug('Language file imported')
+    InitResultStr = 'Language file imported'
+    InitResultLogLevel = logging.DEBUG
 except IOError:
-    logger.warn('No language file found, using defaults')
+    InitResultStr = 'No language file found, using defaults'
+    InitResultLogLevel = logging.WARN
 except ValueError:
-    logger.error('Language file invalid, using defaults')
+    InitResultStr = 'Language file invalid, using defaults'
+    InitResultLogLevel = logging.ERROR
 
+# Writes a log message describing the result of the module initialization.
+def logInitResultMessage():
+    if InitResultStr:
+        logger.log(InitResultLogLevel, InitResultStr)
 
 def __(text, domain=''):
     # return translated string

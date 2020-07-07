@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.2.0-dev.7" # Public release version code
+RELEASE_VERSION = "2.3.0-dev.1" # Public release version code
 SERVER_API = 27 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 25 # Most recent node API
@@ -33,7 +33,6 @@ import os
 import sys
 import traceback
 import platform
-import glob
 import re
 import shutil
 import base64
@@ -169,7 +168,7 @@ class Slave:
                     return True
                 except socketio.exceptions.ConnectionError:
                     gevent.sleep(0.1)
-            logger.info("Slave {0}: connection to {1} failed!".format(self.id+1, self.address))
+            logger.warn("Slave {0}: connection to {1} failed!".format(self.id+1, self.address))
             return False
 
     def emit(self, event, data = None):
@@ -346,7 +345,7 @@ def idAndLogSystemInfo():
             pass
         if modelStr and "raspberry pi" in modelStr.lower():
             IS_SYS_RASPBERRY_PI = True
-            logger.info("Host machine: " + modelStr)
+            logger.info("Host machine: " + modelStr.strip('\0'))
         logger.info("Host OS: {0} {1}".format(platform.system(), platform.release()))
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
@@ -904,18 +903,18 @@ def api_options():
 @SOCKET_IO.on('connect')
 def connect_handler():
     '''Starts the interface and a heartbeat thread for rssi.'''
-    logger.info('Client connected')
+    logger.debug('Client connected')
     INTERFACE.start()
     global HEARTBEAT_THREAD
     if HEARTBEAT_THREAD is None:
         HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
-        logger.info('Heartbeat thread started')
+        logger.debug('Heartbeat thread started')
     emit_heat_data(nobroadcast=True)
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
     '''Emit disconnect event.'''
-    logger.info('Client disconnected')
+    logger.debug('Client disconnected')
 
 # LiveTime compatible events
 
@@ -959,7 +958,7 @@ def on_join_cluster():
     emit_race_format()
     Options.set("MinLapSec", "0")
     Options.set("MinLapBehavior", "0")
-    logger.info('Joined cluster')
+    logger.debug('Joined cluster')
 
     Events.trigger(Evt.CLUSTER_JOIN)
 
@@ -1652,7 +1651,7 @@ def on_set_profile(data, emit_vals=True):
         hardware_set_all_exit_ats(exit_ats)
 
     else:
-        logger.info('Invalid set_profile value: ' + str(profile_val))
+        logger.warn('Invalid set_profile value: ' + str(profile_val))
 
 @SOCKET_IO.on('backup_database')
 def on_backup_database():
@@ -1850,6 +1849,7 @@ def on_alter_race_format(data):
         if 'team_racing_mode' in data:
             race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
         DB.session.commit()
+        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
         Events.trigger(Evt.RACE_FORMAT_ALTER, {
             'race_format': race_format.id,
@@ -1982,7 +1982,7 @@ def on_schedule_race(data):
         'scheduled_at': RACE.scheduled_time
         })
 
-    SOCKET_IO.emit('RACE.scheduled', {
+    SOCKET_IO.emit('race_scheduled', {
         'scheduled': RACE.scheduled,
         'scheduled_at': RACE.scheduled_time
         })
@@ -2189,6 +2189,7 @@ def race_start_thread(start_token):
         INTERFACE.set_race_status(RaceStatus.RACING)
         RACE.timer_running = True # indicate race timer is running
         RACE.laps_winner_name = None  # name of winner in first-to-X-laps race
+        RACE.winning_lap_id = 0  # track winning lap-id if race tied during first-to-X-laps race
         emit_race_status() # Race page, to set race button states
         logger.info('Race started at {0} ({1:13f})'.format(RACE.start_time_monotonic, monotonic_to_milliseconds(RACE.start_time_monotonic)))
 
@@ -2399,6 +2400,7 @@ def clear_laps():
     RACE.last_race_results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
     RACE.last_race_cacheStatus = Results.CacheStatus.VALID
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
+    RACE.winning_lap_id = 0
     db_reset_current_laps() # Clear out the current laps table
     DB.session.query(Database.LapSplit).delete()
     DB.session.commit()
@@ -2660,7 +2662,7 @@ def on_delete_lap(data):
             else:
                 t_laps_dict = get_team_laps_info()[0]
         else:  # if Most Laps Wins race enabled
-            t_laps_dict, t_name, pilot_team_dict = get_team_laps_info()
+            t_laps_dict, t_name, pilot_team_dict = get_team_laps_info(-1, RACE.winning_lap_id)
             if ms_from_race_start() > race_format.race_time_sec*1000:  # if race done
                 check_most_laps_win(node_index, t_laps_dict, pilot_team_dict)
         check_emit_team_racing_status(t_laps_dict)
@@ -3495,6 +3497,7 @@ def emit_current_heat(**params):
                 callsigns.append(None)
         else:
             callsigns.append(None)
+            pilot_ids.append(None)
 
     heat_data = Database.Heat.query.get(RACE.current_heat)
 
@@ -3519,6 +3522,7 @@ def emit_current_heat(**params):
 
 def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
     '''Calculates and returns team-racing info.'''
+    logger.debug('get_team_laps_info cur_pilot_id={0}, num_laps_win={1}'.format(cur_pilot_id, num_laps_win))
               # create dictionary with key=pilot_id, value=team_name
     pilot_team_dict = {}
     profile_freqs = json.loads(getCurrentProfile().frequencies)
@@ -3531,30 +3535,33 @@ def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
             pilot_id = node_pilot_dict.get(node.index)
             if pilot_id:
                 pilot_team_dict[pilot_id] = Database.Pilot.query.filter_by(id=pilot_id).one().team
-    #logger.info('DEBUG get_team_laps_info pilot_team_dict: {0}'.format(pilot_team_dict))
+    logger.debug('get_team_laps_info pilot_team_dict: {0}'.format(pilot_team_dict))
 
-    t_laps_dict = {}  # create dictionary (key=team_name, value=[lapCount,timestamp]) with initial zero laps
+    t_laps_dict = {}  # create dictionary (key=team_name, value=[lapCount,timestamp,item]) with initial zero laps
     for team_name in pilot_team_dict.values():
         if len(team_name) > 0 and team_name not in t_laps_dict:
-            t_laps_dict[team_name] = [0, 0]
+            t_laps_dict[team_name] = [0, 0, None]
 
-              # iterate through list of laps, sorted by lap timestamp
-
+    # iterate through list of laps, sorted by lap timestamp
     grouped_laps = []
     for node_index in range(RACE.num_nodes):
         for lap in RACE.get_active_laps()[node_index]:
             lap['pilot'] = RACE.node_pilots[node_index]
             grouped_laps.append(lap)
 
+    # each item has:  'lap_time_stamp', 'deleted' (True/False), 'lap_number', 'source', 'lap_time_formatted', 'lap_time' 'pilot' (number)
     for item in sorted(grouped_laps, key=lambda lap : lap['lap_time_stamp']):
         if item['lap_number'] > 0:  # current lap is > 0
             team_name = pilot_team_dict[item['pilot']]
             if team_name in t_laps_dict:
                 t_laps_dict[team_name][0] += 1       # increment lap count for team
-                if num_laps_win == 0 or t_laps_dict[team_name][0] <= num_laps_win:
+                if num_laps_win <= 0 or t_laps_dict[team_name][0] <= num_laps_win:
                     t_laps_dict[team_name][1] = item['lap_time_stamp']  # update lap_time_stamp (if not past winning lap)
-                #logger.info('DEBUG get_team_laps_info team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
-    #logger.info('DEBUG get_team_laps_info t_laps_dict: {0}'.format(t_laps_dict))
+                    t_laps_dict[team_name][2] = item
+                    logger.debug('get_team_laps_info team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
+                else:
+                    logger.debug('get_team_laps_info ignoring post-win lap team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
+    logger.debug('get_team_laps_info t_laps_dict: {0}'.format(t_laps_dict))
 
     if cur_pilot_id >= 0:  # determine name for 'cur_pilot_id' if given
         cur_team_name = pilot_team_dict[cur_pilot_id]
@@ -3613,17 +3620,17 @@ def check_pilot_laps_win(pass_node_index, num_laps_win):
 
                             # if (other) pilot crossing for possible winning lap then wait
                             #  in case lap time turns out to be earliest:
-                if node.crossing_flag and node.index != pass_node_index and lap_count == num_laps_win - 1:
+                if node.pass_crossing_flag and node.index != pass_node_index and lap_count == num_laps_win - 1:
                     logger.info('check_pilot_laps_win waiting for crossing, Node {0}'.format(node.index+1))
                     return -1
                 if lap_count >= num_laps_win:
                     lap_data = filter(lambda lap : lap['lap_number']==num_laps_win, RACE.get_active_laps()[node.index])
-                    #logger.info('DEBUG check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data.lap_time_stamp))
+                    logger.debug('check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data[0]['lap_time_stamp']))
                              # save pilot_id for earliest lap time:
                     if win_pilot_id < 0 or lap_data[0]['lap_time_stamp'] < win_lap_tstamp:
                         win_pilot_id = pilot_id
                         win_lap_tstamp = lap_data[0]['lap_time_stamp']
-    #logger.info('DEBUG check_pilot_laps_win returned win_pilot_id={0}'.format(win_pilot_id))
+    logger.debug('check_pilot_laps_win returned win_pilot_id={0}'.format(win_pilot_id))
     return win_pilot_id
 
 def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_index=-1):
@@ -3637,7 +3644,7 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
                           filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
 
         for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
-            if node.crossing_flag and node.index != pass_node_index:
+            if node.pass_crossing_flag and node.index != pass_node_index:
                 if not profile_freqs:
                     profile_freqs = json.loads(getCurrentProfile().frequencies)
                 if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:  # node is enabled
@@ -3653,6 +3660,7 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
                                 return
     win_name = None
     win_tstamp = -1
+    win_item = None
          # for each team, check if team has enough laps to win (and, if more
          #  than one has enough laps, pick team with earliest timestamp)
     for team_name in t_laps_dict.keys():
@@ -3660,24 +3668,27 @@ def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_in
         if ent[0] >= num_laps_win and (win_tstamp < 0 or ent[1] < win_tstamp):
             win_name = team_name
             win_tstamp = ent[1]
-    #logger.info('DEBUG check_team_laps_win win_name={0} tstamp={1}'.format(win_name,win_tstamp))
+            win_item = ent[2]
+    logger.debug('check_team_laps_win win_name={0} tstamp={1}, win_item: {2}'.format(win_name, win_tstamp, win_item))
     RACE.laps_winner_name = win_name
 
 def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=None):
     '''Checks if pilot or team has most laps for a win.'''
     # pass_node_index: -1 if called from 'check_race_time_expired()'; node.index if called from 'pass_record_callback()'
     global RACE
+    logger.debug('Entered check_most_laps_win: pass_node_index={0}, t_laps_dict={1}, pilot_team_dict={2}'.format(pass_node_index, t_laps_dict, pilot_team_dict))
 
     race_format = getCurrentRaceFormat()
     if race_format.team_racing_mode: # team racing mode enabled
 
              # if not passed in then determine number of laps for each team
         if t_laps_dict is None:
-            t_laps_dict, t_name, pilot_team_dict = get_team_laps_info()
+            t_laps_dict, t_name, pilot_team_dict = get_team_laps_info(-1, RACE.winning_lap_id)
 
         max_lap_count = -1
         win_name = None
         win_tstamp = -1
+        win_item = None
         tied_flag = False
         num_max_lap = 0
              # find team with most laps
@@ -3688,6 +3699,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                     max_lap_count = ent[0]
                     win_name = team_name
                     win_tstamp = ent[1]
+                    win_item = ent[2]
                     tied_flag = False
                     num_max_lap = 1
                 else:  # if team is tied for highest lap count found so far
@@ -3697,14 +3709,17 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                         if ent[1] < win_tstamp:  # this team has earlier lap time
                             win_name = team_name
                             win_tstamp = ent[1]
-                    else:  # waiting for crossing
+                            win_item = ent[2]
+                    else:  # waiting for crossing or called from 'check_race_time_expired()'
                         tied_flag = True
-        #logger.info('DEBUG check_most_laps_win tied={0} win_name={1} tstamp={2}'.format(tied_flag,win_name,win_tstamp))
+        logger.debug('check_most_laps_win tied={0} win_name={1} tstamp={2}'.format(tied_flag,win_name,win_tstamp))
 
         if tied_flag or max_lap_count <= 0:
             RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
+            RACE.winning_lap_id = max_lap_count + 1 if max_lap_count >= 0 else 1
             check_emit_team_racing_status(t_laps_dict)
             emit_phonetic_text('Race tied', 'race_winner')
+            logger.debug('check_most_laps_win race tied num_max_lap={0} max_lap_count={1}'.format(num_max_lap, max_lap_count))
             return  # wait for next 'pass_record_callback()' event
 
         if win_name:  # if a team looks like the winner
@@ -3716,7 +3731,7 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                 node_pilot_dict = None  # dict for current heat with key=node_index, value=pilot_id
                 for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
                     if node.index != pass_node_index:  # if node is for other pilot
-                        if node.crossing_flag:
+                        if node.pass_crossing_flag:
                             if not profile_freqs:
                                 profile_freqs = json.loads(getCurrentProfile().frequencies)
                             if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:  # node is enabled
@@ -3741,15 +3756,26 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                                                                                   format(node.index+1))
                                             return
 
-            # if race currently tied and more than one team at max lap
-            #  then don't stop the tied race in progress
-            if (RACE.laps_winner_name is not RACE.status_tied_str) or num_max_lap <= 1:
-                RACE.laps_winner_name = win_name  # indicate a team has won
-                check_emit_team_racing_status(t_laps_dict)
-                emit_phonetic_text('Race done, winner is team ' + RACE.laps_winner_name, 'race_winner')
+            # if race currently tied and more than one team at max_lap_count
+            if RACE.laps_winner_name is RACE.status_tied_str and num_max_lap > 1:
+                if pass_node_index < 0:  # if called from 'check_race_time_expired()'
+                    logger.debug('check_most_laps_win race is tied num_max_lap={0} max_lap_count={1}'.format(num_max_lap, max_lap_count))
+                    return
+                else:  # if called from 'pass_record_callback()'
+                    if max_lap_count < RACE.winning_lap_id:  # if no team has reached winning lap count
+                        logger.debug('check_most_laps_win race tied (not winning lap) max_lap_count={0}, winning_lap_id={1}'.format(max_lap_count, RACE.winning_lap_id))
+                        return
+
+            RACE.laps_winner_name = win_name  # indicate a team has won
+            check_emit_team_racing_status(t_laps_dict)
+            logger.info('check_most_laps_win result: Winner is team {0}'.format(RACE.laps_winner_name))
+            logger.debug('check_most_laps_win winning lap: {0}'.format(win_item))
+            emit_phonetic_text('Race done, winner is team ' + RACE.laps_winner_name, 'race_winner')
 
         else:    # if no team looks like the winner
             RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
+            RACE.winning_lap_id = max_lap_count + 1 if max_lap_count >= 0 else 1
+            logger.debug('check_most_laps_win race tied (no winner yet) max_lap_count={0}, winning_lap_id={1}'.format(max_lap_count, RACE.winning_lap_id))
 
     else:  # not team racing mode
 
@@ -3771,15 +3797,19 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
 
                         if lap_data:
                             pilots_list.append((lap_count, lap_data[0]['lap_time_stamp'], pilot_id, node))
+                            logger.debug('check_most_laps_win pilots_list.append lap_count={0} pilot_id={1}, node.index={2}'.\
+                                        format(lap_count, pilot_id, node.index))
                             if lap_count > max_lap_id:
                                 max_lap_id = lap_count
                                 num_max_lap = 1
                             elif lap_count == max_lap_id:
                                 num_max_lap += 1  # count number of nodes at max lap
-        #logger.info('DEBUG check_most_laps_win pass_node_index={0} max_lap={1}'.format(pass_node_index, max_lap_id))
+        logger.debug('check_most_laps_win pass_node_index={0} max_lap={1}, num_max_lap={2}'.\
+                    format(pass_node_index, max_lap_id, num_max_lap))
 
         if max_lap_id <= 0:  # if no laps then bail out
             RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
+            RACE.winning_lap_id = 1
             if pass_node_index < 0:  # if called from 'check_race_time_expired()'
                 emit_team_racing_status(RACE.laps_winner_name)
                 emit_phonetic_text('Race tied', 'race_winner')
@@ -3789,8 +3819,10 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
         #  winning then bail out (and wait for next 'pass_record_callback()' event)
         pass_node_lap_id = -1
         for item in pilots_list:
+            logger.debug('check_most_laps_win check crossing, item_index={0}, item.crossing_flag={1}'.\
+                         format(item[3].index, item[3].pass_crossing_flag))
             if item[3].index != pass_node_index:  # if node is for other pilot
-                if item[3].crossing_flag and item[0] >= max_lap_id - 1:
+                if item[3].pass_crossing_flag and item[0] >= max_lap_id - 1:
                     # if called from 'check_race_time_expired()' then allow race tied after crossing
                     if pass_node_index < 0:
                         RACE.laps_winner_name = RACE.status_crossing
@@ -3801,20 +3833,25 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
             else:
                 pass_node_lap_id = item[0]  # save 'lap_id' for node/pilot that caused current lap pass
 
-        # if race currently tied and called from 'pass_record_callback()'
-        #  and current-pass pilot is not only one at max lap
-        #  then clear 'pass_node_index' so pass will not stop a tied race in progress
+        # if race currently tied and called from 'pass_record_callback()' and current-pass pilot
+        #  has not reached winning lap then bail out so pass will not stop a tied race in progress
         if RACE.laps_winner_name is RACE.status_tied_str and pass_node_index >= 0 and \
-                (pass_node_lap_id < max_lap_id or (pass_node_lap_id == max_lap_id and num_max_lap > 1)):
-            pass_node_index = -1
+                pass_node_lap_id < RACE.winning_lap_id:
+            logger.debug('check_most_laps_win pilot not at winning lap, pass_node_index={0}, winning_lap_id={1}'.\
+                         format(pass_node_index, RACE.winning_lap_id))
+            return
 
         # check for pilots with max laps; if more than one then select one with
         #  earliest lap time (if called from 'pass_record_callback()' fn) or
         #  indicate status tied (if called from 'check_race_time_expired()' fn)
         win_pilot_id = -1
         win_lap_tstamp = 0
+        logger.debug('check_most_laps_win check max laps, pass_node_index={0}, max_lap_id={1}, laps_winner_name={2}'.\
+                format(pass_node_index, max_lap_id, RACE.laps_winner_name))
         for item in pilots_list:
             if item[0] == max_lap_id:
+                logger.debug('check_most_laps_win check max laps checking: pilot_id={0}, lap_tstamp={1}'.\
+                        format(item[2], item[1]))
                 if win_pilot_id < 0:  # this is first one so far at max_lap
                     win_pilot_id = item[2]
                     win_lap_tstamp = item[1]
@@ -3826,16 +3863,24 @@ def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=No
                             win_lap_tstamp = item[1]
                     else:  # called from 'check_race_time_expired()' or was waiting for crossing
                         if RACE.laps_winner_name is not RACE.status_tied_str:
+                            logger.debug('check_most_laps_win check max laps, laps_winner_name was "{0}", setting to "{1}"'.\
+                                        format(RACE.laps_winner_name, RACE.status_tied_str))
                             RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
+                            RACE.winning_lap_id = max_lap_id + 1
                             emit_team_racing_status(RACE.laps_winner_name)
                             emit_phonetic_text('Race tied', 'race_winner')
+                        else:
+                            logger.debug('check_most_laps_win check max laps, laps_winner_name={0}'.\
+                                        format(RACE.laps_winner_name))
                         return  # wait for next 'pass_record_callback()' event
-        #logger.info('DEBUG check_most_laps_win win_pilot_id={0}'.format(win_pilot_id))
+        logger.debug('check_most_laps_win check max laps, win_pilot_id={0}, win_lap_tstamp={1}'.\
+                        format(win_pilot_id, win_lap_tstamp))
 
         if win_pilot_id >= 0:
             win_callsign = Database.Pilot.query.filter_by(id=win_pilot_id).one().callsign
             RACE.laps_winner_name = win_callsign  # indicate a pilot has won
             emit_team_racing_status('Winner is ' + RACE.laps_winner_name)
+            logger.info('check_most_laps_win result: Winner is {0}'.format(RACE.laps_winner_name))
             win_phon_name = Database.Pilot.query.filter_by(id=win_pilot_id).one().phonetic
             if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                 win_phon_name = win_callsign
@@ -3935,14 +3980,14 @@ def emit_imdtabler_page(**params):
             imdtabler_ver = subprocess.check_output( \
                                 'java -jar ' + IMDTABLER_JAR_NAME + ' -v', shell=True).rstrip()
             profile_freqs = json.loads(getCurrentProfile().frequencies)
-            fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
+            fi_list = list(OrderedDict.fromkeys(profile_freqs['f'][:RACE.num_nodes]))  # remove duplicates
             fs_list = []
             for val in fi_list:  # convert list of integers to list of strings
                 if val > 0:      # drop any zero entries
                     fs_list.append(str(val))
             emit_imdtabler_data(fs_list, imdtabler_ver)
-        except Exception as ex:
-            logger.info('emit_imdtabler_page exception:  ' + str(ex))
+        except Exception:
+            logger.exception('emit_imdtabler_page exception')
 
 def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
     '''Emits IMDTabler data for given frequencies.'''
@@ -3951,9 +3996,9 @@ def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
         if len(fs_list) > 2:  # if 3+ then invoke jar; get response
             imdtabler_data = subprocess.check_output( \
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -t ' + ' '.join(fs_list), shell=True)
-    except Exception as ex:
+    except Exception:
         imdtabler_data = None
-        logger.info('emit_imdtabler_data exception:  ' + str(ex))
+        logger.exception('emit_imdtabler_data exception')
     emit_payload = {
         'freq_list': ' '.join(fs_list),
         'table_data': imdtabler_data,
@@ -3969,7 +4014,7 @@ def emit_imdtabler_rating():
     try:
         profile_freqs = json.loads(getCurrentProfile().frequencies)
         imd_val = None
-        fi_list = list(OrderedDict.fromkeys(profile_freqs['f']))  # remove duplicates
+        fi_list = list(OrderedDict.fromkeys(profile_freqs['f'][:RACE.num_nodes]))  # remove duplicates
         fs_list = []
         for val in fi_list:  # convert list of integers to list of strings
             if val > 0:      # drop any zero entries
@@ -3977,9 +4022,9 @@ def emit_imdtabler_rating():
         if len(fs_list) > 2:
             imd_val = subprocess.check_output(  # invoke jar; get response
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -r ' + ' '.join(fs_list), shell=True).rstrip()
-    except Exception as ex:
+    except Exception:
         imd_val = None
-        logger.info('emit_imdtabler_rating exception:  ' + str(ex))
+        logger.exception('emit_imdtabler_rating exception')
     emit_payload = {
             'imd_rating': imd_val
         }
@@ -4100,9 +4145,8 @@ def heartbeat_thread_function():
             raise
         except SystemExit:
             raise
-        except Exception as ex:
-            logger.info('Exception in Heartbeat thread loop:  ' + str(ex))
-            logger.info(traceback.format_exc())
+        except Exception:
+            logger.exception('Exception in Heartbeat thread loop')
             gevent.sleep(0.500)
 
 # declare/initialize variables for heartbeat functions
@@ -4143,7 +4187,8 @@ def check_race_time_expired():
 def pass_record_callback(node, lap_timestamp_absolute, source):
     '''Handles pass records from the nodes.'''
 
-    logger.info('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, lap_timestamp_absolute))
+    logger.debug('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, lap_timestamp_absolute))
+    node.pass_crossing_flag = False  # clear the "synchronized" version of the crossing flag
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
@@ -4232,7 +4277,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                 team_laps = t_laps_dict[team_name][0]
                                 check_team_laps_win(t_laps_dict, race_format.number_laps_win, pilot_team_dict, node.index)
                             else:
-                                t_laps_dict, team_name, pilot_team_dict = get_team_laps_info(pilot_id)
+                                t_laps_dict, team_name, pilot_team_dict = get_team_laps_info(pilot_id, RACE.winning_lap_id)
                                 team_laps = t_laps_dict[team_name][0]
                             check_emit_team_racing_status(t_laps_dict)
 
@@ -4297,13 +4342,13 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'deleted': True
                         })
                 else:
-                    logger.info('Pass record dismissed: Node: {0}, Race not started' \
+                    logger.debug('Pass record dismissed: Node: {0}, Race not started' \
                         .format(node.index+1))
             else:
-                logger.info('Pass record dismissed: Node: {0}, Pilot not defined' \
+                logger.debug('Pass record dismissed: Node: {0}, Pilot not defined' \
                     .format(node.index+1))
     else:
-        logger.info('Pass record dismissed: Node: {0}, Frequency not defined' \
+        logger.debug('Pass record dismissed: Node: {0}, Frequency not defined' \
             .format(node.index+1))
 
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
@@ -4376,6 +4421,7 @@ def emit_current_log_file_to_socket():
                 SOCKET_IO.emit("hardware_log_init", f.read())
         except Exception:
             logger.exception("Error sending current log file to socket")
+    log.start_socket_forward_handler()
 
 def db_init():
     '''Initialize database.'''
@@ -4433,7 +4479,7 @@ def db_reset_current_laps():
         RACE.node_laps[idx] = []
 
     RACE.cacheStatus = Results.CacheStatus.INVALID
-    logger.info('Database current laps reset')
+    logger.debug('Database current laps reset')
 
 def db_reset_saved_races():
     '''Resets database saved races to default.'''
@@ -4597,8 +4643,8 @@ def backup_db_file(copy_flag):
         else:
             os.renames(DB_FILE_NAME, bkp_name);
             logger.info('Moved old database file to:  ' + bkp_name)
-    except Exception as ex:
-        logger.info('Error backing up database file:  ' + str(ex))
+    except Exception:
+        logger.exception('Error backing up database file')
     return bkp_name
 
 def get_legacy_table_data(metadata, table_name, filter_crit=None, filter_value=None):
@@ -4608,7 +4654,7 @@ def get_legacy_table_data(metadata, table_name, filter_crit=None, filter_value=N
             return table.select().execute().fetchall()
         return table.select().execute().filter(filter_crit==filter_value).fetchall()
     except Exception as ex:
-        logger.info('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
+        logger.warn('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
 
 def restore_table(class_type, table_query_data, **kwargs):
     if table_query_data:
@@ -4646,7 +4692,7 @@ def restore_table(class_type, table_query_data, **kwargs):
                     DB.session.flush()
             logger.info('Database table "{0}" restored'.format(class_type.__name__))
         except Exception as ex:
-            logger.info('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
+            logger.warn('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
             logger.debug(traceback.format_exc())
 
 def recover_database():
@@ -4722,7 +4768,7 @@ def recover_database():
                     profile.exit_ats = json.dumps(exit_ats)
 
     except Exception as ex:
-        logger.info('Error reading data from previous database:  ' + str(ex))
+        logger.warn('Error reading data from previous database:  ' + str(ex))
 
     backup_db_file(False)  # rename and move DB file
     db_init()
@@ -4806,7 +4852,7 @@ def recover_database():
         logger.info('UI Options restored')
 
     except Exception as ex:
-        logger.info('Error while writing data from previous database:  ' + str(ex))
+        logger.warn('Error while writing data from previous database:  ' + str(ex))
         logger.debug(traceback.format_exc())
 
     # secondary data recovery
@@ -4834,7 +4880,7 @@ def recover_database():
             })
 
     except Exception as ex:
-        logger.info('Error while writing data from previous database:  ' + str(ex))
+        logger.warn('Error while writing data from previous database:  ' + str(ex))
         logger.debug(traceback.format_exc())
 
     DB.session.commit()
@@ -4883,16 +4929,16 @@ def initVRxController():
                 except ImportError as e:
                     logger.error("VRxController unable to be imported")
                     logger.error(e)
-                    return False
+                    return None
             else:
                 logger.info('VRxController disabled by config option')
-                return False
+                return None
         except KeyError:
             logger.error('VRxController disabled: config needs "ENABLED" key.')
-            return False
+            return None
     except AttributeError:
         logger.info('VRxController disabled: No VRX_CONTROL config option')
-        return False
+        return None
 
     # If got through import success, create the VRxController object
     vrx_config = Config.VRX_CONTROL
@@ -4910,6 +4956,10 @@ def killVRxController(*args):
 
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 idAndLogSystemInfo()
+
+# log results of module initializations
+Config.logInitResultMessage()
+Language.logInitResultMessage()
 
 # check if current log file owned by 'root' and change owner to 'pi' user if so
 if Current_log_path_name and checkSetFileOwnerPi(Current_log_path_name):
@@ -4988,24 +5038,24 @@ if RACE.num_nodes > 0:
     elif serverInfo['node_api_lowest'] < NODE_API_BEST:
         logger.info('** NOTICE: Node firmware update is available **')
     elif serverInfo['node_api_lowest'] > NODE_API_BEST:
-        logger.info('** WARNING: Node firmware is newer than this server version supports **')
+        logger.warn('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
     try:
         if int(Options.get('server_api')) < SERVER_API:
-            logger.info('Old server API version; rcovering database')
+            logger.info('Old server API version; recovering database')
             recover_database()
         elif not Database.Heat.query.count():
-            logger.info('Heats are empty; rcovering database')
+            logger.info('Heats are empty; recovering database')
             recover_database()
         elif not Database.Profiles.query.count():
-            logger.info('Profiles are empty; rcovering database')
+            logger.info('Profiles are empty; recovering database')
             recover_database()
         elif not Database.RaceFormat.query.count():
-            logger.info('Formats are empty; rcovering database')
+            logger.info('Formats are empty; recovering database')
             recover_database()
     except Exception as ex:
-        logger.info('Clearing all data after recovery failure:  ' + str(ex))
+        logger.warn('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()
 
 # Expand heats (if number of nodes increases)
@@ -5027,7 +5077,7 @@ SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     try:
         java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True)
-        logger.info('Found installed: ' + java_ver.split('\n')[0].strip())
+        logger.debug('Found installed: ' + java_ver.split('\n')[0].strip())
     except:
         java_ver = None
         logger.info('Unable to find java; for IMDTabler functionality try:')
@@ -5038,8 +5088,8 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
                         stderr=subprocess.STDOUT, shell=True).rstrip()
             Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
-            logger.info('Found installed: ' + imdtabler_ver)
-        except Exception as ex:
+            logger.debug('Found installed: ' + imdtabler_ver)
+        except Exception:
             logger.exception('Error checking IMDTabler:  ')
 else:
     logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
@@ -5086,7 +5136,7 @@ if Config.LED['LED_COUNT'] > 0:
             ledModule = None
             logger.info('LED: disabled (no modules available)')
 else:
-    logger.info('LED: disabled (configured LED_COUNT is <= 0)')
+    logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
 if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
@@ -5098,10 +5148,6 @@ if strip:
     init_LED_effects()
 else:
     led_manager = NoLEDManager()
-
-def start(port_val = Config.GENERAL['HTTP_PORT']):
-    if not Options.get("secret_key"):
-        Options.set("secret_key", unicode(os.urandom(50), errors='ignore'))
 
 # start up VRx Control
 vrx_controller = initVRxController()
@@ -5126,7 +5172,7 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         logger.info("Server terminated by keyboard interrupt")
     except SystemExit:
         logger.info("Server terminated by system exit")
-    except Exception as ex:
+    except Exception:
         logger.exception("Server exception:  ")
 
     Events.trigger(Evt.SHUTDOWN)

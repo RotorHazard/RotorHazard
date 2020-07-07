@@ -43,8 +43,8 @@ GENERAL['SLAVE_TIMEOUT'] = 300 # seconds
 GENERAL['DEBUG'] = False
 GENERAL['CORS_ALLOWED_HOSTS'] = '*'
 
-
 InitResultStr = None
+InitResultLogLevel = logging.INFO
 
 # override defaults above with config from file
 try:
@@ -81,9 +81,17 @@ try:
         SERIAL_PORTS.extend(ExternalConfig['SERIAL_PORTS'])
     GENERAL['configFile'] = 1
     InitResultStr = "Using configuration file '{0}'".format(CONFIG_FILE_NAME)
+    InitResultLogLevel = logging.INFO
 except IOError:
     GENERAL['configFile'] = 0
     InitResultStr = "No configuration file found, using defaults"
+    InitResultLogLevel = logging.WARN
 except ValueError as ex:
     GENERAL['configFile'] = -1
-    logger.exception("Configuration file invalid, using defaults; error is: ")
+    InitResultStr = "Configuration file invalid, using defaults; error is: " + str(ex)
+    InitResultLogLevel = logging.ERROR
+
+# Writes a log message describing the result of the module initialization.
+def logInitResultMessage():
+    if InitResultStr:
+        logger.log(InitResultLogLevel, InitResultStr)

@@ -763,10 +763,48 @@
 		});
 
 		/* Classes */
-		socket.on('class_data', function (msg) {
-			$(".race_classes").empty();
-			$('#generator_input_class').empty();
+		function update_class_selectors() {
+			var class_data = rotorhazard.class_data;
+
+			var input_val = $('#generator_input_class').val();
+			var output_val = $('#generator_output_class').val();
+
+			$('#generator_input_class').empty().append($('<option value="0">' + __('Randomize All') + '</option>'));
 			$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
+
+			if (class_data.classes.length) {
+				for (var i in class_data.classes) {
+					var race_class = class_data.classes[i];
+
+					if (race_class.name) {
+						race_class_name = race_class.name
+					} else {
+						race_class_name = __('Class') + ' ' + race_class.id
+					}
+
+					if (race_class.name) {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' +race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+					} else {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+					}
+				}
+			}
+
+			if ($('#generator_input_class option[value="' + input_val + '"]').length) {
+				$('#generator_input_class').val(input_val);
+			}
+			if ($('#generator_output_class option[value="' + output_val + '"]').length) {
+				$('#generator_output_class').val(output_val);
+			}
+
+		}
+
+		socket.on('class_data', function (msg) {
+			rotorhazard.class_data = msg;
+
+			$(".race_classes").empty();
 
 			if (msg.classes.length) {
 				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '<br />' + __('Duplicating a class also duplicates its assigned heats.') + '</p>');
@@ -809,22 +847,13 @@
 					el.append('<button class="duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
 
 					el.appendTo(classlist);
-
-					if (race_class.name) {
-						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
-						$('#generator_output_class').append($('<option value="' + race_class.id + '">' +race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
-					} else {
-						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
-						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
-					}
 				}
 				classlist.appendTo($('.race_classes'));
 			} else {
 				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
 			}
 
-			$('#generator_input_class').append($('<option value="0">' + __('Randomize All') + '</option>'));
-
+			update_class_selectors();
 		});
 
 		$(document).on("change", '.set_race_class_name', function (event) {
@@ -833,6 +862,15 @@
 				class_name: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
+
+			for (var i in rotorhazard.class_data.classes) {
+				var race_class = rotorhazard.class_data.classes[i];
+				if (race_class['id'] == data.class_id) {
+					race_class.name = data.class_name;
+					break;
+				}
+			}
+			update_class_selectors();
 		});
 
 		$(document).on("change", '.set_race_class_format', function (event) {
