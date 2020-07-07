@@ -3,18 +3,15 @@
 ## Initial Setup
 
 ### Hardware and Software Setup
-Follow the instructions here if not done already:
-[Hardware Setup](Hardware%20Setup.md)
-[Software Setup](Software%20Setup.md)
+Follow the instructions here if not done already:<br>
+[Hardware Setup](Hardware%20Setup.md)<br>
+[Software Setup](Software%20Setup.md)<br>
 [RF shielding](Shielding%20and%20Course%20Position.md)
 
 ### Set up Config File
-In the "src/server" directory, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the HTTP_PORT,  ADMIN_USERNAME, and ADMIN_PASSWORD values. Python strictly requires tis file to be valid JSON. A linter utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
+In the "src/server" directory, find *config-dist.json* and copy it to *config.json*. Edit this file and modify the ADMIN_USERNAME and ADMIN_PASSWORD values. This items in this file must in valid JSON format. A linter utility like [JSONLint](https://jsonlint.com/) can be used to check for syntax errors.
 
-HTTP_PORT is the port value the server will run on. By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and the server will fail to start. If port 80 is used, the server may need to be run using the *sudo* command. Port 5000 should be available. Some versions of LiveTime will only connect to a server on port 5000.
-
-ADMIN_USERNAME and ADMIN_PASSWORD are the login credentials you will use to make changes to settings.
-
+ADMIN_USERNAME and ADMIN_PASSWORD are the login credentials you will need to access the pages reserved for the race director (i.e., the *Settings* and *Run* pages).
 
 ### Connect to the Server
 A computer, phone or tablet may be used to interact with the race timer by launching a web browser and entering the IP address of the Raspberry Pi. The Raspberry Pi may be connected using an ethernet cable, or to an available WiFi network. If the IP address of the Pi is not known, it may be viewed using the terminal command "ifconfig", and it can configured to a static value on the Pi desktop via the "Network Preferences." If the Pi is connected to a WiFi network, its IP address may be found in the 'Clients' list on the admin page for the network's router.
@@ -133,11 +130,11 @@ Tuning parameters can be adjusted here via the "⚠" button. See [doc/Tuning Par
 
 During the race, there is an "×" next to each counted lap. This will discard that lap pass, so its time is moved to the next lap. Use this to remove errant extra passes, or clean up pilots flying close to the start gate after their race finished.
 
-A "+ Lap" button is provided to force lap pass for that node to be immediately recorded.
+Pressing the "+ Lap" button will manually trigger a lap pass for that node.
 
 When a race is over, use the "Stop Race" button (Hotkey: <kbd>x</kbd>) to discontinue counting laps. You need to do this  even if the timer reaches zero in a "Count Down" format—a popular race format allows pilots to finish the lap they are on when time expires. For best results, clear the timing gate and allow all valid crossings to end before stopping the race.
 
-Once a race has concluded, you must choose "Save Laps" or "Clear Laps" before starting another race. "Save Laps" (Hotkey: <kbd>c</kbd>) will store race results to the database and display them on the "Results" page. "Clear Laps" (Hotkey: <kbd>v</kbd>) will discard the race results. Saving laps will automatically advance the heat selection to the next heat with the same class as the saved race.
+Once a race has concluded, you must choose "Save Laps" or "Discard Laps" before starting another race. "Save Laps" (Hotkey: <kbd>c</kbd>) will store race results to the database and display them on the "Results" page. "Discard Laps" (Hotkey: <kbd>v</kbd>) will discard the race results. Saving laps will automatically advance the heat selection to the next heat with the same class as the saved race.
 
 The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. _Audio Control_ and _LED Control_ are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race. "Time Until Race Start" will schedule a race to be run at a future time. Operators may use this to set a hard limit on the amount of time allowed for pilots to prepare, or to start the timer and then participate in the race themselves.
 
@@ -149,7 +146,7 @@ Select the round, heat, and pilot to adjust. Enter and Exit points are automatic
 
 Add laps by entering the crossing time in seconds from the beginning of the race, then pressing the "Add Lap" button.
 
-Delete laps with the "×" button on the unwanted lap. Deleted laps are removed from calculations but remain present in the data for later reference. "Clear laps" to permanently remove the data from the database.
+Delete laps with the "×" button on the unwanted lap. Deleted laps are removed from calculations but remain present in the data for later reference. "Discard Laps" to permanently remove the data from the database.
 
 You may click on/touch the graph to set enter/exit points, activate recalculation, and highlight specific laps. Clicking on laps in the list also adds a highlight on the graph. Press <kbd>delete</kbd> or <kbd>x</kbd> to delete a highlighted lap. Active laps are displayed in green, and deleted laps change to red. The width of the lap indicator shows the enter/exit points, and the yellow highlight draws a line at the exact lap time within that window.
 
