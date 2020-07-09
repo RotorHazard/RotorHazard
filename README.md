@@ -47,11 +47,9 @@ Links to external resources are available from the [Wiki](https://github.com/Rot
 ## Contributors
 * Michael Niggel
 * Eric Thomas
-* Klaus Michael Schneider
 * Mark Hale
-* Cerberus Velvet
-* David Just
-* Scott Chin and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
+
+With support from Ryan Friedman, Klaus Michael Schneider, Cerberus Velvet, David Just, Paweł Fabiszewski, Diez Roggisch, Roger Bess, Kęstutis Strimaitis, Scott Chin, and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
 
 ### Supported by:
 [![Propwashed Logo](doc/img/Propwashed-Logo-200w.png)](https://propwashed.com)
@@ -67,6 +65,6 @@ Links to external resources are available from the [Wiki](https://github.com/Rot
 
 Discuss RotorHazard on Facebook:  https://www.facebook.com/groups/rotorhazard
 
-To report bugs or request features, please post a GitHub issue [here](https://github.com/RotorHazard/RotorHazard/issues).
+To report bugs or request features, please post a GitHub issue [here](https://github.com/RotorHazard/RotorHazard/issues). When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended (see [here](doc/Software%20Setup.md#logging) for more information on logging).
 
 Community contributions are welcome and encouraged; see the [Development.md](doc/Development.md) doc for more info.

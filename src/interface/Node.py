@@ -20,6 +20,7 @@ class Node:
         self.lap_timestamp = -1
         self.loop_time = 10
         self.crossing_flag = False
+        self.pass_crossing_flag = False
         self.debug_pass_count = 0
 
         self.enter_at_level = 0

@@ -46,6 +46,8 @@ class BaseHardwareInterface(object):
         if node.scan_interval == 0:
             if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
                 node.crossing_flag = cross_flag
+                if cross_flag:
+                    node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
                 if callable(self.node_crossing_callback):
                     cross_list.append(node)
 
