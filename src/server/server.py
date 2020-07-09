@@ -1064,10 +1064,7 @@ def on_set_frequency(data):
         'frequency': frequency,
         })
 
-    if session.get('LiveTime', False):
-        emit('frequency_set', data)
-    else:
-        emit_frequency_data()
+    emit_frequency_data()
 
 @SOCKET_IO.on('set_frequency_preset')
 def on_set_frequency_preset(data):
@@ -2843,6 +2840,15 @@ def emit_frequency_data(**params):
         emit('frequency_data', emit_payload)
     else:
         SOCKET_IO.emit('frequency_data', emit_payload)
+
+        # send changes to LiveTime
+        for n in range(RACE.num_nodes):
+            # if session.get('LiveTime', False):
+            SOCKET_IO.emit('frequency_set', {
+                'node': n,
+                'frequency': profile_freqs["f"][n]
+            })
+
     # if IMDTabler.java available then trigger call to
     #  'emit_imdtabler_rating' via heartbeat function:
     if Use_imdtabler_jar_flag:
