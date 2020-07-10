@@ -1,0 +1,51 @@
+<html>
+	<head>
+		<script type="text/javascript" src="./static/jquery-3.2.1/jquery.min.js"></script>
+		<script type="text/javascript" src="./static/socket.io-1.3.5/socket.io.min.js"></script>
+		<script type="text/javascript" src="./static/chart/Chart.min.js"></script>
+		<script type="text/javascript" src="./static/scanner.js"></script>
+		<link rel="stylesheet" href="./static/chart/Chart.min.css"></link>
+		<script type="text/javascript" charset="utf-8">
+			jQuery(document).ready(function($){
+				socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+			});
+
+			$(document).ready(function () {
+				var scanners = [];
+		
+				// set up node local store
+				for (let i = 0; i < {{ num_nodes }}; i++) {
+					let scanner = createBandScanner('freq-graph-' + i);
+					scanner.isEnabled = true;
+					scanners.push(scanner);
+				}
+		
+				registerMessageHandlers(socket, scanners);
+		
+			});
+		</script>
+	</head>
+	<body>
+		<main class="page-settings">
+		
+		<div class="panel">
+			<div class="panel-header">
+				<h2>{{ __('Scanner') }}</h2>
+			</div>
+			<div class="full-width">
+				<div class="node-list">
+					{% for node in range(num_nodes) %}
+					<div class="node" data-node="{{ node }}">
+						<div style="height:80%; width:80%; background:#FFFFFF; margin:0 auto;">
+							<canvas id="freq-graph-{{ node }}">
+							</canvas>
+						</div>
+					</div>
+					{% endfor %}
+				</div>
+			</div>
+		</div>
+		
+		</main>
+	</body>
+</html>

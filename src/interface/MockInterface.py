@@ -1,6 +1,7 @@
-'''Mock interface layer.'''
+'''Mock hardware interface layer.'''
 
 import os
+import logging
 import gevent # For threads and timing
 import random
 from gevent.lock import BoundedSemaphore # To limit i2c calls
@@ -9,63 +10,40 @@ from monotonic import monotonic # to capture read timing
 from Node import Node
 from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
+logger = logging.getLogger(__name__)
+
 UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.5')) # Main update loop delay
 
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
-CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
-ENTER_AT_PEAK_MARGIN = 5         # closest that captured enter-at level can be to node peak RSSI
 
 class MockInterface(BaseHardwareInterface):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         BaseHardwareInterface.__init__(self)
         self.update_thread = None # Thread for running the main update loop
-        self.pass_record_callback = None # Function added in server.py
-        self.hardware_log_callback = None # Function added in server.py
-        self.new_enter_or_exit_at_callback = None # Function added in server.py
-        self.node_crossing_callback = None # Function added in server.py
 
         # Scans all i2c_addrs to populate nodes array
         self.nodes = [] # Array to hold each node object
         self.data = []
         i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
-        for index, addr in enumerate(i2c_addrs):
+        for index in range(int(os.environ.get('RH_NODES', '8'))):
             node = Node() # New node instance
-            node.i2c_addr = addr # Set current loop i2c_addr
+            node.i2c_addr = i2c_addrs[index] # Set current loop i2c_addr
             node.index = index
             node.api_valid_flag = True
-            node.api_level = 18
+            node.api_level = 25
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.nodes.append(node) # Add new node to RHInterface
             try:
                 f = open("mock_data_{0}.csv".format(index+1))
-                print "Loaded mock_data_{0}.csv".format(index+1)
+                logger.info("Loaded mock_data_{0}.csv".format(index+1))
             except IOError:
                 f = None
             self.data.append(f)
 
-        # Core temperature
-        self.core_temp = 30
+        self.discover_sensors()
 
-        # Scan for INA219 devices
-        self.ina219_devices = []
-        self.ina219_data = []
-
-        # Scan for BME280 devices
-        self.bme280_addrs = []
-        self.bme280_data = []
-
-
-    #
-    # Class Functions
-    #
-
-    def log(self, message):
-        '''Hardware log of messages.'''
-        if callable(self.hardware_log_callback):
-            string = 'Interface: {0}'.format(message)
-            self.hardware_log_callback(string)
 
     #
     # Update Loop
@@ -82,7 +60,7 @@ class MockInterface(BaseHardwareInterface):
                 self.update()
                 gevent.sleep(UPDATE_SLEEP)
         except KeyboardInterrupt:
-            print "Update thread terminated by keyboard interrupt"
+            logger.info("Update thread terminated by keyboard interrupt")
 
     def update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
@@ -109,12 +87,13 @@ class MockInterface(BaseHardwareInterface):
                 cross_flag = True if data_columns[7]=='T' else False
                 node.pass_nadir_rssi = int(data_columns[8])
                 node.node_nadir_rssi = int(data_columns[9])
-                pn_history = PeakNadirHistory()
+                pn_history = PeakNadirHistory(node.index)
                 pn_history.peakRssi = int(data_columns[10])
                 pn_history.peakFirstTime = int(data_columns[11])
                 pn_history.peakLastTime = int(data_columns[12])
                 pn_history.nadirRssi = int(data_columns[13])
-                pn_history.nadirTime = int(data_columns[14])
+                pn_history.nadirFirstTime = int(data_columns[14])
+                pn_history.nadirLastTime = int(data_columns[15])
 
                 if node.is_valid_rssi(rssi_val):
                     node.current_rssi = rssi_val
@@ -157,53 +136,28 @@ class MockInterface(BaseHardwareInterface):
         if node.api_valid_flag:
             node.exit_at_level = self.transmit_exit_at_level(node, level)
 
-    def set_calibration_threshold_global(self, threshold):
-        return threshold  # dummy function; no longer supported
-
-    def enable_calibration_mode(self):
-        pass  # dummy function; no longer supported
-
-    def set_calibration_offset_global(self, offset):
-        return offset  # dummy function; no longer supported
-
-    def set_trigger_threshold_global(self, threshold):
-        return threshold  # dummy function; no longer supported
-
-    def mark_start_time(self, node_index, start_time):
-        node = self.nodes[node_index]
-
-    def mark_start_time_global(self, pi_time):
-        bcast_flag = False
-        start_time = int(round(pi_time * 1000)) # convert to ms
-
-    def start_capture_enter_at_level(self, node_index):
-        node = self.nodes[node_index]
-        if node.cap_enter_at_flag is False and node.api_valid_flag:
-            node.cap_enter_at_total = 0
-            node.cap_enter_at_count = 0
-                   # set end time for capture of RSSI level:
-            node.cap_enter_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
-            node.cap_enter_at_flag = True
-            return True
-        return False
-
-    def start_capture_exit_at_level(self, node_index):
-        node = self.nodes[node_index]
-        if node.cap_exit_at_flag is False and node.api_valid_flag:
-            node.cap_exit_at_total = 0
-            node.cap_exit_at_count = 0
-                   # set end time for capture of RSSI level:
-            node.cap_exit_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
-            node.cap_exit_at_flag = True
-            return True
-        return False
-
     def force_end_crossing(self, node_index):
-        node = self.nodes[node_index]
+        pass
 
-    def update_environmental_data(self):
-        '''Updates environmental data.'''
+    def inc_intf_read_block_count(self):
+        pass
 
-def get_hardware_interface():
+    def inc_intf_read_error_count(self):
+        pass
+
+    def inc_intf_write_block_count(self):
+        pass
+
+    def inc_intf_write_error_count(self):
+        pass
+
+    def get_intf_total_error_count(self):
+        pass
+
+    def get_intf_error_report_str(self, showWriteFlag=False):
+        return ""
+
+def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''
-    return MockInterface()
+    logger.info('Using mock hardware interface')
+    return MockInterface(*args, **kwargs)

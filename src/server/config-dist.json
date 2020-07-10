@@ -1,19 +1,29 @@
 {
 	"GENERAL": {
 		"HTTP_PORT": 5000,
-		"SECRET_KEY": "secret!",
 		"ADMIN_USERNAME": "admin",
 		"ADMIN_PASSWORD": "rotorhazard",
 		"DEBUG": false,
-		"NODE_RESYNC_INTERVAL": 60
+		"CORS_ALLOWED_HOSTS": "*"
 	},
+	"SENSORS": {
+	},
+	"SERIAL_PORTS": [],
 	"LED": {
-		"LED_COUNT": 150,
+		"LED_COUNT": 0,
 		"LED_PIN": 10,
 		"LED_FREQ_HZ": 800000,
 		"LED_DMA": 10,
-		"LED_BRIGHTNESS": 255,
 		"LED_INVERT": false,
-		"LED_CHANNEL": 0
+		"LED_CHANNEL": 0,
+		"PANEL_ROTATE": 0,
+		"INVERTED_PANEL_ROWS": false
+	},
+	"LOGGING": {
+		"CONSOLE_LEVEL": "INFO",
+		"SYSLOG_LEVEL": "NONE",
+		"FILELOG_LEVEL": "INFO",
+		"FILELOG_NUM_KEEP": 30,
+		"CONSOLE_STREAM": "stdout"
 	}
 }

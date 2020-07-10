@@ -20,23 +20,23 @@
 	<meta name="msapplication-config" content="/static/image/browserconfig.xml">
 	<meta name="theme-color" content="#224873">
 
-	<audio id="sound_buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
-	<audio id="sound_beep" src="./static/audio/beep.mp3" type="audio/mp3"></audio>
-	<audio id="sound_stage" src="./static/audio/stage.mp3" type="audio/mp3"></audio>
-	<audio id="sound_enter" src="./static/audio/enter.mp3" type="audio/mp3"></audio>
-	<audio id="sound_exit" src="./static/audio/exit.mp3" type="audio/mp3"></audio>
+	<audio id="sound_buzzer" src="/static/audio/buzzer.mp3" type="audio/mp3"></audio>
+	<audio id="sound_beep" src="/static/audio/beep.mp3" type="audio/mp3"></audio>
+	<audio id="sound_stage" src="/static/audio/stage.mp3" type="audio/mp3"></audio>
+	<audio id="sound_enter" src="/static/audio/enter.mp3" type="audio/mp3"></audio>
+	<audio id="sound_exit" src="/static/audio/exit.mp3" type="audio/mp3"></audio>
 
 	<!-- Scripts -->
-	<script type="text/javascript" src="./static/jquery-3.2.1/jquery.min.js"></script>
-	<script type="text/javascript" src="./static/articulate/articulate.min.js"></script>
-	<script type="text/javascript" src="./static/socket.io-1.3.5/socket.io.min.js"></script>
-	<script type="text/javascript" src="./static/smoothie/smoothie.js"></script>
-	<script type="text/javascript" src="./static/magnific-1.1.0/magnific-inline-min.js"></script>
-	<script type="text/javascript" src="./static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
+	<script type="text/javascript" src="/static/jquery-3.2.1/jquery.min.js"></script>
+	<script type="text/javascript" src="/static/articulate/articulate.min.js"></script>
+	<script type="text/javascript" src="/static/socket.io-2.2.0/socket.io.min.js"></script>
+	<script type="text/javascript" src="/static/smoothie/smoothie.js"></script>
+	<script type="text/javascript" src="/static/magnific-1.1.0/magnific-inline-min.js"></script>
+	<script type="text/javascript" src="/static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 
 	<!-- CSS -->
-	<link rel="stylesheet" href="./static/magnific-1.1.0/magnific-popup.css"></link>
-	<link rel="stylesheet" href="./static/rotorhazard.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+	<link rel="stylesheet" href="/static/magnific-1.1.0/magnific-popup.css"></link>
+	<link rel="stylesheet" href="/static/rotorhazard.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 	<style>
 
@@ -79,8 +79,16 @@
 				<li class="extra">
 					<a href="#">...</a>
 					<ul>
+						<li><a href="/docs?d=README.md">{{ __("Documentation") }}</a></li>
+
+						<li><a href="/streams">{{ __("Stream Displays") }}</a></li>
+
 						<li><a href="/imdtabler">{{ __("IMDTabler") }}</a></li>
-						<li><a href="https://github.com/RotorHazard/RotorHazard/tree/master/doc" target="_blank">{{ __("Show documentation (on GitHub)") }} &#10132;&#xFE0E;</a></li>
+
+						{% if Debug %}<li><a href="/scanner">{{ __("Band Scanner") }}</a></li>{% endif %}
+
+						<li><a href="/hardwarelog" class="admin-hide">{{ __('View Server Log') }}</a></li>
+
 						<li><a href="https://github.com/RotorHazard/RotorHazard/" target="_blank">{{ __("RotorHazard on GitHub") }} &#10132;&#xFE0E;</a></li>
 						<li><a href="#about" class="open-mfp-popup">{{ __("About RotorHazard") }}</a></li>
 					</ul>

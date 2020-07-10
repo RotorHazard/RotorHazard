@@ -1,179 +1,280 @@
-#include "Arduino.h"
-#include "FastRunningMedian.h"
+#include "config.h"
 #include "rssi.h"
+#include "util/median-filter.h"
+#include "util/lowpass20hz-filter.h"
+#include "util/lowpass50hz-filter.h"
+#include "util/lowpass100hz-filter.h"
+#include "util/no-filter.h"
+#include "util/single-sendbuffer.h"
+#include "util/multi-sendbuffer.h"
+
+#define FILTER_NONE NoFilter<rssi_t>
+#define FILTER_MEDIAN MedianFilter<rssi_t, SmoothingSamples, 0>
+#define FILTER_100 LowPassFilter100Hz
+#define FILTER_50 LowPassFilter50Hz
+#define FILTER_20 LowPassFilter20Hz
+
+//select the filter to use here
+#define FILTER_IMPL FILTER_MEDIAN
+
+#define PEAK_SENDBUFFER_SINGLE SinglePeakSendBuffer
+#define PEAK_SENDBUFFFER_MULTI MultiSendBuffer<Extremum,10>
+#define NADIR_SENDBUFFER_SINGLE SingleNadirSendBuffer
+#define NADIR_SENDBUFFFER_MULTI MultiSendBuffer<Extremum,10>
+
+//select the send buffer to use here
+#define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_SINGLE
+#define NADIR_SENDBUFFER_IMPL NADIR_SENDBUFFER_SINGLE
+
+
+FILTER_IMPL defaultFilter;
+PEAK_SENDBUFFER_IMPL defaultPeakSendBuffer;
+NADIR_SENDBUFFER_IMPL defaultNadirSendBuffer;
 
 struct Settings settings;
 struct State state;
-struct History history;
+struct History history = {
+    {0, 0, 0}, false, &defaultPeakSendBuffer,
+    {MAX_RSSI, 0, 0}, false, &defaultNadirSendBuffer,
+    0
+};
 struct LastPass lastPass;
 
-FastRunningMedian<rssi_t, SmoothingSamples, 0> rssiMedian;
+static Filter<rssi_t> *filter = &defaultFilter;
 
-mtime_t volatile SmoothingTimestamps[SmoothingTimestampSize];
-uint8_t SmoothingTimestampsIndex = 0;
+void rssiSetFilter(Filter<rssi_t> *f)
+{
+    filter = f;
+}
+
+void rssiSetSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir)
+{
+    history.peakSend = peak;
+    history.nadirSend = nadir;
+}
 
 void rssiInit()
 {
-      lastPass.rssiPeak = 0;
-      lastPass.lap = 0;
-      lastPass.timestamp = 0;
-      state.lastloopMicros = micros();
+    state.lastloopMicros = micros();
 }
 
 bool rssiStateValid()
 {
-      return state.nodeRssiNadir <= state.rssi && state.rssi <= state.nodeRssiPeak;
+    return state.nodeRssiNadir <= state.rssi && state.rssi <= state.nodeRssiPeak;
 }
 
 void rssiStateReset()
 {
-      state.nodeRssiPeak = 0;
-      state.nodeRssiNadir = MAX_RSSI;
+    state.crossing = false;
+    invalidatePeak(state.passPeak);
+    state.passRssiNadir = MAX_RSSI;
+    state.nodeRssiPeak = 0;
+    state.nodeRssiNadir = MAX_RSSI;
+    invalidatePeak(history.peak);
+    history.hasPendingPeak = false;
+    history.peakSend->clear();
+    invalidateNadir(history.nadir);
+    history.hasPendingNadir = false;
+    history.nadirSend->clear();
 }
 
-void rssiProcess(rssi_t rssi, mtime_t millis)
+static void bufferHistoricPeak(bool force)
 {
-      rssiMedian.addValue(rssi);
+    if (history.hasPendingPeak)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            bool buffered = history.peakSend->addIfAvailable(history.peak);
+            if (buffered)
+            {
+                history.hasPendingPeak = false;
+            }
+            else if (force)
+            {
+                history.peakSend->addOrDiscard(history.peak);
+                history.hasPendingPeak = false;
+            }
+        }
+    }
+}
 
-      SmoothingTimestamps[SmoothingTimestampsIndex] = millis;
-      SmoothingTimestampsIndex++;
-      if (SmoothingTimestampsIndex >= SmoothingTimestampSize) {
-    	  SmoothingTimestampsIndex = 0;
-      }
+static void bufferHistoricNadir(bool force)
+{
+    if (history.hasPendingNadir)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            bool buffered = history.nadirSend->addIfAvailable(history.nadir);
+            if (buffered)
+            {
+                history.hasPendingNadir = false;
+            }
+            else if (force)
+            {
+                history.nadirSend->addOrDiscard(history.nadir);
+                history.hasPendingNadir = false;
+            }
+        }
+    }
+}
 
-      if (rssiMedian.isFilled() && state.rxFreqSetFlag)
-      {  //don't start operations until after first WRITE_FREQUENCY command is received
+static void initExtremum(Extremum *e)
+{
+    e->rssi = state.rssi;
+    e->firstTime = state.rssiTimestamp;
+    e->duration = 0;
+}
 
-	  state.lastRssi = state.rssi;
-	  state.rssi = rssiMedian.getMedian(); // retrieve the median
-	  state.rssiTimestamp = SmoothingTimestamps[SmoothingTimestampsIndex];
+bool rssiProcess(rssi_t rssi, mtime_t millis)
+{
+    filter->addRawValue(millis, rssi);
 
-	  int rssiChange = state.rssi - state.lastRssi;
-	  // update history
-	  if (rssiChange > 0) { // RSSI is rising
-	    history.peakRssi = state.rssi;
-	    history.peakFirstTime = history.peakLastTime = state.rssiTimestamp;
+    if (filter->isFilled() && state.activatedFlag)
+    {  //don't start operations until after first WRITE_FREQUENCY command is received
 
-	    // if RSSI was falling, but it's rising now, we found a nadir
-	    // copy the values to be sent in the next loop
-	    if (history.rssiChange < 0) { // is falling
-	      // declare a new nadir if we don't have one or if the new one is lower
-	      if (!history.nadirSend || history.nadirRssi < history.nadirSendRssi) {
-		history.nadirSend = true;
-		history.nadirSendRssi = history.nadirRssi;
-		history.nadirSendTime = history.nadirTime;
-	      }
-	    }
+        state.lastRssi = state.rssi;
+        state.rssi = filter->getFilteredValue();
+        state.rssiTimestamp = filter->getFilterTimestamp();
 
-	  } else if (rssiChange < 0) { // RSSI is falling
-	    // whenever history is falling, record the time and value as a nadir
-	    history.nadirRssi = state.rssi;
-	    history.nadirTime = state.rssiTimestamp;
+        /*** update history ***/
 
-	    // if RSSI was rising, but it's falling now, we found a peak
-	    // copy the values to be sent in the next loop
-	    if (history.rssiChange > 0) { // is rising
-	      // declare a new peak if we don't have one or if the new one is higher
-	      if (!history.peakSend || history.peakRssi > history.peakSendRssi) {
-		history.peakSend = true;
-		history.peakSendRssi = history.peakRssi;
-		history.peakSendFirstTime = history.peakFirstTime;
-		history.peakSendLastTime = history.peakLastTime;
-	      }
-	    }
+        const int rssiChange = state.rssi - state.lastRssi;
+        if (rssiChange > 0)
+        {  // RSSI is rising
+            // must buffer latest peak to prevent losing it (overwriting any unsent peak)
+            bufferHistoricPeak(true);
 
-	  } else { // RSSI is equal
-	    // we don't need to track first and last times if it's a nadir
-	    if (history.rssiChange > 0) { // is rising
-	      history.peakLastTime = state.rssiTimestamp;
-	    }
-	  }
+            initExtremum(&(history.peak));
 
-	  if (rssiChange != 0) { // filter out plateaus
-	      // clamp to prevent overflow
-	      history.rssiChange = constrain(rssiChange, -127, 127);
-	  }
+            // if RSSI was falling or unchanged, but it's rising now, we found a nadir
+            // copy the values to be sent in the next loop
+            if (history.rssiChange <= 0)
+            {  // was falling or unchanged
+                // declare a new nadir
+                history.hasPendingNadir = true;
+            }
 
-	  // Keep track of peak rssi
-	  if (state.rssi > state.nodeRssiPeak)
-	  {
-	      state.nodeRssiPeak = state.rssi;
-	      Serial.print(F("New nodeRssiPeak = "));
-	      Serial.println(state.nodeRssiPeak);
-	  }
+        }
+        else if (rssiChange < 0)
+        {  // RSSI is falling
+            // must buffer latest nadir to prevent losing it (overwriting any unsent nadir)
+            bufferHistoricNadir(true);
 
-	  if (state.rssi < state.nodeRssiNadir)
-	  {
-	      state.nodeRssiNadir = state.rssi;
-	      Serial.print(F("New nodeRssiNadir = "));
-	      Serial.println(state.nodeRssiNadir);
-	  }
+            // whenever history is falling, record the time and value as a nadir
+            initExtremum(&(history.nadir));
 
-	  if ((!state.crossing) && state.rssi >= settings.enterAtLevel)
-	  {
-	      state.crossing = true;  // quad is going through the gate (lap pass starting)
-	      Serial.println(F("Crossing = True"));
-	  }
+            // if RSSI was rising or unchanged, but it's falling now, we found a peak
+            // copy the values to be sent in the next loop
+            if (history.rssiChange >= 0)
+            {  // was rising or unchanged
+                // declare a new peak
+                history.hasPendingPeak = true;
+            }
 
-	  // Find the peak rssi and the time it occured during a crossing event
-	  if (state.rssi >= state.passRssiPeak)
-	  {
-	      // if at max peak for more than one iteration then track first
-	      //  and last timestamp so middle-timestamp value can be returned
-	      state.passRssiPeakLastTime = state.rssiTimestamp;
+        }
+        else
+        {  // RSSI is equal
+            if (state.rssi == history.peak.rssi)
+            {  // is peak
+                history.peak.duration = constrain(state.rssiTimestamp - history.peak.firstTime, 0,
+                        MAX_DURATION);
+                if (history.peak.duration == MAX_DURATION)
+                {
+                    bufferHistoricPeak(true);
+                    initExtremum(&(history.peak));
+                }
+            }
+            else if (state.rssi == history.nadir.rssi)
+            {  // is nadir
+                history.nadir.duration = constrain(state.rssiTimestamp - history.nadir.firstTime, 0,
+                        MAX_DURATION);
+                if (history.nadir.duration == MAX_DURATION)
+                {
+                    bufferHistoricNadir(true);
+                    initExtremum(&(history.nadir));
+                }
+            }
+        }
 
-	      if (state.rssi > state.passRssiPeak)
-	      {
-		  // this is first time this peak RSSI value was seen, so save value and timestamp
-		  state.passRssiPeak = state.rssi;
-		  state.passRssiPeakFirstTime = state.passRssiPeakLastTime;
-	      }
-	  }
+        // clamp to prevent overflow
+        history.rssiChange = constrain(rssiChange, -127, 127);
 
-	  // track lowest  rssi seen since end of last pass
-	  state.passRssiNadir = min(state.rssi, state.passRssiNadir);
+        // try to buffer latest peak/nadir (don't overwrite any unsent peak/nadir)
+        bufferHistoricPeak(false);
+        bufferHistoricNadir(false);
 
-	  if (state.crossing)
-	  {  //lap pass is in progress
+        /*** node lifetime RSSI max/min ***/
 
-	      // track RSSI peak for current lap pass
-	      state.passRssiPeak = max(state.rssi, state.passRssiPeak);
+        if (state.rssi > state.nodeRssiPeak)
+        {
+            state.nodeRssiPeak = state.rssi;
+        }
 
-	      // see if quad has left the gate
-	      if (state.rssi < settings.exitAtLevel)
-	      {
-		  Serial.println(F("Crossing = False"));
-		  rssiEndCrossing();
-	      }
-	  }
-      }
+        if (state.rssi < state.nodeRssiNadir)
+        {
+            state.nodeRssiNadir = state.rssi;
+        }
 
-      // Calculate the time it takes to run the main loop
-      utime_t loopMicros = micros();
-      state.loopTimeMicros = loopMicros - state.lastloopMicros;
-      state.lastloopMicros = loopMicros;
+        /*** crossing transition ***/
 
-      // Status LED
-      if (state.crossing ||  // on while crossing
-	  (millis / 100) % 10 == 0 // blink
-	) {
-	digitalWrite(LED_BUILTIN, HIGH);
-      } else {
-	digitalWrite(LED_BUILTIN, LOW);
-      }
+        if ((!state.crossing) && state.rssi >= settings.enterAtLevel)
+        {
+            state.crossing = true;  // quad is going through the gate (lap pass starting)
+        }
+        else if (state.crossing && state.rssi < settings.exitAtLevel)
+        {
+            // quad has left the gate
+            rssiEndCrossing();
+        }
+
+        /*** pass processing **/
+
+        if (state.crossing)
+        {  //lap pass is in progress
+            // Find the peak rssi and the time it occured during a crossing event
+            if (state.rssi > state.passPeak.rssi)
+            {
+                // this is first time this peak RSSI value was seen, so save value and timestamp
+                initExtremum(&(state.passPeak));
+            }
+            else if (state.rssi == state.passPeak.rssi)
+            {
+                // if at max peak for more than one iteration then track duration
+                // so middle-timestamp value can be returned
+                state.passPeak.duration = constrain(state.rssiTimestamp - state.passPeak.firstTime,
+                        0, MAX_DURATION);
+            }
+        }
+        else
+        {
+            // track lowest rssi seen since end of last pass
+            state.passRssiNadir = min(state.rssi, state.passRssiNadir);
+        }
+    }
+
+    // Calculate the time it takes to run the main loop
+    utime_t loopMicros = micros();
+    state.loopTimeMicros = loopMicros - state.lastloopMicros;
+    state.lastloopMicros = loopMicros;
+
+    return state.crossing;
 }
 
 // Function called when crossing ends (by RSSI or I2C command)
-void rssiEndCrossing() {
+void rssiEndCrossing()
+{
     // save values for lap pass
-    lastPass.rssiPeak = state.passRssiPeak;
-    // lap timestamp is between first and last peak RSSI
-    lastPass.timestamp = (state.passRssiPeakLastTime + state.passRssiPeakFirstTime) / 2;
-    lastPass.rssiNadir = state.passRssiNadir;
-    lastPass.lap = lastPass.lap + 1;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        lastPass.rssiPeak = state.passPeak.rssi;
+        // lap timestamp is between first and last peak RSSI
+        lastPass.timestamp = state.passPeak.firstTime + state.passPeak.duration / 2;
+        lastPass.rssiNadir = state.passRssiNadir;
+        lastPass.lap = lastPass.lap + 1;
+    }
 
     // reset lap-pass variables
     state.crossing = false;
-    state.passRssiPeak = 0;
+    state.passPeak.rssi = 0;
     state.passRssiNadir = MAX_RSSI;
 }

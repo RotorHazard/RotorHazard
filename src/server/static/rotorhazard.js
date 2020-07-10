@@ -544,6 +544,10 @@ nodeModel.prototype = {
 }
 
 /* Data model for timer */
+const TONES_NONE = 0;
+const TONES_ONE = 1;
+const TONES_ALL = 2;
+
 function timerModel() {
 	// interval control
 	this.interval = 100; // in ms
@@ -563,15 +567,18 @@ function timerModel() {
 	this.running = false;
 	this.zero_time = null; // timestamp for timer's zero point
 	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
+	this.staging_tones = TONES_ALL; // sound tones during staging
+	this.max_delay = Infinity; // don't sound more tones than this even if staging takes longer
 	this.time_s = false; // simplified relative time in seconds
 	this.count_up = false; // use fixed-length timer
 	this.duration = 0; // fixed-length duration, in seconds
+	this.allow_expire = false; // prevent expire callbacks until timer runs 1 loop
 
 	this.drift_history = [];
 	this.drift_history_samples = 10;
 	this.drift_correction = 0;
 
-	this.warn_until = 0;
+	this.warn_until = 0; // display sync warning
 
 	var self = this;
 
@@ -590,7 +597,7 @@ function timerModel() {
 					if (self.time_s <= 0) {
 						continue_timer = false;
 						self.running = false;
-						if (self.callbacks.expire instanceof Function) {
+						if (self.allow_expire && self.callbacks.expire instanceof Function) {
 							self.callbacks.expire(self);
 						}
 					} else {
@@ -622,6 +629,8 @@ function timerModel() {
 				}
 			}
 		}
+
+		self.allow_expire = true;
 
 		if (continue_timer) {
 			var now = window.performance.now()
@@ -776,11 +785,18 @@ var rotorhazard = {
 	schedule_s: 10, //time in minutes for scheduled races
 	indicator_beep_volume: 0.5, // indicator beep volume
 
+	//display options
+	display_lap_id: false, //enables the display of the lap id
+	display_time_start: false, //shows the timestamp of the lap since the race was started
+	display_time_first_pass: false, //shows the timestamp of the lap since the first pass was recorded
+
 	min_lap: 0, // minimum lap time
 	admin: false, // whether to show admin options in nav
+	show_messages: true, // whether to display messages
 	graphing: false, // currently graphing RSSI
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array
+	heats: {}, // heats object
 
 	panelstates: {}, // collapsible panel state
 
@@ -825,6 +841,9 @@ var rotorhazard = {
 		localStorage['rotorhazard.min_lap'] = JSON.stringify(this.min_lap);
 		localStorage['rotorhazard.admin'] = JSON.stringify(this.admin);
 		localStorage['rotorhazard.primaryPilot'] = JSON.stringify(this.primaryPilot);
+		localStorage['rotorhazard.display_lap_id'] = JSON.stringify(this.display_lap_id);
+		localStorage['rotorhazard.display_time_start'] = JSON.stringify(this.display_time_start);
+		localStorage['rotorhazard.display_time_first_pass'] = JSON.stringify(this.display_time_first_pass);
 		return true;
 	},
 	restoreData: function(dataType) {
@@ -898,6 +917,15 @@ var rotorhazard = {
 			if (localStorage['rotorhazard.primaryPilot']) {
 				this.primaryPilot = JSON.parse(localStorage['rotorhazard.primaryPilot']);
 			}
+			if (localStorage['rotorhazard.display_lap_id']) {
+				this.display_lap_id = JSON.parse(localStorage['rotorhazard.display_lap_id']);
+			}
+			if (localStorage['rotorhazard.display_time_start']) {
+				this.display_time_start = JSON.parse(localStorage['rotorhazard.display_time_start']);
+			}
+			if (localStorage['rotorhazard.display_time_first_pass']) {
+				this.display_time_first_pass = JSON.parse(localStorage['rotorhazard.display_time_first_pass']);
+			}
 			return true;
 		}
 		return false;
@@ -906,7 +934,7 @@ var rotorhazard = {
 
 // deferred timer callbacks (time until race)
 rotorhazard.timer.deferred.callbacks.start = function(timer){
-	if (rotorhazard.timer.staging.running || rotorhazard.timer.race.running) {  // defer timing to staging/race timers
+	if (rotorhazard.timer.race.running) {  // defer timing to staging/race timers
 		rotorhazard.timer.deferred.stop();
 	}
 }
@@ -946,13 +974,26 @@ rotorhazard.timer.deferred.callbacks.expire = function(timer){
 rotorhazard.timer.race.callbacks.start = function(timer){
 	$('.time-display').html(timer.renderHTML());
 	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
+	if (timer.staging_tones == TONES_ONE
+		&& timer.max_delay >= 1) {
+		// beep on start if single staging tone
+		if( rotorhazard.use_mp3_tones){
+			sound_stage.play();
+		}
+		else {
+			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+		}
+	}
 }
 rotorhazard.timer.race.callbacks.step = function(timer){
 	if (timer.warn_until < window.performance.now()) {
 		$('.timing-clock .warning').hide();
 	}
-	if (timer.time_s < 0) {
-		if (timer.hidden_staging) {
+	if (timer.time_s < 0
+		&& timer.time_s >= -timer.max_delay) {
+		// time before race begins (staging)
+		if (timer.hidden_staging
+			&& timer.staging_tones == TONES_ALL) {
 			// beep every second during staging if timer is hidden
 			if (timer.time_s * 10 % 10 == 0) {
 				if( rotorhazard.use_mp3_tones){
@@ -962,11 +1003,12 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
 				}
 			}
-		} else if (timer.time_s == 30
-			|| timer.time_s == 20
-			|| timer.time_s == 10) {
-			speak('<div>' + __l('Starting in') + ' ' + timer.time_s + ' ' + __l('Seconds') + '</div>', true);
-		} else if (timer.time_s <= 5) {
+		} else if (timer.time_s == -30
+			|| timer.time_s == -20
+			|| timer.time_s == -10) {
+			speak('<div>' + __l('Starting in') + ' ' + (-timer.time_s) + ' ' + __l('Seconds') + '</div>', true);
+		} else if (timer.staging_tones == TONES_ALL
+			&& timer.time_s >= -5) {
 			// staging beep for last 5 seconds before start
 			if (timer.time_s * 10 % 10 == 0) {
 				if( rotorhazard.use_mp3_tones){
@@ -1046,31 +1088,35 @@ var standard_message_queue = [];
 var interrupt_message_queue = [];
 
 function get_standard_message() {
-	msg = standard_message_queue[0];
-	$('#banner-msg .message').html(msg);
-	$('#banner-msg').slideDown();
+	if (rotorhazard.show_messages) {
+		msg = standard_message_queue[0];
+		$('#banner-msg .message').html(msg);
+		$('#banner-msg').slideDown();
+	}
 }
 
 function get_interrupt_message() {
-	msg = interrupt_message_queue[0];
+	if (rotorhazard.show_messages) {
+		msg = interrupt_message_queue[0];
 
-	var message_el = $('<div class="priority-message-interrupt popup">');
-	message_el.append('<h2>' + __('Alert') + '</h2>');
-	message_el.append('<div class="popup-content"><p>' + msg + '</p></div>');
+		var message_el = $('<div class="priority-message-interrupt popup">');
+		message_el.append('<h2>' + __('Alert') + '</h2>');
+		message_el.append('<div class="popup-content"><p>' + msg + '</p></div>');
 
-	$.magnificPopup.open({
-		items: {
-			src: message_el,
-			type: 'inline',
-		},
-		callbacks: {
-			afterClose: function(){
-				interrupt_message_queue.shift()
-				if (interrupt_message_queue.length)
-					get_interrupt_message()
+		$.magnificPopup.open({
+			items: {
+				src: message_el,
+				type: 'inline',
+			},
+			callbacks: {
+				afterClose: function(){
+					interrupt_message_queue.shift()
+					if (interrupt_message_queue.length)
+						get_interrupt_message()
+				}
 			}
-		}
-	});
+		});
+	}
 }
 
 // restore local settings
@@ -1250,7 +1296,7 @@ function build_leaderboard(leaderboard, display_type, meta) {
 	var table = $('<table class="leaderboard">');
 	var header = $('<thead>');
 	var header_row = $('<tr>');
-	header_row.append('<th class="pos">' + __('Pos.') + '</th>');
+	header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
 	header_row.append('<th class="pilot">' + __('Pilot') + '</th>');
 	if (meta.team_racing_mode) {
 		header_row.append('<th class="team">' + __('Team') + '</th>');
@@ -1314,7 +1360,13 @@ function build_leaderboard(leaderboard, display_type, meta) {
 			var lap = leaderboard[i].fastest_lap;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
-			row.append('<td class="fast">'+ lap +'</td>');
+			if (leaderboard[i].fastest_lap_source) {
+				row.append('<td class="fast" title="'+ leaderboard[i].fastest_lap_source +'">'+ lap +'</td>');
+				row.data('source', leaderboard[i].fastest_lap_source);
+			} else {
+				row.append('<td class="fast">'+ lap +'</td>');
+			}
+
 		}
 		if (display_type == 'by_consecutives' ||
 		display_type == 'heat' ||
@@ -1323,7 +1375,12 @@ function build_leaderboard(leaderboard, display_type, meta) {
 			var lap = leaderboard[i].consecutives;
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
-			row.append('<td class="consecutive">'+ lap +'</td>');
+			if (leaderboard[i].consecutives_source) {
+				row.append('<td class="consecutive" title="'+ leaderboard[i].consecutives_source +'">'+ lap +'</td>');
+				row.data('source', leaderboard[i].consecutives_source);
+			} else {
+				row.append('<td class="consecutive">'+ lap +'</td>');
+			}
 		}
 
 		body.append(row);

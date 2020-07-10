@@ -5,6 +5,7 @@
 <script type="text/javascript" charset="utf-8">
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	$(document).ready(function () {
 		socket.emit('load_data', {'load_types': [
@@ -22,6 +23,10 @@
 			'min_lap',
 			'race_status',
 			'team_racing_mode',
+			'led_effects',
+			'led_effect_setup',
+			'cluster_status',
+			'vrx_list',
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -31,14 +36,14 @@
 		socket.on('language', function (msg) {
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
-			for (i = 0; i < msg.languages.length; i++) {
+			for (var i = 0; i < msg.languages.length; i++) {
 				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
 
 			$('#set_voice_string_language').empty();
 			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
 			$('#set_voice_string_language').append('<option value="">English</option>')
-			for (i = 0; i < msg.languages.length; i++) {
+			for (var i = 0; i < msg.languages.length; i++) {
 				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
 			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
@@ -84,13 +89,26 @@
 		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
 
+		if ('{{ getOption('ledBrightness') }}' != 'False') {
+			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
+			$('#led_brightness_value').html($('#set_led_brightness').val());
+		}
+
+		if ('{{ getOption('calibrationMode') }}' == '1') {
+			$('#set_calibrationMode').val(1);
+		}
+
+		if ('{{ getOption('pilotSort') }}' == 'callsign') {
+			$('#set_pilotSort').val('callsign');
+		}
+
 		// populate frequency selects
 		$('.frequency_table').each(function(){
 			$(this).html(freq.buildSelect());
 		});
 
 		// set up node local store
-		for (i = 0; i < {{ num_nodes }}; i++) {
+		for (var i = 0; i < {{ num_nodes }}; i++) {
 			rotorhazard.nodes[i] = new nodeModel();
 			// start RSSI graphing
 			rotorhazard.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
@@ -110,6 +128,7 @@
 					$('#set_fix_race_time').prop('disabled', true);
 					$('#set_start_delay_min').prop('disabled', true);
 					$('#set_start_delay_max').prop('disabled', true);
+					$('#set_staging_tones').prop('disabled', true);
 					$('#set_number_laps_win').prop('disabled', true);
 					$('#set_win_condition').prop('disabled', true);
 					$('#set_team_racing_mode').prop('disabled', true);
@@ -123,6 +142,7 @@
 					$('#set_fix_race_time').prop('disabled', false);
 					$('#set_start_delay_min').prop('disabled', false);
 					$('#set_start_delay_max').prop('disabled', false);
+					$('#set_staging_tones').prop('disabled', false);
 					$('#set_number_laps_win').prop('disabled', false);
 					$('#set_win_condition').prop('disabled', false);
 					$('#set_team_racing_mode').prop('disabled', false);
@@ -136,7 +156,7 @@
 		socket.on('heartbeat', function (msg) {
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
 				heartbeatCounter = 0;
-				for (i = 0; i < msg.current_rssi.length; i++) {
+				for (var i = 0; i < msg.current_rssi.length; i++) {
 					var rssiValue = msg.current_rssi[i];
 
 					if (rotorhazard.nodes[i].frequency == 0) {
@@ -178,30 +198,58 @@
 			}
 		});
 		socket.on('environmental_data', function (msg) {
-			$('#core-temperature').html(Number(msg.core_temperature).toFixed(1));
 			env_table_html = '';
-			if (msg.aux_voltage.length > 0) {
-				env_table_html += '<tr><th>'+__('Voltage (V)')+'</th><th>'+__('Current (mA)')+'</th><th>'+__('Power (W)')+'</th></tr>';
-				for (i=0; i < msg.aux_voltage.length; i++) {
-					env_table_html += '<tr>';
-					env_table_html += '<td>' + Number(msg.aux_voltage[i]).toFixed(2) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_current[i]).toFixed(0) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_power[i]).toFixed(2) + '</td>';
-					env_table_html += '</tr>';
+			for (i=0; i<msg.length; i++) {
+				var sensor = msg[i];
+				var name = Object.keys(sensor)[0];
+				var data = sensor[name];
+				var values = '';
+				var br = '';
+				for (var reading in data) {
+					var value = data[reading].value;
+					var units = data[reading].units;
+					values += br;
+					if (reading == 'voltage') {
+						values += __('Voltage: ') + Number(value).toFixed(2)+units;
+					} else if(reading == 'current') {
+						values += __('Current: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'power') {
+						values += __('Power: ') + Number(value).toFixed(0)+units;
+					} else if(reading == 'temperature') {
+						values += __('Temperature: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'humidity') {
+						values += __('Humidity: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'pressure') {
+						values += __('Pressure: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'capacity') {
+						values += __('Capacity: ') + Number(value).toFixed(0)+units;
+					} else {
+						values += __('Unknown: ') + value;
+					}
+					br = '<br/>';
 				}
-			}
-			if (msg.aux_temperature.length > 0) {
-				env_table_html += '<tr><th>'+__('Temperature (°C)')+'</th><th>'+__('Humidity (%rH)')+'</th><th>'+__('Pressure (hPa)')+'</th></tr>';
-				for (i=0; i < msg.aux_temperature.length; i++) {
-					env_table_html += '<tr>';
-					env_table_html += '<td>' + Number(msg.aux_temperature[i]).toFixed(1) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_humidity[i]).toFixed(1) + '</td>';
-					env_table_html += '<td>' + Number(msg.aux_pressure[i]).toFixed(1) + '</td>';
-					env_table_html += '</tr>';
-				}
+				env_table_html += '<tr>';
+				env_table_html += '<td>' + name + '</td>';
+				env_table_html += '<td>' + values + '</td>';
+				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<table>' + env_table_html + '</table>');
+				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table>');
+			}
+		});
+		socket.on('cluster_status', function (msg) {
+			cluster_table_html = '';
+			if (msg.slaves && msg.slaves.length > 0) {
+				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Time since last contact (s)')+'</th></tr>';
+				for (i=0; i < msg.slaves.length; i++) {
+					cluster_table_html += '<tr>';
+					cluster_table_html += '<td>' + msg.slaves[i].address + '</td>';
+					cluster_table_html += '<td>' + msg.slaves[i].last_contact + '</td>';
+					cluster_table_html += '</tr>';
+				}
+			}
+			if (cluster_table_html) {
+				$('#cluster-status-table').html('<table>' + cluster_table_html + '</table>');
 			}
 		});
 
@@ -221,12 +269,11 @@
 		/* Profiles */
 		socket.on('node_tuning', function (msg) {
 			$('#set_profile').empty();
-			for (i = 0; i < msg.profile_ids.length; i++) {
+			for (var i = 0; i < msg.profile_ids.length; i++) {
 				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
 			}
 			$('#set_profile').val(msg.current_profile);
 			$('#set_profile_name').val( msg.profile_name);
-			$('#set_profile_description').val( msg.profile_description);
 		});
 
 		$('#set_profile').change(function (event) {
@@ -253,16 +300,9 @@
 			socket.emit('alter_profile', data);
 		})
 
-		$('#set_profile_description').change(function (event) {
-			var data = {
-				profile_description: $(this).val()
-			};
-			socket.emit('alter_profile', data);
-		})
-
 		/* Frequency Setup */
 		socket.on('frequency_data', function (msg) {
-			for (i = 0; i < msg.frequency.length; i++) {
+			for (var i = 0; i < msg.frequency.length; i++) {
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				rotorhazard.nodes[i].frequency = msg.frequency[i];
 				freq.updateSelects();
@@ -272,7 +312,7 @@
 
 		function show_imd_rating(val) {
 			$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +
-                  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
+				  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
 		};
 
 		function show_imd_rating_dashes() {
@@ -298,9 +338,156 @@
 			socket.emit('set_frequency_preset', data);
 		});
 
+		socket.on('vrx_list', function (msg) {
+			if (msg.enabled) {
+				vrx_by_node = {}
+
+				for (var vrx_id in msg.vrx) {
+					var vrx = msg.vrx[vrx_id]
+					if (vrx.dev == 'rx' && vrx.valid_rx) {
+						if (!vrx_by_node[vrx.node_number]) {
+							vrx_by_node[vrx.node_number] = [];
+						}
+						vrx_by_node[vrx.node_number].push(vrx_id)
+					}
+				}
+
+				// Frequency panel
+				for (i = 0; i < {{ num_nodes }}; i++) {
+					var header = $('.node[data-node=' + i + '] .vrx-header');
+					header.empty();
+
+					var locks = 0;
+					if (i in vrx_by_node) {
+						for (j in vrx_by_node[i]) {
+							var vrx_id = vrx_by_node[i][j];
+							var vrx = msg.vrx[vrx_id];
+							if (vrx.lock_status == 'L') {
+								locks++;
+							}
+						}
+
+						if (locks == vrx_by_node[i].length) {
+							header.removeClass('has-unlocked')
+						} else {
+							header.addClass('has-unlocked')
+						}
+
+						header.append(__('VRx locks') + ': ' + locks + '/' + vrx_by_node[i].length);
+					} else {
+						header.removeClass('has-unlocked')
+						header.append(__('VRx locks') + ': 0/0');
+					}
+				}
+
+				if (msg.connection) {
+					$('.vrx-warning').html(__("WARNING: Video receivers connected.") + " " + __("Changes may cause pilots to lose video."));
+				} else {
+					$('.vrx-warning').empty();
+				}
+
+				// VRx Control Panel
+				if (msg.connection) {
+					$('#vrx-control-setup').empty();
+
+					vrx_header = '<h3>' + __('Connected Receivers') + '</h3>';
+
+					var vrx_list = $('<ul class="vrx-list">')
+					for (var vrx_id in msg.vrx) {
+						var vrx = msg.vrx[vrx_id]
+						if (vrx_id != 'VRxController') {
+							var li = $('<li>')
+							var table = $('<table>');
+
+							table_items = {};
+
+							table_items['ID'] = vrx_id;
+
+							if (vrx.nn) {
+								table_items['Name'] = vrx.nn;
+							}
+
+							if (vrx.dev == 'rx') {
+								if (vrx.valid_rx) {
+									table_items['Status'] = __("Connected");
+
+									if ('node_number' in vrx) {
+										var selectbox = '<select class="vrx-node" data-vrx-id="' + vrx_id + '">'
+										for (var i = 0; i < {{ num_nodes }}; i++) {
+											var opt = '<option value="' + i + '"';
+											if (i == vrx.node_number) {
+												opt += 'selected="selected"';
+											}
+											opt += '>' + (parseInt(i)+1) + '</option>';
+											selectbox += opt;
+										}
+										table_items['Node'] = selectbox;
+									}
+
+									if ('cam_forced_or_auto' in vrx
+										&& 'chosen_camera_type' in vrx) {
+										var cam_labels = {
+											"A": __("Auto"),
+											"F": __("Forced")
+										}
+										var cam_types = {
+											"N": __("NTSC"),
+											"P": __("PAL")
+										}
+
+										table_items['Format'] = cam_labels[vrx.cam_forced_or_auto] + ": " + cam_types[vrx.chosen_camera_type];
+									}
+
+									if ('lock_status' in vrx) {
+										if(vrx.lock_status == 'L') {
+											table_items['Lock'] = __('Locked');
+										} else {
+											table_items['Lock'] = __('Unlocked');
+										}
+									}
+
+								} else {
+									table_items['Status'] = __("No receiver");
+								}
+							} else {
+								table_items['Status'] = __("No connection");
+							}
+
+							for (var item in table_items) {
+								if (item == 'ID' && vrx.ip) {
+									table.append('<tr><th>' + __(item) + '</th><td><a href="http://' + vrx.ip + '">' + table_items[item] + '</a></td></tr>');
+								} else {
+									table.append('<tr><th>' + __(item) + '</th><td>' + table_items[item] + '</td></tr>');
+								}
+							}
+
+							li.append(table)
+							vrx_list.append(li);
+						}
+					}
+
+					$('#vrx-control-setup').append(vrx_header)
+					$('#vrx-control-setup').append(vrx_list)
+				} else {
+					$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
+				}
+			} else {
+				$('.vrx-warning').empty();
+			}
+		});
+
+		$(document).on('change', '.vrx-node', function (msg) {
+			var vrx_id = $(this).data('vrx-id');
+			var node = parseInt($(this).val());
+			socket.emit('set_vrx_node', {
+				'vrx_id': vrx_id,
+				'node': node
+			});
+		});
+
 		/* Nodes */
 		socket.on('node_data', function (msg) {
-			for (i = 0; i < msg.node_peak_rssi.length; i++) {
+			for (var i = 0; i < msg.node_peak_rssi.length; i++) {
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
 				$('.node_nadir_rssi_' + i).html(msg.node_nadir_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
@@ -326,7 +513,7 @@
 		});
 
 		socket.on('enter_and_exit_at_levels', function (msg) {
-			for (i = 0; i < msg.enter_at_levels.length; i++) {
+			for (var i = 0; i < msg.enter_at_levels.length; i++) {
 				$('#set_enter_at_level_' + i).val(msg.enter_at_levels[i]);
 				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
@@ -376,15 +563,6 @@
 				node.graph.render(node.canvas, node.graphPausedTime);
 			}
 			node.graphPaused = !node.graphPaused;
-		});
-
-		$('button.catch-pass').click(function (event) {
-			var data = {
-				node: parseInt($(this).data('node')),
-				method: $(this).data('method'),
-			};
-			socket.emit('recover_pass', data);
-			return false;
 		});
 
 		$('.set_frequency').change(function (event) {
@@ -448,19 +626,25 @@
 
 		/* Heats */
 		socket.on('heat_data', function (msg) {
-			msg.pilot_data.sort(function(a, b){
-				if (a.name < b.name)
-					return -1;
-				if (a.name > b.name)
-					return 1;
-				return 0;
-			});
-
 			$(".heats").empty();
 			for (var i in msg.heats) {
 				var heats = msg.heats[i];
+
+				if (heats.note) {
+					heat_note = heats.note
+				} else {
+					heat_note = __('Heat') + ' ' + heats.heat_id
+				}
+
 				var el = $('<li>');
-				el.append('<h3>Heat ' + heats.heat_id + '</h3>');
+
+				var header = $('<h3>Heat ' + heats.heat_id + '</h3>')
+
+				if (!heats.locked) {
+					header.append('<button class="delete_heat btn-danger" data-id="' + heats.heat_id + '" title="Delete Heat ' + heats.heat_id + '">&#215;</button>');
+				}
+				el.append(header);
+
 				var input = $('<input type="text" id="heat-note-' + heats.heat_id + '" class="set_heat_note" data-heat="' + heats.heat_id + '" placeholder="' + __('Name') + ' (' + __('Heat') + ' ' + heats.heat_id + ')" maxlength="80">');
 				input.val(heats.note);
 				el.append(input);
@@ -476,7 +660,12 @@
 					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" >')
 					selectbox.append('<option value="0">None</option>')
 						for (var k in msg.pilot_data) {
-							selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+							if (msg.pilotSort == 'callsign') {
+								selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+
+							} else {
+								selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].name + ' (' + msg.pilot_data[k].callsign + ')</option>')
+							}
 						}
 					selectbox.val(heatpilot);
 					selectbox.prop('disabled', heats.locked);
@@ -491,7 +680,11 @@
 					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '">')
 						selectbox.append('<option value="0">Unclassified</option>')
 						for (var k in msg.classes) {
-							selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
+							if (msg.classes[k].name) {
+								selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
+							} else {
+								selectbox.append('<option value="' + msg.classes[k].id + '">' + __('Class') + ' ' + msg.classes[k].id + '</option>')
+							}
 						}
 					if (heats.class_id > 0) {
 						selectbox.val(heats.class_id);
@@ -501,6 +694,8 @@
 					selectbox.prop('disabled', heats.locked);
 					el.append(selectbox);
 				}
+
+				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="Duplicate ' + heat_note + '">+</button>');
 
 				el.appendTo($('.heats'));
 			}
@@ -537,17 +732,101 @@
 			return false;
 		});
 
+		$(document).on("click", '.delete_heat', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_heat', data);
+		});
+
+		$(document).on("click", '.duplicate_heat', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('duplicate_heat', data);
+		});
+
+		$('button#generate_heats').click(function (event) {
+			var data = {
+				input_class: parseInt($('#generator_input_class').val()),
+				output_class: parseInt($('#generator_output_class').val()),
+				suffix: $('#generator_suffix').val(),
+				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
+			};
+			$('button#generate_heats').prop('disabled', true);
+			socket.emit('generate_heats', data);
+			return false;
+		});
+
+		socket.on('heat_generate_done', function (msg) {
+			$('button#generate_heats').prop('disabled', false);
+		});
+
+		/* Classes */
+		function update_class_selectors() {
+			var class_data = rotorhazard.class_data;
+
+			var input_val = $('#generator_input_class').val();
+			var output_val = $('#generator_output_class').val();
+
+			$('#generator_input_class').empty().append($('<option value="0">' + __('Randomize All') + '</option>'));
+			$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
+
+			if (class_data.classes.length) {
+				for (var i in class_data.classes) {
+					var race_class = class_data.classes[i];
+
+					if (race_class.name) {
+						race_class_name = race_class.name
+					} else {
+						race_class_name = __('Class') + ' ' + race_class.id
+					}
+
+					if (race_class.name) {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' +race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+					} else {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+					}
+				}
+			}
+
+			if ($('#generator_input_class option[value="' + input_val + '"]').length) {
+				$('#generator_input_class').val(input_val);
+			}
+			if ($('#generator_output_class option[value="' + output_val + '"]').length) {
+				$('#generator_output_class').val(output_val);
+			}
+
+		}
+
 		socket.on('class_data', function (msg) {
+			rotorhazard.class_data = msg;
+
 			$(".race_classes").empty();
 
 			if (msg.classes.length) {
-				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '</p>');
+				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '<br />' + __('Duplicating a class also duplicates its assigned heats.') + '</p>');
 
 				var classlist = $('<ol>');
 				for (var i in msg.classes) {
 					var race_class = msg.classes[i];
+
+					if (race_class.name) {
+						race_class_name = race_class.name
+					} else {
+						race_class_name = __('Class') + ' ' + race_class.id
+					}
+
 					var el = $('<li>');
-					el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');
+					var header = $('<h3>' + __('Class') + ' ' + race_class.id + '</h3>')
+
+					if (!race_class.locked) {
+						header.append('<button class="delete_class btn-danger" data-id="' + race_class.id + '" title="Delete Class '+ race_class.id +'">&#215;</button>');
+					}
+					el.append(header);
+
 					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
 					input.val(race_class.name);
 					el.append(input);
@@ -565,12 +844,16 @@
 					selectbox.prop('disabled', race_class.locked);
 					el.append(selectbox);
 
+					el.append('<button class="duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
+
 					el.appendTo(classlist);
 				}
 				classlist.appendTo($('.race_classes'));
 			} else {
 				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
 			}
+
+			update_class_selectors();
 		});
 
 		$(document).on("change", '.set_race_class_name', function (event) {
@@ -579,6 +862,15 @@
 				class_name: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
+
+			for (var i in rotorhazard.class_data.classes) {
+				var race_class = rotorhazard.class_data.classes[i];
+				if (race_class['id'] == data.class_id) {
+					race_class.name = data.class_name;
+					break;
+				}
+			}
+			update_class_selectors();
 		});
 
 		$(document).on("change", '.set_race_class_format', function (event) {
@@ -602,22 +894,41 @@
 			return false;
 		});
 
+		$(document).on("click", '.delete_class', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_class', data);
+		});
+
+		$(document).on("click", '.duplicate_class', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('duplicate_race_class', data);
+		});
+
 		/* Pilots */
 		socket.on('pilot_data', function (msg) {
 			$(".pilots").empty();
 			for (var i in msg.pilots) {
-				if (msg.pilots[i].pilot_id != 0) {
-					var el = $('<li data-id="' + msg.pilots[i].pilot_id + '">');
-					el.append('<label for="name_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
-					el.append('<input type="text" class="set_pilot_name" id="name_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].name + '" placeholder="' + __('Name') +'">');
-					el.append('<label for="callsign_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
-					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].callsign + '" placeholder="' + __('Callsign') +'">');
-					el.append('<label for="phonetic_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
+				var pilot = msg.pilots[i];
+				if (pilot.pilot_id != 0) {
+					var el = $('<li data-id="' + pilot.pilot_id + '">');
+					el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
+					el.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
+					el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
+					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
+					el.append('<label for="phonetic_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
 					var phonetic = $('<div class="phonetic">');
-					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].phonetic + '" placeholder="' + __('Phonetic') + '">');
-					phonetic.append('<button class="speak_pilot" data-pilot_id="' + msg.pilots[i].pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
+					phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
-					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilots[i].pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '">' + msg.pilots[i].team_options + '</select></div>');
+					el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
+
+					if (!pilot.locked) {
+						el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
+					}
 
 					el.appendTo($('.pilots'));
 				}
@@ -700,6 +1011,13 @@
 		$('button#add_pilot').click(function (event) {
 			socket.emit('add_pilot');
 			return false;
+		});
+
+		$(document).on("click", '.delete_pilot', function (event) {
+			var data = {
+				pilot: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_pilot', data);
 		});
 
 		/* Voice */
@@ -844,9 +1162,9 @@
 		});
 
 		$("#voice_test_text").keyup(function(event) {
-		    if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
-		        $("#play_voice_test").click();
-		    }
+			if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
+				$("#play_voice_test").click();
+			}
 		});
 
 		/* Race Format */
@@ -881,7 +1199,7 @@
 
 		socket.on('race_format', function (msg) {
 			$('#set_race_format').empty();
-			for (i = 0; i < msg.format_ids.length; i++) {
+			for (var i = 0; i < msg.format_ids.length; i++) {
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
 			}
 			$('#set_race_format').val(msg.current_format);
@@ -897,6 +1215,8 @@
 			$('#set_start_delay_min').prop('disabled', msg.locked);
 			$('#set_start_delay_max').val(msg.start_delay_max);
 			$('#set_start_delay_max').prop('disabled', msg.locked);
+			$('#set_staging_tones').val(msg.staging_tones);
+			$('#set_staging_tones').prop('disabled', msg.locked);
 			$('#set_number_laps_win').val(msg.number_laps_win);
 			$('#set_number_laps_win').prop('disabled', msg.locked);
 			$('#set_win_condition').val(msg.win_condition);
@@ -971,6 +1291,13 @@
 			socket.emit('alter_race_format', data);
 		})
 
+		$('#set_staging_tones').change(function (event) {
+			var data = {
+				staging_tones: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+		})
+
 		$('#set_win_condition').change(function (event) {
 			var data = {
 				win_condition: parseInt($(this).val())
@@ -988,7 +1315,7 @@
 			// convert decoded data to byte array
 			var byteNumbers = new Array(msgArray.length);
 			for (var i = 0; i < msgArray.length; i++) {
-			    byteNumbers[i] = msgArray.charCodeAt(i);
+				byteNumbers[i] = msgArray.charCodeAt(i);
 			}
 			var byteArray = new Uint8Array(byteNumbers);
 			// construct blob from byte array and initiate browser save-as
@@ -1015,6 +1342,28 @@
 		$('button#shutdown_pi').click(function (event) {
 			socket.emit('shutdown_pi');
 			return false;
+		});
+
+		$('button#reboot_pi').click(function (event) {
+			socket.emit('reboot_pi');
+			return false;
+		});
+
+		$('button#download_logs').click(function (event) {
+			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
+			return false;
+		});
+
+		socket.on('settings_save_logs', function (msg) {
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+				byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			// construct blob from byte array and initiate browser save-as
+			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
 		});
 
 		socket.on('set_option', function (msg) {
@@ -1077,6 +1426,11 @@
 			var hex_high = hslToHex(hue, sat, lum_high);
 			var contrast_high = contrastColor(hex_high);
 			$('html').css('--contrast_' + option_index + '_high', contrast_high);
+
+			return {
+				'low': contrast_low,
+				'high': contrast_high
+			}
 		}
 
 		$.cssNumber.hue_0 = true;
@@ -1092,6 +1446,34 @@
 			calcContrasts(option_index);
 		});
 
+		$('.hue-control').on('change', function (event) {
+			var option = $(this).data('option');
+			var value = $(this).val();
+			$('html').css('--' + option, value);
+			var option_index = option.split('_')[1];
+			var contrasts = calcContrasts(option_index);
+
+			var data = {
+				option: option,
+				value: value
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_low',
+				value: contrasts.low
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_high',
+				value: contrasts.high
+			};
+			socket.emit('set_option', data);
+
+			return false;
+		});
+
 		$('.sat-control').on('input', function (event) {
 			var option = $(this).data('option');
 			var value = $(this).val();
@@ -1100,7 +1482,66 @@
 			calcContrasts(option_index);
 		});
 
+		$('.sat-control').on('change ', function (event) {
+			var option = $(this).data('option');
+			var value = $(this).val();
+			$('html').css('--' + option, value + '%');
+			var option_index = option.split('_')[1];
+			var contrasts = calcContrasts(option_index);
+
+			var data = {
+				option: option,
+				value: value
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_low',
+				value: contrasts.low
+			};
+			socket.emit('set_option', data);
+
+			var data = {
+				option: 'contrast_' + option_index + '_high',
+				value: contrasts.high
+			};
+			socket.emit('set_option', data);
+
+			return false;
+		});
+
 		/* LED Controls */
+		socket.on('led_effects', function (msg) {
+			var led_html = $('<div class="control-set">');
+
+			var led_select = $('<select id="led-effects-select"></select>');
+
+			const effects = msg.effects.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
+
+			for (var i in effects) {
+				var effect = effects[i];
+
+				var led_select_option = $('<option value="' + effect.name + '">' + effect.label + '</option>')
+
+				led_select.append(led_select_option);
+			}
+
+			led_html.append($('<label for="led-effects">' + __('Effect') + '</label>'));
+			led_html.append(' ');
+			led_html.append(led_select);
+			led_html.append(' ');
+			led_html.append($('<button id="use-led-effect">' + __('Go') + '</button>'));
+
+			$('#LED-effects').append(led_html);
+		});
+
+		$(document).on('click', '#use-led-effect', function (event) {
+			var data = {
+				effect: $('#led-effects-select').val()
+			};
+			socket.emit('use_led_effect', data);
+		});
+
 		$('button.LED-color').click(function (event) {
 				var colors = convertColor($(this).data('rgb'));
 				var data = {
@@ -1112,30 +1553,72 @@
 				return false;
 		});
 
-		$('button.LED-chase').click(function (event) {
-				var colors = convertColor($(this).data('rgb'));
+		$('#set_led_color').change(function (event) {
+				var colors = convertColor($(this).val());
 				var data = {
 					red: colors.r,
 					green: colors.g,
 					blue: colors.b,
 				};
-				socket.emit('LED_chase', data);
+				socket.emit('LED_solid', data);
 				return false;
 		});
 
-		$('button#LED_RB').click(function (event) {
-			socket.emit('LED_RB');
-			return false;
+		socket.on('led_effect_setup_data', function (msg) {
+			var led_html = $('<ol class="form">');
+
+			for (var i in msg.events) {
+				var led_event = msg.events[i];
+				var valid_selection = false;
+
+				var led_select = $('<select id="led-event-' + led_event.event + '" data-event="' + led_event.event + '" class="led-event-select"></select>');
+
+				const effects = led_event.effects.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
+				for (var opt in effects) {
+					var effect = effects[opt];
+
+					var led_select_option = $('<option value="' + effect.name + '">' + effect.label + '</option>')
+
+					led_select.append(led_select_option);
+
+					if (effect.name == led_event.selected)
+						valid_selection = true;
+				}
+
+				var led_event_block = $('<li>');
+				led_event_block.append($('<div class="label-block"><label for="led-event-' + led_event.event + '">' + led_event.label + '</label></div>'));
+				led_event_block.append(led_select);
+
+				if (valid_selection) {
+					led_select.val(led_event.selected);
+				}
+
+				led_html.append(led_event_block);
+			}
+
+			$('#LED-effect-setup').append(led_html);
 		});
 
-		$('button#LED_RBCYCLE').click(function (event) {
-			socket.emit('LED_RBCYCLE');
-			return false;
+		$(document).on('change', '.led-event-select', function(event) {
+			var data = {
+				event: $(this).data('event'),
+				effect: $(this).val()
+			};
+			socket.emit('set_led_event_effect', data);
 		});
 
-		$('button#LED_RBCHASE').click(function (event) {
-			socket.emit('LED_RBCHASE');
-			return false;
+		$('#set_led_brightness').on('input', function (event) {
+			var val = brightness_logsl.value($(this).val());
+			$('#led_brightness_value').html($(this).val());
+		});
+
+		$('#set_led_brightness').change(function (event) {
+			var val = brightness_logsl.value($(this).val());
+			// emit data
+			var data = {
+				brightness: Math.round(val),
+			};
+			socket.emit('LED_brightness', data);
 		});
 	});
 
@@ -1166,19 +1649,17 @@
 	<div class="panel-content">
 		<p><label for="message_body" class="screen-reader-text">{{ __('Message Body') }}</label>
 		<input type="text" id="message_body" maxlength="256" placeholder="Message">{{ getOption('eventDescription') }}</textarea></p>
-		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}</label></p>
+		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}{% if vrx_enabled %} {{ __('and Send to VRx') }}{% endif %}</label></p>
 		<p><button id="send_message">{{ __('Send Message') }}</button></p>
 	</div>
 </div>
 
-<!--Environment-->
+<!--Frequency Setup-->
 <div class="panel collapsing">
 	<div class="panel-header">
-		<h2>{{ __('Profiles') }}</h2>
+		<h2>{{ __('Frequency Setup') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
-
 		<div class="control-set">
 			<label for="set_profile">{{ __('Profile') }}:</label>
 			<select id="set_profile">
@@ -1195,22 +1676,9 @@
 				</div>
 				<input type="text" id="set_profile_name">
 			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_profile_description">{{ __('Description') }}</label>
-				</div>
-				<textarea id="set_profile_description"></textarea>
-			</li>
 		</ol>
-	</div>
-</div>
+		<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
 
-<!--Frequency Setup-->
-<div class="panel collapsing">
-	<div class="panel-header">
-		<h2>{{ __('Frequency Setup') }}</h2>
-	</div>
-	<div class="panel-content">
 		<!--Apply preset-->
 		<div class="control-set">
 			{{ __('Preset') }}:
@@ -1224,6 +1692,9 @@
 		<div class="node-list">
 			{% for node in range(num_nodes) %}
 				<div class="node" data-node="{{ node }}">
+					{% if vrx_enabled %}
+						<div class="vrx-header"></div>
+					{% endif %}
 					<h3><label for="set_freq_node_{{ node }}">{{ __('Node') }} {{ node + 1 }}</label></h3>
 					<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
 					<label for="s_channel_{{ node }}" class="screen-reader-text">Frequency</label>
@@ -1232,6 +1703,7 @@
 			{% endfor %}
 		</div>
 		<div class="control-set" id="imd_rating_label"></div>
+		<div class="control-set vrx-warning"></div>
 	</div>
 </div>
 
@@ -1254,6 +1726,7 @@
 				<div class="rssi-graph">
 					<button class="pause_graph" data-node="{{ node }}">&#x23ef;&#xFE0E;<span class="screen-reader-text"> {{ __('Pause/Resume Graph') }}</span></button>
 					<canvas id="rssi-graph-{{ node }}">
+					</canvas>
 				</div>
 				<div class="crossing crossing_flag_{{ node }}">{{ __('Clear') }}</div>
 				<div class="node-controls">
@@ -1267,11 +1740,6 @@
 						<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
 						<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
 						<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
-					</div>
-
-					<div class="catch-passes">
-						<button class="catch-pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
-						<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
 					</div>
 				</div>
 				<table>
@@ -1321,40 +1789,16 @@
 		<ol class="form">
 			<li>
 				<div class="label-block">
-					<label for="set_recovery_max_offset">{{ __('Missed Lap Offset') }}</label>
-					<p class="desc">{{ __('Adjusts EnterAt value after "Catch Missed Lap"') }}</p>
+					<label for="set_calibrationMode">{{ __('Calibration Mode') }}</label>
 				</div>
-				<input type="text" id="set_recovery_max_offset" class="set-option" data-option="HistoryMaxOffset" value="{{ getOption('HistoryMaxOffset') }}">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_recovery_min_offset">{{ __('End Crossing Offset') }}</label>
-					<p class="desc">{{ __('Adjusts ExitAt value after "Force End Crossing"') }}</p>
-				</div>
-				<input type="text" id="set_recovery_min_offset" class="set-option" data-option="HistoryMinOffset" value="{{ getOption('HistoryMinOffset') }}">
+				<select id="set_calibrationMode" class="set-option" data-option="calibrationMode">
+					<option value="0">{{ __('Manual') }}</option>
+					<option value="1">{{ __('Adaptive') }}</option>
+				</select>
 			</li>
 		</ol>
 
-		<div class="calibration-guide">
-			<h3>{{ __('Calibration') }}</h3>
-			<ol>
-				<li>{{ __('Power on a VTx at the same frequency as the node') }}</li>
-				<li>{{ __('Pass VTx very near the timer to establish peak RSSI for node') }}</li>
-				<li>{{ __('Place VTx 5-10 feet away and press "Capture" for EnterAt') }}</li>
-				<li>{{ __('Place VTx 20-30 feet away and press "Capture" for ExitAt') }}</li>
-				<li>{{ __('Review "Crossing" points and adjust until accurately responding') }}</li>
-				<li>{{ __('The EnterAt value should always be higher than the ExitAt value') }}</li>
-			</ol>
-			<h3>{{ __('Troubleshooting') }}</h3>
-			<ul>
-				<li>{{ __('If gate crossings are being missed then lower EnterAt') }}</li>
-				<li>{{ __("If gate crossing are triggered when they shouldn't be then increase EnterAt") }}</li>
-				<li>{{ __('If a pass by the timer is resulting in multiple crossings, lower ExitAt') }}</li>
-				<li>{{ __('If the "Crossing" indicator is stuck on then increase ExitAt') }}</li>
-				<li>{{ __('If crossings are still erratic, increase RSSI Smoothing to reduce noise') }}</li>
-                <li>{{ __('If missing high-speed passes, try decreasing RSSI Smoothing') }}</li>
-			</ul>
-		</div>
+		<p class="form-note"><a href="/docs?d=Tuning%20Parameters.md">{{ __("Tuning Parameters") }}</a></p>
 	</div>
 </div>
 
@@ -1402,6 +1846,41 @@
 		<div class="control-set">
 			<button id="add_heat">+ {{ __('Add Heat') }}</button>
 		</div>
+
+		<h3>Heat generator</h3>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="generator_input_class">{{ __('Input (Class)') }}</label>
+				</div>
+				<select id="generator_input_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_pilots_per_heat">{{ __('Pilots per Heat') }}</label>
+				</div>
+				<input type="number" id="generator_pilots_per_heat" min="1" max="{{ num_nodes }}" value="{{ num_nodes }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_suffix">{{ __('Suffix') }}</label>
+				</div>
+				<input type="text" id="generator_suffix" value="{{ __('Main') }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_output_class">{{ __('Output Class') }}</label>
+				</div>
+				<select id="generator_output_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<button id="generate_heats">{{ __('Generate Heats') }}</button>
+		</div>
 	</div>
 </div>
 
@@ -1411,6 +1890,7 @@
 		<h2>{{ __('Pilots') }}</h2>
 	</div>
 	<div class="panel-content">
+		<p class="form-note">{{ __('Altering pilot callsigns rebuilds all race results.') }}</p>
 		<ul class="pilots">
 			<li>{{ __('Loading...') }}</li>
 		</ul>
@@ -1418,6 +1898,18 @@
 		<div class="control-set">
 			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
 		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_pilotSort">{{ __('Pilot Sort') }}</label>
+				</div>
+				<select id="set_pilotSort" class="set-option" data-option="pilotSort">
+					<option value="name">{{ __('Name') }}</option>
+					<option value="callsign">{{ __('Callsign') }}</option>
+				</select>
+			</li>
+		</ol>
 	</div>
 </div>
 
@@ -1572,6 +2064,16 @@
 			</li>
 			<li>
 				<div class="label-block">
+					<label for="set_staging_tones">{{ __('Staging Tones') }}</label>
+				</div>
+				<select id="set_staging_tones">
+					<option value="2">{{ __('Each Second') }}</option>
+					<option value="1">{{ __('One') }}</option>
+					<option value="0">{{ __('None') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
 					<p class="desc">{{ __('Used with First to X Laps races') }}</p>
 				</div>
@@ -1582,13 +2084,11 @@
 					<label for="set_win_condition">{{ __('Win Condition') }}</label>
 				</div>
 				<select id="set_win_condition">
-					<option value="0">{{ __('None') }}</option>
 					<option value="1">{{ __('Most Laps') }}</option>
 					<option value="2">{{ __('First to X Laps') }}</option>
-					<!-- Yet to be implemented in server.py
 					<option value="3">{{ __('Fastest Lap') }}</option>
 					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
-					-->
+					<option value="0">{{ __('None') }}</option>
 				</select>
 			</li>
 			<li>
@@ -1627,35 +2127,85 @@
 </div>
 
 <!--LED controls-->
+{% if led_enabled %}
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('LED Events') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div id="LED-effect-setup"></div>
+	</div>
+</div>
+
 <div class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('LED Control') }}</h2>
 	</div>
 	<div class="panel-content">
 		<div class="control-set">
-			<button class="LED-color" data-rgb="#000000"><img src="../static/image/LED-off.png"></button>
-			<button id="LED_RBCYCLE"><img src="../static/image/LED-rainbow.png"></button>
-			<br />
-			<button class="LED-color" data-rgb="#0000ff"><img src="../static/image/LED-blue.png"></button>
-			<button class="LED-color" data-rgb="#ff3200"><img src="../static/image/LED-orange.png"></button>
-			<button class="LED-color" data-rgb="#ff003C"><img src="../static/image/LED-pink.png"></button>
-			<button class="LED-color" data-rgb="#9600ff"><img src="../static/image/LED-purple.png"></button>
-			<button class="LED-color" data-rgb="#ffD200"><img src="../static/image/LED-yellow.png"></button>
-			<button class="LED-color" data-rgb="#00ffff"><img src="../static/image/LED-cyan.png"></button>
-			<button class="LED-color" data-rgb="#00ff00"><img src="../static/image/LED-green.png"></button>
-			<button class="LED-color" data-rgb="#ff0000"><img src="../static/image/LED-red.png"></button>
-			<br />
-			<button class="LED-chase" data-rgb="#0000ff"><img src="../static/image/LED-chase-blue.png"></button>
-			<button class="LED-chase" data-rgb="#ff3200"><img src="../static/image/LED-chase-orange.png"></button>
-			<button class="LED-chase" data-rgb="#ff003C"><img src="../static/image/LED-chase-pink.png"></button>
-			<button class="LED-chase" data-rgb="#9600ff"><img src="../static/image/LED-chase-purple.png"></button>
-			<button class="LED-chase" data-rgb="#ffD200"><img src="../static/image/LED-chase-yellow.png"></button>
-			<button class="LED-chase" data-rgb="#00ffff"><img src="../static/image/LED-chase-cyan.png"></button>
-			<button class="LED-chase" data-rgb="#00ff00"><img src="../static/image/LED-chase-green.png"></button>
-			<button class="LED-chase" data-rgb="#ff0000"><img src="../static/image/LED-chase-red.png"></button>
+			<button class="LED-color" data-rgb="#000000">{{ __('Turn Off') }}</button>
 		</div>
+
+		<div class="control-set">
+			<button class="LED-color" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
+			<button class="LED-color" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
+			<button class="LED-color" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
+			<button class="LED-color" data-rgb="#ffff00"><span style="background-color:#ffff00"></span></button>
+			<button class="LED-color" data-rgb="#7f00ff"><span style="background-color:#7f00ff"></span></button>
+			<button class="LED-color" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
+			<button class="LED-color" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
+			<button class="LED-color" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_led_brightness">{{ __('LED Brightness') }}</label>
+					<p class="desc">{{ __('Level') }}: <span id="led_brightness_value"></span></p>
+				</div>
+				<input type="range" id="set_led_brightness" min="1" max="25">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_led_color">{{ __('LED Color') }}</label>
+				</div>
+				<input type="color" id="set_led_color" />
+			</li>
+		</ol>
+
+		<div id="LED-effects"></div>
 	</div>
 </div>
+{% endif %}
+
+<!--VRx Control-->
+{% if vrx_enabled %}
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('VRx Control') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div id="vrx-control-setup"></div>
+
+		<div class="control-set vrx-warning"></div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_osd_pos_header">{{ __('OSD Rank Prefix') }}</label>
+				</div>
+				<input type="text" id="set_osd_pos_header" class="set-option" data-option="osd_positionHeader" value="{{ getOption('osd_positionHeader') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_osd_lap_header">{{ __('OSD Lap Prefix') }}</label>
+				</div>
+				<input type="text" id="set_osd_lap_header" class="set-option" data-option="osd_lapHeader" value="{{ getOption('osd_lapHeader') }}">
+			</li>
+		</ol>
+	</div>
+</div>
+{% endif %}
 
 <!--Reset database-->
 <div class="panel collapsing">
@@ -1686,16 +2236,17 @@
 		<h2>{{ __('System') }}</h2>
 	</div>
 	<div class="panel-content">
-		<div class="control-set">
-		{{ __('Core temperature:') }} <span id="core-temperature"></span>{{ __('°C') }}
+		<div id="env-data-table" class="control-set">
 		</div>
 		<br />
-		<div id="env-data-table" class="control-set">
+		<div id="cluster-status-table" class="control-set">
 		</div>
 		<br />
 		<div class="control-set">
 			<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
-			{% if Debug %}<a href="/hardwarelog" class="debug button-like">{{ __('Log') }}</a>{% endif %}
+			<a href="#reboot_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Reboot') }}</a>
+			<a href="/hardwarelog" class="debug button-like">{{ __('Server Log') }}</a>
+			<button id="download_logs">{{ __('Download Logs') }}</button>
 		</div>
 
 		<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide popup">
@@ -1703,6 +2254,15 @@
 			<div class="popup-content">
 				<p>{{ __('Shut down server?') }}</p>
 				<p><button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="reboot_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>Alert</h2>
+			<div class="popup-content">
+				<p>{{ __('Reboot server?') }}</p>
+				<p><button class="btn-danger" id="reboot_pi">{{ __('Reboot') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>
@@ -1734,25 +2294,25 @@
 				<div class="label-block">
 					<label for="set_hue_primary">{{ __('Primary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_primary" class="set-option hue-control" data-option="hue_0" value="{{ getOption('hue_0') }}" min="0" max="359">
+				<input type="range" id="set_hue_primary" class="hue-control" data-option="hue_0" value="{{ getOption('hue_0') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_primary">{{ __('Primary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_primary" class="set-option sat-control" data-option="sat_0" value="{{ getOption('sat_0') }}" min="0" max="100">
+				<input type="range" id="set_sat_primary" class="sat-control" data-option="sat_0" value="{{ getOption('sat_0') }}" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_hue_secondary">{{ __('Secondary Hue') }}</label>
 				</div>
-				<input type="range" id="set_hue_secondary" class="set-option hue-control" data-option="hue_1" value="{{ getOption('hue_1') }}" min="0" max="359">
+				<input type="range" id="set_hue_secondary" class="hue-control" data-option="hue_1" value="{{ getOption('hue_1') }}" min="0" max="359">
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_sat_secondary">{{ __('Secondary Saturation') }}</label>
 				</div>
-				<input type="range" id="set_sat_secondary" class="set-option sat-control" data-option="sat_1" value="{{ getOption('sat_1') }}" min="0" max="100">
+				<input type="range" id="set_sat_secondary" class="sat-control" data-option="sat_1" value="{{ getOption('sat_1') }}" min="0" max="100">
 			</li>
 		</ol>
 

@@ -2,6 +2,7 @@
 
 <script type="text/javascript" charset="utf-8">
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	var request_time;
 	var request_pi_time;
@@ -19,6 +20,8 @@
 		rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
 		rotorhazard.timer.race.duration = msg.race_time_sec;
 
+		rotorhazard.timer.race.max_delay = msg.delay;
+
 		rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
 	}
 
@@ -33,6 +36,7 @@
 			'node_data',
 			'frequency_data',
 			'heat_data',
+			'pilot_data',
 			'race_format',
 			'node_tuning',
 			'enter_and_exit_at_levels',
@@ -40,22 +44,46 @@
 			'leaderboard',
 			'current_laps',
 			'race_status',
-			'team_racing_stat_if_enb'
+			'team_racing_stat_if_enb',
+			'led_effects',
+			'callouts',
+			'vrx_list'
 		]});
+
+		$('#about>.popup-content').append('<p id="server-lag">Sync quality: [calculating]</p>');
 
 		socket.on('pi_time', function (msg) {
 			var response_time = window.performance.now();
 			var server_delay = response_time - rotorhazard.pi_time_request;
 			var server_oneway = server_delay ? server_delay / 2 : server_delay;
 
-			var pi_time_diff = (msg.pi_time_s * 1000) - response_time - server_oneway; // convert seconds (pi) to millis (JS)
-			pi_sync_change = pi_time_diff - rotorhazard.pi_time_diff;
+			var pi_time_diff = {
+				'differential': (msg.pi_time_s * 1000) - response_time - server_oneway, // convert seconds (pi) to millis (JS)
+				'response': parseFloat(server_delay)
+			}
 
 			// store sync sample
 			rotorhazard.pi_time_diff_samples.push(pi_time_diff);
 
+			// sort stored samples
+			rotorhazard.pi_time_diff_samples.sort(function(a, b){
+				return a.response - b.response;
+			})
+
+			// remove unusable samples
+			var diff_min = rotorhazard.pi_time_diff_samples[0].differential - rotorhazard.pi_time_diff_samples[0].response
+			var diff_max = rotorhazard.pi_time_diff_samples[0].differential + rotorhazard.pi_time_diff_samples[0].response
+
+			rotorhazard.pi_time_diff_samples = rotorhazard.pi_time_diff_samples.filter(function(value, index, array) {
+				return value.differential >= diff_min && value.differential <= diff_max;
+			});
+
 			// get filtered value
-			rotorhazard.pi_time_diff = median(rotorhazard.pi_time_diff_samples);
+			var a = [];
+			for (var i in rotorhazard.pi_time_diff_samples) {
+				a.push(rotorhazard.pi_time_diff_samples[i].differential);
+			}
+			rotorhazard.pi_time_diff = median(a);
 
 			// pass current sync to timer
 			rotorhazard.timer.race.sync(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
@@ -67,6 +95,13 @@
 					socket.emit('get_pi_time');
 				}, (Math.random() * 500) + 250); // 0.25 to 0.75s delay
 			}
+
+			// update server info
+			var a = Infinity;
+			for (var i in rotorhazard.pi_time_diff_samples) {
+				a = Math.min(a, rotorhazard.pi_time_diff_samples[i].response);
+			}
+			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
 		});
 
 		socket.on('all_languages', function (msg) {
@@ -130,15 +165,24 @@
 		$('#indicator_volume_value').html($('#set_indicator_volume').val());
 		$('#schedule_m').val(rotorhazard.schedule_m);
 		$('#schedule_s').val(rotorhazard.schedule_s);
+		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
+		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
+		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
 
-
+		if ('{{ getOption('ledBrightness') }}' != 'False') {
+			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
+			$('#led_brightness_value').html($('#set_led_brightness').val());
+		}
 
 		// set up node local store
 		for (i = 0; i < {{ num_nodes }}; i++) {
 			rotorhazard.nodes[i] = new nodeModel();
 			// start RSSI graphing
-			rotorhazard.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
-			rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
+			var canvas = document.getElementById('rssi-graph-' + i);
+			if (canvas) {
+				rotorhazard.nodes[i].canvas = canvas;
+				rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
+			}
 		}
 
 		socket.on('race_scheduled', function (msg) {
@@ -153,9 +197,11 @@
 		socket.on('race_status', function (msg) {
 			rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
 			rotorhazard.timer.race.duration = msg.race_time_sec;
+			rotorhazard.timer.race.staging_tones = msg.race_staging_tones;
 
 			switch (msg.race_status) {
 				case 1: // Race running
+					rotorhazard.race_status_go_time = window.performance.now();
 					$('#set_current_heat').prop('disabled', true);
 					$('button#start_race').prop('disabled', true);
 					$('button#stop_race').prop('disabled', false);
@@ -240,41 +286,43 @@
 				heartbeatCounter = 0;
 
 				for (i = 0; i < msg.current_rssi.length; i++) {
-					var rssiValue = msg.current_rssi[i];
+					if(document.getElementById('node-' + i)) {
+						var rssiValue = msg.current_rssi[i];
 
-					if (rotorhazard.nodes[i].frequency == 0) {
-						rssiValue = 0;
-					}
+						if (rotorhazard.nodes[i].frequency == 0) {
+							rssiValue = 0;
+						}
 
-					$('.current_rssi_' + i).html(rssiValue);
+						$('.current_rssi_' + i).html(rssiValue);
 
-					if (msg.crossing_flag[i]) {
-						$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
-					}
-					else {
-						$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
-					}
+						if (msg.crossing_flag[i]) {
+							$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
+						}
+						else {
+							$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
+						}
 
-					rotorhazard.nodes[i].graph.options.maxValue = Math.max(
-						rssiValue,
-						rotorhazard.nodes[i].node_peak_rssi + 1,
-						rotorhazard.nodes[i].enter_at_level + 10,
-					);
+						rotorhazard.nodes[i].graph.options.maxValue = Math.max(
+							rssiValue,
+							rotorhazard.nodes[i].node_peak_rssi + 1,
+							rotorhazard.nodes[i].enter_at_level + 10,
+						);
 
-					rotorhazard.nodes[i].graph.options.minValue = Math.max(0, Math.min(
-						rssiValue,
-						rotorhazard.nodes[i].node_nadir_rssi - 1,
-						rotorhazard.nodes[i].exit_at_level - 10,
-					));
+						rotorhazard.nodes[i].graph.options.minValue = Math.max(0, Math.min(
+							rssiValue,
+							rotorhazard.nodes[i].node_nadir_rssi - 1,
+							rotorhazard.nodes[i].exit_at_level - 10,
+						));
 
-					if (rotorhazard.nodes[i].graphing) {
-						rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
-					} else {
-						if (rssiValue) {
-							rotorhazard.nodes[i].graphing = true;
-							rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
-							rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
+						if (rotorhazard.nodes[i].graphing) {
 							rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
+						} else {
+							if (rssiValue) {
+								rotorhazard.nodes[i].graphing = true;
+								rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
+								rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
+								rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
+							}
 						}
 					}
 				}
@@ -290,16 +338,21 @@
 		});
 
 		socket.on('heat_data', function (msg) {
+			rotorhazard.heats = msg.heats;
 			$('#set_current_heat').empty();
 			for (var i in msg.heats) {
 				var heat = msg.heats[i];
-				var opt = $('<option value="' + heat.heat_id + '">');
 
 				if (heat.note) {
-					opt.html(heat.note);
+					var heatname = heat.note;
 				} else {
-					opt.html(__('Heat') + ' ' + heat.heat_id);
+					var heatname = __('Heat') + ' ' + heat.heat_id;
 				}
+				rotorhazard.heats[i].heatname = heatname;
+
+				var opt = $('<option value="' + heat.heat_id + '" data-class="' + heat.class_id + '">');
+
+				opt.html(heatname);
 				$('#set_current_heat').append(opt);
 			}
 
@@ -354,38 +407,83 @@
 			rotorhazard.nodes[msg.node_index].updateThresholds();
 		});
 
-		socket.on('current_laps', function (msg) {
-			$.each(msg.node_index, function (i, node_index) { // i is loop num, node_index is json array
-				$('#current_laps_' + i + ' tbody > tr').remove();
-				$.each(node_index.lap_id, function (j, lap_id) { // j is loop num, lap_id is not used
-					// No lap deletion for first lap
-					var $tr = '';
-					if (node_index.lap_id[j] == 0) {
-						$tr = $('<tr class="lap_0">').append(
-							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
-							$('<td colspan="2">').text(node_index.lap_time[j])
-						)
-					}
-					else {
-						$tr = $('<tr>').append(
-							// $('<td>').text(node_index.lap_id[j]), // trim for better small UI (can't adjust colspan in CSS)
-							$('<td colspan="2">').text(node_index.lap_time[j] + ' ').append(
-								$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lapid="' + node_index.lap_id[j] + '">&#215;</button>')
-							).prepend($('<span class="from_start">').text(formatTimeMillis(node_index.lap_time_stamp[j])))
-						)
-					}
-					if (j && node_index.lap_raw[j] < (rotorhazard.min_lap * 1000)) {
-						$tr.addClass('min-lap-warning');
-					}
-					$tr.appendTo('#current_laps_' + i);
+		var current_laps = {};
 
-				});
-			});
+		socket.on('current_laps', function (msg) {
+			current_laps = msg;
+			show_current_laps();
 		});
 
+		function show_current_laps() {
+			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
+				$('#current_laps_' + i + ' tbody > tr').remove();
+
+				$.each(node_index.laps, function (j, lap) { // j is loop num, lap_id is json object
+					var tr = '';
+					var lapTime = lap.lap_time;
+					if (lap.splits.length > 0) {
+						lapTime += ' (';
+						for (k=0; k<lap.splits.length; k++) {
+							var split = lap.splits[k];
+							if (k > 0) {
+								lapTime += ', ';
+							}
+							lapTime += split.split_time;
+							if (split.split_speed) {
+								lapTime += '/' + split.split_speed;
+							}
+						}
+						lapTime += ')';
+					}
+
+					var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
+
+					tr = $('<tr>')
+					if (lap.lap_number == 0) {
+						tr.addClass('lap_0');
+					}
+
+					var local_colspan = 2;
+					if(rotorhazard.display_lap_id) {
+						local_colspan = 1;
+						tr.append(
+							$('<td class="display_lap_number">').text(lap.lap_number)
+						);
+					}
+					time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ').append(
+							$('<button class="delete_lap btn-danger" data-node="' + i + '" data-lap-index="' + lap.lap_index + '">&#215;</button>')
+							);
+					local_prepend = $('<span class="from_start">');
+
+					if(rotorhazard.display_time_first_pass) {
+						local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp));
+						if(rotorhazard.display_time_start){
+							local_prepend.append(" / ");
+						}
+					}
+
+					if(rotorhazard.display_time_start) {
+						local_prepend.append(formatTimeMillis(lap.lap_time_stamp));
+					}
+
+					time_td.prepend(local_prepend);
+					tr.append(time_td);
+
+					if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
+						tr.addClass('min-lap-warning');
+					}
+					if (!rotorhazard.race_formats.race_mode && lap.lap_time_stamp > (rotorhazard.race_formats.race_time_sec * 1000)) {
+						tr.addClass('after-time-expired');
+					}
+					tr.appendTo('#current_laps_' + i);
+				});
+			});
+		}
+
 		socket.on('leaderboard', function (msg) {
+			leaderboard = msg.meta.primary_leaderboard;
 			$('#leaderboard').empty();
-			$('#leaderboard').append(build_leaderboard(msg.by_race_time, 'current', msg.meta));
+			$('#leaderboard').append(build_leaderboard(msg[leaderboard], 'current', msg.meta));
 		});
 
 		socket.on('team_racing_status', function (msg) {
@@ -449,7 +547,10 @@
 		})
 
 		socket.on('current_heat', function (msg) {
+			rotorhazard.current_heat = msg.current_heat;
 			$('#set_current_heat').val(msg.current_heat);
+
+			rotorhazard.current_pilots = msg.pilot_ids;
 			for (i = 0; i < msg.callsign.length; i++) {
 				$('.callsign_' + i).html(msg.callsign[i] ? msg.callsign[i] : 'None');
 			}
@@ -496,6 +597,29 @@
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
 			}
+
+			var selectedHeat = $('#set_current_heat').val();
+			var selectedClass = rotorhazard.heats[selectedHeat].class_id;
+			var otherHeats = [];
+			for (heat_i in rotorhazard.heats) {
+				if (rotorhazard.heats[heat_i].class_id == selectedClass) {
+					otherHeats.push(heat_i);
+				}
+			}
+
+			if (otherHeats.length > 1) {
+				var newHeat = null;
+				if (otherHeats[otherHeats.length - 1] == selectedHeat) {
+					newHeat = otherHeats[0];
+				} else {
+					while (otherHeats[otherHeats.length - 1] != selectedHeat) {
+						newHeat = otherHeats.pop();
+					}
+				}
+
+				$('#set_current_heat').val(newHeat).change();
+			}
+
 			return false;
 		});
 
@@ -576,15 +700,6 @@
 			node.graphPaused = !node.graphPaused;
 		});
 
-		$('button.catch-pass').click(function (event) {
-			var data = {
-				node: parseInt($(this).data('node')),
-				method: $(this).data('method'),
-			};
-			socket.emit('recover_pass', data);
-			return false;
-		});
-
 		$('button.simulate_lap').click(function (event) {
 			// if(!$(this).prop('disabled')) {
 				if (rotorhazard.beep_manual_lap_button) {
@@ -607,7 +722,7 @@
 		$(document).on("click", ".delete_lap", function (event) { // Needed for buttons added after document load
 			var data = {
 				node: parseInt($(this).data('node')),
-				lapid: parseInt($(this).data('lapid')),
+				lap_index: parseInt($(this).data('lap-index')),
 			};
 			socket.emit('delete_lap', data);
 			return false;
@@ -766,6 +881,24 @@
 			rotorhazard.saveData();
 		});
 
+		$('#display_lap_id').change(function (event) {
+			rotorhazard.display_lap_id = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
+		$('#display_time_start').change(function (event) {
+			rotorhazard.display_time_start = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
+		$('#display_time_first_pass').change(function (event) {
+			rotorhazard.display_time_first_pass = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
 		/* Race Format */
 
 		$('#schedule_race').click(function (event) {
@@ -813,13 +946,16 @@
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
 			}
 			$('#set_race_format').val(msg.current_format);
+
+			rotorhazard.race_formats = msg;
 		});
 
 		$('#set_race_format').change(function (event) {
 			var data = {
 				race_format: $(this).val()
 			};
-			socket.emit('set_race_format', data);
+			if ($(this).find('option').length > 1)
+				socket.emit('set_race_format', data);
 		});
 
 		/* Calibration Profiles */
@@ -864,6 +1000,38 @@
 		});
 
 		/* LED Controls */
+
+		socket.on('led_effects', function (msg) {
+			var led_html = $('<div class="control-set">');
+
+			var led_select = $('<select id="led-effects-select"></select>');
+
+			const effects = msg.effects.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
+
+			for (var i in effects) {
+				var effect = effects[i];
+
+				var led_select_option = $('<option value="' + effect.name + '">' + effect.label + '</option>')
+
+				led_select.append(led_select_option);
+			}
+
+			led_html.append($('<label for="led-effects">' + __('Effect') + '</label>'));
+			led_html.append(' ');
+			led_html.append(led_select);
+			led_html.append(' ');
+			led_html.append($('<button id="use-led-effect">' + __('Go') + '</button>'));
+
+			$('#LED-effects').append(led_html);
+		});
+
+		$(document).on('click', '#use-led-effect', function (event) {
+			var data = {
+				effect: $('#led-effects-select').val()
+			};
+			socket.emit('use_led_effect', data);
+		});
+
 		$('button.LED-color').click(function (event) {
 				var colors = convertColor($(this).data('rgb'));
 				var data = {
@@ -875,30 +1043,197 @@
 				return false;
 		});
 
-		$('button.LED-chase').click(function (event) {
-				var colors = convertColor($(this).data('rgb'));
+		$('#set_led_color').change(function (event) {
+				var colors = convertColor($(this).val());
 				var data = {
 					red: colors.r,
 					green: colors.g,
 					blue: colors.b,
 				};
-				socket.emit('LED_chase', data);
+				socket.emit('LED_solid', data);
 				return false;
 		});
 
-		$('button#LED_RB').click(function (event) {
-			socket.emit('LED_RB');
+		$('#set_led_brightness').on('input', function (event) {
+			var val = brightness_logsl.value($(this).val());
+			$('#led_brightness_value').html($(this).val());
+		});
+
+		$('#set_led_brightness').change(function (event) {
+			var val = brightness_logsl.value($(this).val());
+			// emit data
+			var data = {
+				brightness: Math.round(val),
+			};
+			socket.emit('LED_brightness', data);
+		});
+
+		/* VRx */
+		socket.on('vrx_list', function (msg) {
+			if (msg.enabled) {
+				vrx_by_node = {}
+
+				for (var vrx_id in msg.vrx) {
+					var vrx = msg.vrx[vrx_id]
+					if (vrx.dev == 'rx' && parseInt(vrx.valid_rx)) {
+						if (!vrx_by_node[vrx.node_number]) {
+							vrx_by_node[vrx.node_number] = [];
+						}
+						vrx_by_node[vrx.node_number].push(vrx_id)
+					}
+				}
+
+				for (i = 0; i < {{ num_nodes }}; i++) {
+					var header = $('#node-' + i + ' .vrx-header');
+					header.empty();
+
+					var locks = 0;
+					if (i in vrx_by_node) {
+						for (j in vrx_by_node[i]) {
+							var vrx_id = vrx_by_node[i][j];
+							var vrx = msg.vrx[vrx_id];
+							if (vrx.lock_status == 'L') {
+								locks++;
+							}
+						}
+
+						if (locks == vrx_by_node[i].length) {
+							header.removeClass('has-unlocked')
+						} else {
+							header.addClass('has-unlocked')
+						}
+
+						header.append(__('VRx locks') + ': ' + locks + '/' + vrx_by_node[i].length);
+					} else {
+						header.removeClass('has-unlocked')
+						header.append(__('VRx locks') + ': 0/0');
+					}
+				}
+			}
+		});
+
+		/* Callouts */
+		/* Pilots */
+		socket.on('pilot_data', function (msg) {
+			rotorhazard.pilot_data = msg.pilots;
+		});
+
+		function add_callout(content='') {
+			id = $('.callout-items>li').length + 1;
+
+			new_callout = $('<li>');
+			new_callout_label = $('<div class="label-block">');
+
+			label = '<label for="callout_text_'+ id +'">' + __('Callout') + ' ' + id + '</label>';
+			if (id <= 9) {
+				label += '<p class="desc">' + __('Ctrl') + '+' + __('Alt') + '+' + id + '</p>';
+			}
+
+			new_callout_label.html(label)
+
+			new_callout_control = $('<div class="control-block">');
+			new_callout_control.append('<input type="text" id="callout_text_' + id + '" class="callout_text" value="' + content + '">');
+			new_callout_control.append('<button class="button play_callout" id="play_callout_' + id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+
+			new_callout.append(new_callout_label);
+			new_callout.append(new_callout_control);
+
+			$('.callout-items').append(new_callout)
+		}
+
+		$('#add_callout').click(function (event) {
+			add_callout();
+		});
+
+		$(document).on('click', '.play_callout', function (event) {
+			var callout = $(this).siblings('.callout_text').val();
+
+			// %HEAT% : Current heat name
+			callout = callout.replace('%HEAT%', rotorhazard.heats[rotorhazard.current_heat].heatname);
+
+			// %PILOTS% : Current pilot names
+			var pilots = '';
+			var first = true;
+			for (i in rotorhazard.current_pilots) {
+				pilot = rotorhazard.current_pilots[i];
+				if (pilot && rotorhazard.nodes[i].frequency) {
+					if (!first) {
+						pilots += ', ';
+					}
+					for (var p in rotorhazard.pilot_data) {
+						pdata = rotorhazard.pilot_data[p];
+						if (pdata.pilot_id == pilot) {
+							if (pdata.phonetic) {
+								pilots += pdata.phonetic;
+							} else {
+								pilots += pdata.callsign;
+							}
+							break;
+						}
+					}
+					first = false;
+				}
+			}
+			callout = callout.replace('%PILOTS%', pilots)
+
+			// %FREQS% : Frequencies with current pilot assignments
+			var pilots = '';
+			var first = true;
+			for (i in rotorhazard.current_pilots) {
+				pilot = rotorhazard.current_pilots[i];
+				if (pilot && rotorhazard.nodes[i].frequency) {
+					if (!first) {
+						pilots += ', ';
+					}
+					pilots += freq.findByFreq(rotorhazard.nodes[i].frequency) + ': '
+					for (var p in rotorhazard.pilot_data) {
+						pdata = rotorhazard.pilot_data[p];
+						if (pdata.pilot_id == pilot) {
+							if (pdata.phonetic) {
+								pilots += pdata.phonetic;
+							} else {
+								pilots += pdata.callsign;
+							}
+							break;
+						}
+					}
+					first = false;
+				}
+			}
+			callout = callout.replace('%FREQS%', pilots)
+
+			speak('<div class="speech">' + callout + '</div>');
 			return false;
 		});
 
-		$('button#LED_RBCYCLE').click(function (event) {
-			socket.emit('LED_RBCYCLE');
-			return false;
+		// make 'Enter' key on input field trigger button
+		$(document).on('keyup', '.callout_text', function(event) {
+			if (event.keyCode === 13) {
+				//
+				$(this).siblings(".play_callout").click();
+			}
 		});
 
-		$('button#LED_RBCHASE').click(function (event) {
-			socket.emit('LED_RBCHASE');
-			return false;
+		// load callouts
+		socket.on('callouts', function(msg){
+			for (i in msg) {
+				add_callout(msg[i]);
+			}
+		})
+
+		// save callouts
+		$(document).on('change', '.callout_text', function (event) {
+			var data = [];
+
+			$('.callout-items>li').each(function(index){
+				text = $(this).find('.callout_text').val().trim();
+				if (text)
+					data.push(text);
+			})
+
+			socket.emit('save_callouts', {
+				'callouts': data
+			});
 		});
 
 		/* Other */
@@ -927,24 +1262,44 @@
 			// keyboard shortcuts
 			switch (e.which) {
 				case 90:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// race start: z
 						$('#start_race').trigger('click');
 					}
 					break;
 				case 88:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// race stop: x
 						$('#stop_race').trigger('click');
 					}
 					break;
 				case 67:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// save laps: c
 						$('#save_laps').trigger('click');
 					}
 					break;
 				case 86:
+					if ( this !== event.target
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// discard laps: v
 						$('#discard_laps').trigger('click');
@@ -954,48 +1309,87 @@
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 1: alt+1
 						$('#manual_lap_0').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+1
+						if ($('#play_callout_1').length)
+							$('#play_callout_1').trigger('click');
 					}
 					break;
 				case 50:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 2: alt+2
 						$('#manual_lap_1').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+2
+						if ($('#play_callout_2').length)
+							$('#play_callout_2').trigger('click');
 					}
 					break;
 				case 51:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 3: alt+3
 						$('#manual_lap_2').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+3
+						if ($('#play_callout_3').length)
+							$('#play_callout_3').trigger('click');
 					}
 					break;
 				case 52:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 4: alt+4
 						$('#manual_lap_3').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+4
+						if ($('#play_callout_4').length)
+							$('#play_callout_4').trigger('click');
 					}
 					break;
 				case 53:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 5: alt+5
 						$('#manual_lap_4').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+5
+						if ($('#play_callout_5').length)
+							$('#play_callout_5').trigger('click');
 					}
 					break;
 				case 54:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 6: alt+6
 						$('#manual_lap_5').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+6
+						if ($('#play_callout_6').length)
+							$('#play_callout_6').trigger('click');
 					}
 					break;
 				case 55:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 7: alt+7
 						$('#manual_lap_6').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+7
+						if ($('#play_callout_7').length)
+							$('#play_callout_7').trigger('click');
 					}
 					break;
 				case 56:
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 8: alt+8
 						$('#manual_lap_7').trigger('click');
+					} else if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+8
+						if ($('#play_callout_8').length)
+							$('#play_callout_8').trigger('click');
+					}
+					break;
+				case 57:
+					if (e.ctrlKey && e.altKey && !e.metaKey) {
+						// play callout 1: ctrl+alt+9
+						if ($('#play_callout_9').length)
+							$('#play_callout_9').trigger('click');
 					}
 					break;
 			}
@@ -1045,92 +1439,91 @@
 
 		<!--Display the current laps-->
 		<div class="race-results">
-			{% for node in range(num_nodes) %}
-			<div class="node">
+			{% for node in nodes %}
+			<div class="node" id="node-{{ node.index }}">
+				{% if vrx_enabled %}
+					<div class="vrx-header">
+
+					</div>
+				{% endif %}
 				<div class="race-header">
-					<a href="#tuning-detail-{{node}}" data-node="{{ node }}" class="open-mfp-popup-tuning button-like btn-warning" title="{{ __('Tuning') }}">&#9888;&#xFE0E;</a>
-					<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr">{{ frequencies[node] }}</span></div>
-					<button class="simulate_lap" id="manual_lap_{{ node }}" data-node="{{ node }}" title="{{ __('Manual') }}">+ {{ __('Lap') }}</button>
+					<a href="#tuning-detail-{{node.index}}" data-node="{{ node.index }}" class="open-mfp-popup-tuning button-like btn-warning" title="{{ __('Tuning') }}">&#9888;&#xFE0E;</a>
+					<div class="channel-block" data-node="{{ node.index }}"><span class="ch"></span> <span class="fr">{{ node.freq }}</span></div>
+					<button class="simulate_lap" id="manual_lap_{{ node.index }}" data-node="{{ node.index }}" title="{{ __('Manual') }}">+ {{ __('Lap') }}</button>
 				</div>
-				<div class="rssi-graph page" data-node="{{ node }}"><canvas id="rssi-graph-{{ node }}"></div>
-				<h4 class="callsign_{{ node }}">
-					{{ pilots.query.filter_by( id=heats.query.filter_by(heat_id=current_heat,node_index=node).first().pilot_id ).first().callsign
-					}}
+				<div class="rssi-graph page" data-node="{{ node.index }}"><canvas id="rssi-graph-{{ node.index }}"></div>
+				<h4 class="callsign_{{ node.index }}">
+					Loading...
 				</h4>
-				<div class="crossing crossing_flag_{{ node }}"><span>{{ __('Clear') }}</span></div>
-				<table class="laps" id="current_laps_{{ node }}">
+				<div class="crossing crossing_flag_{{ node.index }}"><span>{{ __('Clear') }}</span></div>
+				<table class="laps" id="current_laps_{{ node.index }}">
 					<thead>
 					</thead>
 					<tbody>
 					</tbody>
 				</table>
 
-				<div id="tuning-detail-{{node}}" class="tuning-detail mfp-hide popup">
-					<h2>{{ __('Tuning: Node') }} {{ node + 1 }}</h2>
+				<div id="tuning-detail-{{node.index}}" class="tuning-detail mfp-hide popup">
+					<h2>{{ __('Tuning: Node') }} {{ node.index + 1 }}</h2>
 					<div class="popup-content">
 
-						<div class="rssi-graph in-popup" data-node="{{ node }}">
-							<button class="pause_graph" data-node="{{ node }}">&#x23ef;&#xFE0E;<span class="screen-reader-text"> {{ __('Pause/Resume Graph') }}</span></button>
+						<div class="rssi-graph in-popup" data-node="{{ node.index }}">
+							<button class="pause_graph" data-node="{{ node.index }}">&#x23ef;&#xFE0E;<span class="screen-reader-text"> {{ __('Pause/Resume Graph') }}</span></button>
 						</div>
-						<div class="crossing crossing_flag_{{ node }}"><span>{{ __('Clear') }}</span></div>
+						<div class="crossing crossing_flag_{{ node.index }}"><span>{{ __('Clear') }}</span></div>
 
 						<div class="node-controls">
 							<div class="enter-exit-control">
-								<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
-								<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
-								<button class="cap_enter_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
+								<label for="set_enter_at_level_{{ node.index }}">{{ __('EnterAt') }}</label>
+								<input type="number" id="set_enter_at_level_{{ node.index }}" class="set_enter_at_level" data-node="{{ node.index }}" min="0" max="999">
+								<button class="cap_enter_at_btn" data-node_index="{{ node.index }}">{{ __('Capture') }}</button>
 							</div>
 
 							<div class="enter-exit-control">
-								<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
-								<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
-								<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
-							</div>
-
-							<div class="catch-passes">
-								<button class="catch-pass" data-node="{{ node }}" data-method="max">{{ __('Catch Missed Lap') }}</button>
-								<button class="catch-pass" data-node="{{ node }}" data-method="min">{{ __('Force End Crossing') }}</button>
+								<label for="set_exit_at_level_{{ node.index }}">{{ __('ExitAt') }}</label>
+								<input type="number" id="set_exit_at_level_{{ node.index }}" class="set_exit_at_level" data-node="{{ node.index }}" min="0" max="999">
+								<button class="cap_exit_at_btn" data-node_index="{{ node.index }}">{{ __('Capture') }}</button>
 							</div>
 						</div>
 						<table>
 							<tr class="datarow">
 								<td>{{ __('RSSI') }}</td>
 								<td>
-									<span class="current_rssi_{{ node }}"></span>
+									<span class="current_rssi_{{ node.index }}"></span>
 								</td>
 							</tr>
 							<tr class="datarow">
 								<td>{{ __('NodePeak') }}</td>
 								<td>
-									<span class="node_peak_rssi_{{ node }}"></span>
+									<span class="node_peak_rssi_{{ node.index }}"></span>
 								</td>
 							</tr>
 							<tr class="datarow">
 								<td>{{ __('NodeNadir') }}</td>
 								<td>
-									<span class="node_nadir_rssi_{{ node }}"></span>
+									<span class="node_nadir_rssi_{{ node.index }}"></span>
 								</td>
 							</tr>
 							<tr class="datarow">
 								<td>{{ __('PassPeak') }}</td>
 								<td>
-									<span class="pass_peak_rssi_{{ node }}"></span>
+									<span class="pass_peak_rssi_{{ node.index }}"></span>
 								</td>
 							</tr>
 							<tr class="datarow">
 								<td>{{ __('PassNadir') }}</td>
 								<td>
-									<span class="pass_nadir_rssi_{{ node }}"></span>
+									<span class="pass_nadir_rssi_{{ node.index }}"></span>
 								</td>
 							</tr>
 							<tr class="datarow">
 								<td>{{ __('PassCount') }}</td>
 								<td>
-									<span class="debug_pass_count_{{ node }}"></span>
+									<span class="debug_pass_count_{{ node.index }}"></span>
 								</td>
 							</tr>
 						</table>
-						<div id="node_notice_{{ node }}"></div>
+						<div id="node_notice_{{ node.index }}"></div>
 					</div>
 				</div>
 			</div>
@@ -1276,36 +1669,92 @@
 	</div>
 </div>
 
+<!--Display Settings-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Display Settings') }}</h2>
+	</div>
+	<div class="panel-content">
+		<p class="form-note">{{ __('Display settings apply to this device only.') }}</p>
+		<ol class="form">
+
+			<li>
+				<div class="label-block">
+					{{ __('Lap Information') }}
+				</div>
+				<ul>
+					<li><label><input type="checkbox" id="display_lap_id"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
+					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
+				</ul>
+			</li>
+
+		</ol>
+	</div>
+</div>
+
 <!--LED Controls-->
+{% if led_enabled %}
 <div class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('LED Control') }}</h2>
 	</div>
 	<div class="panel-content">
 		<div class="control-set">
-			<button class="LED-color" data-rgb="#000000"><img src="../static/image/LED-off.png"></button>
-			<button id="LED_RBCYCLE"><img src="../static/image/LED-rainbow.png"></button>
-			<br />
-			<button class="LED-color" data-rgb="#0000ff"><img src="../static/image/LED-blue.png"></button>
-			<button class="LED-color" data-rgb="#ff3200"><img src="../static/image/LED-orange.png"></button>
-			<button class="LED-color" data-rgb="#ff003C"><img src="../static/image/LED-pink.png"></button>
-			<button class="LED-color" data-rgb="#9600ff"><img src="../static/image/LED-purple.png"></button>
-			<button class="LED-color" data-rgb="#ffD200"><img src="../static/image/LED-yellow.png"></button>
-			<button class="LED-color" data-rgb="#00ffff"><img src="../static/image/LED-cyan.png"></button>
-			<button class="LED-color" data-rgb="#00ff00"><img src="../static/image/LED-green.png"></button>
-			<button class="LED-color" data-rgb="#ff0000"><img src="../static/image/LED-red.png"></button>
-			<br />
-			<button class="LED-chase" data-rgb="#0000ff"><img src="../static/image/LED-chase-blue.png"></button>
-			<button class="LED-chase" data-rgb="#ff3200"><img src="../static/image/LED-chase-orange.png"></button>
-			<button class="LED-chase" data-rgb="#ff003C"><img src="../static/image/LED-chase-pink.png"></button>
-			<button class="LED-chase" data-rgb="#9600ff"><img src="../static/image/LED-chase-purple.png"></button>
-			<button class="LED-chase" data-rgb="#ffD200"><img src="../static/image/LED-chase-yellow.png"></button>
-			<button class="LED-chase" data-rgb="#00ffff"><img src="../static/image/LED-chase-cyan.png"></button>
-			<button class="LED-chase" data-rgb="#00ff00"><img src="../static/image/LED-chase-green.png"></button>
-			<button class="LED-chase" data-rgb="#ff0000"><img src="../static/image/LED-chase-red.png"></button>
+			<button class="LED-color" data-rgb="#000000">{{ __('Turn Off') }}</button>
 		</div>
+
+		<div class="control-set">
+			<button class="LED-color" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
+			<button class="LED-color" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
+			<button class="LED-color" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
+			<button class="LED-color" data-rgb="#ffff00"><span style="background-color:#ffff00"></span></button>
+			<button class="LED-color" data-rgb="#7f00ff"><span style="background-color:#7f00ff"></span></button>
+			<button class="LED-color" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
+			<button class="LED-color" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
+			<button class="LED-color" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
+		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_led_brightness">{{ __('LED Brightness') }}</label>
+					<p class="desc">{{ __('Level') }}: <span id="led_brightness_value"></span></p>
+				</div>
+				<input type="range" id="set_led_brightness" min="1" max="25">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_led_color">{{ __('LED Color') }}</label>
+				</div>
+				<input type="color" id="set_led_color" />
+			</li>
+		</ol>
+
+		<div id="LED-effects"></div>
 	</div>
 </div>
+{% endif %}
 
+<!--Voice Callouts-->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Callouts') }}</h2>
+	</div>
+	<div class="panel-content">
+		<ol class="form callout-items">
+		</ol>
+
+		<div class="control-set">
+			<button class="button" id="add_callout">Add Callout</button>
+		</div>
+
+		<p class="form-note">
+			%HEAT% : Current heat name<br />
+			%PILOTS% : Current pilot names<br />
+			%FREQS% : Frequencies with current pilot assignments
+		</p>
+	</div>
+</div>
 </main>
 {% endblock %}
