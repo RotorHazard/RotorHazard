@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.2.0-dev.8" # Public release version code
+RELEASE_VERSION = "2.3.0-dev.1" # Public release version code
 SERVER_API = 27 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 25 # Most recent node API
@@ -1997,7 +1997,7 @@ def cancel_schedule_race():
 
     Events.trigger(Evt.RACE_SCHEDULE_CANCEL)
 
-    SOCKET_IO.emit('RACE.scheduled', {
+    SOCKET_IO.emit('race_scheduled', {
         'scheduled': RACE.scheduled,
         'scheduled_at': RACE.scheduled_time
         })
