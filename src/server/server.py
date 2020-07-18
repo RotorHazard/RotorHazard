@@ -2001,7 +2001,7 @@ def cancel_schedule_race():
 
     Events.trigger(Evt.RACE_SCHEDULE_CANCEL)
 
-    SOCKET_IO.emit('RACE.scheduled', {
+    SOCKET_IO.emit('race_scheduled', {
         'scheduled': RACE.scheduled,
         'scheduled_at': RACE.scheduled_time
         })
