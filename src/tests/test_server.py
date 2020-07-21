@@ -28,6 +28,9 @@ class ServerTest(unittest.TestCase):
                 return resp['args'][0]
         self.fail('No response of type {0}'.format(event))
 
+    def test_sensors(self):
+        self.assertTrue(any(s.name == 'TestSensor' for s in server.INTERFACE.sensors))
+
     def test_add_pilot(self):
         self.client.emit('load_data', {'load_types': ['pilot_data']})
         resp = self.get_response('pilot_data')
