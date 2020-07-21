@@ -32,5 +32,7 @@ class Plugins(UserList):
                 kwargs['idxOffset'] = len(self.data)
             try:
                 self.data.extend(plugin_module.discover(*args, **kwargs))
+            except TypeError:
+                logger.debug('Plugin {0} not loaded (not supported - required arguments are not available)'.format(plugin_module.__name__))
             except AttributeError as err:
                 logger.error('Error loading plugin {0}: {1}'.format(plugin_module.__name__, err))
