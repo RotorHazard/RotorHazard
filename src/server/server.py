@@ -32,7 +32,6 @@ import io
 import os
 import sys
 import traceback
-import platform
 import re
 import shutil
 import base64
@@ -79,7 +78,6 @@ HEARTBEAT_THREAD = None
 HEARTBEAT_DATA_RATE_FACTOR = 5
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
-IS_SYS_RASPBERRY_PI = False       # may be set by 'idAndLogSystemInfo()'
 
 FULL_RESULTS_CACHE = {} # Cache of complete results page
 FULL_RESULTS_CACHE_BUILDING = False # Whether results are being calculated
@@ -88,6 +86,10 @@ FULL_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate ca
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
 IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
+
+# check if 'log' directory owned by 'root' and change owner to 'pi' user if so
+if RHUtils.checkSetFileOwnerPi(log.LOG_DIR_NAME):
+    logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(log.LOG_DIR_NAME))
 
 # command-line arguments:
 CMDARG_VERSION_LONG_STR = '--version'  # show program version and exit
@@ -332,38 +334,6 @@ def uniqueName(desiredName, otherNames):
         return newName
     else:
         return desiredName
-
-def idAndLogSystemInfo():
-    global IS_SYS_RASPBERRY_PI
-    try:
-        modelStr = None
-        try:
-            fileHnd = open("/proc/device-tree/model", "r")
-            modelStr = fileHnd.read()
-            fileHnd.close()
-        except:
-            pass
-        if modelStr and "raspberry pi" in modelStr.lower():
-            IS_SYS_RASPBERRY_PI = True
-            logger.info("Host machine: " + modelStr.strip('\0'))
-        logger.info("Host OS: {0} {1}".format(platform.system(), platform.release()))
-    except Exception:
-        logger.exception("Error in 'idAndLogSystemInfo()'")
-
-# Checks if the given file is owned by 'root' and changes owner to 'pi' user if so.
-# Returns True if file owner changed to 'pi' user; False if not.
-def checkSetFileOwnerPi(fileNameStr):
-    try:
-        if IS_SYS_RASPBERRY_PI:
-            # check that 'pi' user exists, file exists, and file owner is 'root'
-            if os.path.isdir("/home/pi") and os.path.isfile(fileNameStr) and os.stat(fileNameStr).st_uid == 0:
-                subprocess.check_call(["sudo", "chown", "pi:pi", fileNameStr])
-                if os.stat(fileNameStr).st_uid != 0:
-                    return True
-                logger.info("Unable to change owner in 'checkSetFileOwnerPi()', file: " + fileNameStr)
-    except Exception:
-        logger.exception("Error in 'checkSetFileOwnerPi()'")
-    return False
 
 def getCurrentProfile():
     current_profile = int(Options.get('currentProfile'))
@@ -1735,8 +1705,9 @@ def on_reboot_pi():
 def on_download_logs(data):
     '''Download logs (as .zip file).'''
     zip_path_name = log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
+    RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME)
     if zip_path_name:
-        checkSetFileOwnerPi(zip_path_name)
+        RHUtils.checkSetFileOwnerPi(zip_path_name)
         try:
             # read logs-zip file data and convert to Base64
             with open(zip_path_name, mode='rb') as file_obj:
@@ -4634,6 +4605,7 @@ def backup_db_file(copy_flag):
         bkp_name = DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
         if not os.path.exists(DB_BKP_DIR_NAME):
             os.makedirs(DB_BKP_DIR_NAME)
+        RHUtils.checkSetFileOwnerPi(DB_BKP_DIR_NAME)
         if os.path.isfile(bkp_name):  # if target file exists then use 'now' timestamp
             time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
             bkp_name = DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
@@ -4643,6 +4615,7 @@ def backup_db_file(copy_flag):
         else:
             os.renames(DB_FILE_NAME, bkp_name);
             logger.info('Moved old database file to:  ' + bkp_name)
+        RHUtils.checkSetFileOwnerPi(bkp_name)
     except Exception:
         logger.exception('Error backing up database file')
     return bkp_name
@@ -4955,15 +4928,17 @@ def killVRxController(*args):
 #
 
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-idAndLogSystemInfo()
+RHUtils.idAndLogSystemInfo()
 
 # log results of module initializations
 Config.logInitResultMessage()
 Language.logInitResultMessage()
 
 # check if current log file owned by 'root' and change owner to 'pi' user if so
-if Current_log_path_name and checkSetFileOwnerPi(Current_log_path_name):
+if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
     logger.debug("Changed log file owner from 'root' to 'pi' (file: '{0}')".format(Current_log_path_name))
+    RHUtils.checkSetFileOwnerPi(log.LOG_DIR_NAME)  # also make sure 'log' dir not owned by 'root'
+
 logger.info("Using log file: {0}".format(Current_log_path_name))
 
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
@@ -5017,13 +4992,19 @@ gevent.sleep(0.500)
 # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
 db_inited_flag = False
 if not os.path.exists(DB_FILE_NAME):
-    logger.info('No database.db file found; creating initial database')
+    logger.info("No '{0}' file found; creating initial database".format(DB_FILE_NAME))
     db_init()
     db_inited_flag = True
 
 # check if DB file owned by 'root' and change owner to 'pi' user if so
-if checkSetFileOwnerPi(DB_FILE_NAME):
+if RHUtils.checkSetFileOwnerPi(DB_FILE_NAME):
     logger.debug("Changed DB-file owner from 'root' to 'pi' (file: '{0}')".format(DB_FILE_NAME))
+
+# check if directories owned by 'root' and change owner to 'pi' user if so
+if RHUtils.checkSetFileOwnerPi(DB_BKP_DIR_NAME):
+    logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(DB_BKP_DIR_NAME))
+if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
+    logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(log.LOGZIP_DIR_NAME))
 
 Options.primeGlobalsCache()
 

@@ -27,6 +27,7 @@ DEF_FILELOG_NUM_KEEP = 30        # default number of log files to keep
 
 LOG_FILENAME_STR = "rh.log"
 LOG_DIR_NAME = "logs"
+LOGZIP_DIR_NAME = "logs/zip"
 
 CONSOLE_FORMAT_STR = "%(message)s"
 SYSLOG_FORMAT_STR = "<-RotorHazard-> %(name)s [%(levelname)s] %(message)s"
@@ -260,11 +261,10 @@ def create_log_files_zip(logger, config_file, db_file):
     zip_file_obj = None
     try:
         if os.path.exists(LOG_DIR_NAME):
-            zip_dir = LOG_DIR_NAME + "/zip"
-            if not os.path.exists(zip_dir):
-                os.makedirs(zip_dir)
+            if not os.path.exists(LOGZIP_DIR_NAME):
+                os.makedirs(LOGZIP_DIR_NAME)
             time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-            zip_path_name = zip_dir + "/rh_logs_" + time_str + ".zip"
+            zip_path_name = LOGZIP_DIR_NAME + "/rh_logs_" + time_str + ".zip"
             logger.info("Creating logs .zip file: {0}".format(zip_path_name))
             gevent.sleep(0.1)  # pause to let log message get written
             zip_file_obj = zipfile.ZipFile(zip_path_name, 'w', zipfile.ZIP_DEFLATED)
