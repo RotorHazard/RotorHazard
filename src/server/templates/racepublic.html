@@ -231,26 +231,9 @@
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
-					var $tr = '';
-					var lapTime = lap.lap_time;
-					if (lap.splits.length > 0) {
-						lapTime += ' (';
-						for (k=0; k<lap.splits.length; k++) {
-							var split = lap.splits[k];
-							if (k > 0) {
-								lapTime += ', ';
-							}
-							lapTime += split.split_time;
-							if (split.split_speed) {
-								lapTime += '/' + split.split_speed;
-							}
-						}
-						lapTime += ')';
-					}
-
 					var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
 
-					$tr = $('<tr>')
+					var $tr = $('<tr>')
 					if (lap.lap_number == 0) {
 						$tr.addClass('lap_0');
 					}
@@ -285,6 +268,25 @@
 						$tr.addClass('after-time-expired');
 					}
 					$tr.appendTo('#current_laps_' + i);
+
+					$.each(lap.splits, function(k, split) {
+						var split_display = split.split_time + ' ';
+						if (split.split_speed) {
+							split_display += '(' + split.split_speed + ')';
+						}
+						var split_tr = $('<tr>');
+						split_tr.addClass('lap_split');
+						if (rotorhazard.display_lap_id) {
+							var split_id = 'split ';
+							if (lap.splits.length > 1) {
+								split_id += (k+1);
+							}
+							split_tr.append($('<td>').text(split_id));
+						}
+						var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+						split_tr.append(split_time_td);
+						split_tr.appendTo('#current_laps_' + i);
+					});
 				});
 			});
 		}
