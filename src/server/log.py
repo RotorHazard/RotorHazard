@@ -99,6 +99,8 @@ def early_stage_setup():
             "geventwebsocket.handler",
             "socketio.server",
             "engineio.server",
+            "socketio.client",
+            "engineio.client",
             "sqlalchemy",
             ]:
         logging.getLogger(name).setLevel(logging.WARN)

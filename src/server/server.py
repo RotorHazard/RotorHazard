@@ -172,6 +172,8 @@ class Slave:
                     gevent.sleep(0.1)
             logger.warn("Slave {0}: connection to {1} failed!".format(self.id+1, self.address))
             return False
+        else:
+            return True
 
     def emit(self, event, data = None):
         if self.reconnect():
