@@ -4679,7 +4679,7 @@ def recover_database():
         metadata = MetaData(bind=engine)
         pilot_query_data = get_legacy_table_data(metadata, 'pilot')
         heat_query_data = get_legacy_table_data(metadata, 'heat')
-        heatnode_query_data = get_legacy_table_data(metadata, 'heatnode')
+        heatNode_query_data = get_legacy_table_data(metadata, 'heat_node')
         raceFormat_query_data = get_legacy_table_data(metadata, 'race_format')
         profiles_query_data = get_legacy_table_data(metadata, 'profiles')
         raceClass_query_data = get_legacy_table_data(metadata, 'race_class')
@@ -4794,7 +4794,7 @@ def recover_database():
                     'results': None,
                     'cacheStatus': Results.CacheStatus.INVALID
                 })
-            restore_table(Database.HeatNode, heatnode_query_data, defaults={
+            restore_table(Database.HeatNode, heatNode_query_data, defaults={
                     'pilot_id': Database.PILOT_ID_NONE
                 })
 
