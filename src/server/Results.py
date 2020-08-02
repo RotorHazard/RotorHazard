@@ -74,53 +74,57 @@ def build_result_cache(DB, **params):
     }
 
 def build_race_results_caches(DB, params):
-    global FULL_RESULTS_CACHE
-    FULL_RESULTS_CACHE = False
-    token = monotonic()
-
-    race = Database.SavedRaceMeta.query.get(params['race_id'])
-    heat = Database.Heat.query.get(params['heat_id'])
-    if heat.class_id != Database.CLASS_ID_NONE:
-        race_class = Database.RaceClass.query.get(heat.class_id)
-
-    race.cacheStatus = token
-    heat.cacheStatus = token
-    if heat.class_id != Database.CLASS_ID_NONE:
-        race_class.cacheStatus = token
-    Options.set("eventResults_cacheStatus", token)
-    DB.session.commit()
-
-    # rebuild race result
-    gevent.sleep()
-    if race.cacheStatus == token:
-        raceResult = build_result_cache(DB, heat_id=params['heat_id'], round_id=params['round_id'])
-        race.results = raceResult['results']
-        race.cacheStatus = raceResult['cacheStatus']
+    try:
+        global FULL_RESULTS_CACHE
+        FULL_RESULTS_CACHE = False
+        token = monotonic()
+    
+        race = Database.SavedRaceMeta.query.get(params['race_id'])
+        heat = Database.Heat.query.get(params['heat_id'])
+        if heat.class_id != Database.CLASS_ID_NONE:
+            race_class = Database.RaceClass.query.get(heat.class_id)
+    
+        race.cacheStatus = token
+        heat.cacheStatus = token
+        if heat.class_id != Database.CLASS_ID_NONE:
+            race_class.cacheStatus = token
+        Options.set("eventResults_cacheStatus", token)
         DB.session.commit()
-
-    # rebuild heat summary
-    gevent.sleep()
-    if heat.cacheStatus == token:
-        heatResult = build_result_cache(DB, heat_id=params['heat_id'])
-        heat.results = heatResult['results']
-        heat.cacheStatus = heatResult['cacheStatus']
-        DB.session.commit()
-
-    # rebuild class summary
-    if heat.class_id != Database.CLASS_ID_NONE:
-        if race_class.cacheStatus == token:
-            gevent.sleep()
-            classResult = build_result_cache(DB, class_id=heat.class_id)
-            race_class.results = classResult['results']
-            race_class.cacheStatus = classResult['cacheStatus']
+    
+        # rebuild race result
+        gevent.sleep()
+        if race.cacheStatus == token:
+            raceResult = build_result_cache(DB, heat_id=params['heat_id'], round_id=params['round_id'])
+            race.results = raceResult['results']
+            race.cacheStatus = raceResult['cacheStatus']
             DB.session.commit()
+    
+        # rebuild heat summary
+        gevent.sleep()
+        if heat.cacheStatus == token:
+            heatResult = build_result_cache(DB, heat_id=params['heat_id'])
+            heat.results = heatResult['results']
+            heat.cacheStatus = heatResult['cacheStatus']
+            DB.session.commit()
+    
+        # rebuild class summary
+        if heat.class_id != Database.CLASS_ID_NONE:
+            if race_class.cacheStatus == token:
+                gevent.sleep()
+                classResult = build_result_cache(DB, class_id=heat.class_id)
+                race_class.results = classResult['results']
+                race_class.cacheStatus = classResult['cacheStatus']
+                DB.session.commit()
+    
+        # rebuild event summary
+        gevent.sleep()
+        Options.set("eventResults", json.dumps(calc_leaderboard(DB)))
+        Options.set("eventResults_cacheStatus", CacheStatus.VALID)
+    
+        logger.debug('Built result caches: Race {0}, Heat {1}, Class {2}, Event'.format(params['race_id'], params['heat_id'], heat.class_id))
 
-    # rebuild event summary
-    gevent.sleep()
-    Options.set("eventResults", json.dumps(calc_leaderboard(DB)))
-    Options.set("eventResults_cacheStatus", CacheStatus.VALID)
-
-    logger.debug('Built result caches: Race {0}, Heat {1}, Class {2}, Event'.format(params['race_id'], params['heat_id'], heat.class_id))
+    except Exception:
+        logger.exception('Exception in Results build_race_results_caches():')
 
 def calc_leaderboard(DB, **params):
     ''' Generates leaderboards '''
