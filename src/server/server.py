@@ -57,6 +57,7 @@ import Database
 import Results
 import Language
 import RHUtils
+from RHUtils import catchLogExceptionsWrapper
 from Language import __
 
 # Events manager
@@ -1082,6 +1083,7 @@ def hardware_set_all_frequencies(freqs):
             'frequency': freqs[idx],
             })
 
+@catchLogExceptionsWrapper
 def restore_node_frequency(node_index):
     ''' Restore frequency for given node index (update hardware) '''
     gevent.sleep(0.250)  # pause to get clear of heartbeat actions for scanner
@@ -2119,9 +2121,10 @@ def findBestValues(node, node_index):
         'exit_at_level': node.exit_at_level
     }
 
+@catchLogExceptionsWrapper
 def race_start_thread(start_token):
     global RACE
-
+    
     # clear any lingering crossings at staging (if node rssi < enterAt)
     for node in INTERFACE.nodes:
         if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != Database.PILOT_ID_NONE and \
@@ -2456,6 +2459,7 @@ def on_generate_heats(data):
     '''Spawn heat generator thread'''
     gevent.spawn(generate_heats, data)
 
+@catchLogExceptionsWrapper
 def generate_heats(data):
     RESULTS_TIMEOUT = 30 # maximum time to wait for results to generate
 
@@ -3130,6 +3134,7 @@ def emit_round_data(**params):
     ''' kick off non-blocking thread to generate data'''
     gevent.spawn(emit_round_data_thread, params, request.sid)
 
+@catchLogExceptionsWrapper
 def emit_round_data_thread(params, sid):
     with APP.test_request_context():
         '''Emits saved races to rounds page.'''
@@ -4207,6 +4212,7 @@ def check_race_time_expired():
             if race_format.win_condition == WinCondition.MOST_LAPS:  # Most Laps Wins Enabled
                 check_most_laps_win()  # check if pilot or team has most laps for win
 
+@catchLogExceptionsWrapper
 def pass_record_callback(node, lap_timestamp_absolute, source):
     '''Handles pass records from the nodes.'''
 
@@ -4374,6 +4380,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
         logger.debug('Pass record dismissed: Node: {0}, Frequency not defined' \
             .format(node.index+1))
 
+@catchLogExceptionsWrapper
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
     if is_enter_at_flag:
         logger.info('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
@@ -4390,6 +4397,7 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
         })
         emit_exit_at_level(node)
 
+@catchLogExceptionsWrapper
 def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
