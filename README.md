@@ -10,19 +10,23 @@ A multi-node radio frequency race timing system for FPV drone racing, with event
 RotorHazard builds on the [Delta5 Race Timer](https://github.com/scottgchin/delta5_race_timer), and supports up to 8 nodes.
 
 ## Major Features
-* Timing and event management on local server hardware
-* Modern, mobile-friendly, and responsive
-* Confidently calibrate in seconds with visual interface
-* Fix calibration issues retroactively after race is complete
-* Never miss a lap; recover laps with full accuracy by reviewing RSSI history
-* Improved filtering works both indoors and outdoors without adjustment, even in difficult multipathing environments
-* Improved synchronization and timing accuracy
+* Race timing and event management on local hardware, no internet connection needed
+* Full screen and mobile-friendly responsive interface
+* Confidently calibrate in seconds using visual interface
+* Adjust and apply calibration retroactively after race is complete
+* Learns which calibration values work for each pilot and automatically applies them to new races
+* Never miss a lap; recover laps with full accuracy by reviewing race history
+* Advanced signal filtering allows accurate reading both indoors and outdoors, even in difficult multipathing environments
+* Accurately tracks analog and DJI HD video transmitters
 * Manage pilots, heats, classes, and race formats
-* Full manual control of results for race organizer
 * Statistics broken out by event, class, heat, and round
-* Sends realtime lap data to livetime
+* Generates overlay displays and results pages for use with live streaming software such as OBS
+* Timer hardware synchronized with user interface for accurate start/end signals with compensation for poor network connectivity
 * LED and audio support to indicate race staging, starts, and other events
-* JSON API to retrieve timing data from other systems
+* Sends live updates of lap times and split times to pilot OSD
+* Control connected video receivers; change frequency and view lock status
+* Connect other systems to extend functionality via MQTT or JSON API
+* Sends realtime lap data to LiveTime
 
 ## Hardware and Software Setup
 To build and configure the system, follow the instructions here:<br />
