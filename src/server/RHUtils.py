@@ -82,7 +82,7 @@ def checkSetFileOwnerPi(fileNameStr):
 def catchLogExceptionsWrapper(func):
     def wrapper(*args, **kwargs):
         try:
-            func(*args, **kwargs)
+            return func(*args, **kwargs)
         except Exception:
             logger.exception("Exception via catchLogExceptionsWrapper")
     return wrapper

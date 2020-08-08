@@ -43,7 +43,7 @@ from functools import wraps
 from collections import OrderedDict
 from six import unichr, string_types
 
-from flask import Flask, render_template, send_file, request, Response, session
+from flask import Flask, send_file, request, Response, session, templating
 from flask_socketio import SocketIO, emit
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy import create_engine, MetaData, Table
@@ -420,6 +420,15 @@ def requires_auth(f):
         return f(*args, **kwargs)
     return decorated
 
+# Flask template render with exception catch, so exception
+# details are sent to the log file (instead of 'stderr').
+def render_template(template_name_or_list, **context):
+    try:
+        return templating.render_template(template_name_or_list, **context)
+    except Exception:
+        logger.exception("Exception in render_template")
+    return "Error rendering template"
+
 #
 # Routes
 #
@@ -581,23 +590,27 @@ def vrxstatus():
 @APP.route('/docs')
 def viewDocs():
     '''Route to doc viewer.'''
-    docfile = request.args.get('d')
-
-    language = Options.get("currentLanguage")
-    if language:
-        translation = language + '-' + docfile
-        if os.path.isfile('../../doc/' + translation):
-            docfile = translation
-
-    with io.open('../../doc/' + docfile, 'r', encoding="utf-8") as f:
-        doc = f.read()
-
-    return render_template('viewdocs.html',
-        serverInfo=serverInfo,
-        getOption=Options.get,
-        __=__,
-        doc=doc
-        )
+    try:
+        docfile = request.args.get('d')
+    
+        language = Options.get("currentLanguage")
+        if language:
+            translation = language + '-' + docfile
+            if os.path.isfile('../../doc/' + translation):
+                docfile = translation
+    
+        with io.open('../../doc/' + docfile, 'r', encoding="utf-8") as f:
+            doc = f.read()
+    
+        return templating.render_template('viewdocs.html',
+            serverInfo=serverInfo,
+            getOption=Options.get,
+            __=__,
+            doc=doc
+            )
+    except Exception:
+        logger.exception("Exception in render_template")
+    return "Error rendering documentation"
 
 @APP.route('/img/<path:imgfile>')
 def viewImg(imgfile):
@@ -875,6 +888,7 @@ def api_options():
 #
 
 @SOCKET_IO.on('connect')
+@catchLogExceptionsWrapper
 def connect_handler():
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
@@ -893,12 +907,14 @@ def disconnect_handler():
 # LiveTime compatible events
 
 @SOCKET_IO.on('get_version')
+@catchLogExceptionsWrapper
 def on_get_version():
     session['LiveTime'] = True
     ver_parts = RELEASE_VERSION.split('.')
     return {'major': ver_parts[0], 'minor': ver_parts[1]}
 
 @SOCKET_IO.on('get_timestamp')
+@catchLogExceptionsWrapper
 def on_get_timestamp():
     if RACE.race_status == RaceStatus.STAGING:
         now = RACE.start_time_monotonic
@@ -907,6 +923,7 @@ def on_get_timestamp():
     return {'timestamp': monotonic_to_milliseconds(now)}
 
 @SOCKET_IO.on('get_settings')
+@catchLogExceptionsWrapper
 def on_get_settings():
     return {'nodes': [{
         'frequency': node.frequency,
@@ -915,6 +932,7 @@ def on_get_settings():
     ]}
 
 @SOCKET_IO.on('reset_auto_calibration')
+@catchLogExceptionsWrapper
 def on_reset_auto_calibration(data):
     on_stop_race()
     on_discard_laps()
@@ -927,6 +945,7 @@ def on_reset_auto_calibration(data):
 # Cluster events
 
 @SOCKET_IO.on('join_cluster')
+@catchLogExceptionsWrapper
 def on_join_cluster():
     setCurrentRaceFormat(SLAVE_RACE_FORMAT)
     emit_race_format()
@@ -939,6 +958,7 @@ def on_join_cluster():
 # RotorHazard events
 
 @SOCKET_IO.on('load_data')
+@catchLogExceptionsWrapper
 def on_load_data(data):
     '''Allow pages to load needed data'''
     load_types = data['load_types']
@@ -1001,12 +1021,14 @@ def on_load_data(data):
             emit_current_log_file_to_socket()
 
 @SOCKET_IO.on('broadcast_message')
+@catchLogExceptionsWrapper
 def on_broadcast_message(data):
     emit_priority_message(data['message'], data['interrupt'])
 
 # Settings socket io events
 
 @SOCKET_IO.on('set_frequency')
+@catchLogExceptionsWrapper
 def on_set_frequency(data):
     '''Set node frequency.'''
     CLUSTER.emit('set_frequency', data)
@@ -1036,6 +1058,7 @@ def on_set_frequency(data):
         emit_frequency_data()
 
 @SOCKET_IO.on('set_frequency_preset')
+@catchLogExceptionsWrapper
 def on_set_frequency_preset(data):
     ''' Apply preset frequencies '''
     CLUSTER.emit('set_frequency_preset', data)
@@ -1094,6 +1117,7 @@ def restore_node_frequency(node_index):
     logger.info('Frequency restored: Node {0} Frequency {1}'.format(node_index+1, freq))
 
 @SOCKET_IO.on('set_enter_at_level')
+@catchLogExceptionsWrapper
 def on_set_enter_at_level(data):
     '''Set node enter-at level.'''
     node_index = data['node']
@@ -1119,6 +1143,7 @@ def on_set_enter_at_level(data):
     logger.info('Node enter-at set: Node {0} Level {1}'.format(node_index+1, enter_at_level))
 
 @SOCKET_IO.on('set_exit_at_level')
+@catchLogExceptionsWrapper
 def on_set_exit_at_level(data):
     '''Set node exit-at level.'''
     node_index = data['node']
@@ -1166,12 +1191,14 @@ def hardware_set_all_exit_ats(exit_at_levels):
                 })
 
 @SOCKET_IO.on('set_language')
+@catchLogExceptionsWrapper
 def on_set_language(data):
     '''Set interface language.'''
     Options.set('currentLanguage', data['language'])
     DB.session.commit()
 
 @SOCKET_IO.on('cap_enter_at_btn')
+@catchLogExceptionsWrapper
 def on_cap_enter_at_btn(data):
     '''Capture enter-at level.'''
     node_index = data['node_index']
@@ -1179,6 +1206,7 @@ def on_cap_enter_at_btn(data):
         logger.info('Starting capture of enter-at level for node {0}'.format(node_index+1))
 
 @SOCKET_IO.on('cap_exit_at_btn')
+@catchLogExceptionsWrapper
 def on_cap_exit_at_btn(data):
     '''Capture exit-at level.'''
     node_index = data['node_index']
@@ -1186,6 +1214,7 @@ def on_cap_exit_at_btn(data):
         logger.info('Starting capture of exit-at level for node {0}'.format(node_index+1))
 
 @SOCKET_IO.on('set_scan')
+@catchLogExceptionsWrapper
 def on_set_scan(data):
     node_index = data['node']
     minScanFreq = data['min_scan_frequency']
@@ -1203,6 +1232,7 @@ def on_set_scan(data):
         gevent.spawn(restore_node_frequency(node_index))
 
 @SOCKET_IO.on('add_heat')
+@catchLogExceptionsWrapper
 def on_add_heat():
     '''Adds the next available heat number to the database.'''
     new_heat = Database.Heat(class_id=Database.CLASS_ID_NONE, cacheStatus=Results.CacheStatus.INVALID)
@@ -1223,6 +1253,7 @@ def on_add_heat():
     emit_heat_data()
 
 @SOCKET_IO.on('duplicate_heat')
+@catchLogExceptionsWrapper
 def on_duplicate_heat(data):
     new_heat_id = duplicate_heat(data['heat'])
     DB.session.commit()
@@ -1268,6 +1299,7 @@ def duplicate_heat(source, **kwargs):
     return new_heat.id
 
 @SOCKET_IO.on('alter_heat')
+@catchLogExceptionsWrapper
 def on_alter_heat(data):
     '''Update heat.'''
     heat_id = data['heat']
@@ -1308,6 +1340,7 @@ def on_alter_heat(data):
         emit_round_data_notify() # live update rounds page
 
 @SOCKET_IO.on('delete_heat')
+@catchLogExceptionsWrapper
 def on_delete_heat(data):
     '''Delete heat.'''
     if (DB.session.query(Database.Heat).count() > 1): # keep one profile
@@ -1340,6 +1373,7 @@ def on_delete_heat(data):
         logger.info('Refusing to delete only heat')
 
 @SOCKET_IO.on('add_race_class')
+@catchLogExceptionsWrapper
 def on_add_race_class():
     '''Adds the next available pilot id number in the database.'''
     new_race_class = Database.RaceClass(name='New class', format_id=0, cacheStatus=Results.CacheStatus.INVALID)
@@ -1359,6 +1393,7 @@ def on_add_race_class():
     emit_heat_data() # Update class selections in heat displays
 
 @SOCKET_IO.on('duplicate_race_class')
+@catchLogExceptionsWrapper
 def on_duplicate_race_class(data):
     '''Adds new race class by duplicating an existing one.'''
     source_class_id = data['class']
@@ -1394,6 +1429,7 @@ def on_duplicate_race_class(data):
     emit_heat_data()
 
 @SOCKET_IO.on('alter_race_class')
+@catchLogExceptionsWrapper
 def on_alter_race_class(data):
     '''Update race class.'''
     race_class = data['class_id']
@@ -1421,6 +1457,7 @@ def on_alter_race_class(data):
         emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
 
 @SOCKET_IO.on('delete_class')
+@catchLogExceptionsWrapper
 def on_delete_class(data):
     '''Delete class.'''
     class_id = data['class']
@@ -1443,6 +1480,7 @@ def on_delete_class(data):
         emit_heat_data()
 
 @SOCKET_IO.on('add_pilot')
+@catchLogExceptionsWrapper
 def on_add_pilot():
     '''Adds the next available pilot id number in the database.'''
     new_pilot = Database.Pilot(name='New Pilot',
@@ -1466,6 +1504,7 @@ def on_add_pilot():
     emit_pilot_data()
 
 @SOCKET_IO.on('alter_pilot')
+@catchLogExceptionsWrapper
 def on_alter_pilot(data):
     '''Update pilot.'''
     global FULL_RESULTS_CACHE_VALID
@@ -1496,6 +1535,7 @@ def on_alter_pilot(data):
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
 @SOCKET_IO.on('delete_pilot')
+@catchLogExceptionsWrapper
 def on_delete_pilot(data):
     '''Delete heat.'''
     pilot_id = data['pilot']
@@ -1517,6 +1557,7 @@ def on_delete_pilot(data):
         emit_heat_data()
 
 @SOCKET_IO.on('add_profile')
+@catchLogExceptionsWrapper
 def on_add_profile():
     '''Adds new profile (frequency set) in the database.'''
     profile = getCurrentProfile()
@@ -1542,6 +1583,7 @@ def on_add_profile():
     on_set_profile(data={ 'profile': new_profile.id })
 
 @SOCKET_IO.on('alter_profile')
+@catchLogExceptionsWrapper
 def on_alter_profile(data):
     ''' update profile '''
     profile = getCurrentProfile()
@@ -1559,6 +1601,7 @@ def on_alter_profile(data):
     emit_node_tuning(noself=True)
 
 @SOCKET_IO.on('delete_profile')
+@catchLogExceptionsWrapper
 def on_delete_profile():
     '''Delete profile'''
     if (DB.session.query(Database.Profiles).count() > 1): # keep one profile
@@ -1578,6 +1621,7 @@ def on_delete_profile():
         logger.info('Refusing to delete only profile')
 
 @SOCKET_IO.on("set_profile")
+@catchLogExceptionsWrapper
 def on_set_profile(data, emit_vals=True):
     ''' set current profile '''
     CLUSTER.emit('set_profile', data)
@@ -1629,6 +1673,7 @@ def on_set_profile(data, emit_vals=True):
         logger.warn('Invalid set_profile value: ' + str(profile_val))
 
 @SOCKET_IO.on('backup_database')
+@catchLogExceptionsWrapper
 def on_backup_database():
     '''Backup database.'''
     bkp_name = backup_db_file(True)  # make copy of DB file
@@ -1647,6 +1692,7 @@ def on_backup_database():
     SOCKET_IO.emit('database_bkp_done', emit_payload)
 
 @SOCKET_IO.on('reset_database')
+@catchLogExceptionsWrapper
 def on_reset_database(data):
     '''Reset database.'''
     global FULL_RESULTS_CACHE_VALID
@@ -1687,6 +1733,7 @@ def on_reset_database(data):
     Events.trigger(Evt.DATABASE_RESET)
 
 @SOCKET_IO.on('shutdown_pi')
+@catchLogExceptionsWrapper
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
     Events.trigger(Evt.SHUTDOWN)
@@ -1697,6 +1744,7 @@ def on_shutdown_pi():
     os.system("sudo shutdown now")
 
 @SOCKET_IO.on('reboot_pi')
+@catchLogExceptionsWrapper
 def on_reboot_pi():
     '''Reboot the raspberry pi.'''
     Events.trigger(Evt.SHUTDOWN)
@@ -1707,6 +1755,7 @@ def on_reboot_pi():
     os.system("sudo reboot now")
 
 @SOCKET_IO.on('download_logs')
+@catchLogExceptionsWrapper
 def on_download_logs(data):
     '''Download logs (as .zip file).'''
     zip_path_name = log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
@@ -1729,6 +1778,7 @@ def on_download_logs(data):
             logger.exception("Error downloading logs-zip file")
 
 @SOCKET_IO.on("set_min_lap")
+@catchLogExceptionsWrapper
 def on_set_min_lap(data):
     min_lap = data['min_lap']
     Options.set("MinLapSec", data['min_lap'])
@@ -1741,6 +1791,7 @@ def on_set_min_lap(data):
     emit_min_lap(noself=True)
 
 @SOCKET_IO.on("set_min_lap_behavior")
+@catchLogExceptionsWrapper
 def on_set_min_lap_behavior(data):
     min_lap_behavior = int(data['min_lap_behavior'])
     Options.set("MinLapBehavior", min_lap_behavior)
@@ -1753,6 +1804,7 @@ def on_set_min_lap_behavior(data):
     emit_min_lap(noself=True)
 
 @SOCKET_IO.on("set_race_format")
+@catchLogExceptionsWrapper
 def on_set_race_format(data):
     ''' set current race_format '''
     if RACE.race_status == RaceStatus.READY: # prevent format change if race running
@@ -1775,6 +1827,7 @@ def on_set_race_format(data):
         emit_race_format()
 
 @SOCKET_IO.on('add_race_format')
+@catchLogExceptionsWrapper
 def on_add_race_format():
     '''Adds new format in the database by duplicating an existing one.'''
     source_format = getCurrentRaceFormat()
@@ -1800,6 +1853,7 @@ def on_add_race_format():
     on_set_race_format(data={ 'race_format': new_format.id })
 
 @SOCKET_IO.on('alter_race_format')
+@catchLogExceptionsWrapper
 def on_alter_race_format(data):
     ''' update race format '''
     race_format = getCurrentDbRaceFormat()
@@ -1838,6 +1892,7 @@ def on_alter_race_format(data):
             emit_class_data()
 
 @SOCKET_IO.on('delete_race_format')
+@catchLogExceptionsWrapper
 def on_delete_race_format():
     '''Delete profile'''
     if RACE.race_status == RaceStatus.READY: # prevent format change if race running
@@ -1913,6 +1968,7 @@ def emit_led_effects(**params):
         emit('led_effects', emit_payload)
 
 @SOCKET_IO.on('set_led_event_effect')
+@catchLogExceptionsWrapper
 def on_set_led_effect(data):
     '''Set effect for event.'''
     if led_manager.isEnabled() and 'event' in data and 'effect' in data:
@@ -1934,6 +1990,7 @@ def on_set_led_effect(data):
         logger.info('Set LED event {0} to effect {1}'.format(data['event'], data['effect']))
 
 @SOCKET_IO.on('use_led_effect')
+@catchLogExceptionsWrapper
 def on_use_led_effect(data):
     '''Activate arbitrary LED Effect.'''
     if led_manager.isEnabled() and 'effect' in data:
@@ -1948,6 +2005,7 @@ def on_use_led_effect(data):
 # Race management socket io events
 
 @SOCKET_IO.on('schedule_race')
+@catchLogExceptionsWrapper
 def on_schedule_race(data):
     global RACE
 
@@ -1966,6 +2024,7 @@ def on_schedule_race(data):
     emit_priority_message(__("Next race begins in {0:01d}:{1:02d}".format(data['m'], data['s'])), True)
 
 @SOCKET_IO.on('cancel_schedule_race')
+@catchLogExceptionsWrapper
 def cancel_schedule_race():
     global RACE
 
@@ -1981,6 +2040,7 @@ def cancel_schedule_race():
     emit_priority_message(__("Scheduled race cancelled"), False)
 
 @SOCKET_IO.on('get_pi_time')
+@catchLogExceptionsWrapper
 def on_get_pi_time():
     # never broadcasts to all (client must make request)
     emit('pi_time', {
@@ -1988,6 +2048,7 @@ def on_get_pi_time():
     })
 
 @SOCKET_IO.on('stage_race')
+@catchLogExceptionsWrapper
 def on_stage_race():
     global RACE
     valid_pilots = False
@@ -2171,6 +2232,7 @@ def race_start_thread(start_token):
         logger.info('Race started at {0} ({1:13f})'.format(RACE.start_time_monotonic, monotonic_to_milliseconds(RACE.start_time_monotonic)))
 
 @SOCKET_IO.on('stop_race')
+@catchLogExceptionsWrapper
 def on_stop_race():
     '''Stops the race and stops registering laps.'''
     global RACE
@@ -2207,6 +2269,7 @@ def on_stop_race():
     emit_race_status() # Race page, to set race button states
 
 @SOCKET_IO.on('save_laps')
+@catchLogExceptionsWrapper
 def on_save_laps():
     '''Save current laps data to the database.'''
     global FULL_RESULTS_CACHE_VALID
@@ -2286,6 +2349,7 @@ def on_save_laps():
     emit_round_data_notify() # live update rounds page
 
 @SOCKET_IO.on('resave_laps')
+@catchLogExceptionsWrapper
 def on_resave_laps(data):
     global FULL_RESULTS_CACHE_VALID
     FULL_RESULTS_CACHE_VALID = False
@@ -2351,6 +2415,7 @@ def update_result_caches(params):
     emit_round_data_notify()
 
 @SOCKET_IO.on('discard_laps')
+@catchLogExceptionsWrapper
 def on_discard_laps(**kwargs):
     '''Clear the current laps without saving.'''
     CLUSTER.emit('discard_laps')
@@ -2404,6 +2469,7 @@ def init_node_cross_fields():
         node.show_crossing_flag = False
 
 @SOCKET_IO.on('set_current_heat')
+@catchLogExceptionsWrapper
 def on_set_current_heat(data):
     '''Update the current heat variable.'''
     new_heat_id = data['heat']
@@ -2590,6 +2656,7 @@ def generate_heats(data):
         SOCKET_IO.emit('heat_generate_done')
 
 @SOCKET_IO.on('delete_lap')
+@catchLogExceptionsWrapper
 def on_delete_lap(data):
     '''Delete a false lap.'''
 
@@ -2650,6 +2717,7 @@ def on_delete_lap(data):
         check_emit_team_racing_status(t_laps_dict)
 
 @SOCKET_IO.on('simulate_lap')
+@catchLogExceptionsWrapper
 def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
@@ -2661,6 +2729,7 @@ def on_simulate_lap(data):
     INTERFACE.intf_simulate_lap(node_index, 0)
 
 @SOCKET_IO.on('LED_solid')
+@catchLogExceptionsWrapper
 def on_LED_solid(data):
     '''LED Solid Color'''
     led_red = data['red']
@@ -2677,6 +2746,7 @@ def on_LED_solid(data):
     })
 
 @SOCKET_IO.on('LED_chase')
+@catchLogExceptionsWrapper
 def on_LED_chase(data):
     '''LED Solid Color Chase'''
     led_red = data['red']
@@ -2695,6 +2765,7 @@ def on_LED_chase(data):
 
 
 @SOCKET_IO.on('LED_RB')
+@catchLogExceptionsWrapper
 def on_LED_RB():
     '''LED rainbow'''
     on_use_led_effect({
@@ -2705,6 +2776,7 @@ def on_LED_RB():
     })
 
 @SOCKET_IO.on('LED_RBCYCLE')
+@catchLogExceptionsWrapper
 def on_LED_RBCYCLE():
     '''LED rainbow Cycle'''
     on_use_led_effect({
@@ -2715,6 +2787,7 @@ def on_LED_RBCYCLE():
     })
 
 @SOCKET_IO.on('LED_RBCHASE')
+@catchLogExceptionsWrapper
 def on_LED_RBCHASE():
     '''LED Rainbow Cycle Chase'''
     on_use_led_effect({
@@ -2725,6 +2798,7 @@ def on_LED_RBCHASE():
     })
 
 @SOCKET_IO.on('LED_brightness')
+@catchLogExceptionsWrapper
 def on_LED_brightness(data):
     '''Change LED Brightness'''
     brightness = data['brightness']
@@ -2736,6 +2810,7 @@ def on_LED_brightness(data):
         })
 
 @SOCKET_IO.on('set_option')
+@catchLogExceptionsWrapper
 def on_set_option(data):
     Options.set(data['option'], data['value'])
     Events.trigger(Evt.OPTION_SET, {
@@ -2744,6 +2819,7 @@ def on_set_option(data):
         })
 
 @SOCKET_IO.on('get_race_scheduled')
+@catchLogExceptionsWrapper
 def get_race_elapsed():
     # get current race status; never broadcasts to all
     emit('race_scheduled', {
@@ -2752,6 +2828,7 @@ def get_race_elapsed():
     })
 
 @SOCKET_IO.on('save_callouts')
+@catchLogExceptionsWrapper
 def save_callouts(data):
     # save callouts to Options
     callouts = json.dumps(data['callouts'])
@@ -2760,11 +2837,13 @@ def save_callouts(data):
     logger.debug('Voice callouts set to: {0}'.format(callouts))
 
 @SOCKET_IO.on('imdtabler_update_freqs')
+@catchLogExceptionsWrapper
 def imdtabler_update_freqs(data):
     ''' Update IMDTabler page with new frequencies list '''
     emit_imdtabler_data(data['freq_list'].replace(',',' ').split())
 
 @SOCKET_IO.on('clean_cache')
+@catchLogExceptionsWrapper
 def clean_results_cache():
     ''' expose cach wiping for frontend debugging '''
     Results.invalidate_all_caches(DB)
@@ -4088,6 +4167,7 @@ def emit_vrx_list(*args, **params):
         SOCKET_IO.emit('vrx_list', emit_payload)
 
 @SOCKET_IO.on('set_vrx_node')
+@catchLogExceptionsWrapper
 def set_vrx_node(data):
     vrx_id = data['vrx_id']
     node = data['node']
