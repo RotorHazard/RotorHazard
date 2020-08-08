@@ -4,7 +4,7 @@ Wires events to handlers
 '''
 
 from eventmanager import Evt
-from UserDict import UserDict
+from six.moves import UserDict
 
 class LEDEventManager:
     events = {}

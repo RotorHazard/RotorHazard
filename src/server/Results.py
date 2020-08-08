@@ -303,7 +303,7 @@ def calc_leaderboard(DB, **params):
 
         gevent.sleep()
         # Get the last lap for each pilot (current race only)
-        if max_laps[i] is 0:
+        if max_laps[i] == 0:
             last_lap.append(None) # Add zero if no laps completed
         else:
             if USE_CURRENT:
@@ -313,7 +313,7 @@ def calc_leaderboard(DB, **params):
 
         gevent.sleep()
         # Get the average lap time for each pilot
-        if max_laps[i] is 0:
+        if max_laps[i] == 0:
             average_lap.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
@@ -342,7 +342,7 @@ def calc_leaderboard(DB, **params):
 
         gevent.sleep()
         # Get the fastest lap time for each pilot
-        if max_laps[i] is 0:
+        if max_laps[i] == 0:
             fastest_lap.append(0) # Add zero if no laps completed
             fastest_lap_source.append(None)
         else:
