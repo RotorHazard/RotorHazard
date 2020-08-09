@@ -7,6 +7,7 @@ import gevent
 import Database
 import Options
 import RHUtils
+from RHUtils import catchLogExceptionsWrapper
 import logging
 from monotonic import monotonic
 from Language import __
@@ -73,6 +74,7 @@ def build_result_cache(DB, **params):
         'cacheStatus': CacheStatus.VALID
     }
 
+@catchLogExceptionsWrapper
 def build_race_results_caches(DB, params):
     global FULL_RESULTS_CACHE
     FULL_RESULTS_CACHE = False

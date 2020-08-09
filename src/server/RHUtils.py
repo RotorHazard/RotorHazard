@@ -76,3 +76,13 @@ def checkSetFileOwnerPi(fileNameStr):
     except Exception:
         logger.exception("Error in 'checkSetFileOwnerPi()'")
     return False
+
+# Wrapper to be used as a decorator on thread functions, etc, so their exception
+# details are sent to the log file (instead of 'stderr').
+def catchLogExceptionsWrapper(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            logger.exception("Exception via catchLogExceptionsWrapper")
+    return wrapper
