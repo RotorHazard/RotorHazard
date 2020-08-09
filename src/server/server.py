@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "2.3.0-dev.1" # Public release version code
-SERVER_API = 27 # Server API version
+SERVER_API = 28 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 25 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -992,6 +992,10 @@ def on_load_data(data):
             emit_node_tuning(nobroadcast=True)
         elif load_type == 'enter_and_exit_at_levels':
             emit_enter_and_exit_at_levels(nobroadcast=True)
+        elif load_type == 'start_thresh_lower_amount':
+            emit_start_thresh_lower_amount(nobroadcast=True)
+        elif load_type == 'start_thresh_lower_duration':
+            emit_start_thresh_lower_duration(nobroadcast=True)
         elif load_type == 'min_lap':
             emit_min_lap(nobroadcast=True)
         elif load_type == 'leaderboard':
@@ -1193,6 +1197,22 @@ def hardware_set_all_exit_ats(exit_at_levels):
                 'node': idx,
                 'exit_at_level': INTERFACE.nodes[idx].exit_at_level
                 })
+
+@SOCKET_IO.on("set_start_thresh_lower_amount")
+@catchLogExceptionsWrapper
+def on_set_start_thresh_lower_amount(data):
+    start_thresh_lower_amount = data['start_thresh_lower_amount']
+    Options.set("startThreshLowerAmount", start_thresh_lower_amount)
+    logger.info("set start_thresh_lower_amount to %s percent" % start_thresh_lower_amount)
+    emit_start_thresh_lower_amount(noself=True)
+
+@SOCKET_IO.on("set_start_thresh_lower_duration")
+@catchLogExceptionsWrapper
+def on_set_start_thresh_lower_duration(data):
+    start_thresh_lower_duration = data['start_thresh_lower_duration']
+    Options.set("startThreshLowerDuration", start_thresh_lower_duration)
+    logger.info("set start_thresh_lower_duration to %s seconds" % start_thresh_lower_duration)
+    emit_start_thresh_lower_duration(noself=True)
 
 @SOCKET_IO.on('set_language')
 @catchLogExceptionsWrapper
@@ -2198,6 +2218,34 @@ def race_start_thread(start_token):
                        format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
             INTERFACE.force_end_crossing(node.index)
 
+    # set lower EnterAt/ExitAt values if configured
+    if Options.getInt('startThreshLowerAmount') > 0 and Options.getInt('startThreshLowerDuration') > 0:
+        lower_amount = Options.getInt('startThreshLowerAmount')
+        logger.info("Lowering EnterAt/ExitAt values at start of race, amount={0}%, duration={1} secs".\
+                    format(lower_amount, Options.getInt('startThreshLowerDuration')))
+        lower_end_time = RACE.start_time_monotonic + Options.getInt('startThreshLowerDuration')
+        for node in INTERFACE.nodes:
+            if node.frequency > 0 and node.current_pilot_id != Database.PILOT_ID_NONE:
+                if node.current_rssi < node.enter_at_level:
+                    diff_val = int((node.enter_at_level-node.exit_at_level)*lower_amount/100)
+                    if diff_val > 0:
+                        new_enter_at = node.enter_at_level - diff_val
+                        new_exit_at = max(node.exit_at_level - diff_val, 0)
+                        if node.api_valid_flag and node.is_valid_rssi(new_enter_at):
+                            logger.info("For node {0} lowering EnterAt from {1} to {2} and ExitAt from {3} to {4}"\
+                                    .format(node.index+1, node.enter_at_level, new_enter_at, node.exit_at_level, new_exit_at))
+                            node.start_thresh_lower_time = lower_end_time  # set time when values will be restored
+                            node.start_thresh_lower_flag = True
+                            # use 'transmit_' instead of 'set_' so values are not saved in node object
+                            INTERFACE.transmit_enter_at_level(node, new_enter_at)
+                            INTERFACE.transmit_exit_at_level(node, new_exit_at)
+                    else:
+                        logger.info("Not lowering EnterAt/ExitAt values for node {0} because EnterAt value ({1}) unchanged"\
+                                .format(node.index+1, node.enter_at_level))
+                else:
+                    logger.info("Not lowering EnterAt/ExitAt values for node {0} because current RSSI ({1}) >= EnterAt ({2})"\
+                            .format(node.index+1, node.current_rssi, node.enter_at_level))
+
     # do non-blocking delay before time-critical code
     while (monotonic() < RACE.start_time_monotonic - 0.5):
         gevent.sleep(0.1)
@@ -2260,11 +2308,22 @@ def on_stop_race():
         RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
         INTERFACE.set_race_status(RaceStatus.DONE)
         Events.trigger(Evt.RACE_STOP)
+
     else:
         logger.info('No active race to stop')
         RACE.race_status = RaceStatus.READY # Go back to ready state
         INTERFACE.set_race_status(RaceStatus.READY)
         led_manager.clear()
+        delta_time = 0
+
+    # check if nodes may be set to temporary lower EnterAt/ExitAt values (and still have them)
+    if Options.getInt('startThreshLowerAmount') > 0 and \
+            delta_time < Options.getInt('startThreshLowerDuration'):
+        for node in INTERFACE.nodes:
+            # if node EnterAt/ExitAt values need to be restored then do it soon
+            if node.frequency > 0 and node.current_pilot_id != Database.PILOT_ID_NONE and \
+                                            node.start_thresh_lower_flag:
+                node.start_thresh_lower_time = RACE.end_time + 0.1
 
     RACE.timer_running = False # indicate race timer not running
     RACE.scheduled = False # also stop any deferred start
@@ -2956,6 +3015,26 @@ def emit_enter_and_exit_at_levels(**params):
         emit('enter_and_exit_at_levels', emit_payload)
     else:
         SOCKET_IO.emit('enter_and_exit_at_levels', emit_payload)
+
+def emit_start_thresh_lower_amount(**params):
+    '''Emits current start_thresh_lower_amount.'''
+    emit_payload = {
+        'start_thresh_lower_amount': Options.get('startThreshLowerAmount'),
+    }
+    if ('nobroadcast' in params):
+        emit('start_thresh_lower_amount', emit_payload)
+    else:
+        SOCKET_IO.emit('start_thresh_lower_amount', emit_payload)
+
+def emit_start_thresh_lower_duration(**params):
+    '''Emits current start_thresh_lower_duration.'''
+    emit_payload = {
+        'start_thresh_lower_duration': Options.get('startThreshLowerDuration'),
+    }
+    if ('nobroadcast' in params):
+        emit('start_thresh_lower_duration', emit_payload)
+    else:
+        SOCKET_IO.emit('start_thresh_lower_duration', emit_payload)
 
 def emit_node_tuning(**params):
     '''Emits node tuning values.'''
@@ -4330,6 +4409,10 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
             if pilot_id != Database.PILOT_ID_NONE:
                 if lap_timestamp_absolute >= RACE.start_time_monotonic:
 
+                    # if node EnterAt/ExitAt values need to be restored then do it soon
+                    if node.start_thresh_lower_flag:
+                        node.start_thresh_lower_time = monotonic()
+
                     lap_time_stamp = (lap_timestamp_absolute - RACE.start_time_monotonic)
                     lap_time_stamp *= 1000 # store as milliseconds
 
@@ -4745,6 +4828,9 @@ def db_reset_options_defaults():
     # Event results cache
     Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
 
+    Options.set("startThreshLowerAmount", "0")
+    Options.set("startThreshLowerDuration", "0")
+
     logger.info("Reset global settings")
 
 def backup_db_file(copy_flag):
@@ -4873,7 +4959,9 @@ def recover_database():
             "colorNode_6",
             "colorNode_7",
             "osd_lapHeader",
-            "osd_positionHeader"
+            "osd_positionHeader",
+            "startThreshLowerAmount",
+            "startThreshLowerDuration"
         ]
         carryOver = {}
         for opt in carryoverOpts:

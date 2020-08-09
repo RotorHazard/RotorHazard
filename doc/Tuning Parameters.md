@@ -28,6 +28,18 @@ In between *EnterAt* and *ExitAt*, the system will remain *Crossing* or *Clear* 
 
 *Adaptive* calibration mode uses the user-defined points unless there are saved races. When saved races exist, changing heats will initiate a search of previous race data for the best calibration values to use in the upcoming race. These values are copied and replace the current *EnterAt* and *ExitAt* values for all nodes. This mode improves calibration as more races are saved if the race director confirms the incoming lap counts or recalculates them through the *Marshal* page.
 
+### Start of Race EnterAt/ExitAt Lowering
+
+At the beginning of a race there can be many quads going through the start gate at the same time, and this can result in lower RSSI values being detected on some of the nodes (which could result in an initial gate pass being missed). To try and account for this, the following settings may be configured:
+
+*Start of race EnterAt/ExitAt lowering amount (percent):* Sets the amount that the EnterAt and ExitAt values for all nodes will be reduced, as a percentage. For instance, if 30 (percent) is configured, the EnterAt value will be lowered to a value that is 30% closer to the ExitAt value. (So if EnterAt=90 and ExitAt=80, the EnterAt value will be lowered to 87.) The ExitAt value will be also be lowered by the same amount.
+
+*Start of race EnterAt/ExitAt lowering duration (seconds):* Sets the maximum amount of time (in seconds) that the EnterAt and ExitAt values will be lowered. If a gate crossing for a node is detected as completed before this time then the EnterAt and ExitAt values for that node will be restored then.
+
+Suggested values are 30 (percent) and 10 (seconds). If either of these settings are configured as zero then the EnterAt and ExitAt values will not be lowered.
+
+Note that on the *Marshal* page these settings are taken into consideration, so if they are non-zero then the first lap pass on a node may be detected even though the peak RSSI appears to be lower than the EnterAt level displayed.
+
 ## Tuning
 Before tuning, power up the timer and keep it running for a few minutes to allow the receiver modules to warm up. The RSSI values tend to increase by a few points as the timer heats up.
 

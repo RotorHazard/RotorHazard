@@ -31,3 +31,13 @@ def set(option, value):
     else:
         Database.DB.session.add(Database.GlobalSettings(option_name=option, option_value=value))
     Database.DB.session.commit()
+
+def getInt(option, default_value=0):
+    try:
+        val = GLOBALS_CACHE[option]
+        if val:
+            return int(val)
+        else:
+            return default_value
+    except:
+        return default_value

@@ -65,47 +65,63 @@ class MockInterface(BaseHardwareInterface):
     def update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
         cross_list = []  # list of nodes with crossing-flag changes
+        startThreshLowerNode = None
         for index, node in enumerate(self.nodes):
             if node.frequency:
                 readtime = monotonic()
 
                 node_data = self.data[index]
-                if not node_data:
-                    break;
-
-                data_line = node_data.readline()
-                if data_line == '':
-                    node_data.seek(0)
+                if node_data:
                     data_line = node_data.readline()
-                data_columns = data_line.split(',')
-                lap_id = int(data_columns[1])
-                ms_val = int(data_columns[2])
-                rssi_val = int(data_columns[3])
-                node.node_peak_rssi = int(data_columns[4])
-                node.pass_peak_rssi = int(data_columns[5])
-                node.loop_time = int(data_columns[6])
-                cross_flag = True if data_columns[7]=='T' else False
-                node.pass_nadir_rssi = int(data_columns[8])
-                node.node_nadir_rssi = int(data_columns[9])
-                pn_history = PeakNadirHistory(node.index)
-                pn_history.peakRssi = int(data_columns[10])
-                pn_history.peakFirstTime = int(data_columns[11])
-                pn_history.peakLastTime = int(data_columns[12])
-                pn_history.nadirRssi = int(data_columns[13])
-                pn_history.nadirFirstTime = int(data_columns[14])
-                pn_history.nadirLastTime = int(data_columns[15])
+                    if data_line == '':
+                        node_data.seek(0)
+                        data_line = node_data.readline()
+                    data_columns = data_line.split(',')
+                    lap_id = int(data_columns[1])
+                    ms_val = int(data_columns[2])
+                    rssi_val = int(data_columns[3])
+                    node.node_peak_rssi = int(data_columns[4])
+                    node.pass_peak_rssi = int(data_columns[5])
+                    node.loop_time = int(data_columns[6])
+                    cross_flag = True if data_columns[7]=='T' else False
+                    node.pass_nadir_rssi = int(data_columns[8])
+                    node.node_nadir_rssi = int(data_columns[9])
+                    pn_history = PeakNadirHistory(node.index)
+                    pn_history.peakRssi = int(data_columns[10])
+                    pn_history.peakFirstTime = int(data_columns[11])
+                    pn_history.peakLastTime = int(data_columns[12])
+                    pn_history.nadirRssi = int(data_columns[13])
+                    pn_history.nadirFirstTime = int(data_columns[14])
+                    pn_history.nadirLastTime = int(data_columns[15])
+                    if node.is_valid_rssi(rssi_val):
+                        node.current_rssi = rssi_val
+                        self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list)
+                    else:
+                        self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
 
-                if node.is_valid_rssi(rssi_val):
-                    node.current_rssi = rssi_val
-                    self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list)
-                else:
-                    self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
+                # check if node is set to temporary lower EnterAt/ExitAt values
+                if node.start_thresh_lower_flag:
+                    time_now = monotonic()
+                    if time_now >= node.start_thresh_lower_time:
+                        # if this is the first one found or has earliest time
+                        if startThreshLowerNode == None or node.start_thresh_lower_time < \
+                                            startThreshLowerNode.start_thresh_lower_time:
+                            startThreshLowerNode = node
 
         # process any nodes with crossing-flag changes
         self.process_crossings(cross_list)
 
         # process any nodes with new laps detected
         self.process_updates(upd_list)
+        
+        if startThreshLowerNode:
+            logger.info("For node {0} restoring EnterAt to {1} and ExitAt to {2}"\
+                    .format(startThreshLowerNode.index+1, startThreshLowerNode.enter_at_level, \
+                            startThreshLowerNode.exit_at_level))
+            self.set_enter_at_level(startThreshLowerNode.index, startThreshLowerNode.enter_at_level)
+            self.set_exit_at_level(startThreshLowerNode.index, startThreshLowerNode.exit_at_level)
+            startThreshLowerNode.start_thresh_lower_flag = False
+            startThreshLowerNode.start_thresh_lower_time = 0
 
 
     #
