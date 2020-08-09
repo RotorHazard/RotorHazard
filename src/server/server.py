@@ -3136,7 +3136,7 @@ def emit_round_data_thread(params, sid):
         timing = {
             'start': monotonic()
         }
-        logger.warn('T%d: Round data build started', timing['start'])
+        logger.debug('T%d: Round data build started', timing['start'])
 
         CACHE_TIMEOUT = 10
         expires = monotonic() + CACHE_TIMEOUT
