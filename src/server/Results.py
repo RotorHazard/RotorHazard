@@ -283,7 +283,7 @@ def calc_leaderboard(DB, **params):
             laps_total = 0
             for lap in current_laps[i]:
                 race_total += lap['lap_time']
-                if lap > 0:
+                if lap['lap_number'] > 0:
                     laps_total += lap['lap_time']
 
             total_time.append(race_total)
