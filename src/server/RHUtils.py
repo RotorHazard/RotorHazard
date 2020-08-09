@@ -70,7 +70,7 @@ def checkSetFileOwnerPi(fileNameStr):
                     if os.path.isdir(fileNameStr):  # if dir then also apply to files in dir
                         file_list = list(filter(os.path.isfile, glob.glob(fileNameStr + "/*.*")))
                         for chk_path in file_list:
-                            checkSetFileOwnerPi(chk_path, logger)
+                            checkSetFileOwnerPi(chk_path)
                     return True
                 logger.info("Unable to change owner in 'checkSetFileOwnerPi()': " + fileNameStr)
     except Exception:
