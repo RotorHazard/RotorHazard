@@ -3290,7 +3290,7 @@ def emit_round_data_thread(params, sid):
 
             gevent.sleep()
             if Options.get("eventResults_cacheStatus") == Results.CacheStatus.INVALID:
-                logger.info('Event cache invalid; rebuilding', race_class.id)
+                logger.info('Event cache invalid; rebuilding')
                 results = Results.calc_leaderboard(DB)
                 Options.set("eventResults", json.dumps(results))
                 Options.set("eventResults_cacheStatus", Results.CacheStatus.VALID)
