@@ -2326,22 +2326,26 @@ def on_resave_laps(data):
     emit_priority_message(message, False)
     logger.info(message)
 
+    # run adaptive calibration
+    if int(Options.get('calibrationMode')):
+        autoUpdateCalibration()
+
     # spawn thread for updating results caches
     params = {
         'race_id': race_id,
         'heat_id': heat_id,
         'round_id': round_id,
     }
-    gevent.spawn(Results.build_race_results_caches, DB, params)
+    gevent.spawn(update_result_caches, params)
 
     Events.trigger(Evt.LAPS_RESAVE, {
         'race_id': race_id,
         'pilot_id': pilot_id,
         })
 
+def update_result_caches(params):
+    Results.build_race_results_caches(DB, params)
     emit_round_data_notify()
-    if int(Options.get('calibrationMode')):
-        autoUpdateCalibration()
 
 @SOCKET_IO.on('discard_laps')
 def on_discard_laps(**kwargs):
@@ -3129,23 +3133,35 @@ def emit_round_data(**params):
 def emit_round_data_thread(params, sid):
     with APP.test_request_context():
         '''Emits saved races to rounds page.'''
-        CACHE_TIMEOUT = 30
+        timing = {
+            'start': monotonic()
+        }
+        logger.warn('T%d: Round data build started', timing['start'])
+
+        CACHE_TIMEOUT = 10
+        expires = monotonic() + CACHE_TIMEOUT
+        error_flag = False
 
         global FULL_RESULTS_CACHE
         global FULL_RESULTS_CACHE_BUILDING
         global FULL_RESULTS_CACHE_VALID
 
+        if FULL_RESULTS_CACHE_BUILDING: # Don't restart calculation if another calculation thread exists
+            while True: # Pause this thread until calculations are completed
+                gevent.idle()
+                if FULL_RESULTS_CACHE_BUILDING is False:
+                    break
+                elif monotonic() > FULL_RESULTS_CACHE_BUILDING + CACHE_TIMEOUT:
+                    logger.warn('T%d: Timed out waiting for other cache build thread', timing['start'])
+                    FULL_RESULTS_CACHE_BUILDING = False
+                    break
+
         if FULL_RESULTS_CACHE_VALID: # Output existing calculated results
             emit_payload = FULL_RESULTS_CACHE
 
-        elif FULL_RESULTS_CACHE_BUILDING: # Don't restart calculation if another calculation thread exists
-            while FULL_RESULTS_CACHE_BUILDING is True: # Pause thread until calculations are completed
-                gevent.sleep(1)
-
-            emit_payload = FULL_RESULTS_CACHE
-
         else:
-            FULL_RESULTS_CACHE_BUILDING = True
+            timing['build_start'] = monotonic()
+            FULL_RESULTS_CACHE_BUILDING = monotonic()
 
             heats = {}
             for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
@@ -3159,13 +3175,13 @@ def emit_round_data_thread(params, sid):
                         laps = []
                         for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
                             laps.append({
-                                    'id': lap.id,
-                                    'lap_time_stamp': lap.lap_time_stamp,
-                                    'lap_time': lap.lap_time,
-                                    'lap_time_formatted': lap.lap_time_formatted,
-                                    'source': lap.source,
-                                    'deleted': lap.deleted
-                                })
+                                'id': lap.id,
+                                'lap_time_stamp': lap.lap_time_stamp,
+                                'lap_time': lap.lap_time,
+                                'lap_time_formatted': lap.lap_time_formatted,
+                                'source': lap.source,
+                                'deleted': lap.deleted
+                            })
 
                         pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
                         if pilot_data:
@@ -3180,19 +3196,22 @@ def emit_round_data_thread(params, sid):
                             'laps': laps
                         })
                     if round.cacheStatus == Results.CacheStatus.INVALID:
+                        logger.info('Heat %d Round %d cache invalid; rebuilding', heat.heat_id, round.round_id)
                         results = Results.calc_leaderboard(DB, heat_id=heat.heat_id, round_id=round.round_id)
                         round.results = results
                         round.cacheStatus = Results.CacheStatus.VALID
                         DB.session.commit()
                     else:
-                        checkStatus = True
-                        while checkStatus:
+                        expires = monotonic() + CACHE_TIMEOUT
+                        while True:
                             gevent.idle()
                             if round.cacheStatus == Results.CacheStatus.VALID:
                                 results = round.results
                                 break
-                            elif isinstance(round.cacheStatus, int) and round.cacheStatus < monotonic() + CACHE_TIMEOUT:
-                                checkStatus = False
+                            elif monotonic() > expires:
+                                logger.warn('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, round.round_id)
+                                error_flag = True
+                                break
 
                     rounds.append({
                         'id': round.round_id,
@@ -3202,19 +3221,23 @@ def emit_round_data_thread(params, sid):
                     })
 
                 if heatdata.cacheStatus == Results.CacheStatus.INVALID:
+                    logger.info('Heat %d cache invalid; rebuilding', heat.heat_id)
                     results = Results.calc_leaderboard(DB, heat_id=heat.heat_id)
                     heatdata.results = results
                     heatdata.cacheStatus = Results.CacheStatus.VALID
                     DB.session.commit()
                 else:
                     checkStatus = True
-                    while checkStatus:
+                    expires = monotonic() + CACHE_TIMEOUT
+                    while True:
                         gevent.idle()
                         if heatdata.cacheStatus == Results.CacheStatus.VALID:
                             results = heatdata.results
                             break
-                        elif isinstance(heatdata.cacheStatus, int) and heatdata.cacheStatus < monotonic() + CACHE_TIMEOUT:
-                            checkStatus = False
+                        elif monotonic() > expires:
+                            logger.warn('T%d: Cache build timed out: Heat Summary %d', timing['start'], heat.heat_id)
+                            error_flag = True
+                            break
 
                 heats[heat.heat_id] = {
                     'heat_id': heat.heat_id,
@@ -3223,30 +3246,38 @@ def emit_round_data_thread(params, sid):
                     'leaderboard': results
                 }
 
+            timing['round_results'] = monotonic()
+            logger.debug('T%d: round results assembled in: %fs', timing['start'], timing['round_results'] - timing['build_start'])
+
             gevent.sleep()
             heats_by_class = {}
             heats_by_class[Database.CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=Database.CLASS_ID_NONE).all()]
             for race_class in Database.RaceClass.query.all():
                 heats_by_class[race_class.id] = [heat.id for heat in Database.Heat.query.filter_by(class_id=race_class.id).all()]
 
+            timing['by_class'] = monotonic()
+
             gevent.sleep()
             current_classes = {}
             for race_class in Database.RaceClass.query.all():
-
                 if race_class.cacheStatus == Results.CacheStatus.INVALID:
+                    logger.info('Class %d cache invalid; rebuilding', race_class.id)
                     results = Results.calc_leaderboard(DB, class_id=race_class.id)
                     race_class.results = results
                     race_class.cacheStatus = Results.CacheStatus.VALID
                     DB.session.commit()
                 else:
                     checkStatus = True
-                    while checkStatus:
+                    expires = monotonic() + CACHE_TIMEOUT
+                    while True:
                         gevent.idle()
                         if race_class.cacheStatus == Results.CacheStatus.VALID:
                             results = race_class.results
                             break
-                        elif isinstance(race_class.cacheStatus, int) and race_class.cacheStatus < monotonic() + CACHE_TIMEOUT:
-                            checkStatus = False
+                        elif monotonic() > expires:
+                            logger.warn('T%d: Cache build timed out: Class Summary %d', timing['start'], race_class.id)
+                            error_flag = True
+                            break
 
                 current_class = {}
                 current_class['id'] = race_class.id
@@ -3255,23 +3286,31 @@ def emit_round_data_thread(params, sid):
                 current_class['leaderboard'] = results
                 current_classes[race_class.id] = current_class
 
-            gevent.sleep()
+            timing['event'] = monotonic()
+            logger.debug('T%d: results by class assembled in: %fs', timing['start'], timing['event'] - timing['by_class'])
 
+            gevent.sleep()
             if Options.get("eventResults_cacheStatus") == Results.CacheStatus.INVALID:
+                logger.info('Event cache invalid; rebuilding')
                 results = Results.calc_leaderboard(DB)
                 Options.set("eventResults", json.dumps(results))
                 Options.set("eventResults_cacheStatus", Results.CacheStatus.VALID)
                 DB.session.commit()
             else:
-                checkStatus = True
-                while checkStatus:
+                expires = monotonic() + CACHE_TIMEOUT
+                while True:
                     gevent.idle()
                     status = Options.get("eventResults_cacheStatus")
                     if status == Results.CacheStatus.VALID:
                         results = json.loads(Options.get("eventResults"))
                         break
-                    elif isinstance(status, int) and status < monotonic() + CACHE_TIMEOUT:
-                        checkStatus = False
+                    elif monotonic() > expires:
+                        logger.warn('Cache build timed out: Event Summary')
+                        error_flag = True
+                        break
+
+            timing['event_end'] = monotonic()
+            logger.debug('T%d: event results assembled in: %fs', timing['start'], timing['event_end'] - timing['event'])
 
             emit_payload = {
                 'heats': heats,
@@ -3280,11 +3319,21 @@ def emit_round_data_thread(params, sid):
                 'event_leaderboard': results
             }
 
-            FULL_RESULTS_CACHE = emit_payload
-            FULL_RESULTS_CACHE_VALID = True
             FULL_RESULTS_CACHE_BUILDING = False
+            if error_flag:
+                logger.warn('T%d: Cache results build failed; leaving page cache invalid', timing['start'])
+                # pass message to front-end? ***
+            else:
 
-            Events.trigger(Evt.CACHE_READY)
+                FULL_RESULTS_CACHE = emit_payload
+                FULL_RESULTS_CACHE_VALID = True
+
+            Events.trigger(Evt.CACHE_READY) # should this trigger if error?
+            logger.debug('T%d: Page cache built in: %fs', timing['start'], monotonic() - timing['build_start'])
+
+        timing['end'] = monotonic()
+
+        logger.info('T%d: Results returned in: %fs', timing['start'], timing['end'] - timing['start'])
 
         if ('nobroadcast' in params):
             emit('round_data', emit_payload, namespace='/', room=sid)
