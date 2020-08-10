@@ -1457,9 +1457,12 @@ var freq = {
 		D3: 5735,
 		D4: 5770,
 		D5: 5805,
-		D6: 5878,
+		D6: 5880,
 		D7: 5914,
 		D8: 5839,
+		J1: 5695,
+		J2: 5770,
+		J3: 5880,
 		'N/A': 'n/a'
 	},
 	findByFreq: function(frequency) {
