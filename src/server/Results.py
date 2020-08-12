@@ -734,11 +734,13 @@ def calc_team_leaderboard(RACE):
             leaderboard_output['meta'] = {
                 'primary_leaderboard': primary_leaderboard,
                 'win_condition': race_format.win_condition,
+                'teams': teams
             }
         else:
             leaderboard_output['meta'] = {
                 'primary_leaderboard': 'by_race_time',
                 'win_condition': WinCondition.NONE,
+                'teams': teams
             }
 
         return leaderboard_output
