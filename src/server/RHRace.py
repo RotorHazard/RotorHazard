@@ -60,11 +60,11 @@ def get_race_state():
 
 class WinCondition():
     NONE = 0
-    MOST_LAPS = 1
+    MOST_PROGRESS = 1 # most laps in fastest time
     FIRST_TO_LAP_X = 2
     FASTEST_LAP = 3
     FASTEST_3_CONSECUTIVE = 4
-    MOST_PROGRESS = 5 # most laps in fastest time
+    MOST_LAPS = 5 # lap count only
 
 class WinStatus():
     NONE = 0

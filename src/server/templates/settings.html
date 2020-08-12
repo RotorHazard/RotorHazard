@@ -2044,7 +2044,7 @@
 			<li>
 				<div class="label-block">
 					<label for="set_fix_race_time">{{ __('Timer Duration (seconds)') }}</label>
-					<p class="desc">{{ __('Used for Count Down timed races') }}</p>
+					<p class="desc">{{ __('Used for Fixed Time races') }}</p>
 				</div>
 				<input type="number" id="set_fix_race_time" min="0" max="99999">
 			</li>
@@ -2085,8 +2085,8 @@
 					<label for="set_win_condition">{{ __('Win Condition') }}</label>
 				</div>
 				<select id="set_win_condition">
-					<option value="5">{{ __('Fastest Progress') }}</option>
-					<option value="1">{{ __('Most Laps Only') }}</option>
+					<option value="1">{{ __('Most Laps + Fastest Time') }}</option>
+					<option value="5">{{ __('Most Laps Only') }}</option>
 					<option value="2">{{ __('First to X Laps') }}</option>
 					<option value="3">{{ __('Fastest Lap') }}</option>
 					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
