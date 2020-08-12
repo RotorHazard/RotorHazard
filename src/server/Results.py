@@ -745,7 +745,7 @@ def calc_team_leaderboard(RACE):
     return None
 
 def check_win_condition(RACE, INTERFACE):
-    if RACE.win_status != WinStatus.DECLARED:
+    if RACE.win_status in [WinStatus.NONE, WinStatus.PENDING_CROSSING]:
         race_format = RACE.format
         if race_format:
             if race_format.team_racing_mode:

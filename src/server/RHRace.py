@@ -71,7 +71,6 @@ class WinStatus():
     TIE = 1
     PENDING_CROSSING = 2
     DECLARED = 3
-    DECLARED_TIE = 4
 
 class RaceStatus():
     READY = 0
