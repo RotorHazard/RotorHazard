@@ -2211,12 +2211,13 @@ def race_expire_thread(start_token):
 
             RACE.timer_running = False # indicate race timer no longer running
             Events.trigger(Evt.RACE_FINISH)
-            win_result = check_win_condition(RACE, INTERFACE)
+            win_result = check_win_condition(RACE, INTERFACE, at_finish=True)
 
             if 'max_consideration' in win_result:
                 gevent.sleep(win_result['max_consideration'] / 1000)
-                logger.debug("Maximum win condition consideration time has expired.")
-                check_win_condition(RACE, INTERFACE, forced=True)
+                if RACE.start_token == start_token:
+                    logger.debug("Maximum win condition consideration time has expired.")
+                    check_win_condition(RACE, INTERFACE, forced=True)
 
         else:
             logger.debug("Killing unused time expires thread")

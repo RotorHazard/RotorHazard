@@ -779,38 +779,37 @@ def check_win_laps_and_time(RACE, INTERFACE, **kwargs):
         (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False) or \
         'forced' in kwargs: # racing must be completed
         leaderboard = RACE.results['by_race_time']
-        if len(leaderboard):
+        if len(leaderboard) > 1:
             lead_lap = leaderboard[0]['laps']
             lead_lap_time = leaderboard[0]['total_time_raw']
 
             if lead_lap > 0: # must have at least one lap
-                if len(leaderboard) > 1:
-                    # prevent win declaration if there are active crossings coming onto lead lap
-                    for line in leaderboard[1:]:
-                        if line['laps'] >= lead_lap - 1:
-                            node = INTERFACE.nodes[line['node']]
-                            if node.pass_crossing_flag:
-                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                                return {
-                                    'status': WinStatus.PENDING_CROSSING
-                                }
-                        else:
-                            # lower results no longer need checked
-                            break
-
-                    # check for tie
-                    if leaderboard[1]['laps'] == lead_lap:
-                        if leaderboard[1]['total_time_raw'] == leaderboard[0]['total_time_raw']:
-                            logger.info('Race tied at {0}/{1}'.format(leaderboard[0]['laps'], leaderboard[0]['total_time']))
+                # prevent win declaration if there are active crossings coming onto lead lap
+                for line in leaderboard[1:]:
+                    if line['laps'] >= lead_lap - 1:
+                        node = INTERFACE.nodes[line['node']]
+                        if node.pass_crossing_flag:
+                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
                             return {
-                                'status': WinStatus.TIE
+                                'status': WinStatus.PENDING_CROSSING
                             }
+                    else:
+                        # lower results no longer need checked
+                        break
 
-                    # no tie or active crossings; declare winner
-                    return {
-                        'status': WinStatus.DECLARED,
-                        'data': leaderboard[0]
-                    }
+                # check for tie
+                if leaderboard[1]['laps'] == lead_lap:
+                    if leaderboard[1]['total_time_raw'] == leaderboard[0]['total_time_raw']:
+                        logger.info('Race tied at {0}/{1}'.format(leaderboard[0]['laps'], leaderboard[0]['total_time']))
+                        return {
+                            'status': WinStatus.TIE
+                        }
+
+                # no tie or active crossings; declare winner
+                return {
+                    'status': WinStatus.DECLARED,
+                    'data': leaderboard[0]
+                }
     return {
         'status': WinStatus.NONE
     }
@@ -820,36 +819,35 @@ def check_win_most_laps(RACE, INTERFACE, **kwargs):
         (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False) or \
         'forced' in kwargs: # racing must be completed
         leaderboard = RACE.results['by_race_time']
-        if len(leaderboard):
+        if len(leaderboard) > 1:
             lead_lap = leaderboard[0]['laps']
 
             if lead_lap > 0: # must have at least one lap
-                if len(leaderboard) > 1:
-                    # check if there are active crossings coming onto lead lap
-                    for line in leaderboard[1:]:
-                        if line['laps'] >= lead_lap - 1:
-                            node = INTERFACE.nodes[line['node']]
-                            if node.pass_crossing_flag:
-                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                                return {
-                                    'status': WinStatus.PENDING_CROSSING
-                                }
-                        else:
-                            # lower results no longer need checked
-                            break
+                # check if there are active crossings coming onto lead lap
+                for line in leaderboard[1:]:
+                    if line['laps'] >= lead_lap - 1:
+                        node = INTERFACE.nodes[line['node']]
+                        if node.pass_crossing_flag:
+                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                            return {
+                                'status': WinStatus.PENDING_CROSSING
+                            }
+                    else:
+                        # lower results no longer need checked
+                        break
 
-                    # check for tie
-                    if leaderboard[1]['laps'] == lead_lap:
-                        logger.info('Race tied at %d laps', leaderboard[1]['laps'])
-                        return {
-                            'status': WinStatus.TIE
-                        }
-
-                    # no tie or active crossings; declare winner
+                # check for tie
+                if leaderboard[1]['laps'] == lead_lap:
+                    logger.info('Race tied at %d laps', leaderboard[1]['laps'])
                     return {
-                        'status': WinStatus.DECLARED,
-                        'data': leaderboard[0]
+                        'status': WinStatus.TIE
                     }
+
+                # no tie or active crossings; declare winner
+                return {
+                    'status': WinStatus.DECLARED,
+                    'data': leaderboard[0]
+                }
     return {
         'status': WinStatus.NONE
     }
@@ -858,37 +856,36 @@ def check_win_first_to_x(RACE, INTERFACE, **kwargs):
     race_format = RACE.format
     if race_format.number_laps_win: # must have laps > 0 to win
         leaderboard = RACE.results['by_race_time']
-        if len(leaderboard):
+        if len(leaderboard) > 1:
             lead_lap = leaderboard[0]['laps']
 
             if lead_lap >= race_format.number_laps_win: # lead lap passes win threshold
-                if len(leaderboard) > 1:
-                    # prevent win declaration if there are active crossings coming onto lead lap
-                    for line in leaderboard[1:]: # check lower position
-                        if line['laps'] >= lead_lap - 1:
-                            node = INTERFACE.nodes[line['node']]
-                            if node.pass_crossing_flag:
-                                logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                                return {
-                                    'status': WinStatus.PENDING_CROSSING
-                                }
-                        else:
-                            # lower results no longer need checked
-                            break
-
-                    # check for tie
-                    if leaderboard[1]['laps'] == lead_lap:
-                        if leaderboard[1]['total_time_raw'] == leaderboard[0]['total_time_raw']:
-                            logger.info('Race tied at {0}/{1}'.format(leaderboard[0]['laps'], leaderboard[0]['total_time']))
+                # prevent win declaration if there are active crossings coming onto lead lap
+                for line in leaderboard[1:]: # check lower position
+                    if line['laps'] >= lead_lap - 1:
+                        node = INTERFACE.nodes[line['node']]
+                        if node.pass_crossing_flag:
+                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
                             return {
-                                'status': WinStatus.TIE
+                                'status': WinStatus.PENDING_CROSSING
                             }
+                    else:
+                        # lower results no longer need checked
+                        break
 
-                    # no active crossings; declare winner
-                    return {
-                        'status': WinStatus.DECLARED,
-                        'data': leaderboard[0]
-                    }
+                # check for tie
+                if leaderboard[1]['laps'] == lead_lap:
+                    if leaderboard[1]['total_time_raw'] == leaderboard[0]['total_time_raw']:
+                        logger.info('Race tied at {0}/{1}'.format(leaderboard[0]['laps'], leaderboard[0]['total_time']))
+                        return {
+                            'status': WinStatus.TIE
+                        }
+
+                # no active crossings; declare winner
+                return {
+                    'status': WinStatus.DECLARED,
+                    'data': leaderboard[0]
+                }
     return {
         'status': WinStatus.NONE
     }
@@ -897,33 +894,31 @@ def check_win_fastest_lap(RACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         'forced' in kwargs: # racing must be completed
         leaderboard = RACE.results['by_fastest_lap']
-        if len(leaderboard):
+        if len(leaderboard) > 1:
             fast_lap = leaderboard[0]['fastest_lap_raw']
 
             if fast_lap > 0: # must have at least one lap
-                if len(leaderboard) > 1:
-                    # check for tie
-                    if leaderboard[1]['fastest_lap_raw'] == fast_lap:
-                        logger.info('Race tied at %s', leaderboard[1]['fastest_lap'])
-                        return {
-                            'status': WinStatus.TIE
-                        }
-                    # declare winner
+                # check for tie
+                if leaderboard[1]['fastest_lap_raw'] == fast_lap:
+                    logger.info('Race tied at %s', leaderboard[1]['fastest_lap'])
                     return {
-                        'status': WinStatus.DECLARED,
-                        'data': leaderboard[0]
+                        'status': WinStatus.TIE
                     }
-    elif (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False):
+                # declare winner
+                return {
+                    'status': WinStatus.DECLARED,
+                    'data': leaderboard[0]
+                }
+    elif 'at_finish' in kwargs:
         leaderboard = RACE.results['by_fastest_lap']
-        if len(leaderboard):
+        if len(leaderboard) > 1:
             fast_lap = leaderboard[0]['fastest_lap_raw']
 
             if fast_lap > 0: # must have at least one lap
-                if len(leaderboard) > 1:
-                    return {
-                        'status': WinStatus.NONE,
-                        'max_consideration': fast_lap
-                    }
+                return {
+                    'status': WinStatus.NONE,
+                    'max_consideration': fast_lap
+                }
 
     return {
         'status': WinStatus.NONE
@@ -933,33 +928,41 @@ def check_win_fastest_consecutive(RACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         'forced' in kwargs: # racing must be completed
         leaderboard = RACE.results['by_consecutives']
-        if len(leaderboard):
+        if len(leaderboard) > 1:
             fast_lap = leaderboard[0]['consecutives_raw']
 
             if fast_lap > 3: # must have at least 3 laps
-                if len(leaderboard) > 1:
-                    # check for tie
-                    if leaderboard[1]['consecutives_raw'] == fast_lap:
-                        logger.info('Race tied at %s', leaderboard[1]['consecutives'])
-                        return {
-                            'status': WinStatus.TIE
-                        }
-                    # declare winner
+                # check for tie
+                if leaderboard[1]['consecutives_raw'] == fast_lap:
+                    logger.info('Race tied at %s', leaderboard[1]['consecutives'])
                     return {
-                        'status': WinStatus.DECLARED,
-                        'data': leaderboard[0]
+                        'status': WinStatus.TIE
                     }
-    elif (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False):
+                # declare winner
+                return {
+                    'status': WinStatus.DECLARED,
+                    'data': leaderboard[0]
+                }
+    elif 'at_finish' in kwargs:
         leaderboard = RACE.results['by_consecutives']
-        if len(leaderboard):
-            fast_lap = leaderboard[0]['consecutives_raw']
+        if len(leaderboard) > 1:
+            fast_consecutives = leaderboard[0]['consecutives_raw']
 
-            if fast_lap > 3: # must have at least 3 laps
-                if len(leaderboard) > 1:
-                    return {
-                        'status': WinStatus.NONE,
-                        'max_consideration': fast_lap
-                    }
+            if fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
+                max_node_consideration = 0
+                logger.debug(fast_consecutives)
+                for node in RACE.node_laps:
+                    laps = RACE.node_laps[node]
+                    if len(laps) >= 2:
+                        last_2_laps = laps[-1]['lap_time'] + laps[-2]['lap_time']
+                        logger.debug(fast_consecutives - last_2_laps)
+                        max_node_consideration = max(max_node_consideration, (fast_consecutives - last_2_laps))
+
+                logger.debug(max_consideration)
+                return {
+                    'status': WinStatus.NONE,
+                    'max_consideration': max_node_consideration
+                }
 
     return {
         'status': WinStatus.NONE
@@ -971,34 +974,33 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
         'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
-        if len(team_leaderboard) and len(individual_leaderboard):
+        if len(team_leaderboard) > 1 and len(individual_leaderboard):
             lead_lap = team_leaderboard[0]['laps']
             lead_lap_time = team_leaderboard[0]['total_time_raw']
 
             if lead_lap > 0: # must have at least one lap
-                if len(team_leaderboard) > 1:
-                    # prevent win declaration if there are active crossings
-                    for line in individual_leaderboard:
-                        node = INTERFACE.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
+                # prevent win declaration if there are active crossings
+                for line in individual_leaderboard:
+                    node = INTERFACE.nodes[line['node']]
+                    if node.pass_crossing_flag:
+                        logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                        return {
+                            'status': WinStatus.PENDING_CROSSING
+                        }
 
-                    # check for tie
-                    if team_leaderboard[1]['laps'] == lead_lap:
-                        if team_leaderboard[1]['total_time_raw'] == team_leaderboard[0]['total_time_raw']:
-                            logger.info('Race tied at {0}/{1}'.format(leaderboard[0]['laps'], leaderboard[0]['total_time']))
-                            return {
-                                'status': WinStatus.TIE
-                            }
+                # check for tie
+                if team_leaderboard[1]['laps'] == lead_lap:
+                    if team_leaderboard[1]['total_time_raw'] == team_leaderboard[0]['total_time_raw']:
+                        logger.info('Race tied at {0}/{1}'.format(leaderboard[0]['laps'], leaderboard[0]['total_time']))
+                        return {
+                            'status': WinStatus.TIE
+                        }
 
-                    # no tie or active crossings; declare winner
-                    return {
-                        'status': WinStatus.DECLARED,
-                        'data': team_leaderboard[0]
-                    }
+                # no tie or active crossings; declare winner
+                return {
+                    'status': WinStatus.DECLARED,
+                    'data': team_leaderboard[0]
+                }
     return {
         'status': WinStatus.NONE
     }
@@ -1009,38 +1011,37 @@ def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
         'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
-        if len(team_leaderboard) and len(individual_leaderboard):
+        if len(team_leaderboard) > 1 and len(individual_leaderboard):
             lead_lap = team_leaderboard[0]['laps']
 
             if lead_lap > 0: # must have at least one lap
-                if len(team_leaderboard) > 1:
-                    # prevent win declaration if there are active crossings
-                    for line in individual_leaderboard:
-                        node = INTERFACE.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
+                # prevent win declaration if there are active crossings
+                for line in individual_leaderboard:
+                    node = INTERFACE.nodes[line['node']]
+                    if node.pass_crossing_flag:
+                        logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                        return {
+                            'status': WinStatus.PENDING_CROSSING
+                        }
 
-                    # check for tie
-                    if team_leaderboard[1]['laps'] == lead_lap:
-                        if team_leaderboard[1]['total_time_raw'] == team_leaderboard[0]['total_time_raw']:
-                            logger.info('Race tied at {0}/{1}'.format(leaderboard[0]['laps'], leaderboard[0]['total_time']))
-                            return {
-                                'status': WinStatus.TIE
-                            }
-
-                        logger.info('Race tied at %d laps', team_leaderboard[1]['laps'])
+                # check for tie
+                if team_leaderboard[1]['laps'] == lead_lap:
+                    if team_leaderboard[1]['total_time_raw'] == team_leaderboard[0]['total_time_raw']:
+                        logger.info('Race tied at {0}/{1}'.format(leaderboard[0]['laps'], leaderboard[0]['total_time']))
                         return {
                             'status': WinStatus.TIE
                         }
 
-                    # no tie or active crossings; declare winner
+                    logger.info('Race tied at %d laps', team_leaderboard[1]['laps'])
                     return {
-                        'status': WinStatus.DECLARED,
-                        'data': team_leaderboard[0]
+                        'status': WinStatus.TIE
                     }
+
+                # no tie or active crossings; declare winner
+                return {
+                    'status': WinStatus.DECLARED,
+                    'data': team_leaderboard[0]
+                }
     return {
         'status': WinStatus.NONE
     }
@@ -1050,33 +1051,32 @@ def check_win_team_first_to_x(RACE, INTERFACE, **kwargs):
     if race_format.number_laps_win: # must have laps > 0 to win
         team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
-        if len(team_leaderboard) and len(individual_leaderboard):
+        if len(team_leaderboard) > 1 and len(individual_leaderboard):
             lead_lap = team_leaderboard[0]['laps']
 
             if lead_lap >= race_format.number_laps_win: # lead lap passes win threshold
-                if len(team_leaderboard) > 1:
-                    # prevent win declaration if there are active crossings
-                    for line in individual_leaderboard:
-                        node = INTERFACE.nodes[line['node']]
-                        if node.pass_crossing_flag:
-                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                            return {
-                                'status': WinStatus.PENDING_CROSSING
-                            }
-
-                    # check for tie
-                    if team_leaderboard[1]['laps'] == lead_lap:
-                        logger.info('Race tied at %d laps', team_leaderboard[1]['laps'])
-                        # TODO: DECLARED_TIE ***
+                # prevent win declaration if there are active crossings
+                for line in individual_leaderboard:
+                    node = INTERFACE.nodes[line['node']]
+                    if node.pass_crossing_flag:
+                        logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
                         return {
-                            'status': WinStatus.TIE
+                            'status': WinStatus.PENDING_CROSSING
                         }
 
-                    # no active crossings; declare winner
+                # check for tie
+                if team_leaderboard[1]['laps'] == lead_lap:
+                    logger.info('Race tied at %d laps', team_leaderboard[1]['laps'])
+                    # TODO: DECLARED_TIE ***
                     return {
-                        'status': WinStatus.DECLARED,
-                        'data': team_leaderboard[0]
+                        'status': WinStatus.TIE
                     }
+
+                # no active crossings; declare winner
+                return {
+                    'status': WinStatus.DECLARED,
+                    'data': team_leaderboard[0]
+                }
     return {
         'status': WinStatus.NONE
     }
@@ -1085,25 +1085,23 @@ def check_win_team_fastest_lap(RACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(RACE)['by_avg_fastest_lap']
-        if len(team_leaderboard):
+        if len(team_leaderboard) > 1:
             if team_leaderboard[0]['laps'] > 0: # must have at least one lap
+                # check for tie
+                if team_leaderboard[1]['contribution_amt'] == team_leaderboard[0]['contribution_amt'] and \
+                    team_leaderboard[1]['average_fastest_lap_raw'] == team_leaderboard[0]['average_fastest_lap_raw'] and \
+                    team_leaderboard[1]['laps'] == team_leaderboard[1]['laps']:
 
-                if len(team_leaderboard) > 1:
-                    # check for tie
-                    if team_leaderboard[1]['contribution_amt'] == team_leaderboard[0]['contribution_amt'] and \
-                        team_leaderboard[1]['average_fastest_lap_raw'] == team_leaderboard[0]['average_fastest_lap_raw'] and \
-                        team_leaderboard[1]['laps'] == team_leaderboard[1]['laps']:
-
-                        logger.info('Race tied at %s', team_leaderboard[1]['average_fastest_lap'])
-                        return {
-                            'status': WinStatus.TIE
-                        }
-                    # declare winner
+                    logger.info('Race tied at %s', team_leaderboard[1]['average_fastest_lap'])
                     return {
-                        'status': WinStatus.DECLARED,
-                        'data': team_leaderboard[0]
+                        'status': WinStatus.TIE
                     }
-    elif (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False):
+                # declare winner
+                return {
+                    'status': WinStatus.DECLARED,
+                    'data': team_leaderboard[0]
+                }
+    elif 'at_finish' in kwargs:
         team_leaderboard = calc_team_leaderboard(RACE)['by_avg_fastest_lap']
         if len(team_leaderboard):
             if team_leaderboard[0]['laps'] > 0: # must have at least one lap
@@ -1123,24 +1121,23 @@ def check_win_team_fastest_consecutive(RACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(RACE)['by_avg_consecutives']
-        if len(team_leaderboard):
+        if len(team_leaderboard) > 1:
             if team_leaderboard[0]['laps'] > 3: # must have at least 3 laps
-                if len(team_leaderboard) > 1:
-                    # check for tie
-                    if team_leaderboard[1]['contribution_amt'] == team_leaderboard[0]['contribution_amt'] and \
-                        team_leaderboard[1]['average_consecutives_raw'] == team_leaderboard[0]['average_consecutives_raw'] and \
-                        team_leaderboard[1]['laps'] == team_leaderboard[1]['laps']:
+                # check for tie
+                if team_leaderboard[1]['contribution_amt'] == team_leaderboard[0]['contribution_amt'] and \
+                    team_leaderboard[1]['average_consecutives_raw'] == team_leaderboard[0]['average_consecutives_raw'] and \
+                    team_leaderboard[1]['laps'] == team_leaderboard[1]['laps']:
 
-                        logger.info('Race tied at %s', team_leaderboard[1]['average_consecutives'])
-                        return {
-                            'status': WinStatus.TIE
-                        }
-                    # declare winner
+                    logger.info('Race tied at %s', team_leaderboard[1]['average_consecutives'])
                     return {
-                        'status': WinStatus.DECLARED,
-                        'data': team_leaderboard[0]
+                        'status': WinStatus.TIE
                     }
-    elif (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False):
+                # declare winner
+                return {
+                    'status': WinStatus.DECLARED,
+                    'data': team_leaderboard[0]
+                }
+    elif 'at_finish' in kwargs:
         team_leaderboard = calc_team_leaderboard(RACE)['by_avg_consecutives']
         if len(team_leaderboard):
             if team_leaderboard[0]['laps'] > 3: # must have at least 3 laps
