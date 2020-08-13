@@ -2191,8 +2191,35 @@ def race_start_thread(start_token):
         RACE.timer_running = True # indicate race timer is running
         RACE.laps_winner_name = None  # name of winner in first-to-X-laps race
         RACE.winning_lap_id = 0  # track winning lap-id if race tied during first-to-X-laps race
+
+        # kick off race expire processing
+        race_format = getCurrentRaceFormat()
+        if race_format and race_format.race_mode == 0: # count down
+            gevent.spawn(race_expire_thread, start_token)
+
         emit_race_status() # Race page, to set race button states
         logger.info('Race started at {0} ({1:13f})'.format(RACE.start_time_monotonic, monotonic_to_milliseconds(RACE.start_time_monotonic)))
+
+def race_expire_thread(start_token):
+    global RACE
+    race_format = getCurrentRaceFormat()
+    if race_format and race_format.race_mode == 0: # count down
+        gevent.sleep(race_format.race_time_sec)
+
+        if RACE.start_token == start_token:
+            logger.info("Race time has exprired.")
+
+            RACE.timer_running = False # indicate race timer no longer running
+            Events.trigger(Evt.RACE_FINISH)
+            win_result = check_win_condition(RACE, INTERFACE)
+
+            if 'max_consideration' in win_result:
+                gevent.sleep(win_result['max_consideration'] / 1000)
+                logger.debug("Maximum win condition consideration time has expired.")
+                check_win_condition(RACE, INTERFACE, forced=True)
+
+        else:
+            logger.debug("Killing unused time expires thread")
 
 @SOCKET_IO.on('stop_race')
 def on_stop_race():
@@ -3733,10 +3760,6 @@ def heartbeat_thread_function():
             SOCKET_IO.emit('heartbeat', node_data)
             heartbeat_thread_function.iter_tracker += 1
 
-            # check if race timer is finished
-            if RACE.timer_running:
-                check_race_time_expired(RACE)
-
             # update displayed IMD rating after freqs changed:
             if heartbeat_thread_function.imdtabler_flag and \
                     (heartbeat_thread_function.iter_tracker % HEARTBEAT_DATA_RATE_FACTOR) == 0:
@@ -3820,14 +3843,6 @@ def ms_from_program_start():
     delta_time = monotonic() - PROGRAM_START
     milli_sec = delta_time * 1000.0
     return milli_sec
-
-def check_race_time_expired(RACE):
-    race_format = getCurrentRaceFormat()
-    if race_format and race_format.race_mode == 0: # count down
-        if monotonic() >= RACE.start_time_monotonic + race_format.race_time_sec:
-            RACE.timer_running = False # indicate race timer no longer running
-            Events.trigger(Evt.RACE_FINISH)
-            check_win_condition(RACE, INTERFACE)
 
 def check_emit_race_status_message(RACE, **params):
     race_format = getCurrentRaceFormat()
@@ -3950,10 +3965,10 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
         logger.debug('Pass record dismissed: Node: {0}, Frequency not defined' \
             .format(node.index+1))
 
-def check_win_condition(RACE, INTERFACE):
+def check_win_condition(RACE, INTERFACE, **kwargs):
     tied_flag = (RACE.win_status == WinStatus.TIE)
 
-    win_status = Results.check_win_condition(RACE, INTERFACE)
+    win_status = Results.check_win_condition(RACE, INTERFACE, **kwargs)
 
     if win_status is not None:
         race_format = RACE.format
@@ -3978,6 +3993,8 @@ def check_win_condition(RACE, INTERFACE):
                 RACE.status_message = __('Race Tied')
                 emit_race_status_message()
                 emit_phonetic_text(RACE.status_message, 'race_winner')
+
+    return win_status
 
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
     if is_enter_at_flag:
