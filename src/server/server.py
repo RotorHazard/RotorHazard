@@ -340,12 +340,12 @@ def uniqueName(desiredName, otherNames):
         return desiredName
 
 def getCurrentProfile():
-    current_profile = int(Options.get('currentProfile'))
+    current_profile = Options.getInt('currentProfile')
     return Database.Profiles.query.get(current_profile)
 
 def getCurrentRaceFormat():
     if RACE.format is None:
-        val = int(Options.get('currentFormat'))
+        val = Options.getInt('currentFormat')
         race_format = Database.RaceFormat.query.get(val)
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
@@ -354,7 +354,7 @@ def getCurrentRaceFormat():
 
 def getCurrentDbRaceFormat():
     if RACE.format is None or RHRaceFormat.isDbBased(RACE.format):
-        val = int(Options.get('currentFormat'))
+        val = Options.getInt('currentFormat')
         return Database.RaceFormat.query.get(val)
     else:
         return None
@@ -2457,7 +2457,7 @@ def on_resave_laps(data):
     logger.info(message)
 
     # run adaptive calibration
-    if int(Options.get('calibrationMode')):
+    if Options.getInt('calibrationMode'):
         autoUpdateCalibration()
 
     # spawn thread for updating results caches
@@ -2568,7 +2568,7 @@ def on_set_current_heat(data):
 
     logger.info('Current heat set: Heat {0}'.format(new_heat_id))
 
-    if int(Options.get('calibrationMode')):
+    if Options.getInt('calibrationMode'):
         autoUpdateCalibration()
 
     Events.trigger(Evt.HEAT_SET, {
@@ -3042,7 +3042,7 @@ def emit_node_tuning(**params):
     emit_payload = {
         'profile_ids': [profile.id for profile in Database.Profiles.query.all()],
         'profile_names': [profile.name for profile in Database.Profiles.query.all()],
-        'current_profile': int(Options.get('currentProfile')),
+        'current_profile': Options.getInt('currentProfile'),
         'profile_name': tune_val.name,
         'profile_description': tune_val.description
     }
@@ -3076,7 +3076,7 @@ def emit_min_lap(**params):
     '''Emits current minimum lap.'''
     emit_payload = {
         'min_lap': Options.get('MinLapSec'),
-        'min_lap_behavior': int(Options.get("MinLapBehavior"))
+        'min_lap_behavior': Options.getInt("MinLapBehavior")
     }
     if ('nobroadcast' in params):
         emit('min_lap', emit_payload)
@@ -4431,8 +4431,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         node.first_cross_flag = True  # indicate first crossing completed
 
                     race_format = getCurrentRaceFormat()
-                    min_lap = int(Options.get("MinLapSec"))
-                    min_lap_behavior = int(Options.get("MinLapBehavior"))
+                    min_lap = Options.getInt("MinLapSec")
+                    min_lap_behavior = Options.getInt("MinLapBehavior")
 
                     lap_ok_flag = True
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
@@ -4926,7 +4926,7 @@ def recover_database():
 
         engine.dispose() # close connection after loading
 
-        migrate_db_api = int(Options.get('server_api'))
+        migrate_db_api = Options.getInt('server_api')
 
         carryoverOpts = [
             "timerName",
@@ -5264,7 +5264,7 @@ if RACE.num_nodes > 0:
 
 if not db_inited_flag:
     try:
-        if int(Options.get('server_api')) < SERVER_API:
+        if Options.getInt('server_api') < SERVER_API:
             logger.info('Old server API version; recovering database')
             recover_database()
         elif not Database.Heat.query.count():
@@ -5321,7 +5321,7 @@ else:
 db_reset_current_laps()
 
 # Send initial profile values to nodes
-current_profile = int(Options.get("currentProfile"))
+current_profile = Options.getInt("currentProfile")
 on_set_profile({'profile': current_profile}, False)
 
 # Set current heat on startup
@@ -5346,7 +5346,7 @@ if Config.LED['LED_COUNT'] > 0:
     led_type = os.environ.get('RH_LEDS', 'ws281x')
     # note: any calls to 'Options.get()' need to happen after the DB initialization,
     #       otherwise it causes problems when run with no existing DB file
-    led_brightness = int(Options.get("ledBrightness"))
+    led_brightness = Options.getInt("ledBrightness")
     try:
         ledModule = importlib.import_module(led_type + '_leds')
         strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
