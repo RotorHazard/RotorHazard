@@ -1,7 +1,6 @@
 '''RotorHazard hardware interface layer.'''
 
 import os
-import io
 import logging
 import gevent # For threads and timing
 from monotonic import monotonic # to capture read timing
@@ -175,6 +174,7 @@ class RHInterface(BaseHardwareInterface):
     def update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
         cross_list = []  # list of nodes with crossing-flag changes
+        startThreshLowerNode = None
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
@@ -307,11 +307,30 @@ class RHInterface(BaseHardwareInterface):
                     else:
                         self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
 
+                # check if node is set to temporary lower EnterAt/ExitAt values
+                if node.start_thresh_lower_flag:
+                    time_now = monotonic()
+                    if time_now >= node.start_thresh_lower_time:
+                        # if this is the first one found or has earliest time
+                        if startThreshLowerNode == None or node.start_thresh_lower_time < \
+                                            startThreshLowerNode.start_thresh_lower_time:
+                            startThreshLowerNode = node
+
+
         # process any nodes with crossing-flag changes
         self.process_crossings(cross_list)
 
         # process any nodes with new laps detected
         self.process_updates(upd_list)
+        
+        if startThreshLowerNode:
+            logger.info("For node {0} restoring EnterAt to {1} and ExitAt to {2}"\
+                    .format(startThreshLowerNode.index+1, startThreshLowerNode.enter_at_level, \
+                            startThreshLowerNode.exit_at_level))
+            self.set_enter_at_level(startThreshLowerNode.index, startThreshLowerNode.enter_at_level)
+            self.set_exit_at_level(startThreshLowerNode.index, startThreshLowerNode.exit_at_level)
+            startThreshLowerNode.start_thresh_lower_flag = False
+            startThreshLowerNode.start_thresh_lower_time = 0
 
 
     #

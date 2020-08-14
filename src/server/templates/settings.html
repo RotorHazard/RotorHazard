@@ -20,6 +20,8 @@
 			'race_format',
 			'node_tuning',
 			'enter_and_exit_at_levels',
+			'start_thresh_lower_amount',
+			'start_thresh_lower_duration',
 			'min_lap',
 			'race_status',
 			'team_racing_mode',
@@ -623,6 +625,29 @@
 			return false;
 		});
 
+		socket.on('start_thresh_lower_amount', function (msg) {
+			$('#set_start_thresh_lower_amount').val(msg.start_thresh_lower_amount);
+		});
+
+		$('#set_start_thresh_lower_amount').change(function (event) {
+			var start_thresh_lower_amount_val = parseInt($(this).val());
+			var data = {
+				start_thresh_lower_amount: start_thresh_lower_amount_val
+			};
+			socket.emit('set_start_thresh_lower_amount', data);
+		})
+
+		socket.on('start_thresh_lower_duration', function (msg) {
+			$('#set_start_thresh_lower_duration').val(msg.start_thresh_lower_duration);
+		});
+
+		$('#set_start_thresh_lower_duration').change(function (event) {
+			var start_thresh_lower_duration_val = parseInt($(this).val());
+			var data = {
+				start_thresh_lower_duration: start_thresh_lower_duration_val
+			};
+			socket.emit('set_start_thresh_lower_duration', data);
+		})
 
 		/* Heats */
 		socket.on('heat_data', function (msg) {
@@ -1795,6 +1820,18 @@
 					<option value="0">{{ __('Manual') }}</option>
 					<option value="1">{{ __('Adaptive') }}</option>
 				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_thresh_lower_amount">{{ __('Start of race EnterAt/ExitAt lowering amount (percent)') }}</label>
+				</div>
+				<input type="number" id="set_start_thresh_lower_amount" min="0" max="200" value="{{ getOption('start_thresh_lower_amount') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_thresh_lower_duration">{{ __('Start of race EnterAt/ExitAt lowering duration (seconds)') }}</label>
+				</div>
+				<input type="number" id="set_start_thresh_lower_duration" min="0" max="999" value="{{ getOption('start_thresh_lower_duration') }}">
 			</li>
 		</ol>
 
