@@ -104,6 +104,10 @@
 			$('#set_pilotSort').val('callsign');
 		}
 
+		if ('{{ getOption('nextHeatBehavior') }}' == '1') {
+			$('#set_next_heat_behavior').val(1);
+		}
+
 		// populate frequency selects
 		$('.frequency_table').each(function(){
 			$(this).html(freq.buildSelect());
@@ -647,6 +651,13 @@
 				start_thresh_lower_duration: start_thresh_lower_duration_val
 			};
 			socket.emit('set_start_thresh_lower_duration', data);
+		})
+
+		$('#set_next_heat_behavior').change(function (event) {
+			var data = {
+				next_heat_behavior: parseInt($(this).val())
+			};
+			socket.emit('set_next_heat_behavior', data);
 		})
 
 		/* Heats */
@@ -1883,6 +1894,18 @@
 		<div class="control-set">
 			<button id="add_heat">+ {{ __('Add Heat') }}</button>
 		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_next_heat_behavior">{{ __('Next Heat Behavior') }}</label>
+				</div>
+				<select id="set_next_heat_behavior">
+					<option value="0">{{ __('Auto-Switch After Race Save') }}</option>
+					<option value="1">{{ __('Manually Switch Heats') }}</option>
+				</select>
+			</li>
+		</ol>
 
 		<h3>Heat generator</h3>
 		<ol class="form">
