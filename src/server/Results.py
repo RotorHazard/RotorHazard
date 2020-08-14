@@ -910,14 +910,24 @@ def check_win_fastest_lap(RACE, **kwargs):
                     'data': leaderboard[0]
                 }
     elif 'at_finish' in kwargs:
+        race_format = RACE.format
         leaderboard = RACE.results['by_fastest_lap']
         if len(leaderboard) > 1:
             fast_lap = leaderboard[0]['fastest_lap_raw']
 
             if fast_lap > 0: # must have at least one lap
+                max_ttc = 0
+
+                for node in RACE.node_laps:
+                    if len(RACE.node_laps[node]) > 0:
+                        most_recent_lap = RACE.node_laps[node][-1]['lap_time_stamp']
+                        time_to_complete = fast_lap - ((race_format.race_time_sec * 1000) - most_recent_lap)
+                        max_ttc = max(max_ttc, time_to_complete)
+
+                max_consideration = min(fast_lap, max_ttc)
                 return {
                     'status': WinStatus.NONE,
-                    'max_consideration': fast_lap
+                    'max_consideration': max_consideration
                 }
 
     return {
@@ -1101,17 +1111,43 @@ def check_win_team_fastest_lap(RACE, **kwargs):
                     'status': WinStatus.DECLARED,
                     'data': team_leaderboard[0]
                 }
-    elif 'at_finish' in kwargs:
-        team_leaderboard = calc_team_leaderboard(RACE)['by_avg_fastest_lap']
-        if len(team_leaderboard):
-            if team_leaderboard[0]['laps'] > 0: # must have at least one lap
-                if len(team_leaderboard) > 1:
-                    fast_lap = team_leaderboard[0]['average_fastest_lap_raw']
 
-                    return {
-                        'status': WinStatus.NONE,
-                        'max_consideration': fast_lap
-                    }
+    elif 'at_finish' in kwargs:
+        race_format = RACE.format
+        team_leaderboard = calc_team_leaderboard(RACE)['by_avg_fastest_lap']
+        if len(team_leaderboard) > 1:
+            if team_leaderboard[0]['laps'] > 0: # must have at least one lap
+
+                fast_lap_average = team_leaderboard[0]['average_fastest_lap_raw']
+                if fast_lap_average > 0: # must have recorded time (otherwise impossible to set bounds)
+                    team_laps_raw = {}
+
+                    team_laps = {}
+                    for line in team_leaderboard:
+                        team = line['name']
+                        team_laps[team] = {
+                            'spent_time': 0,
+                            'members': line['members'],
+                        }
+
+                    for node in RACE.node_laps:
+                        if len(RACE.node_laps[node]) > 0:
+                            team = RACE.node_teams[node]
+                            if team is not None:
+                                most_recent_lap = RACE.node_laps[node][-1]['lap_time_stamp']
+                                spent_time = ((race_format.race_time_sec * 1000) - most_recent_lap)
+                                team_laps[team]['spent_time'] += spent_time
+
+                    max_consideration = 0
+                    for team in team_laps:
+                        time_to_complete = fast_lap_average * team_laps[team]['members']
+                        time_to_complete -= team_laps[team]['spent_time']
+                        max_consideration = max(max_consideration, time_to_complete)
+
+                        return {
+                            'status': WinStatus.NONE,
+                            'max_consideration': max_consideration
+                        }
 
     return {
         'status': WinStatus.NONE
@@ -1139,16 +1175,37 @@ def check_win_team_fastest_consecutive(RACE, **kwargs):
                 }
     elif 'at_finish' in kwargs:
         team_leaderboard = calc_team_leaderboard(RACE)['by_avg_consecutives']
-        if len(team_leaderboard):
-            if team_leaderboard[0]['laps'] > 3: # must have at least 3 laps
-                if len(team_leaderboard) > 1:
-                    fast_lap = team_leaderboard[0]['average_consecutives_raw']
+        if len(team_leaderboard) > 1:
+            fast_consecutives = team_leaderboard[0]['average_consecutives_raw']
+            if fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
+                team_laps_raw = {}
 
-                    return {
-                        'status': WinStatus.NONE,
-                        'max_consideration': fast_lap
+                team_laps = {}
+                for line in team_leaderboard:
+                    team = line['name']
+                    team_laps[team] = {
+                        'time': 0,
+                        'members': line['members']
                     }
 
+                for node in RACE.node_laps:
+                    team = RACE.node_teams[node]
+                    if team is not None:
+                        laps = RACE.node_laps[node]
+                        if len(laps) >= 2:
+                            last_2_laps = laps[-1]['lap_time'] + laps[-2]['lap_time']
+                            team_laps[team]['time'] += last_2_laps
+
+                max_consideration = 0
+                for team in team_laps:
+                    if team != team_leaderboard[0]['name']: # skip leader
+                        team_laps[team]['time'] = team_laps[team]['time'] / team_laps[team]['members']
+                        max_consideration = max(max_consideration, fast_consecutives - team_laps[team]['time'] / team_laps[team]['members'])
+
+                return {
+                    'status': WinStatus.NONE,
+                    'max_consideration': max_consideration
+                }
 
     return {
         'status': WinStatus.NONE

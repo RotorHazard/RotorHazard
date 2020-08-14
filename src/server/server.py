@@ -2214,6 +2214,7 @@ def race_expire_thread(start_token):
             win_result = check_win_condition(RACE, INTERFACE, at_finish=True)
 
             if 'max_consideration' in win_result:
+                logger.debug("Waiting {0}ms to declare winner.".format(win_result['max_consideration']))
                 gevent.sleep(win_result['max_consideration'] / 1000)
                 if RACE.start_token == start_token:
                     logger.debug("Maximum win condition consideration time has expired.")
