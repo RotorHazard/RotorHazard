@@ -1939,6 +1939,13 @@ def on_delete_race_format():
         emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
         logger.info("Format change prevented by active race")
 
+@SOCKET_IO.on("set_next_heat_behavior")
+@catchLogExceptionsWrapper
+def on_set_next_heat_behavior(data):
+    next_heat_behavior = int(data['next_heat_behavior'])
+    Options.set("nextHeatBehavior", next_heat_behavior)
+    logger.info("set next heat behavior to %s" % next_heat_behavior)
+
 # LED Effects
 
 def emit_led_effect_setup(**params):
@@ -4830,6 +4837,7 @@ def db_reset_options_defaults():
 
     Options.set("startThreshLowerAmount", "0")
     Options.set("startThreshLowerDuration", "0")
+    Options.set("nextHeatBehavior", "0")
 
     logger.info("Reset global settings")
 
@@ -4961,7 +4969,8 @@ def recover_database():
             "osd_lapHeader",
             "osd_positionHeader",
             "startThreshLowerAmount",
-            "startThreshLowerDuration"
+            "startThreshLowerDuration",
+            "nextHeatBehavior"
         ]
         carryOver = {}
         for opt in carryoverOpts:
