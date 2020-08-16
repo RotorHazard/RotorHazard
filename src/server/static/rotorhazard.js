@@ -757,6 +757,16 @@ function timerModel() {
 	}
 }
 
+function parseIntOrBoolean(str) {
+	if (str == 'false') {
+		return 0
+	}
+	if (str == 'true') {
+		return 1
+	}
+	return JSON.parse(str)
+}
+
 /* rotorhazard object for local settings/storage */
 var rotorhazard = {
 	language_strings: {},
@@ -767,12 +777,12 @@ var rotorhazard = {
 	voice_volume: 1.0, // voice call volume
 	voice_rate: 1.25,  // voice call speak pitch
 	voice_pitch: 1.0,  // voice call speak rate
-	voice_callsign: true, // speak pilot callsigns
-	voice_lap_count: true, // speak lap counts
-	voice_team_lap_count: true, // speak team lap counts
-	voice_lap_time: true, // speak lap times
-	voice_race_timer: true, // speak race timer
-	voice_race_winner: true, // speak race winner
+	voice_callsign: 1, // speak pilot callsigns
+	voice_lap_count: 2, // speak pilot lap counts
+	voice_team_lap_count: 1, // speak team lap counts
+	voice_lap_time: 1, // speak lap times
+	voice_race_timer: 2, // speak race timer
+	voice_race_winner: 1, // speak race winner
 
 	tone_volume: 1.0, // race stage/start tone volume
 	beep_crossing_entered: false, // beep node crossing entered
@@ -864,22 +874,22 @@ var rotorhazard = {
 				this.voice_pitch = JSON.parse(localStorage['rotorhazard.voice_pitch']);
 			}
 			if (localStorage['rotorhazard.voice_callsign']) {
-				this.voice_callsign = JSON.parse(localStorage['rotorhazard.voice_callsign']);
+				this.voice_callsign = parseIntOrBoolean(localStorage['rotorhazard.voice_callsign']);
 			}
 			if (localStorage['rotorhazard.voice_lap_count']) {
-				this.voice_lap_count = JSON.parse(localStorage['rotorhazard.voice_lap_count']);
+				this.voice_lap_count = parseIntOrBoolean(localStorage['rotorhazard.voice_lap_count']);
 			}
 			if (localStorage['rotorhazard.voice_team_lap_count']) {
-				this.voice_team_lap_count = JSON.parse(localStorage['rotorhazard.voice_team_lap_count']);
+				this.voice_team_lap_count = parseIntOrBoolean(localStorage['rotorhazard.voice_team_lap_count']);
 			}
 			if (localStorage['rotorhazard.voice_lap_time']) {
-				this.voice_lap_time = JSON.parse(localStorage['rotorhazard.voice_lap_time']);
+				this.voice_lap_time = parseIntOrBoolean(localStorage['rotorhazard.voice_lap_time']);
 			}
 			if (localStorage['rotorhazard.voice_race_timer']) {
-				this.voice_race_timer = JSON.parse(localStorage['rotorhazard.voice_race_timer']);
+				this.voice_race_timer = parseIntOrBoolean(localStorage['rotorhazard.voice_race_timer']);
 			}
 			if (localStorage['rotorhazard.voice_race_winner']) {
-				this.voice_race_winner = JSON.parse(localStorage['rotorhazard.voice_race_winner']);
+				this.voice_race_winner = parseIntOrBoolean(localStorage['rotorhazard.voice_race_winner']);
 			}
 			if (localStorage['rotorhazard.tone_volume']) {
 				this.tone_volume = JSON.parse(localStorage['rotorhazard.tone_volume']);
@@ -939,7 +949,7 @@ rotorhazard.timer.deferred.callbacks.start = function(timer){
 	}
 }
 rotorhazard.timer.deferred.callbacks.step = function(timer){
-	if (rotorhazard.voice_race_timer) {
+	if (rotorhazard.voice_race_timer != 0) {
 		if (timer.time_s < -3600 && !(timer.time_s % -3600)) { // 2+ hour callout
 			var hours = timer.time_s / -3600;
 			speak('<div>' + __l('Next race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
@@ -1041,12 +1051,13 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 					}
 				}
 			} else if (timer.time_s == 10) { // announce 10s only when counting down
-				if (rotorhazard.voice_race_timer)
+				if (rotorhazard.voice_race_timer != 0)
 					speak('<div>10 ' + __l('Seconds') + '</div>', true);
 			}
 		}
 
-		if (rotorhazard.voice_race_timer) {
+		if (rotorhazard.voice_race_timer == 1 ||
+				(rotorhazard.voice_race_timer == 2 && (!timer.count_up))) {
 			if (timer.time_s > 3600 && !(timer.time_s % 3600)) { // 2+ hour callout (endurance)
 				var hours = timer.time_s / 3600;
 				speak('<div>' + hours + ' ' + __l('Hours') + '</div>', true);
