@@ -17,7 +17,7 @@ log.early_stage_setup()
 logger = logging.getLogger(__name__)
 
 EPOCH_START = datetime(1970, 1, 1)
-PROGRAM_START_TIMESTAMP = int((datetime.now() - EPOCH_START).total_seconds() / 1000)
+PROGRAM_START_TIMESTAMP = int((datetime.now() - EPOCH_START).total_seconds() * 1000)
 
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 logger.debug('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
@@ -223,7 +223,7 @@ class Slave:
             if last_split_ts is not None:
                 split_time = split_ts - last_split_ts
                 split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
-                logger.info('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
+                logger.debug('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
                     .format(node_index+1, lap_count+1, RHUtils.time_format(split_time), \
                     ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
 
