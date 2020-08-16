@@ -20,7 +20,6 @@ EPOCH_START = datetime(1970, 1, 1)
 PROGRAM_START_TIMESTAMP = int((datetime.now() - EPOCH_START).total_seconds() * 1000)
 
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
-logger.debug('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
 
 # Normal importing resumes here
 import gevent
@@ -5178,6 +5177,7 @@ def killVRxController(*args):
 #
 
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
+logger.debug('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
 RHUtils.idAndLogSystemInfo()
 
 # log results of module initializations
