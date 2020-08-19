@@ -2041,8 +2041,12 @@ def on_stage_race():
         RACE.status_message = ''
 
         RACE.node_has_finished = {}
-        for idx in range(RACE.num_nodes):
-            RACE.node_has_finished[idx] = False
+        for heatNode in heatNodes:
+            if heatNode.node_index < RACE.num_nodes:
+                if heatNode.pilot_id != Database.PILOT_ID_NONE:
+                    RACE.node_has_finished[heatNode.node_index] = False
+                else:
+                    RACE.node_has_finished[heatNode.node_index] = None
 
         INTERFACE.set_race_status(RaceStatus.STAGING)
         emit_current_laps() # Race page, blank laps to the web client
@@ -3903,6 +3907,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                     if RACE.timer_running is False:
                         RACE.node_has_finished[node.index] = True
+                        logger.debug(RACE.node_has_finished)
 
                     lap_ok_flag = True
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
