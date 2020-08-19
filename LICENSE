@@ -1,32 +1,33 @@
-Code for RotorHazard is Copyright (c) 2019 Michael Niggel and contributors.
+RotorHazard is Copyright (c) 2018–2020 Michael Niggel and other contributors.
+
+The RotorHazard name, RotorHazard logo, and other RotorHazard branding elements
+are copyright 2018 Michael Niggel/Hazard Creative, LLC. You may use, copy, 
+publish, or distribute unmodified versions of these works non-commercially with
+unmodified versions of this Project. However, these elements must not be 
+reproduced or distributed with commercial products or with modified versions of
+the project without authorization. Failure to enforce these rights will not be
+construed as waiving them. If use of these elements is desired outside of these
+restrictions, contact michael.niggel@hazardcreative.com.
+
+-----------
 
 MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+of this software, related hardware designs, and associated documentation 
+files (the "Project"), to deal in the Project without restriction, including 
+without limitation the rights to use, copy, modify, merge, publish, 
+distribute, sublicense, and/or sell copies of the Software, and to permit 
+persons to whom the Project is furnished to do so, subject to the following 
+conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+THE PROJECT IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
------------
-
-The RotorHazard name, RotorHazard logo, and other RotorHazard branding elements
-are copyright 2018 Michael Niggel/Hazard Creative, LLC. You may use, copy, 
-publish, or distribute these works non-commercially with unmodified versions of
-this software. However, these elements must not be distributed with commercial 
-products or with modified versions of the software without authorization. 
-Failure to enforce these rights will not be construed as waiving them.
-If use of these elements is desired outside of these restrictions, contact
-michael.niggel@hazardcreative.com.
+OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
+THE PROJECT.
