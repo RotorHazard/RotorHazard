@@ -2039,6 +2039,11 @@ def on_stage_race():
         RACE.race_status = RaceStatus.STAGING
         RACE.win_status = WinStatus.NONE
         RACE.status_message = ''
+
+        RACE.node_has_finished = {}
+        for idx in range(RACE.num_nodes):
+            RACE.node_has_finished[idx] = False
+
         INTERFACE.set_race_status(RaceStatus.STAGING)
         emit_current_laps() # Race page, blank laps to the web client
         emit_current_leaderboard() # Race page, blank leaderboard to the web client
@@ -3895,6 +3900,9 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     race_format = getCurrentRaceFormat()
                     min_lap = int(Options.get("MinLapSec"))
                     min_lap_behavior = int(Options.get("MinLapBehavior"))
+
+                    if RACE.timer_running is False:
+                        RACE.node_has_finished[node.index] = True
 
                     lap_ok_flag = True
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:

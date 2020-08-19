@@ -19,6 +19,7 @@ class RHRace():
         self.start_time = 0 # datetime
         self.start_time_monotonic = 0 # monotonic
         self.node_laps = {} # current race lap objects, by node
+        self.node_has_finished = {}
         # concluded
         self.duration_ms = 0 # Duration in seconds, calculated when race is stopped
         self.end_time = 0 # Monotonic, updated when race is stopped

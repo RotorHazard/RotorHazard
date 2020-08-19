@@ -775,8 +775,10 @@ def check_win_condition(RACE, INTERFACE, **kwargs):
     return None
 
 def check_win_laps_and_time(RACE, INTERFACE, **kwargs):
+    # if racing is stopped, all pilots have completed last lap after time expired,
+    # or a forced determination condition, make a final call
     if RACE.race_status == RaceStatus.DONE or \
-        (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False) or \
+        False not in RACE.node_has_finished or \
         'forced' in kwargs: # racing must be completed
         leaderboard = RACE.results['by_race_time']
         if len(leaderboard) > 1:
@@ -810,12 +812,53 @@ def check_win_laps_and_time(RACE, INTERFACE, **kwargs):
                     'status': WinStatus.DECLARED,
                     'data': leaderboard[0]
                 }
+    elif RACE.race_status == RaceStatus.RACING and RACE.timer_running == False:
+        # time has ended; check if winning is assured
+        leaderboard = RACE.results['by_race_time']
+        if len(leaderboard) > 1:
+            lead_lap = leaderboard[0]['laps']
+            lead_lap_time = leaderboard[0]['total_time_raw']
+
+            if lead_lap > 0: # must have at least one lap
+                # prevent win declaration if there are active crossings coming onto lead lap
+                for line in leaderboard[1:]:
+                    if line['laps'] >= lead_lap - 1:
+                        node = INTERFACE.nodes[line['node']]
+                        if node.pass_crossing_flag:
+                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                            return {
+                                'status': WinStatus.PENDING_CROSSING
+                            }
+                    else:
+                        # lower results no longer need checked
+                        break
+
+                # check if any pilot below lead can potentially pass
+                pilots_can_pass = 0
+                for line in leaderboard[1:]:
+                    if line['laps'] >= lead_lap:
+                        # pilot is on lead lap
+                        node_index = line['node']
+
+                        if RACE.node_has_finished[node_index] == False:
+                            pilots_can_pass += 1
+                    else:
+                        # lower results no longer need checked
+                        break
+
+                if pilots_can_pass == 0:
+                    return {
+                        'status': WinStatus.DECLARED,
+                        'data': leaderboard[0]
+                    }
+
     return {
         'status': WinStatus.NONE
     }
 
 def check_win_most_laps(RACE, INTERFACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
+        False not in RACE.node_has_finished or \
         (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False) or \
         'forced' in kwargs: # racing must be completed
         leaderboard = RACE.results['by_race_time']
@@ -892,6 +935,7 @@ def check_win_first_to_x(RACE, INTERFACE, **kwargs):
 
 def check_win_fastest_lap(RACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
+        False not in RACE.node_has_finished or \
         'forced' in kwargs: # racing must be completed
         leaderboard = RACE.results['by_fastest_lap']
         if len(leaderboard) > 1:
@@ -936,6 +980,7 @@ def check_win_fastest_lap(RACE, **kwargs):
 
 def check_win_fastest_consecutive(RACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
+        False not in RACE.node_has_finished or \
         'forced' in kwargs: # racing must be completed
         leaderboard = RACE.results['by_consecutives']
         if len(leaderboard) > 1:
@@ -980,6 +1025,7 @@ def check_win_fastest_consecutive(RACE, **kwargs):
 
 def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
+        False not in RACE.node_has_finished or \
         (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False) or \
         'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
@@ -1017,6 +1063,7 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
 
 def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
+        False not in RACE.node_has_finished or \
         (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False) or \
         'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
@@ -1093,6 +1140,7 @@ def check_win_team_first_to_x(RACE, INTERFACE, **kwargs):
 
 def check_win_team_fastest_lap(RACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
+        False not in RACE.node_has_finished or \
         'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(RACE)['by_avg_fastest_lap']
         if len(team_leaderboard) > 1:
@@ -1155,6 +1203,7 @@ def check_win_team_fastest_lap(RACE, **kwargs):
 
 def check_win_team_fastest_consecutive(RACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
+        False not in RACE.node_has_finished or \
         'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(RACE)['by_avg_consecutives']
         if len(team_leaderboard) > 1:
