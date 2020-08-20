@@ -1,6 +1,6 @@
 # RotorHazard PCB
 
-The RotorHazard PCB 1.2 implements current hareware standards to simplify wiring and component placement, expediting timer builds and improving usability.
+The RotorHazard PCB 1.2 implements current hardware standards to simplify wiring and component placement, expediting timer builds and improving usability.
 
 ![PCB Layout](RH-PCB-1.2.png)
 
@@ -14,12 +14,12 @@ Download the [gerber file](Gerber_PCB%20RotorHazard%20PCB%20rev.%201.2.zip) to p
 * Functions as 1–4 node primary board or 1–4 node extension
 * Implements hardware-based node address selection. Nodes do not need uniquely addressed and can remain st to address 0 on upload.
 * Implements in-system programming wiring for "OTA" updates without removing Arduinos from board
-* Integrated voltage converter for ISP lines
+* Integrated voltage converter for ISP line
 * Supports standardized 2×5 pin ribbon cable connectors to Pi GPIO and between boards
 * Dedicated connectors for BME280 and INA219 sensors
 * Expansion connectors for other I2C devices
 * Raspberry Pi power isolation jumper
-* Additional VIN connector (common use: case fan)
+* Additional VIN connector (common uses: case fan or diode for reverse voltage protection)
 * Additional ground connectors (common use: case shielding)
 * 6 screw-mount holes, 4 with exposed ground plane
 
@@ -31,7 +31,7 @@ RotorHazrad does not manufacture PCBs and cannot guarantee the quality of any ma
 
 This layout can be used as a primary board for up to 4 nodes when directly connected to the Pi, or a secondary board for up to 4 additional nodes. When connected directly it will be referred to as PCB1. If you are using only one board, follow all instructions for PCB1. A secondary board is referred to as PCB2.
 
-* Find "THIS SIDE UP" indicator. This is the excpeted side on which to attach your components. While other configurations are possible, you will need to adjust these assembly instructions accordingly.
+* Find "THIS SIDE UP" indicator. This is the expected side on which to attach your components. While other configurations are possible, you will need to adjust these assembly instructions accordingly.
 * Use node slots in numeric order. While RotorHazard should function with nodes placed out of order, in-system node flashing may not.
 * Solder four resistors at "R" positions within each node area for all nodes you will be using. Use the values indicated (1k or 100k).
 * R17-19 are required on PCB1. They are not used for PCB2.
@@ -54,10 +54,11 @@ This layout can be used as a primary board for up to 4 nodes when directly conne
 
 ## Usage
 
+* Before ISP flashing of nodes is possible, nodes must not be transmitting over serial. You can flash the most recent node version from RotorHazard, or the standard "Blink" sketch. (Delta5 and older RotorHazard node versions generally use serial and will prevent ISP from functioning.)
 * Nodes should all be flashed with the node number of 0 (default). This board will automatically assign node numbers based on their position.
 * In-system flashing can be accomplished with the [OTA tool](https://github.com/szafranski/RH-ota)
 * If flashing nodes by USB, disconnect JP1 to prevent powering on the Pi.
 
 ## Credit
 
-This board and the OTA tool were developed by Paweł Fabiszewski.
+This board and the OTA tool were developed by [Paweł Fabiszewski](mailto:p.fabiszewski@gmail.com).
