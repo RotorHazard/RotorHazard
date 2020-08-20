@@ -833,7 +833,7 @@ def check_win_laps_and_time(RACE, INTERFACE, **kwargs):
                         # lower results no longer need checked
                         break
 
-                # check if any pilot below lead can potentially pass
+                # check if any pilot below lead can potentially pass or tie
                 pilots_can_pass = 0
                 for line in leaderboard[1:]:
                     if line['laps'] >= lead_lap:
@@ -847,10 +847,7 @@ def check_win_laps_and_time(RACE, INTERFACE, **kwargs):
                         break
 
                 if pilots_can_pass == 0:
-                    return {
-                        'status': WinStatus.DECLARED,
-                        'data': leaderboard[0]
-                    }
+                    return check_win_laps_and_time(RACE, INTERFACE, forced=True, **kwargs)
 
     return {
         'status': WinStatus.NONE
@@ -859,7 +856,6 @@ def check_win_laps_and_time(RACE, INTERFACE, **kwargs):
 def check_win_most_laps(RACE, INTERFACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         False not in RACE.node_has_finished.values() or \
-        (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False) or \
         'forced' in kwargs: # racing must be completed
         leaderboard = RACE.results['by_race_time']
         if len(leaderboard) > 1:
@@ -891,6 +887,42 @@ def check_win_most_laps(RACE, INTERFACE, **kwargs):
                     'status': WinStatus.DECLARED,
                     'data': leaderboard[0]
                 }
+    elif RACE.race_status == RaceStatus.RACING and RACE.timer_running == False:
+        # time has ended; check if winning is assured
+        leaderboard = RACE.results['by_race_time']
+        if len(leaderboard) > 1:
+            lead_lap = leaderboard[0]['laps']
+
+            if lead_lap > 0: # must have at least one lap
+                # check if there are active crossings coming onto lead lap
+                for line in leaderboard[1:]:
+                    if line['laps'] >= lead_lap - 1:
+                        node = INTERFACE.nodes[line['node']]
+                        if node.pass_crossing_flag:
+                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                            return {
+                                'status': WinStatus.PENDING_CROSSING
+                            }
+                    else:
+                        # lower results no longer need checked
+                        break
+
+                # check if any pilot below lead can potentially pass or tie
+                pilots_can_pass = 0
+                for line in leaderboard[1:]:
+                    if line['laps'] >= lead_lap - 1:
+                        # pilot is on lead lap
+                        node_index = line['node']
+
+                        if RACE.node_has_finished[node_index] == False:
+                            pilots_can_pass += 1
+                    else:
+                        # lower results no longer need checked
+                        break
+
+                if pilots_can_pass == 0:
+                    return check_win_most_laps(RACE, INTERFACE, forced=True, **kwargs)
+
     return {
         'status': WinStatus.NONE
     }
@@ -1074,7 +1106,7 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
                             'status': WinStatus.PENDING_CROSSING
                         }
 
-                # check if team can potentially pass
+                # check if team can potentially pass or tie
                 teams_can_pass = 0
 
                 team_members_finished = {}
@@ -1093,10 +1125,7 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
                         teams_can_pass += 1
 
                 if teams_can_pass == 0:
-                    return {
-                        'status': WinStatus.DECLARED,
-                        'data': team_leaderboard[0]
-                    }
+                    return check_win_team_laps_and_time(RACE, INTERFACE, forced=True, **kwargs)
 
     return {
         'status': WinStatus.NONE
@@ -1105,7 +1134,6 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
 def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         False not in RACE.node_has_finished.values() or \
-        (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False) or \
         'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
@@ -1140,6 +1168,45 @@ def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
                     'status': WinStatus.DECLARED,
                     'data': team_leaderboard[0]
                 }
+    elif RACE.race_status == RaceStatus.RACING and RACE.timer_running == False:
+        # time has ended; check if winning is assured
+        team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
+        individual_leaderboard = RACE.results['by_race_time']
+        if len(team_leaderboard) > 1 and len(individual_leaderboard):
+            lead_lap = team_leaderboard[0]['laps']
+
+            if lead_lap > 0: # must have at least one lap
+                # prevent win declaration if there are active crossings
+                for line in individual_leaderboard:
+                    node = INTERFACE.nodes[line['node']]
+                    if node.pass_crossing_flag:
+                        logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                        return {
+                            'status': WinStatus.PENDING_CROSSING
+                        }
+
+                # check if team can potentially pass or tie
+                teams_can_pass = 0
+
+                team_members_finished = {}
+                for line in individual_leaderboard:
+                    node_index = line['node']
+                    team = line['team_name']
+                    if team not in team_members_finished:
+                        team_members_finished[team] = 0
+
+                    if RACE.node_has_finished[node_index]:
+                        team_members_finished[team] += 1
+
+                for line in team_leaderboard[1:]:
+                    max_potential_laps = line['laps'] + line['members'] - team_members_finished[line['name']]
+                    if lead_laps <= max_potential_laps:
+                        teams_can_pass += 1
+
+                if teams_can_pass == 0:
+                    return check_win_team_laps_and_time(RACE, INTERFACE, forced=True)
+
+
     return {
         'status': WinStatus.NONE
     }
