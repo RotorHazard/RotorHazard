@@ -35,7 +35,7 @@ This layout can be used as a primary board for up to 4 nodes when directly conne
 * Use node slots in numeric order. While RotorHazard should function with nodes placed out of order, in-system node flashing may not.
 * Solder four resistors at "R" positions within each node area for all nodes you will be using. Use the values indicated (1k or 100k).
 * R17-19 are required on PCB1. They are not used for PCB2.
-* Female 0.1" (2.54mm) headers are expected for Arduino mounts, voltage regulators, and RX5808 mounts. Add these headers now if you are using them. If you choose to flush mount instead with resistors on the back, be sure to electrically isolate each component from the board.
+* Female 0.1" (2.54mm) headers are expected for Arduino mounts, voltage regulators, and RX5808 mounts. Add these headers now if you are using them. If you choose to flush mount any component, be sure to electrically isolate it from the board.
 * Bridge JP1 on PCB1. A physical jumper is recommended in this position. Bridging on PCB2 is not required.
 * If using 5–8 nodes, connect "PCB2" headers between each board, being careful to match polarity. You may use a standard 2×5 pin ribbon cable or wire these insidivdually. On PCB2, bridge pads at the bottom marked "BRIDGE ON PCB2" (JP2)
 * If using an odd number of nodes, bridge one and only one pad on the back of one board that corresponds to the highest numbered node in use:
@@ -50,7 +50,7 @@ This layout can be used as a primary board for up to 4 nodes when directly conne
 * If using INA219 or BME280 sensors, connect to dedicated pads.
 * Connect Arduinos. Keep Aruino reset button and LEDs visible. Keep USB connector toward side indicated with "<-- USB" (away from voltage regulators).
 * Connect RX5808 modules. Optionally connect GND pads near antenna. Do not solder to RX5808 antenna connection (center pad).
-* When connecting an LED strip to LED OUT, ensure the voltage regulator you are using is rated highly enough for all arduinos, sensors, and the LED strip combined. If not, supply 5V for the LEDs from a separate regulator. You may still use the data and ground pads.
+* When connecting an LED strip to LED OUT, ensure the voltage regulator you are using is rated highly enough for all Arduinos, sensors, and the LED strip combined. If not, supply power for the LEDs from a separate regulator, using only data and ground from the PCB.
 
 ## Usage
 
