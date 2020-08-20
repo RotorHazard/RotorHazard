@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="RotorHazard">
+	<meta name="google" content="notranslate">
+	<title>Decoder Settings</title>
+
+	<!-- Icons -->
+	<link rel="apple-touch-icon" sizes="180x180" href="/static/image/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/static/image/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/static/image/favicon-16x16.png">
+	<link rel="manifest" href="/static/image/site.webmanifest">
+	<link rel="mask-icon" href="/static/image/safari-pinned-tab.svg" color="#ee7a28">
+	<link rel="shortcut icon" href="/static/image/favicon.ico">
+	<meta name="msapplication-TileColor" content="#ee7a28">
+	<meta name="msapplication-config" content="/static/image/browserconfig.xml">
+	<meta name="theme-color" content="#224873">
+
+	<audio id="sound_buzzer" src="./static/audio/buzzer.mp3" type="audio/mp3"></audio>
+	<audio id="sound_beep" src="./static/audio/beep.mp3" type="audio/mp3"></audio>
+	<audio id="sound_stage" src="./static/audio/stage.mp3" type="audio/mp3"></audio>
+	<audio id="sound_enter" src="./static/audio/enter.mp3" type="audio/mp3"></audio>
+	<audio id="sound_exit" src="./static/audio/exit.mp3" type="audio/mp3"></audio>
+
+	<!-- Scripts -->
+	<script type="text/javascript" src="./static/jquery-3.2.1/jquery.min.js"></script>
+	<script type="text/javascript" src="./static/articulate/articulate.min.js"></script>
+	<script type="text/javascript" src="./static/socket.io-2.2.0/socket.io.min.js"></script>
+	<script type="text/javascript" src="./static/smoothie/smoothie.js"></script>
+	<script type="text/javascript" src="./static/magnific-1.1.0/magnific-inline-min.js"></script>
+	<script type="text/javascript" src="./static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
+
+	<!-- CSS -->
+	<link rel="stylesheet" href="./static/magnific-1.1.0/magnific-popup.css"></link>
+	<link rel="stylesheet" href="./static/rotorhazard.css?{{ serverInfo['release_version'] | urlencode }}"></link>
+
+	<style>
+
+	/* CSS variables for interface adjustments */
+	html {
+		--hue_0: {{ getOption("hue_0") }};
+		--sat_0: {{ getOption("sat_0") }}%;
+		--lum_0_low: {{ getOption("lum_0_low") }}%;
+		--lum_0_high: {{ getOption("lum_0_high") }}%;
+		--contrast_0_low: {{ getOption("contrast_0_low") }};
+		--contrast_0_high: {{ getOption("contrast_0_high") }};
+		--hue_1: {{ getOption("hue_1") }};
+		--sat_1: {{ getOption("sat_1") }}%;
+		--lum_1_low: {{ getOption("lum_1_low") }}%;
+		--lum_1_high: {{ getOption("lum_1_high") }}%;
+		--contrast_1_low: {{ getOption("contrast_1_low") }};
+		--contrast_1_high: {{ getOption("contrast_1_high") }};
+	}
+
+	</style>
+	<!-- Child template head content -->
+
+	<script type="text/javascript" charset="utf-8">
+		var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
+		var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+		var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
+
+		$(document).ready(function () {
+			socket.emit('load_data', {'load_types': [
+				'all_languages',
+				'language',
+				'node_data',
+				'environmental_data',
+				'frequency_data',
+				'heat_data',
+				'class_data',
+				'pilot_data',
+				'race_format',
+				'node_tuning',
+				'enter_and_exit_at_levels',
+				'min_lap',
+				'race_status',
+				'team_racing_mode',
+				'led_effects',
+				'led_effect_setup',
+				'cluster_status'
+			]});
+
+			socket.on('all_languages', function (msg) {
+				rotorhazard.language_strings = msg.languages;
+			});
+
+			socket.on('language', function (msg) {
+				$('#set_language').empty();
+				$('#set_language').append('<option value="">English</option>')
+				for (var i = 0; i < msg.languages.length; i++) {
+					$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
+				}
+
+				if (msg.language) {
+					rotorhazard.interface_language = msg.language;
+					$('#set_language').val(msg.language);
+				} else {
+					$('#set_language').selectedIndex = 0;
+				}
+			});
+
+			var heartbeatCounter = 0;
+
+			// set admin flag
+			rotorhazard.admin = true;
+			rotorhazard.saveData();
+			$('nav li').removeClass('admin-hide');
+
+			// populate audio controls
+			$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
+			$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
+			$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
+			$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
+			$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
+			$('#indicator_volume_value').html($('#set_indicator_volume').val());
+
+			if ('{{ getOption('ledBrightness') }}' != 'False') {
+				$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
+				$('#led_brightness_value').html($('#set_led_brightness').val());
+			}
+
+			// populate frequency selects
+			$('.frequency_table').each(function(){
+				$(this).html(freq.buildSelect());
+			});
+
+			// set up node local store
+			for (var i = 0; i < {{ num_nodes }}; i++) {
+				rotorhazard.nodes[i] = new nodeModel();
+				// start RSSI graphing
+				rotorhazard.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
+				rotorhazard.nodes[i].setup(rotorhazard.nodes[i].canvas);
+			}
+
+			socket.on('heartbeat', function (msg) {
+				if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
+					heartbeatCounter = 0;
+					for (var i = 0; i < msg.current_rssi.length; i++) {
+						var rssiValue = msg.current_rssi[i];
+
+						if (rotorhazard.nodes[i].frequency == 0) {
+							rssiValue = 0;
+						}
+
+						$('.current_rssi_' + i).html(rssiValue);
+
+						if (msg.crossing_flag[i]) {
+							$('.crossing_flag_' + i).addClass('is-crossing').html(__('Crossing'));
+						}
+						else {
+							$('.crossing_flag_' + i).removeClass('is-crossing').html(__('Clear'));
+						}
+
+						rotorhazard.nodes[i].graph.options.maxValue = Math.max(
+							rssiValue,
+							rotorhazard.nodes[i].node_peak_rssi + 1,
+							rotorhazard.nodes[i].enter_at_level + 10,
+						);
+
+						rotorhazard.nodes[i].graph.options.minValue = Math.max(0, Math.min(
+							rssiValue,
+							rotorhazard.nodes[i].node_nadir_rssi - 1,
+							rotorhazard.nodes[i].exit_at_level - 10,
+						));
+
+						if (rotorhazard.nodes[i].graphing) {
+							rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
+						} else {
+							if (rssiValue) {
+								rotorhazard.nodes[i].graphing = true;
+								rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
+								rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
+								rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
+							}
+						}
+					}
+				}
+			});
+			socket.on('environmental_data', function (msg) {
+				env_table_html = '';
+				for (i=0; i<msg.length; i++) {
+					var sensor = msg[i];
+					var name = Object.keys(sensor)[0];
+					var data = sensor[name];
+					var values = '';
+					var br = '';
+					for (var reading in data) {
+						var value = data[reading].value;
+						var units = data[reading].units;
+						values += br;
+						if (reading == 'voltage') {
+							values += __('Voltage: ') + Number(value).toFixed(2)+units;
+						} else if(reading == 'current') {
+							values += __('Current: ') + Number(value).toFixed(0)+units;
+						} else if(reading == 'power') {
+							values += __('Power: ') + Number(value).toFixed(0)+units;
+						} else if(reading == 'temperature') {
+							values += __('Temperature: ') + Number(value).toFixed(1)+units;
+						} else if(reading == 'humidity') {
+							values += __('Humidity: ') + Number(value).toFixed(1)+units;
+						} else if(reading == 'pressure') {
+							values += __('Pressure: ') + Number(value).toFixed(1)+units;
+						} else {
+							values += __('Unknown: ') + value;
+						}
+						br = '<br/>';
+					}
+					env_table_html += '<tr>';
+					env_table_html += '<td>' + name + '</td>';
+					env_table_html += '<td>' + values + '</td>';
+					env_table_html += '</tr>';
+				}
+				if (env_table_html) {
+					$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table>');
+				}
+			});
+			socket.on('cluster_status', function (msg) {
+				cluster_table_html = '';
+				if (msg.slaves && msg.slaves.length > 0) {
+					cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Time since last contact (s)')+'</th></tr>';
+					for (i=0; i < msg.slaves.length; i++) {
+						cluster_table_html += '<tr>';
+						cluster_table_html += '<td>' + msg.slaves[i].address + '</td>';
+						cluster_table_html += '<td>' + msg.slaves[i].last_contact + '</td>';
+						cluster_table_html += '</tr>';
+					}
+				}
+				if (cluster_table_html) {
+					$('#cluster-status-table').html('<table>' + cluster_table_html + '</table>');
+				}
+			});
+
+			/* Profiles */
+			socket.on('node_tuning', function (msg) {
+				$('#set_profile').empty();
+				for (var i = 0; i < msg.profile_ids.length; i++) {
+					$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
+				}
+				$('#set_profile').val(msg.current_profile);
+				$('#set_profile_name').val( msg.profile_name);
+			});
+
+			$('#set_profile').change(function (event) {
+				var data = {
+					profile: parseInt($(this).val())
+				};
+				socket.emit('set_profile', data);
+			});
+
+			$('button#add_profile').click(function (event) {
+				socket.emit('add_profile');
+				return false;
+			});
+
+			$('button#delete_profile').click(function (event) {
+				socket.emit('delete_profile');
+				return false;
+			});
+
+			$('#set_profile_name').change(function (event) {
+				var data = {
+					profile_name: $(this).val()
+				};
+				socket.emit('alter_profile', data);
+			})
+
+			/* Frequency Setup */
+			socket.on('frequency_data', function (msg) {
+				for (var i = 0; i < msg.frequency.length; i++) {
+					$('#s_channel_' + i).val(msg.frequency[i]);
+					rotorhazard.nodes[i].frequency = msg.frequency[i];
+					freq.updateSelects();
+					freq.updateBlocks();
+				}
+			});
+
+			function show_imd_rating(val) {
+				$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +
+					  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
+			};
+
+			function show_imd_rating_dashes() {
+				if ($.trim($('#imd_rating_label').html()) != '') {
+					show_imd_rating('---');
+				}
+			};
+
+			socket.on('imdtabler_rating', function (msg) {
+				if (msg.imd_rating) {
+					show_imd_rating(msg.imd_rating);
+				}
+				else {
+					$('#imd_rating_label').empty();
+				}
+			});
+
+			$('button.set_frequency_preset').click(function (event) {
+				show_imd_rating_dashes();
+				var data = {
+					preset: $(this).data('preset')
+				};
+				socket.emit('set_frequency_preset', data);
+			});
+
+			/* Nodes */
+			socket.on('node_data', function (msg) {
+				for (var i = 0; i < msg.node_peak_rssi.length; i++) {
+					$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
+					$('.node_nadir_rssi_' + i).html(msg.node_nadir_rssi[i]);
+					$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
+					$('.pass_nadir_rssi_' + i).html(msg.pass_nadir_rssi[i]);
+					$('.debug_pass_count_' + i).html(msg.debug_pass_count[i]);
+
+					rotorhazard.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
+					rotorhazard.nodes[i].node_nadir_rssi = msg.node_nadir_rssi[i];
+					rotorhazard.nodes[i].pass_peak_rssi = msg.pass_peak_rssi[i];
+					rotorhazard.nodes[i].pass_nadir_rssi = msg.pass_nadir_rssi[i];
+
+					$('#node_notice_' + i).html(rotorhazard.nodes[i].checkValues());
+					rotorhazard.nodes[i].updateThresholds();
+				}
+			});
+
+			$('.frequency_table').change(function (event) {
+				if ($(this).val() != "n/a") {
+					var node = $(this).data('node');
+					var frequency = parseInt($(this).val());
+					$('#s_channel_' + node).val(frequency).trigger('change');
+				}
+			});
+
+			socket.on('enter_and_exit_at_levels', function (msg) {
+				for (var i = 0; i < msg.enter_at_levels.length; i++) {
+					$('#set_enter_at_level_' + i).val(msg.enter_at_levels[i]);
+					rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
+					$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
+					rotorhazard.nodes[i].exit_at_level = msg.exit_at_levels[i];
+
+					$('#node_notice_' + i).html(rotorhazard.nodes[i].checkValues());
+					rotorhazard.nodes[i].updateThresholds();
+				}
+			});
+
+			socket.on('node_enter_at_level', function (msg) {
+				$('#set_enter_at_level_' + msg.node_index).val(msg.level);
+				rotorhazard.nodes[msg.node_index].enter_at_level = msg.level;
+
+				$('#node_notice_' + i).html(rotorhazard.nodes[msg.node_index].checkValues());
+				rotorhazard.nodes[msg.node_index].updateThresholds();
+			});
+
+			socket.on('node_exit_at_level', function (msg) {
+				$('#set_exit_at_level_' + msg.node_index).val(msg.level);
+				rotorhazard.nodes[msg.node_index].exit_at_level = msg.level;
+
+				$('#node_notice_' + i).html(rotorhazard.nodes[msg.node_index].checkValues());
+				rotorhazard.nodes[msg.node_index].updateThresholds();
+			});
+
+			$('button.pause_graph').click(function (event) {
+				var node = rotorhazard.nodes[parseInt($(this).data('node'))]
+				if (node.graphPaused) {
+					node.graph.options.scaleSmoothing = 0.125;
+					node.graph.removeTimeSeries(node.pauseSeries)
+					node.graph.addTimeSeries(node.series, {lineWidth:1.7,
+						strokeStyle:'hsl(214, 53%, 60%)',
+						fillStyle:'hsla(214, 53%, 60%, 0.4)'
+					});
+					node.graph.start();
+				} else {
+					node.graph.stop();
+					node.graphPausedTime = new Date().getTime();
+					node.pauseSeries = node.series;
+					node.graph.options.scaleSmoothing = 1;
+					node.graph.removeTimeSeries(node.series)
+					node.graph.addTimeSeries(node.pauseSeries, {lineWidth:1.7,
+						strokeStyle:'hsl(214, 53%, 60%)',
+						fillStyle:'hsla(214, 53%, 60%, 0.4)'
+					});
+					node.graph.render(node.canvas, node.graphPausedTime);
+				}
+				node.graphPaused = !node.graphPaused;
+			});
+
+			$('.set_frequency').change(function (event) {
+				show_imd_rating_dashes();
+				var data = {
+					node: parseInt($(this).data('node')),
+					frequency: parseInt($(this).val()),
+				};
+				socket.emit('set_frequency', data);
+
+				var freqExists = $('#f_table_' + $(this).data('node') + ' option[value=' + $(this).val() + ']').length;
+				if (freqExists) {
+					$('#f_table_' + $(this).data('node')).val($(this).val());
+				} else {
+					$('#f_table_' + $(this).data('node')).val('n/a');
+				}
+			});
+
+			$('.set_enter_at_level').change(function (event) {
+				var data = {
+					node: parseInt($(this).data('node')),
+					enter_at_level: parseInt($(this).val()),
+				};
+				if (!Number.isNaN(data.enter_at_level)) {
+					socket.emit('set_enter_at_level', data);
+					rotorhazard.nodes[data.node].enter_at_level = data.enter_at_level;
+					rotorhazard.nodes[data.node].updateThresholds();
+				}
+			});
+
+			$('.set_exit_at_level').change(function (event) {
+				var data = {
+					node: parseInt($(this).data('node')),
+					exit_at_level: parseInt($(this).val()),
+				};
+				if (!Number.isNaN(data.exit_at_level)) {
+					socket.emit('set_exit_at_level', data);
+					rotorhazard.nodes[data.node].exit_at_level = data.exit_at_level;
+					rotorhazard.nodes[data.node].updateThresholds();
+				}
+			});
+
+			$('button.cap_enter_at_btn').click(function (event) {
+				var data = {
+					node_index: parseInt($(this).data('node_index')),
+				};
+				$('#set_enter_at_level_' + data.node_index).val('');
+				socket.emit('cap_enter_at_btn', data);
+				return false;
+			});
+
+			$('button.cap_exit_at_btn').click(function (event) {
+				var data = {
+					node_index: parseInt($(this).data('node_index')),
+				};
+				$('#set_exit_at_level_' + data.node_index).val('');
+				socket.emit('cap_exit_at_btn', data);
+				return false;
+			});
+
+			/* Audio */
+			$('#beep_on_first_pass_button').prop('disabled', rotorhazard.beep_crossing_exited);
+
+			$('#set_tone_volume').on('input', function (event) {
+				var val = volume_logsl.value($(this).val());
+				rotorhazard.tone_volume = val;
+				$('#tone_volume_value').html($(this).val());
+			});
+
+			$('#set_tone_volume').change(function (event) {
+				var val = volume_logsl.value($(this).val());
+				rotorhazard.tone_volume = val;
+				rotorhazard.saveData();
+			});
+
+			$('#beep_crossing_entered').change(function (event) {
+				rotorhazard.beep_crossing_entered = $(this).prop('checked');
+				rotorhazard.saveData();
+			});
+
+			$('#beep_crossing_exited').change(function (event) {
+				rotorhazard.beep_crossing_exited = $(this).prop('checked');
+				$('#beep_on_first_pass_button').prop('disabled', rotorhazard.beep_crossing_exited);
+				rotorhazard.saveData();
+			});
+
+			$('#use_mp3_tones').change(function (event) {
+				rotorhazard.use_mp3_tones = $(this).prop('checked');
+				rotorhazard.saveData();
+			});
+
+			$('#beep_on_first_pass_button').change(function (event) {
+				rotorhazard.beep_on_first_pass_button = $(this).prop('checked');
+				rotorhazard.saveData();
+			});
+
+			$('#set_indicator_volume').on('input', function (event) {
+				var val = volume_logsl.value($(this).val());
+				rotorhazard.indicator_beep_volume = val;
+				$('#indicator_volume_value').html($(this).val());
+			});
+
+			$('#set_indicator_volume').change(function (event) {
+				var val = volume_logsl.value($(this).val());
+				rotorhazard.indicator_beep_volume = val;
+				rotorhazard.saveData();
+			});
+
+			/* System */
+			$('button#shutdown_pi').click(function (event) {
+				socket.emit('shutdown_pi');
+				return false;
+			});
+
+			$('button#reboot_pi').click(function (event) {
+				socket.emit('reboot_pi');
+				return false;
+			});
+
+			socket.on('set_option', function (msg) {
+				$('.set_option[data-option="' + msg.label +'"]').val(msg.value);
+			});
+
+			$('.set-option').change(function (event) {
+				var data = {
+					option: $(this).data('option'),
+					value: $(this).val()
+				};
+				socket.emit('set_option', data);
+				return false;
+			});
+
+			$('#set_language').change(function (event) {
+				var data = {
+					language: $(this).val()
+				};
+				socket.emit('set_language', data);
+				location.reload(true);
+			});
+
+			socket.on('node_crossing_change', function (msg) {
+				if (msg.crossing_flag) {
+					if (rotorhazard.beep_crossing_entered) {
+						if( rotorhazard.use_mp3_tones){
+							sound_enter.play();
+						}
+						else {
+							play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
+						}
+					}
+				}
+				else {
+					if (rotorhazard.beep_crossing_exited) {
+						if( rotorhazard.use_mp3_tones){
+							sound_exit.play();
+						}
+						else {
+							play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
+							setTimeout(function(tone){
+								play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth');
+							}, 70, msg.node_index);
+						}
+					}
+				}
+			});
+
+			/* LED Controls */
+			socket.on('led_effects', function (msg) {
+				var led_html = $('<div class="control-set">');
+
+				var led_select = $('<select id="led-effects-select"></select>');
+
+				const effects = msg.effects.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
+
+				for (var i in effects) {
+					var effect = effects[i];
+
+					var led_select_option = $('<option value="' + effect.name + '">' + effect.label + '</option>')
+
+					led_select.append(led_select_option);
+				}
+
+				led_html.append($('<label for="led-effects">' + __('Effect') + '</label>'));
+				led_html.append(' ');
+				led_html.append(led_select);
+				led_html.append(' ');
+				led_html.append($('<button id="use-led-effect">' + __('Go') + '</button>'));
+
+				$('#LED-effects').append(led_html);
+			});
+
+			$(document).on('click', '#use-led-effect', function (event) {
+				var data = {
+					effect: $('#led-effects-select').val()
+				};
+				socket.emit('use_led_effect', data);
+			});
+
+			$('button.LED-color').click(function (event) {
+					var colors = convertColor($(this).data('rgb'));
+					var data = {
+						red: colors.r,
+						green: colors.g,
+						blue: colors.b,
+					};
+					socket.emit('LED_solid', data);
+					return false;
+			});
+
+			$('#set_led_color').change(function (event) {
+					var colors = convertColor($(this).val());
+					var data = {
+						red: colors.r,
+						green: colors.g,
+						blue: colors.b,
+					};
+					socket.emit('LED_solid', data);
+					return false;
+			});
+
+			socket.on('led_effect_setup_data', function (msg) {
+				var led_html = $('<ol class="form">');
+
+				for (var i in msg.events) {
+					var led_event = msg.events[i];
+					var valid_selection = false;
+
+					var led_select = $('<select id="led-event-' + led_event.event + '" data-event="' + led_event.event + '" class="led-event-select"></select>');
+
+					const effects = led_event.effects.slice().sort((a, b) => (a.label > b.label) ? 1 : -1);
+					for (var opt in effects) {
+						var effect = effects[opt];
+
+						var led_select_option = $('<option value="' + effect.name + '">' + effect.label + '</option>')
+
+						led_select.append(led_select_option);
+
+						if (effect.name == led_event.selected)
+							valid_selection = true;
+					}
+
+					var led_event_block = $('<li>');
+					led_event_block.append($('<div class="label-block"><label for="led-event-' + led_event.event + '">' + led_event.label + '</label></div>'));
+					led_event_block.append(led_select);
+
+					if (valid_selection) {
+						led_select.val(led_event.selected);
+					}
+
+					led_html.append(led_event_block);
+				}
+
+				$('#LED-effect-setup').append(led_html);
+			});
+
+			$(document).on('change', '.led-event-select', function(event) {
+				var data = {
+					event: $(this).data('event'),
+					effect: $(this).val()
+				};
+				socket.emit('set_led_event_effect', data);
+			});
+
+			$('#set_led_brightness').on('input', function (event) {
+				var val = brightness_logsl.value($(this).val());
+				$('#led_brightness_value').html($(this).val());
+			});
+
+			$('#set_led_brightness').change(function (event) {
+				var val = brightness_logsl.value($(this).val());
+				// emit data
+				var data = {
+					brightness: Math.round(val),
+				};
+				socket.emit('LED_brightness', data);
+			});
+		});
+	</script>
+
+</head>
+
+<body>
+	<div id="banner-msg">
+		<div class="message"></div>
+		<button id="banner-dismiss" class="no-style">×<span class="screen-reader-text"> Close</span></button>
+	</div>
+	<header>
+		<div id="timer-name"><img src="../static/image/RotorHazard Icon.svg"> <a href="/">{{ getOption("timerName") }}</a></div>
+	</header>
+
+	<main class="page-settings">
+
+		{% if ConfigFile == -1 %}
+			<div class="config-bad">
+				<p><strong>{{ __('The config.json file is invalid. Falling back to default configuration.') | safe }}</strong></p>
+				<p>{{ __('To ensure your config.json file is valid JSON format, consider using a validator such as <a href="https://jsonlint.com/">JSONLint</a>.') | safe }}</p>
+			</div>
+		{% elif ConfigFile == 0 %}
+			<div class="config-none">
+				<p><strong>{{ __('No configuration file was loaded. Falling back to default configuration.') | safe }}</strong></p>
+				<p>{{ __('Copy <em>server/config-dist.json</em> to <em>server/config.json</em> and then update settings for your server port number, admin username/password, and LED configuration.') | safe }}</p>
+			</div>
+		{% endif %}
+
+		<!--Frequency Setup-->
+		<div class="panel collapsing">
+			<div class="panel-header">
+				<h2>{{ __('Frequency Setup') }}</h2>
+			</div>
+			<div class="panel-content">
+				<div class="control-set">
+					<label for="set_profile">{{ __('Profile') }}:</label>
+					<select id="set_profile">
+						<option>{{ __('Loading...') }}</option>
+					</select>
+					<button id="add_profile">+ {{ __('Add Profile') }}</button>
+					<button class="btn-danger" id="delete_profile">&#215; {{ __('Remove') }}</button>
+				</div>
+
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							<label for="set_profile_name">{{ __('Name') }}</label>
+						</div>
+						<input type="text" id="set_profile_name">
+					</li>
+				</ol>
+				<p class="form-note">{{ __('Stores frequency settings and sensor tuning values.') }}</p>
+
+				<!--Apply preset-->
+				<div class="control-set">
+					{{ __('Preset') }}:
+					<button class="set_frequency_preset" data-preset="All-N1">{{ __('Apply Node 1') }}</button>
+					<button class="set_frequency_preset" data-preset="RB-4">{{ __('R1367') }}</button>
+					<button class="set_frequency_preset" data-preset="IMD5C">{{ __('IMD5C') }}</button>
+					<button class="set_frequency_preset" data-preset="IMD6C">{{ __('IMD6C') }}</button>
+					<button class="set_frequency_preset" data-preset="RB-8">{{ __('Raceband 8') }}</button>
+				</div>
+
+				<div class="node-list">
+					{% for node in range(num_nodes) %}
+						<div class="node" data-node="{{ node }}">
+							<h3><label for="set_freq_node_{{ node }}">{{ __('Node') }} {{ node + 1 }}</label></h3>
+							<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
+							<label for="s_channel_{{ node }}" class="screen-reader-text">Frequency</label>
+							<input type="number" id="s_channel_{{ node }}" class="set_frequency" data-node="{{ node }}" min="5000" max="6001">
+						</div>
+					{% endfor %}
+				</div>
+				<div class="control-set" id="imd_rating_label"></div>
+			</div>
+		</div>
+
+		<!--Sensor Tuning-->
+		<div class="panel collapsing">
+			<div class="panel-header">
+				<h2>{{ __('Sensor Tuning') }}</h2>
+			</div>
+			<div class="panel-content full-width">
+				<ul class="graph-key">
+					<li><span style="background-color: hsl(214, 53%, 60%)"></span> {{ __('RSSI') }}</li>
+					<li><span style="background-color: hsl(8.2, 86.5%, 53.7%)"></span> {{ __('EnterAt') }}</li>
+					<li><span style="background-color: hsl(25, 85%, 55%)"></span> {{ __('ExitAt') }}</li>
+				</ul>
+				<div class="node-list">
+					{% for node in range(num_nodes) %}
+					<div class="node" data-node="{{ node }}">
+						<h3>{{ __('Node') }} {{ node + 1 }}</h3>
+						<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
+						<div class="rssi-graph">
+							<button class="pause_graph" data-node="{{ node }}">&#x23ef;&#xFE0E;<span class="screen-reader-text"> {{ __('Pause/Resume Graph') }}</span></button>
+							<canvas id="rssi-graph-{{ node }}">
+							</canvas>
+						</div>
+						<div class="crossing crossing_flag_{{ node }}">{{ __('Clear') }}</div>
+						<div class="node-controls">
+							<div class="enter-exit-control">
+								<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
+								<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
+								<button class="cap_enter_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
+							</div>
+
+							<div class="enter-exit-control">
+								<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
+								<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
+								<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
+							</div>
+						</div>
+						<table>
+							<tr class="datarow">
+								<td>{{ __('RSSI') }}</td>
+								<td>
+									<span class="current_rssi_{{ node }}"></span>
+								</td>
+							</tr>
+							<tr class="datarow">
+								<td>{{ __('NodePeak') }}</td>
+								<td>
+									<span class="node_peak_rssi_{{ node }}"></span>
+								</td>
+							</tr>
+							<tr class="datarow">
+								<td>{{ __('NodeNadir') }}</td>
+								<td>
+									<span class="node_nadir_rssi_{{ node }}"></span>
+								</td>
+							</tr>
+							<tr class="datarow">
+								<td>{{ __('PassPeak') }}</td>
+								<td>
+									<span class="pass_peak_rssi_{{ node }}"></span>
+								</td>
+							</tr>
+							<tr class="datarow">
+								<td>{{ __('PassNadir') }}</td>
+								<td>
+									<span class="pass_nadir_rssi_{{ node }}"></span>
+								</td>
+							</tr>
+							<tr class="datarow">
+								<td>{{ __('PassCount') }}</td>
+								<td>
+									<span class="debug_pass_count_{{ node }}"></span>
+								</td>
+							</tr>
+						</table>
+						<div id="node_notice_{{ node }}"></div>
+					</div>
+					{% endfor %}
+				</div>
+
+				<p class="form-note"><a href="/docs?d=Tuning%20Parameters.md">{{ __("Tuning Parameters") }}</a></p>
+			</div>
+		</div>
+
+		<!--Audio Settings-->
+		<div class="panel collapsing">
+			<div class="panel-header">
+				<h2>{{ __('Audio Control') }}</h2>
+			</div>
+			<div class="panel-content">
+				<p class="form-note">{{ __('Audio settings apply to this device only.') }}</p>
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							{{ __('Indicator Beeps') }}
+						</div>
+						<ul>
+							<li><label><input type="checkbox" id="beep_on_first_pass_button"> {{ __('On First Pass') }}</label></li>
+							<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
+							<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
+							<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
+						</ul>
+					</li>
+					<li>
+						<div class="label-block">
+							<label for="set_indicator_volume">{{ __('Indicator Beeps Volume') }}</label>
+							<p class="desc">{{ __('Volume') }}: <span id="indicator_volume_value"></span></p>
+						</div>
+						<input type="range" id="set_indicator_volume" min="1" max="100">
+					</li>
+				</ol>
+			</div>
+		</div>
+
+		<!--LED controls-->
+		{% if led_enabled %}
+		<div class="panel collapsing">
+			<div class="panel-header">
+				<h2>{{ __('LED Events') }}</h2>
+			</div>
+			<div class="panel-content">
+				<div id="LED-effect-setup"></div>
+			</div>
+		</div>
+
+		<div class="panel collapsing">
+			<div class="panel-header">
+				<h2>{{ __('LED Control') }}</h2>
+			</div>
+			<div class="panel-content">
+				<div class="control-set">
+					<button class="LED-color" data-rgb="#000000">{{ __('Turn Off') }}</button>
+				</div>
+
+				<div class="control-set">
+					<button class="LED-color" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
+					<button class="LED-color" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
+					<button class="LED-color" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
+					<button class="LED-color" data-rgb="#ffff00"><span style="background-color:#ffff00"></span></button>
+					<button class="LED-color" data-rgb="#7f00ff"><span style="background-color:#7f00ff"></span></button>
+					<button class="LED-color" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
+					<button class="LED-color" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
+					<button class="LED-color" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
+				</div>
+
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							<label for="set_led_brightness">{{ __('LED Brightness') }}</label>
+							<p class="desc">{{ __('Level') }}: <span id="led_brightness_value"></span></p>
+						</div>
+						<input type="range" id="set_led_brightness" min="1" max="25">
+					</li>
+					<li>
+						<div class="label-block">
+							<label for="set_led_color">{{ __('LED Color') }}</label>
+						</div>
+						<input type="color" id="set_led_color" />
+					</li>
+				</ol>
+
+				<div id="LED-effects"></div>
+			</div>
+		</div>
+		{% endif %}
+
+		<!-- System -->
+		<div class="panel collapsing">
+			<div class="panel-header">
+				<h2>{{ __('System') }}</h2>
+			</div>
+			<div class="panel-content">
+				<div id="env-data-table" class="control-set">
+				</div>
+				<br />
+				<div id="cluster-status-table" class="control-set">
+				</div>
+				<br />
+				<div class="control-set">
+					<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
+					<a href="#reboot_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Reboot') }}</a>
+					{% if Debug %}<a href="/hardwarelog" class="debug button-like">{{ __('Log') }}</a>{% endif %}
+				</div>
+
+				<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide popup">
+					<h2>Alert</h2>
+					<div class="popup-content">
+						<p>{{ __('Shut down server?') }}</p>
+						<p><button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
+						<button class="cancel">{{ __('Cancel') }}</button></p>
+					</div>
+				</div>
+
+				<div id="reboot_confirm" class="priority-message-interrupt mfp-hide popup">
+					<h2>Alert</h2>
+					<div class="popup-content">
+						<p>{{ __('Reboot server?') }}</p>
+						<p><button class="btn-danger" id="reboot_pi">{{ __('Reboot') }}</button>
+						<button class="cancel">{{ __('Cancel') }}</button></p>
+					</div>
+				</div>
+
+				<ol class="form">
+					<li>
+						<div class="label-block">
+							<label for="set_language">{{ __('Language') }}</label>
+						</div>
+						<select id="set_language">
+							<option>{{ __('Loading...') }}</option>
+						</select>
+					</li>
+					<li>
+						<div class="label-block">
+							<label for="set_timer_name">{{ __('Timer Name') }}</label>
+						</div>
+						<input type="text" id="set_timer_name" class="set-option" data-option="timerName" value="{{ getOption('timerName') }}">
+					</li>
+				</ol>
+			</div>
+		</div>
+
+	</main>
+
+	<footer>
+		<p>Powered by <a href="https://github.com/RotorHazard/RotorHazard/"><img src="../static/image/RotorHazard Logo.svg" alt="RotorHazard / FPV Race Timer" /></a> v{{ serverInfo['release_version'] }}</p>
+	</footer>
+</body>
+
+</html>

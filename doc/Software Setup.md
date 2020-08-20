@@ -38,6 +38,8 @@ add the following lines to the end of the file:
 dtparam=i2c_baudrate=75000
 core_freq=250
 ```
+Note: The first line sets the transfer rate on the I2C bus (which is used to communicate with the Arduino node processors). The second line fixes a potential variable clock-rate issue, described [here](https://www.abelectronics.co.uk/kb/article/1089/i2c--smbus-and-raspbian-stretch-linux). If a Raspberry Pi 4 is being used, the second line may need to be omitted.
+
 Save and exit the file with Ctrl-X
 
 Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
@@ -70,22 +72,13 @@ Arduino 1.8+ is required. Download from https://www.arduino.cc/en/Main/Software
 
 The node code may be edited and built using the [Eclipse IDE](https://www.eclipse.org/eclipseide/) and the "[Eclipse C++ IDE for Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)" plugin (or the old-fashioned way using the Arduino IDE). In Eclipse, the node-code project may be loaded via "File | Open Projects from File System..."
 
-Edit the 'src/node/rhnode.cpp' file and configure the '#define NODE_NUMBER' value for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
+If you are not using a RotorHazard PCB, edit the 'src/node/config.h' file and configure the '#define NODE_NUMBER' value for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
 ```
 // Node Setup -- Set node number here (1 - 8)
 #define NODE_NUMBER 1
 ```
 
-Automatic node configuration is also possible by grounding of hardware pins. Set NODE_NUMBER to 0, then tie these pins to ground:
-
-node #1: ground pin D5<br/>
-node #2: ground pin D6<br/>
-node #3: ground pin D7<br/>
-node #4: ground pin D8<br/>
-node #5: ground pin D5 and pin D4<br/>
-node #6: ground pin D6 and pin D4<br/>
-node #7: ground pin D7 and pin D4<br/>
-node #8: ground pin D8 and pin D4
+Hardware address selection is also possible by grounding hardware pins following the [published specification](https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing).
 
 ## Install Optional Components
 ### WS2812b LED Support
@@ -104,6 +97,26 @@ Install the Python library:
 ```
 cd python
 sudo python setup.py install
+```
+
+Note: The **LED_COUNT** value will need to be set in the `src/server/config.json` file. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
+```
+LED_COUNT:  Number of LED pixels in strip (or panel)
+LED_PIN:  GPIO pin connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
+LED_FREQ_HZ:  LED signal frequency in hertz (usually 800000)
+LED_DMA:  DMA channel to use for generating signal (default 10)
+LED_INVERT:  True to invert the signal (when using NPN transistor level shift)
+LED_CHANNEL:  Set to '1' for GPIOs 13, 19, 41, 45 or 53
+LED_STRIP:  Strip type and color ordering (default is 'GRB')
+LED_ROWS:  Number of rows in LED-panel array (1 for strip)
+PANEL_ROTATE:  Optional panel-rotation value (default 0)
+INVERTED_PANEL_ROWS:  Optional panel row-inversion (default false)
+```
+If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
+
+The LED library requires direct memory and GPIO access. When enabled, RotorHazard must be run with `sudo`.
+```
+sudo python server.py
 ```
 
 ### INA219 Voltage/Current Support
@@ -236,6 +249,18 @@ The RotorHazard server dependencies should also be updated (be patient, this com
 cd ~/RotorHazard/src/server
 sudo pip install --upgrade --no-cache-dir -r requirements.txt
 ```
+
+### Enable Port forwarding
+The RotorHazard server defaults to port 5000, as this is necessary for some 3rd party integrations. While you can change the port via `HTTP_PORT` in the `config.json` file, a better approach is often to forward the web default port of 80 to 5000.
+
+By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and reusing it will cause problems. If port 80 is used directly via `HTTP_PORT`, the server may need to be run using the *sudo* command. With the following commands, the server runs on port 5000 but the system sends the traffic from port 80 to it.
+
+```
+sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 5000
+sudo iptables-save
+sudo apt-get install iptables-persistent
+```
+After running these commands, RotorHazard will be available from both ports 80 and 5000. When available by port 80, you may leave the port off when accessing the server: `http://127.0.0.1`
 <br/>
 
 -----------------------------
@@ -278,6 +303,40 @@ If hardware nodes are connected via USB, they will need to be configured in the 
 If no hardware nodes are configured, the server will operate using simulated (mock) nodes. In this mode the web-GUI interface may be explored and tested.
 
 To view the web-GUI interface, open up a web browser and enter into the address bar: ```localhost:5000``` (If the HTTP_PORT value in the configuration has been changed then use that value instead of 5000). If the server is running then the RotorHazard main page should appear. Note that pages reserved for the race director (Admin/Settings) are password protected with the username and password specified in the configuration.
+<br/>
+
+-----------------------------
+
+<a id="logging"></a>
+### Logging
+
+The RotorHazard server generates "log" messages containing information about its operations. Below is a sample configuration for logging:
+
+```
+    "LOGGING": {
+        "CONSOLE_LEVEL": "INFO",
+        "SYSLOG_LEVEL": "NONE",
+        "FILELOG_LEVEL": "INFO",
+        "FILELOG_NUM_KEEP": 30,
+        "CONSOLE_STREAM": "stdout"
+    }
+```
+The following log levels may be specified:  DEBUG, INFO, WARNING, WARN, ERROR, FATAL, CRITICAL, NONE
+
+If the FILELOG_LEVEL value is not NONE then the server will generate log files in the `src/server/logs` directory. A new log file is created each time the server starts, with each file having a unique name based on the current date and time (i.e., "rh_20200621_181239.log"). Setting FILELOG_LEVEL to DEBUG will result in more detailed log messages being stored in the log file, which can be useful when debugging problems.
+
+The FILELOG_NUM_KEEP value is the number of log files to keep; the rest will be deleted (oldest first).
+
+The CONSOLE_STREAM value may be "stdout" or "stderr".
+
+If the SYSLOG_LEVEL value is not NONE then the server will send log messages to the logging utility built into the host operating system.
+
+The current Server Log may be displayed via the "View Server Log" item in the drop-down menu. The displayed log is "live" in that it will update as new messages are generated. The log can be displayed in a separate window by clicking on the "View Server Log" menu item with the right-mouse button and selecting the "Open Link in New Window" (or similar) option.
+
+Clicking on the "Select Text" button will select all the displayed log text, which may then be copied and pasted. Clicking on the "Download Logs" button will create and download a '.zip' archive file containing all available log files and the current configuration and database files. The '.zip' archive file can also be generated by running the server with the following command:  `python server.py --ziplogs`
+
+When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended.
+
 
 <br/>
 

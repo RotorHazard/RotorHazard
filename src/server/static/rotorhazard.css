@@ -13,12 +13,16 @@ body {
 	padding: 0;
 	display: flex;
 	flex-direction: column;
-	height: 100vh;
+	min-height: 100vh;
 }
 
 body>* {
 	width: 100%;
 	box-sizing: border-box;
+}
+
+pre {
+	white-space:pre-wrap;
 }
 
 img {
@@ -384,7 +388,7 @@ ol.form li+li {
 }
 
 #banner-msg {
-	border-bottom: solid 0.125em hsl(23.1, 64.6%, 37.6%);
+	border-top: solid 0.125em hsl(23.1, 64.6%, 37.6%);
 	background: hsl(25, 85%, 55%);
 	color: #000;
 	padding: 0.5rem;
@@ -686,6 +690,10 @@ main.page-home {
 	margin: 0 -0.25rem;
 }
 
+.leaderboard .pilot {
+	text-align: left;
+}
+
 .node {
 	box-sizing: border-box;
 	min-width: 7em;
@@ -898,6 +906,16 @@ main.page-home {
 	box-sizing: border-box;
 }
 
+.heats h3 {
+	position: relative;
+}
+
+.heats h3>button {
+	position: absolute;
+	right: 0.25em;
+	font-size: 0.9rem;
+}
+
 @media (max-width: 68em){
 	.heats>li {
 		width: calc(25% - 0.5em);
@@ -924,6 +942,22 @@ main.page-home {
 
 .page-settings .heats>li {
 	width: calc(33.3333% - 0.5em);
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.page-settings .heats>li>h3,
+.page-settings .heats>li>.set_heat_note,
+.page-settings .heats>li>ol {
+	flex-basis: 100%;
+}
+
+.page-settings .heats>li>* {
+	flex: 1;
+}
+
+.page-settings .heats>li>.duplicate_heat {
+	flex: 0;
 }
 
 @media (max-width: 54em){
@@ -983,6 +1017,8 @@ main.page-home {
 	border: solid 0.0625em #d1d3d4;
 	border-radius: 0.5rem;
 	box-sizing: border-box;
+	display: flex;
+	flex-wrap: wrap;
 }
 
 @media (max-width: 68em){
@@ -1010,10 +1046,11 @@ main.page-home {
 }
 
 .pilots li .callsign {
-
+	flex-basis: 100%;
 }
 
 .pilots li .name {
+	flex-basis: 100%;
 	font-size: 0.75em;
 	color: hsl(213.8, 53.8%, 46.7%);
 	color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
@@ -1050,11 +1087,37 @@ main.page-home {
 	justify-content: center;
 }
 
+.race_classes h3 {
+	position: relative;
+}
+
+.race_classes h3>button {
+	position: absolute;
+	right: 0.25em;
+	font-size: 0.9rem;
+}
+
 .race_classes>ol>li {
 	width: calc(33.3333% - 0.5em);
 	margin: 0 0.25em 0.5em;
 	padding: 0;
 	box-sizing: border-box;
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.race_classes>ol>li>h3,
+.race_classes>ol>li>.set_race_class_name,
+.race_classes>ol>li>.set_race_class_description {
+	flex-basis: 100%;
+}
+
+.race_classes>ol>li>* {
+	flex: 1;
+}
+
+.race_classes>ol>li>.duplicate_class {
+	flex: 0;
 }
 
 @media (max-width: 54em){
@@ -1099,12 +1162,17 @@ main.page-home {
 	font-size: 0.75em;
 }
 
-.lap-deleted {
+.after-time-expired {
 	background: #eee;
 }
 
-.after-time-expired {
-	background: #eee;
+.lap-deleted {
+	background: #d1d3d4;
+}
+
+.lap_split {
+	font-size: 0.75em;
+	color: dimgray
 }
 
 .btn-danger {
@@ -1307,6 +1375,7 @@ td.speak {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	flex: 1;
 }
 
 .pilot-team label {
@@ -1470,6 +1539,46 @@ footer img {
 .led img {
 	display: block;
 	margin: 0;
+}
+
+.vrx-header {
+	font-size: 0.8rem;
+	padding: 0.25em;
+	text-align: center;
+	color: #fff;
+	background: hsl(212.7, 67.8%, 29.2%);
+	background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
+	color: var(--contrast_0_low);
+}
+
+.vrx-header.has-unlocked {
+	background: hsl(25, 85%, 55%);
+	color: #000;
+	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
+	color: var(--contrast_1_high);
+}
+
+.vrx-list {
+	list-style: none;
+	padding: 0;
+	margin: 1rem -0.5rem;
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.vrx-list>li {
+	margin: 0.5rem;
+	padding: 0;
+	font-size: 0.9rem;
+}
+
+.vrx-list td {
+	text-align: left;
+}
+
+.vrx-list table>tr:first-child>th,
+.vrx-list table>tr:first-child>td {
+	border-top: 0;
 }
 
 /* ************* */

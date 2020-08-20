@@ -3,12 +3,12 @@
 
 unittest(io8)
 {
-  Buffer_t buf;
+  Buffer buf;
   uint8_t expected = 254;
-  ioBufferWrite8(&buf, expected);
+  buf.write8(expected);
   assertEqual(1, buf.size);
 
-  uint8_t result = ioBufferRead8(&buf);
+  uint8_t result = buf.read8();
   assertEqual(1, buf.index);
 
   assertEqual(expected, result);
@@ -16,12 +16,12 @@ unittest(io8)
 
 unittest(io16)
 {
-  Buffer_t buf;
+  Buffer buf;
   uint16_t expected = 254*254;
-  ioBufferWrite16(&buf, expected);
+  buf.write16(expected);
   assertEqual(2, buf.size);
 
-  uint16_t result = ioBufferRead16(&buf);
+  uint16_t result = buf.read16();
   assertEqual(2, buf.index);
 
   assertEqual(expected, result);
@@ -29,12 +29,12 @@ unittest(io16)
 
 unittest(io32)
 {
-  Buffer_t buf;
+  Buffer buf;
   uint32_t expected = 254*254*254*254;
-  ioBufferWrite32(&buf, expected);
+  buf.write32(expected);
   assertEqual(4, buf.size);
 
-  uint32_t result = ioBufferRead32(&buf);
+  uint32_t result = buf.read32();
   assertEqual(4, buf.index);
 
   assertEqual(expected, result);

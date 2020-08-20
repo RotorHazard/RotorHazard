@@ -1,0 +1,167 @@
+html {
+	background: transparent;
+	color: #000;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-size: 1.2em;
+	font-family: sans-serif;
+	margin: 0;
+	padding: 0;
+}
+
+h1 {
+	font-size: 2rem;
+	padding: 1.5rem 0.5rem;
+	background: #386fb6;
+	color: #fff;
+	background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
+	color: var(--contrast_0_high);
+	margin: 0;
+	font-weight: 500;
+	line-height: 1;
+	border-radius: 0.5rem;
+}
+
+table {
+	border-collapse: collapse;
+	min-width: 100%;
+	border: solid 1px #d1d3d4;
+	background: #fff;
+	height: 100%;
+}
+
+th {
+	white-space: nowrap;
+}
+
+th, td {
+	padding: 0.25em;
+	text-align: right;
+	border-top: solid 1px #d1d3d4;
+}
+
+thead th {
+	height: 1.2em;
+	vertical-align: bottom;
+}
+
+tbody td {
+	vertical-align: middle;
+}
+
+main {
+	padding: 0.5rem;
+	display: flex;
+	flex-direction: column;
+	height: calc(100vh - 1rem);
+}
+
+.screen-reader-text {
+	clip: rect(1px, 1px, 1px, 1px);
+	position: absolute;
+}
+
+.channel-block {
+	background: #9e3d22;
+	color: #fff;
+	line-height: 1;
+	vertical-align: top;
+	text-align: center;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-around;
+	align-items: center;
+	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_low));
+	color: var(--contrast_1_low);
+	height: 100%;
+}
+
+.channel-block .ch {
+	font-size: 1.2em;
+	font-weight: bold;
+	margin: 0.25rem;
+}
+
+.channel-block .fr {
+	font-size: 0.75em;
+	margin-top: 0;
+	margin: 0 0.25rem 0.25rem;
+}
+
+#header {
+	flex: 0 0 auto;
+	display: flex;
+	margin-bottom: 0.5rem;
+}
+
+#header h1 {
+	flex: 1 1 auto;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
+	display: block;
+}
+
+#timer {
+	flex: 0 0 17rem;
+	margin-left: 0.5rem;
+}
+
+.timing-clock {
+	font-size: 3rem;
+	line-height: 1;
+	background: #000;
+	color: #fff;
+	border-radius: 0.5rem;
+	padding: 1rem 0;
+	display: block;
+	text-align: center;
+	font-family: monospace;
+	font-weight: bold;
+	margin: 0;
+	position: relative;
+}
+
+.race-running .timing-clock {
+	background: hsl(92.7, 67.8%, 29.2%);
+}
+
+.race-stopped .timing-clock {
+	background: #9e3d22;
+}
+
+.timing-clock.staging {
+	background: hsl(25, 85%, 55%);
+	color: #000;
+}
+
+.timing-clock .warning {
+	position: absolute;
+	left: 0.25em;
+	line-height: 1.3;
+	display: none;
+}
+
+#leaderboard {
+	flex: 1;
+}
+
+.responsive-wrap {
+	height: 100%;
+}
+
+.leaderboard .pilot,
+.leaderboard .race_class {
+	text-align: left;
+}
+
+.leaderboard .race_class {
+	text-align: left;
+}
+
+.leaderboard .channel {
+	width: 5em;
+}

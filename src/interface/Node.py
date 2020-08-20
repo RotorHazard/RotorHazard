@@ -12,6 +12,7 @@ class Node:
         self.node_nadir_rssi = 0
         self.pass_peak_rssi = 0
         self.pass_nadir_rssi = 0
+        self.max_rssi_value = 999
         self.node_lap_id = -1
         self.current_pilot_id = 0
         self.first_cross_flag = False
@@ -20,10 +21,14 @@ class Node:
         self.lap_timestamp = -1
         self.loop_time = 10
         self.crossing_flag = False
+        self.pass_crossing_flag = False
         self.debug_pass_count = 0
 
         self.enter_at_level = 0
         self.exit_at_level = 0
+
+        self.start_thresh_lower_flag = False  # True while EnterAt/ExitAt lowered at start of race
+        self.start_thresh_lower_time = 0      # time when EnterAt/ExitAt should be restored
 
         self.cap_enter_at_flag = False
         self.cap_enter_at_total = 0
@@ -49,7 +54,9 @@ class Node:
 
         self.io_request = None # request time of last I/O read
         self.io_response = None # response time of last I/O read
-
+        
+        self.read_block_count = 0
+        self.read_error_count = 0
 
     def init(self):
         if self.api_level >= 10:
@@ -95,3 +102,17 @@ class Node:
 
     def is_valid_rssi(self, value):
         return value > 0 and value < self.max_rssi_value
+
+    def inc_read_block_count(self, interface):
+        if interface:
+            self.read_block_count += 1
+            interface.inc_intf_read_block_count()
+
+    def inc_read_error_count(self, interface):
+        if interface:
+            self.read_error_count += 1
+            interface.inc_intf_read_error_count()
+
+    def get_read_error_report_str(self):
+        return "Node{0}:{1}/{2}({3:.2%})".format(self.index+1, self.read_error_count, \
+                self.read_block_count, (float(self.read_error_count) / float(self.read_block_count)))

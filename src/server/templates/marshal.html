@@ -13,6 +13,15 @@
 	var precalc_laps = {};
 	var min_lap = {{ getOption('MinLapSec') }} * 1000;
 
+	var start_thresh_lower_amount = 0;
+	var start_thresh_lower_duration = 0;
+	if ('{{ getOption('startThreshLowerAmount') }}' != 'False') {
+		start_thresh_lower_amount = {{ getOption('startThreshLowerAmount') }};
+	}
+	if ('{{ getOption('startThreshLowerDuration') }}' != 'False') {
+		start_thresh_lower_duration = {{ getOption('startThreshLowerDuration') }};
+	}
+
 	$(document).ready(function () {
 		var graph_canvas = document.getElementById('race-graph');
 		var context = graph_canvas.getContext('2d');
@@ -57,7 +66,8 @@
 			'all_languages',
 			'language',
 			'enter_and_exit_at_levels',
-			'race_list',
+			'race_formats',
+			'race_list'
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -75,6 +85,10 @@
 				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				rotorhazard.nodes[i].exit_at_level = msg.exit_at_levels[i];
 			}
+		});
+
+		socket.on('race_formats', function (msg) {
+			rotorhazard.race_formats = msg;
 		});
 
 		socket.on('race_list', function (msg) {
@@ -231,6 +245,8 @@
 				graph.options.minValue = current_race_data.exit_at;
 				graph.options.maxValue = current_race_data.enter_at;
 			}
+
+			current_race_data.race_format = rotorhazard.race_formats[current_race_data.format_id];
 
 			// update header
 			var header = $( "#selected_heat option:selected" ).text() + ' / ' +
@@ -392,6 +408,11 @@
 				} else {
 					lapData.append('<td><button class="delete_lap btn-danger" data-lapid="' + lap_i + '">&#215;</button></td>');
 				}
+
+				if (!current_race_data.race_format.race_mode && lap.lap_time_stamp > (current_race_data.race_format.race_time_sec * 1000)) {
+					lapData.addClass('after-time-expired');
+				}
+
 				lapList.append(lapData);
 			}
 
@@ -486,10 +507,30 @@
 			var peakFirst = 0;
 			var peakLast = 0;
 			var laps = [];
+			var startThreshLowerFlag = false;
+
+			// set lower EnterAt/ExitAt values at race start if configured
+			if (start_thresh_lower_amount > 0 && start_thresh_lower_duration > 0) {
+				var diffVal = (enterat - exitat) * start_thresh_lower_amount / 100;
+				if (diffVal > 0) {
+					enterat = enterat - diffVal;
+					exitat = exitat - diffVal;
+					startThreshLowerFlag = true;
+				}
+			}
 
 			for(var idx in current_race_data.history_values) {
 				var rssi = current_race_data.history_values[idx];
 				var time = current_race_data.history_times[idx];
+
+				if (startThreshLowerFlag) {
+					// if initial pass recorded or past duration then restore EnterAt/ExitAt values
+					if (laps.length > 0 || time >= current_race_data.start_time + start_thresh_lower_duration + current_race_data.race_format.start_delay_max) {
+						enterat = current_race_data.enter_at;
+						exitat = current_race_data.exit_at;
+						startThreshLowerFlag = false;
+					}
+				}
 
 				if (!crossing && (rssi > enterat)) {
 					crossing = true;

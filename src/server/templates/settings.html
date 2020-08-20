@@ -8,7 +8,7 @@
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	$(document).ready(function () {
- 		socket.emit('load_data', {'load_types': [
+		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',
 			'node_data',
@@ -20,12 +20,15 @@
 			'race_format',
 			'node_tuning',
 			'enter_and_exit_at_levels',
+			'start_thresh_lower_amount',
+			'start_thresh_lower_duration',
 			'min_lap',
 			'race_status',
 			'team_racing_mode',
 			'led_effects',
 			'led_effect_setup',
-			'cluster_status'
+			'cluster_status',
+			'vrx_list',
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -35,14 +38,14 @@
 		socket.on('language', function (msg) {
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
-			for (i = 0; i < msg.languages.length; i++) {
+			for (var i = 0; i < msg.languages.length; i++) {
 				$('#set_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
 
 			$('#set_voice_string_language').empty();
 			$('#set_voice_string_language').append('<option value="match-timer">' + __('(Match Timer Language)') + '</option>')
 			$('#set_voice_string_language').append('<option value="">English</option>')
-			for (i = 0; i < msg.languages.length; i++) {
+			for (var i = 0; i < msg.languages.length; i++) {
 				$('#set_voice_string_language').append('<option value="' + msg.languages[i].id +'">' + msg.languages[i].name + '</option>')
 			}
 			$('#set_voice_string_language').val(rotorhazard.voice_string_language);
@@ -97,13 +100,21 @@
 			$('#set_calibrationMode').val(1);
 		}
 
+		if ('{{ getOption('pilotSort') }}' == 'callsign') {
+			$('#set_pilotSort').val('callsign');
+		}
+
+		if ('{{ getOption('nextHeatBehavior') }}' == '1') {
+			$('#set_next_heat_behavior').val(1);
+		}
+
 		// populate frequency selects
 		$('.frequency_table').each(function(){
 			$(this).html(freq.buildSelect());
 		});
 
 		// set up node local store
-		for (i = 0; i < {{ num_nodes }}; i++) {
+		for (var i = 0; i < {{ num_nodes }}; i++) {
 			rotorhazard.nodes[i] = new nodeModel();
 			// start RSSI graphing
 			rotorhazard.nodes[i].canvas = document.getElementById('rssi-graph-' + i);
@@ -123,6 +134,7 @@
 					$('#set_fix_race_time').prop('disabled', true);
 					$('#set_start_delay_min').prop('disabled', true);
 					$('#set_start_delay_max').prop('disabled', true);
+					$('#set_staging_tones').prop('disabled', true);
 					$('#set_number_laps_win').prop('disabled', true);
 					$('#set_win_condition').prop('disabled', true);
 					$('#set_team_racing_mode').prop('disabled', true);
@@ -136,6 +148,7 @@
 					$('#set_fix_race_time').prop('disabled', false);
 					$('#set_start_delay_min').prop('disabled', false);
 					$('#set_start_delay_max').prop('disabled', false);
+					$('#set_staging_tones').prop('disabled', false);
 					$('#set_number_laps_win').prop('disabled', false);
 					$('#set_win_condition').prop('disabled', false);
 					$('#set_team_racing_mode').prop('disabled', false);
@@ -149,7 +162,7 @@
 		socket.on('heartbeat', function (msg) {
 			if (++heartbeatCounter >= 2) {   //do these updates less often than speak-queue checks
 				heartbeatCounter = 0;
-				for (i = 0; i < msg.current_rssi.length; i++) {
+				for (var i = 0; i < msg.current_rssi.length; i++) {
 					var rssiValue = msg.current_rssi[i];
 
 					if (rotorhazard.nodes[i].frequency == 0) {
@@ -214,6 +227,8 @@
 						values += __('Humidity: ') + Number(value).toFixed(1)+units;
 					} else if(reading == 'pressure') {
 						values += __('Pressure: ') + Number(value).toFixed(1)+units;
+					} else if(reading == 'capacity') {
+						values += __('Capacity: ') + Number(value).toFixed(0)+units;
 					} else {
 						values += __('Unknown: ') + value;
 					}
@@ -260,7 +275,7 @@
 		/* Profiles */
 		socket.on('node_tuning', function (msg) {
 			$('#set_profile').empty();
-			for (i = 0; i < msg.profile_ids.length; i++) {
+			for (var i = 0; i < msg.profile_ids.length; i++) {
 				$('#set_profile').append('<option value="' + msg.profile_ids[i] +'">' + msg.profile_names[i] + '</option>')
 			}
 			$('#set_profile').val(msg.current_profile);
@@ -293,7 +308,7 @@
 
 		/* Frequency Setup */
 		socket.on('frequency_data', function (msg) {
-			for (i = 0; i < msg.frequency.length; i++) {
+			for (var i = 0; i < msg.frequency.length; i++) {
 				$('#s_channel_' + i).val(msg.frequency[i]);
 				rotorhazard.nodes[i].frequency = msg.frequency[i];
 				freq.updateSelects();
@@ -303,7 +318,7 @@
 
 		function show_imd_rating(val) {
 			$('#imd_rating_label').html(__('Frequency set IMD rating (100=best)') +
-                  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
+				  ': ' + val + ' &nbsp; <a href="/imdtabler">View with IMDTabler</a>');
 		};
 
 		function show_imd_rating_dashes() {
@@ -329,9 +344,156 @@
 			socket.emit('set_frequency_preset', data);
 		});
 
+		socket.on('vrx_list', function (msg) {
+			if (msg.enabled) {
+				vrx_by_node = {}
+
+				for (var vrx_id in msg.vrx) {
+					var vrx = msg.vrx[vrx_id]
+					if (vrx.dev == 'rx' && vrx.valid_rx) {
+						if (!vrx_by_node[vrx.node_number]) {
+							vrx_by_node[vrx.node_number] = [];
+						}
+						vrx_by_node[vrx.node_number].push(vrx_id)
+					}
+				}
+
+				// Frequency panel
+				for (i = 0; i < {{ num_nodes }}; i++) {
+					var header = $('.node[data-node=' + i + '] .vrx-header');
+					header.empty();
+
+					var locks = 0;
+					if (i in vrx_by_node) {
+						for (j in vrx_by_node[i]) {
+							var vrx_id = vrx_by_node[i][j];
+							var vrx = msg.vrx[vrx_id];
+							if (vrx.lock_status == 'L') {
+								locks++;
+							}
+						}
+
+						if (locks == vrx_by_node[i].length) {
+							header.removeClass('has-unlocked')
+						} else {
+							header.addClass('has-unlocked')
+						}
+
+						header.append(__('VRx locks') + ': ' + locks + '/' + vrx_by_node[i].length);
+					} else {
+						header.removeClass('has-unlocked')
+						header.append(__('VRx locks') + ': 0/0');
+					}
+				}
+
+				if (msg.connection) {
+					$('.vrx-warning').html(__("WARNING: Video receivers connected.") + " " + __("Changes may cause pilots to lose video."));
+				} else {
+					$('.vrx-warning').empty();
+				}
+
+				// VRx Control Panel
+				if (msg.connection) {
+					$('#vrx-control-setup').empty();
+
+					vrx_header = '<h3>' + __('Connected Receivers') + '</h3>';
+
+					var vrx_list = $('<ul class="vrx-list">')
+					for (var vrx_id in msg.vrx) {
+						var vrx = msg.vrx[vrx_id]
+						if (vrx_id != 'VRxController') {
+							var li = $('<li>')
+							var table = $('<table>');
+
+							table_items = {};
+
+							table_items['ID'] = vrx_id;
+
+							if (vrx.nn) {
+								table_items['Name'] = vrx.nn;
+							}
+
+							if (vrx.dev == 'rx') {
+								if (vrx.valid_rx) {
+									table_items['Status'] = __("Connected");
+
+									if ('node_number' in vrx) {
+										var selectbox = '<select class="vrx-node" data-vrx-id="' + vrx_id + '">'
+										for (var i = 0; i < {{ num_nodes }}; i++) {
+											var opt = '<option value="' + i + '"';
+											if (i == vrx.node_number) {
+												opt += 'selected="selected"';
+											}
+											opt += '>' + (parseInt(i)+1) + '</option>';
+											selectbox += opt;
+										}
+										table_items['Node'] = selectbox;
+									}
+
+									if ('cam_forced_or_auto' in vrx
+										&& 'chosen_camera_type' in vrx) {
+										var cam_labels = {
+											"A": __("Auto"),
+											"F": __("Forced")
+										}
+										var cam_types = {
+											"N": __("NTSC"),
+											"P": __("PAL")
+										}
+
+										table_items['Format'] = cam_labels[vrx.cam_forced_or_auto] + ": " + cam_types[vrx.chosen_camera_type];
+									}
+
+									if ('lock_status' in vrx) {
+										if(vrx.lock_status == 'L') {
+											table_items['Lock'] = __('Locked');
+										} else {
+											table_items['Lock'] = __('Unlocked');
+										}
+									}
+
+								} else {
+									table_items['Status'] = __("No receiver");
+								}
+							} else {
+								table_items['Status'] = __("No connection");
+							}
+
+							for (var item in table_items) {
+								if (item == 'ID' && vrx.ip) {
+									table.append('<tr><th>' + __(item) + '</th><td><a href="http://' + vrx.ip + '">' + table_items[item] + '</a></td></tr>');
+								} else {
+									table.append('<tr><th>' + __(item) + '</th><td>' + table_items[item] + '</td></tr>');
+								}
+							}
+
+							li.append(table)
+							vrx_list.append(li);
+						}
+					}
+
+					$('#vrx-control-setup').append(vrx_header)
+					$('#vrx-control-setup').append(vrx_list)
+				} else {
+					$('#vrx-control-setup').html('<p class="form-note">' + __("No connection to VRx communications server (MQTT)") + '</p>');
+				}
+			} else {
+				$('.vrx-warning').empty();
+			}
+		});
+
+		$(document).on('change', '.vrx-node', function (msg) {
+			var vrx_id = $(this).data('vrx-id');
+			var node = parseInt($(this).val());
+			socket.emit('set_vrx_node', {
+				'vrx_id': vrx_id,
+				'node': node
+			});
+		});
+
 		/* Nodes */
 		socket.on('node_data', function (msg) {
-			for (i = 0; i < msg.node_peak_rssi.length; i++) {
+			for (var i = 0; i < msg.node_peak_rssi.length; i++) {
 				$('.node_peak_rssi_' + i).html(msg.node_peak_rssi[i]);
 				$('.node_nadir_rssi_' + i).html(msg.node_nadir_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
@@ -357,7 +519,7 @@
 		});
 
 		socket.on('enter_and_exit_at_levels', function (msg) {
-			for (i = 0; i < msg.enter_at_levels.length; i++) {
+			for (var i = 0; i < msg.enter_at_levels.length; i++) {
 				$('#set_enter_at_level_' + i).val(msg.enter_at_levels[i]);
 				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
@@ -467,22 +629,58 @@
 			return false;
 		});
 
+		socket.on('start_thresh_lower_amount', function (msg) {
+			$('#set_start_thresh_lower_amount').val(msg.start_thresh_lower_amount);
+		});
+
+		$('#set_start_thresh_lower_amount').change(function (event) {
+			var start_thresh_lower_amount_val = parseInt($(this).val());
+			var data = {
+				start_thresh_lower_amount: start_thresh_lower_amount_val
+			};
+			socket.emit('set_start_thresh_lower_amount', data);
+		})
+
+		socket.on('start_thresh_lower_duration', function (msg) {
+			$('#set_start_thresh_lower_duration').val(msg.start_thresh_lower_duration);
+		});
+
+		$('#set_start_thresh_lower_duration').change(function (event) {
+			var start_thresh_lower_duration_val = parseInt($(this).val());
+			var data = {
+				start_thresh_lower_duration: start_thresh_lower_duration_val
+			};
+			socket.emit('set_start_thresh_lower_duration', data);
+		})
+
+		$('#set_next_heat_behavior').change(function (event) {
+			var data = {
+				next_heat_behavior: parseInt($(this).val())
+			};
+			socket.emit('set_next_heat_behavior', data);
+		})
 
 		/* Heats */
 		socket.on('heat_data', function (msg) {
-			msg.pilot_data.sort(function(a, b){
-				if (a.name < b.name)
-					return -1;
-				if (a.name > b.name)
-					return 1;
-				return 0;
-			});
-
 			$(".heats").empty();
 			for (var i in msg.heats) {
 				var heats = msg.heats[i];
+
+				if (heats.note) {
+					heat_note = heats.note
+				} else {
+					heat_note = __('Heat') + ' ' + heats.heat_id
+				}
+
 				var el = $('<li>');
-				el.append('<h3>Heat ' + heats.heat_id + '</h3>');
+
+				var header = $('<h3>Heat ' + heats.heat_id + '</h3>')
+
+				if (!heats.locked) {
+					header.append('<button class="delete_heat btn-danger" data-id="' + heats.heat_id + '" title="Delete Heat ' + heats.heat_id + '">&#215;</button>');
+				}
+				el.append(header);
+
 				var input = $('<input type="text" id="heat-note-' + heats.heat_id + '" class="set_heat_note" data-heat="' + heats.heat_id + '" placeholder="' + __('Name') + ' (' + __('Heat') + ' ' + heats.heat_id + ')" maxlength="80">');
 				input.val(heats.note);
 				el.append(input);
@@ -498,7 +696,12 @@
 					var selectbox = $('<select class="set_pilot_position" id="heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '" >')
 					selectbox.append('<option value="0">None</option>')
 						for (var k in msg.pilot_data) {
-							selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+							if (msg.pilotSort == 'callsign') {
+								selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].callsign + ' (' + msg.pilot_data[k].name + ')</option>')
+
+							} else {
+								selectbox.append('<option value="' + msg.pilot_data[k].pilot_id + '">' + msg.pilot_data[k].name + ' (' + msg.pilot_data[k].callsign + ')</option>')
+							}
 						}
 					selectbox.val(heatpilot);
 					selectbox.prop('disabled', heats.locked);
@@ -513,7 +716,11 @@
 					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '">')
 						selectbox.append('<option value="0">Unclassified</option>')
 						for (var k in msg.classes) {
-							selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
+							if (msg.classes[k].name) {
+								selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
+							} else {
+								selectbox.append('<option value="' + msg.classes[k].id + '">' + __('Class') + ' ' + msg.classes[k].id + '</option>')
+							}
 						}
 					if (heats.class_id > 0) {
 						selectbox.val(heats.class_id);
@@ -523,6 +730,8 @@
 					selectbox.prop('disabled', heats.locked);
 					el.append(selectbox);
 				}
+
+				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="Duplicate ' + heat_note + '">+</button>');
 
 				el.appendTo($('.heats'));
 			}
@@ -559,17 +768,101 @@
 			return false;
 		});
 
+		$(document).on("click", '.delete_heat', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_heat', data);
+		});
+
+		$(document).on("click", '.duplicate_heat', function (event) {
+			var data = {
+				heat: parseInt($(this).data('id')),
+			};
+			socket.emit('duplicate_heat', data);
+		});
+
+		$('button#generate_heats').click(function (event) {
+			var data = {
+				input_class: parseInt($('#generator_input_class').val()),
+				output_class: parseInt($('#generator_output_class').val()),
+				suffix: $('#generator_suffix').val(),
+				pilots_per_heat: parseInt($('#generator_pilots_per_heat').val()),
+			};
+			$('button#generate_heats').prop('disabled', true);
+			socket.emit('generate_heats', data);
+			return false;
+		});
+
+		socket.on('heat_generate_done', function (msg) {
+			$('button#generate_heats').prop('disabled', false);
+		});
+
+		/* Classes */
+		function update_class_selectors() {
+			var class_data = rotorhazard.class_data;
+
+			var input_val = $('#generator_input_class').val();
+			var output_val = $('#generator_output_class').val();
+
+			$('#generator_input_class').empty().append($('<option value="0">' + __('Randomize All') + '</option>'));
+			$('#generator_output_class').empty().append($('<option value="0">' + __('Unclassified') + '</option>'));
+
+			if (class_data.classes.length) {
+				for (var i in class_data.classes) {
+					var race_class = class_data.classes[i];
+
+					if (race_class.name) {
+						race_class_name = race_class.name
+					} else {
+						race_class_name = __('Class') + ' ' + race_class.id
+					}
+
+					if (race_class.name) {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' +race_class.name + ' (' + __('Class') + ' ' + race_class.id + ')</option>'));
+					} else {
+						$('#generator_input_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+						$('#generator_output_class').append($('<option value="' + race_class.id + '">' + __('Class') + ' ' + race_class.id + '</option>'));
+					}
+				}
+			}
+
+			if ($('#generator_input_class option[value="' + input_val + '"]').length) {
+				$('#generator_input_class').val(input_val);
+			}
+			if ($('#generator_output_class option[value="' + output_val + '"]').length) {
+				$('#generator_output_class').val(output_val);
+			}
+
+		}
+
 		socket.on('class_data', function (msg) {
+			rotorhazard.class_data = msg;
+
 			$(".race_classes").empty();
 
 			if (msg.classes.length) {
-				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '</p>');
+				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '<br />' + __('Duplicating a class also duplicates its assigned heats.') + '</p>');
 
 				var classlist = $('<ol>');
 				for (var i in msg.classes) {
 					var race_class = msg.classes[i];
+
+					if (race_class.name) {
+						race_class_name = race_class.name
+					} else {
+						race_class_name = __('Class') + ' ' + race_class.id
+					}
+
 					var el = $('<li>');
-					el.append('<h3>' + __('Class') + ' ' + race_class.id + '</h3>');
+					var header = $('<h3>' + __('Class') + ' ' + race_class.id + '</h3>')
+
+					if (!race_class.locked) {
+						header.append('<button class="delete_class btn-danger" data-id="' + race_class.id + '" title="Delete Class '+ race_class.id +'">&#215;</button>');
+					}
+					el.append(header);
+
 					var input = $('<input type="text" id="race_class_name-' + race_class.id + '" class="set_race_class_name" data-class_id="' + race_class.id + '" placeholder="' + __('Name') + ' (' + __('Class') + ' ' + race_class.id + ')" maxlength="80">');
 					input.val(race_class.name);
 					el.append(input);
@@ -587,12 +880,16 @@
 					selectbox.prop('disabled', race_class.locked);
 					el.append(selectbox);
 
+					el.append('<button class="duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
+
 					el.appendTo(classlist);
 				}
 				classlist.appendTo($('.race_classes'));
 			} else {
 				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
 			}
+
+			update_class_selectors();
 		});
 
 		$(document).on("change", '.set_race_class_name', function (event) {
@@ -601,6 +898,15 @@
 				class_name: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
+
+			for (var i in rotorhazard.class_data.classes) {
+				var race_class = rotorhazard.class_data.classes[i];
+				if (race_class['id'] == data.class_id) {
+					race_class.name = data.class_name;
+					break;
+				}
+			}
+			update_class_selectors();
 		});
 
 		$(document).on("change", '.set_race_class_format', function (event) {
@@ -624,22 +930,41 @@
 			return false;
 		});
 
+		$(document).on("click", '.delete_class', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_class', data);
+		});
+
+		$(document).on("click", '.duplicate_class', function (event) {
+			var data = {
+				class: parseInt($(this).data('id')),
+			};
+			socket.emit('duplicate_race_class', data);
+		});
+
 		/* Pilots */
 		socket.on('pilot_data', function (msg) {
 			$(".pilots").empty();
 			for (var i in msg.pilots) {
-				if (msg.pilots[i].pilot_id != 0) {
-					var el = $('<li data-id="' + msg.pilots[i].pilot_id + '">');
-					el.append('<label for="name_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
-					el.append('<input type="text" class="set_pilot_name" id="name_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].name + '" placeholder="' + __('Name') +'">');
-					el.append('<label for="callsign_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
-					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].callsign + '" placeholder="' + __('Callsign') +'">');
-					el.append('<label for="phonetic_' + msg.pilots[i].pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
+				var pilot = msg.pilots[i];
+				if (pilot.pilot_id != 0) {
+					var el = $('<li data-id="' + pilot.pilot_id + '">');
+					el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
+					el.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
+					el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
+					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
+					el.append('<label for="phonetic_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
 					var phonetic = $('<div class="phonetic">');
-					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '" value="' + msg.pilots[i].phonetic + '" placeholder="' + __('Phonetic') + '">');
-					phonetic.append('<button class="speak_pilot" data-pilot_id="' + msg.pilots[i].pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
+					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
+					phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
-					el.append('<div class="pilot-team"><label for="set_pilot_team_' + msg.pilots[i].pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + msg.pilots[i].pilot_id + '" data-pilot_id="' + msg.pilots[i].pilot_id + '">' + msg.pilots[i].team_options + '</select></div>');
+					el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
+
+					if (!pilot.locked) {
+						el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
+					}
 
 					el.appendTo($('.pilots'));
 				}
@@ -722,6 +1047,13 @@
 		$('button#add_pilot').click(function (event) {
 			socket.emit('add_pilot');
 			return false;
+		});
+
+		$(document).on("click", '.delete_pilot', function (event) {
+			var data = {
+				pilot: parseInt($(this).data('id')),
+			};
+			socket.emit('delete_pilot', data);
 		});
 
 		/* Voice */
@@ -866,9 +1198,9 @@
 		});
 
 		$("#voice_test_text").keyup(function(event) {
-		    if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
-		        $("#play_voice_test").click();
-		    }
+			if (event.keyCode === 13) {  // make 'Enter' key on input field trigger button
+				$("#play_voice_test").click();
+			}
 		});
 
 		/* Race Format */
@@ -903,7 +1235,7 @@
 
 		socket.on('race_format', function (msg) {
 			$('#set_race_format').empty();
-			for (i = 0; i < msg.format_ids.length; i++) {
+			for (var i = 0; i < msg.format_ids.length; i++) {
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
 			}
 			$('#set_race_format').val(msg.current_format);
@@ -919,6 +1251,8 @@
 			$('#set_start_delay_min').prop('disabled', msg.locked);
 			$('#set_start_delay_max').val(msg.start_delay_max);
 			$('#set_start_delay_max').prop('disabled', msg.locked);
+			$('#set_staging_tones').val(msg.staging_tones);
+			$('#set_staging_tones').prop('disabled', msg.locked);
 			$('#set_number_laps_win').val(msg.number_laps_win);
 			$('#set_number_laps_win').prop('disabled', msg.locked);
 			$('#set_win_condition').val(msg.win_condition);
@@ -993,6 +1327,13 @@
 			socket.emit('alter_race_format', data);
 		})
 
+		$('#set_staging_tones').change(function (event) {
+			var data = {
+				staging_tones: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+		})
+
 		$('#set_win_condition').change(function (event) {
 			var data = {
 				win_condition: parseInt($(this).val())
@@ -1010,7 +1351,7 @@
 			// convert decoded data to byte array
 			var byteNumbers = new Array(msgArray.length);
 			for (var i = 0; i < msgArray.length; i++) {
-			    byteNumbers[i] = msgArray.charCodeAt(i);
+				byteNumbers[i] = msgArray.charCodeAt(i);
 			}
 			var byteArray = new Uint8Array(byteNumbers);
 			// construct blob from byte array and initiate browser save-as
@@ -1042,6 +1383,23 @@
 		$('button#reboot_pi').click(function (event) {
 			socket.emit('reboot_pi');
 			return false;
+		});
+
+		$('button#download_logs').click(function (event) {
+			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
+			return false;
+		});
+
+		socket.on('settings_save_logs', function (msg) {
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+				byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			// construct blob from byte array and initiate browser save-as
+			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
 		});
 
 		socket.on('set_option', function (msg) {
@@ -1327,7 +1685,7 @@
 	<div class="panel-content">
 		<p><label for="message_body" class="screen-reader-text">{{ __('Message Body') }}</label>
 		<input type="text" id="message_body" maxlength="256" placeholder="Message">{{ getOption('eventDescription') }}</textarea></p>
-		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}</label></p>
+		<p><label><input type="checkbox" id="message_interrupt"> {{ __('Pop-up Alert') }}{% if vrx_enabled %} {{ __('and Send to VRx') }}{% endif %}</label></p>
 		<p><button id="send_message">{{ __('Send Message') }}</button></p>
 	</div>
 </div>
@@ -1370,6 +1728,9 @@
 		<div class="node-list">
 			{% for node in range(num_nodes) %}
 				<div class="node" data-node="{{ node }}">
+					{% if vrx_enabled %}
+						<div class="vrx-header"></div>
+					{% endif %}
 					<h3><label for="set_freq_node_{{ node }}">{{ __('Node') }} {{ node + 1 }}</label></h3>
 					<select class="frequency_table" id="f_table_{{ node }}" data-node="{{ node }}"></select>
 					<label for="s_channel_{{ node }}" class="screen-reader-text">Frequency</label>
@@ -1378,6 +1739,7 @@
 			{% endfor %}
 		</div>
 		<div class="control-set" id="imd_rating_label"></div>
+		<div class="control-set vrx-warning"></div>
 	</div>
 </div>
 
@@ -1470,9 +1832,21 @@
 					<option value="1">{{ __('Adaptive') }}</option>
 				</select>
 			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_thresh_lower_amount">{{ __('Start of race EnterAt/ExitAt lowering amount (percent)') }}</label>
+				</div>
+				<input type="number" id="set_start_thresh_lower_amount" min="0" max="200" value="{{ getOption('start_thresh_lower_amount') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_thresh_lower_duration">{{ __('Start of race EnterAt/ExitAt lowering duration (seconds)') }}</label>
+				</div>
+				<input type="number" id="set_start_thresh_lower_duration" min="0" max="999" value="{{ getOption('start_thresh_lower_duration') }}">
+			</li>
 		</ol>
 
-		<p class="form-note"><a href="/docs?d=Tuning%20Parameters.md">{{ __("Tuning Parameters") }}</a></p>
+		<p class="form-note"><a href="/docs?d=Tuning%20Parameters.md">{{ __("View Calibration and Tuning Guide") }}</a></p>
 	</div>
 </div>
 
@@ -1520,6 +1894,53 @@
 		<div class="control-set">
 			<button id="add_heat">+ {{ __('Add Heat') }}</button>
 		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_next_heat_behavior">{{ __('Next Heat Behavior') }}</label>
+				</div>
+				<select id="set_next_heat_behavior">
+					<option value="0">{{ __('Auto-Switch After Race Save') }}</option>
+					<option value="1">{{ __('Manually Switch Heats') }}</option>
+				</select>
+			</li>
+		</ol>
+
+		<h3>Heat generator</h3>
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="generator_input_class">{{ __('Input (Class)') }}</label>
+				</div>
+				<select id="generator_input_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_pilots_per_heat">{{ __('Pilots per Heat') }}</label>
+				</div>
+				<input type="number" id="generator_pilots_per_heat" min="1" max="{{ num_nodes }}" value="{{ num_nodes }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_suffix">{{ __('Suffix') }}</label>
+				</div>
+				<input type="text" id="generator_suffix" value="{{ __('Main') }}" />
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="generator_output_class">{{ __('Output Class') }}</label>
+				</div>
+				<select id="generator_output_class">
+					<option>{{ __('Loading...') }}</option>
+				</select>
+			</li>
+		</ol>
+		<div class="control-set">
+			<button id="generate_heats">{{ __('Generate Heats') }}</button>
+		</div>
 	</div>
 </div>
 
@@ -1529,6 +1950,7 @@
 		<h2>{{ __('Pilots') }}</h2>
 	</div>
 	<div class="panel-content">
+		<p class="form-note">{{ __('Altering pilot callsigns rebuilds all race results.') }}</p>
 		<ul class="pilots">
 			<li>{{ __('Loading...') }}</li>
 		</ul>
@@ -1536,6 +1958,18 @@
 		<div class="control-set">
 			<button id="add_pilot">+ {{ __('Add Pilot') }}</button>
 		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_pilotSort">{{ __('Pilot Sort') }}</label>
+				</div>
+				<select id="set_pilotSort" class="set-option" data-option="pilotSort">
+					<option value="name">{{ __('Name') }}</option>
+					<option value="callsign">{{ __('Callsign') }}</option>
+				</select>
+			</li>
+		</ol>
 	</div>
 </div>
 
@@ -1690,6 +2124,16 @@
 			</li>
 			<li>
 				<div class="label-block">
+					<label for="set_staging_tones">{{ __('Staging Tones') }}</label>
+				</div>
+				<select id="set_staging_tones">
+					<option value="2">{{ __('Each Second') }}</option>
+					<option value="1">{{ __('One') }}</option>
+					<option value="0">{{ __('None') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
 					<p class="desc">{{ __('Used with First to X Laps races') }}</p>
 				</div>
@@ -1700,13 +2144,11 @@
 					<label for="set_win_condition">{{ __('Win Condition') }}</label>
 				</div>
 				<select id="set_win_condition">
-					<option value="0">{{ __('None') }}</option>
 					<option value="1">{{ __('Most Laps') }}</option>
 					<option value="2">{{ __('First to X Laps') }}</option>
-					<!-- Yet to be implemented in server.py
 					<option value="3">{{ __('Fastest Lap') }}</option>
 					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
-					-->
+					<option value="0">{{ __('None') }}</option>
 				</select>
 			</li>
 			<li>
@@ -1796,6 +2238,35 @@
 </div>
 {% endif %}
 
+<!--VRx Control-->
+{% if vrx_enabled %}
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('VRx Control') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div id="vrx-control-setup"></div>
+
+		<div class="control-set vrx-warning"></div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_osd_pos_header">{{ __('OSD Rank Prefix') }}</label>
+				</div>
+				<input type="text" id="set_osd_pos_header" class="set-option" data-option="osd_positionHeader" value="{{ getOption('osd_positionHeader') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_osd_lap_header">{{ __('OSD Lap Prefix') }}</label>
+				</div>
+				<input type="text" id="set_osd_lap_header" class="set-option" data-option="osd_lapHeader" value="{{ getOption('osd_lapHeader') }}">
+			</li>
+		</ol>
+	</div>
+</div>
+{% endif %}
+
 <!--Reset database-->
 <div class="panel collapsing">
 	<div class="panel-header">
@@ -1834,7 +2305,8 @@
 		<div class="control-set">
 			<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
 			<a href="#reboot_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Reboot') }}</a>
-			{% if Debug %}<a href="/hardwarelog" class="debug button-like">{{ __('Log') }}</a>{% endif %}
+			<a href="/hardwarelog" class="debug button-like">{{ __('Server Log') }}</a>
+			<button id="download_logs">{{ __('Download Logs') }}</button>
 		</div>
 
 		<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide popup">

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="RotorHazard">
+	<meta name="google" content="notranslate">
+	<title>{% block title %}{% endblock %}: {{ getOption("timerName") }}</title>
+
+	<!-- Icons -->
+	<link rel="apple-touch-icon" sizes="180x180" href="/static/image/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/static/image/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/static/image/favicon-16x16.png">
+	<link rel="manifest" href="/static/image/site.webmanifest">
+	<link rel="mask-icon" href="/static/image/safari-pinned-tab.svg" color="#ee7a28">
+	<link rel="shortcut icon" href="/static/image/favicon.ico">
+	<meta name="msapplication-TileColor" content="#ee7a28">
+	<meta name="msapplication-config" content="/static/image/browserconfig.xml">
+	<meta name="theme-color" content="#224873">
+
+	<!-- Scripts -->
+	<script type="text/javascript" src="/static/jquery-3.2.1/jquery.min.js"></script>
+	<script type="text/javascript" src="/static/articulate/articulate.min.js"></script>
+	<script type="text/javascript" src="/static/socket.io-2.2.0/socket.io.min.js"></script>
+	<script type="text/javascript" src="/static/smoothie/smoothie.js"></script>
+	<script type="text/javascript" src="/static/magnific-1.1.0/magnific-inline-min.js"></script>
+	<script type="text/javascript" src="/static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
+
+	<!-- CSS -->
+	<link rel="stylesheet" href="/static/magnific-1.1.0/magnific-popup.css"></link>
+
+	<style>
+
+	/* CSS variables for interface adjustments */
+	html {
+		--hue_0: {{ getOption("hue_0") }};
+		--sat_0: {{ getOption("sat_0") }}%;
+		--lum_0_low: {{ getOption("lum_0_low") }}%;
+		--lum_0_high: {{ getOption("lum_0_high") }}%;
+		--contrast_0_low: {{ getOption("contrast_0_low") }};
+		--contrast_0_high: {{ getOption("contrast_0_high") }};
+		--hue_1: {{ getOption("hue_1") }};
+		--sat_1: {{ getOption("sat_1") }}%;
+		--lum_1_low: {{ getOption("lum_1_low") }}%;
+		--lum_1_high: {{ getOption("lum_1_high") }}%;
+		--contrast_1_low: {{ getOption("contrast_1_low") }};
+		--contrast_1_high: {{ getOption("contrast_1_high") }};
+	}
+
+	</style>
+	<!-- Child template head content -->
+	{% block head %}{% endblock %}
+</head>
+
+<body>
+	<!--Child template content-->
+	{% block content %}{% endblock %}
+</body>
+
+</html>

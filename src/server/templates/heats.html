@@ -31,14 +31,6 @@
 		});
 
 		socket.on('pilot_data', function (msg) {
-			msg.pilots.sort(function(a, b){
-				if (a.name < b.name)
-					return -1;
-				if (a.name > b.name)
-					return 1;
-				return 0;
-			});
-
 			$(".pilots").empty();
 			for (var i in msg.pilots) {
 				if (msg.pilots[i]) {
@@ -76,7 +68,7 @@
 						}
 					}
 
-					slot.append('<div class="pilot-name">' + callsign + '</div');
+					slot.append('<div class="pilot-name">' + callsign + '</div>');
 					nodelist.append(slot);
 				}
 				el.append(nodelist);

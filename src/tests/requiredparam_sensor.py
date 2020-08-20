@@ -1,0 +1,2 @@
+def discover(requiredParam):
+    return []

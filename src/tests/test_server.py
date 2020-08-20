@@ -23,10 +23,13 @@ class ServerTest(unittest.TestCase):
 
     def get_response(self, event):
         responses = self.client.get_received()
-        for resp in responses:
+        for resp in reversed(responses):
             if resp['name'] == event:
                 return resp['args'][0]
         self.fail('No response of type {0}'.format(event))
+
+    def test_sensors(self):
+        self.assertTrue(any(s.name == 'TestSensor' for s in server.INTERFACE.sensors))
 
     def test_add_pilot(self):
         self.client.emit('load_data', {'load_types': ['pilot_data']})
@@ -48,9 +51,13 @@ class ServerTest(unittest.TestCase):
             self.client.emit('alter_pilot', data)
             self.client.emit('load_data', {'load_types': ['pilot_data']})
             resp = self.get_response('pilot_data')
-            self.assertEquals(resp['pilots'][i-1]['callsign'], data['callsign'])
-            self.assertEquals(resp['pilots'][i-1]['phonetic'], data['phonetic'])
-            self.assertEquals(resp['pilots'][i-1]['name'], data['name'])
+            for item in resp['pilots']:
+                if item['pilot_id'] == i:
+                    pilot = item
+                    break
+            self.assertEquals(pilot['callsign'], data['callsign'])
+            self.assertEquals(pilot['phonetic'], data['phonetic'])
+            self.assertEquals(pilot['name'], data['name'])
 
     def test_add_profile(self):
         self.client.emit('load_data', {'load_types': ['node_tuning']})
@@ -216,6 +223,7 @@ class ServerTest(unittest.TestCase):
         })
 
     def test_livetime_set_frequency(self):
+        self.client.get_received() # clear received buffer
         data = {
             'node': 0,
             'frequency': 5800
@@ -223,8 +231,15 @@ class ServerTest(unittest.TestCase):
         # trigger livetime client mode
         self.client.emit('get_version')
         self.client.emit('set_frequency', data)
-        actual = self.get_response('frequency_set')
-        self.assertEquals(actual, data)
+
+        responses = self.client.get_received()
+        for resp in responses:
+            if resp['name'] == 'frequency_set':
+                if resp['args'][0]['node'] == 0:
+                    self.assertEquals(resp['args'][0], data)
+                    return
+
+        self.fail('No valid responses')
 
     def test_livetime_reset_auto_calibration(self):
         self.client.emit('reset_auto_calibration', {
@@ -245,9 +260,12 @@ class ServerTest(unittest.TestCase):
         server.RACE.race_status = 1
         node = Node()
         node.index = 0
-        server.pass_record_callback(node, server.RACE_START + 19.8, 0)
+        server.pass_record_callback(node, server.RACE.start_time_monotonic + 19.8, 0)
         resp = self.get_response('pass_record')
         self.assertIn('node', resp)
         self.assertIn('frequency', resp)
         self.assertIn('timestamp', resp)
-        self.assertEqual(resp['timestamp'], server.monotonic_to_milliseconds(server.RACE_START) + 19800)
+        self.assertEqual(resp['timestamp'], server.monotonic_to_milliseconds(server.RACE.start_time_monotonic) + 19800)
+
+if __name__ == '__main__':
+    unittest.main()

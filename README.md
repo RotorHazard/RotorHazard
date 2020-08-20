@@ -10,24 +10,30 @@ A multi-node radio frequency race timing system for FPV drone racing, with event
 RotorHazard builds on the [Delta5 Race Timer](https://github.com/scottgchin/delta5_race_timer), and supports up to 8 nodes.
 
 ## Major Features
-* Timing and event management on local server hardware
-* Modern, mobile-friendly, and responsive
-* Confidently calibrate in seconds with visual interface
-* Fix calibration issues retroactively after race is complete
-* Never miss a lap; recover laps with full accuracy by reviewing RSSI history
-* Improved filtering works both indoors and outdoors without adjustment, even in difficult multipathing environments
-* Improved synchronization and timing accuracy
+* Race timing and event management on local hardware, no internet connection needed
+* Full screen and mobile-friendly responsive interface
+* Confidently calibrate in seconds using visual interface
+* Adjust and apply calibration retroactively after race is complete
+* Learns which calibration values work for each pilot and automatically applies them to new races
+* Never miss a lap; recover laps with full accuracy by reviewing race history
+* Advanced signal filtering allows accurate reading both indoors and outdoors, even in difficult multipathing environments
+* Accurately tracks analog and DJI HD video transmitters
 * Manage pilots, heats, classes, and race formats
-* Full manual control of results for race organizer
 * Statistics broken out by event, class, heat, and round
-* Sends realtime lap data to livetime
+* Generates overlay displays and results pages for use with live streaming software such as OBS
+* Timer hardware synchronized with user interface for accurate start/end signals with compensation for poor network connectivity
 * LED and audio support to indicate race staging, starts, and other events
-* JSON API to retrieve timing data from other systems
+* Sends live updates of lap times and split times to pilot OSD
+* Control connected video receivers; change frequency and view lock status
+* Connect other systems to extend functionality via MQTT or JSON API
+* Sends realtime lap data to LiveTime
 
 ## Hardware and Software Setup
 To build and configure the system, follow the instructions here:<br />
 [doc/Hardware Setup.md](doc/Hardware%20Setup.md)<br />
 [doc/Software Setup.md](doc/Software%20Setup.md)
+
+View the RotorHazard documentation here: [doc/README.md](doc/README.md)
 
 An easy-to-build single node version of RotorHazard may also be constructed -- see [doc/USB Nodes.md](doc/USB%20Nodes.md) for more info.
 
@@ -45,11 +51,9 @@ Links to external resources are available from the [Wiki](https://github.com/Rot
 ## Contributors
 * Michael Niggel
 * Eric Thomas
-* Klaus Michael Schneider
 * Mark Hale
-* Cerberus Velvet
-* David Just
-* Scott Chin and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
+
+With support from Ryan Friedman, Klaus Michael Schneider, Cerberus Velvet, David Just, Paweł Fabiszewski, Diez Roggisch, Roger Bess, Kęstutis Strimaitis, Scott Chin, and other [Delta5](https://github.com/scottgchin/delta5_race_timer) Contributors
 
 ### Supported by:
 [![Propwashed Logo](doc/img/Propwashed-Logo-200w.png)](https://propwashed.com)
@@ -65,6 +69,6 @@ Links to external resources are available from the [Wiki](https://github.com/Rot
 
 Discuss RotorHazard on Facebook:  https://www.facebook.com/groups/rotorhazard
 
-To report bugs or request features, please post a GitHub issue [here](https://github.com/RotorHazard/RotorHazard/issues).
+To report bugs or request features, please post a GitHub issue [here](https://github.com/RotorHazard/RotorHazard/issues). When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended (see [here](doc/Software%20Setup.md#logging) for more information on logging).
 
 Community contributions are welcome and encouraged; see the [Development.md](doc/Development.md) doc for more info.

@@ -142,7 +142,7 @@
 		$().articulate('pitch', rotorhazard.voice_pitch);
 		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
 		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
-		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
+		$('#display_lap_number').prop("checked", rotorhazard.display_lap_number);
 		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
 		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
@@ -229,38 +229,20 @@
 		function show_current_laps() {
 			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
 				$('#current_laps_' + i + ' tbody > tr').remove();
-				var lap_index = 0;
 
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
-					var $tr = '';
-					var lapTime = lap.lap_time;
-					if (lap.splits.length > 0) {
-						lapTime += ' (';
-						for (k=0; k<lap.splits.length; k++) {
-							var split = lap.splits[k];
-							if (k > 0) {
-								lapTime += ', ';
-							}
-							lapTime += split.split_time;
-							if (split.split_speed) {
-								lapTime += '/' + split.split_speed;
-							}
-						}
-						lapTime += ')';
-					}
-
 					var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
 
-					$tr = $('<tr>')
-					if (lap_index == 0) {
+					var $tr = $('<tr>')
+					if (lap.lap_number == 0) {
 						$tr.addClass('lap_0');
 					}
 
 					var local_colspan = 2;
-					if(rotorhazard.display_lap_id) {
+					if(rotorhazard.display_lap_number) {
 						local_colspan = 1;
 						$tr.append(
-							$('<td class="display_lap_id">').text(lap_index)
+							$('<td class="display_lap_number">').text(lap.lap_number)
 						);
 					}
 					$time_td = $('<td colspan="'+local_colspan+'">').text(lap.lap_time + ' ');
@@ -287,14 +269,32 @@
 					}
 					$tr.appendTo('#current_laps_' + i);
 
-					lap_index++;
+					$.each(lap.splits, function(k, split) {
+						var split_display = split.split_time + ' ';
+						if (split.split_speed) {
+							split_display += '(' + split.split_speed + ')';
+						}
+						var split_tr = $('<tr>');
+						split_tr.addClass('lap_split');
+						if (rotorhazard.display_lap_id) {
+							var split_id = 'split ';
+							if (lap.splits.length > 1) {
+								split_id += (k+1);
+							}
+							split_tr.append($('<td>').text(split_id));
+						}
+						var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+						split_tr.append(split_time_td);
+						split_tr.appendTo('#current_laps_' + i);
+					});
 				});
 			});
 		}
 
 		socket.on('leaderboard', function (msg) {
+			leaderboard = msg.meta.primary_leaderboard;
 			$('#leaderboard').empty();
-			$('#leaderboard').append(build_leaderboard(msg.by_race_time, 'current', msg.meta));
+			$('#leaderboard').append(build_leaderboard(msg[leaderboard], 'current', msg.meta));
 		});
 
 		socket.on('team_racing_status', function (msg) {
@@ -475,8 +475,8 @@
 			rotorhazard.saveData();
 		});
 
-		$('#display_lap_id').change(function (event) {
-			rotorhazard.display_lap_id = $(this).prop('checked');
+		$('#display_lap_number').change(function (event) {
+			rotorhazard.display_lap_number = $(this).prop('checked');
 			rotorhazard.saveData();
 			show_current_laps();
 		});
@@ -637,7 +637,7 @@
 					{{ __('Lap Information') }}
 				</div>
 				<ul>
-					<li><label><input type="checkbox" id="display_lap_id"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="display_lap_number"> {{ __('Lap Number') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
 				</ul>

@@ -1,12 +1,14 @@
 '''Dummy LED layer.'''
 
 from colorama import init, Fore, Cursor
+import logging
+logger = logging.getLogger(__name__)
 
 class ANSIPixel:
     def __init__(self, count, rows=1):
         '''Constructor'''
         self.pixels = [0 for i in range(count)]
-        self.width = count/rows
+        self.width = count//rows
 
     def begin(self):
         init(autoreset=True)
@@ -25,7 +27,7 @@ class ANSIPixel:
         row = 1
         while start < len(self.pixels):
             end = start + self.width
-            print Cursor.POS(1, row) + ''.join(self.getANSIPx(px) for px in self.pixels[start:end])
+            print(Cursor.POS(1, row) + ''.join(self.getANSIPx(px) for px in self.pixels[start:end]))
             start = end
             row += 1
 
@@ -74,5 +76,5 @@ class ANSIPixel:
 
 def get_pixel_interface(config, brightness, *args, **kwargs):
     '''Returns the pixel interface.'''
-    print('LED: locally enabled via ANSIPixel')
+    logger.info('LED: locally enabled via ANSIPixel')
     return ANSIPixel(config['LED_COUNT'], config.get('LED_ROWS', 1))
