@@ -909,19 +909,29 @@ def check_win_most_laps(RACE, INTERFACE, **kwargs):
 
                 # check if any pilot below lead can potentially pass or tie
                 pilots_can_pass = 0
+                pilots_can_tie = 0
+                pilots_tied = 0
                 for line in leaderboard[1:]:
-                    if line['laps'] >= lead_lap - 1:
-                        # pilot is on lead lap
-                        node_index = line['node']
-
+                    node_index = line['node']
+                    if line['laps'] >= lead_lap: # pilot is on lead lap
+                        pilots_tied += 1
                         if RACE.node_has_finished[node_index] == False:
                             pilots_can_pass += 1
+                    elif line['laps'] >= lead_lap - 1: # pilot can reach lead lap
+                        if RACE.node_has_finished[node_index] == False:
+                            pilots_can_tie += 1
                     else:
                         # lower results no longer need checked
                         break
 
+                # call race if possible
                 if pilots_can_pass == 0:
-                    return check_win_most_laps(RACE, INTERFACE, forced=True, **kwargs)
+                    if pilots_can_tie == 0 and pilots_tied == 0:
+                        return check_win_most_laps(RACE, INTERFACE, forced=True, **kwargs)
+                    elif pilots_tied > 0: # add "and pilots_can_tie == 0" to wait for 3+-way?
+                        node_index = leaderboard[0]['node']
+                        if RACE.node_has_finished[node_index] == True:
+                            return check_win_most_laps(RACE, INTERFACE, forced=True, **kwargs)
 
     return {
         'status': WinStatus.NONE
@@ -1173,9 +1183,9 @@ def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
         team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
         if len(team_leaderboard) > 1 and len(individual_leaderboard):
-            lead_lap = team_leaderboard[0]['laps']
+            lead_laps = team_leaderboard[0]['laps']
 
-            if lead_lap > 0: # must have at least one lap
+            if lead_laps > 0: # must have at least one lap
                 # prevent win declaration if there are active crossings
                 for line in individual_leaderboard:
                     node = INTERFACE.nodes[line['node']]
@@ -1186,8 +1196,6 @@ def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
                         }
 
                 # check if team can potentially pass or tie
-                teams_can_pass = 0
-
                 team_members_finished = {}
                 for line in individual_leaderboard:
                     node_index = line['node']
@@ -1198,14 +1206,26 @@ def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
                     if RACE.node_has_finished[node_index]:
                         team_members_finished[team] += 1
 
+                teams_can_pass = 0
+                teams_can_tie = 0
+                teams_tied = 0
                 for line in team_leaderboard[1:]:
                     max_potential_laps = line['laps'] + line['members'] - team_members_finished[line['name']]
-                    if lead_laps <= max_potential_laps:
+                    if lead_laps == line['laps']:
+                        teams_tied += 1
+                    if lead_laps < max_potential_laps:
                         teams_can_pass += 1
+                    elif lead_laps == max_potential_laps:
+                        teams_can_tie += 1
 
+                # call race if possible
                 if teams_can_pass == 0:
-                    return check_win_team_laps_and_time(RACE, INTERFACE, forced=True)
-
+                    if teams_can_tie == 0 and teams_tied == 0:
+                        return check_win_team_laps_and_time(RACE, INTERFACE, forced=True)
+                    elif teams_tied > 0: # add "and teams_can_tie == 0" to wait for 3+-way?
+                        leading_team = team_leaderboard[0]
+                        if team_members_finished[leading_team['name']] == leading_team['members']:
+                            return check_win_team_laps_and_time(RACE, INTERFACE, forced=True)
 
     return {
         'status': WinStatus.NONE
