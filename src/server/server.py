@@ -4169,7 +4169,7 @@ def db_reset_profile():
 
 def db_reset_race_formats():
     DB.session.query(Database.RaceFormat).delete()
-    DB.session.add(Database.RaceFormat(name=__("MultiGP Standard"),
+    DB.session.add(Database.RaceFormat(name=__("2:00 Standard Race"),
                              race_mode=0,
                              race_time_sec=120,
                              start_delay_min=2,
@@ -4178,7 +4178,7 @@ def db_reset_race_formats():
                              number_laps_win=0,
                              win_condition=WinCondition.MOST_PROGRESS,
                              team_racing_mode=False))
-    DB.session.add(Database.RaceFormat(name=__("Whoop Sprint"),
+    DB.session.add(Database.RaceFormat(name=__("1:30 Whoop Sprint"),
                              race_mode=0,
                              race_time_sec=90,
                              start_delay_min=2,
@@ -4187,7 +4187,7 @@ def db_reset_race_formats():
                              number_laps_win=0,
                              win_condition=WinCondition.MOST_PROGRESS,
                              team_racing_mode=False))
-    DB.session.add(Database.RaceFormat(name=__("Limited Class"),
+    DB.session.add(Database.RaceFormat(name=__("3:00 Extended Race"),
                              race_mode=0,
                              race_time_sec=210,
                              start_delay_min=2,
@@ -4214,6 +4214,33 @@ def db_reset_race_formats():
                              number_laps_win=0,
                              win_condition=WinCondition.NONE,
                              team_racing_mode=False))
+    DB.session.add(Database.RaceFormat(name=__("Fastest Lap Qualifier"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             staging_tones=1,
+                             number_laps_win=0,
+                             win_condition=WinCondition.FASTEST_LAP,
+                             team_racing_mode=False))
+    DB.session.add(Database.RaceFormat(name=__("Fastest 3 Laps Qualifier"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             staging_tones=1,
+                             number_laps_win=0,
+                             win_condition=WinCondition.FASTEST_3_CONSECUTIVE,
+                             team_racing_mode=False))
+    DB.session.add(Database.RaceFormat(name=__("Lap Count Only"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             staging_tones=1,
+                             number_laps_win=0,
+                             win_condition=WinCondition.MOST_LAPS,
+                             team_racing_mode=False))
     DB.session.add(Database.RaceFormat(name=__("Team / Most Laps Wins"),
                              race_mode=0,
                              race_time_sec=120,
@@ -4221,7 +4248,7 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=0,
-                             win_condition=WinCondition.MOST_LAPS,
+                             win_condition=WinCondition.MOST_PROGRESS,
                              team_racing_mode=True))
     DB.session.add(Database.RaceFormat(name=__("Team / First to 7 Laps"),
                              race_mode=0,
