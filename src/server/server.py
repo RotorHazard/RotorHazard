@@ -70,7 +70,8 @@ from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, Co
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
-from Plugins import Plugins
+from Plugins import Plugins, search_modules
+from Sensors import Sensors
 from RHRace import get_race_state, WinCondition, RaceStatus
 
 APP = Flask(__name__, static_url_path='/static')
@@ -123,6 +124,7 @@ SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENER
 Current_log_path_name = log.later_stage_setup(Config.LOGGING, SOCKET_IO)
 
 INTERFACE = None  # initialized later
+SENSORS = Sensors()
 CLUSTER = None    # initialized later
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 
@@ -2999,7 +3001,7 @@ def emit_node_data(**params):
 def emit_environmental_data(**params):
     '''Emits environmental data.'''
     emit_payload = []
-    for sensor in INTERFACE.sensors:
+    for sensor in SENSORS:
         emit_payload.append({sensor.name: sensor.getReadings()})
 
     if ('nobroadcast' in params):
@@ -4325,7 +4327,7 @@ def heartbeat_thread_function():
 
             # emit environment data less often:
             if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
-                INTERFACE.update_environmental_data()
+                SENSORS.update_environmental_data()
                 emit_environmental_data()
 
             time_now = monotonic()
@@ -5191,16 +5193,20 @@ if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
 
 logger.info("Using log file: {0}".format(Current_log_path_name))
 
+hardwareHelpers = {}
+for helper in search_modules(suffix='helper'):
+    hardwareHelpers[helper.__name__] = helper.create()
+
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
     interfaceModule = importlib.import_module(interface_type + 'Interface')
-    INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+    INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
 except (ImportError, RuntimeError, IOError) as ex:
     logger.info('Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex))
 if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
     if not Config.SERIAL_PORTS or len(Config.SERIAL_PORTS) <= 0:
         interfaceModule = importlib.import_module('MockInterface')
-        INTERFACE = interfaceModule.get_hardware_interface(config=Config)
+        INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
     else:
         try:
             importlib.import_module('serial')
@@ -5238,6 +5244,8 @@ else:
 
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
+
+SENSORS.discover(config=Config.SENSORS, **hardwareHelpers)
 
 # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
 db_inited_flag = False

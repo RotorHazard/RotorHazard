@@ -29,7 +29,7 @@ class ServerTest(unittest.TestCase):
         self.fail('No response of type {0}'.format(event))
 
     def test_sensors(self):
-        self.assertTrue(any(s.name == 'TestSensor' for s in server.INTERFACE.sensors))
+        self.assertTrue(any(s.name == 'TestSensor' for s in server.SENSORS))
 
     def test_add_pilot(self):
         self.client.emit('load_data', {'load_types': ['pilot_data']})
