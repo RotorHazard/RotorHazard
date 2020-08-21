@@ -66,12 +66,12 @@
 		$('nav li').removeClass('admin-hide');
 
 		// populate voice controls
-		$('#voice_callsign').prop( "checked", rotorhazard.voice_callsign);
-		$('#voice_lap_count').prop( "checked", rotorhazard.voice_lap_count);
-		$('#voice_team_lap_count').prop( "checked", rotorhazard.voice_team_lap_count);
-		$('#voice_lap_time').prop( "checked", rotorhazard.voice_lap_time);
-		$('#voice_race_timer').prop( "checked", rotorhazard.voice_race_timer);
-		$('#voice_race_winner').prop( "checked", rotorhazard.voice_race_winner);
+		$('#voice_callsign').val(rotorhazard.voice_callsign);
+		$('#voice_lap_count').val(rotorhazard.voice_lap_count);
+		$('#voice_team_lap_count').val(rotorhazard.voice_team_lap_count);
+		$('#voice_lap_time').val(rotorhazard.voice_lap_time);
+		$('#voice_race_timer').val(rotorhazard.voice_race_timer);
+		$('#voice_race_winner').val(rotorhazard.voice_race_winner);
 		$().articulate('volume', rotorhazard.voice_volume);
 		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
 		$('#voice_volume_value').html($('#set_voice_volume').val());
@@ -1079,32 +1079,32 @@
 		});
 
 		$('#voice_callsign').change(function (event) {
-			rotorhazard.voice_callsign = $(this).prop('checked');
+			rotorhazard.voice_callsign = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
 		$('#voice_lap_count').change(function (event) {
-			rotorhazard.voice_lap_count = $(this).prop('checked');
+			rotorhazard.voice_lap_count = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
 		$('#voice_team_lap_count').change(function (event) {
-			rotorhazard.voice_team_lap_count = $(this).prop('checked');
+			rotorhazard.voice_team_lap_count = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
 		$('#voice_lap_time').change(function (event) {
-			rotorhazard.voice_lap_time = $(this).prop('checked');
+			rotorhazard.voice_lap_time = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
 		$('#voice_race_timer').change(function (event) {
-			rotorhazard.voice_race_timer = $(this).prop('checked');
+			rotorhazard.voice_race_timer = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
 		$('#voice_race_winner').change(function (event) {
-			rotorhazard.voice_race_winner = $(this).prop('checked');
+			rotorhazard.voice_race_winner = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
@@ -2006,14 +2006,64 @@
 				<div class="label-block">
 					{{ __('Announcements') }}
 				</div>
-				<ul>
-					<li><label><input type="checkbox" id="voice_callsign"> {{ __('Callsign') }}</label></li>
-					<li><label><input type="checkbox" id="voice_lap_count"> {{ __('Lap Number') }}</label></li>
-					<li><label><input type="checkbox" id="voice_lap_time"> {{ __('Lap Time') }}</label></li>
-					<li><label><input type="checkbox" id="voice_race_timer"> {{ __('Race Timer') }}</label></li>
-					<li><label><input type="checkbox" id="voice_team_lap_count"> {{ __('Team Lap Total') }}</label></li>
-					<li><label><input type="checkbox" id="voice_race_winner"> {{ __('Race Winner') }}</label></li>
-				</ul>
+				<li>
+					<div class="label-block">
+						<label for="voice_callsign">{{ __('Pilot Callsign') }}</label>
+					</div>
+					<select id="voice_callsign">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+						<option value="2">{{ __('Only on Non-team Races') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_lap_count">{{ __('Pilot Lap Number') }}</label>
+					</div>
+					<select id="voice_lap_count">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+						<option value="2">{{ __('Only on Non-team Races') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_lap_time">{{ __('Pilot Lap Time') }}</label>
+					</div>
+					<select id="voice_lap_time">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+						<option value="2">{{ __('Only on Non-team Races') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_race_timer">{{ __('Race Timer') }}</label>
+					</div>
+					<select id="voice_race_timer">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+						<option value="2">{{ __('Only on Fixed-time Races') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_team_lap_count">{{ __('Team Lap Total') }}</label>
+					</div>
+					<select id="voice_team_lap_count">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('On Team Races') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_race_winner">{{ __('Race Winner') }}</label>
+					</div>
+					<select id="voice_race_winner">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+					</select>
+				</li>
 			</li>
 			<li>
 				<div class="label-block">
