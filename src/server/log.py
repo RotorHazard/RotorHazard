@@ -102,7 +102,8 @@ def early_stage_setup():
             "socketio.client",
             "engineio.client",
             "sqlalchemy",
-            "urllib3"
+            "urllib3",
+            "PIL"
             ]:
         logging.getLogger(name).setLevel(logging.WARN)
 
@@ -136,13 +137,13 @@ def later_stage_setup(config, socket):
     logging_config[CONSOLE_STREAM_STR] = DEF_CONSOLE_STREAM.name[1:-1]
 
     logging_config.update(config)
-    
+
     root = logging.getLogger()
     # empty out the already configured handler from basicConfig
     root.handlers[:] = []
 
     handlers = []
-    
+
     min_level = logging.CRITICAL  # track minimum specified log level
 
     err_str = None
