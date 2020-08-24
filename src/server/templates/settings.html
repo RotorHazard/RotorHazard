@@ -246,10 +246,10 @@
 		socket.on('cluster_status', function (msg) {
 			cluster_table_html = '';
 			if (msg.slaves && msg.slaves.length > 0) {
-				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Time since last contact (s)')+'</th></tr>';
+				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Seconds since last contact')+'</th></tr>';
 				for (i=0; i < msg.slaves.length; i++) {
 					cluster_table_html += '<tr>';
-					cluster_table_html += '<td>' + msg.slaves[i].address + '</td>';
+					cluster_table_html += '<td><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
 					cluster_table_html += '<td>' + msg.slaves[i].last_contact + '</td>';
 					cluster_table_html += '</tr>';
 				}
@@ -2349,6 +2349,9 @@
 		<div id="env-data-table" class="control-set">
 		</div>
 		<br />
+		<div class="control-set">
+			{{ __('Cluster Status:') }}
+		</div>
 		<div id="cluster-status-table" class="control-set">
 		</div>
 		<br />
