@@ -41,6 +41,7 @@ CONSOLE_STREAM_STR = "CONSOLE_STREAM"
 LEVEL_NONE_STR = "NONE"
 
 socket_handler_obj = None
+queued_handler_obj = None
 
 # Log handler that distributes log records to one or more destination handlers via a gevent queue.
 class QueuedLogEventHandler(logging.Handler):
@@ -74,6 +75,19 @@ class QueuedLogEventHandler(logging.Handler):
             self.log_record_queue.put(log_rec, timeout=1)
         except Exception as ex:
             print("Error adding record to log-event queue: " + str(ex))
+
+    def waitForQueueEmpty(self):
+        try:
+            count = 0
+            while not self.log_record_queue.empty():
+                count += 1
+                if count > 300:
+                    print("Timeout waiting for log queue empty")
+                    return
+                gevent.sleep(0.01)
+            gevent.sleep(0.1)
+        except Exception as ex:
+            print("Error waiting for log queue empty: " + str(ex))
 
 
 class SocketForwardHandler(logging.Handler):
@@ -214,16 +228,21 @@ def later_stage_setup(config, socket):
 
     root.setLevel(min_level)
 
-    queued_handler1 = QueuedLogEventHandler()
+    global queued_handler_obj
+    queued_handler_obj = QueuedLogEventHandler()
     for logHndlr in handlers:
-        queued_handler1.addHandler(logHndlr)
+        queued_handler_obj.addHandler(logHndlr)
 
-    root.addHandler(queued_handler1)
+    root.addHandler(queued_handler_obj)
 
     if num_old_del > 0:
         logging.debug("Deleted {0} old log file(s)".format(num_old_del))
 
     return log_path_name
+
+def wait_for_queue_empty():
+    if queued_handler_obj:
+        queued_handler_obj.waitForQueueEmpty()
 
 
 def start_socket_forward_handler():

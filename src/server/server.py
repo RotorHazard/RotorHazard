@@ -5337,6 +5337,7 @@ if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
             logger.info('Unable to initialize specified serial node(s): {0}'.format(Config.SERIAL_PORTS))
         except ImportError:
             logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
+        log.wait_for_queue_empty()
         sys.exit()
 
 CLUSTER = Cluster()
@@ -5542,7 +5543,10 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         logger.exception("Server exception:  ")
 
     Events.trigger(Evt.SHUTDOWN)
-    print(INTERFACE.get_intf_error_report_str(True))
+    rep_str = INTERFACE.get_intf_error_report_str(True)
+    if rep_str:
+        logger.info(rep_str)
+    log.wait_for_queue_empty()
 
 # Start HTTP server
 if __name__ == '__main__':
