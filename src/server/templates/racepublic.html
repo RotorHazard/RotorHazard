@@ -303,7 +303,7 @@
 		});
 
 		socket.on('phonetic_data', function (msg) {
-			if (rotorhazard.primaryPilot == 0 || rotorhazard.primaryPilot == msg.pilot_id
+			if ((rotorhazard.primaryPilot == 0 || rotorhazard.primaryPilot == msg.pilot_id)
 				&& rotorhazard.min_lap * 1000 < msg.raw_time) {
 
 				var ttstext = '';
