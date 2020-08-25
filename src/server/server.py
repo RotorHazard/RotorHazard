@@ -17,7 +17,9 @@ log.early_stage_setup()
 logger = logging.getLogger(__name__)
 
 EPOCH_START = datetime(1970, 1, 1)
-PROGRAM_START_TIMESTAMP = int((datetime.now() - EPOCH_START).total_seconds() * 1000)
+
+# program-start time, in milliseconds since 1970-01-01
+PROGRAM_START_EPOCH_TIME = int((datetime.now() - EPOCH_START).total_seconds() * 1000)
 
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
@@ -127,18 +129,23 @@ INTERFACE = None  # initialized later
 SENSORS = Sensors()
 CLUSTER = None    # initialized later
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
+vrx_controller = None
 
 RACE = get_race_state() # For storing race management variables
 
-PROGRAM_START = monotonic()
-PROGRAM_START_MILLIS_OFFSET = 1000.0*PROGRAM_START - PROGRAM_START_TIMESTAMP
+# program-start time (in milliseconds, starting at zero)
+PROGRAM_START_MTONIC = monotonic()
+
+# offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
+MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_MTONIC
 
 TONES_NONE = 0
 TONES_ONE = 1
 TONES_ALL = 2
 
-def monotonic_to_milliseconds(secs):
-    return 1000.0*secs - PROGRAM_START_MILLIS_OFFSET
+# convert 'monotonic' time to epoch milliseconds since 1970-01-01
+def monotonic_to_epoch_millis(secs):
+    return 1000.0*secs + MTONIC_TO_EPOCH_MILLIS_OFFSET
 
 #
 # Slaves
@@ -149,35 +156,42 @@ class Slave:
     TIMER_MODE = 'timer'
     MIRROR_MODE = 'mirror'
 
-    def __init__(self, id, info):
-        self.id = id
+    def __init__(self, idVal, info):
+        self.id = idVal
         self.info = info
         addr = info['address']
         if not '://' in addr:
             addr = 'http://'+addr
         self.address = addr
         self.lastContact = -1
+        self.lastCheckQueryTime = 0
+        self.freqsSentFlag = False
+        self.raceStartEpoch = 0
+        self.clockWarningFlag = False
         self.sio = socketio.Client()
         self.sio.on('connect', self.on_connect)
         self.sio.on('disconnect', self.on_disconnect)
         self.sio.on('pass_record', self.on_pass_record)
+        self.sio.on('check_slave_response', self.on_check_slave_response)
 
     def reconnect(self):
         if self.lastContact == -1:
             startConnectTime = monotonic()
-            logger.info("Slave {0}: connecting to {1}...".format(self.id+1, self.address))
+            logger.info("Connecting to slave {0} at {1}...".format(self.id+1, self.address))
             while monotonic() < startConnectTime + self.info['timeout']:
                 try:
                     self.sio.connect(self.address)
-                    logger.info("Slave {0}: connected to {1}".format(self.id+1, self.address))
+                    logger.info("Connected to slave {0} at {1}".format(self.id+1, self.address))
+                    gevent.spawn_later(3, start_background_threads)  # start heartbeat so 'doClusterMgmtActions()' is called
                     return True
                 except socketio.exceptions.ConnectionError:
                     gevent.sleep(0.1)
-            logger.warn("Slave {0}: connection to {1} failed!".format(self.id+1, self.address))
+            logger.warn("Connection to slave {0} at {1} failed".format(self.id+1, self.address))
             return False
         else:
             return True
 
+    @catchLogExceptionsWrapper
     def emit(self, event, data = None):
         if self.reconnect():
             self.sio.emit(event, data)
@@ -188,7 +202,9 @@ class Slave:
 
     def on_disconnect(self):
         self.lastContact = -1
+        logger.info("Disconnected from slave {0} at {1}".format(self.id+1, self.address))
 
+    @catchLogExceptionsWrapper
     def on_pass_record(self, data):
         self.lastContact = monotonic()
         node_index = data['node']
@@ -197,13 +213,16 @@ class Slave:
 
         if pilot_id != Database.PILOT_ID_NONE:
 
-            split_ts = data['timestamp'] + (PROGRAM_START_MILLIS_OFFSET - 1000.0*RACE.start_time_monotonic)
+            # convert split timestamp (epoch ms sine 1970-01-01) to equivalent local 'monotonic' time value
+            split_ts = data['timestamp'] - RACE.start_time_epoch_ms
 
             lap_count = max(0, len(RACE.get_active_laps()[node_index]) - 1)
 
-            if lap_count:
-                last_lap_ts = RACE.get_active_laps()[node_index][-1]['lap_time_stamp']
-            else: # first lap
+            # get timestamp for last lap pass (including lap 0)
+            act_laps_list = RACE.get_active_laps()[node_index]
+            if len(act_laps_list) > 0:
+                last_lap_ts = act_laps_list[-1]['lap_time_stamp']
+            else:
                 last_lap_ts = 0
 
             split_id = self.id
@@ -222,20 +241,43 @@ class Slave:
                     last_split_ts = None
 
             if last_split_ts is not None:
+
+                # get race-start time value from slave (or previously received and saved value)
+                slv_rs_epoch = data.get('race_start_epoch', 0) or self.raceStartEpoch
+                if slv_rs_epoch > 0:
+                    self.raceStartEpoch = slv_rs_epoch  # save race-start time for future laps
+                    # compare the local race-start epoch time to the slave's
+                    rs_epoch_diff = RACE.start_time_epoch_ms - slv_rs_epoch
+                    # if slave timer's clock is too far off then correct as best we can
+                    #  using estimated difference in race-start epoch times
+                    if abs(rs_epoch_diff) > 1000:
+                        split_ts += rs_epoch_diff
+                        if not self.clockWarningFlag:
+                            logger.warn("Slave {0} clock not synchronized with master, offset={1:.1f}ms, split={2}".\
+                                        format(self.id+1, (-rs_epoch_diff), split_id+1))
+                            self.clockWarningFlag = True
+                        logger.debug("Correcting slave-time offset ({0:.1f}ms) on node {1}, new split_ts={2:.1f}, split={3}".\
+                                     format((-rs_epoch_diff), node_index+1, split_ts, split_id+1))
+
                 split_time = split_ts - last_split_ts
                 split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
-                logger.debug('Split pass record: Node: {0}, Lap: {1}, Split time: {2}, Split speed: {3}' \
-                    .format(node_index+1, lap_count+1, RHUtils.time_format(split_time), \
+                split_time_str = RHUtils.time_format(split_time)
+                logger.debug('Split pass record: Node {0}, lap {1}, split {2}, time={3}, speed={4}' \
+                    .format(node_index+1, lap_count+1, split_id+1, split_time_str, \
                     ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
 
-                DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=lap_count, split_id=split_id, \
-                    split_time_stamp=split_ts, split_time=split_time, split_time_formatted=RHUtils.time_format(split_time), \
-                    split_speed=split_speed))
+                DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=lap_count, \
+                        split_id=split_id, split_time_stamp=split_ts, split_time=split_time, \
+                        split_time_formatted=split_time_str, split_speed=split_speed))
                 DB.session.commit()
                 emit_current_laps() # update all laps on the race page
         else:
             logger.info('Split pass record dismissed: Node: {0}, Frequency not defined' \
                 .format(node_index+1))
+
+    @catchLogExceptionsWrapper
+    def on_check_slave_response(self, data):
+        self.lastContact = monotonic()
 
 class Cluster:
     def __init__(self):
@@ -260,6 +302,31 @@ class Cluster:
             {'address': slave.address, \
             'last_contact': int(now-slave.lastContact) if slave.lastContact >= 0 else 'connection lost' \
             }] for slave in self.slaves})
+        gevent.spawn(self.doClusterMgmtActions)
+
+    def doClusterMgmtActions(self):
+        now = monotonic()
+        for slave in self.slaves:
+            if not slave.freqsSentFlag:
+                try:
+                    logger.info("Sending node frequencies to slave {0} at {1}".format(slave.id+1, slave.address))
+                    slave.freqsSentFlag = True
+                    profile = getCurrentProfile()
+                    profile_freqs = json.loads(profile.frequencies)
+                    for idx in range(RACE.num_nodes):
+                        freq = profile_freqs["f"][idx]
+                        data = { 'node':idx, 'frequency':freq }
+                        slave.emit('set_frequency', data)
+                        gevent.sleep(0.001)
+                except Exception as ex:
+                    logger.error("Error sending node frequencies to slave {0} at {1}: {2}".format(slave.id+1, slave.address, ex))
+            else:
+                try:
+                    if slave.lastContact > 0 and now > slave.lastContact + 10 and now > slave.lastCheckQueryTime + 10:
+                        self.lastCheckQueryTime = now
+                        slave.sio.emit('check_slave_query')  # don't update 'lastContact' value under response received
+                except Exception as ex:
+                    logger.error("Error sending check-query to slave {0} at {1}: {2}".format(slave.id+1, slave.address, ex))
 
 #
 # Server Info
@@ -891,6 +958,14 @@ def api_options():
 
     return json.dumps({"options": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
+
+def start_background_threads():
+    INTERFACE.start()
+    global HEARTBEAT_THREAD
+    if HEARTBEAT_THREAD is None:
+        HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
+        logger.debug('Heartbeat thread started')
+
 #
 # Socket IO Events
 #
@@ -900,11 +975,7 @@ def api_options():
 def connect_handler():
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
-    INTERFACE.start()
-    global HEARTBEAT_THREAD
-    if HEARTBEAT_THREAD is None:
-        HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
-        logger.debug('Heartbeat thread started')
+    start_background_threads()
     emit_heat_data(nobroadcast=True)
 
 @SOCKET_IO.on('disconnect')
@@ -928,7 +999,7 @@ def on_get_timestamp():
         now = RACE.start_time_monotonic
     else:
         now = monotonic()
-    return {'timestamp': monotonic_to_milliseconds(now)}
+    return {'timestamp': monotonic_to_epoch_millis(now)}
 
 @SOCKET_IO.on('get_settings')
 @catchLogExceptionsWrapper
@@ -946,8 +1017,6 @@ def on_reset_auto_calibration(data):
     on_discard_laps()
     setCurrentRaceFormat(SLAVE_RACE_FORMAT)
     emit_race_format()
-    Options.set("MinLapSec", "0")
-    Options.set("MinLapBehavior", "0")
     on_stage_race()
 
 # Cluster events
@@ -956,12 +1025,16 @@ def on_reset_auto_calibration(data):
 @catchLogExceptionsWrapper
 def on_join_cluster():
     setCurrentRaceFormat(SLAVE_RACE_FORMAT)
+    getCurrentRaceFormat().cluster_flag = True
     emit_race_format()
-    Options.set("MinLapSec", "0")
-    Options.set("MinLapBehavior", "0")
-    logger.debug('Joined cluster')
-
+    logger.info('Joined cluster')
     Events.trigger(Evt.CLUSTER_JOIN)
+
+@SOCKET_IO.on('check_slave_query')
+@catchLogExceptionsWrapper
+def on_check_slave_query():
+    ''' Check-query received from master; return response. '''
+    SOCKET_IO.emit('check_slave_response')
 
 # RotorHazard events
 
@@ -1053,10 +1126,25 @@ def on_set_frequency(data):
     freqs = json.loads(profile.frequencies)
     freqs["f"][node_index] = frequency
     profile.frequencies = json.dumps(freqs)
+    logger.info('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
+
+    update_heat_flag = False
+    try:  # if running as slave timer and no pilot is set for node then set one now
+        if frequency and getCurrentRaceFormat() is SLAVE_RACE_FORMAT:
+            heat_node = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).one_or_none()
+            if heat_node and heat_node.pilot_id == Database.PILOT_ID_NONE:
+                pilot = Database.Pilot.query.get(node_index+1)
+                if pilot:
+                    heat_node.pilot_id = pilot.id
+                    update_heat_flag = True
+                    logger.info("Set node {0} pilot to '{1}' for slave-timer operation".format(node_index+1, pilot.callsign))
+                else:
+                    logger.info("Unable to set node {0} pilot for slave-timer operation".format(node_index+1))
+    except:
+        logger.exception("Error checking/setting pilot for node {0} in 'on_set_frequency()'".format(node_index+1))
 
     DB.session.commit()
 
-    logger.info('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
     INTERFACE.set_frequency(node_index, frequency)
 
     Events.trigger(Evt.FREQUENCY_SET, {
@@ -1065,6 +1153,8 @@ def on_set_frequency(data):
         })
 
     emit_frequency_data()
+    if update_heat_flag:
+        emit_heat_data()
 
 @SOCKET_IO.on('set_frequency_preset')
 @catchLogExceptionsWrapper
@@ -1254,7 +1344,7 @@ def on_set_scan(data):
     else:
         HEARTBEAT_DATA_RATE_FACTOR = 5
         gevent.sleep(0.100)  # pause/spawn to get clear of heartbeat actions for scanner
-        gevent.spawn(restore_node_frequency(node_index))
+        gevent.spawn(restore_node_frequency, node_index)
 
 @SOCKET_IO.on('add_heat')
 @catchLogExceptionsWrapper
@@ -2119,6 +2209,7 @@ def on_stage_race():
         DELAY = random.randint(MIN, MAX) + 0.9 # Add ~1 for prestage (<1 to prevent timer beep)
 
         RACE.start_time_monotonic = monotonic() + DELAY
+        RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
         RACE.start_token = random.random()
         gevent.spawn(race_start_thread, RACE.start_token)
 
@@ -2289,7 +2380,7 @@ def race_start_thread(start_token):
         RACE.laps_winner_name = None  # name of winner in first-to-X-laps race
         RACE.winning_lap_id = 0  # track winning lap-id if race tied during first-to-X-laps race
         emit_race_status() # Race page, to set race button states
-        logger.info('Race started at {0} ({1:13f})'.format(RACE.start_time_monotonic, monotonic_to_milliseconds(RACE.start_time_monotonic)))
+        logger.info('Race started at {0} ({1:.1f})'.format(RACE.start_time_monotonic, RACE.start_time_epoch_ms))
 
 @SOCKET_IO.on('stop_race')
 @catchLogExceptionsWrapper
@@ -2304,7 +2395,7 @@ def on_stop_race():
         milli_sec = delta_time * 1000.0
         RACE.duration_ms = milli_sec
 
-        logger.info('Race stopped at {0} ({1:13f}), duration {2}ms'.format(RACE.end_time, monotonic_to_milliseconds(RACE.end_time), RACE.duration_ms))
+        logger.info('Race stopped at {0} ({1:.1f}), duration {2}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), RACE.duration_ms))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
@@ -2734,6 +2825,10 @@ def on_delete_lap(data):
     node_index = data['node']
     lap_index = data['lap_index']
 
+    if node_index is None or lap_index is None:
+        logger.error("Bad parameter in 'on_delete_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
+        return
+
     RACE.node_laps[node_index][lap_index]['deleted'] = True
 
     time = RACE.node_laps[node_index][lap_index]['lap_time_stamp']
@@ -2762,6 +2857,15 @@ def on_delete_lap(data):
     elif db_next:
         db_next['lap_time'] = db_next['lap_time_stamp']
         db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'])
+
+    try:  # delete any split laps for deleted lap
+        lap_splits = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=lap_number).all()
+        if lap_splits and len(lap_splits) > 0:
+            for lap_split in lap_splits:
+                DB.session.delete(lap_split)
+            DB.session.commit()
+    except:
+        logger.exception("Error deleting split laps")
 
     Events.trigger(Evt.LAP_DELETE, {
         'race': RACE,
@@ -4278,6 +4382,18 @@ def set_vrx_node(data):
     else:
         logger.error("Can't set VRx {0} to node {1}: Controller unavailable".format(vrx_id, node))
 
+@catchLogExceptionsWrapper
+def emit_pass_record(node, lap_time_stamp, inc_rsepoch_flag = False):
+    '''Emits 'pass_record' message (will be consumed by slave timers in cluster, etc).'''
+    payload = {
+        'node': node.index,
+        'frequency': node.frequency,
+        'timestamp': lap_time_stamp + RACE.start_time_epoch_ms
+    }
+    if inc_rsepoch_flag:
+        payload['race_start_epoch'] = RACE.start_time_epoch_ms
+    SOCKET_IO.emit('pass_record', payload)
+
 #
 # Program Functions
 #
@@ -4379,7 +4495,7 @@ def ms_to_race_start():
 
 def ms_from_program_start():
     '''Returns the elapsed milliseconds since the start of the program.'''
-    delta_time = monotonic() - PROGRAM_START
+    delta_time = monotonic() - PROGRAM_START_MTONIC
     milli_sec = delta_time * 1000.0
     return milli_sec
 
@@ -4439,8 +4555,14 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         node.first_cross_flag = True  # indicate first crossing completed
 
                     race_format = getCurrentRaceFormat()
-                    min_lap = Options.getInt("MinLapSec")
-                    min_lap_behavior = Options.getInt("MinLapBehavior")
+                    if race_format is SLAVE_RACE_FORMAT:
+                        min_lap = 0  # don't enforce min-lap time if running as slave timer
+                        min_lap_behavior = 0
+                        cluster_flag = getattr(race_format, 'cluster_flag', False)
+                    else:
+                        min_lap = Options.getInt("MinLapSec")
+                        min_lap_behavior = Options.getInt("MinLapBehavior")
+                        cluster_flag = False
 
                     lap_ok_flag = True
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
@@ -4452,11 +4574,12 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                 lap_ok_flag = False
 
                     if lap_ok_flag:
-                        SOCKET_IO.emit('pass_record', {
-                            'node': node.index,
-                            'frequency': node.frequency,
-                            'timestamp': lap_time_stamp + monotonic_to_milliseconds(RACE.start_time_monotonic)
-                        })
+
+                        # emit 'pass_record' message (via thread to make sure we're not blocked), set flag
+                        # to include 'race_start_epoch' only if in cluster and first lap pass
+                        gevent.spawn(emit_pass_record, node, lap_time_stamp, \
+                                     (cluster_flag and not lap_number))
+
                         # Add the new lap to the database
                         RACE.node_laps[node.index].append({
                             'lap_number': lap_number,
@@ -5171,6 +5294,7 @@ def initVRxController():
        [node.frequency for node in INTERFACE.nodes])
 
 def killVRxController(*args):
+    global vrx_controller
     logger.info('Killing VRxController')
     vrx_controller = None
 
@@ -5179,7 +5303,7 @@ def killVRxController(*args):
 #
 
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-logger.debug('Program started at {0:13f}'.format(PROGRAM_START_TIMESTAMP))
+logger.debug('Program started at {0:.1f}'.format(PROGRAM_START_EPOCH_TIME))
 RHUtils.idAndLogSystemInfo()
 
 # log results of module initializations
@@ -5217,18 +5341,21 @@ if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
 
 CLUSTER = Cluster()
 hasMirrors = False
-for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
-    if isinstance(slave_info, string_types):
-        slave_info = {'address': slave_info, 'mode': Slave.TIMER_MODE}
-    if 'timeout' not in slave_info:
-        slave_info['timeout'] = Config.GENERAL['SLAVE_TIMEOUT']
-    if 'mode' in slave_info and slave_info['mode'] == Slave.MIRROR_MODE:
-        hasMirrors = True
-    elif hasMirrors:
-        logger.info('** Mirror slaves must be last - ignoring remaining slave config **')
-        break
-    slave = Slave(index, slave_info)
-    CLUSTER.addSlave(slave)
+try:
+    for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
+        if isinstance(slave_info, string_types):
+            slave_info = {'address': slave_info, 'mode': Slave.TIMER_MODE}
+        if 'timeout' not in slave_info:
+            slave_info['timeout'] = Config.GENERAL['SLAVE_TIMEOUT']
+        if 'mode' in slave_info and slave_info['mode'] == Slave.MIRROR_MODE:
+            hasMirrors = True
+        elif hasMirrors:
+            logger.info('** Mirror slaves must be last - ignoring remaining slave config **')
+            break
+        slave = Slave(index, slave_info)
+        CLUSTER.addSlave(slave)
+except:
+    logger.exception("Error adding slave to cluster")
 
 # set callback functions invoked by interface module
 INTERFACE.pass_record_callback = pass_record_callback

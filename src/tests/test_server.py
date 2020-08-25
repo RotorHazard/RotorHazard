@@ -260,12 +260,15 @@ class ServerTest(unittest.TestCase):
         server.RACE.race_status = 1
         node = Node()
         node.index = 0
-        server.pass_record_callback(node, server.RACE.start_time_monotonic + 19.8, 0)
+        server.RACE.start_time_monotonic = 10
+        server.RACE.start_time_epoch_ms = server.monotonic_to_epoch_millis(server.RACE.start_time_monotonic)
+        server.pass_record_callback(node, 19.8+server.RACE.start_time_monotonic, 0)
+        gevent.sleep(0.1)
         resp = self.get_response('pass_record')
         self.assertIn('node', resp)
         self.assertIn('frequency', resp)
         self.assertIn('timestamp', resp)
-        self.assertEqual(resp['timestamp'], server.monotonic_to_milliseconds(server.RACE.start_time_monotonic) + 19800)
+        self.assertEqual(resp['timestamp'], server.monotonic_to_epoch_millis(server.RACE.start_time_monotonic) + 19800)
 
 if __name__ == '__main__':
     unittest.main()
