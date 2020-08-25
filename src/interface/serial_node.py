@@ -111,12 +111,14 @@ class SerialNode(Node):
 
 
 def discover(idxOffset, config, *args, **kwargs):
-    logger.info("Searching for serial nodes...")
     nodes = []
-    for index, comm in enumerate(getattr(config, 'SERIAL_PORTS', [])):
-        node = SerialNode(index+idxOffset, comm)
-        logger.info("...Serial node {0} found at port {1}".format(index+idxOffset+1, node.serial.name))
-        nodes.append(node)
+    config_ser_ports = getattr(config, 'SERIAL_PORTS', None)
+    if config_ser_ports:
+        logger.info("Searching for serial nodes...")
+        for index, comm in enumerate(config_ser_ports):
+            node = SerialNode(index+idxOffset, comm)
+            logger.info("...Serial node {0} found at port {1}".format(index+idxOffset+1, node.serial.name))
+            nodes.append(node)
 
     gevent.sleep(BOOTLOADER_CHILL_TIME)
     return nodes
