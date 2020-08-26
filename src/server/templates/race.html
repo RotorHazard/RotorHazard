@@ -145,6 +145,7 @@
 		$('#voice_lap_time').val(rotorhazard.voice_lap_time);
 		$('#voice_race_timer').val(rotorhazard.voice_race_timer);
 		$('#voice_race_winner').val(rotorhazard.voice_race_winner);
+		$('#voice_split_timer').val(rotorhazard.voice_split_timer);
 		$().articulate('volume', rotorhazard.voice_volume);
 		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
 		$('#voice_volume_value').html($('#set_voice_volume').val());
@@ -533,6 +534,25 @@
 			}
 		})
 
+		socket.on('phonetic_split_call', function (msg) {
+			var ttstext = '';
+			if (rotorhazard.voice_split_timer) {
+				if ((rotorhazard.voice_split_timer & SPLMSK_PILOT_NAME) && msg.pilot_name) {
+					ttstext = msg.pilot_name
+				}
+				ttstext += ' ' + __l('split');
+				var sepstr = ' '
+				if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_ID) && msg.split_id) {
+					ttstext += ' ' + msg.split_id
+					sepstr = ', '
+				}
+				if ((rotorhazard.voice_split_timer & SPLMSK_SPLIT_TIME) && msg.split_time) {
+					ttstext += sepstr + msg.split_time
+				}
+				speak('<div class="speech">' + ttstext + '</div>');
+			}
+		})
+
 		socket.on('first_pass_registered', function (msg) {
 			if (!rotorhazard.beep_crossing_exited && rotorhazard.beep_on_first_pass_button) {
 				if( rotorhazard.use_mp3_tones){
@@ -794,6 +814,11 @@
 
 		$('#voice_race_winner').change(function (event) {
 			rotorhazard.voice_race_winner = parseInt($(this).val());
+			rotorhazard.saveData();
+		});
+
+		$('#voice_split_timer').change(function (event) {
+			rotorhazard.voice_split_timer = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
@@ -1693,6 +1718,23 @@
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
+				{% if cluster_has_slaves %}
+				<li>
+					<div class="label-block">
+						<label for="voice_split_timer">{{ __('Split Timer') }}</label>
+					</div>
+					<select id="voice_split_timer">
+						<option value="0">{{ __('None') }}</option>
+						<option value="1">{{ __('Pilot Name') }}</option>
+						<option value="5">{{ __('Pilot Name, Split Time') }}</option>
+						<option value="3">{{ __('Pilot Name, Split ID') }}</option>
+						<option value="7">{{ __('Pilot Name, Split ID, Split Time') }}</option>
+						<option value="2">{{ __('Split ID') }}</option>
+						<option value="4">{{ __('Split Time') }}</option>
+						<option value="6">{{ __('Split ID, Split Time') }}</option>
+					</select>
+				</li>
+				{% endif %}
 			</li>
 			<li>
 				<div class="label-block">

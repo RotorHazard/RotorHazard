@@ -74,7 +74,7 @@ sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startu
 
 from Plugins import Plugins, search_modules
 from Sensors import Sensors
-from RHRace import get_race_state, WinCondition, RaceStatus
+from RHRace import get_race_state, WinCondition, RaceStatus, RACE_START_DELAY_EXTRA_SECS
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -247,7 +247,9 @@ class Slave:
                 if slv_rs_epoch > 0:
                     self.raceStartEpoch = slv_rs_epoch  # save race-start time for future laps
                     # compare the local race-start epoch time to the slave's
-                    rs_epoch_diff = RACE.start_time_epoch_ms - slv_rs_epoch
+                    # (account for master-server's prestage race-delay time)
+                    rs_epoch_diff = RACE.start_time_epoch_ms - slv_rs_epoch - \
+                                    int((RACE.start_time_delay_secs-RACE_START_DELAY_EXTRA_SECS) * 1000)
                     # if slave timer's clock is too far off then correct as best we can
                     #  using estimated difference in race-start epoch times
                     if abs(rs_epoch_diff) > 1000:
@@ -258,6 +260,9 @@ class Slave:
                             self.clockWarningFlag = True
                         logger.debug("Correcting slave-time offset ({0:.1f}ms) on node {1}, new split_ts={2:.1f}, split={3}".\
                                      format((-rs_epoch_diff), node_index+1, split_ts, split_id+1))
+                    else:
+                        logger.debug("Slave {0} clock synchronized OK with master, offset={1:.1f}ms, split={2}".\
+                                     format(self.id+1, (-rs_epoch_diff), split_id+1))
 
                 split_time = split_ts - last_split_ts
                 split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
@@ -271,6 +276,7 @@ class Slave:
                         split_time_formatted=split_time_str, split_speed=split_speed))
                 DB.session.commit()
                 emit_current_laps() # update all laps on the race page
+                emit_phonetic_split(pilot_id, split_id, split_time);
         else:
             logger.info('Split pass record dismissed: Node: {0}, Frequency not defined' \
                 .format(node_index+1))
@@ -286,6 +292,9 @@ class Cluster:
     def addSlave(self, slave):
         slave.emit('join_cluster')
         self.slaves.append(slave)
+
+    def hasSlaves(self):
+        return (len(self.slaves))
 
     def emit(self, event, data = None):
         for slave in self.slaves:
@@ -535,7 +544,8 @@ def race():
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat, pilots=Database.Pilot,
-        nodes=nodes)
+        nodes=nodes,
+        cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()))
 
 @APP.route('/current')
 def racepublic():
@@ -551,7 +561,8 @@ def racepublic():
 
     return render_template('racepublic.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes,
-        nodes=nodes)
+        nodes=nodes,
+        cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()))
 
 @APP.route('/marshal')
 @requires_auth
@@ -569,6 +580,7 @@ def settings():
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config.GENERAL['configFile'],
+        cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()),
         Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/streams')
@@ -2206,16 +2218,16 @@ def on_stage_race():
             check_emit_team_racing_status()  # Show initial team-racing status info
         MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
         MAX = max(race_format.start_delay_min, race_format.start_delay_max)
-        DELAY = random.randint(MIN, MAX) + 0.9 # Add ~1 for prestage (<1 to prevent timer beep)
+        RACE.start_time_delay_secs = random.randint(MIN, MAX) + RACE_START_DELAY_EXTRA_SECS
 
-        RACE.start_time_monotonic = monotonic() + DELAY
+        RACE.start_time_monotonic = monotonic() + RACE.start_time_delay_secs
         RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
         RACE.start_token = random.random()
         gevent.spawn(race_start_thread, RACE.start_token)
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,
-            'delay': DELAY,
+            'delay': RACE.start_time_delay_secs,
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'pi_starts_at_s': RACE.start_time_monotonic
@@ -4245,6 +4257,21 @@ def emit_phonetic_text(text_str, domain=False, **params):
         emit('phonetic_text', emit_payload)
     else:
         SOCKET_IO.emit('phonetic_text', emit_payload)
+
+def emit_phonetic_split(pilot_id, split_id, split_time, **params):
+    '''Emits phonetic split-pass data.'''
+    phonetic_name = Database.Pilot.query.get(pilot_id).phonetic or \
+                    Database.Pilot.query.get(pilot_id).callsign
+    phonetic_time = RHUtils.phonetictime_format(split_time)
+    emit_payload = {
+        'pilot_name': phonetic_name,
+        'split_id': str(split_id+1),
+        'split_time': phonetic_time
+    }
+    if ('nobroadcast' in params):
+        emit('phonetic_split_call', emit_payload)
+    else:
+        SOCKET_IO.emit('phonetic_split_call', emit_payload)
 
 def emit_enter_at_level(node, **params):
     '''Emits enter-at level for given node.'''

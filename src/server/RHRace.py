@@ -19,6 +19,7 @@ class RHRace():
         self.start_time = 0 # datetime
         self.start_time_monotonic = 0 # monotonic
         self.start_time_epoch_ms = 0 # ms since 1970-01-01
+        self.start_time_delay_secs = 0 # random-length race-start delay
         self.node_laps = {} # current race lap objects, by node
         self.status_tied_str = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
         self.status_crossing = 'Waiting for cross'  # indicator for Most Laps Wins race
@@ -51,6 +52,8 @@ class RHRace():
             filtered[node_index] = list(filter(lambda lap : lap['deleted'] == False, self.node_laps[node_index]))
 
         return filtered
+
+RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
 
 def get_race_state():
     '''Returns the race object.'''
