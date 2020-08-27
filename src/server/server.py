@@ -333,7 +333,7 @@ class Cluster:
                 try:
                     if slave.lastContact > 0 and now > slave.lastContact + 10 and now > slave.lastCheckQueryTime + 10:
                         self.lastCheckQueryTime = now
-                        slave.sio.emit('check_slave_query')  # don't update 'lastContact' value under response received
+                        slave.sio.emit('check_slave_query')  # don't update 'lastContact' value until response received
                 except Exception as ex:
                     logger.error("Error sending check-query to slave {0} at {1}: {2}".format(slave.id+1, slave.address, ex))
 
@@ -1133,6 +1133,10 @@ def on_set_frequency(data):
         data = json.loads(data)
     node_index = data['node']
     frequency = data['frequency']
+
+    if node_index < 0 or node_index >= RACE.num_nodes:
+        logger.info('Unable to set frequency ({0}) on node {1}; node index out of range'.format(frequency, node_index+1))
+        return
 
     profile = getCurrentProfile()
     freqs = json.loads(profile.frequencies)
