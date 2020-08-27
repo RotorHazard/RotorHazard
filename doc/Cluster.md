@@ -73,6 +73,8 @@ Missed/incorrect split times will have no impact on the recording of lap times b
 
 The status of connected slave timers may be viewed on the *Settings* page in the *System* section. Clicking on the slave-timer address will bring up the web-GUI for the timer. The "*Seconds since last contact*" value should always be less than 20 (higher values indicate network communications problems).
 
+To enable the announcement of split times, see the "*Split Times*" option on the *Settings* page in the *Audio Control* section. (Note that this option will only be visible if a slave timer is connected.)
+
 Doing normal operation, lap history-data will not be saved on the slave timer(s). To view lap history-data and perform marshaling on a slave timer, hit the '*Save Laps*' button on the slave timer before the race is saved or discarded on the master, and then go to the *Marshal* page on the slave timer.
 
 A slave can also be a master, but sub-splits are not propagated upwards.

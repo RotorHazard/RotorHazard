@@ -72,6 +72,7 @@
 		$('#voice_lap_time').val(rotorhazard.voice_lap_time);
 		$('#voice_race_timer').val(rotorhazard.voice_race_timer);
 		$('#voice_race_winner').val(rotorhazard.voice_race_winner);
+		$('#voice_split_timer').val(rotorhazard.voice_split_timer);
 		$().articulate('volume', rotorhazard.voice_volume);
 		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
 		$('#voice_volume_value').html($('#set_voice_volume').val());
@@ -1108,6 +1109,11 @@
 			rotorhazard.saveData();
 		});
 
+		$('#voice_split_timer').change(function (event) {
+			rotorhazard.voice_split_timer = parseInt($(this).val());
+			rotorhazard.saveData();
+		});
+
 		$('#set_voice_volume').on('input', function (event) {
 			var val = volume_logsl.value($(this).val());
 			$().articulate('volume', val);
@@ -2064,6 +2070,39 @@
 						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
+				{% if cluster_has_slaves %}
+				<li>
+<!--
+					Split Timer:
+					Pilot Name, Split ID, Split Time
+					    0          0         0   ~>  000 = 0  :  None
+					    1          0         0   ~>  001 = 1  :  Pilot Name
+					    1          1         0   ~>  011 = 3  :  Pilot Name, Split ID
+					    1          0         1   ~>  101 = 5  :  Pilot Name, Split Time
+					    1          1         1   ~>  111 = 7  :  Pilot Name, Split ID, Split Time
+					    0          1         0   ~>  010 = 2  :  Split ID
+					    0          0         1   ~>  100 = 4  :  Split Time
+					    0          1         1   ~>  110 = 6  :  Split ID, Split Time
+
+					SPLMSK_PILOT_NAME = 0x01
+					SPLMSK_SPLIT_ID = 0x02
+					SPLMSK_SPLIT_TIME = 0x04
+-->
+					<div class="label-block">
+						<label for="voice_split_timer">{{ __('Split Timer') }}</label>
+					</div>
+					<select id="voice_split_timer">
+						<option value="0">{{ __('None') }}</option>
+						<option value="1">{{ __('Pilot Name') }}</option>
+						<option value="5">{{ __('Pilot Name, Split Time') }}</option>
+						<option value="3">{{ __('Pilot Name, Split ID') }}</option>
+						<option value="7">{{ __('Pilot Name, Split ID, Split Time') }}</option>
+						<option value="2">{{ __('Split ID') }}</option>
+						<option value="4">{{ __('Split Time') }}</option>
+						<option value="6">{{ __('Split ID, Split Time') }}</option>
+					</select>
+				</li>
+				{% endif %}
 			</li>
 			<li>
 				<div class="label-block">

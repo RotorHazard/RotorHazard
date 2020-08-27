@@ -2,6 +2,11 @@ var sound_buzzer = $('#sound_buzzer')[0];
 var sound_beep = $('#sound_beep')[0];
 var sound_stage = $('#sound_stage')[0];
 
+// bitmask values for 'phonetic_split_call' function
+const SPLMSK_PILOT_NAME = 0x01
+const SPLMSK_SPLIT_ID = 0x02
+const SPLMSK_SPLIT_TIME = 0x04
+
 /* global functions */
 function supportsLocalStorage() {
 	try {
@@ -783,6 +788,7 @@ var rotorhazard = {
 	voice_lap_time: 1, // speak lap times
 	voice_race_timer: 2, // speak race timer
 	voice_race_winner: 1, // speak race winner
+	voice_split_timer: 0, // split timer
 
 	tone_volume: 1.0, // race stage/start tone volume
 	beep_crossing_entered: false, // beep node crossing entered
@@ -839,6 +845,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.voice_lap_time'] = JSON.stringify(this.voice_lap_time);
 		localStorage['rotorhazard.voice_race_timer'] = JSON.stringify(this.voice_race_timer);
 		localStorage['rotorhazard.voice_race_winner'] = JSON.stringify(this.voice_race_winner);
+		localStorage['rotorhazard.voice_split_timer'] = JSON.stringify(this.voice_split_timer);
 		localStorage['rotorhazard.tone_volume'] = JSON.stringify(this.tone_volume);
 		localStorage['rotorhazard.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
 		localStorage['rotorhazard.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
@@ -890,6 +897,9 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.voice_race_winner']) {
 				this.voice_race_winner = parseIntOrBoolean(localStorage['rotorhazard.voice_race_winner']);
+			}
+			if (localStorage['rotorhazard.voice_split_timer']) {
+				this.voice_split_timer = JSON.parse(localStorage['rotorhazard.voice_split_timer']);
 			}
 			if (localStorage['rotorhazard.tone_volume']) {
 				this.tone_volume = JSON.parse(localStorage['rotorhazard.tone_volume']);
