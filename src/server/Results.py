@@ -761,6 +761,8 @@ def check_win_condition(RACE, INTERFACE, **kwargs):
                     return check_win_team_fastest_lap(RACE, **kwargs)
                 elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
                     return check_win_team_fastest_consecutive(RACE, **kwargs)
+                elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
+                    return check_win_team_laps_and_overtime(RACE, INTERFACE, **kwargs)
             else:
                 if race_format.win_condition == WinCondition.MOST_PROGRESS:
                     return check_win_laps_and_time(RACE, INTERFACE, **kwargs)
@@ -772,6 +774,9 @@ def check_win_condition(RACE, INTERFACE, **kwargs):
                     return check_win_fastest_lap(RACE, **kwargs)
                 elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
                     return check_win_fastest_consecutive(RACE, **kwargs)
+                elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
+                    return check_win_laps_and_overtime(RACE, INTERFACE, **kwargs)
+
     return None
 
 def check_win_laps_and_time(RACE, INTERFACE, **kwargs):
@@ -779,7 +784,7 @@ def check_win_laps_and_time(RACE, INTERFACE, **kwargs):
     # or a forced determination condition, make a final call
     if RACE.race_status == RaceStatus.DONE or \
         False not in RACE.node_has_finished.values() or \
-        'forced' in kwargs: # racing must be completed
+        'forced' in kwargs:
         leaderboard = RACE.results['by_race_time']
         if len(leaderboard) > 1:
             lead_lap = leaderboard[0]['laps']
@@ -932,6 +937,25 @@ def check_win_most_laps(RACE, INTERFACE, **kwargs):
                         node_index = leaderboard[0]['node']
                         if RACE.node_has_finished[node_index] == True:
                             return check_win_most_laps(RACE, INTERFACE, forced=True, **kwargs)
+
+    return {
+        'status': WinStatus.NONE
+    }
+
+def check_win_laps_and_overtime(RACE, INTERFACE, **kwargs):
+    if 'at_finish' in kwargs:
+        # at finish, check only most laps
+        win_status = check_win_most_laps(RACE, INTERFACE, forced=True, **kwargs)
+        if win_status['status'] != WinStatus.TIE:
+            # ties continue to overtime, otherwise pass as normal
+            return win_status
+
+    elif RACE.race_status == RaceStatus.DONE:
+        # manually stopping race always most laps only
+        return check_win_most_laps(RACE, INTERFACE, forced=True, **kwargs)
+
+    elif (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False):
+        return check_win_laps_and_time(RACE, INTERFACE, forced=True, **kwargs)
 
     return {
         'status': WinStatus.NONE
@@ -1129,13 +1153,24 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
                     if RACE.node_has_finished[node_index]:
                         team_members_finished[team] += 1
 
+                leader_has_finished = team_members_finished[team_leaderboard[0]['name']] == team_leaderboard[0]['members']
+                max_consideration = 0
+
                 for line in team_leaderboard[1:]:
                     max_potential_laps = line['laps'] + line['members'] - team_members_finished[line['name']]
                     if lead_laps <= max_potential_laps:
                         teams_can_pass += 1
+                    elif leader_has_finished:
+                        time_to_complete = (lead_laps_time - line['total_time_raw']) * (line['members'] - team_members_finished[line['name']])
+                        max_consideration = max(max_consideration, time_to_complete)
 
                 if teams_can_pass == 0:
                     return check_win_team_laps_and_time(RACE, INTERFACE, forced=True, **kwargs)
+                elif leader_has_finished:
+                    return {
+                        'status': WinStatus.NONE,
+                        'max_consideration': max_consideration
+                    }
 
     return {
         'status': WinStatus.NONE
@@ -1162,12 +1197,6 @@ def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
 
                 # check for tie
                 if team_leaderboard[1]['laps'] == lead_lap:
-                    if team_leaderboard[1]['total_time_raw'] == team_leaderboard[0]['total_time_raw']:
-                        logger.info('Race tied at {0}/{1}'.format(leaderboard[0]['laps'], leaderboard[0]['total_time']))
-                        return {
-                            'status': WinStatus.TIE
-                        }
-
                     logger.info('Race tied at %d laps', team_leaderboard[1]['laps'])
                     return {
                         'status': WinStatus.TIE
@@ -1226,6 +1255,25 @@ def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
                         leading_team = team_leaderboard[0]
                         if team_members_finished[leading_team['name']] == leading_team['members']:
                             return check_win_team_laps_and_time(RACE, INTERFACE, forced=True)
+
+    return {
+        'status': WinStatus.NONE
+    }
+
+def check_win_team_laps_and_overtime(RACE, INTERFACE, **kwargs):
+    if 'at_finish' in kwargs:
+        # at finish, check only most laps
+        win_status = check_win_team_most_laps(RACE, INTERFACE, forced=True, **kwargs)
+        if win_status['status'] != WinStatus.TIE:
+            # ties continue to overtime, otherwise pass as normal
+            return win_status
+
+    elif RACE.race_status == RaceStatus.DONE:
+        # manually stopping race always most laps only
+        return check_win_team_most_laps(RACE, INTERFACE, forced=True, **kwargs)
+
+    elif (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False):
+        return check_win_team_laps_and_time(RACE, INTERFACE, forced=True, **kwargs)
 
     return {
         'status': WinStatus.NONE

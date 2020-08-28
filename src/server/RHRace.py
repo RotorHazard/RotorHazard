@@ -66,6 +66,7 @@ class WinCondition():
     FASTEST_LAP = 3
     FASTEST_3_CONSECUTIVE = 4
     MOST_LAPS = 5 # lap count only
+    MOST_LAPS_OVERTIME = 6 # lap count only, laps and time after T=0
 
 class WinStatus():
     NONE = 0
