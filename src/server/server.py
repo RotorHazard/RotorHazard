@@ -2220,15 +2220,7 @@ def race_expire_thread(start_token):
 
             RACE.timer_running = False # indicate race timer no longer running
             Events.trigger(Evt.RACE_FINISH)
-            win_result = check_win_condition(RACE, INTERFACE, at_finish=True)
-
-            if 'max_consideration' in win_result:
-                logger.debug("Waiting {0}ms to declare winner.".format(win_result['max_consideration']))
-                gevent.sleep(win_result['max_consideration'] / 1000)
-                if RACE.start_token == start_token:
-                    logger.debug("Maximum win condition consideration time has expired.")
-                    check_win_condition(RACE, INTERFACE, forced=True)
-
+            check_win_condition(RACE, INTERFACE, at_finish=True, start_token=start_token)
         else:
             logger.debug("Killing unused time expires thread")
 
@@ -4008,6 +4000,13 @@ def check_win_condition(RACE, INTERFACE, **kwargs):
                 RACE.status_message = __('Race Tied')
                 emit_race_status_message()
                 emit_phonetic_text(RACE.status_message, 'race_winner')
+
+        if 'max_consideration' in win_status:
+            logger.debug("Waiting {0}ms to declare winner.".format(win_status['max_consideration']))
+            gevent.sleep(win_status['max_consideration'] / 1000)
+            if RACE.start_token == kwargs['start_token']:
+                logger.debug("Maximum win condition consideration time has expired.")
+                check_win_condition(RACE, INTERFACE, forced=True)
 
     return win_status
 
