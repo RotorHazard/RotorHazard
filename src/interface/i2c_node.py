@@ -1,7 +1,5 @@
 '''RotorHazard I2C interface layer.'''
 import logging
-import gevent
-from gevent.lock import BoundedSemaphore # To limit i2c calls
 from monotonic import monotonic
 
 from Node import Node

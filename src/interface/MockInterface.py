@@ -166,10 +166,13 @@ class MockInterface(BaseHardwareInterface):
         pass
 
     def get_intf_total_error_count(self):
+        return 0
+
+    def set_intf_error_report_percent_limit(self, percentVal):
         pass
 
-    def get_intf_error_report_str(self, showWriteFlag=False):
-        return ""
+    def get_intf_error_report_str(self, forceFlag=False):
+        return None
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''

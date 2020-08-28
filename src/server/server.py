@@ -4223,8 +4223,9 @@ def heartbeat_thread_function():
                         (ERROR_REPORT_INTERVAL_SECS if not Config.GENERAL['DEBUG'] \
                         else ERROR_REPORT_INTERVAL_SECS/10):
                 heartbeat_thread_function.last_error_rep_time = time_now
-                if INTERFACE.get_intf_total_error_count() > 0:
-                    logger.info(INTERFACE.get_intf_error_report_str())
+                rep_str = INTERFACE.get_intf_error_report_str()
+                if rep_str:
+                    logger.info(rep_str)
 
             gevent.sleep(0.500/HEARTBEAT_DATA_RATE_FACTOR)
 
@@ -5133,6 +5134,9 @@ if RACE.num_nodes == 0:
     logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
 else:
     logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
+    # if I2C nodes then only report comm errors if >= 1.0%
+    if hasattr(INTERFACE.nodes[0], 'i2c_addr'):
+        INTERFACE.set_intf_error_report_percent_limit(1.0)
 
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)

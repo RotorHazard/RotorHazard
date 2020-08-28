@@ -98,6 +98,7 @@ class RHInterface(BaseHardwareInterface):
         self.intf_read_error_count = 0  # number of read errors for all nodes
         self.intf_write_block_count = 0  # number of blocks write by all nodes
         self.intf_write_error_count = 0  # number of write errors for all nodes
+        self.intf_error_report_limit = 0.0  # log if ratio of comm errors is larger
 
         self.nodes = Plugins(suffix='node')
         self.discover_nodes(*args, **kwargs)
@@ -501,16 +502,29 @@ class RHInterface(BaseHardwareInterface):
     def get_intf_total_error_count(self):
         return self.intf_read_error_count + self.intf_write_error_count
 
-    def get_intf_error_report_str(self, showWriteFlag=False):
-        retStr = "CommErrors:"
-        if showWriteFlag or self.intf_write_error_count > 0:
-            retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, self.intf_write_block_count, \
-                            (float(self.intf_write_error_count) / float(self.intf_write_block_count)))
-        retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count, self.intf_read_block_count, \
-                            (float(self.intf_read_error_count) / float(self.intf_read_block_count)))
-        for node in self.nodes:
-            retStr += ", " + node.get_read_error_report_str()
-        return retStr
+    # log comm errors if error percentage is >= this value
+    def set_intf_error_report_percent_limit(self, percentVal):
+        self.intf_error_report_limit = percentVal / 100;
+    
+    def get_intf_error_report_str(self, forceFlag=False):
+        if self.intf_read_block_count <= 0:
+            return None
+        r_err_ratio = float(self.intf_read_error_count) / float(self.intf_read_block_count) \
+                      if self.intf_read_error_count > 0 else 0
+        w_err_ratio = float(self.intf_write_error_count) / float(self.intf_write_block_count) \
+                      if self.intf_write_block_count > 0 and self.intf_write_error_count > 0 else 0
+        if forceFlag or r_err_ratio >= self.intf_error_report_limit or \
+                                    w_err_ratio >= self.intf_error_report_limit:
+            retStr = "CommErrors:"
+            if forceFlag or self.intf_write_error_count > 0:
+                retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, \
+                                self.intf_write_block_count, w_err_ratio)
+            retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count, \
+                                self.intf_read_block_count, r_err_ratio)
+            for node in self.nodes:
+                retStr += ", " + node.get_read_error_report_str()
+            return retStr
+        return None
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the RotorHazard interface object.'''
