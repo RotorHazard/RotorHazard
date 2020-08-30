@@ -32,7 +32,7 @@ Additional options may be configured, for example:
 
 ### Clock Synchronization
 
-The accuracy of reported split times will be higher if all timers have their clocks synchronized. Adding precision real-time clock (RTC) devices like the [DS3231](https://www.adafruit.com/product/3013) to all the timers can accomplish this, or NTP can be configured (if internet is available during races) as shown below.
+The accuracy of reported split times will be higher if all timers have their clocks synchronized. Adding precision [real-time clock (RTC) devices](Real%20Time%20Clock.md) like the [DS3231](https://www.adafruit.com/product/3013) to all the timers can accomplish this, or NTP can be configured to operate between the timers as shown below.
 
 On all timers:
 
