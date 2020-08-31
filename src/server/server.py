@@ -5043,7 +5043,7 @@ def initVRxController():
                     logger.error(e)
                     return None
             else:
-                logger.info('VRxController disabled by config option')
+                logger.debug('VRxController disabled by config option')
                 return None
         except KeyError:
             logger.error('VRxController disabled: config needs "ENABLED" key.')
