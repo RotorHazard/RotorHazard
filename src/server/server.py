@@ -73,7 +73,8 @@ sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startu
 
 from Plugins import Plugins, search_modules
 from Sensors import Sensors
-from RHRace import get_race_state, WinCondition, RaceStatus, RACE_START_DELAY_EXTRA_SECS
+import RHRace
+from RHRace import WinCondition, RaceStatus
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -130,7 +131,7 @@ CLUSTER = None    # initialized later
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
 
-RACE = get_race_state() # For storing race management variables
+RACE = RHRace.RHRace() # For storing race management variables
 
 # program-start time (in milliseconds, starting at zero)
 PROGRAM_START_MTONIC = monotonic()
@@ -1297,7 +1298,6 @@ def on_delete_profile():
 @catchLogExceptionsWrapper
 def on_set_profile(data, emit_vals=True):
     ''' set current profile '''
-    CLUSTER.emit('set_profile', data)
     profile_val = int(data['profile'])
     profile = Database.Profiles.query.get(profile_val)
     if profile:
@@ -1764,7 +1764,7 @@ def on_stage_race():
             check_emit_team_racing_status()  # Show initial team-racing status info
         MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
         MAX = max(race_format.start_delay_min, race_format.start_delay_max)
-        RACE.start_time_delay_secs = random.randint(MIN, MAX) + RACE_START_DELAY_EXTRA_SECS
+        RACE.start_time_delay_secs = random.randint(MIN, MAX) + RHRace.RACE_START_DELAY_EXTRA_SECS
 
         RACE.start_time_monotonic = monotonic() + RACE.start_time_delay_secs
         RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
@@ -2692,7 +2692,6 @@ def emit_cluster_status(**params):
         emit('cluster_status', CLUSTER.getClusterStatusInfo())
     else:
         SOCKET_IO.emit('cluster_status', CLUSTER.getClusterStatusInfo())
-    gevent.spawn(CLUSTER.doClusterMgmtActions(getCurrentProfile()))
 
 def emit_start_thresh_lower_amount(**params):
     '''Emits current start_thresh_lower_amount.'''
@@ -4939,7 +4938,7 @@ try:
         elif hasMirrors:
             logger.info('** Mirror slaves must be last - ignoring remaining slave config **')
             break
-        slave = SlaveNode(index, slave_info, RACE, DB, start_background_threads, emit_split_pass_info)
+        slave = SlaveNode(index, slave_info, RACE, DB, getCurrentProfile, emit_split_pass_info)
         CLUSTER.addSlave(slave)
 except:
     logger.exception("Error adding slave to cluster")
