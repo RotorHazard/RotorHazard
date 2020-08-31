@@ -162,6 +162,8 @@ void setup()
     cbi(ADCSRA, ADPS1);
     cbi(ADCSRA, ADPS0);
 
+    Settings& settings = RssiNode::rssiNode.getSettings();
+
     // if EEPROM-check value matches then read stored values
     if (eepromReadWord(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
     {
@@ -187,8 +189,8 @@ void setup()
     {
         setRxModule(settings.vtxFreq);  // Setup rx module to default frequency
     }
-            
-    rssiInit();
+
+    RssiNode::rssiNode.start();
 }
 
 // Functions for the rx5808 module
@@ -386,11 +388,14 @@ static mtime_t commsMonitorLastResetTime = 0;
 // Main loop
 void loop()
 {
+    Settings& settings = RssiNode::rssiNode.getSettings();
+    State& state = RssiNode::rssiNode.getState();
+
     mtime_t ms = millis();
     if (ms > loopMillis)
     {  // limit to once per millisecond
         // read raw RSSI close to taking timestamp
-        bool crossingFlag = rssiProcess(rssiRead(), ms);
+        bool crossingFlag = RssiNode::rssiNode.process(rssiRead(), ms);
 
         // update settings and status LED
 
@@ -428,7 +433,7 @@ void loop()
             if (changeFlags & FREQ_CHANGED)
             {
                 eepromWriteWord(EEPROM_ADRW_RXFREQ, newVtxFreq);
-                rssiStateReset();  // restart rssi peak tracking for node
+                RssiNode::rssiNode.resetState();  // restart rssi peak tracking for node
             }
         }
 
@@ -526,7 +531,7 @@ void i2cReceive(int byteCount)
         byte expectedSize = i2cMessage.getPayloadSize();
         if (expectedSize > 0 && i2cReadAndValidateIoBuffer(expectedSize))
         {
-            i2cMessage.handleWriteCommand(false);
+            i2cMessage.handleWriteCommand(RssiNode::rssiNode, false);
         }
         i2cMessage.buffer.size = 0;
     }
@@ -575,7 +580,7 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize)
 // A transmit buffer (ioBuffer) is populated with the data before sending.
 void i2cTransmit()
 {
-    i2cMessage.handleReadCommand(false);
+    i2cMessage.handleReadCommand(RssiNode::rssiNode, false);
 
     if (i2cMessage.buffer.size > 0)
     {  // If there is pending data, send it
@@ -602,7 +607,7 @@ void serialEvent()
         }
         else
         {
-            serialMessage.handleReadCommand(true);
+            serialMessage.handleReadCommand(RssiNode::rssiNode, true);
 
             if (serialMessage.buffer.size > 0)
             {  // If there is pending data, send it
@@ -620,7 +625,7 @@ void serialEvent()
             uint8_t checksum = serialMessage.buffer.calculateChecksum(serialMessage.buffer.size - 1);
             if (serialMessage.buffer.data[serialMessage.buffer.size - 1] == checksum)
             {
-                serialMessage.handleWriteCommand(true);
+                serialMessage.handleWriteCommand(RssiNode::rssiNode, true);
             }
             else
             {

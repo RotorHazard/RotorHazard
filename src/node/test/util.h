@@ -1,4 +1,4 @@
-#include "../util/median-filter.h"
+#include "../rssi.h"
 
 MedianFilter<rssi_t, SmoothingSamples, 0> testFilter;
 
@@ -9,7 +9,7 @@ const static int N_TS = testFilter.getTimestampCapacity();
 
 void sendSignal(GodmodeState* nano, int rssi) {
   for(int t=0; t<N_2; t++) {
-    rssiProcess(rssi, millis());
+    RssiNode::rssiNode.process(rssi, millis());
     milliTick(nano);
   }
 }

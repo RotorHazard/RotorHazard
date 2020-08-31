@@ -9,18 +9,22 @@
 unittest(fastCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiSetFilter(&testFilter);
-  rssiInit();
+  RssiNode& rssiNode = RssiNode::rssiNode;
+  rssiNode.setFilter(&testFilter);
+  State& state = rssiNode.getState();
+  LastPass& lastPass = rssiNode.getLastPass();
+  History& history = rssiNode.getHistory();
+  rssiNode.start();
 
   state.activatedFlag = true;
 
   // prime the state with some background signal
   sendSignal(nano, 50);
-  assertFalse(rssiStateValid());
+  assertFalse(rssiNode.isStateValid());
   // more signal needed
   sendSignal(nano, 50);
   assertEqual(2*N_2*1000-1000, state.lastloopMicros);
-  assertTrue(rssiStateValid());
+  assertTrue(rssiNode.isStateValid());
   assertEqual(50, (int)state.rssi);
   assertEqual(timestamp(2), (int)state.rssiTimestamp);
   assertEqual(50, (int)state.lastRssi);

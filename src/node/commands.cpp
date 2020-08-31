@@ -57,7 +57,7 @@ void resetPairedNode(int pinState)
 }
 
 // Generic IO write command handler
-void Message::handleWriteCommand(bool serialFlag)
+void Message::handleWriteCommand(RssiNode& rssiNode, bool serialFlag)
 {
     uint8_t u8val;
     uint16_t u16val;
@@ -65,6 +65,8 @@ void Message::handleWriteCommand(bool serialFlag)
 
     buffer.flipForRead();
     bool actFlag = true;
+
+    Settings& settings = rssiNode.getSettings();
 
     switch (command)
     {
@@ -100,7 +102,7 @@ void Message::handleWriteCommand(bool serialFlag)
             break;
 
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
-            rssiEndCrossing();
+            rssiNode.endCrossing();
             break;
 
         case RESET_PAIRED_NODE:  // reset paired node for ISP
@@ -132,10 +134,15 @@ void ioBufferWriteExtremum(Buffer& buf, const Extremum& e, mtime_t now)
 }
 
 // Generic IO read command handler
-void Message::handleReadCommand(bool serialFlag)
+void Message::handleReadCommand(RssiNode& rssiNode, bool serialFlag)
 {
     buffer.flipForWrite();
     bool actFlag = true;
+
+    Settings& settings = rssiNode.getSettings();
+    State& state = rssiNode.getState();
+    LastPass& lastPass = rssiNode.getLastPass();
+    History& history = rssiNode.getHistory();
 
     switch (command)
     {

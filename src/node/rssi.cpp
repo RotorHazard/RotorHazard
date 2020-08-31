@@ -1,69 +1,36 @@
 #include "config.h"
 #include "rssi.h"
-#include "util/median-filter.h"
-#include "util/lowpass20hz-filter.h"
-#include "util/lowpass50hz-filter.h"
-#include "util/lowpass100hz-filter.h"
-#include "util/no-filter.h"
-#include "util/single-sendbuffer.h"
-#include "util/multi-sendbuffer.h"
 
-#define FILTER_NONE NoFilter<rssi_t>
-#define FILTER_MEDIAN MedianFilter<rssi_t, SmoothingSamples, 0>
-#define FILTER_100 LowPassFilter100Hz
-#define FILTER_50 LowPassFilter50Hz
-#define FILTER_20 LowPassFilter20Hz
+RssiNode RssiNode::rssiNode;
 
-//select the filter to use here
-#define FILTER_IMPL FILTER_MEDIAN
+RssiNode::RssiNode()
+{
+    setFilter(&defaultFilter);
+    setSendBuffers(&defaultPeakSendBuffer, &defaultNadirSendBuffer);
+}
 
-#define PEAK_SENDBUFFER_SINGLE SinglePeakSendBuffer
-#define PEAK_SENDBUFFER_MULTI MultiPeakSendBuffer<10>
-#define NADIR_SENDBUFFER_SINGLE SingleNadirSendBuffer
-#define NADIR_SENDBUFFER_MULTI MultiNadirSendBuffer<10>
-
-//select the send buffer to use here
-#define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_SINGLE
-#define NADIR_SENDBUFFER_IMPL NADIR_SENDBUFFER_SINGLE
-
-
-FILTER_IMPL defaultFilter;
-PEAK_SENDBUFFER_IMPL defaultPeakSendBuffer;
-NADIR_SENDBUFFER_IMPL defaultNadirSendBuffer;
-
-struct Settings settings;
-struct State state;
-struct History history = {
-    {0, 0, 0}, false, &defaultPeakSendBuffer,
-    {MAX_RSSI, 0, 0}, false, &defaultNadirSendBuffer,
-    0
-};
-struct LastPass lastPass;
-
-static Filter<rssi_t> *filter = &defaultFilter;
-
-void rssiSetFilter(Filter<rssi_t> *f)
+void RssiNode::setFilter(Filter<rssi_t> *f)
 {
     filter = f;
 }
 
-void rssiSetSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir)
+void RssiNode::setSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir)
 {
     history.peakSend = peak;
     history.nadirSend = nadir;
 }
 
-void rssiInit()
+void RssiNode::start()
 {
     state.lastloopMicros = micros();
 }
 
-bool rssiStateValid()
+bool RssiNode::isStateValid()
 {
     return state.nodeRssiNadir <= state.rssi && state.rssi <= state.nodeRssiPeak;
 }
 
-void rssiStateReset()
+void RssiNode::resetState()
 {
     state.crossing = false;
     invalidatePeak(state.passPeak);
@@ -78,7 +45,7 @@ void rssiStateReset()
     history.nadirSend->clear();
 }
 
-static void bufferHistoricPeak(bool force)
+void RssiNode::bufferHistoricPeak(bool force)
 {
     if (history.hasPendingPeak)
     {
@@ -98,7 +65,7 @@ static void bufferHistoricPeak(bool force)
     }
 }
 
-static void bufferHistoricNadir(bool force)
+void RssiNode::bufferHistoricNadir(bool force)
 {
     if (history.hasPendingNadir)
     {
@@ -118,14 +85,14 @@ static void bufferHistoricNadir(bool force)
     }
 }
 
-static void initExtremum(Extremum *e)
+void RssiNode::initExtremum(Extremum& e)
 {
-    e->rssi = state.rssi;
-    e->firstTime = state.rssiTimestamp;
-    e->duration = 0;
+    e.rssi = state.rssi;
+    e.firstTime = state.rssiTimestamp;
+    e.duration = 0;
 }
 
-bool rssiProcess(rssi_t rssi, mtime_t millis)
+bool RssiNode::process(rssi_t rssi, mtime_t millis)
 {
     filter->addRawValue(millis, rssi);
 
@@ -144,7 +111,7 @@ bool rssiProcess(rssi_t rssi, mtime_t millis)
             // must buffer latest peak to prevent losing it (overwriting any unsent peak)
             bufferHistoricPeak(true);
 
-            initExtremum(&(history.peak));
+            initExtremum(history.peak);
 
             // if RSSI was falling or unchanged, but it's rising now, we found a nadir
             // copy the values to be sent in the next loop
@@ -161,7 +128,7 @@ bool rssiProcess(rssi_t rssi, mtime_t millis)
             bufferHistoricNadir(true);
 
             // whenever history is falling, record the time and value as a nadir
-            initExtremum(&(history.nadir));
+            initExtremum(history.nadir);
 
             // if RSSI was rising or unchanged, but it's falling now, we found a peak
             // copy the values to be sent in the next loop
@@ -181,7 +148,7 @@ bool rssiProcess(rssi_t rssi, mtime_t millis)
                 if (history.peak.duration == MAX_DURATION)
                 {
                     bufferHistoricPeak(true);
-                    initExtremum(&(history.peak));
+                    initExtremum(history.peak);
                 }
             }
             else if (state.rssi == history.nadir.rssi)
@@ -191,7 +158,7 @@ bool rssiProcess(rssi_t rssi, mtime_t millis)
                 if (history.nadir.duration == MAX_DURATION)
                 {
                     bufferHistoricNadir(true);
-                    initExtremum(&(history.nadir));
+                    initExtremum(history.nadir);
                 }
             }
         }
@@ -224,7 +191,7 @@ bool rssiProcess(rssi_t rssi, mtime_t millis)
         else if (state.crossing && state.rssi < settings.exitAtLevel)
         {
             // quad has left the gate
-            rssiEndCrossing();
+            endCrossing();
         }
 
         /*** pass processing **/
@@ -235,7 +202,7 @@ bool rssiProcess(rssi_t rssi, mtime_t millis)
             if (state.rssi > state.passPeak.rssi)
             {
                 // this is first time this peak RSSI value was seen, so save value and timestamp
-                initExtremum(&(state.passPeak));
+                initExtremum(state.passPeak);
             }
             else if (state.rssi == state.passPeak.rssi)
             {
@@ -261,7 +228,7 @@ bool rssiProcess(rssi_t rssi, mtime_t millis)
 }
 
 // Function called when crossing ends (by RSSI or I2C command)
-void rssiEndCrossing()
+void RssiNode::endCrossing()
 {
     // save values for lap pass
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)

@@ -6,15 +6,19 @@
 unittest(freqNotSet) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiInit();
+  RssiNode& rssiNode = RssiNode::rssiNode;
+  State& state = rssiNode.getState();
+  LastPass& lastPass = rssiNode.getLastPass();
+  History& history = rssiNode.getHistory();
+  rssiNode.start();
 
   state.activatedFlag = false;
 
   sendSignal(nano, 43);
-  assertFalse(rssiStateValid());
+  assertFalse(rssiNode.isStateValid());
   sendSignal(nano, 43);
   assertEqual(2*N_2*1000-1000, state.lastloopMicros);
-  assertFalse(rssiStateValid());
+  assertFalse(rssiNode.isStateValid());
   assertEqual(0, (int)state.rssi);
   assertEqual(0, (int)state.rssiTimestamp);
   assertEqual(0, (int)state.lastRssi);

@@ -2,6 +2,7 @@
 #define commands_h
 
 #include "io.h"
+#include "rssi.h"
 
 // API level for node; increment when commands are modified
 #define NODE_API_LEVEL 25
@@ -13,8 +14,8 @@ public:
     Buffer buffer;  // request/response payload
 
     byte getPayloadSize();
-    void handleWriteCommand(bool serialFlag);
-    void handleReadCommand(bool serialFlag);
+    void handleWriteCommand(RssiNode& rssiNode, bool serialFlag);
+    void handleReadCommand(RssiNode& rssiNode, bool serialFlag);
 };
 
 #define MIN_FREQ 100

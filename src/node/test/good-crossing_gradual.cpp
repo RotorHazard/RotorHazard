@@ -9,15 +9,19 @@
 unittest(gradualCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiSetFilter(&testFilter);
-  rssiInit();
+  RssiNode& rssiNode = RssiNode::rssiNode;
+  rssiNode.setFilter(&testFilter);
+  State& state = rssiNode.getState();
+  LastPass& lastPass = rssiNode.getLastPass();
+  History& history = rssiNode.getHistory();
+  rssiNode.start();
 
   state.activatedFlag = true;
 
   // prime the state with some background signal
   sendSignal(nano, 50);
   sendSignal(nano, 50);
-  assertTrue(rssiStateValid());
+  assertTrue(rssiNode.isStateValid());
 
   // enter
   for(int signal = 50; signal<130; signal++) {

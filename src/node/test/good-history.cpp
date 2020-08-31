@@ -62,9 +62,12 @@ unittest(historyBuffer_merges_nadir) {
 unittest(historyBuffer_withoutReads) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiSetFilter(&testFilter);
-  rssiInit();
-  rssiStateReset();
+  RssiNode& rssiNode = RssiNode::rssiNode;
+  rssiNode.setFilter(&testFilter);
+  State& state = rssiNode.getState();
+  History& history = rssiNode.getHistory();
+  rssiNode.start();
+  rssiNode.resetState();
 
   state.activatedFlag = true;
 
@@ -130,9 +133,12 @@ unittest(historyBuffer_withoutReads) {
 unittest(historyBuffer_withReads) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiSetFilter(&testFilter);
-  rssiInit();
-  rssiStateReset();
+  RssiNode& rssiNode = RssiNode::rssiNode;
+  rssiNode.setFilter(&testFilter);
+  State& state = rssiNode.getState();
+  History& history = rssiNode.getHistory();
+  rssiNode.start();
+  rssiNode.resetState();
 
   state.activatedFlag = true;
 
