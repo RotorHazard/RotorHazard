@@ -87,17 +87,36 @@ Voice volume, rate, and pitch control all text-to-speech announcements. "Tone Vo
 Indicator beeps are very short tones that give feedback on how the timer is working, and are most useful when trying to tune it. Each node is identified with a unique audio pitch. "Crossing Entered" will beep once when a pass begins, and "Crossing Exited" will beep twice rapidly when a pass is completed. "Manual Lap Button" will beep once if the "Manual" button is used to force a simulated pass.
 
 #### Race Format
-Race formats collect settings that define how a race is conducted. Choose an active race format. Settings that you adjust here will be saved to the currently active format.
+Race formats define how a race is conducted. Choose an active race format. Settings that you adjust here will be saved to the currently active format.
 
-Timer mode can count up, or count down. Use "Count Up" for a heads-up, "first to X laps" style. Use "Count Down" for a fixed-time format. Timer duration is only used in "Count Down" mode.
+The race timer can count up or down as selected by _Race Timer Mode_. Use "No Time Limit" for a "first to X laps" style with a timer that counts upward from zero. Use "Fixed Time" for a timer which counts down to zero after the race starts. _Timer Duration_ is used in "Fixed Time" mode to determine race length.
 
-Staging Timer Mode affects whether the time display will be visible before a race. "Show Countdown" will show the time until the race start signal; "Hide Countdown" will display "Ready" until the race begins.
+Each race begins with a staging sequence. Race staging can be done with a fixed or variable number of staging seconds and with or without staging tones. Set the _Minimum Start Delay_ and _Maximum Start Delay_ to the values (in seconds) that are desired for race staging. If these values are different, the timer will choose a value at random for the amount of staging time. Random staging times are useful to prevent false starts. The timer will display "Ready" during staging, obscuring the race start time. For a fixed staging time, set the "Minimum" and "Maximum" to the same value. The staging timer will openly display the number of seconds until the race begins. 
 
-Minimum and Maximum Start Delay adjust how many second the staging (pre-race) timer lasts. Set these to the same number for a fixed countodwn time, or to different numbers for a random time within this range.
+_A small amount of time is needed to ensure the timer has synchronized with all hardware, so there is a short staging period even with a staging time of zero._
 
-Minimum lap time and team racing mode are not stored with the race format.
+A number of tones can be generated during the staging sequence, as set by _Staging Tones_. For "Each Second", the timer will sound a tone continuously during staging. With "One", the timer will sound a tone immediately when staging begins. With "None", no audible warning is provided. Regardless of the _Staging Tones_ setting, the "Race Start" tone is still played when staging completes and the race begins.
 
-Minimum lap time automatically discards passes that would have registered laps less than the specified duration. Use with caution, as this will discard data that may have been valid.
+_Win Condition_ determines how the timer calls out the winner of the race, the information presented in the OSD and streaming display, and sort method for leaderboards. Leaderboard sorting affects the results page and heat generator.
+* __Most Laps in Fastest Time__: Pilots are judged by the number of laps completed and how long it took to complete them. If there is a tie for the number of laps completed, the pilot who completed those laps in a shorter amount of time will be ranked higher.
+* __Most Laps Only__: Scored only by the completed lap count. Pilots with the same lap count are tied. Use with "Fixed Time" mode for a race style before timing was reliable, or with "No Time Limit" mode to judge the greatest distance instead of shortest time.
+* __Most Laps Only with Overtime__: Similar to _Most Laps in Fastest Time_ with a "sudden death" component. Before time expires, the race is judged only by lap count. If there is a tie for lap count when the timer expires, the first of the tied pilots across the line is the winner.
+* __First to X Laps__: The race continues until one pilot reaches the desired lap count. In this mode, the _Number of Laps to Win_ parameter is used. Typically used with the _No Time Limit_ race mode.
+* __Fastest Lap__: Ignores the race progress and considers only each pilot's single fastest lap.
+* __Fastest 3 Consecutive Laps__: Considers all laps a pilot has completed and uses the three consecutive laps with the fastest combined time.
+* __None__: Does not declare a winner under any circumstance. Heats generated from a class with this condition will be assigned randomly.
+
+_Team Racing Mode_ activates alternate scoring for additional race formats. Win conditions in team racing mode differ somewhat:
+* __Most Laps in Fastest Time__: Teams are judged on combined lap count of all members and how long it took to complete those laps.
+* __Most Laps Only__: Teams are judged on total combined lap count of all members.
+* __Most Laps Only with Overtime__: Teams are judged on total combined lap count of all members. If tied when time expires, the first team (of those tied) to add a lap becomes the winner.
+* __First to X Laps__: The first team to complete the desired combined lap count is the winner.
+* __Fastest Lap__: After all team members have contributed one lap, teams are judged by the average of pilots' fastest lap time.
+* __Fastest 3 Consecutive Laps__: After all team members have contributed 3 laps, teams are judged by the average of pilots' fastest "three consecutive laps" time.
+
+With _Fastest Lap_ and _Fastest 3 Consecutive Laps_, teams with differing numbers of pilots can compete together fairly.
+
+_Minimum lap Time_ highlights or discards passes that would have registered laps less than the specified duration. Use the "discard" behavior with caution, as this will eliminate data that may have been valid. _Minimum Lap Time_ is not stored with the race format.
 
 #### LED Effects
 Choose a visual effect for each timer event. The timer will display this effect when the event occurs, immediately overriding any existing display or effect. Some visual effects are only available on particular timer events. Some visual effects are modified by the event, most notably the color of gate crossing enters/exits. Most effects can be previewed through the LED Control panel.
