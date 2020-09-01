@@ -55,10 +55,6 @@ class RHRace():
 
 RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
 
-def get_race_state():
-    '''Returns the race object.'''
-    return RHRace()
-
 class WinCondition():
     NONE = 0
     MOST_LAPS = 1
