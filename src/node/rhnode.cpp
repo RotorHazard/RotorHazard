@@ -28,6 +28,7 @@
 
 #include "config.h"
 #include <Wire.h>
+#include "clock.h"
 #include "rssi.h"
 #include "commands.h"
 #include "rheeprom.h"
@@ -381,7 +382,6 @@ void setStatusLed(bool onFlag)
     }
 }
 
-static mtime_t loopMillis = 0;
 static bool commsMonitorEnabledFlag = false;
 static mtime_t commsMonitorLastResetTime = 0;
 
@@ -391,10 +391,11 @@ void loop()
     Settings& settings = RssiNode::rssiNode.getSettings();
     State& state = RssiNode::rssiNode.getState();
 
-    mtime_t ms = millis();
-    if (ms > loopMillis)
+    const uint32_t elapsed = usclock.tick();
+    if (elapsed > 1000)
     {  // limit to once per millisecond
         // read raw RSSI close to taking timestamp
+        const mtime_t ms = usclock.millis();
         bool crossingFlag = RssiNode::rssiNode.process(rssiRead(), ms);
 
         // update settings and status LED
@@ -488,8 +489,6 @@ void loop()
             else
                 setStatusLed(ms % 2000 == 0);  // blink
         }
-
-        loopMillis = ms;
     }
 }
 

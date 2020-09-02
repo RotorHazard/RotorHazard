@@ -1,4 +1,5 @@
 #include "config.h"
+#include "clock.h"
 #include "rssi.h"
 #include "commands.h"
 
@@ -156,7 +157,7 @@ void Message::handleReadCommand(RssiNode& rssiNode, bool serialFlag)
 
         case READ_LAP_STATS:
             {
-            mtime_t now = millis();
+            mtime_t now = usclock.millis();
             buffer.write8(lastPass.lap);
             buffer.write16(uint16_t(now - lastPass.timestamp));  // ms since lap
             ioBufferWriteRssi(buffer, state.rssi);
