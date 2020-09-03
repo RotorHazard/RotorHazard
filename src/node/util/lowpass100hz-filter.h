@@ -8,13 +8,13 @@
  */
 
 //Low pass bessel filter order=2 alpha1=0.1
+//constant delay in the pass-band (variably less above)
 class LowPassFilter100Hz : public Filter<rssi_t>
 {
     private:
-        uint8_t unfilled = 3;
         float v[3];
         rssi_t nextValue;
-        CircularBuffer<mtime_t,2> timestamps;
+        CircularBuffer<mtime_t,3> timestamps; // delay correct for pass-band
     public:
         LowPassFilter100Hz()
         {
@@ -23,20 +23,17 @@ class LowPassFilter100Hz : public Filter<rssi_t>
         }
 
         bool isFilled() {
-            return unfilled == 0;
+            return timestamps.isFull();
         }
 
         void addRawValue(mtime_t ts, rssi_t x)
         {
-            if (unfilled != 0)
-                unfilled--;
-
             v[0] = v[1];
             v[1] = v[2];
             v[2] = (9.053999669813994622e-2 * x)
                  + (-0.24114073878907091308 * v[0])
                  + (0.87898075199651115597 * v[1]);
-            nextValue = (rssi_t)((v[0] + v[2]) + 2 * v[1]); // 2^
+            nextValue = (rssi_t)((v[0] + v[2]) + 2 * v[1]);
 
             timestamps.push(ts);
         }
