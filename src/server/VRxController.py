@@ -39,9 +39,13 @@ MINIMUM_PAYLOAD = 7
 
 class VRxController:
 
-    def __init__(self, eventmanager, vrx_config, node_frequencies):
+    def __init__(self, eventmanager, vrx_config, seat_frequencies):
         self.Events = eventmanager
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.debug("TEST DEBUG")
+        self.logger.info("TEST INFO")
+        print(self.logger.getEffectiveLevel())
         # Stored receiver data
         self.rx_data = {}
 
@@ -50,8 +54,8 @@ class VRxController:
 
         self.config = self.validate_config(vrx_config)
 
-        # TODO the subscribe topics subscribe it to a node number by default
-        # Don't hack by making node number a wildcard
+        # TODO the subscribe topics subscribe it to a seat number by default
+        # Don't hack by making seat number a wildcard
 
         # TODO: pass in "CV1 to the MQTT_CLIENT because
         # there can be multiple clients, one for each protocol.
@@ -65,11 +69,11 @@ class VRxController:
 
         self._add_subscribe_callbacks()
         self._mqttc.loop_start()
-        self.num_nodes = len(node_frequencies)
+        self.num_seats = len(seat_frequencies)
 
-        self.node_number_range = (0,7)
-        self._nodes = [VRxNode(self._mqttc,self._cv, n, node_frequencies[n], node_number_range=self.node_number_range) for n in range(self.num_nodes)]
-        self._node_broadcast = VRxBroadcastNode(self._mqttc, self._cv)
+        self.seat_number_range = (0,7)
+        self._seats = [VRxSeat(self._mqttc,self._cv, n, seat_frequencies[n], seat_number_range=self.seat_number_range) for n in range(self.num_seats)]
+        self._seat_broadcast = VRxBroadcastSeat(self._mqttc, self._cv)
 
         # Events
         self.Events.on(Evt.STARTUP, 'VRx', self.do_startup)
@@ -125,15 +129,15 @@ class VRxController:
     def do_startup(self,arg):
         self.logger.info("VRx Control Starting up")
 
-        self._node_broadcast.reset_lock()
+        self._seat_broadcast.reset_lock()
         # Request status of all receivers (static and variable)
         self.request_static_status()
         self.request_variable_status()
-        # self._node_broadcast.turn_off_osd()
+        # self._seat_broadcast.turn_off_osd()
 
-        for i in range(self.num_nodes):
-            self.get_node_lock_status(i)
-            gevent.spawn(self.set_node_frequency, i, self._nodes[i]._node_frequency)
+        for i in range(self.num_seats):
+            self.get_seat_lock_status(i)
+            gevent.spawn(self.set_seat_frequency, i, self._seats[i]._seat_frequency)
 
         # Update the DB with receivers that exist and their status
         # (Because the pi was already running, they should all be connected to the broker)
@@ -152,13 +156,13 @@ class VRxController:
             self.logger.error("Unable to send callsigns. RACE not found in event")
             return
 
-        for heatnode in Database.HeatNode.query.filter_by(heat_id=heat_id).all():
-            if heatnode.node_index < self.num_nodes:
-                if heatnode.pilot_id != Database.PILOT_ID_NONE:
-                    pilot = Database.Pilot.query.get(heatnode.pilot_id)
-                    self.set_message_direct(heatnode.node_index, pilot.callsign)
+        for heatseat in Database.HeatSeat.query.filter_by(heat_id=heat_id).all():
+            if heatseat.seat_index < self.num_seats:
+                if heatseat.pilot_id != Database.PILOT_ID_NONE:
+                    pilot = Database.Pilot.query.get(heatseat.pilot_id)
+                    self.set_message_direct(heatseat.seat_index, pilot.callsign)
                 else:
-                    self.set_message_direct(heatnode.node_index, __("-None-"))
+                    self.set_message_direct(heatseat.seat_index, __("-None-"))
 
     def do_race_stage(self, arg):
         self.logger.info("VRx Signaling Race Stage")
@@ -186,7 +190,7 @@ class VRxController:
     def do_frequency_set(self, arg):
         self.logger.info("Setting frequency from event")
         try:
-            node_index = arg["nodeIndex"]
+            seat_index = arg["nodeIndex"]
         except KeyError:
             self.logger.error("Unable to set frequency. nodeIndex not found in event")
             return
@@ -196,7 +200,7 @@ class VRxController:
             self.logger.error("Unable to set frequency. frequency not found in event")
             return
 
-        self.set_node_frequency(node_index, frequency)
+        self.set_seat_frequency(seat_index, frequency)
 
     def do_lap_recorded(self, args):
         '''
@@ -207,16 +211,16 @@ class VRxController:
         LAP_HEADER = Options.get('osd_lapHeader')
         POS_HEADER = Options.get('osd_positionHeader')
 
-        if 'race' in args:
-            RACE = args['race']
+        if 'race' in args: #TODO issue408
+            RACE = args['race'] #TODO issue408
         else:
             self.logger.warn('Failed to send results: Race not specified')
             return False
 
-        if 'node_index' in args:
-            node_index = args['node_index']
+        if 'node_index' in args: 
+            seat_index = args['node_index']
         else:
-            self.logger.warn('Failed to send results: Node not specified')
+            self.logger.warn('Failed to send results: Seat not specified')
             return False
 
         # wait for results to generate
@@ -247,9 +251,9 @@ class VRxController:
                 # WinCondition.NONE
                 leaderboard = results['by_race_time']
 
-            # get this node's results
+            # get this seat's results
             for index, result in enumerate(leaderboard):
-                if result['node'] == node_index:
+                if result['seat'] == seat_index: #TODO issue408
                     rank_index = index
                     break
 
@@ -417,9 +421,9 @@ class VRxController:
                     message += ' / +' + osd_next_split['split_time'] + ' ' + osd_next_split['callsign'][:10]
 
             # send message to crosser
-            node_dest = node_index
-            self.set_message_direct(node_dest, message)
-            self.logger.debug('msg n{1}:  {0}'.format(message, node_dest))
+            seat_dest = seat_index
+            self.set_message_direct(seat_dest, message)
+            self.logger.debug('msg n{1}:  {0}'.format(message, seat_dest))
 
             # show split when next pilot crosses
             if next_rank_split:
@@ -440,9 +444,9 @@ class VRxController:
                     # "Pos-Callsign L[n]|0:00:00 / -0:00.000 Callsign"
                     message += ' / -' + osd_next_split['split_time'] + ' ' + osd['callsign'][:10]
 
-                    node_dest = leaderboard[rank_index - 1]['node']
-                    self.set_message_direct(node_dest, message)
-                    self.logger.debug('msg n{1}:  {0}'.format(message, node_dest))
+                    seat_dest = leaderboard[rank_index - 1]['seat']
+                    self.set_message_direct(seat_dest, message)
+                    self.logger.debug('msg n{1}:  {0}'.format(message, seat_dest))
 
         else:
             self.logger.warn('Failed to send results: Results not available')
@@ -452,61 +456,61 @@ class VRxController:
     ## MQTT Status
     ##############
 
-    def request_static_status(self, node_number=VRxALL):
-        if node_number == VRxALL:
-            node = self._node_broadcast
-            node.request_static_status()
+    def request_static_status(self, seat_number=VRxALL):
+        if seat_number == VRxALL:
+            seat = self._seat_broadcast
+            seat.request_static_status()
         else:
-            self._nodes[node_number].request_static_status()
+            self._seats[seat_number].request_static_status()
 
-    def request_variable_status(self, node_number=VRxALL):
-        if node_number == VRxALL:
-            node = self._node_broadcast
-            node.request_variable_status()
+    def request_variable_status(self, seat_number=VRxALL):
+        if seat_number == VRxALL:
+            seat = self._seat_broadcast
+            seat.request_variable_status()
         else:
-            self._nodes[node_number].request_variable_status()
+            self._seats[seat_number].request_variable_status()
 
     ##############
-    ## Node Number
+    ## Seat Number
     ##############
 
-    def set_node_number(self, desired_node_num=None, current_node_num=None, serial_num=None ):
-        """Sets the node subscription number to desired_number
+    def set_seat_number(self, desired_seat_num=None, current_seat_num=None, serial_num=None ):
+        """Sets the seat subscription number to desired_number
 
-        If targetting all devices at a certain node, use 'current_node_num'
+        If targetting all devices at a certain seat, use 'current_seat_num'
         If targetting a single receiver serial number, use 'serial_num'
-        If targetting all receivers, don't supply either 'current_node_num' or 'serial_num'
+        If targetting all receivers, don't supply either 'current_seat_num' or 'serial_num'
         """
-        MIN_NODE_NUM = self.node_number_range[0]
-        MAX_NODE_NUM = self.node_number_range[1]
-        desired_node_num = int(desired_node_num)
-        if not MIN_NODE_NUM <= desired_node_num <= MAX_NODE_NUM:
-            return ValueError("Desired Node Number %s out of range in set_node_number"%desired_node_num)
+        MIN_SEAT_NUM = self.seat_number_range[0]
+        MAX_SEAT_NUM = self.seat_number_range[1]
+        desired_seat_num = int(desired_seat_num)
+        if not MIN_SEAT_NUM <= desired_seat_num <= MAX_SEAT_NUM:
+            return ValueError("Desired Seat Number %s out of range in set_seat_number"%desired_seat_num)
 
-        if current_node_num is not None:
-            current_node_num = int(current_node_num)
-            if not MIN_NODE_NUM <= current_node_num <= MAX_NODE_NUM:
-                return ValueError("Desired Node Number %s out of range in set_node_number"%current_node_num)
-            self._nodes[current_node_num].set_node_number(desired_node_num)
+        if current_seat_num is not None:
+            current_seat_num = int(current_seat_num)
+            if not MIN_SEAT_NUM <= current_seat_num <= MAX_SEAT_NUM:
+                return ValueError("Desired Seat Number %s out of range in set_seat_number"%current_seat_num)
+            self._seats[current_seat_num].set_seat_number(desired_seat_num)
             return
 
         if serial_num is not None:
             topic = mqtt_publish_topics["cv1"]["receiver_command_esp_targeted_topic"][0]%serial_num
-            cmd = ESP_COMMANDS["Set Node Number"] % desired_node_num
+            cmd = ESP_COMMANDS["Set Seat Number"] % desired_seat_num
             self._mqttc.publish(topic,cmd)
             self.rx_data[serial_num]["needs_config"] = True
             return
 
-        raise NotImplementedError("TODO Broadcast set all node number")
+        raise NotImplementedError("TODO Broadcast set all seat number")
 
     ###########
     # Frequency
     ###########
 
-    def set_node_frequency(self, node_number, frequency):
+    def set_seat_frequency(self, seat_number, frequency):
         fmsg = __("Frequency Change: ") + str(frequency)
-        node = self._nodes[node_number]
-        node.set_node_frequency(frequency)
+        seat = self._seats[seat_number]
+        seat.set_seat_frequency(frequency)
 
     def set_target_frequency(self, target, frequency):
         if frequency != RHUtils.FREQUENCY_ID_NONE:
@@ -519,8 +523,8 @@ class VRxController:
 
             self.logger.debug("Set frequency for %s to %d", target, frequency)
 
-    def get_node_frequency(self, node_number, frequency):
-        self._nodes[node_number].node_frequency
+    def get_seat_frequency(self, seat_number, frequency):
+        self._seats[seat_number].seat_frequency
 
     #############
     # Lock Status
@@ -528,18 +532,18 @@ class VRxController:
 
     # @property
     # def lock_status(self):
-    #     self._lock_status = [node.node_lock_status for node in self._nodes]
+    #     self._lock_status = [seat.seat_lock_status for seat in self._seats]
     #     return self._lock_status
 
-    def get_node_lock_status(self, node_number=VRxALL):
-        if node_number == VRxALL:
-            node = self._node_broadcast
-            node.get_node_lock_status()
+    def get_seat_lock_status(self, seat_number=VRxALL):
+        if seat_number == VRxALL:
+            seat = self._seat_broadcast
+            seat.get_seat_lock_status()
         else:
-            node = self._nodes[node_number]
-            node.get_node_lock_status()
+            seat = self._seats[seat_number]
+            seat.get_seat_lock_status()
 
-        #return self._nodes[node_number].node_lock_status
+        #return self._seats[seat_number].seat_lock_status
 
     #############
     # Camera Type
@@ -547,37 +551,41 @@ class VRxController:
 
     @property
     def camera_type(self):
-        self._camera_type = [node.node_camera_type for node in self._nodes]
+        self._camera_type = [seat.seat_camera_type for seat in self._seats]
         return self._camera_type
 
     @camera_type.setter
     def camera_type(self, camera_types):
         """ set the receiver camera types
         camera_types: dict
-            key: node_number
+            key: seat_number
             value: desired camera_type in ['N','P','A']
         """
-        for node_index in camera_types:
-            c = camera_types[node_index]
-            self._nodes[node_index].node_camera_type = c
+        for seat_index in camera_types:
+            c = camera_types[seat_index]
+            self._seats[seat_index].seat_camera_type = c
 
-    def set_node_camera_type(self, node_number, camera_type):
-        self._nodes[node_number].node_camera_type = camera_type
+    def set_seat_camera_type(self, seat_number, camera_type):
+        self._seats[seat_number].seat_camera_type = camera_type
 
-    def get_node_camera_type(self, node_number, camera_type):
-        self._nodes[node_number].node_camera_type
+    def get_seat_camera_type(self, seat_number, camera_type):
+        self._seats[seat_number].seat_camera_type
 
     ##############
     # OSD Messages
     ##############
 
-    def set_message_direct(self, node_number, message):
+    def set_message_direct(self, seat_number, message):
         """set a message directly. Truncated if over length"""
-        if node_number == VRxALL:
-            node = self._node_broadcast
-            node.set_message_direct(message)
+        if message==None:
+            self.logger.error("No message")
+            return
+    
+        if seat_number == VRxALL:
+            seat = self._seat_broadcast
+            seat.set_message_direct(message)
         else:
-            self._nodes[node_number].set_message_direct(message)
+            self._seats[seat_number].set_message_direct(message)
 
     #############################
     # Private Functions for MQTT
@@ -591,9 +599,9 @@ class VRxController:
             topic_tuple = topics["receiver_response_all"]
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_all)
 
-            # Node response
-            topic_tuple = topics["receiver_response_node"]
-            self._add_subscribe_callback(topic_tuple, self.on_message_resp_node)
+            # Seat response
+            topic_tuple = topics["receiver_response_seat"]
+            self._add_subscribe_callback(topic_tuple, self.on_message_resp_seat)
 
 
             # Connection
@@ -634,15 +642,15 @@ class VRxController:
         initial_config_success = False
 
         try:
-            nn = self.rx_data[target]["node_number"]
+            sn = self.rx_data[target]["seat_number"]
         except KeyError:
-            self.logger.info("No node number available for %s yet", target)
+            self.logger.info("No seat number available for %s yet", target)
         else:
             self.logger.info("Performing initial configuration for %s", target)
 
-            node_number = int(self.rx_data[target]['node_number'])
-            node = self._nodes[node_number]
-            frequency = node.node_frequency
+            seat_number = int(self.rx_data[target]['seat_number'])
+            seat = self._seats[seat_number]
+            frequency = seat.seat_frequency
             self.set_target_frequency(target, frequency)
 
             # TODO: send most relevant OSD information
@@ -686,17 +694,16 @@ class VRxController:
         payload = message.payload
         self.logger.info("TODO on_message_resp_all => %s"%(payload.strip()))
 
-    def on_message_resp_node(self, client, userdata, message):
+    def on_message_resp_seat(self, client, userdata, message):
         topic = message.topic
-        node_number = topic[-1]
+        seat_number = topic[-1]
         payload = message.payload
-        self.logger.info("TODO on_message_resp_node for node %s => %s"%(node_number, payload.strip()))
+        self.logger.info("TODO on_message_resp_seat for seat %s => %s"%(seat_number, payload.strip()))
 
     def on_message_resp_targeted(self, client, userdata, message):
         topic = message.topic
         rx_name = topic.split('/')[-1]
         payload = message.payload
-
         if len(payload) >= MINIMUM_PAYLOAD:
             rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"}) #TODO this is probably not needed
 
@@ -706,6 +713,8 @@ class VRxController:
                 if extracted_data is not None:
                     rx_data["valid_rx"] = True
                     rx_data.update(extracted_data)
+                else:
+                    self.logger.error("Unable to extract vrx data '%s'"%payload)
 
                 self.logger.debug("Receiver Reply %s => %s"%(rx_name, payload.strip()))
             except Exception as ex:
@@ -719,7 +728,7 @@ class VRxController:
             self.logger.debug("Receiver Reply %s => No payload"%(rx_name))
 
         #TODO only fire event if the data changed
-        self.logger.debug("Receiver Data Updated: %s"%self.rx_data[rx_name])
+        self.logger.info("Receiver Data Updated: %s"%self.rx_data[rx_name])
         self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
             'rx_name': rx_name,
             })
@@ -791,8 +800,8 @@ CEND = '\033[0m'
 def printc(*args):
     print(CRED + ' '.join(args) + CEND)
 
-class BaseVRxNode:
-    """Node controller for both the broadcast and individual nodes"""
+class BaseVRxSeat:
+    """Seat controller for both the broadcast and individual seats"""
     def __init__(self,
                  mqtt_client,
                  cv,
@@ -802,32 +811,32 @@ class BaseVRxNode:
         self._cv = cv
         self.logger = logging.getLogger(self.__class__.__name__)
 
-class VRxNode(BaseVRxNode):
-    """Commands and Requests apply to all receivers at a node number"""
+class VRxSeat(BaseVRxSeat):
+    """Commands and Requests apply to all receivers at a seat number"""
     def __init__(self,
                  mqtt_client,
                  cv,
-                 node_number,
-                 node_frequency,
-                 node_number_range = (0,7), #(min,max)
-                 node_camera_type = 'A'
+                 seat_number,
+                 seat_frequency,
+                 seat_number_range = (0,7), #(min,max)
+                 seat_camera_type = 'A'
                  ):
-        BaseVRxNode.__init__(self, mqtt_client, cv)
+        BaseVRxSeat.__init__(self, mqtt_client, cv)
 
-        # RH refers to nodes 0 to 7
-        self.MIN_NODE_NUM = node_number_range[0]
-        self.MAX_NODE_NUM = node_number_range[1]
+        # RH refers to seats 0 to 7
+        self.MIN_SEAT_NUM = seat_number_range[0]
+        self.MAX_SEAT_NUM = seat_number_range[1]
 
-        if self.MIN_NODE_NUM <= node_number <= self.MAX_NODE_NUM:
-            self._node_number = node_number
-        elif node_number == VRxALL:
-            raise Exception("Use the broadcast node")
+        if self.MIN_SEAT_NUM <= seat_number <= self.MAX_SEAT_NUM:
+            self._seat_number = seat_number
+        elif seat_number == VRxALL:
+            raise Exception("Use the broadcast seat")
         else:
-            raise Exception("node_number %d out of range", node_number)
+            raise Exception("seat_number %d out of range", seat_number)
 
-        self._node_frequency = node_frequency
-        self._node_camera_type = node_camera_type
-        self._node_lock_status = None
+        self._seat_frequency = seat_frequency
+        self._seat_camera_type = seat_camera_type
+        self._seat_lock_status = None
 
 
         """
@@ -848,37 +857,37 @@ class VRxNode(BaseVRxNode):
         #   Do we return the command sent or some sort of result from mqtt?
 
     @property
-    def node_number(self):
-        """Get the node number"""
-        self.logger.debug("node property get")
-        return self._node_number
+    def seat_number(self):
+        """Get the seat number"""
+        self.logger.debug("seat property get")
+        return self._seat_number
 
-    @node_number.setter
-    def node_number(self, node_number):
-        if self.MIN_NODE_NUM <= node_number <= self.MAX_NODE_NUM:
-            # TODO change the node number of all receivers and apply the settings of the other node number
+    @seat_number.setter
+    def seat_number(self, seat_number):
+        if self.MIN_SEAT_NUM <= seat_number <= self.MAX_SEAT_NUM:
+            # TODO change the seat number of all receivers and apply the settings of the other seat number
             raise NotImplementedError
-            # self._node_number = node_number
+            # self._seat_number = seat_number
         else:
-            raise Exception("node_number out of range")
+            raise Exception("seat_number out of range")
 
-    def set_node_number(self, new_node_number):
-        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_node_topic"][0]%self._node_number
-        cmd = ESP_COMMANDS["Set Node Number"] % new_node_number
+    def set_seat_number(self, new_seat_number):
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
+        cmd = ESP_COMMANDS["Set Seat Number"] % new_seat_number
         self._mqttc.publish(topic,cmd)
         return
 
     @property
-    def node_frequency(self, ):
-        """Gets the frequency of a node"""
-        return self._node_frequency
+    def seat_frequency(self, ):
+        """Gets the frequency of a seat"""
+        return self._seat_frequency
 
-    @node_frequency.setter
-    def node_frequency(self, frequency):
-        """Sets all receivers at this node number to the new frequency"""
+    @seat_frequency.setter
+    def seat_frequency(self, frequency):
+        """Sets all receivers at this seat number to the new frequency"""
         raise NotImplementedError
 
-    def set_node_frequency(self, frequency):
+    def set_seat_frequency(self, frequency):
         FREQUENCY_TIMEOUT = 10
 
         time_now = monotonic()
@@ -886,14 +895,14 @@ class VRxNode(BaseVRxNode):
         self.set_message_direct(__("!!! Frequency changing to {0} in <10s !!!").format(frequency))
         gevent.sleep(10)
 
-        self.set_node_frequency_direct(frequency)
+        self.set_seat_frequency_direct(frequency)
         self.set_message_direct(__(""))
 
-    def set_node_frequency_direct(self, frequency):
-        """Sets all receivers at this node number to the new frequency"""
-        self._node_frequency = frequency
+    def set_seat_frequency_direct(self, frequency):
+        """Sets all receivers at this seat number to the new frequency"""
+        self._seat_frequency = frequency
         if frequency != RHUtils.FREQUENCY_ID_NONE:
-            topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self._node_number
+            topic = mqtt_publish_topics["cv1"]["receiver_command_seat_topic"][0]%self._seat_number
             messages = self._cv.set_custom_frequency(self._cv.bc_id, frequency)
 
             # set_custom_frequency returns multiple commands (one for channel and one for band)
@@ -901,46 +910,46 @@ class VRxNode(BaseVRxNode):
                 self._mqttc.publish(topic,m)
 
     @property
-    def node_camera_type(self, ):
-        """Get the configured camera type for a node number"""
-        return self._node_camera_type
+    def seat_camera_type(self, ):
+        """Get the configured camera type for a seat number"""
+        return self._seat_camera_type
 
-    @node_camera_type.setter
-    def node_camera_type(self, camera_type):
+    @seat_camera_type.setter
+    def seat_camera_type(self, camera_type):
         if camera_type.capitalize in ["A","N","P"]:
             raise NotImplementedError
         else:
             raise Exception("camera_type out of range")
 
     @property
-    def node_lock_status(self, ):
-        # topic = mqtt_publish_topics["cv1"]["receiver_request_node_active_topic"][0]%self._node_number
+    def seat_lock_status(self, ):
+        # topic = mqtt_publish_topics["cv1"]["receiver_request_seat_active_topic"][0]%self._seat_number
         # self._mqttc.publish(topic,
         #                    "?")
         # time.sleep(0.1)
-        # return self._node_lock_status
+        # return self._seat_lock_status
         pass
-        print("TODO node_lock_status property")
+        print("TODO seat_lock_status property")
 
-    def get_node_lock_status(self,):
-        topic = mqtt_publish_topics["cv1"]["receiver_request_node_all_topic"][0]%self._node_number
-        report_req = self._cv.get_lock_format(self._node_number+1)
+    def get_seat_lock_status(self,):
+        topic = mqtt_publish_topics["cv1"]["receiver_request_seat_all_topic"][0]%self._seat_number
+        report_req = self._cv.get_lock_format(self._seat_number+1)
         self._mqttc.publish(topic,report_req)
         return report_req
 
     def request_static_status(self):
-        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_node_topic"][0]%self._node_number
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
         msg = ESP_COMMANDS["Request Static Status"]
         self._mqttc.publish(topic,msg)
 
     def request_variable_status(self):
-        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_node_topic"][0]%self._node_number
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
         msg = ESP_COMMANDS["Request Variable Status"]
         self._mqttc.publish(topic,msg)
 
     def set_message_direct(self, message):
         """Send a raw message to the OSD"""
-        topic = mqtt_publish_topics["cv1"]["receiver_command_node_topic"][0]%self._node_number
+        topic = mqtt_publish_topics["cv1"]["receiver_command_seat_topic"][0]%self._seat_number
         cmd = self._cv.set_user_message(self._cv.bc_id, message)
         self._mqttc.publish(topic, cmd)
         return cmd
@@ -954,12 +963,12 @@ class VRxNode(BaseVRxNode):
         #todo check against limit each addition and truncate based on field priority
         pass
 
-class VRxBroadcastNode(BaseVRxNode):
+class VRxBroadcastSeat(BaseVRxSeat):
     def __init__(self,
                  mqtt_client,
                  cv
                  ):
-        BaseVRxNode.__init__(self, mqtt_client, cv)
+        BaseVRxSeat.__init__(self, mqtt_client, cv)
         self._cv_broadcast_id = clearview.comspecs.clearview_specs['bc_id']
         self._broadcast_cmd_topic = mqtt_publish_topics["cv1"]["receiver_command_all"][0]
         self._rx_cmd_esp_all_topic = mqtt_publish_topics["cv1"]["receiver_command_esp_all"][0]
@@ -995,7 +1004,7 @@ class VRxBroadcastNode(BaseVRxNode):
         cmd = ESP_COMMANDS["Request Variable Status"]
         self._mqttc.publish(topic,cmd)
 
-    def get_node_lock_status(self,):
+    def get_seat_lock_status(self,):
         topic = mqtt_publish_topics["cv1"]["receiver_request_all_topic"][0]
         report_req = self._cv.get_lock_format(self._cv_broadcast_id)
         self._mqttc.publish(topic,report_req)
@@ -1078,8 +1087,8 @@ def main():
     #                       5860,
     #                       5880,])
 
-    # # Set node 3's frequency to 5781
-    # vrxc.set_node_frequency(3,5781)
+    # # Set seat 3's frequency to 5781
+    # vrxc.set_seat_frequency(3,5781)
     pass
 
 
