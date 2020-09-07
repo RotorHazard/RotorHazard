@@ -62,7 +62,6 @@ unittest(historyBuffer_merges_nadir) {
 unittest(historyBuffer_withoutReads) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  RssiNode& rssiNode = RssiNode::rssiNode;
   rssiNode.setFilter(&testFilter);
   State& state = rssiNode.getState();
   History& history = rssiNode.getHistory();
@@ -133,7 +132,6 @@ unittest(historyBuffer_withoutReads) {
 unittest(historyBuffer_withReads) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  RssiNode& rssiNode = RssiNode::rssiNode;
   rssiNode.setFilter(&testFilter);
   State& state = rssiNode.getState();
   History& history = rssiNode.getHistory();

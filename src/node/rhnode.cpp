@@ -44,14 +44,14 @@ uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 #define EEPROM_ADRW_EXPIRE 6       //address for stored catch history expire duration
 #define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
 #define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
+#define EEPROM_SETTINGS_SIZE 16
 
 #define COMMS_MONITOR_TIME_MS 5000 //I2C communications monitor grace/trigger time
 
 // dummy macro
 #define LOG_ERROR(...)
 
-Message i2cMessage, serialMessage;
-static bool rxPoweredDown = false;
+Message i2cMessage(RssiReceivers::rssiRxs), serialMessage(RssiReceivers::rssiRxs);
 
 // Defines for fast ADC reads
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
@@ -61,10 +61,6 @@ void i2cInitialize(bool delayFlag);
 void i2cReceive(int byteCount);
 bool i2cReadAndValidateIoBuffer(byte expectedSize);
 void i2cTransmit();
-void setRxModule(uint16_t frequency);
-void resetRxModule();
-void setupRxModule();
-void powerDownRxModule();
 
 #if (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
 // Configure the I2C address based on input-pin level.
@@ -163,201 +159,37 @@ void setup()
     cbi(ADCSRA, ADPS1);
     cbi(ADCSRA, ADPS0);
 
-    Settings& settings = RssiNode::rssiNode.getSettings();
-
     // if EEPROM-check value matches then read stored values
-    if (eepromReadWord(EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
-    {
-        settings.vtxFreq = eepromReadWord(EEPROM_ADRW_RXFREQ);
-        settings.enterAtLevel = eepromReadWord(EEPROM_ADRW_ENTERAT);
-        settings.exitAtLevel = eepromReadWord(EEPROM_ADRW_EXITAT);
-    }
-    else
-    {    // if no match then initialize EEPROM values
-        eepromWriteWord(EEPROM_ADRW_RXFREQ, settings.vtxFreq);
-        eepromWriteWord(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
-        eepromWriteWord(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
-        eepromWriteWord(EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
-    }
+    for (int i=0; i<RssiReceivers::rssiRxs->getCount(); i++) {
+      Settings& settings = RssiReceivers::rssiRxs->getSettings(i);
+      int offset = i*EEPROM_SETTINGS_SIZE;
+      if (eepromReadWord(offset + EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
+      {
+          settings.vtxFreq = eepromReadWord(offset + EEPROM_ADRW_RXFREQ);
+          settings.enterAtLevel = eepromReadWord(offset + EEPROM_ADRW_ENTERAT);
+          settings.exitAtLevel = eepromReadWord(offset + EEPROM_ADRW_EXITAT);
+      }
+      else
+      {    // if no match then initialize EEPROM values
+          eepromWriteWord(offset + EEPROM_ADRW_RXFREQ, settings.vtxFreq);
+          eepromWriteWord(offset + EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
+          eepromWriteWord(offset + EEPROM_ADRW_EXITAT, settings.exitAtLevel);
+          eepromWriteWord(offset + EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
+      }
 
-    resetRxModule(); 
-    if (settings.vtxFreq == 1111) // frequency value to power down rx module
-    {
-        powerDownRxModule();
-        rxPoweredDown = true;
-    }
-    else
-    {
-        setRxModule(settings.vtxFreq);  // Setup rx module to default frequency
-    }
-
-    RssiNode::rssiNode.start();
-}
-
-// Functions for the rx5808 module
-
-void SERIAL_SENDBIT1()
-{
-    digitalWrite(RX5808_DATA_PIN, HIGH);
-    delayMicroseconds(300);
-    digitalWrite(RX5808_CLK_PIN, HIGH);
-    delayMicroseconds(300);
-    digitalWrite(RX5808_CLK_PIN, LOW);
-    delayMicroseconds(300);
-}
-
-void SERIAL_SENDBIT0()
-{
-    digitalWrite(RX5808_DATA_PIN, LOW);
-    delayMicroseconds(300);
-    digitalWrite(RX5808_CLK_PIN, HIGH);
-    delayMicroseconds(300);
-    digitalWrite(RX5808_CLK_PIN, LOW);
-    delayMicroseconds(300);
-}
-
-void SERIAL_ENABLE_LOW()
-{
-    digitalWrite(RX5808_SEL_PIN, LOW);
-    delayMicroseconds(200);
-}
-
-void SERIAL_ENABLE_HIGH()
-{
-    digitalWrite(RX5808_SEL_PIN, HIGH);
-    delayMicroseconds(200);
-}
-
-// Calculate rx5808 register hex value for given frequency in MHz
-uint16_t freqMhzToRegVal(uint16_t freqInMhz)
-{
-    uint16_t tf, N, A;
-    tf = (freqInMhz - 479) / 2;
-    N = tf / 32;
-    A = tf % 32;
-    return (N << 7) + A;
-}
-
-// Set the frequency given on the rx5808 module
-void setRxModule(uint16_t frequency)
-{
-    uint8_t i;  // Used in the for loops
-
-    // Get the hex value to send to the rx module
-    uint16_t vtxHex = freqMhzToRegVal(frequency);
-
-
-    //Channel data from the lookup table, 20 bytes of register data are sent, but the
-    // MSB 4 bits are zeros register address = 0x1, write, data0-15=vtxHex data15-19=0x0
-    SERIAL_ENABLE_HIGH();
-    SERIAL_ENABLE_LOW();
-
-    SERIAL_SENDBIT1();  // Register 0x1
-    SERIAL_SENDBIT0();
-    SERIAL_SENDBIT0();
-    SERIAL_SENDBIT0();
-
-    SERIAL_SENDBIT1();  // Write to register
-
-    // D0-D15, note: loop runs backwards as more efficent on AVR
-    for (i = 16; i > 0; i--)
-    {
-        if (vtxHex & 0x1)
-        {  // Is bit high or low?
-            SERIAL_SENDBIT1();
-        }
-        else
-        {
-            SERIAL_SENDBIT0();
-        }
-        vtxHex >>= 1;  // Shift bits along to check the next one
+      RxModule& rx = RssiReceivers::rssiRxs->getRxModule(i);
+      rx.reset(); 
+      if (settings.vtxFreq == 1111) // frequency value to power down rx module
+      {
+          rx.powerDown();
+      }
+      else
+      {
+          rx.setFrequency(settings.vtxFreq);  // Setup rx module to default frequency
+      }
     }
 
-    for (i = 4; i > 0; i--)  // Remaining D16-D19
-        SERIAL_SENDBIT0();
-
-    SERIAL_ENABLE_HIGH();  // Finished clocking data in
-
-}
-
-// Reset rx5808 module to wake up from power down
-void resetRxModule()
-{  
-    uint8_t i;  // Used in the for loops
-  
-    SERIAL_ENABLE_HIGH();
-    SERIAL_ENABLE_LOW();
-
-    SERIAL_SENDBIT1();  // Register 0xF
-    SERIAL_SENDBIT1();
-    SERIAL_SENDBIT1();
-    SERIAL_SENDBIT1();
-
-    SERIAL_SENDBIT1();  // Write to register
-
-    for (i = 20; i > 0; i--)
-        SERIAL_SENDBIT0();
-
-    SERIAL_ENABLE_HIGH();  // Finished clocking data in
-
-    setupRxModule();
-}
-
-// Set power options on the rx5808 module
-void setRxModulePower(uint32_t options)
-{
-    uint8_t i;  // Used in the for loops
-
-    SERIAL_ENABLE_HIGH();
-    SERIAL_ENABLE_LOW();
-
-    SERIAL_SENDBIT0();  // Register 0xA
-    SERIAL_SENDBIT1();
-    SERIAL_SENDBIT0();
-    SERIAL_SENDBIT1();
-
-    SERIAL_SENDBIT1();  // Write to register
-
-    for (i = 20; i > 0; i--)
-    {
-        if (options & 0x1)
-        {  // Is bit high or low?
-            SERIAL_SENDBIT1();
-        }
-        else
-        {
-            SERIAL_SENDBIT0();
-        }
-        options >>= 1;  // Shift bits along to check the next one
-    }
-
-    SERIAL_ENABLE_HIGH();  // Finished clocking data in
-
-    digitalWrite(RX5808_DATA_PIN, LOW);
-}
-
-// Power down rx5808 module
-void powerDownRxModule() 
-{   
-    setRxModulePower(0b11111111111111111111);
-}
-
-// Set up rx5808 module (disabling unused features to save some power)
-void setupRxModule() 
-{   
-    setRxModulePower(0b11010000110111110011);
-}
-
-// Read the RSSI value for the current channel
-rssi_t rssiRead()
-{
-    // reads 5V value as 0-1023, RX5808 is 3.3V powered so RSSI pin will never output the full range
-    int raw = analogRead(RSSI_INPUT_PIN);
-    // clamp upper range to fit scaling
-    if (raw > 0x01FF)
-        raw = 0x01FF;
-    // rescale to fit into a byte and remove some jitter
-    return raw >> 1;
+    RssiReceivers::rssiRxs->start();
 }
 
 static bool currentStatusLedFlag = false;
@@ -388,17 +220,19 @@ static mtime_t commsMonitorLastResetTime = 0;
 // Main loop
 void loop()
 {
-    Settings& settings = RssiNode::rssiNode.getSettings();
-    State& state = RssiNode::rssiNode.getState();
-
     const uint32_t elapsed = usclock.tick();
     if (elapsed > 1000)
     {  // limit to once per millisecond
         // read raw RSSI close to taking timestamp
         const mtime_t ms = usclock.millis();
-        bool crossingFlag = RssiNode::rssiNode.process(rssiRead(), ms);
+        bool crossingFlag = RssiReceivers::rssiRxs->readRssi();
 
         // update settings and status LED
+
+        RssiNode& rssiNode = RssiReceivers::rssiRxs->getRssiNode(cmdRssiNodeIndex);
+        State& state = rssiNode.getState();
+        Settings& settings = rssiNode.getSettings();
+        RxModule& rx = RssiReceivers::rssiRxs->getRxModule(cmdRssiNodeIndex);
 
         uint8_t changeFlags;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -416,17 +250,15 @@ void loop()
             }
             if (newVtxFreq == 1111) // frequency value to power down rx module
             {
-                powerDownRxModule();
-                rxPoweredDown = true;
+                rx.powerDown();
             }
             else
             {
-                if (rxPoweredDown)
+                if (rx.isPoweredDown())
                 {
-                    resetRxModule();
-                    rxPoweredDown = false; 
+                    rx.reset();
                 }
-                setRxModule(newVtxFreq);
+                rx.setFrequency(newVtxFreq);
             }
             
             state.activatedFlag = true;
@@ -434,7 +266,7 @@ void loop()
             if (changeFlags & FREQ_CHANGED)
             {
                 eepromWriteWord(EEPROM_ADRW_RXFREQ, newVtxFreq);
-                RssiNode::rssiNode.resetState();  // restart rssi peak tracking for node
+                rssiNode.resetState();  // restart rssi peak tracking for node
             }
         }
 
@@ -530,7 +362,7 @@ void i2cReceive(int byteCount)
         byte expectedSize = i2cMessage.getPayloadSize();
         if (expectedSize > 0 && i2cReadAndValidateIoBuffer(expectedSize))
         {
-            i2cMessage.handleWriteCommand(RssiNode::rssiNode, false);
+            i2cMessage.handleWriteCommand(false);
         }
         i2cMessage.buffer.size = 0;
     }
@@ -579,7 +411,7 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize)
 // A transmit buffer (ioBuffer) is populated with the data before sending.
 void i2cTransmit()
 {
-    i2cMessage.handleReadCommand(RssiNode::rssiNode, false);
+    i2cMessage.handleReadCommand(false);
 
     if (i2cMessage.buffer.size > 0)
     {  // If there is pending data, send it
@@ -606,7 +438,7 @@ void serialEvent()
         }
         else
         {
-            serialMessage.handleReadCommand(RssiNode::rssiNode, true);
+            serialMessage.handleReadCommand(true);
 
             if (serialMessage.buffer.size > 0)
             {  // If there is pending data, send it
@@ -624,7 +456,7 @@ void serialEvent()
             uint8_t checksum = serialMessage.buffer.calculateChecksum(serialMessage.buffer.size - 1);
             if (serialMessage.buffer.data[serialMessage.buffer.size - 1] == checksum)
             {
-                serialMessage.handleWriteCommand(RssiNode::rssiNode, true);
+                serialMessage.handleWriteCommand(true);
             }
             else
             {

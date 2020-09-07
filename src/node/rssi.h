@@ -101,8 +101,6 @@ private:
     void initExtremum(Extremum& e);
 
 public:
-    static RssiNode rssiNode;
-
     RssiNode();
     void setFilter(Filter<rssi_t> *f);
     void setSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir);
@@ -120,5 +118,4 @@ public:
     struct History& getHistory() { return history; };
     struct LastPass& getLastPass() { return lastPass; };
 };
-
 #endif

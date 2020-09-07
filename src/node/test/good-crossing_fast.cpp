@@ -9,7 +9,6 @@
 unittest(fastCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  RssiNode& rssiNode = RssiNode::rssiNode;
   rssiNode.setFilter(&testFilter);
   State& state = rssiNode.getState();
   LastPass& lastPass = rssiNode.getLastPass();

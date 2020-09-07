@@ -2,20 +2,24 @@
 #define commands_h
 
 #include "io.h"
-#include "rssi.h"
+#include "rssirx.h"
 
 // API level for node; increment when commands are modified
-#define NODE_API_LEVEL 25
+#define NODE_API_LEVEL 26
 
 class Message
 {
+private:
+    RssiReceivers *rssiRxs;
 public:
+    Message(RssiReceivers *rssiRxs) : rssiRxs(rssiRxs) {
+    };
     uint8_t command;  // code to identify messages
     Buffer buffer;  // request/response payload
 
     byte getPayloadSize();
-    void handleWriteCommand(RssiNode& rssiNode, bool serialFlag);
-    void handleReadCommand(RssiNode& rssiNode, bool serialFlag);
+    void handleWriteCommand(bool serialFlag);
+    void handleReadCommand(bool serialFlag);
 };
 
 #define MIN_FREQ 100
@@ -30,10 +34,13 @@ public:
 #define READ_ENTER_AT_LEVEL 0x31
 #define READ_EXIT_AT_LEVEL 0x32
 #define READ_TIME_MILLIS 0x33     // read current 'millis()' value
+#define READ_MULTINODE_COUNT 0x39  // read # of nodes handled by this processor
+#define READ_CURNODE_INDEX 0x3A    // read index of current node for this processor
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_ENTER_AT_LEVEL 0x71
 #define WRITE_EXIT_AT_LEVEL 0x72
+#define WRITE_CURNODE_INDEX 0x7A   // write index of current node for this processor
 
 #define FORCE_END_CROSSING 0x78  // kill current crossing flag regardless of RSSI value
 #define RESET_PAIRED_NODE 0x79  // command to reset node for ISP
@@ -50,6 +57,7 @@ public:
 #define LAPSTATS_FLAG_PEAK 0x02      // reported extremum is peak
 
 extern uint8_t settingChangedFlags;
+extern uint8_t cmdRssiNodeIndex;
 
 // dummy macro
 #define LOG_ERROR(...)

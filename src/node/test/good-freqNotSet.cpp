@@ -6,7 +6,6 @@
 unittest(freqNotSet) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  RssiNode& rssiNode = RssiNode::rssiNode;
   State& state = rssiNode.getState();
   LastPass& lastPass = rssiNode.getLastPass();
   History& history = rssiNode.getHistory();

@@ -1,8 +1,6 @@
 #include "config.h"
 #include "rssi.h"
 
-RssiNode RssiNode::rssiNode;
-
 RssiNode::RssiNode()
 {
     setFilter(&defaultFilter);

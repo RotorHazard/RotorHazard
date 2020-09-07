@@ -10,6 +10,7 @@
 #endif
 
 uint8_t settingChangedFlags = 0;
+uint8_t cmdRssiNodeIndex = 0;
 
 byte Message::getPayloadSize()
 {
@@ -36,6 +37,10 @@ byte Message::getPayloadSize()
             size = 1;
             break;
 
+        case WRITE_CURNODE_INDEX:  // index of current node for this processor
+            size = 1;
+            break;
+
         default:  // invalid command
             LOG_ERROR("Invalid write command: ", command, HEX);
             size = -1;
@@ -58,7 +63,7 @@ void resetPairedNode(int pinState)
 }
 
 // Generic IO write command handler
-void Message::handleWriteCommand(RssiNode& rssiNode, bool serialFlag)
+void Message::handleWriteCommand(bool serialFlag)
 {
     uint8_t u8val;
     uint16_t u16val;
@@ -67,6 +72,7 @@ void Message::handleWriteCommand(RssiNode& rssiNode, bool serialFlag)
     buffer.flipForRead();
     bool actFlag = true;
 
+    RssiNode& rssiNode = rssiRxs->getRssiNode(cmdRssiNodeIndex);
     Settings& settings = rssiNode.getSettings();
 
     switch (command)
@@ -99,6 +105,13 @@ void Message::handleWriteCommand(RssiNode& rssiNode, bool serialFlag)
             {
                 settings.exitAtLevel = rssiVal;
                 settingChangedFlags |= EXITAT_CHANGED;
+            }
+            break;
+
+        case WRITE_CURNODE_INDEX:  // index of current node for this processor
+            u8val = buffer.read8();
+            if (u8val < rssiRxs->getCount() && u8val != cmdRssiNodeIndex) {
+              cmdRssiNodeIndex = u8val;
             }
             break;
 
@@ -135,11 +148,12 @@ void ioBufferWriteExtremum(Buffer& buf, const Extremum& e, mtime_t now)
 }
 
 // Generic IO read command handler
-void Message::handleReadCommand(RssiNode& rssiNode, bool serialFlag)
+void Message::handleReadCommand(bool serialFlag)
 {
     buffer.flipForWrite();
     bool actFlag = true;
 
+    RssiNode& rssiNode = rssiRxs->getRssiNode(cmdRssiNodeIndex);
     Settings& settings = rssiNode.getSettings();
     State& state = rssiNode.getState();
     LastPass& lastPass = rssiNode.getLastPass();
@@ -226,6 +240,14 @@ void Message::handleReadCommand(RssiNode& rssiNode, bool serialFlag)
 
         case READ_TIME_MILLIS:
             buffer.write32(millis());
+            break;
+
+        case READ_MULTINODE_COUNT:
+            buffer.write8(rssiRxs->getCount());
+            break;
+
+        case READ_CURNODE_INDEX:
+            buffer.write8(cmdRssiNodeIndex);
             break;
 
         default:  // If an invalid command is sent, write nothing back, master must react
