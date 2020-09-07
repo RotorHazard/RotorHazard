@@ -43,21 +43,24 @@ class SlaveNode:
 
     def slave_worker_thread(self):
         self.startConnectTime = monotonic()
+        gevent.sleep(0.1)
         while True:
             try:
                 gevent.sleep(1)
                 if self.lastContactTime <= 0:
-                    logger.log((logging.INFO if monotonic() <= self.startConnectTime + self.info['timeout'] else logging.DEBUG), \
-                               "Attempting to connect to slave {0} at {1}...".format(self.id+1, self.address))
-                    try:
-                        self.sio.connect(self.address)
-                    except socketio.exceptions.ConnectionError as ex:
-                        err_msg = "Unable to connect to slave {0} at {1}: {2}".format(self.id+1, self.address, ex)
-                        if monotonic() <= self.startConnectTime + self.info['timeout']:
-                            logger.info(err_msg)
-                        else:                      # if beyond timeout period then
-                            logger.debug(err_msg)  #  log at debug level and
-                            gevent.sleep(29)       #  increase delay between attempts
+                    secs_since_disconn = monotonic() - self.startConnectTime
+                    if secs_since_disconn >= 1.0:  # if disconnect just happened then wait a second before reconnect
+                        logger.log((logging.INFO if secs_since_disconn <= self.info['timeout'] else logging.DEBUG), \
+                                   "Attempting to connect to slave {0} at {1}...".format(self.id+1, self.address))
+                        try:
+                            self.sio.connect(self.address)
+                        except socketio.exceptions.ConnectionError as ex:
+                            err_msg = "Unable to connect to slave {0} at {1}: {2}".format(self.id+1, self.address, ex)
+                            if monotonic() <= self.startConnectTime + self.info['timeout']:
+                                logger.info(err_msg)
+                            else:                      # if beyond timeout period then
+                                logger.debug(err_msg)  #  log at debug level and
+                                gevent.sleep(29)       #  increase delay between attempts
                 else:
                     now_time = monotonic()
                     if not self.freqsSentFlag:
@@ -131,23 +134,23 @@ class SlaveNode:
                 # get timestamp for last lap pass (including lap 0)
                 if len(act_laps_list) > 0:
                     last_lap_ts = act_laps_list[-1]['lap_time_stamp']
-                else:
-                    last_lap_ts = 0
-    
-                split_id = self.id
-                last_split_id = self.DB.session.query(self.DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=lap_count).scalar()
-                if last_split_id is None: # first split for this lap
-                    if split_id > 0:
-                        logger.info('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
-                    last_split_ts = last_lap_ts
-                else:
-                    if split_id > last_split_id:
-                        if split_id > last_split_id + 1:
-                            logger.info('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
-                        last_split_ts = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=lap_count, split_id=last_split_id).one().split_time_stamp
+                    split_id = self.id
+                    last_split_id = self.DB.session.query(self.DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=lap_count).scalar()
+                    if last_split_id is None: # first split for this lap
+                        if split_id > 0:
+                            logger.info('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
+                        last_split_ts = last_lap_ts
                     else:
-                        logger.info('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
-                        last_split_ts = None
+                        if split_id > last_split_id:
+                            if split_id > last_split_id + 1:
+                                logger.info('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
+                            last_split_ts = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=lap_count, split_id=last_split_id).one().split_time_stamp
+                        else:
+                            logger.info('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
+                            last_split_ts = None
+                else:
+                    logger.info('Ignoring split {0} before zero lap for node {1}'.format(split_id+1, node_index+1))
+                    last_split_ts = None
     
                 if last_split_ts is not None:
     
