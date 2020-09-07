@@ -247,11 +247,21 @@
 		socket.on('cluster_status', function (msg) {
 			cluster_table_html = '';
 			if (msg.slaves && msg.slaves.length > 0) {
-				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Seconds since last contact')+'</th></tr>';
+				cluster_table_html += '<tr><th style="text-align:center">' + __('Address') + '</th><th>' + __('Latency:') + '</th><th>' + __('min') + '</th><th>' + __('avg') + '</th><th>' + __('max') + '</th><th>' + __('last') + '</th><th>' + __('Disconns') + '</th><th>' + __('Contacts') + '</th><th>' + __('Up time') + '</th><th>' + __('Down time') + '</th><th>' + __('Avail') + '</th><th>' + __('Last contact') + '</th></tr>';
 				for (i=0; i < msg.slaves.length; i++) {
 					cluster_table_html += '<tr>';
-					cluster_table_html += '<td><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
-					cluster_table_html += '<td>' + msg.slaves[i].last_contact + '</td>';
+					cluster_table_html += '<td style="text-align:center"><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
+					cluster_table_html += '<td style="text-align:center"> </td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].minLatencyMs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].avgLatencyMs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].maxLatencyMs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].lastLatencyMs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numDisconnects + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numContacts + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].upTimeSecs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].downTimeSecs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].availability + '%</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].last_contact + '</td>';
 					cluster_table_html += '</tr>';
 				}
 			}

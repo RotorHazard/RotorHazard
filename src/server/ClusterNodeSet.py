@@ -16,6 +16,8 @@ class SlaveNode:
 
     TIMER_MODE = 'timer'
     MIRROR_MODE = 'mirror'
+    
+    LATENCY_AVG_SIZE = 30
 
     def __init__(self, idVal, info, RACE, DB, getCurrentProfile, emit_split_pass_info):
         self.id = idVal
@@ -30,10 +32,20 @@ class SlaveNode:
         self.address = addr
         self.startConnectTime = 0
         self.lastContactTime = -1
+        self.firstContactTime = 0
         self.lastCheckQueryTime = 0
         self.freqsSentFlag = False
         self.raceStartEpoch = 0
         self.clockWarningFlag = False
+        self.numDisconnects = 0
+        self.numContacts = 0
+        self.minLatencyMs = 0
+        self.maxLatencyMs = 0
+        self.avgLatencyMs = 0
+        self.lastLatencyMs = 0
+        self.latencyMsList = []
+        self.totalUpTimeSecs = 0
+        self.totalDownTimeSecs = 0
         self.sio = socketio.Client()
         self.sio.on('connect', self.on_connect)
         self.sio.on('disconnect', self.on_disconnect)
@@ -99,6 +111,7 @@ class SlaveNode:
             if self.lastContactTime > 0:
                 self.sio.emit(event, data)
                 self.lastContactTime = monotonic()
+                self.numContacts += 1
             else:
                 logger.warn("Unable to emit to disconnected slave {0} at {1}, event='{2}'".\
                             format(self.id+1, self.address, event))
@@ -107,18 +120,39 @@ class SlaveNode:
                             format(self.id+1, self.address, event))
 
     def on_connect(self):
-        self.lastContactTime = monotonic()
         logger.info("Connected to slave {0} at {1}".format(self.id+1, self.address))
+        self.lastContactTime = monotonic()
+        self.firstContactTime = self.lastContactTime
+        if self.numDisconnects > 0:
+            downSecs = int(round(self.lastContactTime - self.startConnectTime)) if self.startConnectTime > 0 else 0
+            self.totalDownTimeSecs += downSecs
+            upDownTotal = self.totalUpTimeSecs + self.totalDownTimeSecs
+            logger.info("Reconnected to slave {0} at {1} (latency: min={2} avg={3} max={4} last={5} ms, disconns={6}, downtime={7}, totalUp={8}, totalDown={9}, avail={10:.1%}))".\
+                        format(self.id+1, self.address, self.minLatencyMs, self.avgLatencyMs, \
+                               self.maxLatencyMs, self.lastLatencyMs, self.numDisconnects, downSecs, \
+                               self.totalUpTimeSecs, self.totalDownTimeSecs,
+                               float(self.totalUpTimeSecs)/upDownTotal if upDownTotal > 0 else 0))
+
         self.emit('join_cluster')
 
     def on_disconnect(self):
-        self.lastContactTime = -1
         self.startConnectTime = monotonic()
-        logger.warn("Disconnected from slave {0} at {1}".format(self.id+1, self.address))
+        upSecs = int(round(monotonic() - self.firstContactTime)) if self.lastContactTime > 0 else 0
+        if self.lastContactTime > 0:
+            self.lastContactTime = -1
+            self.numDisconnects += 1
+            self.totalUpTimeSecs += upSecs
+        upDownTotal = self.totalUpTimeSecs + self.totalDownTimeSecs
+        logger.warn("Disconnected from slave {0} at {1} (latency: min={2} avg={3} max={4} last={5} ms, disconns={6}, uptime={7}, totalUp={8}, totalDown={9}, avail={10:.1%})".\
+                    format(self.id+1, self.address, self.minLatencyMs, self.avgLatencyMs, \
+                           self.maxLatencyMs, self.lastLatencyMs, self.numDisconnects, upSecs, \
+                           self.totalUpTimeSecs, self.totalDownTimeSecs,
+                           float(self.totalUpTimeSecs)/upDownTotal if upDownTotal > 0 else 0))
 
     def on_pass_record(self, data):
         try:
             self.lastContactTime = monotonic()
+            self.numContacts += 1
             node_index = data['node']
             pilot_id = Database.HeatNode.query.filter_by( \
                 heat_id=self.RACE.current_heat, node_index=node_index).one_or_none().pilot_id
@@ -195,8 +229,19 @@ class SlaveNode:
                              format(self.id+1, self.address))
 
     def on_check_slave_response(self, data):
-        self.lastContactTime = monotonic()
-
+        now_time = monotonic()
+        self.lastContactTime = now_time
+        self.numContacts += 1
+        transit_ms = int(round((now_time - self.lastCheckQueryTime) * 1000))
+        if transit_ms > 0:
+            self.lastLatencyMs = transit_ms
+            self.latencyMsList.append(transit_ms)
+            listLen = len(self.latencyMsList)
+            if listLen > self.LATENCY_AVG_SIZE:
+                self.latencyMsList.pop(0)
+            self.minLatencyMs = min(self.latencyMsList)
+            self.maxLatencyMs = max(self.latencyMsList)
+            self.avgLatencyMs = int(round(sum(self.latencyMsList) / listLen))
 
 class ClusterNodeSet:
     def __init__(self):
@@ -219,7 +264,23 @@ class ClusterNodeSet:
 
     def getClusterStatusInfo(self):
         now_time = monotonic()
-        return {'slaves': [ \
-            {'address': slave.address, \
-            'last_contact': int(now_time-slave.lastContactTime) if slave.lastContactTime >= 0 else 'connection lost' \
-            }] for slave in self.slaves}
+        payload = []
+        for slave in self.slaves:
+            upTimeSecs = int(round(now_time - slave.firstContactTime)) if slave.lastContactTime > 0 else 0
+            downTimeSecs = int(round(now_time - slave.startConnectTime)) if slave.lastContactTime <= 0 else 0
+            totalUpSecs = slave.totalUpTimeSecs + upTimeSecs
+            totalDownSecs = slave.totalDownTimeSecs + downTimeSecs
+            payload.append(
+                {'address': slave.address, \
+                 'minLatencyMs':  slave.minLatencyMs, \
+                 'avgLatencyMs': slave.avgLatencyMs, \
+                 'maxLatencyMs': slave.maxLatencyMs, \
+                 'lastLatencyMs': slave.lastLatencyMs, \
+                 'numDisconnects': slave.numDisconnects, \
+                 'numContacts': slave.numContacts, \
+                 'upTimeSecs': upTimeSecs, \
+                 'downTimeSecs': downTimeSecs, \
+                 'availability': round((100.0*totalUpSecs/(totalUpSecs+totalDownSecs) \
+                                       if totalUpSecs+totalDownSecs > 0 else 0), 1), \
+                 'last_contact': int(now_time-slave.lastContactTime) if slave.lastContactTime >= 0 else 'connection lost'})
+        return {'slaves': payload}
