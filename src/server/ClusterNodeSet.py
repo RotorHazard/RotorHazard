@@ -164,11 +164,11 @@ class SlaveNode:
     
                 act_laps_list = self.RACE.get_active_laps()[node_index]
                 lap_count = max(0, len(act_laps_list) - 1)
+                split_id = self.id
     
                 # get timestamp for last lap pass (including lap 0)
                 if len(act_laps_list) > 0:
                     last_lap_ts = act_laps_list[-1]['lap_time_stamp']
-                    split_id = self.id
                     last_split_id = self.DB.session.query(self.DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=lap_count).scalar()
                     if last_split_id is None: # first split for this lap
                         if split_id > 0:
