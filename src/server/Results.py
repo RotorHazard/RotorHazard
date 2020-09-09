@@ -747,7 +747,7 @@ def calc_team_leaderboard(RACE):
     return None
 
 def check_win_condition(RACE, INTERFACE, **kwargs):
-    if RACE.win_status in [WinStatus.NONE, WinStatus.PENDING_CROSSING]:
+    if RACE.win_status in [WinStatus.NONE, WinStatus.PENDING_CROSSING, WinStatus.OVERTIME]:
         race_format = RACE.format
         if race_format:
             if race_format.team_racing_mode:
@@ -962,9 +962,11 @@ def check_win_laps_and_overtime(RACE, INTERFACE, **kwargs):
                 return check_win_laps_and_time(RACE, INTERFACE, **kwargs)
             else:
                 win_status = check_win_most_laps(RACE, INTERFACE, forced=True, **kwargs)
-                if win_status['status'] != WinStatus.TIE:
-                    # ties continue to overtime, otherwise pass as normal
-                    return win_status
+                if win_status['status'] == WinStatus.TIE:
+                    # ties here change status to overtime
+                    win_status['status'] = WinStatus.OVERTIME
+
+                return win_status
 
     return {
         'status': WinStatus.NONE

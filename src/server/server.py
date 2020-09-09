@@ -3973,7 +3973,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
             .format(node.index+1))
 
 def check_win_condition(RACE, INTERFACE, **kwargs):
-    tied_flag = (RACE.win_status == WinStatus.TIE)
+    previous_win_status = RACE.win_status
 
     win_status = Results.check_win_condition(RACE, INTERFACE, **kwargs)
 
@@ -3996,8 +3996,14 @@ def check_win_condition(RACE, INTERFACE, **kwargs):
                 emit_phonetic_text(__('Winner is') + ' ' + win_phon_name, 'race_winner')
         elif win_status['status'] == WinStatus.TIE:
             # announce tied
-            if tied_flag == False:
+            if win_status['status'] != previous_win_status:
                 RACE.status_message = __('Race Tied')
+                emit_race_status_message()
+                emit_phonetic_text(RACE.status_message, 'race_winner')
+        elif win_status['status'] == WinStatus.OVERTIME:
+            # announce overtime
+            if win_status['status'] != previous_win_status:
+                RACE.status_message = __('Race Tied: Overtime')
                 emit_race_status_message()
                 emit_phonetic_text(RACE.status_message, 'race_winner')
 
