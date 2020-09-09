@@ -156,13 +156,14 @@ class VRxController:
             self.logger.error("Unable to send callsigns. RACE not found in event")
             return
 
-        for heatseat in Database.HeatSeat.query.filter_by(heat_id=heat_id).all():
-            if heatseat.seat_index < self.num_seats:
+        for heatseat in Database.HeatNode.query.filter_by(heat_id=heat_id).all():
+            heatseat_index = heatseat.seat_index
+            if heatseat_index < self.num_seats:  # TODO this may break with non-contiguous nodes 
                 if heatseat.pilot_id != Database.PILOT_ID_NONE:
                     pilot = Database.Pilot.query.get(heatseat.pilot_id)
-                    self.set_message_direct(heatseat.seat_index, pilot.callsign)
+                    self.set_message_direct(heatseat_index, pilot.callsign)
                 else:
-                    self.set_message_direct(heatseat.seat_index, __("-None-"))
+                    self.set_message_direct(heatseat_index, __("-None-"))
 
     def do_race_stage(self, arg):
         self.logger.info("VRx Signaling Race Stage")
@@ -253,7 +254,7 @@ class VRxController:
 
             # get this seat's results
             for index, result in enumerate(leaderboard):
-                if result['seat'] == seat_index: #TODO issue408
+                if result['node'] == seat_index: #TODO issue408
                     rank_index = index
                     break
 
@@ -444,7 +445,7 @@ class VRxController:
                     # "Pos-Callsign L[n]|0:00:00 / -0:00.000 Callsign"
                     message += ' / -' + osd_next_split['split_time'] + ' ' + osd['callsign'][:10]
 
-                    seat_dest = leaderboard[rank_index - 1]['seat']
+                    seat_dest = leaderboard[rank_index - 1]['node']
                     self.set_message_direct(seat_dest, message)
                     self.logger.debug('msg n{1}:  {0}'.format(message, seat_dest))
 
