@@ -959,7 +959,7 @@ def check_win_laps_and_overtime(RACE, INTERFACE, **kwargs):
                     break
 
             if pilot_crossed_after_time:
-                return check_win_laps_and_time(RACE, INTERFACE, forced=True, **kwargs)
+                return check_win_laps_and_time(RACE, INTERFACE, **kwargs)
             else:
                 win_status = check_win_most_laps(RACE, INTERFACE, forced=True, **kwargs)
                 if win_status['status'] != WinStatus.TIE:
