@@ -352,10 +352,12 @@
 				for (var vrx_id in msg.vrx) {
 					var vrx = msg.vrx[vrx_id]
 					if (vrx.dev == 'rx' && vrx.valid_rx) {
-						if (!vrx_by_node[vrx.node_number]) {
-							vrx_by_node[vrx.node_number] = [];
+						seat_num = vrx.seat_number
+
+						if (!vrx_by_node[seat_num]) {
+							vrx_by_node[seat_num] = [];
 						}
-						vrx_by_node[vrx.node_number].push(vrx_id)
+						vrx_by_node[seat_num].push(vrx_id)
 					}
 				}
 
@@ -418,17 +420,17 @@
 								if (vrx.valid_rx) {
 									table_items['Status'] = __("Connected");
 
-									if ('node_number' in vrx) {
+									if ('seat_number' in vrx) {
 										var selectbox = '<select class="vrx-node" data-vrx-id="' + vrx_id + '">'
 										for (var i = 0; i < {{ num_nodes }}; i++) {
 											var opt = '<option value="' + i + '"';
-											if (i == vrx.node_number) {
+											if (i == vrx.seat_number) {
 												opt += 'selected="selected"';
 											}
 											opt += '>' + (parseInt(i)+1) + '</option>';
 											selectbox += opt;
 										}
-										table_items['Node'] = selectbox;
+										table_items['Seat'] = selectbox;
 									}
 
 									if ('cam_forced_or_auto' in vrx

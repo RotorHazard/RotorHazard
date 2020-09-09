@@ -99,5 +99,5 @@ mqtt_subscribe_topics = {
 ESP_COMMANDS = {
     "Request Static Status": "status_static?",
     "Request Variable Status": "status_var?",
-    "Set Node Number": "seat_number=%d",
+    "Set Seat Number": "seat=%d",
 }
