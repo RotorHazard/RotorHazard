@@ -1082,15 +1082,12 @@ def check_win_fastest_consecutive(RACE, **kwargs):
 
             if fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
                 max_node_consideration = 0
-                logger.debug(fast_consecutives)
                 for node in RACE.node_laps:
                     laps = RACE.node_laps[node]
                     if len(laps) >= 2:
                         last_2_laps = laps[-1]['lap_time'] + laps[-2]['lap_time']
-                        logger.debug(fast_consecutives - last_2_laps)
                         max_node_consideration = max(max_node_consideration, (fast_consecutives - last_2_laps))
 
-                logger.debug(max_consideration)
                 return {
                     'status': WinStatus.NONE,
                     'max_consideration': max_node_consideration
