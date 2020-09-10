@@ -488,16 +488,16 @@ def viewDocs():
     '''Route to doc viewer.'''
     try:
         docfile = request.args.get('d')
-    
+
         language = Options.get("currentLanguage")
         if language:
             translation = language + '-' + docfile
             if os.path.isfile('../../doc/' + translation):
                 docfile = translation
-    
+
         with io.open('../../doc/' + docfile, 'r', encoding="utf-8") as f:
             doc = f.read()
-    
+
         return templating.render_template('viewdocs.html',
             serverInfo=serverInfo,
             getOption=Options.get,
@@ -1866,7 +1866,7 @@ def findBestValues(node, node_index):
 @catchLogExceptionsWrapper
 def race_start_thread(start_token):
     global RACE
-    
+
     # clear any lingering crossings at staging (if node rssi < enterAt)
     for node in INTERFACE.nodes:
         if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != Database.PILOT_ID_NONE and \
@@ -3189,7 +3189,7 @@ def emit_round_data_thread(params, sid):
         logger.info('T%d: Results returned in: %fs', timing['start'], timing['end'] - timing['start'])
 
         if ('nobroadcast' in params):
-            emit('round_data', emit_payload, namespace='/', room=sid)
+            emit('round_data', emit_payload, namespace='/', room=sid.encode('ascii','replace'))
         else:
             SOCKET_IO.emit('round_data', emit_payload, namespace='/')
 
