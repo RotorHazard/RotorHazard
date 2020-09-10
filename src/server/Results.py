@@ -1164,6 +1164,10 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
                 leader_has_finished = team_members_finished[team_leaderboard[0]['name']] == team_leaderboard[0]['members']
                 max_consideration = 0
 
+                if 'overtime' in kwargs:
+                    if team_members_finished[team_leaderboard[0]['name']]:
+                        return check_win_team_laps_and_time(RACE, INTERFACE, forced=True, **kwargs)
+
                 for line in team_leaderboard[1:]:
                     max_potential_laps = line['laps'] + line['members'] - team_members_finished[line['name']]
                     if lead_laps <= max_potential_laps:
@@ -1285,12 +1289,14 @@ def check_win_team_laps_and_overtime(RACE, INTERFACE, **kwargs):
                     break
 
             if pilot_crossed_after_time:
-                return check_win_team_laps_and_time(RACE, INTERFACE, forced=True, **kwargs)
+                return check_win_team_laps_and_time(RACE, INTERFACE, overtime=True, **kwargs)
             else:
                 win_status = check_win_team_most_laps(RACE, INTERFACE, forced=True, **kwargs)
-                if win_status['status'] != WinStatus.TIE:
-                    # ties continue to overtime, otherwise pass as normal
-                    return win_status
+                if win_status['status'] == WinStatus.TIE:
+                    # ties here change status to overtime
+                    win_status['status'] = WinStatus.OVERTIME
+
+                return win_status
 
     return {
         'status': WinStatus.NONE
