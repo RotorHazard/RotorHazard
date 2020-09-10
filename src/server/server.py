@@ -3899,7 +3899,6 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                     if RACE.timer_running is False:
                         RACE.node_has_finished[node.index] = True
-                        logger.debug(RACE.node_has_finished)
 
                     lap_ok_flag = True
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
@@ -4010,7 +4009,7 @@ def check_win_condition(RACE, INTERFACE, **kwargs):
         if 'max_consideration' in win_status:
             logger.debug("Waiting {0}ms to declare winner.".format(win_status['max_consideration']))
             gevent.sleep(win_status['max_consideration'] / 1000)
-            if RACE.start_token == kwargs['start_token']:
+            if 'start_token' in kwargs and RACE.start_token == kwargs['start_token']:
                 logger.debug("Maximum win condition consideration time has expired.")
                 check_win_condition(RACE, INTERFACE, forced=True)
 
