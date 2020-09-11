@@ -81,6 +81,11 @@ If you are not using a RotorHazard PCB, edit the 'src/node/config.h' file and co
 Hardware address selection is also possible by grounding hardware pins following the [published specification](https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing).
 
 ## Install Optional Components
+
+### Real Time Clock
+
+The installation of a real-time clock module allows the RotorHazard timer to maintain the correct date and time even when an internet connection is not available.  See '[doc/Real Time Clock.md](Real%20Time%20Clock.md)' for more information.
+
 ### WS2812b LED Support
 The ws2812b controls are provided by the following project:
 https://github.com/jgarff/rpi_ws281x

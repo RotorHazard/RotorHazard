@@ -1170,6 +1170,11 @@ main.page-home {
 	background: #d1d3d4;
 }
 
+.lap_split {
+	font-size: 0.75em;
+	color: dimgray
+}
+
 .btn-danger {
 	border: solid 0.125em hsl(13.1, 64.6%, 37.6%);
 	background: hsl(8.2, 86.5%, 53.7%);

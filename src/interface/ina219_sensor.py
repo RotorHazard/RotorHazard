@@ -1,6 +1,7 @@
 import logging
 from sensor import I2CSensor, Reading
 import ina219
+import i2c_helper
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +35,8 @@ class INA219Sensor(I2CSensor):
         return self._power
 
 
-def discover(config, *args, **kwargs):
-    if 'i2c_helper' not in kwargs:
-        return []
-
+def discover(config, i2c_helper, *args, **kwargs):
     sensors = []
-    i2c_helper = kwargs['i2c_helper']
     supported_ina219_addrs = [0x40, 0x41, 0x44, 0x45]
     for addr in supported_ina219_addrs:
         url = I2CSensor.url(addr)

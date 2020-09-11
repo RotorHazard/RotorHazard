@@ -1,6 +1,7 @@
 # USB Nodes
 
 Hardware nodes may be connected into the system via USB.  A node can be created with an Arduino, an RX5808 module, and six wires; with the connections shown below.
+
 ![USB node wiring](img/USB_node_wiring.jpg)
 ![USB node built1](img/USB_node_built1.jpg)
 ![USB node built2](img/USB_node_built2.jpg)

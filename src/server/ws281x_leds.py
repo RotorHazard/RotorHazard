@@ -11,11 +11,11 @@ def get_pixel_interface(config, brightness, *args, **kwargs):
     try:
         pixelModule = importlib.import_module('rpi_ws281x')
         Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-        print 'LED: selecting library "rpi_ws2812x"'
+        logger.info('LED: selecting library "rpi_ws2812x"')
     except ImportError:
         pixelModule = importlib.import_module('neopixel')
         Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-        print 'LED: selecting library "neopixel" (older)'
+        logger.info('LED: selecting library "neopixel" (older)')
 
     led_strip_config = config['LED_STRIP']
     if led_strip_config == 'RGB':
@@ -44,7 +44,7 @@ def get_pixel_interface(config, brightness, *args, **kwargs):
         led_strip = 0x18000810
 
     else:
-        print 'LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config)
+        logger.info('LED: disabled (Invalid LED_STRIP value: {0})'.format(led_strip_config))
         return None
 
     logger.info('LED: hardware GPIO enabled, count={0}, pin={1}, freqHz={2}, dma={3}, invert={4}, chan={5}, strip={6}/{7}'.format(config['LED_COUNT'], config['LED_PIN'], config['LED_FREQ_HZ'], config['LED_DMA'], config['LED_INVERT'], config['LED_CHANNEL'], led_strip_config, led_strip))

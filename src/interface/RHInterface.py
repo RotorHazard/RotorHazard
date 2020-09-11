@@ -1,7 +1,6 @@
 '''RotorHazard hardware interface layer.'''
 
 import os
-import io
 import logging
 import gevent # For threads and timing
 from monotonic import monotonic # to capture read timing
@@ -99,21 +98,17 @@ class RHInterface(BaseHardwareInterface):
         self.intf_read_error_count = 0  # number of read errors for all nodes
         self.intf_write_block_count = 0  # number of blocks write by all nodes
         self.intf_write_error_count = 0  # number of write errors for all nodes
-
-        extKwargs = {}
-        for helper in search_modules(suffix='helper'):
-            extKwargs[helper.__name__] = helper.create(self, *args, **kwargs)
-        extKwargs.update(kwargs)
+        self.intf_error_report_limit = 0.0  # log if ratio of comm errors is larger
 
         self.nodes = Plugins(suffix='node')
-        self.discover_nodes(*args, **extKwargs)
+        self.discover_nodes(*args, **kwargs)
 
         self.data_loggers = []
         for node in self.nodes:
             node.frequency = self.get_value_16(node, READ_FREQUENCY)
             if not node.frequency:
                 raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
-                   # read NODE_API_LEVEL and verification value:
+            # read NODE_API_LEVEL and verification value:
             rev_val = self.get_value_16(node, READ_REVISION_CODE)
             if not rev_val:
                 raise RuntimeError('Unable to read revision code from node {0}'.format(node.index+1))
@@ -137,11 +132,6 @@ class RHInterface(BaseHardwareInterface):
                     self.data_loggers.append(None)
             else:
                 logger.info("Node {0}: API_level={1}".format(node.index+1, node.api_level))
-
-        sensorKwargs = {}
-        sensorKwargs.update(extKwargs)
-        del sensorKwargs['config']
-        self.discover_sensors(config=kwargs['config'].SENSORS, *args, **sensorKwargs)
 
 
     def discover_nodes(self, *args, **kwargs):
@@ -175,6 +165,7 @@ class RHInterface(BaseHardwareInterface):
     def update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
         cross_list = []  # list of nodes with crossing-flag changes
+        startThreshLowerNode = None
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
@@ -307,11 +298,30 @@ class RHInterface(BaseHardwareInterface):
                     else:
                         self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
 
+                # check if node is set to temporary lower EnterAt/ExitAt values
+                if node.start_thresh_lower_flag:
+                    time_now = monotonic()
+                    if time_now >= node.start_thresh_lower_time:
+                        # if this is the first one found or has earliest time
+                        if startThreshLowerNode == None or node.start_thresh_lower_time < \
+                                            startThreshLowerNode.start_thresh_lower_time:
+                            startThreshLowerNode = node
+
+
         # process any nodes with crossing-flag changes
         self.process_crossings(cross_list)
 
         # process any nodes with new laps detected
         self.process_updates(upd_list)
+        
+        if startThreshLowerNode:
+            logger.info("For node {0} restoring EnterAt to {1} and ExitAt to {2}"\
+                    .format(startThreshLowerNode.index+1, startThreshLowerNode.enter_at_level, \
+                            startThreshLowerNode.exit_at_level))
+            self.set_enter_at_level(startThreshLowerNode.index, startThreshLowerNode.enter_at_level)
+            self.set_exit_at_level(startThreshLowerNode.index, startThreshLowerNode.exit_at_level)
+            startThreshLowerNode.start_thresh_lower_flag = False
+            startThreshLowerNode.start_thresh_lower_time = 0
 
 
     #
@@ -492,16 +502,29 @@ class RHInterface(BaseHardwareInterface):
     def get_intf_total_error_count(self):
         return self.intf_read_error_count + self.intf_write_error_count
 
-    def get_intf_error_report_str(self, showWriteFlag=False):
-        retStr = "CommErrors:"
-        if showWriteFlag or self.intf_write_error_count > 0:
-            retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, self.intf_write_block_count, \
-                            (float(self.intf_write_error_count) / float(self.intf_write_block_count)))
-        retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count, self.intf_read_block_count, \
-                            (float(self.intf_read_error_count) / float(self.intf_read_block_count)))
-        for node in self.nodes:
-            retStr += ", " + node.get_read_error_report_str()
-        return retStr
+    # log comm errors if error percentage is >= this value
+    def set_intf_error_report_percent_limit(self, percentVal):
+        self.intf_error_report_limit = percentVal / 100;
+    
+    def get_intf_error_report_str(self, forceFlag=False):
+        if self.intf_read_block_count <= 0:
+            return None
+        r_err_ratio = float(self.intf_read_error_count) / float(self.intf_read_block_count) \
+                      if self.intf_read_error_count > 0 else 0
+        w_err_ratio = float(self.intf_write_error_count) / float(self.intf_write_block_count) \
+                      if self.intf_write_block_count > 0 and self.intf_write_error_count > 0 else 0
+        if forceFlag or r_err_ratio >= self.intf_error_report_limit or \
+                                    w_err_ratio >= self.intf_error_report_limit:
+            retStr = "CommErrors:"
+            if forceFlag or self.intf_write_error_count > 0:
+                retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, \
+                                self.intf_write_block_count, w_err_ratio)
+            retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count, \
+                                self.intf_read_block_count, r_err_ratio)
+            for node in self.nodes:
+                retStr += ", " + node.get_read_error_report_str()
+            return retStr
+        return None
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the RotorHazard interface object.'''

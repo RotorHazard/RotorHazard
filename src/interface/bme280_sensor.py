@@ -29,12 +29,8 @@ class BME280Sensor(I2CSensor):
         return self.data.humidity
 
 
-def discover(config, *args, **kwargs):
-    if 'i2c_helper' not in kwargs:
-        return []
-
+def discover(config, i2c_helper, *args, **kwargs):
     sensors = []
-    i2c_helper = kwargs['i2c_helper']
     supported_bme280_addrs = [0x76, 0x77]
     for addr in supported_bme280_addrs:
         url = I2CSensor.url(addr)

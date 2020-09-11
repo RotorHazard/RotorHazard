@@ -8,6 +8,7 @@ import gevent
 import Database
 import Options
 import RHUtils
+from RHUtils import catchLogExceptionsWrapper
 import logging
 from monotonic import monotonic
 from Language import __
@@ -74,10 +75,14 @@ def build_result_cache(DB, **params):
         'cacheStatus': CacheStatus.VALID
     }
 
+@catchLogExceptionsWrapper
 def build_race_results_caches(DB, params):
     global FULL_RESULTS_CACHE
     FULL_RESULTS_CACHE = False
     token = monotonic()
+    timing = {
+        'start': token
+    }
 
     race = Database.SavedRaceMeta.query.get(params['race_id'])
     heat = Database.Heat.query.get(params['heat_id'])
@@ -93,35 +98,43 @@ def build_race_results_caches(DB, params):
 
     # rebuild race result
     gevent.sleep()
+    timing['race'] = monotonic()
     if race.cacheStatus == token:
         raceResult = build_result_cache(DB, heat_id=params['heat_id'], round_id=params['round_id'])
         race.results = raceResult['results']
         race.cacheStatus = raceResult['cacheStatus']
         DB.session.commit()
+    logger.debug('Race cache built in %fs', monotonic() - timing['race'])
 
     # rebuild heat summary
     gevent.sleep()
+    timing['heat'] = monotonic()
     if heat.cacheStatus == token:
         heatResult = build_result_cache(DB, heat_id=params['heat_id'])
         heat.results = heatResult['results']
         heat.cacheStatus = heatResult['cacheStatus']
         DB.session.commit()
+    logger.debug('Heat cache built in %fs', monotonic() - timing['heat'])
 
     # rebuild class summary
     if heat.class_id != Database.CLASS_ID_NONE:
         if race_class.cacheStatus == token:
             gevent.sleep()
+            timing['class'] = monotonic()
             classResult = build_result_cache(DB, class_id=heat.class_id)
             race_class.results = classResult['results']
             race_class.cacheStatus = classResult['cacheStatus']
             DB.session.commit()
+        logger.debug('Class cache built in %fs', monotonic() - timing['class'])
 
     # rebuild event summary
     gevent.sleep()
+    timing['event'] = monotonic()
     Options.set("eventResults", json.dumps(calc_leaderboard(DB)))
     Options.set("eventResults_cacheStatus", CacheStatus.VALID)
+    logger.debug('Event cache built in %fs', monotonic() - timing['event'])
 
-    logger.debug('Built result caches: Race {0}, Heat {1}, Class {2}, Event'.format(params['race_id'], params['heat_id'], heat.class_id))
+    logger.debug('Built result caches in {0}: Race {1}, Heat {2}, Class {3}, Event'.format(monotonic() - timing['start'], params['race_id'], params['heat_id'], heat.class_id))
 
 def calc_leaderboard(DB, **params):
     ''' Generates leaderboards '''
@@ -273,7 +286,7 @@ def calc_leaderboard(DB, **params):
             laps_total = 0
             for lap in current_laps[i]:
                 race_total += lap['lap_time']
-                if lap > 0:
+                if lap['lap_number'] > 0:
                     laps_total += lap['lap_time']
 
             total_time.append(race_total)
@@ -304,7 +317,7 @@ def calc_leaderboard(DB, **params):
 
         gevent.sleep()
         # Get the last lap for each pilot (current race only)
-        if max_laps[i] is 0:
+        if max_laps[i] == 0:
             last_lap.append(None) # Add zero if no laps completed
         else:
             if USE_CURRENT:
@@ -314,7 +327,7 @@ def calc_leaderboard(DB, **params):
 
         gevent.sleep()
         # Get the average lap time for each pilot
-        if max_laps[i] is 0:
+        if max_laps[i] == 0:
             average_lap.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
@@ -343,7 +356,7 @@ def calc_leaderboard(DB, **params):
 
         gevent.sleep()
         # Get the fastest lap time for each pilot
-        if max_laps[i] is 0:
+        if max_laps[i] == 0:
             fastest_lap.append(0) # Add zero if no laps completed
             fastest_lap_source.append(None)
         else:

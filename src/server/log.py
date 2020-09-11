@@ -27,6 +27,7 @@ DEF_FILELOG_NUM_KEEP = 30        # default number of log files to keep
 
 LOG_FILENAME_STR = "rh.log"
 LOG_DIR_NAME = "logs"
+LOGZIP_DIR_NAME = "logs/zip"
 
 CONSOLE_FORMAT_STR = "%(message)s"
 SYSLOG_FORMAT_STR = "<-RotorHazard-> %(name)s [%(levelname)s] %(message)s"
@@ -40,6 +41,7 @@ CONSOLE_STREAM_STR = "CONSOLE_STREAM"
 LEVEL_NONE_STR = "NONE"
 
 socket_handler_obj = None
+queued_handler_obj = None
 
 # Log handler that distributes log records to one or more destination handlers via a gevent queue.
 class QueuedLogEventHandler(logging.Handler):
@@ -74,6 +76,19 @@ class QueuedLogEventHandler(logging.Handler):
         except Exception as ex:
             print("Error adding record to log-event queue: " + str(ex))
 
+    def waitForQueueEmpty(self):
+        try:
+            count = 0
+            while not self.log_record_queue.empty():
+                count += 1
+                if count > 300:
+                    print("Timeout waiting for log queue empty")
+                    return
+                gevent.sleep(0.01)
+            gevent.sleep(0.1)
+        except Exception as ex:
+            print("Error waiting for log queue empty: " + str(ex))
+
 
 class SocketForwardHandler(logging.Handler):
 
@@ -98,7 +113,12 @@ def early_stage_setup():
             "geventwebsocket.handler",
             "socketio.server",
             "engineio.server",
+            "socketio.client",
+            "engineio.client",
             "sqlalchemy",
+            "urllib3",
+            "requests",
+            "PIL"
             ]:
         logging.getLogger(name).setLevel(logging.WARN)
 
@@ -132,13 +152,13 @@ def later_stage_setup(config, socket):
     logging_config[CONSOLE_STREAM_STR] = DEF_CONSOLE_STREAM.name[1:-1]
 
     logging_config.update(config)
-    
+
     root = logging.getLogger()
     # empty out the already configured handler from basicConfig
     root.handlers[:] = []
 
     handlers = []
-    
+
     min_level = logging.CRITICAL  # track minimum specified log level
 
     err_str = None
@@ -208,16 +228,21 @@ def later_stage_setup(config, socket):
 
     root.setLevel(min_level)
 
-    queued_handler1 = QueuedLogEventHandler()
+    global queued_handler_obj
+    queued_handler_obj = QueuedLogEventHandler()
     for logHndlr in handlers:
-        queued_handler1.addHandler(logHndlr)
+        queued_handler_obj.addHandler(logHndlr)
 
-    root.addHandler(queued_handler1)
+    root.addHandler(queued_handler_obj)
 
     if num_old_del > 0:
         logging.debug("Deleted {0} old log file(s)".format(num_old_del))
 
     return log_path_name
+
+def wait_for_queue_empty():
+    if queued_handler_obj:
+        queued_handler_obj.waitForQueueEmpty()
 
 
 def start_socket_forward_handler():
@@ -260,11 +285,10 @@ def create_log_files_zip(logger, config_file, db_file):
     zip_file_obj = None
     try:
         if os.path.exists(LOG_DIR_NAME):
-            zip_dir = LOG_DIR_NAME + "/zip"
-            if not os.path.exists(zip_dir):
-                os.makedirs(zip_dir)
+            if not os.path.exists(LOGZIP_DIR_NAME):
+                os.makedirs(LOGZIP_DIR_NAME)
             time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-            zip_path_name = zip_dir + "/rh_logs_" + time_str + ".zip"
+            zip_path_name = LOGZIP_DIR_NAME + "/rh_logs_" + time_str + ".zip"
             logger.info("Creating logs .zip file: {0}".format(zip_path_name))
             gevent.sleep(0.1)  # pause to let log message get written
             zip_file_obj = zipfile.ZipFile(zip_path_name, 'w', zipfile.ZIP_DEFLATED)

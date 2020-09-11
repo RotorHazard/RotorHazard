@@ -1,6 +1,5 @@
 import gevent
 import logging
-from Plugins import Plugins
 from monotonic import monotonic
 
 ENTER_AT_PEAK_MARGIN = 5 # closest that captured enter-at level can be to node peak RSSI
@@ -25,15 +24,11 @@ class BaseHardwareInterface(object):
         self.calibration_offset = 10
         self.trigger_threshold = 20
         self.start_time = 1000*monotonic() # millis
-        self.sensors = Plugins(suffix='sensor')
         self.environmental_data_update_tracker = 0
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
         self.pass_record_callback = None # Function added in server.py
         self.new_enter_or_exit_at_callback = None # Function added in server.py
         self.node_crossing_callback = None # Function added in server.py
-
-    def discover_sensors(self, *args, **kwargs):
-        self.sensors.discover(*args, **kwargs)
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
@@ -165,15 +160,6 @@ class BaseHardwareInterface(object):
             node.cap_exit_at_flag = True
             return True
         return False
-
-    def update_environmental_data(self):
-        '''Updates environmental data.'''
-        self.environmental_data_update_tracker += 1
-
-        partition = (self.environmental_data_update_tracker % 2)
-        for index, sensor in enumerate(self.sensors):
-            if (index % 2) == partition:
-                sensor.update()
 
     #
     # Get Json Node Data Functions
