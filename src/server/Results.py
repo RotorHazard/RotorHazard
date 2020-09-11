@@ -37,9 +37,6 @@ def invalidate_all_caches(DB):
 
     Options.set("eventResults_cacheStatus", CacheStatus.INVALID)
 
-    global FULL_RESULTS_CACHE_VALID
-    FULL_RESULTS_CACHE_VALID = False
-
     Events.trigger(Evt.CACHE_CLEAR)
 
     logger.debug('All Result caches invalidated')
