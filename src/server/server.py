@@ -5119,7 +5119,7 @@ APP.register_blueprint(json_endpoints.createBlueprint(Database, Options, Results
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
-        Options.set("secret_key", unicode(os.urandom(50), errors='ignore'))
+        Options.set("secret_key", str(os.urandom(50)))
 
     APP.config['SECRET_KEY'] = Options.get("secret_key")
 
