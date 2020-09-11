@@ -3931,6 +3931,7 @@ def emit_vrx_list(*args, **params):
         # if vrx_controller.has_connection:
             vrx_list = {}
             for vrx in vrx_controller.rx_data:
+                print(vrx)
                 vrx_list[vrx] = vrx_controller.rx_data[vrx]
 
             emit_payload = {
@@ -3961,7 +3962,7 @@ def set_vrx_node(data):
     node = data['node']
 
     if vrx_controller:
-        vrx_controller.set_node_number(serial_num=vrx_id, desired_node_num=node)
+        vrx_controller.set_seat_number(serial_num=vrx_id, desired_seat_num=node)
         logger.info("Set VRx {0} to node {1}".format(vrx_id, node))
     else:
         logger.error("Can't set VRx {0} to node {1}: Controller unavailable".format(vrx_id, node))
@@ -4017,7 +4018,7 @@ def heartbeat_thread_function():
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
                 if vrx_controller:
                     # if vrx_controller.has_connection
-                    vrx_controller.get_node_lock_status()
+                    vrx_controller.get_seat_lock_status()
                     vrx_controller.request_variable_status()
 
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 4:
