@@ -535,7 +535,6 @@ def calc_leaderboard(DB, **params):
     gevent.sleep()
     # Sort consecutives x[6]
     leaderboard_by_consecutives = sorted(leaderboard, key = lambda x: (x[6] if x[6] and x[6] > 0 else float('inf')))
-    logger.debug(leaderboard)
     leaderboard_consecutives_data = []
     last_rank = '-'
     last_rank_consecutive = 0
