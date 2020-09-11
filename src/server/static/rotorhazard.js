@@ -2,6 +2,11 @@ var sound_buzzer = $('#sound_buzzer')[0];
 var sound_beep = $('#sound_beep')[0];
 var sound_stage = $('#sound_stage')[0];
 
+// bitmask values for 'phonetic_split_call' function
+const SPLMSK_PILOT_NAME = 0x01
+const SPLMSK_SPLIT_ID = 0x02
+const SPLMSK_SPLIT_TIME = 0x04
+
 /* global functions */
 function supportsLocalStorage() {
 	try {
@@ -757,6 +762,16 @@ function timerModel() {
 	}
 }
 
+function parseIntOrBoolean(str) {
+	if (str == 'false') {
+		return 0
+	}
+	if (str == 'true') {
+		return 1
+	}
+	return JSON.parse(str)
+}
+
 /* rotorhazard object for local settings/storage */
 var rotorhazard = {
 	language_strings: {},
@@ -767,12 +782,13 @@ var rotorhazard = {
 	voice_volume: 1.0, // voice call volume
 	voice_rate: 1.25,  // voice call speak pitch
 	voice_pitch: 1.0,  // voice call speak rate
-	voice_callsign: true, // speak pilot callsigns
-	voice_lap_count: true, // speak lap counts
-	voice_team_lap_count: true, // speak team lap counts
-	voice_lap_time: true, // speak lap times
-	voice_race_timer: true, // speak race timer
-	voice_race_winner: true, // speak race winner
+	voice_callsign: 1, // speak pilot callsigns
+	voice_lap_count: 2, // speak pilot lap counts
+	voice_team_lap_count: 1, // speak team lap counts
+	voice_lap_time: 1, // speak lap times
+	voice_race_timer: 2, // speak race timer
+	voice_race_winner: 1, // speak race winner
+	voice_split_timer: 0, // split timer
 
 	tone_volume: 1.0, // race stage/start tone volume
 	beep_crossing_entered: false, // beep node crossing entered
@@ -829,6 +845,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.voice_lap_time'] = JSON.stringify(this.voice_lap_time);
 		localStorage['rotorhazard.voice_race_timer'] = JSON.stringify(this.voice_race_timer);
 		localStorage['rotorhazard.voice_race_winner'] = JSON.stringify(this.voice_race_winner);
+		localStorage['rotorhazard.voice_split_timer'] = JSON.stringify(this.voice_split_timer);
 		localStorage['rotorhazard.tone_volume'] = JSON.stringify(this.tone_volume);
 		localStorage['rotorhazard.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
 		localStorage['rotorhazard.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
@@ -864,22 +881,25 @@ var rotorhazard = {
 				this.voice_pitch = JSON.parse(localStorage['rotorhazard.voice_pitch']);
 			}
 			if (localStorage['rotorhazard.voice_callsign']) {
-				this.voice_callsign = JSON.parse(localStorage['rotorhazard.voice_callsign']);
+				this.voice_callsign = parseIntOrBoolean(localStorage['rotorhazard.voice_callsign']);
 			}
 			if (localStorage['rotorhazard.voice_lap_count']) {
-				this.voice_lap_count = JSON.parse(localStorage['rotorhazard.voice_lap_count']);
+				this.voice_lap_count = parseIntOrBoolean(localStorage['rotorhazard.voice_lap_count']);
 			}
 			if (localStorage['rotorhazard.voice_team_lap_count']) {
-				this.voice_team_lap_count = JSON.parse(localStorage['rotorhazard.voice_team_lap_count']);
+				this.voice_team_lap_count = parseIntOrBoolean(localStorage['rotorhazard.voice_team_lap_count']);
 			}
 			if (localStorage['rotorhazard.voice_lap_time']) {
-				this.voice_lap_time = JSON.parse(localStorage['rotorhazard.voice_lap_time']);
+				this.voice_lap_time = parseIntOrBoolean(localStorage['rotorhazard.voice_lap_time']);
 			}
 			if (localStorage['rotorhazard.voice_race_timer']) {
-				this.voice_race_timer = JSON.parse(localStorage['rotorhazard.voice_race_timer']);
+				this.voice_race_timer = parseIntOrBoolean(localStorage['rotorhazard.voice_race_timer']);
 			}
 			if (localStorage['rotorhazard.voice_race_winner']) {
-				this.voice_race_winner = JSON.parse(localStorage['rotorhazard.voice_race_winner']);
+				this.voice_race_winner = parseIntOrBoolean(localStorage['rotorhazard.voice_race_winner']);
+			}
+			if (localStorage['rotorhazard.voice_split_timer']) {
+				this.voice_split_timer = JSON.parse(localStorage['rotorhazard.voice_split_timer']);
 			}
 			if (localStorage['rotorhazard.tone_volume']) {
 				this.tone_volume = JSON.parse(localStorage['rotorhazard.tone_volume']);
@@ -939,7 +959,7 @@ rotorhazard.timer.deferred.callbacks.start = function(timer){
 	}
 }
 rotorhazard.timer.deferred.callbacks.step = function(timer){
-	if (rotorhazard.voice_race_timer) {
+	if (rotorhazard.voice_race_timer != 0) {
 		if (timer.time_s < -3600 && !(timer.time_s % -3600)) { // 2+ hour callout
 			var hours = timer.time_s / -3600;
 			speak('<div>' + __l('Next race begins in') + ' ' + hours + ' ' + __l('Hours') + '</div>', true);
@@ -1041,12 +1061,13 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 					}
 				}
 			} else if (timer.time_s == 10) { // announce 10s only when counting down
-				if (rotorhazard.voice_race_timer)
+				if (rotorhazard.voice_race_timer != 0)
 					speak('<div>10 ' + __l('Seconds') + '</div>', true);
 			}
 		}
 
-		if (rotorhazard.voice_race_timer) {
+		if (rotorhazard.voice_race_timer == 1 ||
+				(rotorhazard.voice_race_timer == 2 && (!timer.count_up))) {
 			if (timer.time_s > 3600 && !(timer.time_s % 3600)) { // 2+ hour callout (endurance)
 				var hours = timer.time_s / 3600;
 				speak('<div>' + hours + ' ' + __l('Hours') + '</div>', true);
@@ -1132,60 +1153,62 @@ jQuery(document).ready(function($){
 	}
 
 	// header collapsing (hamburger)
-	$('#timer-name').after('<button class="hamburger">' + __('Menu') + '</button>');
+	if ($('#nav-main').length) {
+		$('#timer-name').after('<button class="hamburger">' + __('Menu') + '</button>');
 
-	$('.hamburger').on('click', function(event) {
-		if ($('body').hasClass('nav-over')) {
-			$('#header-extras').css('display', '');
-			$('#nav-main').css('display', '');
-			$('body').removeClass('nav-over');
-		} else {
+		$('.hamburger').on('click', function(event) {
+			if ($('body').hasClass('nav-over')) {
+				$('#header-extras').css('display', '');
+				$('#nav-main').css('display', '');
+				$('body').removeClass('nav-over');
+			} else {
+				$('#header-extras').show();
+				$('#nav-main').show();
+				$('body').addClass('nav-over');
+			}
+		});
+
+		$('.hamburger').on('mouseenter', function(event){
 			$('#header-extras').show();
 			$('#nav-main').show();
-			$('body').addClass('nav-over');
-		}
-	});
+			setTimeout(function(){
+				$('body').addClass('nav-over');
+			}, 1);
+		});
 
-	$('.hamburger').on('mouseenter', function(event){
-		$('#header-extras').show();
-		$('#nav-main').show();
-		setTimeout(function(){
-			$('body').addClass('nav-over');
-		}, 1);
-	});
-
-	$('body>header').on('mouseleave', function(event){
-		$('#header-extras').css('display', '');
-		$('#nav-main').css('display', '');
-		$('body').removeClass('nav-over');
-	});
-
-	$(document).on('click', function(event) {
-		if (!$(event.target).closest('body>header').length) {
+		$('body>header').on('mouseleave', function(event){
 			$('#header-extras').css('display', '');
 			$('#nav-main').css('display', '');
 			$('body').removeClass('nav-over');
-		}
-	});
+		});
 
-	// Accessible dropdown menu
-	$('#nav-main>ul').setup_navigation();
+		$(document).on('click', function(event) {
+			if (!$(event.target).closest('body>header').length) {
+				$('#header-extras').css('display', '');
+				$('#nav-main').css('display', '');
+				$('body').removeClass('nav-over');
+			}
+		});
 
-	var $menu = $('#menu'),
-		$menulink = $('.menu-link'),
-		$menuTrigger = $('.has-subnav > a');
+		// Accessible dropdown menu
+		$('#nav-main>ul').setup_navigation();
 
-	$menulink.click(function(e) {
-		e.preventDefault();
-		$menulink.toggleClass('active');
-		$menu.toggleClass('active');
-	});
+		var $menu = $('#menu'),
+			$menulink = $('.menu-link'),
+			$menuTrigger = $('.has-subnav > a');
 
-	$menuTrigger.click(function(e) {
-		e.preventDefault();
-		var $this = $(this);
-		$this.toggleClass('active').next('ul').toggleClass('active');
-	});
+		$menulink.click(function(e) {
+			e.preventDefault();
+			$menulink.toggleClass('active');
+			$menu.toggleClass('active');
+		});
+
+		$menuTrigger.click(function(e) {
+			e.preventDefault();
+			var $this = $(this);
+			$this.toggleClass('active').next('ul').toggleClass('active');
+		});
+	}
 
 	// responsive tables
 	$('table').wrap('<div class="table-wrap">');
@@ -1457,9 +1480,12 @@ var freq = {
 		D3: 5735,
 		D4: 5770,
 		D5: 5805,
-		D6: 5878,
+		D6: 5880,
 		D7: 5914,
 		D8: 5839,
+		J1: 5695,
+		J2: 5770,
+		J3: 5880,
 		'N/A': 'n/a'
 	},
 	findByFreq: function(frequency) {

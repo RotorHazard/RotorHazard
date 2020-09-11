@@ -32,8 +32,7 @@ Additional options may be configured, for example:
 
 ### Clock Synchronization
 
-It is important that all timers have their clocks synchronized.
-You can use NTP to do this.
+The accuracy of reported split times will be higher if all timers have their clocks synchronized. Adding precision [real-time clock (RTC) devices](Real%20Time%20Clock.md) like the [DS3231](https://www.adafruit.com/product/3013) to all the timers can accomplish this, or NTP can be configured to operate between the timers as shown below.
 
 On all timers:
 
@@ -71,6 +70,12 @@ Then, restart rng-tools with
 ### Notes
 
 Missed/incorrect split times will have no impact on the recording of lap times by the master timer.
+
+The status of connected slave timers may be viewed on the *Settings* page in the *System* section. Clicking on the slave-timer address will bring up the web-GUI for the timer. The "*Seconds since last contact*" value should always be less than 20 (higher values indicate network communications problems).
+
+To enable the announcement of split times, see the "*Split Times*" option on the *Settings* page in the *Audio Control* section. (Note that this option will only be visible if a slave timer is connected.)
+
+Doing normal operation, lap history-data will not be saved on the slave timer(s). To view lap history-data and perform marshaling on a slave timer, hit the '*Save Laps*' button on the slave timer before the race is saved or discarded on the master, and then go to the *Marshal* page on the slave timer.
 
 A slave can also be a master, but sub-splits are not propagated upwards.
 

@@ -12,6 +12,7 @@ class Node:
         self.node_nadir_rssi = 0
         self.pass_peak_rssi = 0
         self.pass_nadir_rssi = 0
+        self.max_rssi_value = 999
         self.node_lap_id = -1
         self.current_pilot_id = 0
         self.first_cross_flag = False
@@ -25,6 +26,9 @@ class Node:
 
         self.enter_at_level = 0
         self.exit_at_level = 0
+
+        self.start_thresh_lower_flag = False  # True while EnterAt/ExitAt lowered at start of race
+        self.start_thresh_lower_time = 0      # time when EnterAt/ExitAt should be restored
 
         self.cap_enter_at_flag = False
         self.cap_enter_at_total = 0

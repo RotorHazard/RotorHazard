@@ -20,6 +20,8 @@
 			'race_format',
 			'node_tuning',
 			'enter_and_exit_at_levels',
+			'start_thresh_lower_amount',
+			'start_thresh_lower_duration',
 			'min_lap',
 			'race_status',
 			'team_racing_mode',
@@ -64,12 +66,13 @@
 		$('nav li').removeClass('admin-hide');
 
 		// populate voice controls
-		$('#voice_callsign').prop( "checked", rotorhazard.voice_callsign);
-		$('#voice_lap_count').prop( "checked", rotorhazard.voice_lap_count);
-		$('#voice_team_lap_count').prop( "checked", rotorhazard.voice_team_lap_count);
-		$('#voice_lap_time').prop( "checked", rotorhazard.voice_lap_time);
-		$('#voice_race_timer').prop( "checked", rotorhazard.voice_race_timer);
-		$('#voice_race_winner').prop( "checked", rotorhazard.voice_race_winner);
+		$('#voice_callsign').val(rotorhazard.voice_callsign);
+		$('#voice_lap_count').val(rotorhazard.voice_lap_count);
+		$('#voice_team_lap_count').val(rotorhazard.voice_team_lap_count);
+		$('#voice_lap_time').val(rotorhazard.voice_lap_time);
+		$('#voice_race_timer').val(rotorhazard.voice_race_timer);
+		$('#voice_race_winner').val(rotorhazard.voice_race_winner);
+		$('#voice_split_timer').val(rotorhazard.voice_split_timer);
 		$().articulate('volume', rotorhazard.voice_volume);
 		$('#set_voice_volume').val(volume_logsl.position(rotorhazard.voice_volume));
 		$('#voice_volume_value').html($('#set_voice_volume').val());
@@ -100,6 +103,10 @@
 
 		if ('{{ getOption('pilotSort') }}' == 'callsign') {
 			$('#set_pilotSort').val('callsign');
+		}
+
+		if ('{{ getOption('nextHeatBehavior') }}' == '1') {
+			$('#set_next_heat_behavior').val(1);
 		}
 
 		// populate frequency selects
@@ -240,10 +247,10 @@
 		socket.on('cluster_status', function (msg) {
 			cluster_table_html = '';
 			if (msg.slaves && msg.slaves.length > 0) {
-				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Time since last contact (s)')+'</th></tr>';
+				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Seconds since last contact')+'</th></tr>';
 				for (i=0; i < msg.slaves.length; i++) {
 					cluster_table_html += '<tr>';
-					cluster_table_html += '<td>' + msg.slaves[i].address + '</td>';
+					cluster_table_html += '<td><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
 					cluster_table_html += '<td>' + msg.slaves[i].last_contact + '</td>';
 					cluster_table_html += '</tr>';
 				}
@@ -345,10 +352,12 @@
 				for (var vrx_id in msg.vrx) {
 					var vrx = msg.vrx[vrx_id]
 					if (vrx.dev == 'rx' && vrx.valid_rx) {
-						if (!vrx_by_node[vrx.node_number]) {
-							vrx_by_node[vrx.node_number] = [];
+						seat_num = vrx.seat_number
+
+						if (!vrx_by_node[seat_num]) {
+							vrx_by_node[seat_num] = [];
 						}
-						vrx_by_node[vrx.node_number].push(vrx_id)
+						vrx_by_node[seat_num].push(vrx_id)
 					}
 				}
 
@@ -411,17 +420,17 @@
 								if (vrx.valid_rx) {
 									table_items['Status'] = __("Connected");
 
-									if ('node_number' in vrx) {
+									if ('seat_number' in vrx) {
 										var selectbox = '<select class="vrx-node" data-vrx-id="' + vrx_id + '">'
 										for (var i = 0; i < {{ num_nodes }}; i++) {
 											var opt = '<option value="' + i + '"';
-											if (i == vrx.node_number) {
+											if (i == vrx.seat_number) {
 												opt += 'selected="selected"';
 											}
 											opt += '>' + (parseInt(i)+1) + '</option>';
 											selectbox += opt;
 										}
-										table_items['Node'] = selectbox;
+										table_items['Seat'] = selectbox;
 									}
 
 									if ('cam_forced_or_auto' in vrx
@@ -623,6 +632,36 @@
 			return false;
 		});
 
+		socket.on('start_thresh_lower_amount', function (msg) {
+			$('#set_start_thresh_lower_amount').val(msg.start_thresh_lower_amount);
+		});
+
+		$('#set_start_thresh_lower_amount').change(function (event) {
+			var start_thresh_lower_amount_val = parseInt($(this).val());
+			var data = {
+				start_thresh_lower_amount: start_thresh_lower_amount_val
+			};
+			socket.emit('set_start_thresh_lower_amount', data);
+		})
+
+		socket.on('start_thresh_lower_duration', function (msg) {
+			$('#set_start_thresh_lower_duration').val(msg.start_thresh_lower_duration);
+		});
+
+		$('#set_start_thresh_lower_duration').change(function (event) {
+			var start_thresh_lower_duration_val = parseInt($(this).val());
+			var data = {
+				start_thresh_lower_duration: start_thresh_lower_duration_val
+			};
+			socket.emit('set_start_thresh_lower_duration', data);
+		})
+
+		$('#set_next_heat_behavior').change(function (event) {
+			var data = {
+				next_heat_behavior: parseInt($(this).val())
+			};
+			socket.emit('set_next_heat_behavior', data);
+		})
 
 		/* Heats */
 		socket.on('heat_data', function (msg) {
@@ -1043,32 +1082,37 @@
 		});
 
 		$('#voice_callsign').change(function (event) {
-			rotorhazard.voice_callsign = $(this).prop('checked');
+			rotorhazard.voice_callsign = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
 		$('#voice_lap_count').change(function (event) {
-			rotorhazard.voice_lap_count = $(this).prop('checked');
+			rotorhazard.voice_lap_count = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
 		$('#voice_team_lap_count').change(function (event) {
-			rotorhazard.voice_team_lap_count = $(this).prop('checked');
+			rotorhazard.voice_team_lap_count = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
 		$('#voice_lap_time').change(function (event) {
-			rotorhazard.voice_lap_time = $(this).prop('checked');
+			rotorhazard.voice_lap_time = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
 		$('#voice_race_timer').change(function (event) {
-			rotorhazard.voice_race_timer = $(this).prop('checked');
+			rotorhazard.voice_race_timer = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
 		$('#voice_race_winner').change(function (event) {
-			rotorhazard.voice_race_winner = $(this).prop('checked');
+			rotorhazard.voice_race_winner = parseInt($(this).val());
+			rotorhazard.saveData();
+		});
+
+		$('#voice_split_timer').change(function (event) {
+			rotorhazard.voice_split_timer = parseInt($(this).val());
 			rotorhazard.saveData();
 		});
 
@@ -1796,9 +1840,21 @@
 					<option value="1">{{ __('Adaptive') }}</option>
 				</select>
 			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_thresh_lower_amount">{{ __('Start of race EnterAt/ExitAt lowering amount (percent)') }}</label>
+				</div>
+				<input type="number" id="set_start_thresh_lower_amount" min="0" max="200" value="{{ getOption('start_thresh_lower_amount') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_thresh_lower_duration">{{ __('Start of race EnterAt/ExitAt lowering duration (seconds)') }}</label>
+				</div>
+				<input type="number" id="set_start_thresh_lower_duration" min="0" max="999" value="{{ getOption('start_thresh_lower_duration') }}">
+			</li>
 		</ol>
 
-		<p class="form-note"><a href="/docs?d=Tuning%20Parameters.md">{{ __("Tuning Parameters") }}</a></p>
+		<p class="form-note"><a href="/docs?d=Tuning%20Parameters.md">{{ __("View Calibration and Tuning Guide") }}</a></p>
 	</div>
 </div>
 
@@ -1846,6 +1902,18 @@
 		<div class="control-set">
 			<button id="add_heat">+ {{ __('Add Heat') }}</button>
 		</div>
+
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_next_heat_behavior">{{ __('Next Heat Behavior') }}</label>
+				</div>
+				<select id="set_next_heat_behavior">
+					<option value="0">{{ __('Auto-Switch After Race Save') }}</option>
+					<option value="1">{{ __('Manually Switch Heats') }}</option>
+				</select>
+			</li>
+		</ol>
 
 		<h3>Heat generator</h3>
 		<ol class="form">
@@ -1946,14 +2014,97 @@
 				<div class="label-block">
 					{{ __('Announcements') }}
 				</div>
-				<ul>
-					<li><label><input type="checkbox" id="voice_callsign"> {{ __('Callsign') }}</label></li>
-					<li><label><input type="checkbox" id="voice_lap_count"> {{ __('Lap Number') }}</label></li>
-					<li><label><input type="checkbox" id="voice_lap_time"> {{ __('Lap Time') }}</label></li>
-					<li><label><input type="checkbox" id="voice_race_timer"> {{ __('Race Timer') }}</label></li>
-					<li><label><input type="checkbox" id="voice_team_lap_count"> {{ __('Team Lap Total') }}</label></li>
-					<li><label><input type="checkbox" id="voice_race_winner"> {{ __('Race Winner') }}</label></li>
-				</ul>
+				<li>
+					<div class="label-block">
+						<label for="voice_callsign">{{ __('Pilot Callsign') }}</label>
+					</div>
+					<select id="voice_callsign">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+						<option value="2">{{ __('Only on Non-team Races') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_lap_count">{{ __('Pilot Lap Number') }}</label>
+					</div>
+					<select id="voice_lap_count">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+						<option value="2">{{ __('Only on Non-team Races') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_lap_time">{{ __('Pilot Lap Time') }}</label>
+					</div>
+					<select id="voice_lap_time">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+						<option value="2">{{ __('Only on Non-team Races') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_race_timer">{{ __('Race Timer') }}</label>
+					</div>
+					<select id="voice_race_timer">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+						<option value="2">{{ __('Only on Fixed-time Races') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_team_lap_count">{{ __('Team Lap Total') }}</label>
+					</div>
+					<select id="voice_team_lap_count">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('On Team Races') }}</option>
+					</select>
+				</li>
+				<li>
+					<div class="label-block">
+						<label for="voice_race_winner">{{ __('Race Winner') }}</label>
+					</div>
+					<select id="voice_race_winner">
+						<option value="0">{{ __('Never') }}</option>
+						<option value="1">{{ __('Always') }}</option>
+					</select>
+				</li>
+				{% if cluster_has_slaves %}
+				<li>
+<!--
+					Split Timer:
+					Pilot Name, Split ID, Split Time
+					    0          0         0   ~>  000 = 0  :  None
+					    1          0         0   ~>  001 = 1  :  Pilot Name
+					    1          1         0   ~>  011 = 3  :  Pilot Name, Split ID
+					    1          0         1   ~>  101 = 5  :  Pilot Name, Split Time
+					    1          1         1   ~>  111 = 7  :  Pilot Name, Split ID, Split Time
+					    0          1         0   ~>  010 = 2  :  Split ID
+					    0          0         1   ~>  100 = 4  :  Split Time
+					    0          1         1   ~>  110 = 6  :  Split ID, Split Time
+
+					SPLMSK_PILOT_NAME = 0x01
+					SPLMSK_SPLIT_ID = 0x02
+					SPLMSK_SPLIT_TIME = 0x04
+-->
+					<div class="label-block">
+						<label for="voice_split_timer">{{ __('Split Timer') }}</label>
+					</div>
+					<select id="voice_split_timer">
+						<option value="0">{{ __('None') }}</option>
+						<option value="1">{{ __('Pilot Name') }}</option>
+						<option value="5">{{ __('Pilot Name, Split Time') }}</option>
+						<option value="3">{{ __('Pilot Name, Split ID') }}</option>
+						<option value="7">{{ __('Pilot Name, Split ID, Split Time') }}</option>
+						<option value="2">{{ __('Split ID') }}</option>
+						<option value="4">{{ __('Split Time') }}</option>
+						<option value="6">{{ __('Split ID, Split Time') }}</option>
+					</select>
+				</li>
+				{% endif %}
 			</li>
 			<li>
 				<div class="label-block">
@@ -2239,6 +2390,9 @@
 		<div id="env-data-table" class="control-set">
 		</div>
 		<br />
+		<div class="control-set">
+			{{ __('Cluster Status:') }}
+		</div>
 		<div id="cluster-status-table" class="control-set">
 		</div>
 		<br />

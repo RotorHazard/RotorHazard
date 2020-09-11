@@ -13,6 +13,15 @@
 	var precalc_laps = {};
 	var min_lap = {{ getOption('MinLapSec') }} * 1000;
 
+	var start_thresh_lower_amount = 0;
+	var start_thresh_lower_duration = 0;
+	if ('{{ getOption('startThreshLowerAmount') }}' != 'False') {
+		start_thresh_lower_amount = {{ getOption('startThreshLowerAmount') }};
+	}
+	if ('{{ getOption('startThreshLowerDuration') }}' != 'False') {
+		start_thresh_lower_duration = {{ getOption('startThreshLowerDuration') }};
+	}
+
 	$(document).ready(function () {
 		var graph_canvas = document.getElementById('race-graph');
 		var context = graph_canvas.getContext('2d');
@@ -498,10 +507,30 @@
 			var peakFirst = 0;
 			var peakLast = 0;
 			var laps = [];
+			var startThreshLowerFlag = false;
+
+			// set lower EnterAt/ExitAt values at race start if configured
+			if (start_thresh_lower_amount > 0 && start_thresh_lower_duration > 0) {
+				var diffVal = (enterat - exitat) * start_thresh_lower_amount / 100;
+				if (diffVal > 0) {
+					enterat = enterat - diffVal;
+					exitat = exitat - diffVal;
+					startThreshLowerFlag = true;
+				}
+			}
 
 			for(var idx in current_race_data.history_values) {
 				var rssi = current_race_data.history_values[idx];
 				var time = current_race_data.history_times[idx];
+
+				if (startThreshLowerFlag) {
+					// if initial pass recorded or past duration then restore EnterAt/ExitAt values
+					if (laps.length > 0 || time >= current_race_data.start_time + start_thresh_lower_duration + current_race_data.race_format.start_delay_max) {
+						enterat = current_race_data.enter_at;
+						exitat = current_race_data.exit_at;
+						startThreshLowerFlag = false;
+					}
+				}
 
 				if (!crossing && (rssi > enterat)) {
 					crossing = true;
