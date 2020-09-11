@@ -74,7 +74,7 @@ sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startu
 from Plugins import Plugins, search_modules
 from Sensors import Sensors
 import RHRace
-from RHRace import get_race_state, WinCondition, WinStatus, RaceStatus
+from RHRace import WinCondition, WinStatus, RaceStatus
 
 APP = Flask(__name__, static_url_path='/static')
 
