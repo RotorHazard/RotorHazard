@@ -6,8 +6,8 @@ import json
 import socketio
 from monotonic import monotonic
 import RHUtils
-import RHRace
 import Database
+from util.RunningMedian import RunningMedian
 
 logger = logging.getLogger(__name__)
 
@@ -18,14 +18,18 @@ class SlaveNode:
     MIRROR_MODE = 'mirror'
     
     LATENCY_AVG_SIZE = 30
+    TIMEDIFF_MEDIAN_SIZE = 30
+    TIMEDIFF_CORRECTION_THRESH_MS = 1000  # correct split times if slave clock more off than this
 
-    def __init__(self, idVal, info, RACE, DB, getCurrentProfile, emit_split_pass_info):
+    def __init__(self, idVal, info, RACE, DB, getCurrentProfile, \
+                 emit_split_pass_info, monotonic_to_epoch_millis):
         self.id = idVal
         self.info = info
         self.RACE = RACE
         self.DB = DB
         self.getCurrentProfile = getCurrentProfile
         self.emit_split_pass_info = emit_split_pass_info
+        self.monotonic_to_epoch_millis = monotonic_to_epoch_millis
         addr = info['address']
         if not '://' in addr:
             addr = 'http://' + addr
@@ -35,8 +39,6 @@ class SlaveNode:
         self.firstContactTime = 0
         self.lastCheckQueryTime = 0
         self.freqsSentFlag = False
-        self.raceStartEpoch = 0
-        self.clockWarningFlag = False
         self.numDisconnects = 0
         self.numContacts = 0
         self.minLatencyMs = 0
@@ -46,6 +48,9 @@ class SlaveNode:
         self.latencyMsList = []
         self.totalUpTimeSecs = 0
         self.totalDownTimeSecs = 0
+        self.timeDiffMedianObj = RunningMedian(self.TIMEDIFF_MEDIAN_SIZE)
+        self.timeDiffMedianMs = 0
+        self.timeCorrectionMs = 0
         self.sio = socketio.Client()
         self.sio.on('connect', self.on_connect)
         self.sio.on('disconnect', self.on_disconnect)
@@ -89,10 +94,17 @@ class SlaveNode:
                             logger.error("Error sending node frequencies to slave {0} at {1}: {2}".format(self.id+1, self.address, ex))
                     else:
                         try:
-                            if self.lastContactTime > 0 and now_time > self.lastContactTime + 10 and \
-                                            now_time > self.lastCheckQueryTime + 10:
+                            if self.lastContactTime > 0 and ((now_time > self.lastContactTime + 10 and \
+                                            now_time > self.lastCheckQueryTime + 10) or \
+                                            (self.lastCheckQueryTime == 0 and \
+                                             now_time > self.lastContactTime + 3)):  # if first query do it sooner
                                 self.lastCheckQueryTime = now_time
-                                self.sio.emit('check_slave_query')  # don't update 'lastContactTime' value until response received
+                                # timestamp not actually used by slave, but send to make query and response symmetrical
+                                payload = {
+                                    'timestamp': self.monotonic_to_epoch_millis(now_time)
+                                }
+                                # don't update 'lastContactTime' value until response received
+                                self.sio.emit('check_slave_query', payload)
                         except (KeyboardInterrupt, SystemExit):
                             raise
                         except Exception as ex:
@@ -120,34 +132,50 @@ class SlaveNode:
                             format(self.id+1, self.address, event))
 
     def on_connect(self):
-        logger.info("Connected to slave {0} at {1}".format(self.id+1, self.address))
-        self.lastContactTime = monotonic()
-        self.firstContactTime = self.lastContactTime
-        if self.numDisconnects > 0:
-            downSecs = int(round(self.lastContactTime - self.startConnectTime)) if self.startConnectTime > 0 else 0
-            self.totalDownTimeSecs += downSecs
-            upDownTotal = self.totalUpTimeSecs + self.totalDownTimeSecs
-            logger.info("Reconnected to slave {0} at {1} (latency: min={2} avg={3} max={4} last={5} ms, disconns={6}, downtime={7}, totalUp={8}, totalDown={9}, avail={10:.1%}))".\
-                        format(self.id+1, self.address, self.minLatencyMs, self.avgLatencyMs, \
-                               self.maxLatencyMs, self.lastLatencyMs, self.numDisconnects, downSecs, \
-                               self.totalUpTimeSecs, self.totalDownTimeSecs,
-                               float(self.totalUpTimeSecs)/upDownTotal if upDownTotal > 0 else 0))
-
-        self.emit('join_cluster')
+        if self.lastContactTime <= 0:
+            self.lastContactTime = monotonic()
+            self.firstContactTime = self.lastContactTime
+            if self.numDisconnects <= 0:
+                logger.info("Connected to slave {0} at {1}".format(self.id+1, self.address))
+            else:
+                downSecs = int(round(self.lastContactTime - self.startConnectTime)) if self.startConnectTime > 0 else 0
+                logger.info("Reconnected to " + self.get_log_str(downSecs, False));
+                self.totalDownTimeSecs += downSecs
+            self.emit('join_cluster')
+        else:
+            self.lastContactTime = monotonic()
+            logger.debug("Received extra 'on_connect' event for slave {0} at {1}".format(self.id+1, self.address))
 
     def on_disconnect(self):
-        self.startConnectTime = monotonic()
-        upSecs = int(round(monotonic() - self.firstContactTime)) if self.lastContactTime > 0 else 0
         if self.lastContactTime > 0:
+            self.startConnectTime = monotonic()
             self.lastContactTime = -1
             self.numDisconnects += 1
+            upSecs = int(round(self.startConnectTime - self.firstContactTime)) if self.firstContactTime > 0 else 0
+            logger.warn("Disconnected from " + self.get_log_str(upSecs));
             self.totalUpTimeSecs += upSecs
-        upDownTotal = self.totalUpTimeSecs + self.totalDownTimeSecs
-        logger.warn("Disconnected from slave {0} at {1} (latency: min={2} avg={3} max={4} last={5} ms, disconns={6}, uptime={7}, totalUp={8}, totalDown={9}, avail={10:.1%})".\
+        else:
+            logger.debug("Received extra 'on_disconnect' event for slave {0} at {1}".format(self.id+1, self.address))
+
+    def get_log_str(self, timeSecs=None, upTimeFlag=True):
+        if timeSecs is None:
+            timeSecs = int(round(monotonic() - self.firstContactTime)) if self.lastContactTime > 0 else 0
+        totUpSecs = self.totalUpTimeSecs
+        totDownSecs = self.totalDownTimeSecs
+        if upTimeFlag:
+            totUpSecs += timeSecs
+            upDownStr = "upTime"
+        else:
+            totDownSecs += timeSecs
+            upDownStr = "downTime"
+        upDownTotal = totUpSecs + totDownSecs
+        return "slave {0} at {1} (latency: min={2} avg={3} max={4} last={5} ms, disconns={6}, contacts={7}, " \
+               "timeDiff={8}ms, {9}={10}, totalUp={11}, totalDown={12}, avail={13:.1%}))".\
                     format(self.id+1, self.address, self.minLatencyMs, self.avgLatencyMs, \
-                           self.maxLatencyMs, self.lastLatencyMs, self.numDisconnects, upSecs, \
-                           self.totalUpTimeSecs, self.totalDownTimeSecs,
-                           float(self.totalUpTimeSecs)/upDownTotal if upDownTotal > 0 else 0))
+                           self.maxLatencyMs, self.lastLatencyMs, self.numDisconnects, \
+                           self.numContacts, self.timeDiffMedianMs, upDownStr, timeSecs, \
+                           totUpSecs, totDownSecs, \
+                           float(totUpSecs)/upDownTotal if upDownTotal > 0 else 0)
 
     def on_pass_record(self, data):
         try:
@@ -188,28 +216,10 @@ class SlaveNode:
     
                 if last_split_ts is not None:
     
-                    # get race-start time value from slave (or previously received and saved value)
-                    slv_rs_epoch = data.get('race_start_epoch', 0) or self.raceStartEpoch
-                    if slv_rs_epoch > 0:
-                        self.raceStartEpoch = slv_rs_epoch  # save race-start time for future laps
-                        # compare the local race-start epoch time to the slave's
-                        # (account for master-server's prestage race-delay time)
-                        rs_epoch_diff = self.RACE.start_time_epoch_ms - slv_rs_epoch - \
-                                        int((self.RACE.start_time_delay_secs-RHRace.RACE_START_DELAY_EXTRA_SECS) * 1000)
-                        # if slave timer's clock is too far off then correct as best we can
-                        #  using estimated difference in race-start epoch times
-                        if abs(rs_epoch_diff) > 1000:
-                            split_ts += rs_epoch_diff
-                            if not self.clockWarningFlag:
-                                logger.warn("Slave {0} clock not synchronized with master, offset={1:.1f}ms, split={2}".\
-                                            format(self.id+1, (-rs_epoch_diff), split_id+1))
-                                self.clockWarningFlag = True
-                            logger.debug("Correcting slave-time offset ({0:.1f}ms) on node {1}, new split_ts={2:.1f}, split={3}".\
-                                         format((-rs_epoch_diff), node_index+1, split_ts, split_id+1))
-                        else:
-                            logger.debug("Slave {0} clock synchronized OK with master, offset={1:.1f}ms, split={2}".\
-                                         format(self.id+1, (-rs_epoch_diff), split_id+1))
-    
+                    # if slave-timer clock was detected as not synchronized then apply correction
+                    if self.timeCorrectionMs != 0:
+                        split_ts -= self.timeCorrectionMs
+                        
                     split_time = split_ts - last_split_ts
                     split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
                     split_time_str = RHUtils.time_format(split_time)
@@ -229,19 +239,35 @@ class SlaveNode:
                              format(self.id+1, self.address))
 
     def on_check_slave_response(self, data):
-        now_time = monotonic()
-        self.lastContactTime = now_time
-        self.numContacts += 1
-        transit_ms = int(round((now_time - self.lastCheckQueryTime) * 1000))
-        if transit_ms > 0:
-            self.lastLatencyMs = transit_ms
-            self.latencyMsList.append(transit_ms)
-            listLen = len(self.latencyMsList)
-            if listLen > self.LATENCY_AVG_SIZE:
-                self.latencyMsList.pop(0)
-            self.minLatencyMs = min(self.latencyMsList)
-            self.maxLatencyMs = max(self.latencyMsList)
-            self.avgLatencyMs = int(round(sum(self.latencyMsList) / listLen))
+        try:
+            nowTime = monotonic()
+            self.lastContactTime = nowTime
+            self.numContacts += 1
+            transitTime = nowTime - self.lastCheckQueryTime if self.lastCheckQueryTime > 0 else 0
+            if transitTime > 0:
+                self.lastLatencyMs = int(round(transitTime * 1000))
+                self.latencyMsList.append(self.lastLatencyMs)
+                listLen = len(self.latencyMsList)
+                if listLen > self.LATENCY_AVG_SIZE:
+                    self.latencyMsList.pop(0)
+                    listLen -= 1
+                self.minLatencyMs = min(self.latencyMsList)
+                self.maxLatencyMs = max(self.latencyMsList)
+                self.avgLatencyMs = int(round(sum(self.latencyMsList) / listLen))
+                if data:
+                    slaveTimestamp = data.get('timestamp', 0)
+                    if slaveTimestamp:
+                        # calculate local-time value midway between before and after network query
+                        localTimestamp = self.monotonic_to_epoch_millis(self.lastCheckQueryTime + transitTime/2)
+                        # calculate clock-time difference in ms and add to running median
+                        self.timeDiffMedianObj.insert(int(round(slaveTimestamp - localTimestamp)))
+                        self.timeDiffMedianMs = self.timeDiffMedianObj.median()
+                        return
+                logger.debug("Received check_slave_response with no timestamp from slave {0} at {1}".\
+                             format(self.id+1, self.address))
+        except Exception:
+            logger.exception("Error processing check-response from slave {0} at {1}".\
+                             format(self.id+1, self.address))
 
 class ClusterNodeSet:
     def __init__(self):
@@ -263,11 +289,11 @@ class ClusterNodeSet:
                 gevent.spawn(slave.emit, event, data)
 
     def getClusterStatusInfo(self):
-        now_time = monotonic()
+        nowTime = monotonic()
         payload = []
         for slave in self.slaves:
-            upTimeSecs = int(round(now_time - slave.firstContactTime)) if slave.lastContactTime > 0 else 0
-            downTimeSecs = int(round(now_time - slave.startConnectTime)) if slave.lastContactTime <= 0 else 0
+            upTimeSecs = int(round(nowTime - slave.firstContactTime)) if slave.lastContactTime > 0 else 0
+            downTimeSecs = int(round(nowTime - slave.startConnectTime)) if slave.lastContactTime <= 0 else 0
             totalUpSecs = slave.totalUpTimeSecs + upTimeSecs
             totalDownSecs = slave.totalDownTimeSecs + downTimeSecs
             payload.append(
@@ -278,9 +304,28 @@ class ClusterNodeSet:
                  'lastLatencyMs': slave.lastLatencyMs, \
                  'numDisconnects': slave.numDisconnects, \
                  'numContacts': slave.numContacts, \
+                 'timeDiffMs': slave.timeDiffMedianMs, \
                  'upTimeSecs': upTimeSecs, \
                  'downTimeSecs': downTimeSecs, \
                  'availability': round((100.0*totalUpSecs/(totalUpSecs+totalDownSecs) \
                                        if totalUpSecs+totalDownSecs > 0 else 0), 1), \
-                 'last_contact': int(now_time-slave.lastContactTime) if slave.lastContactTime >= 0 else 'connection lost'})
+                 'last_contact': int(nowTime-slave.lastContactTime) if slave.lastContactTime >= 0 else 'connection lost'})
         return {'slaves': payload}
+
+    def doClusterRaceStart(self):
+        for slave in self.slaves:
+            if slave.lastContactTime > 0:
+                logger.info("Connected at race start to " + slave.get_log_str());
+                if abs(slave.timeDiffMedianMs) > SlaveNode.TIMEDIFF_CORRECTION_THRESH_MS:
+                    # (log at warning level if this is new information)
+                    logger.log((logging.INFO if slave.timeCorrectionMs != 0 else logging.WARN), \
+                               "Slave {0} clock not synchronized with master, timeDiff={1}ms".\
+                                 format(slave.id+1, slave.timeDiffMedianMs))
+                    slave.timeCorrectionMs = slave.timeDiffMedianMs
+                else:
+                    slave.timeCorrectionMs = 0
+                    if slave.lastContactTime > 0:
+                        logger.debug("Slave {0} clock synchronized OK with master, timeDiff={1}ms".\
+                                     format(slave.id+1, slave.timeDiffMedianMs))
+            elif slave.numDisconnects > 0:
+                logger.warn("Slave {0} not connected at race start".format(slave.id+1))

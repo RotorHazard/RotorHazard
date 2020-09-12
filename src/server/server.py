@@ -583,16 +583,18 @@ def on_reset_auto_calibration(data):
 @catchLogExceptionsWrapper
 def on_join_cluster():
     setCurrentRaceFormat(SLAVE_RACE_FORMAT)
-    getCurrentRaceFormat().cluster_flag = True
     emit_race_format()
     logger.info('Joined cluster')
     Events.trigger(Evt.CLUSTER_JOIN)
 
 @SOCKET_IO.on('check_slave_query')
 @catchLogExceptionsWrapper
-def on_check_slave_query():
+def on_check_slave_query(data):
     ''' Check-query received from master; return response. '''
-    SOCKET_IO.emit('check_slave_response')
+    payload = {
+        'timestamp': monotonic_to_epoch_millis(monotonic())
+    }
+    SOCKET_IO.emit('check_slave_response', payload)
 
 # RotorHazard events
 
@@ -1886,6 +1888,9 @@ def race_start_thread(start_token):
             logger.info("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
                        format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
             INTERFACE.force_end_crossing(node.index)
+
+    if CLUSTER and CLUSTER.hasSlaves():
+        CLUSTER.doClusterRaceStart()
 
     # set lower EnterAt/ExitAt values if configured
     if Options.getInt('startThreshLowerAmount') > 0 and Options.getInt('startThreshLowerDuration') > 0:
@@ -3648,15 +3653,13 @@ def set_vrx_node(data):
         logger.error("Can't set VRx {0} to node {1}: Controller unavailable".format(vrx_id, node))
 
 @catchLogExceptionsWrapper
-def emit_pass_record(node, lap_time_stamp, inc_rsepoch_flag = False):
+def emit_pass_record(node, lap_time_stamp):
     '''Emits 'pass_record' message (will be consumed by slave timers in cluster, etc).'''
     payload = {
         'node': node.index,
         'frequency': node.frequency,
         'timestamp': lap_time_stamp + RACE.start_time_epoch_ms
     }
-    if inc_rsepoch_flag:
-        payload['race_start_epoch'] = RACE.start_time_epoch_ms
     SOCKET_IO.emit('pass_record', payload)
 
 #
@@ -3815,11 +3818,9 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     if race_format is SLAVE_RACE_FORMAT:
                         min_lap = 0  # don't enforce min-lap time if running as slave timer
                         min_lap_behavior = 0
-                        cluster_flag = getattr(race_format, 'cluster_flag', False)
                     else:
                         min_lap = Options.getInt("MinLapSec")
                         min_lap_behavior = Options.getInt("MinLapBehavior")
-                        cluster_flag = False
 
                     if RACE.timer_running is False:
                         RACE.node_has_finished[node.index] = True
@@ -3835,10 +3836,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                     if lap_ok_flag:
 
-                        # emit 'pass_record' message (via thread to make sure we're not blocked), set flag
-                        # to include 'race_start_epoch' only if in cluster and first lap pass
-                        gevent.spawn(emit_pass_record, node, lap_time_stamp, \
-                                     (cluster_flag and not lap_number))
+                        # emit 'pass_record' message (via thread to make sure we're not blocked)
+                        gevent.spawn(emit_pass_record, node, lap_time_stamp)
 
                         # Add the new lap to the database
                         RACE.node_laps[node.index].append({
@@ -4653,7 +4652,8 @@ try:
         elif hasMirrors:
             logger.info('** Mirror slaves must be last - ignoring remaining slave config **')
             break
-        slave = SlaveNode(index, slave_info, RACE, DB, getCurrentProfile, emit_split_pass_info)
+        slave = SlaveNode(index, slave_info, RACE, DB, getCurrentProfile, \
+                          emit_split_pass_info, monotonic_to_epoch_millis)
         CLUSTER.addSlave(slave)
 except:
     logger.exception("Error adding slave to cluster")

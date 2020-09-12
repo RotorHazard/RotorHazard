@@ -241,13 +241,13 @@
 				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table>');
+				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
 			}
 		});
 		socket.on('cluster_status', function (msg) {
 			cluster_table_html = '';
 			if (msg.slaves && msg.slaves.length > 0) {
-				cluster_table_html += '<tr><th style="text-align:center">' + __('Address') + '</th><th>' + __('Latency:') + '</th><th>' + __('min') + '</th><th>' + __('avg') + '</th><th>' + __('max') + '</th><th>' + __('last') + '</th><th>' + __('Disconns') + '</th><th>' + __('Contacts') + '</th><th>' + __('Up time') + '</th><th>' + __('Down time') + '</th><th>' + __('Avail') + '</th><th>' + __('Last contact') + '</th></tr>';
+				cluster_table_html += '<tr><th style="text-align:center">' + __('Address') + '</th><th>' + __('Latency:') + '</th><th>' + __('min') + '</th><th>' + __('avg') + '</th><th>' + __('max') + '</th><th>' + __('last') + '</th><th>' + __('Disconns') + '</th><th>' + __('Contacts') + '</th><th>' + __('Time diff') + '</th><th>' + __('Up time') + '</th><th>' + __('Down time') + '</th><th>' + __('Avail') + '</th><th>' + __('Last contact') + '</th></tr>';
 				for (i=0; i < msg.slaves.length; i++) {
 					cluster_table_html += '<tr>';
 					cluster_table_html += '<td style="text-align:center"><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
@@ -258,6 +258,7 @@
 					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].lastLatencyMs + '</td>';
 					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numDisconnects + '</td>';
 					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numContacts + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].timeDiffMs + '</td>';
 					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].upTimeSecs + '</td>';
 					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].downTimeSecs + '</td>';
 					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].availability + '%</td>';
@@ -266,7 +267,7 @@
 				}
 			}
 			if (cluster_table_html) {
-				$('#cluster-status-table').html('<table>' + cluster_table_html + '</table>');
+				$('#cluster-status-table').html(__('Cluster Status:') + '<table>' + cluster_table_html + '</table><br />');
 			}
 		});
 
@@ -2402,13 +2403,8 @@
 	<div class="panel-content">
 		<div id="env-data-table" class="control-set">
 		</div>
-		<br />
-		<div class="control-set">
-			{{ __('Cluster Status:') }}
-		</div>
 		<div id="cluster-status-table" class="control-set">
 		</div>
-		<br />
 		<div class="control-set">
 			<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
 			<a href="#reboot_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Reboot') }}</a>
