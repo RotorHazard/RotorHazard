@@ -6,6 +6,8 @@ import json
 import socketio
 from monotonic import monotonic
 import RHUtils
+from RHRace import RaceStatus
+from Language import __
 import Database
 from util.RunningMedian import RunningMedian
 
@@ -38,6 +40,7 @@ class SlaveNode:
         self.lastContactTime = -1
         self.firstContactTime = 0
         self.lastCheckQueryTime = 0
+        self.secsSinceDisconnect = 0
         self.freqsSentFlag = False
         self.numDisconnects = 0
         self.numContacts = 0
@@ -65,25 +68,34 @@ class SlaveNode:
             try:
                 gevent.sleep(1)
                 if self.lastContactTime <= 0:
-                    secs_since_disconn = monotonic() - self.startConnectTime
-                    if secs_since_disconn >= 1.0:  # if disconnect just happened then wait a second before reconnect
-                        logger.log((logging.INFO if secs_since_disconn <= self.info['timeout'] else logging.DEBUG), \
-                                   "Attempting to connect to slave {0} at {1}...".format(self.id+1, self.address))
-                        try:
-                            self.sio.connect(self.address)
-                        except socketio.exceptions.ConnectionError as ex:
-                            err_msg = "Unable to connect to slave {0} at {1}: {2}".format(self.id+1, self.address, ex)
-                            if monotonic() <= self.startConnectTime + self.info['timeout']:
-                                logger.info(err_msg)
-                            else:                      # if beyond timeout period then
-                                logger.debug(err_msg)  #  log at debug level and
-                                gevent.sleep(29)       #  increase delay between attempts
+                    self.secsSinceDisconnect = monotonic() - self.startConnectTime
+                    if self.secsSinceDisconnect >= 1.0:  # if disconnect just happened then wait a second before reconnect
+                        # if never connected then only retry if race not in progress
+                        if self.numDisconnects > 0 or (self.RACE.race_status != RaceStatus.STAGING and \
+                                                        self.RACE.race_status != RaceStatus.RACING):
+                            logger.log((logging.INFO if self.secsSinceDisconnect <= self.info['timeout'] else logging.DEBUG), \
+                                       "Attempting to connect to slave {0} at {1}...".format(self.id+1, self.address))
+                            try:
+                                self.sio.connect(self.address)
+                            except socketio.exceptions.ConnectionError as ex:
+                                err_msg = "Unable to connect to slave {0} at {1}: {2}".format(self.id+1, self.address, ex)
+                                if monotonic() <= self.startConnectTime + self.info['timeout']:
+                                    logger.info(err_msg)
+                                else:  # if beyond timeout period
+                                    if self.numDisconnects > 0:  # if was previously connected then keep trying
+                                        logger.debug(err_msg)    #  log at debug level and
+                                        gevent.sleep(29)         #  increase delay between attempts
+                                    else:
+                                        logger.warn(err_msg)     # if never connected then give up
+                                        logger.warn("Reached timeout; no longer trying to connect to slave {0} at {1}".\
+                                                    format(self.id+1, self.address))
+                                        return  # exit worker thread
                 else:
                     now_time = monotonic()
                     if not self.freqsSentFlag:
                         try:
-                            logger.info("Sending node frequencies to slave {0} at {1}".format(self.id+1, self.address))
                             self.freqsSentFlag = True
+                            logger.info("Sending node frequencies to slave {0} at {1}".format(self.id+1, self.address))
                             for idx, freq in enumerate(json.loads(self.getCurrentProfile().frequencies)["f"]):
                                 data = { 'node':idx, 'frequency':freq }
                                 self.emit('set_frequency', data)
@@ -124,7 +136,7 @@ class SlaveNode:
                 self.sio.emit(event, data)
                 self.lastContactTime = monotonic()
                 self.numContacts += 1
-            else:
+            elif self.numDisconnects > 0:  # only warn if previously connected
                 logger.warn("Unable to emit to disconnected slave {0} at {1}, event='{2}'".\
                             format(self.id+1, self.address, event))
         except Exception:
@@ -142,6 +154,8 @@ class SlaveNode:
                 logger.info("Reconnected to " + self.get_log_str(downSecs, False));
                 self.totalDownTimeSecs += downSecs
             self.emit('join_cluster')
+            if self.RACE.race_status == RaceStatus.STAGING or self.RACE.race_status == RaceStatus.RACING:
+                self.emit('stage_race')  # if race in progress then make sure running on slave
         else:
             self.lastContactTime = monotonic()
             logger.debug("Received extra 'on_connect' event for slave {0} at {1}".format(self.id+1, self.address))
@@ -293,7 +307,7 @@ class ClusterNodeSet:
         payload = []
         for slave in self.slaves:
             upTimeSecs = int(round(nowTime - slave.firstContactTime)) if slave.lastContactTime > 0 else 0
-            downTimeSecs = int(round(nowTime - slave.startConnectTime)) if slave.lastContactTime <= 0 else 0
+            downTimeSecs = int(round(slave.secsSinceDisconnect)) if slave.lastContactTime <= 0 else 0
             totalUpSecs = slave.totalUpTimeSecs + upTimeSecs
             totalDownSecs = slave.totalDownTimeSecs + downTimeSecs
             payload.append(
@@ -309,7 +323,9 @@ class ClusterNodeSet:
                  'downTimeSecs': downTimeSecs, \
                  'availability': round((100.0*totalUpSecs/(totalUpSecs+totalDownSecs) \
                                        if totalUpSecs+totalDownSecs > 0 else 0), 1), \
-                 'last_contact': int(nowTime-slave.lastContactTime) if slave.lastContactTime >= 0 else 'connection lost'})
+                 'last_contact': int(nowTime-slave.lastContactTime) if slave.lastContactTime >= 0 else \
+                                 (__("connection lost") if slave.numDisconnects > 0 else __("never connected"))
+                 })
         return {'slaves': payload}
 
     def doClusterRaceStart(self):

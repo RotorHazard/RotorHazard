@@ -29,6 +29,7 @@ Additional options may be configured, for example:
 * "address": The IP address and port for the slave timer.
 * "mode": The mode for the timer (either "timer" or "mirror").
 * "distance": The distance from the previous gate (used to calculate speed).
+* "SLAVE_TIMEOUT": Maximum number of seconds to wait for connection to be established.
 
 ### Clock Synchronization
 
