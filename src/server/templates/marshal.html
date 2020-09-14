@@ -95,7 +95,7 @@
 			race_list = msg;
 
 			if (jQuery.isEmptyObject(race_list.heats)) {
-				$('.page-marshal>.panel>.panel-content').html('<p>There is no saved race data available to view.</p>');
+				$('.page-marshal>.panel>.panel-content').html('<p>' + __('There is no saved race data available to view.') + '</p>');
 				return false;
 			}
 
