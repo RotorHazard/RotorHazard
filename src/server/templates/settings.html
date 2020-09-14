@@ -717,7 +717,7 @@
 				// update class selector
 				if (msg.classes.length) {
 					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '">')
-						selectbox.append('<option value="0">Unclassified</option>')
+						selectbox.append('<option value="0">' + __('Unclassified') + '</option>')
 						for (var k in msg.classes) {
 							if (msg.classes[k].name) {
 								selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
