@@ -48,6 +48,7 @@ from flask_socketio import SocketIO, emit
 from sqlalchemy import create_engine, MetaData, Table
 
 import random
+import string
 import json
 
 import Config
@@ -4835,7 +4836,7 @@ APP.register_blueprint(json_endpoints.createBlueprint(Database, Options, Results
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
-        Options.set("secret_key", str(os.urandom(50)))
+        Options.set("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
 
     APP.config['SECRET_KEY'] = Options.get("secret_key")
 
