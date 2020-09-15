@@ -1112,7 +1112,8 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         False not in RACE.node_has_finished.values() or \
         'forced' in kwargs: # racing must be completed
-        team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
+        team_info = calc_team_leaderboard(RACE)
+        team_leaderboard = team_info['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
         if len(team_leaderboard) > 1 and len(individual_leaderboard):
             lead_laps = team_leaderboard[0]['laps']
@@ -1121,12 +1122,13 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
             if lead_laps > 0: # must have at least one lap
                 # prevent win declaration if there are active crossings
                 for line in individual_leaderboard:
-                    node = INTERFACE.nodes[line['node']]
-                    if node.pass_crossing_flag:
-                        logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                        return {
-                            'status': WinStatus.PENDING_CROSSING
-                        }
+                    if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
+                        node = INTERFACE.nodes[line['node']]
+                        if node.pass_crossing_flag:
+                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                            return {
+                                'status': WinStatus.PENDING_CROSSING
+                            }
 
                 # check for tie
                 if team_leaderboard[1]['laps'] == lead_laps:
@@ -1153,7 +1155,7 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
             if lead_laps > 0: # must have at least one lap
                 # prevent win declaration if there are active crossings
                 for line in individual_leaderboard:
-                    if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps: # check for deterministic crossing
+                    if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
                         node = INTERFACE.nodes[line['node']]
                         if node.pass_crossing_flag:
                             logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
@@ -1205,23 +1207,25 @@ def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         False not in RACE.node_has_finished.values() or \
         'forced' in kwargs: # racing must be completed
-        team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
+        team_info = calc_team_leaderboard(RACE)
+        team_leaderboard = team_info['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
         if len(team_leaderboard) > 1 and len(individual_leaderboard):
-            lead_lap = team_leaderboard[0]['laps']
+            lead_laps = team_leaderboard[0]['laps']
 
-            if lead_lap > 0: # must have at least one lap
+            if lead_laps > 0: # must have at least one lap
                 # prevent win declaration if there are active crossings
                 for line in individual_leaderboard:
-                    node = INTERFACE.nodes[line['node']]
-                    if node.pass_crossing_flag:
-                        logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
-                        return {
-                            'status': WinStatus.PENDING_CROSSING
-                        }
+                    if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
+                        node = INTERFACE.nodes[line['node']]
+                        if node.pass_crossing_flag:
+                            logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
+                            return {
+                                'status': WinStatus.PENDING_CROSSING
+                            }
 
                 # check for tie
-                if team_leaderboard[1]['laps'] == lead_lap:
+                if team_leaderboard[1]['laps'] == lead_laps:
                     logger.info('Race tied at %d laps', team_leaderboard[1]['laps'])
                     return {
                         'status': WinStatus.TIE
@@ -1243,7 +1247,7 @@ def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
             if lead_laps > 0: # must have at least one lap
                 # prevent win declaration if there are active crossings
                 for line in individual_leaderboard:
-                    if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps: # check for deterministic crossing
+                    if team_info['meta']['teams'][line['team_name']]['laps'] >= lead_laps - 1: # check for deterministic crossing
                         node = INTERFACE.nodes[line['node']]
                         if node.pass_crossing_flag:
                             logger.info('Waiting for node {0} crossing to decide winner'.format(line['node']+1))
