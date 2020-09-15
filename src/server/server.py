@@ -3242,13 +3242,11 @@ def emit_current_team_leaderboard(**params):
         RACE.team_results = results
         RACE.team_cacheStatus = Results.CacheStatus.VALID
         emit_payload = results
-    else:
-        emit_payload = None
 
-    if ('nobroadcast' in params):
-        emit('team_leaderboard', emit_payload)
-    else:
-        SOCKET_IO.emit('team_leaderboard', emit_payload)
+        if ('nobroadcast' in params):
+            emit('team_leaderboard', emit_payload)
+        else:
+            SOCKET_IO.emit('team_leaderboard', emit_payload)
 
 def emit_heat_data(**params):
     '''Emits heat data.'''
