@@ -302,7 +302,7 @@
 		socket.on('team_leaderboard', function (msg) {
 			$('#team_leaderboard').empty();
 
-			if ('meta' in msg) {
+			if (msg && 'meta' in msg) {
 				team_leaderboard = msg.meta.primary_leaderboard;
 				$('#team_leaderboard').append(build_team_leaderboard(msg[team_leaderboard], team_leaderboard, msg.meta));
 			}
