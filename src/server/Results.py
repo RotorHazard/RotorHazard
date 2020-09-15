@@ -38,9 +38,6 @@ def invalidate_all_caches(DB):
 
     Options.set("eventResults_cacheStatus", CacheStatus.INVALID)
 
-    global FULL_RESULTS_CACHE_VALID
-    FULL_RESULTS_CACHE_VALID = False
-
     Events.trigger(Evt.CACHE_CLEAR)
 
     logger.debug('All Result caches invalidated')
@@ -457,6 +454,7 @@ def calc_leaderboard(DB, **params):
                 consecutives_source.append(None)
 
     gevent.sleep()
+
     # Combine leaderboard
     leaderboard = []
     for i, pilot in enumerate(pilot_ids):
@@ -485,7 +483,7 @@ def calc_leaderboard(DB, **params):
     # Sort by race time
     leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
         -x['laps'], # reverse lap count
-        x['total_time_raw'] if x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
+        x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
     )))
 
     # determine ranking
@@ -506,8 +504,8 @@ def calc_leaderboard(DB, **params):
     gevent.sleep()
     # Sort by fastest laps
     leaderboard_by_fastest_lap = copy.deepcopy(sorted(leaderboard, key = lambda x: (
-        x['fastest_lap_raw'] if x['fastest_lap_raw'] > 0 else float('inf'), # fastest lap
-        x['total_time_raw'] if x['total_time_raw'] > 0 else float('inf') # total time
+        x['fastest_lap_raw'] if x['fastest_lap_raw'] and x['fastest_lap_raw'] > 0 else float('inf'), # fastest lap
+        x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time
     )))
 
     # determine ranking
@@ -525,9 +523,9 @@ def calc_leaderboard(DB, **params):
     gevent.sleep()
     # Sort by consecutive laps
     leaderboard_by_consecutives = copy.deepcopy(sorted(leaderboard, key = lambda x: (
-        x['consecutives_raw'] if x['consecutives_raw'] > 0 else float('inf'), # fastest consecutives
+        x['consecutives_raw'] if x['consecutives_raw'] and x['consecutives_raw'] > 0 else float('inf'), # fastest consecutives
         -x['laps'], # lap count
-        x['total_time_raw'] if x['total_time_raw'] > 0 else float('inf') # total time
+        x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time
     )))
 
     # determine ranking
