@@ -1203,6 +1203,7 @@ def on_alter_pilot(data):
     emit_pilot_data(noself=True) # Settings page, new pilot settings
     if 'callsign' in data:
         Results.invalidate_all_caches(DB) # wipe caches (all have stored pilot names)
+        FULL_RESULTS_CACHE_VALID = False
         emit_round_data_notify() # live update rounds page
         emit_heat_data() # Settings page, new pilot callsign in heats
     if 'phonetic' in data:
@@ -2579,7 +2580,9 @@ def imdtabler_update_freqs(data):
 @catchLogExceptionsWrapper
 def clean_results_cache():
     ''' expose cach wiping for frontend debugging '''
+    global FULL_RESULTS_CACHE_VALID
     Results.invalidate_all_caches(DB)
+    FULL_RESULTS_CACHE_VALID = False
 
 # Socket io emit functions
 
@@ -3189,7 +3192,7 @@ def emit_round_data_thread(params, sid):
         logger.info('T%d: Results returned in: %fs', timing['start'], timing['end'] - timing['start'])
 
         if ('nobroadcast' in params):
-            emit('round_data', emit_payload, namespace='/', room=sid.encode('ascii','replace'))
+            emit('round_data', emit_payload, namespace='/', room=sid)
         else:
             SOCKET_IO.emit('round_data', emit_payload, namespace='/')
 
@@ -4818,6 +4821,8 @@ def recover_database():
 
     DB.session.commit()
 
+    clean_results_cache()
+
     Events.trigger(Evt.DATABASE_RECOVER)
 
 def expand_heats():
@@ -5119,7 +5124,7 @@ APP.register_blueprint(json_endpoints.createBlueprint(Database, Options, Results
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
-        Options.set("secret_key", unicode(os.urandom(50), errors='ignore'))
+        Options.set("secret_key", str(os.urandom(50)))
 
     APP.config['SECRET_KEY'] = Options.get("secret_key")
 

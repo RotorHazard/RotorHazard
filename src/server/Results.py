@@ -37,9 +37,6 @@ def invalidate_all_caches(DB):
 
     Options.set("eventResults_cacheStatus", CacheStatus.INVALID)
 
-    global FULL_RESULTS_CACHE_VALID
-    FULL_RESULTS_CACHE_VALID = False
-
     Events.trigger(Evt.CACHE_CLEAR)
 
     logger.debug('All Result caches invalidated')
@@ -457,10 +454,10 @@ def calc_leaderboard(DB, **params):
 
     gevent.sleep()
     # Combine for sorting
-    leaderboard = zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source, last_lap, pilot_ids, nodes, total_time_laps)
+    leaderboard = list(zip(callsigns, max_laps, total_time, average_lap, fastest_lap, team_names, consecutives, fastest_lap_source, consecutives_source, last_lap, pilot_ids, nodes, total_time_laps))
 
     # Reverse sort max_laps x[1], then sort on total time x[2]
-    leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2] if x[2] > 0 else float('inf')))
+    leaderboard_by_race_time = sorted(leaderboard, key = lambda x: (-x[1], x[2] if x[2] and x[2] > 0 else float('inf')))
 
     leaderboard_total_data = []
     last_rank = '-'
@@ -500,7 +497,7 @@ def calc_leaderboard(DB, **params):
 
     gevent.sleep()
     # Sort fastest_laps x[4]
-    leaderboard_by_fastest_lap = sorted(leaderboard, key = lambda x: (x[4] if x[4] > 0 else float('inf')))
+    leaderboard_by_fastest_lap = sorted(leaderboard, key = lambda x: (x[4] if x[4] and x[4] > 0 else float('inf')))
 
     leaderboard_fast_lap_data = []
     last_rank = '-'
@@ -537,8 +534,7 @@ def calc_leaderboard(DB, **params):
 
     gevent.sleep()
     # Sort consecutives x[6]
-    leaderboard_by_consecutives = sorted(leaderboard, key = lambda x: (x[6] if x[6] > 0 else float('inf')))
-
+    leaderboard_by_consecutives = sorted(leaderboard, key = lambda x: (x[6] if x[6] and x[6] > 0 else float('inf')))
     leaderboard_consecutives_data = []
     last_rank = '-'
     last_rank_consecutive = 0
