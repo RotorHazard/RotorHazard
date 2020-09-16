@@ -346,12 +346,12 @@ def render_index():
 @APP.route('/event')
 def render_event():
     '''Route to heat summary page.'''
-    return render_template('heats.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('event.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
 @APP.route('/results')
 def render_results():
     '''Route to round summary page.'''
-    return render_template('rounds.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('results.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
 @APP.route('/run')
 @requires_auth
@@ -366,7 +366,7 @@ def render_run():
                 'index': idx
             })
 
-    return render_template('race.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('run.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         led_enabled=led_manager.isEnabled(),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
@@ -386,7 +386,7 @@ def render_current():
                 'index': idx
             })
 
-    return render_template('racepublic.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('current.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes,
         nodes=nodes,
         cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()))
