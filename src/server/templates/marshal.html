@@ -249,8 +249,7 @@
 			current_race_data.race_format = rotorhazard.race_formats[current_race_data.format_id];
 
 			// update header
-			var header = current_race_data.start_time_formatted + " - " +
-			$( "#selected_heat option:selected" ).text() + ' / ' +
+			var header = $( "#selected_heat option:selected" ).text() + ' / ' +
 			$( "#selected_round option:selected" ).text() + ' / ' +
 			$( "#selected_pilot option:selected" ).text();
 			$('#race-title').html(header);
