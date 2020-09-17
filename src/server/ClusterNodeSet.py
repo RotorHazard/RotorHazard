@@ -196,58 +196,66 @@ class SlaveNode:
             self.lastContactTime = monotonic()
             self.numContacts += 1
             node_index = data['node']
-            pilot_id = Database.HeatNode.query.filter_by( \
-                heat_id=self.RACE.current_heat, node_index=node_index).one_or_none().pilot_id
-    
-            if pilot_id != Database.PILOT_ID_NONE:
-    
-                # convert split timestamp (epoch ms sine 1970-01-01) to equivalent local 'monotonic' time value
-                split_ts = data['timestamp'] - self.RACE.start_time_epoch_ms
-    
-                act_laps_list = self.RACE.get_active_laps()[node_index]
-                lap_count = max(0, len(act_laps_list) - 1)
-                split_id = self.id
-    
-                # get timestamp for last lap pass (including lap 0)
-                if len(act_laps_list) > 0:
-                    last_lap_ts = act_laps_list[-1]['lap_time_stamp']
-                    last_split_id = self.DB.session.query(self.DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=lap_count).scalar()
-                    if last_split_id is None: # first split for this lap
-                        if split_id > 0:
-                            logger.info('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
-                        last_split_ts = last_lap_ts
-                    else:
-                        if split_id > last_split_id:
-                            if split_id > last_split_id + 1:
-                                logger.info('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
-                            last_split_ts = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=lap_count, split_id=last_split_id).one().split_time_stamp
+
+            if self.RACE.race_status is RaceStatus.RACING:
+
+                pilot_id = Database.HeatNode.query.filter_by( \
+                    heat_id=self.RACE.current_heat, node_index=node_index).one_or_none().pilot_id
+        
+                if pilot_id != Database.PILOT_ID_NONE:
+        
+                    # convert split timestamp (epoch ms sine 1970-01-01) to equivalent local 'monotonic' time value
+                    split_ts = data['timestamp'] - self.RACE.start_time_epoch_ms
+        
+                    act_laps_list = self.RACE.get_active_laps()[node_index]
+                    lap_count = max(0, len(act_laps_list) - 1)
+                    split_id = self.id
+        
+                    # get timestamp for last lap pass (including lap 0)
+                    if len(act_laps_list) > 0:
+                        last_lap_ts = act_laps_list[-1]['lap_time_stamp']
+                        last_split_id = self.DB.session.query(self.DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=lap_count).scalar()
+                        if last_split_id is None: # first split for this lap
+                            if split_id > 0:
+                                logger.info('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
+                            last_split_ts = last_lap_ts
                         else:
-                            logger.info('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
-                            last_split_ts = None
+                            if split_id > last_split_id:
+                                if split_id > last_split_id + 1:
+                                    logger.info('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
+                                last_split_ts = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=lap_count, split_id=last_split_id).one().split_time_stamp
+                            else:
+                                logger.info('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
+                                last_split_ts = None
+                    else:
+                        logger.info('Ignoring split {0} before zero lap for node {1}'.format(split_id+1, node_index+1))
+                        last_split_ts = None
+        
+                    if last_split_ts is not None:
+        
+                        # if slave-timer clock was detected as not synchronized then apply correction
+                        if self.timeCorrectionMs != 0:
+                            split_ts -= self.timeCorrectionMs
+                            
+                        split_time = split_ts - last_split_ts
+                        split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
+                        split_time_str = RHUtils.time_format(split_time)
+                        logger.debug('Split pass record: Node {0}, lap {1}, split {2}, time={3}, speed={4}' \
+                            .format(node_index+1, lap_count+1, split_id+1, split_time_str, \
+                            ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
+        
+                        self.DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=lap_count, \
+                                split_id=split_id, split_time_stamp=split_ts, split_time=split_time, \
+                                split_time_formatted=split_time_str, split_speed=split_speed))
+                        self.DB.session.commit()
+                        self.emit_split_pass_info(pilot_id, split_id, split_time)
+
                 else:
-                    logger.info('Ignoring split {0} before zero lap for node {1}'.format(split_id+1, node_index+1))
-                    last_split_ts = None
-    
-                if last_split_ts is not None:
-    
-                    # if slave-timer clock was detected as not synchronized then apply correction
-                    if self.timeCorrectionMs != 0:
-                        split_ts -= self.timeCorrectionMs
-                        
-                    split_time = split_ts - last_split_ts
-                    split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
-                    split_time_str = RHUtils.time_format(split_time)
-                    logger.debug('Split pass record: Node {0}, lap {1}, split {2}, time={3}, speed={4}' \
-                        .format(node_index+1, lap_count+1, split_id+1, split_time_str, \
-                        ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
-    
-                    self.DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=lap_count, \
-                            split_id=split_id, split_time_stamp=split_ts, split_time=split_time, \
-                            split_time_formatted=split_time_str, split_speed=split_speed))
-                    self.DB.session.commit()
-                    self.emit_split_pass_info(pilot_id, split_id, split_time)
+                    logger.info('Split pass record dismissed: Node: {0}, no pilot on node'.format(node_index+1))
+
             else:
-                logger.info('Split pass record dismissed: Node: {0}, no pilot on node'.format(node_index+1))
+                logger.info('Ignoring split {0} for node {1} because race not running'.format(self.id+1, node_index+1))
+
         except Exception:
             logger.exception("Error processing pass record from slave {0} at {1}".\
                              format(self.id+1, self.address))
@@ -292,6 +300,12 @@ class ClusterNodeSet:
 
     def hasSlaves(self):
         return (len(self.slaves))
+    
+    # return True if slave is or has been connected
+    def isSlaveAvailable(self, slave_index):
+        return (slave_index < len(self.slaves)) and \
+                    (self.slaves[slave_index].lastContactTime > 0 or \
+                     self.slaves[slave_index].numDisconnects > 0)
 
     def emit(self, event, data = None):
         for slave in self.slaves:
@@ -340,8 +354,14 @@ class ClusterNodeSet:
                     slave.timeCorrectionMs = slave.timeDiffMedianMs
                 else:
                     slave.timeCorrectionMs = 0
-                    if slave.lastContactTime > 0:
-                        logger.debug("Slave {0} clock synchronized OK with master, timeDiff={1}ms".\
-                                     format(slave.id+1, slave.timeDiffMedianMs))
+                    logger.debug("Slave {0} clock synchronized OK with master, timeDiff={1}ms".\
+                                 format(slave.id+1, slave.timeDiffMedianMs))
             elif slave.numDisconnects > 0:
                 logger.warn("Slave {0} not connected at race start".format(slave.id+1))
+
+    def doClusterRaceStop(self):
+        for slave in self.slaves:
+            if slave.lastContactTime > 0:
+                logger.info("Connected at race stop to " + slave.get_log_str());
+            elif slave.numDisconnects > 0:
+                logger.warn("Slave {0} not connected at race stop".format(slave.id+1))
