@@ -12,6 +12,7 @@ JSON_API = 3 # JSON API version
 import logging
 import log
 from datetime import datetime
+from monotonic import monotonic
 
 log.early_stage_setup()
 logger = logging.getLogger(__name__)
@@ -20,6 +21,12 @@ EPOCH_START = datetime(1970, 1, 1)
 
 # program-start time, in milliseconds since 1970-01-01
 PROGRAM_START_EPOCH_TIME = int((datetime.now() - EPOCH_START).total_seconds() * 1000)
+
+# program-start time (in milliseconds, starting at zero)
+PROGRAM_START_MTONIC = monotonic()
+
+# offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
+MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_MTONIC
 
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
@@ -38,7 +45,6 @@ import shutil
 import base64
 import subprocess
 import importlib
-from monotonic import monotonic
 from functools import wraps
 from collections import OrderedDict
 from six import unichr, string_types
@@ -133,12 +139,6 @@ Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
 
 RACE = RHRace.RHRace() # For storing race management variables
-
-# program-start time (in milliseconds, starting at zero)
-PROGRAM_START_MTONIC = monotonic()
-
-# offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
-MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_MTONIC
 
 TONES_NONE = 0
 TONES_ONE = 1
