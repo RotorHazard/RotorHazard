@@ -4598,19 +4598,19 @@ def restore_table(class_type, table_query_data, **kwargs):
                                               getattr(row_data, 'name', '') != '-None-':
                     if 'id' in class_type.__table__.columns.keys() and \
                         'id' in row_data.keys():
+                        has_id = True
                         db_update = class_type.query.filter(getattr(class_type,'id')==row_data['id']).first()
                     else:
+                        has_id = False
                         db_update = None
 
                     if db_update is None:
                         new_data = class_type()
                         for col in class_type.__table__.columns.keys():
                             if col in row_data.keys():
-                                if col != 'id':
-                                    setattr(new_data, col, row_data[col])
+                                setattr(new_data, col, row_data[col])
                             else:
-                                if col != 'id':
-                                    setattr(new_data, col, kwargs['defaults'][col])
+                                setattr(new_data, col, kwargs['defaults'][col])
 
                         #logger.info('DEBUG row_data add:  ' + str(getattr(new_data, match_name)))
                         DB.session.add(new_data)
