@@ -1784,8 +1784,6 @@ def on_stage_race():
         emit_race_status()
         check_emit_race_status_message(RACE) # Update race status message
 
-        if race_format.team_racing_mode:
-            check_emit_team_racing_status()  # Show initial team-racing status info
         MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
         MAX = max(race_format.start_delay_min, race_format.start_delay_max)
         RACE.start_time_delay_secs = random.randint(MIN, MAX) + RHRace.RACE_START_DELAY_EXTRA_SECS
