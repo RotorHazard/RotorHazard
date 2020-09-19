@@ -4598,10 +4598,8 @@ def restore_table(class_type, table_query_data, **kwargs):
                                               getattr(row_data, 'name', '') != '-None-':
                     if 'id' in class_type.__table__.columns.keys() and \
                         'id' in row_data.keys():
-                        has_id = True
                         db_update = class_type.query.filter(getattr(class_type,'id')==row_data['id']).first()
                     else:
-                        has_id = False
                         db_update = None
 
                     if db_update is None:
