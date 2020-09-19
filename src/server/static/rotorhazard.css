@@ -1399,7 +1399,7 @@ td.speak {
 	font-size: 0.75em;
 }
 
-.team_racing_status {
+.race_status_message {
 	text-align: center;
 	justify-content: center;
 	display: flex;
@@ -1407,7 +1407,7 @@ td.speak {
 	font-weight: bold;
 }
 
-.team_racing_status>* {
+.race_status_message>* {
 	margin: 0.5em 1em;
 }
 
