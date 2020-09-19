@@ -3762,7 +3762,6 @@ def ms_from_program_start():
     return milli_sec
 
 def check_emit_race_status_message(RACE, **params):
-    race_format = getCurrentRaceFormat()
     if RACE.win_status not in [WinStatus.DECLARED, WinStatus.TIE]: # don't call after declared result
         emit_race_status_message(**params)
 
