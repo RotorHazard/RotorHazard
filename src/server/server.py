@@ -1751,7 +1751,7 @@ def on_stage_race():
     
     # if running as slave timer and missed stop/discard msg then stop/clear current race
     if RACE.race_status != RaceStatus.READY and race_format is SLAVE_RACE_FORMAT:
-        logger.info("Forcing race clear/restart  because running as slave timer")
+        logger.info("Forcing race clear/restart because running as slave timer")
         if RACE.race_status == RaceStatus.RACING:
             on_stop_race()
         on_discard_laps()

@@ -54,7 +54,7 @@ class SlaveNode:
         self.timeDiffMedianObj = RunningMedian(self.TIMEDIFF_MEDIAN_SIZE)
         self.timeDiffMedianMs = 0
         self.timeCorrectionMs = 0
-        self.sio = socketio.Client()
+        self.sio = socketio.Client(reconnection=False, request_timeout=1)
         self.sio.on('connect', self.on_connect)
         self.sio.on('disconnect', self.on_disconnect)
         self.sio.on('pass_record', self.on_pass_record)
@@ -78,18 +78,23 @@ class SlaveNode:
                             try:
                                 self.sio.connect(self.address)
                             except socketio.exceptions.ConnectionError as ex:
-                                err_msg = "Unable to connect to slave {0} at {1}: {2}".format(self.id+1, self.address, ex)
-                                if monotonic() <= self.startConnectTime + self.info['timeout']:
-                                    logger.info(err_msg)
-                                else:  # if beyond timeout period
-                                    if self.numDisconnects > 0:  # if was previously connected then keep trying
-                                        logger.debug(err_msg)    #  log at debug level and
-                                        gevent.sleep(29)         #  increase delay between attempts
-                                    else:
-                                        logger.warn(err_msg)     # if never connected then give up
-                                        logger.warn("Reached timeout; no longer trying to connect to slave {0} at {1}".\
-                                                    format(self.id+1, self.address))
-                                        return  # exit worker thread
+                                if self.lastContactTime > 0:  # if current status is connected
+                                    logger.info("Error connecting to slave {0} at {1}: {2}".format(self.id+1, self.address, ex))
+                                    if not self.sio.connected:  # if not connected then
+                                        self.on_disconnect();   # invoke disconnect function to update status
+                                else:
+                                    err_msg = "Unable to connect to slave {0} at {1}: {2}".format(self.id+1, self.address, ex)
+                                    if monotonic() <= self.startConnectTime + self.info['timeout']:
+                                        logger.info(err_msg)
+                                    else:  # if beyond timeout period
+                                        if self.numDisconnects > 0:  # if was previously connected then keep trying
+                                            logger.debug(err_msg)    #  log at debug level and
+                                            gevent.sleep(29)         #  increase delay between attempts
+                                        else:
+                                            logger.warn(err_msg)     # if never connected then give up
+                                            logger.warn("Reached timeout; no longer trying to connect to slave {0} at {1}".\
+                                                        format(self.id+1, self.address))
+                                            return  # exit worker thread
                 else:
                     now_time = monotonic()
                     if not self.freqsSentFlag:
@@ -106,17 +111,31 @@ class SlaveNode:
                             logger.error("Error sending node frequencies to slave {0} at {1}: {2}".format(self.id+1, self.address, ex))
                     else:
                         try:
-                            if self.lastContactTime > 0 and ((now_time > self.lastContactTime + 10 and \
+                            if self.sio.connected:
+                                # send heartbeat-query every 10 seconds, or 10 seconds are last contact
+                                if (now_time > self.lastContactTime + 10 and \
                                             now_time > self.lastCheckQueryTime + 10) or \
                                             (self.lastCheckQueryTime == 0 and \
-                                             now_time > self.lastContactTime + 3)):  # if first query do it sooner
-                                self.lastCheckQueryTime = now_time
-                                # timestamp not actually used by slave, but send to make query and response symmetrical
-                                payload = {
-                                    'timestamp': self.monotonic_to_epoch_millis(now_time)
-                                }
-                                # don't update 'lastContactTime' value until response received
-                                self.sio.emit('check_slave_query', payload)
+                                             now_time > self.lastContactTime + 3):  # if first query do it sooner
+                                    self.lastCheckQueryTime = now_time
+                                    # timestamp not actually used by slave, but send to make query and response symmetrical
+                                    payload = {
+                                        'timestamp': self.monotonic_to_epoch_millis(now_time)
+                                    }
+                                    # don't update 'lastContactTime' value until response received
+                                    self.sio.emit('check_slave_query', payload)
+                                # if there was no response to last query then disconnect (and reconnect next loop)
+                                elif self.lastCheckQueryTime - self.lastContactTime > 1.9:
+                                    logger.warn("Disconnecting after no response for 'check_slave_query'" \
+                                                " received for slave {0} at {1}".format(self.id+1, self.address))
+                                    # calling 'disconnect()' will usually invoke 'on_disconnect()', but
+                                    #  'disconnect()' can be slow to return, so we update status now
+                                    self.on_disconnect()
+                                    self.sio.disconnect()
+                            else:
+                                logger.info("Invoking 'on_disconnect()' fn for slave {0} at {1}".\
+                                            format(self.id+1, self.address))
+                                self.on_disconnect()
                         except (KeyboardInterrupt, SystemExit):
                             raise
                         except Exception as ex:
@@ -127,7 +146,7 @@ class SlaveNode:
             except SystemExit:
                 raise
             except Exception:
-                logger.exception('Exception in SlaveNode worker thread')
+                logger.exception("Exception in SlaveNode worker thread for slave {0}".format(self.id+1))
                 gevent.sleep(9)
 
     def emit(self, event, data = None):
@@ -142,6 +161,10 @@ class SlaveNode:
         except Exception:
             logger.exception("Error emitting to slave {0} at {1}, event='{2}'".\
                             format(self.id+1, self.address, event))
+            if self.sio.connected:
+                logger.warn("Disconnecting after error emitting to slave {0} at {1}".\
+                            format(self.id+1, self.address))
+                self.sio.disconnect()
 
     def on_connect(self):
         if self.lastContactTime <= 0:
@@ -184,7 +207,7 @@ class SlaveNode:
             upDownStr = "downTime"
         upDownTotal = totUpSecs + totDownSecs
         return "slave {0} at {1} (latency: min={2} avg={3} max={4} last={5} ms, disconns={6}, contacts={7}, " \
-               "timeDiff={8}ms, {9}={10}, totalUp={11}, totalDown={12}, avail={13:.1%}))".\
+               "timeDiff={8}ms, {9}={10}, totalUp={11}, totalDown={12}, avail={13:.1%})".\
                     format(self.id+1, self.address, self.minLatencyMs, self.avgLatencyMs, \
                            self.maxLatencyMs, self.lastLatencyMs, self.numDisconnects, \
                            self.numContacts, self.timeDiffMedianMs, upDownStr, timeSecs, \
