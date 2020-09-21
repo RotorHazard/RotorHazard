@@ -486,6 +486,8 @@ def vrxstatus():
     else:
         return False
 
+# Documentation Viewer
+
 @APP.route('/docs')
 def viewDocs():
     '''Route to doc viewer.'''
@@ -656,6 +658,8 @@ def on_load_data(data):
             emit_imdtabler_page(nobroadcast=True)
         elif load_type == 'vrx_list':
             emit_vrx_list(nobroadcast=True)
+        elif load_type == 'backups_list':
+            on_list_backups()
         elif load_type == 'cluster_status':
             emit_cluster_status()
         elif load_type == 'hardware_log_init':
@@ -1364,7 +1368,50 @@ def on_backup_database():
         'file_name': emit_payload['file_name'],
         })
 
-    SOCKET_IO.emit('database_bkp_done', emit_payload)
+    emit('database_bkp_done', emit_payload)
+    on_list_backups()
+
+@SOCKET_IO.on('list_backups')
+@catchLogExceptionsWrapper
+def on_list_backups():
+    '''List database files in db_bkp'''
+
+    if not os.path.exists(DB_BKP_DIR_NAME):
+        emit_payload = {
+            'backup_files': None
+        }
+    else:
+        files = []
+        for (_, _, filenames) in os.walk(DB_BKP_DIR_NAME):
+            files.extend(filenames)
+            break
+
+        emit_payload = {
+            'backup_files': files
+        }
+
+    emit('backups_list', emit_payload)
+
+@SOCKET_IO.on('restore_database')
+@catchLogExceptionsWrapper
+def on_restore_database(data):
+    '''Restore database.'''
+    if 'backup_file' in data:
+        backup_file = data['backup_file']
+
+        logger.debug(backup_file)
+        DB.session.close()
+        recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
+
+        emit_payload = {
+            'file_name': backup_file
+        }
+
+        Events.trigger(Evt.DATABASE_RESTORE, {
+            'file_name': backup_file,
+            })
+
+        SOCKET_IO.emit('database_restore_done', emit_payload)
 
 @SOCKET_IO.on('reset_database')
 @catchLogExceptionsWrapper
@@ -2596,10 +2643,11 @@ def imdtabler_update_freqs(data):
 @SOCKET_IO.on('clean_cache')
 @catchLogExceptionsWrapper
 def clean_results_cache():
-    ''' expose cach wiping for frontend debugging '''
+    ''' wipe all results caches '''
     global FULL_RESULTS_CACHE_VALID
     Results.invalidate_all_caches(DB)
     FULL_RESULTS_CACHE_VALID = False
+    emit_round_data_notify()
 
 # Socket io emit functions
 
@@ -4337,12 +4385,12 @@ def restore_table(class_type, table_query_data, **kwargs):
             logger.warn('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
             logger.debug(traceback.format_exc())
 
-def recover_database():
+def recover_database(dbfile, **kwargs):
     try:
         logger.info('Recovering data from previous database')
 
         # load file directly
-        engine = create_engine('sqlite:///%s' % DB_FILE_NAME, convert_unicode=True)
+        engine = create_engine('sqlite:///%s' % dbfile, convert_unicode=True)
         metadata = MetaData(bind=engine)
         pilot_query_data = get_legacy_table_data(metadata, 'pilot')
         heat_query_data = get_legacy_table_data(metadata, 'heat')
@@ -4415,7 +4463,9 @@ def recover_database():
     except Exception as ex:
         logger.warn('Error reading data from previous database:  ' + str(ex))
 
-    backup_db_file(False)  # rename and move DB file
+    if "startup" in kwargs:
+        backup_db_file(False)  # rename and move DB file
+
     db_init()
 
     # primary data recovery
@@ -4714,16 +4764,16 @@ if not db_inited_flag:
     try:
         if Options.getInt('server_api') < SERVER_API:
             logger.info('Old server API version; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
         elif not Database.Heat.query.count():
             logger.info('Heats are empty; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
         elif not Database.Profiles.query.count():
             logger.info('Profiles are empty; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
         elif not Database.RaceFormat.query.count():
             logger.info('Formats are empty; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
     except Exception as ex:
         logger.warn('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()

@@ -99,6 +99,7 @@ class Evt:
     DATABASE_RESET = 'databaseReset'
     DATABASE_INITIALIZE = 'databaseInitialize'
     DATABASE_RECOVER = 'databaseRecover'
+    DATABASE_RESTORE = 'databaseRestore'
     # Race setup
     MIN_LAP_TIME_SET = 'minLapTimeSet'
     MIN_LAP_BEHAVIOR_SET = 'minLapBehaviorSet'

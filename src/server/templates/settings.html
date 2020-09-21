@@ -29,6 +29,7 @@
 			'led_effect_setup',
 			'cluster_status',
 			'vrx_list',
+			'backups_list'
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -1366,6 +1367,26 @@
 			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
 		});
 
+		socket.on('backups_list', function (msg) {
+			$('#restore_list').empty();
+			if ('backup_files' in msg && msg.backup_files.length) {
+				for (file in msg.backup_files) {
+					dbfile = msg.backup_files[file];
+					$('#restore_list').append('<option value="' + dbfile + '">' + dbfile + '</option>');
+				}
+			} else {
+				$('#restore_list').append('<option value="-">' + __('No Databases to Restore') + '</option>');
+			}
+		});
+
+		$('button#restore_database').click(function (event) {
+			var data = {
+				backup_file: $('#restore_list').val()
+			};
+			socket.emit('restore_database', data);
+			return false;
+		});
+
 		/* Database Reset */
 		socket.on('reset_confirm', function () {
 			standard_message_queue.push(__('Data Cleared'));
@@ -2380,6 +2401,12 @@
 				<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
 			</select>
 			<button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
+		</div>
+		<div class="control-set">
+			<select id="restore_list">
+				<option value="-">{{ __('No Databases to Restore') }}</option>
+			</select>
+			<button class="btn-warning" id="restore_database">{{ __('Restore Data') }}</button>
 		</div>
 	</div>
 </div>
