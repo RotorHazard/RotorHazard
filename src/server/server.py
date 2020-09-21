@@ -1398,20 +1398,24 @@ def on_restore_database(data):
     '''Restore database.'''
     if 'backup_file' in data:
         backup_file = data['backup_file']
+        backup_path = DB_BKP_DIR_NAME + '/' + backup_file
 
-        logger.debug(backup_file)
-        DB.session.close()
-        recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
+        if os.path.exists(backup_path):
+            logger.info('Found {0}: starting restoration...'.format(backup_file))
+            DB.session.close()
+            recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
 
-        emit_payload = {
-            'file_name': backup_file
-        }
+            emit_payload = {
+                'file_name': backup_file
+            }
 
-        Events.trigger(Evt.DATABASE_RESTORE, {
-            'file_name': backup_file,
-            })
+            Events.trigger(Evt.DATABASE_RESTORE, {
+                'file_name': backup_file,
+                })
 
-        SOCKET_IO.emit('database_restore_done', emit_payload)
+            SOCKET_IO.emit('database_restore_done', emit_payload)
+        else:
+            logger.warning('Unable to restore {0}: File does not exist'.format(backup_file))
 
 @SOCKET_IO.on('reset_database')
 @catchLogExceptionsWrapper
