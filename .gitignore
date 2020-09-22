@@ -4,3 +4,5 @@ config.json
 db_bkp
 /src/libraries
 logs
+/src/server/static/user/*
+!/src/server/static/user/README.md
