@@ -1368,22 +1368,30 @@
 		});
 
 		socket.on('backups_list', function (msg) {
-			$('#restore_list').empty();
+			$('#database_list').empty();
 			if ('backup_files' in msg && msg.backup_files.length) {
 				for (file in msg.backup_files) {
 					dbfile = msg.backup_files[file];
-					$('#restore_list').append('<option value="' + dbfile + '">' + dbfile + '</option>');
+					$('#database_list').append('<option value="' + dbfile + '">' + dbfile + '</option>');
 				}
 			} else {
-				$('#restore_list').append('<option value="-">' + __('No Databases to Restore') + '</option>');
+				$('#database_list').append('<option value="-">' + __('No Saved Databases') + '</option>');
 			}
 		});
 
 		$('button#restore_database').click(function (event) {
 			var data = {
-				backup_file: $('#restore_list').val()
+				backup_file: $('#database_list').val()
 			};
 			socket.emit('restore_database', data);
+			return false;
+		});
+
+		$('button#delete_database').click(function (event) {
+			var data = {
+				backup_file: $('#database_list').val()
+			};
+			socket.emit('delete_database', data);
 			return false;
 		});
 
@@ -2403,10 +2411,11 @@
 			<button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
 		</div>
 		<div class="control-set">
-			<select id="restore_list">
-				<option value="-">{{ __('No Databases to Restore') }}</option>
+			<select id="database_list">
+				<option value="-">{{ __('No Saved Databases') }}</option>
 			</select>
-			<button class="btn-warning" id="restore_database">{{ __('Restore Data') }}</button>
+			<button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
+			<button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
 		</div>
 	</div>
 </div>
