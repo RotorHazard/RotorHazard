@@ -69,13 +69,16 @@ class SlaveNode:
             try:
                 gevent.sleep(1)
                 if self.lastContactTime <= 0:
+                    oldSecsSinceDis = self.secsSinceDisconnect
                     self.secsSinceDisconnect = monotonic() - self.startConnectTime
                     if self.secsSinceDisconnect >= 1.0:  # if disconnect just happened then wait a second before reconnect
                         # if never connected then only retry if race not in progress
                         if self.numDisconnects > 0 or (self.RACE.race_status != RaceStatus.STAGING and \
                                                         self.RACE.race_status != RaceStatus.RACING):
-                            logger.log((logging.INFO if self.secsSinceDisconnect <= self.info['timeout'] else logging.DEBUG), \
-                                       "Attempting to connect to slave {0} at {1}...".format(self.id+1, self.address))
+                            # if first-ever attempt or was previously connected then show log msg
+                            if oldSecsSinceDis == 0 or self.numDisconnects > 0:
+                                logger.log((logging.INFO if self.secsSinceDisconnect <= self.info['timeout'] else logging.DEBUG), \
+                                           "Attempting to connect to slave {0} at {1}...".format(self.id+1, self.address))
                             try:
                                 self.sio.connect(self.address)
                             except socketio.exceptions.ConnectionError as ex:
@@ -86,7 +89,11 @@ class SlaveNode:
                                 else:
                                     err_msg = "Unable to connect to slave {0} at {1}: {2}".format(self.id+1, self.address, ex)
                                     if monotonic() <= self.startConnectTime + self.info['timeout']:
-                                        logger.info(err_msg)
+                                        if self.numDisconnects > 0:  # if previously connected then always log failure
+                                            logger.info(err_msg)
+                                        elif oldSecsSinceDis == 0:   # if not previously connected then only log once
+                                            err_msg += " (will continue attempts until timeout)"
+                                            logger.info(err_msg)
                                     else:  # if beyond timeout period
                                         if self.numDisconnects > 0:  # if was previously connected then keep trying
                                             logger.debug(err_msg)    #  log at debug level and
