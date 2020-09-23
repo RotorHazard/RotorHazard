@@ -4668,7 +4668,7 @@ hasMirrors = False
 try:
     for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
         if isinstance(slave_info, string_types):
-            slave_info = {'address': slave_info, 'mode': SlaveNode.TIMER_MODE}
+            slave_info = {'address': slave_info, 'mode': SlaveNode.SPLIT_MODE}
         if 'timeout' not in slave_info:
             slave_info['timeout'] = Config.GENERAL['SLAVE_TIMEOUT']
         if 'mode' in slave_info and slave_info['mode'] == SlaveNode.MIRROR_MODE:

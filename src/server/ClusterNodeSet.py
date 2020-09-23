@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class SlaveNode:
 
-    TIMER_MODE = 'timer'
+    SPLIT_MODE = 'split'
     MIRROR_MODE = 'mirror'
     
     LATENCY_AVG_SIZE = 30

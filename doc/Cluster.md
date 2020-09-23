@@ -1,6 +1,6 @@
 # Cluster
 
-Additional RotorHazard timers may be attached as "slave" units, interfaced via their network connection (i.e., WiFi).  The default mode is 'timer' (for split timing), which allows multiple timers to be placed around the track to get intermediate lap times.  A 'mirror' mode is also supported, in which the slave timer will mirror the actions of the master (for instance as an "LED-only" timer that displays the actions of the master).
+Additional RotorHazard timers may be attached as "slave" units, interfaced via their network connection (i.e., WiFi).  The default mode is 'split' (for split timing), which allows multiple timers to be placed around the track to get intermediate lap times.  A 'mirror' mode is also supported, in which the slave timer will mirror the actions of the master (for instance as an "LED-only" timer that displays the actions of the master).
 
 ### Configuration
 
@@ -21,13 +21,13 @@ Additional options may be configured, for example:
 {
 	"GENERAL": {
 		... ,
-		"SLAVES": [{"address": "192.168.1.2:5000", "mode": "timer", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
+		"SLAVES": [{"address": "192.168.1.2:5000", "mode": "split", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
 		"SLAVE_TIMEOUT": 10
 	}
 }
 ```
 * "address": The IP address and port for the slave timer.
-* "mode": The mode for the timer (either "timer" or "mirror").
+* "mode": The mode for the timer (either "split" or "mirror").
 * "distance": The distance from the previous gate (used to calculate speed).
 * "SLAVE_TIMEOUT": Maximum number of seconds to wait for connection to be established.
 
