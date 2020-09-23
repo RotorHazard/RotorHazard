@@ -3562,6 +3562,16 @@ def emit_node_crossing_change(node, **params):
     else:
         SOCKET_IO.emit('node_crossing_change', emit_payload)
 
+def emit_cluster_connect_change(connect_flag, **params):
+    '''Emits connect/disconnect tone for cluster timer.'''
+    emit_payload = {
+        'connect_flag': connect_flag
+    }
+    if ('nobroadcast' in params):
+        emit('cluster_connect_change', emit_payload)
+    else:
+        SOCKET_IO.emit('cluster_connect_change', emit_payload)
+
 def emit_callouts():
     callouts = Options.get('voiceCallouts')
     if callouts:
@@ -4667,7 +4677,7 @@ try:
             logger.info('** Mirror slaves must be last - ignoring remaining slave config **')
             break
         slave = SlaveNode(index, slave_info, RACE, DB, getCurrentProfile, \
-                          emit_split_pass_info, monotonic_to_epoch_millis)
+                          emit_split_pass_info, monotonic_to_epoch_millis, emit_cluster_connect_change)
         CLUSTER.addSlave(slave)
 except:
     logger.exception("Error adding slave to cluster")

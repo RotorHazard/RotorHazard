@@ -161,6 +161,7 @@
 		$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
 		$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
 		$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
+		$('#beep_cluster_connect').prop("checked", rotorhazard.beep_cluster_connect);
 		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
 		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
 		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
@@ -894,6 +895,11 @@
 			rotorhazard.saveData();
 		});
 
+		$('#beep_cluster_connect').change(function (event) {
+			rotorhazard.beep_cluster_connect = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+
 		$('#use_mp3_tones').change(function (event) {
 			rotorhazard.use_mp3_tones = $(this).prop('checked');
 			rotorhazard.saveData();
@@ -1040,6 +1046,33 @@
 								play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth');
 							}, 70, msg.node_index);
 						}
+				}
+			}
+		});
+
+		socket.on('cluster_connect_change', function (msg) {
+			if (rotorhazard.beep_cluster_connect) {
+				if (msg.connect_flag) {
+					if( rotorhazard.use_mp3_tones){
+						sound_cconnect.play();
+					}
+					else {
+						play_beep(150, 225, rotorhazard.indicator_beep_volume, 'square');
+						setTimeout(function(tone){
+							play_beep(200, 250, rotorhazard.indicator_beep_volume, 'square');
+						}, 150, 0);
+					}
+				}
+				else {
+					if( rotorhazard.use_mp3_tones){
+						sound_cdisconnect.play();
+					}
+					else {
+						play_beep(200, 200, rotorhazard.indicator_beep_volume, 'square');
+						setTimeout(function(tone){
+							play_beep(400, 100, rotorhazard.indicator_beep_volume, 'square');
+						}, 200, 0);
+					}
 				}
 			}
 		});
@@ -1760,7 +1793,7 @@
 				{% if cluster_has_slaves %}
 				<li>
 					<div class="label-block">
-						<label for="voice_split_timer">{{ __('Split Timer') }}</label>
+						<label for="voice_split_timer">{{ __('Cluster/Split Timer') }}</label>
 					</div>
 					<select id="voice_split_timer">
 						<option value="0">{{ __('None') }}</option>
@@ -1812,6 +1845,9 @@
 					<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
 					<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
 					<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
+					{% if cluster_has_slaves %}
+					<li><label><input type="checkbox" id="beep_cluster_connect"> {{ __('Cluster Timer Connect / Disconnect') }}</label></li>
+					{% endif %}
 					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
 				</ul>
 			</li>

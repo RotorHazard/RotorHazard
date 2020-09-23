@@ -24,7 +24,7 @@ class SlaveNode:
     TIMEDIFF_CORRECTION_THRESH_MS = 1000  # correct split times if slave clock more off than this
 
     def __init__(self, idVal, info, RACE, DB, getCurrentProfile, \
-                 emit_split_pass_info, monotonic_to_epoch_millis):
+                 emit_split_pass_info, monotonic_to_epoch_millis, emit_cluster_connect_change):
         self.id = idVal
         self.info = info
         self.RACE = RACE
@@ -32,6 +32,7 @@ class SlaveNode:
         self.getCurrentProfile = getCurrentProfile
         self.emit_split_pass_info = emit_split_pass_info
         self.monotonic_to_epoch_millis = monotonic_to_epoch_millis
+        self.emit_cluster_connect_change = emit_cluster_connect_change
         addr = info['address']
         if not '://' in addr:
             addr = 'http://' + addr
@@ -179,6 +180,7 @@ class SlaveNode:
             self.emit('join_cluster')
             if self.RACE.race_status == RaceStatus.STAGING or self.RACE.race_status == RaceStatus.RACING:
                 self.emit('stage_race')  # if race in progress then make sure running on slave
+            self.emit_cluster_connect_change(True)
         else:
             self.lastContactTime = monotonic()
             logger.debug("Received extra 'on_connect' event for slave {0} at {1}".format(self.id+1, self.address))
@@ -191,6 +193,7 @@ class SlaveNode:
             upSecs = int(round(self.startConnectTime - self.firstContactTime)) if self.firstContactTime > 0 else 0
             logger.warn("Disconnected from " + self.get_log_str(upSecs));
             self.totalUpTimeSecs += upSecs
+            self.emit_cluster_connect_change(False)
         else:
             logger.debug("Received extra 'on_disconnect' event for slave {0} at {1}".format(self.id+1, self.address))
 
