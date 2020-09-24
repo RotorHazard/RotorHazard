@@ -53,6 +53,7 @@ from flask import Flask, send_file, request, Response, session, templating
 from flask_socketio import SocketIO, emit
 from sqlalchemy import create_engine, MetaData, Table
 
+import socket
 import random
 import string
 import json
@@ -4629,6 +4630,15 @@ logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEA
 logger.debug('Program started at {0:.1f}'.format(PROGRAM_START_EPOCH_TIME))
 RHUtils.idAndLogSystemInfo()
 
+try:
+    server_hostname_str = socket.gethostname()
+    server_ipaddress_str = socket.gethostbyname(server_hostname_str)
+    logger.info("Host machine is '{0}' at {1}".format(server_hostname_str, server_ipaddress_str))
+except Exception as ex:
+    logger.info("Error querying hostname or IP: " + str(ex))
+    server_hostname_str = "UNKNOWN"
+    server_ipaddress_str = None
+
 # log results of module initializations
 Config.logInitResultMessage()
 Language.logInitResultMessage()
@@ -4669,12 +4679,17 @@ try:
     for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
         if isinstance(slave_info, string_types):
             slave_info = {'address': slave_info, 'mode': SlaveNode.SPLIT_MODE}
+        if 'address' not in slave_info:
+            raise RuntimeError("Slave 'address' item not specified")
+        # substitute asterisks in given address with values from host IP address
+        slave_info['address'] = RHUtils.substituteAddrWildcards(server_ipaddress_str, \
+                                                                slave_info['address'])
         if 'timeout' not in slave_info:
             slave_info['timeout'] = Config.GENERAL['SLAVE_TIMEOUT']
         if 'mode' in slave_info and slave_info['mode'] == SlaveNode.MIRROR_MODE:
             hasMirrors = True
         elif hasMirrors:
-            logger.info('** Mirror slaves must be last - ignoring remaining slave config **')
+            logger.warn('** Mirror slaves must be last - ignoring remaining slave config **')
             break
         slave = SlaveNode(index, slave_info, RACE, DB, getCurrentProfile, \
                           emit_split_pass_info, monotonic_to_epoch_millis, emit_cluster_connect_change)

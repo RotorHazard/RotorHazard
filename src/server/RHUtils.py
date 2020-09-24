@@ -61,6 +61,28 @@ def idAndLogSystemInfo():
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
 
+# Substitutes asterisks in the IP address 'destAddrStr' with values from 'sourceAddrStr'.
+def substituteAddrWildcards(sourceAddrStr, destAddrStr):
+    try:
+        if sourceAddrStr and destAddrStr and destAddrStr.find('*') >= 0:
+            # single "*" == full substitution
+            if destAddrStr == "*":
+                return sourceAddrStr
+            sourceParts = sourceAddrStr.split('.')
+            destParts = destAddrStr.split('.')
+            # ("192.168.0.130", "*.*.*.97") => "192.168.0.97"
+            if len(sourceParts) == len(destParts):
+                for i in range(len(destParts)):
+                    if destParts[i] == "*":
+                        destParts[i] = sourceParts[i]
+                return '.'.join(destParts)
+            # ("192.168.0.130", "*.97") => "192.168.0.97"
+            elif len(destParts) == 2 and len(sourceParts) == 4 and destParts[0] == "*":
+                return '.'.join(sourceParts[:-1]) + '.' + destParts[1]
+    except Exception:
+        logger.exception("Error in 'substituteAddrWildcards()'")
+    return destAddrStr
+
 # Checks if given file or directory is owned by 'root' and changes owner to 'pi' user if so.
 # Returns True if owner changed to 'pi' user; False if not.
 def checkSetFileOwnerPi(fileNameStr):

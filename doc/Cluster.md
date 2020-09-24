@@ -31,6 +31,8 @@ Additional options may be configured, for example:
 * "distance": The distance from the previous gate (used to calculate speed).
 * "SLAVE_TIMEOUT": Maximum number of seconds to wait for connection to be established.
 
+The "address" value may be specified using asterisk-wildcard characters. For instance, if the IP address of the 'master' timer is "192.168.0.11":  `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
+
 ### Clock Synchronization
 
 The accuracy of reported split times will be higher if all timers have their clocks synchronized. Adding precision [real-time clock (RTC) devices](Real%20Time%20Clock.md) like the [DS3231](https://www.adafruit.com/product/3013) to all the timers can accomplish this, or NTP can be configured to operate between the timers as shown below.
