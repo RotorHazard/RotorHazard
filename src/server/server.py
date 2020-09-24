@@ -136,6 +136,8 @@ Current_log_path_name = log.later_stage_setup(Config.LOGGING, SOCKET_IO)
 INTERFACE = None  # initialized later
 SENSORS = Sensors()
 CLUSTER = None    # initialized later
+serverInfo = None
+serverInfoItems = None
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
 
@@ -153,64 +155,64 @@ def monotonic_to_epoch_millis(secs):
 # Server Info
 #
 def buildServerInfo():
-    serverInfo = {}
+    infoDict = {}
 
-    serverInfo['about_html'] = "<ul>"
+    infoDict['about_html'] = "<ul>"
 
     # Release Version
-    serverInfo['release_version'] = RELEASE_VERSION
-    serverInfo['about_html'] += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
+    infoDict['release_version'] = RELEASE_VERSION
+    infoDict['about_html'] += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
 
     # Server API
-    serverInfo['server_api'] = SERVER_API
-    serverInfo['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
+    infoDict['server_api'] = SERVER_API
+    infoDict['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
 
     # Server API
-    serverInfo['json_api'] = JSON_API
+    infoDict['json_api'] = JSON_API
 
     # Node API levels
     node_api_level = False
-    serverInfo['node_api_match'] = True
+    infoDict['node_api_match'] = True
 
-    serverInfo['node_api_lowest'] = None
-    serverInfo['node_api_levels'] = [None]
+    infoDict['node_api_lowest'] = None
+    infoDict['node_api_levels'] = [None]
 
     if len(INTERFACE.nodes):
         if INTERFACE.nodes[0].api_level:
             node_api_level = INTERFACE.nodes[0].api_level
-            serverInfo['node_api_lowest'] = node_api_level
-            serverInfo['node_api_levels'] = []
+            infoDict['node_api_lowest'] = node_api_level
+            infoDict['node_api_levels'] = []
             for node in INTERFACE.nodes:
-                serverInfo['node_api_levels'].append(node.api_level)
+                infoDict['node_api_levels'].append(node.api_level)
 
                 if node.api_level is not node_api_level:
-                    serverInfo['node_api_match'] = False
+                    infoDict['node_api_match'] = False
 
-                if node.api_level < serverInfo['node_api_lowest']:
-                    serverInfo['node_api_lowest'] = node.api_level
+                if node.api_level < infoDict['node_api_lowest']:
+                    infoDict['node_api_lowest'] = node.api_level
 
-    serverInfo['about_html'] += "<li>" + __("Node API") + ": "
+    infoDict['about_html'] += "<li>" + __("Node API") + ": "
     if node_api_level:
-        if serverInfo['node_api_match']:
-            serverInfo['about_html'] += str(node_api_level)
+        if infoDict['node_api_match']:
+            infoDict['about_html'] += str(node_api_level)
         else:
-            serverInfo['about_html'] += "[ "
-            for idx, level in enumerate(serverInfo['node_api_levels']):
-                serverInfo['about_html'] += str(idx+1) + ":" + str(level) + " "
-            serverInfo['about_html'] += "]"
+            infoDict['about_html'] += "[ "
+            for idx, level in enumerate(infoDict['node_api_levels']):
+                infoDict['about_html'] += str(idx+1) + ":" + str(level) + " "
+            infoDict['about_html'] += "]"
     else:
-        serverInfo['about_html'] += "None (Delta5)"
+        infoDict['about_html'] += "None (Delta5)"
 
-    serverInfo['about_html'] += "</li>"
+    infoDict['about_html'] += "</li>"
 
-    serverInfo['node_api_best'] = NODE_API_BEST
-    if serverInfo['node_api_match'] is False or node_api_level < NODE_API_BEST:
+    infoDict['node_api_best'] = NODE_API_BEST
+    if infoDict['node_api_match'] is False or node_api_level < NODE_API_BEST:
         # Show Recommended API notice
-        serverInfo['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
+        infoDict['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
 
-    serverInfo['about_html'] += "</ul>"
+    infoDict['about_html'] += "</ul>"
 
-    return serverInfo
+    return infoDict
 
 def uniqueName(desiredName, otherNames):
     if desiredName in otherNames:
@@ -587,6 +589,10 @@ def on_join_cluster():
     emit_race_format()
     logger.info('Joined cluster')
     Events.trigger(Evt.CLUSTER_JOIN)
+    payload = {
+        'server_info': json.dumps(serverInfoItems)
+    }
+    SOCKET_IO.emit('join_cluster_response', payload)
 
 @SOCKET_IO.on('check_slave_query')
 @catchLogExceptionsWrapper
@@ -4692,7 +4698,8 @@ try:
             logger.warn('** Mirror slaves must be last - ignoring remaining slave config **')
             break
         slave = SlaveNode(index, slave_info, RACE, DB, getCurrentProfile, \
-                          emit_split_pass_info, monotonic_to_epoch_millis, emit_cluster_connect_change)
+                          emit_split_pass_info, monotonic_to_epoch_millis, \
+                          emit_cluster_connect_change, RELEASE_VERSION)
         CLUSTER.addSlave(slave)
 except:
     logger.exception("Error adding slave to cluster")
@@ -4736,8 +4743,16 @@ if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
 
 Options.primeGlobalsCache()
 
-# collect server info for About panel
+# collect server info for About panel, etc
 serverInfo = buildServerInfo()
+
+# create version of 'serverInfo' without 'about_html' entry
+serverInfoItems = serverInfo.copy()
+serverInfoItems.pop('about_html', None)
+serverInfoItems['prog_start_epoch'] = "{0:.1f}".format(PROGRAM_START_EPOCH_TIME)
+serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+logger.debug("Server info:  " + json.dumps(serverInfoItems))
+
 if serverInfo['node_api_match'] is False:
     logger.info('** WARNING: Node API mismatch. **')
 

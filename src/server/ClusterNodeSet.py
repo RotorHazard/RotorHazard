@@ -24,7 +24,8 @@ class SlaveNode:
     TIMEDIFF_CORRECTION_THRESH_MS = 1000  # correct split times if slave clock more off than this
 
     def __init__(self, idVal, info, RACE, DB, getCurrentProfile, \
-                 emit_split_pass_info, monotonic_to_epoch_millis, emit_cluster_connect_change):
+                 emit_split_pass_info, monotonic_to_epoch_millis, \
+                 emit_cluster_connect_change, server_release_version):
         self.id = idVal
         self.info = info
         self.RACE = RACE
@@ -33,6 +34,7 @@ class SlaveNode:
         self.emit_split_pass_info = emit_split_pass_info
         self.monotonic_to_epoch_millis = monotonic_to_epoch_millis
         self.emit_cluster_connect_change = emit_cluster_connect_change
+        self.server_release_version = server_release_version
         addr = info['address']
         if not '://' in addr:
             addr = 'http://' + addr
@@ -60,6 +62,7 @@ class SlaveNode:
         self.sio.on('disconnect', self.on_disconnect)
         self.sio.on('pass_record', self.on_pass_record)
         self.sio.on('check_slave_response', self.on_check_slave_response)
+        self.sio.on('join_cluster_response', self.join_cluster_response)
         gevent.spawn(self.slave_worker_thread)
 
     def slave_worker_thread(self):
@@ -322,6 +325,26 @@ class SlaveNode:
                              format(self.id+1, self.address))
         except Exception:
             logger.exception("Error processing check-response from slave {0} at {1}".\
+                             format(self.id+1, self.address))
+
+    def join_cluster_response(self, data):
+        try:
+            infoStr = data.get('server_info')
+            logger.debug("Server info from slave {0} at {1}:  {2}".\
+                         format(self.id+1, self.address, infoStr))
+            # if not first time connecting then check/warning program version
+            if self.numDisconnects == 0:
+                infoDict = json.loads(infoStr)
+                slaveVerStr = infoDict.get('release_version')
+                if slaveVerStr:
+                    if slaveVerStr != self.server_release_version:
+                        logger.warn("Different program version ('{0}') running on slave {1} at {2}".\
+                                    format(slaveVerStr, self.id+1, self.address))
+                else:
+                    logger.warn("Unable to parse 'release_version' from slave {0} at {1}".\
+                                format(self.id+1, self.address))
+        except Exception:
+            logger.exception("Error processing join-cluster response from slave {0} at {1}".\
                              format(self.id+1, self.address))
 
 class ClusterNodeSet:
