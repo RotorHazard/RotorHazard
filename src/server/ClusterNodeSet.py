@@ -39,6 +39,10 @@ class SlaveNode:
         if not '://' in addr:
             addr = 'http://' + addr
         self.address = addr
+        self.queryInterval = info['queryInterval'] if 'queryInterval' in info else 0
+        if self.queryInterval <= 0:
+            self.queryInterval = 10
+        self.firstQueryInterval = 3 if self.queryInterval >= 3 else 1
         self.startConnectTime = 0
         self.lastContactTime = -1
         self.firstContactTime = 0
@@ -123,11 +127,11 @@ class SlaveNode:
                     else:
                         try:
                             if self.sio.connected:
-                                # send heartbeat-query every 10 seconds, or 10 seconds are last contact
-                                if (now_time > self.lastContactTime + 10 and \
-                                            now_time > self.lastCheckQueryTime + 10) or \
+                                # send heartbeat-query every 'queryInterval' seconds, or that long since last contact
+                                if (now_time > self.lastContactTime + self.queryInterval and \
+                                            now_time > self.lastCheckQueryTime + self.queryInterval) or \
                                             (self.lastCheckQueryTime == 0 and \
-                                             now_time > self.lastContactTime + 3):  # if first query do it sooner
+                                             now_time > self.lastContactTime + self.firstQueryInterval):  # if first query do it sooner
                                     self.lastCheckQueryTime = now_time
                                     # timestamp not actually used by slave, but send to make query and response symmetrical
                                     payload = {
