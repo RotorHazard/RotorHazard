@@ -1133,7 +1133,7 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
                 # check for tie
                 if team_leaderboard[1]['laps'] == lead_laps:
                     if team_leaderboard[1]['total_time_raw'] == team_leaderboard[0]['total_time_raw']:
-                        logger.info('Race tied at {0}/{1}'.format(leaderboard[0]['laps'], leaderboard[0]['total_time']))
+                        logger.info('Race tied at {0}/{1}'.format(team_leaderboard[0]['laps'], team_leaderboard[0]['total_time']))
                         return {
                             'status': WinStatus.TIE
                         }
@@ -1188,7 +1188,7 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
                     if lead_laps <= max_potential_laps:
                         teams_can_pass += 1
                     elif leader_has_finished:
-                        time_to_complete = (lead_laps_time - line['total_time_raw']) * (line['members'] - team_members_finished[line['name']])
+                        time_to_complete = (lead_lap_time - line['total_time_raw']) * (line['members'] - team_members_finished[line['name']])
                         max_consideration = max(max_consideration, time_to_complete)
 
                 if teams_can_pass == 0:
@@ -1386,8 +1386,6 @@ def check_win_team_fastest_lap(RACE, **kwargs):
 
                 fast_lap_average = team_leaderboard[0]['average_fastest_lap_raw']
                 if fast_lap_average > 0: # must have recorded time (otherwise impossible to set bounds)
-                    team_laps_raw = {}
-
                     team_laps = {}
                     for line in team_leaderboard:
                         team = line['name']
@@ -1445,8 +1443,6 @@ def check_win_team_fastest_consecutive(RACE, **kwargs):
         if len(team_leaderboard) > 1:
             fast_consecutives = team_leaderboard[0]['average_consecutives_raw']
             if fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
-                team_laps_raw = {}
-
                 team_laps = {}
                 for line in team_leaderboard:
                     team = line['name']
