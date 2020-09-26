@@ -10,6 +10,7 @@ from RHRace import RaceStatus
 from Language import __
 import Database
 from util.RunningMedian import RunningMedian
+from util.Averager import Averager
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +52,7 @@ class SlaveNode:
         self.freqsSentFlag = False
         self.numDisconnects = 0
         self.numContacts = 0
-        self.minLatencyMs = 0
-        self.maxLatencyMs = 0
-        self.avgLatencyMs = 0
-        self.lastLatencyMs = 0
-        self.latencyMsList = []
+        self.latencyAveragerObj = Averager(self.LATENCY_AVG_SIZE)
         self.totalUpTimeSecs = 0
         self.totalDownTimeSecs = 0
         self.timeDiffMedianObj = RunningMedian(self.TIMEDIFF_MEDIAN_SIZE)
@@ -225,10 +222,10 @@ class SlaveNode:
         upDownTotal = totUpSecs + totDownSecs
         return "slave {0} at {1} (latency: min={2} avg={3} max={4} last={5} ms, disconns={6}, contacts={7}, " \
                "timeDiff={8}ms, {9}={10}, totalUp={11}, totalDown={12}, avail={13:.1%})".\
-                    format(self.id+1, self.address, self.minLatencyMs, self.avgLatencyMs, \
-                           self.maxLatencyMs, self.lastLatencyMs, self.numDisconnects, \
-                           self.numContacts, self.timeDiffMedianMs, upDownStr, timeSecs, \
-                           totUpSecs, totDownSecs, \
+                    format(self.id+1, self.address, self.latencyAveragerObj.minVal, \
+                           self.latencyAveragerObj.getIntAvgVal(), self.latencyAveragerObj.maxVal, \
+                           self.latencyAveragerObj.lastVal, self.numDisconnects, self.numContacts, \
+                           self.timeDiffMedianMs, upDownStr, timeSecs, totUpSecs, totDownSecs, \
                            float(totUpSecs)/upDownTotal if upDownTotal > 0 else 0)
 
     def on_pass_record(self, data):
@@ -307,15 +304,7 @@ class SlaveNode:
             self.numContacts += 1
             transitTime = nowTime - self.lastCheckQueryTime if self.lastCheckQueryTime > 0 else 0
             if transitTime > 0:
-                self.lastLatencyMs = int(round(transitTime * 1000))
-                self.latencyMsList.append(self.lastLatencyMs)
-                listLen = len(self.latencyMsList)
-                if listLen > self.LATENCY_AVG_SIZE:
-                    self.latencyMsList.pop(0)
-                    listLen -= 1
-                self.minLatencyMs = min(self.latencyMsList)
-                self.maxLatencyMs = max(self.latencyMsList)
-                self.avgLatencyMs = int(round(sum(self.latencyMsList) / listLen))
+                self.latencyAveragerObj.addItem(int(round(transitTime * 1000)))
                 if data:
                     slaveTimestamp = data.get('timestamp', 0)
                     if slaveTimestamp:
@@ -386,10 +375,10 @@ class ClusterNodeSet:
             totalDownSecs = slave.totalDownTimeSecs + downTimeSecs
             payload.append(
                 {'address': slave.address, \
-                 'minLatencyMs':  slave.minLatencyMs, \
-                 'avgLatencyMs': slave.avgLatencyMs, \
-                 'maxLatencyMs': slave.maxLatencyMs, \
-                 'lastLatencyMs': slave.lastLatencyMs, \
+                 'minLatencyMs':  slave.latencyAveragerObj.minVal, \
+                 'avgLatencyMs': slave.latencyAveragerObj.getIntAvgVal(), \
+                 'maxLatencyMs': slave.latencyAveragerObj.maxVal, \
+                 'lastLatencyMs': slave.latencyAveragerObj.lastVal, \
                  'numDisconnects': slave.numDisconnects, \
                  'numContacts': slave.numContacts, \
                  'timeDiffMs': slave.timeDiffMedianMs, \
