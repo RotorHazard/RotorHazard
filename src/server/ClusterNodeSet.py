@@ -137,13 +137,19 @@ class SlaveNode:
                                     # don't update 'lastContactTime' value until response received
                                     self.sio.emit('check_slave_query', payload)
                                 # if there was no response to last query then disconnect (and reconnect next loop)
-                                elif self.lastCheckQueryTime - self.lastContactTime > 1.9:
-                                    logger.warn("Disconnecting after no response for 'check_slave_query'" \
-                                                " received for slave {0} at {1}".format(self.id+1, self.address))
-                                    # calling 'disconnect()' will usually invoke 'on_disconnect()', but
-                                    #  'disconnect()' can be slow to return, so we update status now
-                                    self.on_disconnect()
-                                    self.sio.disconnect()
+                                elif self.lastCheckQueryTime > self.lastContactTime:
+                                    if self.lastCheckQueryTime - self.lastContactTime > 3.9:
+                                        logger.warn("Disconnecting after no response for 'check_slave_query'" \
+                                                    " received for slave {0} at {1}".format(self.id+1, self.address))
+                                        # calling 'disconnect()' will usually invoke 'on_disconnect()', but
+                                        #  'disconnect()' can be slow to return, so we update status now
+                                        self.on_disconnect()
+                                        self.sio.disconnect()
+                                    else:
+                                        logger.debug("No response for 'check_slave_query' received "\
+                                                     "after {0:.1f} secs for slave {1} at {2}".\
+                                                     format(self.lastCheckQueryTime - self.lastContactTime, \
+                                                            self.id+1, self.address))
                             else:
                                 logger.info("Invoking 'on_disconnect()' fn for slave {0} at {1}".\
                                             format(self.id+1, self.address))
