@@ -149,6 +149,10 @@ main {
 	flex: 1;
 }
 
+#team_leaderboard {
+	flex: 0.5;
+}
+
 .responsive-wrap {
 	height: 100%;
 }

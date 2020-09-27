@@ -21,22 +21,26 @@ class RHRace():
         self.start_time_epoch_ms = 0 # ms since 1970-01-01
         self.start_time_delay_secs = 0 # random-length race-start delay
         self.node_laps = {} # current race lap objects, by node
-        self.status_tied_str = 'Race is tied; continuing'  # shown when Most Laps Wins race tied
-        self.status_crossing = 'Waiting for cross'  # indicator for Most Laps Wins race
+        self.node_has_finished = {}
         # concluded
         self.duration_ms = 0 # Duration in seconds, calculated when race is stopped
         self.end_time = 0 # Monotonic, updated when race is stopped
-        self.laps_winner_name = None  # set to name of winner in first-to-X-laps race
-        self.winning_lap_id = 0  # tracks winning lap-id if race tied during first-to-X-laps race
         # leaderboard/cache
         self.results = None # current race results
         self.cacheStatus = CacheStatus.INVALID # whether cache is valid
         self.last_race_results = None # Cache of current race after clearing
         self.last_race_laps = None # Cache of current laps list after clearing
         self.last_race_cacheStatus = CacheStatus.INVALID # whether cache is valid
+        self.status_message = '' # Race status message (winner, team info)
+
+        self.team_results = None # current race results
+        self.team_cacheStatus = CacheStatus.INVALID # whether cache is valid
+        self.win_status = WinStatus.NONE # whether race is won
+        self.last_race_team_results = None # Cache of current race team results after clearing
+        self.last_race_team_cacheStatus = CacheStatus.INVALID # whether team results cache is valid
 
         '''
-        Lap Object (dict):
+        Lap Object (dict) for node_laps:
             lap_number
             lap_time_stamp
             lap_time
@@ -57,10 +61,19 @@ RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
 
 class WinCondition():
     NONE = 0
-    MOST_LAPS = 1
+    MOST_PROGRESS = 1 # most laps in fastest time
     FIRST_TO_LAP_X = 2
-    FASTEST_LAP = 3 # Not yet implemented
-    FASTEST_3_CONSECUTIVE = 4 # Not yet implemented
+    FASTEST_LAP = 3
+    FASTEST_3_CONSECUTIVE = 4
+    MOST_LAPS = 5 # lap count only
+    MOST_LAPS_OVERTIME = 6 # lap count only, laps and time after T=0
+
+class WinStatus():
+    NONE = 0
+    TIE = 1
+    PENDING_CROSSING = 2
+    DECLARED = 3
+    OVERTIME = 4
 
 class RaceStatus():
     READY = 0

@@ -1413,6 +1413,72 @@ function build_leaderboard(leaderboard, display_type, meta) {
 	twrap.append(table);
 	return twrap;
 }
+function build_team_leaderboard(leaderboard, display_type, meta) {
+	if (typeof(display_type) === 'undefined')
+		display_type = 'by_race_time';
+	if (typeof(meta) === 'undefined') {
+		meta = new Object;
+		meta.team_racing_mode = true;
+	}
+
+	var twrap = $('<div class="responsive-wrap">');
+	var table = $('<table class="leaderboard">');
+	var header = $('<thead>');
+	var header_row = $('<tr>');
+	header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
+	header_row.append('<th class="team">' + __('Team') + '</th>');
+	header_row.append('<th class="contribution">' + __('Contributors') + '</th>');
+	if (display_type == 'by_race_time') {
+		header_row.append('<th class="laps">' + __('Laps') + '</th>');
+		header_row.append('<th class="total">' + __('Average Lap') + '</th>');
+	}
+	if (display_type == 'by_avg_fastest_lap') {
+		header_row.append('<th class="fast">' + __('Average Fastest') + '</th>');
+	}
+	if (display_type == 'by_avg_consecutives') {
+		header_row.append('<th class="consecutive">' + __('Average 3 Consecutive') + '</th>');
+	}
+	header.append(header_row);
+	table.append(header);
+
+	var body = $('<tbody>');
+
+	for (var i in leaderboard) {
+		var row = $('<tr>');
+		row.append('<td class="pos">'+ leaderboard[i].position +'</td>');
+		row.append('<td class="team">'+ leaderboard[i].name +'</td>');
+		row.append('<td class="contribution">'+ leaderboard[i].contributing + '/' + leaderboard[i].members + '</td>');
+		if (display_type == 'by_race_time') {
+			var lap = leaderboard[i].laps;
+			if (!lap || lap == '0:00.000')
+				lap = '&#8212;';
+			row.append('<td class="laps">'+ lap +'</td>');
+
+			var lap = leaderboard[i].average_lap;
+			if (!lap || lap == '0:00.000')
+				lap = '&#8212;';
+			row.append('<td class="total">'+ lap +'</td>');
+		}
+		if (display_type == 'by_avg_fastest_lap') {
+			var lap = leaderboard[i].average_fastest_lap;
+			if (!lap || lap == '0:00.000')
+				lap = '&#8212;';
+			row.append('<td class="fast">'+ lap +'</td>');
+		}
+		if (display_type == 'by_avg_consecutives') {
+			var lap = leaderboard[i].average_consecutives;
+			if (!lap || lap == '0:00.000')
+				lap = '&#8212;';
+			row.append('<td class="consecutive">'+ lap +'</td>');
+		}
+
+		body.append(row);
+	}
+
+	table.append(body);
+	twrap.append(table);
+	return twrap;
+}
 /* Frequency Table */
 var freq = {
 	frequencies: {

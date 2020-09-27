@@ -2187,14 +2187,15 @@
 					<label for="set_race_mode">{{ __('Race Timer Mode') }}</label>
 				</div>
 				<select id="set_race_mode">
-					<option value="0">{{ __('Count Down') }}</option>
-					<option value="1">{{ __('Count Up') }}</option>
+					<option value="1">{{ __('No Time Limit') }}</option>
+					<option value="0">{{ __('Fixed Time') }}</option><!--  / Finish Lap -->
+					<!-- <option value="2">{{ __('Fixed Time / End Immediately') }}</option> -->
 				</select>
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_fix_race_time">{{ __('Timer Duration (seconds)') }}</label>
-					<p class="desc">{{ __('Used for Count Down timed races') }}</p>
+					<p class="desc">{{ __('Used for Fixed Time races') }}</p>
 				</div>
 				<input type="number" id="set_fix_race_time" min="0" max="99999">
 			</li>
@@ -2225,22 +2226,24 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
-					<p class="desc">{{ __('Used with First to X Laps races') }}</p>
-				</div>
-				<input type="number" id="set_number_laps_win" min="0" max="999">
-			</li>
-			<li>
-				<div class="label-block">
 					<label for="set_win_condition">{{ __('Win Condition') }}</label>
 				</div>
 				<select id="set_win_condition">
-					<option value="1">{{ __('Most Laps') }}</option>
+					<option value="1">{{ __('Most Laps in Fastest Time') }}</option>
+					<option value="5">{{ __('Most Laps Only') }}</option>
+					<option value="6">{{ __('Most Laps Only with Overtime') }}</option>
 					<option value="2">{{ __('First to X Laps') }}</option>
 					<option value="3">{{ __('Fastest Lap') }}</option>
 					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
 					<option value="0">{{ __('None') }}</option>
 				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
+					<p class="desc">{{ __('Used with First to X Laps races') }}</p>
+				</div>
+				<input type="number" id="set_number_laps_win" min="0" max="999">
 			</li>
 			<li>
 				<div class="label-block">

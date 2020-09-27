@@ -166,23 +166,25 @@
 									// race laps
 									for (var node_i in round.nodes) {
 										var node = round.nodes[node_i];
-										var node_div = $('<div class="node">');
+										if (node.callsign !== null) {
+											var node_div = $('<div class="node">');
 
-										node_div.append('<h5>' + node.callsign + '</h5>')
+											node_div.append('<h5>' + node.callsign + '</h5>')
 
-										var table = $('<table class="laps">');
-										var tbody = $('<tbody>');
+											var table = $('<table class="laps">');
+											var tbody = $('<tbody>');
 
-										var lap_index = 0;
-										for (var lap_i in node.laps) {
-											var lap = node.laps[lap_i];
-											if (!lap.deleted) {
-												if (lap_index) {
-													tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + formatTimeMillis(lap.lap_time_stamp) + '</span>' + formatTimeMillis(lap.lap_time) + '</td></tr>')
-												} else {
-													tbody.append('<tr class="lap_0"><td>0</td><td>' + formatTimeMillis(lap.lap_time) + '</td></tr>')
+											var lap_index = 0;
+											for (var lap_i in node.laps) {
+												var lap = node.laps[lap_i];
+												if (!lap.deleted) {
+													if (lap_index) {
+														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + formatTimeMillis(lap.lap_time_stamp) + '</span>' + formatTimeMillis(lap.lap_time) + '</td></tr>')
+													} else {
+														tbody.append('<tr class="lap_0"><td>0</td><td>' + formatTimeMillis(lap.lap_time) + '</td></tr>')
+													}
+													lap_index++;
 												}
-												lap_index++;
 											}
 										}
 

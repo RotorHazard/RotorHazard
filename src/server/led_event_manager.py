@@ -59,7 +59,7 @@ class LEDEventManager:
         return True
 
     def clear(self):
-        self.eventEffects['clear']['handlerFn'](self.strip)
+        self.eventEffects['clear']['handlerFn']({'strip': self.strip})
 
 class NoLEDManager():
     def __init__(self):
