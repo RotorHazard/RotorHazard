@@ -4686,7 +4686,10 @@ logger.info("Using log file: {0}".format(Current_log_path_name))
 
 hardwareHelpers = {}
 for helper in search_modules(suffix='helper'):
-    hardwareHelpers[helper.__name__] = helper.create()
+    try:
+        hardwareHelpers[helper.__name__] = helper.create()
+    except Exception as ex:
+        logger.warn("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
