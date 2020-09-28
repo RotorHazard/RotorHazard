@@ -2015,15 +2015,14 @@ def race_expire_thread(start_token):
     race_format = getCurrentRaceFormat()
     if race_format and race_format.race_mode == 0: # count down
         gevent.sleep(race_format.race_time_sec)
-
-        if RACE.start_token == start_token:
-            logger.info("Race time has exprired.")
-
+        # if race still in progress and is still same race
+        if RACE.race_status == RaceStatus.RACING and RACE.start_token == start_token:
+            logger.info("Race count-down timer reached expiration")
             RACE.timer_running = False # indicate race timer no longer running
             trigger_event(Evt.RACE_FINISH)
             check_win_condition(RACE, INTERFACE, at_finish=True, start_token=start_token)
         else:
-            logger.debug("Killing unused time expires thread")
+            logger.debug("Finished unused race-time-expire thread")
 
 @SOCKET_IO.on('stop_race')
 @catchLogExceptionsWrapper
