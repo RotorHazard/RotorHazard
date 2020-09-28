@@ -66,19 +66,21 @@ sudo chmod 777 server
 *Note: If RotorHazard is already installed, see the [Updating an existing installation](#update) section below.*
 
 ## Install Receiver Node Code (Arduinos)
-Arduino 1.8+ is required. Download from https://www.arduino.cc/en/Main/Software
+The standard method of loading (or flashing) the node code onto the Arduino processors (one for each node) is by loading the code into the Arduino IDE program and using its 'Upload' function.  Arduino IDE version 1.8 or newer is required, and it can be download from https://www.arduino.cc/en/Main/Software
 
-*The node code and the server version must match. Use the 'node' code included with the server code you downloaded earlier; do not download a different file directly from GitHub.*
+The code for the Arduino nodes is in the `src/node` directory. To get these files onto your computer, go to the [RotorHazards releases page on GitHub](https://github.com/RotorHazard/RotorHazard/releases) and download the .zip file for the release you're installing (*make sure it is the same release as the one you installed on the Raspberry Pi*).  For instance, if you're installing version 2.2.0, go to the release page for [that version](https://github.com/RotorHazard/RotorHazard/releases/tag/2.2.0), click on "Source code (zip)" and download the file, which in this case will be "RotorHazard-2.2.0.zip".  Unpack that .zip file into a directory on your computer, and the `src/node` directory will be in there.
 
-The node code may be edited and built using the [Eclipse IDE](https://www.eclipse.org/eclipseide/) and the "[Eclipse C++ IDE for Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)" plugin (or the old-fashioned way using the Arduino IDE). In Eclipse, the node-code project may be loaded via "File | Open Projects from File System..."
+In the Arduino IDE, select "File | Open" and navigate to where the `src/node` directory is located, and click on the "node.ino" file to open the node-code project.  In the Arduino IDE the serial port and board type (under "Tools") will need to be set to match the connected Arduino -- the standard setup is:  for 'Board' select "Arduino Nano" and for 'Processor' select "ATMega328P" or "ATMega328P (Old Bootloader)", depending on the particular Arduino used.  If all is well, clicking on the 'Verify' button will successfully compile the code, and clicking on the 'Upload' button will flash the code onto the Arduino processor.
 
-If you are not using a RotorHazard PCB, edit the 'src/node/config.h' file and configure the '#define NODE_NUMBER' value for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
+If you are not using a RotorHazard PCB, edit the `src/node/config.h` file and configure the '#define NODE_NUMBER' value for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
 ```
 // Node Setup -- Set node number here (1 - 8)
 #define NODE_NUMBER 1
 ```
 
 Hardware address selection is also possible by grounding hardware pins following the [published specification](https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing).
+
+The node code may also be edited and built using the [Eclipse IDE](https://www.eclipse.org/eclipseide/) and the "[Eclipse C++ IDE for Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)" plugin. In Eclipse, the node-code project may be loaded via "File | Open Projects from File System..."
 
 ## Install Optional Components
 
