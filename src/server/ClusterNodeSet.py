@@ -40,6 +40,9 @@ class SlaveNode:
         if not '://' in addr:
             addr = 'http://' + addr
         self.address = addr
+        self.isMirrorMode = (str(info.get('mode', SlaveNode.SPLIT_MODE)) == SlaveNode.MIRROR_MODE)
+        self.slaveModeStr = SlaveNode.MIRROR_MODE if self.isMirrorMode else SlaveNode.SPLIT_MODE
+        self.recEventsFlag = info.get('recEventsFlag', self.isMirrorMode)
         self.queryInterval = info['queryInterval'] if 'queryInterval' in info else 0
         if self.queryInterval <= 0:
             self.queryInterval = 10
@@ -112,11 +115,12 @@ class SlaveNode:
                     if not self.freqsSentFlag:
                         try:
                             self.freqsSentFlag = True
-                            logger.info("Sending node frequencies to slave {0} at {1}".format(self.id+1, self.address))
-                            for idx, freq in enumerate(json.loads(self.getCurrentProfile().frequencies)["f"]):
-                                data = { 'node':idx, 'frequency':freq }
-                                self.emit('set_frequency', data)
-                                gevent.sleep(0.001)
+                            if not self.isMirrorMode:
+                                logger.info("Sending node frequencies to slave {0} at {1}".format(self.id+1, self.address))
+                                for idx, freq in enumerate(json.loads(self.getCurrentProfile().frequencies)["f"]):
+                                    data = { 'node':idx, 'frequency':freq }
+                                    self.emit('set_frequency', data)
+                                    gevent.sleep(0.001)
                         except (KeyboardInterrupt, SystemExit):
                             raise
                         except Exception as ex:
@@ -189,13 +193,18 @@ class SlaveNode:
             self.lastContactTime = monotonic()
             self.firstContactTime = self.lastContactTime
             if self.numDisconnects <= 0:
-                logger.info("Connected to slave {0} at {1}".format(self.id+1, self.address))
+                logger.info("Connected to slave {0} at {1} (mode: {2})".format(\
+                                    self.id+1, self.address, self.slaveModeStr))
             else:
                 downSecs = int(round(self.lastContactTime - self.startConnectTime)) if self.startConnectTime > 0 else 0
                 logger.info("Reconnected to " + self.get_log_str(downSecs, False));
                 self.totalDownTimeSecs += downSecs
-            self.emit('join_cluster')
-            if self.RACE.race_status == RaceStatus.STAGING or self.RACE.race_status == RaceStatus.RACING:
+            payload = {
+                'mode': self.slaveModeStr
+            }
+            self.emit('join_cluster_ex', payload)
+            if (not self.isMirrorMode) and \
+                    (self.RACE.race_status == RaceStatus.STAGING or self.RACE.race_status == RaceStatus.RACING):
                 self.emit('stage_race')  # if race in progress then make sure running on slave
             self.emit_cluster_connect_change(True)
         else:
@@ -349,12 +358,24 @@ class SlaveNode:
 class ClusterNodeSet:
     def __init__(self):
         self.slaves = []
+        self.splitSlaves = []
+        self.mirrorSlaves = []
+        self.recEventsSlaves = []
 
     def addSlave(self, slave):
         self.slaves.append(slave)
+        if slave.isMirrorMode:
+            self.mirrorSlaves.append(slave)
+        else:
+            self.splitSlaves.append(slave)
+        if slave.recEventsFlag:
+            self.recEventsSlaves.append(slave)
 
     def hasSlaves(self):
-        return (len(self.slaves))
+        return (len(self.slaves) > 0)
+
+    def hasRecEventsSlaves(self):
+        return (len(self.recEventsSlaves) > 0)
     
     # return True if slave is or has been connected
     def isSlaveAvailable(self, slave_index):
@@ -366,10 +387,17 @@ class ClusterNodeSet:
         for slave in self.slaves:
             gevent.spawn(slave.emit, event, data)
 
+    def emitToSplits(self, event, data = None):
+        for slave in self.splitSlaves:
+            gevent.spawn(slave.emit, event, data)
+
     def emitToMirrors(self, event, data = None):
-        for slave in self.slaves:
-            if slave.info['mode'] == SlaveNode.MIRROR_MODE:
-                gevent.spawn(slave.emit, event, data)
+        for slave in self.mirrorSlaves:
+            gevent.spawn(slave.emit, event, data)
+
+    def emitEventTrigger(self, data = None):
+        for slave in self.recEventsSlaves:
+            gevent.spawn(slave.emit, 'cluster_event_trigger', data)
 
     def getClusterStatusInfo(self):
         nowTime = monotonic()

@@ -30,6 +30,7 @@ Additional options may be configured, for example:
 * "mode": The mode for the timer (either "split" or "mirror").
 * "distance": The distance from the previous timer (used to calculate speed).
 * "queryInterval": Number of seconds between heartbeat/query messages (default 10).
+* "recEventsFlag": Set 'true' to propogate timer events from master (default 'false' for "split" timer, 'true' for "mirror" timer).
 * "SLAVE_TIMEOUT": Maximum number of seconds to wait for connection to be established.
 
 The "address" value may be specified using asterisk-wildcard characters. For instance, if the IP address of the 'master' timer is "192.168.0.11":  `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`

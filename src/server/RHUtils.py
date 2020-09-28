@@ -7,6 +7,7 @@ import logging
 import platform
 import subprocess
 import glob
+import socket
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,21 @@ def idAndLogSystemInfo():
         logger.info("Host OS: {0} {1}".format(platform.system(), platform.release()))
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
+
+# Returns "primary" IP address for local host.  Based on:
+#  https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib
+def getLocalIPAddress():
+    s = None
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        if s:
+            s.close()
+    return IP
 
 # Substitutes asterisks in the IP address 'destAddrStr' with values from 'sourceAddrStr'.
 def substituteAddrWildcards(sourceAddrStr, destAddrStr):
