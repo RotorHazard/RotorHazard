@@ -2774,6 +2774,8 @@ def emit_start_thresh_lower_amount(**params):
     }
     if ('nobroadcast' in params):
         emit('start_thresh_lower_amount', emit_payload)
+    elif ('noself' in params):
+        emit('start_thresh_lower_amount', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('start_thresh_lower_amount', emit_payload)
 
@@ -2784,6 +2786,8 @@ def emit_start_thresh_lower_duration(**params):
     }
     if ('nobroadcast' in params):
         emit('start_thresh_lower_duration', emit_payload)
+    elif ('noself' in params):
+        emit('start_thresh_lower_duration', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('start_thresh_lower_duration', emit_payload)
 
