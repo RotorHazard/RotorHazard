@@ -359,14 +359,11 @@ class ClusterNodeSet:
     def __init__(self):
         self.slaves = []
         self.splitSlaves = []
-        self.mirrorSlaves = []
         self.recEventsSlaves = []
 
     def addSlave(self, slave):
         self.slaves.append(slave)
-        if slave.isMirrorMode:
-            self.mirrorSlaves.append(slave)
-        else:
+        if not slave.isMirrorMode:
             self.splitSlaves.append(slave)
         if slave.recEventsFlag:
             self.recEventsSlaves.append(slave)
@@ -390,10 +387,6 @@ class ClusterNodeSet:
 
     def emitToSplits(self, event, data = None):
         for slave in self.splitSlaves:
-            gevent.spawn(slave.emit, event, data)
-
-    def emitToMirrors(self, event, data = None):
-        for slave in self.mirrorSlaves:
             gevent.spawn(slave.emit, event, data)
 
     def emitEventTrigger(self, data = None):
