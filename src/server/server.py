@@ -1079,7 +1079,7 @@ def on_delete_heat(data):
                 'heat_id': heat_id,
                 })
 
-            # if only one heat remaining then make sure it's called "Heat 1"
+            # if only one heat remaining then set ID to 1
             if heat_count == 2 and RACE.race_status == RaceStatus.READY:
                 try:
                     heat_obj = Database.Heat.query.first()
@@ -1087,15 +1087,15 @@ def on_delete_heat(data):
                         heatnodes = Database.HeatNode.query.filter_by(heat_id=heat_obj.id).all()
                         has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat_obj.id).first()
                         if not has_race:
-                            logger.info("Renaming single remaining heat ({0}) to Heat 1".format(heat_obj.id))
+                            logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat_obj.id))
                             heat_obj.id = 1
                             for heatnode in heatnodes:
                                 heatnode.heat_id = heat_obj.id
                             DB.session.commit()
                         else:
-                            logger.warn("Not renaming single remaining heat ({0}): is in use".format(heat_obj.id))
+                            logger.warn("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
                 except Exception as ex:
-                    logger.warn("Error renaming single remaining heat: " + str(ex))
+                    logger.warn("Error adjusting single remaining heat ID: " + str(ex))
 
             emit_heat_data()
             if RACE.current_heat == heat_id:
