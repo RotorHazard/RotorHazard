@@ -2951,7 +2951,7 @@ def emit_current_laps(**params):
 def get_splits(node, lap_id, lapCompleted):
     splits = []
     for slave_index in range(len(CLUSTER.slaves)):
-        if CLUSTER.isSlaveAvailable(slave_index):
+        if CLUSTER.isSplitSlaveAvailable(slave_index):
             split = Database.LapSplit.query.filter_by(node_index=node,lap_id=lap_id,split_id=slave_index).one_or_none()
             if split:
                 split_payload = {

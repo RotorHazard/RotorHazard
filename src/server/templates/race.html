@@ -1091,7 +1091,7 @@
 				for (i=0; i < msg.slaves.length; i++) {
 					cluster_table_html += '<tr>';
 					cluster_table_html += '<td style="text-align:center"><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
-					cluster_table_html += '<td style="text-align:center"> </td>';
+					cluster_table_html += '<td style="text-align:left">' + msg.slaves[i].modeIndicator + '</td>';
 					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].minLatencyMs + '</td>';
 					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].avgLatencyMs + '</td>';
 					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].maxLatencyMs + '</td>';

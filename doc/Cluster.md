@@ -80,6 +80,7 @@ To enable the announcement of split times, see the "*Cluster/Split Timer*" optio
 
 The status of connected cluster timers may be viewed on the *Settings* page in the *System* section. (This status information is also available on the *Run* page.) The following items are displayed:
  * *Address* - Network address for the cluster timer (click to bring up the web-GUI for the timer)
+ * *S* or *M* - After the address will be an 'S' if split timer or an 'M' if mirror timer
  * *Latency: min avg max last* - Network latency (in milliseconds) for heartbeat/query messages
  * *Disconns* - Number of times the cluster timer has been disconnected
  * *Contacts* - Number of network contacts with the cluster timer

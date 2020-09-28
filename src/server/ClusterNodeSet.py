@@ -377,9 +377,10 @@ class ClusterNodeSet:
     def hasRecEventsSlaves(self):
         return (len(self.recEventsSlaves) > 0)
     
-    # return True if slave is or has been connected
-    def isSlaveAvailable(self, slave_index):
+    # return True if slave is 'split' mode and is or has been connected
+    def isSplitSlaveAvailable(self, slave_index):
         return (slave_index < len(self.slaves)) and \
+               (not self.slaves[slave_index].isMirrorMode) and \
                     (self.slaves[slave_index].lastContactTime > 0 or \
                      self.slaves[slave_index].numDisconnects > 0)
 
@@ -409,6 +410,7 @@ class ClusterNodeSet:
             totalDownSecs = slave.totalDownTimeSecs + downTimeSecs
             payload.append(
                 {'address': slave.address, \
+                 'modeIndicator': ('M' if slave.isMirrorMode else 'S'), \
                  'minLatencyMs':  slave.latencyAveragerObj.minVal, \
                  'avgLatencyMs': slave.latencyAveragerObj.getIntAvgVal(), \
                  'maxLatencyMs': slave.latencyAveragerObj.maxVal, \
