@@ -794,6 +794,7 @@ var rotorhazard = {
 	beep_crossing_entered: false, // beep node crossing entered
 	beep_crossing_exited: false, // beep node crossing exited
 	beep_manual_lap_button: false, // beep when manual lap button bit
+	beep_cluster_connect: false, // cluster timer connect / disconnect
 	use_mp3_tones: false, //use mp3 tones instead of synthetic tones during Races
 	beep_on_first_pass_button: false, // beep during the first pass where not voice announcment is played
 
@@ -850,6 +851,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
 		localStorage['rotorhazard.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
 		localStorage['rotorhazard.beep_manual_lap_button'] = JSON.stringify(this.beep_manual_lap_button);
+		localStorage['rotorhazard.beep_cluster_connect'] = JSON.stringify(this.beep_cluster_connect);
 		localStorage['rotorhazard.use_mp3_tones'] = JSON.stringify(this.use_mp3_tones);
 		localStorage['rotorhazard.beep_on_first_pass_button'] = JSON.stringify(this.beep_on_first_pass_button);
 		localStorage['rotorhazard.schedule_m'] = JSON.stringify(this.schedule_m);
@@ -912,6 +914,9 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.beep_manual_lap_button']) {
 				this.beep_manual_lap_button = JSON.parse(localStorage['rotorhazard.beep_manual_lap_button']);
+			}
+			if (localStorage['rotorhazard.beep_cluster_connect']) {
+				this.beep_cluster_connect = JSON.parse(localStorage['rotorhazard.beep_cluster_connect']);
 			}
 			if (localStorage['rotorhazard.use_mp3_tones']) {
 				this.use_mp3_tones = JSON.parse(localStorage['rotorhazard.use_mp3_tones']);
