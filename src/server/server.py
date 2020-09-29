@@ -49,7 +49,7 @@ from functools import wraps
 from collections import OrderedDict
 from six import unichr, string_types
 
-from flask import Flask, send_file, request, Response, session, templating
+from flask import Flask, send_file, request, Response, session, templating, redirect
 from flask_socketio import SocketIO, emit
 from sqlalchemy import create_engine, MetaData, Table
 
@@ -338,24 +338,24 @@ def trigger_event(event, evtArgs=None):
 #
 
 @APP.route('/')
-def index():
+def render_index():
     '''Route to home page.'''
     return render_template('home.html', serverInfo=serverInfo,
                            getOption=Options.get, __=__, Debug=Config.GENERAL['DEBUG'])
 
-@APP.route('/heats')
-def heats():
+@APP.route('/event')
+def render_event():
     '''Route to heat summary page.'''
-    return render_template('heats.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('event.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
 @APP.route('/results')
-def results():
+def render_results():
     '''Route to round summary page.'''
-    return render_template('rounds.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('results.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
-@APP.route('/race')
+@APP.route('/run')
 @requires_auth
-def race():
+def render_run():
     '''Route to race management page.'''
     frequencies = [node.frequency for node in INTERFACE.nodes]
     nodes = []
@@ -366,7 +366,7 @@ def race():
                 'index': idx
             })
 
-    return render_template('race.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('run.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         led_enabled=led_manager.isEnabled(),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
@@ -375,7 +375,7 @@ def race():
         cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()))
 
 @APP.route('/current')
-def racepublic():
+def render_current():
     '''Route to race management page.'''
     frequencies = [node.frequency for node in INTERFACE.nodes]
     nodes = []
@@ -386,21 +386,21 @@ def racepublic():
                 'index': idx
             })
 
-    return render_template('racepublic.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('current.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes,
         nodes=nodes,
         cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()))
 
 @APP.route('/marshal')
 @requires_auth
-def marshal():
+def render_marshal():
     '''Route to race management page.'''
     return render_template('marshal.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/settings')
 @requires_auth
-def settings():
+def render_settings():
     '''Route to settings page.'''
     return render_template('settings.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         led_enabled=led_manager.isEnabled(),
@@ -411,19 +411,19 @@ def settings():
         Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/streams')
-def stream():
+def render_stream():
     '''Route to stream index.'''
     return render_template('streams.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/stream/results')
-def stream_results():
+def render_stream_results():
     '''Route to current race leaderboard stream.'''
     return render_template('streamresults.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/stream/node/<int:node_id>')
-def stream_node(node_id):
+def render_stream_node(node_id):
     '''Route to single node overlay for streaming.'''
     if node_id <= RACE.num_nodes:
         return render_template('streamnode.html', serverInfo=serverInfo, getOption=Options.get, __=__,
@@ -433,14 +433,14 @@ def stream_node(node_id):
         return False
 
 @APP.route('/stream/class/<int:class_id>')
-def stream_class(class_id):
+def render_stream_class(class_id):
     '''Route to class leaderboard display for streaming.'''
     return render_template('streamclass.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         class_id=class_id
     )
 
 @APP.route('/stream/heat/<int:heat_id>')
-def stream_heat(heat_id):
+def render_stream_heat(heat_id):
     '''Route to heat display for streaming.'''
     return render_template('streamheat.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes,
@@ -449,7 +449,7 @@ def stream_heat(heat_id):
 
 @APP.route('/scanner')
 @requires_auth
-def scanner():
+def render_scanner():
     '''Route to scanner page.'''
 
     return render_template('scanner.html', serverInfo=serverInfo, getOption=Options.get, __=__,
@@ -457,13 +457,13 @@ def scanner():
 
 @APP.route('/decoder')
 @requires_auth
-def decoder():
+def render_decoder():
     '''Route to race management page.'''
     return render_template('decoder.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/imdtabler')
-def imdtabler():
+def render_imdtabler():
     '''Route to IMDTabler page.'''
 
     return render_template('imdtabler.html', serverInfo=serverInfo, getOption=Options.get, __=__)
@@ -472,13 +472,13 @@ def imdtabler():
 
 @APP.route('/hardwarelog')
 @requires_auth
-def hardwarelog():
+def render_hardwarelog():
     '''Route to hardware log page.'''
     return render_template('hardwarelog.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
 @APP.route('/database')
 @requires_auth
-def database():
+def render_database():
     '''Route to database page.'''
     return render_template('database.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         pilots=Database.Pilot,
@@ -493,7 +493,7 @@ def database():
 
 @APP.route('/vrxstatus')
 @requires_auth
-def vrxstatus():
+def render_vrxstatus():
     '''Route to database page.'''
     if vrx_controller:
         return render_template('vrxstatus.html', serverInfo=serverInfo, getOption=Options.get, __=__,
@@ -504,7 +504,7 @@ def vrxstatus():
 # Documentation Viewer
 
 @APP.route('/docs')
-def viewDocs():
+def render_viewDocs():
     '''Route to doc viewer.'''
     try:
         docfile = request.args.get('d')
@@ -529,10 +529,18 @@ def viewDocs():
     return "Error rendering documentation"
 
 @APP.route('/img/<path:imgfile>')
-def viewImg(imgfile):
+def render_viewImg(imgfile):
     '''Route to img called within doc viewer.'''
     return send_file('../../doc/img/' + imgfile)
 
+# Redirect routes
+@APP.route('/race')
+def redirect_race():
+    return redirect("/run", code=301)
+
+@APP.route('/heats')
+def redirect_heats():
+    return redirect("/event", code=301)
 
 def start_background_threads():
     INTERFACE.start()
