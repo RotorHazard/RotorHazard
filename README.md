@@ -60,7 +60,7 @@ With support from Ryan Friedman, Klaus Michael Schneider, Cerberus Velvet, David
 
 ### Translators
 * Dutch: Kenny Van Der Sypt
-* German: Klaus Michael Schneider
+* German: Klaus Michael Schneider, Christian Baumgartner
 * Spanish: Ramon Hernandez Roldan
 * French: Yannick M.
 * Polish: Mariusz Misiurek and Paweł Fabiszewski
