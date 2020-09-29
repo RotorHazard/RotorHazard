@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.3.0-dev.4" # Public release version code
+RELEASE_VERSION = "2.3.0-dev.5" # Public release version code
 SERVER_API = 28 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 25 # Most recent node API
@@ -1879,14 +1879,14 @@ def on_stage_race():
 
     CLUSTER.emitToSplits('stage_race')
     race_format = getCurrentRaceFormat()
-    
+
     # if running as slave timer and missed stop/discard msg then stop/clear current race
     if RACE.race_status != RaceStatus.READY and race_format is SLAVE_RACE_FORMAT:
         logger.info("Forcing race clear/restart because running as slave timer")
         if RACE.race_status == RaceStatus.RACING:
             on_stop_race()
         on_discard_laps()
-    
+
     if RACE.race_status == RaceStatus.READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
         global FULL_RESULTS_CACHE_VALID
