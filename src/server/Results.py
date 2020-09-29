@@ -1074,7 +1074,7 @@ def check_win_fastest_consecutive(RACE, **kwargs):
         if len(leaderboard) > 1:
             fast_lap = leaderboard[0]['consecutives_raw']
 
-            if fast_lap > 3: # must have at least 3 laps
+            if fast_lap and fast_lap > 3: # must have at least 3 laps
                 # check for tie
                 if leaderboard[1]['consecutives_raw'] == fast_lap:
                     logger.info('Race tied at %s', leaderboard[1]['consecutives'])
