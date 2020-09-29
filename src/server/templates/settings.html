@@ -364,8 +364,8 @@
 
 				for (var vrx_id in msg.vrx) {
 					var vrx = msg.vrx[vrx_id]
-					if (vrx.dev == 'rx' && vrx.valid_rx) {
-						seat_num = vrx.seat_number
+					if (vrx.device_type == 'rx' && vrx.valid_rx) {
+						seat_num = vrx.seat
 
 						if (!vrx_by_node[seat_num]) {
 							vrx_by_node[seat_num] = [];
@@ -425,25 +425,27 @@
 
 							table_items['ID'] = vrx_id;
 
-							if (vrx.nn) {
-								table_items['Name'] = vrx.nn;
+							if (vrx.device_name) {
+								table_items['Name'] = vrx.device_name;
 							}
 
-							if (vrx.dev == 'rx') {
+							if (vrx.device_type == 'rx') {
 								if (vrx.valid_rx) {
 									table_items['Status'] = __("Connected");
 
-									if ('seat_number' in vrx) {
+									if ('seat' in vrx) {
 										var selectbox = '<select class="vrx-node" data-vrx-id="' + vrx_id + '">'
 										for (var i = 0; i < {{ num_nodes }}; i++) {
 											var opt = '<option value="' + i + '"';
-											if (i == vrx.seat_number) {
+											if (i == vrx.seat) {
 												opt += 'selected="selected"';
 											}
 											opt += '>' + (parseInt(i)+1) + '</option>';
 											selectbox += opt;
 										}
 										table_items['Seat'] = selectbox;
+									} else {
+										console.warn("No seat number available")
 									}
 
 									if ('cam_forced_or_auto' in vrx
@@ -458,14 +460,18 @@
 										}
 
 										table_items['Format'] = cam_labels[vrx.cam_forced_or_auto] + ": " + cam_types[vrx.chosen_camera_type];
+									} else {
+										console.log("No cam_forced_or_auto and chosen_camera_type in vrx")
 									}
 
-									if ('lock_status' in vrx) {
+									if ('lock' in vrx) {
 										if(vrx.lock_status == 'L') {
 											table_items['Lock'] = __('Locked');
 										} else {
 											table_items['Lock'] = __('Unlocked');
 										}
+									} else {
+										console.warn("No lock in vrx")
 									}
 
 								} else {

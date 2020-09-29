@@ -50,7 +50,7 @@ class VRxController:
         self.rx_data = {}
 
         #ClearView API object
-        self._cv = clearview.ClearView(return_formatted_commands=True)
+        # self._cv = clearview.ClearView(return_formatted_commands=True)
 
         self.config = self.validate_config(vrx_config)
 
@@ -72,8 +72,8 @@ class VRxController:
         self.num_seats = len(seat_frequencies)
 
         self.seat_number_range = (0,7)
-        self._seats = [VRxSeat(self._mqttc,self._cv, n, seat_frequencies[n], seat_number_range=self.seat_number_range) for n in range(self.num_seats)]
-        self._seat_broadcast = VRxBroadcastSeat(self._mqttc, self._cv)
+        self._seats = [VRxSeat(self._mqttc, n, seat_frequencies[n], seat_number_range=self.seat_number_range) for n in range(self.num_seats)]
+        self._seat_broadcast = VRxBroadcastSeat(self._mqttc)
 
         # Events
         self.Events.on(Evt.STARTUP, 'VRx', self.do_startup)
@@ -497,8 +497,8 @@ class VRxController:
 
         if serial_num is not None:
             topic = mqtt_publish_topics["cv1"]["receiver_command_esp_targeted_topic"][0]%serial_num
-            cmd = ESP_COMMANDS["Set Seat Number"] % desired_seat_num
-            self._mqttc.publish(topic,cmd)
+            cmd = json.dumps({"seat": str(desired_seat_num)})
+            self._mqttc.publish(topic, cmd)
             self.rx_data[serial_num]["needs_config"] = True
             return
 
@@ -515,12 +515,14 @@ class VRxController:
 
     def set_target_frequency(self, target, frequency):
         if frequency != RHUtils.FREQUENCY_ID_NONE:
-            topic = mqtt_publish_topics["cv1"]["receiver_command_targeted_topic"][0]%target
-            messages = self._cv.set_custom_frequency(self._cv.bc_id, frequency)
+            topic = mqtt_publish_topics["cv1"]["receiver_command_esp_targeted_topic"][0]%target
 
-            # set_custom_frequency returns multiple commands (one for channel and one for band)
-            for m in messages:
-                self._mqttc.publish(topic,m)
+            # For ClearView, set the band and channel
+            cv_bc = clearview.comspecs.frequency_to_bandchannel_dict(frequency)
+            if cv_bc:
+                self._mqttc.publish(topic, json.dumps(cv_bc))
+            else:
+                self.logger.warning("Unable to set ClearView frequency to %s", frequency)
 
             self.logger.debug("Set frequency for %s to %d", target, frequency)
 
@@ -613,14 +615,6 @@ class VRxController:
             topic_tuple = topics["receiver_response_targeted"]
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_targeted)
 
-            # Status Static
-            topic_tuple = topics["receiver_static_status"]
-            self._add_subscribe_callback(topic_tuple, self.on_message_status)
-
-            # Status Variable
-            topic_tuple = topics["receiver_variable_status"]
-            self._add_subscribe_callback(topic_tuple, self.on_message_status)
-
     def _add_subscribe_callback(self, topic_tuple, callback):
         formatter_name = topic_tuple[1]
 
@@ -643,13 +637,13 @@ class VRxController:
         initial_config_success = False
 
         try:
-            sn = self.rx_data[target]["seat_number"]
+            sn = self.rx_data[target]["seat"]
         except KeyError:
             self.logger.info("No seat number available for %s yet", target)
         else:
             self.logger.info("Performing initial configuration for %s", target)
 
-            seat_number = int(self.rx_data[target]['seat_number'])
+            seat_number = int(self.rx_data[target]['seat'])
             seat = self._seats[seat_number]
             frequency = seat.seat_frequency
             self.set_target_frequency(target, frequency)
@@ -707,67 +701,35 @@ class VRxController:
         payload = message.payload
         if len(payload) >= MINIMUM_PAYLOAD:
             rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"}) #TODO this is probably not needed
-
             try:
-                nt, pattern_response = clearview.formatter.match_response(payload)
-                extracted_data = clearview.formatter.extract_data(nt, pattern_response)
-                if extracted_data is not None:
-                    rx_data["valid_rx"] = True
-                    rx_data.update(extracted_data)
-                else:
-                    self.logger.error("Unable to extract vrx data '%s'"%payload)
+                extracted_data = json.loads(payload)
 
-                self.logger.debug("Receiver Reply %s => %s"%(rx_name, payload.strip()))
-            except Exception as ex:
-                self.rx_data[rx_name]["valid_rx"] = False
-                self.logger.warning("Receiver Reply %s => Unparseable"%(rx_name))
-                self.logger.debug("Receiver Error: " + str(ex))
+            except:
+                self.logger.warning("Can't load json data from '%s' of '%s'", rx_name, payload) 
                 self.logger.debug(traceback.format_exc())
+                rx_data["valid_rx"] = False
+            else:
+                rx_data["valid_rx"] = True
+                rx_data.update(extracted_data) 
 
-        else:
-            self.rx_data[rx_name]["valid_rx"] = False
-            self.logger.debug("Receiver Reply %s => No payload"%(rx_name))
+                if "lock" in extracted_data:
+                    rep_lock = extracted_data["lock"]
 
-        #TODO only fire event if the data changed
-        self.logger.info("Receiver Data Updated: %s"%self.rx_data[rx_name])
-        self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
-            'rx_name': rx_name,
-            })
+                    rx_data["chosen_camera_type"] = rep_lock[0]
+                    rx_data["cam_forced_or_auto"] = rep_lock[1]
+                    rx_data["lock_status"] = rep_lock[2]
 
-    def on_message_status(self, client, userdata, message):
+                
 
-        #TODO the device replying here may not even be a receiver.
-        # If it isn't a receiver, the logic may change.
-        # Use the 'dev' key to see if its is a 'rx'
+                #TODO only fire event if the data changed
+                self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
+                    'rx_name': rx_name,
+                    })
 
-        topic = message.topic
-        status_type,rx_name = topic.split('/')
-        payload = message.payload
-        self.logger.debug("%s data: %s => %s"%(status_type, rx_name, payload))
+                
+                if rx_data["needs_config"] == True and rx_data["valid_rx"] == True:
+                    self.perform_initial_receiver_config(rx_name)
 
-        try:
-            rx_newdata = json.loads(payload)
-        except ValueError:
-            self.logger.error("Unable to json.load on_message_status payload")
-            self.rx_data[rx_name]["valid_rx"] = False
-            return
-
-        #TODO skip storing data if it's not a video receiver. Have to check both rx_newdata and rx_data for the "dev" key as it may not be in both
-
-        rx_data = self.rx_data.setdefault(rx_name,{"connection": "1"}) #Todo this may not be needed now that connection works?
-        rx_data.update(rx_newdata)
-        rx_data["valid_rx"] = True
-
-        if rx_data["needs_config"] == True and rx_data["valid_rx"]:
-            self.perform_initial_receiver_config(rx_name)
-        else:
-            pass
-            # self.logger.debug("RX %s is already configured"%rx_name)
-
-        #TODO only fire event if the data changed
-        self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
-            'rx_name': rx_name,
-            })
 
     def req_status_targeted(self, mode = "variable",serial_num = None):
         """Ask a targeted receiver for its status.
@@ -785,9 +747,9 @@ class VRxController:
 
         topic = mqtt_publish_topics["cv1"]["receiver_command_esp_targeted_topic"][0]%serial_num
         if mode == "variable":
-            cmd = ESP_COMMANDS["Request Static Status"]
-        elif mode == "static":
             cmd = ESP_COMMANDS["Request Variable Status"]
+        elif mode == "static":
+            cmd = ESP_COMMANDS["Request Static Status"]
         else:
             raise Exception("Error checking mode has failed")
         self._mqttc.publish(topic,cmd)
@@ -804,25 +766,22 @@ def printc(*args):
 class BaseVRxSeat:
     """Seat controller for both the broadcast and individual seats"""
     def __init__(self,
-                 mqtt_client,
-                 cv,
+                 mqtt_client
                  ):
 
         self._mqttc = mqtt_client
-        self._cv = cv
         self.logger = logging.getLogger(self.__class__.__name__)
 
 class VRxSeat(BaseVRxSeat):
     """Commands and Requests apply to all receivers at a seat number"""
     def __init__(self,
                  mqtt_client,
-                 cv,
                  seat_number,
                  seat_frequency,
                  seat_number_range = (0,7), #(min,max)
                  seat_camera_type = 'A'
                  ):
-        BaseVRxSeat.__init__(self, mqtt_client, cv)
+        BaseVRxSeat.__init__(self, mqtt_client)
 
         # RH refers to seats 0 to 7
         self.MIN_SEAT_NUM = seat_number_range[0]
@@ -874,7 +833,7 @@ class VRxSeat(BaseVRxSeat):
 
     def set_seat_number(self, new_seat_number):
         topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
-        cmd = ESP_COMMANDS["Set Seat Number"] % new_seat_number
+        cmd = cmd = json.dumps({"seat": str(new_seat_number)})
         self._mqttc.publish(topic,cmd)
         return
 
@@ -903,12 +862,15 @@ class VRxSeat(BaseVRxSeat):
         """Sets all receivers at this seat number to the new frequency"""
         self._seat_frequency = frequency
         if frequency != RHUtils.FREQUENCY_ID_NONE:
-            topic = mqtt_publish_topics["cv1"]["receiver_command_seat_topic"][0]%self._seat_number
-            messages = self._cv.set_custom_frequency(self._cv.bc_id, frequency)
 
-            # set_custom_frequency returns multiple commands (one for channel and one for band)
-            for m in messages:
-                self._mqttc.publish(topic,m)
+            # For ClearView, set the band and channel
+            cv_bc = clearview.comspecs.frequency_to_bandchannel_dict(frequency)
+            if cv_bc:
+                topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
+                self._mqttc.publish(topic, json.dumps(cv_bc))
+
+            else:
+                self.logger.warning("Unable to set ClearView frequency to %s", frequency)
 
     @property
     def seat_camera_type(self, ):
@@ -933,8 +895,8 @@ class VRxSeat(BaseVRxSeat):
         print("TODO seat_lock_status property")
 
     def get_seat_lock_status(self,):
-        topic = mqtt_publish_topics["cv1"]["receiver_request_seat_all_topic"][0]%self._seat_number
-        report_req = self._cv.get_lock_format(self._seat_number+1)
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
+        report_req = json.dumps({"lock": "?"})
         self._mqttc.publish(topic,report_req)
         return report_req
 
@@ -950,8 +912,8 @@ class VRxSeat(BaseVRxSeat):
 
     def set_message_direct(self, message):
         """Send a raw message to the OSD"""
-        topic = mqtt_publish_topics["cv1"]["receiver_command_seat_topic"][0]%self._seat_number
-        cmd = self._cv.set_user_message(self._cv.bc_id, message)
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
+        cmd = json.dumps({"user_msg" : message})
         self._mqttc.publish(topic, cmd)
         return cmd
 
@@ -966,32 +928,32 @@ class VRxSeat(BaseVRxSeat):
 
 class VRxBroadcastSeat(BaseVRxSeat):
     def __init__(self,
-                 mqtt_client,
-                 cv
+                 mqtt_client
                  ):
-        BaseVRxSeat.__init__(self, mqtt_client, cv)
+        BaseVRxSeat.__init__(self, mqtt_client)
         self._cv_broadcast_id = clearview.comspecs.clearview_specs['bc_id']
         self._broadcast_cmd_topic = mqtt_publish_topics["cv1"]["receiver_command_all"][0]
-        self._rx_cmd_esp_all_topic = mqtt_publish_topics["cv1"]["receiver_command_esp_all"][0]
+        self._rx_cmd_esp_all_topic = mqtt_publish_topics["cv1"]["receiver_command_esp_all_topic"][0]
 
     def set_message_direct(self, message):
         """Send a raw message to all OSD's"""
-        topic = self._broadcast_cmd_topic
-        cmd = self._cv.set_user_message(self._cv_broadcast_id, message)
+        topic = self._rx_cmd_esp_all_topic
+        cmd = json.dumps({"user_msg" : message})
         self._mqttc.publish(topic, cmd)
         return cmd
 
     def turn_off_osd(self):
         """Turns off all OSD elements except user message"""
-        topic = self._broadcast_cmd_topic
-        cmd = self._cv.hide_osd(self._cv_broadcast_id)
-        self._mqttc.publish(topic, cmd)
-        return cmd
+        raise NotImplementedError
+        # topic = self._rx_cmd_esp_all_topicc
+        # cmd = self._cv.hide_osd(self._cv_broadcast_id)
+        # self._mqttc.publish(topic, cmd)
+        # return cmd
 
     def reset_lock(self):
         """ Resets lock of all receivers"""
-        topic = self._broadcast_cmd_topic
-        cmd = self._cv.reset_lock(self._cv_broadcast_id)
+        topic = self._rx_cmd_esp_all_topic
+        cmd = json.dumps({"lock": "1"})
         self._mqttc.publish(topic, cmd)
         return cmd
 
@@ -1006,8 +968,8 @@ class VRxBroadcastSeat(BaseVRxSeat):
         self._mqttc.publish(topic,cmd)
 
     def get_seat_lock_status(self,):
-        topic = mqtt_publish_topics["cv1"]["receiver_request_all_topic"][0]
-        report_req = self._cv.get_lock_format(self._cv_broadcast_id)
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_all_topic"][0]
+        report_req = json.dumps({"lock":"?"})
         self._mqttc.publish(topic,report_req)
         return report_req
 
