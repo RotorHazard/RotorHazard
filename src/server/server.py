@@ -501,6 +501,8 @@ def vrxstatus():
     else:
         return False
 
+# Documentation Viewer
+
 @APP.route('/docs')
 def viewDocs():
     '''Route to doc viewer.'''
@@ -695,6 +697,8 @@ def on_load_data(data):
             emit_imdtabler_page(nobroadcast=True)
         elif load_type == 'vrx_list':
             emit_vrx_list(nobroadcast=True)
+        elif load_type == 'backups_list':
+            on_list_backups()
         elif load_type == 'cluster_status':
             emit_cluster_status()
         elif load_type == 'hardware_log_init':
@@ -1384,7 +1388,7 @@ def on_set_profile(data, emit_vals=True):
         hardware_set_all_exit_ats(exit_ats)
 
     else:
-        logger.warn('Invalid set_profile value: ' + str(profile_val))
+        logger.warning('Invalid set_profile value: ' + str(profile_val))
 
 @SOCKET_IO.on('backup_database')
 @catchLogExceptionsWrapper
@@ -1403,7 +1407,79 @@ def on_backup_database():
         'file_name': emit_payload['file_name'],
         })
 
-    SOCKET_IO.emit('database_bkp_done', emit_payload)
+    emit('database_bkp_done', emit_payload)
+    on_list_backups()
+
+@SOCKET_IO.on('list_backups')
+@catchLogExceptionsWrapper
+def on_list_backups():
+    '''List database files in db_bkp'''
+
+    if not os.path.exists(DB_BKP_DIR_NAME):
+        emit_payload = {
+            'backup_files': None
+        }
+    else:
+        files = []
+        for (_, _, filenames) in os.walk(DB_BKP_DIR_NAME):
+            files.extend(filenames)
+            break
+
+        emit_payload = {
+            'backup_files': files
+        }
+
+    emit('backups_list', emit_payload)
+
+@SOCKET_IO.on('restore_database')
+@catchLogExceptionsWrapper
+def on_restore_database(data):
+    '''Restore database.'''
+    if 'backup_file' in data:
+        backup_file = data['backup_file']
+        backup_path = DB_BKP_DIR_NAME + '/' + backup_file
+
+        if os.path.exists(backup_path):
+            logger.info('Found {0}: starting restoration...'.format(backup_file))
+            DB.session.close()
+            recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
+
+            emit_payload = {
+                'file_name': backup_file
+            }
+
+            Events.trigger(Evt.DATABASE_RESTORE, {
+                'file_name': backup_file,
+                })
+
+            SOCKET_IO.emit('database_restore_done', emit_payload)
+        else:
+            logger.warning('Unable to restore {0}: File does not exist'.format(backup_file))
+
+@SOCKET_IO.on('delete_database')
+@catchLogExceptionsWrapper
+def on_delete_database(data):
+    '''Restore database.'''
+    if 'backup_file' in data:
+        backup_file = data['backup_file']
+        backup_path = DB_BKP_DIR_NAME + '/' + backup_file
+
+        if os.path.exists(backup_path):
+            logger.info('Deleting backup file {0}'.format(backup_file))
+            os.remove(backup_path)
+
+            emit_payload = {
+                'file_name': backup_file
+            }
+
+            Events.trigger(Evt.DATABASE_DELETE_BACKUP, {
+                'file_name': backup_file,
+                })
+
+            SOCKET_IO.emit('database_delete_done', emit_payload)
+            on_list_backups()
+        else:
+            logger.warning('Unable to delete {0}: File does not exist'.format(backup_file))
 
 @SOCKET_IO.on('reset_database')
 @catchLogExceptionsWrapper
@@ -2650,10 +2726,11 @@ def imdtabler_update_freqs(data):
 @SOCKET_IO.on('clean_cache')
 @catchLogExceptionsWrapper
 def clean_results_cache():
-    ''' expose cach wiping for frontend debugging '''
+    ''' wipe all results caches '''
     global FULL_RESULTS_CACHE_VALID
     Results.invalidate_all_caches(DB)
     FULL_RESULTS_CACHE_VALID = False
+    emit_round_data_notify()
 
 # Socket io emit functions
 
@@ -3082,7 +3159,7 @@ def emit_round_data_thread(params, sid):
                 if FULL_RESULTS_CACHE_BUILDING is False:
                     break
                 elif monotonic() > FULL_RESULTS_CACHE_BUILDING + CACHE_TIMEOUT:
-                    logger.warn('T%d: Timed out waiting for other cache build thread', timing['start'])
+                    logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
                     FULL_RESULTS_CACHE_BUILDING = False
                     break
 
@@ -3139,7 +3216,7 @@ def emit_round_data_thread(params, sid):
                                 results = round.results
                                 break
                             elif monotonic() > expires:
-                                logger.warn('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, round.round_id)
+                                logger.warning('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, round.round_id)
                                 error_flag = True
                                 break
 
@@ -3165,7 +3242,7 @@ def emit_round_data_thread(params, sid):
                             results = heatdata.results
                             break
                         elif monotonic() > expires:
-                            logger.warn('T%d: Cache build timed out: Heat Summary %d', timing['start'], heat.heat_id)
+                            logger.warning('T%d: Cache build timed out: Heat Summary %d', timing['start'], heat.heat_id)
                             error_flag = True
                             break
 
@@ -3205,7 +3282,7 @@ def emit_round_data_thread(params, sid):
                             results = race_class.results
                             break
                         elif monotonic() > expires:
-                            logger.warn('T%d: Cache build timed out: Class Summary %d', timing['start'], race_class.id)
+                            logger.warning('T%d: Cache build timed out: Class Summary %d', timing['start'], race_class.id)
                             error_flag = True
                             break
 
@@ -3235,7 +3312,7 @@ def emit_round_data_thread(params, sid):
                         results = json.loads(Options.get("eventResults"))
                         break
                     elif monotonic() > expires:
-                        logger.warn('Cache build timed out: Event Summary')
+                        logger.warning('Cache build timed out: Event Summary')
                         error_flag = True
                         break
 
@@ -3251,7 +3328,7 @@ def emit_round_data_thread(params, sid):
 
             FULL_RESULTS_CACHE_BUILDING = False
             if error_flag:
-                logger.warn('T%d: Cache results build failed; leaving page cache invalid', timing['start'])
+                logger.warning('T%d: Cache results build failed; leaving page cache invalid', timing['start'])
                 # pass message to front-end? ***
             else:
 
@@ -4360,7 +4437,7 @@ def get_legacy_table_data(metadata, table_name, filter_crit=None, filter_value=N
             return table.select().execute().fetchall()
         return table.select().execute().filter(filter_crit==filter_value).fetchall()
     except Exception as ex:
-        logger.warn('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
+        logger.warning('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
 
 def restore_table(class_type, table_query_data, **kwargs):
     if table_query_data:
@@ -4396,15 +4473,15 @@ def restore_table(class_type, table_query_data, **kwargs):
                     DB.session.flush()
             logger.info('Database table "{0}" restored'.format(class_type.__name__))
         except Exception as ex:
-            logger.warn('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
+            logger.warning('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
             logger.debug(traceback.format_exc())
 
-def recover_database():
+def recover_database(dbfile, **kwargs):
     try:
         logger.info('Recovering data from previous database')
 
         # load file directly
-        engine = create_engine('sqlite:///%s' % DB_FILE_NAME, convert_unicode=True)
+        engine = create_engine('sqlite:///%s' % dbfile, convert_unicode=True)
         metadata = MetaData(bind=engine)
         pilot_query_data = get_legacy_table_data(metadata, 'pilot')
         heat_query_data = get_legacy_table_data(metadata, 'heat')
@@ -4475,9 +4552,11 @@ def recover_database():
                     profile.exit_ats = json.dumps(exit_ats)
 
     except Exception as ex:
-        logger.warn('Error reading data from previous database:  ' + str(ex))
+        logger.warning('Error reading data from previous database:  ' + str(ex))
 
-    backup_db_file(False)  # rename and move DB file
+    if "startup" in kwargs:
+        backup_db_file(False)  # rename and move DB file
+
     db_init()
 
     # primary data recovery
@@ -4559,7 +4638,7 @@ def recover_database():
         logger.info('UI Options restored')
 
     except Exception as ex:
-        logger.warn('Error while writing data from previous database:  ' + str(ex))
+        logger.warning('Error while writing data from previous database:  ' + str(ex))
         logger.debug(traceback.format_exc())
 
     # secondary data recovery
@@ -4587,7 +4666,7 @@ def recover_database():
             })
 
     except Exception as ex:
-        logger.warn('Error while writing data from previous database:  ' + str(ex))
+        logger.warning('Error while writing data from previous database:  ' + str(ex))
         logger.debug(traceback.format_exc())
 
     DB.session.commit()
@@ -4797,24 +4876,24 @@ if RACE.num_nodes > 0:
     elif serverInfo['node_api_lowest'] < NODE_API_BEST:
         logger.info('** NOTICE: Node firmware update is available **')
     elif serverInfo['node_api_lowest'] > NODE_API_BEST:
-        logger.warn('** WARNING: Node firmware is newer than this server version supports **')
+        logger.warning('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
     try:
         if Options.getInt('server_api') < SERVER_API:
             logger.info('Old server API version; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
         elif not Database.Heat.query.count():
             logger.info('Heats are empty; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
         elif not Database.Profiles.query.count():
             logger.info('Profiles are empty; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
         elif not Database.RaceFormat.query.count():
             logger.info('Formats are empty; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
     except Exception as ex:
-        logger.warn('Clearing all data after recovery failure:  ' + str(ex))
+        logger.warning('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()
 
 # Expand heats (if number of nodes increases)
