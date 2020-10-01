@@ -65,11 +65,11 @@ MultiNadirSendBuffer<1> testNadirBuffer1;
 unittest(historyBuffer_multi1_withoutReads) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiNode.setSendBuffers(&testPeakBuffer1, &testNadirBuffer1);
   rssiNode.setFilter(&testFilter);
   State& state = rssiNode.getState();
   LastPass& lastPass = rssiNode.getLastPass();
   History& history = rssiNode.getHistory();
+  history.setSendBuffers(&testPeakBuffer1, &testNadirBuffer1);
   rssiNode.start();
   rssiNode.resetState();
 
@@ -137,10 +137,10 @@ unittest(historyBuffer_multi1_withoutReads) {
 unittest(historyBuffer_multi1_withReads) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiNode.setSendBuffers(&testPeakBuffer1, &testNadirBuffer1);
   State& state = rssiNode.getState();
   LastPass& lastPass = rssiNode.getLastPass();
   History& history = rssiNode.getHistory();
+  history.setSendBuffers(&testPeakBuffer1, &testNadirBuffer1);
   rssiNode.start();
   rssiNode.resetState();
 

@@ -46,9 +46,9 @@ unittest(slowCrossing) {
   assertEqual(50, (int)state.passRssiNadir);
 
   if (duration > 0) {
-      assertEqual(0, (int)history.rssiChange);
+      assertEqual(0, (int)history.prevRssiChange);
   } else {
-      assertEqual(80, (int)history.rssiChange);
+      assertEqual(80, (int)history.prevRssiChange);
   }
   assertEqual(130, (int)history.peak.rssi); // first upward trend
   assertEqual(timestamp(3), (int)history.peak.firstTime);
@@ -70,7 +70,7 @@ unittest(slowCrossing) {
   assertFalse(isPeakValid(state.passPeak)); // crossing/pass finished
   assertEqual(70, (int)state.passRssiNadir);
 
-  assertEqual(-60, (int)history.rssiChange);
+  assertEqual(-60, (int)history.prevRssiChange);
   assertEqual(130, (int)history.peak.rssi);
   assertEqual(timestamp(3), (int)history.peak.firstTime);
   assertEqual(time(1+duration)-1, (int)history.peak.duration);

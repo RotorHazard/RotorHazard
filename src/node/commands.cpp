@@ -180,9 +180,7 @@ void Message::handleReadCommand(bool serialFlag)
             buffer.write16(uint16_t(state.loopTimeMicros));
             // set flag if 'crossing' in progress
             uint8_t flags = state.crossing ? (uint8_t)LAPSTATS_FLAG_CROSSING : (uint8_t)0;
-            if (!history.peakSend->isEmpty()
-                  && (history.nadirSend->isEmpty()
-                    || (history.peakSend->first().firstTime < history.nadirSend->first().firstTime)))
+            if (history.canSendPeakNext())
             {
                 flags |= LAPSTATS_FLAG_PEAK;
             }
@@ -190,17 +188,13 @@ void Message::handleReadCommand(bool serialFlag)
             ioBufferWriteRssi(buffer, lastPass.rssiNadir);  // lowest rssi since end of last pass
             ioBufferWriteRssi(buffer, state.nodeRssiNadir);
 
-            if (!history.peakSend->isEmpty()
-                  && (history.nadirSend->isEmpty()
-                    || (history.peakSend->first().firstTime < history.nadirSend->first().firstTime)))
+            if (history.canSendPeakNext())
             {
                 // send peak
                 ioBufferWriteExtremum(buffer, history.peakSend->first(), now);
                 history.peakSend->removeFirst();
             }
-            else if (!history.nadirSend->isEmpty()
-                  && (history.peakSend->isEmpty()
-                    || (history.nadirSend->first().firstTime < history.peakSend->first().firstTime)))
+            else if (history.canSendNadirNext())
             {
                 // send nadir
                 ioBufferWriteExtremum(buffer, history.nadirSend->first(), now);

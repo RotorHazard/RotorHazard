@@ -1,21 +1,21 @@
 #include "config.h"
 #include "rssi.h"
 
+inline void initExtremum(Extremum& e, rssi_t rssi, mtime_t ts)
+{
+    e.rssi = rssi;
+    e.firstTime = ts;
+    e.duration = 0;
+}
+
 RssiNode::RssiNode()
 {
     setFilter(&defaultFilter);
-    setSendBuffers(&defaultPeakSendBuffer, &defaultNadirSendBuffer);
 }
 
 void RssiNode::setFilter(Filter<rssi_t> *f)
 {
     filter = f;
-}
-
-void RssiNode::setSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir)
-{
-    history.peakSend = peak;
-    history.nadirSend = nadir;
 }
 
 void RssiNode::start()
@@ -30,64 +30,8 @@ bool RssiNode::isStateValid()
 
 void RssiNode::resetState()
 {
-    state.crossing = false;
-    invalidatePeak(state.passPeak);
-    state.passRssiNadir = MAX_RSSI;
-    state.nodeRssiPeak = 0;
-    state.nodeRssiNadir = MAX_RSSI;
-    invalidatePeak(history.peak);
-    history.hasPendingPeak = false;
-    history.peakSend->clear();
-    invalidateNadir(history.nadir);
-    history.hasPendingNadir = false;
-    history.nadirSend->clear();
-}
-
-void RssiNode::bufferHistoricPeak(bool force)
-{
-    if (history.hasPendingPeak)
-    {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            bool buffered = history.peakSend->addIfAvailable(history.peak);
-            if (buffered)
-            {
-                history.hasPendingPeak = false;
-            }
-            else if (force)
-            {
-                history.peakSend->addOrDiscard(history.peak);
-                history.hasPendingPeak = false;
-            }
-        }
-    }
-}
-
-void RssiNode::bufferHistoricNadir(bool force)
-{
-    if (history.hasPendingNadir)
-    {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            bool buffered = history.nadirSend->addIfAvailable(history.nadir);
-            if (buffered)
-            {
-                history.hasPendingNadir = false;
-            }
-            else if (force)
-            {
-                history.nadirSend->addOrDiscard(history.nadir);
-                history.hasPendingNadir = false;
-            }
-        }
-    }
-}
-
-void RssiNode::initExtremum(Extremum& e)
-{
-    e.rssi = state.rssi;
-    e.firstTime = state.rssiTimestamp;
-    e.duration = 0;
+    state.reset();
+    history.reset();
 }
 
 bool RssiNode::process(rssi_t rssi, mtime_t millis)
@@ -97,45 +41,29 @@ bool RssiNode::process(rssi_t rssi, mtime_t millis)
     if (filter->isFilled() && state.activatedFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received
 
-        state.lastRssi = state.rssi;
-        state.rssi = filter->getFilteredValue();
-        state.rssiTimestamp = filter->getFilterTimestamp();
+        const int rssiChange = state.readRssiFromFilter(filter);
 
         /*** update history ***/
 
-        const int rssiChange = state.rssi - state.lastRssi;
         if (rssiChange > 0)
         {  // RSSI is rising
-            // must buffer latest peak to prevent losing it (overwriting any unsent peak)
-            bufferHistoricPeak(true);
 
-            initExtremum(history.peak);
+            // whenever history is rising, record the time and value as a peak
+            history.startNewPeak(state.rssi, state.rssiTimestamp);
 
             // if RSSI was falling or unchanged, but it's rising now, we found a nadir
             // copy the values to be sent in the next loop
-            if (history.rssiChange <= 0)
-            {  // was falling or unchanged
-                // declare a new nadir
-                history.hasPendingNadir = true;
-            }
-
+            history.checkForNadir();
         }
         else if (rssiChange < 0)
         {  // RSSI is falling
-            // must buffer latest nadir to prevent losing it (overwriting any unsent nadir)
-            bufferHistoricNadir(true);
 
             // whenever history is falling, record the time and value as a nadir
-            initExtremum(history.nadir);
+            history.startNewNadir(state.rssi, state.rssiTimestamp);
 
             // if RSSI was rising or unchanged, but it's falling now, we found a peak
             // copy the values to be sent in the next loop
-            if (history.rssiChange >= 0)
-            {  // was rising or unchanged
-                // declare a new peak
-                history.hasPendingPeak = true;
-            }
-
+            history.checkForPeak();
         }
         else
         {  // RSSI is equal
@@ -145,8 +73,7 @@ bool RssiNode::process(rssi_t rssi, mtime_t millis)
                         MAX_DURATION);
                 if (history.peak.duration == MAX_DURATION)
                 {
-                    bufferHistoricPeak(true);
-                    initExtremum(history.peak);
+                    history.startNewPeak(state.rssi, state.rssiTimestamp);
                 }
             }
             else if (state.rssi == history.nadir.rssi)
@@ -155,30 +82,16 @@ bool RssiNode::process(rssi_t rssi, mtime_t millis)
                         MAX_DURATION);
                 if (history.nadir.duration == MAX_DURATION)
                 {
-                    bufferHistoricNadir(true);
-                    initExtremum(history.nadir);
+                    history.startNewNadir(state.rssi, state.rssiTimestamp);
                 }
             }
         }
 
-        // clamp to prevent overflow
-        history.rssiChange = constrain(rssiChange, -127, 127);
+        history.recordRssiChange(rssiChange);
 
         // try to buffer latest peak/nadir (don't overwrite any unsent peak/nadir)
-        bufferHistoricPeak(false);
-        bufferHistoricNadir(false);
-
-        /*** node lifetime RSSI max/min ***/
-
-        if (state.rssi > state.nodeRssiPeak)
-        {
-            state.nodeRssiPeak = state.rssi;
-        }
-
-        if (state.rssi < state.nodeRssiNadir)
-        {
-            state.nodeRssiNadir = state.rssi;
-        }
+        history.bufferPeak();
+        history.bufferNadir();
 
         /*** crossing transition ***/
 
@@ -200,7 +113,7 @@ bool RssiNode::process(rssi_t rssi, mtime_t millis)
             if (state.rssi > state.passPeak.rssi)
             {
                 // this is first time this peak RSSI value was seen, so save value and timestamp
-                initExtremum(state.passPeak);
+                initExtremum(state.passPeak, state.rssi, state.rssiTimestamp);
             }
             else if (state.rssi == state.passPeak.rssi)
             {
@@ -219,8 +132,7 @@ bool RssiNode::process(rssi_t rssi, mtime_t millis)
 
     // Calculate the time it takes to run the main loop
     utime_t loopMicros = micros();
-    state.loopTimeMicros = loopMicros - state.lastloopMicros;
-    state.lastloopMicros = loopMicros;
+    state.updateLoopTime(loopMicros);
 
     return state.crossing;
 }
@@ -239,7 +151,161 @@ void RssiNode::endCrossing()
     }
 
     // reset lap-pass variables
-    state.crossing = false;
-    state.passPeak.rssi = 0;
-    state.passRssiNadir = MAX_RSSI;
+    state.resetPass();
+}
+
+
+int State::readRssiFromFilter(Filter<rssi_t>* filter)
+{
+    lastRssi = rssi;
+    rssi = filter->getFilteredValue();
+    rssiTimestamp = filter->getFilterTimestamp();
+
+    /*** node lifetime RSSI max/min ***/
+
+    if (rssi > nodeRssiPeak)
+    {
+        nodeRssiPeak = rssi;
+    }
+
+    if (rssi < nodeRssiNadir)
+    {
+        nodeRssiNadir = rssi;
+    }
+
+    // ensure signed arithmetic
+    return (int)rssi - (int)lastRssi;  
+}
+
+void State::updateLoopTime(utime_t loopMicros)
+{
+    loopTimeMicros = loopMicros - lastloopMicros;
+    lastloopMicros = loopMicros;
+}
+
+void State::resetPass()
+{
+    crossing = false;
+    passPeak.rssi = 0;
+    passRssiNadir = MAX_RSSI;
+}
+
+void State::reset()
+{
+    crossing = false;
+    invalidatePeak(passPeak);
+    passRssiNadir = MAX_RSSI;
+    nodeRssiPeak = 0;
+    nodeRssiNadir = MAX_RSSI;
+}
+
+
+History::History()
+{
+    setSendBuffers(&defaultPeakSendBuffer, &defaultNadirSendBuffer);
+}
+
+void History::setSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir)
+{
+    peakSend = peak;
+    nadirSend = nadir;
+}
+
+void History::startNewPeak(rssi_t rssi, mtime_t ts) {
+  // must buffer latest peak to prevent losing it
+  bufferPeak(true);
+  // reset peak
+  initExtremum(peak, rssi, ts);
+}
+
+void History::startNewNadir(rssi_t rssi, mtime_t ts) {
+  // must buffer latest nadir to prevent losing it
+  bufferNadir(true);
+  // reset nadir
+  initExtremum(nadir, rssi, ts);
+}
+
+void History::bufferPeak(bool force)
+{
+    if (hasPendingPeak)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            bool buffered = peakSend->addIfAvailable(peak);
+            if (buffered)
+            {
+                hasPendingPeak = false;
+            }
+            else if (force)
+            {
+                peakSend->addOrDiscard(peak);
+                hasPendingPeak = false;
+            }
+        }
+    }
+}
+
+void History::bufferNadir(bool force)
+{
+    if (hasPendingNadir)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            bool buffered = nadirSend->addIfAvailable(nadir);
+            if (buffered)
+            {
+                hasPendingNadir = false;
+            }
+            else if (force)
+            {
+                nadirSend->addOrDiscard(nadir);
+                hasPendingNadir = false;
+            }
+        }
+    }
+}
+
+void History::recordRssiChange(int delta)
+{
+  // clamp to prevent overflow
+  prevRssiChange = constrain(delta, -127, 127);
+}
+
+bool History::canSendPeakNext()
+{
+  return peakSend->isEmpty() && (nadirSend->isEmpty() || (peakSend->first().firstTime < nadirSend->first().firstTime));
+}
+
+bool History::canSendNadirNext()
+{
+  return !nadirSend->isEmpty() && (peakSend->isEmpty() || (nadirSend->first().firstTime < peakSend->first().firstTime));
+}
+
+void History::checkForPeak()
+{
+  if (prevRssiChange >= 0 && isPeakValid(peak))
+  {  // was rising or unchanged
+      // declare a new peak
+      hasPendingPeak = true;
+  }
+}
+
+void History::checkForNadir()
+{
+  if (prevRssiChange <= 0 && isNadirValid(nadir))
+  {  // was falling or unchanged
+      // declare a new nadir
+      hasPendingNadir = true;
+  }
+}
+
+void History::reset()
+{
+    invalidatePeak(peak);
+    hasPendingPeak = false;
+    peakSend->clear();
+    invalidateNadir(nadir);
+    hasPendingNadir = false;
+    nadirSend->clear();
+    prevRssiChange = 0;
 }

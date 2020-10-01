@@ -24,9 +24,9 @@
 #define FILTER_IMPL FILTER_MEDIAN
 
 #define PEAK_SENDBUFFER_SINGLE SinglePeakSendBuffer
-#define PEAK_SENDBUFFFER_MULTI MultiSendBuffer<Extremum,10>
+#define PEAK_SENDBUFFER_MULTI MultiSendBuffer<Extremum,10>
 #define NADIR_SENDBUFFER_SINGLE SingleNadirSendBuffer
-#define NADIR_SENDBUFFFER_MULTI MultiSendBuffer<Extremum,10>
+#define NADIR_SENDBUFFER_MULTI MultiSendBuffer<Extremum,10>
 
 //select the send buffer to use here
 #define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_SINGLE
@@ -41,8 +41,13 @@ struct Settings
     rssi_t volatile exitAtLevel = 80;
 };
 
-struct State
+class State
 {
+public:
+    // variables to track the loop time
+    utime_t volatile loopTimeMicros = 0;
+    utime_t lastloopMicros = 0;
+
     bool volatile crossing = false; // True when the quad is going through the gate
     rssi_t volatile rssi = 0; // Smoothed rssi value
     rssi_t lastRssi = 0;
@@ -56,22 +61,49 @@ struct State
 
     bool volatile activatedFlag = false; // Set true after initial WRITE_FREQUENCY command received
 
-    // variables to track the loop time
-    utime_t volatile loopTimeMicros = 0;
-    utime_t lastloopMicros = 0;
+    /**
+     * Returns the RSSI change since the last reading.
+     */
+    inline int readRssiFromFilter(Filter<rssi_t>* f);
+    inline void updateLoopTime(utime_t loopMicros);
+    inline void resetPass();
+    inline void reset();
 };
 
-struct History
+class History
 {
-    Extremum peak = {0, 0, 0};
-    bool volatile hasPendingPeak = false;
-    SendBuffer<Extremum> *peakSend = nullptr;
+private:
+    PEAK_SENDBUFFER_IMPL defaultPeakSendBuffer;
+    NADIR_SENDBUFFER_IMPL defaultNadirSendBuffer;
 
+    bool hasPendingPeak = false;
+    bool hasPendingNadir = false;
+
+    void bufferPeak(bool force);
+    void bufferNadir(bool force);
+
+#ifdef __TEST__
+public:
+#endif
+    int8_t prevRssiChange = 0; // >0 for raising, <0 for falling
+public:
+    Extremum peak = {0, 0, 0};
     Extremum nadir = {MAX_RSSI, 0, 0};
-    bool volatile hasPendingNadir = false;
+    SendBuffer<Extremum> *peakSend = nullptr;
     SendBuffer<Extremum> *nadirSend = nullptr;
 
-    int8_t rssiChange = 0; // >0 for raising, <0 for falling
+    History();
+    void setSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir);
+    inline void startNewPeak(rssi_t rssi, mtime_t ts);
+    inline void startNewNadir(rssi_t rssi, mtime_t ts);
+    void bufferPeak() {bufferPeak(false);};
+    void bufferNadir() {bufferNadir(false);};
+    inline void recordRssiChange(int delta);
+    bool canSendPeakNext();
+    inline void checkForPeak();
+    bool canSendNadirNext();
+    inline void checkForNadir();
+    inline void reset();
 };
 
 struct LastPass
@@ -86,24 +118,17 @@ class RssiNode
 {
 private:
     FILTER_IMPL defaultFilter;
-    PEAK_SENDBUFFER_IMPL defaultPeakSendBuffer;
-    NADIR_SENDBUFFER_IMPL defaultNadirSendBuffer;
 
     struct Settings settings;
-    struct State state;
-    struct History history;
+    State state;
+    History history;
     struct LastPass lastPass;
 
     Filter<rssi_t> *filter;
 
-    void bufferHistoricPeak(bool force);
-    void bufferHistoricNadir(bool force);
-    void initExtremum(Extremum& e);
-
 public:
     RssiNode();
     void setFilter(Filter<rssi_t> *f);
-    void setSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir);
     void start();
     bool isStateValid();
     /**
