@@ -199,10 +199,16 @@ class RHInterface(BaseHardwareInterface):
                         if node.api_level >= 21:
                             offset_peakRssi = 11
                             offset_peakFirstTime = 12
-                            offset_peakLastTime = 14
+                            if node.api_level >= 26:
+                                offset_peakDuration = 14
+                            else:
+                                offset_peakLastTime = 14
                             offset_nadirRssi = 11
                             offset_nadirFirstTime = 12
-                            offset_nadirLastTime = 14
+                            if node.api_level >= 26:
+                                offset_nadirDuration = 14
+                            else:
+                                offset_nadirLastTime = 14
                         else:
                             offset_peakRssi = 11
                             offset_peakFirstTime = 12
@@ -238,7 +244,10 @@ class RHInterface(BaseHardwareInterface):
                                         if node.is_valid_rssi(rssi_val):
                                             pn_history.peakRssi = rssi_val
                                             pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
-                                            pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
+                                            if node.api_level >= 26:
+                                                pn_history.peakLastTime = pn_history.peakFirstTime - unpack_16(data[offset_peakDuration:])   # ms *since* the last peak time
+                                            else:
+                                                pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
                                         elif rssi_val > 0:
                                             self.log('History peak RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
                                     else:
@@ -246,7 +255,10 @@ class RHInterface(BaseHardwareInterface):
                                         if node.is_valid_rssi(rssi_val):
                                             pn_history.nadirRssi = rssi_val
                                             pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
-                                            pn_history.nadirLastTime = unpack_16(data[offset_nadirLastTime:])
+                                            if node.api_level >= 26:
+                                                pn_history.nadirLastTime = pn_history.nadirFirstTime - unpack_16(data[offset_nadirDuration:])
+                                            else:
+                                                pn_history.nadirLastTime = unpack_16(data[offset_nadirLastTime:])
                                         elif rssi_val > 0:
                                             self.log('History nadir RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
                                 else:
