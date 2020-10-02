@@ -2420,7 +2420,6 @@ def on_set_current_heat(data):
         autoUpdateCalibration()
 
     trigger_event(Evt.HEAT_SET, {
-        #'race': RACE,  # TODO this causes exceptions via 'json.loads()', so leave out for now
         'heat_id': new_heat_id,
         })
 
@@ -4020,7 +4019,6 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         RACE.cacheStatus = Results.CacheStatus.VALID
 
                         trigger_event(Evt.RACE_LAP_RECORDED, {
-                            #'race': RACE,  # TODO this causes exceptions via 'json.loads()', so leave out for now
                             'node_index': node.index,
                             })
 
@@ -4759,6 +4757,7 @@ def initVRxController():
     vrx_config = Config.VRX_CONTROL
     return VRxController(Events,
        vrx_config,
+       RACE,
        [node.frequency for node in INTERFACE.nodes])
 
 def killVRxController(*args):
