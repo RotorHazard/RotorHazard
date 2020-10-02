@@ -2,6 +2,59 @@
 #include <Godmode.h>
 #include "../rssi.h"
 #include "util.h"
+#include "../util/single-sendbuffer.h"
+
+unittest(historyBuffer_prefers_biggest_peak) {
+    Extremum e = {23, 2, 100};
+    SinglePeakSendBuffer buffer;
+    assertTrue(buffer.addIfAvailable(e));
+    e.rssi = 20;
+    buffer.addOrDiscard(e);
+    e = buffer.first();
+    assertEqual(23, (int)e.rssi);
+    e.rssi = 27;
+    buffer.addOrDiscard(e);
+    e = buffer.first();
+    assertEqual(27, (int)e.rssi);
+}
+
+unittest(historyBuffer_merges_peak) {
+    Extremum e = {23, 2, 100};
+    SinglePeakSendBuffer buffer;
+    assertTrue(buffer.addIfAvailable(e));
+    e.firstTime = 102, e.duration = 10;
+    buffer.addOrDiscard(e);
+    e = buffer.first();
+    assertEqual(23, (int)e.rssi);
+    assertEqual(2, e.firstTime);
+    assertEqual(110, e.duration);
+}
+
+unittest(historyBuffer_prefers_smallest_nadir) {
+    Extremum e = {23, 2, 100};
+    SingleNadirSendBuffer buffer;
+    assertTrue(buffer.addIfAvailable(e));
+    e.rssi = 27;
+    buffer.addOrDiscard(e);
+    e = buffer.first();
+    assertEqual(23, (int)e.rssi);
+    e.rssi = 20;
+    buffer.addOrDiscard(e);
+    e = buffer.first();
+    assertEqual(20, (int)e.rssi);
+}
+
+unittest(historyBuffer_merges_nadir) {
+    Extremum e = {23, 2, 100};
+    SingleNadirSendBuffer buffer;
+    assertTrue(buffer.addIfAvailable(e));
+    e.firstTime = 102, e.duration = 10;
+    buffer.addOrDiscard(e);
+    e = buffer.first();
+    assertEqual(23, (int)e.rssi);
+    assertEqual(2, e.firstTime);
+    assertEqual(110, e.duration);
+}
 
 /**
  * Tests history buffer.
