@@ -18,9 +18,9 @@
 #define FILTER_IMPL FILTER_MEDIAN
 
 #define PEAK_SENDBUFFER_SINGLE SinglePeakSendBuffer
-#define PEAK_SENDBUFFFER_MULTI MultiSendBuffer<Extremum,10>
+#define PEAK_SENDBUFFER_MULTI MultiPeakSendBuffer<10>
 #define NADIR_SENDBUFFER_SINGLE SingleNadirSendBuffer
-#define NADIR_SENDBUFFFER_MULTI MultiSendBuffer<Extremum,10>
+#define NADIR_SENDBUFFER_MULTI MultiNadirSendBuffer<10>
 
 //select the send buffer to use here
 #define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_SINGLE
