@@ -4,6 +4,8 @@
 #include "rhtypes.h"
 #include "sendbuffer.h"
 
+#define endTime(x) ((x).firstTime + (x).duration)
+
 class SinglePeakSendBuffer : public SendBuffer<Extremum>
 {
     private:

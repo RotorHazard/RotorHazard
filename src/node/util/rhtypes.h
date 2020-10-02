@@ -20,6 +20,5 @@ struct Extremum
 #define isNadirValid(x) ((x).rssi != MAX_RSSI)
 #define invalidatePeak(x) ((x).rssi = 0)
 #define invalidateNadir(x) ((x).rssi = MAX_RSSI)
-#define endTime(x) ((x).firstTime + (x).duration)
 
 #endif
