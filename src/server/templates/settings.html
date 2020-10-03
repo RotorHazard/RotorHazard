@@ -1386,7 +1386,7 @@
 
 		socket.on('backups_list', function (msg) {
 			$('#database_list').empty();
-			if ('backup_files' in msg && msg.backup_files.length) {
+			if ('backup_files' in msg && msg.backup_files && msg.backup_files.length) {
 				for (file in msg.backup_files) {
 					dbfile = msg.backup_files[file];
 					$('#database_list').append('<option value="' + dbfile + '">' + dbfile + '</option>');
