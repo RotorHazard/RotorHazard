@@ -1104,6 +1104,7 @@ def on_delete_heat(data):
                             for heatnode in heatnodes:
                                 heatnode.heat_id = heat_obj.id
                             DB.session.commit()
+                            RACE.current_heat = 1
                         else:
                             logger.warn("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
                 except Exception as ex:
