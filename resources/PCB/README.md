@@ -27,6 +27,50 @@ Download the [gerber file](Gerber_PCB%20RotorHazard%20PCB%20rev.%201.2.zip) to p
 
 RotorHazrad does not manufacture PCBs and cannot guarantee the quality of any manufacturer. Thoroughly test any boards before connecting sensitive components.
 
+## Build Components
+
+### Required
+
+See (Hardware Setup)[https://github.com/RotorHazard/RotorHazard/blob/master/doc/Hardware%20Setup.md] for basic component requirements such as Arduinos, resistors, and receiver modules. The RotorHazard PCB offers mounting points for these components.
+
+In addition to the above building with the RotorHazard PCB requires:
+* 1× PCB (for timers with 1–4 nodes) or 2× PCB (timers with 5–8 nodes)
+* 1× 3V 2.5A regulator
+* 3× 10k resistor (0.25W or greater)
+
+The RotorHazard PCB is designed to fit the following components:
+* Arduino Nano
+* Pololu D24V25F5 ("enable" pin is not connected)
+* Pololu D24V25F3 ("enable" pin is not connected)
+
+### Recommended
+
+These components improve performance or significantly improve ease of use.
+
+* 2×15 pin female 0.1in headers for each Arduino
+* 1×9 pin female 0.1in header for each RX5808 module
+* Female 0.1in header for each voltage regulator (either 1×3 pin or 1×4 pin depending on regulator style)
+* 1×2 pin male 0.1in header with 2-pin jumper (for disconnecting power from the Pi)
+* 2×5 pin male connector for Pi GPIO (may be KANDA/ISP style or male gold-pin header)
+* Flat/ribbon cable or 10pcs jumper wires (2×5) for Pi GPIO
+* 4–6 3mm screws for each board (mounting board to case)
+
+If a 2nd PCB is used:
+* 2×5 pin male connector for each PCB
+* Flat/ribbon cable or 10pcs jumper wires (2×5) for PCB1 -> PCB2
+
+### Optional
+
+For a tidy build or to use with optional features, the following components may be added.
+
+* XT30 female connector (power in)
+* 1×3 pin female 0.1in header for each RX5808 module's antenna connector—do not solder center ANT pin
+* 1×3 pin male 0.1in header for LEDs (connect only DATA and GND if LED are powered with separate voltage source)
+* 1×6 pin female 0.1in header for INA219 sensor
+* 1×4 pin female 0.1in header for BME280 sensor
+* 1×2 0.1in header for grounding of RF shield (not needed if mounting screws are already connected to RF shield)
+* 1×2 0.1in header for connecting optional accessories to the VIN (such as a 12V case fan)
+
 ## Assembly
 
 This layout can be used as a primary board for up to 4 nodes when directly connected to the Pi, or a secondary board for up to 4 additional nodes. When connected directly it will be referred to as PCB1. If you are using only one board, follow all instructions for PCB1. A secondary board is referred to as PCB2.
