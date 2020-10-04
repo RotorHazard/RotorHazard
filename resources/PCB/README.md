@@ -31,7 +31,7 @@ RotorHazard does not manufacture PCBs and cannot guarantee the quality of any ma
 
 ### Required
 
-See (Hardware Setup)[https://github.com/RotorHazard/RotorHazard/blob/master/doc/Hardware%20Setup.md] for basic component requirements such as Arduinos, resistors, and receiver modules. The RotorHazard PCB offers mounting points for these components.
+See [Hardware Setup](https://github.com/RotorHazard/RotorHazard/blob/master/doc/Hardware%20Setup.md) for basic component requirements such as Arduinos, resistors, and receiver modules. The RotorHazard PCB offers mounting points for these components.
 
 In addition to the above building with the RotorHazard PCB requires:
 * 1× PCB (for timers with 1–4 nodes) or 2× PCB (timers with 5–8 nodes)
