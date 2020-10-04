@@ -140,6 +140,7 @@ serverInfo = None
 serverInfoItems = None
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
+server_ipaddress_str = None
 
 RACE = RHRace.RHRace() # For storing race management variables
 
@@ -4776,6 +4777,35 @@ def killVRxController(*args):
     logger.info('Killing VRxController')
     vrx_controller = None
 
+def determineHostAddress(maxRetrySecs=10):
+    ''' Determines local host IP address.  Will wait and retry to get valid IP, in
+        case system is starting up and needs time to connect to network and DHCP. '''
+    global server_ipaddress_str
+    if server_ipaddress_str:
+        return server_ipaddress_str  # if previously determined then return value
+    sTime = monotonic()
+    while True:
+        try:
+            ipAddrStr = RHUtils.getLocalIPAddress()
+            if ipAddrStr and ipAddrStr != "127.0.0.1":  # don't accept default-localhost IP
+                server_ipaddress_str = ipAddrStr
+                break
+            logger.debug("Querying of host IP address returned " + ipAddrStr)
+        except Exception as ex:
+            logger.debug("Error querying host IP address: " + str(ex))
+        if monotonic() > sTime + maxRetrySecs:
+            ipAddrStr = "0.0.0.0"
+            logger.warn("Unable to determine IP address for host machine")
+            break
+        gevent.sleep(1)
+    try:
+        hNameStr = socket.gethostname()
+    except Exception as ex:
+        logger.info("Error querying hostname: " + str(ex))
+        hNameStr = "UNKNOWN"
+    logger.info("Host machine is '{0}' at {1}".format(hNameStr, ipAddrStr))
+    return ipAddrStr
+
 #
 # Program Initialize
 #
@@ -4784,14 +4814,7 @@ logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEA
 logger.debug('Program started at {0:.1f}'.format(PROGRAM_START_EPOCH_TIME))
 RHUtils.idAndLogSystemInfo()
 
-server_ipaddress_str = None
-try:
-    server_ipaddress_str = RHUtils.getLocalIPAddress()
-    server_hostname_str = socket.gethostname()
-    logger.info("Host machine is '{0}' at {1}".format(server_hostname_str, server_ipaddress_str))
-except Exception as ex:
-    logger.info("Error querying hostname or IP: " + str(ex))
-    server_hostname_str = "UNKNOWN"
+determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
 
 # log results of module initializations
 Config.logInitResultMessage()
@@ -4839,7 +4862,7 @@ try:
         if 'address' not in slave_info:
             raise RuntimeError("Slave 'address' item not specified")
         # substitute asterisks in given address with values from host IP address
-        slave_info['address'] = RHUtils.substituteAddrWildcards(server_ipaddress_str, \
+        slave_info['address'] = RHUtils.substituteAddrWildcards(determineHostAddress, \
                                                                 slave_info['address'])
         if 'timeout' not in slave_info:
             slave_info['timeout'] = Config.GENERAL['SLAVE_TIMEOUT']
