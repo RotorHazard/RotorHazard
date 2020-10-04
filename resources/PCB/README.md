@@ -25,7 +25,7 @@ Download the [gerber file](Gerber_PCB%20RotorHazard%20PCB%20rev.%201.2.zip) to p
 
 ## Testing
 
-RotorHazrad does not manufacture PCBs and cannot guarantee the quality of any manufacturer. Thoroughly test any boards before connecting sensitive components.
+RotorHazard does not manufacture PCBs and cannot guarantee the quality of any manufacturer. Thoroughly test any boards before connecting sensitive components.
 
 ## Build Components
 
