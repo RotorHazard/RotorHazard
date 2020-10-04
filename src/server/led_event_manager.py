@@ -73,6 +73,28 @@ class NoLEDManager():
             return False
         return nothing
 
+# Similar to NoLEDManager but with enough support to send 'effect' events to cluster timers
+class ClusterLEDManager():
+    eventEffects = {}
+
+    def __init__(self):
+        pass
+
+    def isEnabled(self):
+        return False
+
+    def registerEffect(self, effect):
+        self.eventEffects[effect['name']] = effect
+        return True
+
+    def getRegisteredEffects(self):
+        return self.eventEffects
+
+    def __getattr__(self, *args, **kwargs):
+        def nothing(*args, **kwargs):
+            return False
+        return nothing
+
 '''
 Generic data structures for working with LED commands
 '''

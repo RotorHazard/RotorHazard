@@ -74,7 +74,7 @@ from eventmanager import Evt, EventManager
 Events = EventManager()
 
 # LED imports
-from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorPattern, hexToColor
+from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorPattern, hexToColor
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -1778,16 +1778,17 @@ def emit_led_effect_setup(**params):
         emit('led_effect_setup_data', emit_payload)
 
 def emit_led_effects(**params):
-    if led_manager.isEnabled():
+    if led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSlaves()):
         effects = led_manager.getRegisteredEffects()
 
         effect_list = []
-        for effect in effects:
-            if LEDEvent.NOCONTROL not in effects[effect]['validEvents']:
-                effect_list.append({
-                    'name': effect,
-                    'label': __(effects[effect]['label'])
-                })
+        if effects:
+            for effect in effects:
+                if LEDEvent.NOCONTROL not in effects[effect]['validEvents']:
+                    effect_list.append({
+                        'name': effect,
+                        'label': __(effects[effect]['label'])
+                    })
 
         emit_payload = {
             'effects': effect_list
@@ -5015,6 +5016,13 @@ if strip:
     # Initialize the library (must be called once before other functions).
     strip.begin()
     led_manager = LEDEventManager(Events, strip)
+    led_effects = Plugins(prefix='led_handler')
+    led_effects.discover()
+    for led_effect in led_effects:
+        led_manager.registerEffect(led_effect)
+    init_LED_effects()
+elif CLUSTER and CLUSTER.hasRecEventsSlaves():
+    led_manager = ClusterLEDManager()
     led_effects = Plugins(prefix='led_handler')
     led_effects.discover()
     for led_effect in led_effects:
