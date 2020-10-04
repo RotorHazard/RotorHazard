@@ -7,6 +7,7 @@ import logging
 import platform
 import subprocess
 import glob
+import socket
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,43 @@ def idAndLogSystemInfo():
         logger.info("Host OS: {0} {1}".format(platform.system(), platform.release()))
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
+
+# Returns "primary" IP address for local host.  Based on:
+#  https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib
+def getLocalIPAddress():
+    s = None
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        if s:
+            s.close()
+    return IP
+
+# Substitutes asterisks in the IP address 'destAddrStr' with values from 'sourceAddrStr'.
+def substituteAddrWildcards(sourceAddrStr, destAddrStr):
+    try:
+        if sourceAddrStr and destAddrStr and destAddrStr.find('*') >= 0:
+            # single "*" == full substitution
+            if destAddrStr == "*":
+                return sourceAddrStr
+            sourceParts = sourceAddrStr.split('.')
+            destParts = destAddrStr.split('.')
+            # ("192.168.0.130", "*.*.*.97") => "192.168.0.97"
+            if len(sourceParts) == len(destParts):
+                for i in range(len(destParts)):
+                    if destParts[i] == "*":
+                        destParts[i] = sourceParts[i]
+                return '.'.join(destParts)
+            # ("192.168.0.130", "*.97") => "192.168.0.97"
+            elif len(destParts) == 2 and len(sourceParts) == 4 and destParts[0] == "*":
+                return '.'.join(sourceParts[:-1]) + '.' + destParts[1]
+    except Exception:
+        logger.exception("Error in 'substituteAddrWildcards()'")
+    return destAddrStr
 
 # Checks if given file or directory is owned by 'root' and changes owner to 'pi' user if so.
 # Returns True if owner changed to 'pi' user; False if not.

@@ -29,6 +29,7 @@
 			'led_effect_setup',
 			'cluster_status',
 			'vrx_list',
+			'backups_list'
 		]});
 
 		socket.on('all_languages', function (msg) {
@@ -87,6 +88,7 @@
 		$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
 		$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
 		$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
+		$('#beep_cluster_connect').prop("checked", rotorhazard.beep_cluster_connect);
 		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
 		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
 		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
@@ -241,22 +243,33 @@
 				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table>');
+				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
 			}
 		});
 		socket.on('cluster_status', function (msg) {
 			cluster_table_html = '';
 			if (msg.slaves && msg.slaves.length > 0) {
-				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Seconds since last contact')+'</th></tr>';
+				cluster_table_html += '<tr><th style="text-align:center">' + __('Address') + '</th><th>' + __('Latency:') + '</th><th>' + __('min') + '</th><th>' + __('avg') + '</th><th>' + __('max') + '</th><th>' + __('last') + '</th><th>' + __('Disconns') + '</th><th>' + __('Contacts') + '</th><th>' + __('TimeDiff') + '</th><th>' + __('UpSecs') + '</th><th>' + __('DownSecs') + '</th><th>' + __('Avail') + '</th><th>' + __('LastContact') + '</th></tr>';
 				for (i=0; i < msg.slaves.length; i++) {
 					cluster_table_html += '<tr>';
-					cluster_table_html += '<td><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
-					cluster_table_html += '<td>' + msg.slaves[i].last_contact + '</td>';
+					cluster_table_html += '<td style="text-align:center"><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
+					cluster_table_html += '<td style="text-align:left">' + msg.slaves[i].modeIndicator + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].minLatencyMs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].avgLatencyMs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].maxLatencyMs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].lastLatencyMs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numDisconnects + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numContacts + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].timeDiffMs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].upTimeSecs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].downTimeSecs + '</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].availability + '%</td>';
+					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].last_contact + '</td>';
 					cluster_table_html += '</tr>';
 				}
 			}
 			if (cluster_table_html) {
-				$('#cluster-status-table').html('<table>' + cluster_table_html + '</table>');
+				$('#cluster-status-table').html(__('Cluster Status:') + '<table>' + cluster_table_html + '</table><br />');
 			}
 		});
 
@@ -1178,6 +1191,11 @@
 			rotorhazard.saveData();
 		});
 
+		$('#beep_cluster_connect').change(function (event) {
+			rotorhazard.beep_cluster_connect = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+
 		$('#use_mp3_tones').change(function (event) {
 			rotorhazard.use_mp3_tones = $(this).prop('checked');
 			rotorhazard.saveData();
@@ -1366,6 +1384,34 @@
 			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
 		});
 
+		socket.on('backups_list', function (msg) {
+			$('#database_list').empty();
+			if ('backup_files' in msg && msg.backup_files && msg.backup_files.length) {
+				for (file in msg.backup_files) {
+					dbfile = msg.backup_files[file];
+					$('#database_list').append('<option value="' + dbfile + '">' + dbfile + '</option>');
+				}
+			} else {
+				$('#database_list').append('<option value="-">' + __('No Saved Databases') + '</option>');
+			}
+		});
+
+		$('button#restore_database').click(function (event) {
+			var data = {
+				backup_file: $('#database_list').val()
+			};
+			socket.emit('restore_database', data);
+			return false;
+		});
+
+		$('button#delete_database').click(function (event) {
+			var data = {
+				backup_file: $('#database_list').val()
+			};
+			socket.emit('delete_database', data);
+			return false;
+		});
+
 		/* Database Reset */
 		socket.on('reset_confirm', function () {
 			standard_message_queue.push(__('Data Cleared'));
@@ -1452,6 +1498,33 @@
 						setTimeout(function(tone){
 							play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth');
 						}, 70, msg.node_index);
+					}
+				}
+			}
+		});
+
+		socket.on('cluster_connect_change', function (msg) {
+			if (rotorhazard.beep_cluster_connect) {
+				if (msg.connect_flag) {
+					if( rotorhazard.use_mp3_tones){
+						sound_cconnect.play();
+					}
+					else {
+						play_beep(150, 225, rotorhazard.indicator_beep_volume, 'square');
+						setTimeout(function(tone){
+							play_beep(200, 250, rotorhazard.indicator_beep_volume, 'square');
+						}, 150, 0);
+					}
+				}
+				else {
+					if( rotorhazard.use_mp3_tones){
+						sound_cdisconnect.play();
+					}
+					else {
+						play_beep(200, 200, rotorhazard.indicator_beep_volume, 'square');
+						setTimeout(function(tone){
+							play_beep(400, 100, rotorhazard.indicator_beep_volume, 'square');
+						}, 200, 0);
 					}
 				}
 			}
@@ -2091,7 +2164,7 @@
 					SPLMSK_SPLIT_TIME = 0x04
 -->
 					<div class="label-block">
-						<label for="voice_split_timer">{{ __('Split Timer') }}</label>
+						<label for="voice_split_timer">{{ __('Cluster/Split Timer') }}</label>
 					</div>
 					<select id="voice_split_timer">
 						<option value="0">{{ __('None') }}</option>
@@ -2143,6 +2216,9 @@
 					<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
 					<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
 					<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
+					{% if cluster_has_slaves %}
+					<li><label><input type="checkbox" id="beep_cluster_connect"> {{ __('Cluster Timer Connect / Disconnect') }}</label></li>
+					{% endif %}
 					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
 				</ul>
 			</li>
@@ -2381,6 +2457,13 @@
 			</select>
 			<button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
 		</div>
+		<div class="control-set">
+			<select id="database_list">
+				<option value="-">{{ __('No Saved Databases') }}</option>
+			</select>
+			<button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
+			<button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
+		</div>
 	</div>
 </div>
 
@@ -2392,13 +2475,8 @@
 	<div class="panel-content">
 		<div id="env-data-table" class="control-set">
 		</div>
-		<br />
-		<div class="control-set">
-			{{ __('Cluster Status:') }}
-		</div>
 		<div id="cluster-status-table" class="control-set">
 		</div>
-		<br />
 		<div class="control-set">
 			<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
 			<a href="#reboot_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Reboot') }}</a>
@@ -2443,9 +2521,9 @@
 			<li>
 				<div class="label-block">
 					<label for="set_timer_logo">{{ __('Timer Logo') }}</label>
-					<p class="desc">{{ __('File path relative to RotorHazard/server/static') }}</p>
+					<p class="desc">{{ __('File path relative to RotorHazard/server/static/user') }}</p>
 				</div>
-				<input type="text" id="set_timer_logo" class="set-option" data-option="timerLogo" value="{{ getOption('timerLogo') }}" placeholder="image/group-logo.png">
+				<input type="text" id="set_timer_logo" class="set-option" data-option="timerLogo" value="{{ getOption('timerLogo') }}" placeholder="group-logo.png">
 			</li>
 			<li>
 				<div class="label-block">

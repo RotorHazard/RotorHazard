@@ -1,6 +1,6 @@
 # Cluster
 
-Additional RotorHazard timers may be attached as "slave" units, interfaced via their network connection (i.e., WiFi).  The default mode is 'timer' (for split timing), which allows multiple timers to be placed around the track to get intermediate lap times.  A 'mirror' mode is also supported, in which the slave timer will mirror the actions of the master (for instance as an "LED-only" timer that displays the actions of the master).
+Additional RotorHazard timers may be attached as "slave" units, interfaced via their network connection (i.e., WiFi).  The default mode is 'split' (for split timing), which allows multiple timers to be placed around the track to get intermediate lap times.  A 'mirror' mode is also supported, in which the slave timer will mirror the actions of the master (for instance as an "LED-only" timer that displays the actions of the master).
 
 ### Configuration
 
@@ -21,14 +21,19 @@ Additional options may be configured, for example:
 {
 	"GENERAL": {
 		... ,
-		"SLAVES": [{"address": "192.168.1.2:5000", "mode": "timer", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
+		"SLAVES": [{"address": "192.168.1.2:5000", "mode": "split", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
 		"SLAVE_TIMEOUT": 10
 	}
 }
 ```
 * "address": The IP address and port for the slave timer.
-* "mode": The mode for the timer (either "timer" or "mirror").
-* "distance": The distance from the previous gate (used to calculate speed).
+* "mode": The mode for the timer (either "split" or "mirror").
+* "distance": The distance from the previous timer (used to calculate speed).
+* "queryInterval": Number of seconds between heartbeat/query messages (default 10).
+* "recEventsFlag": Set 'true' to propogate timer events from master (default 'false' for "split" timer, 'true' for "mirror" timer).
+* "SLAVE_TIMEOUT": Maximum number of seconds to wait for connection to be established.
+
+The "address" value may be specified using asterisk-wildcard characters. For instance, if the IP address of the 'master' timer is "192.168.0.11":  `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
 
 ### Clock Synchronization
 
@@ -71,9 +76,19 @@ Then, restart rng-tools with
 
 Missed/incorrect split times will have no impact on the recording of lap times by the master timer.
 
-The status of connected slave timers may be viewed on the *Settings* page in the *System* section. Clicking on the slave-timer address will bring up the web-GUI for the timer. The "*Seconds since last contact*" value should always be less than 20 (higher values indicate network communications problems).
+To enable the announcement of split times, see the "*Cluster/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a cluster/slave timer connects and disconnects, select the "*Cluster Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a cluster timer is connected.)
 
-To enable the announcement of split times, see the "*Split Times*" option on the *Settings* page in the *Audio Control* section. (Note that this option will only be visible if a slave timer is connected.)
+The status of connected cluster timers may be viewed on the *Settings* page in the *System* section. (This status information is also available on the *Run* page.) The following items are displayed:
+ * *Address* - Network address for the cluster timer (click to bring up the web-GUI for the timer)
+ * *S* or *M* - After the address will be an 'S' if split timer or an 'M' if mirror timer
+ * *Latency: min avg max last* - Network latency (in milliseconds) for heartbeat/query messages
+ * *Disconns* - Number of times the cluster timer has been disconnected
+ * *Contacts* - Number of network contacts with the cluster timer
+ * *TimeDiff* - Time difference (in milliseconds) between system clocks on master and cluster timer
+ * *UpSecs* - Number of seconds the cluster timer has been connected
+ * *DownSecs* - Number of seconds the cluster timer has been disconnected
+ * *Avail* - Availability rating (as a percentage) for the cluster timer
+ * *LastContact* - Time (in seconds) since last contact with the timer, or a status message
 
 Doing normal operation, lap history-data will not be saved on the slave timer(s). To view lap history-data and perform marshaling on a slave timer, hit the '*Save Laps*' button on the slave timer before the race is saved or discarded on the master, and then go to the *Marshal* page on the slave timer.
 

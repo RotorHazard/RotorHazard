@@ -39,8 +39,9 @@ MINIMUM_PAYLOAD = 7
 
 class VRxController:
 
-    def __init__(self, eventmanager, vrx_config, seat_frequencies):
+    def __init__(self, eventmanager, vrx_config, race_obj, seat_frequencies):
         self.Events = eventmanager
+        self.RACE = race_obj
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(logging.DEBUG)
         self.logger.debug("TEST DEBUG")
@@ -150,15 +151,10 @@ class VRxController:
         except KeyError:
             self.logger.error("Unable to send callsigns. heat_id not found in event.")
             return
-        try:
-            RACE = arg["race"]
-        except KeyError:
-            self.logger.error("Unable to send callsigns. RACE not found in event")
-            return
 
         for heatseat in Database.HeatNode.query.filter_by(heat_id=heat_id).all():
             heatseat_index = heatseat.seat_index
-            if heatseat_index < self.num_seats:  # TODO this may break with non-contiguous nodes 
+            if heatseat_index < self.num_seats:  # TODO this may break with non-contiguous nodes
                 if heatseat.pilot_id != Database.PILOT_ID_NONE:
                     pilot = Database.Pilot.query.get(heatseat.pilot_id)
                     self.set_message_direct(heatseat_index, pilot.callsign)
@@ -212,13 +208,7 @@ class VRxController:
         LAP_HEADER = Options.get('osd_lapHeader')
         POS_HEADER = Options.get('osd_positionHeader')
 
-        if 'race' in args: #TODO issue408
-            RACE = args['race'] #TODO issue408
-        else:
-            self.logger.warn('Failed to send results: Race not specified')
-            return False
-
-        if 'node_index' in args: 
+        if 'node_index' in args:
             seat_index = args['node_index']
         else:
             self.logger.warn('Failed to send results: Seat not specified')
@@ -227,20 +217,20 @@ class VRxController:
         # wait for results to generate
         time_now = monotonic()
         timeout = time_now + RESULTS_TIMEOUT
-        while RACE.cacheStatus != Results.CacheStatus.VALID and time_now < timeout:
+        while self.RACE.cacheStatus != Results.CacheStatus.VALID and time_now < timeout:
             time_now = monotonic()
             gevent.sleep()
 
-        if RACE.cacheStatus == Results.CacheStatus.VALID:
+        if self.RACE.cacheStatus == Results.CacheStatus.VALID:
             '''
             Get relevant results
             '''
 
-            results = RACE.results
+            results = self.RACE.results
 
             # select correct results
             # *** leaderboard = results[results['meta']['primary_leaderboard']]
-            win_condition = RACE.format.win_condition
+            win_condition = self.RACE.format.win_condition
 
             if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
                 leaderboard = results['by_consecutives']
@@ -581,7 +571,7 @@ class VRxController:
         if message==None:
             self.logger.error("No message")
             return
-    
+
         if seat_number == VRxALL:
             seat = self._seat_broadcast
             seat.set_message_direct(message)
