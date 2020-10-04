@@ -135,6 +135,7 @@ class Evt:
     LED_EFFECT_SET = 'LedEffectSet'
     LED_BRIGHTNESS_SET = 'LedBrightnessSet'
     LED_MANUAL = 'LedManual'
+    LED_SET_MANUAL = 'LedSetManual'
     # VRX Controller
     VRX_DATA_RECEIVE = 'VrxDataRecieve'
 

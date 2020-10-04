@@ -367,7 +367,7 @@ def render_run():
             })
 
     return render_template('run.html', serverInfo=serverInfo, getOption=Options.get, __=__,
-        led_enabled=led_manager.isEnabled(),
+        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSlaves())),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat, pilots=Database.Pilot,
@@ -403,7 +403,8 @@ def render_marshal():
 def render_settings():
     '''Route to settings page.'''
     return render_template('settings.html', serverInfo=serverInfo, getOption=Options.get, __=__,
-        led_enabled=led_manager.isEnabled(),
+        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSlaves())),
+        led_events_enabled=led_manager.isEnabled(),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config.GENERAL['configFile'],
@@ -641,7 +642,11 @@ def on_cluster_event_trigger(data):
     ''' Received event trigger from master. '''
     evtName = data['evt_name']
     evtArgs = json.loads(data['evt_args']) if 'evt_args' in data else None
-    Events.trigger(evtName, evtArgs)
+    if evtName != Evt.LED_SET_MANUAL:
+        Events.trigger(evtName, evtArgs)
+    # special handling for LED Control via master timer
+    elif 'effect' in evtArgs and led_manager.isEnabled():
+        led_manager.setEventEffect(Evt.LED_MANUAL, evtArgs['effect'])
 
 # RotorHazard events
 
@@ -1795,8 +1800,9 @@ def emit_led_effects(**params):
 @catchLogExceptionsWrapper
 def on_set_led_effect(data):
     '''Set effect for event.'''
-    if led_manager.isEnabled() and 'event' in data and 'effect' in data:
-        led_manager.setEventEffect(data['event'], data['effect'])
+    if 'event' in data and 'effect' in data:
+        if led_manager.isEnabled():
+            led_manager.setEventEffect(data['event'], data['effect'])
 
         effect_opt = Options.get('ledEffects')
         if effect_opt:
@@ -1817,8 +1823,10 @@ def on_set_led_effect(data):
 @catchLogExceptionsWrapper
 def on_use_led_effect(data):
     '''Activate arbitrary LED Effect.'''
-    if led_manager.isEnabled() and 'effect' in data:
-        led_manager.setEventEffect(Evt.LED_MANUAL, data['effect'])
+    if 'effect' in data:
+        if led_manager.isEnabled():
+            led_manager.setEventEffect(Evt.LED_MANUAL, data['effect'])
+        trigger_event(Evt.LED_SET_MANUAL, data)  # setup manual effect on mirror timers
 
         args = None
         if 'args' in data:
@@ -4128,7 +4136,7 @@ def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
 
-    if led_manager.isEnabled() and RACE.race_status == RaceStatus.RACING:  # if race is in progress
+    if RACE.race_status == RaceStatus.RACING:  # if race is in progress
         # if pilot assigned to node and first crossing is complete
         if node.current_pilot_id != Database.PILOT_ID_NONE and node.first_cross_flag:
             # first crossing has happened; if 'enter' then show indicator,
