@@ -54,6 +54,7 @@ class SlaveNode:
         self.secsSinceDisconnect = 0
         self.freqsSentFlag = False
         self.numDisconnects = 0
+        self.numDisconnsDuringRace = 0
         self.numContacts = 0
         self.latencyAveragerObj = Averager(self.LATENCY_AVG_SIZE)
         self.totalUpTimeSecs = 0
@@ -216,6 +217,7 @@ class SlaveNode:
             self.startConnectTime = monotonic()
             self.lastContactTime = -1
             self.numDisconnects += 1
+            self.numDisconnsDuringRace += 1
             upSecs = int(round(self.startConnectTime - self.firstContactTime)) if self.firstContactTime > 0 else 0
             logger.warn("Disconnected from " + self.get_log_str(upSecs));
             self.totalUpTimeSecs += upSecs
@@ -223,7 +225,7 @@ class SlaveNode:
         else:
             logger.debug("Received extra 'on_disconnect' event for slave {0} at {1}".format(self.id+1, self.address))
 
-    def get_log_str(self, timeSecs=None, upTimeFlag=True):
+    def get_log_str(self, timeSecs=None, upTimeFlag=True, stoppedRaceFlag=False):
         if timeSecs is None:
             timeSecs = int(round(monotonic() - self.firstContactTime)) if self.lastContactTime > 0 else 0
         totUpSecs = self.totalUpTimeSecs
@@ -236,12 +238,15 @@ class SlaveNode:
             upDownStr = "downTime"
         upDownTotal = totUpSecs + totDownSecs
         return "slave {0} at {1} (latency: min={2} avg={3} max={4} last={5} ms, disconns={6}, contacts={7}, " \
-               "timeDiff={8}ms, {9}={10}, totalUp={11}, totalDown={12}, avail={13:.1%})".\
+               "timeDiff={8}ms, {9}={10}, totalUp={11}, totalDown={12}, avail={13:.1%}{14})".\
                     format(self.id+1, self.address, self.latencyAveragerObj.minVal, \
                            self.latencyAveragerObj.getIntAvgVal(), self.latencyAveragerObj.maxVal, \
                            self.latencyAveragerObj.lastVal, self.numDisconnects, self.numContacts, \
                            self.timeDiffMedianMs, upDownStr, timeSecs, totUpSecs, totDownSecs, \
-                           float(totUpSecs)/upDownTotal if upDownTotal > 0 else 0)
+                           (float(totUpSecs)/upDownTotal if upDownTotal > 0 else 0),
+                           ((", numDisconnsDuringRace=" + str(self.numDisconnsDuringRace)) if \
+                                    (self.numDisconnsDuringRace > 0 and \
+                                     (stoppedRaceFlag or self.RACE.race_status == RaceStatus.RACING)) else ""))
 
     def on_pass_record(self, data):
         try:
@@ -422,13 +427,14 @@ class ClusterNodeSet:
 
     def doClusterRaceStart(self):
         for slave in self.slaves:
+            slave.numDisconnsDuringRace = 0
             if slave.lastContactTime > 0:
                 logger.info("Connected at race start to " + slave.get_log_str());
                 if abs(slave.timeDiffMedianMs) > SlaveNode.TIMEDIFF_CORRECTION_THRESH_MS:
                     # (log at warning level if this is new information)
                     logger.log((logging.INFO if slave.timeCorrectionMs != 0 else logging.WARN), \
                                "Slave {0} clock not synchronized with master, timeDiff={1}ms".\
-                                 format(slave.id+1, slave.timeDiffMedianMs))
+                                format(slave.id+1, slave.timeDiffMedianMs))
                     slave.timeCorrectionMs = slave.timeDiffMedianMs
                 else:
                     slave.timeCorrectionMs = 0
@@ -440,6 +446,6 @@ class ClusterNodeSet:
     def doClusterRaceStop(self):
         for slave in self.slaves:
             if slave.lastContactTime > 0:
-                logger.info("Connected at race stop to " + slave.get_log_str());
+                logger.info("Connected at race stop to " + slave.get_log_str(stoppedRaceFlag=True));
             elif slave.numDisconnects > 0:
-                logger.warn("Slave {0} not connected at race stop".format(slave.id+1))
+                logger.warn("Not connected at race stop to " + slave.get_log_str(stoppedRaceFlag=True));
