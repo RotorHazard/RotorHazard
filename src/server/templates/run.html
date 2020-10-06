@@ -133,6 +133,7 @@
 		});
 
 		var heartbeatCounter = 0;
+		var current_laps = {};
 
 		// set admin flag
 		rotorhazard.admin = true;
@@ -192,6 +193,18 @@
 			}
 		}
 
+		function any_laps_recorded() {
+			if (current_laps && 'node_index' in current_laps) {
+				for (var node_i in current_laps.node_index) {
+					if ('laps' in current_laps.node_index[node_i] &&
+							current_laps.node_index[node_i].laps.length > 0) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
 		socket.on('race_scheduled', function (msg) {
 			if (msg.scheduled) {
 				var deferred_start = msg.scheduled_at * 1000;  // convert seconds (pi) to millis (JS)
@@ -226,7 +239,12 @@
 					break;
 				case 2: // Race stopped, clear or save laps
 					$('#set_current_heat').prop('disabled', true);
-					$('button#start_race').prop('disabled', true);
+					if (any_laps_recorded()) {
+						$('button#start_race').prop('disabled', true);
+					}
+					else {  // if no laps then allow restart (without save/discard)
+						$('button#start_race').prop('disabled', false);
+					}
 					$('button#stop_race').prop('disabled', true);
 					$('button#save_laps').prop('disabled', false);
 					$('button#discard_laps').prop('disabled', false)
@@ -413,8 +431,6 @@
 			$('#node_notice_' + i).html(rotorhazard.nodes[msg.node_index].checkValues());
 			rotorhazard.nodes[msg.node_index].updateThresholds();
 		});
-
-		var current_laps = {};
 
 		socket.on('current_laps', function (msg) {
 			current_laps = msg;
@@ -618,7 +634,13 @@
 				$('.time-display').html('--:--');
 				$('button#start_race').prop('disabled', true);
 				$('#set_current_heat').prop('disabled', true);
+				$("#main_panel").focus();  // make sure focus not on button
 			}
+			return false;
+		});
+
+		$('button#start_race').mousedown(function (event) {
+			event.preventDefault();  // prevent keyboard focus on button
 			return false;
 		});
 
@@ -627,7 +649,13 @@
 				socket.emit('stop_race');
 				rotorhazard.timer.stopAll();
 				$('button#stop_race').prop('disabled', true);
+				$("#main_panel").focus();  // make sure focus not on button
 			}
+			return false;
+		});
+
+		$('button#stop_race').mousedown(function (event) {
+			event.preventDefault();  // prevent keyboard focus on button
 			return false;
 		});
 
@@ -636,6 +664,7 @@
 				socket.emit('save_laps');
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
+				$("#main_panel").focus();  // make sure focus not on button
 			}
 
 			var selectedHeat = $('#set_current_heat').val();
@@ -664,13 +693,24 @@
 			return false;
 		});
 
+		$('button#save_laps').mousedown(function (event) {
+			event.preventDefault();  // prevent keyboard focus on button
+			return false;
+		});
+
 		$('button#discard_laps').click(function (event) {
 			if(!$(this).prop('disabled')) {
 				socket.emit('discard_laps');
 				$('.time-display').html('--:--');
 				$('button#save_laps').prop('disabled', true);
 				$('button#discard_laps').prop('disabled', true);
+				$("#main_panel").focus();  // make sure focus not on button
 			}
+			return false;
+		});
+
+		$('button#discard_laps').mousedown(function (event) {
+			event.preventDefault();  // prevent keyboard focus on button
 			return false;
 		});
 
@@ -1373,8 +1413,8 @@
 		$(document).on('keyup', function(e) {
 			// keyboard shortcuts
 			switch (e.which) {
-				case 90:
-					if ( this !== event.target
+				case 90:  // Z
+					if ( this !== event.target && event.target.id !== "set_current_heat"
 						&& ( /textarea|select/i.test( event.target.nodeName )
 						 || event.target.type === "text") ) {
 						return;
@@ -1382,9 +1422,10 @@
 					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
 						// race start: z
 						$('#start_race').trigger('click');
+						$("#main_panel").focus();  // make sure focus not on Heat selector
 					}
 					break;
-				case 88:
+				case 88:  // X
 					if ( this !== event.target
 						&& ( /textarea|select/i.test( event.target.nodeName )
 						 || event.target.type === "text") ) {
@@ -1395,7 +1436,7 @@
 						$('#stop_race').trigger('click');
 					}
 					break;
-				case 67:
+				case 67:  // C
 					if ( this !== event.target
 						&& ( /textarea|select/i.test( event.target.nodeName )
 						 || event.target.type === "text") ) {
@@ -1406,7 +1447,7 @@
 						$('#save_laps').trigger('click');
 					}
 					break;
-				case 86:
+				case 86:  // V
 					if ( this !== event.target
 						&& ( /textarea|select/i.test( event.target.nodeName )
 						 || event.target.type === "text") ) {
@@ -1417,7 +1458,7 @@
 						$('#discard_laps').trigger('click');
 					}
 					break;
-				case 49:
+				case 49:  // 1
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 1: alt+1
 						$('#manual_lap_0').trigger('click');
@@ -1427,7 +1468,7 @@
 							$('#play_callout_1').trigger('click');
 					}
 					break;
-				case 50:
+				case 50:  // 2
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 2: alt+2
 						$('#manual_lap_1').trigger('click');
@@ -1437,7 +1478,7 @@
 							$('#play_callout_2').trigger('click');
 					}
 					break;
-				case 51:
+				case 51:  // 3
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 3: alt+3
 						$('#manual_lap_2').trigger('click');
@@ -1447,7 +1488,7 @@
 							$('#play_callout_3').trigger('click');
 					}
 					break;
-				case 52:
+				case 52:  // 4
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 4: alt+4
 						$('#manual_lap_3').trigger('click');
@@ -1457,7 +1498,7 @@
 							$('#play_callout_4').trigger('click');
 					}
 					break;
-				case 53:
+				case 53:  // 5
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 5: alt+5
 						$('#manual_lap_4').trigger('click');
@@ -1467,7 +1508,7 @@
 							$('#play_callout_5').trigger('click');
 					}
 					break;
-				case 54:
+				case 54:  // 6
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 6: alt+6
 						$('#manual_lap_5').trigger('click');
@@ -1477,7 +1518,7 @@
 							$('#play_callout_6').trigger('click');
 					}
 					break;
-				case 55:
+				case 55:  // 7
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 7: alt+7
 						$('#manual_lap_6').trigger('click');
@@ -1487,7 +1528,7 @@
 							$('#play_callout_7').trigger('click');
 					}
 					break;
-				case 56:
+				case 56:  // 8
 					if (!e.ctrlKey && e.altKey && !e.metaKey) {
 						// manual lap node 8: alt+8
 						$('#manual_lap_7').trigger('click');
@@ -1497,12 +1538,35 @@
 							$('#play_callout_8').trigger('click');
 					}
 					break;
-				case 57:
+				case 57:  // 9
 					if (e.ctrlKey && e.altKey && !e.metaKey) {
 						// play callout 1: ctrl+alt+9
 						if ($('#play_callout_9').length)
 							$('#play_callout_9').trigger('click');
 					}
+					break;
+			}
+		});
+
+		$(document).on('keydown', function(e) {
+			switch (e.which) {
+				case 32:  // space bar
+					if ( this !== event.target && event.target.id !== "set_current_heat"
+						&& ( /textarea|select/i.test( event.target.nodeName )
+						 || event.target.type === "text") ) {
+						return;
+					}
+					if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+						if (!($('#start_race').prop('disabled'))) {
+							$('#start_race').trigger('click');
+							$("#main_panel").focus();  // make sure focus not on Heat selector
+						}
+						else if (!($('#stop_race').prop('disabled'))) {
+							$('#stop_race').trigger('click');
+							$("#main_panel").focus();  // make sure focus not on Heat selector
+						}
+					}
+					e.preventDefault();  // consume key event
 					break;
 			}
 		});
@@ -1526,7 +1590,7 @@
 {% endblock %} {% block content %}
 <main class="page-race">
 
-<div class="panel">
+<div id="main_panel" class="panel" tabindex="1">
 	<div class="panel-content full-width">
 		<div class="timer">
 			<div class="timing-clock"><div class="warning" title="Browser Sync Loss">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
@@ -1535,13 +1599,13 @@
 		<!--Buttons for controlling the race-->
 		<div class="control-set">
 			<label for="set_current_heat" class="screen-reader-text">{{ __('Current Heat') }}</label>
-			<select id="set_current_heat">
+			<select id="set_current_heat" tabindex="-1">
 				<option value="">{{ __('Loading...') }}</option>
 			</select>
-			<button id="start_race"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
-			<button id="stop_race" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
-			<button id="save_laps" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save Laps') }}</span></button>
-			<button id="discard_laps" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
+			<button id="start_race" tabindex="-1"><span class="narrow">{{ __('Start') }}</span><span class="wide">{{ __('Start Race') }}</span></button>
+			<button id="stop_race" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
+			<button id="save_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save Laps') }}</span></button>
+			<button id="discard_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
 		</div>
 
 		<!--Display the race leaderboard-->
