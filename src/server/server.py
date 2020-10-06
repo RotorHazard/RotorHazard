@@ -1903,11 +1903,14 @@ def on_stage_race():
     race_format = getCurrentRaceFormat()
 
     # if running as slave timer and missed stop/discard msg then stop/clear current race
-    if RACE.race_status != RaceStatus.READY and race_format is SLAVE_RACE_FORMAT:
-        logger.info("Forcing race clear/restart because running as slave timer")
-        if RACE.race_status == RaceStatus.RACING:
-            on_stop_race()
-        on_discard_laps()
+    if RACE.race_status != RaceStatus.READY:
+        if race_format is SLAVE_RACE_FORMAT:
+            logger.info("Forcing race clear/restart because running as slave timer")
+            if RACE.race_status == RaceStatus.RACING:
+                on_stop_race()
+            on_discard_laps()
+        elif RACE.race_status == RaceStatus.DONE and not RACE.any_laps_recorded():
+            on_discard_laps()  # if no laps then allow restart
 
     if RACE.race_status == RaceStatus.READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''

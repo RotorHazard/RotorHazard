@@ -55,8 +55,13 @@ class RHRace():
         filtered = {}
         for node_index in self.node_laps:
             filtered[node_index] = list(filter(lambda lap : lap['deleted'] == False, self.node_laps[node_index]))
-
         return filtered
+
+    def any_laps_recorded(self):
+        for node_index in range(self.num_nodes):
+            if len(self.node_laps[node_index]) > 0:
+                return True
+        return False
 
 RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
 
