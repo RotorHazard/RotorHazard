@@ -606,6 +606,12 @@ def on_reset_auto_calibration(data):
 
 # Cluster events
 
+def emit_join_cluster_response():
+    payload = {
+        'server_info': json.dumps(serverInfoItems)
+    }
+    SOCKET_IO.emit('join_cluster_response', payload)
+
 @SOCKET_IO.on('join_cluster')
 @catchLogExceptionsWrapper
 def on_join_cluster():
@@ -623,10 +629,7 @@ def on_join_cluster_ex(data=None):
         emit_race_format()
     logger.info("Joined cluster" + ((" as '" + tmode + "' timer") if tmode else ""))
     trigger_event(Evt.CLUSTER_JOIN)
-    payload = {
-        'server_info': json.dumps(serverInfoItems)
-    }
-    SOCKET_IO.emit('join_cluster_response', payload)
+    emit_join_cluster_response()
 
 @SOCKET_IO.on('check_slave_query')
 @catchLogExceptionsWrapper
@@ -1919,6 +1922,7 @@ def on_stage_race():
         RACE.race_status = RaceStatus.STAGING
         RACE.win_status = WinStatus.NONE
         RACE.status_message = ''
+        RACE.any_races_started = True
 
         RACE.node_has_finished = {}
         for heatNode in heatNodes:
@@ -2122,7 +2126,7 @@ def race_start_thread(start_token):
             gevent.spawn(race_expire_thread, start_token)
 
         emit_race_status() # Race page, to set race button states
-        logger.info('Race started at {0} ({1:.1f})'.format(RACE.start_time_monotonic, RACE.start_time_epoch_ms))
+        logger.info('Race started at {0} ({1:.0f})'.format(RACE.start_time_monotonic, RACE.start_time_epoch_ms))
 
 def race_expire_thread(start_token):
     global RACE
@@ -2151,7 +2155,7 @@ def on_stop_race():
         milli_sec = delta_time * 1000.0
         RACE.duration_ms = milli_sec
 
-        logger.info('Race stopped at {0} ({1:.1f}), duration {2}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), RACE.duration_ms))
+        logger.info('Race stopped at {0} ({1:.0f}), duration {2}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), RACE.duration_ms))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
@@ -3832,7 +3836,7 @@ def set_vrx_node(data):
 
 @catchLogExceptionsWrapper
 def emit_pass_record(node, lap_time_stamp):
-    '''Emits 'pass_record' message (will be consumed by slave timers in cluster, etc).'''
+    '''Emits 'pass_record' message (will be consumed by master timer in cluster, livetime, etc).'''
     payload = {
         'node': node.index,
         'frequency': node.frequency,
@@ -3920,6 +3924,38 @@ def heartbeat_thread_function():
 heartbeat_thread_function.iter_tracker = 0
 heartbeat_thread_function.imdtabler_flag = False
 heartbeat_thread_function.last_error_rep_time = monotonic()
+
+def clock_check_thread_function():
+    ''' Monitor system clock and adjust PROGRAM_START_EPOCH_TIME if significant jump detected.
+        (This can happen if NTP synchronization occurs after server starts up.) '''
+    global PROGRAM_START_EPOCH_TIME
+    global MTONIC_TO_EPOCH_MILLIS_OFFSET
+    global serverInfoItems
+    try:
+        while True:
+            gevent.sleep(10)
+            if RACE.any_races_started:  # stop monitoring after any race started
+                break
+            time_now = monotonic()
+            epoch_now = int((datetime.now() - EPOCH_START).total_seconds() * 1000)
+            diff_ms = epoch_now - monotonic_to_epoch_millis(time_now)
+            if abs(diff_ms) > 30000:
+                PROGRAM_START_EPOCH_TIME += diff_ms
+                MTONIC_TO_EPOCH_MILLIS_OFFSET = epoch_now - 1000.0*time_now
+                logger.info("Adjusting PROGRAM_START_EPOCH_TIME for shift in system clock ({0:.1f} secs) to: {1:.0f}".\
+                            format(diff_ms/1000, PROGRAM_START_EPOCH_TIME))
+                # update values that will be reported if running as cluster timer
+                serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
+                serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+                logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
+                emit_join_cluster_response()
+    except KeyboardInterrupt:
+        logger.info("clock_check_thread terminated by keyboard interrupt")
+        raise
+    except SystemExit:
+        raise
+    except Exception:
+        logger.exception('Exception in clock_check_thread')
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''
@@ -4811,7 +4847,7 @@ def determineHostAddress(maxRetrySecs=10):
 #
 
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-logger.debug('Program started at {0:.1f}'.format(PROGRAM_START_EPOCH_TIME))
+logger.debug('Program started at {0:.0f}'.format(PROGRAM_START_EPOCH_TIME))
 RHUtils.idAndLogSystemInfo()
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
@@ -4923,7 +4959,7 @@ serverInfo = buildServerInfo()
 # create version of 'serverInfo' without 'about_html' entry
 serverInfoItems = serverInfo.copy()
 serverInfoItems.pop('about_html', None)
-serverInfoItems['prog_start_epoch'] = "{0:.1f}".format(PROGRAM_START_EPOCH_TIME)
+serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
 serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
 logger.debug("Server info:  " + json.dumps(serverInfoItems))
 
@@ -5059,6 +5095,8 @@ vrx_controller = initVRxController()
 
 if vrx_controller:
     Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
+
+gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
 # register endpoints
 import json_endpoints

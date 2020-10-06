@@ -62,6 +62,7 @@ class SlaveNode:
         self.timeDiffMedianObj = RunningMedian(self.TIMEDIFF_MEDIAN_SIZE)
         self.timeDiffMedianMs = 0
         self.timeCorrectionMs = 0
+        self.progStartEpoch = 0
         self.sio = socketio.Client(reconnection=False, request_timeout=1)
         self.sio.on('connect', self.on_connect)
         self.sio.on('disconnect', self.on_disconnect)
@@ -345,9 +346,27 @@ class SlaveNode:
             infoStr = data.get('server_info')
             logger.debug("Server info from slave {0} at {1}:  {2}".\
                          format(self.id+1, self.address, infoStr))
-            # if not first time connecting then check/warning program version
-            if self.numDisconnects == 0:
-                infoDict = json.loads(infoStr)
+            infoDict = json.loads(infoStr)
+            prgStrtEpchStr = infoDict.get('prog_start_epoch')
+            newPrgStrtEpch = False
+            try:
+                prgStrtEpch = int(float(prgStrtEpchStr))
+                if self.progStartEpoch == 0:
+                    self.progStartEpoch = prgStrtEpch
+                    newPrgStrtEpch = True
+                    logger.debug("Initial 'prog_start_epoch' value for slave {0}: {1}".\
+                                format(self.id+1, prgStrtEpch))
+                elif prgStrtEpch != self.progStartEpoch:
+                    self.progStartEpoch = prgStrtEpch
+                    newPrgStrtEpch = True
+                    logger.info("New 'prog_start_epoch' value for slave {0}: {1}; resetting 'timeDiff' median".\
+                                format(self.id+1, prgStrtEpch))
+                    self.timeDiffMedianObj = RunningMedian(self.TIMEDIFF_MEDIAN_SIZE)
+            except ValueError as ex:
+                logger.warn("Error parsing 'prog_start_epoch' value from slave {0}: {1}".\
+                            format(self.id+1, ex))
+            # if first time connecting (or possible slave restart) then check/warn about program version
+            if newPrgStrtEpch or self.numDisconnects == 0:
                 slaveVerStr = infoDict.get('release_version')
                 if slaveVerStr:
                     if slaveVerStr != self.server_release_version:
