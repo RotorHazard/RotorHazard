@@ -1397,6 +1397,7 @@
 		});
 
 		$('button#restore_database').click(function (event) {
+			$.magnificPopup.close();
 			var data = {
 				backup_file: $('#database_list').val()
 			};
@@ -1405,6 +1406,7 @@
 		});
 
 		$('button#delete_database').click(function (event) {
+			$.magnificPopup.close();
 			var data = {
 				backup_file: $('#database_list').val()
 			};
@@ -2463,9 +2465,28 @@
 			<select id="database_list">
 				<option value="-">{{ __('No Saved Databases') }}</option>
 			</select>
-			<button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
-			<button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
+			<a href="#database_restore_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Restore Data') }}</a>
+			<a href="#database_delete_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Delete Data') }}</a>
 		</div>
+
+		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Deleted database files are not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
 	</div>
 </div>
 
@@ -2487,7 +2508,7 @@
 		</div>
 
 		<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>Alert</h2>
+			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
 				<p>{{ __('Shut down server?') }}</p>
 				<p><button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
@@ -2496,7 +2517,7 @@
 		</div>
 
 		<div id="reboot_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>Alert</h2>
+			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
 				<p>{{ __('Reboot server?') }}</p>
 				<p><button class="btn-danger" id="reboot_pi">{{ __('Reboot') }}</button>
