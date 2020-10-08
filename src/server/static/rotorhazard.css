@@ -956,6 +956,15 @@ main.page-home {
 	flex: 1;
 }
 
+.page-settings .heats>li>.unlock_heat {
+	flex: 0;
+}
+
+.page-settings .heats>li>.unlock_heat svg {
+	height: 1em;
+	vertical-align: text-bottom;
+}
+
 .page-settings .heats>li>.duplicate_heat {
 	flex: 0;
 }

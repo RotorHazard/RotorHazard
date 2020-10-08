@@ -6,6 +6,7 @@
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
+	var heat_confirm = null;
 
 	$(document).ready(function () {
 		socket.emit('load_data', {'load_types': [
@@ -729,7 +730,7 @@
 
 				// update class selector
 				if (msg.classes.length) {
-					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '">')
+					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '" data-heat="' + heats.heat_id + '">')
 						selectbox.append('<option value="0">' + __('Unclassified') + '</option>')
 						for (var k in msg.classes) {
 							if (msg.classes[k].name) {
@@ -747,11 +748,16 @@
 					el.append(selectbox);
 				}
 
-				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="Duplicate ' + heat_note + '">+</button>');
+				if (heats.locked) {
+					el.append('<a class="btn-danger button-like open-mfp-popup unlock_heat" href="#unlock_confirm" data-id="' + heats.heat_id + '" title="' + __('Force Modify Heat') + ': ' + heat_note + '">' + svg_asset.lock + '</a>');
+				}
+
+				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="' + __('Duplicate Heat') + ': ' + heat_note + '">+</button>');
 
 				el.appendTo($('.heats'));
 			}
 			freq.updateBlocks();
+			init_popup_generics();
 		});
 
 		$(document).on("change", '.set_heat_note', function (event) {
@@ -789,6 +795,17 @@
 				heat: parseInt($(this).data('id')),
 			};
 			socket.emit('delete_heat', data);
+		});
+
+		$(document).on("click", '.unlock_heat', function (event) {
+			heat_confirm = $(this).data('id');
+		});
+
+		$(document).on("click", '#unlock_heat', function (event) {
+			$.magnificPopup.close();
+			var heat = $('[data-heat=' + heat_confirm + ']');
+			$(heat).prop('disabled', false);
+
 		});
 
 		$(document).on("click", '.duplicate_heat', function (event) {
@@ -1969,7 +1986,7 @@
 		<h2>{{ __('Heats') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">{{ __('Selections cannot be modified for heats with saved races. (Clear races to release.)') }}</p>
+		<p class="form-note">{{ __('Selections are locked for heats with saved races. (Clear races to release.)') }}</p>
 
 		<ol id="heats" class="heats">
 			<li>{{ __('Loading...') }}</li>
@@ -2023,6 +2040,15 @@
 		</ol>
 		<div class="control-set">
 			<button id="generate_heats">{{ __('Generate Heats') }}</button>
+		</div>
+
+		<div id="unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Modifying a locked heat retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_heat">{{ __('Unlock') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
 		</div>
 	</div>
 </div>
