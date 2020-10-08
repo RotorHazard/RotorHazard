@@ -352,7 +352,7 @@ def render_event():
 @APP.route('/results')
 def render_results():
     '''Route to round summary page.'''
-    return render_template('results.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('results.html', serverInfo=serverInfo, getOption=Options.get, __=__, Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/run')
 @requires_auth

@@ -30,7 +30,7 @@
 				return boards;
 			}
 
-			var page = $('.page-rounds')
+			var page = $('#results');
 			page.empty();
 
 			if (!$.isEmptyObject(msg.heats)) {
@@ -236,11 +236,21 @@
 				}
 			}
 		})
+
+		$(document).on("click", '.clean-cache', function (event) {
+			socket.emit('clean_cache');
+		});
 	});
 </script>
 <main class="page-rounds">
 
-<p>{{ __('Loading...') }}</p>
+<div id="results">
+	<p>{{ __('Loading...') }}</p>
+</div>
+
+{% if Debug %}
+<p><button class="debug button-like clean-cache">{{ __('Clean Cache') }}</button></p>
+{% endif %}
 
 </main>
 {% endblock %}
