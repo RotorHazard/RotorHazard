@@ -4575,6 +4575,13 @@ def recover_database(dbfile, **kwargs):
         # load file directly
         engine = create_engine('sqlite:///%s' % dbfile, convert_unicode=True)
         metadata = MetaData(bind=engine)
+
+        options_query_data = get_legacy_table_data(metadata, 'global_settings')
+        for row in options_query_data:
+            if row['option_name'] == 'server_api':
+                migrate_db_api = int(row['option_value'])
+                break
+
         pilot_query_data = get_legacy_table_data(metadata, 'pilot')
         heat_query_data = get_legacy_table_data(metadata, 'heat')
         heatNode_query_data = get_legacy_table_data(metadata, 'heat_node')
@@ -4586,8 +4593,6 @@ def recover_database(dbfile, **kwargs):
         raceLap_query_data = get_legacy_table_data(metadata, 'saved_race_lap')
 
         engine.dispose() # close connection after loading
-
-        migrate_db_api = Options.getInt('server_api')
 
         carryoverOpts = [
             "timerName",
@@ -4625,11 +4630,6 @@ def recover_database(dbfile, **kwargs):
             "startThreshLowerDuration",
             "nextHeatBehavior"
         ]
-        carryOver = {}
-        for opt in carryoverOpts:
-            val = Options.get(opt, None)
-            if val is not None:
-                carryOver[opt] = val
 
         # RSSI reduced by half for 2.0.0
         if migrate_db_api < 23:
@@ -4669,7 +4669,11 @@ def recover_database(dbfile, **kwargs):
             heat_extracted_meta = []
             for row in heat_query_data:
                 if row['node_index'] == 0:
-                    heat_extracted_meta.append(row)
+                    new_row = {}
+                    new_row['id'] = row['heat_id']
+                    new_row['note'] = row['note']
+                    new_row['class_id'] = row['class_id']
+                    heat_extracted_meta.append(new_row)
 
             restore_table(Database.Heat, heat_extracted_meta, defaults={
                     'class_id': Database.CLASS_ID_NONE,
@@ -4677,14 +4681,17 @@ def recover_database(dbfile, **kwargs):
                     'cacheStatus': Results.CacheStatus.INVALID
                 })
 
-            # extract pilots from hets and load into heatnode
+            # extract pilots from heats and load into heatnode
             heatnode_extracted_data = []
+            heatnode_dummy_id = 0
             for row in heat_query_data:
                 heatnode_row = {}
+                heatnode_row['id'] = heatnode_dummy_id
                 heatnode_row['heat_id'] = int(row['heat_id'])
                 heatnode_row['node_index'] = int(row['node_index'])
                 heatnode_row['pilot_id'] = int(row['pilot_id'])
                 heatnode_extracted_data.append(heatnode_row)
+                heatnode_dummy_id += 1
 
             DB.session.query(Database.HeatNode).delete()
             restore_table(Database.HeatNode, heatnode_extracted_data, defaults={
@@ -4725,8 +4732,10 @@ def recover_database(dbfile, **kwargs):
                 'cacheStatus': Results.CacheStatus.INVALID
             })
 
-        for opt in carryOver:
-            Options.set(opt, carryOver[opt])
+        for opt in options_query_data:
+            if opt['option_name'] in carryoverOpts:
+                Options.set(opt['option_name'], opt['option_value'])
+
         logger.info('UI Options restored')
 
     except Exception as ex:
