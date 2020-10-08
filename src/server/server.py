@@ -1051,6 +1051,17 @@ def on_alter_heat(data):
         heatnode = Database.HeatNode.query.filter_by(heat_id=heat.id, node_index=node_index).one()
         heatnode.pilot_id = data['pilot']
 
+    # alter existing saved races:
+    if 'pilot' in data:
+        race_list = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
+        for race_meta in race_list:
+            for pilot_race in Database.SavedPilotRace.query.filter_by(race_id=race_meta.id).all():
+                if pilot_race.node_index == data['node']:
+                    pilot_race.pilot_id = data['pilot']
+            for race_lap in Database.SavedRaceLap.query.filter_by(race_id=race_meta.id).all():
+                if race_lap.node_index == data['node']:
+                    race_lap.pilot_id = data['pilot']
+
     DB.session.commit()
 
     if heat_id == RACE.current_heat:
