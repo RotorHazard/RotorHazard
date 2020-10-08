@@ -1145,6 +1145,13 @@ function get_interrupt_message() {
 	}
 }
 
+function init_popup_generics() {
+	$('.open-mfp-popup').magnificPopup({
+		type:'inline',
+		midClick: true,
+	});
+}
+
 // restore local settings
 if ($() && $().articulate('getVoices')[0] && $().articulate('getVoices')[0].name) {
 	rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
@@ -1261,10 +1268,7 @@ jQuery(document).ready(function($){
 	});
 
 	// Popup generics
-	$('.open-mfp-popup').magnificPopup({
-		type:'inline',
-		midClick: true,
-	});
+	init_popup_generics();
 
 	$('.cancel').click(function() {
 		$.magnificPopup.close();
