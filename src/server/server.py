@@ -1037,6 +1037,7 @@ def duplicate_heat(source, **kwargs):
 @catchLogExceptionsWrapper
 def on_alter_heat(data):
     '''Update heat.'''
+    global RACE
     heat_id = data['heat']
     heat = Database.Heat.query.get(heat_id)
 
@@ -1045,6 +1046,7 @@ def on_alter_heat(data):
         FULL_RESULTS_CACHE_VALID = False
         heat.note = data['note']
     if 'class' in data:
+        old_class_id = heat.class_id
         heat.class_id = data['class']
     if 'pilot' in data:
         node_index = data['node']
@@ -1057,6 +1059,11 @@ def on_alter_heat(data):
     if 'class' in data:
         for race_meta in race_list:
             race_meta.class_id = data['class']
+            # race_meta.cacheStatus=Results.CacheStatus.INVALID
+
+        if old_class_id is not Database.CLASS_ID_NONE:
+            old_class = Database.RaceClass.query.get(old_class_id)
+            old_class.cacheStatus = Results.CacheStatus.INVALID
 
     if 'pilot' in data:
         for race_meta in race_list:
@@ -1066,6 +1073,18 @@ def on_alter_heat(data):
             for race_lap in Database.SavedRaceLap.query.filter_by(race_id=race_meta.id).all():
                 if race_lap.node_index == data['node']:
                     race_lap.pilot_id = data['pilot']
+
+            race_meta.cacheStatus = Results.CacheStatus.INVALID
+
+        heat.cacheStatus = Results.CacheStatus.INVALID
+
+    if 'pilot' in data or 'class' in data:
+        if heat.class_id is not Database.CLASS_ID_NONE:
+            new_class = Database.RaceClass.query.get(heat.class_id)
+            new_class.cacheStatus = Results.CacheStatus.INVALID
+
+        FULL_RESULTS_CACHE_VALID = False
+        emit_round_data_notify()
 
     DB.session.commit()
 
