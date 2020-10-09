@@ -956,11 +956,11 @@ main.page-home {
 	flex: 1;
 }
 
-.page-settings .heats>li>.unlock_heat {
+.page-settings li>.unlock {
 	flex: 0;
 }
 
-.page-settings .heats>li>.unlock_heat svg {
+.page-settings li>.unlock svg {
 	height: 1em;
 	vertical-align: text-bottom;
 }

@@ -1084,7 +1084,6 @@ def on_alter_heat(data):
             new_class.cacheStatus = Results.CacheStatus.INVALID
 
         FULL_RESULTS_CACHE_VALID = False
-        emit_round_data_notify()
 
     DB.session.commit()
 
@@ -1106,8 +1105,7 @@ def on_alter_heat(data):
 
     logger.info('Heat {0} altered with {1}'.format(heat_id, data))
     emit_heat_data(noself=True)
-    if 'note' in data:
-        emit_round_data_notify() # live update rounds page
+    emit_round_data_notify() # live update rounds page
 
 @SOCKET_IO.on('delete_heat')
 @catchLogExceptionsWrapper
@@ -1222,16 +1220,28 @@ def on_duplicate_race_class(data):
 @catchLogExceptionsWrapper
 def on_alter_race_class(data):
     '''Update race class.'''
+    global FULL_RESULTS_CACHE_VALID
     race_class = data['class_id']
     db_update = Database.RaceClass.query.get(race_class)
+
     if 'class_name' in data:
-        global FULL_RESULTS_CACHE_VALID
         FULL_RESULTS_CACHE_VALID = False
         db_update.name = data['class_name']
     if 'class_format' in data:
         db_update.format_id = data['class_format']
     if 'class_description' in data:
         db_update.description = data['class_description']
+
+    # alter existing classes
+    if 'class_format' in data:
+        FULL_RESULTS_CACHE_VALID = False
+        db_update.cacheStatus = Results.CacheStatus.INVALID
+        races = Database.SavedRaceMeta.query.filter_by(class_id=race_class).all()
+
+        for race_meta in races:
+            race_meta.format_id = data['class_format']
+            race_meta.cacheStatus = Results.CacheStatus.INVALID
+
     DB.session.commit()
 
     trigger_event(Evt.CLASS_ALTER, {
@@ -1242,9 +1252,10 @@ def on_alter_race_class(data):
     emit_class_data(noself=True)
     if 'class_name' in data:
         emit_heat_data() # Update class names in heat displays
-        emit_round_data_notify() # live update rounds page
     if 'class_format' in data:
         emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
+
+    emit_round_data_notify() # live update rounds page
 
 @SOCKET_IO.on('delete_class')
 @catchLogExceptionsWrapper

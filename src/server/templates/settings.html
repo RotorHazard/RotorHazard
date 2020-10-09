@@ -6,7 +6,8 @@
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
-	var heat_confirm = null;
+	var heat_to_unlock = null;
+	var class_to_unlock = null;
 
 	$(document).ready(function () {
 		socket.emit('load_data', {'load_types': [
@@ -749,7 +750,7 @@
 				}
 
 				if (heats.locked) {
-					el.append('<a class="btn-danger button-like open-mfp-popup unlock_heat" href="#unlock_confirm" data-id="' + heats.heat_id + '" title="' + __('Force Modify Heat') + ': ' + heat_note + '">' + svg_asset.lock + '</a>');
+					el.append('<a class="btn-danger button-like open-mfp-popup unlock  unlock_heat" href="#heat_unlock_confirm" data-id="' + heats.heat_id + '" title="' + __('Force Modify Heat') + ': ' + heat_note + '">' + svg_asset.lock + '</a>');
 				}
 
 				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="' + __('Duplicate Heat') + ': ' + heat_note + '">+</button>');
@@ -798,14 +799,13 @@
 		});
 
 		$(document).on("click", '.unlock_heat', function (event) {
-			heat_confirm = $(this).data('id');
+			heat_to_unlock = $(this).data('id');
 		});
 
 		$(document).on("click", '#unlock_heat', function (event) {
 			$.magnificPopup.close();
-			var heat = $('[data-heat=' + heat_confirm + ']');
+			var heat = $('[data-heat=' + heat_to_unlock + ']');
 			$(heat).prop('disabled', false);
-
 		});
 
 		$(document).on("click", '.duplicate_heat', function (event) {
@@ -913,6 +913,10 @@
 					selectbox.prop('disabled', race_class.locked);
 					el.append(selectbox);
 
+					if (race_class.locked) {
+						el.append('<a class="btn-danger button-like open-mfp-popup unlock unlock_class" href="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class_name + '">' + svg_asset.lock + '</a>');
+					}
+
 					el.append('<button class="duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
 
 					el.appendTo(classlist);
@@ -956,6 +960,16 @@
 				class_description: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
+		});
+
+		$(document).on("click", '.unlock_class', function (event) {
+			class_to_unlock = $(this).data('id');
+		});
+
+		$(document).on("click", '#unlock_class', function (event) {
+			$.magnificPopup.close();
+			var race_class = $('[data-class_id=' + class_to_unlock + ']');
+			$(race_class).prop('disabled', false);
 		});
 
 		$('button#add_race_class').click(function (event) {
@@ -1977,6 +1991,15 @@
 		<div class="control-set">
 			<button id="add_race_class">+ {{ __('Add Class') }}</button>
 		</div>
+
+		<div id="class_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Modifying a locked class retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_class">{{ __('Unlock') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
 	</div>
 </div>
 
@@ -2042,7 +2065,7 @@
 			<button id="generate_heats">{{ __('Generate Heats') }}</button>
 		</div>
 
-		<div id="unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+		<div id="heat_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
 				<p>{{ __('Modifying a locked heat retroactively changes saved race data.') }}</p>
@@ -2175,7 +2198,7 @@
 				</li>
 				{% if cluster_has_slaves %}
 				<li>
-<!--
+					<!--
 					Split Timer:
 					Pilot Name, Split ID, Split Time
 					    0          0         0   ~>  000 = 0  :  None
@@ -2190,7 +2213,7 @@
 					SPLMSK_PILOT_NAME = 0x01
 					SPLMSK_SPLIT_ID = 0x02
 					SPLMSK_SPLIT_TIME = 0x04
--->
+					-->
 					<div class="label-block">
 						<label for="voice_split_timer">{{ __('Cluster/Split Timer') }}</label>
 					</div>
