@@ -1736,69 +1736,78 @@ def on_add_race_format():
 @catchLogExceptionsWrapper
 def on_alter_race_format(data):
     ''' update race format '''
-    race_format = getCurrentDbRaceFormat()
-    if race_format:
-        emit = False
-        if 'format_name' in data:
-            race_format.name = data['format_name']
-            emit = True
-        if 'race_mode' in data:
-            race_format.race_mode = data['race_mode']
-        if 'race_time' in data:
-            race_format.race_time_sec = data['race_time']
-        if 'start_delay_min' in data:
-            race_format.start_delay_min = data['start_delay_min']
-        if 'start_delay_max' in data:
-            race_format.start_delay_max = data['start_delay_max']
-        if 'staging_tones' in data:
-            race_format.staging_tones = data['staging_tones']
-        if 'number_laps_win' in data:
-            race_format.number_laps_win = data['number_laps_win']
-        if 'win_condition' in data:
-            race_format.win_condition = data['win_condition']
-        if 'team_racing_mode' in data:
-            race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
-        DB.session.commit()
-        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+    global RACE
+    if RACE.race_status == RaceStatus.READY:
+        race_format = getCurrentDbRaceFormat()
+        if race_format:
+            emit = False
+            if 'format_name' in data:
+                race_format.name = data['format_name']
+                emit = True
+            if 'race_mode' in data:
+                race_format.race_mode = data['race_mode']
+            if 'race_time' in data:
+                race_format.race_time_sec = data['race_time']
+            if 'start_delay_min' in data:
+                race_format.start_delay_min = data['start_delay_min']
+            if 'start_delay_max' in data:
+                race_format.start_delay_max = data['start_delay_max']
+            if 'staging_tones' in data:
+                race_format.staging_tones = data['staging_tones']
+            if 'number_laps_win' in data:
+                race_format.number_laps_win = data['number_laps_win']
+            if 'win_condition' in data:
+                race_format.win_condition = data['win_condition']
+            if 'team_racing_mode' in data:
+                race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
+            DB.session.commit()
+            RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
-        trigger_event(Evt.RACE_FORMAT_ALTER, {
-            'race_format': race_format.id,
-            })
+            trigger_event(Evt.RACE_FORMAT_ALTER, {
+                'race_format': race_format.id,
+                })
 
-        setCurrentRaceFormat(race_format)
-        logger.info('Altered race format to %s' % (data))
-        if emit:
-            emit_race_format()
-            emit_class_data()
+            setCurrentRaceFormat(race_format)
+            logger.info('Altered race format to %s' % (data))
+            if emit:
+                emit_race_format()
+                emit_class_data()
 
-        if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
-            message = __('Alterations made to race format: {0}').format(race_format.name)
-            emit_priority_message(message, False)
+            if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
+                message = __('Alterations made to race format: {0}').format(race_format.name)
+                emit_priority_message(message, False)
+    else:
+        emit_priority_message(__('Format alteration prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+        logger.warning('Preventing race format alteration: race in progress')
 
 
 @SOCKET_IO.on('delete_race_format')
 @catchLogExceptionsWrapper
 def on_delete_race_format():
     '''Delete profile'''
-    if RACE.race_status == RaceStatus.READY: # prevent format change if race running
-        raceformat = getCurrentDbRaceFormat()
-        raceformat_id = raceformat.id
-        if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
-            DB.session.delete(raceformat)
-            DB.session.commit()
-            first_raceFormat = Database.RaceFormat.query.first()
+    if RACE.race_status == RaceStatus.READY: # prevent format deletion if race running
+        if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
+            raceformat = getCurrentDbRaceFormat()
+            raceformat_id = raceformat.id
+            if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
+                DB.session.delete(raceformat)
+                DB.session.commit()
+                first_raceFormat = Database.RaceFormat.query.first()
 
-            trigger_event(Evt.RACE_FORMAT_DELETE, {
-                'race_format': raceformat_id,
-                })
+                trigger_event(Evt.RACE_FORMAT_DELETE, {
+                    'race_format': raceformat_id,
+                    })
 
-            setCurrentRaceFormat(first_raceFormat)
-            emit_race_format()
+                setCurrentRaceFormat(first_raceFormat)
+                emit_race_format()
+            else:
+                logger.info('Refusing to delete only format')
         else:
-            logger.info('Refusing to delete only format')
+            emit_priority_message(__('Format deletion prevented: saved race exists with this format'), False, nobroadcast=True)
+            logger.warning("Format deletion prevented by saved race")
     else:
-        emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
-        logger.info("Format change prevented by active race")
+        emit_priority_message(__('Format deletion prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+        logger.warning("Format deletion prevented by active race")
 
 @SOCKET_IO.on("set_next_heat_behavior")
 @catchLogExceptionsWrapper

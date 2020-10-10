@@ -113,6 +113,8 @@
 			$('#set_next_heat_behavior').val(1);
 		}
 
+		$('#unlock_race_format_button').html(svg_asset.lock);
+
 		// populate frequency selects
 		$('.frequency_table').each(function(){
 			$(this).html(freq.buildSelect());
@@ -133,7 +135,8 @@
 				case 3: // Race staging
 					$('#set_race_format').prop('disabled', true);
 					$('#add_race_format').prop('disabled', true);
-					$('#delete_race_format').prop('disabled', true);
+					$('#unlock_race_format_button').prop('disabled', true);
+					$('#delete_race_format_button').prop('disabled', true);
 					$('#set_format_name').prop('disabled', true);
 					$('#set_race_mode').prop('disabled', true);
 					$('#set_fix_race_time').prop('disabled', true);
@@ -147,7 +150,8 @@
 				default: // Waiting to start new race
 					$('#set_race_format').prop('disabled', false);
 					$('#add_race_format').prop('disabled', false);
-					$('#delete_race_format').prop('disabled', false);
+					$('#unlock_race_format_button').prop('disabled', false);
+					$('#delete_race_format_button').prop('disabled', false);
 					$('#set_format_name').prop('disabled', false);
 					$('#set_race_mode').prop('disabled', false);
 					$('#set_fix_race_time').prop('disabled', false);
@@ -1295,6 +1299,8 @@
 			for (var i = 0; i < msg.format_ids.length; i++) {
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
 			}
+			$('#unlock_race_format').toggle(msg.locked);
+			$('#delete_race_format_button').prop('disabled', msg.locked);
 			$('#set_race_format').val(msg.current_format);
 			$('#set_format_name').val(msg.format_name);
 			$('#set_format_name').prop('disabled', msg.locked);
@@ -1330,7 +1336,13 @@
 			return false;
 		});
 
+		$(document).on("click", '#unlock_race_format', function (event) {
+			$.magnificPopup.close();
+			$('#race_formats *').prop('disabled', false);
+		});
+
 		$('button#delete_race_format').click(function (event) {
+			$.magnificPopup.close();
 			socket.emit('delete_race_format');
 			return false;
 		});
@@ -1454,6 +1466,7 @@
 		});
 
 		$('button#reset_database').click(function (event) {
+			$.magnificPopup.close();
 			var data = {
 				reset_type: $('#reset_type').val()
 			};
@@ -2298,11 +2311,30 @@
 			<select id="set_race_format">
 				<option>{{ __('Loading...') }}</option>
 			</select>
-			<button id="add_race_format">+ {{ __('Duplicate Format') }}</button>
-			<button class="btn-danger" id="delete_race_format">&#215; {{ __('Remove') }}</button>
+			<button id="add_race_format" title="{{ __('Duplicate Format') }}">+</button>
+			<button class="btn-danger open-mfp-popup unlock" id="unlock_race_format_button" data-mfp-src="#format_unlock_confirm" title="{{ __('Force Modify Format') }}"></button>
+			<button class="btn-danger open-mfp-popup" id="delete_race_format_button" data-mfp-src="#format_delete_confirm" title="{{ __('Remove') }}">&#215;</button>
 		</div>
 
-		<ol class="form">
+		<div id="format_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Modifying a locked format retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_race_format">{{ __('Unlock') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="format_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Deleting a race format cannot be undone.') }}</p>
+				<p><button class="btn-danger" id="delete_race_format">{{ __('Delete') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<ol class="form" id="race_formats">
 			<li>
 				<div class="label-block">
 					<label for="set_format_name">{{ __('Name') }}</label>
