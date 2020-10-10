@@ -2540,7 +2540,7 @@
 				<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
 				<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
 			</select>
-			<button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
+			<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
 		</div>
 		<div class="control-set">
 			<select id="database_list">
@@ -2548,6 +2548,15 @@
 			</select>
 			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup">{{ __('Restore Data') }}</button>
 			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup">{{ __('Delete Data') }}</button>
+		</div>
+
+		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Current race data is not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
 		</div>
 
 		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
