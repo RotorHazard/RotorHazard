@@ -329,7 +329,7 @@ ol.form li+li {
 	text-align: center;
 }
 
-.control-set * {
+.control-set > * {
 	margin-bottom: 0.5rem;
 }
 
@@ -882,9 +882,9 @@ main.page-home {
 	width: 2em;
 }
 
-.item-blocks .unlock svg {
+.unlock svg {
 	height: 1em;
-	vertical-align: middle;
+	vertical-align: text-top;
 }
 
 .item-blocks .duplicate {

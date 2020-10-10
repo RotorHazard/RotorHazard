@@ -750,7 +750,7 @@
 				}
 
 				if (heats.locked) {
-					el.append('<a class="btn-danger button-like open-mfp-popup unlock  unlock_heat" href="#heat_unlock_confirm" data-id="' + heats.heat_id + '" title="' + __('Force Modify Heat') + ': ' + heat_note + '">' + svg_asset.lock + '</a>');
+					el.append('<button class="btn-danger open-mfp-popup unlock unlock_heat" data-mfp-src="#heat_unlock_confirm" data-id="' + heats.heat_id + '" title="' + __('Force Modify Heat') + ': ' + heat_note + '">' + svg_asset.lock + '</button>');
 				}
 
 				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="' + __('Duplicate Heat') + ': ' + heat_note + '">+</button>');
@@ -913,7 +913,7 @@
 					el.append(selectbox);
 
 					if (race_class.locked) {
-						el.append('<a class="btn-danger button-like open-mfp-popup unlock unlock_class" href="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class_name + '">' + svg_asset.lock + '</a>');
+						el.append('<button class="btn-danger open-mfp-popup unlock unlock_class" data-mfp-src="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class_name + '">' + svg_asset.lock + '</button>');
 					}
 
 					el.append('<button class="duplicate duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
@@ -2514,8 +2514,8 @@
 			<select id="database_list">
 				<option value="-">{{ __('No Saved Databases') }}</option>
 			</select>
-			<a href="#database_restore_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Restore Data') }}</a>
-			<a href="#database_delete_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Delete Data') }}</a>
+			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup">{{ __('Restore Data') }}</button>
+			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup">{{ __('Delete Data') }}</button>
 		</div>
 
 		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
@@ -2550,8 +2550,8 @@
 		<div id="cluster-status-table" class="control-set">
 		</div>
 		<div class="control-set">
-			<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
-			<a href="#reboot_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Reboot') }}</a>
+			<button data-mfp-src="#shutdown_confirm" class="btn-danger open-mfp-popup">{{ __('Shut Down') }}</button>
+			<button data-mfp-src="#reboot_confirm" class="btn-danger open-mfp-popup">{{ __('Reboot') }}</button>
 			<a href="/hardwarelog" class="debug button-like">{{ __('Server Log') }}</a>
 			<button id="download_logs">{{ __('Download Logs') }}</button>
 		</div>
