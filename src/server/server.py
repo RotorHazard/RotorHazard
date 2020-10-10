@@ -1107,6 +1107,10 @@ def on_alter_heat(data):
     emit_heat_data(noself=True)
     emit_round_data_notify() # live update rounds page
 
+    if ('pilot' in data or 'class' in data) and Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).first() is not None:
+        message = __('Alterations made to heat: {0}').format(heat.note)
+        emit_priority_message(message, False)
+
 @SOCKET_IO.on('delete_heat')
 @catchLogExceptionsWrapper
 def on_delete_heat(data):
@@ -1247,6 +1251,10 @@ def on_alter_race_class(data):
     trigger_event(Evt.CLASS_ALTER, {
         'class_id': race_class,
         })
+
+    if 'class_format' in data and Database.SavedRaceMeta.query.filter_by(class_id=race_class).first() is not None:
+        message = __('Alterations made to race class: {0}').format(db_update.name)
+        emit_priority_message(message, False)
 
     logger.info('Altered race class {0} to {1}'.format(race_class, data))
     emit_class_data(noself=True)
@@ -1762,6 +1770,11 @@ def on_alter_race_format(data):
         if emit:
             emit_race_format()
             emit_class_data()
+
+        if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
+            message = __('Alterations made to race format: {0}').format(race_format.name)
+            emit_priority_message(message, False)
+
 
 @SOCKET_IO.on('delete_race_format')
 @catchLogExceptionsWrapper

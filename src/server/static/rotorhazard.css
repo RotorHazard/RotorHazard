@@ -872,6 +872,25 @@ main.page-home {
 	text-align: left;
 }
 
+.item-blocks select {
+	flex: 1;
+	min-width: 0;
+}
+
+.item-blocks .unlock {
+	flex: 0 0 auto;
+	width: 2em;
+}
+
+.item-blocks .unlock svg {
+	height: 1em;
+	vertical-align: middle;
+}
+
+.item-blocks .duplicate {
+	flex: 0 0 auto;
+}
+
 .page-rounds .node table {
 	margin-top: 0;
 }
@@ -950,23 +969,6 @@ main.page-home {
 .page-settings .heats>li>.set_heat_note,
 .page-settings .heats>li>ol {
 	flex-basis: 100%;
-}
-
-.page-settings .heats>li>* {
-	flex: 1;
-}
-
-.page-settings li>.unlock {
-	flex: 0;
-}
-
-.page-settings li>.unlock svg {
-	height: 1em;
-	vertical-align: text-bottom;
-}
-
-.page-settings .heats>li>.duplicate_heat {
-	flex: 0;
 }
 
 @media (max-width: 54em){

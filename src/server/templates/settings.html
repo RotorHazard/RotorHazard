@@ -867,7 +867,6 @@
 			if ($('#generator_output_class option[value="' + output_val + '"]').length) {
 				$('#generator_output_class').val(output_val);
 			}
-
 		}
 
 		socket.on('class_data', function (msg) {
@@ -917,7 +916,7 @@
 						el.append('<a class="btn-danger button-like open-mfp-popup unlock unlock_class" href="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class_name + '">' + svg_asset.lock + '</a>');
 					}
 
-					el.append('<button class="duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
+					el.append('<button class="duplicate duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
 
 					el.appendTo(classlist);
 				}
@@ -926,6 +925,7 @@
 				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
 			}
 
+			init_popup_generics();
 			update_class_selectors();
 		});
 
@@ -1985,7 +1985,7 @@
 			</li>
 		</ol>
 
-		<div id="race_classes" class="race_classes">
+		<div id="race_classes" class="race_classes item-blocks">
 			<p class="form-note">{{ __('Loading...') }}</p>
 		</div>
 		<div class="control-set">
@@ -2011,7 +2011,7 @@
 	<div class="panel-content">
 		<p class="form-note">{{ __('Selections are locked for heats with saved races. (Clear races to release.)') }}</p>
 
-		<ol id="heats" class="heats">
+		<ol id="heats" class="heats item-blocks">
 			<li>{{ __('Loading...') }}</li>
 		</ol>
 		<div class="control-set">
