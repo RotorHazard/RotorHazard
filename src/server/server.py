@@ -1486,22 +1486,21 @@ def on_set_profile(data, emit_vals=True):
 def on_alter_race(data):
     '''Update heat.'''
     global RACE
-    heat_id = int(data['heat_id'])
+    global FULL_RESULTS_CACHE_VALID
     race_id = int(data['race_id'])
-
     race_meta = Database.SavedRaceMeta.query.get(race_id)
-    heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
 
     old_heat_id = race_meta.heat_id
     old_heat = Database.Heat.query.get(old_heat_id)
     old_class = Database.RaceClass.query.get(old_heat.class_id)
 
-    new_heat = Database.Heat.query.get(heat_id)
+    new_heat_id = int(data['heat_id'])
+    new_heat = Database.Heat.query.get(new_heat_id)
     new_class = Database.RaceClass.query.get(new_heat.class_id)
     new_format_id = new_class.format_id
 
     # first clear round ids
-    logger.debug('clearing IDs')
+    heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).all()
     race_meta.round_id = 0
     dummy_round_counter = -1
     for race in heat_races:
@@ -1510,15 +1509,14 @@ def on_alter_race(data):
 
     DB.session.commit()
 
-    logger.debug('adding new IDs')
     # assign new heat
-    race_meta.heat_id = heat_id
+    race_meta.heat_id = new_heat_id
     race_meta.class_id = new_heat.class_id
     race_meta.format_id = new_format_id
 
     # renumber rounds
     DB.session.flush()
-    heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).order_by(Database.SavedRaceMeta.start_time_formatted).all()
+    heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).order_by(Database.SavedRaceMeta.start_time_formatted).all()
     round_counter = 1
     for race in heat_races:
         race.round_id = round_counter
@@ -1542,11 +1540,14 @@ def on_alter_race(data):
 
     logger.info('Race {0} altered with {1}'.format(race_id, data))
 
-    '''
-    if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
-        message = __('Alterations made to race format: {0}').format(race_format.name)
-        emit_priority_message(message, False)
-    '''
+    heatnote = new_heat.note
+    if heatnote:
+        name = heatnote
+    else:
+        name = new_heat.id
+
+    message = __('A race has been reassigned to {0}').format(name)
+    emit_priority_message(message, False)
 
 @SOCKET_IO.on('backup_database')
 @catchLogExceptionsWrapper
