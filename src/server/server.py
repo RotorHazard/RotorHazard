@@ -1549,6 +1549,8 @@ def on_alter_race(data):
     message = __('A race has been reassigned to {0}').format(name)
     emit_priority_message(message, False)
 
+    emit_race_list(nobroadcast=True)
+
 @SOCKET_IO.on('backup_database')
 @catchLogExceptionsWrapper
 def on_backup_database():

@@ -65,6 +65,7 @@
 		socket.emit('load_data', {'load_types': [
 			'all_languages',
 			'language',
+			'heat_data',
 			'enter_and_exit_at_levels',
 			'race_formats',
 			'race_list'
@@ -126,7 +127,7 @@
 				}
 			}
 
-			$('.heat-selector').empty();
+			$('#selected_heat').empty();
 			for (var heat_i in race_list.heats) {
 				var heat = race_list.heats[heat_i];
 
@@ -136,7 +137,7 @@
 					var heat_name = __('Heat') + ' ' + heat_i;
 				}
 
-				$('.heat-selector').append('<option value="' + heat_i + '">' + heat_name + '</option>');
+				$('#selected_heat').append('<option value="' + heat_i + '">' + heat_name + '</option>');
 			}
 
 			if (!race_list_loaded) {
@@ -148,6 +149,21 @@
 			if (prev_heat) {
 				$('.heat-selector').val(prev_heat);
 				$('#selected_heat').trigger('change');
+			}
+		});
+
+		socket.on('heat_data', function (msg) {
+			$("#reassign-heat-selector").empty();
+			for (var heat_i in msg.heats) {
+				var heats = msg.heats[heat_i];
+
+				if (heats.note) {
+					heat_name = heats.note
+				} else {
+					heat_name = __('Heat') + ' ' + heats.heat_id
+				}
+
+				$('#reassign-heat-selector').append('<option value="' + heat_i + '">' + heat_name + '</option>');
 			}
 		});
 
@@ -298,6 +314,7 @@
 			$('#manual-lap-time').prop('disabled', true);
 			$('#add-lap').prop('disabled', true);
 			$('#clean-laps').prop('disabled', true);
+			$('#reassign-heat').prop('disabled', true);
 			$('#save-laps').prop('disabled', true);
 		}
 
@@ -311,6 +328,7 @@
 			$('#add-lap').prop('disabled', false);
 			$('#clean-laps').prop('disabled', false);
 			$('#save-laps').prop('disabled', false);
+			$('#reassign-heat').prop('disabled', false);
 			$('#discard-laps').prop('disabled', false);
 		}
 
