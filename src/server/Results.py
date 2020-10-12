@@ -81,48 +81,72 @@ def build_race_results_caches(DB, params):
         'start': token
     }
 
-    race = Database.SavedRaceMeta.query.get(params['race_id'])
-    heat = Database.Heat.query.get(params['heat_id'])
-    if heat.class_id != Database.CLASS_ID_NONE:
-        race_class = Database.RaceClass.query.get(heat.class_id)
+    if 'race_id' in params:
+        race = Database.SavedRaceMeta.query.get(params['race_id'])
+        if 'round_id' in params:
+            round_id = params['round_id']
+        else:
+            round_id = race.round_id
 
-    race.cacheStatus = token
-    heat.cacheStatus = token
-    if heat.class_id != Database.CLASS_ID_NONE:
+    if 'heat_id' in params:
+        heat_id = params['heat_id']
+        heat = Database.Heat.query.get(heat_id)
+    elif 'race_id' in params:
+        heat_id = race.heat_id
+        heat = Database.Heat.query.get(heat_id)
+
+    if 'class_id' in params:
+        class_id = params['class_id']
+        USE_CLASS = True
+    elif 'heat_id' in params and heat.class_id != Database.CLASS_ID_NONE:
+        class_id = heat.class_id
+        USE_CLASS = True
+    else:
+        USE_CLASS = False
+
+    if 'race_id' in params:
+        race.cacheStatus = token
+    if 'heat_id' in params:
+        heat.cacheStatus = token
+    if USE_CLASS:
+        race_class = Database.RaceClass.query.get(class_id)
         race_class.cacheStatus = token
+
     Options.set("eventResults_cacheStatus", token)
     DB.session.commit()
 
     # rebuild race result
-    gevent.sleep()
-    timing['race'] = monotonic()
-    if race.cacheStatus == token:
-        raceResult = build_result_cache(DB, heat_id=params['heat_id'], round_id=params['round_id'])
-        race.results = raceResult['results']
-        race.cacheStatus = raceResult['cacheStatus']
-        DB.session.commit()
-    logger.debug('Race cache built in %fs', monotonic() - timing['race'])
+    if 'race_id' in params:
+        gevent.sleep()
+        timing['race'] = monotonic()
+        if race.cacheStatus == token:
+            raceResult = build_result_cache(DB, heat_id=heat_id, round_id=round_id)
+            race.results = raceResult['results']
+            race.cacheStatus = raceResult['cacheStatus']
+            DB.session.commit()
+        logger.debug('Race {0} cache built in {1}s'.format(params['race_id'], monotonic() - timing['race']))
 
     # rebuild heat summary
-    gevent.sleep()
-    timing['heat'] = monotonic()
-    if heat.cacheStatus == token:
-        heatResult = build_result_cache(DB, heat_id=params['heat_id'])
-        heat.results = heatResult['results']
-        heat.cacheStatus = heatResult['cacheStatus']
-        DB.session.commit()
-    logger.debug('Heat cache built in %fs', monotonic() - timing['heat'])
+    if 'heat_id' in params:
+        gevent.sleep()
+        timing['heat'] = monotonic()
+        if heat.cacheStatus == token:
+            heatResult = build_result_cache(DB, heat_id=heat_id)
+            heat.results = heatResult['results']
+            heat.cacheStatus = heatResult['cacheStatus']
+            DB.session.commit()
+        logger.debug('Heat {0} cache built in {1}s'.format(heat_id, monotonic() - timing['heat']))
 
     # rebuild class summary
-    if heat.class_id != Database.CLASS_ID_NONE:
+    if USE_CLASS:
+        gevent.sleep()
+        timing['class'] = monotonic()
         if race_class.cacheStatus == token:
-            gevent.sleep()
-            timing['class'] = monotonic()
-            classResult = build_result_cache(DB, class_id=heat.class_id)
+            classResult = build_result_cache(DB, class_id=class_id)
             race_class.results = classResult['results']
             race_class.cacheStatus = classResult['cacheStatus']
             DB.session.commit()
-        logger.debug('Class cache built in %fs', monotonic() - timing['class'])
+        logger.debug('Class {0} cache built in {1}s'.format(class_id, monotonic() - timing['class']))
 
     # rebuild event summary
     gevent.sleep()
@@ -131,7 +155,7 @@ def build_race_results_caches(DB, params):
     Options.set("eventResults_cacheStatus", CacheStatus.VALID)
     logger.debug('Event cache built in %fs', monotonic() - timing['event'])
 
-    logger.debug('Built result caches in {0}: Race {1}, Heat {2}, Class {3}, Event'.format(monotonic() - timing['start'], params['race_id'], params['heat_id'], heat.class_id))
+    logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
 
 def calc_leaderboard(DB, **params):
     ''' Generates leaderboards '''
