@@ -709,11 +709,7 @@
 					'race_id': race_id,
 					'heat_id': heat_id
 				});
-				/*
-				socket.emit('load_data', {'load_types': [
-					'race_list'
-				]});
-				*/
+				race_list_loaded = false
 			} else {
 				standard_message_queue.push(__('No race loaded'));
 				if (standard_message_queue.length == 1) {
