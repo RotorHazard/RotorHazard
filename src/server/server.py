@@ -1038,6 +1038,7 @@ def duplicate_heat(source, **kwargs):
 def on_alter_heat(data):
     '''Update heat.'''
     global RACE
+    global FULL_RESULTS_CACHE_VALID
     heat_id = data['heat']
     heat = Database.Heat.query.get(heat_id)
 
@@ -1063,7 +1064,7 @@ def on_alter_heat(data):
 
         if old_class_id is not Database.CLASS_ID_NONE:
             old_class = Database.RaceClass.query.get(old_class_id)
-            old_class.cacheStatus = Results.CacheStatus.INVALID
+            gevent.spawn(Results.build_race_results_caches, DB, {'class_id':old_class_id})
 
     if 'pilot' in data:
         for race_meta in race_list:
@@ -1074,14 +1075,14 @@ def on_alter_heat(data):
                 if race_lap.node_index == data['node']:
                     race_lap.pilot_id = data['pilot']
 
-            race_meta.cacheStatus = Results.CacheStatus.INVALID
+            gevent.spawn(Results.build_race_results_caches, DB, {'race_id':race_meta.id})
 
-        heat.cacheStatus = Results.CacheStatus.INVALID
+        gevent.spawn(Results.build_race_results_caches, DB, {'heat_id':heat_id})
 
     if 'pilot' in data or 'class' in data:
         if heat.class_id is not Database.CLASS_ID_NONE:
             new_class = Database.RaceClass.query.get(heat.class_id)
-            new_class.cacheStatus = Results.CacheStatus.INVALID
+            gevent.spawn(Results.build_race_results_caches, DB, {'heat_id':heat.class_id})
 
         FULL_RESULTS_CACHE_VALID = False
 
@@ -1239,12 +1240,12 @@ def on_alter_race_class(data):
     # alter existing classes
     if 'class_format' in data:
         FULL_RESULTS_CACHE_VALID = False
-        db_update.cacheStatus = Results.CacheStatus.INVALID
-        races = Database.SavedRaceMeta.query.filter_by(class_id=race_class).all()
+        gevent.spawn(Results.build_race_results_caches, DB, {'class_id':race_class})
 
+        races = Database.SavedRaceMeta.query.filter_by(class_id=race_class).all()
         for race_meta in races:
             race_meta.format_id = data['class_format']
-            race_meta.cacheStatus = Results.CacheStatus.INVALID
+            gevent.spawn(Results.build_race_results_caches, DB, {'race_id':race_meta.id})
 
     DB.session.commit()
 
@@ -1337,10 +1338,19 @@ def on_alter_pilot(data):
     logger.info('Altered pilot {0} to {1}'.format(pilot_id, data))
     emit_pilot_data(noself=True) # Settings page, new pilot settings
     if 'callsign' in data:
-        Results.invalidate_all_caches(DB) # wipe caches (all have stored pilot names)
-        FULL_RESULTS_CACHE_VALID = False
-        emit_round_data_notify() # live update rounds page
         emit_heat_data() # Settings page, new pilot callsign in heats
+        heatnodes = Database.HeatNode.query.filter_by(pilot_id=pilot_id).all()
+        if heatnodes:
+            FULL_RESULTS_CACHE_VALID = False
+            for heatnode in heatnodes:
+                gevent.spawn(Results.build_race_results_caches, DB, {'heat_id':heatnode.heat_id})
+                heat = Database.Heat.query.get(heatnode.heat_id)
+                gevent.spawn(Results.build_race_results_caches, DB, {'class_id':heat.class_id})
+                races = Database.SavedRaceMeta.query.filter_by(heat_id=heatnode.heat_id)
+                for race in races:
+                    gevent.spawn(Results.build_race_results_caches, DB, {'race_id':race.id})
+
+            emit_round_data_notify() # live update rounds page
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
@@ -1493,13 +1503,14 @@ def on_alter_race(data):
     old_heat_id = race_meta.heat_id
     old_heat = Database.Heat.query.get(old_heat_id)
     old_class = Database.RaceClass.query.get(old_heat.class_id)
+    old_format_id = old_class.format_id
 
     new_heat_id = int(data['heat_id'])
     new_heat = Database.Heat.query.get(new_heat_id)
     new_class = Database.RaceClass.query.get(new_heat.class_id)
     new_format_id = new_class.format_id
 
-    # first clear round ids
+    # clear round ids
     heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).all()
     race_meta.round_id = 0
     dummy_round_counter = -1
@@ -1516,23 +1527,28 @@ def on_alter_race(data):
 
     # renumber rounds
     DB.session.flush()
-    heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).order_by(Database.SavedRaceMeta.start_time_formatted).all()
+    old_heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=old_heat_id).order_by(Database.SavedRaceMeta.start_time_formatted).all()
     round_counter = 1
-    for race in heat_races:
+    for race in old_heat_races:
         race.round_id = round_counter
-        race.cacheStatus = Results.CacheStatus.INVALID
         round_counter += 1
 
-    # cache cleaning
-    old_heat.cacheStatus = Results.CacheStatus.INVALID
-    old_class.cacheStatus = Results.CacheStatus.INVALID
-    new_heat.cacheStatus = Results.CacheStatus.INVALID
-    new_class.cacheStatus = Results.CacheStatus.INVALID
+    new_heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).order_by(Database.SavedRaceMeta.start_time_formatted).all()
+    round_counter = 1
+    for race in new_heat_races:
+        race.round_id = round_counter
+        round_counter += 1
 
     DB.session.commit()
 
+    # cache cleaning
     FULL_RESULTS_CACHE_VALID = False
-    emit_round_data_notify()
+    if old_format_id != new_format_id:
+        gevent.spawn(Results.build_race_results_caches, DB, {'race_id':race_id, 'heat_id':new_heat_id})
+    else:
+        gevent.spawn(Results.build_race_results_caches, DB, {'heat_id':new_heat_id})
+
+    gevent.spawn(Results.build_race_results_caches, DB, {'heat_id':old_heat_id})
 
     trigger_event(Evt.RACE_ALTER, {
         'race_id': race_id,
@@ -1550,6 +1566,7 @@ def on_alter_race(data):
     emit_priority_message(message, False)
 
     emit_race_list(nobroadcast=True)
+    emit_round_data_notify()
 
 @SOCKET_IO.on('backup_database')
 @catchLogExceptionsWrapper
@@ -2341,80 +2358,93 @@ def on_stop_race():
 def on_save_laps():
     '''Save current laps data to the database.'''
     global FULL_RESULTS_CACHE_VALID
-    FULL_RESULTS_CACHE_VALID = False
-    race_format = getCurrentRaceFormat()
-    heat = Database.Heat.query.get(RACE.current_heat)
-    # Get the last saved round for the current heat
-    max_round = DB.session.query(DB.func.max(Database.SavedRaceMeta.round_id)) \
-            .filter_by(heat_id=RACE.current_heat).scalar()
-    if max_round is None:
-        max_round = 0
-    # Loop through laps to copy to saved races
-    profile = getCurrentProfile()
-    profile_freqs = json.loads(profile.frequencies)
 
-    new_race = Database.SavedRaceMeta( \
-        round_id=max_round+1, \
-        heat_id=RACE.current_heat, \
-        class_id=heat.class_id, \
-        format_id=Options.get('currentFormat'), \
-        start_time = RACE.start_time_monotonic, \
-        start_time_formatted = RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"), \
-        cacheStatus=Results.CacheStatus.INVALID
-    )
-    DB.session.add(new_race)
-    DB.session.flush()
-    DB.session.refresh(new_race)
+    # Determine if race is empty
+    race_has_laps = False
+    for node_index in RACE.node_laps:
+        if RACE.node_laps[node_index]:
+            race_has_laps = True
+            break
 
-    for node_index in range(RACE.num_nodes):
-        if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-            pilot_id = Database.HeatNode.query.filter_by( \
-                heat_id=RACE.current_heat, node_index=node_index).one().pilot_id
+    if race_has_laps == True:
+        FULL_RESULTS_CACHE_VALID = False
+        race_format = getCurrentRaceFormat()
+        heat = Database.Heat.query.get(RACE.current_heat)
+        # Get the last saved round for the current heat
+        max_round = DB.session.query(DB.func.max(Database.SavedRaceMeta.round_id)) \
+                .filter_by(heat_id=RACE.current_heat).scalar()
+        if max_round is None:
+            max_round = 0
+        # Loop through laps to copy to saved races
+        profile = getCurrentProfile()
+        profile_freqs = json.loads(profile.frequencies)
 
-            new_pilotrace = Database.SavedPilotRace( \
-                race_id=new_race.id, \
-                node_index=node_index, \
-                pilot_id=pilot_id, \
-                history_values=json.dumps(INTERFACE.nodes[node_index].history_values), \
-                history_times=json.dumps(INTERFACE.nodes[node_index].history_times), \
-                penalty_time=0, \
-                enter_at=INTERFACE.nodes[node_index].enter_at_level, \
-                exit_at=INTERFACE.nodes[node_index].exit_at_level
-            )
-            DB.session.add(new_pilotrace)
-            DB.session.flush()
-            DB.session.refresh(new_pilotrace)
+        new_race = Database.SavedRaceMeta( \
+            round_id=max_round+1, \
+            heat_id=RACE.current_heat, \
+            class_id=heat.class_id, \
+            format_id=Options.get('currentFormat'), \
+            start_time = RACE.start_time_monotonic, \
+            start_time_formatted = RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"), \
+            cacheStatus=Results.CacheStatus.INVALID
+        )
+        DB.session.add(new_race)
+        DB.session.flush()
+        DB.session.refresh(new_race)
 
-            for lap in RACE.node_laps[node_index]:
-                DB.session.add(Database.SavedRaceLap( \
+        for node_index in range(RACE.num_nodes):
+            if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+                pilot_id = Database.HeatNode.query.filter_by( \
+                    heat_id=RACE.current_heat, node_index=node_index).one().pilot_id
+
+                new_pilotrace = Database.SavedPilotRace( \
                     race_id=new_race.id, \
-                    pilotrace_id=new_pilotrace.id, \
                     node_index=node_index, \
                     pilot_id=pilot_id, \
-                    lap_time_stamp=lap['lap_time_stamp'], \
-                    lap_time=lap['lap_time'], \
-                    lap_time_formatted=lap['lap_time_formatted'], \
-                    source = lap['source'], \
-                    deleted = lap['deleted']
-                ))
+                    history_values=json.dumps(INTERFACE.nodes[node_index].history_values), \
+                    history_times=json.dumps(INTERFACE.nodes[node_index].history_times), \
+                    penalty_time=0, \
+                    enter_at=INTERFACE.nodes[node_index].enter_at_level, \
+                    exit_at=INTERFACE.nodes[node_index].exit_at_level
+                )
+                DB.session.add(new_pilotrace)
+                DB.session.flush()
+                DB.session.refresh(new_pilotrace)
 
-    DB.session.commit()
+                for lap in RACE.node_laps[node_index]:
+                    DB.session.add(Database.SavedRaceLap( \
+                        race_id=new_race.id, \
+                        pilotrace_id=new_pilotrace.id, \
+                        node_index=node_index, \
+                        pilot_id=pilot_id, \
+                        lap_time_stamp=lap['lap_time_stamp'], \
+                        lap_time=lap['lap_time'], \
+                        lap_time_formatted=lap['lap_time_formatted'], \
+                        source = lap['source'], \
+                        deleted = lap['deleted']
+                    ))
 
-    # spawn thread for updating results caches
-    params = {
-        'race_id': new_race.id,
-        'heat_id': RACE.current_heat,
-        'round_id': new_race.round_id,
-    }
-    gevent.spawn(Results.build_race_results_caches, DB, params)
+        DB.session.commit()
 
-    trigger_event(Evt.LAPS_SAVE, {
-        'race_id': new_race.id,
-        })
+        # spawn thread for updating results caches
+        params = {
+            'race_id': new_race.id,
+            'heat_id': RACE.current_heat,
+            'round_id': new_race.round_id,
+        }
+        gevent.spawn(Results.build_race_results_caches, DB, params)
 
-    logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
-    on_discard_laps(saved=True) # Also clear the current laps
-    emit_round_data_notify() # live update rounds page
+        trigger_event(Evt.LAPS_SAVE, {
+            'race_id': new_race.id,
+            })
+
+        logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
+        on_discard_laps(saved=True) # Also clear the current laps
+        emit_round_data_notify() # live update rounds page
+    else:
+        on_discard_laps()
+        message = __('Discarding empty race')
+        emit_priority_message(message, False, nobroadcast=True)
 
 @SOCKET_IO.on('resave_laps')
 @catchLogExceptionsWrapper
@@ -3359,56 +3389,58 @@ def emit_round_data_thread(params, sid):
 
                 rounds = []
                 for round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
-                    pilotraces = []
-                    for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
-                        gevent.sleep()
-                        laps = []
-                        for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
-                            laps.append({
-                                'id': lap.id,
-                                'lap_time_stamp': lap.lap_time_stamp,
-                                'lap_time': lap.lap_time,
-                                'lap_time_formatted': lap.lap_time_formatted,
-                                'source': lap.source,
-                                'deleted': lap.deleted
+
+                    if Database.SavedRaceLap.query.filter_by(race_id=round.id).first() is not None:
+                        pilotraces = []
+                        for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
+                            gevent.sleep()
+                            laps = []
+                            for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
+                                laps.append({
+                                    'id': lap.id,
+                                    'lap_time_stamp': lap.lap_time_stamp,
+                                    'lap_time': lap.lap_time,
+                                    'lap_time_formatted': lap.lap_time_formatted,
+                                    'source': lap.source,
+                                    'deleted': lap.deleted
+                                })
+
+                            pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
+                            if pilot_data:
+                                nodepilot = pilot_data.callsign
+                            else:
+                                nodepilot = None
+
+                            pilotraces.append({
+                                'callsign': nodepilot,
+                                'pilot_id': pilotrace.pilot_id,
+                                'node_index': pilotrace.node_index,
+                                'laps': laps
                             })
-
-                        pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
-                        if pilot_data:
-                            nodepilot = pilot_data.callsign
+                        if round.cacheStatus == Results.CacheStatus.INVALID:
+                            logger.info('Heat %d Round %d cache invalid; rebuilding', heat.heat_id, round.round_id)
+                            results = Results.calc_leaderboard(DB, heat_id=heat.heat_id, round_id=round.round_id)
+                            round.results = results
+                            round.cacheStatus = Results.CacheStatus.VALID
+                            DB.session.commit()
                         else:
-                            nodepilot = None
+                            expires = monotonic() + CACHE_TIMEOUT
+                            while True:
+                                gevent.idle()
+                                if round.cacheStatus == Results.CacheStatus.VALID:
+                                    results = round.results
+                                    break
+                                elif monotonic() > expires:
+                                    logger.warning('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, round.round_id)
+                                    error_flag = True
+                                    break
 
-                        pilotraces.append({
-                            'callsign': nodepilot,
-                            'pilot_id': pilotrace.pilot_id,
-                            'node_index': pilotrace.node_index,
-                            'laps': laps
+                        rounds.append({
+                            'id': round.round_id,
+                            'start_time_formatted': round.start_time_formatted,
+                            'nodes': pilotraces,
+                            'leaderboard': results
                         })
-                    if round.cacheStatus == Results.CacheStatus.INVALID:
-                        logger.info('Heat %d Round %d cache invalid; rebuilding', heat.heat_id, round.round_id)
-                        results = Results.calc_leaderboard(DB, heat_id=heat.heat_id, round_id=round.round_id)
-                        round.results = results
-                        round.cacheStatus = Results.CacheStatus.VALID
-                        DB.session.commit()
-                    else:
-                        expires = monotonic() + CACHE_TIMEOUT
-                        while True:
-                            gevent.idle()
-                            if round.cacheStatus == Results.CacheStatus.VALID:
-                                results = round.results
-                                break
-                            elif monotonic() > expires:
-                                logger.warning('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, round.round_id)
-                                error_flag = True
-                                break
-
-                    rounds.append({
-                        'id': round.round_id,
-                        'start_time_formatted': round.start_time_formatted,
-                        'nodes': pilotraces,
-                        'leaderboard': results
-                    })
 
                 if heatdata.cacheStatus == Results.CacheStatus.INVALID:
                     logger.info('Heat %d cache invalid; rebuilding', heat.heat_id)
