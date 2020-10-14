@@ -143,6 +143,7 @@
 					$('#set_start_delay_min').prop('disabled', true);
 					$('#set_start_delay_max').prop('disabled', true);
 					$('#set_staging_tones').prop('disabled', true);
+					$('#set_start_behavior').prop('disabled', true);
 					$('#set_number_laps_win').prop('disabled', true);
 					$('#set_win_condition').prop('disabled', true);
 					$('#set_team_racing_mode').prop('disabled', true);
@@ -158,6 +159,7 @@
 					$('#set_start_delay_min').prop('disabled', false);
 					$('#set_start_delay_max').prop('disabled', false);
 					$('#set_staging_tones').prop('disabled', false);
+					$('#set_start_behavior').prop('disabled', false);
 					$('#set_number_laps_win').prop('disabled', false);
 					$('#set_win_condition').prop('disabled', false);
 					$('#set_team_racing_mode').prop('disabled', false);
@@ -1316,6 +1318,8 @@
 			$('#set_start_delay_max').prop('disabled', msg.locked);
 			$('#set_staging_tones').val(msg.staging_tones);
 			$('#set_staging_tones').prop('disabled', msg.locked);
+			$('#set_start_behavior').val(msg.start_behavior);
+			$('#set_start_behavior').prop('disabled', msg.locked);
 			$('#set_number_laps_win').val(msg.number_laps_win);
 			$('#set_number_laps_win').prop('disabled', msg.locked);
 			$('#set_win_condition').val(msg.win_condition);
@@ -1399,6 +1403,13 @@
 		$('#set_staging_tones').change(function (event) {
 			var data = {
 				staging_tones: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+		})
+
+		$('#set_start_behavior').change(function (event) {
+			var data = {
+				start_behavior: parseInt($(this).val())
 			};
 			socket.emit('alter_race_format', data);
 		})
@@ -2377,6 +2388,16 @@
 					<option value="2">{{ __('Each Second') }}</option>
 					<option value="1">{{ __('One') }}</option>
 					<option value="0">{{ __('None') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_start_behavior">{{ __('First Crossing') }}</label>
+				</div>
+				<select id="set_start_behavior">
+					<option value="0">{{ __('Hole Shot') }}</option>
+					<option value="1">{{ __('First Lap') }}</option>
+					<option value="2">{{ __('Staggered Start') }}</option>
 				</select>
 			</li>
 			<li>

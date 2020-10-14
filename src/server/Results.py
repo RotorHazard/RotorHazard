@@ -13,7 +13,7 @@ import logging
 from monotonic import monotonic
 from Language import __
 from eventmanager import Evt, EventManager
-from RHRace import RaceStatus, WinCondition, WinStatus
+from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 
 Events = EventManager()
 
@@ -504,26 +504,48 @@ def calc_leaderboard(DB, **params):
             'node': nodes[i],
         })
 
-    # Sort by race time
-    leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
-        -x['laps'], # reverse lap count
-        x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
-    )))
+    if race_format.start_behavior == StartBehavior.STAGGERED:
+        # Sort by laps time
+        leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
+            -x['laps'], # reverse lap count
+            x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
+        )))
 
-    # determine ranking
-    last_rank = '-'
-    last_rank_laps = 0
-    last_rank_time = 0
-    for i, row in enumerate(leaderboard_by_race_time, start=1):
-        pos = i
-        if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
-            pos = last_rank
-        last_rank = pos
-        last_rank_laps = row['laps']
-        last_rank_time = row['total_time_raw']
+        # determine ranking
+        last_rank = '-'
+        last_rank_laps = 0
+        last_rank_time = 0
+        for i, row in enumerate(leaderboard_by_race_time, start=1):
+            pos = i
+            if last_rank_laps == row['laps'] and last_rank_time == row['total_time_laps_raw']:
+                pos = last_rank
+            last_rank = pos
+            last_rank_laps = row['laps']
+            last_rank_time = row['total_time_laps_raw']
 
-        row['position'] = pos
-        row['behind'] = leaderboard_by_race_time[0]['laps'] - row['laps']
+            row['position'] = pos
+            row['behind'] = leaderboard_by_race_time[0]['laps'] - row['laps']
+    else:
+        # Sort by race time
+        leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
+            -x['laps'], # reverse lap count
+            x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
+        )))
+
+        # determine ranking
+        last_rank = '-'
+        last_rank_laps = 0
+        last_rank_time = 0
+        for i, row in enumerate(leaderboard_by_race_time, start=1):
+            pos = i
+            if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
+                pos = last_rank
+            last_rank = pos
+            last_rank_laps = row['laps']
+            last_rank_time = row['total_time_raw']
+
+            row['position'] = pos
+            row['behind'] = leaderboard_by_race_time[0]['laps'] - row['laps']
 
     gevent.sleep()
     # Sort by fastest laps
