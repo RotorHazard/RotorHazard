@@ -1322,6 +1322,13 @@ function build_leaderboard(leaderboard, display_type, meta) {
 	if (typeof(meta) === 'undefined') {
 		meta = new Object;
 		meta.team_racing_mode = false;
+		meta.start_behavior = 0;
+	}
+
+	if (meta.start_behavior == 2) {
+		var total_label = __('Laps Total');
+	} else {
+		var total_label = __('Total');
 	}
 
 	var twrap = $('<div class="responsive-wrap">');
@@ -1338,7 +1345,7 @@ function build_leaderboard(leaderboard, display_type, meta) {
 		display_type == 'round' ||
 		display_type == 'current') {
 		header_row.append('<th class="laps">' + __('Laps') + '</th>');
-		header_row.append('<th class="total">' + __('Total') + '</th>');
+		header_row.append('<th class="total">' + total_label + '</th>');
 		header_row.append('<th class="avg">' + __('Avg.') + '</th>');
 	}
 	if (display_type == 'by_fastest_lap' ||
@@ -1375,7 +1382,11 @@ function build_leaderboard(leaderboard, display_type, meta) {
 				lap = '&#8212;';
 			row.append('<td class="laps">'+ lap +'</td>');
 
-			var lap = leaderboard[i].total_time;
+			if (meta.start_behavior == 2) {
+				var lap = leaderboard[i].total_time_laps;
+			} else {
+				var lap = leaderboard[i].total_time;
+			}
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			row.append('<td class="total">'+ lap +'</td>');

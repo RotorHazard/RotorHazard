@@ -1827,6 +1827,7 @@ def on_add_race_format():
 def on_alter_race_format(data):
     ''' update race format '''
     global RACE
+    global FULL_RESULTS_CACHE_VALID
     if RACE.race_status == RaceStatus.READY:
         race_format = getCurrentDbRaceFormat()
         if race_format:
@@ -1853,7 +1854,23 @@ def on_alter_race_format(data):
             if 'team_racing_mode' in data:
                 race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
             DB.session.commit()
-            RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+
+            if 'number_laps_win' in data or \
+                'start_behavior' in data or \
+                'win_condition' in data or \
+                'team_racing_mode' in data:
+
+                for race in Database.SavedRaceMeta.query.filter_by(format_id=race_format.id):
+                    gevent.spawn(Results.build_race_results_caches, DB, {'race_id':race.id})
+
+                for race_class in Database.RaceClass.query.filter_by(format_id=race_format.id):
+                    gevent.spawn(Results.build_race_results_caches, DB, {'class_id':race_class.id})
+
+                    for heat in Database.Heat.query.filter_by(class_id=race_class.id):
+                        gevent.spawn(Results.build_race_results_caches, DB, {'heat_id':heat.id})
+
+                FULL_RESULTS_CACHE_VALID = False
+                emit_round_data_notify() # live update rounds page
 
             trigger_event(Evt.RACE_FORMAT_ALTER, {
                 'race_format': race_format.id,

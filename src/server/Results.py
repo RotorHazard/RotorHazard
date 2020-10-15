@@ -615,12 +615,14 @@ def calc_leaderboard(DB, **params):
             'primary_leaderboard': primary_leaderboard,
             'win_condition': race_format.win_condition,
             'team_racing_mode': race_format.team_racing_mode,
+            'start_behavior': race_format.start_behavior,
         }
     else:
         leaderboard_output['meta'] = {
             'primary_leaderboard': 'by_race_time',
             'win_condition': WinCondition.NONE,
-            'team_racing_mode': False
+            'team_racing_mode': False,
+            'start_behavior': StartBehavior.HOLESHOT,
         }
 
     return leaderboard_output
