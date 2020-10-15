@@ -504,7 +504,7 @@ def calc_leaderboard(DB, **params):
             'node': nodes[i],
         })
 
-    if race_format.start_behavior == StartBehavior.STAGGERED:
+    if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
         # Sort by laps time
         leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
             -x['laps'], # reverse lap count
