@@ -239,7 +239,10 @@ def calc_leaderboard(DB, **params):
                     break
 
             if laps:
-                max_lap = len(laps) - 1
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    max_lap = len(laps)
+                else:
+                    max_lap = len(laps) - 1
             else:
                 max_lap = 0
 
@@ -256,6 +259,9 @@ def calc_leaderboard(DB, **params):
             holeshot_laps = []
             pilotnode = None
             for race in racelist:
+                this_race = Database.SavedRaceMeta.query.get(race)
+                this_race_format = Database.RaceFormat.query.get(this_race.format_id)
+
                 pilotraces = Database.SavedPilotRace.query \
                     .filter(Database.SavedPilotRace.pilot_id == pilot.id, \
                     Database.SavedPilotRace.race_id == race \
@@ -264,15 +270,18 @@ def calc_leaderboard(DB, **params):
                 if len(pilotraces):
                     pilotnode = pilotraces[-1].node_index
 
-                for pilotrace in pilotraces:
-                    gevent.sleep()
-                    holeshot_lap = Database.SavedRaceLap.query \
-                        .filter(Database.SavedRaceLap.pilotrace_id == pilotrace.id, \
-                            Database.SavedRaceLap.deleted != 1, \
-                            ).order_by(Database.SavedRaceLap.lap_time_stamp).first()
+                if this_race_format and this_race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    pass
+                else:
+                    for pilotrace in pilotraces:
+                        gevent.sleep()
+                        holeshot_lap = Database.SavedRaceLap.query \
+                            .filter(Database.SavedRaceLap.pilotrace_id == pilotrace.id, \
+                                Database.SavedRaceLap.deleted != 1, \
+                                ).order_by(Database.SavedRaceLap.lap_time_stamp).first()
 
-                    if holeshot_lap:
-                        holeshot_laps.append(holeshot_lap.id)
+                        if holeshot_lap:
+                            holeshot_laps.append(holeshot_lap.id)
 
             # get total laps
             stat_query = DB.session.query(DB.func.count(Database.SavedRaceLap.id)) \

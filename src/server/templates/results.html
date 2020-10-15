@@ -174,7 +174,11 @@
 											var table = $('<table class="laps">');
 											var tbody = $('<tbody>');
 
-											var lap_index = 0;
+											if ('start_behavior' in round.leaderboard.meta && round.leaderboard.meta.start_behavior == 1) {
+												var lap_index = 1;
+											} else {
+												var lap_index = 0;
+											}
 											for (var lap_i in node.laps) {
 												var lap = node.laps[lap_i];
 												if (!lap.deleted) {
