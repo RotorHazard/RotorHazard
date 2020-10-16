@@ -80,7 +80,7 @@ All audio controls are local to the browser and device where you set them, inclu
 
 Voice select chooses the text-to-speech engine. Available selections are provided by the web browser and operating system.
 
-Announcements allow the user to choose to hear each pilot's callsign, lap number, and/or lap time as they cross. The "Race Timer" announcement will perioically call out how much time has elapsed or is remaining, depending on the timer mode in the race format. "Team Lap Total" is used only when "Team Racing Mode" is enabled.
+Announcements allow the user to choose to hear each pilot's callsign, lap number, and/or lap time as they cross. The "Race Clock" announcement will perioically call out how much time has elapsed or is remaining, depending on the timer mode in the race format. "Team Lap Total" is used only when "Team Racing Mode" is enabled.
 
 Voice volume, rate, and pitch control all text-to-speech announcements. "Tone Volume" controls race start and end signals.
 
@@ -89,7 +89,7 @@ Indicator beeps are very short tones that give feedback on how the timer is work
 #### Race Format
 Race formats define how a race is conducted. Choose an active race format. Settings that you adjust here will be saved to the currently active format.
 
-The race timer can count up or down as selected by _Race Timer Mode_. Use "No Time Limit" for a "first to X laps" style with a timer that counts upward from zero. Use "Fixed Time" for a timer which counts down to zero after the race starts. _Timer Duration_ is used in "Fixed Time" mode to determine race length.
+The race clock can count up or down as selected by _Race Clock Mode_. Use "No Time Limit" for a "First to X laps" style with a timer that counts upward from zero. Use "Fixed Time" for a timer which counts down to zero after the race starts. _Timer Duration_ is used in "Fixed Time" mode to determine race length.
 
 Each race begins with a staging sequence. Race staging can be done with a fixed or variable number of staging seconds and with or without staging tones. Set the _Minimum Start Delay_ and _Maximum Start Delay_ to the values (in seconds) that are desired for race staging. If these values are different, the timer will choose a value at random for the amount of staging time. Random staging times are useful to prevent false starts. The timer will display "Ready" during staging, obscuring the race start time. For a fixed staging time, set the "Minimum" and "Maximum" to the same value. The staging timer will openly display the number of seconds until the race begins. 
 
