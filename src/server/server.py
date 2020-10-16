@@ -1855,22 +1855,26 @@ def on_alter_race_format(data):
                 race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
             DB.session.commit()
 
-            if 'number_laps_win' in data or \
-                'start_behavior' in data or \
-                'win_condition' in data or \
-                'team_racing_mode' in data:
+            if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
+                if 'number_laps_win' in data or \
+                    'start_behavior' in data or \
+                    'win_condition' in data or \
+                    'team_racing_mode' in data:
 
-                for race in Database.SavedRaceMeta.query.filter_by(format_id=race_format.id):
-                    gevent.spawn(Results.build_race_results_caches, DB, {'race_id':race.id})
+                    for race in Database.SavedRaceMeta.query.filter_by(format_id=race_format.id):
+                        gevent.spawn(Results.build_race_results_caches, DB, {'race_id':race.id})
 
-                for race_class in Database.RaceClass.query.filter_by(format_id=race_format.id):
-                    gevent.spawn(Results.build_race_results_caches, DB, {'class_id':race_class.id})
+                    for race_class in Database.RaceClass.query.filter_by(format_id=race_format.id):
+                        gevent.spawn(Results.build_race_results_caches, DB, {'class_id':race_class.id})
 
-                    for heat in Database.Heat.query.filter_by(class_id=race_class.id):
-                        gevent.spawn(Results.build_race_results_caches, DB, {'heat_id':heat.id})
+                        for heat in Database.Heat.query.filter_by(class_id=race_class.id):
+                            gevent.spawn(Results.build_race_results_caches, DB, {'heat_id':heat.id})
 
-                FULL_RESULTS_CACHE_VALID = False
-                emit_round_data_notify() # live update rounds page
+                    FULL_RESULTS_CACHE_VALID = False
+                    emit_round_data_notify() # live update rounds page
+
+                message = __('Alterations made to race format: {0}').format(race_format.name)
+                emit_priority_message(message, False)
 
             trigger_event(Evt.RACE_FORMAT_ALTER, {
                 'race_format': race_format.id,
@@ -1882,9 +1886,6 @@ def on_alter_race_format(data):
                 emit_race_format()
                 emit_class_data()
 
-            if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
-                message = __('Alterations made to race format: {0}').format(race_format.name)
-                emit_priority_message(message, False)
     else:
         emit_priority_message(__('Format alteration prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
         logger.warning('Preventing race format alteration: race in progress')
@@ -1895,9 +1896,9 @@ def on_alter_race_format(data):
 def on_delete_race_format():
     '''Delete profile'''
     if RACE.race_status == RaceStatus.READY: # prevent format deletion if race running
-        if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
-            raceformat = getCurrentDbRaceFormat()
-            raceformat_id = raceformat.id
+        raceformat = getCurrentDbRaceFormat()
+        raceformat_id = raceformat.id
+        if Database.SavedRaceMeta.query.filter_by(format_id=raceformat_id).first() is None:
             if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
                 DB.session.delete(raceformat)
                 DB.session.commit()
