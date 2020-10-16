@@ -97,6 +97,8 @@ _A small amount of time is needed to ensure the timer has synchronized with all 
 
 A number of tones can be generated during the staging sequence, as set by _Staging Tones_. For "Each Second", the timer will sound a tone continuously during staging. With "One", the timer will sound a tone immediately when staging begins. With "None", no audible warning is provided. Regardless of the _Staging Tones_ setting, the "Race Start" tone is still played when staging completes and the race begins.
 
+When a pilot crosses for the first time in a race, _First Crossing_ affects how result displays and race outcomes are processed. "Hole Shot" records the race time of each pilot's first crossing as beginning their first lap. "First Lap" records the race time of each pilot's first crossing as ending their first lap. "Staggered Start" begins each pilot's own race clock their first crossing, disregarding the global race clock. "Staggered Start" is typically combined with the "No Time Limit" _Race Clock Mode_.
+
 _Win Condition_ determines how the timer calls out the winner of the race, the information presented in the OSD and streaming display, and sort method for leaderboards. Leaderboard sorting affects the results page and heat generator.
 * __Most Laps in Fastest Time__: Pilots are judged by the number of laps completed and how long it took to complete them. If there is a tie for the number of laps completed, the pilot who completed those laps in a shorter amount of time will be ranked higher.
 * __Most Laps Only__: Scored only by the completed lap count. Pilots with the same lap count are tied. Use with "Fixed Time" mode for a race style before timing was reliable, or with "No Time Limit" mode to judge the greatest distance instead of shortest time.
