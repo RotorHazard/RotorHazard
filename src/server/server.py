@@ -256,6 +256,7 @@ def setCurrentRaceFormat(race_format):
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
         RACE.format.id = race_format.id
+        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
     else:
         RACE.format = race_format
 
@@ -1123,7 +1124,7 @@ def on_delete_heat(data):
             if RACE.current_heat == heat_id:
                 RACE.current_heat = Database.Heat.query.first().id
                 emit_current_heat()
-
+                RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
     else:
         logger.info('Refusing to delete only heat')
 
@@ -1289,6 +1290,7 @@ def on_alter_pilot(data):
         emit_heat_data() # Settings page, new pilot callsign in heats
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
+    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
 @SOCKET_IO.on('delete_pilot')
 @catchLogExceptionsWrapper
@@ -1311,6 +1313,7 @@ def on_delete_pilot(data):
         logger.info('Pilot {0} deleted'.format(pilot.id))
         emit_pilot_data()
         emit_heat_data()
+        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
 @SOCKET_IO.on('add_profile')
 @catchLogExceptionsWrapper
