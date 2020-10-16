@@ -1372,6 +1372,21 @@ main.page-home {
 	margin-bottom: 2em;
 }
 
+.form-note.emphasis {
+	margin: 1em 0;
+	background: #eee;
+	overflow: auto;
+}
+
+.form-note.emphasis ul {
+	padding: 0;
+}
+
+.form-note.emphasis li {
+	list-style: none;
+	margin: 0.5rem 0;
+}
+
 th.speak,
 td.speak {
 	width: 2.2em;

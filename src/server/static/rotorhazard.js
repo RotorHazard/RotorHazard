@@ -814,6 +814,7 @@ var rotorhazard = {
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array
 	heats: {}, // heats object
+	race_format: {}, // current format object
 
 	panelstates: {}, // collapsible panel state
 
