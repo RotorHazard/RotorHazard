@@ -1115,16 +1115,15 @@ def on_delete_heat(data):
                                 heatnode.heat_id = heat_obj.id
                             DB.session.commit()
                             RACE.current_heat = 1
+                            heat_id = 1  # set value so heat data is updated below
                         else:
                             logger.warn("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
                 except Exception as ex:
                     logger.warn("Error adjusting single remaining heat ID: " + str(ex))
 
             emit_heat_data()
-            if RACE.current_heat == heat_id:
-                RACE.current_heat = Database.Heat.query.first().id
-                emit_current_heat()
-                RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+            if RACE.current_heat == heat_id:  # if current heat was deleted then load new heat data
+                on_set_current_heat({ 'heat': Database.Heat.query.first().id })
     else:
         logger.info('Refusing to delete only heat')
 
