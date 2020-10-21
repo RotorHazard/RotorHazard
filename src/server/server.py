@@ -256,6 +256,7 @@ def setCurrentRaceFormat(race_format):
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
         RACE.format.id = race_format.id
+        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
     else:
         RACE.format = race_format
 
@@ -1154,16 +1155,15 @@ def on_delete_heat(data):
                                 heatnode.heat_id = heat_obj.id
                             DB.session.commit()
                             RACE.current_heat = 1
+                            heat_id = 1  # set value so heat data is updated below
                         else:
                             logger.warn("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
                 except Exception as ex:
                     logger.warn("Error adjusting single remaining heat ID: " + str(ex))
 
             emit_heat_data()
-            if RACE.current_heat == heat_id:
-                RACE.current_heat = Database.Heat.query.first().id
-                emit_current_heat()
-
+            if RACE.current_heat == heat_id:  # if current heat was deleted then load new heat data
+                on_set_current_heat({ 'heat': Database.Heat.query.first().id })
     else:
         logger.info('Refusing to delete only heat')
 
@@ -1355,6 +1355,7 @@ def on_alter_pilot(data):
             emit_round_data_notify() # live update rounds page
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
+    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
 @SOCKET_IO.on('delete_pilot')
 @catchLogExceptionsWrapper
@@ -1377,6 +1378,7 @@ def on_delete_pilot(data):
         logger.info('Pilot {0} deleted'.format(pilot.id))
         emit_pilot_data()
         emit_heat_data()
+        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
 @SOCKET_IO.on('add_profile')
 @catchLogExceptionsWrapper
@@ -4426,11 +4428,14 @@ def emit_current_log_file_to_socket():
             logger.exception("Error sending current log file to socket")
     log.start_socket_forward_handler()
 
-def db_init():
+def db_init(**kwargs):
     '''Initialize database.'''
     DB.create_all() # Creates tables from database classes/models
     db_reset_pilots()
-    db_reset_heats()
+    if 'nofill' in kwargs:
+        db_reset_heats(nofill=True)
+    else:
+        db_reset_heats()
     db_reset_current_laps()
     db_reset_saved_races()
     db_reset_profile()
@@ -4440,10 +4445,13 @@ def db_init():
     trigger_event(Evt.DATABASE_INITIALIZE)
     logger.info('Database initialized')
 
-def db_reset():
+def db_reset(**kwargs):
     '''Resets database.'''
     db_reset_pilots()
-    db_reset_heats()
+    if 'nofill' in kwargs:
+        db_reset_heats(nofill=True)
+    else:
+        db_reset_heats()
     db_reset_current_laps()
     db_reset_saved_races()
     db_reset_profile()
@@ -4460,13 +4468,14 @@ def db_reset_pilots():
     DB.session.commit()
     logger.info('Database pilots reset')
 
-def db_reset_heats():
+def db_reset_heats(**kwargs):
     '''Resets database heats to default.'''
     DB.session.query(Database.Heat).delete()
     DB.session.query(Database.HeatNode).delete()
-    on_add_heat()
     DB.session.commit()
-    RACE.current_heat = 1
+    if 'nofill' not in kwargs:
+        on_add_heat()
+        RACE.current_heat = 1
     logger.info('Database heats reset')
 
 def db_reset_classes():
@@ -4842,7 +4851,7 @@ def recover_database(dbfile, **kwargs):
     if "startup" in kwargs:
         backup_db_file(False)  # rename and move DB file
 
-    db_init()
+    db_init(nofill=True)
 
     # primary data recovery
     try:
@@ -4900,6 +4909,8 @@ def recover_database(dbfile, **kwargs):
             restore_table(Database.HeatNode, heatNode_query_data, defaults={
                     'pilot_id': Database.PILOT_ID_NONE
                 })
+
+            RACE.current_heat = Database.Heat.query.first().id
 
         restore_table(Database.RaceFormat, raceFormat_query_data, defaults={
                 'name': __("Migrated Format"),
