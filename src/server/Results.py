@@ -361,17 +361,10 @@ def calc_leaderboard(DB, **params):
             average_lap.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
-                avg_lap = (current_laps[i][-1]['lap_time_stamp'] - current_laps[i][0]['lap_time_stamp']) / (len(current_laps[i]) - 1)
-
-                '''
-                timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
-
-                lap_total = 0
-                for lap in timed_laps:
-                    lap_total += lap['lap_time']
-
-                avg_lap = lap_total / len(timed_laps)
-                '''
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    avg_lap = current_laps[i][-1]['lap_time_stamp'] / len(current_laps[i])
+                else:
+                    avg_lap = (current_laps[i][-1]['lap_time_stamp'] - current_laps[i][0]['lap_time_stamp']) / (len(current_laps[i]) - 1)
 
             else:
                 stat_query = DB.session.query(DB.func.avg(Database.SavedRaceLap.lap_time)) \
@@ -391,7 +384,10 @@ def calc_leaderboard(DB, **params):
             fastest_lap_source.append(None)
         else:
             if USE_CURRENT:
-                timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    timed_laps = current_laps[i]
+                else:
+                    timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
 
                 fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
                 fastest_lap_source.append(None)
