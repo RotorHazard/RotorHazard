@@ -82,7 +82,7 @@ sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startu
 from Plugins import Plugins, search_modules
 from Sensors import Sensors
 import RHRace
-from RHRace import WinCondition, WinStatus, RaceStatus
+from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -3222,6 +3222,7 @@ def emit_race_formats(**params):
 def emit_current_laps(**params):
     '''Emits current laps.'''
     global RACE
+    race_format = getCurrentRaceFormat()
     if 'use_cache' in params and RACE.last_race_cacheStatus == Results.CacheStatus.VALID:
         emit_payload = RACE.last_race_laps
     else:
@@ -3233,10 +3234,14 @@ def emit_current_laps(**params):
             last_lap_id = -1
             for idx, lap in enumerate(RACE.node_laps[node]):
                 if not lap['deleted']:
+                    lap_number = lap['lap_number'];
+                    if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                        lap_number += 1
+
                     splits = get_splits(node, lap['lap_number'], True)
                     node_laps.append({
                         'lap_index': idx,
-                        'lap_number': lap['lap_number'],
+                        'lap_number': lap_number,
                         'lap_raw': lap['lap_time'],
                         'lap_time': lap['lap_time_formatted'],
                         'lap_time_stamp': lap['lap_time_stamp'],
