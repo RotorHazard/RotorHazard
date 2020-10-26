@@ -1,9 +1,9 @@
-{% extends "layout.html" %} {% block title %}Rounds{% endblock %} {% block head %} {% endblock %} {% block content %}
+{% extends "layout.html" %} {% block title %}Results{% endblock %} {% block head %} {% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
 		'all_languages',
 		'language',
-		'round_data',
+		'results_data',
 	];
 
 	$(document).ready(function () {
@@ -13,13 +13,7 @@
 			}
 		});
 
-		socket.on('round_data_notify', function () {
-			socket.emit('load_data', {'load_types': [
-				'round_data',
-			]});
-		});
-
-		socket.on('round_data', function (msg) {
+		socket.on('results_data', function (msg) {
 			function order_boards(primary) {
 				var boards = ['by_race_time', 'by_fastest_lap', 'by_consecutives']
 				boards.sort(function(x,y){ return x == primary ? -1 : y == primary ? 1 : 0; });

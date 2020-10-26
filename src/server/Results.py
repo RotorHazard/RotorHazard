@@ -66,14 +66,14 @@ def normalize_cache_status(DB):
 
     logger.debug('All Result caches normalized')
 
-def build_result_cache(DB, **params):
+def build_atomic_result_cache(DB, **params):
     return {
         'results': calc_leaderboard(DB, **params),
         'cacheStatus': CacheStatus.VALID
     }
 
 @catchLogExceptionsWrapper
-def build_race_results_caches(DB, params):
+def build_atomic_results_caches(DB, params):
     global FULL_RESULTS_CACHE
     FULL_RESULTS_CACHE = False
     token = monotonic()
@@ -120,7 +120,7 @@ def build_race_results_caches(DB, params):
         gevent.sleep()
         timing['race'] = monotonic()
         if race.cacheStatus == token:
-            raceResult = build_result_cache(DB, heat_id=heat_id, round_id=round_id)
+            raceResult = build_atomic_result_cache(DB, heat_id=heat_id, round_id=round_id)
             race.results = raceResult['results']
             race.cacheStatus = raceResult['cacheStatus']
             DB.session.commit()
@@ -131,7 +131,7 @@ def build_race_results_caches(DB, params):
         gevent.sleep()
         timing['heat'] = monotonic()
         if heat.cacheStatus == token:
-            heatResult = build_result_cache(DB, heat_id=heat_id)
+            heatResult = build_atomic_result_cache(DB, heat_id=heat_id)
             heat.results = heatResult['results']
             heat.cacheStatus = heatResult['cacheStatus']
             DB.session.commit()
@@ -142,7 +142,7 @@ def build_race_results_caches(DB, params):
         gevent.sleep()
         timing['class'] = monotonic()
         if race_class.cacheStatus == token:
-            classResult = build_result_cache(DB, class_id=class_id)
+            classResult = build_atomic_result_cache(DB, class_id=class_id)
             race_class.results = classResult['results']
             race_class.cacheStatus = classResult['cacheStatus']
             DB.session.commit()

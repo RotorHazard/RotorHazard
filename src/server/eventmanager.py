@@ -130,6 +130,7 @@ class Evt:
     # Results cache
     CACHE_CLEAR = 'cacheClear'
     CACHE_READY = 'cacheReady'
+    CACHE_FAIL = 'cacheFail'
     # CLUSTER
     CLUSTER_JOIN = 'clusterJoin'
     # LED
