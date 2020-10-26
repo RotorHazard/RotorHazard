@@ -104,6 +104,7 @@ class Evt:
     # Race setup
     MIN_LAP_TIME_SET = 'minLapTimeSet'
     MIN_LAP_BEHAVIOR_SET = 'minLapBehaviorSet'
+    RACE_ALTER = 'raceAlter'
     RACE_FORMAT_SET = 'raceFormatSet'
     RACE_FORMAT_ADD = 'raceFormatAdd'
     RACE_FORMAT_ALTER = 'raceFormatAlter'

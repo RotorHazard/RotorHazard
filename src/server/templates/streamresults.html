@@ -2,6 +2,19 @@
 <link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'frequency_data',
+		'pilot_data',
+		'race_format',
+		'leaderboard_cache',
+		'current_laps',
+		'race_status',
+		'current_heat',
+		'team_racing_stat_if_enb'
+	];
+
 	rotorhazard.show_messages = false;
 
 	var request_time;
@@ -24,19 +37,6 @@
 		// get pi time
 		rotorhazard.pi_time_request = window.performance.now();
 		socket.emit('get_pi_time');
-
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'frequency_data',
-			'pilot_data',
-			'race_format',
-			'leaderboard_cache',
-			'current_laps',
-			'race_status',
-			'current_heat',
-			'team_racing_stat_if_enb'
-		]});
 
 		socket.on('pi_time', function (msg) {
 			var response_time = window.performance.now();
@@ -88,10 +88,6 @@
 				a = Math.min(a, rotorhazard.pi_time_diff_samples[i].response);
 			}
 			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
-		});
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
 		});
 
 		socket.on('language', function (msg) {

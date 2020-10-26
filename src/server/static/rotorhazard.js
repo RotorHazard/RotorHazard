@@ -1145,6 +1145,13 @@ function get_interrupt_message() {
 	}
 }
 
+function init_popup_generics() {
+	$('.open-mfp-popup').magnificPopup({
+		type:'inline',
+		midClick: true,
+	});
+}
+
 // restore local settings
 if ($() && $().articulate('getVoices')[0] && $().articulate('getVoices')[0].name) {
 	rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
@@ -1261,10 +1268,7 @@ jQuery(document).ready(function($){
 	});
 
 	// Popup generics
-	$('.open-mfp-popup').magnificPopup({
-		type:'inline',
-		midClick: true,
-	});
+	init_popup_generics();
 
 	$('.cancel').click(function() {
 		$.magnificPopup.close();
@@ -1273,6 +1277,7 @@ jQuery(document).ready(function($){
 	// startup socket connection
 	socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
+	// popup messaging
 	socket.on('priority_message', function (msg) {
 		if (msg.interrupt) {
 			interrupt_message_queue.push(msg.message);
@@ -1308,6 +1313,21 @@ jQuery(document).ready(function($){
 			}
 		}
 	};
+
+	// hard reset
+	socket.on('database_restore_done', function (msg) {
+		location.reload();
+	});
+
+	// load needed data from server when required
+	socket.on('load_all', function (msg) {
+		socket.emit('load_data', {'load_types': data_dependencies});
+	});
+
+	// store language strings
+	socket.on('all_languages', function (msg) {
+		rotorhazard.language_strings = msg.languages;
+	});
 });
 }
 

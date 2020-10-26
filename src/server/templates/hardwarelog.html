@@ -2,6 +2,10 @@
 <script type="text/javascript" src="./static/Blob.js"></script>
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'hardware_log_init'
+	];
+
 	var log;
 	var live_updates = true;
 
@@ -24,10 +28,6 @@
 	}
 
 	$(document).ready(function () {
-		socket.emit('load_data', {'load_types': [
-			'hardware_log_init'
-		]});
-
 		function set_log_text(text) {
 			log = text;
 			$('#log').html($('<div/>').text(log).html());

@@ -1,16 +1,12 @@
 {% extends "layout.html" %} {% block title %}Rounds{% endblock %} {% block head %} {% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'round_data',
+	];
+
 	$(document).ready(function () {
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'round_data',
-		]});
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
-
 		socket.on('language', function (msg) {
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
@@ -30,7 +26,7 @@
 				return boards;
 			}
 
-			var page = $('.page-rounds')
+			var page = $('#results');
 			page.empty();
 
 			if (!$.isEmptyObject(msg.heats)) {
@@ -186,11 +182,11 @@
 													lap_index++;
 												}
 											}
-										}
 
-										table.append(tbody);
-										node_div.append(table);
-										race_results.append(node_div);
+											table.append(tbody);
+											node_div.append(table);
+											race_results.append(node_div);
+										}
 									}
 
 									round_content.append(race_leaderboard);
@@ -236,11 +232,21 @@
 				}
 			}
 		})
+
+		$(document).on("click", '.clean-cache', function (event) {
+			socket.emit('clean_cache');
+		});
 	});
 </script>
 <main class="page-rounds">
 
-<p>{{ __('Loading...') }}</p>
+<div id="results">
+	<p>{{ __('Loading...') }}</p>
+</div>
+
+{% if Debug %}
+<p><button class="debug button-like clean-cache">{{ __('Clean Cache') }}</button></p>
+{% endif %}
 
 </main>
 {% endblock %}
