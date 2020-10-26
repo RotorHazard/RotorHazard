@@ -4745,6 +4745,9 @@ def recover_database(dbfile, **kwargs):
                 migrate_db_api = int(row['option_value'])
                 break
 
+        if migrate_db_api > SERVER_API:
+            raise ValueError('Database version is newer than server version')
+
         pilot_query_data = get_legacy_table_data(metadata, 'pilot')
         heat_query_data = get_legacy_table_data(metadata, 'heat')
         heatNode_query_data = get_legacy_table_data(metadata, 'heat_node')
