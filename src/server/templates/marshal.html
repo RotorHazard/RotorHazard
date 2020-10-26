@@ -1,6 +1,15 @@
 {% extends "layout.html" %} {% block title %}Marshal Race Data{% endblock %}{% block head %}
 
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'heat_data',
+		'enter_and_exit_at_levels',
+		'race_formats',
+		'race_list'
+	];
+
 	// set admin flag
 	rotorhazard.admin = true;
 	rotorhazard.saveData();
@@ -61,19 +70,6 @@
 		});
 		graph.streamTo(graph_canvas, 1);
 		graph.stop();
-
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'heat_data',
-			'enter_and_exit_at_levels',
-			'race_formats',
-			'race_list'
-		]});
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
 
 		socket.on('language', function (msg) {
 			if (msg.language) {

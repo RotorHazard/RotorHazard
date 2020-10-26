@@ -2,24 +2,19 @@
 <link rel="stylesheet" href="/static/streamnode.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'race_format',
+		'leaderboard_cache',
+		'current_laps',
+	];
+
 	rotorhazard.show_messages = false;
 	streamnode = {{ node_id }}
 
 	$(document).ready(function () {
 		rotorhazard.show_messages = false;
-
-		// get pi time
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'race_format',
-			'leaderboard_cache',
-			'current_laps',
-		]});
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
 
 		socket.on('language', function (msg) {
 			if (msg.language) {

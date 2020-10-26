@@ -3,6 +3,30 @@
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
 
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'node_data',
+		'environmental_data',
+		'frequency_data',
+		'heat_data',
+		'class_data',
+		'pilot_data',
+		'race_format',
+		'node_tuning',
+		'enter_and_exit_at_levels',
+		'start_thresh_lower_amount',
+		'start_thresh_lower_duration',
+		'min_lap',
+		'race_status',
+		'team_racing_mode',
+		'led_effects',
+		'led_effect_setup',
+		'cluster_status',
+		'vrx_list',
+		'backups_list'
+	];
+
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
@@ -10,34 +34,6 @@
 	var class_to_unlock = null;
 
 	$(document).ready(function () {
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'node_data',
-			'environmental_data',
-			'frequency_data',
-			'heat_data',
-			'class_data',
-			'pilot_data',
-			'race_format',
-			'node_tuning',
-			'enter_and_exit_at_levels',
-			'start_thresh_lower_amount',
-			'start_thresh_lower_duration',
-			'min_lap',
-			'race_status',
-			'team_racing_mode',
-			'led_effects',
-			'led_effect_setup',
-			'cluster_status',
-			'vrx_list',
-			'backups_list'
-		]});
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
-
 		socket.on('language', function (msg) {
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
@@ -1605,10 +1601,10 @@
 						sound_cconnect.play();
 					}
 					else {
-						play_beep(150, 225, rotorhazard.indicator_beep_volume, 'square');
+						play_beep(120, 225, rotorhazard.indicator_beep_volume, 'square');
 						setTimeout(function(tone){
-							play_beep(200, 250, rotorhazard.indicator_beep_volume, 'square');
-						}, 150, 0);
+							play_beep(110, 250, rotorhazard.indicator_beep_volume, 'square');
+						}, 120, 0);
 					}
 				}
 				else {
@@ -1616,10 +1612,10 @@
 						sound_cdisconnect.play();
 					}
 					else {
-						play_beep(200, 200, rotorhazard.indicator_beep_volume, 'square');
+						play_beep(80, 200, rotorhazard.indicator_beep_volume, 'square');
 						setTimeout(function(tone){
-							play_beep(400, 100, rotorhazard.indicator_beep_volume, 'square');
-						}, 200, 0);
+							play_beep(220, 100, rotorhazard.indicator_beep_volume, 'square');
+						}, 80, 0);
 					}
 				}
 			}
@@ -2623,7 +2619,7 @@
 			</div>
 		</div>
 
-		<div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+      <div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
 				<p>{{ __('Deleted database files are not recoverable. Are you sure?') }}</p>

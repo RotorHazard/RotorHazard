@@ -250,7 +250,7 @@ def getCurrentDbRaceFormat():
     else:
         return None
 
-def setCurrentRaceFormat(race_format):
+def setCurrentRaceFormat(race_format, **kwargs):
     if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
         Options.set('currentFormat', race_format.id)
         # create a shared instance
@@ -260,7 +260,8 @@ def setCurrentRaceFormat(race_format):
     else:
         RACE.format = race_format
 
-    emit_current_laps()
+    if 'silent' not in kwargs:
+        emit_current_laps()
 
 class RHRaceFormat():
     def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
@@ -564,7 +565,8 @@ def connect_handler():
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
     start_background_threads()
-    emit_heat_data(nobroadcast=True)
+    # push initial data
+    emit_frontend_load(nobroadcast=True)
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
@@ -1617,6 +1619,7 @@ def on_list_backups():
 @catchLogExceptionsWrapper
 def on_restore_database(data):
     '''Restore database.'''
+    success = None
     if 'backup_file' in data:
         backup_file = data['backup_file']
         backup_path = DB_BKP_DIR_NAME + '/' + backup_file
@@ -1624,19 +1627,35 @@ def on_restore_database(data):
         if os.path.exists(backup_path):
             logger.info('Found {0}: starting restoration...'.format(backup_file))
             DB.session.close()
-            recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
 
-            emit_payload = {
-                'file_name': backup_file
-            }
+            try:
+                recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
+
+                expand_heats()
+                raceformat_id = Options.getInt('currentFormat')
+                race_format = Database.RaceFormat.query.get(raceformat_id)
+                setCurrentRaceFormat(race_format)
+
+                success = True
+            except Exception as ex:
+                logger.warning('Clearing all data after recovery failure:  ' + str(ex))
+                db_reset()
+                success = False
+
+            init_race_state()
+            init_interface_state()
 
             Events.trigger(Evt.DATABASE_RESTORE, {
                 'file_name': backup_file,
                 })
-
-            SOCKET_IO.emit('database_restore_done', emit_payload)
         else:
             logger.warning('Unable to restore {0}: File does not exist'.format(backup_file))
+            success = False
+
+    if success == False:
+        message = __('Database recovery failed for: {0}').format(backup_file)
+        emit_priority_message(message, False, nobroadcast=True)
+
 
 @SOCKET_IO.on('delete_database')
 @catchLogExceptionsWrapper
@@ -1856,27 +1875,7 @@ def on_alter_race_format(data):
             if 'team_racing_mode' in data:
                 race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
             DB.session.commit()
-
-            if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
-                if 'number_laps_win' in data or \
-                    'start_behavior' in data or \
-                    'win_condition' in data or \
-                    'team_racing_mode' in data:
-
-                    for race in Database.SavedRaceMeta.query.filter_by(format_id=race_format.id):
-                        gevent.spawn(Results.build_race_results_caches, DB, {'race_id':race.id})
-
-                    for race_class in Database.RaceClass.query.filter_by(format_id=race_format.id):
-                        gevent.spawn(Results.build_race_results_caches, DB, {'class_id':race_class.id})
-
-                        for heat in Database.Heat.query.filter_by(class_id=race_class.id):
-                            gevent.spawn(Results.build_race_results_caches, DB, {'heat_id':heat.id})
-
-                    FULL_RESULTS_CACHE_VALID = False
-                    emit_round_data_notify() # live update rounds page
-
-                message = __('Alterations made to race format: {0}').format(race_format.name)
-                emit_priority_message(message, False)
+            RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
             trigger_event(Evt.RACE_FORMAT_ALTER, {
                 'race_format': race_format.id,
@@ -1888,6 +1887,9 @@ def on_alter_race_format(data):
                 emit_race_format()
                 emit_class_data()
 
+            if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
+                message = __('Alterations made to race format: {0}').format(race_format.name)
+                emit_priority_message(message, False)
     else:
         emit_priority_message(__('Format alteration prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
         logger.warning('Preventing race format alteration: race in progress')
@@ -2973,6 +2975,13 @@ def clean_results_cache():
     emit_round_data_notify()
 
 # Socket io emit functions
+
+def emit_frontend_load(**params):
+    '''Emits reload command.'''
+    if ('nobroadcast' in params):
+        emit('load_all')
+    else:
+        SOCKET_IO.emit('load_all')
 
 def emit_priority_message(message, interrupt=False, **params):
     ''' Emits message to all clients '''
@@ -4776,6 +4785,13 @@ def restore_table(class_type, table_query_data, **kwargs):
             logger.debug(traceback.format_exc())
 
 def recover_database(dbfile, **kwargs):
+    recover_status = {
+        'stage_0': False,
+        'stage_1': False,
+        'stage_2': False,
+    }
+
+    # stage 0: collect data from file
     try:
         logger.info('Recovering data from previous database')
 
@@ -4784,10 +4800,16 @@ def recover_database(dbfile, **kwargs):
         metadata = MetaData(bind=engine)
 
         options_query_data = get_legacy_table_data(metadata, 'global_settings')
-        for row in options_query_data:
-            if row['option_name'] == 'server_api':
-                migrate_db_api = int(row['option_value'])
-                break
+
+        migrate_db_api = 0 # delta5 or very old RH versions
+        if options_query_data:
+            for row in options_query_data:
+                if row['option_name'] == 'server_api':
+                    migrate_db_api = int(row['option_value'])
+                    break
+
+        if migrate_db_api > SERVER_API:
+            raise ValueError('Database version is newer than server version')
 
         pilot_query_data = get_legacy_table_data(metadata, 'pilot')
         heat_query_data = get_legacy_table_data(metadata, 'heat')
@@ -4850,135 +4872,139 @@ def recover_database(dbfile, **kwargs):
                     exit_ats["v"] = [val/2 for val in exit_ats["v"]]
                     profile.exit_ats = json.dumps(exit_ats)
 
+        recover_status['stage_0'] = True
     except Exception as ex:
-        logger.warning('Error reading data from previous database:  ' + str(ex))
+        logger.warning('Error reading data from previous database (stage 0):  ' + str(ex))
 
     if "startup" in kwargs:
         backup_db_file(False)  # rename and move DB file
 
     db_init(nofill=True)
 
-    # primary data recovery
-    try:
-        if pilot_query_data:
-            DB.session.query(Database.Pilot).delete()
-            restore_table(Database.Pilot, pilot_query_data, defaults={
-                    'name': 'New Pilot',
-                    'callsign': 'New Callsign',
-                    'team': DEF_TEAM_NAME,
-                    'phonetic': ''
+    # stage 1: recover pilots, heats, heatnodes, format, profile, class, options
+    if recover_status['stage_0'] == True:
+        try:
+            if pilot_query_data:
+                DB.session.query(Database.Pilot).delete()
+                restore_table(Database.Pilot, pilot_query_data, defaults={
+                        'name': 'New Pilot',
+                        'callsign': 'New Callsign',
+                        'team': DEF_TEAM_NAME,
+                        'phonetic': ''
+                    })
+
+            if migrate_db_api < 27:
+                # old heat DB structure; migrate node 0 to heat table
+
+                # build list of heat meta
+                heat_extracted_meta = []
+                for row in heat_query_data:
+                    if row['node_index'] == 0:
+                        new_row = {}
+                        new_row['id'] = row['heat_id']
+                        new_row['note'] = row['note']
+                        new_row['class_id'] = row['class_id']
+                        heat_extracted_meta.append(new_row)
+
+                restore_table(Database.Heat, heat_extracted_meta, defaults={
+                        'class_id': Database.CLASS_ID_NONE,
+                        'results': None,
+                        'cacheStatus': Results.CacheStatus.INVALID
+                    })
+
+                # extract pilots from heats and load into heatnode
+                heatnode_extracted_data = []
+                heatnode_dummy_id = 0
+                for row in heat_query_data:
+                    heatnode_row = {}
+                    heatnode_row['id'] = heatnode_dummy_id
+                    heatnode_row['heat_id'] = int(row['heat_id'])
+                    heatnode_row['node_index'] = int(row['node_index'])
+                    heatnode_row['pilot_id'] = int(row['pilot_id'])
+                    heatnode_extracted_data.append(heatnode_row)
+                    heatnode_dummy_id += 1
+
+                DB.session.query(Database.HeatNode).delete()
+                restore_table(Database.HeatNode, heatnode_extracted_data, defaults={
+                        'pilot_id': Database.PILOT_ID_NONE
+                    })
+            else:
+                # current heat structure; use basic migration
+                restore_table(Database.Heat, heat_query_data, defaults={
+                        'class_id': Database.CLASS_ID_NONE,
+                        'results': None,
+                        'cacheStatus': Results.CacheStatus.INVALID
+                    })
+                restore_table(Database.HeatNode, heatNode_query_data, defaults={
+                        'pilot_id': Database.PILOT_ID_NONE
+                    })
+
+                RACE.current_heat = Database.Heat.query.first().id
+
+            restore_table(Database.RaceFormat, raceFormat_query_data, defaults={
+                    'name': __("Migrated Format"),
+                    'race_mode': 0,
+                    'race_time_sec': 120,
+                    'start_delay_min': 2,
+                    'start_delay_max': 5,
+                    'staging_tones': 2,
+                    'number_laps_win': 0,
+                    'win_condition': WinCondition.MOST_LAPS,
+                    'team_racing_mode': False
                 })
-
-        if migrate_db_api < 27:
-            # old heat DB structure; migrate node 0 to heat table
-
-            # build list of heat meta
-            heat_extracted_meta = []
-            for row in heat_query_data:
-                if row['node_index'] == 0:
-                    new_row = {}
-                    new_row['id'] = row['heat_id']
-                    new_row['note'] = row['note']
-                    new_row['class_id'] = row['class_id']
-                    heat_extracted_meta.append(new_row)
-
-            restore_table(Database.Heat, heat_extracted_meta, defaults={
-                    'class_id': Database.CLASS_ID_NONE,
+            restore_table(Database.Profiles, profiles_query_data, defaults={
+                    'name': __("Migrated Profile"),
+                    'frequencies': json.dumps(default_frequencies()),
+                    'enter_ats': json.dumps({'v': [None, None, None, None, None, None, None, None]}),
+                    'exit_ats': json.dumps({'v': [None, None, None, None, None, None, None, None]})
+                })
+            restore_table(Database.RaceClass, raceClass_query_data, defaults={
+                    'name': 'New class',
+                    'format_id': 0,
                     'results': None,
                     'cacheStatus': Results.CacheStatus.INVALID
                 })
 
-            # extract pilots from heats and load into heatnode
-            heatnode_extracted_data = []
-            heatnode_dummy_id = 0
-            for row in heat_query_data:
-                heatnode_row = {}
-                heatnode_row['id'] = heatnode_dummy_id
-                heatnode_row['heat_id'] = int(row['heat_id'])
-                heatnode_row['node_index'] = int(row['node_index'])
-                heatnode_row['pilot_id'] = int(row['pilot_id'])
-                heatnode_extracted_data.append(heatnode_row)
-                heatnode_dummy_id += 1
+            if options_query_data:
+                for opt in options_query_data:
+                    if opt['option_name'] in carryoverOpts:
+                        Options.set(opt['option_name'], opt['option_value'])
 
-            DB.session.query(Database.HeatNode).delete()
-            restore_table(Database.HeatNode, heatnode_extracted_data, defaults={
-                    'pilot_id': Database.PILOT_ID_NONE
-                })
-        else:
-            # current heat structure; use basic migration
-            restore_table(Database.Heat, heat_query_data, defaults={
-                    'class_id': Database.CLASS_ID_NONE,
-                    'results': None,
-                    'cacheStatus': Results.CacheStatus.INVALID
-                })
-            restore_table(Database.HeatNode, heatNode_query_data, defaults={
-                    'pilot_id': Database.PILOT_ID_NONE
-                })
+            logger.info('UI Options restored')
 
-            RACE.current_heat = Database.Heat.query.first().id
+            recover_status['stage_1'] = True
+        except Exception as ex:
+            logger.warning('Error while writing data from previous database (stage 1):  ' + str(ex))
+            logger.debug(traceback.format_exc())
 
-        restore_table(Database.RaceFormat, raceFormat_query_data, defaults={
-                'name': __("Migrated Format"),
-                'race_mode': 0,
-                'race_time_sec': 120,
-                'start_delay_min': 2,
-                'start_delay_max': 5,
-                'staging_tones': 2,
-                'number_laps_win': 0,
-                'win_condition': WinCondition.MOST_LAPS,
-                'start_behavior': 0,
-                'team_racing_mode': False
-            })
-        restore_table(Database.Profiles, profiles_query_data, defaults={
-                'name': __("Migrated Profile"),
-                'frequencies': json.dumps(default_frequencies()),
-                'enter_ats': json.dumps({'v': [None, None, None, None, None, None, None, None]}),
-                'exit_ats': json.dumps({'v': [None, None, None, None, None, None, None, None]})
-            })
-        restore_table(Database.RaceClass, raceClass_query_data, defaults={
-                'name': 'New class',
-                'format_id': 0,
-                'results': None,
-                'cacheStatus': Results.CacheStatus.INVALID
-            })
+        # stage 2: recover race result data
+        if recover_status['stage_1'] == True:
+            try:
+                if migrate_db_api < 23:
+                    # don't attempt to migrate race data older than 2.0
+                    logger.warning('Race data older than v2.0; skipping results migration')
+                else:
+                    restore_table(Database.SavedRaceMeta, raceMeta_query_data, defaults={
+                        'results': None,
+                        'cacheStatus': Results.CacheStatus.INVALID
+                    })
+                    restore_table(Database.SavedPilotRace, racePilot_query_data, defaults={
+                        'history_values': None,
+                        'history_times': None,
+                        'penalty_time': None,
+                        'penalty_desc': None,
+                        'enter_at': None,
+                        'exit_at': None
+                    })
+                    restore_table(Database.SavedRaceLap, raceLap_query_data, defaults={
+                        'source': None,
+                        'deleted': False
+                    })
 
-        for opt in options_query_data:
-            if opt['option_name'] in carryoverOpts:
-                Options.set(opt['option_name'], opt['option_value'])
-
-        logger.info('UI Options restored')
-
-    except Exception as ex:
-        logger.warning('Error while writing data from previous database:  ' + str(ex))
-        logger.debug(traceback.format_exc())
-
-    # secondary data recovery
-
-    try:
-        if migrate_db_api < 23:
-            # don't attempt to migrate race data older than 2.0
-            pass
-        else:
-            restore_table(Database.SavedRaceMeta, raceMeta_query_data, defaults={
-                'results': None,
-                'cacheStatus': Results.CacheStatus.INVALID
-            })
-            restore_table(Database.SavedPilotRace, racePilot_query_data, defaults={
-                'history_values': None,
-                'history_times': None,
-                'penalty_time': None,
-                'penalty_desc': None,
-                'enter_at': None,
-                'exit_at': None
-            })
-            restore_table(Database.SavedRaceLap, raceLap_query_data, defaults={
-                'source': None,
-                'deleted': False
-            })
-
-    except Exception as ex:
-        logger.warning('Error while writing data from previous database:  ' + str(ex))
-        logger.debug(traceback.format_exc())
+                recover_status['stage_2'] = True
+            except Exception as ex:
+                logger.warning('Error while writing data from previous database (stage 2):  ' + str(ex))
+                logger.debug(traceback.format_exc())
 
     DB.session.commit()
 
@@ -4986,7 +5012,10 @@ def recover_database(dbfile, **kwargs):
 
     trigger_event(Evt.DATABASE_RECOVER)
 
+    return recover_status
+
 def expand_heats():
+    ''' ensure loaded data includes enough slots for current nodes '''
     for heat_ids in Database.Heat.query.all():
         for node in range(RACE.num_nodes):
             heat_row = Database.HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
@@ -4994,6 +5023,43 @@ def expand_heats():
                 DB.session.add(Database.HeatNode(heat_id=heat_ids.id, node_index=node, pilot_id=Database.PILOT_ID_NONE))
 
     DB.session.commit()
+
+def init_race_state():
+    expand_heats()
+
+    # Send profile values to nodes
+    current_profile = Options.getInt('currentProfile')
+    on_set_profile({'profile': current_profile}, False)
+
+    # Set current heat
+    if Database.Heat.query.first():
+        RACE.current_heat = Database.Heat.query.first().id
+        RACE.node_pilots = {}
+        RACE.node_teams = {}
+        for heatNode in Database.HeatNode.query.filter_by(heat_id=RACE.current_heat):
+            RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+
+            if heatNode.pilot_id is not Database.PILOT_ID_NONE:
+                RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+            else:
+                RACE.node_teams[heatNode.node_index] = None
+
+    # Set race format
+    raceformat_id = Options.getInt('currentFormat')
+    race_format = Database.RaceFormat.query.get(raceformat_id)
+    setCurrentRaceFormat(race_format, silent=True)
+
+    # Normalize results caches
+    Results.normalize_cache_status(DB)
+
+def init_interface_state():
+    # Cancel current race
+    on_stop_race()
+    # Reset laps display
+    db_reset_current_laps()
+
+    SOCKET_IO.emit('database_restore_done')
+
 
 def init_LED_effects():
     # start with defaults
@@ -5230,8 +5296,9 @@ if not db_inited_flag:
         logger.warning('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()
 
-# Expand heats (if number of nodes increases)
-expand_heats()
+# Initialize internal state with database
+# DB session commit needed to prevent 'application context' errors
+init_race_state()
 
 # internal slave race format for LiveTime (needs to be created after initial DB setup)
 global SLAVE_RACE_FORMAT
@@ -5266,30 +5333,6 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
             logger.exception('Error checking IMDTabler:  ')
 else:
     logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
-
-# Clear any current laps from the database on each program start
-# DB session commit needed to prevent 'application context' errors
-db_reset_current_laps()
-
-# Send initial profile values to nodes
-current_profile = Options.getInt("currentProfile")
-on_set_profile({'profile': current_profile}, False)
-
-# Set current heat on startup
-if Database.Heat.query.first():
-    RACE.current_heat = Database.Heat.query.first().id
-    RACE.node_pilots = {}
-    RACE.node_teams = {}
-    for heatNode in Database.HeatNode.query.filter_by(heat_id=RACE.current_heat):
-        RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-
-        if heatNode.pilot_id is not Database.PILOT_ID_NONE:
-            RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
-        else:
-            RACE.node_teams[heatNode.node_index] = None
-
-# Normalize results caches
-Results.normalize_cache_status(DB)
 
 # Create LED object with appropriate configuration
 strip = None
@@ -5342,7 +5385,6 @@ import json_endpoints
 
 APP.register_blueprint(json_endpoints.createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProfile))
 
-
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
         Options.set("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
@@ -5350,6 +5392,8 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     APP.config['SECRET_KEY'] = Options.get("secret_key")
 
     logger.info("Running http server at port " + str(port_val))
+
+    init_interface_state()
 
     Events.trigger(Evt.STARTUP)
 
