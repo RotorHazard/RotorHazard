@@ -34,10 +34,6 @@
 	var class_to_unlock = null;
 
 	$(document).ready(function () {
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
-
 		socket.on('language', function (msg) {
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
