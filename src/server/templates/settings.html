@@ -139,6 +139,7 @@
 					$('#set_start_delay_min').prop('disabled', true);
 					$('#set_start_delay_max').prop('disabled', true);
 					$('#set_staging_tones').prop('disabled', true);
+					$('#set_start_behavior').prop('disabled', true);
 					$('#set_number_laps_win').prop('disabled', true);
 					$('#set_win_condition').prop('disabled', true);
 					$('#set_team_racing_mode').prop('disabled', true);
@@ -154,6 +155,7 @@
 					$('#set_start_delay_min').prop('disabled', false);
 					$('#set_start_delay_max').prop('disabled', false);
 					$('#set_staging_tones').prop('disabled', false);
+					$('#set_start_behavior').prop('disabled', false);
 					$('#set_number_laps_win').prop('disabled', false);
 					$('#set_win_condition').prop('disabled', false);
 					$('#set_team_racing_mode').prop('disabled', false);
@@ -1290,7 +1292,44 @@
 			socket.emit('alter_race_format', data);
 		})
 
+		function update_race_format_ui() {
+			var rf = rotorhazard.race_format;
+
+			$('#format-race-duration-field').toggle(rf.race_mode == 0);
+			$('#format-laps-to-win-field').toggle(rf.win_condition == 2);
+
+			var issues = []
+
+			if (rf.win_condition == 1 && rf.race_mode == 1) {
+				issues.push('"Most Laps in Fastest Time" is typically used with "Fixed Time"');
+			}
+
+			if (rf.win_condition == 2 && rf.race_mode == 0) {
+				issues.push('"First to X Laps" is typically used with "No Time Limit"');
+			}
+
+			if (rf.win_condition == 6 && rf.race_mode == 1) {
+				issues.push('"Most Laps Only with Overtime" is typically used with "Fixed Time"');
+			}
+
+			if (rf.start_behavior == 2 && rf.race_mode == 0) {
+				issues.push('"Staggered Start" is typically used with "No Time Limit"');
+			}
+
+			if (issues.length) {
+				var output = $('<ul>')
+				for (item in issues) {
+					output.append('<li>' + __(issues[item]) + '</li>');
+				}
+				$('#race_format_suggestions').html(output);
+			} else {
+				$('#race_format_suggestions').empty();
+			}
+		}
+
 		socket.on('race_format', function (msg) {
+			rotorhazard.race_format = msg;
+
 			$('#set_race_format').empty();
 			for (var i = 0; i < msg.format_ids.length; i++) {
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
@@ -1312,12 +1351,16 @@
 			$('#set_start_delay_max').prop('disabled', msg.locked);
 			$('#set_staging_tones').val(msg.staging_tones);
 			$('#set_staging_tones').prop('disabled', msg.locked);
+			$('#set_start_behavior').val(msg.start_behavior);
+			$('#set_start_behavior').prop('disabled', msg.locked);
 			$('#set_number_laps_win').val(msg.number_laps_win);
 			$('#set_number_laps_win').prop('disabled', msg.locked);
 			$('#set_win_condition').val(msg.win_condition);
 			$('#set_win_condition').prop('disabled', msg.locked);
 			$('#set_team_racing_mode').val(msg.team_racing_mode);
 			$('#set_team_racing_mode').prop('disabled', msg.locked);
+
+			update_race_format_ui();
 		});
 
 		$('#set_race_format').change(function (event) {
@@ -1355,6 +1398,8 @@
 				race_mode: parseInt($(this).val())
 			};
 			socket.emit('alter_race_format', data);
+			rotorhazard.race_format.race_mode = parseInt($(this).val());
+			update_race_format_ui();
 		})
 
 		$('#set_fix_race_time').change(function (event) {
@@ -1362,13 +1407,6 @@
 				race_time: parseInt($(this).val())
 			};
 			socket.emit('alter_race_format', data);
-		})
-
-		$('#set_hide_stage_timer').change(function (event) {
-			var data = {
-				hide_stage_timer: parseInt($(this).val())
-			};
-			socket.emit('set_hide_stage_timer', data);
 		})
 
 		$('#set_start_delay_min').change(function (event) {
@@ -1399,11 +1437,22 @@
 			socket.emit('alter_race_format', data);
 		})
 
+		$('#set_start_behavior').change(function (event) {
+			var data = {
+				start_behavior: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+			rotorhazard.race_format.start_behavior = parseInt($(this).val());
+			update_race_format_ui();
+		})
+
 		$('#set_win_condition').change(function (event) {
 			var data = {
 				win_condition: parseInt($(this).val())
 			};
 			socket.emit('alter_race_format', data);
+			rotorhazard.race_format.win_condition = parseInt($(this).val());
+			update_race_format_ui();
 		})
 
 		$('button#backup_database').click(function (event) {
@@ -2176,7 +2225,7 @@
 				</li>
 				<li>
 					<div class="label-block">
-						<label for="voice_race_timer">{{ __('Race Timer') }}</label>
+						<label for="voice_race_timer">{{ __('Race Clock') }}</label>
 					</div>
 					<select id="voice_race_timer">
 						<option value="0">{{ __('Never') }}</option>
@@ -2335,7 +2384,7 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_race_mode">{{ __('Race Timer Mode') }}</label>
+					<label for="set_race_mode">{{ __('Race Clock Mode') }}</label>
 				</div>
 				<select id="set_race_mode">
 					<option value="1">{{ __('No Time Limit') }}</option>
@@ -2343,10 +2392,9 @@
 					<!-- <option value="2">{{ __('Fixed Time / End Immediately') }}</option> -->
 				</select>
 			</li>
-			<li>
+			<li id="format-race-duration-field">
 				<div class="label-block">
 					<label for="set_fix_race_time">{{ __('Timer Duration (seconds)') }}</label>
-					<p class="desc">{{ __('Used for Fixed Time races') }}</p>
 				</div>
 				<input type="number" id="set_fix_race_time" min="0" max="99999">
 			</li>
@@ -2377,6 +2425,16 @@
 			</li>
 			<li>
 				<div class="label-block">
+					<label for="set_start_behavior">{{ __('First Crossing') }}</label>
+				</div>
+				<select id="set_start_behavior">
+					<option value="0">{{ __('Hole Shot') }}</option>
+					<option value="1">{{ __('First Lap') }}</option>
+					<option value="2">{{ __('Staggered Start') }}</option>
+				</select>
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="set_win_condition">{{ __('Win Condition') }}</label>
 				</div>
 				<select id="set_win_condition">
@@ -2389,10 +2447,9 @@
 					<option value="0">{{ __('None') }}</option>
 				</select>
 			</li>
-			<li>
+			<li id="format-laps-to-win-field">
 				<div class="label-block">
 					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
-					<p class="desc">{{ __('Used with First to X Laps races') }}</p>
 				</div>
 				<input type="number" id="set_number_laps_win" min="0" max="999">
 			</li>
@@ -2406,6 +2463,8 @@
 				</select>
 			</li>
 		</ol>
+
+		<div id="race_format_suggestions" class="form-note emphasis"></div>
 
 		<hr />
 
@@ -2560,7 +2619,7 @@
 			</div>
 		</div>
 
-		<div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+      <div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
 			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
 				<p>{{ __('Deleted database files are not recoverable. Are you sure?') }}</p>

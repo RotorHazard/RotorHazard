@@ -13,7 +13,7 @@ import logging
 from monotonic import monotonic
 from Language import __
 from eventmanager import Evt, EventManager
-from RHRace import RaceStatus, WinCondition, WinStatus
+from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 
 Events = EventManager()
 
@@ -239,7 +239,10 @@ def calc_leaderboard(DB, **params):
                     break
 
             if laps:
-                max_lap = len(laps) - 1
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    max_lap = len(laps)
+                else:
+                    max_lap = len(laps) - 1
             else:
                 max_lap = 0
 
@@ -256,6 +259,9 @@ def calc_leaderboard(DB, **params):
             holeshot_laps = []
             pilotnode = None
             for race in racelist:
+                this_race = Database.SavedRaceMeta.query.get(race)
+                this_race_format = Database.RaceFormat.query.get(this_race.format_id)
+
                 pilotraces = Database.SavedPilotRace.query \
                     .filter(Database.SavedPilotRace.pilot_id == pilot.id, \
                     Database.SavedPilotRace.race_id == race \
@@ -264,15 +270,18 @@ def calc_leaderboard(DB, **params):
                 if len(pilotraces):
                     pilotnode = pilotraces[-1].node_index
 
-                for pilotrace in pilotraces:
-                    gevent.sleep()
-                    holeshot_lap = Database.SavedRaceLap.query \
-                        .filter(Database.SavedRaceLap.pilotrace_id == pilotrace.id, \
-                            Database.SavedRaceLap.deleted != 1, \
-                            ).order_by(Database.SavedRaceLap.lap_time_stamp).first()
+                if this_race_format and this_race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    pass
+                else:
+                    for pilotrace in pilotraces:
+                        gevent.sleep()
+                        holeshot_lap = Database.SavedRaceLap.query \
+                            .filter(Database.SavedRaceLap.pilotrace_id == pilotrace.id, \
+                                Database.SavedRaceLap.deleted != 1, \
+                                ).order_by(Database.SavedRaceLap.lap_time_stamp).first()
 
-                    if holeshot_lap:
-                        holeshot_laps.append(holeshot_lap.id)
+                        if holeshot_lap:
+                            holeshot_laps.append(holeshot_lap.id)
 
             # get total laps
             stat_query = DB.session.query(DB.func.count(Database.SavedRaceLap.id)) \
@@ -352,17 +361,10 @@ def calc_leaderboard(DB, **params):
             average_lap.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
-                avg_lap = (current_laps[i][-1]['lap_time_stamp'] - current_laps[i][0]['lap_time_stamp']) / (len(current_laps[i]) - 1)
-
-                '''
-                timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
-
-                lap_total = 0
-                for lap in timed_laps:
-                    lap_total += lap['lap_time']
-
-                avg_lap = lap_total / len(timed_laps)
-                '''
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    avg_lap = current_laps[i][-1]['lap_time_stamp'] / len(current_laps[i])
+                else:
+                    avg_lap = (current_laps[i][-1]['lap_time_stamp'] - current_laps[i][0]['lap_time_stamp']) / (len(current_laps[i]) - 1)
 
             else:
                 stat_query = DB.session.query(DB.func.avg(Database.SavedRaceLap.lap_time)) \
@@ -382,7 +384,10 @@ def calc_leaderboard(DB, **params):
             fastest_lap_source.append(None)
         else:
             if USE_CURRENT:
-                timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    timed_laps = current_laps[i]
+                else:
+                    timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
 
                 fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
                 fastest_lap_source.append(None)
@@ -504,26 +509,48 @@ def calc_leaderboard(DB, **params):
             'node': nodes[i],
         })
 
-    # Sort by race time
-    leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
-        -x['laps'], # reverse lap count
-        x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
-    )))
+    if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
+        # Sort by laps time
+        leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
+            -x['laps'], # reverse lap count
+            x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
+        )))
 
-    # determine ranking
-    last_rank = '-'
-    last_rank_laps = 0
-    last_rank_time = 0
-    for i, row in enumerate(leaderboard_by_race_time, start=1):
-        pos = i
-        if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
-            pos = last_rank
-        last_rank = pos
-        last_rank_laps = row['laps']
-        last_rank_time = row['total_time_raw']
+        # determine ranking
+        last_rank = '-'
+        last_rank_laps = 0
+        last_rank_time = 0
+        for i, row in enumerate(leaderboard_by_race_time, start=1):
+            pos = i
+            if last_rank_laps == row['laps'] and last_rank_time == row['total_time_laps_raw']:
+                pos = last_rank
+            last_rank = pos
+            last_rank_laps = row['laps']
+            last_rank_time = row['total_time_laps_raw']
 
-        row['position'] = pos
-        row['behind'] = leaderboard_by_race_time[0]['laps'] - row['laps']
+            row['position'] = pos
+            row['behind'] = leaderboard_by_race_time[0]['laps'] - row['laps']
+    else:
+        # Sort by race time
+        leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
+            -x['laps'], # reverse lap count
+            x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
+        )))
+
+        # determine ranking
+        last_rank = '-'
+        last_rank_laps = 0
+        last_rank_time = 0
+        for i, row in enumerate(leaderboard_by_race_time, start=1):
+            pos = i
+            if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
+                pos = last_rank
+            last_rank = pos
+            last_rank_laps = row['laps']
+            last_rank_time = row['total_time_raw']
+
+            row['position'] = pos
+            row['behind'] = leaderboard_by_race_time[0]['laps'] - row['laps']
 
     gevent.sleep()
     # Sort by fastest laps
@@ -593,12 +620,14 @@ def calc_leaderboard(DB, **params):
             'primary_leaderboard': primary_leaderboard,
             'win_condition': race_format.win_condition,
             'team_racing_mode': race_format.team_racing_mode,
+            'start_behavior': race_format.start_behavior,
         }
     else:
         leaderboard_output['meta'] = {
             'primary_leaderboard': 'by_race_time',
             'win_condition': WinCondition.NONE,
-            'team_racing_mode': False
+            'team_racing_mode': False,
+            'start_behavior': StartBehavior.HOLESHOT,
         }
 
     return leaderboard_output

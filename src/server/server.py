@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "2.3.0-dev.6" # Public release version code
-SERVER_API = 28 # Server API version
+SERVER_API = 29 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 25 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -82,7 +82,7 @@ sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startu
 from Plugins import Plugins, search_modules
 from Sensors import Sensors
 import RHRace
-from RHRace import WinCondition, WinStatus, RaceStatus
+from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -264,7 +264,7 @@ def setCurrentRaceFormat(race_format, **kwargs):
         emit_current_laps()
 
 class RHRaceFormat():
-    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode):
+    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
         self.name = name
         self.race_mode = race_mode
         self.race_time_sec = race_time_sec
@@ -274,6 +274,7 @@ class RHRaceFormat():
         self.number_laps_win = number_laps_win
         self.win_condition = win_condition
         self.team_racing_mode = team_racing_mode
+        self.start_behavior = start_behavior
 
     @classmethod
     def copy(cls, race_format):
@@ -285,7 +286,8 @@ class RHRaceFormat():
                             staging_tones=race_format.staging_tones,
                             number_laps_win=race_format.number_laps_win,
                             win_condition=race_format.win_condition,
-                            team_racing_mode=race_format.team_racing_mode)
+                            team_racing_mode=race_format.team_racing_mode,
+                            start_behavior=race_format.start_behavior)
 
     @classmethod
     def isDbBased(cls, race_format):
@@ -1828,7 +1830,8 @@ def on_add_race_format():
                              staging_tones=source_format.staging_tones,
                              number_laps_win=source_format.number_laps_win,
                              win_condition=source_format.win_condition,
-                             team_racing_mode=source_format.team_racing_mode)
+                             team_racing_mode=source_format.team_racing_mode,
+                             start_behavior=source_format.start_behavior)
     DB.session.add(new_format)
     DB.session.flush()
     DB.session.refresh(new_format)
@@ -1845,6 +1848,7 @@ def on_add_race_format():
 def on_alter_race_format(data):
     ''' update race format '''
     global RACE
+    global FULL_RESULTS_CACHE_VALID
     if RACE.race_status == RaceStatus.READY:
         race_format = getCurrentDbRaceFormat()
         if race_format:
@@ -1864,6 +1868,8 @@ def on_alter_race_format(data):
                 race_format.staging_tones = data['staging_tones']
             if 'number_laps_win' in data:
                 race_format.number_laps_win = data['number_laps_win']
+            if 'start_behavior' in data:
+                race_format.start_behavior = data['start_behavior']
             if 'win_condition' in data:
                 race_format.win_condition = data['win_condition']
             if 'team_racing_mode' in data:
@@ -1894,9 +1900,9 @@ def on_alter_race_format(data):
 def on_delete_race_format():
     '''Delete profile'''
     if RACE.race_status == RaceStatus.READY: # prevent format deletion if race running
-        if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
-            raceformat = getCurrentDbRaceFormat()
-            raceformat_id = raceformat.id
+        raceformat = getCurrentDbRaceFormat()
+        raceformat_id = raceformat.id
+        if Database.SavedRaceMeta.query.filter_by(format_id=raceformat_id).first() is None:
             if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
                 DB.session.delete(raceformat)
                 DB.session.commit()
@@ -2276,6 +2282,8 @@ def race_start_thread(start_token):
         # do blocking delay until race start
         while monotonic() < RACE.start_time_monotonic:
             pass
+
+        # !!! RACE STARTS NOW !!!
 
         # do time-critical tasks
         trigger_event(Evt.RACE_START)
@@ -3178,6 +3186,7 @@ def emit_race_format(**params):
         'staging_tones': race_format.staging_tones,
         'number_laps_win': race_format.number_laps_win,
         'win_condition': race_format.win_condition,
+        'start_behavior': race_format.start_behavior,
         'team_racing_mode': 1 if race_format.team_racing_mode else 0,
         'locked': locked
     }
@@ -3201,6 +3210,7 @@ def emit_race_formats(**params):
             'staging_tones': race_format.staging_tones,
             'number_laps_win': race_format.number_laps_win,
             'win_condition': race_format.win_condition,
+            'start_behavior': race_format.start_behavior,
             'team_racing_mode': 1 if race_format.team_racing_mode else 0,
         }
 
@@ -3221,6 +3231,7 @@ def emit_race_formats(**params):
 def emit_current_laps(**params):
     '''Emits current laps.'''
     global RACE
+    race_format = getCurrentRaceFormat()
     if 'use_cache' in params and RACE.last_race_cacheStatus == Results.CacheStatus.VALID:
         emit_payload = RACE.last_race_laps
     else:
@@ -3232,10 +3243,14 @@ def emit_current_laps(**params):
             last_lap_id = -1
             for idx, lap in enumerate(RACE.node_laps[node]):
                 if not lap['deleted']:
+                    lap_number = lap['lap_number'];
+                    if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                        lap_number += 1
+
                     splits = get_splits(node, lap['lap_number'], True)
                     node_laps.append({
                         'lap_index': idx,
-                        'lap_number': lap['lap_number'],
+                        'lap_number': lap_number,
                         'lap_raw': lap['lap_time'],
                         'lap_time': lap['lap_time_formatted'],
                         'lap_time_stamp': lap['lap_time_stamp'],
@@ -4528,7 +4543,8 @@ def db_reset_race_formats():
                              staging_tones=1,
                              number_laps_win=0,
                              win_condition=WinCondition.MOST_PROGRESS,
-                             team_racing_mode=False))
+                             team_racing_mode=False,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("1:30 Whoop Sprint"),
                              race_mode=0,
                              race_time_sec=90,
@@ -4537,7 +4553,8 @@ def db_reset_race_formats():
                              staging_tones=2,
                              number_laps_win=0,
                              win_condition=WinCondition.MOST_PROGRESS,
-                             team_racing_mode=False))
+                             team_racing_mode=False,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("3:00 Extended Race"),
                              race_mode=0,
                              race_time_sec=210,
@@ -4546,7 +4563,8 @@ def db_reset_race_formats():
                              staging_tones=2,
                              number_laps_win=0,
                              win_condition=WinCondition.MOST_PROGRESS,
-                             team_racing_mode=False))
+                             team_racing_mode=False,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("First to 3 Laps"),
                              race_mode=1,
                              race_time_sec=0,
@@ -4555,7 +4573,8 @@ def db_reset_race_formats():
                              staging_tones=2,
                              number_laps_win=3,
                              win_condition=WinCondition.FIRST_TO_LAP_X,
-                             team_racing_mode=False))
+                             team_racing_mode=False,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("Open Practice"),
                              race_mode=1,
                              race_time_sec=0,
@@ -4564,7 +4583,8 @@ def db_reset_race_formats():
                              staging_tones=0,
                              number_laps_win=0,
                              win_condition=WinCondition.NONE,
-                             team_racing_mode=False))
+                             team_racing_mode=False,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("Fastest Lap Qualifier"),
                              race_mode=0,
                              race_time_sec=120,
@@ -4573,7 +4593,8 @@ def db_reset_race_formats():
                              staging_tones=1,
                              number_laps_win=0,
                              win_condition=WinCondition.FASTEST_LAP,
-                             team_racing_mode=False))
+                             team_racing_mode=False,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("Fastest 3 Laps Qualifier"),
                              race_mode=0,
                              race_time_sec=120,
@@ -4582,7 +4603,8 @@ def db_reset_race_formats():
                              staging_tones=1,
                              number_laps_win=0,
                              win_condition=WinCondition.FASTEST_3_CONSECUTIVE,
-                             team_racing_mode=False))
+                             team_racing_mode=False,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("Lap Count Only"),
                              race_mode=0,
                              race_time_sec=120,
@@ -4591,7 +4613,8 @@ def db_reset_race_formats():
                              staging_tones=1,
                              number_laps_win=0,
                              win_condition=WinCondition.MOST_LAPS,
-                             team_racing_mode=False))
+                             team_racing_mode=False,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("Team / Most Laps Wins"),
                              race_mode=0,
                              race_time_sec=120,
@@ -4600,7 +4623,8 @@ def db_reset_race_formats():
                              staging_tones=2,
                              number_laps_win=0,
                              win_condition=WinCondition.MOST_PROGRESS,
-                             team_racing_mode=True))
+                             team_racing_mode=True,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("Team / First to 7 Laps"),
                              race_mode=0,
                              race_time_sec=120,
@@ -4609,7 +4633,8 @@ def db_reset_race_formats():
                              staging_tones=2,
                              number_laps_win=7,
                              win_condition=WinCondition.FIRST_TO_LAP_X,
-                             team_racing_mode=True))
+                             team_racing_mode=True,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("Team / Fastest Lap Average"),
                              race_mode=0,
                              race_time_sec=120,
@@ -4618,7 +4643,8 @@ def db_reset_race_formats():
                              staging_tones=2,
                              number_laps_win=0,
                              win_condition=WinCondition.FASTEST_LAP,
-                             team_racing_mode=True))
+                             team_racing_mode=True,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("Team / Fastest 3 Consecutive Average"),
                              race_mode=0,
                              race_time_sec=120,
@@ -4627,7 +4653,8 @@ def db_reset_race_formats():
                              staging_tones=2,
                              number_laps_win=0,
                              win_condition=WinCondition.FASTEST_3_CONSECUTIVE,
-                             team_racing_mode=True))
+                             team_racing_mode=True,
+                             start_behavior=0))
 
 
     DB.session.commit()
@@ -5283,7 +5310,8 @@ SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
                          staging_tones=0,
                          number_laps_win=0,
                          win_condition=WinCondition.NONE,
-                         team_racing_mode=False)
+                         team_racing_mode=False,
+                         start_behavior=0)
 
 # Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available

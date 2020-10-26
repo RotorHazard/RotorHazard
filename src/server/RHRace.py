@@ -65,6 +65,11 @@ class RHRace():
 
 RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
 
+class StartBehavior():
+    HOLESHOT = 0
+    FIRST_LAP = 1
+    STAGGERED = 2
+
 class WinCondition():
     NONE = 0
     MOST_PROGRESS = 1 # most laps in fastest time
