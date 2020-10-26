@@ -250,7 +250,7 @@ def getCurrentDbRaceFormat():
     else:
         return None
 
-def setCurrentRaceFormat(race_format):
+def setCurrentRaceFormat(race_format, **kwargs):
     if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
         Options.set('currentFormat', race_format.id)
         # create a shared instance
@@ -260,7 +260,8 @@ def setCurrentRaceFormat(race_format):
     else:
         RACE.format = race_format
 
-    emit_current_laps()
+    if 'silent' not in kwargs:
+        emit_current_laps()
 
 class RHRaceFormat():
     def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode):
@@ -1622,7 +1623,24 @@ def on_restore_database(data):
         if os.path.exists(backup_path):
             logger.info('Found {0}: starting restoration...'.format(backup_file))
             DB.session.close()
-            recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
+
+            success = None
+            try:
+                recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
+
+                expand_heats()
+                raceformat_id = Options.getInt('currentFormat')
+                race_format = Database.RaceFormat.query.get(raceformat_id)
+                setCurrentRaceFormat(race_format)
+
+                success = True
+            except Exception as ex:
+                logger.warning('Clearing all data after recovery failure:  ' + str(ex))
+                db_reset()
+                success = False
+
+            init_race_state()
+            init_interface_state()
 
             emit_payload = {
                 'file_name': backup_file
@@ -1632,7 +1650,11 @@ def on_restore_database(data):
                 'file_name': backup_file,
                 })
 
-            SOCKET_IO.emit('database_restore_done', emit_payload)
+            if success:
+                SOCKET_IO.emit('database_restore_done', emit_payload)
+            else:
+                message = __('Database recovery failed for: {0}').format(backup_file)
+                emit_priority_message(message, False, nobroadcast=True)
         else:
             logger.warning('Unable to restore {0}: File does not exist'.format(backup_file))
 
@@ -4945,6 +4967,7 @@ def recover_database(dbfile, **kwargs):
     trigger_event(Evt.DATABASE_RECOVER)
 
 def expand_heats():
+    ''' ensure loaded data includes enough slots for current nodes '''
     for heat_ids in Database.Heat.query.all():
         for node in range(RACE.num_nodes):
             heat_row = Database.HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
@@ -4952,6 +4975,40 @@ def expand_heats():
                 DB.session.add(Database.HeatNode(heat_id=heat_ids.id, node_index=node, pilot_id=Database.PILOT_ID_NONE))
 
     DB.session.commit()
+
+def init_race_state():
+    expand_heats()
+
+    # Send profile values to nodes
+    current_profile = Options.getInt('currentProfile')
+    on_set_profile({'profile': current_profile}, False)
+
+    # Set current heat
+    if Database.Heat.query.first():
+        RACE.current_heat = Database.Heat.query.first().id
+        RACE.node_pilots = {}
+        RACE.node_teams = {}
+        for heatNode in Database.HeatNode.query.filter_by(heat_id=RACE.current_heat):
+            RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+
+            if heatNode.pilot_id is not Database.PILOT_ID_NONE:
+                RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+            else:
+                RACE.node_teams[heatNode.node_index] = None
+
+    # Set race format
+    raceformat_id = Options.getInt('currentFormat')
+    race_format = Database.RaceFormat.query.get(raceformat_id)
+    setCurrentRaceFormat(race_format, silent=True)
+
+    # Normalize results caches
+    Results.normalize_cache_status(DB)
+
+def init_interface_state():
+    # Cancel current race
+    on_stop_race()
+    # Reset laps display
+    db_reset_current_laps()
 
 def init_LED_effects():
     # start with defaults
@@ -5188,8 +5245,9 @@ if not db_inited_flag:
         logger.warning('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()
 
-# Expand heats (if number of nodes increases)
-expand_heats()
+# Initialize internal state with database
+# DB session commit needed to prevent 'application context' errors
+init_race_state()
 
 # internal slave race format for LiveTime (needs to be created after initial DB setup)
 global SLAVE_RACE_FORMAT
@@ -5223,30 +5281,6 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
             logger.exception('Error checking IMDTabler:  ')
 else:
     logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
-
-# Clear any current laps from the database on each program start
-# DB session commit needed to prevent 'application context' errors
-db_reset_current_laps()
-
-# Send initial profile values to nodes
-current_profile = Options.getInt("currentProfile")
-on_set_profile({'profile': current_profile}, False)
-
-# Set current heat on startup
-if Database.Heat.query.first():
-    RACE.current_heat = Database.Heat.query.first().id
-    RACE.node_pilots = {}
-    RACE.node_teams = {}
-    for heatNode in Database.HeatNode.query.filter_by(heat_id=RACE.current_heat):
-        RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-
-        if heatNode.pilot_id is not Database.PILOT_ID_NONE:
-            RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
-        else:
-            RACE.node_teams[heatNode.node_index] = None
-
-# Normalize results caches
-Results.normalize_cache_status(DB)
 
 # Create LED object with appropriate configuration
 strip = None
@@ -5299,7 +5333,6 @@ import json_endpoints
 
 APP.register_blueprint(json_endpoints.createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProfile))
 
-
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
         Options.set("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
@@ -5307,6 +5340,8 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     APP.config['SECRET_KEY'] = Options.get("secret_key")
 
     logger.info("Running http server at port " + str(port_val))
+
+    init_interface_state()
 
     Events.trigger(Evt.STARTUP)
 
