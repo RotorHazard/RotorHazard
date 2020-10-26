@@ -1277,6 +1277,7 @@ jQuery(document).ready(function($){
 	// startup socket connection
 	socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
+	// popup messaging
 	socket.on('priority_message', function (msg) {
 		if (msg.interrupt) {
 			interrupt_message_queue.push(msg.message);
@@ -1312,6 +1313,13 @@ jQuery(document).ready(function($){
 			}
 		}
 	};
+
+	// hard reset
+	socket.on('database_restore_done', function (msg) {
+		location.reload();
+	});
+
+database_restore_done
 });
 }
 
