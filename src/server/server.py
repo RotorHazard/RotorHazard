@@ -1616,6 +1616,7 @@ def on_list_backups():
 @catchLogExceptionsWrapper
 def on_restore_database(data):
     '''Restore database.'''
+    success = None
     if 'backup_file' in data:
         backup_file = data['backup_file']
         backup_path = DB_BKP_DIR_NAME + '/' + backup_file
@@ -1624,7 +1625,6 @@ def on_restore_database(data):
             logger.info('Found {0}: starting restoration...'.format(backup_file))
             DB.session.close()
 
-            success = None
             try:
                 recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
 
@@ -1642,21 +1642,17 @@ def on_restore_database(data):
             init_race_state()
             init_interface_state()
 
-            emit_payload = {
-                'file_name': backup_file
-            }
-
             Events.trigger(Evt.DATABASE_RESTORE, {
                 'file_name': backup_file,
                 })
-
-            if success:
-                SOCKET_IO.emit('database_restore_done', emit_payload)
-            else:
-                message = __('Database recovery failed for: {0}').format(backup_file)
-                emit_priority_message(message, False, nobroadcast=True)
         else:
             logger.warning('Unable to restore {0}: File does not exist'.format(backup_file))
+            success = False
+
+    if success == False:
+        message = __('Database recovery failed for: {0}').format(backup_file)
+        emit_priority_message(message, False, nobroadcast=True)
+
 
 @SOCKET_IO.on('delete_database')
 @catchLogExceptionsWrapper
@@ -5009,6 +5005,9 @@ def init_interface_state():
     on_stop_race()
     # Reset laps display
     db_reset_current_laps()
+
+    SOCKET_IO.emit('database_restore_done')
+
 
 def init_LED_effects():
     # start with defaults
