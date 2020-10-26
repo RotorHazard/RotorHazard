@@ -563,7 +563,8 @@ def connect_handler():
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
     start_background_threads()
-    emit_heat_data(nobroadcast=True)
+    # push initial data
+    emit_frontend_load(nobroadcast=True)
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
@@ -2966,6 +2967,13 @@ def clean_results_cache():
     emit_round_data_notify()
 
 # Socket io emit functions
+
+def emit_frontend_load(**params):
+    '''Emits reload command.'''
+    if ('nobroadcast' in params):
+        emit('load_all')
+    else:
+        SOCKET_IO.emit('load_all')
 
 def emit_priority_message(message, interrupt=False, **params):
     ''' Emits message to all clients '''

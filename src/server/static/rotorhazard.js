@@ -1319,7 +1319,15 @@ jQuery(document).ready(function($){
 		location.reload();
 	});
 
-database_restore_done
+	// load needed data from server when required
+	socket.on('load_all', function (msg) {
+		socket.emit('load_data', {'load_types': data_dependencies});
+	});
+
+	// store language strings
+	socket.on('all_languages', function (msg) {
+		rotorhazard.language_strings = msg.languages;
+	});
 });
 }
 
