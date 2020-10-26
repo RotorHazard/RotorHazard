@@ -1345,11 +1345,13 @@ def on_alter_pilot(data):
 
     logger.info('Altered pilot {0} to {1}'.format(pilot_id, data))
     emit_pilot_data(noself=True) # Settings page, new pilot settings
-    if 'callsign' in data:
+    if 'callsign' in data or 'team_name' in data:
         emit_heat_data() # Settings page, new pilot callsign in heats
         heatnodes = Database.HeatNode.query.filter_by(pilot_id=pilot_id).all()
         if heatnodes:
             FULL_RESULTS_CACHE_VALID = False
+            Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+
             for heatnode in heatnodes:
                 heat = Database.Heat.query.get(heatnode.heat_id)
                 heat.cacheStatus = Results.CacheStatus.INVALID
@@ -1359,10 +1361,13 @@ def on_alter_pilot(data):
                 for race in races:
                     race.cacheStatus = Results.CacheStatus.INVALID
 
+            DB.session.commit()
+
             emit_result_data() # live update rounds page
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
-    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+
+    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh current leaderboard
 
 @SOCKET_IO.on('delete_pilot')
 @catchLogExceptionsWrapper
@@ -1564,6 +1569,8 @@ def on_alter_race(data):
     if old_heat.class_id != new_heat.class_id:
         new_class.cacheStatus = Results.CacheStatus.INVALID
         old_class.cacheStatus = Results.CacheStatus.INVALID
+
+    DB.session.commit()
 
     trigger_event(Evt.RACE_ALTER, {
         'race_id': race_id,
@@ -1855,6 +1862,7 @@ def on_add_race_format():
 def on_alter_race_format(data):
     ''' update race format '''
     global RACE
+    global FULL_RESULTS_CACHE_VALID
     if RACE.race_status == RaceStatus.READY:
         race_format = getCurrentDbRaceFormat()
         if race_format:
@@ -1892,8 +1900,28 @@ def on_alter_race_format(data):
                 emit_class_data()
 
             if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
+                if 'win_condition' in data or 'start_behavior' in data:
+                    FULL_RESULTS_CACHE_VALID = False
+                    Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+
+                    races = Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).all()
+                    for race in races:
+                        race.cacheStatus = Results.CacheStatus.INVALID
+
+                    classes = Database.RaceClass.query.filter_by(format_id=race_format.id).all()
+                    for race_class in classes:
+                        race_class.cacheStatus = Results.CacheStatus.INVALID
+
+                        heats = Database.Heat.query.filter_by(class_id=race_class.id).all()
+                        for heat in heats:
+                            heat.cacheStatus = Results.CacheStatus.INVALID
+
+                    DB.session.commit()
+                    emit_result_data()
+
                 message = __('Alterations made to race format: {0}').format(race_format.name)
                 emit_priority_message(message, False)
+
     else:
         emit_priority_message(__('Format alteration prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
         logger.warning('Preventing race format alteration: race in progress')
