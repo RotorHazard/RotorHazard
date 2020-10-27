@@ -649,7 +649,7 @@ nav>ul>li>ul li {
 	}
 
 	.hamburger {
-		width: calc(100% - 1.2em);
+		width: calc(100% - 3.2em);
 	}
 }
 
