@@ -1706,9 +1706,18 @@ footer {
 	font-size: 0.75em;
 }
 
-footer img {
+footer a {
+	color: inherit;
+}
+
+footer .rh-logo {
+	display: inline-block;
+	margin: 0 0.25em;
+}
+
+footer svg {
 	height: 2.5em;
-	vertical-align: middle;
+	vertical-align: -0.75em;
 }
 
 .page-docs pre {

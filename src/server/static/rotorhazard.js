@@ -1161,9 +1161,13 @@ rotorhazard.restoreData();
 
 if (typeof jQuery != 'undefined') {
 jQuery(document).ready(function($){
+	// display admin options
 	if (rotorhazard.admin) {
 		$('*').removeClass('admin-hide');
 	}
+
+	// populate SVG logo
+	$('.rh-logo').html(svg_asset.logo);
 
 	// header collapsing (hamburger)
 	if ($('#nav-main').length) {
