@@ -1278,6 +1278,15 @@ jQuery(document).ready(function($){
 	// startup socket connection
 	socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
+	// reconnect when visibility is regained
+	$(document).on('visibilitychange', function(){
+		if (!document['hidden']) {
+			if (!socket.connected) {
+ 				socket.connect();
+			}
+		}
+	});
+
 	// popup messaging
 	socket.on('priority_message', function (msg) {
 		if (msg.interrupt) {
