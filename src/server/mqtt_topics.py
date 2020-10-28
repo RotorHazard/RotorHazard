@@ -1,3 +1,4 @@
+import json
 #########################
 # Established MQTT Topics
 #########################
@@ -78,7 +79,7 @@ mqtt_publish_topics = {
             "receiver_request_seat_active_topic":receiver_request_seat_active_topic,
             "receiver_request_targeted_topic":receiver_request_targeted_topic,
             "receiver_kick_topic":receiver_kick_topic,
-            "receiver_command_esp_all": receiver_command_esp_all,
+            "receiver_command_esp_all_topic": receiver_command_esp_all,
             "receiver_command_esp_seat_topic":receiver_command_esp_seat_topic,
             "receiver_command_esp_targeted_topic": receiver_command_esp_targeted_topic,
         }
@@ -97,7 +98,16 @@ mqtt_subscribe_topics = {
 }
 
 ESP_COMMANDS = {
-    "Request Static Status": "status_static?",
-    "Request Variable Status": "status_var?",
-    "Set Seat Number": "seat=%d",
+    "Request Static Status" : json.dumps(
+                                {"cv_version": "?",
+                                "cvcm_version": "?",
+                                "mac_addr": "?",
+                                "device_type": "?"}
+                                ),
+    "Request Variable Status" : json.dumps(
+                                {"seat": "?",
+                                "device_name": "?",
+                                "video_format": "?",
+                                "ip_addr": "?"}
+                                )
 }

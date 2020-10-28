@@ -4060,7 +4060,6 @@ def emit_vrx_list(*args, **params):
         # if vrx_controller.has_connection:
             vrx_list = {}
             for vrx in vrx_controller.rx_data:
-                print(vrx)
                 vrx_list[vrx] = vrx_controller.rx_data[vrx]
 
             emit_payload = {
