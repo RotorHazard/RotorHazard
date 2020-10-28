@@ -62,35 +62,31 @@
 	<!-- Child template head content -->
 
 	<script type="text/javascript" charset="utf-8">
+		var data_dependencies = [
+			'all_languages',
+			'language',
+			'node_data',
+			'environmental_data',
+			'frequency_data',
+			'heat_data',
+			'class_data',
+			'pilot_data',
+			'race_format',
+			'node_tuning',
+			'enter_and_exit_at_levels',
+			'min_lap',
+			'race_status',
+			'team_racing_mode',
+			'led_effects',
+			'led_effect_setup',
+			'cluster_status'
+		];
+
 		var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
 		var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 		var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 		$(document).ready(function () {
-			socket.emit('load_data', {'load_types': [
-				'all_languages',
-				'language',
-				'node_data',
-				'environmental_data',
-				'frequency_data',
-				'heat_data',
-				'class_data',
-				'pilot_data',
-				'race_format',
-				'node_tuning',
-				'enter_and_exit_at_levels',
-				'min_lap',
-				'race_status',
-				'team_racing_mode',
-				'led_effects',
-				'led_effect_setup',
-				'cluster_status'
-			]});
-
-			socket.on('all_languages', function (msg) {
-				rotorhazard.language_strings = msg.languages;
-			});
-
 			socket.on('language', function (msg) {
 				$('#set_language').empty();
 				$('#set_language').append('<option value="">English</option>')

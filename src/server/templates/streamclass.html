@@ -2,26 +2,23 @@
 <link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'result_data',
+	];
+
+
 	rotorhazard.show_messages = false;
-	var round_data;
+	var result_data;
 	var streamclass = {{ class_id }}
 
 	$(document).ready(function () {
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'round_data',
-		]});
-
 		if (!{{ class_id }}) {
 			socket.emit('load_data', {'load_types': [
 				'current_heat',
 			]});
 		}
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
 
 		socket.on('language', function (msg) {
 			if (msg.language) {
@@ -29,17 +26,11 @@
 			}
 		});
 
-		socket.on('round_data_notify', function () {
-			socket.emit('load_data', {'load_types': [
-				'round_data',
-			]});
-		});
-
 		socket.on('current_heat', function (msg) {
 			if (!{{ class_id }}) {
 				if (msg.heat_class) {
 					streamclass = msg.heat_class;
-					display_round_data(round_data);
+					display_result_data(result_data);
 				} else {
 					display_nothing()
 				}
@@ -51,7 +42,7 @@
 			$('#leaderboard').html('<p>' + __('There is no saved race data available to view.') + '</p>');
 		}
 
-		function display_round_data(msg) {
+		function display_result_data(msg) {
 			if (!$.isEmptyObject(msg.heats)) {
 				for (var class_id in msg.heats_by_class) {
 					if (class_id == streamclass) {
@@ -81,9 +72,9 @@
 			}
 		}
 
-		socket.on('round_data', function (msg) {
-			round_data = msg;
-			display_round_data(round_data);
+		socket.on('result_data', function (msg) {
+			result_data = msg;
+			display_result_data(result_data);
 		});
 	});
 

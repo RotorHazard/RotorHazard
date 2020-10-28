@@ -34,6 +34,7 @@
 	<script type="text/javascript" src="/static/socket.io-2.2.0/socket.io.min.js"></script>
 	<script type="text/javascript" src="/static/smoothie/smoothie.js"></script>
 	<script type="text/javascript" src="/static/magnific-1.1.0/magnific-inline-min.js"></script>
+	<script type="text/javascript" src="/static/svgasset.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 	<script type="text/javascript" src="/static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
 
 	<!-- CSS -->
@@ -72,10 +73,10 @@
 		<div id="timer-name"><img src="../static/image/RotorHazard Icon.svg"> <a href="/">{{ getOption("timerName") }}</a></div>
 		<nav id="nav-main">
 			<ul>
-				<li><a href="/heats">{{ __("Event") }}</a></li>
+				<li><a href="/event">{{ __("Event") }}</a></li>
 				<li><a href="/results">{{ __("Results") }}</a></li>
 				<li><a href="/current">{{ __("Current") }}</a></li>
-				<li class="admin-hide"><a href="/race">{{ __("Run") }}</a></li>
+				<li class="admin-hide"><a href="/run">{{ __("Run") }}</a></li>
 				<li class="admin-hide"><a href="/marshal">{{ __("Marshal") }}</a></li>
 				<li class="admin-hide"><a href="/settings">{{ __("Settings") }}</a></li>
 				<li class="extra">
@@ -103,7 +104,7 @@
 	{% block content %}{% endblock %}
 
 	<footer>
-		<p>Powered by <a href="https://github.com/RotorHazard/RotorHazard/"><img src="../static/image/RotorHazard Logo.svg" alt="RotorHazard / FPV Race Timer" /></a> v{{ serverInfo['release_version'] }}</p>
+		<p>Powered by <a href="https://github.com/RotorHazard/RotorHazard/"><span class="rh-logo"></span></a> v{{ serverInfo['release_version'] }}</p>
 	</footer>
 
 	<div id="about" class="mfp-hide popup">

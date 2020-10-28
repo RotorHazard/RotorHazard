@@ -13,7 +13,7 @@ import logging
 from monotonic import monotonic
 from Language import __
 from eventmanager import Evt, EventManager
-from RHRace import RaceStatus, WinCondition, WinStatus
+from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 
 Events = EventManager()
 
@@ -66,14 +66,14 @@ def normalize_cache_status(DB):
 
     logger.debug('All Result caches normalized')
 
-def build_result_cache(DB, **params):
+def build_atomic_result_cache(DB, **params):
     return {
         'results': calc_leaderboard(DB, **params),
         'cacheStatus': CacheStatus.VALID
     }
 
 @catchLogExceptionsWrapper
-def build_race_results_caches(DB, params):
+def build_atomic_results_caches(DB, params):
     global FULL_RESULTS_CACHE
     FULL_RESULTS_CACHE = False
     token = monotonic()
@@ -81,48 +81,72 @@ def build_race_results_caches(DB, params):
         'start': token
     }
 
-    race = Database.SavedRaceMeta.query.get(params['race_id'])
-    heat = Database.Heat.query.get(params['heat_id'])
-    if heat.class_id != Database.CLASS_ID_NONE:
-        race_class = Database.RaceClass.query.get(heat.class_id)
+    if 'race_id' in params:
+        race = Database.SavedRaceMeta.query.get(params['race_id'])
+        if 'round_id' in params:
+            round_id = params['round_id']
+        else:
+            round_id = race.round_id
 
-    race.cacheStatus = token
-    heat.cacheStatus = token
-    if heat.class_id != Database.CLASS_ID_NONE:
+    if 'heat_id' in params:
+        heat_id = params['heat_id']
+        heat = Database.Heat.query.get(heat_id)
+    elif 'race_id' in params:
+        heat_id = race.heat_id
+        heat = Database.Heat.query.get(heat_id)
+
+    if 'class_id' in params:
+        class_id = params['class_id']
+        USE_CLASS = True
+    elif 'heat_id' in params and heat.class_id != Database.CLASS_ID_NONE:
+        class_id = heat.class_id
+        USE_CLASS = True
+    else:
+        USE_CLASS = False
+
+    if 'race_id' in params:
+        race.cacheStatus = token
+    if 'heat_id' in params:
+        heat.cacheStatus = token
+    if USE_CLASS:
+        race_class = Database.RaceClass.query.get(class_id)
         race_class.cacheStatus = token
+
     Options.set("eventResults_cacheStatus", token)
     DB.session.commit()
 
     # rebuild race result
-    gevent.sleep()
-    timing['race'] = monotonic()
-    if race.cacheStatus == token:
-        raceResult = build_result_cache(DB, heat_id=params['heat_id'], round_id=params['round_id'])
-        race.results = raceResult['results']
-        race.cacheStatus = raceResult['cacheStatus']
-        DB.session.commit()
-    logger.debug('Race cache built in %fs', monotonic() - timing['race'])
+    if 'race_id' in params:
+        gevent.sleep()
+        timing['race'] = monotonic()
+        if race.cacheStatus == token:
+            raceResult = build_atomic_result_cache(DB, heat_id=heat_id, round_id=round_id)
+            race.results = raceResult['results']
+            race.cacheStatus = raceResult['cacheStatus']
+            DB.session.commit()
+        logger.debug('Race {0} cache built in {1}s'.format(params['race_id'], monotonic() - timing['race']))
 
     # rebuild heat summary
-    gevent.sleep()
-    timing['heat'] = monotonic()
-    if heat.cacheStatus == token:
-        heatResult = build_result_cache(DB, heat_id=params['heat_id'])
-        heat.results = heatResult['results']
-        heat.cacheStatus = heatResult['cacheStatus']
-        DB.session.commit()
-    logger.debug('Heat cache built in %fs', monotonic() - timing['heat'])
+    if 'heat_id' in params:
+        gevent.sleep()
+        timing['heat'] = monotonic()
+        if heat.cacheStatus == token:
+            heatResult = build_atomic_result_cache(DB, heat_id=heat_id)
+            heat.results = heatResult['results']
+            heat.cacheStatus = heatResult['cacheStatus']
+            DB.session.commit()
+        logger.debug('Heat {0} cache built in {1}s'.format(heat_id, monotonic() - timing['heat']))
 
     # rebuild class summary
-    if heat.class_id != Database.CLASS_ID_NONE:
+    if USE_CLASS:
+        gevent.sleep()
+        timing['class'] = monotonic()
         if race_class.cacheStatus == token:
-            gevent.sleep()
-            timing['class'] = monotonic()
-            classResult = build_result_cache(DB, class_id=heat.class_id)
+            classResult = build_atomic_result_cache(DB, class_id=class_id)
             race_class.results = classResult['results']
             race_class.cacheStatus = classResult['cacheStatus']
             DB.session.commit()
-        logger.debug('Class cache built in %fs', monotonic() - timing['class'])
+        logger.debug('Class {0} cache built in {1}s'.format(class_id, monotonic() - timing['class']))
 
     # rebuild event summary
     gevent.sleep()
@@ -131,7 +155,7 @@ def build_race_results_caches(DB, params):
     Options.set("eventResults_cacheStatus", CacheStatus.VALID)
     logger.debug('Event cache built in %fs', monotonic() - timing['event'])
 
-    logger.debug('Built result caches in {0}: Race {1}, Heat {2}, Class {3}, Event'.format(monotonic() - timing['start'], params['race_id'], params['heat_id'], heat.class_id))
+    logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
 
 def calc_leaderboard(DB, **params):
     ''' Generates leaderboards '''
@@ -215,7 +239,10 @@ def calc_leaderboard(DB, **params):
                     break
 
             if laps:
-                max_lap = len(laps) - 1
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    max_lap = len(laps)
+                else:
+                    max_lap = len(laps) - 1
             else:
                 max_lap = 0
 
@@ -232,6 +259,9 @@ def calc_leaderboard(DB, **params):
             holeshot_laps = []
             pilotnode = None
             for race in racelist:
+                this_race = Database.SavedRaceMeta.query.get(race)
+                this_race_format = Database.RaceFormat.query.get(this_race.format_id)
+
                 pilotraces = Database.SavedPilotRace.query \
                     .filter(Database.SavedPilotRace.pilot_id == pilot.id, \
                     Database.SavedPilotRace.race_id == race \
@@ -240,15 +270,18 @@ def calc_leaderboard(DB, **params):
                 if len(pilotraces):
                     pilotnode = pilotraces[-1].node_index
 
-                for pilotrace in pilotraces:
-                    gevent.sleep()
-                    holeshot_lap = Database.SavedRaceLap.query \
-                        .filter(Database.SavedRaceLap.pilotrace_id == pilotrace.id, \
-                            Database.SavedRaceLap.deleted != 1, \
-                            ).order_by(Database.SavedRaceLap.lap_time_stamp).first()
+                if this_race_format and this_race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    pass
+                else:
+                    for pilotrace in pilotraces:
+                        gevent.sleep()
+                        holeshot_lap = Database.SavedRaceLap.query \
+                            .filter(Database.SavedRaceLap.pilotrace_id == pilotrace.id, \
+                                Database.SavedRaceLap.deleted != 1, \
+                                ).order_by(Database.SavedRaceLap.lap_time_stamp).first()
 
-                    if holeshot_lap:
-                        holeshot_laps.append(holeshot_lap.id)
+                        if holeshot_lap:
+                            holeshot_laps.append(holeshot_lap.id)
 
             # get total laps
             stat_query = DB.session.query(DB.func.count(Database.SavedRaceLap.id)) \
@@ -328,17 +361,10 @@ def calc_leaderboard(DB, **params):
             average_lap.append(0) # Add zero if no laps completed
         else:
             if USE_CURRENT:
-                avg_lap = (current_laps[i][-1]['lap_time_stamp'] - current_laps[i][0]['lap_time_stamp']) / (len(current_laps[i]) - 1)
-
-                '''
-                timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
-
-                lap_total = 0
-                for lap in timed_laps:
-                    lap_total += lap['lap_time']
-
-                avg_lap = lap_total / len(timed_laps)
-                '''
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    avg_lap = current_laps[i][-1]['lap_time_stamp'] / len(current_laps[i])
+                else:
+                    avg_lap = (current_laps[i][-1]['lap_time_stamp'] - current_laps[i][0]['lap_time_stamp']) / (len(current_laps[i]) - 1)
 
             else:
                 stat_query = DB.session.query(DB.func.avg(Database.SavedRaceLap.lap_time)) \
@@ -358,7 +384,10 @@ def calc_leaderboard(DB, **params):
             fastest_lap_source.append(None)
         else:
             if USE_CURRENT:
-                timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    timed_laps = current_laps[i]
+                else:
+                    timed_laps = filter(lambda x : x['lap_number'] > 0, current_laps[i])
 
                 fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
                 fastest_lap_source.append(None)
@@ -480,26 +509,48 @@ def calc_leaderboard(DB, **params):
             'node': nodes[i],
         })
 
-    # Sort by race time
-    leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
-        -x['laps'], # reverse lap count
-        x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
-    )))
+    if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
+        # Sort by laps time
+        leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
+            -x['laps'], # reverse lap count
+            x['total_time_laps_raw'] if x['total_time_laps_raw'] and x['total_time_laps_raw'] > 0 else float('inf') # total time ascending except 0
+        )))
 
-    # determine ranking
-    last_rank = '-'
-    last_rank_laps = 0
-    last_rank_time = 0
-    for i, row in enumerate(leaderboard_by_race_time, start=1):
-        pos = i
-        if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
-            pos = last_rank
-        last_rank = pos
-        last_rank_laps = row['laps']
-        last_rank_time = row['total_time_raw']
+        # determine ranking
+        last_rank = '-'
+        last_rank_laps = 0
+        last_rank_time = 0
+        for i, row in enumerate(leaderboard_by_race_time, start=1):
+            pos = i
+            if last_rank_laps == row['laps'] and last_rank_time == row['total_time_laps_raw']:
+                pos = last_rank
+            last_rank = pos
+            last_rank_laps = row['laps']
+            last_rank_time = row['total_time_laps_raw']
 
-        row['position'] = pos
-        row['behind'] = leaderboard_by_race_time[0]['laps'] - row['laps']
+            row['position'] = pos
+            row['behind'] = leaderboard_by_race_time[0]['laps'] - row['laps']
+    else:
+        # Sort by race time
+        leaderboard_by_race_time = copy.deepcopy(sorted(leaderboard, key = lambda x: (
+            -x['laps'], # reverse lap count
+            x['total_time_raw'] if x['total_time_raw'] and x['total_time_raw'] > 0 else float('inf') # total time ascending except 0
+        )))
+
+        # determine ranking
+        last_rank = '-'
+        last_rank_laps = 0
+        last_rank_time = 0
+        for i, row in enumerate(leaderboard_by_race_time, start=1):
+            pos = i
+            if last_rank_laps == row['laps'] and last_rank_time == row['total_time_raw']:
+                pos = last_rank
+            last_rank = pos
+            last_rank_laps = row['laps']
+            last_rank_time = row['total_time_raw']
+
+            row['position'] = pos
+            row['behind'] = leaderboard_by_race_time[0]['laps'] - row['laps']
 
     gevent.sleep()
     # Sort by fastest laps
@@ -569,12 +620,14 @@ def calc_leaderboard(DB, **params):
             'primary_leaderboard': primary_leaderboard,
             'win_condition': race_format.win_condition,
             'team_racing_mode': race_format.team_racing_mode,
+            'start_behavior': race_format.start_behavior,
         }
     else:
         leaderboard_output['meta'] = {
             'primary_leaderboard': 'by_race_time',
             'win_condition': WinCondition.NONE,
-            'team_racing_mode': False
+            'team_racing_mode': False,
+            'start_behavior': StartBehavior.HOLESHOT,
         }
 
     return leaderboard_output
@@ -1074,7 +1127,7 @@ def check_win_fastest_consecutive(RACE, **kwargs):
         if len(leaderboard) > 1:
             fast_lap = leaderboard[0]['consecutives_raw']
 
-            if fast_lap > 3: # must have at least 3 laps
+            if fast_lap and fast_lap > 3: # must have at least 3 laps
                 # check for tie
                 if leaderboard[1]['consecutives_raw'] == fast_lap:
                     logger.info('Race tied at %s', leaderboard[1]['consecutives'])

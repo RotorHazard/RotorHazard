@@ -1,36 +1,26 @@
-{% extends "layout.html" %} {% block title %}Rounds{% endblock %} {% block head %} {% endblock %} {% block content %}
+{% extends "layout.html" %} {% block title %}Results{% endblock %} {% block head %} {% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'results_data',
+	];
+
 	$(document).ready(function () {
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'round_data',
-		]});
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
-
 		socket.on('language', function (msg) {
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
 			}
 		});
 
-		socket.on('round_data_notify', function () {
-			socket.emit('load_data', {'load_types': [
-				'round_data',
-			]});
-		});
-
-		socket.on('round_data', function (msg) {
+		socket.on('results_data', function (msg) {
 			function order_boards(primary) {
 				var boards = ['by_race_time', 'by_fastest_lap', 'by_consecutives']
 				boards.sort(function(x,y){ return x == primary ? -1 : y == primary ? 1 : 0; });
 				return boards;
 			}
 
-			var page = $('.page-rounds')
+			var page = $('#results');
 			page.empty();
 
 			if (!$.isEmptyObject(msg.heats)) {
@@ -44,11 +34,11 @@
 				var panel_content = $('<div class="panel-content" style="display: none">');
 				var event_leaderboard = $('<div class="event-leaderboards">');
 				event_leaderboard.append('<h3>' + __('Race Totals') + '</h3>');
-				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_race_time, 'by_race_time', msg.meta));
+				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_race_time, 'by_race_time', msg.event_leaderboard.meta));
 				event_leaderboard.append('<h3>' + __('Fastest Laps') + '</h3>');
-				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_fastest_lap, 'by_fastest_lap', msg.meta));
+				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_fastest_lap, 'by_fastest_lap', msg.event_leaderboard.meta));
 				event_leaderboard.append('<h3>' + __('Fastest 3 Consecutive Laps') + '</h3>');
-				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_consecutives, 'by_consecutives', msg.meta));
+				event_leaderboard.append(build_leaderboard(msg.event_leaderboard.by_consecutives, 'by_consecutives', msg.event_leaderboard.meta));
 				panel_content.append(event_leaderboard);
 				panel.append(panel_content);
 
@@ -98,13 +88,13 @@
 							for (var i in boards) {
 								if (boards[i] == 'by_race_time') {
 									class_leaderboard_content.append('<h4>' + __('Race Totals') + '</h4>');
-									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_race_time, 'by_race_time', msg.meta));
+									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_race_time, 'by_race_time', current_class.leaderboard.meta));
 								} else if (boards[i] == 'by_fastest_lap') {
 									class_leaderboard_content.append('<h4>' + __('Fastest Laps') + '</h4>');
-									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_fastest_lap, 'by_fastest_lap', msg.meta));
+									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_fastest_lap, 'by_fastest_lap', current_class.leaderboard.meta));
 								} else if (boards[i] == 'by_consecutives') {
 									class_leaderboard_content.append('<h4>' + __('Fastest 3 Consecutive Laps') + '</h4>');
-									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_consecutives, 'by_consecutives', msg.meta));
+									class_leaderboard_content.append(build_leaderboard(current_class.leaderboard.by_consecutives, 'by_consecutives', current_class.leaderboard.meta));
 								}
 							}
 
@@ -143,7 +133,7 @@
 									heat_summary_panel.append('<div class="panel-header"><h4><button class="no-style">' + __('Heat Summary') + '</button></h4></div>')
 									var heat_summary_panel_content = $('<div class="panel-content">');
 									var heat_leaderboard = $('<div class="leaderboard">');
-									heat_leaderboard.append(build_leaderboard(heat.leaderboard[heat.leaderboard.meta.primary_leaderboard], 'heat', msg.meta));
+									heat_leaderboard.append(build_leaderboard(heat.leaderboard[heat.leaderboard.meta.primary_leaderboard], 'heat', heat.leaderboard.meta));
 									heat_summary_panel_content.append(heat_leaderboard);
 									heat_summary_panel.append(heat_summary_panel_content);
 									panel_content.append(heat_summary_panel);
@@ -159,7 +149,7 @@
 									var round_content = $('<div class="panel-content">');
 									// race leaderboards
 									var race_leaderboard = $('<div class="leaderboard">');
-									race_leaderboard.append(build_leaderboard(round.leaderboard[round.leaderboard.meta.primary_leaderboard], 'round', msg.meta));
+									race_leaderboard.append(build_leaderboard(round.leaderboard[round.leaderboard.meta.primary_leaderboard], 'round', round.leaderboard.meta));
 
 									var race_results = $('<div class="race-results">');
 
@@ -174,23 +164,32 @@
 											var table = $('<table class="laps">');
 											var tbody = $('<tbody>');
 
-											var lap_index = 0;
+											if ('start_behavior' in round.leaderboard.meta && round.leaderboard.meta.start_behavior == 1) {
+												var lap_index = 1;
+											} else {
+												var lap_index = 0;
+											}
 											for (var lap_i in node.laps) {
 												var lap = node.laps[lap_i];
 												if (!lap.deleted) {
 													if (lap_index) {
-														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + formatTimeMillis(lap.lap_time_stamp) + '</span>' + formatTimeMillis(lap.lap_time) + '</td></tr>')
+														if ('start_behavior' in round.leaderboard.meta && round.leaderboard.meta.start_behavior == 2) {
+															var timestamp = formatTimeMillis(lap.lap_time_stamp - node.laps[0].lap_time_stamp) + ' / ' + formatTimeMillis(lap.lap_time_stamp)
+														} else {
+															var timestamp = formatTimeMillis(lap.lap_time_stamp)
+														}
+														tbody.append('<tr class="lap_' + lap_index + '"><td>' + lap_index + '</td><td><span class="from_start">' + timestamp + '</span>' + formatTimeMillis(lap.lap_time) + '</td></tr>')
 													} else {
 														tbody.append('<tr class="lap_0"><td>0</td><td>' + formatTimeMillis(lap.lap_time) + '</td></tr>')
 													}
 													lap_index++;
 												}
 											}
-										}
 
-										table.append(tbody);
-										node_div.append(table);
-										race_results.append(node_div);
+											table.append(tbody);
+											node_div.append(table);
+											race_results.append(node_div);
+										}
 									}
 
 									round_content.append(race_leaderboard);
@@ -236,11 +235,21 @@
 				}
 			}
 		})
+
+		$(document).on("click", '.clean-cache', function (event) {
+			socket.emit('clean_cache');
+		});
 	});
 </script>
 <main class="page-rounds">
 
-<p>{{ __('Loading...') }}</p>
+<div id="results">
+	<p>{{ __('Loading...') }}</p>
+</div>
+
+{% if Debug %}
+<p><button class="debug button-like clean-cache">{{ __('Clean Cache') }}</button></p>
+{% endif %}
 
 </main>
 {% endblock %}
