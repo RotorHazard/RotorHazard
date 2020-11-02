@@ -814,6 +814,7 @@ var rotorhazard = {
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array
 	heats: {}, // heats object
+	race_format: {}, // current format object
 
 	panelstates: {}, // collapsible panel state
 
@@ -1145,6 +1146,13 @@ function get_interrupt_message() {
 	}
 }
 
+function init_popup_generics() {
+	$('.open-mfp-popup').magnificPopup({
+		type:'inline',
+		midClick: true,
+	});
+}
+
 // restore local settings
 if ($() && $().articulate('getVoices')[0] && $().articulate('getVoices')[0].name) {
 	rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
@@ -1153,9 +1161,13 @@ rotorhazard.restoreData();
 
 if (typeof jQuery != 'undefined') {
 jQuery(document).ready(function($){
+	// display admin options
 	if (rotorhazard.admin) {
 		$('*').removeClass('admin-hide');
 	}
+
+	// populate SVG logo
+	$('.rh-logo').html(svg_asset.logo);
 
 	// header collapsing (hamburger)
 	if ($('#nav-main').length) {
@@ -1261,10 +1273,7 @@ jQuery(document).ready(function($){
 	});
 
 	// Popup generics
-	$('.open-mfp-popup').magnificPopup({
-		type:'inline',
-		midClick: true,
-	});
+	init_popup_generics();
 
 	$('.cancel').click(function() {
 		$.magnificPopup.close();
@@ -1273,6 +1282,16 @@ jQuery(document).ready(function($){
 	// startup socket connection
 	socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
+	// reconnect when visibility is regained
+	$(document).on('visibilitychange', function(){
+		if (!document['hidden']) {
+			if (!socket.connected) {
+ 				socket.connect();
+			}
+		}
+	});
+
+	// popup messaging
 	socket.on('priority_message', function (msg) {
 		if (msg.interrupt) {
 			interrupt_message_queue.push(msg.message);
@@ -1308,6 +1327,21 @@ jQuery(document).ready(function($){
 			}
 		}
 	};
+
+	// hard reset
+	socket.on('database_restore_done', function (msg) {
+		location.reload();
+	});
+
+	// load needed data from server when required
+	socket.on('load_all', function (msg) {
+		socket.emit('load_data', {'load_types': data_dependencies});
+	});
+
+	// store language strings
+	socket.on('all_languages', function (msg) {
+		rotorhazard.language_strings = msg.languages;
+	});
 });
 }
 
@@ -1318,6 +1352,13 @@ function build_leaderboard(leaderboard, display_type, meta) {
 	if (typeof(meta) === 'undefined') {
 		meta = new Object;
 		meta.team_racing_mode = false;
+		meta.start_behavior = 0;
+	}
+
+	if (meta.start_behavior == 2) {
+		var total_label = __('Laps Total');
+	} else {
+		var total_label = __('Total');
 	}
 
 	var twrap = $('<div class="responsive-wrap">');
@@ -1334,7 +1375,7 @@ function build_leaderboard(leaderboard, display_type, meta) {
 		display_type == 'round' ||
 		display_type == 'current') {
 		header_row.append('<th class="laps">' + __('Laps') + '</th>');
-		header_row.append('<th class="total">' + __('Total') + '</th>');
+		header_row.append('<th class="total">' + total_label + '</th>');
 		header_row.append('<th class="avg">' + __('Avg.') + '</th>');
 	}
 	if (display_type == 'by_fastest_lap' ||
@@ -1371,7 +1412,11 @@ function build_leaderboard(leaderboard, display_type, meta) {
 				lap = '&#8212;';
 			row.append('<td class="laps">'+ lap +'</td>');
 
-			var lap = leaderboard[i].total_time;
+			if (meta.start_behavior == 2) {
+				var lap = leaderboard[i].total_time_laps;
+			} else {
+				var lap = leaderboard[i].total_time;
+			}
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			row.append('<td class="total">'+ lap +'</td>');

@@ -64,26 +64,41 @@ def idAndLogSystemInfo():
 
 # Returns "primary" IP address for local host.  Based on:
 #  https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib
+#  and https://stackoverflow.com/questions/24196932/how-can-i-get-the-ip-address-from-nic-in-python
 def getLocalIPAddress():
-    s = None
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('10.255.255.255', 1))
-        IP = s.getsockname()[0]
-    except Exception:
-        IP = '127.0.0.1'
-    finally:
-        if s:
-            s.close()
-    return IP
+        s = None
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(('10.255.255.255', 1))
+            IP = s.getsockname()[0]
+        finally:
+            if s:
+                s.close()
+    except:
+        IP = None
+    if IP:
+        return IP
+    # use alternate method that does not rely on internet access
+    ips = subprocess.check_output(['hostname', '--all-ip-addresses'])
+    if ips:
+        for IP in ips.split(' '):
+            if IP.find('.') > 0 and not IP.startswith("127."):
+                return IP
+    raise RuntimeError("Unable to determine IP address via 'hostname' command")
 
-# Substitutes asterisks in the IP address 'destAddrStr' with values from 'sourceAddrStr'.
-def substituteAddrWildcards(sourceAddrStr, destAddrStr):
+# Substitutes asterisks in the IP address 'destAddrStr' with values from the IP address
+#  fetched via the given 'determineHostAddressFn' function.
+def substituteAddrWildcards(determineHostAddressFn, destAddrStr):
     try:
-        if sourceAddrStr and destAddrStr and destAddrStr.find('*') >= 0:
+        if determineHostAddressFn and destAddrStr and destAddrStr.find('*') >= 0:
+            colonPos = destAddrStr.find(':')  # find position of port specifier (i.e., ":5000")
+            if colonPos <= 0:
+                colonPos = len(destAddrStr)
+            sourceAddrStr = determineHostAddressFn()
             # single "*" == full substitution
-            if destAddrStr == "*":
-                return sourceAddrStr
+            if destAddrStr[:colonPos] == "*":
+                return sourceAddrStr + destAddrStr[colonPos:]
             sourceParts = sourceAddrStr.split('.')
             destParts = destAddrStr.split('.')
             # ("192.168.0.130", "*.*.*.97") => "192.168.0.97"

@@ -25,13 +25,13 @@ Download the [gerber file](Gerber_PCB%20RotorHazard%20PCB%20rev.%201.2.zip) to p
 
 ## Testing
 
-RotorHazrad does not manufacture PCBs and cannot guarantee the quality of any manufacturer. Thoroughly test any boards before connecting sensitive components.
+RotorHazard does not manufacture PCBs and cannot guarantee the quality of any manufacturer. Thoroughly test any boards before connecting sensitive components.
 
 ## Build Components
 
 ### Required
 
-See (Hardware Setup)[https://github.com/RotorHazard/RotorHazard/blob/master/doc/Hardware%20Setup.md] for basic component requirements such as Arduinos, resistors, and receiver modules. The RotorHazard PCB offers mounting points for these components.
+See [Hardware Setup](https://github.com/RotorHazard/RotorHazard/blob/master/doc/Hardware%20Setup.md) for basic component requirements such as Arduinos, resistors, and receiver modules. The RotorHazard PCB offers mounting points for these components.
 
 In addition to the above building with the RotorHazard PCB requires:
 * 1× PCB (for timers with 1–4 nodes) or 2× PCB (timers with 5–8 nodes)

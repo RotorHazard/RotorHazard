@@ -104,6 +104,7 @@ class Evt:
     # Race setup
     MIN_LAP_TIME_SET = 'minLapTimeSet'
     MIN_LAP_BEHAVIOR_SET = 'minLapBehaviorSet'
+    RACE_ALTER = 'raceAlter'
     RACE_FORMAT_SET = 'raceFormatSet'
     RACE_FORMAT_ADD = 'raceFormatAdd'
     RACE_FORMAT_ALTER = 'raceFormatAlter'
@@ -129,12 +130,14 @@ class Evt:
     # Results cache
     CACHE_CLEAR = 'cacheClear'
     CACHE_READY = 'cacheReady'
+    CACHE_FAIL = 'cacheFail'
     # CLUSTER
     CLUSTER_JOIN = 'clusterJoin'
     # LED
     LED_EFFECT_SET = 'LedEffectSet'
     LED_BRIGHTNESS_SET = 'LedBrightnessSet'
     LED_MANUAL = 'LedManual'
+    LED_SET_MANUAL = 'LedSetManual'
     # VRX Controller
     VRX_DATA_RECEIVE = 'VrxDataRecieve'
 

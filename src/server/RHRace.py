@@ -22,6 +22,7 @@ class RHRace():
         self.start_time_delay_secs = 0 # random-length race-start delay
         self.node_laps = {} # current race lap objects, by node
         self.node_has_finished = {}
+        self.any_races_started = False
         # concluded
         self.duration_ms = 0 # Duration in seconds, calculated when race is stopped
         self.end_time = 0 # Monotonic, updated when race is stopped
@@ -54,10 +55,20 @@ class RHRace():
         filtered = {}
         for node_index in self.node_laps:
             filtered[node_index] = list(filter(lambda lap : lap['deleted'] == False, self.node_laps[node_index]))
-
         return filtered
 
+    def any_laps_recorded(self):
+        for node_index in range(self.num_nodes):
+            if len(self.node_laps[node_index]) > 0:
+                return True
+        return False
+
 RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
+
+class StartBehavior():
+    HOLESHOT = 0
+    FIRST_LAP = 1
+    STAGGERED = 2
 
 class WinCondition():
     NONE = 0
