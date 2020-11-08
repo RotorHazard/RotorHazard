@@ -2785,7 +2785,7 @@ def build_full_result_cache():
 
     timing['end'] = monotonic()
 
-    logger.info('T%d: Results returned in: %fs', timing['start'], timing['end'] - timing['start'])
+    logger.info('T%d: Built results data in: %fs', timing['start'], timing['end'] - timing['start'])
 
 @SOCKET_IO.on('discard_laps')
 @catchLogExceptionsWrapper
