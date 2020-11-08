@@ -1730,6 +1730,10 @@ def on_reset_database(data):
         db_reset_classes()
         db_reset_saved_races()
         db_reset_current_laps()
+    elif reset_type == 'formats':
+        db_reset_saved_races()
+        db_reset_current_laps()
+        db_reset_race_formats()
     emit_heat_data()
     emit_pilot_data()
     emit_race_format()
@@ -4705,6 +4709,8 @@ def db_reset_race_formats():
                              team_racing_mode=True,
                              start_behavior=0))
 
+    for race_class in Database.RaceClass.query.all():
+        race_class.format_id = 0
 
     DB.session.commit()
     setCurrentRaceFormat(Database.RaceFormat.query.first())
