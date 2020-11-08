@@ -30,7 +30,9 @@
 			if (!{{ class_id }}) {
 				if (msg.heat_class) {
 					streamclass = msg.heat_class;
-					display_result_data(result_data);
+					if (result_data != undefined) {
+						display_result_data(result_data);
+					}
 				} else {
 					display_nothing()
 				}
