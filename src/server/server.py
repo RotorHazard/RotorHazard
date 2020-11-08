@@ -1666,6 +1666,8 @@ def on_restore_database(data):
             Events.trigger(Evt.DATABASE_RESTORE, {
                 'file_name': backup_file,
                 })
+
+            SOCKET_IO.emit('database_restore_done')
         else:
             logger.warning('Unable to restore {0}: File does not exist'.format(backup_file))
             success = False
@@ -5113,8 +5115,6 @@ def init_interface_state():
     on_stop_race()
     # Reset laps display
     db_reset_current_laps()
-
-    SOCKET_IO.emit('database_restore_done')
 
 def init_LED_effects():
     # start with defaults
