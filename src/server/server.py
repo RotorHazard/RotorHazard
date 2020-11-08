@@ -4999,7 +4999,8 @@ def recover_database(dbfile, **kwargs):
                     'staging_tones': 2,
                     'number_laps_win': 0,
                     'win_condition': WinCondition.MOST_LAPS,
-                    'team_racing_mode': False
+                    'team_racing_mode': False,
+                    'start_behavior': 0
                 })
             restore_table(Database.Profiles, profiles_query_data, defaults={
                     'name': __("Migrated Profile"),
