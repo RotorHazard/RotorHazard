@@ -4337,18 +4337,22 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         emit_current_leaderboard() # generate and update leaderboard
                         check_emit_race_status_message(RACE) # Update race status message
 
-                        if lap_number > 0:
-                            # announce lap
-                            if RACE.format.team_racing_mode:
-                                team = Database.Pilot.query.get(pilot_id).team
-                                team_data = RACE.team_results['meta']['teams'][team]
-                                emit_phonetic_data(pilot_id, lap_number, lap_time, team, team_data['laps'])
-                            else:
-                                emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
-
-                            check_win_condition(RACE, INTERFACE) # check for and announce winner
-                        elif lap_number == 0:
+                        if lap_number == 0:
                             emit_first_pass_registered(node.index) # play first-pass sound
+
+                        if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                            lap_number += 1
+
+                        # announce lap
+                        if RACE.format.team_racing_mode:
+                            team = Database.Pilot.query.get(pilot_id).team
+                            team_data = RACE.team_results['meta']['teams'][team]
+                            emit_phonetic_data(pilot_id, lap_number, lap_time, team, team_data['laps'])
+                        else:
+                            emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
+
+                        check_win_condition(RACE, INTERFACE) # check for and announce winner
+
                     else:
                         # record lap as 'deleted'
                         RACE.node_laps[node.index].append({
