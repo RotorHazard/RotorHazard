@@ -677,7 +677,7 @@ def on_load_data(data):
             emit_class_data(nobroadcast=True)
         elif load_type == 'pilot_data':
             emit_pilot_data(nobroadcast=True)
-        elif load_type == 'results_data':
+        elif load_type == 'result_data':
             emit_result_data(nobroadcast=True)
         elif load_type == 'race_format':
             emit_race_format(nobroadcast=True)
@@ -3647,9 +3647,9 @@ def emit_result_data_thread(params, sid=None):
         emit_payload = FULL_RESULTS_CACHE
 
         if 'nobroadcast' in params and sid != None:
-            emit('results_data', emit_payload, namespace='/', room=sid)
+            emit('result_data', emit_payload, namespace='/', room=sid)
         else:
-            SOCKET_IO.emit('results_data', emit_payload, namespace='/')
+            SOCKET_IO.emit('result_data', emit_payload, namespace='/')
 
 def emit_current_leaderboard(**params):
     '''Emits leaderboard.'''

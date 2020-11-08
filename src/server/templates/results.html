@@ -3,7 +3,7 @@
 	var data_dependencies = [
 		'all_languages',
 		'language',
-		'results_data',
+		'result_data',
 	];
 
 	$(document).ready(function () {
@@ -13,7 +13,7 @@
 			}
 		});
 
-		socket.on('results_data', function (msg) {
+		socket.on('result_data', function (msg) {
 			function order_boards(primary) {
 				var boards = ['by_race_time', 'by_fastest_lap', 'by_consecutives']
 				boards.sort(function(x,y){ return x == primary ? -1 : y == primary ? 1 : 0; });
