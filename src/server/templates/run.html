@@ -472,7 +472,7 @@
 					time_td.prepend(local_prepend);
 					tr.append(time_td);
 
-					if (j && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
+					if (lap.lap_number && lap.lap_raw < (rotorhazard.min_lap * 1000)) {
 						tr.addClass('min-lap-warning');
 					}
 					if (!rotorhazard.race_formats.race_mode && lap.lap_time_stamp > (rotorhazard.race_formats.race_time_sec * 1000)) {

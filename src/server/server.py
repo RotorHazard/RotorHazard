@@ -1666,6 +1666,8 @@ def on_restore_database(data):
             Events.trigger(Evt.DATABASE_RESTORE, {
                 'file_name': backup_file,
                 })
+
+            SOCKET_IO.emit('database_restore_done')
         else:
             logger.warning('Unable to restore {0}: File does not exist'.format(backup_file))
             success = False
@@ -1730,6 +1732,10 @@ def on_reset_database(data):
         db_reset_classes()
         db_reset_saved_races()
         db_reset_current_laps()
+    elif reset_type == 'formats':
+        db_reset_saved_races()
+        db_reset_current_laps()
+        db_reset_race_formats()
     emit_heat_data()
     emit_pilot_data()
     emit_race_format()
@@ -2396,7 +2402,7 @@ def on_stop_race():
             CLUSTER.doClusterRaceStop()
 
     else:
-        logger.info('No active race to stop')
+        logger.debug('No active race to stop')
         RACE.race_status = RaceStatus.READY # Go back to ready state
         INTERFACE.set_race_status(RaceStatus.READY)
         led_manager.clear()
@@ -2785,7 +2791,7 @@ def build_full_result_cache():
 
     timing['end'] = monotonic()
 
-    logger.info('T%d: Results returned in: %fs', timing['start'], timing['end'] - timing['start'])
+    logger.info('T%d: Built results data in: %fs', timing['start'], timing['end'] - timing['start'])
 
 @SOCKET_IO.on('discard_laps')
 @catchLogExceptionsWrapper
@@ -4337,18 +4343,22 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         emit_current_leaderboard() # generate and update leaderboard
                         check_emit_race_status_message(RACE) # Update race status message
 
-                        if lap_number > 0:
-                            # announce lap
-                            if RACE.format.team_racing_mode:
-                                team = Database.Pilot.query.get(pilot_id).team
-                                team_data = RACE.team_results['meta']['teams'][team]
-                                emit_phonetic_data(pilot_id, lap_number, lap_time, team, team_data['laps'])
-                            else:
-                                emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
-
-                            check_win_condition(RACE, INTERFACE) # check for and announce winner
-                        elif lap_number == 0:
+                        if lap_number == 0:
                             emit_first_pass_registered(node.index) # play first-pass sound
+
+                        if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                            lap_number += 1
+
+                        # announce lap
+                        if RACE.format.team_racing_mode:
+                            team = Database.Pilot.query.get(pilot_id).team
+                            team_data = RACE.team_results['meta']['teams'][team]
+                            emit_phonetic_data(pilot_id, lap_number, lap_time, team, team_data['laps'])
+                        else:
+                            emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
+
+                        check_win_condition(RACE, INTERFACE) # check for and announce winner
+
                     else:
                         # record lap as 'deleted'
                         RACE.node_laps[node.index].append({
@@ -4701,6 +4711,8 @@ def db_reset_race_formats():
                              team_racing_mode=True,
                              start_behavior=0))
 
+    for race_class in Database.RaceClass.query.all():
+        race_class.format_id = 0
 
     DB.session.commit()
     setCurrentRaceFormat(Database.RaceFormat.query.first())
@@ -4995,7 +5007,8 @@ def recover_database(dbfile, **kwargs):
                     'staging_tones': 2,
                     'number_laps_win': 0,
                     'win_condition': WinCondition.MOST_LAPS,
-                    'team_racing_mode': False
+                    'team_racing_mode': False,
+                    'start_behavior': 0
                 })
             restore_table(Database.Profiles, profiles_query_data, defaults={
                     'name': __("Migrated Profile"),
@@ -5102,8 +5115,6 @@ def init_interface_state():
     on_stop_race()
     # Reset laps display
     db_reset_current_laps()
-
-    SOCKET_IO.emit('database_restore_done')
 
 def init_LED_effects():
     # start with defaults
