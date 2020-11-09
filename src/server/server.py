@@ -2402,7 +2402,7 @@ def on_stop_race():
             CLUSTER.doClusterRaceStop()
 
     else:
-        logger.info('No active race to stop')
+        logger.debug('No active race to stop')
         RACE.race_status = RaceStatus.READY # Go back to ready state
         INTERFACE.set_race_status(RaceStatus.READY)
         led_manager.clear()
