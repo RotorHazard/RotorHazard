@@ -24,7 +24,8 @@
 		'led_effect_setup',
 		'cluster_status',
 		'vrx_list',
-		'backups_list'
+		'backups_list',
+		'exporter_list',
 	];
 
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
@@ -1576,6 +1577,31 @@
 			return false;
 		});
 
+		socket.on('exporter_list', function (msg) {
+			$('#exporter_list').empty();
+			if ('exporters' in msg && msg.exporters.length) {
+				msg.exporters.sort(function(a, b){return ('' + a.name).localeCompare(b.name)})
+				for (idx in msg.exporters) {
+					var ex = msg.exporters[idx];
+					$('#exporter_list').append('<option value="' + ex.id + '">' + __(ex.name) + '</option>');
+				}
+				$('#exporter_list').prop('disabled', false);
+				$('#export_database').prop('disabled', false);
+			} else {
+				$('#exporter_list').append('<option value="-">' + __('No Exporters') + '</option>');
+				$('#exporter_list').prop('disabled', true);
+				$('#export_database').prop('disabled', true);
+			}
+		});
+
+		$('button#export_database').click(function (event) {
+			var data = {
+				exporter: $('#exporter_list').val()
+			};
+			socket.emit('export_database', data);
+			return false;
+		});
+
 		$('button#download_logs').click(function (event) {
 			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
 			return false;
@@ -2650,6 +2676,12 @@
 			</select>
 			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup">{{ __('Restore Data') }}</button>
 			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup">{{ __('Delete Data') }}</button>
+		</div>
+		<div class="control-set">
+			<select id="exporter_list" disabled="disabled">
+				<option value="-">{{ __('No Exporters') }}</option>
+			</select>
+			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
 		</div>
 
 		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">

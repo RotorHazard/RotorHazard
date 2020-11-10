@@ -777,6 +777,8 @@ def on_load_data(data):
             emit_vrx_list(nobroadcast=True)
         elif load_type == 'backups_list':
             on_list_backups()
+        elif load_type == 'exporter_list':
+            emit_exporter_list()
         elif load_type == 'cluster_status':
             emit_cluster_status()
         elif load_type == 'hardware_log_init':
@@ -1874,6 +1876,32 @@ def on_reset_database(data):
     emit('reset_confirm')
 
     trigger_event(Evt.DATABASE_RESET)
+
+@SOCKET_IO.on('export_database')
+@catchLogExceptionsWrapper
+def on_export_database(data):
+    '''Run the selected Exporter'''
+    exporter_id = data['exporter']
+
+    if exporter_id in exporters:
+        exporter = exporters[exporter_id]
+
+        # do export
+        logger.info('Exporting data via {0}'.format(exporter['name']))
+        export_result = exporter['handlerFn'](Database, exporter['args'])
+
+        if export_result:
+            trigger_event(Evt.DATABASE_EXPORT)
+            emit_priority_message(__('Data exported.'), False, nobroadcast=True)
+        else:
+            logger.info('Failed exporting data')
+            emit_priority_message(__('Data export failed.'), False, nobroadcast=True)
+
+        return
+
+    logger.warning('Data exporter "{0}" not found'.format(exporter_id))
+    emit_priority_message(__('Data export failed.'), False, nobroadcast=True)
+
 
 @SOCKET_IO.on('shutdown_pi')
 @catchLogExceptionsWrapper
@@ -4330,6 +4358,22 @@ def emit_pass_record(node, lap_time_stamp):
     }
     emit_cluster_msg_to_primary('pass_record', payload)
 
+
+def emit_exporter_list():
+    '''List Database Exporters'''
+
+    emit_payload = {
+        'exporters': []
+    }
+
+    for ex in exporters:
+        emit_payload['exporters'].append({
+            'id': ex,
+            'name': exporters[ex]['name']
+        })
+
+    emit('exporter_list', emit_payload)
+
 #
 # Program Functions
 #
@@ -5783,6 +5827,21 @@ vrx_controller = initVRxController()
 
 if vrx_controller:
     Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
+
+# Search for data export plugins
+exporters = {}
+export_plugins = Plugins(prefix='data_export')
+export_plugins.discover()
+# collect exporters into single list
+for exporter in export_plugins:
+    if exporter['id'] in exporters:
+        logger.warning('Overwriting data exporter "{0}"'.format(exporter['id']))
+
+    exporters[exporter['id']] = {
+        'name': exporter['name'],
+        'handlerFn': exporter['handlerFn'],
+        'args': exporter['args'],
+    }
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
