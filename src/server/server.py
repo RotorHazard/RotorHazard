@@ -1890,17 +1890,28 @@ def on_export_database(data):
         logger.info('Exporting data via {0}'.format(exporter['name']))
         export_result = exporter['handlerFn'](Database, exporter['args'])
 
-        if export_result:
-            trigger_event(Evt.DATABASE_EXPORT)
-            emit_priority_message(__('Data exported.'), False, nobroadcast=True)
+        if export_result != False:
+            try:
+                file_content = export_result
+                emit_payload = {
+                    'filename': 'RotorHazard Export ' + datetime.now().strftime('%Y%m%d_%H%M%S') + ' ' + exporter_id + '.' + export_result['ext'],
+                    'encoding': export_result['encoding'],
+                    'data' : export_result['data']
+                }
+                emit('exported_data', emit_payload)
+
+                trigger_event(Evt.DATABASE_EXPORT)
+            except Exception:
+                logger.exception("Error downloading export file")
+                emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
         else:
-            logger.info('Failed exporting data')
-            emit_priority_message(__('Data export failed.'), False, nobroadcast=True)
+            logger.warning('Failed exporting data: exporter returned no data')
+            emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
 
         return
 
-    logger.warning('Data exporter "{0}" not found'.format(exporter_id))
-    emit_priority_message(__('Data export failed.'), False, nobroadcast=True)
+    logger.error('Data exporter "{0}" not found'.format(exporter_id))
+    emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
 
 
 @SOCKET_IO.on('shutdown_pi')

@@ -8,9 +8,13 @@ from sqlalchemy.ext.declarative import DeclarativeMeta
 
 def export_as_json(DB, args):
     if 'fn' in args:
-        payload = json.dumps(args['fn'](DB), cls=AlchemyEncoder)
-        logger.info(payload)
-        return True
+        payload = json.dumps(args['fn'](DB), indent='\t', cls=AlchemyEncoder)
+
+        return {
+            'data': payload,
+            'encoding': 'application/json',
+            'ext': 'json'
+        }
     else:
         return False
 
