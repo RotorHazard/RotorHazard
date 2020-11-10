@@ -4350,14 +4350,15 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             lap_number += 1
 
                         # announce lap
-                        if RACE.format.team_racing_mode:
-                            team = Database.Pilot.query.get(pilot_id).team
-                            team_data = RACE.team_results['meta']['teams'][team]
-                            emit_phonetic_data(pilot_id, lap_number, lap_time, team, team_data['laps'])
-                        else:
-                            emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
+                        if lap_number > 0:
+                            if RACE.format.team_racing_mode:
+                                team = Database.Pilot.query.get(pilot_id).team
+                                team_data = RACE.team_results['meta']['teams'][team]
+                                emit_phonetic_data(pilot_id, lap_number, lap_time, team, team_data['laps'])
+                            else:
+                                emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
 
-                        check_win_condition(RACE, INTERFACE) # check for and announce winner
+                            check_win_condition(RACE, INTERFACE) # check for and announce winner
 
                     else:
                         # record lap as 'deleted'
