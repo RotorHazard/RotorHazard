@@ -134,7 +134,7 @@ class VRxController:
         # Request status of all receivers (static and variable)
         self.request_static_status()
         self.request_variable_status()
-        # self._seat_broadcast.turn_off_osd()
+        self._seat_broadcast.turn_off_osd()
 
         for i in range(self.num_seats):
             self.get_seat_lock_status(i)
@@ -934,11 +934,17 @@ class VRxBroadcastSeat(BaseVRxSeat):
 
     def turn_off_osd(self):
         """Turns off all OSD elements except user message"""
-        raise NotImplementedError
-        # topic = self._rx_cmd_esp_all_topicc
-        # cmd = self._cv.hide_osd(self._cv_broadcast_id)
-        # self._mqttc.publish(topic, cmd)
-        # return cmd
+        topic = self._rx_cmd_esp_all_topic
+        cmd = json.dumps({"osd_visibility" : "D"})
+        self._mqttc.publish(topic, cmd)
+        return cmd
+    
+    def turn_on_osd(self):
+        """Turns on all OSD elements except user message"""
+        topic = self._rx_cmd_esp_all_topic
+        cmd = json.dumps({"osd_visibility" : "E"})
+        self._mqttc.publish(topic, cmd)
+        return cmd
 
     def reset_lock(self):
         """ Resets lock of all receivers"""
