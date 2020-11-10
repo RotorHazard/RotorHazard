@@ -2,9 +2,14 @@
 
 import logging
 logger = logging.getLogger(__name__)
-
+from Language import __
 import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
+
+DEF_TEAM_NAME = 'A'  # default team
+PILOT_ID_NONE = 0  # indicator value for no pilot configured
+HEAT_ID_NONE = 0  # indicator value for practice heat
+CLASS_ID_NONE = 0  # indicator value for unclassified heat
 
 def export_as_json(DB, args):
     if 'fn' in args:
@@ -18,11 +23,25 @@ def export_as_json(DB, args):
     else:
         return False
 
+def export_all(DB):
+    payload = {}
+    payload['pilots'] = export_pilots(DB)
+    payload['heats'] = export_heats(DB)
+    payload['classes'] = export_classes(DB)
+    payload['formats'] = export_formats(DB)
+    payload['results'] = export_results(DB)
+    return payload
+
 def export_pilots(DB):
     pilots = DB.Pilot.query.all()
     payload = []
     for pilot in pilots:
-        payload.append(pilot)
+        # payload.append(pilot)
+        payload.append({
+            'Callsign': pilot.callsign,
+            'Name': pilot.name,
+            'Team': pilot.team,
+        })
 
     return payload
 
@@ -31,26 +50,24 @@ def export_heats(DB):
     for heat in DB.Heat.query.all():
         heat_id = heat.id
         note = heat.note
-        race_class = heat.class_id
+
+        if heat.class_id != CLASS_ID_NONE:
+            race_class = DB.RaceClass.query.get(heat.class_id).name
+        else:
+            race_class = None
 
         heatnodes = DB.HeatNode.query.filter_by(heat_id=heat.id).all()
         pilots = {}
-        for pilot in heatnodes:
-            pilots[pilot.node_index] = pilot.pilot_id
-
-        has_race = DB.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
-
-        if has_race:
-            locked = True
-        else:
-            locked = False
+        for heatnode in heatnodes:
+            if heatnode.pilot_id != PILOT_ID_NONE:
+                pilots[heatnode.node_index] = DB.Pilot.query.get(heatnode.pilot_id).callsign
+            else:
+                pilots[heatnode.node_index] = None
 
         payload[heat_id] = {
-            'note': note,
-            'heat_id': heat_id,
-            'class_id': race_class,
-            'nodes_pilots': pilots,
-            'locked': locked
+            'Name': note,
+            'Class': race_class,
+            'Pilots': pilots,
         }
 
     return payload
@@ -59,7 +76,13 @@ def export_classes(DB):
     race_classes = DB.RaceClass.query.all()
     payload = []
     for race_class in race_classes:
-        payload.append(race_class)
+        # payload.append(race_class)
+        # expand format id to name
+        payload.append({
+            'Name': race_class.name,
+            'Description': race_class.description,
+            'Race Format': DB.RaceFormat.query.get(race_class.format_id).name
+        })
 
     return payload
 
@@ -67,9 +90,48 @@ def export_formats(DB):
     formats = DB.RaceFormat.query.all()
     payload = []
     for race_format in formats:
-        payload.append(race_format)
+        # payload.append(race_format)
+        timer_modes = [
+            __('Fixed Time'),
+            __('No Time Limit'),
+        ]
+        tones = [
+            __('None'),
+            __('One'),
+            __('Each Second')
+        ]
+        win_conditions = [
+            __('None'),
+            __('Most Laps in Fastest Time'),
+            __('First to X Laps'),
+            __('Fastest Lap'),
+            __('Fastest 3 Consecutive Laps'),
+            __('Most Laps Only'),
+            __('Most Laps Only with Overtime')
+        ]
+        start_behaviors = [
+            __('Hole Shot'),
+            __('First Lap'),
+            __('Staggered Start'),
+        ]
+
+        payload.append({
+            'Name': race_format.name,
+            'Mode': timer_modes[race_format.race_mode],
+            'Duration (seconds)': race_format.race_time_sec,
+            'Minimum Start Delay': race_format.start_delay_min,
+            'Maximum Start Delay': race_format.start_delay_max,
+            'Staging Tones': tones[race_format.staging_tones],
+            'Win Condition': race_format.win_condition,
+            'Laps to Win': race_format.number_laps_win,
+            'Team Racing': race_format.team_racing_mode,
+            'First Crossing': start_behaviors[race_format.start_behavior],
+        })
 
     return payload
+
+def export_results(DB):
+    pass
 
 class AlchemyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -100,7 +162,7 @@ def discover(*args, **kwargs):
     return [
         {
             'id': 'json_pilots',
-            'name': 'JSON / Pilots',
+            'name': 'JSON (Friendly) / Pilots',
             'handlerFn': export_as_json,
             'args': {
                 'fn': export_pilots,
@@ -108,7 +170,7 @@ def discover(*args, **kwargs):
         },
         {
             'id': 'json_heats',
-            'name': 'JSON / Heats',
+            'name': 'JSON (Friendly) / Heats',
             'handlerFn': export_as_json,
             'args': {
                 'fn': export_heats,
@@ -116,7 +178,7 @@ def discover(*args, **kwargs):
         },
         {
             'id': 'json_classes',
-            'name': 'JSON / Classes',
+            'name': 'JSON (Friendly) / Classes',
             'handlerFn': export_as_json,
             'args': {
                 'fn': export_classes,
@@ -124,10 +186,26 @@ def discover(*args, **kwargs):
         },
         {
             'id': 'json_formats',
-            'name': 'JSON / Formats',
+            'name': 'JSON (Friendly) / Formats',
             'handlerFn': export_as_json,
             'args': {
                 'fn': export_formats,
+            },
+        },
+        {
+            'id': 'json_results',
+            'name': 'JSON (Friendly) / Results',
+            'handlerFn': export_as_json,
+            'args': {
+                'fn': export_results,
+            },
+        },
+        {
+            'id': 'json_formats',
+            'name': 'JSON (Friendly) / All',
+            'handlerFn': export_as_json,
+            'args': {
+                'fn': export_all,
             },
         },
     ]
