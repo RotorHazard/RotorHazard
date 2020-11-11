@@ -6,7 +6,6 @@ import platform
 import time
 import zipfile
 import gevent
-import gevent.queue
 from datetime import datetime
 
 # Sample configuration:
@@ -50,7 +49,7 @@ class QueuedLogEventHandler(logging.Handler):
     def __init__(self, dest_hndlr=None):
         super(QueuedLogEventHandler, self).__init__()
         self.queue_handlers_list = []
-        self.log_record_queue = gevent.queue.Queue()
+        self.log_record_queue = gevent.queue.Queue(maxsize=99)
         if dest_hndlr:
             self.queue_handlers_list.append(dest_hndlr)
         gevent.spawn(self.queueWorkerFn)
@@ -67,8 +66,14 @@ class QueuedLogEventHandler(logging.Handler):
                     if log_rec.levelno >= dest_hndlr.level:
                         gevent.sleep(0.001)
                         dest_hndlr.emit(log_rec)
+            except KeyboardInterrupt:
+                print("Log-event queue worker thread terminated by keyboard interrupt")
+                raise
+            except SystemExit:
+                raise
             except Exception as ex:
                 print("Error processing log-event queue: " + str(ex))
+                gevent.sleep(5)
 
     def emit(self, log_rec):
         try:
