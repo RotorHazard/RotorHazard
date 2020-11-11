@@ -11,9 +11,9 @@ PILOT_ID_NONE = 0  # indicator value for no pilot configured
 HEAT_ID_NONE = 0  # indicator value for practice heat
 CLASS_ID_NONE = 0  # indicator value for unclassified heat
 
-def export_as_json(Database, args):
+def export_as_json(Database, PageCache, args):
     if 'fn' in args:
-        payload = json.dumps(args['fn'](Database), indent='\t', cls=AlchemyEncoder)
+        payload = json.dumps(args['fn'](Database, PageCache), indent='\t', cls=AlchemyEncoder)
 
         return {
             'data': payload,
@@ -23,16 +23,16 @@ def export_as_json(Database, args):
     else:
         return False
 
-def export_all(Database):
+def export_all(Database, PageCache):
     payload = {}
-    payload['pilots'] = export_pilots(Database)
-    payload['heats'] = export_heats(Database)
-    payload['classes'] = export_classes(Database)
-    payload['formats'] = export_formats(Database)
-    payload['results'] = export_results(Database)
+    payload['Pilots'] = export_pilots(Database)
+    payload['Heats'] = export_heats(Database)
+    payload['Classes'] = export_classes(Database)
+    payload['Formats'] = export_formats(Database)
+    payload['Results'] = export_results(PageCache)
     return payload
 
-def export_pilots(Database):
+def export_pilots(Database, PageCache):
     pilots = Database.Pilot.query.all()
     payload = []
     for pilot in pilots:
@@ -45,7 +45,7 @@ def export_pilots(Database):
 
     return payload
 
-def export_heats(Database):
+def export_heats(Database, PageCache):
     payload = {}
     for heat in Database.Heat.query.all():
         heat_id = heat.id
@@ -72,7 +72,7 @@ def export_heats(Database):
 
     return payload
 
-def export_classes(Database):
+def export_classes(Database, PageCache):
     race_classes = Database.RaceClass.query.all()
     payload = []
     for race_class in race_classes:
@@ -86,7 +86,7 @@ def export_classes(Database):
 
     return payload
 
-def export_formats(Database):
+def export_formats(Database, PageCache):
     formats = Database.RaceFormat.query.all()
     payload = []
     for race_format in formats:
@@ -130,8 +130,9 @@ def export_formats(Database):
 
     return payload
 
-def export_results(Database):
-    pass
+def export_results(Database, PageCache):
+    payload = PageCache.data
+    return payload
 
 class AlchemyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -201,7 +202,7 @@ def discover(*args, **kwargs):
             },
         },
         {
-            'id': 'json_formats',
+            'id': 'json_all',
             'name': 'JSON (Friendly) / All',
             'handlerFn': export_as_json,
             'args': {
