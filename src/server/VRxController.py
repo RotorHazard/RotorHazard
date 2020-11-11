@@ -601,7 +601,7 @@ class VRxController:
             topic_tuple  = topics["receiver_connection"]
             self._add_subscribe_callback(topic_tuple, self.on_message_connection)
 
-            # Targetted Response
+            # Targeted Response
             topic_tuple = topics["receiver_response_targeted"]
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_targeted)
 
@@ -637,7 +637,7 @@ class VRxController:
             seat = self._seats[seat_number]
             frequency = seat.seat_frequency
             self.set_target_frequency(target, frequency)
-            seat.turn_off_osd()
+            self.turn_off_osd_targeted(target)
 
             # TODO: send most relevant OSD information
 
@@ -747,7 +747,19 @@ class VRxController:
         self._mqttc.publish(topic,cmd)
 
 
+    def turn_off_osd_targeted(self, target):
+        """Turns off all OSD elements except user message"""
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_targeted_topic"][0]%target
+        cmd = json.dumps({"osd_visibility" : "D"})
+        self._mqttc.publish(topic, cmd)
+        return cmd
 
+    def turn_on_osd_targeted(self, target):
+        """Turns on all OSD elements except user message"""
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_targeted_topic"][0]%target
+        cmd = json.dumps({"osd_visibility" : "E"})
+        self._mqttc.publish(topic, cmd)
+        return cmd
 
 
 CRED = '\033[91m'
