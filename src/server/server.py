@@ -770,6 +770,11 @@ def on_set_frequency(data):
 
     profile = getCurrentProfile()
     freqs = json.loads(profile.frequencies)
+
+    # handle case where more nodes were added
+    while node_index >= len(freqs["f"]):
+        freqs["f"].append(RHUtils.FREQUENCY_ID_NONE)
+
     freqs["f"][node_index] = frequency
     profile.frequencies = json.dumps(freqs)
     logger.info('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
@@ -823,6 +828,8 @@ def on_set_frequency_preset(data):
             freqs = [5658, 5695, 5760, 5800, 5885, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
         else: #IMD6C is default
             freqs = [5658, 5695, 5760, 5800, 5880, 5917, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
+        while RACE.num_nodes > len(freqs):
+            freqs.append(RHUtils.FREQUENCY_ID_NONE)
 
     set_all_frequencies(freqs)
     emit_frequency_data()
@@ -868,12 +875,21 @@ def on_set_enter_at_level(data):
     node_index = data['node']
     enter_at_level = data['enter_at_level']
 
+    if node_index < 0 or node_index >= RACE.num_nodes:
+        logger.info('Unable to set enter-at ({0}) on node {1}; node index out of range'.format(enter_at_level, node_index+1))
+        return
+
     if not enter_at_level:
         logger.info('Node enter-at set null; getting from node: Node {0}'.format(node_index+1))
         enter_at_level = INTERFACE.nodes[node_index].enter_at_level
 
     profile = getCurrentProfile()
     enter_ats = json.loads(profile.enter_ats)
+
+    # handle case where more nodes were added
+    while node_index >= len(enter_ats["v"]):
+        enter_ats["v"].append(None)
+
     enter_ats["v"][node_index] = enter_at_level
     profile.enter_ats = json.dumps(enter_ats)
     DB.session.commit()
@@ -894,12 +910,21 @@ def on_set_exit_at_level(data):
     node_index = data['node']
     exit_at_level = data['exit_at_level']
 
+    if node_index < 0 or node_index >= RACE.num_nodes:
+        logger.info('Unable to set exit-at ({0}) on node {1}; node index out of range'.format(exit_at_level, node_index+1))
+        return
+
     if not exit_at_level:
         logger.info('Node exit-at set null; getting from node: Node {0}'.format(node_index+1))
         exit_at_level = INTERFACE.nodes[node_index].exit_at_level
 
     profile = getCurrentProfile()
     exit_ats = json.loads(profile.exit_ats)
+
+    # handle case where more nodes were added
+    while node_index >= len(exit_ats["v"]):
+        exit_ats["v"].append(None)
+
     exit_ats["v"][node_index] = exit_at_level
     profile.exit_ats = json.dumps(exit_ats)
     DB.session.commit()
@@ -1491,10 +1516,14 @@ def on_set_profile(data, emit_vals=True):
         # set freqs, enter_ats, and exit_ats
         freqs_loaded = json.loads(profile.frequencies)
         freqs = freqs_loaded["f"]
+        while RACE.num_nodes > len(freqs):
+            freqs.append(RHUtils.FREQUENCY_ID_NONE)
 
         if profile.enter_ats:
             enter_ats_loaded = json.loads(profile.enter_ats)
             enter_ats = enter_ats_loaded["v"]
+            while RACE.num_nodes > len(enter_ats):
+                enter_ats.append(None)
         else: #handle null data by copying in hardware values
             enter_at_levels = {}
             enter_at_levels["v"] = [node.enter_at_level for node in INTERFACE.nodes]
@@ -1505,6 +1534,8 @@ def on_set_profile(data, emit_vals=True):
         if profile.exit_ats:
             exit_ats_loaded = json.loads(profile.exit_ats)
             exit_ats = exit_ats_loaded["v"]
+            while RACE.num_nodes > len(exit_ats):
+                exit_ats.append(None)
         else: #handle null data by copying in hardware values
             exit_at_levels = {}
             exit_at_levels["v"] = [node.exit_at_level for node in INTERFACE.nodes]
@@ -4493,6 +4524,8 @@ def default_frequencies():
         freqs = [5658, 5732, 5843, 5880, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
     else:
         freqs = [5658, 5695, 5760, 5800, 5880, 5917, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
+        while RACE.num_nodes > len(freqs):
+            freqs.append(RHUtils.FREQUENCY_ID_NONE)
     return freqs
 
 def assign_frequencies():
@@ -4600,7 +4633,7 @@ def db_reset_profile():
     new_freqs["f"] = default_frequencies()
 
     template = {}
-    template["v"] = [None, None, None, None, None, None, None, None]
+    template["v"] = [None for i in range(max(RACE.num_nodes,8))]
 
     DB.session.add(Database.Profiles(name=__("Default"),
                              frequencies = json.dumps(new_freqs),
@@ -5035,8 +5068,8 @@ def recover_database(dbfile, **kwargs):
             restore_table(Database.Profiles, profiles_query_data, defaults={
                     'name': __("Migrated Profile"),
                     'frequencies': json.dumps(default_frequencies()),
-                    'enter_ats': json.dumps({'v': [None, None, None, None, None, None, None, None]}),
-                    'exit_ats': json.dumps({'v': [None, None, None, None, None, None, None, None]})
+                    'enter_ats': json.dumps({'v': [None for i in range(max(RACE.num_nodes,8))]}),
+                    'exit_ats': json.dumps({'v': [None for i in range(max(RACE.num_nodes,8))]})
                 })
             restore_table(Database.RaceClass, raceClass_query_data, defaults={
                     'name': 'New class',
