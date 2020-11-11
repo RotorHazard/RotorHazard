@@ -637,6 +637,7 @@ class VRxController:
             seat = self._seats[seat_number]
             frequency = seat.seat_frequency
             self.set_target_frequency(target, frequency)
+            seat.turn_off_osd()
 
             # TODO: send most relevant OSD information
 
@@ -667,6 +668,7 @@ class VRxController:
             # See TODO in on_message_status
             self.req_status_targeted("variable", rx_name)
             self.req_status_targeted("static", rx_name)
+            
 
 
 
@@ -904,6 +906,20 @@ class VRxSeat(BaseVRxSeat):
         """Send a raw message to the OSD"""
         topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
         cmd = json.dumps({"user_msg" : message})
+        self._mqttc.publish(topic, cmd)
+        return cmd
+
+    def turn_off_osd(self):
+        """Turns off all OSD elements except user message"""
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
+        cmd = json.dumps({"osd_visibility" : "D"})
+        self._mqttc.publish(topic, cmd)
+        return cmd
+
+    def turn_on_osd(self):
+        """Turns on all OSD elements except user message"""
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
+        cmd = json.dumps({"osd_visibility" : "E"})
         self._mqttc.publish(topic, cmd)
         return cmd
 
