@@ -67,6 +67,7 @@ import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Language import __
 from ClusterNodeSet import SlaveNode, ClusterNodeSet
+from util.SendAckQueue import SendAckQueue
 
 # Events manager
 from eventmanager import Evt, EventManager
@@ -136,6 +137,7 @@ Current_log_path_name = log.later_stage_setup(Config.LOGGING, SOCKET_IO)
 INTERFACE = None  # initialized later
 SENSORS = Sensors()
 CLUSTER = None    # initialized later
+ClusterSendAckQueueObj = None
 serverInfo = None
 serverInfoItems = None
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
@@ -611,11 +613,19 @@ def on_reset_auto_calibration(data):
 
 # Cluster events
 
+def emit_cluster_msg_to_master(messageType, messagePayload, waitForAckFlag=True):
+    '''Emits cluster message to master timer.'''
+    global ClusterSendAckQueueObj
+    if not ClusterSendAckQueueObj:
+        ClusterSendAckQueueObj = SendAckQueue(20, SOCKET_IO, logger)
+    ClusterSendAckQueueObj.put(messageType, messagePayload, waitForAckFlag)
+
 def emit_join_cluster_response():
+    '''Emits 'join_cluster_response' message to master timer.'''
     payload = {
         'server_info': json.dumps(serverInfoItems)
     }
-    SOCKET_IO.emit('join_cluster_response', payload)
+    emit_cluster_msg_to_master('join_cluster_response', payload, False)
 
 @SOCKET_IO.on('join_cluster')
 @catchLogExceptionsWrapper
@@ -656,6 +666,17 @@ def on_cluster_event_trigger(data):
     # special handling for LED Control via master timer
     elif 'effect' in evtArgs and led_manager.isEnabled():
         led_manager.setEventEffect(Evt.LED_MANUAL, evtArgs['effect'])
+
+@SOCKET_IO.on('cluster_message_ack')
+@catchLogExceptionsWrapper
+def on_cluster_message_ack(data):
+    ''' Received message acknowledgement from master. '''
+    if ClusterSendAckQueueObj:
+        messageType = str(data.get('messageType')) if data else None
+        messagePayload = data.get('messagePayload') if data else None
+        ClusterSendAckQueueObj.ack(messageType, messagePayload)
+    else:
+        logger.warn("Received 'on_cluster_message_ack' message with no ClusterSendAckQueueObj setup")
 
 # RotorHazard events
 
@@ -2126,12 +2147,12 @@ def on_stage_race():
     CLUSTER.emitToSplits('stage_race')
     race_format = getCurrentRaceFormat()
 
-    # if running as slave timer and missed stop/discard msg then stop/clear current race
     if RACE.race_status != RaceStatus.READY:
-        if race_format is SLAVE_RACE_FORMAT:
-            logger.info("Forcing race clear/restart because running as slave timer")
+        if race_format is SLAVE_RACE_FORMAT:  # if running as slave timer
             if RACE.race_status == RaceStatus.RACING:
-                on_stop_race()
+                return  # if race in progress then leave it be
+            # if missed stop/discard message then clear current race
+            logger.info("Forcing race clear/restart because running as slave timer")
             on_discard_laps()
         elif RACE.race_status == RaceStatus.DONE and not RACE.any_laps_recorded():
             on_discard_laps()  # if no laps then allow restart
@@ -4109,7 +4130,7 @@ def emit_pass_record(node, lap_time_stamp):
         'frequency': node.frequency,
         'timestamp': lap_time_stamp + RACE.start_time_epoch_ms
     }
-    SOCKET_IO.emit('pass_record', payload)
+    emit_cluster_msg_to_master('pass_record', payload)
 
 #
 # Program Functions
@@ -4317,8 +4338,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                     if lap_ok_flag:
 
-                        # emit 'pass_record' message (via thread to make sure we're not blocked)
-                        gevent.spawn(emit_pass_record, node, lap_time_stamp)
+                        # emit 'pass_record' message (to master timer in cluster, livetime, etc).
+                        emit_pass_record(node, lap_time_stamp)
 
                         # Add the new lap to the database
                         RACE.node_laps[node.index].append({
