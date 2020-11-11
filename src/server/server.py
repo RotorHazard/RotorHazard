@@ -825,7 +825,7 @@ def on_set_frequency(data):
     try:  # if running as secondary timer and no pilot is set for node then set one now
         if frequency and getCurrentRaceFormat() is SECONDARY_RACE_FORMAT:
             heat_node = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).one_or_none()
-            if heat_node and heat_node.pilot_id == Database.PILOT_ID_NONE:
+            if heat_node and heat_node.pilot_id == RHUtils.PILOT_ID_NONE:
                 pilot = Database.Pilot.query.get(node_index+1)
                 if pilot:
                     heat_node.pilot_id = pilot.id
@@ -1092,13 +1092,13 @@ def on_set_scan(data):
 @catchLogExceptionsWrapper
 def on_add_heat():
     '''Adds the next available heat number to the database.'''
-    new_heat = Database.Heat(class_id=Database.CLASS_ID_NONE, cacheStatus=Results.CacheStatus.INVALID)
+    new_heat = Database.Heat(class_id=RHUtils.CLASS_ID_NONE, cacheStatus=Results.CacheStatus.INVALID)
     DB.session.add(new_heat)
     DB.session.flush()
     DB.session.refresh(new_heat)
 
     for node in range(RACE.num_nodes): # Add next heat with empty pilots
-        DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=Database.PILOT_ID_NONE))
+        DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=RHUtils.PILOT_ID_NONE))
 
     DB.session.commit()
 
@@ -1184,7 +1184,7 @@ def on_alter_heat(data):
                 race_meta.class_id = data['class']
                 # race_meta.cacheStatus=Results.CacheStatus.INVALID
 
-            if old_class_id is not Database.CLASS_ID_NONE:
+            if old_class_id is not RHUtils.CLASS_ID_NONE:
                 old_class = Database.RaceClass.query.get(old_class_id)
                 old_class.cacheStatus = Results.CacheStatus.INVALID
 
@@ -1204,7 +1204,7 @@ def on_alter_heat(data):
 
     if 'pilot' in data or 'class' in data:
         if len(race_list):
-            if heat.class_id is not Database.CLASS_ID_NONE:
+            if heat.class_id is not RHUtils.CLASS_ID_NONE:
                 new_class = Database.RaceClass.query.get(heat.class_id)
                 new_class.cacheStatus = Results.CacheStatus.INVALID
 
@@ -1219,7 +1219,7 @@ def on_alter_heat(data):
         for heatNode in Database.HeatNode.query.filter_by(heat_id=heat_id):
             RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
-            if heatNode.pilot_id is not Database.PILOT_ID_NONE:
+            if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
                 RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
             else:
                 RACE.node_teams[heatNode.node_index] = None
@@ -1411,7 +1411,7 @@ def on_delete_class(data):
         DB.session.delete(race_class)
         for heat in Database.Heat.query.all():
             if heat.class_id == race_class.id:
-                heat.class_id = Database.CLASS_ID_NONE
+                heat.class_id = RHUtils.CLASS_ID_NONE
 
         DB.session.commit()
 
@@ -1507,7 +1507,7 @@ def on_delete_pilot(data):
         DB.session.delete(pilot)
         for heatNode in Database.HeatNode.query.all():
             if heatNode.pilot_id == pilot.id:
-                heatNode.pilot_id = Database.PILOT_ID_NONE
+                heatNode.pilot_id = RHUtils.PILOT_ID_NONE
         DB.session.commit()
 
         logger.info('Pilot {0} deleted'.format(pilot.id))
@@ -2317,7 +2317,7 @@ def on_stage_race():
     heatNodes = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat).all()
     for heatNode in heatNodes:
         if heatNode.node_index < RACE.num_nodes:
-            if heatNode.pilot_id != Database.PILOT_ID_NONE:
+            if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
                 valid_pilots = True
                 break
 
@@ -2363,7 +2363,7 @@ def on_stage_race():
         RACE.node_has_finished = {}
         for heatNode in heatNodes:
             if heatNode.node_index < RACE.num_nodes:
-                if heatNode.pilot_id != Database.PILOT_ID_NONE:
+                if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
                     RACE.node_has_finished[heatNode.node_index] = False
                 else:
                     RACE.node_has_finished[heatNode.node_index] = None
@@ -2424,7 +2424,7 @@ def findBestValues(node, node_index):
     current_class = heat.class_id
 
     # test for disabled node
-    if pilot is Database.PILOT_ID_NONE or node.frequency is RHUtils.FREQUENCY_ID_NONE:
+    if pilot is RHUtils.PILOT_ID_NONE or node.frequency is RHUtils.FREQUENCY_ID_NONE:
         logger.debug('Node {0} calibration: skipping disabled node'.format(node.index+1))
         return {
             'enter_at_level': node.enter_at_level,
@@ -2485,7 +2485,7 @@ def race_start_thread(start_token):
 
     # clear any lingering crossings at staging (if node rssi < enterAt)
     for node in INTERFACE.nodes:
-        if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != Database.PILOT_ID_NONE and \
+        if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != RHUtils.PILOT_ID_NONE and \
                     node.current_rssi < node.enter_at_level:
             logger.info("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
                        format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
@@ -2501,7 +2501,7 @@ def race_start_thread(start_token):
                     format(lower_amount, Options.getInt('startThreshLowerDuration')))
         lower_end_time = RACE.start_time_monotonic + Options.getInt('startThreshLowerDuration')
         for node in INTERFACE.nodes:
-            if node.frequency > 0 and node.current_pilot_id != Database.PILOT_ID_NONE:
+            if node.frequency > 0 and node.current_pilot_id != RHUtils.PILOT_ID_NONE:
                 if node.current_rssi < node.enter_at_level:
                     diff_val = int((node.enter_at_level-node.exit_at_level)*lower_amount/100)
                     if diff_val > 0:
@@ -2548,7 +2548,7 @@ def race_start_thread(start_token):
             node.history_times = []
             node.under_min_lap_count = 0
             # clear any lingering crossing (if rssi>enterAt then first crossing starts now)
-            if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != Database.PILOT_ID_NONE:
+            if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != RHUtils.PILOT_ID_NONE:
                 logger.info("Forcing end crossing for node {0} at start (rssi={1}, enterAt={2}, exitAt={3})".\
                            format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
                 INTERFACE.force_end_crossing(node.index)
@@ -2624,7 +2624,7 @@ def on_stop_race():
             delta_time < Options.getInt('startThreshLowerDuration'):
         for node in INTERFACE.nodes:
             # if node EnterAt/ExitAt values need to be restored then do it soon
-            if node.frequency > 0 and node.current_pilot_id != Database.PILOT_ID_NONE and \
+            if node.frequency > 0 and node.current_pilot_id != RHUtils.PILOT_ID_NONE and \
                                             node.start_thresh_lower_flag:
                 node.start_thresh_lower_time = RACE.end_time + 0.1
 
@@ -2914,7 +2914,7 @@ def build_full_result_cache():
 
         gevent.sleep()
         heats_by_class = {}
-        heats_by_class[Database.CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=Database.CLASS_ID_NONE).all()]
+        heats_by_class[RHUtils.CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=RHUtils.CLASS_ID_NONE).all()]
         for race_class in Database.RaceClass.query.all():
             heats_by_class[race_class.id] = [heat.id for heat in Database.Heat.query.filter_by(class_id=race_class.id).all()]
 
@@ -3044,7 +3044,7 @@ def init_node_cross_fields():
         heat_id=RACE.current_heat).all()
 
     for node in INTERFACE.nodes:
-        node.current_pilot_id = Database.PILOT_ID_NONE
+        node.current_pilot_id = RHUtils.PILOT_ID_NONE
         if node.frequency and node.frequency > 0:
             for heatnode in heatnodes:
                 if heatnode.node_index == node.index:
@@ -3085,7 +3085,7 @@ def on_set_current_heat(data):
     for heatNode in Database.HeatNode.query.filter_by(heat_id=new_heat_id):
         RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
-        if heatNode.pilot_id is not Database.PILOT_ID_NONE:
+        if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
             RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
         else:
             RACE.node_teams[heatNode.node_index] = None
@@ -3129,7 +3129,7 @@ def generate_heats(data):
     suffix = data['suffix']
     pilots_per_heat = int(data['pilots_per_heat'])
 
-    if input_class == Database.CLASS_ID_NONE:
+    if input_class == RHUtils.CLASS_ID_NONE:
         results = {
             'by_race_time': []
         }
@@ -3235,7 +3235,7 @@ def generate_heats(data):
                 if node in heat:
                     DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=heat[node]))
                 else:
-                    DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=Database.PILOT_ID_NONE))
+                    DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=RHUtils.PILOT_ID_NONE))
 
             DB.session.commit()
 
@@ -3840,7 +3840,7 @@ def emit_race_list(**params):
 
     '''
     heats_by_class = {}
-    heats_by_class[Database.CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=Database.CLASS_ID_NONE).all()]
+    heats_by_class[RHUtils.CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=RHUtils.CLASS_ID_NONE).all()]
     for race_class in Database.RaceClass.query.all():
         heats_by_class[race_class.id] = [heat.id for heat in Database.Heat.query.filter_by(class_id=race_class.id).all()]
 
@@ -4071,7 +4071,7 @@ def emit_current_heat(**params):
 
     # dict for current heat with key=node_index, value=pilot_id
     node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
-        filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
+        filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=RHUtils.PILOT_ID_NONE).all())
 
     for node_index in range(RACE.num_nodes):
         pilot_id = node_pilot_dict.get(node_index)
@@ -4092,7 +4092,7 @@ def emit_current_heat(**params):
     heat_note = heat_data.note
 
     heat_format = None
-    if heat_data.class_id != Database.CLASS_ID_NONE:
+    if heat_data.class_id != RHUtils.CLASS_ID_NONE:
         heat_format = Database.RaceClass.query.get(heat_data.class_id).format_id
 
     emit_payload = {
@@ -4546,7 +4546,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                 heat_id=RACE.current_heat, node_index=node.index).one().pilot_id
 
             # reject passes before race start and with disabled (no-pilot) nodes
-            if pilot_id != Database.PILOT_ID_NONE:
+            if pilot_id != RHUtils.PILOT_ID_NONE:
                 if lap_timestamp_absolute >= RACE.start_time_monotonic:
 
                     # if node EnterAt/ExitAt values need to be restored then do it soon
@@ -4724,7 +4724,7 @@ def node_crossing_callback(node):
 
     if RACE.race_status == RaceStatus.RACING:  # if race is in progress
         # if pilot assigned to node and first crossing is complete
-        if node.current_pilot_id != Database.PILOT_ID_NONE and node.first_cross_flag:
+        if node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.first_cross_flag:
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
@@ -5283,7 +5283,7 @@ def recover_database(dbfile, **kwargs):
 
                 restore_table(Database.Heat, heat_extracted_meta, defaults={
                         'note': None,
-                        'class_id': Database.CLASS_ID_NONE,
+                        'class_id': RHUtils.CLASS_ID_NONE,
                         'results': None,
                         'cacheStatus': Results.CacheStatus.INVALID
                     })
@@ -5302,19 +5302,19 @@ def recover_database(dbfile, **kwargs):
 
                 DB.session.query(Database.HeatNode).delete()
                 restore_table(Database.HeatNode, heatnode_extracted_data, defaults={
-                        'pilot_id': Database.PILOT_ID_NONE
+                        'pilot_id': RHUtils.PILOT_ID_NONE
                     })
             else:
                 # current heat structure; use basic migration
 
                 if heat_query_data:
                     restore_table(Database.Heat, heat_query_data, defaults={
-                            'class_id': Database.CLASS_ID_NONE,
+                            'class_id': RHUtils.CLASS_ID_NONE,
                             'results': None,
                             'cacheStatus': Results.CacheStatus.INVALID
                         })
                     restore_table(Database.HeatNode, heatNode_query_data, defaults={
-                            'pilot_id': Database.PILOT_ID_NONE
+                            'pilot_id': RHUtils.PILOT_ID_NONE
                         })
 
                     RACE.current_heat = Database.Heat.query.first().id
@@ -5410,7 +5410,7 @@ def expand_heats():
         for node in range(RACE.num_nodes):
             heat_row = Database.HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
             if not heat_row.count():
-                DB.session.add(Database.HeatNode(heat_id=heat_ids.id, node_index=node, pilot_id=Database.PILOT_ID_NONE))
+                DB.session.add(Database.HeatNode(heat_id=heat_ids.id, node_index=node, pilot_id=RHUtils.PILOT_ID_NONE))
 
     DB.session.commit()
 
@@ -5429,7 +5429,7 @@ def init_race_state():
         for heatNode in Database.HeatNode.query.filter_by(heat_id=RACE.current_heat):
             RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
-            if heatNode.pilot_id is not Database.PILOT_ID_NONE:
+            if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
                 RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
             else:
                 RACE.node_teams[heatNode.node_index] = None

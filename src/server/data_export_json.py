@@ -6,11 +6,6 @@ from Language import __
 import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
 
-DEF_TEAM_NAME = 'A'  # default team
-PILOT_ID_NONE = 0  # indicator value for no pilot configured
-HEAT_ID_NONE = 0  # indicator value for practice heat
-CLASS_ID_NONE = 0  # indicator value for unclassified heat
-
 def export_as_json(Database, PageCache, args):
     if 'fn' in args:
         payload = json.dumps(args['fn'](Database, PageCache), indent='\t', cls=AlchemyEncoder)
@@ -51,7 +46,7 @@ def export_heats(Database, PageCache):
         heat_id = heat.id
         note = heat.note
 
-        if heat.class_id != CLASS_ID_NONE:
+        if heat.class_id != RHUtils.CLASS_ID_NONE:
             race_class = Database.RaceClass.query.get(heat.class_id).name
         else:
             race_class = None
@@ -59,7 +54,7 @@ def export_heats(Database, PageCache):
         heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
         pilots = {}
         for heatnode in heatnodes:
-            if heatnode.pilot_id != PILOT_ID_NONE:
+            if heatnode.pilot_id != RHUtils.PILOT_ID_NONE:
                 pilots[heatnode.node_index] = Database.Pilot.query.get(heatnode.pilot_id).callsign
             else:
                 pilots[heatnode.node_index] = None

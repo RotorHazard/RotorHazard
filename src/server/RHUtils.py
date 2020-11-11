@@ -12,6 +12,10 @@ import socket
 
 logger = logging.getLogger(__name__)
 
+DEF_TEAM_NAME = 'A'  # default team
+PILOT_ID_NONE = 0  # indicator value for no pilot configured
+HEAT_ID_NONE = 0  # indicator value for practice heat
+CLASS_ID_NONE = 0  # indicator value for unclassified heat
 FREQUENCY_ID_NONE = 0       # indicator value for node disabled
 IS_SYS_RASPBERRY_PI = True  # set by 'idAndLogSystemInfo()'
 
