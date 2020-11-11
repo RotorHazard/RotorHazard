@@ -1886,7 +1886,7 @@ def on_export_database(data):
         exporter = exporters[exporter_id]
 
         # perpare data
-        build_full_result_cache()
+        build_page_cache()
 
         # do export
         logger.info('Exporting data via {0}'.format(exporter['name']))
@@ -2792,7 +2792,7 @@ def build_atomic_result_caches(params):
     Results.build_atomic_results_caches(DB, params)
     emit_result_data()
 
-def build_full_result_cache():
+def build_page_cache():
     '''Builds any invalid atomic result caches and creates final output'''
     timing = {
         'start': monotonic()
@@ -3876,7 +3876,7 @@ def emit_result_data_thread(params, sid=None):
     global PageCache
     with APP.test_request_context():
 
-        build_full_result_cache()
+        build_page_cache()
 
         emit_payload = PageCache.data
 
