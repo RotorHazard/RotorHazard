@@ -227,7 +227,7 @@ option {
 	color: var(--contrast_0_low);
 }
 
-button:disabled, select:disabled {
+button:disabled, input:disabled, select:disabled {
 	border: solid 0.125em hsl(225, 1.8%, 43.5%);
 	color: hsl(225, 1.8%, 10%);
 	background: hsl(225, 1.8%, 80%);
@@ -237,7 +237,7 @@ button:disabled, select:disabled {
 }
 
 @media (prefers-color-scheme: dark) {
-	button:disabled, select:disabled {
+	button:disabled, input:disabled, select:disabled {
 		color: hsl(225, 1.8%, 0%);
 		background: hsl(225, 1.8%, 60%);
 		background: -moz-linear-gradient(top, hsl(225, 1.8%, 60%) 0%, hsl(225, 1.8%, 30%) 100%);
