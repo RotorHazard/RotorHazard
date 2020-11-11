@@ -11,9 +11,9 @@ PILOT_ID_NONE = 0  # indicator value for no pilot configured
 HEAT_ID_NONE = 0  # indicator value for practice heat
 CLASS_ID_NONE = 0  # indicator value for unclassified heat
 
-def export_as_json(DB, args):
+def export_as_json(Database, args):
     if 'fn' in args:
-        payload = json.dumps(args['fn'](DB), indent='\t', cls=AlchemyEncoder)
+        payload = json.dumps(args['fn'](Database), indent='\t', cls=AlchemyEncoder)
 
         return {
             'data': payload,
@@ -23,17 +23,17 @@ def export_as_json(DB, args):
     else:
         return False
 
-def export_all(DB):
+def export_all(Database):
     payload = {}
-    payload['pilots'] = export_pilots(DB)
-    payload['heats'] = export_heats(DB)
-    payload['classes'] = export_classes(DB)
-    payload['formats'] = export_formats(DB)
-    payload['results'] = export_results(DB)
+    payload['pilots'] = export_pilots(Database)
+    payload['heats'] = export_heats(Database)
+    payload['classes'] = export_classes(Database)
+    payload['formats'] = export_formats(Database)
+    payload['results'] = export_results(Database)
     return payload
 
-def export_pilots(DB):
-    pilots = DB.Pilot.query.all()
+def export_pilots(Database):
+    pilots = Database.Pilot.query.all()
     payload = []
     for pilot in pilots:
         # payload.append(pilot)
@@ -45,22 +45,22 @@ def export_pilots(DB):
 
     return payload
 
-def export_heats(DB):
+def export_heats(Database):
     payload = {}
-    for heat in DB.Heat.query.all():
+    for heat in Database.Heat.query.all():
         heat_id = heat.id
         note = heat.note
 
         if heat.class_id != CLASS_ID_NONE:
-            race_class = DB.RaceClass.query.get(heat.class_id).name
+            race_class = Database.RaceClass.query.get(heat.class_id).name
         else:
             race_class = None
 
-        heatnodes = DB.HeatNode.query.filter_by(heat_id=heat.id).all()
+        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
         pilots = {}
         for heatnode in heatnodes:
             if heatnode.pilot_id != PILOT_ID_NONE:
-                pilots[heatnode.node_index] = DB.Pilot.query.get(heatnode.pilot_id).callsign
+                pilots[heatnode.node_index] = Database.Pilot.query.get(heatnode.pilot_id).callsign
             else:
                 pilots[heatnode.node_index] = None
 
@@ -72,8 +72,8 @@ def export_heats(DB):
 
     return payload
 
-def export_classes(DB):
-    race_classes = DB.RaceClass.query.all()
+def export_classes(Database):
+    race_classes = Database.RaceClass.query.all()
     payload = []
     for race_class in race_classes:
         # payload.append(race_class)
@@ -81,13 +81,13 @@ def export_classes(DB):
         payload.append({
             'Name': race_class.name,
             'Description': race_class.description,
-            'Race Format': DB.RaceFormat.query.get(race_class.format_id).name
+            'Race Format': Database.RaceFormat.query.get(race_class.format_id).name
         })
 
     return payload
 
-def export_formats(DB):
-    formats = DB.RaceFormat.query.all()
+def export_formats(Database):
+    formats = Database.RaceFormat.query.all()
     payload = []
     for race_format in formats:
         # payload.append(race_format)
@@ -130,7 +130,7 @@ def export_formats(DB):
 
     return payload
 
-def export_results(DB):
+def export_results(Database):
     pass
 
 class AlchemyEncoder(json.JSONEncoder):
