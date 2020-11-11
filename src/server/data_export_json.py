@@ -3,6 +3,7 @@
 import logging
 logger = logging.getLogger(__name__)
 from Language import __
+import RHUtils
 import json
 from sqlalchemy.ext.declarative import DeclarativeMeta
 
@@ -20,11 +21,11 @@ def export_as_json(Database, PageCache, args):
 
 def export_all(Database, PageCache):
     payload = {}
-    payload['Pilots'] = export_pilots(Database)
-    payload['Heats'] = export_heats(Database)
-    payload['Classes'] = export_classes(Database)
-    payload['Formats'] = export_formats(Database)
-    payload['Results'] = export_results(PageCache)
+    payload['Pilots'] = export_pilots(Database, PageCache)
+    payload['Heats'] = export_heats(Database, PageCache)
+    payload['Classes'] = export_classes(Database, PageCache)
+    payload['Formats'] = export_formats(Database, PageCache)
+    payload['Results'] = export_results(Database, PageCache)
     return payload
 
 def export_pilots(Database, PageCache):
@@ -82,33 +83,34 @@ def export_classes(Database, PageCache):
     return payload
 
 def export_formats(Database, PageCache):
+    timer_modes = [
+        __('Fixed Time'),
+        __('No Time Limit'),
+    ]
+    tones = [
+        __('None'),
+        __('One'),
+        __('Each Second')
+    ]
+    win_conditions = [
+        __('None'),
+        __('Most Laps in Fastest Time'),
+        __('First to X Laps'),
+        __('Fastest Lap'),
+        __('Fastest 3 Consecutive Laps'),
+        __('Most Laps Only'),
+        __('Most Laps Only with Overtime')
+    ]
+    start_behaviors = [
+        __('Hole Shot'),
+        __('First Lap'),
+        __('Staggered Start'),
+    ]
+
     formats = Database.RaceFormat.query.all()
     payload = []
     for race_format in formats:
         # payload.append(race_format)
-        timer_modes = [
-            __('Fixed Time'),
-            __('No Time Limit'),
-        ]
-        tones = [
-            __('None'),
-            __('One'),
-            __('Each Second')
-        ]
-        win_conditions = [
-            __('None'),
-            __('Most Laps in Fastest Time'),
-            __('First to X Laps'),
-            __('Fastest Lap'),
-            __('Fastest 3 Consecutive Laps'),
-            __('Most Laps Only'),
-            __('Most Laps Only with Overtime')
-        ]
-        start_behaviors = [
-            __('Hole Shot'),
-            __('First Lap'),
-            __('Staggered Start'),
-        ]
 
         payload.append({
             'Name': race_format.name,
