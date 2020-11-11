@@ -67,6 +67,7 @@ import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Language import __
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
+from PageCache import PageCache
 from util.SendAckQueue import SendAckQueue
 import RHGPIO
 import util.stm32loader as stm32loader
@@ -93,10 +94,6 @@ HEARTBEAT_THREAD = None
 HEARTBEAT_DATA_RATE_FACTOR = 5
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
-
-FULL_RESULTS_CACHE = {} # Cache of complete results page
-FULL_RESULTS_CACHE_BUILDING = False # Whether results are being calculated
-FULL_RESULTS_CACHE_VALID = False # Whether cache is valid (False = regenerate cache)
 
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
@@ -161,6 +158,8 @@ server_ipaddress_str = None
 Settings_note_msg_text = None
 
 RACE = RHRace.RHRace() # For storing race management variables
+
+PageCache = PageCache() # For storing page cache
 
 TONES_NONE = 0
 TONES_ONE = 1
@@ -1161,13 +1160,12 @@ def duplicate_heat(source, **kwargs):
 def on_alter_heat(data):
     '''Update heat.'''
     global RACE
-    global FULL_RESULTS_CACHE_VALID
+    global PageCache
     heat_id = data['heat']
     heat = Database.Heat.query.get(heat_id)
 
     if 'note' in data:
-        global FULL_RESULTS_CACHE_VALID
-        FULL_RESULTS_CACHE_VALID = False
+        PageCache.valid = False
         heat.note = data['note']
     if 'class' in data:
         old_class_id = heat.class_id
@@ -1211,7 +1209,7 @@ def on_alter_heat(data):
                 new_class.cacheStatus = Results.CacheStatus.INVALID
 
             Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
-            FULL_RESULTS_CACHE_VALID = False
+            PageCache.valid = False
 
     DB.session.commit()
 
@@ -1352,12 +1350,12 @@ def on_duplicate_race_class(data):
 @catchLogExceptionsWrapper
 def on_alter_race_class(data):
     '''Update race class.'''
-    global FULL_RESULTS_CACHE_VALID
+    global PageCache
     race_class = data['class_id']
     db_update = Database.RaceClass.query.get(race_class)
 
     if 'class_name' in data:
-        FULL_RESULTS_CACHE_VALID = False
+        PageCache.valid = False
         db_update.name = data['class_name']
     if 'class_format' in data:
         db_update.format_id = data['class_format']
@@ -1366,7 +1364,7 @@ def on_alter_race_class(data):
 
     # alter existing classes
     if 'class_format' in data:
-        FULL_RESULTS_CACHE_VALID = False
+        PageCache.valid = False
         Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
         db_update.cacheStatus = Results.CacheStatus.INVALID
 
@@ -1449,7 +1447,7 @@ def on_add_pilot():
 @catchLogExceptionsWrapper
 def on_alter_pilot(data):
     '''Update pilot.'''
-    global FULL_RESULTS_CACHE_VALID
+    global PageCache
     pilot_id = data['pilot_id']
     db_update = Database.Pilot.query.get(pilot_id)
     if 'callsign' in data:
@@ -1473,7 +1471,7 @@ def on_alter_pilot(data):
         emit_heat_data() # Settings page, new pilot callsign in heats
         heatnodes = Database.HeatNode.query.filter_by(pilot_id=pilot_id).all()
         if heatnodes:
-            FULL_RESULTS_CACHE_VALID = False
+            PageCache.valid = False
             Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
 
             for heatnode in heatnodes:
@@ -1645,7 +1643,7 @@ def on_set_profile(data, emit_vals=True):
 def on_alter_race(data):
     '''Update heat.'''
     global RACE
-    global FULL_RESULTS_CACHE_VALID
+    global PageCache
     race_id = int(data['race_id'])
     race_meta = Database.SavedRaceMeta.query.get(race_id)
 
@@ -1691,7 +1689,7 @@ def on_alter_race(data):
     DB.session.commit()
 
     # cache cleaning
-    FULL_RESULTS_CACHE_VALID = False
+    PageCache.valid = False
 
     new_heat.cacheStatus = Results.CacheStatus.INVALID
     old_heat.cacheStatus = Results.CacheStatus.INVALID
@@ -1836,8 +1834,8 @@ def on_delete_database(data):
 @catchLogExceptionsWrapper
 def on_reset_database(data):
     '''Reset database.'''
-    global FULL_RESULTS_CACHE_VALID
-    FULL_RESULTS_CACHE_VALID = False
+    global PageCache
+    PageCache.valid = False
 
     reset_type = data['reset_type']
     if reset_type == 'races':
@@ -1881,14 +1879,18 @@ def on_reset_database(data):
 @catchLogExceptionsWrapper
 def on_export_database(data):
     '''Run the selected Exporter'''
+    global PageCache
     exporter_id = data['exporter']
 
     if exporter_id in exporters:
         exporter = exporters[exporter_id]
 
+        # perpare data
+        build_full_result_cache()
+
         # do export
         logger.info('Exporting data via {0}'.format(exporter['name']))
-        export_result = exporter['handlerFn'](Database, exporter['args'])
+        export_result = exporter['handlerFn'](Database, PageCache, exporter['args'])
 
         if export_result != False:
             try:
@@ -2069,7 +2071,7 @@ def on_add_race_format():
 def on_alter_race_format(data):
     ''' update race format '''
     global RACE
-    global FULL_RESULTS_CACHE_VALID
+    global PageCache
     if RACE.race_status == RaceStatus.READY:
         race_format = getCurrentDbRaceFormat()
         if race_format:
@@ -2110,7 +2112,7 @@ def on_alter_race_format(data):
 
             if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
                 if 'win_condition' in data or 'start_behavior' in data:
-                    FULL_RESULTS_CACHE_VALID = False
+                    PageCache.valid = False
                     Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
 
                     races = Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).all()
@@ -2337,7 +2339,7 @@ def on_stage_race():
 
     if RACE.race_status == RaceStatus.READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
-        global FULL_RESULTS_CACHE_VALID
+        global PageCache
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
         trigger_event(Evt.RACE_STAGE)
@@ -2636,7 +2638,7 @@ def on_stop_race():
 @catchLogExceptionsWrapper
 def on_save_laps():
     '''Save current laps data to the database.'''
-    global FULL_RESULTS_CACHE_VALID
+    global PageCache
 
     # Determine if race is empty
     race_has_laps = False
@@ -2646,7 +2648,7 @@ def on_save_laps():
             break
 
     if race_has_laps == True:
-        FULL_RESULTS_CACHE_VALID = False
+        PageCache.valid = False
         race_format = getCurrentRaceFormat()
         heat = Database.Heat.query.get(RACE.current_heat)
         # Get the last saved round for the current heat
@@ -2727,8 +2729,8 @@ def on_save_laps():
 @SOCKET_IO.on('resave_laps')
 @catchLogExceptionsWrapper
 def on_resave_laps(data):
-    global FULL_RESULTS_CACHE_VALID
-    FULL_RESULTS_CACHE_VALID = False
+    global PageCache
+    PageCache.valid = False
 
     heat_id = data['heat_id']
     round_id = data['round_id']
@@ -2801,26 +2803,24 @@ def build_full_result_cache():
     expires = monotonic() + CACHE_TIMEOUT
     error_flag = False
 
-    global FULL_RESULTS_CACHE
-    global FULL_RESULTS_CACHE_BUILDING
-    global FULL_RESULTS_CACHE_VALID
+    global PageCache
 
-    if FULL_RESULTS_CACHE_BUILDING: # Don't restart calculation if another calculation thread exists
+    if PageCache.building: # Don't restart calculation if another calculation thread exists
         while True: # Pause this thread until calculations are completed
             gevent.idle()
-            if FULL_RESULTS_CACHE_BUILDING is False:
+            if PageCache.building is False:
                 break
-            elif monotonic() > FULL_RESULTS_CACHE_BUILDING + CACHE_TIMEOUT:
+            elif monotonic() > PageCache.building + CACHE_TIMEOUT:
                 logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
-                FULL_RESULTS_CACHE_BUILDING = False
+                PageCache.building = False
                 break
 
-    if FULL_RESULTS_CACHE_VALID: # Output existing calculated results
+    if PageCache.valid: # Output existing calculated results
         logger.info('T%d: Returning valid cache', timing['start'])
 
     else:
         timing['build_start'] = monotonic()
-        FULL_RESULTS_CACHE_BUILDING = monotonic()
+        PageCache.building = monotonic()
 
         heats = {}
         for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
@@ -2984,15 +2984,15 @@ def build_full_result_cache():
             'event_leaderboard': results
         }
 
-        FULL_RESULTS_CACHE = payload
-        FULL_RESULTS_CACHE_BUILDING = False
+        PageCache.data = payload
+        PageCache.building = False
 
         if error_flag:
             logger.warning('T%d: Cache results build failed; leaving page cache invalid', timing['start'])
             emit_priority_message(__("Results did not load completely. Please try again."), False)
             trigger_event(Evt.CACHE_FAIL)
         else:
-            FULL_RESULTS_CACHE_VALID = True
+            PageCache.valid = True
             trigger_event(Evt.CACHE_READY)
 
         logger.debug('T%d: Page cache built in: %fs', timing['start'], monotonic() - timing['build_start'])
@@ -3439,9 +3439,9 @@ def imdtabler_update_freqs(data):
 @catchLogExceptionsWrapper
 def clean_results_cache():
     ''' wipe all results caches '''
-    global FULL_RESULTS_CACHE_VALID
+    global PageCache
     Results.invalidate_all_caches(DB)
-    FULL_RESULTS_CACHE_VALID = False
+    PageCache.valid = False
     emit_result_data()
 
 # Socket io emit functions
@@ -3873,12 +3873,12 @@ def emit_result_data(**params):
 
 @catchLogExceptionsWrapper
 def emit_result_data_thread(params, sid=None):
-    global FULL_RESULTS_CACHE
+    global PageCache
     with APP.test_request_context():
 
         build_full_result_cache()
 
-        emit_payload = FULL_RESULTS_CACHE
+        emit_payload = PageCache.data
 
         if 'nobroadcast' in params and sid != None:
             emit('result_data', emit_payload, namespace='/', room=sid)
