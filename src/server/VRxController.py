@@ -134,7 +134,7 @@ class VRxController:
         # Request status of all receivers (static and variable)
         self.request_static_status()
         self.request_variable_status()
-        # self._seat_broadcast.turn_off_osd()
+        self._seat_broadcast.turn_off_osd()
 
         for i in range(self.num_seats):
             self.get_seat_lock_status(i)
@@ -601,7 +601,7 @@ class VRxController:
             topic_tuple  = topics["receiver_connection"]
             self._add_subscribe_callback(topic_tuple, self.on_message_connection)
 
-            # Targetted Response
+            # Targeted Response
             topic_tuple = topics["receiver_response_targeted"]
             self._add_subscribe_callback(topic_tuple, self.on_message_resp_targeted)
 
@@ -637,6 +637,7 @@ class VRxController:
             seat = self._seats[seat_number]
             frequency = seat.seat_frequency
             self.set_target_frequency(target, frequency)
+            self.turn_off_osd_targeted(target)
 
             # TODO: send most relevant OSD information
 
@@ -667,6 +668,7 @@ class VRxController:
             # See TODO in on_message_status
             self.req_status_targeted("variable", rx_name)
             self.req_status_targeted("static", rx_name)
+            
 
 
 
@@ -745,7 +747,19 @@ class VRxController:
         self._mqttc.publish(topic,cmd)
 
 
+    def turn_off_osd_targeted(self, target):
+        """Turns off all OSD elements except user message"""
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_targeted_topic"][0]%target
+        cmd = json.dumps({"osd_visibility" : "D"})
+        self._mqttc.publish(topic, cmd)
+        return cmd
 
+    def turn_on_osd_targeted(self, target):
+        """Turns on all OSD elements except user message"""
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_targeted_topic"][0]%target
+        cmd = json.dumps({"osd_visibility" : "E"})
+        self._mqttc.publish(topic, cmd)
+        return cmd
 
 
 CRED = '\033[91m'
@@ -907,6 +921,20 @@ class VRxSeat(BaseVRxSeat):
         self._mqttc.publish(topic, cmd)
         return cmd
 
+    def turn_off_osd(self):
+        """Turns off all OSD elements except user message"""
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
+        cmd = json.dumps({"osd_visibility" : "D"})
+        self._mqttc.publish(topic, cmd)
+        return cmd
+
+    def turn_on_osd(self):
+        """Turns on all OSD elements except user message"""
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
+        cmd = json.dumps({"osd_visibility" : "E"})
+        self._mqttc.publish(topic, cmd)
+        return cmd
+
     def _update_osd_by_fields(self):
         #todo
         # Get a list of keys sorted by field_order
@@ -934,11 +962,17 @@ class VRxBroadcastSeat(BaseVRxSeat):
 
     def turn_off_osd(self):
         """Turns off all OSD elements except user message"""
-        raise NotImplementedError
-        # topic = self._rx_cmd_esp_all_topicc
-        # cmd = self._cv.hide_osd(self._cv_broadcast_id)
-        # self._mqttc.publish(topic, cmd)
-        # return cmd
+        topic = self._rx_cmd_esp_all_topic
+        cmd = json.dumps({"osd_visibility" : "D"})
+        self._mqttc.publish(topic, cmd)
+        return cmd
+    
+    def turn_on_osd(self):
+        """Turns on all OSD elements except user message"""
+        topic = self._rx_cmd_esp_all_topic
+        cmd = json.dumps({"osd_visibility" : "E"})
+        self._mqttc.publish(topic, cmd)
+        return cmd
 
     def reset_lock(self):
         """ Resets lock of all receivers"""
