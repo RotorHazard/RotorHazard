@@ -25,10 +25,10 @@ class MockInterface(BaseHardwareInterface):
         # Scans all i2c_addrs to populate nodes array
         self.nodes = [] # Array to hold each node object
         self.data = []
-        i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
+        # i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
         for index in range(int(os.environ.get('RH_NODES', '8'))):
             node = Node() # New node instance
-            node.i2c_addr = i2c_addrs[index] # Set current loop i2c_addr
+            node.i2c_addr = 2 * index + 8 # Set current loop i2c_addr
             node.index = index
             node.api_valid_flag = True
             node.api_level = 25
@@ -111,7 +111,7 @@ class MockInterface(BaseHardwareInterface):
 
         # process any nodes with new laps detected
         self.process_updates(upd_list)
-        
+
         if startThreshLowerNode:
             logger.info("For node {0} restoring EnterAt to {1} and ExitAt to {2}"\
                     .format(startThreshLowerNode.index+1, startThreshLowerNode.enter_at_level, \

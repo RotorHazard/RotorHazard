@@ -761,6 +761,7 @@ main.page-home {
 	display: flex;
 	flex-wrap: wrap;
 	margin: 0 -0.25rem;
+	justify-content: center;
 }
 
 .leaderboard .pilot {
@@ -770,9 +771,11 @@ main.page-home {
 .node {
 	box-sizing: border-box;
 	min-width: 7em;
+	max-width: 24em;
 	margin: 0.5rem 0;
 	padding: 0 0.25rem;
 	flex: 1 0 7em;
+	align-self: flex-start;
 }
 
 .node-controls {
@@ -832,6 +835,70 @@ main.page-home {
 	}
 }
 
+@media (max-width: 137em) {
+	.node:first-child:nth-last-child(16),
+	.node:first-child:nth-last-child(16) ~ .node {
+		flex: 0 auto;
+		width: 12.5%;
+	}
+}
+
+@media (max-width: 129em) {
+	.node:first-child:nth-last-child(15),
+	.node:first-child:nth-last-child(15) ~ .node {
+		flex: 0 auto;
+		width: 12.5%;
+	}
+}
+
+@media (max-width: 120em) {
+	.node:first-child:nth-last-child(14),
+	.node:first-child:nth-last-child(14) ~ .node {
+		flex: 0 auto;
+		width: 14.2857%;
+	}
+}
+
+@media (max-width: 112em) {
+	.node:first-child:nth-last-child(13),
+	.node:first-child:nth-last-child(13) ~ .node {
+		flex: 0 auto;
+		width: 14.2857%;
+	}
+}
+
+@media (max-width: 103em) {
+	.node:first-child:nth-last-child(12),
+	.node:first-child:nth-last-child(12) ~ .node {
+		flex: 0 auto;
+		width: 16.6667%;
+	}
+}
+
+@media (max-width: 95em) {
+	.node:first-child:nth-last-child(11),
+	.node:first-child:nth-last-child(11) ~ .node {
+		flex: 0 auto;
+		width: 16.6667%;
+	}
+}
+
+@media (max-width: 86em) {
+	.node:first-child:nth-last-child(10),
+	.node:first-child:nth-last-child(10) ~ .node {
+		flex: 0 auto;
+		width: 20%;
+	}
+}
+
+@media (max-width: 78em) {
+	.node:first-child:nth-last-child(9),
+	.node:first-child:nth-last-child(9) ~ .node {
+		flex: 0 auto;
+		width: 20%;
+	}
+}
+
 @media (max-width: 69em) {
 	.node:first-child:nth-last-child(1) {
 		flex: 0 auto;
@@ -849,9 +916,26 @@ main.page-home {
 	.node:first-child:nth-last-child(7),
 	.node:first-child:nth-last-child(7) ~ .node,
 	.node:first-child:nth-last-child(8),
-	.node:first-child:nth-last-child(8) ~ .node {
+	.node:first-child:nth-last-child(8) ~ .node,
+	.node:first-child:nth-last-child(10),
+	.node:first-child:nth-last-child(10) ~ .node,
+	.node:first-child:nth-last-child(11),
+	.node:first-child:nth-last-child(11) ~ .node,
+	.node:first-child:nth-last-child(12),
+	.node:first-child:nth-last-child(12) ~ .node,
+	.node:first-child:nth-last-child(16),
+	.node:first-child:nth-last-child(16) ~ .node {
 		flex: 0 auto;
 		width: 25%;
+	}
+
+	.node:first-child:nth-last-child(13),
+	.node:first-child:nth-last-child(13) ~ .node,
+	.node:first-child:nth-last-child(14),
+	.node:first-child:nth-last-child(14) ~ .node,
+	.node:first-child:nth-last-child(15),
+	.node:first-child:nth-last-child(15) ~ .node {
+		width: 20%;
 	}
 }
 
@@ -861,8 +945,25 @@ main.page-home {
 	.node:first-child:nth-last-child(5),
 	.node:first-child:nth-last-child(5) ~ .node,
 	.node:first-child:nth-last-child(6),
-	.node:first-child:nth-last-child(6) ~ .node {
+	.node:first-child:nth-last-child(6) ~ .node,
+	.node:first-child:nth-last-child(9),
+	.node:first-child:nth-last-child(9) ~ .node,
+	.node:first-child:nth-last-child(11),
+	.node:first-child:nth-last-child(11) ~ .node,
+	.node:first-child:nth-last-child(12),
+	.node:first-child:nth-last-child(12) ~ .node {
 		flex: 0 auto;
+		width: 33.3333%;
+	}
+}
+
+@media (max-width: 45em) {
+	.node:first-child:nth-last-child(13),
+	.node:first-child:nth-last-child(13) ~ .node,
+	.node:first-child:nth-last-child(14),
+	.node:first-child:nth-last-child(14) ~ .node,
+	.node:first-child:nth-last-child(15),
+	.node:first-child:nth-last-child(15) ~ .node {
 		width: 33.3333%;
 	}
 }
@@ -871,8 +972,12 @@ main.page-home {
 	.node:first-child:nth-last-child(7),
 	.node:first-child:nth-last-child(7) ~ .node,
 	.node:first-child:nth-last-child(8),
-	.node:first-child:nth-last-child(8) ~ .node {
-		  width: 33.3333%;
+	.node:first-child:nth-last-child(8) ~ .node,
+	.node:first-child:nth-last-child(10),
+	.node:first-child:nth-last-child(10) ~ .node,
+	.node:first-child:nth-last-child(16),
+	.node:first-child:nth-last-child(16) ~ .node {
+		width: 33.3333%;
 	}
 
 	.node:first-child:nth-last-child(4),
@@ -891,7 +996,23 @@ main.page-home {
 	.node:first-child:nth-last-child(7),
 	.node:first-child:nth-last-child(7) ~ .node,
 	.node:first-child:nth-last-child(8),
-	.node:first-child:nth-last-child(8) ~ .node {
+	.node:first-child:nth-last-child(8) ~ .node,
+	.node:first-child:nth-last-child(9),
+	.node:first-child:nth-last-child(9) ~ .node,
+	.node:first-child:nth-last-child(10),
+	.node:first-child:nth-last-child(10) ~ .node,
+	.node:first-child:nth-last-child(11),
+	.node:first-child:nth-last-child(11) ~ .node,
+	.node:first-child:nth-last-child(12),
+	.node:first-child:nth-last-child(12) ~ .node,
+	.node:first-child:nth-last-child(13),
+	.node:first-child:nth-last-child(13) ~ .node,
+	.node:first-child:nth-last-child(14),
+	.node:first-child:nth-last-child(14) ~ .node,
+	.node:first-child:nth-last-child(15),
+	.node:first-child:nth-last-child(15) ~ .node,
+	.node:first-child:nth-last-child(16),
+	.node:first-child:nth-last-child(16) ~ .node {
 		width: 50%;
 	}
 }
@@ -912,7 +1033,25 @@ main.page-home {
 	.node:first-child:nth-last-child(7),
 	.node:first-child:nth-last-child(7) ~ .node,
 	.node:first-child:nth-last-child(8),
-	.node:first-child:nth-last-child(8) ~ .node {
+	.node:first-child:nth-last-child(8) ~ .node,
+	.node:first-child:nth-last-child(8),
+	.node:first-child:nth-last-child(8) ~ .node,
+	.node:first-child:nth-last-child(9),
+	.node:first-child:nth-last-child(9) ~ .node,
+	.node:first-child:nth-last-child(10),
+	.node:first-child:nth-last-child(10) ~ .node,
+	.node:first-child:nth-last-child(11),
+	.node:first-child:nth-last-child(11) ~ .node,
+	.node:first-child:nth-last-child(12),
+	.node:first-child:nth-last-child(12) ~ .node,
+	.node:first-child:nth-last-child(13),
+	.node:first-child:nth-last-child(13) ~ .node,
+	.node:first-child:nth-last-child(14),
+	.node:first-child:nth-last-child(14) ~ .node,
+	.node:first-child:nth-last-child(15),
+	.node:first-child:nth-last-child(15) ~ .node,
+	.node:first-child:nth-last-child(16),
+	.node:first-child:nth-last-child(16) ~ .node {
 		width: 100%;
 	}
 }
@@ -1271,6 +1410,7 @@ main.page-home {
 	display: flex;
 	flex-wrap: wrap;
 	margin: 0 -0.25rem;
+	justify-content: center;
 }
 
 .simulate_lap {
