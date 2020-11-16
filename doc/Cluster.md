@@ -4,8 +4,17 @@ Additional RotorHazard timers may be attached as "slave" units, interfaced via t
 
 ### Configuration
 
-Additional timers may be configured (in 'src/server/config.json') under "GENERAL" with a "SLAVES" entry containing an array of IP addresses of the slave timers in track order.
+An additional timer may be configured (in 'src/server/config.json' on the master timer) under "GENERAL" with a "SLAVES" entry containing the address of the slave timer; for example:
+```
+{
+	"GENERAL": {
+		... ,
+		"SLAVES": ["192.168.1.2:5000"]
+	}
+}
+```
 
+Multiple slave timers may be specified as a list of addresses in track order:
 ```
 {
 	"GENERAL": {
@@ -16,7 +25,6 @@ Additional timers may be configured (in 'src/server/config.json') under "GENERAL
 ```
 
 Additional options may be configured, for example:
-
 ```
 {
 	"GENERAL": {
@@ -34,6 +42,8 @@ Additional options may be configured, for example:
 * "SLAVE_TIMEOUT": Maximum number of seconds to wait for connection to be established.
 
 The "address" value may be specified using asterisk-wildcard characters. For instance, if the IP address of the 'master' timer is "192.168.0.11":  `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
+
+On the slave timer, no configuration changes are needed.
 
 ### Clock Synchronization
 
