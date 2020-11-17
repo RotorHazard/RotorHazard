@@ -128,7 +128,71 @@ def export_formats(Database, PageCache):
     return payload
 
 def export_results(Database, PageCache):
+    # TODO: Make results friendly
     payload = PageCache.data
+    return payload
+
+def export_complete(Database, PageCache):
+    payload = {}
+    payload['Pilot'] = export_pilots_complete(Database, PageCache)
+    payload['Heat'] = export_heats_complete(Database, PageCache)
+    payload['HeatNode'] = export_heatnodes_complete(Database, PageCache)
+    payload['RaceClass'] = export_classes_complete(Database, PageCache)
+    payload['RaceFormat'] = export_formats_complete(Database, PageCache)
+    payload['SavedRaceMeta'] = export_racemeta_complete(Database, PageCache)
+    payload['SavedPilotRace'] = export_pilotrace_complete(Database, PageCache)
+    payload['SavedRaceLap'] = export_racelap_complete(Database, PageCache)
+    payload['LapSplit'] = export_split_complete(Database, PageCache)
+    payload['Profiles'] = export_profiles_complete(Database, PageCache)
+    payload['GlobalSettings'] = export_settings_complete(Database, PageCache)
+    return payload
+
+def export_results_raw(Database, PageCache):
+    payload = PageCache.data
+    return payload
+
+def export_pilots_complete(Database, PageCache):
+    payload = Database.Pilot.query.all()
+    return payload
+
+def export_heats_complete(Database, PageCache):
+    payload = Database.Heat.query.all()
+    return payload
+
+def export_heatnodes_complete(Database, PageCache):
+    payload = Database.HeatNode.query.all()
+    return payload
+
+def export_classes_complete(Database, PageCache):
+    payload = Database.RaceClass.query.all()
+    return payload
+
+def export_formats_complete(Database, PageCache):
+    payload = Database.RaceFormat.query.all()
+    return payload
+
+def export_split_complete(Database, PageCache):
+    payload = Database.LapSplit.query.all()
+    return payload
+
+def export_racemeta_complete(Database, PageCache):
+    payload = Database.SavedRaceMeta.query.all()
+    return payload
+
+def export_pilotrace_complete(Database, PageCache):
+    payload = Database.SavedPilotRace.query.all()
+    return payload
+
+def export_racelap_complete(Database, PageCache):
+    payload = Database.SavedRaceLap.query.all()
+    return payload
+
+def export_profiles_complete(Database, PageCache):
+    payload = Database.Profiles.query.all()
+    return payload
+
+def export_settings_complete(Database, PageCache):
+    payload = Database.GlobalSettings.query.all()
     return payload
 
 class AlchemyEncoder(json.JSONEncoder):
@@ -204,6 +268,22 @@ def discover(*args, **kwargs):
             'handlerFn': export_as_json,
             'args': {
                 'fn': export_all,
+            },
+        },
+        {
+            'id': 'json_complete_all',
+            'name': 'JSON (Complete) / All',
+            'handlerFn': export_as_json,
+            'args': {
+                'fn': export_complete,
+            },
+        },
+        {
+            'id': 'json_complete_results',
+            'name': 'JSON (Complete) / Results',
+            'handlerFn': export_as_json,
+            'args': {
+                'fn': export_results_raw,
             },
         },
     ]
