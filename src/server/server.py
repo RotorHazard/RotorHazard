@@ -1403,8 +1403,9 @@ def on_alter_pilot(data):
             for heatnode in heatnodes:
                 heat = Database.Heat.query.get(heatnode.heat_id)
                 heat.cacheStatus = Results.CacheStatus.INVALID
-                race_class = Database.RaceClass.query.get(heat.class_id)
-                race_class.cacheStatus = Results.CacheStatus.INVALID
+                if heat.class_id != Database.CLASS_ID_NONE:
+                    race_class = Database.RaceClass.query.get(heat.class_id)
+                    race_class.cacheStatus = Results.CacheStatus.INVALID
                 races = Database.SavedRaceMeta.query.filter_by(heat_id=heatnode.heat_id)
                 for race in races:
                     race.cacheStatus = Results.CacheStatus.INVALID
