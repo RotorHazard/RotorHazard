@@ -1109,34 +1109,37 @@ def on_alter_heat(data):
     race_list = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
 
     if 'class' in data:
-        for race_meta in race_list:
-            race_meta.class_id = data['class']
-            # race_meta.cacheStatus=Results.CacheStatus.INVALID
+        if len(race_list):
+            for race_meta in race_list:
+                race_meta.class_id = data['class']
+                # race_meta.cacheStatus=Results.CacheStatus.INVALID
 
-        if old_class_id is not Database.CLASS_ID_NONE:
-            old_class = Database.RaceClass.query.get(old_class_id)
-            old_class.cacheStatus = Results.CacheStatus.INVALID
+            if old_class_id is not Database.CLASS_ID_NONE:
+                old_class = Database.RaceClass.query.get(old_class_id)
+                old_class.cacheStatus = Results.CacheStatus.INVALID
 
     if 'pilot' in data:
-        for race_meta in race_list:
-            for pilot_race in Database.SavedPilotRace.query.filter_by(race_id=race_meta.id).all():
-                if pilot_race.node_index == data['node']:
-                    pilot_race.pilot_id = data['pilot']
-            for race_lap in Database.SavedRaceLap.query.filter_by(race_id=race_meta.id).all():
-                if race_lap.node_index == data['node']:
-                    race_lap.pilot_id = data['pilot']
+        if len(race_list):
+            for race_meta in race_list:
+                for pilot_race in Database.SavedPilotRace.query.filter_by(race_id=race_meta.id).all():
+                    if pilot_race.node_index == data['node']:
+                        pilot_race.pilot_id = data['pilot']
+                for race_lap in Database.SavedRaceLap.query.filter_by(race_id=race_meta.id).all():
+                    if race_lap.node_index == data['node']:
+                        race_lap.pilot_id = data['pilot']
 
-            race_meta.cacheStatus = Results.CacheStatus.INVALID
+                race_meta.cacheStatus = Results.CacheStatus.INVALID
 
-        heat.cacheStatus = Results.CacheStatus.INVALID
+            heat.cacheStatus = Results.CacheStatus.INVALID
 
     if 'pilot' in data or 'class' in data:
-        if heat.class_id is not Database.CLASS_ID_NONE:
-            new_class = Database.RaceClass.query.get(heat.class_id)
-            new_class.cacheStatus = Results.CacheStatus.INVALID
+        if len(race_list):
+            if heat.class_id is not Database.CLASS_ID_NONE:
+                new_class = Database.RaceClass.query.get(heat.class_id)
+                new_class.cacheStatus = Results.CacheStatus.INVALID
 
-        Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
-        FULL_RESULTS_CACHE_VALID = False
+            Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+            FULL_RESULTS_CACHE_VALID = False
 
     DB.session.commit()
 
@@ -1158,7 +1161,8 @@ def on_alter_heat(data):
 
     logger.info('Heat {0} altered with {1}'.format(heat_id, data))
     emit_heat_data(noself=True)
-    emit_result_data() # live update rounds page
+    if len(race_list):
+        emit_result_data() # live update rounds page
 
     if ('pilot' in data or 'class' in data) and Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).first() is not None:
         message = __('Alterations made to heat: {0}').format(heat.note)
