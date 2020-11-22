@@ -684,16 +684,14 @@ def calc_team_leaderboard(RACE):
             average_lap_raw = 0
             average_fastest_lap_raw = 0
             average_consecutives_raw = 0
-            # only count averages whole whole team contributes
-            if teams[team]['contributing'] == teams[team]['members']:
-                if teams[team]['combined_average_lap_raw']:
-                    average_lap_raw = float(teams[team]['combined_average_lap_raw']) / teams[team]['members']
+            if teams[team]['combined_average_lap_raw']:
+                average_lap_raw = float(teams[team]['combined_average_lap_raw']) / teams[team]['contributing']
 
-                if teams[team]['combined_fastest_lap_raw']:
-                    average_fastest_lap_raw = float(teams[team]['combined_fastest_lap_raw']) / teams[team]['members']
+            if teams[team]['combined_fastest_lap_raw']:
+                average_fastest_lap_raw = float(teams[team]['combined_fastest_lap_raw']) / teams[team]['contributing']
 
-                if teams[team]['combined_consecutives_raw']:
-                    average_consecutives_raw = float(teams[team]['combined_consecutives_raw']) / teams[team]['members']
+            if teams[team]['combined_consecutives_raw']:
+                average_consecutives_raw = float(teams[team]['combined_consecutives_raw']) / teams[team]['contributing']
 
             leaderboard.append({
                 'name': team,
