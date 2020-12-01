@@ -627,6 +627,9 @@ def emit_join_cluster_response():
     }
     emit_cluster_msg_to_master('join_cluster_response', payload, False)
 
+def has_joined_cluster():
+    return True if ClusterSendAckQueueObj else False
+
 @SOCKET_IO.on('join_cluster')
 @catchLogExceptionsWrapper
 def on_join_cluster():
@@ -4271,8 +4274,9 @@ def clock_check_thread_function():
                 # update values that will be reported if running as cluster timer
                 serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
                 serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
-                logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
-                emit_join_cluster_response()
+                if has_joined_cluster():
+                    logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
+                    emit_join_cluster_response()
     except KeyboardInterrupt:
         logger.info("clock_check_thread terminated by keyboard interrupt")
         raise
