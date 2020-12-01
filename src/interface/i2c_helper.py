@@ -2,7 +2,6 @@
 
 import smbus # For i2c comms
 import gevent
-from gevent.lock import BoundedSemaphore # To limit i2c calls
 import logging
 from monotonic import monotonic
 
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 class I2CBus(object):
     def __init__(self):
         self.i2c = smbus.SMBus(1) # Start i2c bus
-        self.semaphore = BoundedSemaphore(1) # Limits i2c to 1 read/write at a time
+        self.i2c_rlock_obj = gevent.lock.RLock()  # for limiting i2c to 1 read/write at a time
         self.i2c_timestamp = -1
 
     def i2c_end(self):
@@ -31,7 +30,7 @@ class I2CBus(object):
     def with_i2c(self, callback):
         val = None
         if callable(callback):
-            with self.semaphore:
+            with self.i2c_rlock_obj:
                 self.i2c_sleep()
                 val = callback()
                 self.i2c_end()
