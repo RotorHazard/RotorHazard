@@ -91,8 +91,12 @@
 			primary_leaderboard = msg.meta.primary_leaderboard;
 			leaderboard = msg[primary_leaderboard];
 
+			found_streamnode = false;
+
 			for (var i in leaderboard) {
 				if (leaderboard[i].node == streamnode) {
+					found_streamnode = true;
+
 					pilot_data = leaderboard[i];
 
 					$('#position').html(pilot_data.position);
@@ -111,10 +115,16 @@
 					}
 
 					$('#rank_stat').html(rank_stat);
+					break;
 				}
 			}
 
-			$('#dump').append(msg);
+			if (!found_streamnode) {
+				$('#position').html('');
+				$('#callsign').html('');
+				$('#rank_stat').html('');
+				$('#current_laps').html('');
+			}
 		});
 
 		socket.on('race_format', function (msg) {
