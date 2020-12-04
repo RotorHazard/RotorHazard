@@ -81,6 +81,7 @@ def getLocalIPAddress():
         return IP
     # use alternate method that does not rely on internet access
     ips = subprocess.check_output(['hostname', '--all-ip-addresses'])
+    logger.debug("Result of 'hostname --all-ip-addresses': " + str(ips))
     if ips:
         for IP in ips.split(' '):
             if IP.find('.') > 0 and not IP.startswith("127."):

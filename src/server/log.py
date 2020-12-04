@@ -123,7 +123,9 @@ def early_stage_setup():
             "sqlalchemy",
             "urllib3",
             "requests",
-            "PIL"
+            "PIL",
+            "Adafruit_I2C",
+            "Adafruit_I2C.Device.Bus"
             ]:
         logging.getLogger(name).setLevel(logging.WARN)
 
@@ -148,6 +150,8 @@ def get_logging_level_for_item(logging_config, cfg_item_name, err_str, def_level
 # Returns the path/filename for the current log file in use, or None.
 def later_stage_setup(config, socket):
     global socket_handler_obj
+
+#    print(logging.Logger.manager.loggerDict)  # uncomment to display all loggers
 
     logging_config = {}
     logging_config[CONSOLE_LEVEL_STR] = logging.getLevelName(logging.INFO)
