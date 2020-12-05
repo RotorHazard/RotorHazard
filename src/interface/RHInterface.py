@@ -223,8 +223,8 @@ class RHInterface(BaseHardwareInterface):
                         offset_nadirFirstTime = 26
 
                     rssi_val = unpack_rssi(node, data[offset_rssi:])
+                    node.current_rssi = rssi_val  # save value (even if invalid so displayed in GUI)
                     if node.is_valid_rssi(rssi_val):
-                        node.current_rssi = rssi_val
 
                         cross_flag = None
                         pn_history = None
@@ -296,7 +296,11 @@ class RHInterface(BaseHardwareInterface):
                         self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list)
 
                     else:
-                        self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
+                        node.bad_rssi_count += 1
+                        # log the first ten, but then only 1 per 100 after that
+                        if node.bad_rssi_count <= 10 or node.bad_rssi_count % 100 == 0:
+                            self.log('RSSI reading ({}) out of range on Node {}; rejected; count={}'.\
+                                     format(rssi_val, node.index+1, node.bad_rssi_count))
 
                 # check if node is set to temporary lower EnterAt/ExitAt values
                 if node.start_thresh_lower_flag:
