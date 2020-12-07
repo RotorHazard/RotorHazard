@@ -4455,7 +4455,7 @@ def check_win_condition(RACE, INTERFACE, **kwargs):
             if race_format.team_racing_mode:
                 RACE.status_message = __('Winner is') + ' ' + __('Team') + ' ' + win_status['data']['name']
                 emit_race_status_message()
-                emit_phonetic_text(RACE.status_message)
+                emit_phonetic_text(RACE.status_message, 'race_winner')
             else:
                 RACE.status_message = __('Winner is') + ' ' + win_status['data']['callsign']
                 emit_race_status_message()
