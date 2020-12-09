@@ -2173,6 +2173,7 @@ def on_get_pi_time():
 def on_stage_race():
     global RACE
     valid_pilots = False
+    heat_data = Database.Heat.query.get(RACE.current_heat)
     heatNodes = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat).all()
     for heatNode in heatNodes:
         if heatNode.node_index < RACE.num_nodes:
@@ -2202,6 +2203,14 @@ def on_stage_race():
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
         trigger_event(Evt.RACE_STAGE)
+
+        if heat_data.class_id != Database.CLASS_ID_NONE:
+            class_format_id = Database.RaceClass.query.get(heat_data.class_id).format_id
+            if class_format_id != Database.FORMAT_ID_NONE:
+                class_format = Database.RaceFormat.query.get(class_format_id)
+                setCurrentRaceFormat(class_format)
+                logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
+
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         RACE.last_race_cacheStatus = Results.CacheStatus.INVALID # invalidate last race results cache
@@ -2223,6 +2232,7 @@ def on_stage_race():
         emit_current_laps() # Race page, blank laps to the web client
         emit_current_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
+        emit_race_format()
         check_emit_race_status_message(RACE) # Update race status message
 
         MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
@@ -2942,6 +2952,15 @@ def on_set_current_heat(data):
         else:
             RACE.node_teams[heatNode.node_index] = None
 
+    heat_data = Database.Heat.query.get(new_heat_id)
+
+    if heat_data.class_id != Database.CLASS_ID_NONE:
+        class_format_id = Database.RaceClass.query.get(heat_data.class_id).format_id
+        if class_format_id != Database.FORMAT_ID_NONE:
+            class_format = Database.RaceFormat.query.get(class_format_id)
+            setCurrentRaceFormat(class_format)
+            logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
+
     logger.info('Current heat set: Heat {0}'.format(new_heat_id))
 
     if Options.getInt('calibrationMode'):
@@ -2954,6 +2973,7 @@ def on_set_current_heat(data):
     RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
     emit_current_heat() # Race page, to update heat selection button
     emit_current_leaderboard() # Race page, to update callsigns in leaderboard
+    emit_race_format()
     check_emit_race_status_message(RACE) # Update race status message
 
 @SOCKET_IO.on('generate_heats')
