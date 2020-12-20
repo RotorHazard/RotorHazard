@@ -1,6 +1,7 @@
 #ifndef config_h
 #define config_h
 
+#include <Arduino.h>
 #include "util/rhtypes.h"
 
 // ******************************************************************** //
@@ -15,11 +16,37 @@
 
 // ******************************************************************** //
 
+#ifdef STM32_CORE_VERSION
+#define STM32_MODE_FLAG 1  // 1 for STM 32-bit processor running multiple nodes
+#else
+#define STM32_MODE_FLAG 0  // 0 for Arduino processor running single node
+#endif
+
+#define STM32_SERIALUSB_FLAG 0
+
+// features flags for value returned by READ_RHFEAT_FLAGS command
+#define RHFEAT_STM32_MODE ((uint16_t)0x0004)      // STM 32-bit processor running multiple nodes
+#define RHFEAT_JUMPTO_BOOTLDR ((uint16_t)0x0008)  // JUMP_TO_BOOTLOADER command supported
+#define RHFEAT_IAP_FIRMWARE ((uint16_t)0x0010)    // in-application programming of firmware supported
+#define RHFEAT_NONE ((uint16_t)0)
+
+#if STM32_MODE_FLAG
+// value returned by READ_RHFEAT_FLAGS command
+#define RHFEAT_FLAGS_VALUE (RHFEAT_STM32_MODE | RHFEAT_JUMPTO_BOOTLDR | RHFEAT_IAP_FIRMWARE)
+
+#define SERIAL_BAUD_RATE 921600
+#define MULTI_RHNODE_MAX 2
+
+#else
+// value returned by READ_RHFEAT_FLAGS command
+#define RHFEAT_FLAGS_VALUE RHFEAT_NONE
+
 #define SERIAL_BAUD_RATE 115200
+#define MULTI_RHNODE_MAX 1
+#endif
 
-#include <Arduino.h>
 
-#if defined(__TEST__)
+#if STM32_MODE_FLAG || defined(__TEST__)
 #define ATOMIC_BLOCK(x)
 #define ATOMIC_RESTORESTATE
 #else
