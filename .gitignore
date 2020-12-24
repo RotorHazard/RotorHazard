@@ -7,3 +7,4 @@ logs
 /src/server/static/user/*
 !/src/server/static/user/README.md
 .settings
+.vscode

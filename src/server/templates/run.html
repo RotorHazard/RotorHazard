@@ -623,6 +623,26 @@
 			race_kickoff(msg);
 		});
 
+        socket.on('obs_toggle_cnct', function (is_connected) {  // OBS_RECORD
+            if (is_connected) {
+				$('#OBS_rcrd').prop('disabled', false);
+				$('#OBS_cnct').text('Disconnect OBS').addClass('btn-danger');
+            } else {
+				$('#OBS_rcrd').prop('disabled', true);
+				$('#OBS_cnct').text('Connect OBS').removeClass('btn-danger');
+            }
+        });
+
+        socket.on('obs_toggle_rcrd', function (is_recording) {  // OBS_RECORD
+            if (is_recording) {
+				$('#OBS_cnct').prop('disabled', true);
+				$('#OBS_rcrd').text('Stop OBS Recording');
+            } else {
+				$('#OBS_cnct').prop('disabled', false);
+				$('#OBS_rcrd').text('Start OBS Recording');
+            }
+        });
+
 		$('button#start_race').click(function (event) {
 			if(!$(this).prop('disabled')) {
 				socket.emit('stage_race');
@@ -709,6 +729,32 @@
 			event.preventDefault();  // prevent keyboard focus on button
 			return false;
 		});
+
+        $('button#OBS_cnct').click(function (event) {      // OBS_RECORD
+            if(!$(this).prop('disabled')) {
+                socket.emit('OBS_cnct');
+                $("#main_panel").focus();  // make sure focus not on button
+            }
+            return false;
+        });
+
+        $('button#OBS_cnct').mousedown(function (event) {  // OBS_RECORD
+            event.preventDefault();  // prevent keyboard focus on button
+            return false;
+        });
+
+        $('button#OBS_rcrd').click(function (event) {      // OBS_RECORD
+            if(!$(this).prop('disabled')) {
+                socket.emit('OBS_rcrd');
+                $("#main_panel").focus();  // make sure focus not on button
+            }
+            return false;
+        });
+
+        $('button#OBS_rcrd').mousedown(function (event) {  // OBS_RECORD
+            event.preventDefault();  // prevent keyboard focus on button
+            return false;
+        });
 
 		$('.set_enter_at_level').change(function (event) {
 			var data = {
@@ -1602,6 +1648,10 @@
 			<button id="stop_race" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Stop') }}</span><span class="wide">{{ __('Stop Race') }}</span></button>
 			<button id="save_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Save') }}</span><span class="wide">{{ __('Save Laps') }}</span></button>
 			<button id="discard_laps" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Discard') }}</span><span class="wide">{{ __('Discard Laps') }}</span></button>
+            {% if obs_enabled %}
+            <button id="OBS_cnct" tabindex="-1"><span class="narrow">{{ __('Connect') }}</span><span class="wide">{{ __('Connect OBS') }}</span></button>
+            <button id="OBS_rcrd" tabindex="-1" disabled="disabled"><span class="narrow">{{ __('Record') }}</span><span class="wide">{{ __('Start OBS Recording') }}</span></button>
+            {% endif %}
 		</div>
 
 		<!--Display the race leaderboard-->

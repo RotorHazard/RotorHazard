@@ -84,6 +84,7 @@ from Plugins import Plugins, search_modules
 from Sensors import Sensors
 import RHRace
 from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus
+from obswebsocket import obsws, requests, events   #OBS_RECORD
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -379,6 +380,7 @@ def render_run():
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat, pilots=Database.Pilot,
         nodes=nodes,
+        obs_enabled=obs_enabled,    #OBS_RECORD
         cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()))
 
 @APP.route('/current')
@@ -1812,6 +1814,7 @@ def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
     trigger_event(Evt.SHUTDOWN)
     CLUSTER.emit('shutdown_pi')
+    ws.disconnect()             #OBS_RECORD
     emit_priority_message(__('Server has shut down.'), True)
     logger.info('Shutdown pi')
     gevent.sleep(1);
@@ -1823,6 +1826,7 @@ def on_reboot_pi():
     '''Reboot the raspberry pi.'''
     trigger_event(Evt.SHUTDOWN)
     CLUSTER.emit('reboot_pi')
+    ws.disconnect()             #OBS_RECORD
     emit_priority_message(__('Server is rebooting.'), True)
     logger.info('Rebooting pi')
     gevent.sleep(1);
@@ -2141,7 +2145,7 @@ def on_schedule_race(data):
         'scheduled': RACE.scheduled,
         'scheduled_at': RACE.scheduled_time
         })
-
+    
     emit_priority_message(__("Next race begins in {0:01d}:{1:02d}".format(data['m'], data['s'])), True)
 
 @SOCKET_IO.on('cancel_schedule_race')
@@ -5286,6 +5290,38 @@ def determineHostAddress(maxRetrySecs=10):
     return ipAddrStr
 
 #
+#OBS_RECORD events
+#
+
+@SOCKET_IO.on('OBS_cnct')
+@catchLogExceptionsWrapper
+def connect_to_obs():
+    global obs_connected
+    try:
+        if obs_connected is False:
+            ws.connect()
+        else:
+            ws.disconnect()
+        obs_connected = not obs_connected
+        SOCKET_IO.emit('obs_toggle_cnct', obs_connected)
+    except:
+        logger.info("Error communicating with OBS")
+        message = "Connection to OBS failed"
+        emit_priority_message(message, False, nobroadcast=True)
+        
+
+@SOCKET_IO.on('OBS_rcrd')
+@catchLogExceptionsWrapper
+def set_obs_recording():
+    global obs_recording
+    try:
+        ws.call(requests.StartStopRecording())
+        obs_recording = not obs_recording
+        SOCKET_IO.emit('obs_toggle_rcrd', obs_recording)
+    except:
+        logger.info("Error starting/stopping recording")
+
+#
 # Program Initialize
 #
 
@@ -5551,6 +5587,19 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     if rep_str:
         logger.info(rep_str)
     log.wait_for_queue_empty()
+
+#Initialize OBS websocket   OBS_RECORD
+try:
+    if Config.GENERAL['AUTO_OBS'] is True:                  #OBS_RECORD
+        OBS_WS_HOST = Config.GENERAL['OBS_HOST_IP']         #OBS_RECORD
+        OBS_PORT = Config.GENERAL['OBS_PORT']               #OBS_RECORD
+        ws = obsws(OBS_WS_HOST, OBS_PORT)                   #OBS_RECORD
+        obs_connected = False                               #OBS_RECORD
+        obs_recording = False                               #OBS_RECORD
+        obs_enabled = 1                                     #OBS_RECORD
+except:
+    logger.info("No AUTO_OBS string under general in config.json file")
+    obs_enabled=0
 
 # Start HTTP server
 if __name__ == '__main__':
