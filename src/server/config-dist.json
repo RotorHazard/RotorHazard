@@ -5,7 +5,7 @@
 		"ADMIN_PASSWORD": "rotorhazard",
 		"DEBUG": false,
 		"CORS_ALLOWED_HOSTS": "*",
-		"AUTO_OBS": true,
+		"AUTO_OBS": false,
 		"OBS_HOST_IP": "10.10.1.200",
 		"OBS_PORT": 4444
 	},

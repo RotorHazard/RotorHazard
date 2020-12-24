@@ -84,7 +84,7 @@ from Plugins import Plugins, search_modules
 from Sensors import Sensors
 import RHRace
 from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus
-from obswebsocket import obsws, requests, events   #OBS_RECORD
+from obswebsocket import obsws, requests, events
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -380,7 +380,7 @@ def render_run():
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat, pilots=Database.Pilot,
         nodes=nodes,
-        obs_enabled=obs_enabled,    #OBS_RECORD
+        obs_enabled=obs_enabled,
         cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()))
 
 @APP.route('/current')
@@ -1814,7 +1814,7 @@ def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
     trigger_event(Evt.SHUTDOWN)
     CLUSTER.emit('shutdown_pi')
-    ws.disconnect()             #OBS_RECORD
+    ws.disconnect()
     emit_priority_message(__('Server has shut down.'), True)
     logger.info('Shutdown pi')
     gevent.sleep(1);
@@ -1826,7 +1826,7 @@ def on_reboot_pi():
     '''Reboot the raspberry pi.'''
     trigger_event(Evt.SHUTDOWN)
     CLUSTER.emit('reboot_pi')
-    ws.disconnect()             #OBS_RECORD
+    ws.disconnect()
     emit_priority_message(__('Server is rebooting.'), True)
     logger.info('Rebooting pi')
     gevent.sleep(1);
@@ -5289,10 +5289,6 @@ def determineHostAddress(maxRetrySecs=10):
     logger.info("Host machine is '{0}' at {1}".format(hNameStr, ipAddrStr))
     return ipAddrStr
 
-#
-#OBS_RECORD events
-#
-
 @SOCKET_IO.on('OBS_cnct')
 @catchLogExceptionsWrapper
 def connect_to_obs():
@@ -5588,18 +5584,20 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         logger.info(rep_str)
     log.wait_for_queue_empty()
 
-#Initialize OBS websocket   OBS_RECORD
+# Initialize OBS websocket
 try:
-    if Config.GENERAL['AUTO_OBS'] is True:                  #OBS_RECORD
-        OBS_WS_HOST = Config.GENERAL['OBS_HOST_IP']         #OBS_RECORD
-        OBS_PORT = Config.GENERAL['OBS_PORT']               #OBS_RECORD
-        ws = obsws(OBS_WS_HOST, OBS_PORT)                   #OBS_RECORD
-        obs_connected = False                               #OBS_RECORD
-        obs_recording = False                               #OBS_RECORD
-        obs_enabled = 1                                     #OBS_RECORD
+    if Config.GENERAL['AUTO_OBS'] is True:
+        OBS_WS_HOST = Config.GENERAL['OBS_HOST_IP']
+        OBS_PORT = Config.GENERAL['OBS_PORT']
+        ws = obsws(OBS_WS_HOST, OBS_PORT)
+        obs_connected = False
+        obs_recording = False
+        obs_enabled = 1
+    else:
+        obs_enabled = 0
 except:
     logger.info("No AUTO_OBS string under general in config.json file")
-    obs_enabled=0
+    obs_enabled = 0
 
 # Start HTTP server
 if __name__ == '__main__':
