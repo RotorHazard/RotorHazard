@@ -502,12 +502,8 @@ def render_database():
 @APP.route('/vrxstatus')
 @requires_auth
 def render_vrxstatus():
-    '''Route to database page.'''
-    if vrx_controller:
-        return render_template('vrxstatus.html', serverInfo=serverInfo, getOption=Options.get, __=__,
-            vrxstatus=vrx_controller.rx_data)
-    else:
-        return False
+    '''Route to VRx status debug page.'''
+    return render_template('vrxstatus.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
 # Documentation Viewer
 
