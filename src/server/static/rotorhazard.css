@@ -1925,6 +1925,45 @@ footer svg {
 	border-top: 0;
 }
 
+#cluster-status>ul {
+	list-style: none;
+	padding: 0;
+	margin: 1rem -0.5rem;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+#cluster-status>ul>li {
+	margin: 0.5rem;
+	padding: 0;
+	font-size: 0.9rem;
+	max-width: 30em;
+}
+
+.tinytable {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.tinytable dt {
+	width: 40%;
+	text-align: left;
+}
+
+.tinytable dd {
+	width: calc(60% - 1em);
+	margin: 0 0 1em 0;
+	text-align: right;
+}
+
+@media(min-width: 20em) {
+	#cluster-status>ul>li {
+		flex: 1 0 20em;
+	}
+}
+
+
 /* ************* */
 /* Print Styling */
 /* ************* */

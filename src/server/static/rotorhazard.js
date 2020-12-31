@@ -1335,7 +1335,9 @@ jQuery(document).ready(function($){
 
 	// load needed data from server when required
 	socket.on('load_all', function (msg) {
-		socket.emit('load_data', {'load_types': data_dependencies});
+		if (typeof(data_dependencies) != "undefined") {
+			socket.emit('load_data', {'load_types': data_dependencies});
+		}
 	});
 
 	// store language strings
