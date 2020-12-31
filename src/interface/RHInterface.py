@@ -12,6 +12,9 @@ from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
 READ_LAP_STATS = 0x05
+READ_LAP_PASS_STATS = 0x0D
+READ_LAP_EXTREMUMS = 0x0E
+READ_RHFEAT_FLAGS = 0x11    # read feature flags value
 # READ_FILTER_RATIO = 0x20    # node API_level>=10 uses 16-bit value
 READ_REVISION_CODE = 0x22   # read NODE_API_LEVEL and verification value
 READ_NODE_RSSI_PEAK = 0x23  # read 'nodeRssiPeak' value
@@ -19,15 +22,24 @@ READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
 READ_TIME_MILLIS = 0x33     # read current 'millis()' time value
+READ_MULTINODE_COUNT = 0x39  # read # of nodes handled by processor
+READ_CURNODE_INDEX = 0x3A    # read index of current node for processor
 
 WRITE_FREQUENCY = 0x51      # Sets frequency (2 byte)
 # WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
+WRITE_CURNODE_INDEX = 0x7A  # write index of current node for processor
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
+JUMP_TO_BOOTLOADER = 0x7E   # jump to bootloader for flash update
 
 LAPSTATS_FLAG_CROSSING = 0x01  # crossing is in progress
 LAPSTATS_FLAG_PEAK = 0x02      # reported extremum is peak
+
+# features flags for value returned by READ_RHFEAT_FLAGS command
+RHFEAT_STM32_MODE = 0x0004      # STM 32-bit processor running multiple nodes
+RHFEAT_JUMPTO_BOOTLDR = 0x0008  # JUMP_TO_BOOTLOADER command supported
+RHFEAT_IAP_FIRMWARE = 0x0010    # in-application programming of firmware supported
 
 UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
@@ -132,6 +144,10 @@ class RHInterface(BaseHardwareInterface):
                     self.data_loggers.append(None)
             else:
                 logger.info("Node {0}: API_level={1}".format(node.index+1, node.api_level))
+            if node.api_level >= 32:
+                flags_val = self.get_value_16(node, READ_RHFEAT_FLAGS)
+                if flags_val:
+                    node.rhfeature_flags = flags_val
 
 
     def discover_nodes(self, *args, **kwargs):
@@ -146,6 +162,12 @@ class RHInterface(BaseHardwareInterface):
         if self.update_thread is None:
             self.log('Starting background thread')
             self.update_thread = gevent.spawn(self.update_loop)
+
+    def stop(self):
+        if self.update_thread:
+            self.log('Stopping background thread')
+            self.update_thread.kill(block=True, timeout=0.5)
+            self.update_thread = None
 
     def update_loop(self):
         while True:
@@ -169,7 +191,11 @@ class RHInterface(BaseHardwareInterface):
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
-                    if node.api_level >= 21:
+                    if node.api_level >= 32:
+                        data = node.read_block(self, READ_LAP_PASS_STATS, 8)
+                        if data != None:
+                            data.extend(node.read_block(self, READ_LAP_EXTREMUMS, 8))
+                    elif node.api_level >= 21:
                         data = node.read_block(self, READ_LAP_STATS, 16)
                     elif node.api_level >= 18:
                         data = node.read_block(self, READ_LAP_STATS, 19)
@@ -364,7 +390,8 @@ class RHInterface(BaseHardwareInterface):
                 success = True
             else:
                 retry_count = retry_count + 1
-                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node.index))
+                self.log('Value 8v Not Set (retry={0}): cmd={1}, val={2}, node={3}'.\
+                         format(retry_count, write_command, in_value, node.index+1))
 
         if out_value == None:
             out_value = in_value
@@ -382,7 +409,8 @@ class RHInterface(BaseHardwareInterface):
                 success = True
             else:
                 retry_count = retry_count + 1
-                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node.index))
+                self.log('Value 16v Not Set (retry={0}): cmd={1}, val={2}, node={3}'.\
+                         format(retry_count, write_command, in_value, node.index+1))
 
         if out_value == None:
             out_value = in_value
@@ -400,7 +428,8 @@ class RHInterface(BaseHardwareInterface):
                 success = True
             else:
                 retry_count = retry_count + 1
-                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node.index))
+                self.log('Value Not Set 32v (retry={0}): cmd={1}, val={2}, node={3}'.\
+                         format(retry_count, write_command, in_value, node.index+1))
 
         if out_value == None:
             out_value = in_value
@@ -415,7 +444,8 @@ class RHInterface(BaseHardwareInterface):
                 success = True
             else:
                 retry_count = retry_count + 1
-                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node.index))
+                self.log('Value 8 Not Set (retry={0}): cmd={1}, val={2}, node={3}'.\
+                         format(retry_count, write_command, in_value, node.index+1))
         return success
 
     def set_value_32(self, node, write_command, in_value):
@@ -427,7 +457,8 @@ class RHInterface(BaseHardwareInterface):
                 success = True
             else:
                 retry_count = retry_count + 1
-                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node.index))
+                self.log('Value 32 Not Set (retry={0}): cmd={1}, val={2}, node={3}'.\
+                         format(retry_count, write_command, in_value, node.index+1))
         return success
 
     def set_and_validate_value_rssi(self, node, write_command, read_command, in_value):
@@ -441,7 +472,6 @@ class RHInterface(BaseHardwareInterface):
             return self.get_value_8(node, command)
         else:
             return self.get_value_16(node, command)
-
 
     #
     # External functions for setting data
@@ -491,6 +521,13 @@ class RHInterface(BaseHardwareInterface):
         if node.api_level >= 14:
             self.set_value_8(node, FORCE_END_CROSSING, 0)
 
+    def jump_to_bootloader(self):
+        for node in self.nodes:
+            if (node.rhfeature_flags & RHFEAT_JUMPTO_BOOTLDR) != 0:
+                node.jump_to_bootloader(self)
+                return
+        self.log("Unable to find any nodes with jump-to-bootloader support")
+
     def inc_intf_read_block_count(self):
         self.intf_read_block_count += 1
 
@@ -517,8 +554,8 @@ class RHInterface(BaseHardwareInterface):
                       if self.intf_read_error_count > 0 else 0
         w_err_ratio = float(self.intf_write_error_count) / float(self.intf_write_block_count) \
                       if self.intf_write_block_count > 0 and self.intf_write_error_count > 0 else 0
-        if forceFlag or r_err_ratio >= self.intf_error_report_limit or \
-                                    w_err_ratio >= self.intf_error_report_limit:
+        if forceFlag or r_err_ratio > self.intf_error_report_limit or \
+                                    w_err_ratio > self.intf_error_report_limit:
             retStr = "CommErrors:"
             if forceFlag or self.intf_write_error_count > 0:
                 retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, \

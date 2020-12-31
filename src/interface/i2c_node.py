@@ -15,7 +15,7 @@ class I2CNode(Node):
         self.i2c_addr = addr
         self.i2c_helper = i2c_helper
 
-    def read_block(self, interface, command, size):
+    def read_block(self, interface, command, size, max_retries=MAX_RETRY_COUNT):
         '''
         Read i2c data given command, and data size.
         '''
@@ -23,7 +23,7 @@ class I2CNode(Node):
         success = False
         retry_count = 0
         data = None
-        while success is False and retry_count <= MAX_RETRY_COUNT:
+        while success is False and retry_count <= max_retries:
             try:
                 def _read():
                     self.io_request = monotonic()
@@ -40,7 +40,7 @@ class I2CNode(Node):
                 else:
                     # self.log('Invalid Checksum ({0}): {1}'.format(retry_count, data))
                     retry_count = retry_count + 1
-                    if retry_count <= MAX_RETRY_COUNT:
+                    if retry_count <= max_retries:
                         if retry_count > 1:  # don't log the occasional single retry
                             interface.log('Retry (checksum) in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
                     else:
@@ -50,7 +50,7 @@ class I2CNode(Node):
                 interface.log('Read Error: ' + str(err))
                 self.i2c_helper.i2c_end()
                 retry_count = retry_count + 1
-                if retry_count <= MAX_RETRY_COUNT:
+                if retry_count <= max_retries:
                     if retry_count > 1:  # don't log the occasional single retry
                         interface.log('Retry (IOError) in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
                 else:
@@ -89,6 +89,9 @@ class I2CNode(Node):
                     interface.log('Retry (IOError) limit reached in write_block:  addr={0} cmd={1} data={2} retry={3} ts={4}'.format(self.i2c_addr, command, data, retry_count, self.i2c_helper.i2c_timestamp))
                 interface.inc_intf_write_error_count()
         return success
+
+    def jump_to_bootloader(self, interface):
+        pass
 
 
 def discover(idxOffset, i2c_helper, *args, **kwargs):

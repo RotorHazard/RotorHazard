@@ -6,6 +6,9 @@ class Node:
         self.api_level = 0
         self.api_valid_flag = False
         self.index = -1
+        self.multi_node_index = -1
+        self.multi_curnode_index_holder = None
+        self.rhfeature_flags = 0
         self.frequency = 0
         self.current_rssi = 0
         self.node_peak_rssi = 0
