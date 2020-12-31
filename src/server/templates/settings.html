@@ -211,7 +211,7 @@
 			}
 		});
 		socket.on('environmental_data', function (msg) {
-			env_table_html = '';
+			var env_table_html = '';
 			for (i=0; i<msg.length; i++) {
 				var sensor = msg[i];
 				var name = Object.keys(sensor)[0];
