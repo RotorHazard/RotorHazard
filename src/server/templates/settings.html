@@ -266,10 +266,10 @@
 					properties.append('<dd><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></dd>');
 
 					properties.append('<dt>' + __('Latency') + ' / ' + __('last') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].modeIndicator + ' / ' + msg.slaves[i].lastLatencyMs + '</dd>');
+					properties.append('<dd>' + msg.slaves[i].modeIndicator + ' / ' + msg.slaves[i].lastLatencyMs + 'ms</dd>');
 
 					properties.append('<dt>' + __('min') + ' / ' + __('avg') + ' / ' + __('max') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].minLatencyMs + ' / ' + msg.slaves[i].avgLatencyMs + ' / ' + msg.slaves[i].maxLatencyMs + '</dd>');
+					properties.append('<dd>' + msg.slaves[i].minLatencyMs + ' / ' + msg.slaves[i].avgLatencyMs + ' / ' + msg.slaves[i].maxLatencyMs + ' ms</dd>');
 
 					properties.append('<dt>' + __('Disconnects') + '</dt>');
 					properties.append('<dd>' + msg.slaves[i].numDisconnects + '</dd>');
@@ -278,13 +278,13 @@
 					properties.append('<dd>' + msg.slaves[i].numContacts + '</dd>');
 
 					properties.append('<dt>' + __('Time Difference') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].timeDiffMs + '</dd>');
+					properties.append('<dd>' + msg.slaves[i].timeDiffMs + 'ms</dd>');
 
-					properties.append('<dt>' + __('Uptime (s)') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].upTimeSecs + '</dd>');
+					properties.append('<dt>' + __('Uptime') + '</dt>');
+					properties.append('<dd>' + msg.slaves[i].upTimeSecs + 's</dd>');
 
-					properties.append('<dt>' + __('Downtime (s)') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].downTimeSecs + '</dd>');
+					properties.append('<dt>' + __('Downtime') + '</dt>');
+					properties.append('<dd>' + msg.slaves[i].downTimeSecs + 's</dd>');
 
 					properties.append('<dt>' + __('Availability') + '</dt>');
 					properties.append('<dd>' + msg.slaves[i].availability + '%</dd>');
