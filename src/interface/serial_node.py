@@ -8,10 +8,12 @@ from monotonic import monotonic
 from Node import Node
 from RHInterface import READ_REVISION_CODE, READ_MULTINODE_COUNT, MAX_RETRY_COUNT, \
                         validate_checksum, calculate_checksum, pack_8, unpack_8, unpack_16, \
-                        WRITE_CURNODE_INDEX, READ_CURNODE_INDEX, JUMP_TO_BOOTLOADER
+                        WRITE_CURNODE_INDEX, READ_CURNODE_INDEX, READ_NODE_SLOTIDX, \
+                        JUMP_TO_BOOTLOADER
 
 BOOTLOADER_CHILL_TIME = 2 # Delay for USB to switch from bootloader to serial mode
 SERIAL_BAUD_RATES = [921600, 115200]
+DEF_S32BPILL_SERIAL_PORT = "/dev/serial0"
 
 logger = logging.getLogger(__name__)
 
@@ -169,12 +171,22 @@ class SerialNode(Node):
         except Exception as ex:
             self.node_log(interface, 'Error sending JUMP_TO_BOOTLOADER message to serial node {0}: {1}'.format(self.index+1, ex))
 
+    def read_node_slot_index(self):
+        # read node slot index (physical slot position of node on S32_BPill PCB)
+        try:
+            data = self.read_block(None, READ_NODE_SLOTIDX, 1, 1)
+            self.multi_node_slot_index = unpack_8(data) if data else -1
+        except Exception:
+            self.multi_node_slot_index = -1
 
-def discover(idxOffset, config, *args, **kwargs):
+
+def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
     nodes = []
-    config_ser_ports = getattr(config, 'SERIAL_PORTS', None)
+    config_ser_ports = getattr(config, 'SERIAL_PORTS', [])
+    if isS32BPillFlag and len(config_ser_ports) == 0:
+        config_ser_ports.append(DEF_S32BPILL_SERIAL_PORT)
+        logger.debug("Using default serial port ('{}') for S32_BPill board".format(DEF_S32BPILL_SERIAL_PORT))
     if config_ser_ports:
-        logger.info("Searching for serial nodes...")
         for index, comm in enumerate(config_ser_ports):
             rev_val = None
             baud_idx = 0
@@ -186,6 +198,7 @@ def discover(idxOffset, config, *args, **kwargs):
                 node = SerialNode(index+idxOffset, node_serial_obj)
                 multi_count = 1
                 try:               # handle serial multi-node processor
+                    # read NODE_API_LEVEL and verification value:
                     data = node.read_block(None, READ_REVISION_CODE, 2, 2, False)
                     rev_val = unpack_16(data) if data != None else None
                     if rev_val and (rev_val >> 8) == 0x25:
@@ -202,24 +215,32 @@ def discover(idxOffset, config, *args, **kwargs):
                     node_serial_obj.close()
                     baud_idx += 1
             if rev_val:
+                api_level = rev_val & 0xFF
                 if multi_count <= 1:
-                    logger.info("...Serial node {0} found at port {1}, baudrate={2}".format(\
-                                index+idxOffset+1, node.serial.name, node.serial.baudrate))
+                    logger.info("Serial node {} found at port '{}', API_level={}, baudrate={}".format(\
+                                index+idxOffset+1, node.serial.name, api_level, node.serial.baudrate))
+                    node.api_level = api_level
                     nodes.append(node)
                 else:
+                    logger.info("Serial multi-node found at port '{}', count={}, API_level={}, baudrate={}".\
+                                format(node.serial.name, multi_count, api_level, node.serial.baudrate))
                     node.multi_node_index = 0
                     curnode_index_holder = [-1]  # tracker for index of current node for processor
                     node.multi_curnode_index_holder = curnode_index_holder
-                    logger.info("...Serial (multi) node {0} found at port {1}, baudrate={2}".format(\
-                                index+idxOffset+1, node.serial.name, node.serial.baudrate))
+                    node.api_level = api_level
+                    node.read_node_slot_index()
+                    logger.debug("Serial (multi) node {} (slot={}) added for port '{}'".format(\
+                                 index+idxOffset+1, node.multi_node_slot_index+1, node.serial.name))
                     nodes.append(node)
                     for nIdx in range(1, multi_count):
                         idxOffset += 1
                         node = SerialNode(index+idxOffset, node_serial_obj)
                         node.multi_node_index = nIdx
                         node.multi_curnode_index_holder = curnode_index_holder
-                        logger.info("...Serial (multi) node {0} found at port {1}, baudrate={2}".format(\
-                                    index+idxOffset+1, node.serial.name, node.serial.baudrate))
+                        node.api_level = api_level
+                        node.read_node_slot_index()
+                        logger.debug("Serial (multi) node {} (slot={}) added for port '{}'".format(\
+                                     index+idxOffset+1, node.multi_node_slot_index+1, node.serial.name))
                         nodes.append(node)
             else:
                 logger.error('Unable to fetch revision code for serial node at "{0}"'.format(comm))

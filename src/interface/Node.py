@@ -8,6 +8,7 @@ class Node:
         self.index = -1
         self.multi_node_index = -1
         self.multi_curnode_index_holder = None
+        self.multi_node_slot_index = -1
         self.rhfeature_flags = 0
         self.frequency = 0
         self.current_rssi = 0

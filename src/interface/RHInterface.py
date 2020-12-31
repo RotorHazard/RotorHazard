@@ -5,8 +5,7 @@ import logging
 import gevent # For threads and timing
 from monotonic import monotonic # to capture read timing
 
-from Plugins import Plugins, search_modules
-from Node import Node
+from Plugins import Plugins
 from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
@@ -14,18 +13,19 @@ READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
 READ_LAP_STATS = 0x05
 READ_LAP_PASS_STATS = 0x0D
 READ_LAP_EXTREMUMS = 0x0E
-READ_RHFEAT_FLAGS = 0x11    # read feature flags value
+READ_RHFEAT_FLAGS = 0x11     # read feature flags value
 # READ_FILTER_RATIO = 0x20    # node API_level>=10 uses 16-bit value
-READ_REVISION_CODE = 0x22   # read NODE_API_LEVEL and verification value
-READ_NODE_RSSI_PEAK = 0x23  # read 'nodeRssiPeak' value
+READ_REVISION_CODE = 0x22    # read NODE_API_LEVEL and verification value
+READ_NODE_RSSI_PEAK = 0x23   # read 'nodeRssiPeak' value
 READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
-READ_TIME_MILLIS = 0x33     # read current 'millis()' time value
+READ_TIME_MILLIS = 0x33      # read current 'millis()' time value
 READ_MULTINODE_COUNT = 0x39  # read # of nodes handled by processor
 READ_CURNODE_INDEX = 0x3A    # read index of current node for processor
+READ_NODE_SLOTIDX = 0x3C     # read node slot index (for multi-node setup)
 
-WRITE_FREQUENCY = 0x51      # Sets frequency (2 byte)
+WRITE_FREQUENCY = 0x51       # Sets frequency (2 byte)
 # WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
@@ -120,14 +120,6 @@ class RHInterface(BaseHardwareInterface):
             node.frequency = self.get_value_16(node, READ_FREQUENCY)
             if not node.frequency:
                 raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
-            # read NODE_API_LEVEL and verification value:
-            rev_val = self.get_value_16(node, READ_REVISION_CODE)
-            if not rev_val:
-                raise RuntimeError('Unable to read revision code from node {0}'.format(node.index+1))
-            if (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
-                node.api_level = rev_val & 0xFF
-            else:
-                node.api_level = 0  # if verify failed (fn not defined) then set API level to 0
             node.init()
             if node.api_level >= 10:
                 node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
@@ -135,7 +127,9 @@ class RHInterface(BaseHardwareInterface):
                     node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
                 node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
                 node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
-                logger.info("Node {0}: API_level={1}, Freq={2}, EnterAt={3}, ExitAt={4}".format(node.index+1, node.api_level, node.frequency, node.enter_at_level, node.exit_at_level))
+                if node.multi_node_index < 0:  # (multi-nodes will always have default values)
+                    logger.debug("Node {}: Freq={}, EnterAt={}, ExitAt={}".format(\
+                                 node.index+1, node.frequency, node.enter_at_level, node.exit_at_level))
 
                 if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
                     self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
@@ -143,7 +137,7 @@ class RHInterface(BaseHardwareInterface):
                 else:
                     self.data_loggers.append(None)
             else:
-                logger.info("Node {0}: API_level={1}".format(node.index+1, node.api_level))
+                logger.warn("Node {} has obsolete API_level ({})".format(node.index+1, node.api_level))
             if node.api_level >= 32:
                 flags_val = self.get_value_16(node, READ_RHFEAT_FLAGS)
                 if flags_val:

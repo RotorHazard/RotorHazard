@@ -3,7 +3,8 @@ import logging
 from monotonic import monotonic
 
 from Node import Node
-from RHInterface import READ_ADDRESS, MAX_RETRY_COUNT, validate_checksum, calculate_checksum
+from RHInterface import READ_ADDRESS, READ_REVISION_CODE, MAX_RETRY_COUNT,\
+                        validate_checksum, calculate_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -94,19 +95,33 @@ class I2CNode(Node):
         pass
 
 
-def discover(idxOffset, i2c_helper, *args, **kwargs):
-    logger.info("Searching for I2C nodes...")
+def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
+    if not isS32BPillFlag:
+        logger.info("Searching for I2C nodes...")
     nodes = []
     # Scans all i2c_addrs to populate nodes array
     i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
     for index, addr in enumerate(i2c_addrs):
         try:
             i2c_helper.i2c.read_i2c_block_data(addr, READ_ADDRESS, 1)
-            logger.info("...I2C node {0} found at address {1}".format(index+idxOffset+1, addr))
             node = I2CNode(index+idxOffset, addr, i2c_helper) # New node instance
+            # read NODE_API_LEVEL and verification value:
+            rev_val = node.get_value_16(node, READ_REVISION_CODE)
+            if rev_val:
+                if (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
+                    node.api_level = rev_val & 0xFF
+                else:
+                    logger.warn("Unable to verify revision code from node {}".format(index+idxOffset+1))
+            else:
+                logger.warn("Unable to read revision code from node {}".format(index+idxOffset+1))
+            logger.info("...I2C node {} found at address {}, API_level={}".format(\
+                                    index+idxOffset+1, addr, node.api_level))
             nodes.append(node) # Add new node to RHInterface
-        except IOError as err:
-            logger.info("...No I2C node at address {0}".format(addr))
+        except IOError:
+            if not isS32BPillFlag:
+                logger.info("...No I2C node at address {0}".format(addr))
         i2c_helper.i2c_end()
         i2c_helper.i2c_sleep()
+        if isS32BPillFlag and len(nodes) == 0:
+            break
     return nodes

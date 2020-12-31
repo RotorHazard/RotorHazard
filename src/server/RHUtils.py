@@ -62,6 +62,9 @@ def idAndLogSystemInfo():
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
 
+def isSysRaspberryPi():
+    return IS_SYS_RASPBERRY_PI
+
 # Returns "primary" IP address for local host.  Based on:
 #  https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib
 #  and https://stackoverflow.com/questions/24196932/how-can-i-get-the-ip-address-from-nic-in-python

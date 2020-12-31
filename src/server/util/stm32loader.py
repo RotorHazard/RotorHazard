@@ -27,6 +27,7 @@ import operator
 import struct
 import sys
 import time
+import traceback
 from functools import reduce
 
 CHIP_IDS = {
@@ -735,8 +736,8 @@ def is_sys_raspberry_pi():
             pass
         if modelStr and "raspberry pi" in modelStr.lower():
             return True
-    except Exception:
-        print("Error in 'is_sys_raspberry_pi()'")
+    except Exception as ex:
+        print("Error in 'is_sys_raspberry_pi()': " + str(ex))
     return False
 
 def reset_to_boot_0():
@@ -755,8 +756,10 @@ def reset_to_boot_0():
         GPIO.output(GPIO_BOOT0_PIN, GPIO.LOW)
         GPIO.setup(GPIO_RESET_PIN, GPIO.IN)
         GPIO.setup(GPIO_BOOT0_PIN, GPIO.IN)
-    except Exception:
-        print("Error in 'reset_to_boot_0()'")
+    except ImportError as ex:
+        print("ImportError in 'reset_to_boot_0()': " + str(ex))
+    except Exception as ex:
+        print("Error in 'reset_to_boot_0()': " + str(ex))
 
 def reset_to_run():
     try:
@@ -770,8 +773,10 @@ def reset_to_run():
         GPIO.output(GPIO_RESET_PIN, GPIO.HIGH)
         time.sleep(0.1)
         GPIO.setup(GPIO_RESET_PIN, GPIO.IN)
-    except Exception:
-        print("Error in 'reset_to_run()'")
+    except ImportError as ex:
+        print("ImportError in 'reset_to_run()': " + str(ex))
+    except Exception as ex:
+        print("Error in 'reset_to_run()': " + str(ex))
 
 def download_to_buffer(src_url):
     u = urllib2.urlopen(src_url)
@@ -783,114 +788,131 @@ def download_to_buffer(src_url):
     return u.read(src_size)
 
 
-if __name__ == '__main__':
-    
-    portStr = sys.argv[1] if len(sys.argv) > 1 else "/dev/serial0"
-    srcStr = sys.argv[2] if len(sys.argv) > 2 else  "http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin"
-    
-    binaryData = None
-    if srcStr.startswith("http://") or srcStr.startswith("https://") or srcStr.startswith("ftp://"):
-        binaryData = bytearray(download_to_buffer(srcStr))
+def flash_file_to_stm32(portStr, srcStr):
+    try:
 
-    elif len(srcStr) > 0:
-        with open(srcStr, "rb") as read_file:
-            binaryData = bytearray(read_file.read())
-    
-    verboseFlag = False
-    memoryAddress = 0x08000000
-    goAddress = 0x08000000
-    family = "F1"
-    
-    isRPiFlag = is_sys_raspberry_pi()
-    
-    print("stm32loader using port %s" % portStr)
-    serialObj = serial.Serial(port=None, baudrate=57600, parity=serial.PARITY_EVEN, timeout=3, \
-                              rtscts=False, dsrdtr=False)
-    serialObj.setDTR(0)  # clear in case line is tied to node-processor reset
-    serialObj.setRTS(0)
-    serialObj.setPort(portStr)
-    serialObj.open()  # open port (now that DTR is configured for no change)
-    
-    bootloaderObj = Stm32Bootloader(serialObj, verbosity=5)
-    
-    if isRPiFlag:
-        bootloaderObj.SYNCHRONIZE_ATTEMPTS = 1
-        # first try to see if processor already in bootloader mode
+        binaryData = None
         try:
-            bootloaderObj.reset_from_system_memory()
-            activatedFlag = True
-            print("Activated bootloader")
-        except CommandError:
-            activatedFlag = False
-        if not activatedFlag:
-            # try to reset into bootloader mode via RPi GPIO outputs
-            bootloaderObj.SYNCHRONIZE_ATTEMPTS = 2
-            print("Resetting BPill with Boot0 via GPIO")
-            reset_to_boot_0()
+            if srcStr.startswith("http://") or srcStr.startswith("https://") or srcStr.startswith("ftp://"):
+                binaryData = bytearray(download_to_buffer(srcStr))
+            elif len(srcStr) > 0:
+                with open(srcStr, "rb") as read_file:
+                    binaryData = bytearray(read_file.read())
+        except IOError as ex:
+            print(("Error loading file: " + str(ex)), file=sys.stderr)
+            return False
+        
+        verboseFlag = False
+        memoryAddress = 0x08000000
+        goAddress = 0x08000000
+        family = "F1"
+        
+        isRPiFlag = is_sys_raspberry_pi()
+        
+        print("stm32loader using port %s" % portStr)
+        try:
+            serialObj = serial.Serial(port=None, baudrate=57600, parity=serial.PARITY_EVEN, timeout=3, \
+                                      rtscts=False, dsrdtr=False)
+            serialObj.setDTR(0)  # clear in case line is tied to node-processor reset
+            serialObj.setRTS(0)
+            serialObj.setPort(portStr)
+            serialObj.open()  # open port (now that DTR is configured for no change)
+        except IOError as ex:
+            print(("Error opening serial port: " + str(ex)), file=sys.stderr)
+            return False
+        
+        bootloaderObj = Stm32Bootloader(serialObj, verbosity=5)
+        
+        if isRPiFlag:
+            bootloaderObj.SYNCHRONIZE_ATTEMPTS = 1
+            # first try to see if processor already in bootloader mode
+            try:
+                bootloaderObj.reset_from_system_memory()
+                activatedFlag = True
+                print("Activated bootloader")
+            except CommandError:
+                activatedFlag = False
+            if not activatedFlag:
+                # try to reset into bootloader mode via RPi GPIO outputs
+                bootloaderObj.SYNCHRONIZE_ATTEMPTS = 2
+                print("Resetting BPill with Boot0 via GPIO")
+                reset_to_boot_0()
+                try:
+                    print("Activating bootloader")
+                    bootloaderObj.reset_from_system_memory()
+                except CommandError:
+                    print("Can't init into bootloader - ensure that Boot0 jumper is installed and RH server is not running", file=sys.stderr)
+                    print("Resetting BPill via GPIO")
+                    reset_to_run()
+                    return False
+        else:
             try:
                 print("Activating bootloader")
                 bootloaderObj.reset_from_system_memory()
             except CommandError:
-                print("Can't init into bootloader - ensure that BOOT0 jumper is installed and RH server is not running", file=sys.stderr)
-                print("Resetting BPill via GPIO")
-                reset_to_run()
-                sys.exit(1)
-
-    else:
-        try:
-            print("Activating bootloader")
-            bootloaderObj.reset_from_system_memory()
-        except CommandError:
-            print("Can't init into bootloader. Ensure that BOOT0 is enabled and reset the device.", file=sys.stderr)
-            bootloaderObj.reset_from_flash()
-            sys.exit(1)
-
-    successFlag = False
-    try:
-        bootVersion = bootloaderObj.get()
-        print("Device bootloader version: 0x%X" % bootVersion)
-        deviceId = bootloaderObj.get_id()
-        print("Device chip id: 0x%X (%s)" % (deviceId, CHIP_IDS.get(deviceId, "Unknown")))
-        successFlag = True
-        
-        try:
-            if family != "F4":
-                flash_size = bootloaderObj.get_flash_size(family)
-                device_uid = bootloaderObj.get_uid(family)
-            else:
-                flash_size, device_uid = bootloaderObj.get_flash_size_and_uid_f4()
-            device_uid_string = bootloaderObj.format_uid(device_uid)
-            print("Device UID: %s" % device_uid_string)
-            print("Flash size: %d KiB" % flash_size)
-        except CommandError as e:
-            print("Error reading chip family data: " + str(e))
-        
-    except Exception as ex:
-        print("Unable to communicate with device: %s" % ex)
-
-    if successFlag:
-        if binaryData:
-            if verboseFlag:
-                bootloaderObj.verbosity = 10
-            
-            print("Erasing memory")
-            bootloaderObj.erase_memory()
-
-            bootloaderObj.write_memory_data(memoryAddress, binaryData)
+                print("Can't init into bootloader - ensure that Boot0 is enabled and reset the device.", file=sys.stderr)
+                bootloaderObj.reset_from_flash()
+                return False
     
-            read_data = bootloaderObj.read_memory_data(memoryAddress, len(binaryData))
+        successFlag = False
+        try:
+            bootVersion = bootloaderObj.get()
+            print("Device bootloader version: 0x%X" % bootVersion)
+            deviceId = bootloaderObj.get_id()
+            print("Device chip id: 0x%X (%s)" % (deviceId, CHIP_IDS.get(deviceId, "Unknown")))
+            successFlag = True
+            
             try:
-                Stm32Bootloader.verify_data(read_data, binaryData)
-                print("Verification OK")
-            except DataMismatchError as e:
-                successFlag = False
-                print("Verification FAILED: %s" % e, file=sys.stdout)
+                if family != "F4":
+                    flash_size = bootloaderObj.get_flash_size(family)
+                    device_uid = bootloaderObj.get_uid(family)
+                else:
+                    flash_size, device_uid = bootloaderObj.get_flash_size_and_uid_f4()
+                device_uid_string = bootloaderObj.format_uid(device_uid)
+                print("Device UID: %s" % device_uid_string)
+                print("Flash size: %d KiB" % flash_size)
+            except CommandError as e:
+                print("Error reading chip family data: " + str(e))
+            
+        except Exception as ex:
+            print("Unable to communicate with device: %s" % ex)
+    
+        if successFlag:
+            if binaryData:
+                if verboseFlag:
+                    bootloaderObj.verbosity = 10
                 
-            if successFlag and goAddress >= 0:
-                bootloaderObj.go(goAddress)
+                print("Erasing memory")
+                bootloaderObj.erase_memory()
+    
+                bootloaderObj.write_memory_data(memoryAddress, binaryData)
+        
+                read_data = bootloaderObj.read_memory_data(memoryAddress, len(binaryData))
+                try:
+                    Stm32Bootloader.verify_data(read_data, binaryData)
+                    print("Verification OK")
+                except DataMismatchError as e:
+                    successFlag = False
+                    print("Verification FAILED: %s" % e, file=sys.stdout)
+                    
+                if successFlag and goAddress >= 0:
+                    bootloaderObj.go(goAddress)
+    
+        serialObj.close()
+    
+        if isRPiFlag:
+            print("Resetting BPill via GPIO")
+            reset_to_run()
+    
+        return successFlag
 
-    serialObj.close()
+    except:
+        traceback.print_exc()
+        return False
 
-    if isRPiFlag:
-        print("Resetting BPill via GPIO")
-        reset_to_run()
+
+if __name__ == '__main__':
+    portStr = sys.argv[1] if len(sys.argv) > 1 else "/dev/serial0"
+    srcStr = sys.argv[2] if len(sys.argv) > 2 else  "http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin"
+    successFlag = flash_file_to_stm32(portStr, srcStr)
+    sys.exit(0 if successFlag else 1)

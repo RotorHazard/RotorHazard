@@ -68,6 +68,8 @@ from RHUtils import catchLogExceptionsWrapper
 from Language import __
 from ClusterNodeSet import SlaveNode, ClusterNodeSet
 from util.SendAckQueue import SendAckQueue
+import RHGPIO
+import util.stm32loader as stm32loader
 
 # Events manager
 from eventmanager import Evt, EventManager
@@ -5311,6 +5313,9 @@ RHUtils.idAndLogSystemInfo()
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
 
+logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspberryPi(), \
+                                        RHGPIO.isRealRPiGPIO(), RHGPIO.isS32BPillBoard()))
+
 # log results of module initializations
 Config.logInitResultMessage()
 Language.logInitResultMessage()
@@ -5322,6 +5327,10 @@ if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
 
 logger.info("Using log file: {0}".format(Current_log_path_name))
 
+if RHUtils.isSysRaspberryPi() and RHGPIO.isS32BPillBoard():
+    logger.debug("Resetting S32_BPill processor")
+    stm32loader.reset_to_run()
+
 hardwareHelpers = {}
 for helper in search_modules(suffix='helper'):
     try:
@@ -5332,7 +5341,8 @@ for helper in search_modules(suffix='helper'):
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
     interfaceModule = importlib.import_module(interface_type + 'Interface')
-    INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
+    INTERFACE = interfaceModule.get_hardware_interface(\
+                    config=Config, isS32BPillFlag=RHGPIO.isS32BPillBoard(), **hardwareHelpers)
 except (ImportError, RuntimeError, IOError) as ex:
     logger.info('Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex))
 if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
