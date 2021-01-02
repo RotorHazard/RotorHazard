@@ -7,7 +7,7 @@
 		"CORS_ALLOWED_HOSTS": "*"
 	},
 	"HARDWARE": {
-		"I2C_BUS": 1,
+		"I2C_BUS": 1
 	},
 	"SENSORS": {
 	},

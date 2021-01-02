@@ -57,6 +57,8 @@ try:
 
     GENERAL.update(ExternalConfig['GENERAL'])
 
+    if 'HARDWARE' in ExternalConfig:
+        HARDWARE.update(ExternalConfig['HARDWARE'])
     if 'LOGGING' in ExternalConfig:
         LOGGING.update(ExternalConfig['LOGGING'])
     if 'LED' in ExternalConfig:
