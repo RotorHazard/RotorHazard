@@ -1939,10 +1939,19 @@ footer svg {
 	padding: 0;
 	font-size: 0.9rem;
 	max-width: 30em;
+	padding: 0.5rem 0.5rem 0;
+	border: solid 0.0625em #d1d3d4;
+	border-radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+	#cluster-status>ul>li {
+		border-color: #4c4c4c;
+	}
 }
 
 .tinytable {
-	margin: 1em 0;
+	margin: 0;
 	padding: 0;
 	list-style: none;
 }
