@@ -1963,12 +1963,12 @@ footer svg {
 
 .tinytable .data {
 	text-align: left;
-	margin: 0 0 1em 1em;
+	margin: 0 0 0.25em 1em;
 }
 
 @media(min-width: 20em) {
 	#cluster-status>ul>li {
-		flex: 1 0 20em;
+		flex: 1 0 23em;
 	}
 
 	.tinytable>li {
@@ -1979,7 +1979,7 @@ footer svg {
 
 	.tinytable .label {
 		flex: 1 1 auto;
-		margin-bottom: 0.5em;
+		margin-bottom: 0.25em;
 	}
 
 	.tinytable .data {
