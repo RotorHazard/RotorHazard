@@ -1942,24 +1942,40 @@ footer svg {
 }
 
 .tinytable {
-	display: flex;
-	flex-wrap: wrap;
+	margin: 1em 0;
+	padding: 0;
+	list-style: none;
 }
 
-.tinytable dt {
-	width: 40%;
+.tinytable .label {
 	text-align: left;
+	font-weight: bold;
 }
 
-.tinytable dd {
-	width: calc(60% - 1em);
-	margin: 0 0 1em 0;
-	text-align: right;
+.tinytable .data {
+	text-align: left;
+	margin: 0 0 1em 1em;
 }
 
 @media(min-width: 20em) {
 	#cluster-status>ul>li {
 		flex: 1 0 20em;
+	}
+
+	.tinytable>li {
+		display: flex;
+		flex-wrap: wrap;
+		margin-bottom: 0.5em;
+	}
+
+	.tinytable .label {
+		flex: 1 1 auto;
+		margin-bottom: 0.5em;
+	}
+
+	.tinytable .data {
+		flex: 1 1 auto;
+		text-align: right;
 	}
 }
 

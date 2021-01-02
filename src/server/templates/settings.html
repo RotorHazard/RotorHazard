@@ -260,37 +260,32 @@
 
 				for (i=0; i < msg.slaves.length; i++) {
 					var item = $('<li>');
-					var properties = $('<dl class="cluster tinytable">');
+					var properties = $('<ul class="cluster tinytable">');
 
-					properties.append('<dt>' + __('Address') + '</dt>');
-					properties.append('<dd><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></dd>');
+					var property = $('<li>');
+					property.append('<div class="label">' + __('Address') + ' / ' + __('Type') + '</div>');
+					property.append('<div class="data"><a href="' + msg.slaves[i].adivress + '">' + msg.slaves[i].adivress + '</a> / ' + msg.slaves[i].modeIndicator + '</div>');
+					properties.append(property);
 
-					properties.append('<dt>' + __('Latency') + ' / ' + __('last') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].modeIndicator + ' / ' + msg.slaves[i].lastLatencyMs + 'ms</dd>');
+					property = $('<li>');
+					property.append('<div class="label">' + __('Latency (ms)') + ': ' + __('last') + ' / ' + __('min') + ' / ' + __('avg') + ' / ' + __('max') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].lastLatencyMs + ' / ' + msg.slaves[i].minLatencyMs + ' / ' + msg.slaves[i].avgLatencyMs + ' / ' + msg.slaves[i].maxLatencyMs + '</div>');
+					properties.append(property);
 
-					properties.append('<dt>' + __('min') + ' / ' + __('avg') + ' / ' + __('max') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].minLatencyMs + ' / ' + msg.slaves[i].avgLatencyMs + ' / ' + msg.slaves[i].maxLatencyMs + ' ms</dd>');
+					property = $('<li>');
+					property.append('<div class="label">' + __('Disconnects') + ' / ' + __('Contacts') + ' / ' + __('Time Difference') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].numDisconnects + ' / ' + msg.slaves[i].numContacts + ' / ' + msg.slaves[i].timeDiffMs + 'ms</div>');
+					properties.append(property);
 
-					properties.append('<dt>' + __('Disconnects') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].numDisconnects + '</dd>');
+					property = $('<li>');
+					property.append('<div class="label">' + __('Uptime') + ' / ' + __('Downtime') + ' / ' + __('Availability') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].upTimeSecs + 's / ' + msg.slaves[i].downTimeSecs + 's / ' + msg.slaves[i].availability + '%</div>');
+					properties.append(property);
 
-					properties.append('<dt>' + __('Contacts') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].numContacts + '</dd>');
-
-					properties.append('<dt>' + __('Time Difference') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].timeDiffMs + 'ms</dd>');
-
-					properties.append('<dt>' + __('Uptime') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].upTimeSecs + 's</dd>');
-
-					properties.append('<dt>' + __('Downtime') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].downTimeSecs + 's</dd>');
-
-					properties.append('<dt>' + __('Availability') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].availability + '%</dd>');
-
-					properties.append('<dt>' + __('Last Contact') + '</dt>');
-					properties.append('<dd>' + msg.slaves[i].last_contact + '</dd>');
+					property = $('<li>');
+					property.append('<div class="label">' + __('Last Contact') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].last_contact + '</div>');
+					properties.append(property);
 
 					item.append(properties);
 					cluster_body.append(item);
