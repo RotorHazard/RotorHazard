@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 CONFIG_FILE_NAME = 'config.json'
 
 GENERAL = {}
+HARDWARE = {}
 SENSORS = {}
 LED = {}
 SERIAL_PORTS = []
@@ -32,6 +33,9 @@ LED['INVERTED_PANEL_ROWS'] = False
 VRX_CONTROL['HOST']    = 'localhost'     # MQTT broker IP Address
 VRX_CONTROL['ENABLED'] = False
 VRX_CONTROL['OSD_LAP_HEADER'] = 'L'
+
+# hardware default configurations
+HARDWARE['I2C_BUS'] = 1
 
 # other default configurations
 GENERAL['HTTP_PORT'] = 5000

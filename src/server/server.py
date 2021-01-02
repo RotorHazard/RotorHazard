@@ -5305,7 +5305,7 @@ logger.info("Using log file: {0}".format(Current_log_path_name))
 hardwareHelpers = {}
 for helper in search_modules(suffix='helper'):
     try:
-        hardwareHelpers[helper.__name__] = helper.create()
+        hardwareHelpers[helper.__name__] = helper.create(Config)
     except Exception as ex:
         logger.warn("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 

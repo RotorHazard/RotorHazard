@@ -6,6 +6,9 @@
 		"DEBUG": false,
 		"CORS_ALLOWED_HOSTS": "*"
 	},
+	"HARDWARE": {
+		"I2C_BUS": 1,
+	},
 	"SENSORS": {
 	},
 	"SERIAL_PORTS": [],
