@@ -210,6 +210,7 @@
 				}
 			}
 		});
+
 		socket.on('environmental_data', function (msg) {
 			var env_table_html = '';
 			for (i=0; i<msg.length; i++) {
@@ -247,33 +248,52 @@
 				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
+				$('#env-data-table').html('<h3>' + __('Environment Status') + '</h3><table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
 			}
 		});
+
 		socket.on('cluster_status', function (msg) {
-			cluster_table_html = '';
+			$('#cluster-status').empty();
+
 			if (msg.slaves && msg.slaves.length > 0) {
-				cluster_table_html += '<tr><th style="text-align:center">' + __('Address') + '</th><th>' + __('Latency:') + '</th><th>' + __('min') + '</th><th>' + __('avg') + '</th><th>' + __('max') + '</th><th>' + __('last') + '</th><th>' + __('Disconns') + '</th><th>' + __('Contacts') + '</th><th>' + __('TimeDiff') + '</th><th>' + __('UpSecs') + '</th><th>' + __('DownSecs') + '</th><th>' + __('Avail') + '</th><th>' + __('LastContact') + '</th></tr>';
+				var cluster_header = $('<h3>' + __('Cluster Status') + '</h3>');
+
+				var cluster_body = $('<ul>');
+
 				for (i=0; i < msg.slaves.length; i++) {
-					cluster_table_html += '<tr>';
-					cluster_table_html += '<td style="text-align:center"><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
-					cluster_table_html += '<td style="text-align:left">' + msg.slaves[i].modeIndicator + '</td>';
-					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].minLatencyMs + '</td>';
-					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].avgLatencyMs + '</td>';
-					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].maxLatencyMs + '</td>';
-					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].lastLatencyMs + '</td>';
-					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numDisconnects + '</td>';
-					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numContacts + '</td>';
-					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].timeDiffMs + '</td>';
-					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].upTimeSecs + '</td>';
-					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].downTimeSecs + '</td>';
-					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].availability + '%</td>';
-					cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].last_contact + '</td>';
-					cluster_table_html += '</tr>';
+					var item = $('<li>');
+					var properties = $('<ul class="cluster tinytable">');
+
+					var property = $('<li>');
+					property.append('<div class="label">' + __('Address') + ' / ' + __('Type') + '</div>');
+					property.append('<div class="data"><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a> / ' + msg.slaves[i].modeIndicator + '</div>');
+					properties.append(property);
+
+					property = $('<li>');
+					property.append('<div class="label">' + __('Latency') + ': ' + __('last') + ' / ' + __('min') + ' / ' + __('avg') + ' / ' + __('max') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].lastLatencyMs + ' / ' + msg.slaves[i].minLatencyMs + ' / ' + msg.slaves[i].avgLatencyMs + ' / ' + msg.slaves[i].maxLatencyMs + ' ' + __('ms') + '</div>');
+					properties.append(property);
+
+					property = $('<li>');
+					property.append('<div class="label">' + __('Disconnects') + ' / ' + __('Contacts') + ' / ' + __('Time Diff') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].numDisconnects + ' / ' + msg.slaves[i].numContacts + ' / ' + msg.slaves[i].timeDiffMs + ' ' + __('ms') + '</div>');
+					properties.append(property);
+
+					property = $('<li>');
+					property.append('<div class="label">' + __('Up') + ' / ' + __('Down') + ' / ' + __('Availability') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].upTimeSecs + __('s') + ' / ' + msg.slaves[i].downTimeSecs + __('s') + ' / ' + msg.slaves[i].availability + '%</div>');
+					properties.append(property);
+
+					property = $('<li>');
+					property.append('<div class="label">' + __('Last Contact') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].last_contact + '</div>');
+					properties.append(property);
+
+					item.append(properties);
+					cluster_body.append(item);
 				}
-			}
-			if (cluster_table_html) {
-				$('#cluster-status-table').html(__('Cluster Status:') + '<table>' + cluster_table_html + '</table><br />');
+
+				$('#cluster-status').append(cluster_header).append(cluster_body);
 			}
 		});
 
@@ -2644,10 +2664,6 @@
 		<h2>{{ __('System') }}</h2>
 	</div>
 	<div class="panel-content">
-		<div id="env-data-table" class="control-set">
-		</div>
-		<div id="cluster-status-table" class="control-set">
-		</div>
 		<div class="control-set">
 			<button data-mfp-src="#shutdown_confirm" class="btn-danger open-mfp-popup">{{ __('Shut Down') }}</button>
 			<button data-mfp-src="#reboot_confirm" class="btn-danger open-mfp-popup">{{ __('Reboot') }}</button>
@@ -2725,6 +2741,19 @@
 		<div class="control-set">
 			<div class="swatch primary-color">{{ __('Primary Color') }}</div>
 			<div class="swatch secondary-color">{{ __('Secondary Color') }}</div>
+		</div>
+	</div>
+</div>
+
+<!-- Status -->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Status') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div id="cluster-status" class="control-set">
+		</div>
+		<div id="env-data-table" class="control-set">
 		</div>
 	</div>
 </div>

@@ -1925,6 +1925,70 @@ footer svg {
 	border-top: 0;
 }
 
+#cluster-status>ul {
+	list-style: none;
+	padding: 0;
+	margin: 1rem -0.5rem;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+#cluster-status>ul>li {
+	margin: 0.5rem;
+	padding: 0;
+	font-size: 0.9rem;
+	max-width: 30em;
+	padding: 0.5rem 0.5rem 0;
+	border: solid 0.0625em #d1d3d4;
+	border-radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+	#cluster-status>ul>li {
+		border-color: #4c4c4c;
+	}
+}
+
+.tinytable {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.tinytable .label {
+	text-align: left;
+	font-weight: bold;
+}
+
+.tinytable .data {
+	text-align: left;
+	margin: 0 0 0.25em 1em;
+}
+
+@media(min-width: 20em) {
+	#cluster-status>ul>li {
+		flex: 1 0 23em;
+	}
+
+	.tinytable>li {
+		display: flex;
+		flex-wrap: wrap;
+		margin-bottom: 0.5em;
+	}
+
+	.tinytable .label {
+		flex: 1 1 auto;
+		margin-bottom: 0.25em;
+	}
+
+	.tinytable .data {
+		flex: 1 1 auto;
+		text-align: right;
+	}
+}
+
+
 /* ************* */
 /* Print Styling */
 /* ************* */
