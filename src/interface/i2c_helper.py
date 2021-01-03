@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 class I2CBus(object):
-    def __init__(self):
-        self.i2c = smbus.SMBus(1) # Start i2c bus
+    def __init__(self, bus):
+        self.i2c = smbus.SMBus(bus) # Start i2c bus
         self.i2c_rlock_obj = gevent.lock.RLock()  # for limiting i2c to 1 read/write at a time
         self.i2c_timestamp = -1
 
@@ -44,5 +44,7 @@ class I2CBus(object):
             self.i2c_end()
 
 
-def create():
-    return I2CBus()
+def create(config):
+    bus = config.HARDWARE['I2C_BUS']
+    logger.debug('Starting I2C on bus {0}'.format(bus))
+    return I2CBus(bus)
