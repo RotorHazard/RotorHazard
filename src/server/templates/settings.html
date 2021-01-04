@@ -1873,6 +1873,10 @@
 		<p><strong>{{ __('No configuration file was loaded. Falling back to default configuration.') | safe }}</strong></p>
 		<p>{{ __('Copy <em>server/config-dist.json</em> to <em>server/config.json</em> and then update settings for your server port number, admin username/password, and LED configuration.') | safe }}</p>
 	</div>
+{% elif note_message_text %}
+	<div class="config-none">
+		<p><strong>Note: </strong>{{ note_message_text | safe }}</p>
+	</div>
 {% endif %}
 
 <!--Client Messaging-->
@@ -2669,6 +2673,9 @@
 			<button data-mfp-src="#reboot_confirm" class="btn-danger open-mfp-popup">{{ __('Reboot') }}</button>
 			<a href="/hardwarelog" class="debug button-like">{{ __('Server Log') }}</a>
 			<button id="download_logs">{{ __('Download Logs') }}</button>
+			{% if node_fw_updatable %}
+			<a href="/updatenodes" class="debug button-like">{{ __('Update Nodes') }}</a>
+			{% endif %}
 		</div>
 
 		<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide popup">

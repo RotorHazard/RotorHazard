@@ -104,7 +104,8 @@ def unpack_rssi(node, data):
 class RHInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         BaseHardwareInterface.__init__(self)
-        self.update_thread = None # Thread for running the main update loop
+        self.update_thread = None      # Thread for running the main update loop
+        self.fwupd_serial_obj = None   # serial object for in-app update of node firmware
 
         self.intf_read_block_count = 0  # number of blocks read by all nodes
         self.intf_read_error_count = 0  # number of read errors for all nodes
@@ -142,6 +143,10 @@ class RHInterface(BaseHardwareInterface):
                 flags_val = self.get_value_16(node, READ_RHFEAT_FLAGS)
                 if flags_val:
                     node.rhfeature_flags = flags_val
+                    # if first node that supports in-app fw update then save port name
+                    if (not self.fwupd_serial_obj) and node.serial and \
+                            (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
+                        self.set_fwupd_serial_obj(node.serial)
 
 
     def discover_nodes(self, *args, **kwargs):
@@ -521,6 +526,28 @@ class RHInterface(BaseHardwareInterface):
                 node.jump_to_bootloader(self)
                 return
         self.log("Unable to find any nodes with jump-to-bootloader support")
+
+    def set_fwupd_serial_obj(self, serial_obj):
+        self.fwupd_serial_obj = serial_obj
+
+    def set_mock_fwupd_serial_obj(self, port_name):
+        serial_obj = type('', (), {})()  # empty base object
+        def mock_no_op():
+            pass
+        serial_obj.name = port_name
+        serial_obj.open = mock_no_op()
+        serial_obj.close = mock_no_op()
+        self.fwupd_serial_obj = serial_obj
+
+    def get_fwupd_serial_name(self):
+        return self.fwupd_serial_obj.name if self.fwupd_serial_obj else None
+
+    def close_fwupd_serial_port(self):
+        try:
+            if self.fwupd_serial_obj:
+                self.fwupd_serial_obj.close()
+        except Exception as ex:
+            self.log("Error closing FW node serial port: " + str(ex))
 
     def inc_intf_read_block_count(self):
         self.intf_read_block_count += 1

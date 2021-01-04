@@ -162,6 +162,12 @@ class MockInterface(BaseHardwareInterface):
     def jump_to_bootloader(self):
         self.log("MockInterace - no jump-to-bootloader support")
 
+    def get_fwupd_serial_name(self):
+        return None
+
+    def close_fwupd_serial_port(self):
+        pass
+
     def inc_intf_read_block_count(self):
         pass
 

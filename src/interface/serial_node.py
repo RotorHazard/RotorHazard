@@ -191,8 +191,11 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
             rev_val = None
             baud_idx = 0
             while rev_val == None and baud_idx < len(SERIAL_BAUD_RATES):
-                node_serial_obj = serial.Serial(port=comm, baudrate=SERIAL_BAUD_RATES[baud_idx], timeout=0.25)
+                node_serial_obj = serial.Serial(port=None, baudrate=SERIAL_BAUD_RATES[baud_idx], timeout=0.25)
                 node_serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
+                node_serial_obj.setRTS(0)
+                node_serial_obj.setPort(comm)
+                node_serial_obj.open()  # open port (now that DTR is configured for no change)
                 if baud_idx > 0:
                     gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for Arduino USB
                 node = SerialNode(index+idxOffset, node_serial_obj)
