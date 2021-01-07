@@ -53,15 +53,15 @@ class SendAckQueue:
                                 self.emitMessageQueue.get_nowait()
                                 self.ackNotifyEventObj.set()
                             else:
-                                self.logger.warn("SendAckQueue received 'ack' messagePayload ('{0}') "\
+                                self.logger.warning("SendAckQueue received 'ack' messagePayload ('{0}') "\
                                                  "different from one in queue ('{1}')".\
                                                  format(messagePayload, qMsgPayload))
                         else:
-                            self.logger.warn("SendAckQueue received 'ack' messageType ('{0}') "\
+                            self.logger.warning("SendAckQueue received 'ack' messageType ('{0}') "\
                                              "different from one in queue ('{1}')".\
                                              format(messageType, qMsgType))
                     elif messagePayload:
-                        self.logger.warn("SendAckQueue received 'ack' with empty queue; msg: '{0}': {1}".\
+                        self.logger.warning("SendAckQueue received 'ack' with empty queue; msg: '{0}': {1}".\
                                          format(messageType, messagePayload))
             else:
                 self.anyAcksReceivedFlag = True  # expect messages to be 'ack'd from now one
@@ -86,7 +86,7 @@ class SendAckQueue:
                                 self.logger.info("SendAckQueue timeout reached (retryCount={0}); resending msg: '{1}': {2}".\
                                                  format(emitRetryCount, messageType, messagePayload))
                             else:
-                                self.logger.warn("SendAckQueue retry limit reached (retryCount={0}); discarding msg: '{1}': {2}".\
+                                self.logger.warning("SendAckQueue retry limit reached (retryCount={0}); discarding msg: '{1}': {2}".\
                                                  format(emitRetryCount, messageType, messagePayload))
                                 self.emitMessageQueue.get_nowait()
                                 emitRetryCount = 0

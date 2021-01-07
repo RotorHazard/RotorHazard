@@ -211,7 +211,7 @@ class VRxController:
         if 'node_index' in args:
             seat_index = args['node_index']
         else:
-            self.logger.warn('Failed to send results: Seat not specified')
+            self.logger.warning('Failed to send results: Seat not specified')
             return False
 
         # wait for results to generate
@@ -440,7 +440,7 @@ class VRxController:
                     self.logger.debug('msg n{1}:  {0}'.format(message, seat_dest))
 
         else:
-            self.logger.warn('Failed to send results: Results not available')
+            self.logger.warning('Failed to send results: Results not available')
             return False
 
     ##############

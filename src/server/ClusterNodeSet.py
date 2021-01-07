@@ -108,8 +108,8 @@ class SlaveNode:
                                             logger.debug(err_msg)    #  log at debug level and
                                             gevent.sleep(29)         #  increase delay between attempts
                                         else:
-                                            logger.warn(err_msg)     # if never connected then give up
-                                            logger.warn("Reached timeout; no longer trying to connect to slave {0} at {1}".\
+                                            logger.warning(err_msg)     # if never connected then give up
+                                            logger.warning("Reached timeout; no longer trying to connect to slave {0} at {1}".\
                                                         format(self.id+1, self.address))
                                             if self.emit_cluster_connect_change:
                                                 self.emit_cluster_connect_change(False)  # play one disconnect tone
@@ -148,7 +148,7 @@ class SlaveNode:
                                 # if there was no response to last query then disconnect (and reconnect next loop)
                                 elif self.lastCheckQueryTime > self.lastContactTime:
                                     if self.lastCheckQueryTime - self.lastContactTime > 3.9:
-                                        logger.warn("Disconnecting after no response for 'check_slave_query'" \
+                                        logger.warning("Disconnecting after no response for 'check_slave_query'" \
                                                     " received for slave {0} at {1}".format(self.id+1, self.address))
                                         # calling 'disconnect()' will usually invoke 'on_disconnect()', but
                                         #  'disconnect()' can be slow to return, so we update status now
@@ -183,13 +183,13 @@ class SlaveNode:
                 self.lastContactTime = monotonic()
                 self.numContacts += 1
             elif self.numDisconnects > 0:  # only warn if previously connected
-                logger.warn("Unable to emit to disconnected slave {0} at {1}, event='{2}'".\
+                logger.warning("Unable to emit to disconnected slave {0} at {1}, event='{2}'".\
                             format(self.id+1, self.address, event))
         except Exception:
             logger.exception("Error emitting to slave {0} at {1}, event='{2}'".\
                             format(self.id+1, self.address, event))
             if self.sio.connected:
-                logger.warn("Disconnecting after error emitting to slave {0} at {1}".\
+                logger.warning("Disconnecting after error emitting to slave {0} at {1}".\
                             format(self.id+1, self.address))
                 self.sio.disconnect()
 
@@ -229,7 +229,7 @@ class SlaveNode:
                 self.numDisconnects += 1
                 self.numDisconnsDuringRace += 1
                 upSecs = int(round(self.startConnectTime - self.firstContactTime)) if self.firstContactTime > 0 else 0
-                logger.warn("Disconnected from " + self.get_log_str(upSecs));
+                logger.warning("Disconnected from " + self.get_log_str(upSecs));
                 self.totalUpTimeSecs += upSecs
                 if self.emit_cluster_connect_change:
                     self.emit_cluster_connect_change(False)
@@ -392,17 +392,17 @@ class SlaveNode:
                                 format(self.id+1, prgStrtEpch))
                     self.timeDiffMedianObj = RunningMedian(self.TIMEDIFF_MEDIAN_SIZE)
             except ValueError as ex:
-                logger.warn("Error parsing 'prog_start_epoch' value from slave {0}: {1}".\
+                logger.warning("Error parsing 'prog_start_epoch' value from slave {0}: {1}".\
                             format(self.id+1, ex))
             # if first time connecting (or possible slave restart) then check/warn about program version
             if newPrgStrtEpch or self.numDisconnects == 0:
                 slaveVerStr = infoDict.get('release_version')
                 if slaveVerStr:
                     if slaveVerStr != self.server_release_version:
-                        logger.warn("Different program version ('{0}') running on slave {1} at {2}".\
+                        logger.warning("Different program version ('{0}') running on slave {1} at {2}".\
                                     format(slaveVerStr, self.id+1, self.address))
                 else:
-                    logger.warn("Unable to parse 'release_version' from slave {0} at {1}".\
+                    logger.warning("Unable to parse 'release_version' from slave {0} at {1}".\
                                 format(self.id+1, self.address))
         except Exception:
             logger.exception("Error processing join-cluster response from slave {0} at {1}".\
@@ -495,11 +495,11 @@ class ClusterNodeSet:
                     logger.debug("Slave {0} clock synchronized OK with master, timeDiff={1}ms".\
                                  format(slave.id+1, slave.timeDiffMedianMs))
             elif slave.numDisconnects > 0:
-                logger.warn("Slave {0} not connected at race start".format(slave.id+1))
+                logger.warning("Slave {0} not connected at race start".format(slave.id+1))
 
     def doClusterRaceStop(self):
         for slave in self.slaves:
             if slave.lastContactTime > 0:
                 logger.info("Connected at race stop to " + slave.get_log_str(stoppedRaceFlag=True));
             elif slave.numDisconnects > 0:
-                logger.warn("Not connected at race stop to " + slave.get_log_str(stoppedRaceFlag=True));
+                logger.warning("Not connected at race stop to " + slave.get_log_str(stoppedRaceFlag=True));
