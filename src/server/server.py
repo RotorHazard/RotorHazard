@@ -675,7 +675,7 @@ def on_cluster_message_ack(data):
         messagePayload = data.get('messagePayload') if data else None
         ClusterSendAckQueueObj.ack(messageType, messagePayload)
     else:
-        logger.warn("Received 'on_cluster_message_ack' message with no ClusterSendAckQueueObj setup")
+        logger.warning("Received 'on_cluster_message_ack' message with no ClusterSendAckQueueObj setup")
 
 # RotorHazard events
 
@@ -1209,9 +1209,9 @@ def on_delete_heat(data):
                             RACE.current_heat = 1
                             heat_id = 1  # set value so heat data is updated below
                         else:
-                            logger.warn("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
+                            logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
                 except Exception as ex:
-                    logger.warn("Error adjusting single remaining heat ID: " + str(ex))
+                    logger.warning("Error adjusting single remaining heat ID: " + str(ex))
 
             emit_heat_data()
             if RACE.current_heat == heat_id:  # if current heat was deleted then load new heat data
@@ -5270,7 +5270,7 @@ def determineHostAddress(maxRetrySecs=10):
             logger.debug("Error querying host IP address: " + str(ex))
         if monotonic() > sTime + maxRetrySecs:
             ipAddrStr = "0.0.0.0"
-            logger.warn("Unable to determine IP address for host machine")
+            logger.warning("Unable to determine IP address for host machine")
             break
         gevent.sleep(1)
     try:
@@ -5307,7 +5307,7 @@ for helper in search_modules(suffix='helper'):
     try:
         hardwareHelpers[helper.__name__] = helper.create(Config)
     except Exception as ex:
-        logger.warn("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
+        logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
 interface_type = os.environ.get('RH_INTERFACE', 'RH')
 try:
@@ -5344,7 +5344,7 @@ try:
         if 'mode' in slave_info and str(slave_info['mode']) == SlaveNode.MIRROR_MODE:
             hasMirrors = True
         elif hasMirrors:
-            logger.warn('** Mirror slaves must be last - ignoring remaining slave config **')
+            logger.warning('** Mirror slaves must be last - ignoring remaining slave config **')
             break
         slave = SlaveNode(index, slave_info, RACE, DB, getCurrentProfile, \
                           emit_split_pass_info, monotonic_to_epoch_millis, \
