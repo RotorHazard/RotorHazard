@@ -722,7 +722,11 @@ class Stm32Bootloader:
 # Above code is from "stm32loader-0.5.1/stm32loader/bootloader.py"
 
 import serial
-import urllib2
+
+try:
+    from urllib.request import urlopen  # for Python 3
+except ImportError:
+    from urllib2 import urlopen  # for Python 2
 
 DEF_SERIAL_PORT = "/dev/serial0"
 DEF_BINSRC_STR = "http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin"
@@ -796,15 +800,14 @@ def reset_to_run():
 
 # download given URL to buffer
 def download_to_buffer(src_url):
-    u = urllib2.urlopen(src_url)
-    meta = u.info()
-    src_size = int(meta.getheaders("Content-Length")[0])
+    resp = urlopen(src_url)
+    src_size = int(resp.headers["Content-Length"])
     if src_size <= 0:
         raise RuntimeError("Source-data size is zero, aborting download from: {}".format(src_url))
     if src_size > 999999:
         raise RuntimeError("Source-data size too large ({}), aborting download from: {}".format(src_size, src_url))
     Console_output_fn("Downloading {} bytes from: {}".format(src_size, src_url))
-    return u.read(src_size)
+    return resp.read(src_size)
 
 
 # flash firmware to BPill at given port with data from given file/URL
