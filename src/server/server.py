@@ -5374,9 +5374,20 @@ def initialize_rh_interface():
             interfaceModule = importlib.import_module(rh_interface_name)
             INTERFACE = interfaceModule.get_hardware_interface(\
                             config=Config, isS32BPillFlag=RHGPIO.isS32BPillBoard(), **hardwareHelpers)
+            # if RPi then check if problem is 'smbus2' or 'gevent' lib not installed
+            if RHUtils.isSysRaspberryPi() and INTERFACE and ((not INTERFACE.nodes) or \
+                                                             len(INTERFACE.nodes) <= 0):
+                try:
+                    importlib.import_module('smbus2')
+                    importlib.import_module('gevent')
+                except ImportError:
+                    logger.warning("Unable to import libraries for I2C nodes; try:  " +\
+                                   "sudo pip install --upgrade --no-cache-dir -r requirements.txt")
+                RACE.num_nodes = 0
+                return True
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
-        if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
+        if (not INTERFACE) or (not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0:
             if not Config.SERIAL_PORTS or len(Config.SERIAL_PORTS) <= 0:
                 interfaceModule = importlib.import_module('MockInterface')
                 INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
@@ -5414,6 +5425,8 @@ determineHostAddress(2)  # attempt to determine IP address, but don't wait too l
 
 logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspberryPi(), \
                                         RHGPIO.isRealRPiGPIO(), RHGPIO.isS32BPillBoard()))
+if RHUtils.isSysRaspberryPi() and not RHGPIO.isRealRPiGPIO():
+    logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install RPi.GPIO")
 
 # log results of module initializations
 Config.logInitResultMessage()

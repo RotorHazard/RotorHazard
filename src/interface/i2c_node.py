@@ -4,7 +4,7 @@ from monotonic import monotonic
 
 from Node import Node
 from RHInterface import READ_ADDRESS, READ_REVISION_CODE, MAX_RETRY_COUNT,\
-                        validate_checksum, calculate_checksum
+                        validate_checksum, calculate_checksum, unpack_16
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +106,8 @@ def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
             i2c_helper.i2c.read_i2c_block_data(addr, READ_ADDRESS, 1)
             node = I2CNode(index+idxOffset, addr, i2c_helper) # New node instance
             # read NODE_API_LEVEL and verification value:
-            rev_val = node.get_value_16(node, READ_REVISION_CODE)
+            data = node.read_block(None, READ_REVISION_CODE, 2, 2)
+            rev_val = unpack_16(data) if data != None else None
             if rev_val:
                 if (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
                     node.api_level = rev_val & 0xFF

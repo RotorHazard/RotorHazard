@@ -38,6 +38,7 @@ FILELOG_LEVEL_STR = "FILELOG_LEVEL"
 FILELOG_NUM_KEEP_STR = "FILELOG_NUM_KEEP"
 CONSOLE_STREAM_STR = "CONSOLE_STREAM"
 LEVEL_NONE_STR = "NONE"
+LEVEL_NONE_VALUE = 9999
 
 socket_handler_obj = None
 queued_handler_obj = None
@@ -106,7 +107,7 @@ class SocketForwardHandler(logging.Handler):
 
 
 def early_stage_setup():
-    logging.addLevelName(0, LEVEL_NONE_STR)
+    logging.addLevelName(LEVEL_NONE_VALUE, LEVEL_NONE_STR)
     logging.basicConfig(
         stream=DEF_CONSOLE_STREAM,
         level=logging.INFO,
@@ -172,7 +173,7 @@ def later_stage_setup(config, socket):
 
     err_str = None
     (lvl, err_str) = get_logging_level_for_item(logging_config, CONSOLE_LEVEL_STR, err_str)
-    if lvl > 0:
+    if lvl > 0 and lvl < LEVEL_NONE_VALUE:
         stm_obj = sys.stdout if sys.stderr.name.find(logging_config[CONSOLE_STREAM_STR]) != 1 else sys.stderr
         hdlr_obj = logging.StreamHandler(stream=stm_obj)
         hdlr_obj.setLevel(lvl)
@@ -182,7 +183,7 @@ def later_stage_setup(config, socket):
             min_level = lvl
 
     (lvl, err_str) = get_logging_level_for_item(logging_config, SYSLOG_LEVEL_STR, err_str, logging.NOTSET)
-    if lvl > 0:
+    if lvl > 0 and lvl < LEVEL_NONE_VALUE:
         system_logger = logging.handlers.SysLogHandler("/dev/log", level=lvl) \
                         if platform.system() != "Windows" else \
                         logging.handlers.NTEventLogHandler("RotorHazard")
@@ -193,7 +194,7 @@ def later_stage_setup(config, socket):
             min_level = lvl
 
     (lvl, err_str) = get_logging_level_for_item(logging_config, FILELOG_LEVEL_STR, err_str)
-    if lvl > 0:
+    if lvl > 0 and lvl < LEVEL_NONE_VALUE:
         # put log files in subdirectory, and with date-timestamp in names
         (lfname, lfext) = os.path.splitext(LOG_FILENAME_STR)
         (num_old_del, err_str) = delete_old_log_files(logging_config[FILELOG_NUM_KEEP_STR], lfname, lfext, err_str)
@@ -230,7 +231,7 @@ def later_stage_setup(config, socket):
 
     socket_handler_obj = SocketForwardHandler(socket)
     # use same configuration as log file
-    if lvl > 0:
+    if lvl > 0 and lvl < LEVEL_NONE_VALUE:
         socket_handler_obj.setLevel(lvl)
     # configure log format with milliseconds as ".###" (not ",###")
     socket_handler_obj.setFormatter(logging.Formatter(fmt=FILELOG_FORMAT_STR, datefmt='%Y-%m-%d %H:%M:%S'))
