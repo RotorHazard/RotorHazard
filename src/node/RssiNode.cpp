@@ -15,6 +15,7 @@ RssiNode::RssiNode()
 void RssiNode::initRx5808Pins(int nIdx)
 {
     nodeIndex = nIdx;
+    slotIndex = nIdx;
 #if STM32_MODE_FLAG
     rx5808DataPin = PB3;  //DATA (CH1) output line to (all) RX5808 modules
     rx5808ClkPin = PB4;   //CLK (CH3) output line to (all) RX5808 modules
@@ -39,6 +40,18 @@ void RssiNode::initRxModule()
 {
     resetRxModule();
     setRxModuleToFreq(settings.vtxFreq);
+}
+
+void RssiNode::copyNodeData(RssiNode *srcPtr)
+{
+    slotIndex = srcPtr->slotIndex;
+    rx5808DataPin = srcPtr->rx5808DataPin;
+    rx5808ClkPin = srcPtr->rx5808ClkPin;
+    rx5808SelPin = srcPtr->rx5808SelPin;
+    rssiInputPin = srcPtr->rssiInputPin;
+    rxPoweredDown = srcPtr->rxPoweredDown;
+    recentSetFreqFlag = srcPtr->recentSetFreqFlag;
+    lastSetFreqTimeMs = srcPtr->lastSetFreqTimeMs;
 }
 
 // Set frequency on RX5808 module to given value
@@ -205,7 +218,7 @@ void RssiNode::setRxModulePower(uint32_t options)
 
     rx5808SerialEnableHigh();  // Finished clocking data in
 
-    digitalWrite(RX5808_DATA_PIN, LOW);
+    digitalWrite(rx5808DataPin, LOW);
 }
 
 // Power down rx5808 module

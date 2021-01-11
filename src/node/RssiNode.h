@@ -89,6 +89,7 @@ struct LastPass
 class RssiNode
 {
     uint8_t nodeIndex = 0;       //node index (0 if first or only node)
+    uint8_t slotIndex = 0;       //node slot index (for multi-node setup)
 
     uint16_t rx5808DataPin = 0;  //DATA (CH1) output line to RX5808 module
     uint16_t rx5808ClkPin = 0;   //CLK (CH3) output line to RX5808 module
@@ -120,7 +121,6 @@ class RssiNode
     void setupRxModule();
     void powerDownRxModule();
 
-    rssi_t rssiRead();
     void bufferHistoricPeak(bool force);
     void bufferHistoricNadir(bool force);
     void initExtremum(Extremum *e);
@@ -138,8 +138,10 @@ public:
     RssiNode();
     void initRx5808Pins(int nIdx);
     void initRxModule();
+    void copyNodeData(RssiNode *srcPtr);
     void setRxModuleToFreq(uint16_t vtxFreq);
 
+    rssi_t rssiRead();
     void rssiSetFilter(Filter<rssi_t> *f);
     void rssiSetSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir);
     void rssiInit();
@@ -149,6 +151,7 @@ public:
     void rssiEndCrossing();
 
     uint8_t getNodeIndex() { return nodeIndex; }
+    uint8_t getSlotIndex() { return slotIndex; }
     bool getActivatedFlag() { return state.activatedFlag; }
     void setActivatedFlag(bool flgVal) { state.activatedFlag = flgVal; }
     uint16_t getVtxFreq() { return settings.vtxFreq; }

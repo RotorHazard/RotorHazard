@@ -64,6 +64,7 @@ byte Message::getPayloadSize()
 // Node reset for ISP; resets other node wired to this node's reset pin
 void resetPairedNode(int pinState)
 {
+#if !STM32_MODE_FLAG
     if (pinState)
     {
         pinMode(NODE_RESET_PIN, INPUT_PULLUP);
@@ -73,6 +74,7 @@ void resetPairedNode(int pinState)
         pinMode(NODE_RESET_PIN, OUTPUT);
         digitalWrite(NODE_RESET_PIN, LOW);
     }
+#endif
 }
 
 // Generic IO write command handler
@@ -242,6 +244,10 @@ void Message::handleReadCommand(bool serialFlag)
 
         case READ_CURNODE_INDEX:
             buffer.write8(cmdRssiNodePtr->getNodeIndex());
+            break;
+
+        case READ_NODE_SLOTIDX:
+            buffer.write8(cmdRssiNodePtr->getSlotIndex());
             break;
 
         default:  // If an invalid command is sent, write nothing back, master must react

@@ -55,6 +55,7 @@ uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
 #else
 #define STATUS_LED_ONSTATE LOW
 #define STATUS_LED_OFFSTATE HIGH
+#define MIN_RSSI_DETECT 5          //value for detecting node as installed
 #if STM32_SERIALUSB_FLAG
 #define SERIALCOM SerialUSB
 #else
@@ -154,14 +155,31 @@ void setup()
     for (int nIdx=0; nIdx<MULTI_RHNODE_MAX; ++nIdx)
         RssiNode::rssiNodeArray[nIdx].initRx5808Pins(nIdx);
 
-    RssiNode::multiRssiNodeCount = MULTI_RHNODE_MAX;  //TODO: detect number of RX5808 modules connected
+    RssiNode::multiRssiNodeCount = MULTI_RHNODE_MAX;
 
     SERIALCOM.begin(SERIAL_BAUD_RATE);  // initialize serial interface
 
-    for (uint8_t nIdx=0; nIdx<RssiNode::multiRssiNodeCount; ++nIdx)
+    uint8_t nIdx;
+    for (nIdx=0; nIdx<RssiNode::multiRssiNodeCount; ++nIdx)
     {
         RssiNode::rssiNodeArray[nIdx].initRxModule();      //init and set RX5808 to default frequency
         RssiNode::rssiNodeArray[nIdx].rssiInit();          //initialize RSSI processing
+    }
+
+    // detect number of RX5808 modules connected
+    nIdx = RssiNode::multiRssiNodeCount;
+    while (nIdx > 0)
+    {
+    	--nIdx;
+        if(RssiNode::rssiNodeArray[nIdx].rssiRead() <= MIN_RSSI_DETECT)
+        {  //RX5808 not installed in slot
+            if (nIdx < RssiNode::multiRssiNodeCount - 1)
+            {  //not last slot; shift down nodes later in array
+                for (int i=nIdx; i<RssiNode::multiRssiNodeCount; ++i)
+                	RssiNode::rssiNodeArray[i].copyNodeData(&RssiNode::rssiNodeArray[i+1]);
+            }
+            --RssiNode::multiRssiNodeCount;
+        }
     }
 
 #else

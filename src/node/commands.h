@@ -36,6 +36,7 @@ public:
 #define READ_TIME_MILLIS 0x33      // read current 'millis()' value
 #define READ_MULTINODE_COUNT 0x39  // read # of nodes handled by this processor
 #define READ_CURNODE_INDEX 0x3A    // read index of current node for this processor
+#define READ_NODE_SLOTIDX 0x3C     // read node slot index (for multi-node setup)
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_ENTER_AT_LEVEL 0x71
