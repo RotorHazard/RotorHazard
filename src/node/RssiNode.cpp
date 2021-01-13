@@ -327,9 +327,9 @@ void RssiNode::initExtremum(Extremum *e)
     e->duration = 0;
 }
 
-bool RssiNode::rssiProcess(mtime_t millis)
+bool RssiNode::rssiProcessValue(mtime_t millis, rssi_t rssiVal)
 {
-    filter->addRawValue(millis, rssiRead());
+    filter->addRawValue(millis, rssiVal);
 
     if (filter->isFilled() && state.activatedFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received

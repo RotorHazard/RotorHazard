@@ -147,7 +147,7 @@ public:
     void rssiInit();
     bool rssiStateValid();
     void rssiStateReset();  //restarts rssi peak tracking for node
-    bool rssiProcess(mtime_t millis);
+    bool rssiProcessValue(mtime_t millis, rssi_t rssiVal);
     void rssiEndCrossing();
 
     uint8_t getNodeIndex() { return nodeIndex; }
@@ -160,10 +160,24 @@ public:
     void setEnterAtLevel(rssi_t val) { settings.enterAtLevel = val; }
     rssi_t getExitAtLevel() { return settings.exitAtLevel; }
     void setExitAtLevel(rssi_t val) { settings.exitAtLevel = val; }
+    bool rssiProcess(mtime_t millis) { return rssiProcessValue(millis, rssiRead()); }
 
     struct State & getState() { return state; }
     struct History & getHistory() { return history; }
     struct LastPass & getLastPass()  { return lastPass; }
 };
+
+
+// need to define some pin names for Travis CI tests
+#ifdef __TEST__
+#define A0   (14)
+#define A1   (15)
+#define A2   (16)
+#define A3   (17)
+#define A4   (18)
+#define A5   (19)
+#define A6   (20)
+#define A7   (21)
+#endif
 
 #endif  //RSSINODE_H_
