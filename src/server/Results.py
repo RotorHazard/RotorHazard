@@ -808,6 +808,171 @@ def calc_team_leaderboard(RACE):
         return leaderboard_output
     return None
 
+def get_lap_info(RACE, seat_index):
+    ''' Assembles current lap information for OSD '''
+    # Ensure race result cache is valid before calling
+
+    # select correct results
+    win_condition = RACE.format.win_condition
+
+    if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+        leaderboard = RACE.results['by_consecutives']
+    elif win_condition == WinCondition.FASTEST_LAP:
+        leaderboard = RACE.results['by_fastest_lap']
+    else:
+        # WinCondition.MOST_LAPS
+        # WinCondition.FIRST_TO_LAP_X
+        # WinCondition.NONE
+        leaderboard = RACE.results['by_race_time']
+
+    # get this seat's results
+    for index, result in enumerate(leaderboard):
+        if result['node'] == seat_index: #TODO issue408
+            rank_index = index
+            break
+
+    # check for best lap
+    is_best_lap = False
+    if result['fastest_lap_raw'] == result['last_lap_raw']:
+        is_best_lap = True
+
+    # get the next faster results
+    next_rank_split = None
+    next_rank_split_result = None
+    if result['position'] > 1:
+        next_rank_split_result = leaderboard[rank_index - 1]
+
+        if next_rank_split_result['total_time_raw']:
+            if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                if next_rank_split_result['consecutives_raw']:
+                    next_rank_split = result['consecutives_raw'] - next_rank_split_result['consecutives_raw']
+            elif win_condition == WinCondition.FASTEST_LAP:
+                if next_rank_split_result['fastest_lap_raw']:
+                    next_rank_split = result['last_lap_raw'] - next_rank_split_result['fastest_lap_raw']
+            else:
+                # WinCondition.MOST_LAPS
+                # WinCondition.FIRST_TO_LAP_X
+                next_rank_split = result['total_time_raw'] - next_rank_split_result['total_time_raw']
+                next_rank_split_fastest = ''
+    else:
+        # check split to self
+        next_rank_split_result = leaderboard[rank_index]
+
+        if win_condition == WinCondition.FASTEST_3_CONSECUTIVE or win_condition == WinCondition.FASTEST_LAP:
+            if next_rank_split_result['fastest_lap_raw']:
+                if result['last_lap_raw'] > next_rank_split_result['fastest_lap_raw']:
+                    next_rank_split = result['last_lap_raw'] - next_rank_split_result['fastest_lap_raw']
+
+    # get the fastest result
+    first_rank_split = None
+    first_rank_split_result = None
+    if result['position'] > 2:
+        first_rank_split_result = leaderboard[0]
+
+        if next_rank_split_result['total_time_raw']:
+            if win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
+                if first_rank_split_result['consecutives_raw']:
+                    first_rank_split = result['consecutives_raw'] - first_rank_split_result['consecutives_raw']
+            elif win_condition == WinCondition.FASTEST_LAP:
+                if first_rank_split_result['fastest_lap_raw']:
+                    first_rank_split = result['last_lap_raw'] - first_rank_split_result['fastest_lap_raw']
+            else:
+                # WinCondition.MOST_LAPS
+                # WinCondition.FIRST_TO_LAP_X
+                first_rank_split = result['total_time_raw'] - first_rank_split_result['total_time_raw']
+
+    '''
+    Set up output objects
+    '''
+
+    lap_info = {
+        'race': {},
+        'current': {},
+        'next_rank': {},
+        'first_rank': {},
+    }
+
+    # Race
+    lap_info['race'] = {
+        'win_condition': win_condition
+    }
+
+    # Current pilot
+    lap_info['current'] = {
+        'seat': seat_index,
+        'position': str(result['position']),
+        'callsign': result['callsign'],
+        'lap_number': '',
+        'last_lap_time': '',
+        'total_time': result['total_time'],
+        'total_time_laps': result['total_time_laps'],
+        'consecutives': result['consecutives'],
+        'is_best_lap': is_best_lap,
+    }
+
+    if result['laps']:
+        lap_info['current']['lap_number'] = str(result['laps'])
+        lap_info['current']['last_lap_time'] = result['last_lap']
+    else:
+        lap_info['current']['lap_prefix'] = ''
+        lap_info['current']['lap_number'] = __('HS')
+        lap_info['current']['last_lap_time'] = result['total_time']
+        lap_info['current']['is_best_lap'] = False
+
+    # Next faster pilot
+    lap_info['next_rank'] = {
+        'seat': None,
+        'position': None,
+        'callsign': None,
+        'split_time': None,
+        'lap_number': None,
+        'last_lap_time': None,
+        'total_time': None,
+    }
+
+    if next_rank_split:
+        lap_info['next_rank'] = {
+            'seat': next_rank_split_result['node'],
+            'position': str(next_rank_split_result['position']),
+            'callsign': next_rank_split_result['callsign'],
+            'split_time': RHUtils.time_format(next_rank_split),
+            'lap_number': str(next_rank_split_result['laps']),
+            'last_lap_time': next_rank_split_result['last_lap'],
+            'total_time': next_rank_split_result['total_time'],
+        }
+
+        if next_rank_split_result['laps'] < 1:
+            lap_info['next_rank']['lap_number'] = __('HS')
+            lap_info['next_rank']['last_lap_time'] = next_rank_split_result['total_time']
+
+    # Race Leader
+    lap_info['first_rank'] = {
+        'seat': None,
+        'position': None,
+        'callsign': None,
+        'split_time': None,
+        'lap_number': None,
+        'last_lap_time': None,
+        'total_time': None,
+    }
+
+    if first_rank_split:
+        lap_info['first_rank'] = {
+            'seat': first_rank_split_result['node'],
+            'position': str(first_rank_split_result['position']),
+            'callsign': first_rank_split_result['callsign'],
+            'split_time': RHUtils.time_format(first_rank_split),
+            'lap_number': str(first_rank_split_result['laps']),
+            'last_lap_time': first_rank_split_result['last_lap'],
+            'total_time': first_rank_split_result['total_time'],
+        }
+
+        if next_rank_split_result['laps'] < 1:
+            lap_info['first_rank']['lap_number'] = __('HS')
+            lap_info['first_rank']['last_lap_time'] = first_rank_split_result['total_time']
+
+    return lap_info
+
 def check_win_condition(RACE, INTERFACE, **kwargs):
     if RACE.win_status in [WinStatus.NONE, WinStatus.PENDING_CROSSING, WinStatus.OVERTIME]:
         race_format = RACE.format
@@ -1524,3 +1689,4 @@ def check_win_team_fastest_consecutive(RACE, **kwargs):
     return {
         'status': WinStatus.NONE
     }
+

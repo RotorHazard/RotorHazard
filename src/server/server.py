@@ -4552,6 +4552,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                         RACE.results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
                         RACE.cacheStatus = Results.CacheStatus.VALID
+                        RACE.lap_info = Results.get_lap_info(RACE, node.index)
 
                         trigger_event(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,

@@ -29,6 +29,7 @@ class RHRace():
         # leaderboard/cache
         self.results = None # current race results
         self.cacheStatus = CacheStatus.INVALID # whether cache is valid
+        self.lap_info = None # Lap data and split times for most recent crossing
         self.last_race_results = None # Cache of current race after clearing
         self.last_race_laps = None # Cache of current laps list after clearing
         self.last_race_cacheStatus = CacheStatus.INVALID # whether cache is valid
