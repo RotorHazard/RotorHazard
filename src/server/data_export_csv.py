@@ -160,6 +160,7 @@ def build_leaderboard(leaderboard, **kwargs):
         total_source = 'total_time'
 
     output = [[
+        __('Seat'),
         __('Rank'),
         __('Pilot'),
         __('Laps'),
@@ -172,6 +173,7 @@ def build_leaderboard(leaderboard, **kwargs):
 
     for entry in primary_leaderboard:
         output.append([
+            entry['node'],
             entry['position'],
             entry['callsign'],
             entry['laps'],
@@ -191,17 +193,17 @@ def export_results(Database, PageCache):
 
     payload.append([__('Event Leaderboards') + ': ' + __('Race Totals')])
     for row in build_leaderboard(results['event_leaderboard'], primary_leaderboard='by_race_time'):
-        payload.append(row)
+        payload.append(row[1:])
 
     payload.append([''])
     payload.append([__('Event Leaderboards') + ': ' + __('Fastest Laps')])
     for row in build_leaderboard(results['event_leaderboard'], primary_leaderboard='by_fastest_lap'):
-        payload.append(row)
+        payload.append(row[1:])
 
     payload.append([''])
     payload.append([__('Event Leaderboards') + ': ' + __('Fastest 3 Consecutive Laps')])
     for row in build_leaderboard(results['event_leaderboard'], primary_leaderboard='by_consecutives'):
-        payload.append(row)
+        payload.append(row[1:])
 
     payload.append([''])
     payload.append([__('Class Leaderboards')])
@@ -229,7 +231,7 @@ def export_results(Database, PageCache):
                 payload.append([])
                 payload.append([__('Class Summary')])
                 for row in build_leaderboard(race_class['leaderboard']):
-                    payload.append(row)
+                    payload.append(row[1:])
             else:
                 if len(results['classes']):
                     payload.append([__('Unclassified')])
@@ -247,29 +249,35 @@ def export_results(Database, PageCache):
                     payload.append([__('Heat Summary')])
 
                     for row in build_leaderboard(heat['leaderboard']):
-                        payload.append(row)
+                        payload.append(row[1:])
 
                 for heat_round in heat['rounds']:
                     payload.append([])
                     payload.append([__('Round {0}').format(heat_round['id'])])
 
+                    laptimes = []
+
                     for row in build_leaderboard(heat_round['leaderboard']):
-                        payload.append(row)
+                        for node in heat_round['nodes']:
+                            if row[0] == node['node_index']:
+                                laplist = []
+
+                                laplist.append(node['callsign'])
+
+                                for lap in node['laps']:
+                                    if not lap['deleted']:
+                                        laplist.append(lap['lap_time_formatted'])
+
+                                laptimes.append(laplist)
+
+                        payload.append(row[1:])
+
 
                     payload.append([])
                     payload.append([__('Round {0} Times').format(str(heat_round['id']))])
 
-                    for node in heat_round['nodes']:
-                        if len(node['laps']):
-                            laplist = []
-
-                            laplist.append(node['callsign'])
-
-                            for lap in node['laps']:
-                                if not lap['deleted']:
-                                    laplist.append(lap['lap_time_formatted'])
-
-                            payload.append(laplist)
+                    for row in laptimes:
+                        payload.append(row)
 
     return payload
 
