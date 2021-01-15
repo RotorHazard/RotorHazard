@@ -1,6 +1,6 @@
-## Arduino Nodes
+# Arduino Nodes
 
-### Compiling and Uploading with the Arduino IDE
+## Compiling and Uploading with the Arduino IDE
 
 The traditional method of loading (or flashing) the node code onto the Arduino processors (one for each node) is by loading the code into the Arduino IDE program and using its 'Upload' function.  Arduino IDE version 1.8 or newer is required, and it can be downloaded from https://www.arduino.cc/en/Main/Software
 
@@ -20,7 +20,7 @@ Hardware address selection is also possible by grounding hardware pins following
 
 The node code may also be edited and built using the [Eclipse IDE](https://www.eclipse.org/eclipseide) and the "[Eclipse C++ IDE for Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)" plugin. Arduino-node project files for Eclipse may be found in the `src/node/project_files/eclipse_arduino` directory -- copy these files to the `src/node` directory. Then, in Eclipse, the node-code project may be loaded via "File | Open Projects from File System..."
 
-### Command-line Compiling and Uploading (Arduino Nodes)
+## Command-line Compiling and Uploading (Arduino Nodes)
 
 Command-line batch/script files for compiling and uploading the node code may be found in the `src/node/scripts` directory. For these files to work, the Arduino IDE needs to be installed -- Arduino IDE version 1.8 or newer is required, and it can be downloaded from https://www.arduino.cc/en/Main/Software
 
@@ -32,7 +32,7 @@ The following batch/script files are available:
 
 * *upload_arduino_oldbl* : Same as '*upload_arduino*' except that it uses the 57600 baud rate, which is needed for Arduinos with the "old bootloader"
 
-### Verify Arduino Addresses
+## Verify Arduino Addresses
 
 The following command may be run on the Raspberry Pi to verify that the Arduino nodes are wired and programmed properly:
 ```

@@ -1,4 +1,4 @@
-## Receiver Node Firmware
+# Receiver Node Firmware
 
 The `src/node` directory contains the source code for the RotorHazard nodes. The same code may be used on Arduino nodes, or on an S32_BPill multi-node board.
 
@@ -9,7 +9,7 @@ For S32_BPill nodes, see '[readme_S32_BPill.md](readme_S32_BPill.md)'
 
 <br>
 
-### Unit Tests
+## Unit Tests
 
 Setup as per <https://github.com/Arduino-CI/arduino_ci>, then
 

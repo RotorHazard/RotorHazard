@@ -1,8 +1,8 @@
-## S32_BPill Nodes
+# S32_BPill Nodes
 
 *Note:* The recommended method for installing the currently-released node firmware onto the S32_BPill processor is to use the `Update Nodes` button (in the 'System' section on the 'Settings' page) on the RotorHazard web GUI. The steps described below are for developers who wish to build the node firmware from the source code.
 
-### Compiling and Uploading with the Arduino IDE
+## Compiling and Uploading with the Arduino IDE
 
 The node code may be loaded (or flashed) onto the S32_BPill processor by loading the code into the Arduino IDE program and using its 'Upload' function. Arduino IDE version 1.8 or newer is required, and it can be downloaded from https://www.arduino.cc/en/Main/Software
 
@@ -36,7 +36,7 @@ Support for STM32 processors in the Arduino IDE is provided by the [STM32duino p
 <a id="s32ftdi"></a>
 8. The code may be uploaded to the processor on the RotorHazard S32_BPill board by connecting an FTDI to the 6-pin J4 ("BPill Serial FTDI Link") connector on the board. (The other end of the FTDI is connected to the USB port on a PC.) The Raspberry Pi must not be powered on during programming. In the Arduino IDE the serial port (under "Tools | Port") will need to be set to match the connected FTDI.  (If you view the "Tools | Port" selections before and after connecting the FTDI, you should see its serial-port name appear.) In the "Tools" menu, set the "Upload method" to "STM32CubeProgrammer (Serial)". Clicking on the 'Upload' button should flash the code onto the S32_BPill processor.
 
-### Command-line Compiling and Uploading (S32_BPill Nodes)
+## Command-line Compiling and Uploading (S32_BPill Nodes)
 
 Command-line batch/script files for compiling and uploading the node code may be found in the `src/node/scripts` directory. For these files to work, the Arduino IDE needs to be installed -- Arduino IDE version 1.8 or newer is required, and it can be downloaded from https://www.arduino.cc/en/Main/Software
 
@@ -48,7 +48,7 @@ The following batch/script files are available:
 
 * *upload_stm32* : Builds the S32_BPill node code and uploads it using the serial (COM) port specified as the first argument. An optional second argument, "--skipBuild", may be specified to skip the build and upload the last firmware file that was built. See the last step [above](#s32ftdi) for info on using an FTDI for uploading
 
-### Compiling and Uploading with Sloeber Eclipse (S32_BPill Nodes)
+## Compiling and Uploading with Sloeber Eclipse (S32_BPill Nodes)
 
 The node code may also be edited and built using the [Sloeber-Eclipse IDE](http://eclipse.baeyens.it). To install Sloeber-Eclipse:
 
