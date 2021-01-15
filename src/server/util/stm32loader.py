@@ -729,7 +729,7 @@ except ImportError:
     from urllib2 import urlopen  # for Python 2
 
 DEF_SERIAL_PORT = "/dev/serial0"
-DEF_BINSRC_STR = "http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin"
+DEF_BINSRC_STR = "http://www.rotorhazard.com/fw/rel/current/RH_S32_BPill_node.bin"
 
 GPIO_RESET_PIN = 17
 GPIO_BOOT0_PIN = 27
@@ -850,16 +850,16 @@ def flash_file_to_stm32(portStr, srcStr):
         
         bootloaderObj = Stm32Bootloader(serialObj, verbosity=5)
         
+        gpioResetFlag = False
         if isRPiFlag:
             bootloaderObj.SYNCHRONIZE_ATTEMPTS = 1
             # first try to see if processor already in bootloader mode
             try:
                 bootloaderObj.reset_from_system_memory()
-                activatedFlag = True
                 Console_output_fn("Activated bootloader")
             except CommandError:
-                activatedFlag = False
-            if not activatedFlag:
+                gpioResetFlag = True
+            if gpioResetFlag:
                 # try to reset into bootloader mode via RPi GPIO outputs
                 bootloaderObj.SYNCHRONIZE_ATTEMPTS = 2
                 Console_output_fn("Resetting BPill with Boot0 via GPIO")
@@ -927,7 +927,7 @@ def flash_file_to_stm32(portStr, srcStr):
     
         serialObj.close()
     
-        if isRPiFlag:
+        if gpioResetFlag:
             Console_output_fn("Resetting BPill via GPIO")
             reset_to_run()
     

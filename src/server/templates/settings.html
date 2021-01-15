@@ -1556,6 +1556,11 @@
 			return false;
 		});
 
+		$('button#kill_server').click(function (event) {
+			socket.emit('kill_server');
+			return false;
+		});
+
 		$('button#download_logs').click(function (event) {
 			socket.emit('download_logs', {'emit_fn_name': 'settings_save_logs'});
 			return false;
@@ -2669,8 +2674,13 @@
 	</div>
 	<div class="panel-content">
 		<div class="control-set">
+			{% if is_raspberry_pi %}
 			<button data-mfp-src="#shutdown_confirm" class="btn-danger open-mfp-popup">{{ __('Shut Down') }}</button>
 			<button data-mfp-src="#reboot_confirm" class="btn-danger open-mfp-popup">{{ __('Reboot') }}</button>
+			{% endif %}
+			{% if Debug %}
+			<button data-mfp-src="#kill_server_confirm" class="btn-danger open-mfp-popup">{{ __('Kill Server') }}</button>
+			{% endif %}
 			<a href="/hardwarelog" class="debug button-like">{{ __('Server Log') }}</a>
 			<button id="download_logs">{{ __('Download Logs') }}</button>
 			{% if node_fw_updatable %}
@@ -2692,6 +2702,15 @@
 			<div class="popup-content">
 				<p>{{ __('Reboot server?') }}</p>
 				<p><button class="btn-danger" id="reboot_pi">{{ __('Reboot') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="kill_server_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Terminate RotorHazard server?') }}</p>
+				<p><button class="btn-danger" id="kill_server">{{ __('Kill Server') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>

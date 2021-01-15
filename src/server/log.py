@@ -1,7 +1,7 @@
 import sys
 import os
 import glob
-import logging.handlers
+import logging
 import platform
 import time
 import zipfile
@@ -95,6 +95,17 @@ class QueuedLogEventHandler(logging.Handler):
         except Exception as ex:
             print("Error waiting for log queue empty: " + str(ex))
 
+    def close(self):
+        try:
+            if self.queue_handlers_list:
+                self.waitForQueueEmpty()
+                for dest_hndlr in self.queue_handlers_list:
+                    dest_hndlr.close()
+            self.queue_handlers_list = []
+            logging.getLogger().removeHandler(self)
+            super(QueuedLogEventHandler, self).close()
+        except Exception as ex:
+            print("Error closing QueuedLogEventHandler: " + str(ex))
 
 class SocketForwardHandler(logging.Handler):
 
@@ -254,6 +265,22 @@ def wait_for_queue_empty():
     if queued_handler_obj:
         queued_handler_obj.waitForQueueEmpty()
 
+def close_logging():
+    try:
+        global queued_handler_obj
+        if queued_handler_obj:
+            queued_handler_obj.close()
+        queued_handler_obj = None
+        root = logging.getLogger()
+        if root and root.handlers:
+            hdlrsList = list(root.handlers)
+            for dest_hndlr in hdlrsList:
+                root.removeHandler(dest_hndlr)
+                dest_hndlr.close()
+        root.handlers[:] = []
+        logging._handlerList = []
+    except Exception as ex:
+        print("Error closing logging: " + str(ex))
 
 def start_socket_forward_handler():
     global socket_handler_obj

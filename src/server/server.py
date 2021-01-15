@@ -434,6 +434,7 @@ def render_settings():
         note_message_text=Settings_note_msg_text,
         cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()),
         node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
+        is_raspberry_pi=RHUtils.isSysRaspberryPi(),
         Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/streams')
@@ -1849,11 +1850,16 @@ def on_shutdown_pi():
     emit_priority_message(__('Server has shut down.'), True)
     logger.info('Performing system shutdown')
     stop_background_threads()
-    gevent.sleep(0.5);
-    SOCKET_IO.stop()  # shut down flask http server
+    gevent.sleep(0.5)
+    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
     if RHUtils.isSysRaspberryPi():
-        gevent.sleep(0.5);
+        gevent.sleep(0.1)
+        logger.debug("Executing system command:  sudo shutdown now")
+        log.wait_for_queue_empty()
+        log.close_logging()
         os.system("sudo shutdown now")
+    else:
+        logger.debug("Not executing system shutdown command because not RPi")
 
 @SOCKET_IO.on('reboot_pi')
 @catchLogExceptionsWrapper
@@ -1864,11 +1870,28 @@ def on_reboot_pi():
     emit_priority_message(__('Server is rebooting.'), True)
     logger.info('Performing system reboot')
     stop_background_threads()
-    gevent.sleep(0.5);
-    SOCKET_IO.stop()  # shut down flask http server
+    gevent.sleep(0.5)
+    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
     if RHUtils.isSysRaspberryPi():
-        gevent.sleep(0.5);
+        gevent.sleep(0.1)
+        logger.debug("Executing system command:  sudo reboot now")
+        log.wait_for_queue_empty()
+        log.close_logging()
         os.system("sudo reboot now")
+    else:
+        logger.debug("Not executing system reboot command because not RPi")
+
+@SOCKET_IO.on('kill_server')
+@catchLogExceptionsWrapper
+def on_kill_server():
+    '''Shutdown the raspberry pi.'''
+    trigger_event(Evt.SHUTDOWN)
+    CLUSTER.emit('kill_server')
+    emit_priority_message(__('Server has stopped.'), True)
+    logger.info('Killing RotorHazard server')
+    stop_background_threads()
+    gevent.sleep(0.5)
+    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
 
 @SOCKET_IO.on('download_logs')
 @catchLogExceptionsWrapper
@@ -5372,11 +5395,13 @@ def initialize_rh_interface():
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
-            INTERFACE = interfaceModule.get_hardware_interface(\
-                            config=Config, isS32BPillFlag=RHGPIO.isS32BPillBoard(), **hardwareHelpers)
-            # if RPi then check if problem is 'smbus2' or 'gevent' lib not installed
-            if RHUtils.isSysRaspberryPi() and INTERFACE and ((not INTERFACE.nodes) or \
-                                                             len(INTERFACE.nodes) <= 0):
+            INTERFACE = interfaceModule.get_hardware_interface(config=Config, \
+                            isS32BPillFlag=RHGPIO.isS32BPillBoard(), **hardwareHelpers)
+            # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
+            #  then check if problem is 'smbus2' or 'gevent' lib not installed
+            if INTERFACE and ((not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0) and \
+                        RHUtils.isSysRaspberryPi() and (not RHGPIO.isS32BPillBoard()) and \
+                        ((not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0):
                 try:
                     importlib.import_module('smbus2')
                     importlib.import_module('gevent')
@@ -5388,14 +5413,15 @@ def initialize_rh_interface():
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
         if (not INTERFACE) or (not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0:
-            if not Config.SERIAL_PORTS or len(Config.SERIAL_PORTS) <= 0:
+            if (not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0:
                 interfaceModule = importlib.import_module('MockInterface')
                 INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
                 Settings_note_msg_text = __("Server is using simulated (mock) nodes")
             else:
                 try:
                     importlib.import_module('serial')
-                    logger.info('Unable to initialize specified serial node(s): {0}'.format(Config.SERIAL_PORTS))
+                    logger.info("Unable to initialize specified serial node(s): {0}".format(Config.SERIAL_PORTS))
+                    logger.info("If an S32_BPill board is connected, its processor my need to be flash-updated")
                     # enter serial port name so it's available for node firmware update
                     if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
                         INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
@@ -5691,6 +5717,8 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         logger.info(rep_str)
     stop_background_threads()
     log.wait_for_queue_empty()
+    gevent.sleep(2)  # allow system shutdown command to run before program exit
+    log.close_logging()
 
 # Start HTTP server
 if __name__ == '__main__':
