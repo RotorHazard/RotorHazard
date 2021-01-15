@@ -15,3 +15,4 @@ monotonic==1.5.*
 pyserial==3.4.*
 paho-mqtt==1.5.*
 websocket-client==0.57.*
+obs-websocket-py==0.5.*
