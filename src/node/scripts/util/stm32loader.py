@@ -729,7 +729,7 @@ except ImportError:
     from urllib2 import urlopen  # for Python 2
 
 DEF_SERIAL_PORT = "/dev/serial0"
-DEF_BINSRC_STR = "http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin"
+DEF_BINSRC_STR = "http://www.rotorhazard.com/fw/rel/current/RH_S32_BPill_node.bin"
 
 GPIO_RESET_PIN = 17
 GPIO_BOOT0_PIN = 27
