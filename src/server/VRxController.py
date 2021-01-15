@@ -211,8 +211,23 @@ class VRxController:
         results = self.RACE.results
         lap_info = self.RACE.lap_info
 
+
+        lap_info_json = json.dumps(lap_info)
+
         '''
-        Format and send messages
+        # send message to crosser
+        seat_dest = seat_index
+        self.send_lap_object(seat_dest, lap_info_json)
+
+        # show split when next pilot crosses
+        if lap_info['next_rank']['position'] != None:
+            seat_dest = lap_info['next_rank']['seat']
+            self.send_lap_object(seat_dest, lap_info_json)
+        '''
+
+
+        '''
+        Format and send messages (Legacy)
         '''
 
         # Server options
