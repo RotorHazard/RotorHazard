@@ -1859,7 +1859,7 @@ def on_shutdown_pi():
         log.close_logging()
         os.system("sudo shutdown now")
     else:
-        logger.debug("Not executing system shutdown command because not RPi")
+        logger.warning("Not executing system shutdown command because not RPi")
 
 @SOCKET_IO.on('reboot_pi')
 @catchLogExceptionsWrapper
@@ -1879,12 +1879,12 @@ def on_reboot_pi():
         log.close_logging()
         os.system("sudo reboot now")
     else:
-        logger.debug("Not executing system reboot command because not RPi")
+        logger.warning("Not executing system reboot command because not RPi")
 
 @SOCKET_IO.on('kill_server')
 @catchLogExceptionsWrapper
 def on_kill_server():
-    '''Shutdown the raspberry pi.'''
+    '''Shutdown this server.'''
     trigger_event(Evt.SHUTDOWN)
     CLUSTER.emit('kill_server')
     emit_priority_message(__('Server has stopped.'), True)
