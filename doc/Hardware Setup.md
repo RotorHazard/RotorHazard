@@ -84,4 +84,5 @@ Multiple RotorHazard timers may be connected together (i.e., for split timing an
 See Also:<br/>
 [doc/USB Nodes.md](USB%20Nodes.md)<br/>
 [doc/Software Setup.md](Software%20Setup.md)<br/>
-[doc/User Guide.md](User%20Guide.md)
+[doc/User Guide.md](User%20Guide.md)<br/>
+[Build Resources (PCB, etc)](../resources)

@@ -1,0 +1,33 @@
+     Notes on Pololu Compatibility With Race Timer
+    ----------------------------------------------
+
+5V Regulator
+=====================
+   Original was:     D24V25F5  5V, 2.5A  6.5V-38V input (not recommended for new designs)
+                     (ENABLE VIN GND GND VOUT right-justified), 0.7" X 0.7"
+
+   S32 Specified:    D36V28F5  5V, 3.2A
+                     (EN VIN GND GND VOUT right-justified plus auxiliary PG), 0.7" X 0.8"
+
+
+   Layout will also fit: > The original D24V25F5 (2.5A)
+                         > D24V50F5 (5A)
+
+   Layout will not fit:  D24V22F5 (2.5A)
+
+
+
+3.3V Regulator
+=====================
+   Original was:    D24V25F3  3.3V, 2.5A  4.5V-38V input (not recommended for new designs)
+                    (ENABLE VIN GND GND VOUT right-justified), 0.7" X 0.7"
+
+   S32 specified:   D24V22F3  3.3V, 2.6A  4V-36V input
+                    (PG EN VIN GND VOUT left-justified plus auxiliary GND), 0.7" X 0.7"
+
+
+   Layout will also fit:  > The original D24V25F3 (2.5A)
+                          > D36V28F3 (5A) (interference fit to Node 5 and Node 6 PCBs)
+
+
+--------------------------------

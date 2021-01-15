@@ -376,4 +376,5 @@ When troubleshooting, another place to check for error messages is the "/var/log
 See Also:<br/>
 [doc/Hardware Setup.md](Hardware%20Setup.md)<br/>
 [doc/USB Nodes.md](USB%20Nodes.md)<br/>
-[doc/User Guide.md](User%20Guide.md)
+[doc/User Guide.md](User%20Guide.md)<br/>
+[Build Resources (PCB, etc)](../resources)
