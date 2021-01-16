@@ -31,7 +31,10 @@ The RotorHazard S32_BPill PCB v1.0 represents the next generation of race-timer 
 * Optional "extra" LED, which can be panel mounted on the timer case
 
 * Connector pads for LED-strips -- one to the Raspberry Pi, one to the STM32 processor
+<br>
 
+![RH_S32_BPill_R1_0_PCB_both](pic/RH_S32_BPill_R1_0_PCB_both.png)<br><br>
+![RH_S32_BPill_R1_0_Node_both](pic/RH_S32_BPill_R1_0_Node_both.png)
 
 ## Resources
 
@@ -46,6 +49,8 @@ The RotorHazard S32_BPill PCB v1.0 represents the next generation of race-timer 
 The Gerber files can be sent to a PCB manufacturer to fabricate boards. To build a timer, you will need one S32_BPill PCB, and several of the S32_BPill Node boards (one for each RX5808 module in the timer).
 
 Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/RotorHazard_S32_BPill_R1_bd02.xls) | [HTML](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_R1_bd02.html)
+
+[Atrium project files exported to ASCII](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_R1_AltiumAscii.zip)
 
 [CAD drawings of S32_BPill PCB](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_PCB_R1.pdf)
 
@@ -65,3 +70,8 @@ Notes on [Pololu Compatibility With Race Timer](files/PololuCompatibilityWithRac
 
 * If you install the Boot0 jumper wire (and leave it installed) then the RPi will always be able to flash the BPill. Without the wire it will work if the RH firmware is operational on the BPill (it has a jump-to-bootloader command), but if not then you'd need to move the 2-pin header clip to the '1' position on Boot0. The red wire in [this pic](pic/RH_S32_BPill_Boot0Jumper.jpg) is the Boot0 jumper wire.
 
+* The board supports two types of [Real-Time Clock](../../../doc/Real%20Time%20Clock.md) (RTC) modules - '[DS3231 PiRTC](https://www.adafruit.com/product/4282)' (3x2 header U15) and '[DS3231 Breakout](https://www.adafruit.com/product/3013)' (8-pin header U14). Only one should be attached at a time.
+
+<br>
+
+The RotorHazard S32_BPill schematic and PCB were developed by Bob Duris and [Eric Thomas](http://www.etheli.com)
