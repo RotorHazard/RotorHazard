@@ -1,3 +1,6 @@
+#ifndef MEDIAN_FILTER_H
+#define MEDIAN_FILTER_H
+
 #include "filter.h"
 #include "FastRunningMedian.h"
 #define CIRCULAR_BUFFER_INT_SAFE
@@ -36,3 +39,5 @@ template <typename T, uint8_t N, T default_value> class MedianFilter : public Fi
 };
 
 #define SmoothingSamples 255
+
+#endif  //MEDIAN_FILTER_H

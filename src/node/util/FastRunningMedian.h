@@ -1,3 +1,5 @@
+#ifndef FASTRUNNINGMEDIAN_H
+#define FASTRUNNINGMEDIAN_H
 
 //
 // Released to the public domain
@@ -124,3 +126,5 @@ private:
 };
 
 // --- END OF FILE ---
+
+#endif  //FASTRUNNINGMEDIAN_H

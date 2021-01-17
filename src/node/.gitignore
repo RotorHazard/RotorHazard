@@ -2,4 +2,14 @@
 /*.bin
 /*.gcda
 /*.gcno
+/.settings
+/.cproject
+/.project
+/Release/
+/build_arduino/
+/build_stm32/
+/spec.d
+/core
+/libraries
+/sloeber.ino.cpp
 /build/
