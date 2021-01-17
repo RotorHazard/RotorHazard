@@ -16,9 +16,9 @@ The RotorHazard S32_BPill PCB v1.0 represents the next generation of race-timer 
 
 * Communication between the STM32 processor and the Raspberry Pi is via serial-port link, running at 921600 baud. The S32_BPill board can also be connected directly to a computer (via USB-to-Serial/FTDI dongle)
 
-* The STM32 processor is on a 40-pin module, attached to the board via sockets. These are commonly known as "Blue Pill" modules, and are readily available and inexpensive
+* The STM32 processor is on a 40-pin module, attached to the board via sockets. These are commonly known as "Blue Pill" modules, and are readily available and inexpensive (see [below](#aboutblue))
 
-* The board has a 40-pin (2x20) header for connecting to the Raspberry Pi, via a ribbon cable with female ends
+* The board has a 40-pin (2x20) header for connecting to the Raspberry Pi, via a [ribbon cable](https://www.ebay.com/itm/40-Pin-2x20-Female-to-Female-2-54mm-Pitch-40-wire-IDC-Flat-Ribbon-Cable/391776118674) with female ends
 
 * The STM32 processor is in-circuit programmable, able to be updated/flashed using the Raspberry Pi. The update can be performed via the RotorHazard web GUI using the 'Update Nodes' button (in the 'System' section on the 'Settings' page)
 
@@ -26,14 +26,16 @@ The RotorHazard S32_BPill PCB v1.0 represents the next generation of race-timer 
 
 * Supports power/battery monitoring and a buzzer (low-battery alarm)
 
-* Mounting locations for (optional) DS3231 (RTC), INA219 and BME280 modules, connected to the Raspberry Pi I2C bus
+* Mounting locations for (optional) [DS3231](#rtc) (RTC), [INA219](https://www.adafruit.com/product/904) and [BME280](https://www.amazon.com/Onyehn-Temperature-Humidity-Barometric-Pressure/dp/B07KR24P6P) modules, connected to the Raspberry Pi I2C bus
 
 * Optional "extra" LED, which can be panel mounted on the timer case
 
 * Connector pads for LED-strips -- one to the Raspberry Pi, one to the STM32 processor
 <br>
 
+Main PCB:<br>
 ![RH_S32_BPill_R1_0_PCB_both](pic/RH_S32_BPill_R1_0_PCB_both.png)<br><br>
+Node PCB:<br>
 ![RH_S32_BPill_R1_0_Node_both](pic/RH_S32_BPill_R1_0_Node_both.png)
 
 ## Resources
@@ -48,6 +50,8 @@ The RotorHazard S32_BPill PCB v1.0 represents the next generation of race-timer 
 
 The Gerber files can be sent to a PCB manufacturer to fabricate boards. To build a timer, you will need one S32_BPill PCB, and several of the S32_BPill Node boards (one for each RX5808 module in the timer).
 
+The size of the node board is 34.3x33.0mm, with a recommended thickness of 0.8mm (for better thermal conductivity and more capacitance between layers). The recommended thickness for the main PCB is the standard 1.6mm, and, in general, the default PCB-fabrication settings should work well (i.e., 1oz copper, HASL finish, no castellated holes, no gold).
+
 Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/RotorHazard_S32_BPill_R1_bd02.xls) | [HTML](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_R1_bd02.html)
 
 [Atrium project files exported to ASCII](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_R1_AltiumAscii.zip)
@@ -60,17 +64,41 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 
 [Node board assembly tips](http://www.rotorhazard.com/files/node_board_assy.pdf)
 
-Notes on [Pololu Compatibility With Race Timer](files/PololuCompatibilityWithRaceTimer.txt)
-
 [Generic Blue Pill Pinout](files/GenericBluePillPinout.jpg)
 
 [RobotDyn "Black" Pill Pinout](files/STM32F103C8T6-RobotDyn_Black_Pill_pinout.pdf)
 
 ## Notes
 
-* If you install the Boot0 jumper wire (and leave it installed) then the RPi will always be able to flash the BPill. Without the wire it will work if the RH firmware is operational on the BPill (it has a jump-to-bootloader command), but if not then you'd need to move the 2-pin header clip to the '1' position on Boot0. The red wire in [this pic](pic/RH_S32_BPill_Boot0Jumper.jpg) is the Boot0 jumper wire.
+* If you install the Boot0 jumper wire (and leave it installed) then the RPi will always be able to flash the BPill. Without the wire it will work if the RotorHazard firmware is operational on the BPill (it has a jump-to-bootloader command), but if not then you'd need to move the 2-pin header clip to the '1' position on Boot0. The red wire in [this pic](pic/RH_S32_BPill_Boot0Jumper.jpg) is the Boot0 jumper wire.
 
-* The board supports two types of [Real-Time Clock](../../../doc/Real%20Time%20Clock.md) (RTC) modules - '[DS3231 PiRTC](https://www.adafruit.com/product/4282)' (3x2 header U15) and '[DS3231 Breakout](https://www.adafruit.com/product/3013)' (8-pin header U14). Only one should be attached at a time.
+* Note that after the initial install, if the buzzer is constantly beeping (because the BPill is not yet flashed), you can put the clip on the '1' position of the Boot0 jumper on the BPill module and do a reset to silence it, and leave it on there until the initial flash of the BPill. After that, the Boot0 wire jumper should be installed and left in place. See the links above for BPill pinouts.
+
+* The recommended voltage regulators for the board are Pololu [D36V28F5](https://www.pololu.com/product/3782) (5V) and Pololu [D24V22F3](https://www.pololu.com/product/2857) (3.3V). See [here for additional notes](files/PololuCompatibilityWithRaceTimer.txt) about Pololu voltage regulators.
+
+<a name="rtc"> </a>
+* The board supports two types of [Real-Time Clock](../../../doc/Real%20Time%20Clock.md) (RTC) modules - '[DS3231 PiRTC](https://www.adafruit.com/product/4282)' (3x2 header U15) and '[DS3231 Breakout](https://www.adafruit.com/product/3013)' (8-pin header U14). Only one should be attached at a time. See the '[doc/Real Time Clock.md](../../../doc/Real%20Time%20Clock.md)' file for setup instructions.
+
+* The recommended installation option for the RX5808 node boards is to use [low-profile sockets](https://www.mouser.com/ProductDetail/Mill-Max/801-93-036-10-012000?qs=WZRMhwwaLl%2F7W%252BkSMqBETQ%3D%3D) in the U1-U8 (9-pin) locations on the PCB. These are shorter and have better contacts than standard header sockets. If the low-profile sockets are used, the pins on the RX5808 node boards should be cut to a length of 3.5mm-4.0mm (as measured from the edge of the node PCB).
+
+<a name="aboutblue"></a>
+### About Blue Pills and Black Pills
+
+The "Blue Pill" is a module containing an STM32F1 processor and support components mounted on small board with two rows of 20-pin headers. The most common variant is what we're calling the "[Generic Blue Pill](https://stm32-base.org/boards/STM32F103C8T6-Blue-Pill)".
+
+[RobotDyn](https://robotdyn.com) has a version with several improvements (better parts, thinner board layout, etc), which they called a "[Black Pill](https://stm32-base.org/boards/STM32F103C8T6-RobotDyn-Black-Pill)". See [here for the RobotDyn page](https://robotdyn.com/stm32f103-stm32-arm-mini-system-dev-board-stm-firmware.html).
+
+We like the RobotDyn version more than the generics, but it has become difficult to acquire. In practice, any Blue Pill module with an STM32F103C8T6 processor and a compatible pin layout should work fine with the S32_BPill PCB.
+
+To complicate things further there is another type of "[Black Pill](https://stm32-base.org/boards/STM32F103C8T6-Black-Pill.html)" module out there that has a different (incompatible) pinout, though it doesn't really seem to be used as much. 
+
+Seaching eBay for "[STM32F103C8T6 Blue Pill](https://www.ebay.com/sch/i.html?_nkw=STM32F103C8T6+Blue+Pill)" should lead to a number of good, cheap options for acquiring compatible modules.
+
+<br>
+
+### Assembled RotorHazard S32_BPill Board
+
+![DHill_RH_S32_BPill_built_20210116_1](pic/DHill_RH_S32_BPill_built_20210116_1.jpg)
 
 <br>
 
