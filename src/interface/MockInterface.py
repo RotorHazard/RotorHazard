@@ -31,7 +31,7 @@ class MockInterface(BaseHardwareInterface):
             node.i2c_addr = 2 * index + 8 # Set current loop i2c_addr
             node.index = index
             node.api_valid_flag = True
-            node.api_level = 25
+            node.api_level = 32
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.nodes.append(node) # Add new node to RHInterface
@@ -51,6 +51,12 @@ class MockInterface(BaseHardwareInterface):
         if self.update_thread is None:
             self.log('Starting background thread.')
             self.update_thread = gevent.spawn(self.update_loop)
+
+    def stop(self):
+        if self.update_thread:
+            self.log('Stopping background thread')
+            self.update_thread.kill(block=True, timeout=0.5)
+            self.update_thread = None
 
     def update_loop(self):
         try:
@@ -151,6 +157,15 @@ class MockInterface(BaseHardwareInterface):
             node.exit_at_level = self.transmit_exit_at_level(node, level)
 
     def force_end_crossing(self, node_index):
+        pass
+
+    def jump_to_bootloader(self):
+        self.log("MockInterace - no jump-to-bootloader support")
+
+    def get_fwupd_serial_name(self):
+        return None
+
+    def close_fwupd_serial_port(self):
         pass
 
     def inc_intf_read_block_count(self):

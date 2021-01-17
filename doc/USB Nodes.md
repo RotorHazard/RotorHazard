@@ -38,7 +38,7 @@ Multiple USB nodes would be configured like this:
 
 #### Node Code
 
-No changes to the standard RotorHazard node code are needed; the code may be uploaded (flashed) to the Arduino using [the "standard" method](Software%20Setup.md#install-receiver-node-code-arduinos) (via the Arduino IDE).  The NODE_NUMBER value (in "src/node/config.h") is ignored for USB nodes; it can be left at 0.
+The RotorHazard node code will need to be uploaded (flashed) to the Arduino using [the "standard" method](Software%20Setup.md#install-receiver-node-code-arduinos) (via the Arduino IDE).  The NODE_NUMBER value (in "src/node/config.h") is ignored for USB nodes; it can be left at 0.
 
 <br/>
 

@@ -2,7 +2,7 @@
 RELEASE_VERSION = "2.4.0-dev.1" # Public release version code
 SERVER_API = 29 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 25 # Most recent node API
+NODE_API_BEST = 32 # Most recent node API
 JSON_API = 3 # JSON API version
 
 # This must be the first import for the time being. It is
@@ -68,6 +68,8 @@ from RHUtils import catchLogExceptionsWrapper
 from Language import __
 from ClusterNodeSet import SlaveNode, ClusterNodeSet
 from util.SendAckQueue import SendAckQueue
+import RHGPIO
+import util.stm32loader as stm32loader
 
 # Events manager
 from eventmanager import Evt, EventManager
@@ -105,9 +107,11 @@ if RHUtils.checkSetFileOwnerPi(log.LOG_DIR_NAME):
     logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(log.LOG_DIR_NAME))
 
 # command-line arguments:
-CMDARG_VERSION_LONG_STR = '--version'  # show program version and exit
-CMDARG_VERSION_SHORT_STR = '-v'        # show program version and exit
-CMDARG_ZIP_LOGS_STR = '--ziplogs'      # create logs .zip file
+CMDARG_VERSION_LONG_STR = '--version'    # show program version and exit
+CMDARG_VERSION_SHORT_STR = '-v'          # show program version and exit
+CMDARG_ZIP_LOGS_STR = '--ziplogs'        # create logs .zip file
+CMDARG_JUMP_TO_BL_STR = '--jumptobl'     # send jump-to-bootloader command to node
+CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill processor
 
 if __name__ == '__main__' and len(sys.argv) > 1:
     if CMDARG_VERSION_LONG_STR in sys.argv or CMDARG_VERSION_SHORT_STR in sys.argv:
@@ -115,7 +119,18 @@ if __name__ == '__main__' and len(sys.argv) > 1:
     if CMDARG_ZIP_LOGS_STR in sys.argv:
         log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
         sys.exit(0)
-    print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
+    if CMDARG_JUMP_TO_BL_STR not in sys.argv:  # handle jump-to-bootloader argument later
+        if CMDARG_FLASH_BPILL_STR in sys.argv:
+            argIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
+            portStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
+                                                len(Config.SERIAL_PORTS) > 0 else None
+            srcStr = sys.argv[argIdx] if argIdx < len(sys.argv) else None
+            if srcStr and srcStr.startswith("--"):  # use next arg as src file (optional)
+                srcStr = None                       #  unless arg is switch param
+            successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
+            sys.exit(0 if successFlag else 1)
+        print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
+        sys.exit(1)
 
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 DEF_TEAM_NAME = 'A'  # default team
@@ -143,6 +158,7 @@ serverInfoItems = None
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
 server_ipaddress_str = None
+Settings_note_msg_text = None
 
 RACE = RHRace.RHRace() # For storing race management variables
 
@@ -415,7 +431,10 @@ def render_settings():
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config.GENERAL['configFile'],
+        note_message_text=Settings_note_msg_text,
         cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()),
+        node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
+        is_raspberry_pi=RHUtils.isSysRaspberryPi(),
         Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/streams')
@@ -473,8 +492,14 @@ def render_decoder():
 @APP.route('/imdtabler')
 def render_imdtabler():
     '''Route to IMDTabler page.'''
-
     return render_template('imdtabler.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+
+@APP.route('/updatenodes')
+@requires_auth
+def render_updatenodes():
+    '''Route to update nodes page.'''
+    return render_template('updatenodes.html', serverInfo=serverInfo, getOption=Options.get, __=__, \
+                           fw_src_str=stm32loader.DEF_BINSRC_STR)
 
 # Debug Routes
 
@@ -552,6 +577,17 @@ def start_background_threads():
     if HEARTBEAT_THREAD is None:
         HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
         logger.debug('Heartbeat thread started')
+
+def stop_background_threads():
+    try:
+        global HEARTBEAT_THREAD
+        if HEARTBEAT_THREAD:
+            logger.info('Stopping heartbeat thread')
+            HEARTBEAT_THREAD.kill(block=True, timeout=0.5)
+            HEARTBEAT_THREAD = None
+        INTERFACE.stop()
+    except Exception:
+        logger.error("Error stopping background threads")
 
 #
 # Socket IO Events
@@ -849,6 +885,7 @@ def set_all_frequencies(freqs):
 
 def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
+    logger.debug("Sending frequency values to nodes: " + str(freqs))
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs[idx])
 
@@ -939,6 +976,7 @@ def on_set_exit_at_level(data):
 
 def hardware_set_all_enter_ats(enter_at_levels):
     '''send update to nodes'''
+    logger.debug("Sending enter-at values to nodes: " + str(enter_at_levels))
     for idx in range(RACE.num_nodes):
         if enter_at_levels[idx]:
             INTERFACE.set_enter_at_level(idx, enter_at_levels[idx])
@@ -950,6 +988,7 @@ def hardware_set_all_enter_ats(enter_at_levels):
 
 def hardware_set_all_exit_ats(exit_at_levels):
     '''send update to nodes'''
+    logger.debug("Sending exit-at values to nodes: " + str(exit_at_levels))
     for idx in range(RACE.num_nodes):
         if exit_at_levels[idx]:
             INTERFACE.set_exit_at_level(idx, exit_at_levels[idx])
@@ -1809,9 +1848,18 @@ def on_shutdown_pi():
     trigger_event(Evt.SHUTDOWN)
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
-    logger.info('Shutdown pi')
-    gevent.sleep(1);
-    os.system("sudo shutdown now")
+    logger.info('Performing system shutdown')
+    stop_background_threads()
+    gevent.sleep(0.5)
+    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
+    if RHUtils.isSysRaspberryPi():
+        gevent.sleep(0.1)
+        logger.debug("Executing system command:  sudo shutdown now")
+        log.wait_for_queue_empty()
+        log.close_logging()
+        os.system("sudo shutdown now")
+    else:
+        logger.warning("Not executing system shutdown command because not RPi")
 
 @SOCKET_IO.on('reboot_pi')
 @catchLogExceptionsWrapper
@@ -1820,9 +1868,30 @@ def on_reboot_pi():
     trigger_event(Evt.SHUTDOWN)
     CLUSTER.emit('reboot_pi')
     emit_priority_message(__('Server is rebooting.'), True)
-    logger.info('Rebooting pi')
-    gevent.sleep(1);
-    os.system("sudo reboot now")
+    logger.info('Performing system reboot')
+    stop_background_threads()
+    gevent.sleep(0.5)
+    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
+    if RHUtils.isSysRaspberryPi():
+        gevent.sleep(0.1)
+        logger.debug("Executing system command:  sudo reboot now")
+        log.wait_for_queue_empty()
+        log.close_logging()
+        os.system("sudo reboot now")
+    else:
+        logger.warning("Not executing system reboot command because not RPi")
+
+@SOCKET_IO.on('kill_server')
+@catchLogExceptionsWrapper
+def on_kill_server():
+    '''Shutdown this server.'''
+    trigger_event(Evt.SHUTDOWN)
+    CLUSTER.emit('kill_server')
+    emit_priority_message(__('Server has stopped.'), True)
+    logger.info('Killing RotorHazard server')
+    stop_background_threads()
+    gevent.sleep(0.5)
+    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
 
 @SOCKET_IO.on('download_logs')
 @catchLogExceptionsWrapper
@@ -4165,6 +4234,36 @@ def emit_vrx_list(*args, **params):
     else:
         SOCKET_IO.emit('vrx_list', emit_payload)
 
+@SOCKET_IO.on('do_bpillfw_update')
+@catchLogExceptionsWrapper
+def do_bpillfw_update(data):
+    srcStr = data['src_file_str']
+    portStr = INTERFACE.get_fwupd_serial_name()
+    msgStr = "Performing S32_BPill update, port='{}', file: {}".format(portStr, srcStr)
+    logger.info(msgStr)
+    SOCKET_IO.emit('upd_messages_init', (msgStr + "\n"))
+    stop_background_threads()
+    gevent.sleep(0.1)
+    jump_to_node_bootloader()
+    INTERFACE.close_fwupd_serial_port()
+    s32Logger = logging.getLogger("stm32loader")
+    def doS32Log(msgStr):  # send message to update-messages window and log file
+        SOCKET_IO.emit('upd_messages_append', msgStr)
+        s32Logger.info(msgStr)
+        gevent.sleep(0.001)  # do thread yield to allow display updates
+    stm32loader.set_console_output_fn(doS32Log)
+    successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
+    msgStr = "Node update " + ("succeeded" if successFlag else "failed")
+    logger.info(msgStr)
+    SOCKET_IO.emit('upd_messages_append', ("\n" + msgStr))
+    SOCKET_IO.emit('upd_messages_finish')  # show 'Close' button
+    stm32loader.set_console_output_fn(None)
+    gevent.sleep(0.2)
+    logger.info("Reinitializing RH interface")
+    initialize_rh_interface()
+    init_race_state()
+    start_background_threads()
+
 @SOCKET_IO.on('set_vrx_node')
 @catchLogExceptionsWrapper
 def set_vrx_node(data):
@@ -4503,6 +4602,7 @@ def check_win_condition(RACE, INTERFACE, **kwargs):
 
 @catchLogExceptionsWrapper
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
+    gevent.sleep(0.025)  # delay to avoid potential I/O error
     if is_enter_at_flag:
         logger.info('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
         on_set_enter_at_level({
@@ -5281,6 +5381,64 @@ def determineHostAddress(maxRetrySecs=10):
     logger.info("Host machine is '{0}' at {1}".format(hNameStr, ipAddrStr))
     return ipAddrStr
 
+def jump_to_node_bootloader():
+    try:
+        INTERFACE.jump_to_bootloader()
+    except Exception:
+        logger.error("Error executing jump to node bootloader")
+
+def initialize_rh_interface():
+    try:
+        global INTERFACE, Settings_note_msg_text
+        Settings_note_msg_text = None
+        rh_interface_name = os.environ.get('RH_INTERFACE', 'RH') + "Interface"
+        try:
+            logger.debug("Initializing interface module: " + rh_interface_name)
+            interfaceModule = importlib.import_module(rh_interface_name)
+            INTERFACE = interfaceModule.get_hardware_interface(config=Config, \
+                            isS32BPillFlag=RHGPIO.isS32BPillBoard(), **hardwareHelpers)
+            # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
+            #  then check if problem is 'smbus2' or 'gevent' lib not installed
+            if INTERFACE and ((not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0) and \
+                        RHUtils.isSysRaspberryPi() and (not RHGPIO.isS32BPillBoard()) and \
+                        ((not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0):
+                try:
+                    importlib.import_module('smbus2')
+                    importlib.import_module('gevent')
+                except ImportError:
+                    logger.warning("Unable to import libraries for I2C nodes; try:  " +\
+                                   "sudo pip install --upgrade --no-cache-dir -r requirements.txt")
+                RACE.num_nodes = 0
+                return True
+        except (ImportError, RuntimeError, IOError) as ex:
+            logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
+        if (not INTERFACE) or (not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0:
+            if (not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0:
+                interfaceModule = importlib.import_module('MockInterface')
+                INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
+                Settings_note_msg_text = __("Server is using simulated (mock) nodes")
+            else:
+                try:
+                    importlib.import_module('serial')
+                    logger.info("Unable to initialize specified serial node(s): {0}".format(Config.SERIAL_PORTS))
+                    logger.info("If an S32_BPill board is connected, its processor my need to be flash-updated")
+                    # enter serial port name so it's available for node firmware update
+                    if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
+                        INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
+                        Settings_note_msg_text = __("Server is unable to communicate with node processor") + \
+                                ". " + __("If an S32_BPill board is connected, you may attempt to") +\
+                                " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                                __("its processor") + "."
+                except ImportError:
+                    logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
+                    return False
+
+        RACE.num_nodes = len(INTERFACE.nodes)  # save number of nodes found
+        return True
+    except:
+        logger.exception("Error initializing RH interface")
+        return False
+
 #
 # Program Initialize
 #
@@ -5290,6 +5448,11 @@ logger.debug('Program started at {0:.0f}'.format(PROGRAM_START_EPOCH_TIME))
 RHUtils.idAndLogSystemInfo()
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
+
+logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspberryPi(), \
+                                        RHGPIO.isRealRPiGPIO(), RHGPIO.isS32BPillBoard()))
+if RHUtils.isSysRaspberryPi() and not RHGPIO.isRealRPiGPIO():
+    logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install RPi.GPIO")
 
 # log results of module initializations
 Config.logInitResultMessage()
@@ -5302,6 +5465,13 @@ if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
 
 logger.info("Using log file: {0}".format(Current_log_path_name))
 
+if RHUtils.isSysRaspberryPi() and RHGPIO.isS32BPillBoard():
+    logger.debug("Resetting S32_BPill processor")
+    s32logger = logging.getLogger("stm32loader")
+    stm32loader.set_console_output_fn(lambda msgStr: s32logger.info(msgStr))
+    stm32loader.reset_to_run()
+    stm32loader.set_console_output_fn(None)
+
 hardwareHelpers = {}
 for helper in search_modules(suffix='helper'):
     try:
@@ -5309,24 +5479,24 @@ for helper in search_modules(suffix='helper'):
     except Exception as ex:
         logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
-interface_type = os.environ.get('RH_INTERFACE', 'RH')
-try:
-    interfaceModule = importlib.import_module(interface_type + 'Interface')
-    INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
-except (ImportError, RuntimeError, IOError) as ex:
-    logger.info('Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex))
-if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
-    if not Config.SERIAL_PORTS or len(Config.SERIAL_PORTS) <= 0:
-        interfaceModule = importlib.import_module('MockInterface')
-        INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
-    else:
-        try:
-            importlib.import_module('serial')
-            logger.info('Unable to initialize specified serial node(s): {0}'.format(Config.SERIAL_PORTS))
-        except ImportError:
-            logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
-        log.wait_for_queue_empty()
-        sys.exit()
+resultFlag = initialize_rh_interface()
+if not resultFlag:
+    log.wait_for_queue_empty()
+    sys.exit(1)
+
+if len(sys.argv) > 0 and CMDARG_JUMP_TO_BL_STR in sys.argv:
+    stop_background_threads()
+    jump_to_node_bootloader()
+    if CMDARG_FLASH_BPILL_STR in sys.argv:
+        argIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
+        portStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
+                                            len(Config.SERIAL_PORTS) > 0 else None
+        srcStr = sys.argv[argIdx] if argIdx < len(sys.argv) else None
+        if srcStr and srcStr.startswith("--"):  # use next arg as src file (optional)
+            srcStr = None                       #  unless arg is switch param
+        successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
+        sys.exit(0 if successFlag else 1)
+    sys.exit(0)
 
 CLUSTER = ClusterNodeSet()
 hasMirrors = False
@@ -5358,13 +5528,11 @@ INTERFACE.pass_record_callback = pass_record_callback
 INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
 INTERFACE.node_crossing_callback = node_crossing_callback
 
-# Save number of nodes found
-RACE.num_nodes = len(INTERFACE.nodes)
 if RACE.num_nodes == 0:
     logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
 else:
     logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
-    # if I2C nodes then only report comm errors if >= 1.0%
+    # if I2C nodes then only report comm errors if > 1.0%
     if hasattr(INTERFACE.nodes[0], 'i2c_addr'):
         INTERFACE.set_intf_error_report_percent_limit(1.0)
 
@@ -5535,18 +5703,22 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     try:
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
+        logger.info("Server is shutting down")
     except KeyboardInterrupt:
         logger.info("Server terminated by keyboard interrupt")
     except SystemExit:
         logger.info("Server terminated by system exit")
     except Exception:
-        logger.exception("Server exception:  ")
+        logger.exception("Server exception")
 
     Events.trigger(Evt.SHUTDOWN)
     rep_str = INTERFACE.get_intf_error_report_str(True)
     if rep_str:
         logger.info(rep_str)
+    stop_background_threads()
     log.wait_for_queue_empty()
+    gevent.sleep(2)  # allow system shutdown command to run before program exit
+    log.close_logging()
 
 # Start HTTP server
 if __name__ == '__main__':

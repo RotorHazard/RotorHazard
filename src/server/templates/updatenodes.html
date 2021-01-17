@@ -1,0 +1,61 @@
+{% extends "layout.html" %} {% block title %}Firmware Update{% endblock %} {% block head %}
+
+<script type="text/javascript" charset="utf-8">
+	var upd_msgs_text = "";
+
+	$(document).ready(function () {
+
+		function set_updmsgs_text(text) {
+			upd_msgs_text = text + "\n";
+			$('#upd_messages').html($('<div/>').text(upd_msgs_text).html());
+		}
+
+		function append_to_updmsgs(text) {
+			upd_msgs_text = upd_msgs_text + text + "\n";
+			$('#upd_messages').text(upd_msgs_text);
+		}
+
+		socket.on('upd_messages_init', function (msg) {
+			set_updmsgs_text(msg);
+		});
+
+		socket.on('upd_messages_append', function (msg) {
+			append_to_updmsgs(msg);
+		});
+
+		socket.on('upd_messages_finish', function () {
+			$('#close_button_div').html("<a href=\"/settings\" class=\"debug button-like\">{{ __('Close') }}</a>");
+		});
+
+		$('button#do_update').click(function (event) {
+			$('button#do_update').prop('disabled', true);
+			var data = {
+				src_file_str: $('#src_file_str').val(),
+			};
+			socket.emit('do_bpillfw_update', data);
+			return false;
+		});
+	});
+</script>
+{% endblock %} {% block content %}
+
+<main class="page-updatenodes">
+<h2>{{ __('Update Node Firmware') }}</h2>
+
+The processor on the RotorHazard S32_BPill board will be flash-updated using the firmware file below:
+<br />
+<br />
+<input type="text" id="src_file_str" value="{{ fw_src_str }}" />
+<br />
+<br />
+<button id="do_update">{{ __('Update') }}</button>&nbsp;
+<a href="/settings" class="debug button-like">{{ __('Cancel') }}</a>
+<br />
+<br />
+<pre>
+<div id="upd_messages"></div>
+</pre>
+<div id="close_button_div"></div>
+
+</main>
+{% endblock %}

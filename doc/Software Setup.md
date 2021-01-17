@@ -7,7 +7,7 @@ Note: If RotorHazard is already installed, see the [Updating an existing install
 ## Install System (Raspberry Pi)
 Note: Many of the setup commands below require that the Rasperry Pi has internet access.
 
-Start by installing Raspbian, following the official instructions here: https://www.raspberrypi.org/downloads/raspbian/. You may use either Desktop or Lite.
+Start by installing the Raspberry Pi OS, following the official instructions here: https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit . You may use either Desktop or Lite.
 
 Configure the interface options on the Raspberry Pi.
 Open a Terminal window and enter the following command:
@@ -149,9 +149,13 @@ sudo python setup.py install
 ```
 
 ### Java Support
-Java enables calculating of IMD scores. If you started with RASPBIAN WITH DESKTOP, this step should not be necessary as Java is installed by default. Otherwise:
+Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
 ```
-sudo apt-get install openjdk-8-jdk
+java --version
+```
+If the response is "command not found" then Java may be installed with:
+```
+sudo apt-get install openjdk-11-jdk
 ```
 
 ## Prepare System
@@ -214,6 +218,10 @@ sudo systemctl stop rotorhazard
 To disable the service (so it no longer runs when the system starts up), enter:
 ```
 sudo systemctl disable rotorhazard.service
+```
+To query the status of the service:
+```
+sudo systemctl status rotorhazard.service
 ```
 
 ### Shutting down the System
@@ -279,9 +287,12 @@ To install the RotorHazard server on these systems:
 
 1. Open up a command prompt and navigate to the ```src/server``` directory in the RotorHazard files (using the 'cd' command).
 
-1. Install the RotorHazard server dependencies using the 'requirements.txt' file, using one of the commands below. (Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
-  * On a Windows system the command to use will likely be:<br/>```python -m pip install -r requirements.txt```<br/><br/>
-  * On a Linux system the command to use will likely be:<br/>```sudo pip install -r requirements.txt```<br/>
+1. Install the RotorHazard server dependencies using the 'reqsNonPi.txt' file, using one of the commands below. (Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
+  * On a Windows system the command to use will likely be:<br/>```python -m pip install -r reqsNonPi.txt```<br>
+
+Note: If the above command fails with a message like "error: Microsoft Visual C++ 14.0 is required", the Visual C++ Build Tools may downloaded (from [here](http://go.microsoft.com/fwlink/?LinkId=691126&fixForIE=.exe.)) and installed.<br>
+
+  * On a Linux system the command to use will likely be:<br/>```sudo pip install -r reqsNonPi.txt```
 
 
 To run the RotorHazard server on these systems:
