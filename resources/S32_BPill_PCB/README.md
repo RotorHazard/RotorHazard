@@ -79,7 +79,7 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 <a name="rtc"> </a>
 * The board supports two types of [Real-Time Clock](../../doc/Real%20Time%20Clock.md) (RTC) modules - '[DS3231 PiRTC](https://www.adafruit.com/product/4282)' (3x2 header U15) and '[DS3231 Breakout](https://www.adafruit.com/product/3013)' (8-pin header U14). Only one should be attached at a time. See the '[doc/Real Time Clock.md](../../doc/Real%20Time%20Clock.md)' file for setup instructions.
 
-* The recommended installation option for the RX5808 node boards is to use [low-profile sockets](https://www.mouser.com/ProductDetail/Mill-Max/801-93-036-10-012000?qs=WZRMhwwaLl%2F7W%252BkSMqBETQ%3D%3D) in the U1-U8 (9-pin) locations on the PCB. These are shorter and have better contacts than standard header sockets. If the low-profile sockets are used, the pins on the RX5808 node boards should be cut to a length of 3.5mm-4.0mm (as measured from the edge of the node PCB).
+* The recommended installation option for the RX5808 node boards is to use [low-profile sockets](https://www.mouser.com/ProductDetail/Mill-Max/801-93-036-10-012000?qs=WZRMhwwaLl%2F7W%252BkSMqBETQ%3D%3D) in the U1-U8 (9-pin) locations on the PCB. These are shorter and have better contacts than standard header sockets. See the "[Trimming Jig for RotorHazard S32_BPill Nodes](trimjig.md)" document for more information.
 
 <a name="aboutblue"></a>
 ### About Blue Pills and Black Pills
