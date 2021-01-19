@@ -199,13 +199,13 @@ class RHInterface(BaseHardwareInterface):
                         if node.api_level >= 21:
                             offset_peakRssi = 11
                             offset_peakFirstTime = 12
-                            if node.api_level >= 26:
+                            if node.api_level >= 33:
                                 offset_peakDuration = 14
                             else:
                                 offset_peakLastTime = 14
                             offset_nadirRssi = 11
                             offset_nadirFirstTime = 12
-                            if node.api_level >= 26:
+                            if node.api_level >= 33:
                                 offset_nadirDuration = 14
                             else:
                                 offset_nadirLastTime = 14
@@ -244,7 +244,7 @@ class RHInterface(BaseHardwareInterface):
                                         if node.is_valid_rssi(rssi_val):
                                             pn_history.peakRssi = rssi_val
                                             pn_history.peakFirstTime = unpack_16(data[offset_peakFirstTime:]) # ms *since* the first peak time
-                                            if node.api_level >= 26:
+                                            if node.api_level >= 33:
                                                 pn_history.peakLastTime = pn_history.peakFirstTime - unpack_16(data[offset_peakDuration:])   # ms *since* the last peak time
                                             else:
                                                 pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
@@ -255,7 +255,7 @@ class RHInterface(BaseHardwareInterface):
                                         if node.is_valid_rssi(rssi_val):
                                             pn_history.nadirRssi = rssi_val
                                             pn_history.nadirFirstTime = unpack_16(data[offset_nadirFirstTime:])
-                                            if node.api_level >= 26:
+                                            if node.api_level >= 33:
                                                 pn_history.nadirLastTime = pn_history.nadirFirstTime - unpack_16(data[offset_nadirDuration:])
                                             else:
                                                 pn_history.nadirLastTime = unpack_16(data[offset_nadirLastTime:])
@@ -325,7 +325,7 @@ class RHInterface(BaseHardwareInterface):
 
         # process any nodes with new laps detected
         self.process_updates(upd_list)
-        
+
         if startThreshLowerNode:
             logger.info("For node {0} restoring EnterAt to {1} and ExitAt to {2}"\
                     .format(startThreshLowerNode.index+1, startThreshLowerNode.enter_at_level, \
@@ -517,7 +517,7 @@ class RHInterface(BaseHardwareInterface):
     # log comm errors if error percentage is >= this value
     def set_intf_error_report_percent_limit(self, percentVal):
         self.intf_error_report_limit = percentVal / 100;
-    
+
     def get_intf_error_report_str(self, forceFlag=False):
         if self.intf_read_block_count <= 0:
             return None
