@@ -42,7 +42,7 @@ int filter(char name[], Filter<rssi_t>& lpf, double testFreq, rssi_t output[]) {
 { \
     int t_max = ONE_SEC + offset + (int)(1000.0/2.0/freq); \
     int t_zero = ONE_SEC + offset + (int)(1000.0/freq); \
-    rssi_t max = output[t_max]; \
+    rssi_t maxVal = output[t_max]; \
     rssi_t zero = output[t_zero]; \
     rssi_t expectedMax = 0; \
     rssi_t expectedMin = MAX_RSSI; \
@@ -50,7 +50,7 @@ int filter(char name[], Filter<rssi_t>& lpf, double testFreq, rssi_t output[]) {
         expectedMax = max(output[i], expectedMax); \
         expectedMin = min(output[i], expectedMin); \
     } \
-    assertEqual((int)expectedMax, (int)max); \
+    assertEqual((int)expectedMax, (int)maxVal); \
     assertEqual((int)expectedMin, (int)zero); \
 }
 
@@ -136,7 +136,7 @@ unittest(composite_with_10hz_signal)
 
   int t_max = ONE_SEC + offset + (int)(1000.0/2.0/freq);
   int t_zero = ONE_SEC + offset + (int)(1000.0/freq);
-  rssi_t max = output[t_max];
+  rssi_t maxVal = output[t_max];
   rssi_t zero = output[t_zero];
   rssi_t expectedMax = 0;
   rssi_t expectedMin = MAX_RSSI;
@@ -144,7 +144,7 @@ unittest(composite_with_10hz_signal)
       expectedMax = max(output[i], expectedMax);
       expectedMin = min(output[i], expectedMin);
   }
-  assertMore((int)expectedMax, (int)max);
+  assertMore((int)expectedMax, (int)maxVal);
   assertLess((int)expectedMin, (int)zero);
 }
 
