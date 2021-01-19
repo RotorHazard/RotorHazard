@@ -794,6 +794,7 @@ var rotorhazard = {
 	beep_crossing_entered: false, // beep node crossing entered
 	beep_crossing_exited: false, // beep node crossing exited
 	beep_manual_lap_button: false, // beep when manual lap button bit
+	beep_cluster_connect: false, // cluster timer connect / disconnect
 	use_mp3_tones: false, //use mp3 tones instead of synthetic tones during Races
 	beep_on_first_pass_button: false, // beep during the first pass where not voice announcment is played
 
@@ -813,6 +814,7 @@ var rotorhazard = {
 	primaryPilot: -1, // restrict voice calls to single pilot (default: all)
 	nodes: [], // node array
 	heats: {}, // heats object
+	race_format: {}, // current format object
 
 	panelstates: {}, // collapsible panel state
 
@@ -850,6 +852,7 @@ var rotorhazard = {
 		localStorage['rotorhazard.beep_crossing_entered'] = JSON.stringify(this.beep_crossing_entered);
 		localStorage['rotorhazard.beep_crossing_exited'] = JSON.stringify(this.beep_crossing_exited);
 		localStorage['rotorhazard.beep_manual_lap_button'] = JSON.stringify(this.beep_manual_lap_button);
+		localStorage['rotorhazard.beep_cluster_connect'] = JSON.stringify(this.beep_cluster_connect);
 		localStorage['rotorhazard.use_mp3_tones'] = JSON.stringify(this.use_mp3_tones);
 		localStorage['rotorhazard.beep_on_first_pass_button'] = JSON.stringify(this.beep_on_first_pass_button);
 		localStorage['rotorhazard.schedule_m'] = JSON.stringify(this.schedule_m);
@@ -912,6 +915,9 @@ var rotorhazard = {
 			}
 			if (localStorage['rotorhazard.beep_manual_lap_button']) {
 				this.beep_manual_lap_button = JSON.parse(localStorage['rotorhazard.beep_manual_lap_button']);
+			}
+			if (localStorage['rotorhazard.beep_cluster_connect']) {
+				this.beep_cluster_connect = JSON.parse(localStorage['rotorhazard.beep_cluster_connect']);
 			}
 			if (localStorage['rotorhazard.use_mp3_tones']) {
 				this.use_mp3_tones = JSON.parse(localStorage['rotorhazard.use_mp3_tones']);
@@ -1140,6 +1146,13 @@ function get_interrupt_message() {
 	}
 }
 
+function init_popup_generics() {
+	$('.open-mfp-popup').magnificPopup({
+		type:'inline',
+		midClick: true,
+	});
+}
+
 // restore local settings
 if ($() && $().articulate('getVoices')[0] && $().articulate('getVoices')[0].name) {
 	rotorhazard.voice_language = $().articulate('getVoices')[0].name; // set default voice
@@ -1148,9 +1161,13 @@ rotorhazard.restoreData();
 
 if (typeof jQuery != 'undefined') {
 jQuery(document).ready(function($){
+	// display admin options
 	if (rotorhazard.admin) {
 		$('*').removeClass('admin-hide');
 	}
+
+	// populate SVG logo
+	$('.rh-logo').html(svg_asset.logo);
 
 	// header collapsing (hamburger)
 	if ($('#nav-main').length) {
@@ -1256,10 +1273,7 @@ jQuery(document).ready(function($){
 	});
 
 	// Popup generics
-	$('.open-mfp-popup').magnificPopup({
-		type:'inline',
-		midClick: true,
-	});
+	init_popup_generics();
 
 	$('.cancel').click(function() {
 		$.magnificPopup.close();
@@ -1268,6 +1282,16 @@ jQuery(document).ready(function($){
 	// startup socket connection
 	socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
+	// reconnect when visibility is regained
+	$(document).on('visibilitychange', function(){
+		if (!document['hidden']) {
+			if (!socket.connected) {
+ 				socket.connect();
+			}
+		}
+	});
+
+	// popup messaging
 	socket.on('priority_message', function (msg) {
 		if (msg.interrupt) {
 			interrupt_message_queue.push(msg.message);
@@ -1303,6 +1327,23 @@ jQuery(document).ready(function($){
 			}
 		}
 	};
+
+	// hard reset
+	socket.on('database_restore_done', function (msg) {
+		location.reload();
+	});
+
+	// load needed data from server when required
+	socket.on('load_all', function (msg) {
+		if (typeof(data_dependencies) != "undefined") {
+			socket.emit('load_data', {'load_types': data_dependencies});
+		}
+	});
+
+	// store language strings
+	socket.on('all_languages', function (msg) {
+		rotorhazard.language_strings = msg.languages;
+	});
 });
 }
 
@@ -1313,6 +1354,13 @@ function build_leaderboard(leaderboard, display_type, meta) {
 	if (typeof(meta) === 'undefined') {
 		meta = new Object;
 		meta.team_racing_mode = false;
+		meta.start_behavior = 0;
+	}
+
+	if (meta.start_behavior == 2) {
+		var total_label = __('Laps Total');
+	} else {
+		var total_label = __('Total');
 	}
 
 	var twrap = $('<div class="responsive-wrap">');
@@ -1329,7 +1377,7 @@ function build_leaderboard(leaderboard, display_type, meta) {
 		display_type == 'round' ||
 		display_type == 'current') {
 		header_row.append('<th class="laps">' + __('Laps') + '</th>');
-		header_row.append('<th class="total">' + __('Total') + '</th>');
+		header_row.append('<th class="total">' + total_label + '</th>');
 		header_row.append('<th class="avg">' + __('Avg.') + '</th>');
 	}
 	if (display_type == 'by_fastest_lap' ||
@@ -1366,7 +1414,11 @@ function build_leaderboard(leaderboard, display_type, meta) {
 				lap = '&#8212;';
 			row.append('<td class="laps">'+ lap +'</td>');
 
-			var lap = leaderboard[i].total_time;
+			if (meta.start_behavior == 2) {
+				var lap = leaderboard[i].total_time_laps;
+			} else {
+				var lap = leaderboard[i].total_time;
+			}
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			row.append('<td class="total">'+ lap +'</td>');
@@ -1404,6 +1456,72 @@ function build_leaderboard(leaderboard, display_type, meta) {
 			} else {
 				row.append('<td class="consecutive">'+ lap +'</td>');
 			}
+		}
+
+		body.append(row);
+	}
+
+	table.append(body);
+	twrap.append(table);
+	return twrap;
+}
+function build_team_leaderboard(leaderboard, display_type, meta) {
+	if (typeof(display_type) === 'undefined')
+		display_type = 'by_race_time';
+	if (typeof(meta) === 'undefined') {
+		meta = new Object;
+		meta.team_racing_mode = true;
+	}
+
+	var twrap = $('<div class="responsive-wrap">');
+	var table = $('<table class="leaderboard">');
+	var header = $('<thead>');
+	var header_row = $('<tr>');
+	header_row.append('<th class="pos"><span class="screen-reader-text">' + __('Rank') + '</span></th>');
+	header_row.append('<th class="team">' + __('Team') + '</th>');
+	header_row.append('<th class="contribution">' + __('Contributors') + '</th>');
+	if (display_type == 'by_race_time') {
+		header_row.append('<th class="laps">' + __('Laps') + '</th>');
+		header_row.append('<th class="total">' + __('Average Lap') + '</th>');
+	}
+	if (display_type == 'by_avg_fastest_lap') {
+		header_row.append('<th class="fast">' + __('Average Fastest') + '</th>');
+	}
+	if (display_type == 'by_avg_consecutives') {
+		header_row.append('<th class="consecutive">' + __('Average 3 Consecutive') + '</th>');
+	}
+	header.append(header_row);
+	table.append(header);
+
+	var body = $('<tbody>');
+
+	for (var i in leaderboard) {
+		var row = $('<tr>');
+		row.append('<td class="pos">'+ leaderboard[i].position +'</td>');
+		row.append('<td class="team">'+ leaderboard[i].name +'</td>');
+		row.append('<td class="contribution">'+ leaderboard[i].contributing + '/' + leaderboard[i].members + '</td>');
+		if (display_type == 'by_race_time') {
+			var lap = leaderboard[i].laps;
+			if (!lap || lap == '0:00.000')
+				lap = '&#8212;';
+			row.append('<td class="laps">'+ lap +'</td>');
+
+			var lap = leaderboard[i].average_lap;
+			if (!lap || lap == '0:00.000')
+				lap = '&#8212;';
+			row.append('<td class="total">'+ lap +'</td>');
+		}
+		if (display_type == 'by_avg_fastest_lap') {
+			var lap = leaderboard[i].average_fastest_lap;
+			if (!lap || lap == '0:00.000')
+				lap = '&#8212;';
+			row.append('<td class="fast">'+ lap +'</td>');
+		}
+		if (display_type == 'by_avg_consecutives') {
+			var lap = leaderboard[i].average_consecutives;
+			if (!lap || lap == '0:00.000')
+				lap = '&#8212;';
+			row.append('<td class="consecutive">'+ lap +'</td>');
 		}
 
 		body.append(row);
@@ -1486,6 +1604,14 @@ var freq = {
 		J1: 5695,
 		J2: 5770,
 		J3: 5880,
+		S1: 5660,
+		S2: 5695,
+		S3: 5735,
+		S4: 5770,
+		S5: 5805,
+		S6: 5878,
+		S7: 5914,
+		S8: 5839,
 		'N/A': 'n/a'
 	},
 	findByFreq: function(frequency) {

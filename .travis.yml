@@ -1,3 +1,8 @@
+# Configuration for Continuous Integration unit tests
+#
+# Node code CI uses: https://github.com/Arduino-CI/arduino_ci
+#
+
 language: python
 
 python:
@@ -17,7 +22,7 @@ script:
    - cd ../..
    - cd src/node
    - bundle install
-   - bundle exec arduino_ci_remote.rb --skip-compilation
+   - bundle exec arduino_ci.rb
    - cd ../..
 
 after_success:

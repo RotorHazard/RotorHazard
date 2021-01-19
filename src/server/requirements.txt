@@ -7,10 +7,13 @@ python-engineio==3.11.*
 python-socketio==4.4.*
 six==1.14.*
 Werkzeug==1.0.*
-gevent==1.4.*
+gevent==20.6.*
 gevent-websocket==0.10.*
+greenlet==0.4.16
 flask_sqlalchemy==2.4.*
 monotonic==1.5.*
 pyserial==3.4.*
 paho-mqtt==1.5.*
 websocket-client==0.57.*
+smbus2==0.4.0
+RPi.GPIO==0.7.*

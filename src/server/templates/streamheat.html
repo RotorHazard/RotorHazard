@@ -2,18 +2,18 @@
 <link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'frequency_data',
+		'heat_data',
+	];
+
 	rotorhazard.show_messages = false;
 	var heat_data;
 	var streamheat = {{ heat_id }}
 
 	$(document).ready(function () {
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'frequency_data',
-			'heat_data',
-		]});
-
 		// set up node local store
 		for (i = 0; i < {{ num_nodes }}; i++) {
 			rotorhazard.nodes[i] = new nodeModel();
@@ -24,10 +24,6 @@
 				'current_heat',
 			]});
 		}
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
 
 		socket.on('language', function (msg) {
 			if (msg.language) {
@@ -105,7 +101,7 @@
 								}
 							}
 						} else {
-							tbody.append('<tr><td></td><td colspan="2" class="race_class">Unclassified</td><tr>');
+							tbody.append('<tr><td></td><td colspan="2" class="race_class">' + __('Unclassified') + '</td><tr>');
 						}
 					}
 

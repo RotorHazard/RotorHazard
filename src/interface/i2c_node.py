@@ -1,11 +1,10 @@
 '''RotorHazard I2C interface layer.'''
 import logging
-import gevent
-from gevent.lock import BoundedSemaphore # To limit i2c calls
 from monotonic import monotonic
 
 from Node import Node
-from RHInterface import READ_ADDRESS, MAX_RETRY_COUNT, validate_checksum, calculate_checksum
+from RHInterface import READ_ADDRESS, READ_REVISION_CODE, MAX_RETRY_COUNT,\
+                        validate_checksum, calculate_checksum, unpack_16
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +16,7 @@ class I2CNode(Node):
         self.i2c_addr = addr
         self.i2c_helper = i2c_helper
 
-    def read_block(self, interface, command, size):
+    def read_block(self, interface, command, size, max_retries=MAX_RETRY_COUNT):
         '''
         Read i2c data given command, and data size.
         '''
@@ -25,7 +24,7 @@ class I2CNode(Node):
         success = False
         retry_count = 0
         data = None
-        while success is False and retry_count <= MAX_RETRY_COUNT:
+        while success is False and retry_count <= max_retries:
             try:
                 def _read():
                     self.io_request = monotonic()
@@ -42,7 +41,7 @@ class I2CNode(Node):
                 else:
                     # self.log('Invalid Checksum ({0}): {1}'.format(retry_count, data))
                     retry_count = retry_count + 1
-                    if retry_count <= MAX_RETRY_COUNT:
+                    if retry_count <= max_retries:
                         if retry_count > 1:  # don't log the occasional single retry
                             interface.log('Retry (checksum) in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
                     else:
@@ -52,7 +51,7 @@ class I2CNode(Node):
                 interface.log('Read Error: ' + str(err))
                 self.i2c_helper.i2c_end()
                 retry_count = retry_count + 1
-                if retry_count <= MAX_RETRY_COUNT:
+                if retry_count <= max_retries:
                     if retry_count > 1:  # don't log the occasional single retry
                         interface.log('Retry (IOError) in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
                 else:
@@ -92,20 +91,38 @@ class I2CNode(Node):
                 interface.inc_intf_write_error_count()
         return success
 
+    def jump_to_bootloader(self, interface):
+        pass
 
-def discover(idxOffset, i2c_helper, *args, **kwargs):
-    logger.info("Searching for I2C nodes...")
+
+def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
+    if not isS32BPillFlag:
+        logger.info("Searching for I2C nodes...")
     nodes = []
     # Scans all i2c_addrs to populate nodes array
     i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
     for index, addr in enumerate(i2c_addrs):
         try:
             i2c_helper.i2c.read_i2c_block_data(addr, READ_ADDRESS, 1)
-            logger.info("...I2C node {0} found at address {1}".format(index+idxOffset+1, addr))
             node = I2CNode(index+idxOffset, addr, i2c_helper) # New node instance
+            # read NODE_API_LEVEL and verification value:
+            data = node.read_block(None, READ_REVISION_CODE, 2, 2)
+            rev_val = unpack_16(data) if data != None else None
+            if rev_val:
+                if (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
+                    node.api_level = rev_val & 0xFF
+                else:
+                    logger.warn("Unable to verify revision code from node {}".format(index+idxOffset+1))
+            else:
+                logger.warn("Unable to read revision code from node {}".format(index+idxOffset+1))
+            logger.info("...I2C node {} found at address {}, API_level={}".format(\
+                                    index+idxOffset+1, addr, node.api_level))
             nodes.append(node) # Add new node to RHInterface
-        except IOError as err:
-            logger.info("...No I2C node at address {0}".format(addr))
+        except IOError:
+            if not isS32BPillFlag:
+                logger.info("...No I2C node at address {0}".format(addr))
         i2c_helper.i2c_end()
         i2c_helper.i2c_sleep()
+        if isS32BPillFlag and len(nodes) == 0:
+            break
     return nodes

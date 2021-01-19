@@ -1,20 +1,24 @@
 #include <ArduinoUnitTests.h>
 #include <Godmode.h>
-#include "../rssi.h"
 #include "util.h"
 
 unittest(freqNotSet) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiInit();
 
-  state.activatedFlag = false;
+  RssiNode::multiRssiNodeCount = 1;
+  RssiNode *rssiNodePtr = &(RssiNode::rssiNodeArray[0]);
+  rssiNodePtr->rssiInit();
 
-  sendSignal(nano, 43);
-  assertFalse(rssiStateValid());
-  sendSignal(nano, 43);
+  rssiNodePtr->setActivatedFlag(false);
+
+  struct State & state = rssiNodePtr->getState();
+
+  sendSignal(rssiNodePtr, nano, 43);
+  assertFalse(rssiNodePtr->rssiStateValid());
+  sendSignal(rssiNodePtr, nano, 43);
   assertEqual(2*N_2*1000-1000, state.lastloopMicros);
-  assertFalse(rssiStateValid());
+  assertFalse(rssiNodePtr->rssiStateValid());
   assertEqual(0, (int)state.rssi);
   assertEqual(0, (int)state.rssiTimestamp);
   assertEqual(0, (int)state.lastRssi);

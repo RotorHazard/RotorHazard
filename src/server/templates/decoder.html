@@ -25,6 +25,8 @@
 	<audio id="sound_stage" src="./static/audio/stage.mp3" type="audio/mp3"></audio>
 	<audio id="sound_enter" src="./static/audio/enter.mp3" type="audio/mp3"></audio>
 	<audio id="sound_exit" src="./static/audio/exit.mp3" type="audio/mp3"></audio>
+	<audio id="sound_cconnect" src="./static/audio/cconnect.mp3" type="audio/mp3"></audio>
+	<audio id="sound_cdisconnect" src="./static/audio/cdisconnect.mp3" type="audio/mp3"></audio>
 
 	<!-- Scripts -->
 	<script type="text/javascript" src="./static/jquery-3.2.1/jquery.min.js"></script>
@@ -60,35 +62,31 @@
 	<!-- Child template head content -->
 
 	<script type="text/javascript" charset="utf-8">
+		var data_dependencies = [
+			'all_languages',
+			'language',
+			'node_data',
+			'environmental_data',
+			'frequency_data',
+			'heat_data',
+			'class_data',
+			'pilot_data',
+			'race_format',
+			'node_tuning',
+			'enter_and_exit_at_levels',
+			'min_lap',
+			'race_status',
+			'team_racing_mode',
+			'led_effects',
+			'led_effect_setup',
+			'cluster_status'
+		];
+
 		var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
 		var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 		var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 		$(document).ready(function () {
-			socket.emit('load_data', {'load_types': [
-				'all_languages',
-				'language',
-				'node_data',
-				'environmental_data',
-				'frequency_data',
-				'heat_data',
-				'class_data',
-				'pilot_data',
-				'race_format',
-				'node_tuning',
-				'enter_and_exit_at_levels',
-				'min_lap',
-				'race_status',
-				'team_racing_mode',
-				'led_effects',
-				'led_effect_setup',
-				'cluster_status'
-			]});
-
-			socket.on('all_languages', function (msg) {
-				rotorhazard.language_strings = msg.languages;
-			});
-
 			socket.on('language', function (msg) {
 				$('#set_language').empty();
 				$('#set_language').append('<option value="">English</option>')
@@ -216,22 +214,33 @@
 					env_table_html += '</tr>';
 				}
 				if (env_table_html) {
-					$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table>');
+					$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
 				}
 			});
 			socket.on('cluster_status', function (msg) {
 				cluster_table_html = '';
 				if (msg.slaves && msg.slaves.length > 0) {
-					cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Time since last contact (s)')+'</th></tr>';
+					cluster_table_html += '<tr><th style="text-align:center">' + __('Address') + '</th><th>' + __('Latency:') + '</th><th>' + __('min') + '</th><th>' + __('avg') + '</th><th>' + __('max') + '</th><th>' + __('last') + '</th><th>' + __('Disconns') + '</th><th>' + __('Contacts') + '</th><th>' + __('TimeDiff') + '</th><th>' + __('UpSecs') + '</th><th>' + __('DownSecs') + '</th><th>' + __('Avail') + '</th><th>' + __('LastContact') + '</th></tr>';
 					for (i=0; i < msg.slaves.length; i++) {
 						cluster_table_html += '<tr>';
-						cluster_table_html += '<td>' + msg.slaves[i].address + '</td>';
-						cluster_table_html += '<td>' + msg.slaves[i].last_contact + '</td>';
+						cluster_table_html += '<td style="text-align:center"><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
+						cluster_table_html += '<td style="text-align:center"> </td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].minLatencyMs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].avgLatencyMs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].maxLatencyMs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].lastLatencyMs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numDisconnects + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numContacts + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].timeDiffMs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].upTimeSecs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].downTimeSecs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].availability + '%</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].last_contact + '</td>';
 						cluster_table_html += '</tr>';
 					}
 				}
 				if (cluster_table_html) {
-					$('#cluster-status-table').html('<table>' + cluster_table_html + '</table>');
+					$('#cluster-status-table').html(__('Cluster Status:') + '<table>' + cluster_table_html + '</table><br />');
 				}
 			});
 
@@ -910,10 +919,8 @@
 			<div class="panel-content">
 				<div id="env-data-table" class="control-set">
 				</div>
-				<br />
 				<div id="cluster-status-table" class="control-set">
 				</div>
-				<br />
 				<div class="control-set">
 					<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
 					<a href="#reboot_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Reboot') }}</a>

@@ -16,9 +16,13 @@
 * [USB Nodes](USB%20Nodes.md)
 * [Video Receiver Control](Video%20Receiver.md)
 
+## General Reference
+* [FPV Frequency Reference Chart](Frequency%20Reference.md)
+
 <br />
 
 ---
 
+* [Build Resources (PCB, etc)](../resources)
 * [Developer Documentation](Development.md)
 * <a href="https://github.com/RotorHazard/RotorHazard" target="_blank">RotorHazard on GitHub</a> &#10132;&#xFE0E;

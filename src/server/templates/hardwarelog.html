@@ -2,6 +2,13 @@
 <script type="text/javascript" src="./static/Blob.js"></script>
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'hardware_log_init'
+	];
+
+	var log;
+	var live_updates = true;
+
 	function selectText(element) {
 		var doc = document
 			, text = doc.getElementById(element)
@@ -21,18 +28,19 @@
 	}
 
 	$(document).ready(function () {
-		socket.emit('load_data', {'load_types': [
-			'hardware_log_init'
-		]});
-
 		function set_log_text(text) {
-			$('#log').html($('<div/>').text(text).html());
+			log = text;
+			$('#log').html($('<div/>').text(log).html());
 			window.scrollTo(0,document.body.scrollHeight);
 		}
 
 		function append_to_log(text) {
-			$('#log').append(text + "\n");
-			window.scrollTo(0,document.body.scrollHeight);
+			log = log + text + "\n";
+
+			if (live_updates) {
+				$('#log').text(log);
+				window.scrollTo(0,document.body.scrollHeight);
+			}
 		}
 
 		socket.on('hardware_log_init', function (msg) {
@@ -41,6 +49,16 @@
 
 		socket.on('hardware_log', function (msg) {
 			append_to_log(msg);
+		});
+
+		$(document).on('click', '#pause-updates', function(){
+			live_updates = !live_updates
+			if (live_updates) {
+				$('#pause-updates').html(__('Pause Updates'));
+				set_log_text(log);
+			} else {
+				$('#pause-updates').html(__('Resume Updates'));
+			}
 		});
 
 		$(document).on('click', '#select-log', function(){
@@ -73,7 +91,10 @@
 <pre>
 <div id="log"></div>
 </pre>
-<div class="control-set"><button id="select-log">{{ __('Select Text') }}</button>
-<button id="download_logs">{{ __('Download Logs') }}</button></div>
+<div class="control-set">
+	<button id="pause-updates">{{ __('Pause Updates') }}</button>
+	<button id="select-log">{{ __('Select Text') }}</button>
+	<button id="download_logs">{{ __('Download Logs') }}</button>
+</div>
 </main>
 {% endblock %}

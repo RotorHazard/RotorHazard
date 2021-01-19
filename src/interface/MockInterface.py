@@ -25,13 +25,13 @@ class MockInterface(BaseHardwareInterface):
         # Scans all i2c_addrs to populate nodes array
         self.nodes = [] # Array to hold each node object
         self.data = []
-        i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
+        # i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
         for index in range(int(os.environ.get('RH_NODES', '8'))):
             node = Node() # New node instance
-            node.i2c_addr = i2c_addrs[index] # Set current loop i2c_addr
+            node.i2c_addr = 2 * index + 8 # Set current loop i2c_addr
             node.index = index
             node.api_valid_flag = True
-            node.api_level = 25
+            node.api_level = 32
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.nodes.append(node) # Add new node to RHInterface
@@ -51,6 +51,12 @@ class MockInterface(BaseHardwareInterface):
         if self.update_thread is None:
             self.log('Starting background thread.')
             self.update_thread = gevent.spawn(self.update_loop)
+
+    def stop(self):
+        if self.update_thread:
+            self.log('Stopping background thread')
+            self.update_thread.kill(block=True, timeout=0.5)
+            self.update_thread = None
 
     def update_loop(self):
         try:
@@ -111,7 +117,7 @@ class MockInterface(BaseHardwareInterface):
 
         # process any nodes with new laps detected
         self.process_updates(upd_list)
-        
+
         if startThreshLowerNode:
             logger.info("For node {0} restoring EnterAt to {1} and ExitAt to {2}"\
                     .format(startThreshLowerNode.index+1, startThreshLowerNode.enter_at_level, \
@@ -153,6 +159,15 @@ class MockInterface(BaseHardwareInterface):
     def force_end_crossing(self, node_index):
         pass
 
+    def jump_to_bootloader(self):
+        self.log("MockInterace - no jump-to-bootloader support")
+
+    def get_fwupd_serial_name(self):
+        return None
+
+    def close_fwupd_serial_port(self):
+        pass
+
     def inc_intf_read_block_count(self):
         pass
 
@@ -166,10 +181,13 @@ class MockInterface(BaseHardwareInterface):
         pass
 
     def get_intf_total_error_count(self):
+        return 0
+
+    def set_intf_error_report_percent_limit(self, percentVal):
         pass
 
-    def get_intf_error_report_str(self, showWriteFlag=False):
-        return ""
+    def get_intf_error_report_str(self, forceFlag=False):
+        return None
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''

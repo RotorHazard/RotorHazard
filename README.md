@@ -31,7 +31,8 @@ RotorHazard builds on the [Delta5 Race Timer](https://github.com/scottgchin/delt
 ## Hardware and Software Setup
 To build and configure the system, follow the instructions here:<br />
 [doc/Hardware Setup.md](doc/Hardware%20Setup.md)<br />
-[doc/Software Setup.md](doc/Software%20Setup.md)
+[doc/Software Setup.md](doc/Software%20Setup.md)<br />
+[Build Resources (PCB, etc)](resources)
 
 View the RotorHazard documentation here: [doc/README.md](doc/README.md)
 
@@ -60,7 +61,7 @@ With support from Ryan Friedman, Klaus Michael Schneider, Cerberus Velvet, David
 
 ### Translators
 * Dutch: Kenny Van Der Sypt
-* German: Klaus Michael Schneider
+* German: Klaus Michael Schneider, Christian Baumgartner
 * Spanish: Ramon Hernandez Roldan
 * French: Yannick M.
 * Polish: Mariusz Misiurek and Paweł Fabiszewski

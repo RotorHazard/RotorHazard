@@ -10,6 +10,7 @@ DEF_TEAM_NAME = 'A'  # default team
 PILOT_ID_NONE = 0  # indicator value for no pilot configured
 HEAT_ID_NONE = 0  # indicator value for practice heat
 CLASS_ID_NONE = 0  # indicator value for unclassified heat
+FORMAT_ID_NONE = 0  # indicator value for no defined format
 
 #
 # Database Models
@@ -142,6 +143,7 @@ class LapSource:
     REALTIME = 0
     MANUAL = 1
     RECALC = 2
+    AUTOMATIC = 3
 
 class Profiles(DB.Model):
     __tablename__ = 'profiles'
@@ -165,9 +167,11 @@ class RaceFormat(DB.Model):
     number_laps_win = DB.Column(DB.Integer, nullable=False)
     win_condition = DB.Column(DB.Integer, nullable=False)
     team_racing_mode = DB.Column(DB.Boolean, nullable=False)
+    start_behavior = DB.Column(DB.Integer, nullable=False)
 
 class GlobalSettings(DB.Model):
     __tablename__ = 'global_settings'
     id = DB.Column(DB.Integer, primary_key=True)
     option_name = DB.Column(DB.String(40), nullable=False)
     option_value = DB.Column(DB.String, nullable=False)
+

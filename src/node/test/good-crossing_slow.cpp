@@ -1,6 +1,5 @@
 #include <ArduinoUnitTests.h>
 #include <Godmode.h>
-#include "../rssi.h"
 #include "util.h"
 
 /**
@@ -9,22 +8,29 @@
 unittest(slowCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiSetFilter(&testFilter);
-  rssiInit();
 
-  state.activatedFlag = true;
+  RssiNode::multiRssiNodeCount = 1;
+  RssiNode *rssiNodePtr = &(RssiNode::rssiNodeArray[0]);
+  rssiNodePtr->rssiSetFilter(&testFilter);
+  rssiNodePtr->rssiInit();
+
+  rssiNodePtr->setActivatedFlag(true);
 
   // prime the state with some background signal
-  sendSignal(nano, 50);
-  sendSignal(nano, 50);
-  assertTrue(rssiStateValid());
+  sendSignal(rssiNodePtr, nano, 50);
+  sendSignal(rssiNodePtr, nano, 50);
+  assertTrue(rssiNodePtr->rssiStateValid());
 
   // enter
-  sendSignal(nano, 130);
+  sendSignal(rssiNodePtr, nano, 130);
   int duration = 3;
   for(int i=0; i<duration; i++) {
-      sendSignal(nano, 130);
+      sendSignal(rssiNodePtr, nano, 130);
   }
+
+  struct State & state = rssiNodePtr->getState();
+  struct History & history = rssiNodePtr->getHistory();
+  struct LastPass & lastPass = rssiNodePtr->getLastPass();
 
   assertEqual(130, (int)state.rssi);
   assertEqual(timestamp(3+duration), (int)state.rssiTimestamp);
@@ -56,7 +62,7 @@ unittest(slowCrossing) {
   assertTrue(history.nadirSend->isEmpty());
 
   // exit
-  sendSignal(nano, 70);
+  sendSignal(rssiNodePtr, nano, 70);
   assertEqual(70, (int)state.rssi);
   assertEqual(timestamp(4+duration), (int)state.rssiTimestamp);
   assertEqual(130, (int)state.lastRssi);

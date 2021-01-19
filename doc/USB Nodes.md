@@ -8,7 +8,11 @@ Hardware nodes may be connected into the system via USB.  A node can be created 
 
 The above build uses an Arduino Nano V3.0 16M 5V ATmega328P module (which can be found on [eBay](https://www.ebay.com/sch/i.html?_nkw=Arduino+Nano+V3.0+16M+5V+ATmega328P)) and an RX5808 module (which can be found on [banggood](https://www.banggood.com/search/rx5808-module.html) and [eBay](https://www.ebay.com/sch/i.html?_nkw=rx5808+module)).
 
-USB nodes may be plugged into the USB ports of the Raspberry Pi on a standard RotorHazard timer build, or they may be attached to [any computer running the RotorHazard server](Software%20Setup.md#otheros).  The USB nodes need to be configured in the "SERIAL_PORTS" section in the "src/server/config.json" file.
+USB nodes may be plugged into the USB ports of the Raspberry Pi on a standard RotorHazard timer build, and they will appear in the system as serial ports.  If the timer also has "standard" (PCB-based) nodes, the USB/serial nodes will add to the total number of nodes available.  (Node counts of 9 or higher are possible.)
+
+The nodes may also be attached (via USB) to [any computer running the RotorHazard server](Software%20Setup.md#otheros).  
+
+USB nodes need to be configured in the "SERIAL_PORTS" section in the "src/server/config.json" file, as shown in the examples below.
 
 #### Raspberry Pi
 
@@ -31,6 +35,10 @@ Multiple USB nodes would be configured like this:
 ```
 	"SERIAL_PORTS": ["COM5","COM6"],
 ```
+
+#### Node Code
+
+The RotorHazard node code will need to be uploaded (flashed) to the Arduino using [the "standard" method](Software%20Setup.md#install-receiver-node-code-arduinos) (via the Arduino IDE).  The NODE_NUMBER value (in "src/node/config.h") is ignored for USB nodes; it can be left at 0.
 
 <br/>
 

@@ -26,45 +26,41 @@ class EventManager:
             "unique": unique
         }
 
-        self.eventOrder[event] = sorted(self.events[event].items(), key=lambda x: x[1]['priority'])
+        self.eventOrder[event] = [key for key, value in sorted(self.events[event].items(), key=lambda x: x[1]['priority'])]
 
         return True
 
     def trigger(self, event, evtArgs=None):
         if event in self.events:
-            for handlerlist in self.eventOrder[event]:
-                for name in handlerlist:
-                    handler = self.events[event][name]
+            for name in self.eventOrder[event]:
+                handler = self.events[event][name]
 
-                    args = handler['defaultArgs']
-                    if evtArgs:
-                        if args:
-                            args.update(evtArgs)
-                        else:
-                            args = evtArgs
-
-                    if handler['priority'] < 100:
-                        # stop any threads with same name
-                        if name in self.eventThreads:
-                            if self.eventThreads[name] is not None:
-                                self.eventThreads[name].kill()
-                                self.eventThreads[name] = None
-
-                        handler['handlerFn'](args)
+                args = handler['defaultArgs']
+                if evtArgs:
+                    if args:
+                        args.update(evtArgs)
                     else:
-                        # restart thread with same name regardless of status
-                        if name in self.eventThreads:
-                            if self.eventThreads[name] is not None:
-                                self.eventThreads[name].kill()
+                        args = evtArgs
 
-                        if handler['unique']:
-                            token = monotonic()
-                            self.eventThreads[name + str(token)] = gevent.spawn(handler['handlerFn'], args)
-                        else:
-                            self.eventThreads[name] = gevent.spawn(handler['handlerFn'], args)
+                if handler['priority'] < 100:
+                    # stop any threads with same name
+                    if name in self.eventThreads:
+                        if self.eventThreads[name] is not None:
+                            self.eventThreads[name].kill()
+                            self.eventThreads[name] = None
 
-                    return True
-        return False
+                    handler['handlerFn'](args)
+                else:
+                    # restart thread with same name regardless of status
+                    if name in self.eventThreads:
+                        if self.eventThreads[name] is not None:
+                            self.eventThreads[name].kill()
+
+                    if handler['unique']:
+                        token = monotonic()
+                        self.eventThreads[name + str(token)] = gevent.spawn(handler['handlerFn'], args)
+                    else:
+                        self.eventThreads[name] = gevent.spawn(handler['handlerFn'], args)
 
 class Evt:
     # Program
@@ -99,9 +95,12 @@ class Evt:
     DATABASE_RESET = 'databaseReset'
     DATABASE_INITIALIZE = 'databaseInitialize'
     DATABASE_RECOVER = 'databaseRecover'
+    DATABASE_RESTORE = 'databaseRestore'
+    DATABASE_DELETE_BACKUP = 'databaseDeleteBackup'
     # Race setup
     MIN_LAP_TIME_SET = 'minLapTimeSet'
     MIN_LAP_BEHAVIOR_SET = 'minLapBehaviorSet'
+    RACE_ALTER = 'raceAlter'
     RACE_FORMAT_SET = 'raceFormatSet'
     RACE_FORMAT_ADD = 'raceFormatAdd'
     RACE_FORMAT_ALTER = 'raceFormatAlter'
@@ -127,12 +126,14 @@ class Evt:
     # Results cache
     CACHE_CLEAR = 'cacheClear'
     CACHE_READY = 'cacheReady'
+    CACHE_FAIL = 'cacheFail'
     # CLUSTER
     CLUSTER_JOIN = 'clusterJoin'
     # LED
     LED_EFFECT_SET = 'LedEffectSet'
     LED_BRIGHTNESS_SET = 'LedBrightnessSet'
     LED_MANUAL = 'LedManual'
+    LED_SET_MANUAL = 'LedSetManual'
     # VRX Controller
     VRX_DATA_RECEIVE = 'VrxDataRecieve'
 

@@ -1,5 +1,18 @@
 {% extends "layout.html" %} {% block title %}Race{% endblock %}{% block head %}
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'frequency_data',
+		'pilot_data',
+		'race_format',
+		'leaderboard_cache',
+		'current_laps',
+		'race_status',
+		'current_heat',
+		'team_racing_stat_if_enb'
+	];
+
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 
 	var request_time;
@@ -25,19 +38,6 @@
 		// get pi time
 		rotorhazard.pi_time_request = window.performance.now();
 		socket.emit('get_pi_time');
-
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'frequency_data',
-			'pilot_data',
-			'race_format',
-			'leaderboard_cache',
-			'current_laps',
-			'race_status',
-			'current_heat',
-			'team_racing_stat_if_enb'
-		]});
 
 		$('#about>.popup-content').append('<p id="server-lag">Sync quality: [calculating]</p>');
 
@@ -91,10 +91,6 @@
 				a = Math.min(a, rotorhazard.pi_time_diff_samples[i].response);
 			}
 			$('#server-lag').html('<p>Sync quality: within ' + a + 'ms (' + rotorhazard.pi_time_diff_samples.length + ' samples)</p>');
-		});
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
 		});
 
 		socket.on('language', function (msg) {
@@ -299,8 +295,17 @@
 			$('#leaderboard').append(build_leaderboard(msg[leaderboard], 'current', msg.meta));
 		});
 
-		socket.on('team_racing_status', function (msg) {
-			$('.team_racing_status').html(msg.team_laps_str);
+		socket.on('team_leaderboard', function (msg) {
+			$('#team_leaderboard').empty();
+
+			if (msg && 'meta' in msg) {
+				team_leaderboard = msg.meta.primary_leaderboard;
+				$('#team_leaderboard').append(build_team_leaderboard(msg[team_leaderboard], team_leaderboard, msg.meta));
+			}
+		});
+
+		socket.on('race_status_message', function (msg) {
+			$('.race_status_message').html(msg.team_laps_str);
 		});
 
 		socket.on('phonetic_data', function (msg) {
@@ -566,7 +571,9 @@
 		<!--Display the race leaderboard-->
 		<div id="leaderboard"></div>
 
-		<div class="team_racing_status"></div>
+		<div id="team_leaderboard"></div>
+
+		<div class="race_status_message"></div>
 
 		<!--Display the current laps-->
 		<div class="race-results">
@@ -624,8 +631,8 @@
 					</div>
 					<select id="voice_callsign">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('Always') }}</option>
 						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
 				<li>
@@ -634,8 +641,8 @@
 					</div>
 					<select id="voice_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('Always') }}</option>
 						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
 				<li>
@@ -644,18 +651,18 @@
 					</div>
 					<select id="voice_lap_time">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('Always') }}</option>
 						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
 				<li>
 					<div class="label-block">
-						<label for="voice_race_timer">{{ __('Race Timer') }}</label>
+						<label for="voice_race_timer">{{ __('Race Clock') }}</label>
 					</div>
 					<select id="voice_race_timer">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('Always') }}</option>
 						<option value="2">{{ __('Only on Fixed-time Races') }}</option>
+						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
 				<li>

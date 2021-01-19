@@ -1,8 +1,8 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.3.0-dev.3" # Public release version code
-SERVER_API = 28 # Server API version
+RELEASE_VERSION = "3.0.0-dev.1" # Public release version code
+SERVER_API = 29 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 25 # Most recent node API
+NODE_API_BEST = 32 # Most recent node API
 JSON_API = 3 # JSON API version
 
 # This must be the first import for the time being. It is
@@ -12,6 +12,7 @@ JSON_API = 3 # JSON API version
 import logging
 import log
 from datetime import datetime
+from monotonic import monotonic
 
 log.early_stage_setup()
 logger = logging.getLogger(__name__)
@@ -20,6 +21,12 @@ EPOCH_START = datetime(1970, 1, 1)
 
 # program-start time, in milliseconds since 1970-01-01
 PROGRAM_START_EPOCH_TIME = int((datetime.now() - EPOCH_START).total_seconds() * 1000)
+
+# program-start time (in milliseconds, starting at zero)
+PROGRAM_START_MTONIC = monotonic()
+
+# offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
+MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_MTONIC
 
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
@@ -38,18 +45,17 @@ import shutil
 import base64
 import subprocess
 import importlib
-import socketio
-from monotonic import monotonic
 from functools import wraps
 from collections import OrderedDict
 from six import unichr, string_types
 
-from flask import Flask, send_file, request, Response, session, templating
+from flask import Flask, send_file, request, Response, session, templating, redirect
 from flask_socketio import SocketIO, emit
-from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy import create_engine, MetaData, Table
 
+import socket
 import random
+import string
 import json
 
 import Config
@@ -60,6 +66,10 @@ import Language
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Language import __
+from ClusterNodeSet import SlaveNode, ClusterNodeSet
+from util.SendAckQueue import SendAckQueue
+import RHGPIO
+import util.stm32loader as stm32loader
 
 # Events manager
 from eventmanager import Evt, EventManager
@@ -67,14 +77,15 @@ from eventmanager import Evt, EventManager
 Events = EventManager()
 
 # LED imports
-from led_event_manager import LEDEventManager, NoLEDManager, LEDEvent, Color, ColorPattern, hexToColor
+from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorPattern, hexToColor
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
 from Plugins import Plugins, search_modules
 from Sensors import Sensors
-from RHRace import get_race_state, WinCondition, RaceStatus, RACE_START_DELAY_EXTRA_SECS
+import RHRace
+from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -96,9 +107,11 @@ if RHUtils.checkSetFileOwnerPi(log.LOG_DIR_NAME):
     logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(log.LOG_DIR_NAME))
 
 # command-line arguments:
-CMDARG_VERSION_LONG_STR = '--version'  # show program version and exit
-CMDARG_VERSION_SHORT_STR = '-v'        # show program version and exit
-CMDARG_ZIP_LOGS_STR = '--ziplogs'      # create logs .zip file
+CMDARG_VERSION_LONG_STR = '--version'    # show program version and exit
+CMDARG_VERSION_SHORT_STR = '-v'          # show program version and exit
+CMDARG_ZIP_LOGS_STR = '--ziplogs'        # create logs .zip file
+CMDARG_JUMP_TO_BL_STR = '--jumptobl'     # send jump-to-bootloader command to node
+CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill processor
 
 if __name__ == '__main__' and len(sys.argv) > 1:
     if CMDARG_VERSION_LONG_STR in sys.argv or CMDARG_VERSION_SHORT_STR in sys.argv:
@@ -106,7 +119,18 @@ if __name__ == '__main__' and len(sys.argv) > 1:
     if CMDARG_ZIP_LOGS_STR in sys.argv:
         log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
         sys.exit(0)
-    print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
+    if CMDARG_JUMP_TO_BL_STR not in sys.argv:  # handle jump-to-bootloader argument later
+        if CMDARG_FLASH_BPILL_STR in sys.argv:
+            argIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
+            portStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
+                                                len(Config.SERIAL_PORTS) > 0 else None
+            srcStr = sys.argv[argIdx] if argIdx < len(sys.argv) else None
+            if srcStr and srcStr.startswith("--"):  # use next arg as src file (optional)
+                srcStr = None                       #  unless arg is switch param
+            successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
+            sys.exit(0 if successFlag else 1)
+        print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
+        sys.exit(1)
 
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 DEF_TEAM_NAME = 'A'  # default team
@@ -128,16 +152,15 @@ Current_log_path_name = log.later_stage_setup(Config.LOGGING, SOCKET_IO)
 INTERFACE = None  # initialized later
 SENSORS = Sensors()
 CLUSTER = None    # initialized later
+ClusterSendAckQueueObj = None
+serverInfo = None
+serverInfoItems = None
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
+server_ipaddress_str = None
+Settings_note_msg_text = None
 
-RACE = get_race_state() # For storing race management variables
-
-# program-start time (in milliseconds, starting at zero)
-PROGRAM_START_MTONIC = monotonic()
-
-# offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
-MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_MTONIC
+RACE = RHRace.RHRace() # For storing race management variables
 
 TONES_NONE = 0
 TONES_ONE = 1
@@ -148,258 +171,67 @@ def monotonic_to_epoch_millis(secs):
     return 1000.0*secs + MTONIC_TO_EPOCH_MILLIS_OFFSET
 
 #
-# Slaves
-#
-
-class Slave:
-
-    TIMER_MODE = 'timer'
-    MIRROR_MODE = 'mirror'
-
-    def __init__(self, idVal, info):
-        self.id = idVal
-        self.info = info
-        addr = info['address']
-        if not '://' in addr:
-            addr = 'http://'+addr
-        self.address = addr
-        self.lastContact = -1
-        self.lastCheckQueryTime = 0
-        self.freqsSentFlag = False
-        self.raceStartEpoch = 0
-        self.clockWarningFlag = False
-        self.sio = socketio.Client()
-        self.sio.on('connect', self.on_connect)
-        self.sio.on('disconnect', self.on_disconnect)
-        self.sio.on('pass_record', self.on_pass_record)
-        self.sio.on('check_slave_response', self.on_check_slave_response)
-
-    def reconnect(self):
-        if self.lastContact == -1:
-            startConnectTime = monotonic()
-            logger.info("Connecting to slave {0} at {1}...".format(self.id+1, self.address))
-            while monotonic() < startConnectTime + self.info['timeout']:
-                try:
-                    self.sio.connect(self.address)
-                    logger.info("Connected to slave {0} at {1}".format(self.id+1, self.address))
-                    gevent.spawn_later(3, start_background_threads)  # start heartbeat so 'doClusterMgmtActions()' is called
-                    return True
-                except socketio.exceptions.ConnectionError:
-                    gevent.sleep(0.1)
-            logger.warn("Connection to slave {0} at {1} failed".format(self.id+1, self.address))
-            return False
-        else:
-            return True
-
-    @catchLogExceptionsWrapper
-    def emit(self, event, data = None):
-        if self.reconnect():
-            self.sio.emit(event, data)
-            self.lastContact = monotonic()
-
-    def on_connect(self):
-        self.lastContact = monotonic()
-
-    def on_disconnect(self):
-        self.lastContact = -1
-        logger.info("Disconnected from slave {0} at {1}".format(self.id+1, self.address))
-
-    @catchLogExceptionsWrapper
-    def on_pass_record(self, data):
-        self.lastContact = monotonic()
-        node_index = data['node']
-        pilot_id = Database.HeatNode.query.filter_by( \
-            heat_id=RACE.current_heat, node_index=node_index).one_or_none().pilot_id
-
-        if pilot_id != Database.PILOT_ID_NONE:
-
-            # convert split timestamp (epoch ms sine 1970-01-01) to equivalent local 'monotonic' time value
-            split_ts = data['timestamp'] - RACE.start_time_epoch_ms
-
-            lap_count = max(0, len(RACE.get_active_laps()[node_index]) - 1)
-
-            # get timestamp for last lap pass (including lap 0)
-            act_laps_list = RACE.get_active_laps()[node_index]
-            if len(act_laps_list) > 0:
-                last_lap_ts = act_laps_list[-1]['lap_time_stamp']
-            else:
-                last_lap_ts = 0
-
-            split_id = self.id
-            last_split_id = DB.session.query(DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=lap_count).scalar()
-            if last_split_id is None: # first split for this lap
-                if split_id > 0:
-                    logger.info('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
-                last_split_ts = last_lap_ts
-            else:
-                if split_id > last_split_id:
-                    if split_id > last_split_id + 1:
-                        logger.info('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
-                    last_split_ts = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=lap_count, split_id=last_split_id).one().split_time_stamp
-                else:
-                    logger.info('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
-                    last_split_ts = None
-
-            if last_split_ts is not None:
-
-                # get race-start time value from slave (or previously received and saved value)
-                slv_rs_epoch = data.get('race_start_epoch', 0) or self.raceStartEpoch
-                if slv_rs_epoch > 0:
-                    self.raceStartEpoch = slv_rs_epoch  # save race-start time for future laps
-                    # compare the local race-start epoch time to the slave's
-                    # (account for master-server's prestage race-delay time)
-                    rs_epoch_diff = RACE.start_time_epoch_ms - slv_rs_epoch - \
-                                    int((RACE.start_time_delay_secs-RACE_START_DELAY_EXTRA_SECS) * 1000)
-                    # if slave timer's clock is too far off then correct as best we can
-                    #  using estimated difference in race-start epoch times
-                    if abs(rs_epoch_diff) > 1000:
-                        split_ts += rs_epoch_diff
-                        if not self.clockWarningFlag:
-                            logger.warn("Slave {0} clock not synchronized with master, offset={1:.1f}ms, split={2}".\
-                                        format(self.id+1, (-rs_epoch_diff), split_id+1))
-                            self.clockWarningFlag = True
-                        logger.debug("Correcting slave-time offset ({0:.1f}ms) on node {1}, new split_ts={2:.1f}, split={3}".\
-                                     format((-rs_epoch_diff), node_index+1, split_ts, split_id+1))
-                    else:
-                        logger.debug("Slave {0} clock synchronized OK with master, offset={1:.1f}ms, split={2}".\
-                                     format(self.id+1, (-rs_epoch_diff), split_id+1))
-
-                split_time = split_ts - last_split_ts
-                split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
-                split_time_str = RHUtils.time_format(split_time)
-                logger.debug('Split pass record: Node {0}, lap {1}, split {2}, time={3}, speed={4}' \
-                    .format(node_index+1, lap_count+1, split_id+1, split_time_str, \
-                    ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
-
-                DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=lap_count, \
-                        split_id=split_id, split_time_stamp=split_ts, split_time=split_time, \
-                        split_time_formatted=split_time_str, split_speed=split_speed))
-                DB.session.commit()
-                emit_current_laps() # update all laps on the race page
-                emit_phonetic_split(pilot_id, split_id, split_time);
-        else:
-            logger.info('Split pass record dismissed: Node: {0}, Frequency not defined' \
-                .format(node_index+1))
-
-    @catchLogExceptionsWrapper
-    def on_check_slave_response(self, data):
-        self.lastContact = monotonic()
-
-class Cluster:
-    def __init__(self):
-        self.slaves = []
-
-    def addSlave(self, slave):
-        slave.emit('join_cluster')
-        self.slaves.append(slave)
-
-    def hasSlaves(self):
-        return (len(self.slaves))
-
-    def emit(self, event, data = None):
-        for slave in self.slaves:
-            gevent.spawn(slave.emit, event, data)
-
-    def emitToMirrors(self, event, data = None):
-        for slave in self.slaves:
-            if slave.info['mode'] == Slave.MIRROR_MODE:
-                gevent.spawn(slave.emit, event, data)
-
-    def emitStatus(self):
-        now = monotonic()
-        SOCKET_IO.emit('cluster_status', {'slaves': [ \
-            {'address': slave.address, \
-            'last_contact': int(now-slave.lastContact) if slave.lastContact >= 0 else 'connection lost' \
-            }] for slave in self.slaves})
-        gevent.spawn(self.doClusterMgmtActions)
-
-    def doClusterMgmtActions(self):
-        now = monotonic()
-        for slave in self.slaves:
-            if not slave.freqsSentFlag:
-                try:
-                    logger.info("Sending node frequencies to slave {0} at {1}".format(slave.id+1, slave.address))
-                    slave.freqsSentFlag = True
-                    profile = getCurrentProfile()
-                    profile_freqs = json.loads(profile.frequencies)
-                    for idx in range(RACE.num_nodes):
-                        freq = profile_freqs["f"][idx]
-                        data = { 'node':idx, 'frequency':freq }
-                        slave.emit('set_frequency', data)
-                        gevent.sleep(0.001)
-                except Exception as ex:
-                    logger.error("Error sending node frequencies to slave {0} at {1}: {2}".format(slave.id+1, slave.address, ex))
-            else:
-                try:
-                    if slave.lastContact > 0 and now > slave.lastContact + 10 and now > slave.lastCheckQueryTime + 10:
-                        self.lastCheckQueryTime = now
-                        slave.sio.emit('check_slave_query')  # don't update 'lastContact' value until response received
-                except Exception as ex:
-                    logger.error("Error sending check-query to slave {0} at {1}: {2}".format(slave.id+1, slave.address, ex))
-
-#
 # Server Info
 #
-
 def buildServerInfo():
-    serverInfo = {}
+    infoDict = {}
 
-    serverInfo['about_html'] = "<ul>"
+    infoDict['about_html'] = "<ul>"
 
     # Release Version
-    serverInfo['release_version'] = RELEASE_VERSION
-    serverInfo['about_html'] += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
+    infoDict['release_version'] = RELEASE_VERSION
+    infoDict['about_html'] += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
 
     # Server API
-    serverInfo['server_api'] = SERVER_API
-    serverInfo['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
+    infoDict['server_api'] = SERVER_API
+    infoDict['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
 
     # Server API
-    serverInfo['json_api'] = JSON_API
+    infoDict['json_api'] = JSON_API
 
     # Node API levels
     node_api_level = False
-    serverInfo['node_api_match'] = True
+    infoDict['node_api_match'] = True
 
-    serverInfo['node_api_lowest'] = None
-    serverInfo['node_api_levels'] = [None]
+    infoDict['node_api_lowest'] = None
+    infoDict['node_api_levels'] = [None]
 
     if len(INTERFACE.nodes):
         if INTERFACE.nodes[0].api_level:
             node_api_level = INTERFACE.nodes[0].api_level
-            serverInfo['node_api_lowest'] = node_api_level
-            serverInfo['node_api_levels'] = []
+            infoDict['node_api_lowest'] = node_api_level
+            infoDict['node_api_levels'] = []
             for node in INTERFACE.nodes:
-                serverInfo['node_api_levels'].append(node.api_level)
+                infoDict['node_api_levels'].append(node.api_level)
 
                 if node.api_level is not node_api_level:
-                    serverInfo['node_api_match'] = False
+                    infoDict['node_api_match'] = False
 
-                if node.api_level < serverInfo['node_api_lowest']:
-                    serverInfo['node_api_lowest'] = node.api_level
+                if node.api_level < infoDict['node_api_lowest']:
+                    infoDict['node_api_lowest'] = node.api_level
 
-    serverInfo['about_html'] += "<li>" + __("Node API") + ": "
+    infoDict['about_html'] += "<li>" + __("Node API") + ": "
     if node_api_level:
-        if serverInfo['node_api_match']:
-            serverInfo['about_html'] += str(node_api_level)
+        if infoDict['node_api_match']:
+            infoDict['about_html'] += str(node_api_level)
         else:
-            serverInfo['about_html'] += "[ "
-            for idx, level in enumerate(serverInfo['node_api_levels']):
-                serverInfo['about_html'] += str(idx+1) + ":" + str(level) + " "
-            serverInfo['about_html'] += "]"
+            infoDict['about_html'] += "[ "
+            for idx, level in enumerate(infoDict['node_api_levels']):
+                infoDict['about_html'] += str(idx+1) + ":" + str(level) + " "
+            infoDict['about_html'] += "]"
     else:
-        serverInfo['about_html'] += "None (Delta5)"
+        infoDict['about_html'] += "None (Delta5)"
 
-    serverInfo['about_html'] += "</li>"
+    infoDict['about_html'] += "</li>"
 
-    serverInfo['node_api_best'] = NODE_API_BEST
-    if serverInfo['node_api_match'] is False or node_api_level < NODE_API_BEST:
+    infoDict['node_api_best'] = NODE_API_BEST
+    if infoDict['node_api_match'] is False or node_api_level < NODE_API_BEST:
         # Show Recommended API notice
-        serverInfo['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
+        infoDict['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
 
-    serverInfo['about_html'] += "</ul>"
+    infoDict['about_html'] += "</ul>"
 
-    return serverInfo
+    return infoDict
 
 def uniqueName(desiredName, otherNames):
     if desiredName in otherNames:
@@ -436,17 +268,21 @@ def getCurrentDbRaceFormat():
     else:
         return None
 
-def setCurrentRaceFormat(race_format):
+def setCurrentRaceFormat(race_format, **kwargs):
     if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
         Options.set('currentFormat', race_format.id)
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
         RACE.format.id = race_format.id
+        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
     else:
         RACE.format = race_format
 
+    if 'silent' not in kwargs:
+        emit_current_laps()
+
 class RHRaceFormat():
-    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode):
+    def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
         self.name = name
         self.race_mode = race_mode
         self.race_time_sec = race_time_sec
@@ -456,6 +292,7 @@ class RHRaceFormat():
         self.number_laps_win = number_laps_win
         self.win_condition = win_condition
         self.team_racing_mode = team_racing_mode
+        self.start_behavior = start_behavior
 
     @classmethod
     def copy(cls, race_format):
@@ -467,7 +304,8 @@ class RHRaceFormat():
                             staging_tones=race_format.staging_tones,
                             number_laps_win=race_format.number_laps_win,
                             win_condition=race_format.win_condition,
-                            team_racing_mode=race_format.team_racing_mode)
+                            team_racing_mode=race_format.team_racing_mode,
+                            start_behavior=race_format.start_behavior)
 
     @classmethod
     def isDbBased(cls, race_format):
@@ -506,29 +344,41 @@ def render_template(template_name_or_list, **context):
         logger.exception("Exception in render_template")
     return "Error rendering template"
 
+def trigger_event(event, evtArgs=None):
+    try:
+        Events.trigger(event, evtArgs)
+        # if there are cluster timers interested in events then emit it out to them
+        if CLUSTER.hasRecEventsSlaves():
+            payload = { 'evt_name': event }
+            if evtArgs:
+                payload['evt_args'] = json.dumps(evtArgs)
+            CLUSTER.emitEventTrigger(payload)
+    except Exception:
+        logger.exception("Exception in 'trigger_event()'")
+
 #
 # Routes
 #
 
 @APP.route('/')
-def index():
+def render_index():
     '''Route to home page.'''
     return render_template('home.html', serverInfo=serverInfo,
                            getOption=Options.get, __=__, Debug=Config.GENERAL['DEBUG'])
 
-@APP.route('/heats')
-def heats():
+@APP.route('/event')
+def render_event():
     '''Route to heat summary page.'''
-    return render_template('heats.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('event.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
 @APP.route('/results')
-def results():
+def render_results():
     '''Route to round summary page.'''
-    return render_template('rounds.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('results.html', serverInfo=serverInfo, getOption=Options.get, __=__, Debug=Config.GENERAL['DEBUG'])
 
-@APP.route('/race')
+@APP.route('/run')
 @requires_auth
-def race():
+def render_run():
     '''Route to race management page.'''
     frequencies = [node.frequency for node in INTERFACE.nodes]
     nodes = []
@@ -539,8 +389,8 @@ def race():
                 'index': idx
             })
 
-    return render_template('race.html', serverInfo=serverInfo, getOption=Options.get, __=__,
-        led_enabled=led_manager.isEnabled(),
+    return render_template('run.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSlaves())),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat, pilots=Database.Pilot,
@@ -548,7 +398,7 @@ def race():
         cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()))
 
 @APP.route('/current')
-def racepublic():
+def render_current():
     '''Route to race management page.'''
     frequencies = [node.frequency for node in INTERFACE.nodes]
     nodes = []
@@ -559,44 +409,48 @@ def racepublic():
                 'index': idx
             })
 
-    return render_template('racepublic.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('current.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes,
         nodes=nodes,
         cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()))
 
 @APP.route('/marshal')
 @requires_auth
-def marshal():
+def render_marshal():
     '''Route to race management page.'''
     return render_template('marshal.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/settings')
 @requires_auth
-def settings():
+def render_settings():
     '''Route to settings page.'''
     return render_template('settings.html', serverInfo=serverInfo, getOption=Options.get, __=__,
-        led_enabled=led_manager.isEnabled(),
+        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSlaves())),
+        led_events_enabled=led_manager.isEnabled(),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config.GENERAL['configFile'],
+        note_message_text=Settings_note_msg_text,
         cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()),
+        node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
+        is_raspberry_pi=RHUtils.isSysRaspberryPi(),
         Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/streams')
-def stream():
+def render_stream():
     '''Route to stream index.'''
     return render_template('streams.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/stream/results')
-def stream_results():
+def render_stream_results():
     '''Route to current race leaderboard stream.'''
     return render_template('streamresults.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/stream/node/<int:node_id>')
-def stream_node(node_id):
+def render_stream_node(node_id):
     '''Route to single node overlay for streaming.'''
     if node_id <= RACE.num_nodes:
         return render_template('streamnode.html', serverInfo=serverInfo, getOption=Options.get, __=__,
@@ -606,14 +460,14 @@ def stream_node(node_id):
         return False
 
 @APP.route('/stream/class/<int:class_id>')
-def stream_class(class_id):
+def render_stream_class(class_id):
     '''Route to class leaderboard display for streaming.'''
     return render_template('streamclass.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         class_id=class_id
     )
 
 @APP.route('/stream/heat/<int:heat_id>')
-def stream_heat(heat_id):
+def render_stream_heat(heat_id):
     '''Route to heat display for streaming.'''
     return render_template('streamheat.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes,
@@ -622,7 +476,7 @@ def stream_heat(heat_id):
 
 @APP.route('/scanner')
 @requires_auth
-def scanner():
+def render_scanner():
     '''Route to scanner page.'''
 
     return render_template('scanner.html', serverInfo=serverInfo, getOption=Options.get, __=__,
@@ -630,28 +484,34 @@ def scanner():
 
 @APP.route('/decoder')
 @requires_auth
-def decoder():
+def render_decoder():
     '''Route to race management page.'''
     return render_template('decoder.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/imdtabler')
-def imdtabler():
+def render_imdtabler():
     '''Route to IMDTabler page.'''
-
     return render_template('imdtabler.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+
+@APP.route('/updatenodes')
+@requires_auth
+def render_updatenodes():
+    '''Route to update nodes page.'''
+    return render_template('updatenodes.html', serverInfo=serverInfo, getOption=Options.get, __=__, \
+                           fw_src_str=stm32loader.DEF_BINSRC_STR)
 
 # Debug Routes
 
 @APP.route('/hardwarelog')
 @requires_auth
-def hardwarelog():
+def render_hardwarelog():
     '''Route to hardware log page.'''
     return render_template('hardwarelog.html', serverInfo=serverInfo, getOption=Options.get, __=__)
 
 @APP.route('/database')
 @requires_auth
-def database():
+def render_database():
     '''Route to database page.'''
     return render_template('database.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         pilots=Database.Pilot,
@@ -666,29 +526,27 @@ def database():
 
 @APP.route('/vrxstatus')
 @requires_auth
-def vrxstatus():
-    '''Route to database page.'''
-    if vrx_controller:
-        return render_template('vrxstatus.html', serverInfo=serverInfo, getOption=Options.get, __=__,
-            vrxstatus=vrx_controller.rx_data)
-    else:
-        return False
+def render_vrxstatus():
+    '''Route to VRx status debug page.'''
+    return render_template('vrxstatus.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+
+# Documentation Viewer
 
 @APP.route('/docs')
-def viewDocs():
+def render_viewDocs():
     '''Route to doc viewer.'''
     try:
         docfile = request.args.get('d')
-    
+
         language = Options.get("currentLanguage")
         if language:
             translation = language + '-' + docfile
             if os.path.isfile('../../doc/' + translation):
                 docfile = translation
-    
+
         with io.open('../../doc/' + docfile, 'r', encoding="utf-8") as f:
             doc = f.read()
-    
+
         return templating.render_template('viewdocs.html',
             serverInfo=serverInfo,
             getOption=Options.get,
@@ -700,276 +558,18 @@ def viewDocs():
     return "Error rendering documentation"
 
 @APP.route('/img/<path:imgfile>')
-def viewImg(imgfile):
+def render_viewImg(imgfile):
     '''Route to img called within doc viewer.'''
     return send_file('../../doc/img/' + imgfile)
 
-# JSON API
+# Redirect routes
+@APP.route('/race')
+def redirect_race():
+    return redirect("/run", code=301)
 
-class AlchemyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj.__class__, DeclarativeMeta):
-            # an SQLAlchemy class
-            fields = {}
-            for field in [x for x in dir(obj) if not x.startswith('_') and x != 'metadata']:
-                data = obj.__getattribute__(field)
-                if field != "query" \
-                    and field != "query_class":
-                    try:
-                        json.dumps(data) # this will fail on non-encodable values, like other classes
-                        if field == "frequencies":
-                            fields[field] = json.loads(data)["f"]
-                        elif field == "enter_ats" or field == "exit_ats":
-                            fields[field] = json.loads(data)["v"]
-                        else:
-                            fields[field] = data
-                    except TypeError:
-                        fields[field] = None
-            # a json-encodable dict
-            return fields
-
-        return json.JSONEncoder.default(self, obj)
-
-@APP.route('/api/pilot/all')
-def api_pilot_all():
-    pilots = Database.Pilot.query.all()
-    payload = []
-    for pilot in pilots:
-        payload.append(pilot)
-
-    return json.dumps({"pilots": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/pilot/<int:pilot_id>')
-def api_pilot(pilot_id):
-    pilot = Database.Pilot.query.get(pilot_id)
-
-    return json.dumps({"pilot": pilot}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/heat/all')
-def api_heat_all():
-    all_heats = {}
-    for heat in Database.Heat.query.all():
-        heat_id = heat.id
-        note = heat.note
-        race_class = heat.class_id
-
-        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
-        pilots = {}
-        for pilot in heatnodes:
-            pilots[pilot.node_index] = pilot.pilot_id
-
-        has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
-
-        if has_race:
-            locked = True
-        else:
-            locked = False
-
-        all_heats[heat_id] = {
-            'note': note,
-            'heat_id': heat_id,
-            'class_id': race_class,
-            'nodes_pilots': pilots,
-            'locked': locked
-        }
-
-    return json.dumps({"heats": all_heats}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/heat/<int:heat_id>')
-def api_heat(heat_id):
-    heat = Database.Heat.query.get(heat_id)
-    if heat:
-        note = heat.note
-        race_class = heat.class_id
-
-        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
-        pilots = {}
-        for pilot in heatnodes:
-            pilots[pilot.node_index] = pilot.pilot_id
-
-        has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
-
-        if has_race:
-            locked = True
-        else:
-            locked = False
-
-        heat = {
-            'note': note,
-            'heat_id': heat_id,
-            'class_id': race_class,
-            'nodes_pilots': pilots,
-            'locked': locked
-        }
-    else:
-        heat = None
-
-    payload = {
-        'setup': heat,
-        'leaderboard': Results.calc_leaderboard(DB, heat_id=heat_id)
-    }
-
-    return json.dumps({"heat": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/class/all')
-def api_class_all():
-    race_classes = Database.RaceClass.query.all()
-    payload = []
-    for race_class in race_classes:
-        payload.append(race_class)
-
-    return json.dumps({"classes": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/class/<int:class_id>')
-def api_class(class_id):
-    race_class = Database.RaceClass.query.get(class_id)
-
-    return json.dumps({"class": race_class}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/format/all')
-def api_format_all():
-    formats = Database.RaceFormat.query.all()
-    payload = []
-    for race_format in formats:
-        payload.append(race_format)
-
-    return json.dumps({"formats": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/format/<int:format_id>')
-def api_format(format_id):
-    raceformat = Database.RaceFormat.query.get(format_id)
-
-    return json.dumps({"format": raceformat}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/profile/all')
-def api_profile_all():
-    profiles = Database.Profiles.query.all()
-    payload = []
-    for profile in profiles:
-        payload.append(profile)
-
-    return json.dumps({"profiles": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/profile/<int:profile_id>')
-def api_profile(profile_id):
-    profile = Database.Profiles.query.get(profile_id)
-
-    return json.dumps({"profile": profile}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/race/current')
-def api_race_current():
-    global RACE
-    if RACE.cacheStatus == Results.CacheStatus.VALID:
-        results = RACE.results
-    else:
-        results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
-        RACE.results = results
-        RACE.cacheStatus = Results.CacheStatus.VALID
-
-    payload = {
-        "raw_laps": RACE.node_laps,
-        "leaderboard": results
-    }
-
-    return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/race/all')
-def api_race_all():
-    heats = []
-    for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
-        max_rounds = DB.session.query(DB.func.max(Database.SavedRaceMeta.round_id)).filter_by(heat_id=heat.heat_id).scalar()
-        heats.append({
-            "id": heat.heat_id,
-            "rounds": max_rounds
-        })
-
-    payload = {
-        "heats": heats,
-        "leaderboard": Results.calc_leaderboard(DB)
-    }
-
-    return json.dumps({"races": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/race/<int:heat_id>/<int:round_id>')
-def api_race(heat_id, round_id):
-    race = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).one()
-
-    pilotraces = []
-    for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=race.id).all():
-        laps = []
-        for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
-            laps.append({
-                    'id': lap.id,
-                    'lap_time_stamp': lap.lap_time_stamp,
-                    'lap_time': lap.lap_time,
-                    'lap_time_formatted': lap.lap_time_formatted,
-                    'source': lap.source,
-                    'deleted': lap.deleted
-                })
-
-        pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
-        if pilot_data:
-            nodepilot = pilot_data.callsign
-        else:
-            nodepilot = None
-
-        if Options.get('pilotSort') == 'callsign':
-            pilot_data.sort(key=lambda x: (x['callsign'], x['name']))
-        else:
-            pilot_data.sort(key=lambda x: (x['name'], x['callsign']))
-
-        pilotraces.append({
-            'callsign': nodepilot,
-            'pilot_id': pilotrace.pilot_id,
-            'node_index': pilotrace.node_index,
-            'laps': laps
-        })
-    payload = {
-        'start_time_formatted': race.start_time_formatted,
-        'nodes': pilotraces,
-        'sort': Options.get('pilotSort'),
-        'leaderboard': Results.calc_leaderboard(DB, heat_id=heat_id, round_id=round_id)
-    }
-
-    return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/status')
-def api_status():
-    data = {
-        "server_info": {
-            "server_api": serverInfo['server_api'],
-            "json_api": serverInfo['json_api'],
-            "node_api_best": serverInfo['node_api_best'],
-            "release_version": serverInfo['release_version'],
-            "node_api_match": serverInfo['node_api_match'],
-            "node_api_lowest": serverInfo['node_api_lowest'],
-            "node_api_levels": serverInfo['node_api_levels']
-        },
-        "state": {
-            "current_heat": RACE.current_heat,
-            "num_nodes": RACE.num_nodes,
-            "race_status": RACE.race_status,
-            "currentProfile": Options.get('currentProfile'),
-            "currentFormat": Options.get('currentFormat'),
-        }
-    }
-
-    return json.dumps({"status": data}), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
-@APP.route('/api/options')
-def api_options():
-    opt_query = Database.GlobalSettings.query.all()
-    options = {}
-    if opt_query:
-        for opt in opt_query:
-            options[opt.option_name] = opt.option_value
-
-        payload = options
-    else:
-        payload = None
-
-    return json.dumps({"options": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-
+@APP.route('/heats')
+def redirect_heats():
+    return redirect("/event", code=301)
 
 def start_background_threads():
     INTERFACE.start()
@@ -977,6 +577,17 @@ def start_background_threads():
     if HEARTBEAT_THREAD is None:
         HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
         logger.debug('Heartbeat thread started')
+
+def stop_background_threads():
+    try:
+        global HEARTBEAT_THREAD
+        if HEARTBEAT_THREAD:
+            logger.info('Stopping heartbeat thread')
+            HEARTBEAT_THREAD.kill(block=True, timeout=0.5)
+            HEARTBEAT_THREAD = None
+        INTERFACE.stop()
+    except Exception:
+        logger.error("Error stopping background threads")
 
 #
 # Socket IO Events
@@ -988,7 +599,8 @@ def connect_handler():
     '''Starts the interface and a heartbeat thread for rssi.'''
     logger.debug('Client connected')
     start_background_threads()
-    emit_heat_data(nobroadcast=True)
+    # push initial data
+    emit_frontend_load(nobroadcast=True)
 
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
@@ -1033,20 +645,73 @@ def on_reset_auto_calibration(data):
 
 # Cluster events
 
+def emit_cluster_msg_to_master(messageType, messagePayload, waitForAckFlag=True):
+    '''Emits cluster message to master timer.'''
+    global ClusterSendAckQueueObj
+    if not ClusterSendAckQueueObj:
+        ClusterSendAckQueueObj = SendAckQueue(20, SOCKET_IO, logger)
+    ClusterSendAckQueueObj.put(messageType, messagePayload, waitForAckFlag)
+
+def emit_join_cluster_response():
+    '''Emits 'join_cluster_response' message to master timer.'''
+    payload = {
+        'server_info': json.dumps(serverInfoItems)
+    }
+    emit_cluster_msg_to_master('join_cluster_response', payload, False)
+
+def has_joined_cluster():
+    return True if ClusterSendAckQueueObj else False
+
 @SOCKET_IO.on('join_cluster')
 @catchLogExceptionsWrapper
 def on_join_cluster():
     setCurrentRaceFormat(SLAVE_RACE_FORMAT)
-    getCurrentRaceFormat().cluster_flag = True
     emit_race_format()
-    logger.info('Joined cluster')
-    Events.trigger(Evt.CLUSTER_JOIN)
+    logger.info("Joined cluster")
+    trigger_event(Evt.CLUSTER_JOIN)
+
+@SOCKET_IO.on('join_cluster_ex')
+@catchLogExceptionsWrapper
+def on_join_cluster_ex(data=None):
+    tmode = str(data.get('mode', SlaveNode.SPLIT_MODE)) if data else None
+    if tmode != SlaveNode.MIRROR_MODE:
+        setCurrentRaceFormat(SLAVE_RACE_FORMAT)
+        emit_race_format()
+    logger.info("Joined cluster" + ((" as '" + tmode + "' timer") if tmode else ""))
+    trigger_event(Evt.CLUSTER_JOIN)
+    emit_join_cluster_response()
 
 @SOCKET_IO.on('check_slave_query')
 @catchLogExceptionsWrapper
-def on_check_slave_query():
+def on_check_slave_query(data):
     ''' Check-query received from master; return response. '''
-    SOCKET_IO.emit('check_slave_response')
+    payload = {
+        'timestamp': monotonic_to_epoch_millis(monotonic())
+    }
+    SOCKET_IO.emit('check_slave_response', payload)
+
+@SOCKET_IO.on('cluster_event_trigger')
+@catchLogExceptionsWrapper
+def on_cluster_event_trigger(data):
+    ''' Received event trigger from master. '''
+    evtName = data['evt_name']
+    evtArgs = json.loads(data['evt_args']) if 'evt_args' in data else None
+    if evtName != Evt.LED_SET_MANUAL:
+        Events.trigger(evtName, evtArgs)
+    # special handling for LED Control via master timer
+    elif 'effect' in evtArgs and led_manager.isEnabled():
+        led_manager.setEventEffect(Evt.LED_MANUAL, evtArgs['effect'])
+
+@SOCKET_IO.on('cluster_message_ack')
+@catchLogExceptionsWrapper
+def on_cluster_message_ack(data):
+    ''' Received message acknowledgement from master. '''
+    if ClusterSendAckQueueObj:
+        messageType = str(data.get('messageType')) if data else None
+        messagePayload = data.get('messagePayload') if data else None
+        ClusterSendAckQueueObj.ack(messageType, messagePayload)
+    else:
+        logger.warning("Received 'on_cluster_message_ack' message with no ClusterSendAckQueueObj setup")
 
 # RotorHazard events
 
@@ -1068,8 +733,8 @@ def on_load_data(data):
             emit_class_data(nobroadcast=True)
         elif load_type == 'pilot_data':
             emit_pilot_data(nobroadcast=True)
-        elif load_type == 'round_data':
-            emit_round_data(nobroadcast=True)
+        elif load_type == 'result_data':
+            emit_result_data(nobroadcast=True)
         elif load_type == 'race_format':
             emit_race_format(nobroadcast=True)
         elif load_type == 'race_formats':
@@ -1094,8 +759,6 @@ def on_load_data(data):
             emit_race_status(nobroadcast=True)
         elif load_type == 'current_heat':
             emit_current_heat(nobroadcast=True)
-        elif load_type == 'team_racing_stat_if_enb':
-            emit_team_racing_stat_if_enb(nobroadcast=True)
         elif load_type == 'race_list':
             emit_race_list(nobroadcast=True)
         elif load_type == 'language':
@@ -1112,8 +775,10 @@ def on_load_data(data):
             emit_imdtabler_page(nobroadcast=True)
         elif load_type == 'vrx_list':
             emit_vrx_list(nobroadcast=True)
+        elif load_type == 'backups_list':
+            on_list_backups()
         elif load_type == 'cluster_status':
-            CLUSTER.emitStatus()
+            emit_cluster_status()
         elif load_type == 'hardware_log_init':
             emit_current_log_file_to_socket()
 
@@ -1128,7 +793,7 @@ def on_broadcast_message(data):
 @catchLogExceptionsWrapper
 def on_set_frequency(data):
     '''Set node frequency.'''
-    CLUSTER.emit('set_frequency', data)
+    CLUSTER.emitToSplits('set_frequency', data)
     if isinstance(data, string_types): # LiveTime compatibility
         data = json.loads(data)
     node_index = data['node']
@@ -1140,6 +805,11 @@ def on_set_frequency(data):
 
     profile = getCurrentProfile()
     freqs = json.loads(profile.frequencies)
+
+    # handle case where more nodes were added
+    while node_index >= len(freqs["f"]):
+        freqs["f"].append(RHUtils.FREQUENCY_ID_NONE)
+
     freqs["f"][node_index] = frequency
     profile.frequencies = json.dumps(freqs)
     logger.info('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
@@ -1163,7 +833,7 @@ def on_set_frequency(data):
 
     INTERFACE.set_frequency(node_index, frequency)
 
-    Events.trigger(Evt.FREQUENCY_SET, {
+    trigger_event(Evt.FREQUENCY_SET, {
         'nodeIndex': node_index,
         'frequency': frequency,
         })
@@ -1176,7 +846,7 @@ def on_set_frequency(data):
 @catchLogExceptionsWrapper
 def on_set_frequency_preset(data):
     ''' Apply preset frequencies '''
-    CLUSTER.emit('set_frequency_preset', data)
+    CLUSTER.emitToSplits('set_frequency_preset', data)
     freqs = []
     if data['preset'] == 'All-N1':
         profile = getCurrentProfile()
@@ -1193,6 +863,8 @@ def on_set_frequency_preset(data):
             freqs = [5658, 5695, 5760, 5800, 5885, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
         else: #IMD6C is default
             freqs = [5658, 5695, 5760, 5800, 5880, 5917, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
+        while RACE.num_nodes > len(freqs):
+            freqs.append(RHUtils.FREQUENCY_ID_NONE)
 
     set_all_frequencies(freqs)
     emit_frequency_data()
@@ -1213,10 +885,11 @@ def set_all_frequencies(freqs):
 
 def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
+    logger.debug("Sending frequency values to nodes: " + str(freqs))
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs[idx])
 
-        Events.trigger(Evt.FREQUENCY_SET, {
+        trigger_event(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
             'frequency': freqs[idx],
             })
@@ -1238,19 +911,28 @@ def on_set_enter_at_level(data):
     node_index = data['node']
     enter_at_level = data['enter_at_level']
 
+    if node_index < 0 or node_index >= RACE.num_nodes:
+        logger.info('Unable to set enter-at ({0}) on node {1}; node index out of range'.format(enter_at_level, node_index+1))
+        return
+
     if not enter_at_level:
         logger.info('Node enter-at set null; getting from node: Node {0}'.format(node_index+1))
         enter_at_level = INTERFACE.nodes[node_index].enter_at_level
 
     profile = getCurrentProfile()
     enter_ats = json.loads(profile.enter_ats)
+
+    # handle case where more nodes were added
+    while node_index >= len(enter_ats["v"]):
+        enter_ats["v"].append(None)
+
     enter_ats["v"][node_index] = enter_at_level
     profile.enter_ats = json.dumps(enter_ats)
     DB.session.commit()
 
     INTERFACE.set_enter_at_level(node_index, enter_at_level)
 
-    Events.trigger(Evt.ENTER_AT_LEVEL_SET, {
+    trigger_event(Evt.ENTER_AT_LEVEL_SET, {
         'nodeIndex': node_index,
         'enter_at_level': enter_at_level,
         })
@@ -1264,19 +946,28 @@ def on_set_exit_at_level(data):
     node_index = data['node']
     exit_at_level = data['exit_at_level']
 
+    if node_index < 0 or node_index >= RACE.num_nodes:
+        logger.info('Unable to set exit-at ({0}) on node {1}; node index out of range'.format(exit_at_level, node_index+1))
+        return
+
     if not exit_at_level:
         logger.info('Node exit-at set null; getting from node: Node {0}'.format(node_index+1))
         exit_at_level = INTERFACE.nodes[node_index].exit_at_level
 
     profile = getCurrentProfile()
     exit_ats = json.loads(profile.exit_ats)
+
+    # handle case where more nodes were added
+    while node_index >= len(exit_ats["v"]):
+        exit_ats["v"].append(None)
+
     exit_ats["v"][node_index] = exit_at_level
     profile.exit_ats = json.dumps(exit_ats)
     DB.session.commit()
 
     INTERFACE.set_exit_at_level(node_index, exit_at_level)
 
-    Events.trigger(Evt.EXIT_AT_LEVEL_SET, {
+    trigger_event(Evt.EXIT_AT_LEVEL_SET, {
         'nodeIndex': node_index,
         'exit_at_level': exit_at_level,
         })
@@ -1285,6 +976,7 @@ def on_set_exit_at_level(data):
 
 def hardware_set_all_enter_ats(enter_at_levels):
     '''send update to nodes'''
+    logger.debug("Sending enter-at values to nodes: " + str(enter_at_levels))
     for idx in range(RACE.num_nodes):
         if enter_at_levels[idx]:
             INTERFACE.set_enter_at_level(idx, enter_at_levels[idx])
@@ -1296,6 +988,7 @@ def hardware_set_all_enter_ats(enter_at_levels):
 
 def hardware_set_all_exit_ats(exit_at_levels):
     '''send update to nodes'''
+    logger.debug("Sending exit-at values to nodes: " + str(exit_at_levels))
     for idx in range(RACE.num_nodes):
         if exit_at_levels[idx]:
             INTERFACE.set_exit_at_level(idx, exit_at_levels[idx])
@@ -1376,7 +1069,7 @@ def on_add_heat():
 
     DB.session.commit()
 
-    Events.trigger(Evt.HEAT_DUPLICATE, {
+    trigger_event(Evt.HEAT_DUPLICATE, {
         'heat_id': new_heat.id,
         })
 
@@ -1389,7 +1082,7 @@ def on_duplicate_heat(data):
     new_heat_id = duplicate_heat(data['heat'])
     DB.session.commit()
 
-    Events.trigger(Evt.HEAT_DUPLICATE, {
+    trigger_event(Evt.HEAT_DUPLICATE, {
         'heat_id': new_heat_id,
         })
 
@@ -1433,6 +1126,8 @@ def duplicate_heat(source, **kwargs):
 @catchLogExceptionsWrapper
 def on_alter_heat(data):
     '''Update heat.'''
+    global RACE
+    global FULL_RESULTS_CACHE_VALID
     heat_id = data['heat']
     heat = Database.Heat.query.get(heat_id)
 
@@ -1441,11 +1136,48 @@ def on_alter_heat(data):
         FULL_RESULTS_CACHE_VALID = False
         heat.note = data['note']
     if 'class' in data:
+        old_class_id = heat.class_id
         heat.class_id = data['class']
     if 'pilot' in data:
         node_index = data['node']
         heatnode = Database.HeatNode.query.filter_by(heat_id=heat.id, node_index=node_index).one()
         heatnode.pilot_id = data['pilot']
+
+    # alter existing saved races:
+    race_list = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
+
+    if 'class' in data:
+        if len(race_list):
+            for race_meta in race_list:
+                race_meta.class_id = data['class']
+                # race_meta.cacheStatus=Results.CacheStatus.INVALID
+
+            if old_class_id is not Database.CLASS_ID_NONE:
+                old_class = Database.RaceClass.query.get(old_class_id)
+                old_class.cacheStatus = Results.CacheStatus.INVALID
+
+    if 'pilot' in data:
+        if len(race_list):
+            for race_meta in race_list:
+                for pilot_race in Database.SavedPilotRace.query.filter_by(race_id=race_meta.id).all():
+                    if pilot_race.node_index == data['node']:
+                        pilot_race.pilot_id = data['pilot']
+                for race_lap in Database.SavedRaceLap.query.filter_by(race_id=race_meta.id).all():
+                    if race_lap.node_index == data['node']:
+                        race_lap.pilot_id = data['pilot']
+
+                race_meta.cacheStatus = Results.CacheStatus.INVALID
+
+            heat.cacheStatus = Results.CacheStatus.INVALID
+
+    if 'pilot' in data or 'class' in data:
+        if len(race_list):
+            if heat.class_id is not Database.CLASS_ID_NONE:
+                new_class = Database.RaceClass.query.get(heat.class_id)
+                new_class.cacheStatus = Results.CacheStatus.INVALID
+
+            Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+            FULL_RESULTS_CACHE_VALID = False
 
     DB.session.commit()
 
@@ -1461,20 +1193,25 @@ def on_alter_heat(data):
                 RACE.node_teams[heatNode.node_index] = None
         RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
-    Events.trigger(Evt.HEAT_ALTER, {
+    trigger_event(Evt.HEAT_ALTER, {
         'heat_id': heat_id,
         })
 
     logger.info('Heat {0} altered with {1}'.format(heat_id, data))
     emit_heat_data(noself=True)
-    if 'note' in data:
-        emit_round_data_notify() # live update rounds page
+    if len(race_list):
+        emit_result_data() # live update rounds page
+
+    if ('pilot' in data or 'class' in data) and Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).first() is not None:
+        message = __('Alterations made to heat: {0}').format(heat.note)
+        emit_priority_message(message, False)
 
 @SOCKET_IO.on('delete_heat')
 @catchLogExceptionsWrapper
 def on_delete_heat(data):
     '''Delete heat.'''
-    if (DB.session.query(Database.Heat).count() > 1): # keep one profile
+    heat_count = DB.session.query(Database.Heat).count()
+    if heat_count > 1: # keep one profile
         heat_id = data['heat']
         heat = Database.Heat.query.get(heat_id)
         heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
@@ -1491,15 +1228,33 @@ def on_delete_heat(data):
 
             logger.info('Heat {0} deleted'.format(heat.id))
 
-            Events.trigger(Evt.HEAT_DELETE, {
+            trigger_event(Evt.HEAT_DELETE, {
                 'heat_id': heat_id,
                 })
 
-            emit_heat_data()
-            if RACE.current_heat == heat.id:
-                RACE.current_heat = Database.Heat.query.first().id
-                emit_current_heat()
+            # if only one heat remaining then set ID to 1
+            if heat_count == 2 and RACE.race_status == RaceStatus.READY:
+                try:
+                    heat_obj = Database.Heat.query.first()
+                    if heat_obj.id != 1:
+                        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat_obj.id).all()
+                        has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat_obj.id).first()
+                        if not has_race:
+                            logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat_obj.id))
+                            heat_obj.id = 1
+                            for heatnode in heatnodes:
+                                heatnode.heat_id = heat_obj.id
+                            DB.session.commit()
+                            RACE.current_heat = 1
+                            heat_id = 1  # set value so heat data is updated below
+                        else:
+                            logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
+                except Exception as ex:
+                    logger.warning("Error adjusting single remaining heat ID: " + str(ex))
 
+            emit_heat_data()
+            if RACE.current_heat == heat_id:  # if current heat was deleted then load new heat data
+                on_set_current_heat({ 'heat': Database.Heat.query.first().id })
     else:
         logger.info('Refusing to delete only heat')
 
@@ -1515,7 +1270,7 @@ def on_add_race_class():
     new_race_class.description = ''
     DB.session.commit()
 
-    Events.trigger(Evt.CLASS_ADD, {
+    trigger_event(Evt.CLASS_ADD, {
         'class_id': new_race_class.id,
         })
 
@@ -1551,7 +1306,7 @@ def on_duplicate_race_class(data):
 
     DB.session.commit()
 
-    Events.trigger(Evt.CLASS_DUPLICATE, {
+    trigger_event(Evt.CLASS_DUPLICATE, {
         'class_id': new_class.id,
         })
 
@@ -1563,29 +1318,51 @@ def on_duplicate_race_class(data):
 @catchLogExceptionsWrapper
 def on_alter_race_class(data):
     '''Update race class.'''
+    global FULL_RESULTS_CACHE_VALID
     race_class = data['class_id']
     db_update = Database.RaceClass.query.get(race_class)
+
     if 'class_name' in data:
-        global FULL_RESULTS_CACHE_VALID
         FULL_RESULTS_CACHE_VALID = False
         db_update.name = data['class_name']
     if 'class_format' in data:
         db_update.format_id = data['class_format']
     if 'class_description' in data:
         db_update.description = data['class_description']
+
+    # alter existing classes
+    if 'class_format' in data:
+        FULL_RESULTS_CACHE_VALID = False
+        Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+        db_update.cacheStatus = Results.CacheStatus.INVALID
+
+        races = Database.SavedRaceMeta.query.filter_by(class_id=race_class).all()
+        for race_meta in races:
+            race_meta.format_id = data['class_format']
+            race_meta.cacheStatus = Results.CacheStatus.INVALID
+
+        heats = Database.Heat.query.filter_by(class_id=race_class).all()
+        for heat in heats:
+            heat.cacheStatus = Results.CacheStatus.INVALID
+
     DB.session.commit()
 
-    Events.trigger(Evt.CLASS_ALTER, {
+    trigger_event(Evt.CLASS_ALTER, {
         'class_id': race_class,
         })
+
+    if 'class_format' in data and Database.SavedRaceMeta.query.filter_by(class_id=race_class).first() is not None:
+        message = __('Alterations made to race class: {0}').format(db_update.name)
+        emit_priority_message(message, False)
 
     logger.info('Altered race class {0} to {1}'.format(race_class, data))
     emit_class_data(noself=True)
     if 'class_name' in data:
         emit_heat_data() # Update class names in heat displays
-        emit_round_data_notify() # live update rounds page
     if 'class_format' in data:
         emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
+
+    emit_result_data() # live update rounds page
 
 @SOCKET_IO.on('delete_class')
 @catchLogExceptionsWrapper
@@ -1627,7 +1404,7 @@ def on_add_pilot():
     new_pilot.phonetic = ''
     DB.session.commit()
 
-    Events.trigger(Evt.PILOT_ADD, {
+    trigger_event(Evt.PILOT_ADD, {
         'pilot_id': new_pilot.id,
         })
 
@@ -1652,18 +1429,36 @@ def on_alter_pilot(data):
 
     DB.session.commit()
 
-    Events.trigger(Evt.PILOT_ALTER, {
+    trigger_event(Evt.PILOT_ALTER, {
         'pilot_id': pilot_id,
         })
 
     logger.info('Altered pilot {0} to {1}'.format(pilot_id, data))
     emit_pilot_data(noself=True) # Settings page, new pilot settings
-    if 'callsign' in data:
-        Results.invalidate_all_caches(DB) # wipe caches (all have stored pilot names)
-        emit_round_data_notify() # live update rounds page
+    if 'callsign' in data or 'team_name' in data:
         emit_heat_data() # Settings page, new pilot callsign in heats
+        heatnodes = Database.HeatNode.query.filter_by(pilot_id=pilot_id).all()
+        if heatnodes:
+            FULL_RESULTS_CACHE_VALID = False
+            Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+
+            for heatnode in heatnodes:
+                heat = Database.Heat.query.get(heatnode.heat_id)
+                heat.cacheStatus = Results.CacheStatus.INVALID
+                if heat.class_id != Database.CLASS_ID_NONE:
+                    race_class = Database.RaceClass.query.get(heat.class_id)
+                    race_class.cacheStatus = Results.CacheStatus.INVALID
+                races = Database.SavedRaceMeta.query.filter_by(heat_id=heatnode.heat_id)
+                for race in races:
+                    race.cacheStatus = Results.CacheStatus.INVALID
+
+            DB.session.commit()
+
+            emit_result_data() # live update rounds page
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
+
+    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh current leaderboard
 
 @SOCKET_IO.on('delete_pilot')
 @catchLogExceptionsWrapper
@@ -1686,6 +1481,7 @@ def on_delete_pilot(data):
         logger.info('Pilot {0} deleted'.format(pilot.id))
         emit_pilot_data()
         emit_heat_data()
+        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
 @SOCKET_IO.on('add_profile')
 @catchLogExceptionsWrapper
@@ -1707,7 +1503,7 @@ def on_add_profile():
     new_profile.name = __('Profile %s') % new_profile.id
     DB.session.commit()
 
-    Events.trigger(Evt.PROFILE_ADD, {
+    trigger_event(Evt.PROFILE_ADD, {
         'profile_id': new_profile.id,
         })
 
@@ -1724,7 +1520,7 @@ def on_alter_profile(data):
         profile.description = data['profile_description']
     DB.session.commit()
 
-    Events.trigger(Evt.PROFILE_ALTER, {
+    trigger_event(Evt.PROFILE_ALTER, {
         'profile_id': profile.id,
         })
 
@@ -1742,7 +1538,7 @@ def on_delete_profile():
         DB.session.commit()
         first_profile_id = Database.Profiles.query.first().id
 
-        Events.trigger(Evt.PROFILE_DELETE, {
+        trigger_event(Evt.PROFILE_DELETE, {
             'profile_id': profile_id,
             })
 
@@ -1755,7 +1551,6 @@ def on_delete_profile():
 @catchLogExceptionsWrapper
 def on_set_profile(data, emit_vals=True):
     ''' set current profile '''
-    CLUSTER.emit('set_profile', data)
     profile_val = int(data['profile'])
     profile = Database.Profiles.query.get(profile_val)
     if profile:
@@ -1764,10 +1559,14 @@ def on_set_profile(data, emit_vals=True):
         # set freqs, enter_ats, and exit_ats
         freqs_loaded = json.loads(profile.frequencies)
         freqs = freqs_loaded["f"]
+        while RACE.num_nodes > len(freqs):
+            freqs.append(RHUtils.FREQUENCY_ID_NONE)
 
         if profile.enter_ats:
             enter_ats_loaded = json.loads(profile.enter_ats)
             enter_ats = enter_ats_loaded["v"]
+            while RACE.num_nodes > len(enter_ats):
+                enter_ats.append(None)
         else: #handle null data by copying in hardware values
             enter_at_levels = {}
             enter_at_levels["v"] = [node.enter_at_level for node in INTERFACE.nodes]
@@ -1778,6 +1577,8 @@ def on_set_profile(data, emit_vals=True):
         if profile.exit_ats:
             exit_ats_loaded = json.loads(profile.exit_ats)
             exit_ats = exit_ats_loaded["v"]
+            while RACE.num_nodes > len(exit_ats):
+                exit_ats.append(None)
         else: #handle null data by copying in hardware values
             exit_at_levels = {}
             exit_at_levels["v"] = [node.exit_at_level for node in INTERFACE.nodes]
@@ -1787,7 +1588,7 @@ def on_set_profile(data, emit_vals=True):
 
         DB.session.commit()
 
-        Events.trigger(Evt.PROFILE_SET, {
+        trigger_event(Evt.PROFILE_SET, {
             'profile_id': profile_val,
             })
 
@@ -1801,7 +1602,90 @@ def on_set_profile(data, emit_vals=True):
         hardware_set_all_exit_ats(exit_ats)
 
     else:
-        logger.warn('Invalid set_profile value: ' + str(profile_val))
+        logger.warning('Invalid set_profile value: ' + str(profile_val))
+
+@SOCKET_IO.on('alter_race')
+@catchLogExceptionsWrapper
+def on_alter_race(data):
+    '''Update heat.'''
+    global RACE
+    global FULL_RESULTS_CACHE_VALID
+    race_id = int(data['race_id'])
+    race_meta = Database.SavedRaceMeta.query.get(race_id)
+
+    old_heat_id = race_meta.heat_id
+    old_heat = Database.Heat.query.get(old_heat_id)
+    old_class = Database.RaceClass.query.get(old_heat.class_id)
+    old_format_id = old_class.format_id
+
+    new_heat_id = int(data['heat_id'])
+    new_heat = Database.Heat.query.get(new_heat_id)
+    new_class = Database.RaceClass.query.get(new_heat.class_id)
+    new_format_id = new_class.format_id
+
+    # clear round ids
+    heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).all()
+    race_meta.round_id = 0
+    dummy_round_counter = -1
+    for race in heat_races:
+        race.round_id = dummy_round_counter
+        dummy_round_counter -= 1
+
+    DB.session.commit()
+
+    # assign new heat
+    race_meta.heat_id = new_heat_id
+    race_meta.class_id = new_heat.class_id
+    race_meta.format_id = new_format_id
+
+    # renumber rounds
+    DB.session.flush()
+    old_heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=old_heat_id).order_by(Database.SavedRaceMeta.start_time_formatted).all()
+    round_counter = 1
+    for race in old_heat_races:
+        race.round_id = round_counter
+        round_counter += 1
+
+    new_heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).order_by(Database.SavedRaceMeta.start_time_formatted).all()
+    round_counter = 1
+    for race in new_heat_races:
+        race.round_id = round_counter
+        round_counter += 1
+
+    DB.session.commit()
+
+    # cache cleaning
+    FULL_RESULTS_CACHE_VALID = False
+
+    new_heat.cacheStatus = Results.CacheStatus.INVALID
+    old_heat.cacheStatus = Results.CacheStatus.INVALID
+
+    if old_format_id != new_format_id:
+        race_meta.cacheStatus = Results.CacheStatus.INVALID
+
+    if old_heat.class_id != new_heat.class_id:
+        new_class.cacheStatus = Results.CacheStatus.INVALID
+        old_class.cacheStatus = Results.CacheStatus.INVALID
+
+    DB.session.commit()
+
+    trigger_event(Evt.RACE_ALTER, {
+        'race_id': race_id,
+        })
+
+    logger.info('Race {0} altered with {1}'.format(race_id, data))
+
+    heatnote = new_heat.note
+    if heatnote:
+        name = heatnote
+    else:
+        name = new_heat.id
+
+    message = __('A race has been reassigned to {0}').format(name)
+    emit_priority_message(message, False)
+
+    emit_race_list(nobroadcast=True)
+    emit_result_data()
 
 @SOCKET_IO.on('backup_database')
 @catchLogExceptionsWrapper
@@ -1816,11 +1700,101 @@ def on_backup_database():
         'file_data' : file_content
     }
 
-    Events.trigger(Evt.DATABASE_BACKUP, {
+    trigger_event(Evt.DATABASE_BACKUP, {
         'file_name': emit_payload['file_name'],
         })
 
-    SOCKET_IO.emit('database_bkp_done', emit_payload)
+    emit('database_bkp_done', emit_payload)
+    on_list_backups()
+
+@SOCKET_IO.on('list_backups')
+@catchLogExceptionsWrapper
+def on_list_backups():
+    '''List database files in db_bkp'''
+
+    if not os.path.exists(DB_BKP_DIR_NAME):
+        emit_payload = {
+            'backup_files': None
+        }
+    else:
+        files = []
+        for (_, _, filenames) in os.walk(DB_BKP_DIR_NAME):
+            files.extend(filenames)
+            break
+
+        emit_payload = {
+            'backup_files': files
+        }
+
+    emit('backups_list', emit_payload)
+
+@SOCKET_IO.on('restore_database')
+@catchLogExceptionsWrapper
+def on_restore_database(data):
+    '''Restore database.'''
+    success = None
+    if 'backup_file' in data:
+        backup_file = data['backup_file']
+        backup_path = DB_BKP_DIR_NAME + '/' + backup_file
+
+        if os.path.exists(backup_path):
+            logger.info('Found {0}: starting restoration...'.format(backup_file))
+            DB.session.close()
+
+            try:
+                recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
+
+                expand_heats()
+                raceformat_id = Options.getInt('currentFormat')
+                race_format = Database.RaceFormat.query.get(raceformat_id)
+                setCurrentRaceFormat(race_format)
+
+                success = True
+            except Exception as ex:
+                logger.warning('Clearing all data after recovery failure:  ' + str(ex))
+                db_reset()
+                success = False
+
+            init_race_state()
+            init_interface_state()
+
+            Events.trigger(Evt.DATABASE_RESTORE, {
+                'file_name': backup_file,
+                })
+
+            SOCKET_IO.emit('database_restore_done')
+        else:
+            logger.warning('Unable to restore {0}: File does not exist'.format(backup_file))
+            success = False
+
+    if success == False:
+        message = __('Database recovery failed for: {0}').format(backup_file)
+        emit_priority_message(message, False, nobroadcast=True)
+
+@SOCKET_IO.on('delete_database')
+@catchLogExceptionsWrapper
+def on_delete_database(data):
+    '''Restore database.'''
+    if 'backup_file' in data:
+        backup_file = data['backup_file']
+        backup_path = DB_BKP_DIR_NAME + '/' + backup_file
+
+        if os.path.exists(backup_path):
+            logger.info('Deleting backup file {0}'.format(backup_file))
+            os.remove(backup_path)
+
+            emit_payload = {
+                'file_name': backup_file
+            }
+
+            Events.trigger(Evt.DATABASE_DELETE_BACKUP, {
+                'file_name': backup_file,
+                })
+
+            SOCKET_IO.emit('database_delete_done', emit_payload)
+            on_list_backups()
+        else:
+            logger.warning('Unable to delete {0}: File does not exist'.format(backup_file))
 
 @SOCKET_IO.on('reset_database')
 @catchLogExceptionsWrapper
@@ -1853,37 +1827,71 @@ def on_reset_database(data):
         db_reset_classes()
         db_reset_saved_races()
         db_reset_current_laps()
+    elif reset_type == 'formats':
+        db_reset_saved_races()
+        db_reset_current_laps()
+        db_reset_race_formats()
     emit_heat_data()
     emit_pilot_data()
     emit_race_format()
     emit_class_data()
     emit_current_laps()
-    emit_round_data_notify()
+    emit_result_data()
     emit('reset_confirm')
 
-    Events.trigger(Evt.DATABASE_RESET)
+    trigger_event(Evt.DATABASE_RESET)
 
 @SOCKET_IO.on('shutdown_pi')
 @catchLogExceptionsWrapper
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
-    Events.trigger(Evt.SHUTDOWN)
+    trigger_event(Evt.SHUTDOWN)
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
-    logger.info('Shutdown pi')
-    gevent.sleep(1);
-    os.system("sudo shutdown now")
+    logger.info('Performing system shutdown')
+    stop_background_threads()
+    gevent.sleep(0.5)
+    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
+    if RHUtils.isSysRaspberryPi():
+        gevent.sleep(0.1)
+        logger.debug("Executing system command:  sudo shutdown now")
+        log.wait_for_queue_empty()
+        log.close_logging()
+        os.system("sudo shutdown now")
+    else:
+        logger.warning("Not executing system shutdown command because not RPi")
 
 @SOCKET_IO.on('reboot_pi')
 @catchLogExceptionsWrapper
 def on_reboot_pi():
     '''Reboot the raspberry pi.'''
-    Events.trigger(Evt.SHUTDOWN)
+    trigger_event(Evt.SHUTDOWN)
     CLUSTER.emit('reboot_pi')
     emit_priority_message(__('Server is rebooting.'), True)
-    logger.info('Rebooting pi')
-    gevent.sleep(1);
-    os.system("sudo reboot now")
+    logger.info('Performing system reboot')
+    stop_background_threads()
+    gevent.sleep(0.5)
+    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
+    if RHUtils.isSysRaspberryPi():
+        gevent.sleep(0.1)
+        logger.debug("Executing system command:  sudo reboot now")
+        log.wait_for_queue_empty()
+        log.close_logging()
+        os.system("sudo reboot now")
+    else:
+        logger.warning("Not executing system reboot command because not RPi")
+
+@SOCKET_IO.on('kill_server')
+@catchLogExceptionsWrapper
+def on_kill_server():
+    '''Shutdown this server.'''
+    trigger_event(Evt.SHUTDOWN)
+    CLUSTER.emit('kill_server')
+    emit_priority_message(__('Server has stopped.'), True)
+    logger.info('Killing RotorHazard server')
+    stop_background_threads()
+    gevent.sleep(0.5)
+    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
 
 @SOCKET_IO.on('download_logs')
 @catchLogExceptionsWrapper
@@ -1901,7 +1909,7 @@ def on_download_logs(data):
                 'file_name': os.path.basename(zip_path_name),
                 'file_data' : file_content
             }
-            Events.trigger(Evt.DATABASE_BACKUP, {
+            trigger_event(Evt.DATABASE_BACKUP, {
                 'file_name': emit_payload['file_name'],
                 })
             SOCKET_IO.emit(data['emit_fn_name'], emit_payload)
@@ -1914,7 +1922,7 @@ def on_set_min_lap(data):
     min_lap = data['min_lap']
     Options.set("MinLapSec", data['min_lap'])
 
-    Events.trigger(Evt.MIN_LAP_TIME_SET, {
+    trigger_event(Evt.MIN_LAP_TIME_SET, {
         'min_lap': min_lap,
         })
 
@@ -1927,7 +1935,7 @@ def on_set_min_lap_behavior(data):
     min_lap_behavior = int(data['min_lap_behavior'])
     Options.set("MinLapBehavior", min_lap_behavior)
 
-    Events.trigger(Evt.MIN_LAP_BEHAVIOR_SET, {
+    trigger_event(Evt.MIN_LAP_BEHAVIOR_SET, {
         'min_lap_behavior': min_lap_behavior,
         })
 
@@ -1945,13 +1953,12 @@ def on_set_race_format(data):
         setCurrentRaceFormat(race_format)
         DB.session.commit()
 
-        Events.trigger(Evt.RACE_FORMAT_SET, {
+        trigger_event(Evt.RACE_FORMAT_SET, {
             'race_format': race_format_val,
             })
 
         emit_race_format()
         logger.info("set race format to '%s' (%s)" % (race_format.name, race_format.id))
-        CLUSTER.emitToMirrors('set_race_format', data)
     else:
         emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
         logger.info("Format change prevented by active race")
@@ -1971,13 +1978,14 @@ def on_add_race_format():
                              staging_tones=source_format.staging_tones,
                              number_laps_win=source_format.number_laps_win,
                              win_condition=source_format.win_condition,
-                             team_racing_mode=source_format.team_racing_mode)
+                             team_racing_mode=source_format.team_racing_mode,
+                             start_behavior=source_format.start_behavior)
     DB.session.add(new_format)
     DB.session.flush()
     DB.session.refresh(new_format)
     DB.session.commit()
 
-    Events.trigger(Evt.RACE_FORMAT_ADD, {
+    trigger_event(Evt.RACE_FORMAT_ADD, {
         'race_format': new_format.id,
         })
 
@@ -1987,64 +1995,100 @@ def on_add_race_format():
 @catchLogExceptionsWrapper
 def on_alter_race_format(data):
     ''' update race format '''
-    race_format = getCurrentDbRaceFormat()
-    if race_format:
-        emit = False
-        if 'format_name' in data:
-            race_format.name = data['format_name']
-            emit = True
-        if 'race_mode' in data:
-            race_format.race_mode = data['race_mode']
-        if 'race_time' in data:
-            race_format.race_time_sec = data['race_time']
-        if 'start_delay_min' in data:
-            race_format.start_delay_min = data['start_delay_min']
-        if 'start_delay_max' in data:
-            race_format.start_delay_max = data['start_delay_max']
-        if 'staging_tones' in data:
-            race_format.staging_tones = data['staging_tones']
-        if 'number_laps_win' in data:
-            race_format.number_laps_win = data['number_laps_win']
-        if 'win_condition' in data:
-            race_format.win_condition = data['win_condition']
-        if 'team_racing_mode' in data:
-            race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
-        DB.session.commit()
-        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+    global RACE
+    global FULL_RESULTS_CACHE_VALID
+    if RACE.race_status == RaceStatus.READY:
+        race_format = getCurrentDbRaceFormat()
+        if race_format:
+            emit = False
+            if 'format_name' in data:
+                race_format.name = data['format_name']
+                emit = True
+            if 'race_mode' in data:
+                race_format.race_mode = data['race_mode']
+            if 'race_time' in data:
+                race_format.race_time_sec = data['race_time']
+            if 'start_delay_min' in data:
+                race_format.start_delay_min = data['start_delay_min']
+            if 'start_delay_max' in data:
+                race_format.start_delay_max = data['start_delay_max']
+            if 'staging_tones' in data:
+                race_format.staging_tones = data['staging_tones']
+            if 'number_laps_win' in data:
+                race_format.number_laps_win = data['number_laps_win']
+            if 'start_behavior' in data:
+                race_format.start_behavior = data['start_behavior']
+            if 'win_condition' in data:
+                race_format.win_condition = data['win_condition']
+            if 'team_racing_mode' in data:
+                race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
+            DB.session.commit()
+            RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
-        Events.trigger(Evt.RACE_FORMAT_ALTER, {
-            'race_format': race_format.id,
-            })
+            trigger_event(Evt.RACE_FORMAT_ALTER, {
+                'race_format': race_format.id,
+                })
 
-        setCurrentRaceFormat(race_format)
-        logger.info('Altered race format to %s' % (data))
-        if emit:
-            emit_race_format()
-            emit_class_data()
+            setCurrentRaceFormat(race_format)
+            logger.info('Altered race format to %s' % (data))
+            if emit:
+                emit_race_format()
+                emit_class_data()
+
+            if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
+                if 'win_condition' in data or 'start_behavior' in data:
+                    FULL_RESULTS_CACHE_VALID = False
+                    Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+
+                    races = Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).all()
+                    for race in races:
+                        race.cacheStatus = Results.CacheStatus.INVALID
+
+                    classes = Database.RaceClass.query.filter_by(format_id=race_format.id).all()
+                    for race_class in classes:
+                        race_class.cacheStatus = Results.CacheStatus.INVALID
+
+                        heats = Database.Heat.query.filter_by(class_id=race_class.id).all()
+                        for heat in heats:
+                            heat.cacheStatus = Results.CacheStatus.INVALID
+
+                    DB.session.commit()
+                    emit_result_data()
+
+                message = __('Alterations made to race format: {0}').format(race_format.name)
+                emit_priority_message(message, False)
+
+    else:
+        emit_priority_message(__('Format alteration prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+        logger.warning('Preventing race format alteration: race in progress')
 
 @SOCKET_IO.on('delete_race_format')
 @catchLogExceptionsWrapper
 def on_delete_race_format():
     '''Delete profile'''
-    if RACE.race_status == RaceStatus.READY: # prevent format change if race running
+    if RACE.race_status == RaceStatus.READY: # prevent format deletion if race running
         raceformat = getCurrentDbRaceFormat()
         raceformat_id = raceformat.id
-        if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
-            DB.session.delete(raceformat)
-            DB.session.commit()
-            first_raceFormat = Database.RaceFormat.query.first()
+        if Database.SavedRaceMeta.query.filter_by(format_id=raceformat_id).first() is None:
+            if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
+                DB.session.delete(raceformat)
+                DB.session.commit()
+                first_raceFormat = Database.RaceFormat.query.first()
 
-            Events.trigger(Evt.RACE_FORMAT_DELETE, {
-                'race_format': raceformat_id,
-                })
+                trigger_event(Evt.RACE_FORMAT_DELETE, {
+                    'race_format': raceformat_id,
+                    })
 
-            setCurrentRaceFormat(first_raceFormat)
-            emit_race_format()
+                setCurrentRaceFormat(first_raceFormat)
+                emit_race_format()
+            else:
+                logger.info('Refusing to delete only format')
         else:
-            logger.info('Refusing to delete only format')
+            emit_priority_message(__('Format deletion prevented: saved race exists with this format'), False, nobroadcast=True)
+            logger.warning("Format deletion prevented by saved race")
     else:
-        emit_priority_message(__('Format change prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
-        logger.info("Format change prevented by active race")
+        emit_priority_message(__('Format deletion prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+        logger.warning("Format deletion prevented by active race")
 
 @SOCKET_IO.on("set_next_heat_behavior")
 @catchLogExceptionsWrapper
@@ -2087,16 +2131,17 @@ def emit_led_effect_setup(**params):
         emit('led_effect_setup_data', emit_payload)
 
 def emit_led_effects(**params):
-    if led_manager.isEnabled():
+    if led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSlaves()):
         effects = led_manager.getRegisteredEffects()
 
         effect_list = []
-        for effect in effects:
-            if LEDEvent.NOCONTROL not in effects[effect]['validEvents']:
-                effect_list.append({
-                    'name': effect,
-                    'label': __(effects[effect]['label'])
-                })
+        if effects:
+            for effect in effects:
+                if LEDEvent.NOCONTROL not in effects[effect]['validEvents']:
+                    effect_list.append({
+                        'name': effect,
+                        'label': __(effects[effect]['label'])
+                    })
 
         emit_payload = {
             'effects': effect_list
@@ -2109,8 +2154,9 @@ def emit_led_effects(**params):
 @catchLogExceptionsWrapper
 def on_set_led_effect(data):
     '''Set effect for event.'''
-    if led_manager.isEnabled() and 'event' in data and 'effect' in data:
-        led_manager.setEventEffect(data['event'], data['effect'])
+    if 'event' in data and 'effect' in data:
+        if led_manager.isEnabled():
+            led_manager.setEventEffect(data['event'], data['effect'])
 
         effect_opt = Options.get('ledEffects')
         if effect_opt:
@@ -2121,7 +2167,7 @@ def on_set_led_effect(data):
         effects[data['event']] = data['effect']
         Options.set('ledEffects', json.dumps(effects))
 
-        Events.trigger(Evt.LED_EFFECT_SET, {
+        trigger_event(Evt.LED_EFFECT_SET, {
             'effect': data['event'],
             })
 
@@ -2131,14 +2177,16 @@ def on_set_led_effect(data):
 @catchLogExceptionsWrapper
 def on_use_led_effect(data):
     '''Activate arbitrary LED Effect.'''
-    if led_manager.isEnabled() and 'effect' in data:
-        led_manager.setEventEffect(Evt.LED_MANUAL, data['effect'])
+    if 'effect' in data:
+        if led_manager.isEnabled():
+            led_manager.setEventEffect(Evt.LED_MANUAL, data['effect'])
+        trigger_event(Evt.LED_SET_MANUAL, data)  # setup manual effect on mirror timers
 
         args = None
         if 'args' in data:
             args = data['args']
 
-        Events.trigger(Evt.LED_MANUAL, args)
+        trigger_event(Evt.LED_MANUAL, args)
 
 # Race management socket io events
 
@@ -2150,7 +2198,7 @@ def on_schedule_race(data):
     RACE.scheduled_time = monotonic() + (data['m'] * 60) + data['s']
     RACE.scheduled = True
 
-    Events.trigger(Evt.RACE_SCHEDULE, {
+    trigger_event(Evt.RACE_SCHEDULE, {
         'scheduled_at': RACE.scheduled_time
         })
 
@@ -2168,7 +2216,7 @@ def cancel_schedule_race():
 
     RACE.scheduled = False
 
-    Events.trigger(Evt.RACE_SCHEDULE_CANCEL)
+    trigger_event(Evt.RACE_SCHEDULE_CANCEL)
 
     SOCKET_IO.emit('race_scheduled', {
         'scheduled': RACE.scheduled,
@@ -2190,6 +2238,7 @@ def on_get_pi_time():
 def on_stage_race():
     global RACE
     valid_pilots = False
+    heat_data = Database.Heat.query.get(RACE.current_heat)
     heatNodes = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat).all()
     for heatNode in heatNodes:
         if heatNode.node_index < RACE.num_nodes:
@@ -2200,29 +2249,60 @@ def on_stage_race():
     if valid_pilots is False:
         emit_priority_message(__('No valid pilots in race'), True, nobroadcast=True)
 
-    CLUSTER.emit('stage_race')
+    CLUSTER.emitToSplits('stage_race')
+    race_format = getCurrentRaceFormat()
+
+    if RACE.race_status != RaceStatus.READY:
+        if race_format is SLAVE_RACE_FORMAT:  # if running as slave timer
+            if RACE.race_status == RaceStatus.RACING:
+                return  # if race in progress then leave it be
+            # if missed stop/discard message then clear current race
+            logger.info("Forcing race clear/restart because running as slave timer")
+            on_discard_laps()
+        elif RACE.race_status == RaceStatus.DONE and not RACE.any_laps_recorded():
+            on_discard_laps()  # if no laps then allow restart
+
     if RACE.race_status == RaceStatus.READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
         global FULL_RESULTS_CACHE_VALID
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        Events.trigger(Evt.RACE_STAGE)
+        trigger_event(Evt.RACE_STAGE)
+
+        if heat_data.class_id != Database.CLASS_ID_NONE:
+            class_format_id = Database.RaceClass.query.get(heat_data.class_id).format_id
+            if class_format_id != Database.FORMAT_ID_NONE:
+                class_format = Database.RaceFormat.query.get(class_format_id)
+                setCurrentRaceFormat(class_format)
+                logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
+
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         RACE.last_race_cacheStatus = Results.CacheStatus.INVALID # invalidate last race results cache
         RACE.timer_running = False # indicate race timer not running
         RACE.race_status = RaceStatus.STAGING
+        RACE.win_status = WinStatus.NONE
+        RACE.status_message = ''
+        RACE.any_races_started = True
+
+        RACE.node_has_finished = {}
+        for heatNode in heatNodes:
+            if heatNode.node_index < RACE.num_nodes:
+                if heatNode.pilot_id != Database.PILOT_ID_NONE:
+                    RACE.node_has_finished[heatNode.node_index] = False
+                else:
+                    RACE.node_has_finished[heatNode.node_index] = None
+
         INTERFACE.set_race_status(RaceStatus.STAGING)
         emit_current_laps() # Race page, blank laps to the web client
         emit_current_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
+        emit_race_format()
+        check_emit_race_status_message(RACE) # Update race status message
 
-        race_format = getCurrentRaceFormat()
-        if race_format.team_racing_mode:
-            check_emit_team_racing_status()  # Show initial team-racing status info
         MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
         MAX = max(race_format.start_delay_min, race_format.start_delay_max)
-        RACE.start_time_delay_secs = random.randint(MIN, MAX) + RACE_START_DELAY_EXTRA_SECS
+        RACE.start_time_delay_secs = random.randint(MIN, MAX) + RHRace.RACE_START_DELAY_EXTRA_SECS
 
         RACE.start_time_monotonic = monotonic() + RACE.start_time_delay_secs
         RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
@@ -2236,6 +2316,9 @@ def on_stage_race():
             'race_time_sec': race_format.race_time_sec,
             'pi_starts_at_s': RACE.start_time_monotonic
         }) # Announce staging with chosen delay
+
+    else:
+        logger.info("Attempted to stage race while status is not 'ready'")
 
 def autoUpdateCalibration():
     ''' Apply best tuning values to nodes '''
@@ -2324,7 +2407,7 @@ def findBestValues(node, node_index):
 @catchLogExceptionsWrapper
 def race_start_thread(start_token):
     global RACE
-    
+
     # clear any lingering crossings at staging (if node rssi < enterAt)
     for node in INTERFACE.nodes:
         if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != Database.PILOT_ID_NONE and \
@@ -2332,6 +2415,9 @@ def race_start_thread(start_token):
             logger.info("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
                        format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
             INTERFACE.force_end_crossing(node.index)
+
+    if CLUSTER and CLUSTER.hasSlaves():
+        CLUSTER.doClusterRaceStart()
 
     # set lower EnterAt/ExitAt values if configured
     if Options.getInt('startThreshLowerAmount') > 0 and Options.getInt('startThreshLowerDuration') > 0:
@@ -2374,8 +2460,10 @@ def race_start_thread(start_token):
         while monotonic() < RACE.start_time_monotonic:
             pass
 
+        # !!! RACE STARTS NOW !!!
+
         # do time-critical tasks
-        Events.trigger(Evt.RACE_START)
+        trigger_event(Evt.RACE_START)
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now() # record standard-formatted time
@@ -2395,8 +2483,28 @@ def race_start_thread(start_token):
         RACE.timer_running = True # indicate race timer is running
         RACE.laps_winner_name = None  # name of winner in first-to-X-laps race
         RACE.winning_lap_id = 0  # track winning lap-id if race tied during first-to-X-laps race
+
+        # kick off race expire processing
+        race_format = getCurrentRaceFormat()
+        if race_format and race_format.race_mode == 0: # count down
+            gevent.spawn(race_expire_thread, start_token)
+
         emit_race_status() # Race page, to set race button states
-        logger.info('Race started at {0} ({1:.1f})'.format(RACE.start_time_monotonic, RACE.start_time_epoch_ms))
+        logger.info('Race started at {0} ({1:.0f})'.format(RACE.start_time_monotonic, RACE.start_time_epoch_ms))
+
+def race_expire_thread(start_token):
+    global RACE
+    race_format = getCurrentRaceFormat()
+    if race_format and race_format.race_mode == 0: # count down
+        gevent.sleep(race_format.race_time_sec)
+        # if race still in progress and is still same race
+        if RACE.race_status == RaceStatus.RACING and RACE.start_token == start_token:
+            logger.info("Race count-down timer reached expiration")
+            RACE.timer_running = False # indicate race timer no longer running
+            trigger_event(Evt.RACE_FINISH)
+            check_win_condition(RACE, INTERFACE, at_finish=True, start_token=start_token)
+        else:
+            logger.debug("Finished unused race-time-expire thread")
 
 @SOCKET_IO.on('stop_race')
 @catchLogExceptionsWrapper
@@ -2404,14 +2512,14 @@ def on_stop_race():
     '''Stops the race and stops registering laps.'''
     global RACE
 
-    CLUSTER.emit('stop_race')
+    CLUSTER.emitToSplits('stop_race')
     if RACE.race_status == RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
         delta_time = RACE.end_time - RACE.start_time_monotonic
         milli_sec = delta_time * 1000.0
         RACE.duration_ms = milli_sec
 
-        logger.info('Race stopped at {0} ({1:.1f}), duration {2}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), RACE.duration_ms))
+        logger.info('Race stopped at {0} ({1:.0f}), duration {2}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), RACE.duration_ms))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
@@ -2422,13 +2530,18 @@ def on_stop_race():
 
         RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
         INTERFACE.set_race_status(RaceStatus.DONE)
-        Events.trigger(Evt.RACE_STOP)
+        trigger_event(Evt.RACE_STOP)
+        check_win_condition(RACE, INTERFACE)
+
+        if CLUSTER.hasSlaves():
+            CLUSTER.doClusterRaceStop()
 
     else:
-        logger.info('No active race to stop')
+        logger.debug('No active race to stop')
         RACE.race_status = RaceStatus.READY # Go back to ready state
         INTERFACE.set_race_status(RaceStatus.READY)
         led_manager.clear()
+        trigger_event(Evt.LAPS_CLEAR)
         delta_time = 0
 
     # check if nodes may be set to temporary lower EnterAt/ExitAt values (and still have them)
@@ -2451,80 +2564,92 @@ def on_stop_race():
 def on_save_laps():
     '''Save current laps data to the database.'''
     global FULL_RESULTS_CACHE_VALID
-    FULL_RESULTS_CACHE_VALID = False
-    race_format = getCurrentRaceFormat()
-    heat = Database.Heat.query.get(RACE.current_heat)
-    # Get the last saved round for the current heat
-    max_round = DB.session.query(DB.func.max(Database.SavedRaceMeta.round_id)) \
-            .filter_by(heat_id=RACE.current_heat).scalar()
-    if max_round is None:
-        max_round = 0
-    # Loop through laps to copy to saved races
-    profile = getCurrentProfile()
-    profile_freqs = json.loads(profile.frequencies)
 
-    new_race = Database.SavedRaceMeta( \
-        round_id=max_round+1, \
-        heat_id=RACE.current_heat, \
-        class_id=heat.class_id, \
-        format_id=Options.get('currentFormat'), \
-        start_time = RACE.start_time_monotonic, \
-        start_time_formatted = RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"), \
-        cacheStatus=Results.CacheStatus.INVALID
-    )
-    DB.session.add(new_race)
-    DB.session.flush()
-    DB.session.refresh(new_race)
+    # Determine if race is empty
+    race_has_laps = False
+    for node_index in RACE.node_laps:
+        if RACE.node_laps[node_index]:
+            race_has_laps = True
+            break
 
-    for node_index in range(RACE.num_nodes):
-        if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-            pilot_id = Database.HeatNode.query.filter_by( \
-                heat_id=RACE.current_heat, node_index=node_index).one().pilot_id
+    if race_has_laps == True:
+        FULL_RESULTS_CACHE_VALID = False
+        race_format = getCurrentRaceFormat()
+        heat = Database.Heat.query.get(RACE.current_heat)
+        # Get the last saved round for the current heat
+        max_round = DB.session.query(DB.func.max(Database.SavedRaceMeta.round_id)) \
+                .filter_by(heat_id=RACE.current_heat).scalar()
+        if max_round is None:
+            max_round = 0
+        # Loop through laps to copy to saved races
+        profile = getCurrentProfile()
+        profile_freqs = json.loads(profile.frequencies)
 
-            new_pilotrace = Database.SavedPilotRace( \
-                race_id=new_race.id, \
-                node_index=node_index, \
-                pilot_id=pilot_id, \
-                history_values=json.dumps(INTERFACE.nodes[node_index].history_values), \
-                history_times=json.dumps(INTERFACE.nodes[node_index].history_times), \
-                penalty_time=0, \
-                enter_at=INTERFACE.nodes[node_index].enter_at_level, \
-                exit_at=INTERFACE.nodes[node_index].exit_at_level
-            )
-            DB.session.add(new_pilotrace)
-            DB.session.flush()
-            DB.session.refresh(new_pilotrace)
+        new_race = Database.SavedRaceMeta( \
+            round_id=max_round+1, \
+            heat_id=RACE.current_heat, \
+            class_id=heat.class_id, \
+            format_id=Options.get('currentFormat'), \
+            start_time = RACE.start_time_monotonic, \
+            start_time_formatted = RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"), \
+            cacheStatus=Results.CacheStatus.INVALID
+        )
+        DB.session.add(new_race)
+        DB.session.flush()
+        DB.session.refresh(new_race)
 
-            for lap in RACE.node_laps[node_index]:
-                DB.session.add(Database.SavedRaceLap( \
+        for node_index in range(RACE.num_nodes):
+            if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+                pilot_id = Database.HeatNode.query.filter_by( \
+                    heat_id=RACE.current_heat, node_index=node_index).one().pilot_id
+
+                new_pilotrace = Database.SavedPilotRace( \
                     race_id=new_race.id, \
-                    pilotrace_id=new_pilotrace.id, \
                     node_index=node_index, \
                     pilot_id=pilot_id, \
-                    lap_time_stamp=lap['lap_time_stamp'], \
-                    lap_time=lap['lap_time'], \
-                    lap_time_formatted=lap['lap_time_formatted'], \
-                    source = lap['source'], \
-                    deleted = lap['deleted']
-                ))
+                    history_values=json.dumps(INTERFACE.nodes[node_index].history_values), \
+                    history_times=json.dumps(INTERFACE.nodes[node_index].history_times), \
+                    penalty_time=0, \
+                    enter_at=INTERFACE.nodes[node_index].enter_at_level, \
+                    exit_at=INTERFACE.nodes[node_index].exit_at_level
+                )
+                DB.session.add(new_pilotrace)
+                DB.session.flush()
+                DB.session.refresh(new_pilotrace)
 
-    DB.session.commit()
+                for lap in RACE.node_laps[node_index]:
+                    DB.session.add(Database.SavedRaceLap( \
+                        race_id=new_race.id, \
+                        pilotrace_id=new_pilotrace.id, \
+                        node_index=node_index, \
+                        pilot_id=pilot_id, \
+                        lap_time_stamp=lap['lap_time_stamp'], \
+                        lap_time=lap['lap_time'], \
+                        lap_time_formatted=lap['lap_time_formatted'], \
+                        source = lap['source'], \
+                        deleted = lap['deleted']
+                    ))
 
-    # spawn thread for updating results caches
-    params = {
-        'race_id': new_race.id,
-        'heat_id': RACE.current_heat,
-        'round_id': new_race.round_id,
-    }
-    gevent.spawn(Results.build_race_results_caches, DB, params)
+        DB.session.commit()
 
-    Events.trigger(Evt.LAPS_SAVE, {
-        'race_id': new_race.id,
-        })
+        # spawn thread for updating results caches
+        params = {
+            'race_id': new_race.id,
+            'heat_id': RACE.current_heat,
+            'round_id': new_race.round_id,
+        }
+        gevent.spawn(build_atomic_result_caches, params)
 
-    logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
-    on_discard_laps(saved=True) # Also clear the current laps
-    emit_round_data_notify() # live update rounds page
+        trigger_event(Evt.LAPS_SAVE, {
+            'race_id': new_race.id,
+            })
+
+        logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
+        on_discard_laps(saved=True) # Also clear the current laps
+    else:
+        on_discard_laps()
+        message = __('Discarding empty race')
+        emit_priority_message(message, False, nobroadcast=True)
 
 @SOCKET_IO.on('resave_laps')
 @catchLogExceptionsWrapper
@@ -2581,42 +2706,252 @@ def on_resave_laps(data):
         'heat_id': heat_id,
         'round_id': round_id,
     }
-    gevent.spawn(update_result_caches, params)
+    gevent.spawn(build_atomic_result_caches, params)
 
-    Events.trigger(Evt.LAPS_RESAVE, {
+    trigger_event(Evt.LAPS_RESAVE, {
         'race_id': race_id,
         'pilot_id': pilot_id,
         })
 
-def update_result_caches(params):
-    Results.build_race_results_caches(DB, params)
-    emit_round_data_notify()
+def build_atomic_result_caches(params):
+    Results.build_atomic_results_caches(DB, params)
+    emit_result_data()
+
+def build_full_result_cache():
+    '''Builds any invalid atomic result caches and creates final output'''
+    timing = {
+        'start': monotonic()
+    }
+    logger.debug('T%d: Result data build started', timing['start'])
+
+    CACHE_TIMEOUT = 10
+    expires = monotonic() + CACHE_TIMEOUT
+    error_flag = False
+
+    global FULL_RESULTS_CACHE
+    global FULL_RESULTS_CACHE_BUILDING
+    global FULL_RESULTS_CACHE_VALID
+
+    if FULL_RESULTS_CACHE_BUILDING: # Don't restart calculation if another calculation thread exists
+        while True: # Pause this thread until calculations are completed
+            gevent.idle()
+            if FULL_RESULTS_CACHE_BUILDING is False:
+                break
+            elif monotonic() > FULL_RESULTS_CACHE_BUILDING + CACHE_TIMEOUT:
+                logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
+                FULL_RESULTS_CACHE_BUILDING = False
+                break
+
+    if FULL_RESULTS_CACHE_VALID: # Output existing calculated results
+        logger.info('T%d: Returning valid cache', timing['start'])
+
+    else:
+        timing['build_start'] = monotonic()
+        FULL_RESULTS_CACHE_BUILDING = monotonic()
+
+        heats = {}
+        for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
+            heatdata = Database.Heat.query.get(heat.heat_id)
+
+            rounds = []
+            for round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
+
+                if Database.SavedRaceLap.query.filter_by(race_id=round.id).first() is not None:
+                    pilotraces = []
+                    for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
+                        gevent.sleep()
+                        laps = []
+                        for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
+                            laps.append({
+                                'id': lap.id,
+                                'lap_time_stamp': lap.lap_time_stamp,
+                                'lap_time': lap.lap_time,
+                                'lap_time_formatted': lap.lap_time_formatted,
+                                'source': lap.source,
+                                'deleted': lap.deleted
+                            })
+
+                        pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
+                        if pilot_data:
+                            nodepilot = pilot_data.callsign
+                        else:
+                            nodepilot = None
+
+                        pilotraces.append({
+                            'callsign': nodepilot,
+                            'pilot_id': pilotrace.pilot_id,
+                            'node_index': pilotrace.node_index,
+                            'laps': laps
+                        })
+                    if round.cacheStatus == Results.CacheStatus.INVALID:
+                        logger.info('Heat %d Round %d cache invalid; rebuilding', heat.heat_id, round.round_id)
+                        results = Results.calc_leaderboard(DB, heat_id=heat.heat_id, round_id=round.round_id)
+                        round.results = results
+                        round.cacheStatus = Results.CacheStatus.VALID
+                        DB.session.commit()
+                    else:
+                        expires = monotonic() + CACHE_TIMEOUT
+                        while True:
+                            gevent.idle()
+                            if round.cacheStatus == Results.CacheStatus.VALID:
+                                results = round.results
+                                break
+                            elif monotonic() > expires:
+                                logger.warning('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, round.round_id)
+                                results = None
+                                error_flag = True
+                                break
+
+                    rounds.append({
+                        'id': round.round_id,
+                        'start_time_formatted': round.start_time_formatted,
+                        'nodes': pilotraces,
+                        'leaderboard': results
+                    })
+
+            if heatdata.cacheStatus == Results.CacheStatus.INVALID:
+                logger.info('Heat %d cache invalid; rebuilding', heat.heat_id)
+                results = Results.calc_leaderboard(DB, heat_id=heat.heat_id)
+                heatdata.results = results
+                heatdata.cacheStatus = Results.CacheStatus.VALID
+                DB.session.commit()
+            else:
+                checkStatus = True
+                expires = monotonic() + CACHE_TIMEOUT
+                while True:
+                    gevent.idle()
+                    if heatdata.cacheStatus == Results.CacheStatus.VALID:
+                        results = heatdata.results
+                        break
+                    elif monotonic() > expires:
+                        logger.warning('T%d: Cache build timed out: Heat Summary %d', timing['start'], heat.heat_id)
+                        results = None
+                        error_flag = True
+                        break
+
+            heats[heat.heat_id] = {
+                'heat_id': heat.heat_id,
+                'note': heatdata.note,
+                'rounds': rounds,
+                'leaderboard': results
+            }
+
+        timing['round_results'] = monotonic()
+        logger.debug('T%d: round results assembled in: %fs', timing['start'], timing['round_results'] - timing['build_start'])
+
+        gevent.sleep()
+        heats_by_class = {}
+        heats_by_class[Database.CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=Database.CLASS_ID_NONE).all()]
+        for race_class in Database.RaceClass.query.all():
+            heats_by_class[race_class.id] = [heat.id for heat in Database.Heat.query.filter_by(class_id=race_class.id).all()]
+
+        timing['by_class'] = monotonic()
+
+        gevent.sleep()
+        current_classes = {}
+        for race_class in Database.RaceClass.query.all():
+            if race_class.cacheStatus == Results.CacheStatus.INVALID:
+                logger.info('Class %d cache invalid; rebuilding', race_class.id)
+                results = Results.calc_leaderboard(DB, class_id=race_class.id)
+                race_class.results = results
+                race_class.cacheStatus = Results.CacheStatus.VALID
+                DB.session.commit()
+            else:
+                checkStatus = True
+                expires = monotonic() + CACHE_TIMEOUT
+                while True:
+                    gevent.idle()
+                    if race_class.cacheStatus == Results.CacheStatus.VALID:
+                        results = race_class.results
+                        break
+                    elif monotonic() > expires:
+                        logger.warning('T%d: Cache build timed out: Class Summary %d', timing['start'], race_class.id)
+                        results = None
+                        error_flag = True
+                        break
+
+            current_class = {}
+            current_class['id'] = race_class.id
+            current_class['name'] = race_class.name
+            current_class['description'] = race_class.name
+            current_class['leaderboard'] = results
+            current_classes[race_class.id] = current_class
+
+        timing['event'] = monotonic()
+        logger.debug('T%d: results by class assembled in: %fs', timing['start'], timing['event'] - timing['by_class'])
+
+        gevent.sleep()
+        if Options.get("eventResults_cacheStatus") == Results.CacheStatus.INVALID:
+            logger.info('Event cache invalid; rebuilding')
+            results = Results.calc_leaderboard(DB)
+            Options.set("eventResults", json.dumps(results))
+            Options.set("eventResults_cacheStatus", Results.CacheStatus.VALID)
+            DB.session.commit()
+        else:
+            expires = monotonic() + CACHE_TIMEOUT
+            while True:
+                gevent.idle()
+                status = Options.get("eventResults_cacheStatus")
+                if status == Results.CacheStatus.VALID:
+                    results = json.loads(Options.get("eventResults"))
+                    break
+                elif monotonic() > expires:
+                    logger.warning('Cache build timed out: Event Summary')
+                    results = None
+                    error_flag = True
+                    break
+
+        timing['event_end'] = monotonic()
+        logger.debug('T%d: event results assembled in: %fs', timing['start'], timing['event_end'] - timing['event'])
+
+        payload = {
+            'heats': heats,
+            'heats_by_class': heats_by_class,
+            'classes': current_classes,
+            'event_leaderboard': results
+        }
+
+        FULL_RESULTS_CACHE = payload
+        FULL_RESULTS_CACHE_BUILDING = False
+
+        if error_flag:
+            logger.warning('T%d: Cache results build failed; leaving page cache invalid', timing['start'])
+            emit_priority_message(__("Results did not load completely. Please try again."), False)
+            trigger_event(Evt.CACHE_FAIL)
+        else:
+            FULL_RESULTS_CACHE_VALID = True
+            trigger_event(Evt.CACHE_READY)
+
+        logger.debug('T%d: Page cache built in: %fs', timing['start'], monotonic() - timing['build_start'])
+
+    timing['end'] = monotonic()
+
+    logger.info('T%d: Built results data in: %fs', timing['start'], timing['end'] - timing['start'])
 
 @SOCKET_IO.on('discard_laps')
 @catchLogExceptionsWrapper
 def on_discard_laps(**kwargs):
     '''Clear the current laps without saving.'''
-    CLUSTER.emit('discard_laps')
+    global RACE
+    CLUSTER.emitToSplits('discard_laps')
     clear_laps()
     RACE.race_status = RaceStatus.READY # Flag status as ready to start next race
     INTERFACE.set_race_status(RaceStatus.READY)
     emit_current_laps() # Race page, blank laps to the web client
     emit_current_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
-    race_format = getCurrentRaceFormat()
-    if race_format.team_racing_mode:
-        check_emit_team_racing_status()  # Show team-racing status info
-    else:
-        emit_team_racing_status('')  # clear any displayed "Winner is" text
+    RACE.win_status = WinStatus.NONE
+    RACE.status_message = ''
+    check_emit_race_status_message(RACE) # Update race status message
 
     if 'saved' in kwargs and kwargs['saved'] == True:
         # discarding follows a save action
         pass
     else:
         # discarding does not follow a save action
-        Events.trigger(Evt.LAPS_DISCARD)
+        trigger_event(Evt.LAPS_DISCARD)
 
-    Events.trigger(Evt.LAPS_CLEAR)
+    trigger_event(Evt.LAPS_CLEAR)
 
 def clear_laps():
     '''Clear the current laps table.'''
@@ -2650,6 +2985,7 @@ def init_node_cross_fields():
 @catchLogExceptionsWrapper
 def on_set_current_heat(data):
     '''Update the current heat variable.'''
+    global RACE
     new_heat_id = data['heat']
     RACE.current_heat = new_heat_id
 
@@ -2681,22 +3017,29 @@ def on_set_current_heat(data):
         else:
             RACE.node_teams[heatNode.node_index] = None
 
+    heat_data = Database.Heat.query.get(new_heat_id)
+
+    if heat_data.class_id != Database.CLASS_ID_NONE:
+        class_format_id = Database.RaceClass.query.get(heat_data.class_id).format_id
+        if class_format_id != Database.FORMAT_ID_NONE:
+            class_format = Database.RaceFormat.query.get(class_format_id)
+            setCurrentRaceFormat(class_format)
+            logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
+
     logger.info('Current heat set: Heat {0}'.format(new_heat_id))
 
     if Options.getInt('calibrationMode'):
         autoUpdateCalibration()
 
-    Events.trigger(Evt.HEAT_SET, {
-        'race': RACE,
+    trigger_event(Evt.HEAT_SET, {
         'heat_id': new_heat_id,
         })
 
     RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
     emit_current_heat() # Race page, to update heat selection button
     emit_current_leaderboard() # Race page, to update callsigns in leaderboard
-    race_format = getCurrentRaceFormat()
-    if race_format.team_racing_mode:
-        check_emit_team_racing_status()  # Show initial team-racing status info
+    emit_race_format()
+    check_emit_race_status_message(RACE) # Update race status message
 
 @SOCKET_IO.on('generate_heats')
 def on_generate_heats(data):
@@ -2826,7 +3169,7 @@ def generate_heats(data):
         logger.info("Generated {0} heats from class {1}".format(len(generated_heats), input_class))
         SOCKET_IO.emit('heat_generate_done')
 
-        Events.trigger(Evt.HEAT_GENERATE)
+        trigger_event(Evt.HEAT_GENERATE)
 
         emit_heat_data()
     else:
@@ -2883,8 +3226,8 @@ def on_delete_lap(data):
     except:
         logger.exception("Error deleting split laps")
 
-    Events.trigger(Evt.LAP_DELETE, {
-        'race': RACE,
+    trigger_event(Evt.LAP_DELETE, {
+        #'race': RACE,  # TODO this causes exceptions via 'json.loads()', so leave out for now
         'node_index': node_index,
         })
 
@@ -2892,20 +3235,7 @@ def on_delete_lap(data):
     RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
     emit_current_laps() # Race page, update web client
     emit_current_leaderboard() # Race page, update web client
-    race_format = getCurrentRaceFormat()
-    if race_format.team_racing_mode:
-        # update team-racing status info
-        if race_format.win_condition != WinCondition.MOST_LAPS:  # if not Most Laps Wins race
-            if race_format.number_laps_win > 0:  # if number-laps-win race
-                t_laps_dict, team_name, pilot_team_dict = get_team_laps_info(-1, race_format.number_laps_win)
-                check_team_laps_win(t_laps_dict, race_format.number_laps_win, pilot_team_dict)
-            else:
-                t_laps_dict = get_team_laps_info()[0]
-        else:  # if Most Laps Wins race enabled
-            t_laps_dict, t_name, pilot_team_dict = get_team_laps_info(-1, RACE.winning_lap_id)
-            if ms_from_race_start() > race_format.race_time_sec*1000:  # if race done
-                check_most_laps_win(node_index, t_laps_dict, pilot_team_dict)
-        check_emit_team_racing_status(t_laps_dict)
+    check_emit_race_status_message(RACE) # Update race status message
 
 @SOCKET_IO.on('simulate_lap')
 @catchLogExceptionsWrapper
@@ -2913,7 +3243,7 @@ def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
     logger.info('Simulated lap: Node {0}'.format(node_index+1))
-    Events.trigger(Evt.CROSSING_EXIT, {
+    trigger_event(Evt.CROSSING_EXIT, {
         'nodeIndex': node_index,
         'color': hexToColor(Options.get('colorNode_' + str(node_index), '#ffffff'))
         })
@@ -2953,7 +3283,6 @@ def on_LED_chase(data):
             'time': 5
         }
     })
-
 
 @SOCKET_IO.on('LED_RB')
 @catchLogExceptionsWrapper
@@ -2996,7 +3325,7 @@ def on_LED_brightness(data):
     strip.setBrightness(brightness)
     strip.show()
     Options.set("ledBrightness", brightness)
-    Events.trigger(Evt.LED_BRIGHTNESS_SET, {
+    trigger_event(Evt.LED_BRIGHTNESS_SET, {
         'level': brightness,
         })
 
@@ -3004,7 +3333,7 @@ def on_LED_brightness(data):
 @catchLogExceptionsWrapper
 def on_set_option(data):
     Options.set(data['option'], data['value'])
-    Events.trigger(Evt.OPTION_SET, {
+    trigger_event(Evt.OPTION_SET, {
         'option': data['option'],
         'value': data['value'],
         })
@@ -3036,10 +3365,20 @@ def imdtabler_update_freqs(data):
 @SOCKET_IO.on('clean_cache')
 @catchLogExceptionsWrapper
 def clean_results_cache():
-    ''' expose cach wiping for frontend debugging '''
+    ''' wipe all results caches '''
+    global FULL_RESULTS_CACHE_VALID
     Results.invalidate_all_caches(DB)
+    FULL_RESULTS_CACHE_VALID = False
+    emit_result_data()
 
 # Socket io emit functions
+
+def emit_frontend_load(**params):
+    '''Emits reload command.'''
+    if ('nobroadcast' in params):
+        emit('load_all')
+    else:
+        SOCKET_IO.emit('load_all')
 
 def emit_priority_message(message, interrupt=False, **params):
     ''' Emits message to all clients '''
@@ -3051,12 +3390,12 @@ def emit_priority_message(message, interrupt=False, **params):
         emit('priority_message', emit_payload)
     else:
         if interrupt:
-            Events.trigger(Evt.MESSAGE_INTERRUPT, {
+            trigger_event(Evt.MESSAGE_INTERRUPT, {
                 'message': message,
                 'interrupt': interrupt
                 })
         else:
-            Events.trigger(Evt.MESSAGE_STANDARD, {
+            trigger_event(Evt.MESSAGE_STANDARD, {
                 'message': message,
                 'interrupt': interrupt
                 })
@@ -3144,6 +3483,13 @@ def emit_enter_and_exit_at_levels(**params):
     else:
         SOCKET_IO.emit('enter_and_exit_at_levels', emit_payload)
 
+def emit_cluster_status(**params):
+    '''Emits cluster status information.'''
+    if ('nobroadcast' in params):
+        emit('cluster_status', CLUSTER.getClusterStatusInfo())
+    else:
+        SOCKET_IO.emit('cluster_status', CLUSTER.getClusterStatusInfo())
+
 def emit_start_thresh_lower_amount(**params):
     '''Emits current start_thresh_lower_amount.'''
     emit_payload = {
@@ -3151,6 +3497,8 @@ def emit_start_thresh_lower_amount(**params):
     }
     if ('nobroadcast' in params):
         emit('start_thresh_lower_amount', emit_payload)
+    elif ('noself' in params):
+        emit('start_thresh_lower_amount', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('start_thresh_lower_amount', emit_payload)
 
@@ -3161,6 +3509,8 @@ def emit_start_thresh_lower_duration(**params):
     }
     if ('nobroadcast' in params):
         emit('start_thresh_lower_duration', emit_payload)
+    elif ('noself' in params):
+        emit('start_thresh_lower_duration', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('start_thresh_lower_duration', emit_payload)
 
@@ -3233,6 +3583,7 @@ def emit_race_format(**params):
         'staging_tones': race_format.staging_tones,
         'number_laps_win': race_format.number_laps_win,
         'win_condition': race_format.win_condition,
+        'start_behavior': race_format.start_behavior,
         'team_racing_mode': 1 if race_format.team_racing_mode else 0,
         'locked': locked
     }
@@ -3240,7 +3591,6 @@ def emit_race_format(**params):
         emit('race_format', emit_payload)
     else:
         SOCKET_IO.emit('race_format', emit_payload)
-        emit_team_racing_stat_if_enb()
         emit_current_leaderboard()
 
 def emit_race_formats(**params):
@@ -3257,6 +3607,7 @@ def emit_race_formats(**params):
             'staging_tones': race_format.staging_tones,
             'number_laps_win': race_format.number_laps_win,
             'win_condition': race_format.win_condition,
+            'start_behavior': race_format.start_behavior,
             'team_racing_mode': 1 if race_format.team_racing_mode else 0,
         }
 
@@ -3277,6 +3628,7 @@ def emit_race_formats(**params):
 def emit_current_laps(**params):
     '''Emits current laps.'''
     global RACE
+    race_format = getCurrentRaceFormat()
     if 'use_cache' in params and RACE.last_race_cacheStatus == Results.CacheStatus.VALID:
         emit_payload = RACE.last_race_laps
     else:
@@ -3288,10 +3640,14 @@ def emit_current_laps(**params):
             last_lap_id = -1
             for idx, lap in enumerate(RACE.node_laps[node]):
                 if not lap['deleted']:
+                    lap_number = lap['lap_number'];
+                    if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                        lap_number += 1
+
                     splits = get_splits(node, lap['lap_number'], True)
                     node_laps.append({
                         'lap_index': idx,
-                        'lap_number': lap['lap_number'],
+                        'lap_number': lap_number,
                         'lap_raw': lap['lap_time'],
                         'lap_time': lap['lap_time_formatted'],
                         'lap_time_stamp': lap['lap_time_stamp'],
@@ -3328,23 +3684,23 @@ def emit_current_laps(**params):
 def get_splits(node, lap_id, lapCompleted):
     splits = []
     for slave_index in range(len(CLUSTER.slaves)):
-        split = Database.LapSplit.query.filter_by(node_index=node,lap_id=lap_id,split_id=slave_index).one_or_none()
-        if split:
-            split_payload = {
-                'split_id': slave_index,
-                'split_raw': split.split_time,
-                'split_time': split.split_time_formatted,
-                'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else '-'
-            }
-        elif lapCompleted:
-            split_payload = {
-                'split_id': slave_index,
-                'split_time': '-'
-            }
-        else:
-            break
-        splits.append(split_payload)
-
+        if CLUSTER.isSplitSlaveAvailable(slave_index):
+            split = Database.LapSplit.query.filter_by(node_index=node,lap_id=lap_id,split_id=slave_index).one_or_none()
+            if split:
+                split_payload = {
+                    'split_id': slave_index,
+                    'split_raw': split.split_time,
+                    'split_time': split.split_time_formatted,
+                    'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
+                }
+            elif lapCompleted:
+                split_payload = {
+                    'split_id': slave_index,
+                    'split_time': '-'
+                }
+            else:
+                break
+            splits.append(split_payload)
     return splits
 
 def emit_race_list(**params):
@@ -3425,224 +3781,26 @@ def emit_race_list(**params):
     else:
         SOCKET_IO.emit('race_list', emit_payload)
 
-def emit_round_data_notify(**params):
-    '''Let clients know round data is updated so they can request it.'''
-    SOCKET_IO.emit('round_data_notify')
-
-def emit_round_data(**params):
+def emit_result_data(**params):
     ''' kick off non-blocking thread to generate data'''
-    gevent.spawn(emit_round_data_thread, params, request.sid)
+    if request:
+        gevent.spawn(emit_result_data_thread, params, request.sid)
+    else:
+        gevent.spawn(emit_result_data_thread, params)
 
 @catchLogExceptionsWrapper
-def emit_round_data_thread(params, sid):
+def emit_result_data_thread(params, sid=None):
+    global FULL_RESULTS_CACHE
     with APP.test_request_context():
-        '''Emits saved races to rounds page.'''
-        timing = {
-            'start': monotonic()
-        }
-        logger.debug('T%d: Round data build started', timing['start'])
 
-        CACHE_TIMEOUT = 10
-        expires = monotonic() + CACHE_TIMEOUT
-        error_flag = False
+        build_full_result_cache()
 
-        global FULL_RESULTS_CACHE
-        global FULL_RESULTS_CACHE_BUILDING
-        global FULL_RESULTS_CACHE_VALID
+        emit_payload = FULL_RESULTS_CACHE
 
-        if FULL_RESULTS_CACHE_BUILDING: # Don't restart calculation if another calculation thread exists
-            while True: # Pause this thread until calculations are completed
-                gevent.idle()
-                if FULL_RESULTS_CACHE_BUILDING is False:
-                    break
-                elif monotonic() > FULL_RESULTS_CACHE_BUILDING + CACHE_TIMEOUT:
-                    logger.warn('T%d: Timed out waiting for other cache build thread', timing['start'])
-                    FULL_RESULTS_CACHE_BUILDING = False
-                    break
-
-        if FULL_RESULTS_CACHE_VALID: # Output existing calculated results
-            emit_payload = FULL_RESULTS_CACHE
-
+        if 'nobroadcast' in params and sid != None:
+            emit('result_data', emit_payload, namespace='/', room=sid)
         else:
-            timing['build_start'] = monotonic()
-            FULL_RESULTS_CACHE_BUILDING = monotonic()
-
-            heats = {}
-            for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
-                heatdata = Database.Heat.query.get(heat.heat_id)
-
-                rounds = []
-                for round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
-                    pilotraces = []
-                    for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
-                        gevent.sleep()
-                        laps = []
-                        for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
-                            laps.append({
-                                'id': lap.id,
-                                'lap_time_stamp': lap.lap_time_stamp,
-                                'lap_time': lap.lap_time,
-                                'lap_time_formatted': lap.lap_time_formatted,
-                                'source': lap.source,
-                                'deleted': lap.deleted
-                            })
-
-                        pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
-                        if pilot_data:
-                            nodepilot = pilot_data.callsign
-                        else:
-                            nodepilot = None
-
-                        pilotraces.append({
-                            'callsign': nodepilot,
-                            'pilot_id': pilotrace.pilot_id,
-                            'node_index': pilotrace.node_index,
-                            'laps': laps
-                        })
-                    if round.cacheStatus == Results.CacheStatus.INVALID:
-                        logger.info('Heat %d Round %d cache invalid; rebuilding', heat.heat_id, round.round_id)
-                        results = Results.calc_leaderboard(DB, heat_id=heat.heat_id, round_id=round.round_id)
-                        round.results = results
-                        round.cacheStatus = Results.CacheStatus.VALID
-                        DB.session.commit()
-                    else:
-                        expires = monotonic() + CACHE_TIMEOUT
-                        while True:
-                            gevent.idle()
-                            if round.cacheStatus == Results.CacheStatus.VALID:
-                                results = round.results
-                                break
-                            elif monotonic() > expires:
-                                logger.warn('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, round.round_id)
-                                error_flag = True
-                                break
-
-                    rounds.append({
-                        'id': round.round_id,
-                        'start_time_formatted': round.start_time_formatted,
-                        'nodes': pilotraces,
-                        'leaderboard': results
-                    })
-
-                if heatdata.cacheStatus == Results.CacheStatus.INVALID:
-                    logger.info('Heat %d cache invalid; rebuilding', heat.heat_id)
-                    results = Results.calc_leaderboard(DB, heat_id=heat.heat_id)
-                    heatdata.results = results
-                    heatdata.cacheStatus = Results.CacheStatus.VALID
-                    DB.session.commit()
-                else:
-                    checkStatus = True
-                    expires = monotonic() + CACHE_TIMEOUT
-                    while True:
-                        gevent.idle()
-                        if heatdata.cacheStatus == Results.CacheStatus.VALID:
-                            results = heatdata.results
-                            break
-                        elif monotonic() > expires:
-                            logger.warn('T%d: Cache build timed out: Heat Summary %d', timing['start'], heat.heat_id)
-                            error_flag = True
-                            break
-
-                heats[heat.heat_id] = {
-                    'heat_id': heat.heat_id,
-                    'note': heatdata.note,
-                    'rounds': rounds,
-                    'leaderboard': results
-                }
-
-            timing['round_results'] = monotonic()
-            logger.debug('T%d: round results assembled in: %fs', timing['start'], timing['round_results'] - timing['build_start'])
-
-            gevent.sleep()
-            heats_by_class = {}
-            heats_by_class[Database.CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=Database.CLASS_ID_NONE).all()]
-            for race_class in Database.RaceClass.query.all():
-                heats_by_class[race_class.id] = [heat.id for heat in Database.Heat.query.filter_by(class_id=race_class.id).all()]
-
-            timing['by_class'] = monotonic()
-
-            gevent.sleep()
-            current_classes = {}
-            for race_class in Database.RaceClass.query.all():
-                if race_class.cacheStatus == Results.CacheStatus.INVALID:
-                    logger.info('Class %d cache invalid; rebuilding', race_class.id)
-                    results = Results.calc_leaderboard(DB, class_id=race_class.id)
-                    race_class.results = results
-                    race_class.cacheStatus = Results.CacheStatus.VALID
-                    DB.session.commit()
-                else:
-                    checkStatus = True
-                    expires = monotonic() + CACHE_TIMEOUT
-                    while True:
-                        gevent.idle()
-                        if race_class.cacheStatus == Results.CacheStatus.VALID:
-                            results = race_class.results
-                            break
-                        elif monotonic() > expires:
-                            logger.warn('T%d: Cache build timed out: Class Summary %d', timing['start'], race_class.id)
-                            error_flag = True
-                            break
-
-                current_class = {}
-                current_class['id'] = race_class.id
-                current_class['name'] = race_class.name
-                current_class['description'] = race_class.name
-                current_class['leaderboard'] = results
-                current_classes[race_class.id] = current_class
-
-            timing['event'] = monotonic()
-            logger.debug('T%d: results by class assembled in: %fs', timing['start'], timing['event'] - timing['by_class'])
-
-            gevent.sleep()
-            if Options.get("eventResults_cacheStatus") == Results.CacheStatus.INVALID:
-                logger.info('Event cache invalid; rebuilding')
-                results = Results.calc_leaderboard(DB)
-                Options.set("eventResults", json.dumps(results))
-                Options.set("eventResults_cacheStatus", Results.CacheStatus.VALID)
-                DB.session.commit()
-            else:
-                expires = monotonic() + CACHE_TIMEOUT
-                while True:
-                    gevent.idle()
-                    status = Options.get("eventResults_cacheStatus")
-                    if status == Results.CacheStatus.VALID:
-                        results = json.loads(Options.get("eventResults"))
-                        break
-                    elif monotonic() > expires:
-                        logger.warn('Cache build timed out: Event Summary')
-                        error_flag = True
-                        break
-
-            timing['event_end'] = monotonic()
-            logger.debug('T%d: event results assembled in: %fs', timing['start'], timing['event_end'] - timing['event'])
-
-            emit_payload = {
-                'heats': heats,
-                'heats_by_class': heats_by_class,
-                'classes': current_classes,
-                'event_leaderboard': results
-            }
-
-            FULL_RESULTS_CACHE_BUILDING = False
-            if error_flag:
-                logger.warn('T%d: Cache results build failed; leaving page cache invalid', timing['start'])
-                # pass message to front-end? ***
-            else:
-
-                FULL_RESULTS_CACHE = emit_payload
-                FULL_RESULTS_CACHE_VALID = True
-
-            Events.trigger(Evt.CACHE_READY) # should this trigger if error?
-            logger.debug('T%d: Page cache built in: %fs', timing['start'], monotonic() - timing['build_start'])
-
-        timing['end'] = monotonic()
-
-        logger.info('T%d: Results returned in: %fs', timing['start'], timing['end'] - timing['start'])
-
-        if ('nobroadcast' in params):
-            emit('round_data', emit_payload, namespace='/', room=sid)
-        else:
-            SOCKET_IO.emit('round_data', emit_payload, namespace='/')
+            SOCKET_IO.emit('result_data', emit_payload, namespace='/')
 
 def emit_current_leaderboard(**params):
     '''Emits leaderboard.'''
@@ -3657,10 +3815,30 @@ def emit_current_leaderboard(**params):
         RACE.cacheStatus = Results.CacheStatus.VALID
         emit_payload = results
 
+    emit_current_team_leaderboard()
+
     if ('nobroadcast' in params):
         emit('leaderboard', emit_payload)
     else:
         SOCKET_IO.emit('leaderboard', emit_payload)
+
+def emit_current_team_leaderboard(**params):
+    '''Emits team leaderboard.'''
+    global RACE
+    race_format = getCurrentRaceFormat()
+
+    if race_format.team_racing_mode:
+        results = Results.calc_team_leaderboard(RACE)
+        RACE.team_results = results
+        RACE.team_cacheStatus = Results.CacheStatus.VALID
+        emit_payload = results
+    else:
+        emit_payload = None
+
+    if ('nobroadcast' in params):
+        emit('team_leaderboard', emit_payload)
+    else:
+        SOCKET_IO.emit('team_leaderboard', emit_payload)
 
 def emit_heat_data(**params):
     '''Emits heat data.'''
@@ -3847,373 +4025,14 @@ def emit_current_heat(**params):
     else:
         SOCKET_IO.emit('current_heat', emit_payload)
 
-def get_team_laps_info(cur_pilot_id=-1, num_laps_win=0):
-    '''Calculates and returns team-racing info.'''
-    logger.debug('get_team_laps_info cur_pilot_id={0}, num_laps_win={1}'.format(cur_pilot_id, num_laps_win))
-              # create dictionary with key=pilot_id, value=team_name
-    pilot_team_dict = {}
-    profile_freqs = json.loads(getCurrentProfile().frequencies)
-                             # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
-                      filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
-
-    for node in INTERFACE.nodes:
-        if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
-            pilot_id = node_pilot_dict.get(node.index)
-            if pilot_id:
-                pilot_team_dict[pilot_id] = Database.Pilot.query.filter_by(id=pilot_id).one().team
-    logger.debug('get_team_laps_info pilot_team_dict: {0}'.format(pilot_team_dict))
-
-    t_laps_dict = {}  # create dictionary (key=team_name, value=[lapCount,timestamp,item]) with initial zero laps
-    for team_name in pilot_team_dict.values():
-        if len(team_name) > 0 and team_name not in t_laps_dict:
-            t_laps_dict[team_name] = [0, 0, None]
-
-    # iterate through list of laps, sorted by lap timestamp
-    grouped_laps = []
-    for node_index in range(RACE.num_nodes):
-        for lap in RACE.get_active_laps()[node_index]:
-            lap['pilot'] = RACE.node_pilots[node_index]
-            grouped_laps.append(lap)
-
-    # each item has:  'lap_time_stamp', 'deleted' (True/False), 'lap_number', 'source', 'lap_time_formatted', 'lap_time' 'pilot' (number)
-    for item in sorted(grouped_laps, key=lambda lap : lap['lap_time_stamp']):
-        if item['lap_number'] > 0:  # current lap is > 0
-            team_name = pilot_team_dict[item['pilot']]
-            if team_name in t_laps_dict:
-                t_laps_dict[team_name][0] += 1       # increment lap count for team
-                if num_laps_win <= 0 or t_laps_dict[team_name][0] <= num_laps_win:
-                    t_laps_dict[team_name][1] = item['lap_time_stamp']  # update lap_time_stamp (if not past winning lap)
-                    t_laps_dict[team_name][2] = item
-                    logger.debug('get_team_laps_info team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
-                else:
-                    logger.debug('get_team_laps_info ignoring post-win lap team[{0}]={1} item: {2}'.format(team_name, t_laps_dict[team_name], item))
-    logger.debug('get_team_laps_info t_laps_dict: {0}'.format(t_laps_dict))
-
-    if cur_pilot_id >= 0:  # determine name for 'cur_pilot_id' if given
-        cur_team_name = pilot_team_dict[cur_pilot_id]
-    else:
-        cur_team_name = None
-
-    return t_laps_dict, cur_team_name, pilot_team_dict
-
-def check_emit_team_racing_status(t_laps_dict=None, **params):
-    '''Checks and emits team-racing status info.'''
-              # if not passed in then determine number of laps for each team
-    if t_laps_dict is None:
-        t_laps_dict = get_team_laps_info()[0]
-    disp_str = ''
-    for t_name in sorted(t_laps_dict.keys()):
-        disp_str += ' <span class="team-laps">Team ' + t_name + ' Lap: ' + str(t_laps_dict[t_name][0]) + '</span>'
-    if RACE.laps_winner_name is not None:
-        if RACE.laps_winner_name is not RACE.status_tied_str and \
-                RACE.laps_winner_name is not RACE.status_crossing:
-            disp_str += '<span class="team-winner">Winner is Team ' + RACE.laps_winner_name + '</span>'
-        else:
-            disp_str += '<span class="team-winner">' + RACE.laps_winner_name + '</span>'
-    #logger.info('Team racing status: ' + disp_str)
-    emit_team_racing_status(disp_str)
-
-def emit_team_racing_stat_if_enb(**params):
-    '''Emits team-racing status info if team racing is enabled.'''
-    race_format = getCurrentRaceFormat()
-    if race_format.team_racing_mode:
-        check_emit_team_racing_status(**params)
-    else:
-        emit_team_racing_status('')
-
-def emit_team_racing_status(disp_str, **params):
+def emit_race_status_message(**params):
     '''Emits given team-racing status info.'''
-    emit_payload = {'team_laps_str': disp_str}
+    global RACE
+    emit_payload = {'team_laps_str': RACE.status_message}
     if ('nobroadcast' in params):
-        emit('team_racing_status', emit_payload)
+        emit('race_status_message', emit_payload)
     else:
-        SOCKET_IO.emit('team_racing_status', emit_payload)
-
-def check_pilot_laps_win(pass_node_index, num_laps_win):
-    '''Checks if a pilot has completed enough laps to win.'''
-    win_pilot_id = -1
-    win_lap_tstamp = 0
-    profile_freqs = json.loads(getCurrentProfile().frequencies)
-                             # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
-                      filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
-
-    for node in INTERFACE.nodes:
-        if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
-            pilot_id = node_pilot_dict.get(node.index)
-            if pilot_id:
-                lap_count = max(0, len(RACE.get_active_laps()[node.index]) - 1)
-
-                            # if (other) pilot crossing for possible winning lap then wait
-                            #  in case lap time turns out to be earliest:
-                if node.pass_crossing_flag and node.index != pass_node_index and lap_count == num_laps_win - 1:
-                    logger.info('check_pilot_laps_win waiting for crossing, Node {0}'.format(node.index+1))
-                    return -1
-                if lap_count >= num_laps_win:
-                    lap_data = filter(lambda lap : lap['lap_number']==num_laps_win, RACE.get_active_laps()[node.index])
-                    logger.debug('check_pilot_laps_win Node {0} pilot_id={1} tstamp={2}'.format(node.index+1, pilot_id, lap_data[0]['lap_time_stamp']))
-                             # save pilot_id for earliest lap time:
-                    if win_pilot_id < 0 or lap_data[0]['lap_time_stamp'] < win_lap_tstamp:
-                        win_pilot_id = pilot_id
-                        win_lap_tstamp = lap_data[0]['lap_time_stamp']
-    logger.debug('check_pilot_laps_win returned win_pilot_id={0}'.format(win_pilot_id))
-    return win_pilot_id
-
-def check_team_laps_win(t_laps_dict, num_laps_win, pilot_team_dict, pass_node_index=-1):
-    '''Checks if a team has completed enough laps to win.'''
-    global RACE
-         # make sure there's not a pilot in the process of crossing for a winning lap
-    if RACE.laps_winner_name is None and pilot_team_dict:
-        profile_freqs = None
-                                  # dict for current heat with key=node_index, value=pilot_id
-        node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
-                          filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
-
-        for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
-            if node.pass_crossing_flag and node.index != pass_node_index:
-                if not profile_freqs:
-                    profile_freqs = json.loads(getCurrentProfile().frequencies)
-                if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:  # node is enabled
-                    pilot_id = node_pilot_dict.get(node.index)
-                    if pilot_id:  # node has pilot assigned to it
-                        team_name = pilot_team_dict[pilot_id]
-                        if team_name:
-                            ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
-                                        # if pilot crossing for possible winning lap then wait
-                                        #  in case lap time turns out to be earliest:
-                            if ent and ent[0] == num_laps_win - 1:
-                                logger.info('check_team_laps_win waiting for crossing, Node {0}'.format(node.index+1))
-                                return
-    win_name = None
-    win_tstamp = -1
-    win_item = None
-         # for each team, check if team has enough laps to win (and, if more
-         #  than one has enough laps, pick team with earliest timestamp)
-    for team_name in t_laps_dict.keys():
-        ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
-        if ent[0] >= num_laps_win and (win_tstamp < 0 or ent[1] < win_tstamp):
-            win_name = team_name
-            win_tstamp = ent[1]
-            win_item = ent[2]
-    logger.debug('check_team_laps_win win_name={0} tstamp={1}, win_item: {2}'.format(win_name, win_tstamp, win_item))
-    RACE.laps_winner_name = win_name
-
-def check_most_laps_win(pass_node_index=-1, t_laps_dict=None, pilot_team_dict=None):
-    '''Checks if pilot or team has most laps for a win.'''
-    # pass_node_index: -1 if called from 'check_race_time_expired()'; node.index if called from 'pass_record_callback()'
-    global RACE
-    logger.debug('Entered check_most_laps_win: pass_node_index={0}, t_laps_dict={1}, pilot_team_dict={2}'.format(pass_node_index, t_laps_dict, pilot_team_dict))
-
-    race_format = getCurrentRaceFormat()
-    if race_format.team_racing_mode: # team racing mode enabled
-
-             # if not passed in then determine number of laps for each team
-        if t_laps_dict is None:
-            t_laps_dict, t_name, pilot_team_dict = get_team_laps_info(-1, RACE.winning_lap_id)
-
-        max_lap_count = -1
-        win_name = None
-        win_tstamp = -1
-        win_item = None
-        tied_flag = False
-        num_max_lap = 0
-             # find team with most laps
-        for team_name in t_laps_dict.keys():
-            ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
-            if ent[0] >= max_lap_count:
-                if ent[0] > max_lap_count:  # if team has highest lap count found so far
-                    max_lap_count = ent[0]
-                    win_name = team_name
-                    win_tstamp = ent[1]
-                    win_item = ent[2]
-                    tied_flag = False
-                    num_max_lap = 1
-                else:  # if team is tied for highest lap count found so far
-                    # not waiting for crossing
-                    if pass_node_index >= 0 and RACE.laps_winner_name is not RACE.status_crossing:
-                        num_max_lap += 1  # count number of teams at max lap
-                        if ent[1] < win_tstamp:  # this team has earlier lap time
-                            win_name = team_name
-                            win_tstamp = ent[1]
-                            win_item = ent[2]
-                    else:  # waiting for crossing or called from 'check_race_time_expired()'
-                        tied_flag = True
-        logger.debug('check_most_laps_win tied={0} win_name={1} tstamp={2}'.format(tied_flag,win_name,win_tstamp))
-
-        if tied_flag or max_lap_count <= 0:
-            RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
-            RACE.winning_lap_id = max_lap_count + 1 if max_lap_count >= 0 else 1
-            check_emit_team_racing_status(t_laps_dict)
-            emit_phonetic_text('Race tied', 'race_winner')
-            logger.debug('check_most_laps_win race tied num_max_lap={0} max_lap_count={1}'.format(num_max_lap, max_lap_count))
-            return  # wait for next 'pass_record_callback()' event
-
-        if win_name:  # if a team looks like the winner
-
-            # make sure there's not a pilot in the process of crossing for a winning lap
-            if (RACE.laps_winner_name is None or RACE.laps_winner_name is RACE.status_tied_str or \
-                                RACE.laps_winner_name is RACE.status_crossing) and pilot_team_dict:
-                profile_freqs = None
-                node_pilot_dict = None  # dict for current heat with key=node_index, value=pilot_id
-                for node in INTERFACE.nodes:  # check if (other) pilot node is crossing gate
-                    if node.index != pass_node_index:  # if node is for other pilot
-                        if node.pass_crossing_flag:
-                            if not profile_freqs:
-                                profile_freqs = json.loads(getCurrentProfile().frequencies)
-                            if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:  # node is enabled
-                                if not node_pilot_dict:
-                                    node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
-                                              filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
-
-                                pilot_id = node_pilot_dict.get(node.index)
-                                if pilot_id:  # node has pilot assigned to it
-                                    team_name = pilot_team_dict[pilot_id]
-                                    if team_name:
-                                        ent = t_laps_dict[team_name]  # entry for team [lapCount,timestamp]
-                                                    # if pilot crossing for possible winning lap then wait
-                                                    #  in case lap time turns out to be earliest:
-                                        if ent and ent[0] == max_lap_count - 1:
-                                            # allow race tied when gate crossing completes
-                                            if pass_node_index < 0:
-                                                RACE.laps_winner_name = RACE.status_crossing
-                                            else:  # if called from 'pass_record_callback()' then no more ties
-                                                RACE.laps_winner_name = RACE.status_tied_str
-                                            logger.info('check_most_laps_win waiting for crossing, Node {0}'.\
-                                                                                  format(node.index+1))
-                                            return
-
-            # if race currently tied and more than one team at max_lap_count
-            if RACE.laps_winner_name is RACE.status_tied_str and num_max_lap > 1:
-                if pass_node_index < 0:  # if called from 'check_race_time_expired()'
-                    logger.debug('check_most_laps_win race is tied num_max_lap={0} max_lap_count={1}'.format(num_max_lap, max_lap_count))
-                    return
-                else:  # if called from 'pass_record_callback()'
-                    if max_lap_count < RACE.winning_lap_id:  # if no team has reached winning lap count
-                        logger.debug('check_most_laps_win race tied (not winning lap) max_lap_count={0}, winning_lap_id={1}'.format(max_lap_count, RACE.winning_lap_id))
-                        return
-
-            RACE.laps_winner_name = win_name  # indicate a team has won
-            check_emit_team_racing_status(t_laps_dict)
-            logger.info('check_most_laps_win result: Winner is team {0}'.format(RACE.laps_winner_name))
-            logger.debug('check_most_laps_win winning lap: {0}'.format(win_item))
-            emit_phonetic_text('Race done, winner is team ' + RACE.laps_winner_name, 'race_winner')
-
-        else:    # if no team looks like the winner
-            RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
-            RACE.winning_lap_id = max_lap_count + 1 if max_lap_count >= 0 else 1
-            logger.debug('check_most_laps_win race tied (no winner yet) max_lap_count={0}, winning_lap_id={1}'.format(max_lap_count, RACE.winning_lap_id))
-
-    else:  # not team racing mode
-
-        pilots_list = []  # (lap_id, lap_time_stamp, pilot_id, node)
-        max_lap_id = 0
-        num_max_lap = 0
-        profile_freqs = json.loads(getCurrentProfile().frequencies)
-                                  # dict for current heat with key=node_index, value=pilot_id
-        node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
-                          filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=Database.PILOT_ID_NONE).all())
-
-        for node in INTERFACE.nodes:  # load per-pilot data into 'pilots_list'
-            if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
-                pilot_id = node_pilot_dict.get(node.index)
-                if pilot_id:
-                    lap_count = max(0, len(RACE.get_active_laps()[node.index]) - 1)
-                    if lap_count > 0:
-                        lap_data = filter(lambda lap : lap['lap_number']==lap_count, RACE.get_active_laps()[node.index])
-
-                        if lap_data:
-                            pilots_list.append((lap_count, lap_data[0]['lap_time_stamp'], pilot_id, node))
-                            logger.debug('check_most_laps_win pilots_list.append lap_count={0} pilot_id={1}, node.index={2}'.\
-                                        format(lap_count, pilot_id, node.index))
-                            if lap_count > max_lap_id:
-                                max_lap_id = lap_count
-                                num_max_lap = 1
-                            elif lap_count == max_lap_id:
-                                num_max_lap += 1  # count number of nodes at max lap
-        logger.debug('check_most_laps_win pass_node_index={0} max_lap={1}, num_max_lap={2}'.\
-                    format(pass_node_index, max_lap_id, num_max_lap))
-
-        if max_lap_id <= 0:  # if no laps then bail out
-            RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
-            RACE.winning_lap_id = 1
-            if pass_node_index < 0:  # if called from 'check_race_time_expired()'
-                emit_team_racing_status(RACE.laps_winner_name)
-                emit_phonetic_text('Race tied', 'race_winner')
-            return
-
-        # if any (other) pilot is in the process of crossing the gate and within one lap of
-        #  winning then bail out (and wait for next 'pass_record_callback()' event)
-        pass_node_lap_id = -1
-        for item in pilots_list:
-            logger.debug('check_most_laps_win check crossing, item_index={0}, item.crossing_flag={1}'.\
-                         format(item[3].index, item[3].pass_crossing_flag))
-            if item[3].index != pass_node_index:  # if node is for other pilot
-                if item[3].pass_crossing_flag and item[0] >= max_lap_id - 1:
-                    # if called from 'check_race_time_expired()' then allow race tied after crossing
-                    if pass_node_index < 0:
-                        RACE.laps_winner_name = RACE.status_crossing
-                    else:  # if called from 'pass_record_callback()' then no more ties
-                        RACE.laps_winner_name = RACE.status_tied_str
-                    logger.info('check_most_laps_win waiting for crossing, Node {0}'.format(item[3].index+1))
-                    return
-            else:
-                pass_node_lap_id = item[0]  # save 'lap_id' for node/pilot that caused current lap pass
-
-        # if race currently tied and called from 'pass_record_callback()' and current-pass pilot
-        #  has not reached winning lap then bail out so pass will not stop a tied race in progress
-        if RACE.laps_winner_name is RACE.status_tied_str and pass_node_index >= 0 and \
-                pass_node_lap_id < RACE.winning_lap_id:
-            logger.debug('check_most_laps_win pilot not at winning lap, pass_node_index={0}, winning_lap_id={1}'.\
-                         format(pass_node_index, RACE.winning_lap_id))
-            return
-
-        # check for pilots with max laps; if more than one then select one with
-        #  earliest lap time (if called from 'pass_record_callback()' fn) or
-        #  indicate status tied (if called from 'check_race_time_expired()' fn)
-        win_pilot_id = -1
-        win_lap_tstamp = 0
-        logger.debug('check_most_laps_win check max laps, pass_node_index={0}, max_lap_id={1}, laps_winner_name={2}'.\
-                format(pass_node_index, max_lap_id, RACE.laps_winner_name))
-        for item in pilots_list:
-            if item[0] == max_lap_id:
-                logger.debug('check_most_laps_win check max laps checking: pilot_id={0}, lap_tstamp={1}'.\
-                        format(item[2], item[1]))
-                if win_pilot_id < 0:  # this is first one so far at max_lap
-                    win_pilot_id = item[2]
-                    win_lap_tstamp = item[1]
-                else:  # other pilots found at max_lap
-                             # if called from 'pass_record_callback()' and not waiting for crossing
-                    if pass_node_index >= 0 and RACE.laps_winner_name is not RACE.status_crossing:
-                        if item[1] < win_lap_tstamp:  # this pilot has earlier lap time
-                            win_pilot_id = item[2]
-                            win_lap_tstamp = item[1]
-                    else:  # called from 'check_race_time_expired()' or was waiting for crossing
-                        if RACE.laps_winner_name is not RACE.status_tied_str:
-                            logger.debug('check_most_laps_win check max laps, laps_winner_name was "{0}", setting to "{1}"'.\
-                                        format(RACE.laps_winner_name, RACE.status_tied_str))
-                            RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
-                            RACE.winning_lap_id = max_lap_id + 1
-                            emit_team_racing_status(RACE.laps_winner_name)
-                            emit_phonetic_text('Race tied', 'race_winner')
-                        else:
-                            logger.debug('check_most_laps_win check max laps, laps_winner_name={0}'.\
-                                        format(RACE.laps_winner_name))
-                        return  # wait for next 'pass_record_callback()' event
-        logger.debug('check_most_laps_win check max laps, win_pilot_id={0}, win_lap_tstamp={1}'.\
-                        format(win_pilot_id, win_lap_tstamp))
-
-        if win_pilot_id >= 0:
-            win_callsign = Database.Pilot.query.filter_by(id=win_pilot_id).one().callsign
-            RACE.laps_winner_name = win_callsign  # indicate a pilot has won
-            emit_team_racing_status('Winner is ' + RACE.laps_winner_name)
-            logger.info('check_most_laps_win result: Winner is {0}'.format(RACE.laps_winner_name))
-            win_phon_name = Database.Pilot.query.filter_by(id=win_pilot_id).one().phonetic
-            if len(win_phon_name) <= 0:  # if no phonetic then use callsign
-                win_phon_name = win_callsign
-            emit_phonetic_text('Race done, winner is ' + win_phon_name, 'race_winner')
-        else:
-            RACE.laps_winner_name = RACE.status_tied_str  # indicate status tied
+        SOCKET_IO.emit('race_status_message', emit_payload)
 
 def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **params):
     '''Emits phonetic data.'''
@@ -4242,7 +4061,7 @@ def emit_first_pass_registered(node_idx, **params):
     emit_payload = {
         'node_index': node_idx,
     }
-    Events.trigger(Evt.RACE_FIRST_PASS, {
+    trigger_event(Evt.RACE_FIRST_PASS, {
         'node_index': node_idx,
         })
 
@@ -4277,6 +4096,10 @@ def emit_phonetic_split(pilot_id, split_id, split_time, **params):
     else:
         SOCKET_IO.emit('phonetic_split_call', emit_payload)
 
+def emit_split_pass_info(pilot_id, split_id, split_time):
+    emit_current_laps()  # update all laps on the race page
+    emit_phonetic_split(pilot_id, split_id, split_time)
+
 def emit_enter_at_level(node, **params):
     '''Emits enter-at level for given node.'''
     emit_payload = {
@@ -4310,6 +4133,16 @@ def emit_node_crossing_change(node, **params):
     else:
         SOCKET_IO.emit('node_crossing_change', emit_payload)
 
+def emit_cluster_connect_change(connect_flag, **params):
+    '''Emits connect/disconnect tone for cluster timer.'''
+    emit_payload = {
+        'connect_flag': connect_flag
+    }
+    if ('nobroadcast' in params):
+        emit('cluster_connect_change', emit_payload)
+    else:
+        SOCKET_IO.emit('cluster_connect_change', emit_payload)
+
 def emit_callouts():
     callouts = Options.get('voiceCallouts')
     if callouts:
@@ -4320,7 +4153,7 @@ def emit_imdtabler_page(**params):
     if Use_imdtabler_jar_flag:
         try:                          # get IMDTabler version string
             imdtabler_ver = subprocess.check_output( \
-                                'java -jar ' + IMDTABLER_JAR_NAME + ' -v', shell=True).rstrip()
+                                'java -jar ' + IMDTABLER_JAR_NAME + ' -v', shell=True).decode("utf-8").rstrip()
             profile_freqs = json.loads(getCurrentProfile().frequencies)
             fi_list = list(OrderedDict.fromkeys(profile_freqs['f'][:RACE.num_nodes]))  # remove duplicates
             fs_list = []
@@ -4337,7 +4170,7 @@ def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
         imdtabler_data = None
         if len(fs_list) > 2:  # if 3+ then invoke jar; get response
             imdtabler_data = subprocess.check_output( \
-                        'java -jar ' + IMDTABLER_JAR_NAME + ' -t ' + ' '.join(fs_list), shell=True)
+                        'java -jar ' + IMDTABLER_JAR_NAME + ' -t ' + ' '.join(fs_list), shell=True).decode("utf-8")
     except Exception:
         imdtabler_data = None
         logger.exception('emit_imdtabler_data exception')
@@ -4363,7 +4196,7 @@ def emit_imdtabler_rating():
                 fs_list.append(str(val))
         if len(fs_list) > 2:
             imd_val = subprocess.check_output(  # invoke jar; get response
-                        'java -jar ' + IMDTABLER_JAR_NAME + ' -r ' + ' '.join(fs_list), shell=True).rstrip()
+                        'java -jar ' + IMDTABLER_JAR_NAME + ' -r ' + ' '.join(fs_list), shell=True).decode("utf-8").rstrip()
     except Exception:
         imd_val = None
         logger.exception('emit_imdtabler_rating exception')
@@ -4401,6 +4234,36 @@ def emit_vrx_list(*args, **params):
     else:
         SOCKET_IO.emit('vrx_list', emit_payload)
 
+@SOCKET_IO.on('do_bpillfw_update')
+@catchLogExceptionsWrapper
+def do_bpillfw_update(data):
+    srcStr = data['src_file_str']
+    portStr = INTERFACE.get_fwupd_serial_name()
+    msgStr = "Performing S32_BPill update, port='{}', file: {}".format(portStr, srcStr)
+    logger.info(msgStr)
+    SOCKET_IO.emit('upd_messages_init', (msgStr + "\n"))
+    stop_background_threads()
+    gevent.sleep(0.1)
+    jump_to_node_bootloader()
+    INTERFACE.close_fwupd_serial_port()
+    s32Logger = logging.getLogger("stm32loader")
+    def doS32Log(msgStr):  # send message to update-messages window and log file
+        SOCKET_IO.emit('upd_messages_append', msgStr)
+        s32Logger.info(msgStr)
+        gevent.sleep(0.001)  # do thread yield to allow display updates
+    stm32loader.set_console_output_fn(doS32Log)
+    successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
+    msgStr = "Node update " + ("succeeded" if successFlag else "failed")
+    logger.info(msgStr)
+    SOCKET_IO.emit('upd_messages_append', ("\n" + msgStr))
+    SOCKET_IO.emit('upd_messages_finish')  # show 'Close' button
+    stm32loader.set_console_output_fn(None)
+    gevent.sleep(0.2)
+    logger.info("Reinitializing RH interface")
+    initialize_rh_interface()
+    init_race_state()
+    start_background_threads()
+
 @SOCKET_IO.on('set_vrx_node')
 @catchLogExceptionsWrapper
 def set_vrx_node(data):
@@ -4408,22 +4271,20 @@ def set_vrx_node(data):
     node = data['node']
 
     if vrx_controller:
-        vrx_controller.set_node_number(serial_num=vrx_id, desired_node_num=node)
+        vrx_controller.set_seat_number(serial_num=vrx_id, desired_seat_num=node)
         logger.info("Set VRx {0} to node {1}".format(vrx_id, node))
     else:
         logger.error("Can't set VRx {0} to node {1}: Controller unavailable".format(vrx_id, node))
 
 @catchLogExceptionsWrapper
-def emit_pass_record(node, lap_time_stamp, inc_rsepoch_flag = False):
-    '''Emits 'pass_record' message (will be consumed by slave timers in cluster, etc).'''
+def emit_pass_record(node, lap_time_stamp):
+    '''Emits 'pass_record' message (will be consumed by master timer in cluster, livetime, etc).'''
     payload = {
         'node': node.index,
         'frequency': node.frequency,
         'timestamp': lap_time_stamp + RACE.start_time_epoch_ms
     }
-    if inc_rsepoch_flag:
-        payload['race_start_epoch'] = RACE.start_time_epoch_ms
-    SOCKET_IO.emit('pass_record', payload)
+    emit_cluster_msg_to_master('pass_record', payload)
 
 #
 # Program Functions
@@ -4442,10 +4303,6 @@ def heartbeat_thread_function():
             SOCKET_IO.emit('heartbeat', node_data)
             heartbeat_thread_function.iter_tracker += 1
 
-            # check if race timer is finished
-            if RACE.timer_running:
-                check_race_time_expired()
-
             # update displayed IMD rating after freqs changed:
             if heartbeat_thread_function.imdtabler_flag and \
                     (heartbeat_thread_function.iter_tracker % HEARTBEAT_DATA_RATE_FACTOR) == 0:
@@ -4458,13 +4315,13 @@ def heartbeat_thread_function():
 
             # emit cluster status less often:
             if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == (2*HEARTBEAT_DATA_RATE_FACTOR):
-                CLUSTER.emitStatus()
+                emit_cluster_status()
 
             # collect vrx lock status
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
                 if vrx_controller:
                     # if vrx_controller.has_connection
-                    vrx_controller.get_node_lock_status()
+                    vrx_controller.get_seat_lock_status()
                     vrx_controller.request_variable_status()
 
             if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 4:
@@ -4490,8 +4347,9 @@ def heartbeat_thread_function():
                         (ERROR_REPORT_INTERVAL_SECS if not Config.GENERAL['DEBUG'] \
                         else ERROR_REPORT_INTERVAL_SECS/10):
                 heartbeat_thread_function.last_error_rep_time = time_now
-                if INTERFACE.get_intf_total_error_count() > 0:
-                    logger.info(INTERFACE.get_intf_error_report_str())
+                rep_str = INTERFACE.get_intf_error_report_str()
+                if rep_str:
+                    logger.info(rep_str)
 
             gevent.sleep(0.500/HEARTBEAT_DATA_RATE_FACTOR)
 
@@ -4508,6 +4366,39 @@ def heartbeat_thread_function():
 heartbeat_thread_function.iter_tracker = 0
 heartbeat_thread_function.imdtabler_flag = False
 heartbeat_thread_function.last_error_rep_time = monotonic()
+
+def clock_check_thread_function():
+    ''' Monitor system clock and adjust PROGRAM_START_EPOCH_TIME if significant jump detected.
+        (This can happen if NTP synchronization occurs after server starts up.) '''
+    global PROGRAM_START_EPOCH_TIME
+    global MTONIC_TO_EPOCH_MILLIS_OFFSET
+    global serverInfoItems
+    try:
+        while True:
+            gevent.sleep(10)
+            if RACE.any_races_started:  # stop monitoring after any race started
+                break
+            time_now = monotonic()
+            epoch_now = int((datetime.now() - EPOCH_START).total_seconds() * 1000)
+            diff_ms = epoch_now - monotonic_to_epoch_millis(time_now)
+            if abs(diff_ms) > 30000:
+                PROGRAM_START_EPOCH_TIME += diff_ms
+                MTONIC_TO_EPOCH_MILLIS_OFFSET = epoch_now - 1000.0*time_now
+                logger.info("Adjusting PROGRAM_START_EPOCH_TIME for shift in system clock ({0:.1f} secs) to: {1:.0f}".\
+                            format(diff_ms/1000, PROGRAM_START_EPOCH_TIME))
+                # update values that will be reported if running as cluster timer
+                serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
+                serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+                if has_joined_cluster():
+                    logger.debug("Emitting 'join_cluster_response' message with updated 'prog_start_epoch'")
+                    emit_join_cluster_response()
+    except KeyboardInterrupt:
+        logger.info("clock_check_thread terminated by keyboard interrupt")
+        raise
+    except SystemExit:
+        raise
+    except Exception:
+        logger.exception('Exception in clock_check_thread')
 
 def ms_from_race_start():
     '''Return milliseconds since race start.'''
@@ -4530,14 +4421,9 @@ def ms_from_program_start():
     milli_sec = delta_time * 1000.0
     return milli_sec
 
-def check_race_time_expired():
-    race_format = getCurrentRaceFormat()
-    if race_format and race_format.race_mode == 0: # count down
-        if monotonic() >= RACE.start_time_monotonic + race_format.race_time_sec:
-            RACE.timer_running = False # indicate race timer no longer running
-            Events.trigger(Evt.RACE_FINISH)
-            if race_format.win_condition == WinCondition.MOST_LAPS:  # Most Laps Wins Enabled
-                check_most_laps_win()  # check if pilot or team has most laps for win
+def check_emit_race_status_message(RACE, **params):
+    if RACE.win_status not in [WinStatus.DECLARED, WinStatus.TIE]: # don't call after declared result
+        emit_race_status_message(**params)
 
 @catchLogExceptionsWrapper
 def pass_record_callback(node, lap_timestamp_absolute, source):
@@ -4589,11 +4475,12 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     if race_format is SLAVE_RACE_FORMAT:
                         min_lap = 0  # don't enforce min-lap time if running as slave timer
                         min_lap_behavior = 0
-                        cluster_flag = getattr(race_format, 'cluster_flag', False)
                     else:
                         min_lap = Options.getInt("MinLapSec")
                         min_lap_behavior = Options.getInt("MinLapBehavior")
-                        cluster_flag = False
+
+                    if RACE.timer_running is False:
+                        RACE.node_has_finished[node.index] = True
 
                     lap_ok_flag = True
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
@@ -4606,10 +4493,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                     if lap_ok_flag:
 
-                        # emit 'pass_record' message (via thread to make sure we're not blocked), set flag
-                        # to include 'race_start_epoch' only if in cluster and first lap pass
-                        gevent.spawn(emit_pass_record, node, lap_time_stamp, \
-                                     (cluster_flag and not lap_number))
+                        # emit 'pass_record' message (to master timer in cluster, livetime, etc).
+                        emit_pass_record(node, lap_time_stamp)
 
                         # Add the new lap to the database
                         RACE.node_laps[node.index].append({
@@ -4624,82 +4509,35 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         RACE.results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
                         RACE.cacheStatus = Results.CacheStatus.VALID
 
-                        Events.trigger(Evt.RACE_LAP_RECORDED, {
-                            'race': RACE,
+                        trigger_event(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
                             })
 
-                        #logger.info('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
-                        #    .format(node.index+1, lap_number, RHUtils.time_format(lap_time)))
+                        logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
+                            .format(node.index+1, lap_number, RHUtils.time_format(lap_time)))
                         emit_current_laps() # update all laps on the race page
-                        emit_current_leaderboard() # update leaderboard
+                        emit_current_leaderboard() # generate and update leaderboard
+                        check_emit_race_status_message(RACE) # Update race status message
 
-                        if race_format.team_racing_mode: # team racing mode enabled
+                        if lap_number == 0:
+                            emit_first_pass_registered(node.index) # play first-pass sound
 
-                            # if win condition is first-to-x-laps and x is valid
-                            #  then check if a team has enough laps to win
-                            if race_format.win_condition == WinCondition.FIRST_TO_LAP_X and race_format.number_laps_win > 0:
-                                t_laps_dict, team_name, pilot_team_dict = \
-                                    get_team_laps_info(pilot_id, race_format.number_laps_win)
-                                team_laps = t_laps_dict[team_name][0]
-                                check_team_laps_win(t_laps_dict, race_format.number_laps_win, pilot_team_dict, node.index)
+                        if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                            lap_number += 1
+
+                        # announce lap
+                        if lap_number > 0:
+                            if RACE.format.team_racing_mode:
+                                team = Database.Pilot.query.get(pilot_id).team
+                                team_data = RACE.team_results['meta']['teams'][team]
+                                emit_phonetic_data(pilot_id, lap_number, lap_time, team, team_data['laps'])
                             else:
-                                t_laps_dict, team_name, pilot_team_dict = get_team_laps_info(pilot_id, RACE.winning_lap_id)
-                                team_laps = t_laps_dict[team_name][0]
-                            check_emit_team_racing_status(t_laps_dict)
+                                emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
 
-                            if lap_number > 0:   # send phonetic data to be spoken
-                                emit_phonetic_data(pilot_id, lap_number, lap_time, team_name, team_laps)
+                            check_win_condition(RACE, INTERFACE) # check for and announce winner
 
-                                # if Most Laps Wins race is tied then check for winner
-                                if race_format.win_condition == WinCondition.MOST_LAPS:
-                                    if RACE.laps_winner_name is RACE.status_tied_str or \
-                                                RACE.laps_winner_name is RACE.status_crossing:
-                                        check_most_laps_win(node.index, t_laps_dict, pilot_team_dict)
-
-                                # if a team has won the race and this is the winning lap
-                                elif RACE.laps_winner_name is not None and \
-                                            team_name == RACE.laps_winner_name and \
-                                            team_laps >= race_format.number_laps_win:
-                                    emit_phonetic_text('Winner is team ' + RACE.laps_winner_name, 'race_winner')
-                            elif lap_number == 0:
-                                emit_first_pass_registered(node.index) # play first-pass sound
-
-                        else:  # not team racing mode
-                            if lap_number > 0:
-                                                # send phonetic data to be spoken
-                                if race_format.win_condition != WinCondition.FIRST_TO_LAP_X or race_format.number_laps_win <= 0:
-                                    emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
-
-                                                     # if Most Laps Wins race is tied then check for winner
-                                    if race_format.win_condition == WinCondition.MOST_LAPS:
-                                        if RACE.laps_winner_name is RACE.status_tied_str or \
-                                                    RACE.laps_winner_name is RACE.status_crossing:
-                                            check_most_laps_win(node.index)
-
-                                else:           # need to check if any pilot has enough laps to win
-                                    if race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
-                                        win_pilot_id = check_pilot_laps_win(node.index, race_format.number_laps_win)
-                                        if win_pilot_id >= 0:  # a pilot has won the race
-                                            win_callsign = Database.Pilot.query.get(win_pilot_id).callsign
-                                            emit_team_racing_status('Winner is ' + win_callsign)
-                                            emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
-
-                                            if RACE.laps_winner_name is None:
-                                                    # a pilot has won the race and has not yet been announced
-                                                win_phon_name = Database.Pilot.query.get(win_pilot_id).phonetic
-                                                if len(win_phon_name) <= 0:  # if no phonetic then use callsign
-                                                    win_phon_name = win_callsign
-                                                RACE.laps_winner_name = win_callsign  # call out winner (once)
-                                                emit_phonetic_text('Winner is ' + win_phon_name, 'race_winner')
-
-                                        else:  # no pilot has won the race; send phonetic data to be spoken
-                                            emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
-                                    else:  # other win conditions
-                                            emit_phonetic_data(pilot_id, lap_number, lap_time, None, None)
-                            elif lap_number == 0:
-                                emit_first_pass_registered(node.index) # play first-pass sound
                     else:
+                        # record lap as 'deleted'
                         RACE.node_laps[node.index].append({
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
@@ -4718,8 +4556,53 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
         logger.debug('Pass record dismissed: Node: {0}, Frequency not defined' \
             .format(node.index+1))
 
+def check_win_condition(RACE, INTERFACE, **kwargs):
+    previous_win_status = RACE.win_status
+
+    win_status = Results.check_win_condition(RACE, INTERFACE, **kwargs)
+
+    if win_status is not None:
+        race_format = RACE.format
+        RACE.win_status = win_status['status']
+
+        if win_status['status'] == WinStatus.DECLARED:
+            # announce winner
+            if race_format.team_racing_mode:
+                RACE.status_message = __('Winner is') + ' ' + __('Team') + ' ' + win_status['data']['name']
+                emit_race_status_message()
+                emit_phonetic_text(RACE.status_message, 'race_winner')
+            else:
+                RACE.status_message = __('Winner is') + ' ' + win_status['data']['callsign']
+                emit_race_status_message()
+                win_phon_name = Database.Pilot.query.get(win_status['data']['pilot_id']).phonetic
+                if len(win_phon_name) <= 0:  # if no phonetic then use callsign
+                    win_phon_name = win_status['data']['callsign']
+                emit_phonetic_text(__('Winner is') + ' ' + win_phon_name, 'race_winner')
+        elif win_status['status'] == WinStatus.TIE:
+            # announce tied
+            if win_status['status'] != previous_win_status:
+                RACE.status_message = __('Race Tied')
+                emit_race_status_message()
+                emit_phonetic_text(RACE.status_message, 'race_winner')
+        elif win_status['status'] == WinStatus.OVERTIME:
+            # announce overtime
+            if win_status['status'] != previous_win_status:
+                RACE.status_message = __('Race Tied: Overtime')
+                emit_race_status_message()
+                emit_phonetic_text(RACE.status_message, 'race_winner')
+
+        if 'max_consideration' in win_status:
+            logger.debug("Waiting {0}ms to declare winner.".format(win_status['max_consideration']))
+            gevent.sleep(win_status['max_consideration'] / 1000)
+            if 'start_token' in kwargs and RACE.start_token == kwargs['start_token']:
+                logger.debug("Maximum win condition consideration time has expired.")
+                check_win_condition(RACE, INTERFACE, forced=True)
+
+    return win_status
+
 @catchLogExceptionsWrapper
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
+    gevent.sleep(0.025)  # delay to avoid potential I/O error
     if is_enter_at_flag:
         logger.info('Finished capture of enter-at level for node {0}, level={1}, count={2}'.format(node.index+1, node.enter_at_level, node.cap_enter_at_count))
         on_set_enter_at_level({
@@ -4740,20 +4623,20 @@ def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
 
-    if led_manager.isEnabled() and RACE.race_status == RaceStatus.RACING:  # if race is in progress
+    if RACE.race_status == RaceStatus.RACING:  # if race is in progress
         # if pilot assigned to node and first crossing is complete
         if node.current_pilot_id != Database.PILOT_ID_NONE and node.first_cross_flag:
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
-                Events.trigger(Evt.CROSSING_ENTER, {
+                trigger_event(Evt.CROSSING_ENTER, {
                     'nodeIndex': node.index,
                     'color': hexToColor(Options.get('colorNode_' + str(node.index), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
-                    Events.trigger(Evt.CROSSING_EXIT, {
+                    trigger_event(Evt.CROSSING_EXIT, {
                         'nodeIndex': node.index,
                         'color': hexToColor(Options.get('colorNode_' + str(node.index), '#ffffff'))
                         })
@@ -4766,6 +4649,8 @@ def default_frequencies():
         freqs = [5658, 5732, 5843, 5880, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
     else:
         freqs = [5658, 5695, 5760, 5800, 5880, 5917, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
+        while RACE.num_nodes > len(freqs):
+            freqs.append(RHUtils.FREQUENCY_ID_NONE)
     return freqs
 
 def assign_frequencies():
@@ -4775,7 +4660,7 @@ def assign_frequencies():
 
     for idx in range(RACE.num_nodes):
         INTERFACE.set_frequency(idx, freqs["f"][idx])
-        Events.trigger(Evt.FREQUENCY_SET, {
+        trigger_event(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
             'frequency': freqs["f"][idx],
             })
@@ -4792,24 +4677,30 @@ def emit_current_log_file_to_socket():
             logger.exception("Error sending current log file to socket")
     log.start_socket_forward_handler()
 
-def db_init():
+def db_init(**kwargs):
     '''Initialize database.'''
     DB.create_all() # Creates tables from database classes/models
     db_reset_pilots()
-    db_reset_heats()
+    if 'nofill' in kwargs:
+        db_reset_heats(nofill=True)
+    else:
+        db_reset_heats()
     db_reset_current_laps()
     db_reset_saved_races()
     db_reset_profile()
     db_reset_race_formats()
     db_reset_options_defaults()
     assign_frequencies()
-    Events.trigger(Evt.DATABASE_INITIALIZE)
+    trigger_event(Evt.DATABASE_INITIALIZE)
     logger.info('Database initialized')
 
-def db_reset():
+def db_reset(**kwargs):
     '''Resets database.'''
     db_reset_pilots()
-    db_reset_heats()
+    if 'nofill' in kwargs:
+        db_reset_heats(nofill=True)
+    else:
+        db_reset_heats()
     db_reset_current_laps()
     db_reset_saved_races()
     db_reset_profile()
@@ -4826,13 +4717,14 @@ def db_reset_pilots():
     DB.session.commit()
     logger.info('Database pilots reset')
 
-def db_reset_heats():
+def db_reset_heats(**kwargs):
     '''Resets database heats to default.'''
     DB.session.query(Database.Heat).delete()
     DB.session.query(Database.HeatNode).delete()
-    on_add_heat()
     DB.session.commit()
-    RACE.current_heat = 1
+    if 'nofill' not in kwargs:
+        on_add_heat()
+        RACE.current_heat = 1
     logger.info('Database heats reset')
 
 def db_reset_classes():
@@ -4866,7 +4758,7 @@ def db_reset_profile():
     new_freqs["f"] = default_frequencies()
 
     template = {}
-    template["v"] = [None, None, None, None, None, None, None, None]
+    template["v"] = [None for i in range(max(RACE.num_nodes,8))]
 
     DB.session.add(Database.Profiles(name=__("Default"),
                              frequencies = json.dumps(new_freqs),
@@ -4878,33 +4770,36 @@ def db_reset_profile():
 
 def db_reset_race_formats():
     DB.session.query(Database.RaceFormat).delete()
-    DB.session.add(Database.RaceFormat(name=__("MultiGP Standard"),
+    DB.session.add(Database.RaceFormat(name=__("2:00 Standard Race"),
                              race_mode=0,
                              race_time_sec=120,
                              start_delay_min=2,
                              start_delay_max=5,
-                             staging_tones=2,
+                             staging_tones=1,
                              number_laps_win=0,
-                             win_condition=WinCondition.MOST_LAPS,
-                             team_racing_mode=False))
-    DB.session.add(Database.RaceFormat(name=__("Whoop Sprint"),
+                             win_condition=WinCondition.MOST_PROGRESS,
+                             team_racing_mode=False,
+                             start_behavior=0))
+    DB.session.add(Database.RaceFormat(name=__("1:30 Whoop Sprint"),
                              race_mode=0,
                              race_time_sec=90,
                              start_delay_min=2,
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=0,
-                             win_condition=WinCondition.MOST_LAPS,
-                             team_racing_mode=False))
-    DB.session.add(Database.RaceFormat(name=__("Limited Class"),
+                             win_condition=WinCondition.MOST_PROGRESS,
+                             team_racing_mode=False,
+                             start_behavior=0))
+    DB.session.add(Database.RaceFormat(name=__("3:00 Extended Race"),
                              race_mode=0,
                              race_time_sec=210,
                              start_delay_min=2,
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=0,
-                             win_condition=WinCondition.MOST_LAPS,
-                             team_racing_mode=False))
+                             win_condition=WinCondition.MOST_PROGRESS,
+                             team_racing_mode=False,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("First to 3 Laps"),
                              race_mode=1,
                              race_time_sec=0,
@@ -4913,7 +4808,8 @@ def db_reset_race_formats():
                              staging_tones=2,
                              number_laps_win=3,
                              win_condition=WinCondition.FIRST_TO_LAP_X,
-                             team_racing_mode=False))
+                             team_racing_mode=False,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("Open Practice"),
                              race_mode=1,
                              race_time_sec=0,
@@ -4922,7 +4818,38 @@ def db_reset_race_formats():
                              staging_tones=0,
                              number_laps_win=0,
                              win_condition=WinCondition.NONE,
-                             team_racing_mode=False))
+                             team_racing_mode=False,
+                             start_behavior=0))
+    DB.session.add(Database.RaceFormat(name=__("Fastest Lap Qualifier"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             staging_tones=1,
+                             number_laps_win=0,
+                             win_condition=WinCondition.FASTEST_LAP,
+                             team_racing_mode=False,
+                             start_behavior=0))
+    DB.session.add(Database.RaceFormat(name=__("Fastest 3 Laps Qualifier"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             staging_tones=1,
+                             number_laps_win=0,
+                             win_condition=WinCondition.FASTEST_3_CONSECUTIVE,
+                             team_racing_mode=False,
+                             start_behavior=0))
+    DB.session.add(Database.RaceFormat(name=__("Lap Count Only"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             staging_tones=1,
+                             number_laps_win=0,
+                             win_condition=WinCondition.MOST_LAPS,
+                             team_racing_mode=False,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("Team / Most Laps Wins"),
                              race_mode=0,
                              race_time_sec=120,
@@ -4930,8 +4857,9 @@ def db_reset_race_formats():
                              start_delay_max=5,
                              staging_tones=2,
                              number_laps_win=0,
-                             win_condition=WinCondition.MOST_LAPS,
-                             team_racing_mode=True))
+                             win_condition=WinCondition.MOST_PROGRESS,
+                             team_racing_mode=True,
+                             start_behavior=0))
     DB.session.add(Database.RaceFormat(name=__("Team / First to 7 Laps"),
                              race_mode=0,
                              race_time_sec=120,
@@ -4940,7 +4868,32 @@ def db_reset_race_formats():
                              staging_tones=2,
                              number_laps_win=7,
                              win_condition=WinCondition.FIRST_TO_LAP_X,
-                             team_racing_mode=True))
+                             team_racing_mode=True,
+                             start_behavior=0))
+    DB.session.add(Database.RaceFormat(name=__("Team / Fastest Lap Average"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             staging_tones=2,
+                             number_laps_win=0,
+                             win_condition=WinCondition.FASTEST_LAP,
+                             team_racing_mode=True,
+                             start_behavior=0))
+    DB.session.add(Database.RaceFormat(name=__("Team / Fastest 3 Consecutive Average"),
+                             race_mode=0,
+                             race_time_sec=120,
+                             start_delay_min=2,
+                             start_delay_max=5,
+                             staging_tones=2,
+                             number_laps_win=0,
+                             win_condition=WinCondition.FASTEST_3_CONSECUTIVE,
+                             team_racing_mode=True,
+                             start_behavior=0))
+
+    for race_class in Database.RaceClass.query.all():
+        race_class.format_id = 0
+
     DB.session.commit()
     setCurrentRaceFormat(Database.RaceFormat.query.first())
     logger.info("Database reset race formats")
@@ -5029,7 +4982,7 @@ def get_legacy_table_data(metadata, table_name, filter_crit=None, filter_value=N
             return table.select().execute().fetchall()
         return table.select().execute().filter(filter_crit==filter_value).fetchall()
     except Exception as ex:
-        logger.warn('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
+        logger.warning('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
 
 def restore_table(class_type, table_query_data, **kwargs):
     if table_query_data:
@@ -5047,11 +5000,9 @@ def restore_table(class_type, table_query_data, **kwargs):
                         new_data = class_type()
                         for col in class_type.__table__.columns.keys():
                             if col in row_data.keys():
-                                if col != 'id':
-                                    setattr(new_data, col, row_data[col])
+                                setattr(new_data, col, row_data[col])
                             else:
-                                if col != 'id':
-                                    setattr(new_data, col, kwargs['defaults'][col])
+                                setattr(new_data, col, kwargs['defaults'][col])
 
                         #logger.info('DEBUG row_data add:  ' + str(getattr(new_data, match_name)))
                         DB.session.add(new_data)
@@ -5067,16 +5018,36 @@ def restore_table(class_type, table_query_data, **kwargs):
                     DB.session.flush()
             logger.info('Database table "{0}" restored'.format(class_type.__name__))
         except Exception as ex:
-            logger.warn('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
+            logger.warning('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
             logger.debug(traceback.format_exc())
 
-def recover_database():
+def recover_database(dbfile, **kwargs):
+    recover_status = {
+        'stage_0': False,
+        'stage_1': False,
+        'stage_2': False,
+    }
+
+    # stage 0: collect data from file
     try:
         logger.info('Recovering data from previous database')
 
         # load file directly
-        engine = create_engine('sqlite:///%s' % DB_FILE_NAME, convert_unicode=True)
+        engine = create_engine('sqlite:///%s' % dbfile, convert_unicode=True)
         metadata = MetaData(bind=engine)
+
+        options_query_data = get_legacy_table_data(metadata, 'global_settings')
+
+        migrate_db_api = 0 # delta5 or very old RH versions
+        if options_query_data:
+            for row in options_query_data:
+                if row['option_name'] == 'server_api':
+                    migrate_db_api = int(row['option_value'])
+                    break
+
+        if migrate_db_api > SERVER_API:
+            raise ValueError('Database version is newer than server version')
+
         pilot_query_data = get_legacy_table_data(metadata, 'pilot')
         heat_query_data = get_legacy_table_data(metadata, 'heat')
         heatNode_query_data = get_legacy_table_data(metadata, 'heat_node')
@@ -5088,8 +5059,6 @@ def recover_database():
         raceLap_query_data = get_legacy_table_data(metadata, 'saved_race_lap')
 
         engine.dispose() # close connection after loading
-
-        migrate_db_api = Options.getInt('server_api')
 
         carryoverOpts = [
             "timerName",
@@ -5127,11 +5096,6 @@ def recover_database():
             "startThreshLowerDuration",
             "nextHeatBehavior"
         ]
-        carryOver = {}
-        for opt in carryoverOpts:
-            val = Options.get(opt, None)
-            if val is not None:
-                carryOver[opt] = val
 
         # RSSI reduced by half for 2.0.0
         if migrate_db_api < 23:
@@ -5145,127 +5109,151 @@ def recover_database():
                     exit_ats["v"] = [val/2 for val in exit_ats["v"]]
                     profile.exit_ats = json.dumps(exit_ats)
 
+        recover_status['stage_0'] = True
     except Exception as ex:
-        logger.warn('Error reading data from previous database:  ' + str(ex))
+        logger.warning('Error reading data from previous database (stage 0):  ' + str(ex))
 
-    backup_db_file(False)  # rename and move DB file
-    db_init()
+    if "startup" in kwargs:
+        backup_db_file(False)  # rename and move DB file
 
-    # primary data recovery
-    try:
-        if pilot_query_data:
-            DB.session.query(Database.Pilot).delete()
-            restore_table(Database.Pilot, pilot_query_data, defaults={
-                    'name': 'New Pilot',
-                    'callsign': 'New Callsign',
-                    'team': DEF_TEAM_NAME,
-                    'phonetic': ''
+    db_init(nofill=True)
+
+    # stage 1: recover pilots, heats, heatnodes, format, profile, class, options
+    if recover_status['stage_0'] == True:
+        try:
+            if pilot_query_data:
+                DB.session.query(Database.Pilot).delete()
+                restore_table(Database.Pilot, pilot_query_data, defaults={
+                        'name': 'New Pilot',
+                        'callsign': 'New Callsign',
+                        'team': DEF_TEAM_NAME,
+                        'phonetic': ''
+                    })
+
+            if migrate_db_api < 27:
+                # old heat DB structure; migrate node 0 to heat table
+
+                # build list of heat meta
+                heat_extracted_meta = []
+                for row in heat_query_data:
+                    if row['node_index'] == 0:
+                        new_row = {}
+                        new_row['id'] = row['heat_id']
+                        new_row['note'] = row['note']
+                        new_row['class_id'] = row['class_id']
+                        heat_extracted_meta.append(new_row)
+
+                restore_table(Database.Heat, heat_extracted_meta, defaults={
+                        'class_id': Database.CLASS_ID_NONE,
+                        'results': None,
+                        'cacheStatus': Results.CacheStatus.INVALID
+                    })
+
+                # extract pilots from heats and load into heatnode
+                heatnode_extracted_data = []
+                heatnode_dummy_id = 0
+                for row in heat_query_data:
+                    heatnode_row = {}
+                    heatnode_row['id'] = heatnode_dummy_id
+                    heatnode_row['heat_id'] = int(row['heat_id'])
+                    heatnode_row['node_index'] = int(row['node_index'])
+                    heatnode_row['pilot_id'] = int(row['pilot_id'])
+                    heatnode_extracted_data.append(heatnode_row)
+                    heatnode_dummy_id += 1
+
+                DB.session.query(Database.HeatNode).delete()
+                restore_table(Database.HeatNode, heatnode_extracted_data, defaults={
+                        'pilot_id': Database.PILOT_ID_NONE
+                    })
+            else:
+                # current heat structure; use basic migration
+                restore_table(Database.Heat, heat_query_data, defaults={
+                        'class_id': Database.CLASS_ID_NONE,
+                        'results': None,
+                        'cacheStatus': Results.CacheStatus.INVALID
+                    })
+                restore_table(Database.HeatNode, heatNode_query_data, defaults={
+                        'pilot_id': Database.PILOT_ID_NONE
+                    })
+
+                RACE.current_heat = Database.Heat.query.first().id
+
+            restore_table(Database.RaceFormat, raceFormat_query_data, defaults={
+                    'name': __("Migrated Format"),
+                    'race_mode': 0,
+                    'race_time_sec': 120,
+                    'start_delay_min': 2,
+                    'start_delay_max': 5,
+                    'staging_tones': 2,
+                    'number_laps_win': 0,
+                    'win_condition': WinCondition.MOST_LAPS,
+                    'team_racing_mode': False,
+                    'start_behavior': 0
                 })
-
-        if migrate_db_api < 27:
-            # old heat DB structure; migrate node 0 to heat table
-
-            # build list of heat meta
-            heat_extracted_meta = []
-            for row in heat_query_data:
-                if row['node_index'] == 0:
-                    heat_extracted_meta.append(row)
-
-            restore_table(Database.Heat, heat_extracted_meta, defaults={
-                    'class_id': Database.CLASS_ID_NONE,
+            restore_table(Database.Profiles, profiles_query_data, defaults={
+                    'name': __("Migrated Profile"),
+                    'frequencies': json.dumps(default_frequencies()),
+                    'enter_ats': json.dumps({'v': [None for i in range(max(RACE.num_nodes,8))]}),
+                    'exit_ats': json.dumps({'v': [None for i in range(max(RACE.num_nodes,8))]})
+                })
+            restore_table(Database.RaceClass, raceClass_query_data, defaults={
+                    'name': 'New class',
+                    'format_id': 0,
                     'results': None,
                     'cacheStatus': Results.CacheStatus.INVALID
                 })
 
-            # extract pilots from hets and load into heatnode
-            heatnode_extracted_data = []
-            for row in heat_query_data:
-                heatnode_row = {}
-                heatnode_row['heat_id'] = int(row['heat_id'])
-                heatnode_row['node_index'] = int(row['node_index'])
-                heatnode_row['pilot_id'] = int(row['pilot_id'])
-                heatnode_extracted_data.append(heatnode_row)
+            if options_query_data:
+                for opt in options_query_data:
+                    if opt['option_name'] in carryoverOpts:
+                        Options.set(opt['option_name'], opt['option_value'])
 
-            DB.session.query(Database.HeatNode).delete()
-            restore_table(Database.HeatNode, heatnode_extracted_data, defaults={
-                    'pilot_id': Database.PILOT_ID_NONE
-                })
-        else:
-            # current heat structure; use basic migration
-            restore_table(Database.Heat, heat_query_data, defaults={
-                    'class_id': Database.CLASS_ID_NONE,
-                    'results': None,
-                    'cacheStatus': Results.CacheStatus.INVALID
-                })
-            restore_table(Database.HeatNode, heatNode_query_data, defaults={
-                    'pilot_id': Database.PILOT_ID_NONE
-                })
+            logger.info('UI Options restored')
 
-        restore_table(Database.RaceFormat, raceFormat_query_data, defaults={
-                'name': __("Migrated Format"),
-                'race_mode': 0,
-                'race_time_sec': 120,
-                'start_delay_min': 2,
-                'start_delay_max': 5,
-                'staging_tones': 2,
-                'number_laps_win': 0,
-                'win_condition': WinCondition.MOST_LAPS,
-                'team_racing_mode': False
-            })
-        restore_table(Database.Profiles, profiles_query_data, defaults={
-                'name': __("Migrated Profile"),
-                'frequencies': json.dumps(default_frequencies()),
-                'enter_ats': json.dumps({'v': [None, None, None, None, None, None, None, None]}),
-                'exit_ats': json.dumps({'v': [None, None, None, None, None, None, None, None]})
-            })
-        restore_table(Database.RaceClass, raceClass_query_data, defaults={
-                'name': 'New class',
-                'format_id': 0,
-                'results': None,
-                'cacheStatus': Results.CacheStatus.INVALID
-            })
+            recover_status['stage_1'] = True
+        except Exception as ex:
+            logger.warning('Error while writing data from previous database (stage 1):  ' + str(ex))
+            logger.debug(traceback.format_exc())
 
-        for opt in carryOver:
-            Options.set(opt, carryOver[opt])
-        logger.info('UI Options restored')
+        # stage 2: recover race result data
+        if recover_status['stage_1'] == True:
+            try:
+                if migrate_db_api < 23:
+                    # don't attempt to migrate race data older than 2.0
+                    logger.warning('Race data older than v2.0; skipping results migration')
+                else:
+                    restore_table(Database.SavedRaceMeta, raceMeta_query_data, defaults={
+                        'results': None,
+                        'cacheStatus': Results.CacheStatus.INVALID
+                    })
+                    restore_table(Database.SavedPilotRace, racePilot_query_data, defaults={
+                        'history_values': None,
+                        'history_times': None,
+                        'penalty_time': None,
+                        'penalty_desc': None,
+                        'enter_at': None,
+                        'exit_at': None
+                    })
+                    restore_table(Database.SavedRaceLap, raceLap_query_data, defaults={
+                        'source': None,
+                        'deleted': False
+                    })
 
-    except Exception as ex:
-        logger.warn('Error while writing data from previous database:  ' + str(ex))
-        logger.debug(traceback.format_exc())
-
-    # secondary data recovery
-
-    try:
-        if migrate_db_api < 23:
-            # don't attempt to migrate race data older than 2.0
-            pass
-        else:
-            restore_table(Database.SavedRaceMeta, raceMeta_query_data, defaults={
-                'results': None,
-                'cacheStatus': Results.CacheStatus.INVALID
-            })
-            restore_table(Database.SavedPilotRace, racePilot_query_data, defaults={
-                'history_values': None,
-                'history_times': None,
-                'penalty_time': None,
-                'penalty_desc': None,
-                'enter_at': None,
-                'exit_at': None
-            })
-            restore_table(Database.SavedRaceLap, raceLap_query_data, defaults={
-                'source': None,
-                'deleted': False
-            })
-
-    except Exception as ex:
-        logger.warn('Error while writing data from previous database:  ' + str(ex))
-        logger.debug(traceback.format_exc())
+                recover_status['stage_2'] = True
+            except Exception as ex:
+                logger.warning('Error while writing data from previous database (stage 2):  ' + str(ex))
+                logger.debug(traceback.format_exc())
 
     DB.session.commit()
 
-    Events.trigger(Evt.DATABASE_RECOVER)
+    clean_results_cache()
+
+    trigger_event(Evt.DATABASE_RECOVER)
+
+    return recover_status
 
 def expand_heats():
+    ''' ensure loaded data includes enough slots for current nodes '''
     for heat_ids in Database.Heat.query.all():
         for node in range(RACE.num_nodes):
             heat_row = Database.HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
@@ -5273,6 +5261,40 @@ def expand_heats():
                 DB.session.add(Database.HeatNode(heat_id=heat_ids.id, node_index=node, pilot_id=Database.PILOT_ID_NONE))
 
     DB.session.commit()
+
+def init_race_state():
+    expand_heats()
+
+    # Send profile values to nodes
+    current_profile = Options.getInt('currentProfile')
+    on_set_profile({'profile': current_profile}, False)
+
+    # Set current heat
+    if Database.Heat.query.first():
+        RACE.current_heat = Database.Heat.query.first().id
+        RACE.node_pilots = {}
+        RACE.node_teams = {}
+        for heatNode in Database.HeatNode.query.filter_by(heat_id=RACE.current_heat):
+            RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+
+            if heatNode.pilot_id is not Database.PILOT_ID_NONE:
+                RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+            else:
+                RACE.node_teams[heatNode.node_index] = None
+
+    # Set race format
+    raceformat_id = Options.getInt('currentFormat')
+    race_format = Database.RaceFormat.query.get(raceformat_id)
+    setCurrentRaceFormat(race_format, silent=True)
+
+    # Normalize results caches
+    Results.normalize_cache_status(DB)
+
+def init_interface_state():
+    # Cancel current race
+    on_stop_race()
+    # Reset laps display
+    db_reset_current_laps()
 
 def init_LED_effects():
     # start with defaults
@@ -5309,7 +5331,7 @@ def initVRxController():
                     logger.error(e)
                     return None
             else:
-                logger.info('VRxController disabled by config option')
+                logger.debug('VRxController disabled by config option')
                 return None
         except KeyError:
             logger.error('VRxController disabled: config needs "ENABLED" key.')
@@ -5322,6 +5344,7 @@ def initVRxController():
     vrx_config = Config.VRX_CONTROL
     return VRxController(Events,
        vrx_config,
+       RACE,
        [node.frequency for node in INTERFACE.nodes])
 
 def killVRxController(*args):
@@ -5329,13 +5352,107 @@ def killVRxController(*args):
     logger.info('Killing VRxController')
     vrx_controller = None
 
+def determineHostAddress(maxRetrySecs=10):
+    ''' Determines local host IP address.  Will wait and retry to get valid IP, in
+        case system is starting up and needs time to connect to network and DHCP. '''
+    global server_ipaddress_str
+    if server_ipaddress_str:
+        return server_ipaddress_str  # if previously determined then return value
+    sTime = monotonic()
+    while True:
+        try:
+            ipAddrStr = RHUtils.getLocalIPAddress()
+            if ipAddrStr and ipAddrStr != "127.0.0.1":  # don't accept default-localhost IP
+                server_ipaddress_str = ipAddrStr
+                break
+            logger.debug("Querying of host IP address returned " + ipAddrStr)
+        except Exception as ex:
+            logger.debug("Error querying host IP address: " + str(ex))
+        if monotonic() > sTime + maxRetrySecs:
+            ipAddrStr = "0.0.0.0"
+            logger.warning("Unable to determine IP address for host machine")
+            break
+        gevent.sleep(1)
+    try:
+        hNameStr = socket.gethostname()
+    except Exception as ex:
+        logger.info("Error querying hostname: " + str(ex))
+        hNameStr = "UNKNOWN"
+    logger.info("Host machine is '{0}' at {1}".format(hNameStr, ipAddrStr))
+    return ipAddrStr
+
+def jump_to_node_bootloader():
+    try:
+        INTERFACE.jump_to_bootloader()
+    except Exception:
+        logger.error("Error executing jump to node bootloader")
+
+def initialize_rh_interface():
+    try:
+        global INTERFACE, Settings_note_msg_text
+        Settings_note_msg_text = None
+        rh_interface_name = os.environ.get('RH_INTERFACE', 'RH') + "Interface"
+        try:
+            logger.debug("Initializing interface module: " + rh_interface_name)
+            interfaceModule = importlib.import_module(rh_interface_name)
+            INTERFACE = interfaceModule.get_hardware_interface(config=Config, \
+                            isS32BPillFlag=RHGPIO.isS32BPillBoard(), **hardwareHelpers)
+            # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
+            #  then check if problem is 'smbus2' or 'gevent' lib not installed
+            if INTERFACE and ((not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0) and \
+                        RHUtils.isSysRaspberryPi() and (not RHGPIO.isS32BPillBoard()) and \
+                        ((not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0):
+                try:
+                    importlib.import_module('smbus2')
+                    importlib.import_module('gevent')
+                except ImportError:
+                    logger.warning("Unable to import libraries for I2C nodes; try:  " +\
+                                   "sudo pip install --upgrade --no-cache-dir -r requirements.txt")
+                RACE.num_nodes = 0
+                return True
+        except (ImportError, RuntimeError, IOError) as ex:
+            logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
+        if (not INTERFACE) or (not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0:
+            if (not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0:
+                interfaceModule = importlib.import_module('MockInterface')
+                INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
+                Settings_note_msg_text = __("Server is using simulated (mock) nodes")
+            else:
+                try:
+                    importlib.import_module('serial')
+                    logger.info("Unable to initialize specified serial node(s): {0}".format(Config.SERIAL_PORTS))
+                    logger.info("If an S32_BPill board is connected, its processor my need to be flash-updated")
+                    # enter serial port name so it's available for node firmware update
+                    if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
+                        INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
+                        Settings_note_msg_text = __("Server is unable to communicate with node processor") + \
+                                ". " + __("If an S32_BPill board is connected, you may attempt to") +\
+                                " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                                __("its processor") + "."
+                except ImportError:
+                    logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
+                    return False
+
+        RACE.num_nodes = len(INTERFACE.nodes)  # save number of nodes found
+        return True
+    except:
+        logger.exception("Error initializing RH interface")
+        return False
+
 #
 # Program Initialize
 #
 
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
-logger.debug('Program started at {0:.1f}'.format(PROGRAM_START_EPOCH_TIME))
+logger.debug('Program started at {0:.0f}'.format(PROGRAM_START_EPOCH_TIME))
 RHUtils.idAndLogSystemInfo()
+
+determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
+
+logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspberryPi(), \
+                                        RHGPIO.isRealRPiGPIO(), RHGPIO.isS32BPillBoard()))
+if RHUtils.isSysRaspberryPi() and not RHGPIO.isRealRPiGPIO():
+    logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install RPi.GPIO")
 
 # log results of module initializations
 Config.logInitResultMessage()
@@ -5348,43 +5465,60 @@ if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
 
 logger.info("Using log file: {0}".format(Current_log_path_name))
 
+if RHUtils.isSysRaspberryPi() and RHGPIO.isS32BPillBoard():
+    logger.debug("Resetting S32_BPill processor")
+    s32logger = logging.getLogger("stm32loader")
+    stm32loader.set_console_output_fn(lambda msgStr: s32logger.info(msgStr))
+    stm32loader.reset_to_run()
+    stm32loader.set_console_output_fn(None)
+
 hardwareHelpers = {}
 for helper in search_modules(suffix='helper'):
-    hardwareHelpers[helper.__name__] = helper.create()
+    try:
+        hardwareHelpers[helper.__name__] = helper.create(Config)
+    except Exception as ex:
+        logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
-interface_type = os.environ.get('RH_INTERFACE', 'RH')
-try:
-    interfaceModule = importlib.import_module(interface_type + 'Interface')
-    INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
-except (ImportError, RuntimeError, IOError) as ex:
-    logger.info('Unable to initialize nodes via ' + interface_type + 'Interface:  ' + str(ex))
-if not INTERFACE or not INTERFACE.nodes or len(INTERFACE.nodes) <= 0:
-    if not Config.SERIAL_PORTS or len(Config.SERIAL_PORTS) <= 0:
-        interfaceModule = importlib.import_module('MockInterface')
-        INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
-    else:
-        try:
-            importlib.import_module('serial')
-            logger.info('Unable to initialize specified serial node(s): {0}'.format(Config.SERIAL_PORTS))
-        except ImportError:
-            logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
-        log.wait_for_queue_empty()
-        sys.exit()
+resultFlag = initialize_rh_interface()
+if not resultFlag:
+    log.wait_for_queue_empty()
+    sys.exit(1)
 
-CLUSTER = Cluster()
+if len(sys.argv) > 0 and CMDARG_JUMP_TO_BL_STR in sys.argv:
+    stop_background_threads()
+    jump_to_node_bootloader()
+    if CMDARG_FLASH_BPILL_STR in sys.argv:
+        argIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
+        portStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
+                                            len(Config.SERIAL_PORTS) > 0 else None
+        srcStr = sys.argv[argIdx] if argIdx < len(sys.argv) else None
+        if srcStr and srcStr.startswith("--"):  # use next arg as src file (optional)
+            srcStr = None                       #  unless arg is switch param
+        successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
+        sys.exit(0 if successFlag else 1)
+    sys.exit(0)
+
+CLUSTER = ClusterNodeSet()
 hasMirrors = False
 try:
     for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
         if isinstance(slave_info, string_types):
-            slave_info = {'address': slave_info, 'mode': Slave.TIMER_MODE}
+            slave_info = {'address': slave_info, 'mode': SlaveNode.SPLIT_MODE}
+        if 'address' not in slave_info:
+            raise RuntimeError("Slave 'address' item not specified")
+        # substitute asterisks in given address with values from host IP address
+        slave_info['address'] = RHUtils.substituteAddrWildcards(determineHostAddress, \
+                                                                slave_info['address'])
         if 'timeout' not in slave_info:
             slave_info['timeout'] = Config.GENERAL['SLAVE_TIMEOUT']
-        if 'mode' in slave_info and slave_info['mode'] == Slave.MIRROR_MODE:
+        if 'mode' in slave_info and str(slave_info['mode']) == SlaveNode.MIRROR_MODE:
             hasMirrors = True
         elif hasMirrors:
-            logger.info('** Mirror slaves must be last - ignoring remaining slave config **')
+            logger.warning('** Mirror slaves must be last - ignoring remaining slave config **')
             break
-        slave = Slave(index, slave_info)
+        slave = SlaveNode(index, slave_info, RACE, DB, getCurrentProfile, \
+                          emit_split_pass_info, monotonic_to_epoch_millis, \
+                          emit_cluster_connect_change, RELEASE_VERSION)
         CLUSTER.addSlave(slave)
 except:
     logger.exception("Error adding slave to cluster")
@@ -5394,12 +5528,13 @@ INTERFACE.pass_record_callback = pass_record_callback
 INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
 INTERFACE.node_crossing_callback = node_crossing_callback
 
-# Save number of nodes found
-RACE.num_nodes = len(INTERFACE.nodes)
 if RACE.num_nodes == 0:
     logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
 else:
     logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
+    # if I2C nodes then only report comm errors if > 1.0%
+    if hasattr(INTERFACE.nodes[0], 'i2c_addr'):
+        INTERFACE.set_intf_error_report_percent_limit(1.0)
 
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
@@ -5425,8 +5560,16 @@ if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
 
 Options.primeGlobalsCache()
 
-# collect server info for About panel
+# collect server info for About panel, etc
 serverInfo = buildServerInfo()
+
+# create version of 'serverInfo' without 'about_html' entry
+serverInfoItems = serverInfo.copy()
+serverInfoItems.pop('about_html', None)
+serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
+serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+logger.debug("Server info:  " + json.dumps(serverInfoItems))
+
 if serverInfo['node_api_match'] is False:
     logger.info('** WARNING: Node API mismatch. **')
 
@@ -5436,28 +5579,29 @@ if RACE.num_nodes > 0:
     elif serverInfo['node_api_lowest'] < NODE_API_BEST:
         logger.info('** NOTICE: Node firmware update is available **')
     elif serverInfo['node_api_lowest'] > NODE_API_BEST:
-        logger.warn('** WARNING: Node firmware is newer than this server version supports **')
+        logger.warning('** WARNING: Node firmware is newer than this server version supports **')
 
 if not db_inited_flag:
     try:
         if Options.getInt('server_api') < SERVER_API:
             logger.info('Old server API version; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
         elif not Database.Heat.query.count():
             logger.info('Heats are empty; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
         elif not Database.Profiles.query.count():
             logger.info('Profiles are empty; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
         elif not Database.RaceFormat.query.count():
             logger.info('Formats are empty; recovering database')
-            recover_database()
+            recover_database(DB_FILE_NAME, startup=True)
     except Exception as ex:
-        logger.warn('Clearing all data after recovery failure:  ' + str(ex))
+        logger.warning('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()
 
-# Expand heats (if number of nodes increases)
-expand_heats()
+# Initialize internal state with database
+# DB session commit needed to prevent 'application context' errors
+init_race_state()
 
 # internal slave race format for LiveTime (needs to be created after initial DB setup)
 global SLAVE_RACE_FORMAT
@@ -5469,12 +5613,13 @@ SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
                          staging_tones=0,
                          number_laps_win=0,
                          win_condition=WinCondition.NONE,
-                         team_racing_mode=False)
+                         team_racing_mode=False,
+                         start_behavior=0)
 
 # Import IMDTabler
 if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     try:
-        java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True)
+        java_ver = subprocess.check_output('java -version', stderr=subprocess.STDOUT, shell=True).decode("utf-8")
         logger.debug('Found installed: ' + java_ver.split('\n')[0].strip())
     except:
         java_ver = None
@@ -5484,37 +5629,13 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
         try:
             imdtabler_ver = subprocess.check_output( \
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
-                        stderr=subprocess.STDOUT, shell=True).rstrip()
+                        stderr=subprocess.STDOUT, shell=True).decode("utf-8").rstrip()
             Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
             logger.debug('Found installed: ' + imdtabler_ver)
         except Exception:
             logger.exception('Error checking IMDTabler:  ')
 else:
     logger.info('IMDTabler lib not found at: ' + IMDTABLER_JAR_NAME)
-
-# Clear any current laps from the database on each program start
-# DB session commit needed to prevent 'application context' errors
-db_reset_current_laps()
-
-# Send initial profile values to nodes
-current_profile = Options.getInt("currentProfile")
-on_set_profile({'profile': current_profile}, False)
-
-# Set current heat on startup
-if Database.Heat.query.first():
-    RACE.current_heat = Database.Heat.query.first().id
-    RACE.node_pilots = {}
-    RACE.node_teams = {}
-    for heatNode in Database.HeatNode.query.filter_by(heat_id=RACE.current_heat):
-        RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-
-        if heatNode.pilot_id is not Database.PILOT_ID_NONE:
-            RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
-        else:
-            RACE.node_teams[heatNode.node_index] = None
-
-# Normalize results caches
-Results.normalize_cache_status(DB)
 
 # Create LED object with appropriate configuration
 strip = None
@@ -5544,6 +5665,13 @@ if strip:
     for led_effect in led_effects:
         led_manager.registerEffect(led_effect)
     init_LED_effects()
+elif CLUSTER and CLUSTER.hasRecEventsSlaves():
+    led_manager = ClusterLEDManager()
+    led_effects = Plugins(prefix='led_handler')
+    led_effects.discover()
+    for led_effect in led_effects:
+        led_manager.registerEffect(led_effect)
+    init_LED_effects()
 else:
     led_manager = NoLEDManager()
 
@@ -5553,31 +5681,44 @@ vrx_controller = initVRxController()
 if vrx_controller:
     Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
 
+gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
+
+# register endpoints
+import json_endpoints
+
+APP.register_blueprint(json_endpoints.createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProfile))
+
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not Options.get("secret_key"):
-        Options.set("secret_key", unicode(os.urandom(50), errors='ignore'))
+        Options.set("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
 
     APP.config['SECRET_KEY'] = Options.get("secret_key")
 
     logger.info("Running http server at port " + str(port_val))
+
+    init_interface_state()
 
     Events.trigger(Evt.STARTUP)
 
     try:
         # the following fn does not return until the server is shutting down
         SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
+        logger.info("Server is shutting down")
     except KeyboardInterrupt:
         logger.info("Server terminated by keyboard interrupt")
     except SystemExit:
         logger.info("Server terminated by system exit")
     except Exception:
-        logger.exception("Server exception:  ")
+        logger.exception("Server exception")
 
     Events.trigger(Evt.SHUTDOWN)
     rep_str = INTERFACE.get_intf_error_report_str(True)
     if rep_str:
         logger.info(rep_str)
+    stop_background_threads()
     log.wait_for_queue_empty()
+    gevent.sleep(2)  # allow system shutdown command to run before program exit
+    log.close_logging()
 
 # Start HTTP server
 if __name__ == '__main__':

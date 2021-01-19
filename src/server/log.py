@@ -1,12 +1,11 @@
 import sys
 import os
 import glob
-import logging.handlers
+import logging
 import platform
 import time
 import zipfile
 import gevent
-import gevent.queue
 from datetime import datetime
 
 # Sample configuration:
@@ -39,6 +38,7 @@ FILELOG_LEVEL_STR = "FILELOG_LEVEL"
 FILELOG_NUM_KEEP_STR = "FILELOG_NUM_KEEP"
 CONSOLE_STREAM_STR = "CONSOLE_STREAM"
 LEVEL_NONE_STR = "NONE"
+LEVEL_NONE_VALUE = 9999
 
 socket_handler_obj = None
 queued_handler_obj = None
@@ -50,7 +50,7 @@ class QueuedLogEventHandler(logging.Handler):
     def __init__(self, dest_hndlr=None):
         super(QueuedLogEventHandler, self).__init__()
         self.queue_handlers_list = []
-        self.log_record_queue = gevent.queue.Queue()
+        self.log_record_queue = gevent.queue.Queue(maxsize=99)
         if dest_hndlr:
             self.queue_handlers_list.append(dest_hndlr)
         gevent.spawn(self.queueWorkerFn)
@@ -67,8 +67,14 @@ class QueuedLogEventHandler(logging.Handler):
                     if log_rec.levelno >= dest_hndlr.level:
                         gevent.sleep(0.001)
                         dest_hndlr.emit(log_rec)
+            except KeyboardInterrupt:
+                print("Log-event queue worker thread terminated by keyboard interrupt")
+                raise
+            except SystemExit:
+                raise
             except Exception as ex:
                 print("Error processing log-event queue: " + str(ex))
+                gevent.sleep(5)
 
     def emit(self, log_rec):
         try:
@@ -89,6 +95,17 @@ class QueuedLogEventHandler(logging.Handler):
         except Exception as ex:
             print("Error waiting for log queue empty: " + str(ex))
 
+    def close(self):
+        try:
+            if self.queue_handlers_list:
+                self.waitForQueueEmpty()
+                for dest_hndlr in self.queue_handlers_list:
+                    dest_hndlr.close()
+            self.queue_handlers_list = []
+            logging.getLogger().removeHandler(self)
+            super(QueuedLogEventHandler, self).close()
+        except Exception as ex:
+            print("Error closing QueuedLogEventHandler: " + str(ex))
 
 class SocketForwardHandler(logging.Handler):
 
@@ -101,7 +118,7 @@ class SocketForwardHandler(logging.Handler):
 
 
 def early_stage_setup():
-    logging.addLevelName(0, LEVEL_NONE_STR)
+    logging.addLevelName(LEVEL_NONE_VALUE, LEVEL_NONE_STR)
     logging.basicConfig(
         stream=DEF_CONSOLE_STREAM,
         level=logging.INFO,
@@ -118,7 +135,9 @@ def early_stage_setup():
             "sqlalchemy",
             "urllib3",
             "requests",
-            "PIL"
+            "PIL",
+            "Adafruit_I2C",
+            "Adafruit_I2C.Device.Bus"
             ]:
         logging.getLogger(name).setLevel(logging.WARN)
 
@@ -144,6 +163,8 @@ def get_logging_level_for_item(logging_config, cfg_item_name, err_str, def_level
 def later_stage_setup(config, socket):
     global socket_handler_obj
 
+#    print(logging.Logger.manager.loggerDict)  # uncomment to display all loggers
+
     logging_config = {}
     logging_config[CONSOLE_LEVEL_STR] = logging.getLevelName(logging.INFO)
     logging_config[SYSLOG_LEVEL_STR] = LEVEL_NONE_STR
@@ -163,7 +184,7 @@ def later_stage_setup(config, socket):
 
     err_str = None
     (lvl, err_str) = get_logging_level_for_item(logging_config, CONSOLE_LEVEL_STR, err_str)
-    if lvl > 0:
+    if lvl > 0 and lvl < LEVEL_NONE_VALUE:
         stm_obj = sys.stdout if sys.stderr.name.find(logging_config[CONSOLE_STREAM_STR]) != 1 else sys.stderr
         hdlr_obj = logging.StreamHandler(stream=stm_obj)
         hdlr_obj.setLevel(lvl)
@@ -173,7 +194,7 @@ def later_stage_setup(config, socket):
             min_level = lvl
 
     (lvl, err_str) = get_logging_level_for_item(logging_config, SYSLOG_LEVEL_STR, err_str, logging.NOTSET)
-    if lvl > 0:
+    if lvl > 0 and lvl < LEVEL_NONE_VALUE:
         system_logger = logging.handlers.SysLogHandler("/dev/log", level=lvl) \
                         if platform.system() != "Windows" else \
                         logging.handlers.NTEventLogHandler("RotorHazard")
@@ -184,7 +205,7 @@ def later_stage_setup(config, socket):
             min_level = lvl
 
     (lvl, err_str) = get_logging_level_for_item(logging_config, FILELOG_LEVEL_STR, err_str)
-    if lvl > 0:
+    if lvl > 0 and lvl < LEVEL_NONE_VALUE:
         # put log files in subdirectory, and with date-timestamp in names
         (lfname, lfext) = os.path.splitext(LOG_FILENAME_STR)
         (num_old_del, err_str) = delete_old_log_files(logging_config[FILELOG_NUM_KEEP_STR], lfname, lfext, err_str)
@@ -221,7 +242,7 @@ def later_stage_setup(config, socket):
 
     socket_handler_obj = SocketForwardHandler(socket)
     # use same configuration as log file
-    if lvl > 0:
+    if lvl > 0 and lvl < LEVEL_NONE_VALUE:
         socket_handler_obj.setLevel(lvl)
     # configure log format with milliseconds as ".###" (not ",###")
     socket_handler_obj.setFormatter(logging.Formatter(fmt=FILELOG_FORMAT_STR, datefmt='%Y-%m-%d %H:%M:%S'))
@@ -244,6 +265,22 @@ def wait_for_queue_empty():
     if queued_handler_obj:
         queued_handler_obj.waitForQueueEmpty()
 
+def close_logging():
+    try:
+        global queued_handler_obj
+        if queued_handler_obj:
+            queued_handler_obj.close()
+        queued_handler_obj = None
+        root = logging.getLogger()
+        if root and root.handlers:
+            hdlrsList = list(root.handlers)
+            for dest_hndlr in hdlrsList:
+                root.removeHandler(dest_hndlr)
+                dest_hndlr.close()
+        root.handlers[:] = []
+        logging._handlerList = []
+    except Exception as ex:
+        print("Error closing logging: " + str(ex))
 
 def start_socket_forward_handler():
     global socket_handler_obj

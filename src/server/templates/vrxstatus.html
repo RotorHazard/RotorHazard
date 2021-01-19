@@ -1,16 +1,12 @@
 {% extends "layout.html" %} {% block title %}VRx Status{% endblock %} {% block head %}
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'vrx_list',
+	];
+
 	$(document).ready(function () {
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'vrx_list',
-		]});
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
-
 		socket.on('language', function (msg) {
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
@@ -22,7 +18,7 @@
 
 			for (var i in msg.vrx) {
 				var item = $('<li>');
-				var properties = $('<dl>')
+				var properties = $('<dl>');
 
 				item.append('<dt>id</dt>');
 				item.append('<dd>' + i + '</dd>');

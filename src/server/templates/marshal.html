@@ -1,6 +1,15 @@
 {% extends "layout.html" %} {% block title %}Marshal Race Data{% endblock %}{% block head %}
 
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'heat_data',
+		'enter_and_exit_at_levels',
+		'race_formats',
+		'race_list'
+	];
+
 	// set admin flag
 	rotorhazard.admin = true;
 	rotorhazard.saveData();
@@ -62,18 +71,6 @@
 		graph.streamTo(graph_canvas, 1);
 		graph.stop();
 
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'enter_and_exit_at_levels',
-			'race_formats',
-			'race_list'
-		]});
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
-
 		socket.on('language', function (msg) {
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
@@ -95,7 +92,7 @@
 			race_list = msg;
 
 			if (jQuery.isEmptyObject(race_list.heats)) {
-				$('.page-marshal>.panel>.panel-content').html('<p>There is no saved race data available to view.</p>');
+				$('.page-marshal>.panel>.panel-content').html('<p>' + __('There is no saved race data available to view.') + '</p>');
 				return false;
 			}
 
@@ -141,13 +138,28 @@
 
 			if (!race_list_loaded) {
 				race_list_loaded = true;
-				$('#selected_heat').prop('disabled', false);
+				$('.heat-selector').prop('disabled', false);
 				$('#selected_round').prop('disabled', false);
 				$('#selected_pilot').prop('disabled', false);
 			}
 			if (prev_heat) {
-				$('#selected_heat').val(prev_heat);
+				$('.heat-selector').val(prev_heat);
 				$('#selected_heat').trigger('change');
+			}
+		});
+
+		socket.on('heat_data', function (msg) {
+			$("#reassign-heat-selector").empty();
+			for (var heat_i in msg.heats) {
+				var heats = msg.heats[heat_i];
+
+				if (heats.note) {
+					heat_name = heats.note
+				} else {
+					heat_name = __('Heat') + ' ' + heats.heat_id
+				}
+
+				$('#reassign-heat-selector').append('<option value="' + heat_i + '">' + heat_name + '</option>');
 			}
 		});
 
@@ -157,6 +169,7 @@
 		}
 
 		$('#selected_heat').change(function(){
+			$('#reassign-heat-selector').val($(this).val());
 			var prev_round = $('#selected_round').val();
 
 			$('#selected_round').empty();
@@ -297,6 +310,7 @@
 			$('#manual-lap-time').prop('disabled', true);
 			$('#add-lap').prop('disabled', true);
 			$('#clean-laps').prop('disabled', true);
+			$('#reassign-heat').prop('disabled', true);
 			$('#save-laps').prop('disabled', true);
 		}
 
@@ -310,6 +324,7 @@
 			$('#add-lap').prop('disabled', false);
 			$('#clean-laps').prop('disabled', false);
 			$('#save-laps').prop('disabled', false);
+			$('#reassign-heat').prop('disabled', false);
 			$('#discard-laps').prop('disabled', false);
 		}
 
@@ -682,6 +697,23 @@
 			renderGraph();
 		});
 
+		$('#reassign-heat').click(function(){
+			if (race_loaded) {
+				var race_id = current_race_data.race_id;
+				var heat_id = parseInt($('#reassign-heat-selector').val());
+				socket.emit('alter_race', {
+					'race_id': race_id,
+					'heat_id': heat_id
+				});
+				race_list_loaded = false
+			} else {
+				standard_message_queue.push(__('No race loaded'));
+				if (standard_message_queue.length == 1) {
+					get_standard_message()
+				}
+			}
+		});
+
 		$('#save-laps').click(function(){
 			if (race_loaded) {
 				var data = {
@@ -957,7 +989,7 @@
 
 		<div class="control-set">
 			<label for="selected_heat" class="screen-reader-text">{{ __('Heat') }}</label>
-			<select id="selected_heat" disabled>
+			<select id="selected_heat" class="heat-selector" disabled>
 				<option value="--">{{ __('Loading...') }}</option>
 			</select>
 
@@ -1012,6 +1044,13 @@
 					<input type="number" id="manual-lap-time" step="0.001" placeholder="{{ __('Manual Lap Time') }}" disabled />
 					<button id="add-lap" disabled>{{ __('Add Lap') }}</button>
 					<button id="clean-laps" disabled>{{ __('Clean Deleted Laps') }}</button>
+				</div>
+				<div class="control-block">
+					<h3>{{ __('Reassign Heat') }}</h3>
+					<select id="reassign-heat-selector" class="heat-selector" disabled>
+						<option>{{ __('Loading...') }}</option>
+					</select>
+					<button id="reassign-heat" disabled>{{ __('Reassign Heat') }}</button>
 				</div>
 				<div class="control-block">
 					<h3>{{ __('Confirm') }}</h3>

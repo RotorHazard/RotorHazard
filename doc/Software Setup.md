@@ -2,10 +2,12 @@
 
 The central software component of the RotorHazard system is its server, written in Python, which operates its functions and serves up web pages to browsers. In a standard setup, the server is run on a RaspberryPi. (It is also possible to run RotorHazard on other types of hardware -- see the [Other Operating Systems](#otheros) section below.)
 
+Note: If RotorHazard is already installed, see the [Updating an existing installation](#update) section below.
+
 ## Install System (Raspberry Pi)
 Note: Many of the setup commands below require that the Rasperry Pi has internet access.
 
-Start by installing Raspbian, following the official instructions here: https://www.raspberrypi.org/downloads/raspbian/. You may use either Desktop or Lite.
+Start by installing the Raspberry Pi OS, following the official instructions here: https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit . You may use either Desktop or Lite.
 
 Configure the interface options on the Raspberry Pi.
 Open a Terminal window and enter the following command:
@@ -63,24 +65,21 @@ cd ~/RotorHazard/src
 sudo chmod 777 server
 ```
 
-*Note: If RotorHazard is already installed, see the [Updating an existing installation](#update) section below.*
+## RotorHazard Node Code
 
-## Install Receiver Node Code (Arduinos)
-Arduino 1.8+ is required. Download from https://www.arduino.cc/en/Main/Software
+The firmware for the RotorHazard nodes will need to be installed (or updated). The nodes can be Arduino based (with an Arduino processor for each node channel), or use the multi-node S32_BPill board (with a single STM32F1 processor running 1-8 channels).
 
-*The node code and the server version must match. Use the 'node' code included with the server code you downloaded earlier; do not download a different file directly from GitHub.*
+For Arduino-based node boards, see the '[src/node/readme_Arduino.md](../src/node/readme_Arduino.md)' file for more information and instructions for installing the node firmware code.
 
-The node code may be edited and built using the [Eclipse IDE](https://www.eclipse.org/eclipseide/) and the "[Eclipse C++ IDE for Arduino](https://marketplace.eclipse.org/content/eclipse-c-ide-arduino)" plugin (or the old-fashioned way using the Arduino IDE). In Eclipse, the node-code project may be loaded via "File | Open Projects from File System..."
+For the S32_BPill board, the recommended method for installing the currently-released node firmware is to use the `Update Nodes` button (in the 'System' section on the 'Settings' page) on the RotorHazard web GUI. The steps described in '[src/node/readme_S32_BPill.md](../src/node/readme_S32_BPill.md)' are for developers who wish to build the S32_BPill node firmware from the source code.
 
-If you are not using a RotorHazard PCB, edit the 'src/node/config.h' file and configure the '#define NODE_NUMBER' value for each node before uploading. For first node set NODE_NUMBER to 1, for second set it to 2, etc.
-```
-// Node Setup -- Set node number here (1 - 8)
-#define NODE_NUMBER 1
-```
-
-Hardware address selection is also possible by grounding hardware pins following the [published specification](https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Node-hardware-addressing).
 
 ## Install Optional Components
+
+### Real Time Clock
+
+The installation of a real-time clock module allows the RotorHazard timer to maintain the correct date and time even when an internet connection is not available.  See '[doc/Real Time Clock.md](Real%20Time%20Clock.md)' for more information.
+
 ### WS2812b LED Support
 The ws2812b controls are provided by the following project:
 https://github.com/jgarff/rpi_ws281x
@@ -150,9 +149,13 @@ sudo python setup.py install
 ```
 
 ### Java Support
-Java enables calculating of IMD scores. If you started with RASPBIAN WITH DESKTOP, this step should not be necessary as Java is installed by default. Otherwise:
+Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
 ```
-sudo apt-get install openjdk-8-jdk
+java --version
+```
+If the response is "command not found" then Java may be installed with:
+```
+sudo apt-get install openjdk-11-jdk
 ```
 
 ## Prepare System
@@ -215,6 +218,10 @@ sudo systemctl stop rotorhazard
 To disable the service (so it no longer runs when the system starts up), enter:
 ```
 sudo systemctl disable rotorhazard.service
+```
+To query the status of the service:
+```
+sudo systemctl status rotorhazard.service
 ```
 
 ### Shutting down the System
@@ -280,9 +287,12 @@ To install the RotorHazard server on these systems:
 
 1. Open up a command prompt and navigate to the ```src/server``` directory in the RotorHazard files (using the 'cd' command).
 
-1. Install the RotorHazard server dependencies using the 'requirements.txt' file, using one of the commands below. (Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
-  * On a Windows system the command to use will likely be:<br/>```python -m pip install -r requirements.txt```<br/><br/>
-  * On a Linux system the command to use will likely be:<br/>```sudo pip install -r requirements.txt```<br/>
+1. Install the RotorHazard server dependencies using the 'reqsNonPi.txt' file, using one of the commands below. (Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
+  * On a Windows system the command to use will likely be:<br/>```python -m pip install -r reqsNonPi.txt```<br>
+
+Note: If the above command fails with a message like "error: Microsoft Visual C++ 14.0 is required", the Visual C++ Build Tools may downloaded (from [here](http://go.microsoft.com/fwlink/?LinkId=691126&fixForIE=.exe.)) and installed.<br>
+
+  * On a Linux system the command to use will likely be:<br/>```sudo pip install -r reqsNonPi.txt```
 
 
 To run the RotorHazard server on these systems:
@@ -335,7 +345,9 @@ The current Server Log may be displayed via the "View Server Log" item in the dr
 
 Clicking on the "Select Text" button will select all the displayed log text, which may then be copied and pasted. Clicking on the "Download Logs" button will create and download a '.zip' archive file containing all available log files and the current configuration and database files. The '.zip' archive file can also be generated by running the server with the following command:  `python server.py --ziplogs`
 
-When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended.
+**When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended.**
+
+When troubleshooting, another place to check for error messages is the "/var/log/syslog" file, which may be viewed with a command like: `tail -100 /var/log/syslog`
 
 
 <br/>
@@ -345,4 +357,5 @@ When reporting issues, using the "Download Logs" button and including the genera
 See Also:<br/>
 [doc/Hardware Setup.md](Hardware%20Setup.md)<br/>
 [doc/USB Nodes.md](USB%20Nodes.md)<br/>
-[doc/User Guide.md](User%20Guide.md)
+[doc/User Guide.md](User%20Guide.md)<br/>
+[Build Resources (PCB, etc)](../resources)

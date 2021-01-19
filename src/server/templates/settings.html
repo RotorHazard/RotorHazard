@@ -3,38 +3,37 @@
 <script type="text/javascript" src="./static/FileSaver.min.js"></script>
 
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'node_data',
+		'environmental_data',
+		'frequency_data',
+		'heat_data',
+		'class_data',
+		'pilot_data',
+		'race_format',
+		'node_tuning',
+		'enter_and_exit_at_levels',
+		'start_thresh_lower_amount',
+		'start_thresh_lower_duration',
+		'min_lap',
+		'race_status',
+		'team_racing_mode',
+		'led_effects',
+		'led_effect_setup',
+		'cluster_status',
+		'vrx_list',
+		'backups_list'
+	];
+
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
+	var heat_to_unlock = null;
+	var class_to_unlock = null;
 
 	$(document).ready(function () {
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'node_data',
-			'environmental_data',
-			'frequency_data',
-			'heat_data',
-			'class_data',
-			'pilot_data',
-			'race_format',
-			'node_tuning',
-			'enter_and_exit_at_levels',
-			'start_thresh_lower_amount',
-			'start_thresh_lower_duration',
-			'min_lap',
-			'race_status',
-			'team_racing_mode',
-			'led_effects',
-			'led_effect_setup',
-			'cluster_status',
-			'vrx_list',
-		]});
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
-
 		socket.on('language', function (msg) {
 			$('#set_language').empty();
 			$('#set_language').append('<option value="">English</option>')
@@ -87,6 +86,7 @@
 		$('#beep_crossing_entered').prop("checked", rotorhazard.beep_crossing_entered);
 		$('#beep_crossing_exited').prop("checked", rotorhazard.beep_crossing_exited);
 		$('#beep_manual_lap_button').prop("checked", rotorhazard.beep_manual_lap_button);
+		$('#beep_cluster_connect').prop("checked", rotorhazard.beep_cluster_connect);
 		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
 		$('#beep_on_first_pass_button').prop("checked", rotorhazard.beep_on_first_pass_button);
 		$('#set_indicator_volume').val(volume_logsl.position(rotorhazard.indicator_beep_volume));
@@ -109,6 +109,8 @@
 			$('#set_next_heat_behavior').val(1);
 		}
 
+		$('#unlock_race_format_button').html(svg_asset.lock);
+
 		// populate frequency selects
 		$('.frequency_table').each(function(){
 			$(this).html(freq.buildSelect());
@@ -129,13 +131,15 @@
 				case 3: // Race staging
 					$('#set_race_format').prop('disabled', true);
 					$('#add_race_format').prop('disabled', true);
-					$('#delete_race_format').prop('disabled', true);
+					$('#unlock_race_format_button').prop('disabled', true);
+					$('#delete_race_format_button').prop('disabled', true);
 					$('#set_format_name').prop('disabled', true);
 					$('#set_race_mode').prop('disabled', true);
 					$('#set_fix_race_time').prop('disabled', true);
 					$('#set_start_delay_min').prop('disabled', true);
 					$('#set_start_delay_max').prop('disabled', true);
 					$('#set_staging_tones').prop('disabled', true);
+					$('#set_start_behavior').prop('disabled', true);
 					$('#set_number_laps_win').prop('disabled', true);
 					$('#set_win_condition').prop('disabled', true);
 					$('#set_team_racing_mode').prop('disabled', true);
@@ -143,13 +147,15 @@
 				default: // Waiting to start new race
 					$('#set_race_format').prop('disabled', false);
 					$('#add_race_format').prop('disabled', false);
-					$('#delete_race_format').prop('disabled', false);
+					$('#unlock_race_format_button').prop('disabled', false);
+					$('#delete_race_format_button').prop('disabled', false);
 					$('#set_format_name').prop('disabled', false);
 					$('#set_race_mode').prop('disabled', false);
 					$('#set_fix_race_time').prop('disabled', false);
 					$('#set_start_delay_min').prop('disabled', false);
 					$('#set_start_delay_max').prop('disabled', false);
 					$('#set_staging_tones').prop('disabled', false);
+					$('#set_start_behavior').prop('disabled', false);
 					$('#set_number_laps_win').prop('disabled', false);
 					$('#set_win_condition').prop('disabled', false);
 					$('#set_team_racing_mode').prop('disabled', false);
@@ -204,8 +210,9 @@
 				}
 			}
 		});
+
 		socket.on('environmental_data', function (msg) {
-			env_table_html = '';
+			var env_table_html = '';
 			for (i=0; i<msg.length; i++) {
 				var sensor = msg[i];
 				var name = Object.keys(sensor)[0];
@@ -241,22 +248,52 @@
 				env_table_html += '</tr>';
 			}
 			if (env_table_html) {
-				$('#env-data-table').html('<table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table>');
+				$('#env-data-table').html('<h3>' + __('Environment Status') + '</h3><table><tr><th>'+__('Sensor')+'</th><th>'+__('Readings')+'</th></tr>' + env_table_html + '</table><br />');
 			}
 		});
+
 		socket.on('cluster_status', function (msg) {
-			cluster_table_html = '';
+			$('#cluster-status').empty();
+
 			if (msg.slaves && msg.slaves.length > 0) {
-				cluster_table_html += '<tr><th>'+__('Address')+'</th><th>'+__('Seconds since last contact')+'</th></tr>';
+				var cluster_header = $('<h3>' + __('Cluster Status') + '</h3>');
+
+				var cluster_body = $('<ul>');
+
 				for (i=0; i < msg.slaves.length; i++) {
-					cluster_table_html += '<tr>';
-					cluster_table_html += '<td><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
-					cluster_table_html += '<td>' + msg.slaves[i].last_contact + '</td>';
-					cluster_table_html += '</tr>';
+					var item = $('<li>');
+					var properties = $('<ul class="cluster tinytable">');
+
+					var property = $('<li>');
+					property.append('<div class="label">' + __('Address') + ' / ' + __('Type') + '</div>');
+					property.append('<div class="data"><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a> / ' + msg.slaves[i].modeIndicator + '</div>');
+					properties.append(property);
+
+					property = $('<li>');
+					property.append('<div class="label">' + __('Latency') + ': ' + __('last') + ' / ' + __('min') + ' / ' + __('avg') + ' / ' + __('max') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].lastLatencyMs + ' / ' + msg.slaves[i].minLatencyMs + ' / ' + msg.slaves[i].avgLatencyMs + ' / ' + msg.slaves[i].maxLatencyMs + ' ' + __('ms') + '</div>');
+					properties.append(property);
+
+					property = $('<li>');
+					property.append('<div class="label">' + __('Disconnects') + ' / ' + __('Contacts') + ' / ' + __('Time Diff') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].numDisconnects + ' / ' + msg.slaves[i].numContacts + ' / ' + msg.slaves[i].timeDiffMs + ' ' + __('ms') + '</div>');
+					properties.append(property);
+
+					property = $('<li>');
+					property.append('<div class="label">' + __('Up') + ' / ' + __('Down') + ' / ' + __('Availability') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].upTimeSecs + __('s') + ' / ' + msg.slaves[i].downTimeSecs + __('s') + ' / ' + msg.slaves[i].availability + '%</div>');
+					properties.append(property);
+
+					property = $('<li>');
+					property.append('<div class="label">' + __('Last Contact') + '</div>');
+					property.append('<div class="data">' + msg.slaves[i].last_contact + '</div>');
+					properties.append(property);
+
+					item.append(properties);
+					cluster_body.append(item);
 				}
-			}
-			if (cluster_table_html) {
-				$('#cluster-status-table').html('<table>' + cluster_table_html + '</table>');
+
+				$('#cluster-status').append(cluster_header).append(cluster_body);
 			}
 		});
 
@@ -351,11 +388,13 @@
 
 				for (var vrx_id in msg.vrx) {
 					var vrx = msg.vrx[vrx_id]
-					if (vrx.dev == 'rx' && vrx.valid_rx) {
-						if (!vrx_by_node[vrx.node_number]) {
-							vrx_by_node[vrx.node_number] = [];
+					if (vrx.device_type == 'rx' && vrx.valid_rx) {
+						seat_num = vrx.seat
+
+						if (!vrx_by_node[seat_num]) {
+							vrx_by_node[seat_num] = [];
 						}
-						vrx_by_node[vrx.node_number].push(vrx_id)
+						vrx_by_node[seat_num].push(vrx_id)
 					}
 				}
 
@@ -410,25 +449,27 @@
 
 							table_items['ID'] = vrx_id;
 
-							if (vrx.nn) {
-								table_items['Name'] = vrx.nn;
+							if (vrx.device_name) {
+								table_items['Name'] = vrx.device_name;
 							}
 
-							if (vrx.dev == 'rx') {
+							if (vrx.device_type == 'rx') {
 								if (vrx.valid_rx) {
 									table_items['Status'] = __("Connected");
 
-									if ('node_number' in vrx) {
+									if ('seat' in vrx) {
 										var selectbox = '<select class="vrx-node" data-vrx-id="' + vrx_id + '">'
 										for (var i = 0; i < {{ num_nodes }}; i++) {
 											var opt = '<option value="' + i + '"';
-											if (i == vrx.node_number) {
+											if (i == vrx.seat) {
 												opt += 'selected="selected"';
 											}
 											opt += '>' + (parseInt(i)+1) + '</option>';
 											selectbox += opt;
 										}
-										table_items['Node'] = selectbox;
+										table_items['Seat'] = selectbox;
+									} else {
+										console.warn("No seat number available")
 									}
 
 									if ('cam_forced_or_auto' in vrx
@@ -443,14 +484,18 @@
 										}
 
 										table_items['Format'] = cam_labels[vrx.cam_forced_or_auto] + ": " + cam_types[vrx.chosen_camera_type];
+									} else {
+										console.log("No cam_forced_or_auto and chosen_camera_type in vrx")
 									}
 
-									if ('lock_status' in vrx) {
+									if ('lock' in vrx) {
 										if(vrx.lock_status == 'L') {
 											table_items['Lock'] = __('Locked');
 										} else {
 											table_items['Lock'] = __('Unlocked');
 										}
+									} else {
+										console.warn("No lock in vrx")
 									}
 
 								} else {
@@ -714,8 +759,8 @@
 
 				// update class selector
 				if (msg.classes.length) {
-					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '_node_' + j + '" data-heat="' + heats.heat_id + '" data-node="' + j + '">')
-						selectbox.append('<option value="0">Unclassified</option>')
+					var selectbox = $('<select class="set_heat_class" id="class_heat_' + heats.heat_id + '" data-heat="' + heats.heat_id + '">')
+						selectbox.append('<option value="0">' + __('Unclassified') + '</option>')
 						for (var k in msg.classes) {
 							if (msg.classes[k].name) {
 								selectbox.append('<option value="' + msg.classes[k].id + '">' + msg.classes[k].name + '</option>')
@@ -732,11 +777,16 @@
 					el.append(selectbox);
 				}
 
-				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="Duplicate ' + heat_note + '">+</button>');
+				if (heats.locked) {
+					el.append('<button class="btn-danger open-mfp-popup unlock unlock_heat" data-mfp-src="#heat_unlock_confirm" data-id="' + heats.heat_id + '" title="' + __('Force Modify Heat') + ': ' + heat_note + '">' + svg_asset.lock + '</button>');
+				}
+
+				el.append('<button class="duplicate_heat" data-id="' + heats.heat_id + '" title="' + __('Duplicate Heat') + ': ' + heat_note + '">+</button>');
 
 				el.appendTo($('.heats'));
 			}
 			freq.updateBlocks();
+			init_popup_generics();
 		});
 
 		$(document).on("change", '.set_heat_note', function (event) {
@@ -774,6 +824,16 @@
 				heat: parseInt($(this).data('id')),
 			};
 			socket.emit('delete_heat', data);
+		});
+
+		$(document).on("click", '.unlock_heat', function (event) {
+			heat_to_unlock = $(this).data('id');
+		});
+
+		$(document).on("click", '#unlock_heat', function (event) {
+			$.magnificPopup.close();
+			var heat = $('[data-heat=' + heat_to_unlock + ']');
+			$(heat).prop('disabled', false);
 		});
 
 		$(document).on("click", '.duplicate_heat', function (event) {
@@ -835,7 +895,6 @@
 			if ($('#generator_output_class option[value="' + output_val + '"]').length) {
 				$('#generator_output_class').val(output_val);
 			}
-
 		}
 
 		socket.on('class_data', function (msg) {
@@ -844,7 +903,7 @@
 			$(".race_classes").empty();
 
 			if (msg.classes.length) {
-				$('.race_classes').append('<p class="form-note">' + __('Selections cannot be modified for classes with saved races. (Clear races to release.)') + '<br />' + __('Duplicating a class also duplicates its assigned heats.') + '</p>');
+				$('.race_classes').append('<p class="form-note">' + __('Duplicating a class also duplicates its assigned heats.') + '</p>');
 
 				var classlist = $('<ol>');
 				for (var i in msg.classes) {
@@ -881,7 +940,11 @@
 					selectbox.prop('disabled', race_class.locked);
 					el.append(selectbox);
 
-					el.append('<button class="duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
+					if (race_class.locked) {
+						el.append('<button class="btn-danger open-mfp-popup unlock unlock_class" data-mfp-src="#class_unlock_confirm" data-id="' + race_class.id + '" title="' + __('Force Modify class') + ': ' + race_class_name + '">' + svg_asset.lock + '</button>');
+					}
+
+					el.append('<button class="duplicate duplicate_class" data-id="' + race_class.id + '" title="Duplicate ' + race_class_name + '">+</button>');
 
 					el.appendTo(classlist);
 				}
@@ -890,6 +953,7 @@
 				$('.race_classes').append('<p class="form-note">' + __('No classes are defined; this will be a single-class event.') + '</p>');
 			}
 
+			init_popup_generics();
 			update_class_selectors();
 		});
 
@@ -924,6 +988,16 @@
 				class_description: $(this).val(),
 			};
 			socket.emit('alter_race_class', data);
+		});
+
+		$(document).on("click", '.unlock_class', function (event) {
+			class_to_unlock = $(this).data('id');
+		});
+
+		$(document).on("click", '#unlock_class', function (event) {
+			$.magnificPopup.close();
+			var race_class = $('[data-class_id=' + class_to_unlock + ']');
+			$(race_class).prop('disabled', false);
 		});
 
 		$('button#add_race_class').click(function (event) {
@@ -1176,6 +1250,11 @@
 			rotorhazard.saveData();
 		});
 
+		$('#beep_cluster_connect').change(function (event) {
+			rotorhazard.beep_cluster_connect = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+
 		$('#use_mp3_tones').change(function (event) {
 			rotorhazard.use_mp3_tones = $(this).prop('checked');
 			rotorhazard.saveData();
@@ -1239,11 +1318,50 @@
 			socket.emit('alter_race_format', data);
 		})
 
+		function update_race_format_ui() {
+			var rf = rotorhazard.race_format;
+
+			$('#format-race-duration-field').toggle(rf.race_mode == 0);
+			$('#format-laps-to-win-field').toggle(rf.win_condition == 2);
+
+			var issues = []
+
+			if (rf.win_condition == 1 && rf.race_mode == 1) {
+				issues.push('"Most Laps in Fastest Time" is typically used with "Fixed Time"');
+			}
+
+			if (rf.win_condition == 2 && rf.race_mode == 0) {
+				issues.push('"First to X Laps" is typically used with "No Time Limit"');
+			}
+
+			if (rf.win_condition == 6 && rf.race_mode == 1) {
+				issues.push('"Most Laps Only with Overtime" is typically used with "Fixed Time"');
+			}
+
+			if (rf.start_behavior == 2 && rf.race_mode == 0) {
+				issues.push('"Staggered Start" is typically used with "No Time Limit"');
+			}
+
+			if (issues.length) {
+				var output = $('<ul>')
+				for (item in issues) {
+					output.append('<li>' + __(issues[item]) + '</li>');
+				}
+				$('#race_format_suggestions').html(output);
+			} else {
+				$('#race_format_suggestions').empty();
+			}
+		}
+
 		socket.on('race_format', function (msg) {
+			rotorhazard.race_format = msg;
+
 			$('#set_race_format').empty();
 			for (var i = 0; i < msg.format_ids.length; i++) {
 				$('#set_race_format').append('<option value="' + msg.format_ids[i] +'">' + msg.format_names[i] + '</option>')
 			}
+			$('#unlock_race_format').toggle(msg.locked);
+			$('#delete_race_format_button').prop('disabled', msg.locked);
 			$('#set_race_format').val(msg.current_format);
 			$('#set_format_name').val(msg.format_name);
 			$('#set_format_name').prop('disabled', msg.locked);
@@ -1259,12 +1377,16 @@
 			$('#set_start_delay_max').prop('disabled', msg.locked);
 			$('#set_staging_tones').val(msg.staging_tones);
 			$('#set_staging_tones').prop('disabled', msg.locked);
+			$('#set_start_behavior').val(msg.start_behavior);
+			$('#set_start_behavior').prop('disabled', msg.locked);
 			$('#set_number_laps_win').val(msg.number_laps_win);
 			$('#set_number_laps_win').prop('disabled', msg.locked);
 			$('#set_win_condition').val(msg.win_condition);
 			$('#set_win_condition').prop('disabled', msg.locked);
 			$('#set_team_racing_mode').val(msg.team_racing_mode);
 			$('#set_team_racing_mode').prop('disabled', msg.locked);
+
+			update_race_format_ui();
 		});
 
 		$('#set_race_format').change(function (event) {
@@ -1279,7 +1401,13 @@
 			return false;
 		});
 
+		$(document).on("click", '#unlock_race_format', function (event) {
+			$.magnificPopup.close();
+			$('#race_formats *').prop('disabled', false);
+		});
+
 		$('button#delete_race_format').click(function (event) {
+			$.magnificPopup.close();
 			socket.emit('delete_race_format');
 			return false;
 		});
@@ -1296,6 +1424,8 @@
 				race_mode: parseInt($(this).val())
 			};
 			socket.emit('alter_race_format', data);
+			rotorhazard.race_format.race_mode = parseInt($(this).val());
+			update_race_format_ui();
 		})
 
 		$('#set_fix_race_time').change(function (event) {
@@ -1303,13 +1433,6 @@
 				race_time: parseInt($(this).val())
 			};
 			socket.emit('alter_race_format', data);
-		})
-
-		$('#set_hide_stage_timer').change(function (event) {
-			var data = {
-				hide_stage_timer: parseInt($(this).val())
-			};
-			socket.emit('set_hide_stage_timer', data);
 		})
 
 		$('#set_start_delay_min').change(function (event) {
@@ -1340,11 +1463,22 @@
 			socket.emit('alter_race_format', data);
 		})
 
+		$('#set_start_behavior').change(function (event) {
+			var data = {
+				start_behavior: parseInt($(this).val())
+			};
+			socket.emit('alter_race_format', data);
+			rotorhazard.race_format.start_behavior = parseInt($(this).val());
+			update_race_format_ui();
+		})
+
 		$('#set_win_condition').change(function (event) {
 			var data = {
 				win_condition: parseInt($(this).val())
 			};
 			socket.emit('alter_race_format', data);
+			rotorhazard.race_format.win_condition = parseInt($(this).val());
+			update_race_format_ui();
 		})
 
 		$('button#backup_database').click(function (event) {
@@ -1364,6 +1498,36 @@
 			saveAs(new Blob([byteArray], {type: "application/octet-stream"}), msg.file_name);
 		});
 
+		socket.on('backups_list', function (msg) {
+			$('#database_list').empty();
+			if ('backup_files' in msg && msg.backup_files && msg.backup_files.length) {
+				for (file in msg.backup_files) {
+					dbfile = msg.backup_files[file];
+					$('#database_list').append('<option value="' + dbfile + '">' + dbfile + '</option>');
+				}
+			} else {
+				$('#database_list').append('<option value="-">' + __('No Saved Databases') + '</option>');
+			}
+		});
+
+		$('button#restore_database').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				backup_file: $('#database_list').val()
+			};
+			socket.emit('restore_database', data);
+			return false;
+		});
+
+		$('button#delete_database').click(function (event) {
+			$.magnificPopup.close();
+			var data = {
+				backup_file: $('#database_list').val()
+			};
+			socket.emit('delete_database', data);
+			return false;
+		});
+
 		/* Database Reset */
 		socket.on('reset_confirm', function () {
 			standard_message_queue.push(__('Data Cleared'));
@@ -1373,6 +1537,7 @@
 		});
 
 		$('button#reset_database').click(function (event) {
+			$.magnificPopup.close();
 			var data = {
 				reset_type: $('#reset_type').val()
 			};
@@ -1388,6 +1553,11 @@
 
 		$('button#reboot_pi').click(function (event) {
 			socket.emit('reboot_pi');
+			return false;
+		});
+
+		$('button#kill_server').click(function (event) {
+			socket.emit('kill_server');
 			return false;
 		});
 
@@ -1450,6 +1620,33 @@
 						setTimeout(function(tone){
 							play_beep(35, node_tone[tone], rotorhazard.indicator_beep_volume, 'sawtooth');
 						}, 70, msg.node_index);
+					}
+				}
+			}
+		});
+
+		socket.on('cluster_connect_change', function (msg) {
+			if (rotorhazard.beep_cluster_connect) {
+				if (msg.connect_flag) {
+					if( rotorhazard.use_mp3_tones){
+						sound_cconnect.play();
+					}
+					else {
+						play_beep(120, 225, rotorhazard.indicator_beep_volume, 'square');
+						setTimeout(function(tone){
+							play_beep(110, 250, rotorhazard.indicator_beep_volume, 'square');
+						}, 120, 0);
+					}
+				}
+				else {
+					if( rotorhazard.use_mp3_tones){
+						sound_cdisconnect.play();
+					}
+					else {
+						play_beep(80, 200, rotorhazard.indicator_beep_volume, 'square');
+						setTimeout(function(tone){
+							play_beep(220, 100, rotorhazard.indicator_beep_volume, 'square');
+						}, 80, 0);
 					}
 				}
 			}
@@ -1628,7 +1825,7 @@
 				}
 
 				var led_event_block = $('<li>');
-				led_event_block.append($('<div class="label-block"><label for="led-event-' + led_event.event + '">' + led_event.label + '</label></div>'));
+				led_event_block.append($('<div class="label-block"><label for="led-event-' + led_event.event + '">' + __(led_event.label) + '</label></div>'));
 				led_event_block.append(led_select);
 
 				if (valid_selection) {
@@ -1681,6 +1878,10 @@
 		<p><strong>{{ __('No configuration file was loaded. Falling back to default configuration.') | safe }}</strong></p>
 		<p>{{ __('Copy <em>server/config-dist.json</em> to <em>server/config.json</em> and then update settings for your server port number, admin username/password, and LED configuration.') | safe }}</p>
 	</div>
+{% elif note_message_text %}
+	<div class="config-none">
+		<p><strong>Note: </strong>{{ note_message_text | safe }}</p>
+	</div>
 {% endif %}
 
 <!--Client Messaging-->
@@ -1701,7 +1902,7 @@
 	<div class="panel-header">
 		<h2>{{ __('Frequency Setup') }}</h2>
 	</div>
-	<div class="panel-content">
+	<div class="panel-content full-width">
 		<div class="control-set">
 			<label for="set_profile">{{ __('Profile') }}:</label>
 			<select id="set_profile">
@@ -1877,11 +2078,20 @@
 			</li>
 		</ol>
 
-		<div id="race_classes" class="race_classes">
+		<div id="race_classes" class="race_classes item-blocks">
 			<p class="form-note">{{ __('Loading...') }}</p>
 		</div>
 		<div class="control-set">
 			<button id="add_race_class">+ {{ __('Add Class') }}</button>
+		</div>
+
+		<div id="class_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Modifying a locked class retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_class">{{ __('Unlock') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
 		</div>
 	</div>
 </div>
@@ -1892,9 +2102,7 @@
 		<h2>{{ __('Heats') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">{{ __('Selections cannot be modified for heats with saved races. (Clear races to release.)') }}</p>
-
-		<ol id="heats" class="heats">
+		<ol id="heats" class="heats item-blocks">
 			<li>{{ __('Loading...') }}</li>
 		</ol>
 		<div class="control-set">
@@ -1947,6 +2155,15 @@
 		<div class="control-set">
 			<button id="generate_heats">{{ __('Generate Heats') }}</button>
 		</div>
+
+		<div id="heat_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Modifying a locked heat retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_heat">{{ __('Unlock') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
 	</div>
 </div>
 
@@ -1956,7 +2173,6 @@
 		<h2>{{ __('Pilots') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">{{ __('Altering pilot callsigns rebuilds all race results.') }}</p>
 		<ul class="pilots">
 			<li>{{ __('Loading...') }}</li>
 		</ul>
@@ -2018,8 +2234,8 @@
 					</div>
 					<select id="voice_callsign">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('Always') }}</option>
 						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
 				<li>
@@ -2028,8 +2244,8 @@
 					</div>
 					<select id="voice_lap_count">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('Always') }}</option>
 						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
 				<li>
@@ -2038,18 +2254,18 @@
 					</div>
 					<select id="voice_lap_time">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('Always') }}</option>
 						<option value="2">{{ __('Only on Non-team Races') }}</option>
+						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
 				<li>
 					<div class="label-block">
-						<label for="voice_race_timer">{{ __('Race Timer') }}</label>
+						<label for="voice_race_timer">{{ __('Race Clock') }}</label>
 					</div>
 					<select id="voice_race_timer">
 						<option value="0">{{ __('Never') }}</option>
-						<option value="1">{{ __('Always') }}</option>
 						<option value="2">{{ __('Only on Fixed-time Races') }}</option>
+						<option value="1">{{ __('Always') }}</option>
 					</select>
 				</li>
 				<li>
@@ -2072,7 +2288,7 @@
 				</li>
 				{% if cluster_has_slaves %}
 				<li>
-<!--
+					<!--
 					Split Timer:
 					Pilot Name, Split ID, Split Time
 					    0          0         0   ~>  000 = 0  :  None
@@ -2087,9 +2303,9 @@
 					SPLMSK_PILOT_NAME = 0x01
 					SPLMSK_SPLIT_ID = 0x02
 					SPLMSK_SPLIT_TIME = 0x04
--->
+					-->
 					<div class="label-block">
-						<label for="voice_split_timer">{{ __('Split Timer') }}</label>
+						<label for="voice_split_timer">{{ __('Cluster/Split Timer') }}</label>
 					</div>
 					<select id="voice_split_timer">
 						<option value="0">{{ __('None') }}</option>
@@ -2141,6 +2357,9 @@
 					<li><label><input type="checkbox" id="beep_crossing_entered"> {{ __('Crossing Entered') }}</label></li>
 					<li><label><input type="checkbox" id="beep_crossing_exited"> {{ __('Crossing Exited') }}</label></li>
 					<li><label><input type="checkbox" id="beep_manual_lap_button"> {{ __('Manual Lap Button') }}</label></li>
+					{% if cluster_has_slaves %}
+					<li><label><input type="checkbox" id="beep_cluster_connect"> {{ __('Cluster Timer Connect / Disconnect') }}</label></li>
+					{% endif %}
 					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
 				</ul>
 			</li>
@@ -2161,7 +2380,6 @@
 		<h2>{{ __('Race Format') }}</h2>
 	</div>
 	<div class="panel-content">
-		<p class="form-note">{{ __('Formats used with saved races cannot be modified. (Clear races to release.)') }}</p>
 		<p class="form-note">{{ __('Format cannot be changed while a race is running.') }}</p>
 
 		<div class="control-set">
@@ -2169,11 +2387,30 @@
 			<select id="set_race_format">
 				<option>{{ __('Loading...') }}</option>
 			</select>
-			<button id="add_race_format">+ {{ __('Duplicate Format') }}</button>
-			<button class="btn-danger" id="delete_race_format">&#215; {{ __('Remove') }}</button>
+			<button id="add_race_format" title="{{ __('Duplicate Format') }}">+</button>
+			<button class="btn-danger open-mfp-popup unlock" id="unlock_race_format_button" data-mfp-src="#format_unlock_confirm" title="{{ __('Force Modify Format') }}"></button>
+			<button class="btn-danger open-mfp-popup" id="delete_race_format_button" data-mfp-src="#format_delete_confirm" title="{{ __('Remove') }}">&#215;</button>
 		</div>
 
-		<ol class="form">
+		<div id="format_unlock_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Modifying a locked format retroactively changes saved race data.') }}</p>
+				<p><button class="btn-danger" id="unlock_race_format">{{ __('Unlock') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="format_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Deleting a race format cannot be undone.') }}</p>
+				<p><button class="btn-danger" id="delete_race_format">{{ __('Delete') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<ol class="form" id="race_formats">
 			<li>
 				<div class="label-block">
 					<label for="set_format_name">{{ __('Name') }}</label>
@@ -2182,17 +2419,17 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_race_mode">{{ __('Race Timer Mode') }}</label>
+					<label for="set_race_mode">{{ __('Race Clock Mode') }}</label>
 				</div>
 				<select id="set_race_mode">
-					<option value="0">{{ __('Count Down') }}</option>
-					<option value="1">{{ __('Count Up') }}</option>
+					<option value="1">{{ __('No Time Limit') }}</option>
+					<option value="0">{{ __('Fixed Time') }}</option><!--  / Finish Lap -->
+					<!-- <option value="2">{{ __('Fixed Time / End Immediately') }}</option> -->
 				</select>
 			</li>
-			<li>
+			<li id="format-race-duration-field">
 				<div class="label-block">
 					<label for="set_fix_race_time">{{ __('Timer Duration (seconds)') }}</label>
-					<p class="desc">{{ __('Used for Count Down timed races') }}</p>
 				</div>
 				<input type="number" id="set_fix_race_time" min="0" max="99999">
 			</li>
@@ -2223,22 +2460,33 @@
 			</li>
 			<li>
 				<div class="label-block">
-					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
-					<p class="desc">{{ __('Used with First to X Laps races') }}</p>
+					<label for="set_start_behavior">{{ __('First Crossing') }}</label>
 				</div>
-				<input type="number" id="set_number_laps_win" min="0" max="999">
+				<select id="set_start_behavior">
+					<option value="0">{{ __('Hole Shot') }}</option>
+					<option value="1">{{ __('First Lap') }}</option>
+					<option value="2">{{ __('Staggered Start') }}</option>
+				</select>
 			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_win_condition">{{ __('Win Condition') }}</label>
 				</div>
 				<select id="set_win_condition">
-					<option value="1">{{ __('Most Laps') }}</option>
+					<option value="1">{{ __('Most Laps in Fastest Time') }}</option>
+					<option value="5">{{ __('Most Laps Only') }}</option>
+					<option value="6">{{ __('Most Laps Only with Overtime') }}</option>
 					<option value="2">{{ __('First to X Laps') }}</option>
 					<option value="3">{{ __('Fastest Lap') }}</option>
 					<option value="4">{{ __('Fastest 3 Consecutive Laps') }}</option>
 					<option value="0">{{ __('None') }}</option>
 				</select>
+			</li>
+			<li id="format-laps-to-win-field">
+				<div class="label-block">
+					<label for="set_number_laps_win">{{ __('Number of Laps to Win') }}</label>
+				</div>
+				<input type="number" id="set_number_laps_win" min="0" max="999">
 			</li>
 			<li>
 				<div class="label-block">
@@ -2250,6 +2498,8 @@
 				</select>
 			</li>
 		</ol>
+
+		<div id="race_format_suggestions" class="form-note emphasis"></div>
 
 		<hr />
 
@@ -2276,7 +2526,7 @@
 </div>
 
 <!--LED controls-->
-{% if led_enabled %}
+{% if led_events_enabled %}
 <div class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('LED Events') }}</h2>
@@ -2285,7 +2535,9 @@
 		<div id="LED-effect-setup"></div>
 	</div>
 </div>
+{% endif %}
 
+{% if led_enabled %}
 <div class="panel collapsing">
 	<div class="panel-header">
 		<h2>{{ __('LED Control') }}</h2>
@@ -2373,9 +2625,45 @@
 				<option value="classes">{{ __('Races, Heats, and Classes') }}</option>
 				<option value="pilots">{{ __('Races, Heats, and Pilots') }}</option>
 				<option value="all">{{ __('Races, Heats, Classes, and Pilots') }}</option>
+				<option value="formats">{{ __('Races and Race Formats') }}</option>
 			</select>
-			<button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
+			<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
 		</div>
+		<div class="control-set">
+			<select id="database_list">
+				<option value="-">{{ __('No Saved Databases') }}</option>
+			</select>
+			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup">{{ __('Restore Data') }}</button>
+			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup">{{ __('Delete Data') }}</button>
+		</div>
+
+		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Current race data is not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="reset_database">{{ __('Clear Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="database_restore_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Restoring overwrites all current data. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="restore_database">{{ __('Restore Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+      <div id="database_delete_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Deleted database files are not recoverable. Are you sure?') }}</p>
+				<p><button class="btn-danger" id="delete_database">{{ __('Delete Data') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
 	</div>
 </div>
 
@@ -2385,24 +2673,23 @@
 		<h2>{{ __('System') }}</h2>
 	</div>
 	<div class="panel-content">
-		<div id="env-data-table" class="control-set">
-		</div>
-		<br />
 		<div class="control-set">
-			{{ __('Cluster Status:') }}
-		</div>
-		<div id="cluster-status-table" class="control-set">
-		</div>
-		<br />
-		<div class="control-set">
-			<a href="#shutdown_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Shut Down') }}</a>
-			<a href="#reboot_confirm" class="btn-danger button-like open-mfp-popup">{{ __('Reboot') }}</a>
+			{% if is_raspberry_pi %}
+			<button data-mfp-src="#shutdown_confirm" class="btn-danger open-mfp-popup">{{ __('Shut Down') }}</button>
+			<button data-mfp-src="#reboot_confirm" class="btn-danger open-mfp-popup">{{ __('Reboot') }}</button>
+			{% endif %}
+			{% if Debug %}
+			<button data-mfp-src="#kill_server_confirm" class="btn-danger open-mfp-popup">{{ __('Kill Server') }}</button>
+			{% endif %}
 			<a href="/hardwarelog" class="debug button-like">{{ __('Server Log') }}</a>
 			<button id="download_logs">{{ __('Download Logs') }}</button>
+			{% if node_fw_updatable %}
+			<a href="/updatenodes" class="debug button-like">{{ __('Update Nodes') }}</a>
+			{% endif %}
 		</div>
 
 		<div id="shutdown_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>Alert</h2>
+			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
 				<p>{{ __('Shut down server?') }}</p>
 				<p><button class="btn-danger" id="shutdown_pi">{{ __('Shut Down') }}</button>
@@ -2411,10 +2698,19 @@
 		</div>
 
 		<div id="reboot_confirm" class="priority-message-interrupt mfp-hide popup">
-			<h2>Alert</h2>
+			<h2>{{ __('Alert') }}</h2>
 			<div class="popup-content">
 				<p>{{ __('Reboot server?') }}</p>
 				<p><button class="btn-danger" id="reboot_pi">{{ __('Reboot') }}</button>
+				<button class="cancel">{{ __('Cancel') }}</button></p>
+			</div>
+		</div>
+
+		<div id="kill_server_confirm" class="priority-message-interrupt mfp-hide popup">
+			<h2>{{ __('Alert') }}</h2>
+			<div class="popup-content">
+				<p>{{ __('Terminate RotorHazard server?') }}</p>
+				<p><button class="btn-danger" id="kill_server">{{ __('Kill Server') }}</button>
 				<button class="cancel">{{ __('Cancel') }}</button></p>
 			</div>
 		</div>
@@ -2438,9 +2734,9 @@
 			<li>
 				<div class="label-block">
 					<label for="set_timer_logo">{{ __('Timer Logo') }}</label>
-					<p class="desc">{{ __('File path relative to RotorHazard/server/static') }}</p>
+					<p class="desc">{{ __('File path relative to RotorHazard/server/static/user') }}</p>
 				</div>
-				<input type="text" id="set_timer_logo" class="set-option" data-option="timerLogo" value="{{ getOption('timerLogo') }}" placeholder="image/group-logo.png">
+				<input type="text" id="set_timer_logo" class="set-option" data-option="timerLogo" value="{{ getOption('timerLogo') }}" placeholder="group-logo.png">
 			</li>
 			<li>
 				<div class="label-block">
@@ -2471,6 +2767,19 @@
 		<div class="control-set">
 			<div class="swatch primary-color">{{ __('Primary Color') }}</div>
 			<div class="swatch secondary-color">{{ __('Secondary Color') }}</div>
+		</div>
+	</div>
+</div>
+
+<!-- Status -->
+<div class="panel collapsing">
+	<div class="panel-header">
+		<h2>{{ __('Status') }}</h2>
+	</div>
+	<div class="panel-content">
+		<div id="cluster-status" class="control-set">
+		</div>
+		<div id="env-data-table" class="control-set">
 		</div>
 	</div>
 </div>

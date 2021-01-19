@@ -2,24 +2,19 @@
 <link rel="stylesheet" href="/static/streamnode.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
+	var data_dependencies = [
+		'all_languages',
+		'language',
+		'race_format',
+		'leaderboard_cache',
+		'current_laps',
+	];
+
 	rotorhazard.show_messages = false;
 	streamnode = {{ node_id }}
 
 	$(document).ready(function () {
 		rotorhazard.show_messages = false;
-
-		// get pi time
-		socket.emit('load_data', {'load_types': [
-			'all_languages',
-			'language',
-			'race_format',
-			'leaderboard_cache',
-			'current_laps',
-		]});
-
-		socket.on('all_languages', function (msg) {
-			rotorhazard.language_strings = msg.languages;
-		});
 
 		socket.on('language', function (msg) {
 			if (msg.language) {
@@ -96,8 +91,12 @@
 			primary_leaderboard = msg.meta.primary_leaderboard;
 			leaderboard = msg[primary_leaderboard];
 
+			found_streamnode = false;
+
 			for (var i in leaderboard) {
 				if (leaderboard[i].node == streamnode) {
+					found_streamnode = true;
+
 					pilot_data = leaderboard[i];
 
 					$('#position').html(pilot_data.position);
@@ -116,10 +115,16 @@
 					}
 
 					$('#rank_stat').html(rank_stat);
+					break;
 				}
 			}
 
-			$('#dump').append(msg);
+			if (!found_streamnode) {
+				$('#position').html('');
+				$('#callsign').html('');
+				$('#rank_stat').html('');
+				$('#current_laps').html('');
+			}
 		});
 
 		socket.on('race_format', function (msg) {

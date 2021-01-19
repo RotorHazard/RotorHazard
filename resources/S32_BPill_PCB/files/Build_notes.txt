@@ -1,0 +1,38 @@
+
+Recommended build sequence with some notes is as follows:
+
+1) First install the resistors onto the board being sure to note where the two precision 1% resistors go.
+
+2) Next install the diode and the two capacitors.  Observe polarity markings on the diode.
+
+3) Solder the vertical headers to the regulator boards, including the extra pins that are not in-line.  Solder one pin of the header first so that you can then adjust it to be as vertical as possible while heating that pin.
+
+4) Solder the regulators to the appropriate places on the main board, making sure that the 3.3V and 5V regulators are in the correct positions.
+
+5) Solder a right-angle header to the INA219 board.  Note that the header mounts on the component side.  Be sure to keep it straight using the solder-one-pin-first technique.  Then solder the complete module to the main PCB making sure that the pin designators correspond to those on the main board.  If soldered backwards it WILL be destroyed.
+(make sure that Vin+ and Vin- are on the end closest to the edge of the main PCB)
+
+6) Solder the correct gender of XT30 to the back side of the PCB.
+
+At this point it is recommended to apply a 12V supply to the XT30 and verify that the proper voltages (+3.3V and +5.0V) exist on points throughout the main PCB.  Use of a smoke-stopper will help prevent damage caused by any incorrect installation.  The regulators are reverse-voltage protected but the INA219 is not.
+
+
+7) Install all the sockets using the solder-one-pin-first method to ensure they are vertical.
+
+   a) Install the two 20-pin strips for the Pill, putting the strips onto the Pill first to help keep them vertical
+
+   b) Install the 8 low-profile sockets for the nodes, making extra sure they are vertical
+
+   c) Install the 6-pin socket for the FTDI, the 4-pin socket for the BME280, and (if desired) the 8-pin socket for the RTC Breakout
+
+   (I think that’s all the sockets)
+
+8) Install the 40-pin header on the back side of the board, being sure to note Pin 1 and the location of the notch.  Solder from the front of the board.
+
+9) Install the buzzer, the long pin is +
+
+10) Install all of the remaining headers, keeping them as vertical as possible.  I believe there are three 4-pin headers, seven 2-pin headers, and six 1-pin headers (which are a PITA to solder and keep vertical).  This is assuming that you install a 2-pin header in place of the LED so that it can connect through a cable to the LED on the rear panel.  There is one 2-pin header on the back side of the board near the Pill that is not to be installed as it should not be necessary.  It’s more  of a CYA thing.
+
+
+
+The sensor on the BME280 (square-ish metal can with hole) has to face up.  The header is mounted on the other side of the sensor board with the pins facing down.  Vin should be on the bottom right if you are looking at the main PCB with nodes at the top.  The temp sensor nominally goes into a socket.  Again, check out the 3D view in the PDF.

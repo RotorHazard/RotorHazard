@@ -38,7 +38,8 @@ def discover(config, i2c_helper, *args, **kwargs):
         name = sensor_config.get('name', url)
         try:
             sensors.append(BME280Sensor(name, addr, i2c_helper))
-            logger.info("BME280 found at address {0}".format(addr))
+            logger.info("BME280 found at address 0x{:02x} ('{}')".format(addr, name))
         except IOError:
-            logger.info("No BME280 at address {0}".format(addr))
+            if sensor_config:
+                logger.info("No BME280 found at address 0x{:02x}".format(addr))
     return sensors
