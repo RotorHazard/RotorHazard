@@ -169,7 +169,7 @@ void ioBufferWriteExtremum(Buffer& buf, const Extremum& e, mtime_t now)
 {
     ioBufferWriteRssi(buf, e.rssi);
     buf.write16(uint16_t(now - e.firstTime));
-    buf.write16(uint16_t(now - e.firstTime - e.duration));
+    buf.write16(e.duration);
 }
 
 // Generic IO read command handler
