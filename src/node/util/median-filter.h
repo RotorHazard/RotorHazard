@@ -6,6 +6,7 @@
 #define CIRCULAR_BUFFER_INT_SAFE
 #include "CircularBuffer.h"
 
+//non-linear!!!
 template <typename T, uint8_t N, T default_value> class MedianFilter : public Filter<T>
 {
     private:
