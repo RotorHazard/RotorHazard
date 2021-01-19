@@ -2,10 +2,12 @@
 
 import smbus2 # For i2c comms
 import gevent
+from gevent.lock import BoundedSemaphore # To limit i2c calls
+import os
 import logging
 from monotonic import monotonic
 
-I2C_CHILL_TIME = 0.075 # Delay after i2c read/write
+I2C_CHILL_TIME = float(os.environ.get('RH_I2C_SLEEP', '0.015')) # Delay after i2c read/write
 
 logger = logging.getLogger(__name__)
 
