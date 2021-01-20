@@ -1,5 +1,6 @@
 #include <ArduinoUnitTests.h>
 #include <Godmode.h>
+#include "../rssi.h"
 #include "util.h"
 
 /**
@@ -8,29 +9,25 @@
 unittest(slowCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
+  rssiNode.setFilter(&testFilter);
+  State& state = rssiNode.getState();
+  LastPass& lastPass = rssiNode.getLastPass();
+  History& history = rssiNode.getHistory();
+  rssiNode.start();
 
-  RssiNode::multiRssiNodeCount = 1;
-  RssiNode *rssiNodePtr = &(RssiNode::rssiNodeArray[0]);
-  rssiNodePtr->rssiSetFilter(&testFilter);
-  rssiNodePtr->rssiInit();
-
-  rssiNodePtr->setActivatedFlag(true);
+  state.activatedFlag = true;
 
   // prime the state with some background signal
-  sendSignal(rssiNodePtr, nano, 50);
-  sendSignal(rssiNodePtr, nano, 50);
-  assertTrue(rssiNodePtr->rssiStateValid());
+  sendSignal(nano, 50);
+  sendSignal(nano, 50);
+  assertTrue(rssiNode.isStateValid());
 
   // enter
-  sendSignal(rssiNodePtr, nano, 130);
+  sendSignal(nano, 130);
   int duration = 3;
   for(int i=0; i<duration; i++) {
-      sendSignal(rssiNodePtr, nano, 130);
+      sendSignal(nano, 130);
   }
-
-  struct State & state = rssiNodePtr->getState();
-  struct History & history = rssiNodePtr->getHistory();
-  struct LastPass & lastPass = rssiNodePtr->getLastPass();
 
   assertEqual(130, (int)state.rssi);
   assertEqual(timestamp(3+duration), (int)state.rssiTimestamp);
@@ -49,9 +46,9 @@ unittest(slowCrossing) {
   assertEqual(50, (int)state.passRssiNadir);
 
   if (duration > 0) {
-      assertEqual(0, (int)history.rssiChange);
+      assertEqual(0, (int)history.prevRssiChange);
   } else {
-      assertEqual(80, (int)history.rssiChange);
+      assertEqual(80, (int)history.prevRssiChange);
   }
   assertEqual(130, (int)history.peak.rssi); // first upward trend
   assertEqual(timestamp(3), (int)history.peak.firstTime);
@@ -62,7 +59,7 @@ unittest(slowCrossing) {
   assertTrue(history.nadirSend->isEmpty());
 
   // exit
-  sendSignal(rssiNodePtr, nano, 70);
+  sendSignal(nano, 70);
   assertEqual(70, (int)state.rssi);
   assertEqual(timestamp(4+duration), (int)state.rssiTimestamp);
   assertEqual(130, (int)state.lastRssi);
@@ -73,7 +70,7 @@ unittest(slowCrossing) {
   assertFalse(isPeakValid(state.passPeak)); // crossing/pass finished
   assertEqual(70, (int)state.passRssiNadir);
 
-  assertEqual(-60, (int)history.rssiChange);
+  assertEqual(-60, (int)history.prevRssiChange);
   assertEqual(130, (int)history.peak.rssi);
   assertEqual(timestamp(3), (int)history.peak.firstTime);
   assertEqual(time(1+duration)-1, (int)history.peak.duration);

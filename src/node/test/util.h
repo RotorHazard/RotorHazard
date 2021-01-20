@@ -1,8 +1,4 @@
-#ifndef TEST_UTIL_H
-#define TEST_UTIL_H
-
-#include "../RssiNode.h"
-#include "../util/median-filter.h"
+#include "../rssi.h"
 
 MedianFilter<rssi_t, SmoothingSamples, 0> testFilter;
 
@@ -11,9 +7,11 @@ MedianFilter<rssi_t, SmoothingSamples, 0> testFilter;
 const static int N_2 = testFilter.getSampleCapacity()/2+1;
 const static int N_TS = testFilter.getTimestampCapacity();
 
-void sendSignal(RssiNode *rssiNodePtr, GodmodeState* nano, int rssi) {
+RssiNode rssiNode;
+
+void sendSignal(GodmodeState* nano, int rssi) {
   for(int t=0; t<N_2; t++) {
-    rssiNodePtr->rssiProcessValue(millis(), rssi);
+    rssiNode.process(rssi, millis());
     milliTick(nano);
   }
 }
@@ -25,5 +23,3 @@ mtime_t timestamp(int sendCount) {
 mtime_t time(int sendCount) {
   return sendCount*N_2;
 }
-
-#endif  //TEST_UTIL_H

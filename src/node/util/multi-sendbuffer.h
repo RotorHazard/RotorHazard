@@ -8,7 +8,7 @@
 
 template <typename T, uint8_t N> class MultiSendBuffer : public SendBuffer<T>
 {
-    private:
+    protected:
         CircularBuffer<T,N> buffer;
     public:
       bool isEmpty() {
@@ -33,6 +33,44 @@ template <typename T, uint8_t N> class MultiSendBuffer : public SendBuffer<T>
       void add(const T& e) {
           buffer.push(e);
       }
+};
+
+template <uint8_t N> class MultiPeakSendBuffer : public MultiSendBuffer<Extremum,N>
+{
+    public:
+        void addOrDiscard(const Extremum& e) {
+            if (MultiSendBuffer<Extremum,N>::isFull()) {
+                Extremum last = MultiSendBuffer<Extremum,N>::buffer.last();
+                if (e.rssi > last.rssi) {
+                    MultiSendBuffer<Extremum,N>::buffer.push(e);
+                } else if (e.rssi == last.rssi) {
+                    // merge
+                    Extremum merged = {last.rssi, last.firstTime, endTime(e) - last.firstTime};
+                    MultiSendBuffer<Extremum,N>::buffer.push(merged);
+                }
+            } else {
+                MultiSendBuffer<Extremum,N>::buffer.push(e);
+            }
+        }
+};
+
+template <uint8_t N> class MultiNadirSendBuffer : public MultiSendBuffer<Extremum,N>
+{
+    public:
+        void addOrDiscard(const Extremum& e) {
+            if (MultiSendBuffer<Extremum,N>::isFull()) {
+                Extremum last = MultiSendBuffer<Extremum,N>::buffer.last();
+                if (e.rssi < last.rssi) {
+                    MultiSendBuffer<Extremum,N>::buffer.push(e);
+                } else if (e.rssi == last.rssi) {
+                    // merge
+                    Extremum merged = {last.rssi, last.firstTime, endTime(e) - last.firstTime};
+                    MultiSendBuffer<Extremum,N>::buffer.push(merged);
+                }
+            } else {
+                MultiSendBuffer<Extremum,N>::buffer.push(e);
+            }
+        }
 };
 
 #endif
