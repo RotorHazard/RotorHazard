@@ -62,6 +62,8 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 
 [PCB Build Notes](files/Build_notes.txt) and [Pin Soldering Helper](files/PinSolderingHelper.pdf) doc
 
+[Socket Headers](headers.md) and [Trimming Jig](trimjig.md) for RotorHazard S32_BPill
+
 [Node board assembly tips](http://www.rotorhazard.com/files/node_board_assy.pdf)
 
 [Generic Blue Pill Pinout](files/GenericBluePillPinout.jpg)
