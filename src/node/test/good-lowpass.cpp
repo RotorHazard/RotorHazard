@@ -42,7 +42,7 @@ int filter(char name[], Filter<rssi_t>& lpf, double testFreq, rssi_t output[]) {
 { \
     int t_max = ONE_SEC + offset + (int)(1000.0/2.0/freq); \
     int t_zero = ONE_SEC + offset + (int)(1000.0/freq); \
-    rssi_t max = output[t_max]; \
+    rssi_t maxVal = output[t_max]; \
     rssi_t zero = output[t_zero]; \
     rssi_t expectedMax = 0; \
     rssi_t expectedMin = MAX_RSSI; \
@@ -50,7 +50,7 @@ int filter(char name[], Filter<rssi_t>& lpf, double testFreq, rssi_t output[]) {
         expectedMax = max(output[i], expectedMax); \
         expectedMin = min(output[i], expectedMin); \
     } \
-    assertEqual((int)expectedMax, (int)max); \
+    assertEqual((int)expectedMax, (int)maxVal); \
     assertEqual((int)expectedMin, (int)zero); \
 }
 
@@ -124,19 +124,19 @@ unittest(lpf100_with_100hz_signal)
   assertMaxMin(output, offset, freq);
 }
 
-unittest(composite_with_10hz_signal)
+unittest(composite2_with_10hz_signal)
 {
   LowPassFilter50Hz lpf50;
   MedianFilter<rssi_t, 7, 0> mf;
-  CompositeFilter<rssi_t> lpf(lpf50, mf);
+  Composite2Filter<rssi_t> lpf(lpf50, mf);
   assertFalse(lpf.isFilled());
   double freq = 20;
   rssi_t output[N];
-  int offset = filter("composite_with_10hz_signal.csv", lpf, freq, output);
+  int offset = filter("composite2_with_10hz_signal.csv", lpf, freq, output);
 
   int t_max = ONE_SEC + offset + (int)(1000.0/2.0/freq);
   int t_zero = ONE_SEC + offset + (int)(1000.0/freq);
-  rssi_t max = output[t_max];
+  rssi_t maxVal = output[t_max];
   rssi_t zero = output[t_zero];
   rssi_t expectedMax = 0;
   rssi_t expectedMin = MAX_RSSI;
@@ -144,7 +144,32 @@ unittest(composite_with_10hz_signal)
       expectedMax = max(output[i], expectedMax);
       expectedMin = min(output[i], expectedMin);
   }
-  assertMore((int)expectedMax, (int)max);
+  assertMore((int)expectedMax, (int)maxVal);
+  assertLess((int)expectedMin, (int)zero);
+}
+
+unittest(composite3_with_10hz_signal)
+{
+  LowPassFilter50Hz lpf50;
+  LowPassFilter100Hz lpf100;
+  MedianFilter<rssi_t, 7, 0> mf;
+  Composite3Filter<rssi_t> lpf(lpf50, lpf100, mf);
+  assertFalse(lpf.isFilled());
+  double freq = 20;
+  rssi_t output[N];
+  int offset = filter("composite3_with_10hz_signal.csv", lpf, freq, output);
+
+  int t_max = ONE_SEC + offset + (int)(1000.0/2.0/freq);
+  int t_zero = ONE_SEC + offset + (int)(1000.0/freq);
+  rssi_t maxVal = output[t_max];
+  rssi_t zero = output[t_zero];
+  rssi_t expectedMax = 0;
+  rssi_t expectedMin = MAX_RSSI;
+  for (int i=ONE_SEC + offset; i<N; i++) {
+      expectedMax = max(output[i], expectedMax);
+      expectedMin = min(output[i], expectedMin);
+  }
+  assertMore((int)expectedMax, (int)maxVal);
   assertLess((int)expectedMin, (int)zero);
 }
 

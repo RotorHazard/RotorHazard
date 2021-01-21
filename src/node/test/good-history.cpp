@@ -65,8 +65,12 @@ unittest(historyBuffer_withoutReads) {
   rssiNode.setFilter(&testFilter);
   State& state = rssiNode.getState();
   History& history = rssiNode.getHistory();
+  SinglePeakSendBuffer peakBuffer;
+  SingleNadirSendBuffer nadirBuffer;
+  history.setSendBuffers(&peakBuffer, &nadirBuffer);
   rssiNode.start();
   rssiNode.resetState();
+  nano->micros += 40000; // settle time
 
   state.activatedFlag = true;
 
@@ -135,8 +139,12 @@ unittest(historyBuffer_withReads) {
   rssiNode.setFilter(&testFilter);
   State& state = rssiNode.getState();
   History& history = rssiNode.getHistory();
+  SinglePeakSendBuffer peakBuffer;
+  SingleNadirSendBuffer nadirBuffer;
+  history.setSendBuffers(&peakBuffer, &nadirBuffer);
   rssiNode.start();
   rssiNode.resetState();
+  nano->micros += 40000; // settle time
 
   state.activatedFlag = true;
 

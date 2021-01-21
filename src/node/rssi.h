@@ -123,10 +123,13 @@ struct LastPass
 class RssiNode
 {
 private:
-    LowPassFilter15Hz lpfFilter;
+    LowPassFilter15Hz lpfFilter1;
+    LowPassFilter50Hz lpfFilter2;
     MedianFilter<rssi_t, 51, 0> medianFilter;
-    CompositeFilter<rssi_t> defaultFilter(lpfFilter, medianFilter);
+    Composite3Filter<rssi_t> defaultFilter;
 
+    bool needsToSettle = false;
+    mtime_t lastResetTimeMs = 0;
     struct Settings settings;
     State state;
     History history;
@@ -143,7 +146,7 @@ public:
      * Restarts rssi peak tracking for node.
      */
     void resetState();
-    bool process(rssi_t rssi, mtime_t millis);
+    bool process(rssi_t rssi, mtime_t ms);
     void endCrossing();
 
     struct Settings& getSettings() { return settings; };

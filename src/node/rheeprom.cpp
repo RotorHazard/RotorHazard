@@ -1,4 +1,4 @@
-#ifndef __TEST__
+#if !defined(__TEST__) && !STM32_MODE_FLAG
 #include "config.h"
 #include "rheeprom.h"
 

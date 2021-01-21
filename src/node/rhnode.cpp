@@ -27,42 +27,73 @@
 // SOFTWARE.
 
 #include "config.h"
-#include <Wire.h>
 #include "clock.h"
 #include "rssi.h"
 #include "commands.h"
+#if !STM32_MODE_FLAG
+#include <Wire.h>
 #include "rheeprom.h"
+#endif
 
-// i2c address for node
-// Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
-// Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
-uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
+// Note: Configure Arduino NODE_NUMBER value in 'config.h'
 
-#define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
-#define EEPROM_ADRW_ENTERAT 2      //address for stored 'enterAtLevel'
-#define EEPROM_ADRW_EXITAT 4       //address for stored 'exitAtLevel'
-#define EEPROM_ADRW_EXPIRE 6       //address for stored catch history expire duration
-#define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
-#define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
-#define EEPROM_SETTINGS_SIZE 16
-
-#define COMMS_MONITOR_TIME_MS 5000 //I2C communications monitor grace/trigger time
+#if !STM32_MODE_FLAG
+    // i2c address for node
+    // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
+    // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
+    #define I2C_ADDR (6 + (NODE_NUMBER * 2));
+    #define SERIALCOM Serial
+    #define STATUS_LED_ONSTATE HIGH
+    #define STATUS_LED_OFFSTATE LOW
+    #define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
+    #define EEPROM_ADRW_ENTERAT 2      //address for stored 'enterAtLevel'
+    #define EEPROM_ADRW_EXITAT 4       //address for stored 'exitAtLevel'
+    #define EEPROM_ADRW_EXPIRE 6       //address for stored catch history expire duration
+    #define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
+    #define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
+    #define EEPROM_SETTINGS_SIZE 16
+    #define COMMS_MONITOR_TIME_MS 5000 //I2C communications monitor grace/trigger time
+#else
+    #define I2C_ADDR 0;
+    #define STATUS_LED_ONSTATE LOW
+    #define STATUS_LED_OFFSTATE HIGH
+    #if STM32_SERIALUSB_FLAG
+    #define SERIALCOM SerialUSB
+    #else
+    #define SERIALCOM Serial
+    #endif
+#endif
 
 // dummy macro
 #define LOG_ERROR(...)
 
-Message i2cMessage(RssiReceivers::rssiRxs), serialMessage(RssiReceivers::rssiRxs);
+uint8_t i2cSlaveAddress = I2C_ADDR;
+Message serialMessage(RssiReceivers::rssiRxs);
 
-// Defines for fast ADC reads
-#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#if !STM32_MODE_FLAG
+    Message i2cMessage(RssiReceivers::rssiRxs);
 
-void i2cInitialize(bool delayFlag);
-void i2cReceive(int byteCount);
-bool i2cReadAndValidateIoBuffer(byte expectedSize);
-void i2cTransmit();
+    // Defines for fast ADC reads
+    #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+    #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
-#if (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
+    void i2cInitialize(bool delayFlag);
+    void i2cReceive(int byteCount);
+    bool i2cReadAndValidateIoBuffer(byte expectedSize);
+    void i2cTransmit();
+
+#elif STM32_SERIALUSB_FLAG
+    void serialEvent();
+#endif
+
+static void initSettings(int nIdx, Settings& settings);
+static void initRxModule(int nIdx, RxModule& rx);
+#if STM32_MODE_FLAG
+static int rx5808SelPinForNodeIndex(int nIdx);
+static int rssiInputPinForNodeIndex(int nIdx);
+#endif
+
+#if (!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))
 // Configure the I2C address based on input-pin level.
 void configI2cSlaveAddress()
 {
@@ -121,19 +152,14 @@ void configI2cSlaveAddress()
         i2cSlaveAddress = 8 + (i2cSlaveAddress * 2);
     }
 }
-#endif  // (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
+#endif  // (!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))
 
 // Initialize program
 void setup()
 {
-    // initialize pins for RX5808 module communications
-    pinMode(RX5808_SEL_PIN, OUTPUT);
-    pinMode(RX5808_DATA_PIN, OUTPUT);
-    pinMode(RX5808_CLK_PIN, OUTPUT);
-    digitalWrite(RX5808_SEL_PIN, HIGH);
-    digitalWrite(RX5808_DATA_PIN, LOW);
-    digitalWrite(RX5808_CLK_PIN, LOW);
+    pinMode(LED_BUILTIN, OUTPUT);
 
+#if !STM32_MODE_FLAG
     // init pin used to reset paired Arduino via RESET_PAIRED_NODE command
     pinMode(NODE_RESET_PIN, INPUT_PULLUP);
 
@@ -146,47 +172,46 @@ void setup()
     delay(100);  // delay a bit a let pin level settle before reading input
 #endif
 
-    if (digitalRead(DISABLE_SERIAL_PIN) == HIGH)
-    {
-        Serial.begin(SERIAL_BAUD_RATE);  // Start serial interface
-        while (!Serial) {};  // Wait for the Serial port to initialize
-    }
-
     i2cInitialize(false);  // setup I2C slave address and callbacks
 
     // set ADC prescaler to 16 to speedup ADC readings
     sbi(ADCSRA, ADPS2);
     cbi(ADCSRA, ADPS1);
     cbi(ADCSRA, ADPS0);
+#endif
+
+#if !STM32_MODE_FLAG
+    if (digitalRead(DISABLE_SERIAL_PIN) == HIGH)
+#endif
+    {
+        SERIALCOM.begin(SERIAL_BAUD_RATE);  // Start serial interface
+        while (!SERIALCOM) {
+            ;  // Wait for the Serial port to initialize
+        }
+    }
 
     // if EEPROM-check value matches then read stored values
     for (int i=0; i<RssiReceivers::rssiRxs->getCount(); i++) {
-      Settings& settings = RssiReceivers::rssiRxs->getSettings(i);
-      int offset = i*EEPROM_SETTINGS_SIZE;
-      if (eepromReadWord(offset + EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
-      {
-          settings.vtxFreq = eepromReadWord(offset + EEPROM_ADRW_RXFREQ);
-          settings.enterAtLevel = eepromReadWord(offset + EEPROM_ADRW_ENTERAT);
-          settings.exitAtLevel = eepromReadWord(offset + EEPROM_ADRW_EXITAT);
-      }
-      else
-      {    // if no match then initialize EEPROM values
-          eepromWriteWord(offset + EEPROM_ADRW_RXFREQ, settings.vtxFreq);
-          eepromWriteWord(offset + EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
-          eepromWriteWord(offset + EEPROM_ADRW_EXITAT, settings.exitAtLevel);
-          eepromWriteWord(offset + EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
-      }
+        RxModule& rx = RssiReceivers::rssiRxs->getRxModule(i);
+        initRxModule(i, rx);
+        while (!rx.reset()) {
+            ;
+        }
 
-      RxModule& rx = RssiReceivers::rssiRxs->getRxModule(i);
-      rx.reset(); 
-      if (settings.vtxFreq == 1111) // frequency value to power down rx module
-      {
-          rx.powerDown();
-      }
-      else
-      {
-          rx.setFrequency(settings.vtxFreq);  // Setup rx module to default frequency
-      }
+        Settings& settings = RssiReceivers::rssiRxs->getSettings(i);
+        initSettings(i, settings);
+        if (settings.vtxFreq == 1111) // frequency value to power down rx module
+        {
+            while (!rx.powerDown()) {
+                ;
+            }
+        }
+        else
+        {
+            while (!rx.setFrequency(settings.vtxFreq)) {  // Setup rx module to default frequency
+                ;
+            }
+        }
     }
 
     RssiReceivers::rssiRxs->start();
@@ -201,7 +226,7 @@ void setStatusLed(bool onFlag)
         if (!currentStatusLedFlag)
         {
             currentStatusLedFlag = true;
-            digitalWrite(LED_BUILTIN, HIGH);
+            digitalWrite(LED_BUILTIN, STATUS_LED_ONSTATE);
         }
     }
     else
@@ -209,13 +234,16 @@ void setStatusLed(bool onFlag)
         if (currentStatusLedFlag)
         {
             currentStatusLedFlag = false;
-            digitalWrite(LED_BUILTIN, LOW);
+            digitalWrite(LED_BUILTIN, STATUS_LED_OFFSTATE);
         }
     }
 }
 
-static bool commsMonitorEnabledFlag = false;
-static mtime_t commsMonitorLastResetTime = 0;
+static uint8_t currentStatusFlags = 0;
+#if !STM32_MODE_FLAG
+static bool i2cMonitorEnabledFlag = false;
+static mtime_t i2cMonitorLastResetTime = 0;
+#endif
 
 // Main loop
 void loop()
@@ -234,14 +262,20 @@ void loop()
         Settings& settings = rssiNode.getSettings();
         RxModule& rx = RssiReceivers::rssiRxs->getRxModule(cmdRssiNodeIndex);
 
-        uint8_t changeFlags;
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            changeFlags = settingChangedFlags;
-            settingChangedFlags &= COMM_ACTIVITY;  // clear all except COMM_ACTIVITY
+            currentStatusFlags |= cmdStatusFlags;
+            cmdStatusFlags = 0;
         }
-        bool oldActFlag = state.activatedFlag;
-        if (changeFlags & FREQ_SET)
+
+        // allow READ_LAP_STATS command to activate operations
+        //  so they will resume after node or I2C bus reset
+        if (!state.activatedFlag && (currentStatusFlags & LAPSTATS_READ))
+        {
+            state.activatedFlag = true;
+        }
+
+        if (currentStatusFlags & FREQ_SET)
         {
             uint16_t newVtxFreq;
             ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -250,7 +284,11 @@ void loop()
             }
             if (newVtxFreq == 1111) // frequency value to power down rx module
             {
-                rx.powerDown();
+                if (rx.isPoweredDown() || rx.powerDown())
+                {
+                    currentStatusFlags &= ~FREQ_SET;
+                }
+                state.activatedFlag = false;
             }
             else
             {
@@ -258,48 +296,69 @@ void loop()
                 {
                     rx.reset();
                 }
-                rx.setFrequency(newVtxFreq);
+                if (!rx.isPoweredDown() && rx.setFrequency(newVtxFreq))
+                {
+                    currentStatusFlags &= ~FREQ_SET;
+                }
+                state.activatedFlag = true;
             }
-            
-            state.activatedFlag = true;
 
-            if (changeFlags & FREQ_CHANGED)
+            if (currentStatusFlags & FREQ_CHANGED)
             {
+#if !STM32_MODE_FLAG
                 eepromWriteWord(EEPROM_ADRW_RXFREQ, newVtxFreq);
+#endif
                 rssiNode.resetState();  // restart rssi peak tracking for node
+                currentStatusFlags &= ~FREQ_CHANGED;
             }
         }
 
-        // also allow READ_LAP_STATS command to activate operations
-        //  so they will resume after node or I2C bus reset
-        if (!state.activatedFlag && (changeFlags & LAPSTATS_READ))
-            state.activatedFlag = true;
-
-        if (commsMonitorEnabledFlag)
+#if !STM32_MODE_FLAG
+        if (state.activatedFlag)
         {
-            if (changeFlags & COMM_ACTIVITY)
-            {  //communications activity detected; update comms monitor time
-                commsMonitorLastResetTime = ms;
+            if (i2cMonitorEnabledFlag)
+            {
+                if ((currentStatusFlags & COMM_ACTIVITY) && (currentStatusFlags & SERIAL_CMD_MSG) == 0)
+                {  //I2C communications activity detected; update comms monitor time
+                    i2cMonitorLastResetTime = ms;
+                }
+                else if (ms - i2cMonitorLastResetTime > COMMS_MONITOR_TIME_MS)
+                {  //too long since last communications activity detected
+                    i2cMonitorEnabledFlag = false;
+                    // redo init, which should release I2C pins (SDA & SCL) if "stuck"
+                    i2cInitialize(true);
+                }
             }
-            else if (ms - commsMonitorLastResetTime > COMMS_MONITOR_TIME_MS)
-            {  //too long since last communications activity detected
-                commsMonitorEnabledFlag = false;
-                // redo init, which should release I2C pins (SDA & SCL) if "stuck"
-                i2cInitialize(true);
+            else if ((currentStatusFlags & LAPSTATS_READ) &&
+                    (currentStatusFlags & SERIAL_CMD_MSG) == 0)
+            {  //if activated and I2C LAPSTATS_READ cmd received then enable comms monitor
+                i2cMonitorEnabledFlag = true;
+                i2cMonitorLastResetTime = ms;
             }
         }
-        else if (oldActFlag && (changeFlags & LAPSTATS_READ) &&
-                (changeFlags & SERIAL_CMD_MSG) == (uint8_t)0)
-        {  //if activated and I2C LAPSTATS_READ cmd received then enable comms monitor
-            commsMonitorEnabledFlag = true;
-            commsMonitorLastResetTime = ms;
+        else if (i2cMonitorEnabledFlag)
+        {
+            i2cMonitorEnabledFlag = false;
         }
+#endif
+        currentStatusFlags &= ~LAPSTATS_READ;
+        currentStatusFlags &= ~SERIAL_CMD_MSG;
 
-        if (changeFlags & ENTERAT_CHANGED)
+        if (currentStatusFlags & ENTERAT_CHANGED)
+        {
+#if !STM32_MODE_FLAG
             eepromWriteWord(EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
+#endif
+            currentStatusFlags &= ~ENTERAT_CHANGED;
+        }
 
-        if (changeFlags & EXITAT_CHANGED)
+        if (currentStatusFlags & EXITAT_CHANGED)
+        {
+#if !STM32_MODE_FLAG
             eepromWriteWord(EEPROM_ADRW_EXITAT, settings.exitAtLevel);
+#endif
+            currentStatusFlags &= ~EXITAT_CHANGED;
+        }
 
         // Status LED
         if (ms <= 1000)
@@ -312,18 +371,23 @@ void loop()
 
             // if crossing or communications activity then LED on
             if (crossingFlag)
-                setStatusLed(true);
-            else if (changeFlags & COMM_ACTIVITY)
             {
                 setStatusLed(true);
-                settingChangedFlags = 0;  // clear COMM_ACTIVITY flag
+            }
+            else if (currentStatusFlags & COMM_ACTIVITY)
+            {
+                setStatusLed(true);
+                currentStatusFlags &= ~COMM_ACTIVITY;  // clear COMM_ACTIVITY flag
             }
             else
+            {
                 setStatusLed(ms % 2000 == 0);  // blink
+            }
         }
     }
 }
 
+#if !STM32_MODE_FLAG
 void i2cInitialize(bool delayFlag)
 {
     setStatusLed(true);
@@ -419,6 +483,7 @@ void i2cTransmit()
         i2cMessage.buffer.size = 0;
     }
 }
+#endif
 
 void serialEvent()
 {
@@ -466,4 +531,152 @@ void serialEvent()
         }
     }
 }
+
+
+#if STM32_MODE_FLAG
+void initSettings(int nIdx, Settings& settings)
+{
+}
+
+void initRxModule(int nIdx, RxModule& rx)
+{
+    uint16_t dataPin = PB3;  //DATA (CH1) output line to (all) RX5808 modules
+    uint16_t clkPin = PB4;   //CLK (CH3) output line to (all) RX5808 modules
+    uint16_t selPin = rx5808SelPinForNodeIndex(nIdx);  //SEL (CH2) output line to RX5808 module
+    uint16_t rssiPin = rssiInputPinForNodeIndex(nIdx); //RSSI input from RX5808
+    rx.init(dataPin, clkPin, selPin, rssiPin);
+}
+
+int rx5808SelPinForNodeIndex(int nIdx)
+{
+    switch (nIdx)
+    {
+        case 1:
+            return PB7;
+        case 2:
+            return PB8;
+        case 3:
+            return PB9;
+        case 4:
+            return PB12;
+        case 5:
+            return PB13;
+        case 6:
+            return PB14;
+        case 7:
+            return PB15;
+        default:
+            return PB6;
+    }
+}
+
+int rssiInputPinForNodeIndex(int nIdx)
+{
+    switch (nIdx)
+    {
+        case 1:
+            return A1;
+        case 2:
+            return A2;
+        case 3:
+            return A3;
+        case 4:
+            return A4;
+        case 5:
+            return A5;
+        case 6:
+            return A6;
+        case 7:
+            return A7;
+        default:
+            return A0;
+    }
+}
+
+// address for STM32 bootloader
+#if defined(STM32F1)
+#define BOOTLOADER_ADDRESS 0x1FFFF000
+#else
+#define BOOTLOADER_ADDRESS 0x1FFF0000
+#endif
+
+// Jump to STM32 built-in bootloader; based on code from
+//  https://stm32f4-discovery.net/2017/04/tutorial-jump-system-memory-software-stm32
+void doJumpToBootloader()
+{
+    volatile uint32_t addr = BOOTLOADER_ADDRESS;  // STM32 built-in bootloader address
+    void (*SysMemBootJump)(void);
+
+    SERIALCOM.flush();  // flush and close down serial port
+    SERIALCOM.end();
+
+    // disable RCC, set it to default (after reset) settings; internal clock, no PLL, etc.
+#if defined(USE_HAL_DRIVER)
+    HAL_RCC_DeInit();
+#endif /* defined(USE_HAL_DRIVER) */
+#if defined(USE_STDPERIPH_DRIVER)
+    RCC_DeInit();
+#endif /* defined(USE_STDPERIPH_DRIVER) */
+
+    // disable systick timer and reset it to default values
+    SysTick->CTRL = 0;
+    SysTick->LOAD = 0;
+    SysTick->VAL = 0;
+
+    __disable_irq();  // disable all interrupts
+
+    // Remap system memory to address 0x0000 0000 in address space
+    // For each family registers may be different.
+    // Check reference manual for each family.
+    // For STM32F4xx, MEMRMP register in SYSCFG is used (bits[1:0])
+    // For STM32F0xx, CFGR1 register in SYSCFG is used (bits[1:0])
+    // For others, check family reference manual
+#if defined(STM32F4)
+    SYSCFG->MEMRMP = 0x01;
+#endif
+#if defined(STM32F0)
+    SYSCFG->CFGR1 = 0x01;
+#endif
+
+     //Set jump memory location for system memory
+     // Use address with 4 bytes offset which specifies jump location where program starts
+    SysMemBootJump = (void (*)(void)) (*((uint32_t *)(addr + 4)));
+
+    // Set main stack pointer
+    // (This step must be done last otherwise local variables in this function
+    // don't have proper value since stack pointer is located on different position
+    // Set direct address location which specifies stack pointer in SRAM location)
+    __set_MSP(*(uint32_t *)addr);  // @suppress("Invalid arguments")
+
+    SysMemBootJump();  // do jump to bootloader in system memory
+}
+
+#else
+void initSettings(int nIdx, Settings& settings)
+{
+    int offset = nIdx*EEPROM_SETTINGS_SIZE;
+    if (eepromReadWord(offset + EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
+    {
+        settings.vtxFreq = eepromReadWord(offset + EEPROM_ADRW_RXFREQ);
+        settings.enterAtLevel = eepromReadWord(offset + EEPROM_ADRW_ENTERAT);
+        settings.exitAtLevel = eepromReadWord(offset + EEPROM_ADRW_EXITAT);
+    }
+    else
+    {    // if no match then initialize EEPROM values
+        eepromWriteWord(offset + EEPROM_ADRW_RXFREQ, settings.vtxFreq);
+        eepromWriteWord(offset + EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
+        eepromWriteWord(offset + EEPROM_ADRW_EXITAT, settings.exitAtLevel);
+        eepromWriteWord(offset + EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
+    }
+}
+
+void initRxModule(int nIdx, RxModule& rx)
+{
+    uint16_t dataPin = RX5808_DATA_PIN;  //DATA (CH1) output line to RX5808 module
+    uint16_t clkPin = RX5808_CLK_PIN;    //SEL (CH2) output line to RX5808 module
+    uint16_t selPin = RX5808_SEL_PIN;    //CLK (CH3) output line to RX5808 module
+    uint16_t rssiPin = RSSI_INPUT_PIN;   //RSSI input from RX5808
+    rx.init(dataPin, clkPin, selPin, rssiPin);
+}
+#endif
 #endif

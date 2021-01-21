@@ -1,6 +1,8 @@
 #include "config.h"
 #include "rssi.h"
 
+#define MIN_TUNETIME 35  // after set freq need to wait this long before read RSSI
+
 inline void initExtremum(Extremum& e, rssi_t rssi, mtime_t ts)
 {
     e.rssi = rssi;
@@ -8,7 +10,7 @@ inline void initExtremum(Extremum& e, rssi_t rssi, mtime_t ts)
     e.duration = 0;
 }
 
-RssiNode::RssiNode()
+RssiNode::RssiNode() : defaultFilter(lpfFilter1, lpfFilter2, medianFilter)
 {
     setFilter(&defaultFilter);
 }
@@ -32,11 +34,25 @@ void RssiNode::resetState()
 {
     state.reset();
     history.reset();
+    needsToSettle = true;
+    lastResetTimeMs = millis();
 }
 
-bool RssiNode::process(rssi_t rssi, mtime_t millis)
+bool RssiNode::process(rssi_t rssi, mtime_t ms)
 {
-    filter->addRawValue(millis, rssi);
+    if (needsToSettle)
+    {  // check if RSSI is stable after tune
+        if (millis() - lastResetTimeMs < MIN_TUNETIME)
+        {
+            return false;  // wait until after-tune-delay time is fulfilled
+        }
+        else
+        {
+            needsToSettle = false;  // don't need to check again until next freq change
+        }
+    }
+
+    filter->addRawValue(ms, rssi);
 
     if (filter->isFilled() && state.activatedFlag)
     {  //don't start operations until after first WRITE_FREQUENCY command is received

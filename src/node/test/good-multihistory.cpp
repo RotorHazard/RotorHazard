@@ -72,6 +72,7 @@ unittest(historyBuffer_multi1_withoutReads) {
   history.setSendBuffers(&testPeakBuffer1, &testNadirBuffer1);
   rssiNode.start();
   rssiNode.resetState();
+  nano->micros += 40000; // settle time
 
   state.activatedFlag = true;
 
@@ -143,6 +144,7 @@ unittest(historyBuffer_multi1_withReads) {
   history.setSendBuffers(&testPeakBuffer1, &testNadirBuffer1);
   rssiNode.start();
   rssiNode.resetState();
+  nano->micros += 40000; // settle time
 
   state.activatedFlag = true;
 
