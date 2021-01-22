@@ -5501,7 +5501,7 @@ if len(sys.argv) > 0 and CMDARG_JUMP_TO_BL_STR in sys.argv:
 CLUSTER = ClusterNodeSet()
 hasMirrors = False
 try:
-    for index, secondary_info in enumerate(Config.GENERAL['Secondaries']):
+    for index, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
         if isinstance(secondary_info, string_types):
             secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
         if 'address' not in secondary_info:
