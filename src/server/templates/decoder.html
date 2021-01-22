@@ -219,23 +219,23 @@
 			});
 			socket.on('cluster_status', function (msg) {
 				cluster_table_html = '';
-				if (msg.slaves && msg.slaves.length > 0) {
+				if (msg.secondaries && msg.secondaries.length > 0) {
 					cluster_table_html += '<tr><th style="text-align:center">' + __('Address') + '</th><th>' + __('Latency:') + '</th><th>' + __('min') + '</th><th>' + __('avg') + '</th><th>' + __('max') + '</th><th>' + __('last') + '</th><th>' + __('Disconns') + '</th><th>' + __('Contacts') + '</th><th>' + __('TimeDiff') + '</th><th>' + __('UpSecs') + '</th><th>' + __('DownSecs') + '</th><th>' + __('Avail') + '</th><th>' + __('LastContact') + '</th></tr>';
-					for (i=0; i < msg.slaves.length; i++) {
+					for (i=0; i < msg.secondaries.length; i++) {
 						cluster_table_html += '<tr>';
-						cluster_table_html += '<td style="text-align:center"><a href="' + msg.slaves[i].address + '">' + msg.slaves[i].address + '</a></td>';
+						cluster_table_html += '<td style="text-align:center"><a href="' + msg.secondaries[i].address + '">' + msg.secondaries[i].address + '</a></td>';
 						cluster_table_html += '<td style="text-align:center"> </td>';
-						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].minLatencyMs + '</td>';
-						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].avgLatencyMs + '</td>';
-						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].maxLatencyMs + '</td>';
-						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].lastLatencyMs + '</td>';
-						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numDisconnects + '</td>';
-						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].numContacts + '</td>';
-						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].timeDiffMs + '</td>';
-						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].upTimeSecs + '</td>';
-						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].downTimeSecs + '</td>';
-						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].availability + '%</td>';
-						cluster_table_html += '<td style="text-align:center">' + msg.slaves[i].last_contact + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.secondaries[i].minLatencyMs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.secondaries[i].avgLatencyMs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.secondaries[i].maxLatencyMs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.secondaries[i].lastLatencyMs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.secondaries[i].numDisconnects + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.secondaries[i].numContacts + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.secondaries[i].timeDiffMs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.secondaries[i].upTimeSecs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.secondaries[i].downTimeSecs + '</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.secondaries[i].availability + '%</td>';
+						cluster_table_html += '<td style="text-align:center">' + msg.secondaries[i].last_contact + '</td>';
 						cluster_table_html += '</tr>';
 					}
 				}

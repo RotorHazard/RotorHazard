@@ -1,16 +1,16 @@
 # Cluster
 
-Zusätzliche RotorHazard-Zeitgeber können als "Slave" -Einheiten angeschlossen werden, die über ihre Netzwerkverbindung (d. H. WiFi) verbunden sind. Der Standardmodus ist "Split" (für Split-Timing), wodurch mehrere Timer auf der Strecke platziert werden können, um Zwischenrundenzeiten zu erhalten. Es wird auch ein "Spiegel" -Modus unterstützt, in dem der Slave-Timer die Aktionen des Masters spiegelt (z. B. als "Nur-LED" -Timer, der die Aktionen des Masters anzeigt).
+Zusätzliche RotorHazard-Zeitgeber können als "secundario" -Einheiten angeschlossen werden, die über ihre Netzwerkverbindung (d. H. WiFi) verbunden sind. Der Standardmodus ist "Split" (für Split-Timing), wodurch mehrere Timer auf der Strecke platziert werden können, um Zwischenrundenzeiten zu erhalten. Es wird auch ein "Spiegel" -Modus unterstützt, in dem der Secondary-Timer die Aktionen des Primarys spiegelt (z. B. als "Nur-LED" -Timer, der die Aktionen des Primarys anzeigt).
 
 ### Konfiguration
 
-Zusätzliche Timer können (in 'src/server/config.json') unter "ALLGEMEIN" mit einem "SLAVES" -Eintrag konfiguriert werden, der ein Array von IP-Adressen der Slave-Timer in der Spurreihenfolge enthält.
+Zusätzliche Timer können (in 'src/server/config.json') unter "ALLGEMEIN" mit einem "SECONDARIES" -Eintrag konfiguriert werden, der ein Array von IP-Adressen der Secondary-Timer in der Spurreihenfolge enthält.
 
 ```
 {
 	"GENERAL": {
 		... ,
-		"SLAVES": ["192.168.1.2:5000", "192.168.1.3:5000"]
+		"SECONDARIES": ["192.168.1.2:5000", "192.168.1.3:5000"]
 	}
 }
 ```
@@ -21,20 +21,20 @@ Zusätzliche Optionen können konfiguriert werden, zum Beispiel:
 {
 	"GENERAL": {
 		... ,
-		"SLAVES": [{"address": "192.168.1.2:5000", "mode": "split", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
-		"SLAVE_TIMEOUT": 10
+		"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "split", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
+		"SECONDARY_TIMEOUT": 10
 	}
 }
 ```
 
-* "Adresse": Die IP-Adresse und der Port für den Slave-Timer.
+* "Adresse": Die IP-Adresse und der Port für den Secondary-Timer.
 * "Modus": Der Modus für den Timer (entweder "Timer" oder "Spiegel").
 * "Entfernung": Die Entfernung vom vorherigen Tor (zur Berechnung der Geschwindigkeit).
 * "queryInterval": Anzahl der Sekunden zwischen Heartbeat- / Abfragenachrichten (Standard 10).
-* "recEventsFlag": Setzen Sie 'true', um Timer-Ereignisse vom Master aus zu übertragen (Standard 'false' für "split" -Timer, 'true' für "Mirror" -Timer).
-* "SLAVE_TIMEOUT": Maximale Anzahl von Sekunden, die auf den Verbindungsaufbau gewartet werden soll.
+* "recEventsFlag": Setzen Sie 'true', um Timer-Ereignisse vom Primary aus zu übertragen (Standard 'false' für "split" -Timer, 'true' für "Mirror" -Timer).
+* "SECONDARY_TIMEOUT": Maximale Anzahl von Sekunden, die auf den Verbindungsaufbau gewartet werden soll.
 
-Der Wert "Adresse" kann mit Sternchen-Platzhalterzeichen angegeben werden. Wenn die IP-Adresse des 'Master'-Timers beispielsweise "192.168.0.11" lautet: `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
+Der Wert "Adresse" kann mit Sternchen-Platzhalterzeichen angegeben werden. Wenn die IP-Adresse des 'Primary'-Timers beispielsweise "192.168.0.11" lautet: `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
 
 ### Uhrensynchronisation
 
@@ -46,14 +46,14 @@ Auf allen Timern:
 sudo apt-get install ntp
 ```
 
-Bearbeiten Sie auf dem Master /etc/npd.conf und fügen Sie ähnliche Zeilen hinzu:
+Bearbeiten Sie auf dem Primary /etc/npd.conf und fügen Sie ähnliche Zeilen hinzu:
 
 ```
 broadcast 192.168.123.255
 restrict 192.168.123.0 mask 255.255.255.0
 ```
 
-Bearbeiten Sie auf den Slaves /etc/npd.conf und fügen Sie ähnliche Zeilen hinzu:
+Bearbeiten Sie auf den secundario /etc/npd.conf und fügen Sie ähnliche Zeilen hinzu:
 
 ```
 server 192.168.123.1
@@ -89,9 +89,9 @@ sudo service rng-tools restart
 
 ### Anmerkungen
 
-Verpasste / falsche Zwischenzeiten haben keinen Einfluss auf die Aufzeichnung der Rundenzeiten durch den Master-Timer.
+Verpasste / falsche Zwischenzeiten haben keinen Einfluss auf die Aufzeichnung der Rundenzeiten durch den Primary-Timer.
 
-Informationen zum Aktivieren der Ankündigung von Zwischenzeiten finden Sie in der Option "*Cluster / Split Timer*" auf der Seite *Einstellungen* im Abschnitt *Audiosteuerung*. Um Audioanzeigen zu aktivieren, wann ein Cluster- / Slave-Timer eine Verbindung herstellt und trennt, aktivieren Sie das Kontrollkästchen "*Cluster-Timer verbinden / trennen*" unter "*Anzeigetöne*". (Beachten Sie, dass diese Optionen nur sichtbar sind, wenn ein Cluster-Timer angeschlossen ist.)
+Informationen zum Aktivieren der Ankündigung von Zwischenzeiten finden Sie in der Option "*Cluster / Split Timer*" auf der Seite *Einstellungen* im Abschnitt *Audiosteuerung*. Um Audioanzeigen zu aktivieren, wann ein Cluster- / Secondary-Timer eine Verbindung herstellt und trennt, aktivieren Sie das Kontrollkästchen "*Cluster-Timer verbinden / trennen*" unter "*Anzeigetöne*". (Beachten Sie, dass diese Optionen nur sichtbar sind, wenn ein Cluster-Timer angeschlossen ist.)
 
 Der Status der verbundenen Cluster-Timer kann auf der Seite *Einstellungen* im Abschnitt *System* angezeigt werden. (Diese Statusinformationen sind auch auf der Seite *Ausführen* verfügbar.) Die folgenden Elemente werden angezeigt:
 
@@ -100,15 +100,15 @@ Der Status der verbundenen Cluster-Timer kann auf der Seite *Einstellungen* im A
 * *Latenz: min avg max last* - Netzwerklatenz (in Millisekunden) für Heartbeat- / Abfragenachrichten
 * *Disconns* - Häufigkeit, mit der der Cluster-Timer getrennt wurde
 * *Kontakte* - Anzahl der Netzwerkkontakte mit dem Cluster-Timer
-* *TimeDiff* - Zeitdifferenz (in Millisekunden) zwischen Systemuhren auf Master- und Cluster-Timer
+* *TimeDiff* - Zeitdifferenz (in Millisekunden) zwischen Systemuhren auf Primary- und Cluster-Timer
 * *UpSecs* - Anzahl der Sekunden, in denen der Cluster-Timer verbunden wurde
 * *DownSecs* - Anzahl der Sekunden, in denen der Cluster-Timer getrennt wurde
 * *Verfügbar* - Verfügbarkeitsbewertung (in Prozent) für den Cluster-Timer
 * *LastContact* - Zeit (in Sekunden) seit dem letzten Kontakt mit dem Timer oder eine Statusmeldung
 
-Bei normalem Betrieb werden die Rundenverlaufsdaten nicht auf den Slave-Timern gespeichert. Um die Rundenverlaufsdaten anzuzeigen und das Marshalling für einen Slave-Timer durchzuführen, klicken Sie auf die Schaltfläche '*Runden speichern*' am Slave-Timer, bevor das Rennen auf dem Master gespeichert oder verworfen wird, und wechseln Sie dann zur Seite *Marschall* des Slaves Timer.
+Bei normalem Betrieb werden die Rundenverlaufsdaten nicht auf den Secondary-Timern gespeichert. Um die Rundenverlaufsdaten anzuzeigen und das Marshalling für einen Secondary-Timer durchzuführen, klicken Sie auf die Schaltfläche '*Runden speichern*' am Secondary-Timer, bevor das Rennen auf dem Primary gespeichert oder verworfen wird, und wechseln Sie dann zur Seite *Marschall* des Secondary Timer.
 
-Ein Slave kann auch ein Master sein, aber Sub-Splits werden nicht nach oben weitergegeben.
+Ein secundario kann auch ein Primary sein, aber Sub-Splits werden nicht nach oben weitergegeben.
 
 Wenn Sie einen Wi-Fi-basierten Cluster verwenden möchten, finden Sie Anweisungen zum Einrichten eines Zugangspunkts (Wi-Fi-Hotspot) unter
 [https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md](https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md).

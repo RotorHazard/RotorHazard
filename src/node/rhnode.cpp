@@ -40,7 +40,7 @@
 // i2c address for node
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
-uint8_t i2cSlaveAddress = 6 + (NODE_NUMBER * 2);
+uint8_t i2cAddress = 6 + (NODE_NUMBER * 2);
 #define SERIALCOM Serial
 #define STATUS_LED_ONSTATE HIGH
 #define STATUS_LED_OFFSTATE LOW
@@ -86,7 +86,7 @@ void serialEvent();
 
 #if (!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))
 // Configure the I2C address based on input-pin level.
-void configI2cSlaveAddress()
+void configI2cAddress()
 {
     // current hardware selection
     pinMode(HARDWARE_SELECT_PIN_1, INPUT_PULLUP);
@@ -111,36 +111,36 @@ void configI2cSlaveAddress()
         if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_1) == HIGH)
         {
             if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == LOW)
-                i2cSlaveAddress = 8;
+                i2cAddress = 8;
             else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == LOW)
-                i2cSlaveAddress = 10;
+                i2cAddress = 10;
             else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == LOW)
-                i2cSlaveAddress = 12;
+                i2cAddress = 12;
             else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == LOW)
-                i2cSlaveAddress = 14;
+                i2cAddress = 14;
         }
         else
         {
             if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_2) == LOW)
-                i2cSlaveAddress = 16;
+                i2cAddress = 16;
             else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_3) == LOW)
-                i2cSlaveAddress = 18;
+                i2cAddress = 18;
             else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_4) == LOW)
-                i2cSlaveAddress = 20;
+                i2cAddress = 20;
             else if (digitalRead(LEGACY_HARDWARE_SELECT_PIN_5) == LOW)
-                i2cSlaveAddress = 22;
+                i2cAddress = 22;
         }
     }
     else
     {   // use standard selection
-        i2cSlaveAddress = 0;
+        i2cAddress = 0;
         if (digitalRead(HARDWARE_SELECT_PIN_1) == LOW)
-            i2cSlaveAddress |= 1;
+            i2cAddress |= 1;
         if (digitalRead(HARDWARE_SELECT_PIN_2) == LOW)
-            i2cSlaveAddress |= 2;
+            i2cAddress |= 2;
         if (digitalRead(HARDWARE_SELECT_PIN_3) == LOW)
-            i2cSlaveAddress |= 4;
-        i2cSlaveAddress = 8 + (i2cSlaveAddress * 2);
+            i2cAddress |= 4;
+        i2cAddress = 8 + (i2cAddress * 2);
     }
 }
 #endif  // (!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))
@@ -194,7 +194,7 @@ void setup()
     pinMode(DISABLE_SERIAL_PIN, INPUT_PULLUP);
 
 #if (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
-    configI2cSlaveAddress();
+    configI2cAddress();
 #else
     delay(100);  // delay a bit a let pin level settle before reading input
 #endif
@@ -205,7 +205,7 @@ void setup()
         while (!Serial) {};  // Wait for the Serial port to initialize
     }
 
-    i2cInitialize(false);  // setup I2C slave address and callbacks
+    i2cInitialize(false);  // setup I2C address and callbacks
 
     // set ADC prescaler to 16 to speedup ADC readings
     sbi(ADCSRA, ADPS2);
@@ -388,20 +388,20 @@ void i2cInitialize(bool delayFlag)
         delay(250);  //  to help bus reset and show longer LED flash
     setStatusLed(false);
 
-    Wire.begin(i2cSlaveAddress);  // I2C slave address setup
+    Wire.begin(i2cAddress);  // I2C address setup
     Wire.onReceive(i2cReceive);   // Trigger 'i2cReceive' function on incoming data
     Wire.onRequest(i2cTransmit);  // Trigger 'i2cTransmit' function for outgoing data, on master request
 
 #if !STM32_MODE_FLAG
-    TWAR = (i2cSlaveAddress << 1) | 1;  // enable broadcasts to be received
+    TWAR = (i2cAddress << 1) | 1;  // enable broadcasts to be received
 #endif
 }
 
-// Function called by twi interrupt service when master sends information to the slave
+// Function called by twi interrupt service when master sends information to the node
 // or when master sets up a specific read request
 void i2cReceive(int byteCount)
 {  // Number of bytes in rx buffer
-   // If byteCount is zero, the master only checked for presence of the slave device, no response necessary
+   // If byteCount is zero, the master only checked for presence of the node device, no response necessary
     if (byteCount == 0)
     {
         LOG_ERROR("no bytes to receive?");
@@ -416,7 +416,7 @@ void i2cReceive(int byteCount)
     i2cMessage.command = Wire.read();  // The first byte sent is a command byte
 
     if (i2cMessage.command > 0x50)
-    {  // Commands > 0x50 are writes TO this slave
+    {  // Commands > 0x50 are writes TO this node
         byte expectedSize = i2cMessage.getPayloadSize();
         if (expectedSize > 0 && i2cReadAndValidateIoBuffer(expectedSize))
         {
@@ -464,7 +464,7 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize)
     }
 }
 
-// Function called by twi interrupt service when the Master wants to get data from the Slave
+// Function called by twi interrupt service when the Master wants to get data from the node
 // No parameters and no returns
 // A transmit buffer (ioBuffer) is populated with the data before sending.
 void i2cTransmit()
@@ -490,7 +490,7 @@ void serialEvent()
             // new command
             serialMessage.command = nextByte;
             if (serialMessage.command > 0x50)
-            {  // Commands > 0x50 are writes TO this slave
+            {  // Commands > 0x50 are writes TO this node
                 byte expectedSize = serialMessage.getPayloadSize();
                 if (expectedSize > 0)
                 {
