@@ -1,6 +1,6 @@
 ﻿# Racimo
 
-Se pueden conectar cronos RotorHazard adicionales como unidades "secondary", interconectadas a través de su conexión de red (es decir, WiFi). El modo predeterminado es 'temporizador' (para tiempo dividido), que permite colocar múltiples temporizadores alrededor de la pista para obtener tiempos de vuelta intermedios. También se admite un modo 'espejo', en el que el temporizador secondary reflejará las acciones del maestro (por ejemplo, como un temporizador "solo LED" que muestra las acciones del maestro).
+Se pueden conectar cronos RotorHazard adicionales como unidades "secundario", interconectadas a través de su conexión de red (es decir, WiFi). El modo predeterminado es 'temporizador' (para tiempo dividido), que permite colocar múltiples temporizadores alrededor de la pista para obtener tiempos de vuelta intermedios. También se admite un modo 'espejo', en el que el temporizador secundario reflejará las acciones del maestro (por ejemplo, como un temporizador "solo LED" que muestra las acciones del maestro).
 
 ### Configuración
 
@@ -26,7 +26,7 @@ Se pueden configurar opciones adicionales, por ejemplo:
 	}
 }
 ```
-* "address": La direccion IP y puerto para el crono secondary.
+* "address": La direccion IP y puerto para el crono secundario.
 * "mode": El modo en que actuará el crono (ya sea "timer" or "mirror").
 * "distance": La distrancia desde la puerta anterior (utilizada para calcular la velocidad).
 
@@ -72,7 +72,7 @@ Luego, reinicie rng-tools con
 
 Los tiempos parciales perdidos/incorrectos no tendrán impacto en la grabación de los tiempos de vuelta contados por el crono maestro.
 
-Un secondary también puede ser un maestro, pero las sub-divisiones no se propagan hacia arriba.
+Un secundario también puede ser un maestro, pero las sub-divisiones no se propagan hacia arriba.
 
 Si desea utilizar un racimo basado en Wi-Fi, puede encontrar instrucciones para configurar un punto de acceso (punto de acceso Wi-Fi) en
 <https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md>.

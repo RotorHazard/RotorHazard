@@ -1,6 +1,6 @@
 # Cluster
 
-Zusätzliche RotorHazard-Zeitgeber können als "secundario" -Einheiten angeschlossen werden, die über ihre Netzwerkverbindung (d. H. WiFi) verbunden sind. Der Standardmodus ist "Split" (für Split-Timing), wodurch mehrere Timer auf der Strecke platziert werden können, um Zwischenrundenzeiten zu erhalten. Es wird auch ein "Spiegel" -Modus unterstützt, in dem der Secondary-Timer die Aktionen des Primarys spiegelt (z. B. als "Nur-LED" -Timer, der die Aktionen des Primarys anzeigt).
+Zusätzliche RotorHazard-Zeitgeber können als "Secondary" -Einheiten angeschlossen werden, die über ihre Netzwerkverbindung (d. H. WiFi) verbunden sind. Der Standardmodus ist "Split" (für Split-Timing), wodurch mehrere Timer auf der Strecke platziert werden können, um Zwischenrundenzeiten zu erhalten. Es wird auch ein "Spiegel" -Modus unterstützt, in dem der Secondary-Timer die Aktionen des Primarys spiegelt (z. B. als "Nur-LED" -Timer, der die Aktionen des Primarys anzeigt).
 
 ### Konfiguration
 
@@ -53,7 +53,7 @@ broadcast 192.168.123.255
 restrict 192.168.123.0 mask 255.255.255.0
 ```
 
-Bearbeiten Sie auf den secundario /etc/npd.conf und fügen Sie ähnliche Zeilen hinzu:
+Bearbeiten Sie auf den Secondary /etc/npd.conf und fügen Sie ähnliche Zeilen hinzu:
 
 ```
 server 192.168.123.1
@@ -108,7 +108,7 @@ Der Status der verbundenen Cluster-Timer kann auf der Seite *Einstellungen* im A
 
 Bei normalem Betrieb werden die Rundenverlaufsdaten nicht auf den Secondary-Timern gespeichert. Um die Rundenverlaufsdaten anzuzeigen und das Marshalling für einen Secondary-Timer durchzuführen, klicken Sie auf die Schaltfläche '*Runden speichern*' am Secondary-Timer, bevor das Rennen auf dem Primary gespeichert oder verworfen wird, und wechseln Sie dann zur Seite *Marschall* des Secondary Timer.
 
-Ein secundario kann auch ein Primary sein, aber Sub-Splits werden nicht nach oben weitergegeben.
+Ein Secondary kann auch ein Primary sein, aber Sub-Splits werden nicht nach oben weitergegeben.
 
 Wenn Sie einen Wi-Fi-basierten Cluster verwenden möchten, finden Sie Anweisungen zum Einrichten eines Zugangspunkts (Wi-Fi-Hotspot) unter
 [https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md](https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md).
