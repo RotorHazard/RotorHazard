@@ -99,11 +99,11 @@ except ValueError as ex:
 
 # Apply legacy config options for backward compatibility
 if not GENERAL['SECONDARIES']:
-    if GENERAL['SLAVES']:
+    if 'SLAVES' in GENERAL and GENERAL['SLAVES']:
         GENERAL['SECONDARIES'] = GENERAL['SLAVES']
 
 if not GENERAL['SECONDARY_TIMEOUT']:
-    if GENERAL['SLAVE_TIMEOUT']:
+    if 'SLAVE_TIMEOUT' in GENERAL and GENERAL['SLAVE_TIMEOUT']:
         GENERAL['SECONDARY_TIMEOUT'] = GENERAL['SLAVE_TIMEOUT']
 
 # Writes a log message describing the result of the module initialization.
