@@ -16,7 +16,7 @@ InitResultLogLevel = logging.INFO
 
 # Load language file
 try:
-    with open(LANGUAGE_FILE_NAME, 'r') as f:
+    with open(LANGUAGE_FILE_NAME, 'r', encoding="utf8") as f:
         Languages = json.load(f)
     InitResultStr = 'Language file imported'
     InitResultLogLevel = logging.DEBUG
