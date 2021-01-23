@@ -21,24 +21,10 @@
 
 // ******************************************************************** //
 
-// features flags for value returned by READ_RHFEAT_FLAGS command
-#define RHFEAT_STM32_MODE ((uint16_t)0x0004)      // STM 32-bit processor running multiple nodes
-#define RHFEAT_JUMPTO_BOOTLDR ((uint16_t)0x0008)  // JUMP_TO_BOOTLOADER command supported
-#define RHFEAT_IAP_FIRMWARE ((uint16_t)0x0010)    // in-application programming of firmware supported
-#define RHFEAT_NONE ((uint16_t)0)
-
 #if STM32_MODE_FLAG
-    // value returned by READ_RHFEAT_FLAGS command
-    #define RHFEAT_FLAGS_VALUE (RHFEAT_STM32_MODE | RHFEAT_JUMPTO_BOOTLDR | RHFEAT_IAP_FIRMWARE)
-
-    #define SERIAL_BAUD_RATE 921600
     #define MULTI_RHNODE_MAX 8
     #define STM32_SERIALUSB_FLAG 0  // 1 to use BPill USB port for serial link
 #else
-    // value returned by READ_RHFEAT_FLAGS command
-    #define RHFEAT_FLAGS_VALUE RHFEAT_NONE
-
-    #define SERIAL_BAUD_RATE 115200
     // Set greater than 1 to support multiple freqs per node
     #define MULTI_RHNODE_MAX 1
     // multi-freq reads

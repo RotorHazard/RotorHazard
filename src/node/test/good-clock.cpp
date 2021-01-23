@@ -1,13 +1,13 @@
 #include <ArduinoUnitTests.h>
 #include <Godmode.h>
-#include "clock.h"
+#include "microclock.h"
 
 unittest(clock_under)
 {
   GodmodeState* nano = GODMODE();
   nano->reset();
   nano->micros = 400;
-  Clock clock;
+  MicroClock clock;
   assertEqual(400, clock.tick());
   assertEqual(0, clock.millis());
   nano->micros = 1000;
@@ -20,7 +20,7 @@ unittest(clock_over)
   GodmodeState* nano = GODMODE();
   nano->reset();
   nano->micros = 1500;
-  Clock clock;
+  MicroClock clock;
   assertEqual(1500, clock.tick());
   assertEqual(1, clock.millis());
   nano->micros = 3000;
@@ -33,7 +33,7 @@ unittest(clock_rollover)
     GodmodeState* nano = GODMODE();
     nano->reset();
     nano->micros = 0xFFFFFFFF;
-    Clock clock;
+    MicroClock clock;
     assertEqual(0xFFFFFFFF, clock.tick());
     nano->micros = 1000;
     assertEqual(1001, clock.tick());

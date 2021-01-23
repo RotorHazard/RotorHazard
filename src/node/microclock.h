@@ -1,9 +1,10 @@
-#ifndef clock_h
-#define clock_h
+// NB: filename avoids conflict with stm32 clock.h
+#ifndef microclock_h
+#define microclock_h
 
 #include "util/rhtypes.h"
 
-class Clock
+class MicroClock
 {
 private:
     utime_t prevTick = 0;
@@ -17,6 +18,6 @@ public:
     mtime_t millis();
 };
 
-extern Clock usclock;
+extern MicroClock usclock;
 
 #endif

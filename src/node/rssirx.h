@@ -7,7 +7,7 @@
 
 class RssiReceivers {
 public:
-    static RssiReceivers *rssiRxs;
+    static RssiReceivers *const rssiRxs;
 
     virtual RssiNode& getRssiNode(uint8_t idx) = 0;
     virtual RxModule& getRxModule(uint8_t idx) = 0;

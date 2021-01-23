@@ -142,7 +142,7 @@ bool RssiNode::process(rssi_t rssi, mtime_t ms)
         else
         {
             // track lowest rssi seen since end of last pass
-            state.passRssiNadir = min(state.rssi, state.passRssiNadir);
+            state.passRssiNadir = min((rssi_t)state.rssi, (rssi_t)state.passRssiNadir);
         }
     }
 

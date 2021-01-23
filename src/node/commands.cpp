@@ -1,17 +1,7 @@
 #include "config.h"
-#include "clock.h"
+#include "microclock.h"
 #include "rssi.h"
 #include "commands.h"
-
-#ifdef __TEST__
-  static uint8_t i2cSlaveAddress = 0x08;
-#else
-  extern uint8_t i2cSlaveAddress;
-#endif
-
-#if STM32_MODE_FLAG
-  void doJumpToBootloader();
-#endif
 
 uint8_t cmdStatusFlags = 0;
 uint8_t cmdRssiNodeIndex = 0;
@@ -54,22 +44,6 @@ byte Message::getPayloadSize()
             size = -1;
     }
     return size;
-}
-
-// Node reset for ISP; resets other node wired to this node's reset pin
-void resetPairedNode(int pinState)
-{
-#if !STM32_MODE_FLAG
-    if (pinState)
-    {
-        pinMode(NODE_RESET_PIN, INPUT_PULLUP);
-    }
-    else
-    {
-        pinMode(NODE_RESET_PIN, OUTPUT);
-        digitalWrite(NODE_RESET_PIN, LOW);
-    }
-#endif
 }
 
 // Generic IO write command handler
@@ -131,13 +105,11 @@ void Message::handleWriteCommand(bool serialFlag)
 
         case RESET_PAIRED_NODE:  // reset paired node for ISP
             u8val = buffer.read8();
-            resetPairedNode(u8val);
+            hardware->resetPairedNode(u8val);
             break;
 
         case JUMP_TO_BOOTLOADER:  // jump to bootloader for flash update
-#if STM32_MODE_FLAG
-            doJumpToBootloader();
-#endif
+            hardware->doJumpToBootloader();
             break;
 
         default:
@@ -176,7 +148,7 @@ void Message::handleReadCommand(bool serialFlag)
     switch (command)
     {
         case READ_ADDRESS:
-            buffer.write8(i2cSlaveAddress);
+            buffer.write8(hardware->getAddress());
             break;
 
         case READ_FREQUENCY:
@@ -226,7 +198,7 @@ void Message::handleReadCommand(bool serialFlag)
             break;
 
         case READ_RHFEAT_FLAGS:   // reply with feature flags value
-            buffer.write16(RHFEAT_FLAGS_VALUE);
+            buffer.write16(hardware->getFeatureFlags());
             break;
 
         case READ_MULTINODE_COUNT:
@@ -306,5 +278,52 @@ void Message::handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal)
         ioBufferWriteRssi(buffer, 0);
         buffer.write16(0);
         buffer.write16(0);
+    }
+}
+
+void handleStreamEvent(Stream& stream, Message& msg)
+{
+    uint8_t nextByte = stream.read();
+    if (msg.buffer.size == 0)
+    {
+        // new command
+        msg.command = nextByte;
+        if (msg.command > 0x50)
+        {  // Commands > 0x50 are writes TO this slave
+            byte expectedSize = msg.getPayloadSize();
+            if (expectedSize > 0)
+            {
+                msg.buffer.index = 0;
+                msg.buffer.size = expectedSize + 1;  // include checksum byte
+            }
+        }
+        else
+        {
+            msg.handleReadCommand(true);
+
+            if (msg.buffer.size > 0)
+            {  // If there is pending data, send it
+                stream.write((byte *)msg.buffer.data, msg.buffer.size);
+                msg.buffer.size = 0;
+            }
+        }
+    }
+    else
+    {
+        // existing command
+        msg.buffer.data[msg.buffer.index++] = nextByte;
+        if (msg.buffer.index == msg.buffer.size)
+        {
+            uint8_t checksum = msg.buffer.calculateChecksum(msg.buffer.size - 1);
+            if (msg.buffer.data[msg.buffer.size - 1] == checksum)
+            {
+                msg.handleWriteCommand(true);
+            }
+            else
+            {
+                LOG_ERROR("Invalid checksum", checksum);
+            }
+            msg.buffer.size = 0;
+        }
     }
 }

@@ -1,8 +1,9 @@
-#include "clock.h"
+#include "microclock.h"
 #include "rssirx.h"
 
 #define MIN_RSSI_DETECT 5 //value for detecting node as installed
 
+#if !STM32_MODE_FLAG
 class SingleRssiReceiver : public RssiReceivers {
 private:
     RssiNode node;
@@ -80,6 +81,7 @@ public:
       return nodes[idx].process(rx.readRssi(), usclock.millis());
     };
 };
+#endif
 
 class PhysicalRssiReceivers : public RssiReceivers {
 private:
@@ -141,4 +143,4 @@ public:
     VirtualRssiReceivers defaultRssiReceivers;
     #endif
 #endif
-RssiReceivers *RssiReceivers::rssiRxs = &defaultRssiReceivers;
+RssiReceivers *const RssiReceivers::rssiRxs = &defaultRssiReceivers;

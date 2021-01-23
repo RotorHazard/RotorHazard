@@ -1,8 +1,10 @@
 #ifndef commands_h
 #define commands_h
 
+#include <Stream.h>
 #include "io.h"
 #include "rssirx.h"
+#include "hardware.h"
 
 // API level for node; increment when commands are modified
 #define NODE_API_LEVEL 33
@@ -10,11 +12,12 @@
 class Message
 {
 private:
-    RssiReceivers *rssiRxs;
+    RssiReceivers *const rssiRxs;
+    Hardware *const hardware;
     void handleReadLapPassStats(RssiNode& rssiNode, mtime_t timeNowVal);
     void handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal);
 public:
-    Message(RssiReceivers *rssiRxs) : rssiRxs(rssiRxs) {
+    Message(RssiReceivers *rssiRxs, Hardware *hardware) : rssiRxs(rssiRxs), hardware(hardware) {
     };
     uint8_t command;  // code to identify messages
     Buffer buffer;  // request/response payload
@@ -23,6 +26,8 @@ public:
     void handleWriteCommand(bool serialFlag);
     void handleReadCommand(bool serialFlag);
 };
+
+void handleStreamEvent(Stream& stream, Message& msg);
 
 #define MIN_FREQ 100
 #define MAX_FREQ 9999

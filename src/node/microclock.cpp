@@ -1,9 +1,9 @@
 #include "config.h"
-#include "clock.h"
+#include "microclock.h"
 
-Clock usclock;
+MicroClock usclock;
 
-uint32_t Clock::tick()
+uint32_t MicroClock::tick()
 {
     utime_t currentTick = micros();
     // unsigned arithmetic to handle roll-over
@@ -18,7 +18,7 @@ uint32_t Clock::tick()
     return elapsed;
 }
 
-mtime_t Clock::millis()
+mtime_t MicroClock::millis()
 {
     return timeMillis;
 }
