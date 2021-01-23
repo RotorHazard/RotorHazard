@@ -1,17 +1,17 @@
 # Grupa
 
-Dodatkowe timery RotorHazard mogą być podłączone jako moduły "slave", porozumiewające się za pomocą wbudowanych interfejsów sieciowych (np. WiFi). Domyślny tryb to  „timer” (dla mierzenia międzyczasów), który pozwala wielu timerom być umieszczonym wzdłuż toru, żeby podawać międzyczasy. Tryb "lustrzany" (mirror) również jest wspierany. W trybie tym moduł "slave" dokładnie odwzorowuje to co robi moduł główny (np. może być ustawiony jako "tylko-LED i pokazywać animacje LED-owe modułu głównego).
+Dodatkowe timery RotorHazard mogą być podłączone jako moduły "secondary", porozumiewające się za pomocą wbudowanych interfejsów sieciowych (np. WiFi). Domyślny tryb to  „timer” (dla mierzenia międzyczasów), który pozwala wielu timerom być umieszczonym wzdłuż toru, żeby podawać międzyczasy. Tryb "lustrzany" (mirror) również jest wspierany. W trybie tym moduł "secondary" dokładnie odwzorowuje to co robi moduł główny (np. może być ustawiony jako "tylko-LED i pokazywać animacje LED-owe modułu głównego).
 
 ### Konfiguracja
 
-Dodatkowe czasomierze mogą być skonfigurowane (w pliku 'src/server/config.json') w sekcji "GENERAL" z wpisem "SLAVES" zamierającym macierz adresów IP czasomierzy ułożoną według kolejności timerów na torze.
+Dodatkowe czasomierze mogą być skonfigurowane (w pliku 'src/server/config.json') w sekcji "GENERAL" z wpisem "SECONDARIES" zamierającym macierz adresów IP czasomierzy ułożoną według kolejności timerów na torze.
 
 
 ```
 {
 	"GENERAL": {
 		... ,
-		"SLAVES": ["192.168.1.2:5000", "192.168.1.3:5000"]
+		"SECONDARIES": ["192.168.1.2:5000", "192.168.1.3:5000"]
 	}
 }
 ```
@@ -22,12 +22,12 @@ Dodatkowe opcje mogą być skonfigurowane, np:
 {
 	"GENERAL": {
 		... ,
-		"SLAVES": [{"address": "192.168.1.2:5000", "mode": "timer", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
-		"SLAVE_TIMEOUT": 10
+		"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "timer", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
+		"SECONDARY_TIMEOUT": 10
 	}
 }
 ```
-* "address": Adres IP i port modułu "slave".
+* "address": Adres IP i port modułu "secondary".
 * "mode": Tryb timera ("mirror" lub "timer")
 * "distance": Dystans od poprzedniej bramki - dla obliczenia prędkości.
 
@@ -45,7 +45,7 @@ Na głównym, edytuj /etc/npd.conf i dodaj linie podobne do:
 	restrict 192.168.123.0 mask 255.255.255.0
 	broadcast 192.168.123.255
 
-Na modułach "slave", edytuj /etc/npd.conf i dodaj linie podobne do:
+Na modułach "secondary", edytuj /etc/npd.conf i dodaj linie podobne do:
 
 	server 192.168.123.1
 
@@ -73,7 +73,7 @@ Następnie, zrestartuj rng-tools wpisując
 
 Przegapione i niepoprawne międzyczasy nie mają żadnego wpływu na zapamiętywanie czasów okrążeń przez moduł główny.
 
-Moduł "slave", również może być głównym, ale pod-podziały nie są przekazywane wyżej w hierarchii.
+Moduł "secondary", również może być głównym, ale pod-podziały nie są przekazywane wyżej w hierarchii.
 
 Jeśli chcesz używać Grupy opartej o Wifi, instrukcje jak stworzyć Access Point (WiFi hot-spot) możesz znaleźć na:
 <https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md>.

@@ -1,25 +1,25 @@
 # Cluster
 
-Additional RotorHazard timers may be attached as "slave" units, interfaced via their network connection (i.e., WiFi).  The default mode is 'split' (for split timing), which allows multiple timers to be placed around the track to get intermediate lap times.  A 'mirror' mode is also supported, in which the slave timer will mirror the actions of the master (for instance as an "LED-only" timer that displays the actions of the master).
+Additional RotorHazard timers may be attached as "secondary" units, interfaced via their network connection (i.e., WiFi).  The default mode is 'split' (for split timing), which allows multiple timers to be placed around the track to get intermediate lap times.  A 'mirror' mode is also supported, in which the secondary timer will mirror the actions of the primary (for instance as an "LED-only" timer that displays the actions of the primary).
 
 ### Configuration
 
-An additional timer may be configured (in 'src/server/config.json' on the master timer) under "GENERAL" with a "SLAVES" entry containing the address of the slave timer; for example:
+An additional timer may be configured (in 'src/server/config.json' on the primary timer) under "GENERAL" with a "SECONDARIES" entry containing the address of the secondary timer; for example:
 ```
 {
 	"GENERAL": {
 		... ,
-		"SLAVES": ["192.168.1.2:5000"]
+		"SECONDARIES": ["192.168.1.2:5000"]
 	}
 }
 ```
 
-Multiple slave timers may be specified as a list of addresses in track order:
+Multiple secondary timers may be specified as a list of addresses in track order:
 ```
 {
 	"GENERAL": {
 		... ,
-		"SLAVES": ["192.168.1.2:5000", "192.168.1.3:5000"]
+		"SECONDARIES": ["192.168.1.2:5000", "192.168.1.3:5000"]
 	}
 }
 ```
@@ -29,21 +29,21 @@ Additional options may be configured, for example:
 {
 	"GENERAL": {
 		... ,
-		"SLAVES": [{"address": "192.168.1.2:5000", "mode": "split", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
-		"SLAVE_TIMEOUT": 10
+		"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "split", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
+		"SECONDARY_TIMEOUT": 10
 	}
 }
 ```
-* "address": The IP address and port for the slave timer.
+* "address": The IP address and port for the secondary timer.
 * "mode": The mode for the timer (either "split" or "mirror").
 * "distance": The distance from the previous timer (used to calculate speed).
 * "queryInterval": Number of seconds between heartbeat/query messages (default 10).
-* "recEventsFlag": Set 'true' to propogate timer events from master (default 'false' for "split" timer, 'true' for "mirror" timer).
-* "SLAVE_TIMEOUT": Maximum number of seconds to wait for connection to be established.
+* "recEventsFlag": Set 'true' to propogate timer events from primary (default 'false' for "split" timer, 'true' for "mirror" timer).
+* "SECONDARY_TIMEOUT": Maximum number of seconds to wait for connection to be established.
 
-The "address" value may be specified using asterisk-wildcard characters. For instance, if the IP address of the 'master' timer is "192.168.0.11":  `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
+The "address" value may be specified using asterisk-wildcard characters. For instance, if the IP address of the 'primary' timer is "192.168.0.11":  `"*.77" => "192.168.0.77"`, `"*.*.3.77" => "192.168.3.77"`, `"*" => "192.168.0.11"`
 
-On the slave timer, no configuration changes are needed.
+On the secondary timer, no configuration changes are needed.
 
 ### Clock Synchronization
 
@@ -53,12 +53,12 @@ On all timers:
 
 	sudo apt-get install ntp
 
-On the master, edit /etc/npd.conf and add lines similar to:
+On the primary, edit /etc/npd.conf and add lines similar to:
 
 	restrict 192.168.123.0 mask 255.255.255.0
 	broadcast 192.168.123.255
 	
-On the slaves, edit /etc/npd.conf and add lines similar to:
+On the secondaries, edit /etc/npd.conf and add lines similar to:
 
 	server 192.168.123.1
 
@@ -84,9 +84,9 @@ Then, restart rng-tools with
 
 ### Notes
 
-Missed/incorrect split times will have no impact on the recording of lap times by the master timer.
+Missed/incorrect split times will have no impact on the recording of lap times by the primary timer.
 
-To enable the announcement of split times, see the "*Cluster/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a cluster/slave timer connects and disconnects, select the "*Cluster Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a cluster timer is connected.)
+To enable the announcement of split times, see the "*Cluster/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a cluster/secondary timer connects and disconnects, select the "*Cluster Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a cluster timer is connected.)
 
 The status of connected cluster timers may be viewed on the *Settings* page in the *System* section. (This status information is also available on the *Run* page.) The following items are displayed:
  * *Address* - Network address for the cluster timer (click to bring up the web-GUI for the timer)
@@ -94,15 +94,15 @@ The status of connected cluster timers may be viewed on the *Settings* page in t
  * *Latency: min avg max last* - Network latency (in milliseconds) for heartbeat/query messages
  * *Disconns* - Number of times the cluster timer has been disconnected
  * *Contacts* - Number of network contacts with the cluster timer
- * *TimeDiff* - Time difference (in milliseconds) between system clocks on master and cluster timer
+ * *TimeDiff* - Time difference (in milliseconds) between system clocks on primary and cluster timer
  * *UpSecs* - Number of seconds the cluster timer has been connected
  * *DownSecs* - Number of seconds the cluster timer has been disconnected
  * *Avail* - Availability rating (as a percentage) for the cluster timer
  * *LastContact* - Time (in seconds) since last contact with the timer, or a status message
 
-Doing normal operation, lap history-data will not be saved on the slave timer(s). To view lap history-data and perform marshaling on a slave timer, hit the '*Save Laps*' button on the slave timer before the race is saved or discarded on the master, and then go to the *Marshal* page on the slave timer.
+Doing normal operation, lap history-data will not be saved on the secondary timer(s). To view lap history-data and perform marshaling on a secondary timer, hit the '*Save Laps*' button on the secondary timer before the race is saved or discarded on the primary, and then go to the *Marshal* page on the secondary timer.
 
-A slave can also be a master, but sub-splits are not propagated upwards.
+A secondary can also be a primary, but sub-splits are not propagated upwards.
 
 If you want to use a Wi-Fi based cluster, instructions for setting up an access point (Wi-Fi hotspot) can be found at
 <https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md>.
