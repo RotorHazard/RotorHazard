@@ -3,10 +3,10 @@
 #include "commands.h"
 
 #ifdef __TEST__
-  static uint8_t i2cSlaveAddress = 0x08;
+  static uint8_t i2cAddress = 0x08;
 #else
 #if !STM32_MODE_FLAG
-  extern uint8_t i2cSlaveAddress;
+  extern uint8_t i2cAddress;
 #else
   void doJumpToBootloader();
 #endif
@@ -182,7 +182,7 @@ void Message::handleReadCommand(bool serialFlag)
     {
         case READ_ADDRESS:
 #if !STM32_MODE_FLAG
-            buffer.write8(i2cSlaveAddress);
+            buffer.write8(i2cAddress);
 #else
             buffer.write8((uint8_t)0);
 #endif

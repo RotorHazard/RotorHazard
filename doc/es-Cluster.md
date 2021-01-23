@@ -1,16 +1,16 @@
 ﻿# Racimo
 
-Se pueden conectar cronos RotorHazard adicionales como unidades "esclavas", interconectadas a través de su conexión de red (es decir, WiFi). El modo predeterminado es 'temporizador' (para tiempo dividido), que permite colocar múltiples temporizadores alrededor de la pista para obtener tiempos de vuelta intermedios. También se admite un modo 'espejo', en el que el temporizador esclavo reflejará las acciones del maestro (por ejemplo, como un temporizador "solo LED" que muestra las acciones del maestro).
+Se pueden conectar cronos RotorHazard adicionales como unidades "secundario", interconectadas a través de su conexión de red (es decir, WiFi). El modo predeterminado es 'temporizador' (para tiempo dividido), que permite colocar múltiples temporizadores alrededor de la pista para obtener tiempos de vuelta intermedios. También se admite un modo 'espejo', en el que el temporizador secundario reflejará las acciones del maestro (por ejemplo, como un temporizador "solo LED" que muestra las acciones del maestro).
 
 ### Configuración
 
-Se pueden configurar cronos adicionales (en 'src/server/config.json') en "GENERAL" con una entrada "ESCLAVOS" que contiene una lista de direcciones IP de los cronos esclavos en orden de seguimiento.
+Se pueden configurar cronos adicionales (en 'src/server/config.json') en "GENERAL" con una entrada "SECONDARIES" que contiene una lista de direcciones IP de los cronos secondaries en orden de seguimiento.
 
 ```
 {
 	"GENERAL": {
 		... ,
-		"SLAVES": ["192.168.1.2:5000", "192.168.1.3:5000"]
+		"SECONDARIES": ["192.168.1.2:5000", "192.168.1.3:5000"]
 	}
 }
 ```
@@ -21,12 +21,12 @@ Se pueden configurar opciones adicionales, por ejemplo:
 {
 	"GENERAL": {
 		... ,
-		"SLAVES": [{"address": "192.168.1.2:5000", "mode": "timer", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
-		"SLAVE_TIMEOUT": 10
+		"SECONDARIES": [{"address": "192.168.1.2:5000", "mode": "timer", "distance": 5}, {"address": "192.168.1.2:5000", "mode": "mirror"}],
+		"SECONDARY_TIMEOUT": 10
 	}
 }
 ```
-* "address": La direccion IP y puerto para el crono esclavo.
+* "address": La direccion IP y puerto para el crono secundario.
 * "mode": El modo en que actuará el crono (ya sea "timer" or "mirror").
 * "distance": La distrancia desde la puerta anterior (utilizada para calcular la velocidad).
 
@@ -44,7 +44,7 @@ En el maestro, edite /etc/npd.conf y agregue las siguientes líneas similares a 
 	restrict 192.168.123.0 mask 255.255.255.0
 	broadcast 192.168.123.255
 	
-En los esclavos, edite /etc/npd.conf y agregue líneas similares a:
+En los secondaries, edite /etc/npd.conf y agregue líneas similares a:
 
 	server 192.168.123.1
 
@@ -72,7 +72,7 @@ Luego, reinicie rng-tools con
 
 Los tiempos parciales perdidos/incorrectos no tendrán impacto en la grabación de los tiempos de vuelta contados por el crono maestro.
 
-Un esclavo también puede ser un maestro, pero las sub-divisiones no se propagan hacia arriba.
+Un secundario también puede ser un maestro, pero las sub-divisiones no se propagan hacia arriba.
 
 Si desea utilizar un racimo basado en Wi-Fi, puede encontrar instrucciones para configurar un punto de acceso (punto de acceso Wi-Fi) en
 <https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md>.

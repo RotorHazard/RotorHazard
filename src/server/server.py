@@ -66,7 +66,7 @@ import Language
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Language import __
-from ClusterNodeSet import SlaveNode, ClusterNodeSet
+from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 from util.SendAckQueue import SendAckQueue
 import RHGPIO
 import util.stm32loader as stm32loader
@@ -348,7 +348,7 @@ def trigger_event(event, evtArgs=None):
     try:
         Events.trigger(event, evtArgs)
         # if there are cluster timers interested in events then emit it out to them
-        if CLUSTER.hasRecEventsSlaves():
+        if CLUSTER.hasRecEventsSecondaries():
             payload = { 'evt_name': event }
             if evtArgs:
                 payload['evt_args'] = json.dumps(evtArgs)
@@ -390,12 +390,12 @@ def render_run():
             })
 
     return render_template('run.html', serverInfo=serverInfo, getOption=Options.get, __=__,
-        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSlaves())),
+        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
         current_heat=RACE.current_heat, pilots=Database.Pilot,
         nodes=nodes,
-        cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()))
+        cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()))
 
 @APP.route('/current')
 def render_current():
@@ -412,7 +412,7 @@ def render_current():
     return render_template('current.html', serverInfo=serverInfo, getOption=Options.get, __=__,
         num_nodes=RACE.num_nodes,
         nodes=nodes,
-        cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()))
+        cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()))
 
 @APP.route('/marshal')
 @requires_auth
@@ -426,13 +426,13 @@ def render_marshal():
 def render_settings():
     '''Route to settings page.'''
     return render_template('settings.html', serverInfo=serverInfo, getOption=Options.get, __=__,
-        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSlaves())),
+        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
         led_events_enabled=led_manager.isEnabled(),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
         ConfigFile=Config.GENERAL['configFile'],
         note_message_text=Settings_note_msg_text,
-        cluster_has_slaves=(CLUSTER and CLUSTER.hasSlaves()),
+        cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()),
         node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
         is_raspberry_pi=RHUtils.isSysRaspberryPi(),
         Debug=Config.GENERAL['DEBUG'])
@@ -639,25 +639,25 @@ def on_get_settings():
 def on_reset_auto_calibration(data):
     on_stop_race()
     on_discard_laps()
-    setCurrentRaceFormat(SLAVE_RACE_FORMAT)
+    setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
     emit_race_format()
     on_stage_race()
 
 # Cluster events
 
-def emit_cluster_msg_to_master(messageType, messagePayload, waitForAckFlag=True):
-    '''Emits cluster message to master timer.'''
+def emit_cluster_msg_to_primary(messageType, messagePayload, waitForAckFlag=True):
+    '''Emits cluster message to primary timer.'''
     global ClusterSendAckQueueObj
     if not ClusterSendAckQueueObj:
         ClusterSendAckQueueObj = SendAckQueue(20, SOCKET_IO, logger)
     ClusterSendAckQueueObj.put(messageType, messagePayload, waitForAckFlag)
 
 def emit_join_cluster_response():
-    '''Emits 'join_cluster_response' message to master timer.'''
+    '''Emits 'join_cluster_response' message to primary timer.'''
     payload = {
         'server_info': json.dumps(serverInfoItems)
     }
-    emit_cluster_msg_to_master('join_cluster_response', payload, False)
+    emit_cluster_msg_to_primary('join_cluster_response', payload, False)
 
 def has_joined_cluster():
     return True if ClusterSendAckQueueObj else False
@@ -665,7 +665,7 @@ def has_joined_cluster():
 @SOCKET_IO.on('join_cluster')
 @catchLogExceptionsWrapper
 def on_join_cluster():
-    setCurrentRaceFormat(SLAVE_RACE_FORMAT)
+    setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
     emit_race_format()
     logger.info("Joined cluster")
     trigger_event(Evt.CLUSTER_JOIN)
@@ -673,39 +673,39 @@ def on_join_cluster():
 @SOCKET_IO.on('join_cluster_ex')
 @catchLogExceptionsWrapper
 def on_join_cluster_ex(data=None):
-    tmode = str(data.get('mode', SlaveNode.SPLIT_MODE)) if data else None
-    if tmode != SlaveNode.MIRROR_MODE:
-        setCurrentRaceFormat(SLAVE_RACE_FORMAT)
+    tmode = str(data.get('mode', SecondaryNode.SPLIT_MODE)) if data else None
+    if tmode != SecondaryNode.MIRROR_MODE:
+        setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
         emit_race_format()
     logger.info("Joined cluster" + ((" as '" + tmode + "' timer") if tmode else ""))
     trigger_event(Evt.CLUSTER_JOIN)
     emit_join_cluster_response()
 
-@SOCKET_IO.on('check_slave_query')
+@SOCKET_IO.on('check_secondary_query')
 @catchLogExceptionsWrapper
-def on_check_slave_query(data):
-    ''' Check-query received from master; return response. '''
+def on_check_secondary_query(data):
+    ''' Check-query received from primary; return response. '''
     payload = {
         'timestamp': monotonic_to_epoch_millis(monotonic())
     }
-    SOCKET_IO.emit('check_slave_response', payload)
+    SOCKET_IO.emit('check_secondary_response', payload)
 
 @SOCKET_IO.on('cluster_event_trigger')
 @catchLogExceptionsWrapper
 def on_cluster_event_trigger(data):
-    ''' Received event trigger from master. '''
+    ''' Received event trigger from primary. '''
     evtName = data['evt_name']
     evtArgs = json.loads(data['evt_args']) if 'evt_args' in data else None
     if evtName != Evt.LED_SET_MANUAL:
         Events.trigger(evtName, evtArgs)
-    # special handling for LED Control via master timer
+    # special handling for LED Control via primary timer
     elif 'effect' in evtArgs and led_manager.isEnabled():
         led_manager.setEventEffect(Evt.LED_MANUAL, evtArgs['effect'])
 
 @SOCKET_IO.on('cluster_message_ack')
 @catchLogExceptionsWrapper
 def on_cluster_message_ack(data):
-    ''' Received message acknowledgement from master. '''
+    ''' Received message acknowledgement from primary. '''
     if ClusterSendAckQueueObj:
         messageType = str(data.get('messageType')) if data else None
         messagePayload = data.get('messagePayload') if data else None
@@ -815,17 +815,17 @@ def on_set_frequency(data):
     logger.info('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
 
     update_heat_flag = False
-    try:  # if running as slave timer and no pilot is set for node then set one now
-        if frequency and getCurrentRaceFormat() is SLAVE_RACE_FORMAT:
+    try:  # if running as secondary timer and no pilot is set for node then set one now
+        if frequency and getCurrentRaceFormat() is SECONDARY_RACE_FORMAT:
             heat_node = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).one_or_none()
             if heat_node and heat_node.pilot_id == Database.PILOT_ID_NONE:
                 pilot = Database.Pilot.query.get(node_index+1)
                 if pilot:
                     heat_node.pilot_id = pilot.id
                     update_heat_flag = True
-                    logger.info("Set node {0} pilot to '{1}' for slave-timer operation".format(node_index+1, pilot.callsign))
+                    logger.info("Set node {0} pilot to '{1}' for secondary-timer operation".format(node_index+1, pilot.callsign))
                 else:
-                    logger.info("Unable to set node {0} pilot for slave-timer operation".format(node_index+1))
+                    logger.info("Unable to set node {0} pilot for secondary-timer operation".format(node_index+1))
     except:
         logger.exception("Error checking/setting pilot for node {0} in 'on_set_frequency()'".format(node_index+1))
 
@@ -2131,7 +2131,7 @@ def emit_led_effect_setup(**params):
         emit('led_effect_setup_data', emit_payload)
 
 def emit_led_effects(**params):
-    if led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSlaves()):
+    if led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries()):
         effects = led_manager.getRegisteredEffects()
 
         effect_list = []
@@ -2253,11 +2253,11 @@ def on_stage_race():
     race_format = getCurrentRaceFormat()
 
     if RACE.race_status != RaceStatus.READY:
-        if race_format is SLAVE_RACE_FORMAT:  # if running as slave timer
+        if race_format is SECONDARY_RACE_FORMAT:  # if running as secondary timer
             if RACE.race_status == RaceStatus.RACING:
                 return  # if race in progress then leave it be
             # if missed stop/discard message then clear current race
-            logger.info("Forcing race clear/restart because running as slave timer")
+            logger.info("Forcing race clear/restart because running as secondary timer")
             on_discard_laps()
         elif RACE.race_status == RaceStatus.DONE and not RACE.any_laps_recorded():
             on_discard_laps()  # if no laps then allow restart
@@ -2416,7 +2416,7 @@ def race_start_thread(start_token):
                        format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
             INTERFACE.force_end_crossing(node.index)
 
-    if CLUSTER and CLUSTER.hasSlaves():
+    if CLUSTER and CLUSTER.hasSecondaries():
         CLUSTER.doClusterRaceStart()
 
     # set lower EnterAt/ExitAt values if configured
@@ -2533,7 +2533,7 @@ def on_stop_race():
         trigger_event(Evt.RACE_STOP)
         check_win_condition(RACE, INTERFACE)
 
-        if CLUSTER.hasSlaves():
+        if CLUSTER.hasSecondaries():
             CLUSTER.doClusterRaceStop()
 
     else:
@@ -3683,19 +3683,19 @@ def emit_current_laps(**params):
 
 def get_splits(node, lap_id, lapCompleted):
     splits = []
-    for slave_index in range(len(CLUSTER.slaves)):
-        if CLUSTER.isSplitSlaveAvailable(slave_index):
-            split = Database.LapSplit.query.filter_by(node_index=node,lap_id=lap_id,split_id=slave_index).one_or_none()
+    for secondary_index in range(len(CLUSTER.secondaries)):
+        if CLUSTER.isSplitSecondaryAvailable(secondary_index):
+            split = Database.LapSplit.query.filter_by(node_index=node,lap_id=lap_id,split_id=secondary_index).one_or_none()
             if split:
                 split_payload = {
-                    'split_id': slave_index,
+                    'split_id': secondary_index,
                     'split_raw': split.split_time,
                     'split_time': split.split_time_formatted,
                     'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
                 }
             elif lapCompleted:
                 split_payload = {
-                    'split_id': slave_index,
+                    'split_id': secondary_index,
                     'split_time': '-'
                 }
             else:
@@ -4278,13 +4278,13 @@ def set_vrx_node(data):
 
 @catchLogExceptionsWrapper
 def emit_pass_record(node, lap_time_stamp):
-    '''Emits 'pass_record' message (will be consumed by master timer in cluster, livetime, etc).'''
+    '''Emits 'pass_record' message (will be consumed by primary timer in cluster, livetime, etc).'''
     payload = {
         'node': node.index,
         'frequency': node.frequency,
         'timestamp': lap_time_stamp + RACE.start_time_epoch_ms
     }
-    emit_cluster_msg_to_master('pass_record', payload)
+    emit_cluster_msg_to_primary('pass_record', payload)
 
 #
 # Program Functions
@@ -4472,8 +4472,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         node.first_cross_flag = True  # indicate first crossing completed
 
                     race_format = getCurrentRaceFormat()
-                    if race_format is SLAVE_RACE_FORMAT:
-                        min_lap = 0  # don't enforce min-lap time if running as slave timer
+                    if race_format is SECONDARY_RACE_FORMAT:
+                        min_lap = 0  # don't enforce min-lap time if running as secondary timer
                         min_lap_behavior = 0
                     else:
                         min_lap = Options.getInt("MinLapSec")
@@ -4493,7 +4493,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                     if lap_ok_flag:
 
-                        # emit 'pass_record' message (to master timer in cluster, livetime, etc).
+                        # emit 'pass_record' message (to primary timer in cluster, livetime, etc).
                         emit_pass_record(node, lap_time_stamp)
 
                         # Add the new lap to the database
@@ -5501,27 +5501,27 @@ if len(sys.argv) > 0 and CMDARG_JUMP_TO_BL_STR in sys.argv:
 CLUSTER = ClusterNodeSet()
 hasMirrors = False
 try:
-    for index, slave_info in enumerate(Config.GENERAL['SLAVES']):
-        if isinstance(slave_info, string_types):
-            slave_info = {'address': slave_info, 'mode': SlaveNode.SPLIT_MODE}
-        if 'address' not in slave_info:
-            raise RuntimeError("Slave 'address' item not specified")
+    for index, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
+        if isinstance(secondary_info, string_types):
+            secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
+        if 'address' not in secondary_info:
+            raise RuntimeError("Secondary 'address' item not specified")
         # substitute asterisks in given address with values from host IP address
-        slave_info['address'] = RHUtils.substituteAddrWildcards(determineHostAddress, \
-                                                                slave_info['address'])
-        if 'timeout' not in slave_info:
-            slave_info['timeout'] = Config.GENERAL['SLAVE_TIMEOUT']
-        if 'mode' in slave_info and str(slave_info['mode']) == SlaveNode.MIRROR_MODE:
+        secondary_info['address'] = RHUtils.substituteAddrWildcards(determineHostAddress, \
+                                                                secondary_info['address'])
+        if 'timeout' not in secondary_info:
+            secondary_info['timeout'] = Config.GENERAL['SECONDARY_TIMEOUT']
+        if 'mode' in secondary_info and str(secondary_info['mode']) == SecondaryNode.MIRROR_MODE:
             hasMirrors = True
         elif hasMirrors:
-            logger.warning('** Mirror slaves must be last - ignoring remaining slave config **')
+            logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
             break
-        slave = SlaveNode(index, slave_info, RACE, DB, getCurrentProfile, \
+        secondary = SecondaryNode(index, secondary_info, RACE, DB, getCurrentProfile, \
                           emit_split_pass_info, monotonic_to_epoch_millis, \
                           emit_cluster_connect_change, RELEASE_VERSION)
-        CLUSTER.addSlave(slave)
+        CLUSTER.addSecondary(secondary)
 except:
-    logger.exception("Error adding slave to cluster")
+    logger.exception("Error adding secondary to cluster")
 
 # set callback functions invoked by interface module
 INTERFACE.pass_record_callback = pass_record_callback
@@ -5603,9 +5603,9 @@ if not db_inited_flag:
 # DB session commit needed to prevent 'application context' errors
 init_race_state()
 
-# internal slave race format for LiveTime (needs to be created after initial DB setup)
-global SLAVE_RACE_FORMAT
-SLAVE_RACE_FORMAT = RHRaceFormat(name=__("Slave"),
+# internal secondary race format for LiveTime (needs to be created after initial DB setup)
+global SECONDARY_RACE_FORMAT
+SECONDARY_RACE_FORMAT = RHRaceFormat(name=__("Secondary"),
                          race_mode=1,
                          race_time_sec=0,
                          start_delay_min=0,
@@ -5665,7 +5665,7 @@ if strip:
     for led_effect in led_effects:
         led_manager.registerEffect(led_effect)
     init_LED_effects()
-elif CLUSTER and CLUSTER.hasRecEventsSlaves():
+elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
     led_manager = ClusterLEDManager()
     led_effects = Plugins(prefix='led_handler')
     led_effects.discover()
