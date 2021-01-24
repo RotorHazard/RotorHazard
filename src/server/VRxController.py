@@ -237,23 +237,26 @@ class VRxController:
 
         # "Pos-Callsign L[n]|0:00:00"
         message = POS_HEADER + lap_info['current']['position'] + '-' + \
-            lap_info['current']['callsign'][:10] + \
-            ' ' + \
-            LAP_HEADER + lap_info['current']['lap_number'] + '|' + \
-            lap_info['current']['last_lap_time']
+            lap_info['current']['callsign'][:10] + ' '
+
+        if lap_info['current']['lap_number'] != __('HS'):
+            message += LAP_HEADER
+
+        message += lap_info['current']['lap_number'] + '|' + \
+            RHUtils.time_format(lap_info['current']['last_lap_time'])
 
         if lap_info['race']['win_condition'] == WinCondition.FASTEST_3_CONSECUTIVE:
             # "Pos-Callsign L[n]|0:00:00 | #/0:00.000" (current | best consecutives)
             if lap_info['current']['lap_number'] >= 3:
-                message += ' | 3/' + lap_info['current']['consecutives']
+                message += ' | 3/' + RHUtils.time_format(lap_info['current']['consecutives'])
             elif lap_info['current']['lap_number'] == 2:
-                message += ' | 2/' + lap_info['current']['total_time_laps']
+                message += ' | 2/' + RHUtils.time_format(lap_info['current']['total_time_laps'])
 
         elif lap_info['race']['win_condition'] == WinCondition.FASTEST_LAP:
             if lap_info['next_rank']['position'] != None:
                 # pilot in 2nd or lower
                 # "Pos-Callsign L[n]|0:00:00 / +0:00.000 Callsign"
-                message += ' / +' + lap_info['next_rank']['split_time'] + ' ' + lap_info['next_rank']['callsign'][:10]
+                message += ' / +' + RHUtils.time_format(lap_info['next_rank']['split_time']) + ' ' + lap_info['next_rank']['callsign'][:10]
             elif lap_info['is_best_lap']:
                 # pilot in 1st and is best lap
                 # "Pos:Callsign L[n]:0:00:00 / Best"
@@ -265,7 +268,7 @@ class VRxController:
 
             # "Pos-Callsign L[n]|0:00:00 / +0:00.000 Callsign"
             if lap_info['next_rank']['position'] != None:
-                message += ' / +' + lap_info['next_rank']['split_time'] + ' ' + lap_info['next_rank']['callsign'][:10]
+                message += ' / +' + RHUtils.time_format(lap_info['next_rank']['split_time']) + ' ' + lap_info['next_rank']['callsign'][:10]
 
         # send message to crosser
         seat_dest = seat_index
@@ -286,10 +289,15 @@ class VRxController:
                 # update pilot ahead with split-behind
 
                 # "Pos-Callsign L[n]|0:00:00"
-                message = POS_HEADER + lap_info['next_rank']['position'] + '-' + lap_info['next_rank']['callsign'][:10] + ' ' + LAP_HEADER + lap_info['next_rank']['lap_number'] + '|' + lap_info['next_rank']['last_lap_time']
+                message = POS_HEADER + lap_info['next_rank']['position'] + '-' + lap_info['next_rank']['callsign'][:10] + ' '
+
+                if lap_info['next_rank']['lap_number'] != __('HS'):
+                    message += LAP_HEADER
+
+                message += lap_info['next_rank']['lap_number'] + '|' + RHUtils.time_format(lap_info['next_rank']['last_lap_time'])
 
                 # "Pos-Callsign L[n]|0:00:00 / -0:00.000 Callsign"
-                message += ' / -' + lap_info['next_rank']['split_time'] + ' ' + lap_info['current']['callsign'][:10]
+                message += ' / -' + RHUtils.time_format(lap_info['next_rank']['split_time']) + ' ' + lap_info['current']['callsign'][:10]
 
                 seat_dest = lap_info['next_rank']['seat']
                 self.set_message_direct(seat_dest, message)

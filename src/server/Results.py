@@ -904,19 +904,19 @@ def get_lap_info(RACE, seat_index):
         'callsign': result['callsign'],
         'lap_number': '',
         'last_lap_time': '',
-        'total_time': result['total_time'],
-        'total_time_laps': result['total_time_laps'],
-        'consecutives': result['consecutives'],
+        'total_time': result['total_time_raw'],
+        'total_time_laps': result['total_time_laps_raw'],
+        'consecutives': result['consecutives_raw'],
         'is_best_lap': is_best_lap,
     }
 
     if result['laps']:
         lap_info['current']['lap_number'] = str(result['laps'])
-        lap_info['current']['last_lap_time'] = result['last_lap']
+        lap_info['current']['last_lap_time'] = result['last_lap_raw']
     else:
         lap_info['current']['lap_prefix'] = ''
         lap_info['current']['lap_number'] = __('HS')
-        lap_info['current']['last_lap_time'] = result['total_time']
+        lap_info['current']['last_lap_time'] = result['total_time_raw']
         lap_info['current']['is_best_lap'] = False
 
     # Next faster pilot
@@ -935,15 +935,15 @@ def get_lap_info(RACE, seat_index):
             'seat': next_rank_split_result['node'],
             'position': str(next_rank_split_result['position']),
             'callsign': next_rank_split_result['callsign'],
-            'split_time': RHUtils.time_format(next_rank_split),
+            'split_time': next_rank_split,
             'lap_number': str(next_rank_split_result['laps']),
-            'last_lap_time': next_rank_split_result['last_lap'],
-            'total_time': next_rank_split_result['total_time'],
+            'last_lap_time': next_rank_split_result['last_lap_raw'],
+            'total_time': next_rank_split_result['total_time_raw'],
         }
 
         if next_rank_split_result['laps'] < 1:
             lap_info['next_rank']['lap_number'] = __('HS')
-            lap_info['next_rank']['last_lap_time'] = next_rank_split_result['total_time']
+            lap_info['next_rank']['last_lap_time'] = next_rank_split_result['total_time_raw']
 
     # Race Leader
     lap_info['first_rank'] = {
@@ -961,15 +961,15 @@ def get_lap_info(RACE, seat_index):
             'seat': first_rank_split_result['node'],
             'position': str(first_rank_split_result['position']),
             'callsign': first_rank_split_result['callsign'],
-            'split_time': RHUtils.time_format(first_rank_split),
+            'split_time': first_rank_split,
             'lap_number': str(first_rank_split_result['laps']),
-            'last_lap_time': first_rank_split_result['last_lap'],
-            'total_time': first_rank_split_result['total_time'],
+            'last_lap_time': first_rank_split_result['last_lap_raw'],
+            'total_time': first_rank_split_result['total_time_raw'],
         }
 
         if next_rank_split_result['laps'] < 1:
             lap_info['first_rank']['lap_number'] = __('HS')
-            lap_info['first_rank']['last_lap_time'] = first_rank_split_result['total_time']
+            lap_info['first_rank']['last_lap_time'] = first_rank_split_result['total_time_raw']
 
     return lap_info
 
