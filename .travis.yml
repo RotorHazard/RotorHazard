@@ -9,6 +9,12 @@ python:
    - 2.7
    - 3.8
 
+env:
+   - INSTALL_PLATFORMS=avr
+
+before_install:
+   - source <(curl -SLs https://raw.githubusercontent.com/adafruit/travis-ci-arduino/master/install.sh)
+
 install:
    - pip install codecov
    - pip install coverage
@@ -21,6 +27,9 @@ script:
    - coverage run -m unittest discover
    - cd ../..
    - cd src/node
+   - arduino --verify --board arduino:avr:nano:cpu=atmega328old rhnode.cpp
+   - arduino --pref boardsmanager.additional.urls=https://github.com/stm32duino/BoardManagerFiles/raw/master/STM32/package_stm_index.json --install-boards STM32:stm32
+   - arduino --verify --board STM32:stm32:GenF1:pnum=BLUEPILL_F103C8 --pref xserial=generic,usb=none,xusb=FS,opt=osstd,rtlib=nano rhnode.cpp
    - bundle install
    - bundle exec arduino_ci.rb
    - cd ../..
