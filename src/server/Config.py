@@ -42,8 +42,8 @@ GENERAL['HTTP_PORT'] = 5000
 GENERAL['SECRET_KEY'] = random.random()
 GENERAL['ADMIN_USERNAME'] = 'admin'
 GENERAL['ADMIN_PASSWORD'] = 'rotorhazard'
-GENERAL['SLAVES'] = []
-GENERAL['SLAVE_TIMEOUT'] = 300 # seconds
+GENERAL['SECONDARIES'] = []
+GENERAL['SECONDARY_TIMEOUT'] = 300 # seconds
 GENERAL['DEBUG'] = False
 GENERAL['CORS_ALLOWED_HOSTS'] = '*'
 
@@ -96,6 +96,15 @@ except ValueError as ex:
     GENERAL['configFile'] = -1
     InitResultStr = "Configuration file invalid, using defaults; error is: " + str(ex)
     InitResultLogLevel = logging.ERROR
+
+# Apply legacy config options for backward compatibility
+if not GENERAL['SECONDARIES']:
+    if 'SLAVES' in GENERAL and GENERAL['SLAVES']:
+        GENERAL['SECONDARIES'] = GENERAL['SLAVES']
+
+if not GENERAL['SECONDARY_TIMEOUT']:
+    if 'SLAVE_TIMEOUT' in GENERAL and GENERAL['SLAVE_TIMEOUT']:
+        GENERAL['SECONDARY_TIMEOUT'] = GENERAL['SLAVE_TIMEOUT']
 
 # Writes a log message describing the result of the module initialization.
 def logInitResultMessage():

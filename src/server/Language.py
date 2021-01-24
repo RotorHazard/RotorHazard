@@ -4,6 +4,7 @@
 import logging
 import json
 import Options
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ InitResultLogLevel = logging.INFO
 
 # Load language file
 try:
-    with open(LANGUAGE_FILE_NAME, 'r') as f:
+    with io.open(LANGUAGE_FILE_NAME, 'r', encoding="utf8") as f:
         Languages = json.load(f)
     InitResultStr = 'Language file imported'
     InitResultLogLevel = logging.DEBUG
