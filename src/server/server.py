@@ -5679,13 +5679,17 @@ else:
     logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
 if strip:
     # Initialize the library (must be called once before other functions).
-    strip.begin()
-    led_manager = LEDEventManager(Events, strip)
-    led_effects = Plugins(prefix='led_handler')
-    led_effects.discover()
-    for led_effect in led_effects:
-        led_manager.registerEffect(led_effect)
-    init_LED_effects()
+    try:
+        strip.begin()
+        led_manager = LEDEventManager(Events, strip)
+        led_effects = Plugins(prefix='led_handler')
+        led_effects.discover()
+        for led_effect in led_effects:
+            led_manager.registerEffect(led_effect)
+        init_LED_effects()
+    except:
+        logger.exception("Error initializing LED support")
+        led_manager = NoLEDManager()
 elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
     led_manager = ClusterLEDManager()
     led_effects = Plugins(prefix='led_handler')
