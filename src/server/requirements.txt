@@ -15,5 +15,7 @@ monotonic==1.5.*
 pyserial==3.4.*
 paho-mqtt==1.5.*
 websocket-client==0.57.*
-smbus2==0.4.0
+requests==2.25.*
+smbus2==0.4.*
 RPi.GPIO==0.7.*
+rpi-ws281x==4.2.*
