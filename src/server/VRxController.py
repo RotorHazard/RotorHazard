@@ -208,9 +208,13 @@ class VRxController:
             self.logger.warning('Failed to send results: Seat not specified')
             return False
 
-        results = self.RACE.results
-        lap_info = self.RACE.lap_info
+        if 'lap_info' in args:
+            lap_info = args['lap_info']
+        else:
+            self.logger.warning('Failed to send results: Lap info not sent')
+            return False
 
+        results = self.RACE.results
 
         lap_info_json = json.dumps(lap_info)
 
