@@ -272,8 +272,9 @@ class VRxController:
             # WinCondition.NONE
 
             # "Pos-Callsign L[n]|0:00:00 / +0:00.000 Callsign"
-            if lap_info['next_rank']['position'] != None:
-                message += ' / +' + RHUtils.time_format(lap_info['next_rank']['split_time']) + ' ' + lap_info['next_rank']['callsign'][:10]
+            if lap_info['next_rank']:
+                if lap_info['next_rank']['position'] != None:
+                    message += ' / +' + RHUtils.time_format(lap_info['next_rank']['split_time']) + ' ' + lap_info['next_rank']['callsign'][:10]
 
         # send message to crosser
         seat_dest = seat_index
@@ -281,32 +282,33 @@ class VRxController:
         self.logger.debug('msg s{1}:  {0}'.format(message, seat_dest))
 
         # show split when next pilot crosses
-        if lap_info['next_rank']['position'] != None:
-            if lap_info['race']['win_condition'] == WinCondition.FASTEST_3_CONSECUTIVE or lap_info['race']['win_condition'] == WinCondition.FASTEST_LAP:
-                # don't update
-                pass
+        if lap_info['next_rank']:
+            if lap_info['next_rank']['position'] != None:
+                if lap_info['race']['win_condition'] == WinCondition.FASTEST_3_CONSECUTIVE or lap_info['race']['win_condition'] == WinCondition.FASTEST_LAP:
+                    # don't update
+                    pass
 
-            else:
-                # WinCondition.MOST_LAPS
-                # WinCondition.FIRST_TO_LAP_X
-                # WinCondition.NONE
+                else:
+                    # WinCondition.MOST_LAPS
+                    # WinCondition.FIRST_TO_LAP_X
+                    # WinCondition.NONE
 
-                # update pilot ahead with split-behind
+                    # update pilot ahead with split-behind
 
-                # "Pos-Callsign L[n]|0:00:00"
-                message = POS_HEADER + lap_info['next_rank']['position'] + '-' + lap_info['next_rank']['callsign'][:10] + ' '
+                    # "Pos-Callsign L[n]|0:00:00"
+                    message = POS_HEADER + lap_info['next_rank']['position'] + '-' + lap_info['next_rank']['callsign'][:10] + ' '
 
-                if lap_info['next_rank']['lap_number'] >= 1:
-                    message += LAP_HEADER
+                    if lap_info['next_rank']['lap_number'] >= 1:
+                        message += LAP_HEADER
 
-                message += str(lap_info['next_rank']['lap_number']) + '|' + RHUtils.time_format(lap_info['next_rank']['last_lap_time'])
+                    message += str(lap_info['next_rank']['lap_number']) + '|' + RHUtils.time_format(lap_info['next_rank']['last_lap_time'])
 
-                # "Pos-Callsign L[n]|0:00:00 / -0:00.000 Callsign"
-                message += ' / -' + RHUtils.time_format(lap_info['next_rank']['split_time']) + ' ' + lap_info['current']['callsign'][:10]
+                    # "Pos-Callsign L[n]|0:00:00 / -0:00.000 Callsign"
+                    message += ' / -' + RHUtils.time_format(lap_info['next_rank']['split_time']) + ' ' + lap_info['current']['callsign'][:10]
 
-                seat_dest = lap_info['next_rank']['seat']
-                self.set_message_direct(seat_dest, message)
-                self.logger.debug('msg s{1}:  {0}'.format(message, seat_dest))
+                    seat_dest = lap_info['next_rank']['seat']
+                    self.set_message_direct(seat_dest, message)
+                    self.logger.debug('msg s{1}:  {0}'.format(message, seat_dest))
 
 
     ##############

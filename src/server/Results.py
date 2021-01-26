@@ -927,7 +927,7 @@ def get_lap_info(RACE, seat_index):
             'position': str(next_rank_split_result['position']),
             'callsign': next_rank_split_result['callsign'],
             'split_time': next_rank_split,
-            'lap_number': str(next_rank_split_result['laps']),
+            'lap_number': next_rank_split_result['laps'],
             'last_lap_time': next_rank_split_result['last_lap_raw'],
             'total_time': next_rank_split_result['total_time_raw'],
         }
@@ -944,7 +944,7 @@ def get_lap_info(RACE, seat_index):
             'position': str(first_rank_split_result['position']),
             'callsign': first_rank_split_result['callsign'],
             'split_time': first_rank_split,
-            'lap_number': str(first_rank_split_result['laps']),
+            'lap_number': first_rank_split_result['laps'],
             'last_lap_time': first_rank_split_result['last_lap_raw'],
             'total_time': first_rank_split_result['total_time_raw'],
         }
