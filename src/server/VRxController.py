@@ -234,12 +234,13 @@ class VRxController:
         LAP_HEADER = Options.get('osd_lapHeader')
         POS_HEADER = Options.get('osd_positionHeader')
         BEST_LAP_TEXT = __('Best Lap')
+        HOLSESHOT_TEXT = __('HS')
 
         # "Pos-Callsign L[n]|0:00:00"
         message = POS_HEADER + lap_info['current']['position'] + '-' + \
             lap_info['current']['callsign'][:10] + ' '
 
-        if lap_info['current']['lap_number'] != __('HS'):
+        if lap_info['current']['lap_number'] >= 1:
             message += LAP_HEADER
 
         message += lap_info['current']['lap_number'] + '|' + \
@@ -291,7 +292,7 @@ class VRxController:
                 # "Pos-Callsign L[n]|0:00:00"
                 message = POS_HEADER + lap_info['next_rank']['position'] + '-' + lap_info['next_rank']['callsign'][:10] + ' '
 
-                if lap_info['next_rank']['lap_number'] != __('HS'):
+                if lap_info['next_rank']['lap_number'] >= 1:
                     message += LAP_HEADER
 
                 message += lap_info['next_rank']['lap_number'] + '|' + RHUtils.time_format(lap_info['next_rank']['last_lap_time'])

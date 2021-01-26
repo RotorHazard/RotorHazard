@@ -902,7 +902,7 @@ def get_lap_info(RACE, seat_index):
         'seat': seat_index,
         'position': str(result['position']),
         'callsign': result['callsign'],
-        'lap_number': '',
+        'lap_number': None,
         'last_lap_time': '',
         'total_time': result['total_time_raw'],
         'total_time_laps': result['total_time_laps_raw'],
@@ -911,24 +911,15 @@ def get_lap_info(RACE, seat_index):
     }
 
     if result['laps']:
-        lap_info['current']['lap_number'] = str(result['laps'])
+        lap_info['current']['lap_number'] = result['laps']
         lap_info['current']['last_lap_time'] = result['last_lap_raw']
     else:
-        lap_info['current']['lap_prefix'] = ''
-        lap_info['current']['lap_number'] = __('HS')
+        lap_info['current']['lap_number'] = 0
         lap_info['current']['last_lap_time'] = result['total_time_raw']
         lap_info['current']['is_best_lap'] = False
 
     # Next faster pilot
-    lap_info['next_rank'] = {
-        'seat': None,
-        'position': None,
-        'callsign': None,
-        'split_time': None,
-        'lap_number': None,
-        'last_lap_time': None,
-        'total_time': None,
-    }
+    lap_info['next_rank'] = None
 
     if next_rank_split:
         lap_info['next_rank'] = {
@@ -942,19 +933,10 @@ def get_lap_info(RACE, seat_index):
         }
 
         if next_rank_split_result['laps'] < 1:
-            lap_info['next_rank']['lap_number'] = __('HS')
             lap_info['next_rank']['last_lap_time'] = next_rank_split_result['total_time_raw']
 
     # Race Leader
-    lap_info['first_rank'] = {
-        'seat': None,
-        'position': None,
-        'callsign': None,
-        'split_time': None,
-        'lap_number': None,
-        'last_lap_time': None,
-        'total_time': None,
-    }
+    lap_info['first_rank'] = None
 
     if first_rank_split:
         lap_info['first_rank'] = {
@@ -968,7 +950,6 @@ def get_lap_info(RACE, seat_index):
         }
 
         if next_rank_split_result['laps'] < 1:
-            lap_info['first_rank']['lap_number'] = __('HS')
             lap_info['first_rank']['last_lap_time'] = first_rank_split_result['total_time_raw']
 
     return lap_info
