@@ -18,7 +18,7 @@ private:
     void handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal);
 public:
     Message(RssiReceivers *rssiRxs, Hardware *hardware) : rssiRxs(rssiRxs), hardware(hardware) {
-    };
+    }
     uint8_t command;  // code to identify messages
     Buffer buffer;  // request/response payload
 

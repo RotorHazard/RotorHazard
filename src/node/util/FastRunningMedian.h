@@ -32,17 +32,7 @@ template <typename T, uint8_t N, T default_value> class FastRunningMedian {
 
 public:
 	FastRunningMedian() {
-		_buffer_ptr = N;
-		_median_ptr = N/2;
-		_unfilled = N;
-
-		// Init buffers
-		uint8_t i = N;
-		while( i > 0 ) {
-			i--;
-			_inbuffer[i] = default_value;
-			_sortbuffer[i] = default_value;
-		}
+	    init();
 	}
 
 	bool isFilled() {
@@ -111,6 +101,10 @@ public:
 		}
 	}
 
+    void reset() {
+        init();
+    }
+
 private:
 	// Pointer to the last added element in _inbuffer
 	uint8_t _buffer_ptr;
@@ -123,6 +117,20 @@ private:
 	T _inbuffer[N];
 	// sorted buffer
 	T _sortbuffer[N];
+
+    void init() {
+        _buffer_ptr = N;
+        _median_ptr = N/2;
+        _unfilled = N;
+
+        // Init buffers
+        uint8_t i = N;
+        while( i > 0 ) {
+            i--;
+            _inbuffer[i] = default_value;
+            _sortbuffer[i] = default_value;
+        }
+    }
 };
 
 // --- END OF FILE ---

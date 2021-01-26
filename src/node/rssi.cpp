@@ -32,6 +32,7 @@ bool RssiNode::isStateValid()
 
 void RssiNode::resetState()
 {
+    filter->reset();
     state.reset();
     history.reset();
     needsToSettle = true;

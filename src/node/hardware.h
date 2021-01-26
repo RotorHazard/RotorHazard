@@ -16,26 +16,28 @@
 class Hardware {
 private:
     const uint8_t ledOnValue, ledOffValue;
+
+protected:
     bool currentStatusLedFlag = false;
 
 public:
     Hardware(uint8_t ledOn, uint8_t ledOff) : ledOnValue(ledOn), ledOffValue(ledOff) {
-    };
-    void init() {
+    }
+    virtual void init() {
         pinMode(LED_BUILTIN, OUTPUT);
-    };
-    void initSettings(int nIdx, Settings& settings) {};
+    }
+    virtual void initSettings(int nIdx, Settings& settings) {}
     virtual void initRxModule(int nIdx, RxModule& rx) = 0;
-    void processStatusFlags(uint8_t statusFlags, RssiNode& node) {};
-    void resetPairedNode(int pinState) {};
-    void doJumpToBootloader() {};
-    uint8_t getAddress() { return 0; };
+    virtual void processStatusFlags(uint8_t statusFlags, RssiNode& node) {}
+    virtual void resetPairedNode(int pinState) {}
+    virtual void doJumpToBootloader() {}
+    virtual uint8_t getAddress() { return 0; }
     // value returned by READ_RHFEAT_FLAGS command
-    uint16_t getFeatureFlags() { return RHFEAT_NONE; };
-    void storeFrequency(uint16_t freq) {};
-    void storeEnterAtLevel(rssi_t rssi) {};
-    void storeExitAtLevel(rssi_t rssi) {};
-    void setStatusLed(bool onFlag)
+    virtual uint16_t getFeatureFlags() { return RHFEAT_NONE; }
+    virtual void storeFrequency(uint16_t freq) {}
+    virtual void storeEnterAtLevel(rssi_t rssi) {}
+    virtual void storeExitAtLevel(rssi_t rssi) {}
+    virtual void setStatusLed(bool onFlag)
     {
         if (onFlag)
         {
