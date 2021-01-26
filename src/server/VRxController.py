@@ -247,7 +247,7 @@ class VRxController:
         if lap_info['current']['lap_number'] >= 1:
             message += LAP_HEADER
 
-        message += lap_info['current']['lap_number'] + '|' + \
+        message += str(lap_info['current']['lap_number']) + '|' + \
             RHUtils.time_format(lap_info['current']['last_lap_time'])
 
         if lap_info['race']['win_condition'] == WinCondition.FASTEST_3_CONSECUTIVE:
@@ -299,7 +299,7 @@ class VRxController:
                 if lap_info['next_rank']['lap_number'] >= 1:
                     message += LAP_HEADER
 
-                message += lap_info['next_rank']['lap_number'] + '|' + RHUtils.time_format(lap_info['next_rank']['last_lap_time'])
+                message += str(lap_info['next_rank']['lap_number']) + '|' + RHUtils.time_format(lap_info['next_rank']['last_lap_time'])
 
                 # "Pos-Callsign L[n]|0:00:00 / -0:00.000 Callsign"
                 message += ' / -' + RHUtils.time_format(lap_info['next_rank']['split_time']) + ' ' + lap_info['current']['callsign'][:10]
