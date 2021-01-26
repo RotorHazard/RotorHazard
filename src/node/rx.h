@@ -25,7 +25,7 @@ class RxModule {
     rssi_t readRssi();
     bool powerUp();
     bool powerDown();
-    bool isPoweredDown() { return rxPoweredDown; };
+    bool isPoweredDown() { return rxPoweredDown; }
     bool reset();
 };
 

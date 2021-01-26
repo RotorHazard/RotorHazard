@@ -1,4 +1,3 @@
-#ifndef __TEST__
 // RotorHazard FPV Race Timing
 // Based on Delta 5 Race Timer by Scott Chin
 // SPI driver based on fs_skyrf_58g-main.c Written by Simon Chambers
@@ -36,10 +35,14 @@
 // dummy macro
 #define LOG_ERROR(...)
 
+#if defined(__TEST__)
+#include "test_hardware.h"
+#else
 #if STM32_MODE_FLAG
 #include "stm32_hardware.h"
 #else
 #include "avr_hardware.h"
+#endif
 #endif
 
 // Initialize program
@@ -52,7 +55,7 @@ void setup()
         RxModule& rx = RssiReceivers::rssiRxs->getRxModule(i);
         hardware->initRxModule(i, rx);
         while (!rx.reset()) {
-            ;
+            delay(1);
         }
 
         Settings& settings = RssiReceivers::rssiRxs->getSettings(i);
@@ -60,13 +63,13 @@ void setup()
         if (settings.vtxFreq == 1111) // frequency value to power down rx module
         {
             while (!rx.powerDown()) {
-                ;
+                delay(1);
             }
         }
-        else
+        else if (settings.vtxFreq > 0)
         {
             while (!rx.setFrequency(settings.vtxFreq)) {  // Setup rx module to default frequency
-                ;
+                delay(1);
             }
         }
     }
@@ -74,17 +77,18 @@ void setup()
     RssiReceivers::rssiRxs->start();
 }
 
+static uint32_t elapsedSinceLastRead = 0;
 static uint8_t currentStatusFlags = 0;
 
 // Main loop
 void loop()
 {
-    const uint32_t elapsed = usclock.tick();
-    if (elapsed > 1000)
+    const uint32_t elapsedSinceLastTick = usclock.tick();
+    elapsedSinceLastRead += elapsedSinceLastTick;
+    if (elapsedSinceLastRead > 1000)
     {  // limit to once per millisecond
-        // read raw RSSI close to taking timestamp
-        const mtime_t ms = usclock.millis();
         bool crossingFlag = RssiReceivers::rssiRxs->readRssi();
+        elapsedSinceLastRead = 0;
 
         // update settings and status LED
 
@@ -105,6 +109,8 @@ void loop()
         {
             state.activatedFlag = true;
         }
+
+        // update settings
 
         if (currentStatusFlags & FREQ_SET)
         {
@@ -159,6 +165,7 @@ void loop()
         currentStatusFlags &= ~SERIAL_CMD_MSG;
 
         // Status LED
+        mtime_t ms = millis();
         if (ms <= 1000)
         {  //flash three times during first second of running
             int ti = (int)ms / 100;
@@ -184,4 +191,3 @@ void loop()
         }
     }
 }
-#endif

@@ -13,6 +13,7 @@ public:
   virtual void addRawValue(mtime_t ts, T value) = 0;
   virtual T getFilteredValue() = 0;
   virtual mtime_t getFilterTimestamp() = 0;
+  virtual void reset() = 0;
 };
 
 #endif

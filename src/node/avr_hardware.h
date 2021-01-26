@@ -1,4 +1,4 @@
-#if !defined(__TEST__) && !STM32_MODE_FLAG
+#include "config.h"
 #include "hardware.h"
 #include "commands.h"
 #include <Wire.h>
@@ -91,7 +91,7 @@ private:
                 i2cAddress |= 4;
             i2cAddress = 8 + (i2cAddress * 2);
         }
-    };
+    }
 #endif  // (!defined(NODE_NUMBER)) || (!NODE_NUMBER)
 
     void i2cInitialize(bool delayFlag)
@@ -107,11 +107,11 @@ private:
         Wire.onRequest(i2cTransmit);  // Trigger 'i2cTransmit' function for outgoing data, on master request
 
         TWAR = (i2cAddress << 1) | 1;  // enable broadcasts to be received
-    };
+    }
 
 public:
     AvrHardware() : Hardware(HIGH,LOW) {
-    };
+    }
     void init()
     {
         Hardware::init();
@@ -132,7 +132,7 @@ public:
         {
             Serial.begin(SERIAL_BAUD_RATE);  // Start serial interface
             while (!Serial) {
-                ;  // Wait for the Serial port to initialize
+                delay(1);  // Wait for the Serial port to initialize
             }
         }
 
@@ -142,7 +142,7 @@ public:
         sbi(ADCSRA, ADPS2);
         cbi(ADCSRA, ADPS1);
         cbi(ADCSRA, ADPS0);
-    };
+    }
 
     void initSettings(int nIdx, Settings& settings)
     {
@@ -160,7 +160,7 @@ public:
             eepromWriteWord(offset + EEPROM_ADRW_EXITAT, settings.exitAtLevel);
             eepromWriteWord(offset + EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
         }
-    };
+    }
 
     void initRxModule(int nIdx, RxModule& rx)
     {
@@ -169,7 +169,7 @@ public:
         uint16_t selPin = RX5808_SEL_PIN;    //CLK (CH3) output line to RX5808 module
         uint16_t rssiPin = RSSI_INPUT_PIN;   //RSSI input from RX5808
         rx.init(dataPin, clkPin, selPin, rssiPin);
-    };
+    }
 
     void processStatusFlags(uint8_t statusFlags, RssiNode& rssiNode) {
         State& state = rssiNode.getState();
@@ -200,7 +200,7 @@ public:
         {
             i2cMonitorEnabledFlag = false;
         }
-    };
+    }
 
     // Node reset for ISP; resets other node wired to this node's reset pin
     void resetPairedNode(int pinState)
@@ -214,42 +214,42 @@ public:
             pinMode(NODE_RESET_PIN, OUTPUT);
             digitalWrite(NODE_RESET_PIN, LOW);
         }
-    };
+    }
 
     void doJumpToBootloader()
     {
-    };
+    }
 
     uint8_t getAddress()
     {
         return i2cAddress;
-    };
+    }
 
     uint16_t getFeatureFlags() {
         return (RHFEAT_STM32_MODE | RHFEAT_JUMPTO_BOOTLDR | RHFEAT_IAP_FIRMWARE);
-    };
+    }
 
     void storeFrequency(uint16_t freq)
     {
         eepromWriteWord(EEPROM_ADRW_RXFREQ, freq);
-    };
+    }
 
     void storeEnterAtLevel(rssi_t rssi)
     {
         eepromWriteWord(EEPROM_ADRW_ENTERAT, rssi);
-    };
+    }
 
     void storeExitAtLevel(rssi_t rssi)
     {
         eepromWriteWord(EEPROM_ADRW_EXITAT, rssi);
-    };
+    }
 };
 
 AvrHardware defaultHardware;
 Hardware *hardware = &defaultHardware;
 
-Message i2cMessage(RssiReceivers::rssiRxs, hardware);
-Message serialMessage(RssiReceivers::rssiRxs, hardware);
+static Message i2cMessage(RssiReceivers::rssiRxs, hardware);
+static Message serialMessage(RssiReceivers::rssiRxs, hardware);
 
 // Function called by twi interrupt service when master sends information to the slave
 // or when master sets up a specific read request
@@ -318,7 +318,7 @@ bool i2cReadAndValidateIoBuffer(byte expectedSize)
     }
 }
 
-// Function called by twi interrupt service when the Master wants to get data from the Slave
+// Function called by twi interrupt service when a request for data is received
 // No parameters and no returns
 // A transmit buffer (ioBuffer) is populated with the data before sending.
 void i2cTransmit()
@@ -336,4 +336,3 @@ void serialEvent()
 {
     handleStreamEvent(Serial, serialMessage);
 }
-#endif

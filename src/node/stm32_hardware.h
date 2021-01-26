@@ -1,4 +1,3 @@
-#if STM32_MODE_FLAG
 #include "config.h"
 #include "hardware.h"
 #include "commands.h"
@@ -41,7 +40,7 @@ private:
             default:
                 return PB6;
         }
-    };
+    }
 
     int rssiInputPinForNodeIndex(int nIdx)
     {
@@ -64,20 +63,20 @@ private:
             default:
                 return A0;
         }
-    };
+    }
 
 public:
     Stm32Hardware() : Hardware(LOW,HIGH) {
-    };
+    }
     void init()
     {
         Hardware::init();
 
         SERIALCOM.begin(SERIAL_BAUD_RATE);  // Start serial interface
         while (!SERIALCOM) {
-            ;  // Wait for the Serial port to initialize
+            delay(1);  // Wait for the Serial port to initialize
         }
-    };
+    }
 
     void initRxModule(int nIdx, RxModule& rx)
     {
@@ -86,11 +85,11 @@ public:
         uint16_t selPin = rx5808SelPinForNodeIndex(nIdx);  //SEL (CH2) output line to RX5808 module
         uint16_t rssiPin = rssiInputPinForNodeIndex(nIdx); //RSSI input from RX5808
         rx.init(dataPin, clkPin, selPin, rssiPin);
-    };
+    }
 
     uint16_t getFeatureFlags() {
         return RHFEAT_STM32_MODE | RHFEAT_JUMPTO_BOOTLDR | RHFEAT_IAP_FIRMWARE;
-    };
+    }
 
     // Jump to STM32 built-in bootloader; based on code from
     //  https://stm32f4-discovery.net/2017/04/tutorial-jump-system-memory-software-stm32
@@ -141,16 +140,15 @@ public:
         __set_MSP(*(uint32_t *)addr);  // @suppress("Invalid arguments")
 
         SysMemBootJump();  // do jump to bootloader in system memory
-    };
+    }
 };
 
 Stm32Hardware defaultHardware;
 Hardware *hardware = &defaultHardware;
 
-Message serialMessage(RssiReceivers::rssiRxs, hardware);
+static Message serialMessage(RssiReceivers::rssiRxs, hardware);
 
 void serialEvent()
 {
     handleStreamEvent(SERIALCOM, serialMessage);
 }
-#endif

@@ -37,6 +37,11 @@ template <typename T, uint8_t N, T default_value> class MedianFilter : public Fi
       uint8_t getTimestampCapacity() {
         return timestamps.capacity;
       }
+
+      void reset() {
+          median.reset();
+          timestamps.clear();
+      }
 };
 
 #define SmoothingSamples 255

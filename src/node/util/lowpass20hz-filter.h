@@ -45,4 +45,12 @@ class LowPassFilter20Hz : public Filter<rssi_t>
         mtime_t getFilterTimestamp() {
             return timestamps.first();
         }
+
+        void reset() {
+            v[0] = 0.0;
+            v[1] = 0.0;
+            v[2] = 0.0;
+            nextValue = 0;
+            timestamps.clear();
+        }
 };

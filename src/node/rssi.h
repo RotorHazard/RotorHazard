@@ -149,9 +149,9 @@ public:
     bool process(rssi_t rssi, mtime_t ms);
     void endCrossing();
 
-    struct Settings& getSettings() { return settings; };
-    struct State& getState() { return state; };
-    struct History& getHistory() { return history; };
-    struct LastPass& getLastPass() { return lastPass; };
+    struct Settings& getSettings() { return settings; }
+    struct State& getState() { return state; }
+    struct History& getHistory() { return history; }
+    struct LastPass& getLastPass() { return lastPass; }
 };
 #endif

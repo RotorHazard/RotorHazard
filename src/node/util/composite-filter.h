@@ -28,6 +28,11 @@ template <typename T> class Composite2Filter : public Filter<T>
         mtime_t getFilterTimestamp() {
           return f2.getFilterTimestamp();
         }
+
+        void reset() {
+            f1.reset();
+            f2.reset();
+        }
 };
 
 template <typename T> class Composite3Filter : public Filter<T>
@@ -61,5 +66,11 @@ template <typename T> class Composite3Filter : public Filter<T>
 
         mtime_t getFilterTimestamp() {
           return f3.getFilterTimestamp();
+        }
+
+        void reset() {
+            f1.reset();
+            f2.reset();
+            f3.reset();
         }
 };

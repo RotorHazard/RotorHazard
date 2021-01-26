@@ -23,4 +23,9 @@ template <typename T> class NoFilter : public Filter<T>
         mtime_t getFilterTimestamp() {
             return timestamp;
         }
+
+        void reset() {
+            v = 0;
+            timestamp = 0;
+        }
 };
