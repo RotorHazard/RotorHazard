@@ -5102,11 +5102,11 @@ def recover_database(dbfile, **kwargs):
         # RSSI reduced by half for 2.0.0
         if migrate_db_api < 23:
             for profile in profiles_query_data:
-                if profile.enter_ats:
+                if hasattr(profile, 'enter_ats'):
                     enter_ats = json.loads(profile.enter_ats)
                     enter_ats["v"] = [val/2 for val in enter_ats["v"]]
                     profile.enter_ats = json.dumps(enter_ats)
-                if profile.exit_ats:
+                if hasattr(profile, 'exit_ats'):
                     exit_ats = json.loads(profile.exit_ats)
                     exit_ats["v"] = [val/2 for val in exit_ats["v"]]
                     profile.exit_ats = json.dumps(exit_ats)
