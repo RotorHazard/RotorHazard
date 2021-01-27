@@ -4998,8 +4998,17 @@ def get_legacy_table_data(metadata, table_name, filter_crit=None, filter_value=N
     try:
         table = Table(table_name, metadata, autoload=True)
         if filter_crit is None:
-            return table.select().execute().fetchall()
-        return table.select().execute().filter(filter_crit==filter_value).fetchall()
+            data = table.select().execute().fetchall()
+        else:
+            data = table.select().execute().filter(filter_crit==filter_value).fetchall()
+
+        output = []
+        for row in data:
+            d = dict(row.items())
+            output.append(d)
+
+        return output
+
     except Exception as ex:
         logger.warning('Unable to read "{0}" table from previous database: {1}'.format(table_name, ex))
 
