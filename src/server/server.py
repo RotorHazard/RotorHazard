@@ -5020,6 +5020,8 @@ def restore_table(class_type, table_query_data, **kwargs):
         except Exception as ex:
             logger.warning('Error restoring "{0}" table from previous database: {1}'.format(class_type.__name__, ex))
             logger.debug(traceback.format_exc())
+    else:
+        logger.debug('Error restoring "{0}" table: no data'.format(class_type.__name__))
 
 def recover_database(dbfile, **kwargs):
     recover_status = {
@@ -5112,6 +5114,7 @@ def recover_database(dbfile, **kwargs):
         recover_status['stage_0'] = True
     except Exception as ex:
         logger.warning('Error reading data from previous database (stage 0):  ' + str(ex))
+        logger.debug(traceback.format_exc())
 
     if "startup" in kwargs:
         backup_db_file(False)  # rename and move DB file
@@ -5129,6 +5132,8 @@ def recover_database(dbfile, **kwargs):
                         'team': DEF_TEAM_NAME,
                         'phonetic': ''
                     })
+            else:
+                db_reset_pilots()
 
             if migrate_db_api < 27:
                 # old heat DB structure; migrate node 0 to heat table
@@ -5167,18 +5172,23 @@ def recover_database(dbfile, **kwargs):
                     })
             else:
                 # current heat structure; use basic migration
-                restore_table(Database.Heat, heat_query_data, defaults={
-                        'class_id': Database.CLASS_ID_NONE,
-                        'results': None,
-                        'cacheStatus': Results.CacheStatus.INVALID
-                    })
-                restore_table(Database.HeatNode, heatNode_query_data, defaults={
-                        'pilot_id': Database.PILOT_ID_NONE
-                    })
 
-                RACE.current_heat = Database.Heat.query.first().id
+                if heat_query_data:
+                    restore_table(Database.Heat, heat_query_data, defaults={
+                            'class_id': Database.CLASS_ID_NONE,
+                            'results': None,
+                            'cacheStatus': Results.CacheStatus.INVALID
+                        })
+                    restore_table(Database.HeatNode, heatNode_query_data, defaults={
+                            'pilot_id': Database.PILOT_ID_NONE
+                        })
 
-            restore_table(Database.RaceFormat, raceFormat_query_data, defaults={
+                    RACE.current_heat = Database.Heat.query.first().id
+                else:
+                    db_reset_heats()
+
+            if raceFormat_query_data:
+                restore_table(Database.RaceFormat, raceFormat_query_data, defaults={
                     'name': __("Migrated Format"),
                     'race_mode': 0,
                     'race_time_sec': 120,
@@ -5190,12 +5200,19 @@ def recover_database(dbfile, **kwargs):
                     'team_racing_mode': False,
                     'start_behavior': 0
                 })
-            restore_table(Database.Profiles, profiles_query_data, defaults={
-                    'name': __("Migrated Profile"),
-                    'frequencies': json.dumps(default_frequencies()),
-                    'enter_ats': json.dumps({'v': [None for i in range(max(RACE.num_nodes,8))]}),
-                    'exit_ats': json.dumps({'v': [None for i in range(max(RACE.num_nodes,8))]})
-                })
+            else:
+                db_reset_race_formats()
+
+            if profiles_query_data:
+                restore_table(Database.Profiles, profiles_query_data, defaults={
+                        'name': __("Migrated Profile"),
+                        'frequencies': json.dumps(default_frequencies()),
+                        'enter_ats': json.dumps({'v': [None for i in range(max(RACE.num_nodes,8))]}),
+                        'exit_ats': json.dumps({'v': [None for i in range(max(RACE.num_nodes,8))]})
+                    })
+            else:
+                db_reset_profile()
+
             restore_table(Database.RaceClass, raceClass_query_data, defaults={
                     'name': 'New class',
                     'format_id': 0,
