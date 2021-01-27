@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "3.0.0-dev.1" # Public release version code
-SERVER_API = 29 # Server API version
+SERVER_API = 30 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 33 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -798,6 +798,8 @@ def on_set_frequency(data):
         data = json.loads(data)
     node_index = data['node']
     frequency = data['frequency']
+    band = data['band'] if 'band' in data else None
+    channel = data['channel'] if 'channel' in data else None
 
     if node_index < 0 or node_index >= RACE.num_nodes:
         logger.info('Unable to set frequency ({0}) on node {1}; node index out of range'.format(frequency, node_index+1))
@@ -808,11 +810,15 @@ def on_set_frequency(data):
 
     # handle case where more nodes were added
     while node_index >= len(freqs["f"]):
+        freqs["b"].append(None)
+        freqs["c"].append(None)
         freqs["f"].append(RHUtils.FREQUENCY_ID_NONE)
 
+    freqs["b"][node_index] = band
+    freqs["c"][node_index] = channel
     freqs["f"][node_index] = frequency
     profile.frequencies = json.dumps(freqs)
-    logger.info('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
+    logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(node_index+1, band, channel, frequency))
 
     update_heat_flag = False
     try:  # if running as secondary timer and no pilot is set for node then set one now
@@ -1488,8 +1494,7 @@ def on_delete_pilot(data):
 def on_add_profile():
     '''Adds new profile (frequency set) in the database.'''
     profile = getCurrentProfile()
-    new_freqs = {}
-    new_freqs["f"] = default_frequencies()
+    new_freqs = default_frequencies()
 
     new_profile = Database.Profiles(name=__('New Profile'),
                            description = __('New Profile'),
@@ -3423,6 +3428,8 @@ def emit_frequency_data(**params):
     '''Emits node data.'''
     profile_freqs = json.loads(getCurrentProfile().frequencies)
     emit_payload = {
+            'band': profile_freqs["b"][:RACE.num_nodes],
+            'channel': profile_freqs["c"][:RACE.num_nodes],
             'frequency': profile_freqs["f"][:RACE.num_nodes]
         }
     if ('nobroadcast' in params):
@@ -4646,11 +4653,23 @@ def node_crossing_callback(node):
 def default_frequencies():
     '''Set node frequencies, R1367 for 4, IMD6C+ for 5+.'''
     if RACE.num_nodes < 5:
-        freqs = [5658, 5732, 5843, 5880, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
+        freqs = {
+            'b': ['R', 'R', 'R', 'R', None, None, None, None],
+            'c': [1, 3, 6, 7, None, None, None, None],
+            'f': [5658, 5732, 5843, 5880, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
+        }
     else:
-        freqs = [5658, 5695, 5760, 5800, 5880, 5917, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
-        while RACE.num_nodes > len(freqs):
-            freqs.append(RHUtils.FREQUENCY_ID_NONE)
+        freqs = {
+            'b': ['R', 'R', 'F', 'F', 'R', 'R', None, None],
+            'c': [1, 2, 2, 4, 7, 8, None, None],
+            'f': [5658, 5695, 5760, 5800, 5880, 5917, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
+        }
+
+        while RACE.num_nodes > len(freqs['f']):
+            freqs['b'].append(None)
+            freqs['c'].append(None)
+            freqs['f'].append(RHUtils.FREQUENCY_ID_NONE)
+
     return freqs
 
 def assign_frequencies():
@@ -4755,7 +4774,7 @@ def db_reset_profile():
     DB.session.query(Database.Profiles).delete()
 
     new_freqs = {}
-    new_freqs["f"] = default_frequencies()
+    new_freqs = default_frequencies()
 
     template = {}
     template["v"] = [None for i in range(max(RACE.num_nodes,8))]
@@ -5110,6 +5129,18 @@ def recover_database(dbfile, **kwargs):
                     exit_ats = json.loads(profile.exit_ats)
                     exit_ats["v"] = [val/2 for val in exit_ats["v"]]
                     profile.exit_ats = json.dumps(exit_ats)
+
+        # Convert frequencies
+        if migrate_db_api < 30:
+            for profile in profiles_query_data:
+                if profile.frequencies:
+                    freqs = json.loads(profile.frequencies)
+                    f_obj = {
+                        'b': None,
+                        'c': None,
+                        'f': freqs['f']
+                    }
+                    profile.frequencies = json.dumps(f_obj)
 
         recover_status['stage_0'] = True
     except Exception as ex:

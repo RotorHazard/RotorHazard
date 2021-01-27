@@ -1614,14 +1614,44 @@ var freq = {
 		S8: 5839,
 		'N/A': 'n/a'
 	},
+	getFObjbyKey: function(key) {
+		var regex = /([A-Za-z]*)([0-9]*)/;
+		var parts = key.match(regex);
+		return {
+			key: key,
+			fString: key + ':' + this.frequencies[key],
+			band: parts[1],
+			channel: parts[2],
+			frequency: this.frequencies[key]
+		}
+	},
+	getFObjbyFString: function(fstring) {
+		var regex = /([A-Za-z]*)([0-9]*):([0-9]{4})/;
+		var parts = fstring.match(regex);
+		return {
+			key: "" + parts[1] + parts[2],
+			fString: fstring,
+			band: parts[1],
+			channel: parts[2],
+			frequency: parts[3]
+		}
+	},
 	findByFreq: function(frequency) {
 		var keyNames = Object.keys(this.frequencies);
 		for (var i in keyNames) {
 			if (this.frequencies[keyNames[i]] == frequency) {
-				return keyNames[i];
+				var fObj = this.getFObjbyKey(keyNames[i]);
+
+				return fObj;
 			}
 		}
-		return false;
+		return {
+			key: null,
+			fString: "n/a",
+			band: null,
+			channel: null,
+			frequency: frequency
+		};
 	},
 	buildSelect: function() {
 		var output = '';
@@ -1632,7 +1662,7 @@ var freq = {
 			} else if (this.frequencies[keyNames[i]] == 'n/a') {
 				output += '<option value="n/a">' + __('N/A') + '</option>';
 			} else {
-				output += '<option value="' + this.frequencies[keyNames[i]] + '">' + keyNames[i] + ' ' + this.frequencies[keyNames[i]] + '</option>';
+				output += '<option value="' + keyNames[i] + ':' + this.frequencies[keyNames[i]] + '">' + keyNames[i] + ' ' + this.frequencies[keyNames[i]] + '</option>';
 			}
 		}
 		return output;
