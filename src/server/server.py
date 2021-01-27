@@ -5102,11 +5102,11 @@ def recover_database(dbfile, **kwargs):
         # RSSI reduced by half for 2.0.0
         if migrate_db_api < 23:
             for profile in profiles_query_data:
-                if hasattr(profile, 'enter_ats'):
+                if hasattr(profile, 'enter_ats') and profile.enter_ats:
                     enter_ats = json.loads(profile.enter_ats)
                     enter_ats["v"] = [val/2 for val in enter_ats["v"]]
                     profile.enter_ats = json.dumps(enter_ats)
-                if hasattr(profile, 'exit_ats'):
+                if hasattr(profile, 'exit_ats') and profile.exit_ats:
                     exit_ats = json.loads(profile.exit_ats)
                     exit_ats["v"] = [val/2 for val in exit_ats["v"]]
                     profile.exit_ats = json.dumps(exit_ats)
@@ -5144,11 +5144,14 @@ def recover_database(dbfile, **kwargs):
                     if row['node_index'] == 0:
                         new_row = {}
                         new_row['id'] = row['heat_id']
-                        new_row['note'] = row['note']
-                        new_row['class_id'] = row['class_id']
+                        if 'note' in row:
+                            new_row['note'] = row['note']
+                        if 'class_id' in row:
+                            new_row['class_id'] = row['class_id']
                         heat_extracted_meta.append(new_row)
 
                 restore_table(Database.Heat, heat_extracted_meta, defaults={
+                        'note': None,
                         'class_id': Database.CLASS_ID_NONE,
                         'results': None,
                         'cacheStatus': Results.CacheStatus.INVALID
@@ -5206,9 +5209,10 @@ def recover_database(dbfile, **kwargs):
             if profiles_query_data:
                 restore_table(Database.Profiles, profiles_query_data, defaults={
                         'name': __("Migrated Profile"),
-                        'frequencies': json.dumps(default_frequencies()),
+                        'frequencies': json.dumps({'f': default_frequencies()}),
                         'enter_ats': json.dumps({'v': [None for i in range(max(RACE.num_nodes,8))]}),
-                        'exit_ats': json.dumps({'v': [None for i in range(max(RACE.num_nodes,8))]})
+                        'exit_ats': json.dumps({'v': [None for i in range(max(RACE.num_nodes,8))]}),
+                        'f_ratio': None
                     })
             else:
                 db_reset_profile()
