@@ -3427,11 +3427,19 @@ def emit_race_status(**params):
 def emit_frequency_data(**params):
     '''Emits node data.'''
     profile_freqs = json.loads(getCurrentProfile().frequencies)
+
+    fdata = []
+    for idx in range(RACE.num_nodes):
+        fdata.append({
+                'band': profile_freqs["b"][idx],
+                'channel': profile_freqs["c"][idx],
+                'frequency': profile_freqs["f"][idx]
+            })
+
     emit_payload = {
-            'band': profile_freqs["b"][:RACE.num_nodes],
-            'channel': profile_freqs["c"][:RACE.num_nodes],
-            'frequency': profile_freqs["f"][:RACE.num_nodes]
+            'fdata': fdata
         }
+
     if ('nobroadcast' in params):
         emit('frequency_data', emit_payload)
     else:
