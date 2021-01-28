@@ -1687,6 +1687,28 @@ var freq = {
 		}
 		return false;
 	},
+	getFObjbyKey: function(key) {
+		var regex = /([A-Za-z]*)([0-9]*)/;
+		var parts = key.match(regex);
+		return {
+			key: key,
+			fString: key + ':' + this.frequencies[key],
+			band: parts[1],
+			channel: parts[2],
+			frequency: this.frequencies[key]
+		}
+	},
+	getFObjbyFString: function(fstring) {
+		var regex = /([A-Za-z]*)([0-9]*):([0-9]{4})/;
+		var parts = fstring.match(regex);
+		return {
+			key: "" + parts[1] + parts[2],
+			fString: fstring,
+			band: parts[1],
+			channel: parts[2],
+			frequency: parts[3]
+		}
+	},
 	findByFreq: function(frequency) {
 		if (frequency == 0) {
 			return {
