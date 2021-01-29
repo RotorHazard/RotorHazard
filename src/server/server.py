@@ -4723,7 +4723,7 @@ def assign_frequencies():
             'channel': freqs["c"][idx]
             })
 
-        logger.info('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs["f"][idx]))
+        logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
     DB.session.commit()
 
 def emit_current_log_file_to_socket():
