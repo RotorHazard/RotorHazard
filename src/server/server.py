@@ -369,7 +369,7 @@ def render_index():
 @APP.route('/event')
 def render_event():
     '''Route to heat summary page.'''
-    return render_template('event.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('event.html', num_nodes=RACE.num_nodes, serverInfo=serverInfo, getOption=Options.get, __=__)
 
 @APP.route('/results')
 def render_results():
@@ -797,9 +797,9 @@ def on_set_frequency(data):
     if isinstance(data, string_types): # LiveTime compatibility
         data = json.loads(data)
     node_index = data['node']
-    frequency = data['frequency']
-    band = data['band'] if 'band' in data else None
-    channel = data['channel'] if 'channel' in data else None
+    frequency = int(data['frequency'])
+    band = str(data['band']) if 'band' in data else None
+    channel = int(data['channel']) if 'channel' in data else None
 
     if node_index < 0 or node_index >= RACE.num_nodes:
         logger.info('Unable to set frequency ({0}) on node {1}; node index out of range'.format(frequency, node_index+1))
@@ -842,6 +842,8 @@ def on_set_frequency(data):
     trigger_event(Evt.FREQUENCY_SET, {
         'nodeIndex': node_index,
         'frequency': frequency,
+        'band': band,
+        'channel': channel
         })
 
     emit_frequency_data()
@@ -853,28 +855,48 @@ def on_set_frequency(data):
 def on_set_frequency_preset(data):
     ''' Apply preset frequencies '''
     CLUSTER.emitToSplits('set_frequency_preset', data)
+    bands = []
+    channels = []
     freqs = []
     if data['preset'] == 'All-N1':
         profile = getCurrentProfile()
         profile_freqs = json.loads(profile.frequencies)
-        frequency = profile_freqs["f"][0]
         for idx in range(RACE.num_nodes):
-            freqs.append(frequency)
+            bands.append(profile_freqs["b"][0])
+            channels.append(profile_freqs["c"][0])
+            freqs.append(profile_freqs["f"][0])
     else:
         if data['preset'] == 'RB-4':
-            freqs = [5658, 5732, 5843, 5880, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
+            bands = ['R', 'R', 'R', 'R']
+            channels = [1, 3, 6, 7]
+            freqs = [5658, 5732, 5843, 5880]
         elif data['preset'] == 'RB-8':
+            bands = ['R', 'R', 'R', 'R', 'R', 'R', 'R', 'R']
+            channels = [1, 2, 3, 4, 5, 6, 7, 8]
             freqs = [5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917]
         elif data['preset'] == 'IMD5C':
-            freqs = [5658, 5695, 5760, 5800, 5885, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
+            bands = ['R', 'R', 'F', 'F', 'E']
+            channels = [1, 2, 2, 4, 5]
+            freqs = [5658, 5695, 5760, 5800, 5885]
         else: #IMD6C is default
-            freqs = [5658, 5695, 5760, 5800, 5880, 5917, RHUtils.FREQUENCY_ID_NONE, RHUtils.FREQUENCY_ID_NONE]
+            bands = ['R', 'R', 'F', 'F', 'R', 'R']
+            channels = [1, 2, 2, 4, 7, 8]
+            freqs = [5658, 5695, 5760, 5800, 5880, 5917]
+        while RACE.num_nodes > len(bands):
+            bands.append(RHUtils.FREQUENCY_ID_NONE)
+        while RACE.num_nodes > len(channels):
+            channels.append(RHUtils.FREQUENCY_ID_NONE)
         while RACE.num_nodes > len(freqs):
             freqs.append(RHUtils.FREQUENCY_ID_NONE)
 
-    set_all_frequencies(freqs)
+    payload = {
+        "b": bands,
+        "c": channels,
+        "f": freqs
+    }
+    set_all_frequencies(payload)
     emit_frequency_data()
-    hardware_set_all_frequencies(freqs)
+    hardware_set_all_frequencies(payload)
 
 def set_all_frequencies(freqs):
     ''' Set frequencies for all nodes (but do not update hardware) '''
@@ -883,21 +905,23 @@ def set_all_frequencies(freqs):
     profile_freqs = json.loads(profile.frequencies)
 
     for idx in range(RACE.num_nodes):
-        profile_freqs["f"][idx] = freqs[idx]
-        logger.info('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs[idx]))
+        profile_freqs["b"][idx] = freqs["b"][idx]
+        profile_freqs["c"][idx] = freqs["c"][idx]
+        profile_freqs["f"][idx] = freqs["f"][idx]
+        logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
 
     profile.frequencies = json.dumps(profile_freqs)
     DB.session.commit()
 
 def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
-    logger.debug("Sending frequency values to nodes: " + str(freqs))
+    logger.debug("Sending frequency values to nodes: " + str(freqs["f"]))
     for idx in range(RACE.num_nodes):
-        INTERFACE.set_frequency(idx, freqs[idx])
+        INTERFACE.set_frequency(idx, freqs["f"][idx])
 
         trigger_event(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
-            'frequency': freqs[idx],
+            'frequency': freqs["f"][idx],
             })
 
 @catchLogExceptionsWrapper
@@ -1562,10 +1586,13 @@ def on_set_profile(data, emit_vals=True):
         Options.set("currentProfile", data['profile'])
         logger.info("Set Profile to '%s'" % profile_val)
         # set freqs, enter_ats, and exit_ats
-        freqs_loaded = json.loads(profile.frequencies)
-        freqs = freqs_loaded["f"]
-        while RACE.num_nodes > len(freqs):
-            freqs.append(RHUtils.FREQUENCY_ID_NONE)
+        freqs = json.loads(profile.frequencies)
+        while RACE.num_nodes > len(freqs["b"]):
+            freqs["b"].append(RHUtils.FREQUENCY_ID_NONE)
+        while RACE.num_nodes > len(freqs["c"]):
+            freqs["c"].append(RHUtils.FREQUENCY_ID_NONE)
+        while RACE.num_nodes > len(freqs["f"]):
+            freqs["f"].append(RHUtils.FREQUENCY_ID_NONE)
 
         if profile.enter_ats:
             enter_ats_loaded = json.loads(profile.enter_ats)
