@@ -922,6 +922,8 @@ def hardware_set_all_frequencies(freqs):
         trigger_event(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
             'frequency': freqs["f"][idx],
+            'band': freqs["b"][idx],
+            'channel': freqs["c"][idx]
             })
 
 @catchLogExceptionsWrapper
@@ -4717,6 +4719,8 @@ def assign_frequencies():
         trigger_event(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
             'frequency': freqs["f"][idx],
+            'band': freqs["b"][idx],
+            'channel': freqs["c"][idx]
             })
 
         logger.info('Frequency set: Node {0} Frequency {1}'.format(idx+1, freqs["f"][idx]))
