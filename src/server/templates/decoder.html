@@ -281,11 +281,14 @@
 
 			/* Frequency Setup */
 			socket.on('frequency_data', function (msg) {
-				for (var i = 0; i < msg.frequency.length; i++) {
-					$('#s_channel_' + i).val(msg.frequency[i]);
-					rotorhazard.nodes[i].frequency = msg.frequency[i];
-					freq.updateSelects();
-					freq.updateBlocks();
+				if (msg.fdata.length) {
+					for (var i in msg.fdata) {
+						var fObj = freq.getFObjbyFData(msg.fdata[i]);
+						rotorhazard.nodes[i].fObj = fObj;
+						$('#s_channel_' + i).val(fObj.frequency);
+						$('#f_table_' + i).val(fObj.fString);
+						freq.updateBlock(fObj, i);
+					}
 				}
 			});
 
@@ -337,10 +340,23 @@
 			});
 
 			$('.frequency_table').change(function (event) {
-				if ($(this).val() != "n/a") {
-					var node = $(this).data('node');
-					var frequency = parseInt($(this).val());
-					$('#s_channel_' + node).val(frequency).trigger('change');
+				node = parseInt($(this).data('node'));
+				var fstring = $(this).val();
+				if (fstring != "n/a") {
+					// parse frequency string
+					fObj = freq.getFObjbyFString(fstring);
+
+					// update server
+					var data = {
+						node: node,
+						band: fObj.band,
+						channel: fObj.channel,
+						frequency: fObj.frequency
+					};
+					socket.emit('set_frequency', data);
+
+					// update local view
+					$('#s_channel_' + node).val(fObj.frequency);
 				}
 			});
 
