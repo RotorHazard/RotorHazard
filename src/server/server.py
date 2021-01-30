@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "2.4.0-dev.1" # Public release version code
+RELEASE_VERSION = "2.3.1" # Public release version code
 SERVER_API = 29 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 25 # Most recent node API
@@ -5501,7 +5501,7 @@ if strip:
     except:
         logger.exception("Error initializing LED support")
         led_manager = NoLEDManager()
-elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
+elif CLUSTER and CLUSTER.hasRecEventsSlaves():
     led_manager = ClusterLEDManager()
     led_effects = Plugins(prefix='led_handler')
     led_effects.discover()
