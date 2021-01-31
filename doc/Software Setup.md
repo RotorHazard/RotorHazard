@@ -112,8 +112,10 @@ The installation of a real-time clock module allows the RotorHazard timer to mai
 
 ### WS2812b LED Support
 
-Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)' (which is among the libraries installed via the `sudo pip install -r requirements.txt` command.
-
+Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)', which is installed by the following command:
+```
+sudo pip install rpi-ws281x
+```
 The **LED_COUNT** value needs to be set in the `src/server/config.json` file. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
 ```
 LED_COUNT:  Number of LED pixels in strip (or panel)
