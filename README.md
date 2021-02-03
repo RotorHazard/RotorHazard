@@ -28,23 +28,15 @@ RotorHazard builds on the [Delta5 Race Timer](https://github.com/scottgchin/delt
 * Connect other systems to extend functionality via MQTT or JSON API
 * Sends realtime lap data to LiveTime
 
-## Hardware and Software Setup
-To build and configure the system, follow the instructions here:<br />
-[doc/Hardware Setup.md](doc/Hardware%20Setup.md)<br />
-[doc/Software Setup.md](doc/Software%20Setup.md)<br />
-[Build Resources (PCB, etc)](resources)
-
-View the RotorHazard documentation here: [doc/README.md](doc/README.md)
+## Documentation
+For instructions on how to build and operate the current version of RotorHazard, follow the [Documentation](https://github.com/RotorHazard/RotorHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest).
 
 An easy-to-build single node version of RotorHazard may also be constructed -- see [doc/USB Nodes.md](doc/USB%20Nodes.md) for more info.
 
-**Note:** The 'master' branch in the GitHub repository will usually contain the latest development code, which may not be stable. To install the latest stable release, please follow the instructions in the [doc/Software Setup.md](doc/Software%20Setup.md) document (for version upgrading see the '[Updating an existing installation](doc/Software%20Setup.md#update)' section at the end).
-
-## User Guide
-For initial setup and running races, follow these instructions: [doc/User Guide.md](doc/User%20Guide.md)
+**Note:** The 'master' branch in the GitHub repository will usually contain the latest development code, which may not be stable. To install or upgrade to the latest stable release, please follow the [Documentation](https://github.com/RotorHazard/RotorHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest) (see "Software Setup Instructions").
 
 ## Migrating from/to Delta5
-RotorHazard uses the same hardware, but different code for the nodes. Re-flash your Arduinos as in the [setup instructions](doc/Software%20Setup.md#receiver-nodes-arduinos) whenever you switch between the two projects.
+RotorHazard uses the same hardware, but different code for the nodes. Re-flash your Arduinos as in the [setup instructions](doc/Software%20Setup.md#rotorhazard-node-code) whenever you switch between the two projects.
 
 ## Additional Resources
 Links to external resources are available from the [Wiki](https://github.com/RotorHazard/RotorHazard/wiki), including extended tutorials, video content, and a Raspberry Pi setup/install/upgrade/node flashing tool.
