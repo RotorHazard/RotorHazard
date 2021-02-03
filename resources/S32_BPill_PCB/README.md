@@ -54,7 +54,9 @@ The size of the node board is 34.3x33.0mm, with a recommended thickness of 0.8mm
 
 Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/RotorHazard_S32_BPill_R1_bd02.xls) | [HTML](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_R1_bd02.html)
 
-[Atrium project files exported to ASCII](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_R1_AltiumAscii.zip)
+[RotorHazard S32_BPill Main Board Build Guide](mainBoardBuild.md)
+
+[Altium 16.1 project files exported to ASCII](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_R1_AltiumAscii.zip)
 
 [CAD drawings of S32_BPill PCB](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_PCB_R1.pdf)
 
@@ -104,4 +106,5 @@ Seaching eBay for "[STM32F103C8T6 Blue Pill](https://www.ebay.com/sch/i.html?_nk
 
 <br>
 
-The RotorHazard S32_BPill schematic and PCB were developed by Bob Duris and [Eric Thomas](http://www.etheli.com)
+The RotorHazard S32_BPill schematic and PCB were developed by Bob Duris and [Eric Thomas](http://www.etheli.com)<br>
+Special thanks to David Hill for the RotorHazard S32_BPill Main Board Build Guide, and more.
