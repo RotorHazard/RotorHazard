@@ -56,21 +56,21 @@ Install them by first pressing them onto the BPill and soldering the
 sockets in place while attached to the BPill.
 
 The recommended installation option for the RX5808 node boards is to use
-[low-profile
-sockets](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/headers.md) in
-the U1-U8 (9-pin) locations on the PCB. These are shorter and have
+[low-profile sockets](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/headers.md)
+in the U1-U8 (9-pin) locations on the PCB. These are shorter and have
 better contacts than standard header sockets. If the low-profile sockets
 are used, the pins on the RX5808 node boards should be cut to a length
 of 3.5mm-4.0mm (as measured from the edge of the node PCB) -- the
 [Trimming Jig for RotorHazard S32_BPill
 Nodes](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/trimjig.md) can
-help with this.
+help with this.<br>
+See also: [RotorHazard S32_BPill Node Board Assembly](nodeAssembly.md)
 
-Install the 6-pin socket at U14 for the FTDI breakout.
+Optional - Install the 6-pin socket at U14 for the FTDI breakout.
 
 Optional - Install the 8-pin socket for the RTC Breakout at J4.
 
-Optional - Install the 4-pin socket for the BME280 at Temp_Baro box.
+Optional - Install the 4-pin socket for the BME280 at U9 Temp_Baro box.
 
 ![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image13.jpg)
 
@@ -81,8 +81,8 @@ Solder pin headers onto the main PCB at the locations shown below.
 Installing pin headers vertically can be challenging. One technique is
 to use a spare socket header to hold the pin(s). Press the pin into a
 socket, push the pin through the board, turn the board over and solder
-the pin while holding the socket. Use the single pin first technique to
-ensure they are vertical.
+the pin while holding the socket. (See also the [Pin Soldering Helper doc](files/PinSolderingHelper.pdf).)
+Use the single pin first technique to ensure they are vertical.
 
 Installing a 2-pin header at the LED1 location will provide a connection
 point for a panel-mount LED. Another option is to install an LED
@@ -226,8 +226,8 @@ left in place (see below).
 
 #### ​11) Boot Jumper
 
-After completing the build and installing the BPill, connect a wire
-between the Boot0 pin on the BPill and the PCB. If you install the Boot0
+After completing the build and installing the BPill, connect a [jumper wire](https://www.adafruit.com/product/1951)
+between the Boot0 pins on the BPill and the PCB. If you install the Boot0
 jumper wire (and leave it installed) then the RPi will always be able to
 flash the BPill. Without the wire it will work if the RH firmware is
 operational on the BPill (it has a jump-to-bootloader command), but if
@@ -251,3 +251,9 @@ or a RobotDyn Black Pill module:
 #### ​12) Assembled RotorHazard S32_BPill Board
 
 ![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image18.jpg)
+
+<br>
+
+-------------------------------------------------------
+
+See also: [RotorHazard S32_BPill Node Board Assembly](nodeAssembly.md)
