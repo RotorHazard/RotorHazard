@@ -52,7 +52,7 @@ The Gerber files can be sent to a PCB manufacturer to fabricate boards. To build
 
 The size of the node board is 34.3x33.0mm, with a recommended thickness of 0.8mm (for better thermal conductivity and more capacitance between layers). The recommended thickness for the main PCB is the standard 1.6mm, and, in general, the default PCB-fabrication settings should work well (i.e., 1oz copper, HASL finish, no castellated holes, no gold).
 
-Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/RotorHazard_S32_BPill_R1_bd02.xls) | [HTML](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/files/RotorHazard_S32_BPill_R1_bd02.html)
+Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/RotorHazard_S32_BPill_R1_bd02.xls) | [HTML](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_R1_bd02.html)
 
 [RotorHazard S32_BPill Main Board Build Guide](mainBoardBuild.md)
 
@@ -83,9 +83,9 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 
 * An optional [INA219](https://www.adafruit.com/product/904) voltage and current-sensing module may be installed on the PCB at position U10. See [here](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image10.jpg) for a pic. (Make sure sure the pin designators correspond to those on the main board -- if the INA219 is installed backwards it will be destroyed.) If an INA219 is not installed, then a wire jumper needs to be soldered between the Vin+ and Vin- pins of the U10 pads (as noted on the
 [schematic](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/files/RotorHazard_S32_BPill_SCH_R1.pdf)).
-* If you install the Boot0 [jumper wire](https://www.adafruit.com/product/1951) (and leave it installed) then the Raspberry Pi will always be able to flash the BPill. Without the wire it will work if the RotorHazard firmware is operational on the BPill (it has a jump-to-bootloader command), but if not then you'd need to move the 2-pin header clip to the '1' position on Boot0. The red wire in [this pic](pic/RH_S32_BPill_Boot0Jumper.jpg) is the Boot0 jumper wire.
+* If you install the Boot0 [jumper wire](https://www.adafruit.com/product/1951) (and leave it installed) then the Raspberry Pi will always be able to flash the BPill. Without the wire, flash-updates will work if the RotorHazard firmware is operational on the BPill (it has a jump-to-bootloader command), but if not then you'd need to move the 2-pin header clip to the '1' position on Boot0. The red wire in [this pic](pic/RH_S32_BPill_Boot0Jumper.jpg) is the Boot0 jumper wire.
 
-* Note that after the initial install, if the buzzer is constantly beeping (because the BPill is not yet flashed), you can put the clip on the '1' position of the Boot0 jumper on the BPill module and do a reset to silence it, and leave it on there until the initial flash of the BPill. After that, the Boot0 wire jumper should be installed and left in place. See the links above for BPill pinouts.
+* Note that during the first-time power up, if the buzzer is constantly beeping (because the BPill is not yet flashed), you can put the 2-pin header-clip on the '1' position of the Boot0 jumper on the BPill module and press the reset button to silence it, and leave it on there until the initial flash of the BPill. After that, the Boot0 wire jumper should be installed and left in place. See the links above for BPill pinouts.
 
 
 <a name="aboutblue"></a>
