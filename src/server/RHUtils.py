@@ -3,6 +3,7 @@ RotorHazard Helper and utility functions
 '''
 
 import os
+import sys
 import logging
 import platform
 import subprocess
@@ -58,7 +59,8 @@ def idAndLogSystemInfo():
         if modelStr and "raspberry pi" in modelStr.lower():
             IS_SYS_RASPBERRY_PI = True
             logger.info("Host machine: " + modelStr.strip('\0'))
-        logger.info("Host OS: {0} {1}".format(platform.system(), platform.release()))
+        logger.info("Host OS: {} {}".format(platform.system(), platform.release()))
+        logger.info("Python version: {}".format(sys.version.split('\n')[0].strip()))
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
 

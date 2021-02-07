@@ -1,6 +1,9 @@
 '''RotorHazard I2C interface layer.'''
 
-import smbus # For i2c comms
+try:
+    from smbus2 import SMBus # For i2c comms
+except:
+    from smbus import SMBus
 import gevent
 import logging
 from monotonic import monotonic
@@ -12,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class I2CBus(object):
     def __init__(self, bus):
-        self.i2c = smbus.SMBus(bus) # Start i2c bus
+        self.i2c = SMBus(bus) # Start i2c bus
         self.i2c_rlock_obj = gevent.lock.RLock()  # for limiting i2c to 1 read/write at a time
         self.i2c_timestamp = -1
 
