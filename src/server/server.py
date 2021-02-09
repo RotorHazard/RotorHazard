@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "3.0.0-dev.1" # Public release version code
+RELEASE_VERSION = "3.0.0-dev.2" # Public release version code
 SERVER_API = 30 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 33 # Most recent node API
@@ -5506,6 +5506,9 @@ def initialize_rh_interface():
                     logger.warning("Unable to import libraries for I2C nodes; try:  " +\
                                    "sudo pip install --upgrade --no-cache-dir -r requirements.txt")
                 RACE.num_nodes = 0
+                INTERFACE.pass_record_callback = pass_record_callback
+                INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
+                INTERFACE.node_crossing_callback = node_crossing_callback
                 return True
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
@@ -5531,6 +5534,10 @@ def initialize_rh_interface():
                     return False
 
         RACE.num_nodes = len(INTERFACE.nodes)  # save number of nodes found
+        # set callback functions invoked by interface module
+        INTERFACE.pass_record_callback = pass_record_callback
+        INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
+        INTERFACE.node_crossing_callback = node_crossing_callback
         return True
     except:
         logger.exception("Error initializing RH interface")
@@ -5619,11 +5626,6 @@ try:
         CLUSTER.addSecondary(secondary)
 except:
     logger.exception("Error adding secondary to cluster")
-
-# set callback functions invoked by interface module
-INTERFACE.pass_record_callback = pass_record_callback
-INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
-INTERFACE.node_crossing_callback = node_crossing_callback
 
 if RACE.num_nodes == 0:
     logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
@@ -5755,13 +5757,17 @@ else:
     logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
 if strip:
     # Initialize the library (must be called once before other functions).
-    strip.begin()
-    led_manager = LEDEventManager(Events, strip)
-    led_effects = Plugins(prefix='led_handler')
-    led_effects.discover()
-    for led_effect in led_effects:
-        led_manager.registerEffect(led_effect)
-    init_LED_effects()
+    try:
+        strip.begin()
+        led_manager = LEDEventManager(Events, strip)
+        led_effects = Plugins(prefix='led_handler')
+        led_effects.discover()
+        for led_effect in led_effects:
+            led_manager.registerEffect(led_effect)
+        init_LED_effects()
+    except:
+        logger.exception("Error initializing LED support")
+        led_manager = NoLEDManager()
 elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
     led_manager = ClusterLEDManager()
     led_effects = Plugins(prefix='led_handler')

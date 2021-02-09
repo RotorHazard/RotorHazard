@@ -11,7 +11,7 @@ def get_pixel_interface(config, brightness, *args, **kwargs):
     try:
         pixelModule = importlib.import_module('rpi_ws281x')
         Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')
-        logger.info('LED: selecting library "rpi_ws2812x"')
+        logger.info('LED: selecting library "rpi_ws281x"')
     except ImportError:
         pixelModule = importlib.import_module('neopixel')
         Pixel = getattr(pixelModule, 'Adafruit_NeoPixel')

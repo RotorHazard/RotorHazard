@@ -54,17 +54,19 @@ The size of the node board is 34.3x33.0mm, with a recommended thickness of 0.8mm
 
 Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/RotorHazard_S32_BPill_R1_bd02.xls) | [HTML](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_R1_bd02.html)
 
-[Atrium project files exported to ASCII](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_R1_AltiumAscii.zip)
+[RotorHazard S32_BPill Main Board Build Guide](mainBoardBuild.md)
 
-[CAD drawings of S32_BPill PCB](http://www.rotorhazard.com/files/RotorHazard_S32_BPill_PCB_R1.pdf)
+[RotorHazard S32_BPill Node Board Assembly](nodeAssembly.md)
 
-[CAD drawings of S32_BPill Node Board](http://www.rotorhazard.com/files/RotorHazard_S32_Node_PCB_R1_0.pdf)
+[Altium 16.1 project files exported to ASCII](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/files/RotorHazard_S32_BPill_R1_AltiumAscii.zip)
+
+[CAD drawings of S32_BPill PCB](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/files/RotorHazard_S32_BPill_PCB_R1.pdf)
+
+[CAD drawings of S32_BPill Node Board](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/files/RotorHazard_S32_Node_PCB_R1_0.pdf)
 
 [PCB Build Notes](files/Build_notes.txt) and [Pin Soldering Helper](files/PinSolderingHelper.pdf) doc
 
 [Socket Headers](headers.md) and [Trimming Jig](trimjig.md) for RotorHazard S32_BPill
-
-[Node board assembly tips](http://www.rotorhazard.com/files/node_board_assy.pdf)
 
 [Generic Blue Pill Pinout](files/GenericBluePillPinout.jpg)
 
@@ -72,16 +74,19 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 
 ## Notes
 
-* If you install the Boot0 jumper wire (and leave it installed) then the RPi will always be able to flash the BPill. Without the wire it will work if the RotorHazard firmware is operational on the BPill (it has a jump-to-bootloader command), but if not then you'd need to move the 2-pin header clip to the '1' position on Boot0. The red wire in [this pic](pic/RH_S32_BPill_Boot0Jumper.jpg) is the Boot0 jumper wire.
-
-* Note that after the initial install, if the buzzer is constantly beeping (because the BPill is not yet flashed), you can put the clip on the '1' position of the Boot0 jumper on the BPill module and do a reset to silence it, and leave it on there until the initial flash of the BPill. After that, the Boot0 wire jumper should be installed and left in place. See the links above for BPill pinouts.
-
 * The recommended voltage regulators for the board are Pololu [D36V28F5](https://www.pololu.com/product/3782) (5V) and Pololu [D24V22F3](https://www.pololu.com/product/2857) (3.3V). See [here for additional notes](files/PololuCompatibilityWithRaceTimer.txt) about Pololu voltage regulators.
 
 <a name="rtc"> </a>
 * The board supports two types of [Real-Time Clock](../../doc/Real%20Time%20Clock.md) (RTC) modules - '[DS3231 PiRTC](https://www.adafruit.com/product/4282)' (3x2 header U15) and '[DS3231 Breakout](https://www.adafruit.com/product/3013)' (8-pin header U14). Only one should be attached at a time. See the '[doc/Real Time Clock.md](../../doc/Real%20Time%20Clock.md)' file for setup instructions.
 
-* The recommended installation option for the RX5808 node boards is to use [low-profile sockets](https://www.mouser.com/ProductDetail/Mill-Max/801-93-036-10-012000?qs=WZRMhwwaLl%2F7W%252BkSMqBETQ%3D%3D) in the U1-U8 (9-pin) locations on the PCB. These are shorter and have better contacts than standard header sockets. See the "[Trimming Jig for RotorHazard S32_BPill Nodes](trimjig.md)" document for more information.
+* The recommended installation option for the RX5808 node boards is to use [low-profile sockets](https://www.mouser.com/ProductDetail/Mill-Max/801-93-036-10-012000?qs=WZRMhwwaLl%2F7W%252BkSMqBETQ%3D%3D) in the U1-U8 (9-pin) locations on the PCB. These are shorter and have better contacts than standard header sockets. See the "[Trimming Jig for RotorHazard S32_BPill Nodes](trimjig.md)" document for information about trimming the pins on the node boards.
+
+* An optional [INA219](https://www.adafruit.com/product/904) voltage and current-sensing module may be installed on the PCB at position U10. See [here](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image10.jpg) for a pic. (Make sure sure the pin designators correspond to those on the main board -- if the INA219 is installed backwards it will be destroyed.) If an INA219 is not installed, then a wire jumper needs to be soldered between the Vin+ and Vin- pins of the U10 pads (as noted on the
+[schematic](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/files/RotorHazard_S32_BPill_SCH_R1.pdf)).
+* If you install the Boot0 [jumper wire](https://www.adafruit.com/product/1951) (and leave it installed) then the Raspberry Pi will always be able to flash the BPill. Without the wire, flash-updates will work if the RotorHazard firmware is operational on the BPill (it has a jump-to-bootloader command), but if not then you'd need to move the 2-pin header clip to the '1' position on Boot0. The red wire in [this pic](pic/RH_S32_BPill_Boot0Jumper.jpg) is the Boot0 jumper wire.
+
+* Note that during the first-time power up, if the buzzer is constantly beeping (because the BPill is not yet flashed), you can put the 2-pin header-clip on the '1' position of the Boot0 jumper on the BPill module and press the reset button to silence it, and leave it on there until the initial flash of the BPill. After that, the Boot0 wire jumper should be installed and left in place. See the links above for BPill pinouts.
+
 
 <a name="aboutblue"></a>
 ### About Blue Pills and Black Pills
@@ -104,4 +109,5 @@ Seaching eBay for "[STM32F103C8T6 Blue Pill](https://www.ebay.com/sch/i.html?_nk
 
 <br>
 
-The RotorHazard S32_BPill schematic and PCB were developed by Bob Duris and [Eric Thomas](http://www.etheli.com)
+The RotorHazard S32_BPill schematic and PCB were developed by Bob Duris and [Eric Thomas](http://www.etheli.com).<br>
+Special thanks to David Hill for the RotorHazard S32_BPill Main Board Build Guide, and more.

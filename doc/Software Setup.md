@@ -81,24 +81,10 @@ For the S32_BPill board, the recommended method for installing the currently-rel
 The installation of a real-time clock module allows the RotorHazard timer to maintain the correct date and time even when an internet connection is not available.  See '[doc/Real Time Clock.md](Real%20Time%20Clock.md)' for more information.
 
 ### WS2812b LED Support
-The ws2812b controls are provided by the following project:
-https://github.com/jgarff/rpi_ws281x
 
-Clone the repository onto the Pi and initiate Scons:
-```
-cd ~
-sudo git clone https://github.com/jgarff/rpi_ws281x.git
-cd rpi_ws281x
-sudo scons
-```
+Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)' (which is among the libraries installed via the `sudo pip install -r requirements.txt` command.
 
-Install the Python library:
-```
-cd python
-sudo python setup.py install
-```
-
-Note: The **LED_COUNT** value will need to be set in the `src/server/config.json` file. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
+The **LED_COUNT** value needs to be set in the `src/server/config.json` file. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
 ```
 LED_COUNT:  Number of LED pixels in strip (or panel)
 LED_PIN:  GPIO pin connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
@@ -112,11 +98,6 @@ PANEL_ROTATE:  Optional panel-rotation value (default 0)
 INVERTED_PANEL_ROWS:  Optional panel row-inversion (default false)
 ```
 If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
-
-The LED library requires direct memory and GPIO access. When enabled, RotorHazard must be run with `sudo`.
-```
-sudo python server.py
-```
 
 ### INA219 Voltage/Current Support
 The ina219 interface is provided by the following project:
