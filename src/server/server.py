@@ -4379,7 +4379,7 @@ def emit_exporter_list():
     for name, exp in export_manager.getExporters().items():
         emit_payload['exporters'].append({
             'name': name,
-            'label': exp['label']
+            'label': exp.label
         })
 
     emit('exporter_list', emit_payload)

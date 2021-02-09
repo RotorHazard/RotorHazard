@@ -15,7 +15,6 @@
 #
 
 import logging
-from six.moves import UserDict
 from Plugins import Plugins
 
 class dataExportManager():
@@ -32,11 +31,11 @@ class dataExportManager():
             self.registerExporter(exporter)
 
     def registerExporter(self, exporter):
-        if 'name' in exporter:
-            if exporter['name'] in self.exporters:
+        if hasattr(exporter, 'name'):
+            if exporter.name in self.exporters:
                 logger.warning('Overwriting data exporter "{0}"'.format(exporter['name']))
 
-            self.exporters[exporter['name']] = exporter
+            self.exporters[exporter.name] = exporter
         else:
             logger.warning('Invalid exporter')
 
@@ -49,14 +48,12 @@ class dataExportManager():
         return self.exporters
 
     def export(self, exporter_id, Database, PageCache):
-        data = self.exporters[exporter_id]['assembler'](Database, PageCache)
-        return self.exporters[exporter_id]['formatter'](data)
+        data = self.exporters[exporter_id].assembler(Database, PageCache)
+        return self.exporters[exporter_id].formatter(data)
 
-class DataExporter(UserDict):
-    def __init__(self, name, label, formatterFn, assemblerFn, args=None):
-        UserDict.__init__(self, {
-            "name": name,
-            "label": label,
-            "formatter": formatterFn,
-            "assembler": assemblerFn
-        })
+class DataExporter():
+    def __init__(self, name, label, formatterFn, assemblerFn):
+        self.name = name
+        self.label = label
+        self.formatter = formatterFn
+        self.assembler = assemblerFn
