@@ -1,11 +1,10 @@
-{% extends "layout-basic.html" %} {% block title %}Stream: Current{% endblock %}{% block head %}
+{% extends "layout-basic.html" %} {% block title %}{{ __('Stream') }}: {{ __('Current') }}{% endblock %}{% block head %}
 <link rel="stylesheet" href="/static/stream.css?{{ serverInfo['release_version'] | urlencode }}"></link>
 
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
 		'all_languages',
 		'language',
-		'frequency_data',
 		'pilot_data',
 		'race_format',
 		'leaderboard_cache',
@@ -152,14 +151,6 @@
 		});
 
 		socket.on('heartbeat', function (msg) {
-		});
-
-		socket.on('frequency_data', function (msg) {
-			for (i = 0; i < msg.frequency.length; i++) {
-				$('#s_channel_' + i).val(msg.frequency[i]);
-				rotorhazard.nodes[i].frequency = msg.frequency[i];
-				freq.updateBlocks();
-			}
 		});
 
 		socket.on('leaderboard', function (msg) {

@@ -1,4 +1,4 @@
-{% extends "layout.html" %} {% block title %}Race{% endblock %}{% block head %}
+{% extends "layout.html" %} {% block title %}{{ __('Current') }}{% endblock %}{% block head %}
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
 		'all_languages',
@@ -212,10 +212,14 @@
 		});
 
 		socket.on('frequency_data', function (msg) {
-			for (i = 0; i < msg.frequency.length; i++) {
-				$('#s_channel_' + i).val(msg.frequency[i]);
-				rotorhazard.nodes[i].frequency = msg.frequency[i];
-				freq.updateBlocks();
+			if (msg.fdata.length) {
+				for (var i in msg.fdata) {
+					var fObj = freq.getFObjbyFData(msg.fdata[i]);
+					rotorhazard.nodes[i].fObj = fObj;
+					$('#s_channel_' + i).val(fObj.frequency);
+					$('#f_table_' + i).val(fObj.fString);
+					freq.updateBlock(fObj, i);
+				}
 			}
 		});
 

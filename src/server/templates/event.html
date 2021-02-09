@@ -1,4 +1,4 @@
-{% extends "layout.html" %} {% block title %}Heats{% endblock %} {% block head %} {% endblock %} {% block content %}
+{% extends "layout.html" %} {% block title %}{{ __('Event') }}{% endblock %} {% block head %} {% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
 		'all_languages',
@@ -16,13 +16,20 @@
 			}
 		});
 
+		// set up node local store
+		for (var i = 0; i < {{ num_nodes }}; i++) {
+			rotorhazard.nodes[i] = new nodeModel();
+		}
+
 		socket.on('frequency_data', function (msg) {
-			for (var i in msg.frequency) {
-				if (typeof(rotorhazard.nodes[i]) === 'undefined') {
-					rotorhazard.nodes[i] = new nodeModel();
+			if (msg.fdata.length) {
+				for (var i in msg.fdata) {
+					var fObj = freq.getFObjbyFData(msg.fdata[i]);
+					rotorhazard.nodes[i].fObj = fObj;
+					$('#s_channel_' + i).val(fObj.frequency);
+					$('#f_table_' + i).val(fObj.fString);
+					freq.updateBlock(fObj, i);
 				}
-				rotorhazard.nodes[i].frequency = msg.frequency[i];
-				freq.updateBlocks();
 			}
 		});
 

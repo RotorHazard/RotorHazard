@@ -1534,7 +1534,6 @@ function build_team_leaderboard(leaderboard, display_type, meta) {
 /* Frequency Table */
 var freq = {
 	frequencies: {
-		'—': 0,
 		R1: 5658,
 		R2: 5695,
 		R3: 5732,
@@ -1612,31 +1611,139 @@ var freq = {
 		S6: 5878,
 		S7: 5914,
 		S8: 5839,
-		'N/A': 'n/a'
 	},
-	findByFreq: function(frequency) {
+	getFObjbyFData: function(fData) {
 		var keyNames = Object.keys(this.frequencies);
-		for (var i in keyNames) {
-			if (this.frequencies[keyNames[i]] == frequency) {
-				return keyNames[i];
+
+		if (fData.frequency == 0) {
+			return {
+				key: '—',
+				fString: 0,
+				band: null,
+				channel: null,
+				frequency: 0
+			}
+		}
+
+		var fKey = "" + fData.band + fData.channel;
+		if (fKey in this.frequencies) {
+			if (this.frequencies[fKey] == fData.frequency) {
+				return {
+					key: fKey,
+					fString: fKey + ':' + this.frequencies[fKey],
+					band: fData.band,
+					channel: fData.channel,
+					frequency: fData.frequency
+				}
+			}
+		}
+
+		return this.findByFreq(fData.frequency)
+	},
+	getFObjbyKey: function(key) {
+		var regex = /([A-Za-z]*)([0-9]*)/;
+		var parts = key.match(regex);
+		if (parts && parts.length == 3) {
+			return {
+				key: key,
+				fString: key + ':' + this.frequencies[key],
+				band: parts[1],
+				channel: parts[2],
+				frequency: this.frequencies[key]
 			}
 		}
 		return false;
 	},
-	buildSelect: function() {
-		var output = '';
-		var keyNames = Object.keys(this.frequencies);
-		for (var i in keyNames) {
-			if (this.frequencies[keyNames[i]] == 0) {
-				output += '<option value="0">' + __('Disabled') + '</option>';
-			} else if (this.frequencies[keyNames[i]] == 'n/a') {
-				output += '<option value="n/a">' + __('N/A') + '</option>';
-			} else {
-				output += '<option value="' + this.frequencies[keyNames[i]] + '">' + keyNames[i] + ' ' + this.frequencies[keyNames[i]] + '</option>';
+	getFObjbyFString: function(fstring) {
+		if (fstring == 0) {
+			return {
+				key: '—',
+				fString: 0,
+				band: null,
+				channel: null,
+				frequency: 0
 			}
 		}
+
+		if (fstring == "n/a") {
+			return {
+				key: __("X"),
+				fString: "n/a",
+				band: null,
+				channel: null,
+				frequency: frequency
+			}
+		}
+		var regex = /([A-Za-z]*)([0-9]*):([0-9]{4})/;
+		var parts = fstring.match(regex);
+		if (parts && parts.length == 4) {
+			return {
+				key: "" + parts[1] + parts[2],
+				fString: fstring,
+				band: parts[1],
+				channel: parts[2],
+				frequency: parts[3]
+			}
+		}
+		return false;
+	},
+	getFObjbyKey: function(key) {
+		var regex = /([A-Za-z]*)([0-9]*)/;
+		var parts = key.match(regex);
+		return {
+			key: key,
+			fString: key + ':' + this.frequencies[key],
+			band: parts[1],
+			channel: parts[2],
+			frequency: this.frequencies[key]
+		}
+	},
+	getFObjbyFString: function(fstring) {
+		var regex = /([A-Za-z]*)([0-9]*):([0-9]{4})/;
+		var parts = fstring.match(regex);
+		return {
+			key: "" + parts[1] + parts[2],
+			fString: fstring,
+			band: parts[1],
+			channel: parts[2],
+			frequency: parts[3]
+		}
+	},
+	findByFreq: function(frequency) {
+		if (frequency == 0) {
+			return {
+				key: '—',
+				fString: 0,
+				band: null,
+				channel: null,
+				frequency: 0
+			}
+		}
+		var keyNames = Object.keys(this.frequencies);
+		for (var i in keyNames) {
+			if (this.frequencies[keyNames[i]] == frequency) {
+				var fObj = this.getFObjbyKey(keyNames[i]);
+				if (fObj) return fObj;
+			}
+		}
+		return {
+			key: __("X"),
+			fString: "n/a",
+			band: null,
+			channel: null,
+			frequency: frequency
+		}
+	},
+	buildSelect: function() {
+		var output = '<option value="0">' + __('Disabled') + '</option>';
+		var keyNames = Object.keys(this.frequencies);
+		for (var i in keyNames) {
+			output += '<option value="' + keyNames[i] + ':' + this.frequencies[keyNames[i]] + '">' + keyNames[i] + ' ' + this.frequencies[keyNames[i]] + '</option>';
+		}
+		output += '<option value="n/a">' + __('N/A') + '</option>';
 		return output;
 	},
+	/*
 	updateSelects: function() {
 		for (var i in rotorhazard.nodes) {
 			var freqExists = $('#f_table_' + i + ' option[value=' + rotorhazard.nodes[i].frequency + ']').length;
@@ -1647,16 +1754,22 @@ var freq = {
 			}
 		}
 	},
+	*/
+	updateBlock: function(fObj, node_idx) {
+		// populate channel block
+		var channelBlock = $('.channel-block[data-node="' + node_idx + '"]');
+		if (fObj.frequency == 0) {
+			channelBlock.children('.ch').html('—');
+			channelBlock.children('.fr').html('');
+		} else {
+			channelBlock.children('.ch').html(fObj.key);
+			channelBlock.children('.fr').html(fObj.frequency);
+		}
+	},
 	updateBlocks: function() {
 		// populate channel blocks
 		for (var i in rotorhazard.nodes) {
-			var channelBlock = $('.channel-block[data-node="' + i + '"]');
-			channelBlock.children('.ch').html(this.findByFreq(rotorhazard.nodes[i].frequency));
-			if (rotorhazard.nodes[i].frequency == 0) {
-				channelBlock.children('.fr').html('');
-			} else {
-				channelBlock.children('.fr').html(rotorhazard.nodes[i].frequency);
-			}
+			this.updateBlock(rotorhazard.nodes[i].fObj, i);
 		}
 	}
 }
