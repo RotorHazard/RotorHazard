@@ -7,30 +7,26 @@ import RHUtils
 import io
 import csv
 from sqlalchemy.ext.declarative import DeclarativeMeta
+from data_export import DataExporter
 
-def export_as_csv(Database, PageCache, args):
-    if 'fn' in args:
-        payload = args['fn'](Database, PageCache)
+def write_csv(data):
+    output = io.StringIO()
+    writer = csv.writer(output, quoting=csv.QUOTE_NONNUMERIC)
+    writer.writerows(data)
 
-        output = io.StringIO()
-        writer = csv.writer(output, quoting=csv.QUOTE_NONNUMERIC)
-        writer.writerows(payload)
+    return {
+        'data': output.getvalue(),
+        'encoding': 'text/csv',
+        'ext': 'csv'
+    }
 
-        return {
-            'data': output.getvalue(),
-            'encoding': 'application/json',
-            'ext': 'csv'
-        }
-    else:
-        return False
-
-def export_all(Database, PageCache):
+def assemble_all(Database, PageCache):
     payload = {}
-    payload['Pilots'] = export_pilots(Database, PageCache)
-    payload['Heats'] = export_heats(Database, PageCache)
-    payload['Classes'] = export_classes(Database, PageCache)
-    payload['Formats'] = export_formats(Database, PageCache)
-    payload['Results'] = export_results(Database, PageCache)
+    payload['Pilots'] = assemble_pilots(Database, PageCache)
+    payload['Heats'] = assemble_heats(Database, PageCache)
+    payload['Classes'] = assemble_classes(Database, PageCache)
+    payload['Formats'] = assemble_formats(Database, PageCache)
+    payload['Results'] = assemble_results(Database, PageCache)
 
     output = []
     for datatype in payload:
@@ -41,7 +37,7 @@ def export_all(Database, PageCache):
 
     return output
 
-def export_pilots(Database, PageCache):
+def assemble_pilots(Database, PageCache):
     payload = [[__('Callsign'), __('Name'), __('Team')]]
 
     pilots = Database.Pilot.query.all()
@@ -50,7 +46,7 @@ def export_pilots(Database, PageCache):
 
     return payload
 
-def export_heats(Database, PageCache):
+def assemble_heats(Database, PageCache):
     payload = [[__('Name'), __('Class'), __('Pilots')]]
     for heat in Database.Heat.query.all():
         heat_id = heat.id
@@ -75,7 +71,7 @@ def export_heats(Database, PageCache):
 
     return payload
 
-def export_classes(Database, PageCache):
+def assemble_classes(Database, PageCache):
     race_classes = Database.RaceClass.query.all()
     payload = [[__('Name'), __('Description'), __('Race Format')]]
 
@@ -91,7 +87,7 @@ def export_classes(Database, PageCache):
 
     return payload
 
-def export_formats(Database, PageCache):
+def assemble_formats(Database, PageCache):
     timer_modes = [
         __('Fixed Time'),
         __('No Time Limit'),
@@ -186,8 +182,7 @@ def build_leaderboard(leaderboard, **kwargs):
 
     return output
 
-
-def export_results(Database, PageCache):
+def assemble_results(Database, PageCache):
     results = PageCache.data
     payload = []
 
@@ -239,97 +234,86 @@ def export_results(Database, PageCache):
                     payload.append([__('Heats')])
 
             for heat_id in results['heats_by_class'][class_id]:
-                heat = results['heats'][heat_id]
-
-                payload.append([])
-                payload.append([__('Heat') + ': ' + heat['note']])
-
-                if len(heat['rounds']) > 1:
-                    payload.append([])
-                    payload.append([__('Heat Summary')])
-
-                    for row in build_leaderboard(heat['leaderboard']):
-                        payload.append(row[1:])
-
-                for heat_round in heat['rounds']:
-                    payload.append([])
-                    payload.append([__('Round {0}').format(heat_round['id'])])
-
-                    laptimes = []
-
-                    for row in build_leaderboard(heat_round['leaderboard']):
-                        for node in heat_round['nodes']:
-                            if row[0] == node['node_index']:
-                                laplist = []
-
-                                laplist.append(node['callsign'])
-
-                                for lap in node['laps']:
-                                    if not lap['deleted']:
-                                        laplist.append(lap['lap_time_formatted'])
-
-                                laptimes.append(laplist)
-
-                        payload.append(row[1:])
-
+                if heat_id in results['heats']:
+                    heat = results['heats'][heat_id]
 
                     payload.append([])
-                    payload.append([__('Round {0} Times').format(str(heat_round['id']))])
+                    payload.append([__('Heat') + ': ' + heat['note']])
 
-                    for row in laptimes:
-                        payload.append(row)
+                    if len(heat['rounds']) > 1:
+                        payload.append([])
+                        payload.append([__('Heat Summary')])
+
+                        for row in build_leaderboard(heat['leaderboard']):
+                            payload.append(row[1:])
+
+                    for heat_round in heat['rounds']:
+                        payload.append([])
+                        payload.append([__('Round {0}').format(heat_round['id'])])
+
+                        laptimes = []
+
+                        for row in build_leaderboard(heat_round['leaderboard']):
+                            for node in heat_round['nodes']:
+                                if row[0] == node['node_index']:
+                                    laplist = []
+
+                                    laplist.append(node['callsign'])
+
+                                    for lap in node['laps']:
+                                        if not lap['deleted']:
+                                            laplist.append(lap['lap_time_formatted'])
+
+                                    laptimes.append(laplist)
+
+                            payload.append(row[1:])
+
+
+                        payload.append([])
+                        payload.append([__('Round {0} Times').format(str(heat_round['id']))])
+
+                        for row in laptimes:
+                            payload.append(row)
 
     return payload
 
 def discover(*args, **kwargs):
     # returns array of exporters with default arguments
     return [
-        {
-            'id': 'csv_pilots',
-            'name': 'CSV (Friendly) / Pilots',
-            'handlerFn': export_as_csv,
-            'args': {
-                'fn': export_pilots,
-            },
-        },
-        {
-            'id': 'csv_heats',
-            'name': 'CSV (Friendly) / Heats',
-            'handlerFn': export_as_csv,
-            'args': {
-                'fn': export_heats,
-            },
-        },
-        {
-            'id': 'csv_classes',
-            'name': 'CSV (Friendly) / Classes',
-            'handlerFn': export_as_csv,
-            'args': {
-                'fn': export_classes,
-            },
-        },
-        {
-            'id': 'csv_formats',
-            'name': 'CSV (Friendly) / Formats',
-            'handlerFn': export_as_csv,
-            'args': {
-                'fn': export_formats,
-            },
-        },
-        {
-            'id': 'csv_results',
-            'name': 'CSV (Friendly) / Results',
-            'handlerFn': export_as_csv,
-            'args': {
-                'fn': export_results,
-            },
-        },
-        {
-            'id': 'csv_all',
-            'name': 'CSV (Friendly) / All',
-            'handlerFn': export_as_csv,
-            'args': {
-                'fn': export_all,
-            },
-        },
+        DataExporter(
+            'csv_pilots',
+            'CSV (Friendly) / Pilots',
+            write_csv,
+            assemble_pilots
+        ),
+        DataExporter(
+            'csv_heats',
+            'CSV (Friendly) / Heats',
+            write_csv,
+            assemble_heats
+        ),
+        DataExporter(
+            'csv_classes',
+            'CSV (Friendly) / Classes',
+            write_csv,
+            assemble_classes
+        ),
+        DataExporter(
+            'csv_formats',
+            'CSV (Friendly) / Formats',
+            write_csv,
+            assemble_formats
+        ),
+        DataExporter(
+            'csv_results',
+            'CSV (Friendly) / Results',
+            write_csv,
+            assemble_results
+        ),
+        DataExporter(
+            'csv_all',
+            'CSV (Friendly) / All',
+            write_csv,
+            assemble_all
+        )
     ]

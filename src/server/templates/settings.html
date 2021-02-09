@@ -1586,10 +1586,10 @@
 		socket.on('exporter_list', function (msg) {
 			$('#exporter_list').empty();
 			if ('exporters' in msg && msg.exporters.length) {
-				msg.exporters.sort(function(a, b){return ('' + a.name).localeCompare(b.name)})
+				msg.exporters.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
 				for (idx in msg.exporters) {
 					var ex = msg.exporters[idx];
-					$('#exporter_list').append('<option value="' + ex.id + '">' + __(ex.name) + '</option>');
+					$('#exporter_list').append('<option value="' + ex.name + '">' + __(ex.label) + '</option>');
 				}
 				$('#exporter_list').prop('disabled', false);
 				$('#export_database').prop('disabled', false);

@@ -87,6 +87,7 @@ from Plugins import Plugins, search_modules
 from Sensors import Sensors
 import RHRace
 from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus
+from data_export import dataExportManager
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -1880,23 +1881,21 @@ def on_reset_database(data):
 def on_export_database(data):
     '''Run the selected Exporter'''
     global PageCache
-    exporter_id = data['exporter']
+    exporter = data['exporter']
 
-    if exporter_id in exporters:
-        exporter = exporters[exporter_id]
-
+    if export_manager.isExporter(exporter):
         # perpare data
         build_page_cache()
 
         # do export
-        logger.info('Exporting data via {0}'.format(exporter['name']))
-        export_result = exporter['handlerFn'](Database, PageCache, exporter['args'])
+        logger.info('Exporting data via {0}'.format(exporter))
+        export_result = export_manager.export(exporter, Database, PageCache)
 
         if export_result != False:
             try:
                 file_content = export_result
                 emit_payload = {
-                    'filename': 'RotorHazard Export ' + datetime.now().strftime('%Y%m%d_%H%M%S') + ' ' + exporter_id + '.' + export_result['ext'],
+                    'filename': 'RotorHazard Export ' + datetime.now().strftime('%Y%m%d_%H%M%S') + ' ' + exporter + '.' + export_result['ext'],
                     'encoding': export_result['encoding'],
                     'data' : export_result['data']
                 }
@@ -1912,7 +1911,7 @@ def on_export_database(data):
 
         return
 
-    logger.error('Data exporter "{0}" not found'.format(exporter_id))
+    logger.error('Data exporter "{0}" not found'.format(exporter))
     emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
 
 
@@ -4377,10 +4376,10 @@ def emit_exporter_list():
         'exporters': []
     }
 
-    for ex in exporters:
+    for name, exp in export_manager.getExporters().items():
         emit_payload['exporters'].append({
-            'id': ex,
-            'name': exporters[ex]['name']
+            'name': name,
+            'label': exp['label']
         })
 
     emit('exporter_list', emit_payload)
@@ -5839,20 +5838,8 @@ vrx_controller = initVRxController()
 if vrx_controller:
     Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
 
-# Search for data export plugins
-exporters = {}
-export_plugins = Plugins(prefix='data_export')
-export_plugins.discover()
-# collect exporters into single list
-for exporter in export_plugins:
-    if exporter['id'] in exporters:
-        logger.warning('Overwriting data exporter "{0}"'.format(exporter['id']))
-
-    exporters[exporter['id']] = {
-        'name': exporter['name'],
-        'handlerFn': exporter['handlerFn'],
-        'args': exporter['args'],
-    }
+# data exporters
+export_manager = dataExportManager()
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
