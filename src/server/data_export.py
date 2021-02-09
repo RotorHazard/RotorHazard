@@ -17,7 +17,7 @@
 import logging
 from Plugins import Plugins
 
-class dataExportManager():
+class DataExportManager():
     exporters = {}
 
     def __init__(self):
@@ -39,7 +39,7 @@ class dataExportManager():
         else:
             logger.warning('Invalid exporter')
 
-    def isExporter(self, exporter_id):
+    def hasExporter(self, exporter_id):
         if exporter_id in self.exporters:
             return True
         return False
@@ -48,8 +48,7 @@ class dataExportManager():
         return self.exporters
 
     def export(self, exporter_id, Database, PageCache):
-        data = self.exporters[exporter_id].assembler(Database, PageCache)
-        return self.exporters[exporter_id].formatter(data)
+        return self.exporters[exporter_id].export(Database, PageCache)
 
 class DataExporter():
     def __init__(self, name, label, formatterFn, assemblerFn):
@@ -57,3 +56,7 @@ class DataExporter():
         self.label = label
         self.formatter = formatterFn
         self.assembler = assemblerFn
+
+    def export(self, Database, PageCache):
+        data = self.assembler(Database, PageCache)
+        return self.formatter(data)

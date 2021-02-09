@@ -87,7 +87,7 @@ from Plugins import Plugins, search_modules
 from Sensors import Sensors
 import RHRace
 from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus
-from data_export import dataExportManager
+from data_export import DataExportManager
 
 APP = Flask(__name__, static_url_path='/static')
 
@@ -1883,7 +1883,7 @@ def on_export_database(data):
     global PageCache
     exporter = data['exporter']
 
-    if export_manager.isExporter(exporter):
+    if export_manager.hasExporter(exporter):
         # perpare data
         build_page_cache()
 
@@ -5839,7 +5839,7 @@ if vrx_controller:
     Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
 
 # data exporters
-export_manager = dataExportManager()
+export_manager = DataExportManager()
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
