@@ -311,7 +311,7 @@
 					if(document.getElementById('node-' + i)) {
 						var rssiValue = msg.current_rssi[i];
 
-						if (rotorhazard.nodes[i].frequency == 0) {
+						if (rotorhazard.nodes[i].fObj.frequency == 0) {
 							rssiValue = 0;
 						}
 
@@ -1367,7 +1367,7 @@
 			var first = true;
 			for (i in rotorhazard.current_pilots) {
 				pilot = rotorhazard.current_pilots[i];
-				if (pilot && rotorhazard.nodes[i].frequency) {
+				if (pilot && rotorhazard.nodes[i].fObj.frequency) {
 					if (!first) {
 						pilots += ', ';
 					}
@@ -1392,11 +1392,11 @@
 			var first = true;
 			for (i in rotorhazard.current_pilots) {
 				pilot = rotorhazard.current_pilots[i];
-				if (pilot && rotorhazard.nodes[i].frequency) {
+				if (pilot && rotorhazard.nodes[i].fObj.frequency) {
 					if (!first) {
 						pilots += ', ';
 					}
-					pilots += freq.findByFreq(rotorhazard.nodes[i].frequency) + ': '
+					pilots += freq.findByFreq(rotorhazard.nodes[i].fObj.frequency) + ': '
 					for (var p in rotorhazard.pilot_data) {
 						pdata = rotorhazard.pilot_data[p];
 						if (pdata.pilot_id == pilot) {
