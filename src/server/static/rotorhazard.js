@@ -455,7 +455,13 @@ function __l(text) {
 /* Data model for nodes */
 function nodeModel() {
 	this.trigger_rssi = false;
-	this.frequency = 0;
+	this.fObj = {
+		key: '—',
+		fString: 0,
+		band: null,
+		channel: null,
+		frequency: 0
+	};
 	this.node_peak_rssi = false;
 	this.node_nadir_rssi = false;
 	this.pass_peak_rssi = false;
