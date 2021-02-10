@@ -172,7 +172,7 @@
 				for (var i = 0; i < msg.current_rssi.length; i++) {
 					var rssiValue = msg.current_rssi[i];
 
-					if (rotorhazard.nodes[i].frequency == 0) {
+					if (rotorhazard.nodes[i].fObj.frequency == 0) {
 						rssiValue = 0;
 					}
 
