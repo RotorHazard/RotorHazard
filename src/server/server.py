@@ -5160,8 +5160,6 @@ def recover_database(dbfile, **kwargs):
             "colorNode_5",
             "colorNode_6",
             "colorNode_7",
-            "osd_lapHeader",
-            "osd_positionHeader",
             "startThreshLowerAmount",
             "startThreshLowerDuration",
             "nextHeatBehavior"

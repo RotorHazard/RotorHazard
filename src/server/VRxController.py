@@ -88,13 +88,6 @@ class VRxController:
         self.Events.on(Evt.LAP_DELETE, 'VRx', self.do_lap_recorded)
         self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200, True)
         self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.do_send_message)
-        self.Events.on(Evt.OPTION_SET, 'VRx', self.validate_option)
-
-        # Options
-        if Options.get('osd_lapHeader') is False:
-            Options.set('osd_lapHeader', 'L')
-        if Options.get('osd_positionHeader') is False:
-            Options.set('osd_positionHeader', '')
 
     def validate_config(self, supplied_config):
         """Ensure config values are within range and reasonable values"""
@@ -111,21 +104,6 @@ class VRxController:
                 saved_config[k] = supplied_config[k]
 
         return saved_config
-
-    def validate_option(self, args):
-        """Ensure config values are within range and reasonable values"""
-        if 'option' in args:
-            if args['option'] in ['osd_lapHeader', 'osd_positionHeader']:
-                cv_csum = clearview.comspecs.clearview_specs["message_csum"]
-                config_item = args['value']
-
-                if len(config_item) == 1:
-                    if config_item == cv_csum:
-                        self.logger.error("Cannot use reserved character '%s' in '%s'"%(cv_csum, args['option']))
-                        Options.set(args['option'], '')
-                elif cv_csum in config_item:
-                    self.logger.error("Cannot use reserved character '%s' in '%s'"%(cv_csum, args['option']))
-                    Options.set(args['option'], '')
 
     def do_startup(self,arg):
         self.logger.info("VRx Control Starting up")
@@ -235,8 +213,8 @@ class VRxController:
         '''
 
         # Server options
-        LAP_HEADER = Options.get('osd_lapHeader')
-        POS_HEADER = Options.get('osd_positionHeader')
+        LAP_HEADER = Options.get('osd_lapHeader', 'L')
+        POS_HEADER = Options.get('osd_positionHeader', '')
         BEST_LAP_TEXT = __('Best Lap')
         HOLSESHOT_TEXT = __('HS')
 
