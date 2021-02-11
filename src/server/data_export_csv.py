@@ -8,6 +8,7 @@ import io
 import csv
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from data_export import DataExporter
+from database_read import DatabaseReader
 
 def write_csv(data):
     output = io.StringIO()
@@ -37,33 +38,33 @@ def assemble_all(Database, PageCache):
 
     return output
 
-def assemble_pilots(Database, PageCache):
+def assemble_pilots(DatabaseReader):
     payload = [[__('Callsign'), __('Name'), __('Team')]]
 
-    pilots = Database.Pilot.query.all()
+    pilots = DatabaseReader.get_all_pilots()
     for pilot in pilots:
         payload.append([pilot.callsign, pilot.name, pilot.team])
 
     return payload
 
-def assemble_heats(Database, PageCache):
+def assemble_heats(DatabaseReader):
     payload = [[__('Name'), __('Class'), __('Pilots')]]
-    for heat in Database.Heat.query.all():
+    for heat in DatabaseReader.get_all_heats():
         heat_id = heat.id
         note = heat.note
 
         if heat.class_id != RHUtils.CLASS_ID_NONE:
-            race_class = Database.RaceClass.query.get(heat.class_id).name
+            race_class = DatabaseReader.get_race_class(heat.class_id).name
         else:
             race_class = None
 
         row = [note, race_class]
 
-        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
+        heatnodes = DatabaseReader.get_head_nodes_f_orderNode(heat_id=heat.id)
         pilots = {}
         for heatnode in heatnodes:
             if heatnode.pilot_id != RHUtils.PILOT_ID_NONE:
-                row.append(Database.Pilot.query.get(heatnode.pilot_id).callsign)
+                row.append(DatabaseReader.get_heat_pilot_callsign(heatnode.pilot_id))
             else:
                 row.append('-')
 
@@ -71,7 +72,7 @@ def assemble_heats(Database, PageCache):
 
     return payload
 
-def assemble_classes(Database, PageCache):
+def assemble_classes(DatabaseReader):
     race_classes = Database.RaceClass.query.all()
     payload = [[__('Name'), __('Description'), __('Race Format')]]
 
