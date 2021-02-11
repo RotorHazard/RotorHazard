@@ -177,8 +177,23 @@ class VRxController:
 
         self.set_seat_frequency(seat_index, frequency)
 
+
+    def do_lap_recorded_json(self, args):
+        """
+        Records a lap using the json interface for all the lap objects
+        """
+        pass
+
     def do_lap_recorded(self, args):
-        ''' Sends lap data to VRx for OSD output '''
+        '''
+        *** Deprecated ***
+        '''
+        raise DeprecationWarning("Use do_lap_recorded_json")
+        print("LAP")
+
+        RESULTS_TIMEOUT = 5 # maximum time to wait for results to generate
+        LAP_HEADER = Options.get('osd_lapHeader')
+        POS_HEADER = Options.get('osd_positionHeader')
 
         if 'node_index' in args:
             seat_index = args['node_index']
@@ -648,20 +663,12 @@ class VRxSeat(BaseVRxSeat):
         self._seat_camera_type = seat_camera_type
         self._seat_lock_status = None
 
-
         """
         osd_fields are used to format the OSD string with multiple pieces of data
-        example fields names:
-        * cur_lap_count
-        * pilot_name
-        * lap_time
-        * split_time
-        * total_laps
-        The osd fields have the actual data (_osd_field_data),
-        and the order (_osd_field_order)
+        Follows this protocol:
+        https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Realtime-lap-information
         """
         self._osd_field_data = {}
-        self._osd_field_order = {}
 
         # TODO specify the return value for commands.
         #   Do we return the command sent or some sort of result from mqtt?
@@ -781,14 +788,17 @@ class VRxSeat(BaseVRxSeat):
         self._mqttc.publish(topic, cmd)
         return cmd
 
-    def _update_osd_by_fields(self):
-        #todo
-        # Get a list of keys sorted by field_order
-        # concatenate the data togeter with a " " separator
-        # send the OSD an update command
+    def update_osd_on_lap(self):
+        """Sends a combined OSD data packet"""
+        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_seat_topic"][0]%self._seat_number
+        osd_data = {}
 
-        #todo check against limit each addition and truncate based on field priority
-        pass
+        # TODO append OSD data here
+
+        cmd = json.dumps(osd_data)
+        self._mqttc.publish(topic, cmd)
+        return cmd
+
 
 class VRxBroadcastSeat(BaseVRxSeat):
     def __init__(self,
@@ -842,72 +852,6 @@ class VRxBroadcastSeat(BaseVRxSeat):
         report_req = json.dumps({"lock":"?"})
         self._mqttc.publish(topic,report_req)
         return report_req
-
-class ClearViewValInterpret:
-    """Holds constants of the protocols"""
-    def __init__(self):
-        self.CONNECTED = '1'
-        self.DISCONNECTED = '0'
-        self.LOCKED = 'L'
-        self.UNLOCKED = 'U'
-
-class packet_formatter:
-    def __init__(self):
-        pass
-
-    def format_command(self, command_name):
-        if command_name == "frequency":
-            command = {
-                "cv1": self.get_cv1_base_format()
-            }
-
-    def get_cv1_base_format(self):
-        clearview_specs = {
-            'message_start_char': '\n',
-            'message_end_char': '\r',
-            'message_csum': '%',
-            'mess_src': 9,
-            'baud': 57600,
-            'bc_id': 0
-        }
-
-        # base_format = (clearview_specs[message_start_char] +
-        #        '%i' +
-        #        str(clearview_specs[mess_src] +
-        #        '%s' +
-        #        clearview_specs[message_csum] +
-        #        clearview_specs[message_end_char])
-
-        # return base_format
-
-    def set_osd_field(self, field_data):
-        """sets an  osd field data object. Updates OSD.
-        That field must also be shown on the OSD
-
-        Input:
-            field_data: dictionary
-                *keys = field names (str), value = field value (str)
-        """
-
-        for field in field_data:
-            if field not in self._osd_field_data:
-                self.set_field_order({field: -1})
-
-            self._osd_field_data[field] = field_data[field]
-
-    def set_field_order(self, field_order):
-        """sets an  osd field data order. Updates OSD.
-        That field must also be shown on the OSD
-
-        Input:
-            field_data: dictionary
-                *keys = field names (str), value = field order (int)
-                A field order of -1 disables it.
-                Field orders must be unique
-        """
-        for field in field_order:
-                self._osd_field_order[field] = field_order
-        self._update_osd_by_fields()
 
 def main():
     # vrxc = VRxController("192.168.0.110",
