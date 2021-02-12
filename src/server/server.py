@@ -63,6 +63,7 @@ import Options
 import Database
 import Results
 import Language
+import RHData
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Language import __
