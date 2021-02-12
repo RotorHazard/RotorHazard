@@ -24,7 +24,8 @@
 		'led_effect_setup',
 		'cluster_status',
 		'vrx_list',
-		'backups_list'
+		'backups_list',
+		'exporter_list',
 	];
 
 	var logsl = new LogSlider({maxpos: 12, minval: 0.0001, maxval: 1});
@@ -1520,8 +1521,14 @@
 					dbfile = msg.backup_files[file];
 					$('#database_list').append('<option value="' + dbfile + '">' + dbfile + '</option>');
 				}
+				$('#database_list').prop('disabled', false);
+				$('button[data-mfp-src="#database_restore_confirm"]').prop('disabled', false);
+				$('button[data-mfp-src="#database_delete_confirm"]').prop('disabled', false);
 			} else {
 				$('#database_list').append('<option value="-">' + __('No Saved Databases') + '</option>');
+				$('#database_list').prop('disabled', true);
+				$('button[data-mfp-src="#database_restore_confirm"]').prop('disabled', true);
+				$('button[data-mfp-src="#database_delete_confirm"]').prop('disabled', true);
 			}
 		});
 
@@ -1573,6 +1580,46 @@
 
 		$('button#kill_server').click(function (event) {
 			socket.emit('kill_server');
+			return false;
+		});
+
+		socket.on('exporter_list', function (msg) {
+			$('#exporter_list').empty();
+			if ('exporters' in msg && msg.exporters.length) {
+				msg.exporters.sort(function(a, b){return ('' + a.label).localeCompare(b.label)})
+				for (idx in msg.exporters) {
+					var ex = msg.exporters[idx];
+					$('#exporter_list').append('<option value="' + ex.name + '">' + __(ex.label) + '</option>');
+				}
+				$('#exporter_list').prop('disabled', false);
+				$('#export_database').prop('disabled', false);
+			} else {
+				$('#exporter_list').append('<option value="-">' + __('No Exporters') + '</option>');
+				$('#exporter_list').prop('disabled', true);
+				$('#export_database').prop('disabled', true);
+			}
+		});
+
+		socket.on('exported_data', function (msg) {
+			var data = msg.data
+			/*
+			msgArray = atob(msg.file_data);  // decode Base64 string
+			// convert decoded data to byte array
+			var byteNumbers = new Array(msgArray.length);
+			for (var i = 0; i < msgArray.length; i++) {
+				byteNumbers[i] = msgArray.charCodeAt(i);
+			}
+			var byteArray = new Uint8Array(byteNumbers);
+			*/
+			// construct blob and initiate browser save-as
+			saveAs(new Blob([data], {type: msg.encoding}), msg.filename);
+		});
+
+		$('button#export_database').click(function (event) {
+			var data = {
+				exporter: $('#exporter_list').val()
+			};
+			socket.emit('export_database', data);
 			return false;
 		});
 
@@ -2645,11 +2692,17 @@
 			<button class="btn-danger open-mfp-popup" data-mfp-src="#clear_data_confirm">{{ __('Clear Data') }}</button>
 		</div>
 		<div class="control-set">
-			<select id="database_list">
+			<select id="database_list" disabled="disabled">
 				<option value="-">{{ __('No Saved Databases') }}</option>
 			</select>
-			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup">{{ __('Restore Data') }}</button>
-			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup">{{ __('Delete Data') }}</button>
+			<button data-mfp-src="#database_restore_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Restore Data') }}</button>
+			<button data-mfp-src="#database_delete_confirm" class="btn-danger open-mfp-popup" disabled="disabled">{{ __('Delete Data') }}</button>
+		</div>
+		<div class="control-set">
+			<select id="exporter_list" disabled="disabled">
+				<option value="-">{{ __('No Exporters') }}</option>
+			</select>
+			<button id="export_database" disabled="disabled">{{ __('Export Data') }}</button>
 		</div>
 
 		<div id="clear_data_confirm" class="priority-message-interrupt mfp-hide popup">

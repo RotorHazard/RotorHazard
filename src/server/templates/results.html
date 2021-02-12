@@ -46,7 +46,7 @@
 
 				// heats
 
-				// reorder classes (Assumes Object.keys is ordered by ES6 rules, or as added by server)
+				// move unclassified heats to end of list (Assumes Object.keys is ordered by ES6 rules, or as added by server)
 				var class_ordered = Object.keys(msg.heats_by_class)
 				class_ordered = class_ordered.concat(class_ordered.splice(0, 1));
 

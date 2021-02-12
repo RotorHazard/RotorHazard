@@ -155,7 +155,7 @@ class VRxController:
         for heatseat in Database.HeatNode.query.filter_by(heat_id=heat_id).all():
             heatseat_index = heatseat.seat_index
             if heatseat_index < self.num_seats:  # TODO this may break with non-contiguous nodes
-                if heatseat.pilot_id != Database.PILOT_ID_NONE:
+                if heatseat.pilot_id != RHUtils.PILOT_ID_NONE:
                     pilot = Database.Pilot.query.get(heatseat.pilot_id)
                     self.set_message_direct(heatseat_index, pilot.callsign)
                 else:
@@ -697,12 +697,12 @@ class VRxController:
                 extracted_data = json.loads(payload)
 
             except:
-                self.logger.warning("Can't load json data from '%s' of '%s'", rx_name, payload) 
+                self.logger.warning("Can't load json data from '%s' of '%s'", rx_name, payload)
                 self.logger.debug(traceback.format_exc())
                 rx_data["valid_rx"] = False
             else:
                 rx_data["valid_rx"] = True
-                rx_data.update(extracted_data) 
+                rx_data.update(extracted_data)
 
                 if "lock" in extracted_data:
                     rep_lock = extracted_data["lock"]
@@ -711,14 +711,14 @@ class VRxController:
                     rx_data["cam_forced_or_auto"] = rep_lock[1]
                     rx_data["lock_status"] = rep_lock[2]
 
-                
+
 
                 #TODO only fire event if the data changed
                 self.Events.trigger(Evt.VRX_DATA_RECEIVE, {
                     'rx_name': rx_name,
                     })
 
-                
+
                 if rx_data["needs_config"] == True and rx_data["valid_rx"] == True:
                     self.perform_initial_receiver_config(rx_name)
 

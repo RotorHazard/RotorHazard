@@ -98,7 +98,7 @@ def build_atomic_results_caches(DB, params):
     if 'class_id' in params:
         class_id = params['class_id']
         USE_CLASS = True
-    elif 'heat_id' in params and heat.class_id != Database.CLASS_ID_NONE:
+    elif 'heat_id' in params and heat.class_id != RHUtils.CLASS_ID_NONE:
         class_id = heat.class_id
         USE_CLASS = True
     else:
@@ -229,7 +229,7 @@ def calc_leaderboard(DB, **params):
     current_laps = []
     holeshots = []
 
-    for pilot in Database.Pilot.query.filter(Database.Pilot.id != Database.PILOT_ID_NONE):
+    for pilot in Database.Pilot.query.filter(Database.Pilot.id != RHUtils.PILOT_ID_NONE):
         gevent.sleep()
         if USE_CURRENT:
             laps = []

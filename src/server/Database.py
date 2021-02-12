@@ -2,15 +2,10 @@
 Database module
 '''
 
+import RHUtils
 from flask_sqlalchemy import SQLAlchemy
 
 DB = SQLAlchemy()
-
-DEF_TEAM_NAME = 'A'  # default team
-PILOT_ID_NONE = 0  # indicator value for no pilot configured
-HEAT_ID_NONE = 0  # indicator value for practice heat
-CLASS_ID_NONE = 0  # indicator value for unclassified heat
-FORMAT_ID_NONE = 0  # indicator value for no defined format
 
 #
 # Database Models
@@ -25,7 +20,7 @@ class Pilot(DB.Model):
     __tablename__ = 'pilot'
     id = DB.Column(DB.Integer, primary_key=True)
     callsign = DB.Column(DB.String(80), nullable=False)
-    team = DB.Column(DB.String(80), nullable=False, default=DEF_TEAM_NAME)
+    team = DB.Column(DB.String(80), nullable=False, default=RHUtils.DEF_TEAM_NAME)
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
 

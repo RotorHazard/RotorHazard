@@ -273,7 +273,7 @@ class SecondaryNode:
                 pilot_id = Database.HeatNode.query.filter_by( \
                     heat_id=self.RACE.current_heat, node_index=node_index).one_or_none().pilot_id
 
-                if pilot_id != Database.PILOT_ID_NONE:
+                if pilot_id != RHUtils.PILOT_ID_NONE:
 
                     # convert split timestamp (epoch ms sine 1970-01-01) to equivalent local 'monotonic' time value
                     split_ts = data['timestamp'] - self.RACE.start_time_epoch_ms
