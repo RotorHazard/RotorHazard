@@ -159,9 +159,10 @@ vrx_controller = None
 server_ipaddress_str = None
 Settings_note_msg_text = None
 
-RACE = RHRace.RHRace() # For storing race management variables
-
 PageCache = PageCache() # For storing page cache
+
+RACE = RHRace.RHRace() # For storing race management variables
+RHData = RHData.RHData(Database, PageCache) # Primary race data storage
 
 TONES_NONE = 0
 TONES_ONE = 1
@@ -251,12 +252,12 @@ def uniqueName(desiredName, otherNames):
 
 def getCurrentProfile():
     current_profile = Options.getInt('currentProfile')
-    return Database.Profiles.query.get(current_profile)
+    return RHData.get_profile(current_profile)
 
 def getCurrentRaceFormat():
     if RACE.format is None:
         val = Options.getInt('currentFormat')
-        race_format = Database.RaceFormat.query.get(val)
+        race_format = RHData.get_raceFormat(val)
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
         RACE.format.id = race_format.id
@@ -265,7 +266,7 @@ def getCurrentRaceFormat():
 def getCurrentDbRaceFormat():
     if RACE.format is None or RHRaceFormat.isDbBased(RACE.format):
         val = Options.getInt('currentFormat')
-        return Database.RaceFormat.query.get(val)
+        return RHData.get_raceFormat(val)
     else:
         return None
 
@@ -828,7 +829,7 @@ def on_set_frequency(data):
         if frequency and getCurrentRaceFormat() is SECONDARY_RACE_FORMAT:
             heat_node = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).one_or_none()
             if heat_node and heat_node.pilot_id == RHUtils.PILOT_ID_NONE:
-                pilot = Database.Pilot.query.get(node_index+1)
+                pilot = RHData.get_pilot(node_index+1)
                 if pilot:
                     heat_node.pilot_id = pilot.id
                     update_heat_flag = True
@@ -1127,10 +1128,10 @@ def on_duplicate_heat(data):
 
 def duplicate_heat(source, **kwargs):
     '''Adds new heat by duplicating an existing one.'''
-    source_heat = Database.Heat.query.get(source)
+    source_heat = RHData.get_heat(source)
 
     if source_heat.note:
-        all_heat_notes = [heat.note for heat in Database.Heat.query.all()]
+        all_heat_notes = [heat.note for heat in RHData.get_heats()]
         new_heat_note = uniqueName(source_heat.note, all_heat_notes)
     else:
         new_heat_note = ''
@@ -1149,7 +1150,7 @@ def duplicate_heat(source, **kwargs):
     DB.session.flush()
     DB.session.refresh(new_heat)
 
-    for source_heatnode in Database.HeatNode.query.filter_by(heat_id=source_heat.id).all():
+    for source_heatnode in RHData.get_heatNode_by_heat(source_heat.id):
         new_heatnode = Database.HeatNode(heat_id=new_heat.id,
             node_index=source_heatnode.node_index,
             pilot_id=source_heatnode.pilot_id)
@@ -1164,7 +1165,7 @@ def on_alter_heat(data):
     global RACE
     global PageCache
     heat_id = data['heat']
-    heat = Database.Heat.query.get(heat_id)
+    heat = RHData.get_heat(heat_id)
 
     if 'note' in data:
         PageCache.valid = False
@@ -1187,7 +1188,7 @@ def on_alter_heat(data):
                 # race_meta.cacheStatus=Results.CacheStatus.INVALID
 
             if old_class_id is not RHUtils.CLASS_ID_NONE:
-                old_class = Database.RaceClass.query.get(old_class_id)
+                old_class = RHData.get_raceClass(old_class_id)
                 old_class.cacheStatus = Results.CacheStatus.INVALID
 
     if 'pilot' in data:
@@ -1207,7 +1208,7 @@ def on_alter_heat(data):
     if 'pilot' in data or 'class' in data:
         if len(race_list):
             if heat.class_id is not RHUtils.CLASS_ID_NONE:
-                new_class = Database.RaceClass.query.get(heat.class_id)
+                new_class = RHData.get_raceClass(heat.class_id)
                 new_class.cacheStatus = Results.CacheStatus.INVALID
 
             Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
@@ -1218,11 +1219,11 @@ def on_alter_heat(data):
     if heat_id == RACE.current_heat:
         RACE.node_pilots = {}
         RACE.node_teams = {}
-        for heatNode in Database.HeatNode.query.filter_by(heat_id=heat_id):
+        for heatNode in RHData.get_heatNode_by_heat(heat_id):
             RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
             if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+                RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
             else:
                 RACE.node_teams[heatNode.node_index] = None
         RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
@@ -1247,8 +1248,8 @@ def on_delete_heat(data):
     heat_count = DB.session.query(Database.Heat).count()
     if heat_count > 1: # keep one profile
         heat_id = data['heat']
-        heat = Database.Heat.query.get(heat_id)
-        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
+        heat = RHData.get_heat(heat_id)
+        heatnodes = RHData.get_heatNode_by_heat(heat.id)
 
         has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
 
@@ -1271,7 +1272,7 @@ def on_delete_heat(data):
                 try:
                     heat_obj = Database.Heat.query.first()
                     if heat_obj.id != 1:
-                        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat_obj.id).all()
+                        heatnodes = RHData.get_heatNode_by_heat(heat_obj.id).all()
                         has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat_obj.id).first()
                         if not has_race:
                             logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat_obj.id))
@@ -1317,10 +1318,10 @@ def on_add_race_class():
 def on_duplicate_race_class(data):
     '''Adds new race class by duplicating an existing one.'''
     source_class_id = data['class']
-    source_class = Database.RaceClass.query.get(source_class_id)
+    source_class = RHData.get_raceClass(source_class_id)
 
     if source_class.name:
-        all_class_names = [race_class.name for race_class in Database.RaceClass.query.all()]
+        all_class_names = [race_class.name for race_class in RHData.get_raceClasses()]
         new_class_name = uniqueName(source_class.name, all_class_names)
     else:
         new_class_name = ''
@@ -1354,7 +1355,7 @@ def on_alter_race_class(data):
     '''Update race class.'''
     global PageCache
     race_class = data['class_id']
-    db_update = Database.RaceClass.query.get(race_class)
+    db_update = RHData.get_raceClass(race_class)
 
     if 'class_name' in data:
         PageCache.valid = False
@@ -1403,7 +1404,7 @@ def on_alter_race_class(data):
 def on_delete_class(data):
     '''Delete class.'''
     class_id = data['class']
-    race_class = Database.RaceClass.query.get(class_id)
+    race_class = RHData.get_raceClass(class_id)
 
     has_race = Database.SavedRaceMeta.query.filter_by(class_id=race_class.id).first()
 
@@ -1411,7 +1412,7 @@ def on_delete_class(data):
         logger.info('Refusing to delete class {0}: is in use'.format(race_class.id))
     else:
         DB.session.delete(race_class)
-        for heat in Database.Heat.query.all():
+        for heat in RHData.get_heats():
             if heat.class_id == race_class.id:
                 heat.class_id = RHUtils.CLASS_ID_NONE
 
@@ -1451,7 +1452,7 @@ def on_alter_pilot(data):
     '''Update pilot.'''
     global PageCache
     pilot_id = data['pilot_id']
-    db_update = Database.Pilot.query.get(pilot_id)
+    db_update = RHData.get_pilot(pilot_id)
     if 'callsign' in data:
         db_update.callsign = data['callsign']
     if 'team_name' in data:
@@ -1477,10 +1478,10 @@ def on_alter_pilot(data):
             Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
 
             for heatnode in heatnodes:
-                heat = Database.Heat.query.get(heatnode.heat_id)
+                heat = RHData.get_heat(heatnode.heat_id)
                 heat.cacheStatus = Results.CacheStatus.INVALID
                 if heat.class_id != Database.CLASS_ID_NONE:
-                    race_class = Database.RaceClass.query.get(heat.class_id)
+                    race_class = RHData.get_raceClass(heat.class_id)
                     race_class.cacheStatus = Results.CacheStatus.INVALID
                 races = Database.SavedRaceMeta.query.filter_by(heat_id=heatnode.heat_id)
                 for race in races:
@@ -1499,7 +1500,7 @@ def on_alter_pilot(data):
 def on_delete_pilot(data):
     '''Delete heat.'''
     pilot_id = data['pilot']
-    pilot = Database.Pilot.query.get(pilot_id)
+    pilot = RHData.get_pilot(pilot_id)
 
     has_race = Database.SavedPilotRace.query.filter_by(pilot_id=pilot.id).first()
 
@@ -1585,7 +1586,7 @@ def on_delete_profile():
 def on_set_profile(data, emit_vals=True):
     ''' set current profile '''
     profile_val = int(data['profile'])
-    profile = Database.Profiles.query.get(profile_val)
+    profile = RHData.get_profile(profile_val)
     if profile:
         Options.set("currentProfile", data['profile'])
         logger.info("Set Profile to '%s'" % profile_val)
@@ -1650,13 +1651,13 @@ def on_alter_race(data):
     race_meta = Database.SavedRaceMeta.query.get(race_id)
 
     old_heat_id = race_meta.heat_id
-    old_heat = Database.Heat.query.get(old_heat_id)
-    old_class = Database.RaceClass.query.get(old_heat.class_id)
+    old_heat = RHData.get_heats(old_heat_id)
+    old_class = RHData.get_raceClass(old_heat.class_id)
     old_format_id = old_class.format_id
 
     new_heat_id = int(data['heat_id'])
-    new_heat = Database.Heat.query.get(new_heat_id)
-    new_class = Database.RaceClass.query.get(new_heat.class_id)
+    new_heat = RHData.get_heat(new_heat_id)
+    new_class = RHData.get_raceClass(new_heat.class_id)
     new_format_id = new_class.format_id
 
     # clear round ids
@@ -1782,7 +1783,7 @@ def on_restore_database(data):
 
                 expand_heats()
                 raceformat_id = Options.getInt('currentFormat')
-                race_format = Database.RaceFormat.query.get(raceformat_id)
+                race_format = RHData.get_raceFormat(raceformat_id)
                 setCurrentRaceFormat(race_format)
 
                 success = True
@@ -2023,7 +2024,7 @@ def on_set_race_format(data):
     ''' set current race_format '''
     if RACE.race_status == RaceStatus.READY: # prevent format change if race running
         race_format_val = data['race_format']
-        race_format = Database.RaceFormat.query.get(race_format_val)
+        race_format = RHData.get_raceFormat(race_format_val)
         DB.session.flush()
         setCurrentRaceFormat(race_format)
         DB.session.commit()
@@ -2044,7 +2045,7 @@ def on_set_race_format(data):
 def on_add_race_format():
     '''Adds new format in the database by duplicating an existing one.'''
     source_format = getCurrentRaceFormat()
-    all_format_names = [format.name for format in Database.RaceFormat.query.all()]
+    all_format_names = [format.name for format in RHData.get_raceFormats()]
     new_format = Database.RaceFormat(name=uniqueName(source_format.name, all_format_names),
                              race_mode=source_format.race_mode,
                              race_time_sec=source_format.race_time_sec ,
@@ -2313,8 +2314,8 @@ def on_get_pi_time():
 def on_stage_race():
     global RACE
     valid_pilots = False
-    heat_data = Database.Heat.query.get(RACE.current_heat)
-    heatNodes = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat).all()
+    heat_data = RHData.get_heat(RACE.current_heat)
+    heatNodes = RHData.get_heatNode_by_heat(RACE.current_heat)
     for heatNode in heatNodes:
         if heatNode.node_index < RACE.num_nodes:
             if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
@@ -2345,9 +2346,9 @@ def on_stage_race():
         trigger_event(Evt.RACE_STAGE)
 
         if heat_data.class_id != Database.CLASS_ID_NONE:
-            class_format_id = Database.RaceClass.query.get(heat_data.class_id).format_id
+            class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
             if class_format_id != Database.FORMAT_ID_NONE:
-                class_format = Database.RaceFormat.query.get(class_format_id)
+                class_format = RHData.get_raceFormat(class_format_id)
                 setCurrentRaceFormat(class_format)
                 logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
 
@@ -2419,7 +2420,7 @@ def findBestValues(node, node_index):
     ''' Search race history for best tuning values '''
 
     # get commonly used values
-    heat = Database.Heat.query.get(RACE.current_heat)
+    heat = RHData.get_heat(RACE.current_heat)
     pilot = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
     current_class = heat.class_id
 
@@ -2650,7 +2651,7 @@ def on_save_laps():
     if race_has_laps == True:
         PageCache.valid = False
         race_format = getCurrentRaceFormat()
-        heat = Database.Heat.query.get(RACE.current_heat)
+        heat = RHData.get_heat(RACE.current_heat)
         # Get the last saved round for the current heat
         max_round = DB.session.query(DB.func.max(Database.SavedRaceMeta.round_id)) \
                 .filter_by(heat_id=RACE.current_heat).scalar()
@@ -2824,7 +2825,7 @@ def build_page_cache():
 
         heats = {}
         for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
-            heatdata = Database.Heat.query.get(heat.heat_id)
+            heatdata = RHData.get_heat(heat.heat_id)
 
             rounds = []
             for round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
@@ -2915,14 +2916,14 @@ def build_page_cache():
         gevent.sleep()
         heats_by_class = {}
         heats_by_class[RHUtils.CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=RHUtils.CLASS_ID_NONE).all()]
-        for race_class in Database.RaceClass.query.all():
+        for race_class in RHData.get_raceClasses():
             heats_by_class[race_class.id] = [heat.id for heat in Database.Heat.query.filter_by(class_id=race_class.id).all()]
 
         timing['by_class'] = monotonic()
 
         gevent.sleep()
         current_classes = {}
-        for race_class in Database.RaceClass.query.all():
+        for race_class in RHData.get_raceClasses():
             if race_class.cacheStatus == Results.CacheStatus.INVALID:
                 logger.info('Class %d cache invalid; rebuilding', race_class.id)
                 results = Results.calc_leaderboard(DB, class_id=race_class.id)
@@ -3040,8 +3041,7 @@ def clear_laps():
 
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
-    heatnodes = Database.HeatNode.query.filter_by( \
-        heat_id=RACE.current_heat).all()
+    heatnodes = RHData.get_heatNode_by_heat(RACE.current_heat)
 
     for node in INTERFACE.nodes:
         node.current_pilot_id = RHUtils.PILOT_ID_NONE
@@ -3082,20 +3082,20 @@ def on_set_current_heat(data):
         '6': None,
         '7': None,
     }
-    for heatNode in Database.HeatNode.query.filter_by(heat_id=new_heat_id):
+    for heatNode in RHData.get_heatNode_by_heat(new_heat_id):
         RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
         if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-            RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+            RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
         else:
             RACE.node_teams[heatNode.node_index] = None
 
-    heat_data = Database.Heat.query.get(new_heat_id)
+    heat_data = RHData.get_heat(new_heat_id)
 
     if heat_data.class_id != Database.CLASS_ID_NONE:
-        class_format_id = Database.RaceClass.query.get(heat_data.class_id).format_id
+        class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
         if class_format_id != Database.FORMAT_ID_NONE:
-            class_format = Database.RaceFormat.query.get(class_format_id)
+            class_format = RHData.get_raceFormat(class_format_id)
             setCurrentRaceFormat(class_format)
             logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
 
@@ -3133,7 +3133,7 @@ def generate_heats(data):
         results = {
             'by_race_time': []
         }
-        for pilot in Database.Pilot.query.all():
+        for pilot in RHData.get_pilots():
             # *** if pilot is active
             entry = {}
             entry['pilot_id'] = pilot.id
@@ -3149,8 +3149,8 @@ def generate_heats(data):
         win_condition = WinCondition.NONE
         cacheStatus = Results.CacheStatus.VALID
     else:
-        race_class = Database.RaceClass.query.get(input_class)
-        race_format = Database.RaceFormat.query.get(race_class.format_id)
+        race_class = RHData.get_raceClass(input_class)
+        race_format = RHData.get_raceFormat(race_class.format_id)
         results = race_class.results
         if race_format:
             win_condition = race_format.win_condition
@@ -3655,8 +3655,8 @@ def emit_race_format(**params):
         locked = False
 
     emit_payload = {
-        'format_ids': [raceformat.id for raceformat in Database.RaceFormat.query.all()],
-        'format_names': [raceformat.name for raceformat in Database.RaceFormat.query.all()],
+        'format_ids': [raceformat.id for raceformat in RHData.get_raceFormats()],
+        'format_names': [raceformat.name for raceformat in RHData.get_raceFormats()],
         'current_format': race_format.id if is_db_race_format else None,
         'format_name': race_format.name,
         'race_mode': race_format.race_mode,
@@ -3678,7 +3678,7 @@ def emit_race_format(**params):
 
 def emit_race_formats(**params):
     '''Emits all race formats.'''
-    formats = Database.RaceFormat.query.all()
+    formats = RHData.get_raceFormats()
     emit_payload = {}
     for race_format in formats:
         format_copy = {
@@ -3790,7 +3790,7 @@ def emit_race_list(**params):
     '''Emits race listing'''
     heats = {}
     for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
-        heatnote = Database.Heat.query.get(heat.heat_id).note
+        heatnote = RHData.get_heat(heat.heat_id).note
 
         rounds = {}
         for round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
@@ -3841,11 +3841,11 @@ def emit_race_list(**params):
     '''
     heats_by_class = {}
     heats_by_class[RHUtils.CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=RHUtils.CLASS_ID_NONE).all()]
-    for race_class in Database.RaceClass.query.all():
+    for race_class in RHData.get_raceClasses():
         heats_by_class[race_class.id] = [heat.id for heat in Database.Heat.query.filter_by(class_id=race_class.id).all()]
 
     current_classes = {}
-    for race_class in Database.RaceClass.query.all():
+    for race_class in RHData.get_raceClasses():
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
@@ -3926,12 +3926,12 @@ def emit_current_team_leaderboard(**params):
 def emit_heat_data(**params):
     '''Emits heat data.'''
     current_heats = {}
-    for heat in Database.Heat.query.all():
+    for heat in RHData.get_heats():
         heat_id = heat.id
         note = heat.note
         race_class = heat.class_id
 
-        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
+        heatnodes = RHData.get_heatNode_by_heat(heat.id)
         pilots = []
         for heatnode in heatnodes:
             pilots.append(heatnode.pilot_id)
@@ -3950,7 +3950,7 @@ def emit_heat_data(**params):
             'locked': locked}
 
     current_classes = []
-    for race_class in Database.RaceClass.query.all():
+    for race_class in RHData.get_raceClasses():
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
@@ -3958,7 +3958,7 @@ def emit_heat_data(**params):
         current_classes.append(current_class)
 
     pilots = []
-    for pilot in Database.Pilot.query.all():
+    for pilot in RHData.get_pilots():
         pilots.append({
             'pilot_id': pilot.id,
             'callsign': pilot.callsign,
@@ -3986,7 +3986,7 @@ def emit_heat_data(**params):
 def emit_class_data(**params):
     '''Emits class data.'''
     current_classes = []
-    for race_class in Database.RaceClass.query.all():
+    for race_class in RHData.get_raceClasses():
         current_class = {}
         current_class['id'] = race_class.id
         current_class['name'] = race_class.name
@@ -4002,7 +4002,7 @@ def emit_class_data(**params):
         current_classes.append(current_class)
 
     formats = []
-    for race_format in Database.RaceFormat.query.all():
+    for race_format in RHData.get_raceFormats():
         raceformat = {}
         raceformat['id'] = race_format.id
         raceformat['name'] = race_format.name
@@ -4022,7 +4022,7 @@ def emit_class_data(**params):
 def emit_pilot_data(**params):
     '''Emits pilot data.'''
     pilots_list = []
-    for pilot in Database.Pilot.query.all():
+    for pilot in RHData.get_pilots():
         opts_str = '' # create team-options string for each pilot, with current team selected
         for name in TEAM_NAMES_LIST:
             opts_str += '<option value="' + name + '"'
@@ -4076,7 +4076,7 @@ def emit_current_heat(**params):
     for node_index in range(RACE.num_nodes):
         pilot_id = node_pilot_dict.get(node_index)
         if pilot_id:
-            pilot = Database.Pilot.query.get(pilot_id)
+            pilot = RHData.get_pilot(pilot_id)
             if pilot:
                 pilot_ids.append(pilot_id)
                 callsigns.append(pilot.callsign)
@@ -4087,13 +4087,13 @@ def emit_current_heat(**params):
             callsigns.append(None)
             pilot_ids.append(None)
 
-    heat_data = Database.Heat.query.get(RACE.current_heat)
+    heat_data = RHData.get_heat(RACE.current_heat)
 
     heat_note = heat_data.note
 
     heat_format = None
     if heat_data.class_id != RHUtils.CLASS_ID_NONE:
-        heat_format = Database.RaceClass.query.get(heat_data.class_id).format_id
+        heat_format = RHData.get_raceClass(heat_data.class_id).format_id
 
     emit_payload = {
         'current_heat': RACE.current_heat,
@@ -4121,13 +4121,11 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, **param
     '''Emits phonetic data.'''
     raw_time = lap_time
     phonetic_time = RHUtils.phonetictime_format(lap_time)
-    phonetic_name = Database.Pilot.query.get(pilot_id).phonetic
-    callsign = Database.Pilot.query.get(pilot_id).callsign
-    pilot_id = Database.Pilot.query.get(pilot_id).id
+    pilot = RHData.get_pilot(pilot_id)
     emit_payload = {
-        'pilot': phonetic_name,
-        'callsign': callsign,
-        'pilot_id': pilot_id,
+        'pilot': pilot.phonetic,
+        'callsign': pilot.callsign,
+        'pilot_id': pilot.id,
         'lap': lap_id,
         'raw_time': raw_time,
         'phonetic': phonetic_time,
@@ -4166,8 +4164,8 @@ def emit_phonetic_text(text_str, domain=False, **params):
 
 def emit_phonetic_split(pilot_id, split_id, split_time, **params):
     '''Emits phonetic split-pass data.'''
-    phonetic_name = Database.Pilot.query.get(pilot_id).phonetic or \
-                    Database.Pilot.query.get(pilot_id).callsign
+    pilot = RHData.get_pilot(pilot_id)
+    phonetic_name = pilot.phonetic or pilot.callsign
     phonetic_time = RHUtils.phonetictime_format(split_time)
     emit_payload = {
         'pilot_name': phonetic_name,
@@ -4627,7 +4625,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         # announce lap
                         if lap_number > 0:
                             if RACE.format.team_racing_mode:
-                                team = Database.Pilot.query.get(pilot_id).team
+                                team = RHData.get_pilot(pilot_id).team
                                 team_data = RACE.team_results['meta']['teams'][team]
                                 emit_phonetic_data(pilot_id, lap_number, lap_time, team, team_data['laps'])
                             else:
@@ -4673,7 +4671,7 @@ def check_win_condition(RACE, INTERFACE, **kwargs):
             else:
                 RACE.status_message = __('Winner is') + ' ' + win_status['data']['callsign']
                 emit_race_status_message()
-                win_phon_name = Database.Pilot.query.get(win_status['data']['pilot_id']).phonetic
+                win_phon_name = RHData.get_pilot(win_status['data']['pilot_id']).phonetic
                 if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                     win_phon_name = win_status['data']['callsign']
                 emit_phonetic_text(__('Winner is') + ' ' + win_phon_name, 'race_winner')
@@ -5004,7 +5002,7 @@ def db_reset_race_formats():
                              team_racing_mode=True,
                              start_behavior=0))
 
-    for race_class in Database.RaceClass.query.all():
+    for race_class in RHData.get_raceClasses():
         race_class.format_id = 0
 
     DB.session.commit()
@@ -5406,7 +5404,7 @@ def recover_database(dbfile, **kwargs):
 
 def expand_heats():
     ''' ensure loaded data includes enough slots for current nodes '''
-    for heat_ids in Database.Heat.query.all():
+    for heat_ids in RHData.get_heats():
         for node in range(RACE.num_nodes):
             heat_row = Database.HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
             if not heat_row.count():
@@ -5426,17 +5424,17 @@ def init_race_state():
         RACE.current_heat = Database.Heat.query.first().id
         RACE.node_pilots = {}
         RACE.node_teams = {}
-        for heatNode in Database.HeatNode.query.filter_by(heat_id=RACE.current_heat):
+        for heatNode in RHData.get_heatNode_by_heat(RACE.current_heat):
             RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
             if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                RACE.node_teams[heatNode.node_index] = Database.Pilot.query.get(heatNode.pilot_id).team
+                RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
             else:
                 RACE.node_teams[heatNode.node_index] = None
 
     # Set race format
     raceformat_id = Options.getInt('currentFormat')
-    race_format = Database.RaceFormat.query.get(raceformat_id)
+    race_format = RHData.get_raceFormat(raceformat_id)
     setCurrentRaceFormat(race_format, silent=True)
 
     # Normalize results caches

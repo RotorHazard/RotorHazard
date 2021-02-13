@@ -5,12 +5,13 @@
 
 import logging
 import RHUtils
+import copy
 
 class RHData():
 
-    def __init__(self, Database):
+    def __init__(self, Database, PageCache):
         self._Database = Database
-        # self._Pagecache = Pagecache # pagecache isn't merged in yet
+        self._PageCache = PageCache
 
     def get_pilot(self, pilot_id):
         return self._Database.Pilot.query.get(pilot_id)
@@ -25,7 +26,7 @@ class RHData():
         return self._Database.Heat.query.all()
 
     def get_heatNode_by_heat(self, heat_id):
-        return self._Database.HeatNode.query.filter_by(heat_id=heat_id).order_by(Database.HeatNode.node_index).all()
+        return self._Database.HeatNode.query.filter_by(heat_id=heat_id).order_by(self._Database.HeatNode.node_index).all()
 
     def get_raceClass(self, raceClass_id):
         return self._Database.RaceClass.query.get(raceClass_id)
@@ -45,3 +46,5 @@ class RHData():
     def get_raceFormats(self):
         return self._Database.RaceFormat.query.all()
 
+    def get_pageCache(self):
+        return copy.deepcopy(self._PageCache)
