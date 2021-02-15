@@ -2333,9 +2333,9 @@ def on_stage_race():
 
         trigger_event(Evt.RACE_STAGE)
 
-        if heat_data.class_id != Database.CLASS_ID_NONE:
+        if heat_data.class_id != RHUtils.CLASS_ID_NONE:
             class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
-            if class_format_id != Database.FORMAT_ID_NONE:
+            if class_format_id != RHUtils.FORMAT_ID_NONE:
                 class_format = RHData.get_raceFormat(class_format_id)
                 setCurrentRaceFormat(class_format)
                 logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
@@ -2869,9 +2869,9 @@ def on_set_current_heat(data):
 
     heat_data = RHData.get_heat(new_heat_id)
 
-    if heat_data.class_id != Database.CLASS_ID_NONE:
+    if heat_data.class_id != RHUtils.CLASS_ID_NONE:
         class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
-        if class_format_id != Database.FORMAT_ID_NONE:
+        if class_format_id != RHUtils.FORMAT_ID_NONE:
             class_format = RHData.get_raceFormat(class_format_id)
             setCurrentRaceFormat(class_format)
             logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
