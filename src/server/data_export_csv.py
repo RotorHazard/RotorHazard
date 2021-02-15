@@ -183,7 +183,7 @@ def build_leaderboard(leaderboard, **kwargs):
     return output
 
 def assemble_results(Database, PageCache):
-    results = PageCache.data
+    results = PageCache.get_cache()
     payload = []
 
     payload.append([__('Event Leaderboards') + ': ' + __('Race Totals')])

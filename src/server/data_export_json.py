@@ -133,7 +133,7 @@ def assemble_formats(Database, PageCache):
 
 def assemble_results(Database, PageCache):
     # TODO: Make results friendly
-    payload = PageCache.data
+    payload = PageCache.get_cache()
     return payload
 
 def assemble_complete(Database, PageCache):
@@ -152,7 +152,7 @@ def assemble_complete(Database, PageCache):
     return payload
 
 def assemble_results_raw(Database, PageCache):
-    payload = PageCache.data
+    payload = PageCache.get_cache()
     return payload
 
 def assemble_pilots_complete(Database, PageCache):

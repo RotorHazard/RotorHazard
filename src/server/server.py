@@ -159,10 +159,9 @@ vrx_controller = None
 server_ipaddress_str = None
 Settings_note_msg_text = None
 
-PageCache = PageCache() # For storing page cache
-
 RACE = RHRace.RHRace() # For storing race management variables
-RHData = RHData.RHData(Database, PageCache) # Primary race data storage
+RHData = RHData.RHData(Database) # Primary race data storage
+PageCache = PageCache(RHData) # For storing page cache
 
 TONES_NONE = 0
 TONES_ONE = 1
@@ -1150,7 +1149,7 @@ def duplicate_heat(source, **kwargs):
     DB.session.flush()
     DB.session.refresh(new_heat)
 
-    for source_heatnode in RHData.get_heatNode_by_heat(source_heat.id):
+    for source_heatnode in RHData.get_heatNodes(filter_by={'heat_id': source_heat.id}):
         new_heatnode = Database.HeatNode(heat_id=new_heat.id,
             node_index=source_heatnode.node_index,
             pilot_id=source_heatnode.pilot_id)
@@ -1163,12 +1162,11 @@ def duplicate_heat(source, **kwargs):
 def on_alter_heat(data):
     '''Update heat.'''
     global RACE
-    global PageCache
     heat_id = data['heat']
     heat = RHData.get_heat(heat_id)
 
     if 'note' in data:
-        PageCache.valid = False
+        PageCache.set_valid(False)
         heat.note = data['note']
     if 'class' in data:
         old_class_id = heat.class_id
@@ -1212,14 +1210,14 @@ def on_alter_heat(data):
                 new_class.cacheStatus = Results.CacheStatus.INVALID
 
             Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
-            PageCache.valid = False
+            PageCache.set_valid(False)
 
     DB.session.commit()
 
     if heat_id == RACE.current_heat:
         RACE.node_pilots = {}
         RACE.node_teams = {}
-        for heatNode in RHData.get_heatNode_by_heat(heat_id):
+        for heatNode in RHData.get_heatNodes(filter_by={'heat_id': heat_id}):
             RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
             if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
@@ -1249,7 +1247,7 @@ def on_delete_heat(data):
     if heat_count > 1: # keep one profile
         heat_id = data['heat']
         heat = RHData.get_heat(heat_id)
-        heatnodes = RHData.get_heatNode_by_heat(heat.id)
+        heatnodes = RHData.get_heatNodes(filter_by={'heat_id': heat.id})
 
         has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
 
@@ -1272,7 +1270,7 @@ def on_delete_heat(data):
                 try:
                     heat_obj = Database.Heat.query.first()
                     if heat_obj.id != 1:
-                        heatnodes = RHData.get_heatNode_by_heat(heat_obj.id).all()
+                        heatnodes = RHData.get_heatNodes(filter_by={'heat_id': heat_obj.id})
                         has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat_obj.id).first()
                         if not has_race:
                             logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat_obj.id))
@@ -1353,12 +1351,11 @@ def on_duplicate_race_class(data):
 @catchLogExceptionsWrapper
 def on_alter_race_class(data):
     '''Update race class.'''
-    global PageCache
     race_class = data['class_id']
     db_update = RHData.get_raceClass(race_class)
 
     if 'class_name' in data:
-        PageCache.valid = False
+        PageCache.set_valid(False)
         db_update.name = data['class_name']
     if 'class_format' in data:
         db_update.format_id = data['class_format']
@@ -1367,7 +1364,7 @@ def on_alter_race_class(data):
 
     # alter existing classes
     if 'class_format' in data:
-        PageCache.valid = False
+        PageCache.set_valid(False)
         Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
         db_update.cacheStatus = Results.CacheStatus.INVALID
 
@@ -1450,7 +1447,6 @@ def on_add_pilot():
 @catchLogExceptionsWrapper
 def on_alter_pilot(data):
     '''Update pilot.'''
-    global PageCache
     pilot_id = data['pilot_id']
     db_update = RHData.get_pilot(pilot_id)
     if 'callsign' in data:
@@ -1474,7 +1470,7 @@ def on_alter_pilot(data):
         emit_heat_data() # Settings page, new pilot callsign in heats
         heatnodes = Database.HeatNode.query.filter_by(pilot_id=pilot_id).all()
         if heatnodes:
-            PageCache.valid = False
+            PageCache.set_valid(False)
             Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
 
             for heatnode in heatnodes:
@@ -1646,7 +1642,6 @@ def on_set_profile(data, emit_vals=True):
 def on_alter_race(data):
     '''Update heat.'''
     global RACE
-    global PageCache
     race_id = int(data['race_id'])
     race_meta = Database.SavedRaceMeta.query.get(race_id)
 
@@ -1692,7 +1687,7 @@ def on_alter_race(data):
     DB.session.commit()
 
     # cache cleaning
-    PageCache.valid = False
+    PageCache.set_valid(False)
 
     new_heat.cacheStatus = Results.CacheStatus.INVALID
     old_heat.cacheStatus = Results.CacheStatus.INVALID
@@ -1837,8 +1832,7 @@ def on_delete_database(data):
 @catchLogExceptionsWrapper
 def on_reset_database(data):
     '''Reset database.'''
-    global PageCache
-    PageCache.valid = False
+    PageCache.set_valid(False)
 
     reset_type = data['reset_type']
     if reset_type == 'races':
@@ -1882,13 +1876,9 @@ def on_reset_database(data):
 @catchLogExceptionsWrapper
 def on_export_database(data):
     '''Run the selected Exporter'''
-    global PageCache
     exporter = data['exporter']
 
     if export_manager.hasExporter(exporter):
-        # perpare data
-        build_page_cache()
-
         # do export
         logger.info('Exporting data via {0}'.format(exporter))
         export_result = export_manager.export(exporter, Database, PageCache)
@@ -2072,7 +2062,6 @@ def on_add_race_format():
 def on_alter_race_format(data):
     ''' update race format '''
     global RACE
-    global PageCache
     if RACE.race_status == RaceStatus.READY:
         race_format = getCurrentDbRaceFormat()
         if race_format:
@@ -2113,7 +2102,7 @@ def on_alter_race_format(data):
 
             if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
                 if 'win_condition' in data or 'start_behavior' in data:
-                    PageCache.valid = False
+                    PageCache.set_valid(False)
                     Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
 
                     races = Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).all()
@@ -2315,7 +2304,7 @@ def on_stage_race():
     global RACE
     valid_pilots = False
     heat_data = RHData.get_heat(RACE.current_heat)
-    heatNodes = RHData.get_heatNode_by_heat(RACE.current_heat)
+    heatNodes = RHData.get_heatNodes(filter_by={'heat_id': RACE.current_heat})
     for heatNode in heatNodes:
         if heatNode.node_index < RACE.num_nodes:
             if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
@@ -2340,7 +2329,6 @@ def on_stage_race():
 
     if RACE.race_status == RaceStatus.READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
-        global PageCache
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
         trigger_event(Evt.RACE_STAGE)
@@ -2639,7 +2627,6 @@ def on_stop_race():
 @catchLogExceptionsWrapper
 def on_save_laps():
     '''Save current laps data to the database.'''
-    global PageCache
 
     # Determine if race is empty
     race_has_laps = False
@@ -2649,7 +2636,7 @@ def on_save_laps():
             break
 
     if race_has_laps == True:
-        PageCache.valid = False
+        PageCache.set_valid(False)
         race_format = getCurrentRaceFormat()
         heat = RHData.get_heat(RACE.current_heat)
         # Get the last saved round for the current heat
@@ -2730,8 +2717,7 @@ def on_save_laps():
 @SOCKET_IO.on('resave_laps')
 @catchLogExceptionsWrapper
 def on_resave_laps(data):
-    global PageCache
-    PageCache.valid = False
+    PageCache.set_valid(False)
 
     heat_id = data['heat_id']
     round_id = data['round_id']
@@ -2793,215 +2779,6 @@ def build_atomic_result_caches(params):
     Results.build_atomic_results_caches(DB, params)
     emit_result_data()
 
-def build_page_cache():
-    '''Builds any invalid atomic result caches and creates final output'''
-    timing = {
-        'start': monotonic()
-    }
-    logger.debug('T%d: Result data build started', timing['start'])
-
-    CACHE_TIMEOUT = 10
-    expires = monotonic() + CACHE_TIMEOUT
-    error_flag = False
-
-    global PageCache
-
-    if PageCache.building: # Don't restart calculation if another calculation thread exists
-        while True: # Pause this thread until calculations are completed
-            gevent.idle()
-            if PageCache.building is False:
-                break
-            elif monotonic() > PageCache.building + CACHE_TIMEOUT:
-                logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
-                PageCache.building = False
-                break
-
-    if PageCache.valid: # Output existing calculated results
-        logger.info('T%d: Returning valid cache', timing['start'])
-
-    else:
-        timing['build_start'] = monotonic()
-        PageCache.building = monotonic()
-
-        heats = {}
-        for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
-            heatdata = RHData.get_heat(heat.heat_id)
-
-            rounds = []
-            for round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
-
-                if Database.SavedRaceLap.query.filter_by(race_id=round.id).first() is not None:
-                    pilotraces = []
-                    for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
-                        gevent.sleep()
-                        laps = []
-                        for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
-                            laps.append({
-                                'id': lap.id,
-                                'lap_time_stamp': lap.lap_time_stamp,
-                                'lap_time': lap.lap_time,
-                                'lap_time_formatted': lap.lap_time_formatted,
-                                'source': lap.source,
-                                'deleted': lap.deleted
-                            })
-
-                        pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
-                        if pilot_data:
-                            nodepilot = pilot_data.callsign
-                        else:
-                            nodepilot = None
-
-                        pilotraces.append({
-                            'callsign': nodepilot,
-                            'pilot_id': pilotrace.pilot_id,
-                            'node_index': pilotrace.node_index,
-                            'laps': laps
-                        })
-                    if round.cacheStatus == Results.CacheStatus.INVALID:
-                        logger.info('Heat %d Round %d cache invalid; rebuilding', heat.heat_id, round.round_id)
-                        results = Results.calc_leaderboard(DB, heat_id=heat.heat_id, round_id=round.round_id)
-                        round.results = results
-                        round.cacheStatus = Results.CacheStatus.VALID
-                        DB.session.commit()
-                    else:
-                        expires = monotonic() + CACHE_TIMEOUT
-                        while True:
-                            gevent.idle()
-                            if round.cacheStatus == Results.CacheStatus.VALID:
-                                results = round.results
-                                break
-                            elif monotonic() > expires:
-                                logger.warning('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, round.round_id)
-                                results = None
-                                error_flag = True
-                                break
-
-                    rounds.append({
-                        'id': round.round_id,
-                        'start_time_formatted': round.start_time_formatted,
-                        'nodes': pilotraces,
-                        'leaderboard': results
-                    })
-
-            if heatdata.cacheStatus == Results.CacheStatus.INVALID:
-                logger.info('Heat %d cache invalid; rebuilding', heat.heat_id)
-                results = Results.calc_leaderboard(DB, heat_id=heat.heat_id)
-                heatdata.results = results
-                heatdata.cacheStatus = Results.CacheStatus.VALID
-                DB.session.commit()
-            else:
-                checkStatus = True
-                expires = monotonic() + CACHE_TIMEOUT
-                while True:
-                    gevent.idle()
-                    if heatdata.cacheStatus == Results.CacheStatus.VALID:
-                        results = heatdata.results
-                        break
-                    elif monotonic() > expires:
-                        logger.warning('T%d: Cache build timed out: Heat Summary %d', timing['start'], heat.heat_id)
-                        results = None
-                        error_flag = True
-                        break
-
-            heats[heat.heat_id] = {
-                'heat_id': heat.heat_id,
-                'note': heatdata.note,
-                'rounds': rounds,
-                'leaderboard': results
-            }
-
-        timing['round_results'] = monotonic()
-        logger.debug('T%d: round results assembled in: %fs', timing['start'], timing['round_results'] - timing['build_start'])
-
-        gevent.sleep()
-        heats_by_class = {}
-        heats_by_class[RHUtils.CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=RHUtils.CLASS_ID_NONE).all()]
-        for race_class in RHData.get_raceClasses():
-            heats_by_class[race_class.id] = [heat.id for heat in Database.Heat.query.filter_by(class_id=race_class.id).all()]
-
-        timing['by_class'] = monotonic()
-
-        gevent.sleep()
-        current_classes = {}
-        for race_class in RHData.get_raceClasses():
-            if race_class.cacheStatus == Results.CacheStatus.INVALID:
-                logger.info('Class %d cache invalid; rebuilding', race_class.id)
-                results = Results.calc_leaderboard(DB, class_id=race_class.id)
-                race_class.results = results
-                race_class.cacheStatus = Results.CacheStatus.VALID
-                DB.session.commit()
-            else:
-                checkStatus = True
-                expires = monotonic() + CACHE_TIMEOUT
-                while True:
-                    gevent.idle()
-                    if race_class.cacheStatus == Results.CacheStatus.VALID:
-                        results = race_class.results
-                        break
-                    elif monotonic() > expires:
-                        logger.warning('T%d: Cache build timed out: Class Summary %d', timing['start'], race_class.id)
-                        results = None
-                        error_flag = True
-                        break
-
-            current_class = {}
-            current_class['id'] = race_class.id
-            current_class['name'] = race_class.name
-            current_class['description'] = race_class.name
-            current_class['leaderboard'] = results
-            current_classes[race_class.id] = current_class
-
-        timing['event'] = monotonic()
-        logger.debug('T%d: results by class assembled in: %fs', timing['start'], timing['event'] - timing['by_class'])
-
-        gevent.sleep()
-        if Options.get("eventResults_cacheStatus") == Results.CacheStatus.INVALID:
-            logger.info('Event cache invalid; rebuilding')
-            results = Results.calc_leaderboard(DB)
-            Options.set("eventResults", json.dumps(results))
-            Options.set("eventResults_cacheStatus", Results.CacheStatus.VALID)
-            DB.session.commit()
-        else:
-            expires = monotonic() + CACHE_TIMEOUT
-            while True:
-                gevent.idle()
-                status = Options.get("eventResults_cacheStatus")
-                if status == Results.CacheStatus.VALID:
-                    results = json.loads(Options.get("eventResults"))
-                    break
-                elif monotonic() > expires:
-                    logger.warning('Cache build timed out: Event Summary')
-                    results = None
-                    error_flag = True
-                    break
-
-        timing['event_end'] = monotonic()
-        logger.debug('T%d: event results assembled in: %fs', timing['start'], timing['event_end'] - timing['event'])
-
-        payload = {
-            'heats': heats,
-            'heats_by_class': heats_by_class,
-            'classes': current_classes,
-            'event_leaderboard': results
-        }
-
-        PageCache.data = payload
-        PageCache.building = False
-
-        if error_flag:
-            logger.warning('T%d: Cache results build failed; leaving page cache invalid', timing['start'])
-            emit_priority_message(__("Results did not load completely. Please try again."), False)
-            trigger_event(Evt.CACHE_FAIL)
-        else:
-            PageCache.valid = True
-            trigger_event(Evt.CACHE_READY)
-
-        logger.debug('T%d: Page cache built in: %fs', timing['start'], monotonic() - timing['build_start'])
-
-    timing['end'] = monotonic()
-
-    logger.info('T%d: Built results data in: %fs', timing['start'], timing['end'] - timing['start'])
-
 @SOCKET_IO.on('discard_laps')
 @catchLogExceptionsWrapper
 def on_discard_laps(**kwargs):
@@ -3041,7 +2818,7 @@ def clear_laps():
 
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
-    heatnodes = RHData.get_heatNode_by_heat(RACE.current_heat)
+    heatnodes = RHData.get_heatNodes(filter_by={'heat_id': RACE.current_heat})
 
     for node in INTERFACE.nodes:
         node.current_pilot_id = RHUtils.PILOT_ID_NONE
@@ -3082,7 +2859,7 @@ def on_set_current_heat(data):
         '6': None,
         '7': None,
     }
-    for heatNode in RHData.get_heatNode_by_heat(new_heat_id):
+    for heatNode in RHData.get_heatNodes(filter_by={'heat_id': new_heat_id}):
         RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
         if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
@@ -3439,9 +3216,8 @@ def imdtabler_update_freqs(data):
 @catchLogExceptionsWrapper
 def clean_results_cache():
     ''' wipe all results caches '''
-    global PageCache
     Results.invalidate_all_caches(DB)
-    PageCache.valid = False
+    PageCache.set_valid(False)
     emit_result_data()
 
 # Socket io emit functions
@@ -3873,12 +3649,9 @@ def emit_result_data(**params):
 
 @catchLogExceptionsWrapper
 def emit_result_data_thread(params, sid=None):
-    global PageCache
     with APP.test_request_context():
 
-        build_page_cache()
-
-        emit_payload = PageCache.data
+        emit_payload = PageCache.get_cache()
 
         if 'nobroadcast' in params and sid != None:
             emit('result_data', emit_payload, namespace='/', room=sid)
@@ -3931,7 +3704,7 @@ def emit_heat_data(**params):
         note = heat.note
         race_class = heat.class_id
 
-        heatnodes = RHData.get_heatNode_by_heat(heat.id)
+        heatnodes = RHData.get_heatNodes(filter_by={'heat_id': heat.id}, order_by={'node_index': ''})
         pilots = []
         for heatnode in heatnodes:
             pilots.append(heatnode.pilot_id)
@@ -5424,7 +5197,7 @@ def init_race_state():
         RACE.current_heat = Database.Heat.query.first().id
         RACE.node_pilots = {}
         RACE.node_teams = {}
-        for heatNode in RHData.get_heatNode_by_heat(RACE.current_heat):
+        for heatNode in RHData.get_heatNodes(filter_by={'heat_id': RACE.current_heat}):
             RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
             if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
