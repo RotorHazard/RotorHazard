@@ -1476,7 +1476,7 @@ def on_alter_pilot(data):
             for heatnode in heatnodes:
                 heat = RHData.get_heat(heatnode.heat_id)
                 heat.cacheStatus = Results.CacheStatus.INVALID
-                if heat.class_id != Database.CLASS_ID_NONE:
+                if heat.class_id != RHUtils.CLASS_ID_NONE:
                     race_class = RHData.get_raceClass(heat.class_id)
                     race_class.cacheStatus = Results.CacheStatus.INVALID
                 races = Database.SavedRaceMeta.query.filter_by(heat_id=heatnode.heat_id)
@@ -3704,7 +3704,7 @@ def emit_heat_data(**params):
         note = heat.note
         race_class = heat.class_id
 
-        heatnodes = RHData.get_heatNodes(filter_by={'heat_id': heat.id}, order_by={'node_index': ''})
+        heatnodes = RHData.get_heatNodes(filter_by={'heat_id': heat.id}, order_by={'node_index': None})
         pilots = []
         for heatnode in heatnodes:
             pilots.append(heatnode.pilot_id)

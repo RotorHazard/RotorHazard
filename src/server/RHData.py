@@ -4,6 +4,8 @@
 #
 
 import logging
+logger = logging.getLogger(__name__)
+
 import RHUtils
 import copy
 
@@ -22,9 +24,9 @@ class RHData():
                     order = []
                     for key, val in kwargs['order_by'].items():
                         if val == 'desc':
-                            order.append(getattr(db_obj, key))
-                        else:
                             order.append(getattr(db_obj, key).desc())
+                        else:
+                            order.append(getattr(db_obj, key))
 
                     db_query = db_query.order_by(*order)
 
@@ -55,12 +57,6 @@ class RHData():
     def get_heatNodes(self, **kwargs):
         return self._Database.HeatNode
 
-    '''
-    @getter_parameters
-    def get_heatNode_by_heat(self, heat_id):
-        return self._Database.HeatNode.query.filter_by(heat_id=heat_id).order_by(self._Database.HeatNode.node_index).all()
-    '''
-
     def get_raceClass(self, raceClass_id):
         return self._Database.RaceClass.query.get(raceClass_id)
 
@@ -81,7 +77,4 @@ class RHData():
     @_Decorators.getter_parameters
     def get_raceFormats(self, **kwargs):
         return self._Database.RaceFormat
-
-    def get_pageCache(self):
-        return copy.deepcopy(self._PageCache)
 
