@@ -159,7 +159,6 @@ Settings_note_msg_text = None
 
 RACE = RHRace.RHRace() # For storing race management variables
 RHData = RHData.RHData(Database) # Primary race data storage
-RHData.primeOptionsCache() # Ready the Options cache
 PageCache = PageCache(RHData) # For storing page cache
 Language = Language.Language(RHData) # initialize language
 __ = Language.__ # Shortcut to translation function
@@ -5477,6 +5476,7 @@ if not os.path.exists(DB_FILE_NAME):
     logger.info("No '{0}' file found; creating initial database".format(DB_FILE_NAME))
     db_init()
     db_inited_flag = True
+    RHData.primeOptionsCache() # Ready the Options cache
 
 # check if DB file owned by 'root' and change owner to 'pi' user if so
 if RHUtils.checkSetFileOwnerPi(DB_FILE_NAME):
@@ -5509,8 +5509,11 @@ if RACE.num_nodes > 0:
     elif serverInfo['node_api_lowest'] > NODE_API_BEST:
         logger.warning('** WARNING: Node firmware is newer than this server version supports **')
 
+# Do data consistency checks
 if not db_inited_flag:
     try:
+        RHData.primeOptionsCache() # Ready the Options cache
+
         if RHData.get_optionInt('server_api') < SERVER_API:
             logger.info('Old server API version; recovering database')
             recover_database(DB_FILE_NAME, startup=True)
