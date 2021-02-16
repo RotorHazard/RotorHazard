@@ -16,8 +16,9 @@ def search_modules(prefix=None, suffix=None):
                 plugin_module = importlib.import_module(name)
                 plugin_modules.append(plugin_module)
                 logger.info('Loaded module {0}'.format(name))
-            except ImportError:
+            except ImportError as ex:
                 logger.debug('Module {0} not imported (not supported or may require additional dependencies)'.format(name))
+                logger.debug(ex)
     return plugin_modules
 
 class Plugins(UserList):

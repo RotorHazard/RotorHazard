@@ -17,10 +17,15 @@
 import logging
 from Plugins import Plugins
 
+logger = logging.getLogger(__name__)
+
 class DataExportManager():
     exporters = {}
 
-    def __init__(self):
+    def __init__(self, RHData, PageCache, Language):
+        self._RHData = RHData
+        self._PageCache = PageCache
+        self._Language = Language
         self.readPlugins()
 
     def readPlugins(self):
@@ -47,8 +52,8 @@ class DataExportManager():
     def getExporters(self):
         return self.exporters
 
-    def export(self, exporter_id, Database, PageCache):
-        return self.exporters[exporter_id].export(Database, PageCache)
+    def export(self, exporter_id):
+        return self.exporters[exporter_id].export(self._RHData, self._PageCache, self._Language)
 
 class DataExporter():
     def __init__(self, name, label, formatterFn, assemblerFn):
@@ -57,6 +62,6 @@ class DataExporter():
         self.formatter = formatterFn
         self.assembler = assemblerFn
 
-    def export(self, Database, PageCache):
-        data = self.assembler(Database, PageCache)
+    def export(self, RHData, PageCache, Language):
+        data = self.assembler(RHData, PageCache, Language)
         return self.formatter(data)

@@ -159,6 +159,7 @@ Settings_note_msg_text = None
 
 RACE = RHRace.RHRace() # For storing race management variables
 RHData = RHData.RHData(Database) # Primary race data storage
+RHData.primeOptionsCache() # Ready the Options cache
 PageCache = PageCache(RHData) # For storing page cache
 Language = Language.Language(RHData) # initialize language
 __ = Language.__ # Shortcut to translation function
@@ -1881,7 +1882,7 @@ def on_export_database(data):
     if export_manager.hasExporter(exporter):
         # do export
         logger.info('Exporting data via {0}'.format(exporter))
-        export_result = export_manager.export(exporter, Database, PageCache)
+        export_result = export_manager.export(exporter)
 
         if export_result != False:
             try:
@@ -5170,6 +5171,7 @@ def recover_database(dbfile, **kwargs):
     DB.session.commit()
 
     clean_results_cache()
+    RHData.primeOptionsCache() # refresh Options cache
 
     trigger_event(Evt.DATABASE_RECOVER)
 
@@ -5612,7 +5614,7 @@ if vrx_controller:
     Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
 
 # data exporters
-export_manager = DataExportManager()
+export_manager = DataExportManager(RHData, PageCache, Language)
 
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 

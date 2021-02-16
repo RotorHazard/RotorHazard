@@ -1445,7 +1445,7 @@ function build_leaderboard(leaderboard, display_type, meta) {
 				var source = leaderboard[i].fastest_lap_source;
 				row.append('<td class="fast" title="'+ leaderboard[i].fastest_lap_source +'">'+ lap +'</td>');
 
-                if source.fast_lap_heatnote {
+                if (source.fast_lap_heatnote) {
                     var source_text = source.fast_lap_heatnote
                 } else {
                     var source_text = __('Heat') + ' ' + source.fast_lap_heat;
@@ -1469,9 +1469,9 @@ function build_leaderboard(leaderboard, display_type, meta) {
 				var source = leaderboard[i].consecutives_source;
 				row.append('<td class="consecutive" title="'+ leaderboard[i].consecutives_source +'">'+ lap +'</td>');
 
-                if fast_lap_heatnote {
+                if (source.fast_lap_heatnote) {
                     var source_text = source.fast_lap_heatnote;
-                } else
+                } else {
                     var source_text = __('Heat') + ' ' + source.fast_lap_heat;
                 }
                 source_text += ' / ' + __('Round') + ' ' + source.fast_lap_round;

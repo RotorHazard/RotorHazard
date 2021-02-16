@@ -2,7 +2,6 @@
 
 import logging
 logger = logging.getLogger(__name__)
-from Language import __
 import RHUtils
 import io
 import csv
@@ -20,13 +19,13 @@ def write_csv(data):
         'ext': 'csv'
     }
 
-def assemble_all(Database, PageCache):
+def assemble_all(RHData, PageCache, Language):
     payload = {}
-    payload['Pilots'] = assemble_pilots(Database, PageCache)
-    payload['Heats'] = assemble_heats(Database, PageCache)
-    payload['Classes'] = assemble_classes(Database, PageCache)
-    payload['Formats'] = assemble_formats(Database, PageCache)
-    payload['Results'] = assemble_results(Database, PageCache)
+    payload['Pilots'] = assemble_pilots(RHData, PageCache, Language)
+    payload['Heats'] = assemble_heats(RHData, PageCache, Language)
+    payload['Classes'] = assemble_classes(RHData, PageCache, Language)
+    payload['Formats'] = assemble_formats(RHData, PageCache, Language)
+    payload['Results'] = assemble_results(RHData, PageCache, Language)
 
     output = []
     for datatype in payload:
@@ -37,33 +36,33 @@ def assemble_all(Database, PageCache):
 
     return output
 
-def assemble_pilots(Database, PageCache):
-    payload = [[__('Callsign'), __('Name'), __('Team')]]
+def assemble_pilots(RHData, PageCache, Language):
+    payload = [[Language.__('Callsign'), Language.__('Name'), Language.__('Team')]]
 
-    pilots = Database.Pilot.query.all()
+    pilots = RHData.get_pilots()
     for pilot in pilots:
         payload.append([pilot.callsign, pilot.name, pilot.team])
 
     return payload
 
-def assemble_heats(Database, PageCache):
-    payload = [[__('Name'), __('Class'), __('Pilots')]]
-    for heat in Database.Heat.query.all():
+def assemble_heats(RHData, PageCache, Language):
+    payload = [[Language.__('Name'), Language.__('Class'), Language.__('Pilots')]]
+    for heat in RHData.get_heats():
         heat_id = heat.id
         note = heat.note
 
         if heat.class_id != RHUtils.CLASS_ID_NONE:
-            race_class = Database.RaceClass.query.get(heat.class_id).name
+            race_class = RHData.get_raceClass(heat.class_id).name
         else:
             race_class = None
 
         row = [note, race_class]
 
-        heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).order_by(Database.HeatNode.node_index).all()
+        heatnodes = RHData.get_heatNodes(filter_by={'heat_id': heat.id}, order_by={'node_index': None})
         pilots = {}
         for heatnode in heatnodes:
             if heatnode.pilot_id != RHUtils.PILOT_ID_NONE:
-                row.append(Database.Pilot.query.get(heatnode.pilot_id).callsign)
+                row.append(RHData.get_pilot(heatnode.pilot_id).callsign)
             else:
                 row.append('-')
 
@@ -71,13 +70,13 @@ def assemble_heats(Database, PageCache):
 
     return payload
 
-def assemble_classes(Database, PageCache):
-    race_classes = Database.RaceClass.query.all()
-    payload = [[__('Name'), __('Description'), __('Race Format')]]
+def assemble_classes(RHData, PageCache, Language):
+    race_classes = RHData.get_raceClasses()
+    payload = [[Language.__('Name'), Language.__('Description'), Language.__('Race Format')]]
 
     for race_class in race_classes:
         # expand format id to name
-        race_format = Database.RaceFormat.query.get(race_class.format_id)
+        race_format = RHData.get_raceFormat(race_class.format_id)
         if race_format:
             format_string = race_format.name
         else:
@@ -87,43 +86,43 @@ def assemble_classes(Database, PageCache):
 
     return payload
 
-def assemble_formats(Database, PageCache):
+def assemble_formats(RHData, PageCache, Language):
     timer_modes = [
-        __('Fixed Time'),
-        __('No Time Limit'),
+        Language.__('Fixed Time'),
+        Language.__('No Time Limit'),
     ]
     tones = [
-        __('None'),
-        __('One'),
-        __('Each Second')
+        Language.__('None'),
+        Language.__('One'),
+        Language.__('Each Second')
     ]
     win_conditions = [
-        __('None'),
-        __('Most Laps in Fastest Time'),
-        __('First to X Laps'),
-        __('Fastest Lap'),
-        __('Fastest 3 Consecutive Laps'),
-        __('Most Laps Only'),
-        __('Most Laps Only with Overtime')
+        Language.__('None'),
+        Language.__('Most Laps in Fastest Time'),
+        Language.__('First to X Laps'),
+        Language.__('Fastest Lap'),
+        Language.__('Fastest 3 Consecutive Laps'),
+        Language.__('Most Laps Only'),
+        Language.__('Most Laps Only with Overtime')
     ]
     start_behaviors = [
-        __('Hole Shot'),
-        __('First Lap'),
-        __('Staggered Start'),
+        Language.__('Hole Shot'),
+        Language.__('First Lap'),
+        Language.__('Staggered Start'),
     ]
 
-    formats = Database.RaceFormat.query.all()
+    formats = RHData.get_raceFormats()
     payload = [[
-        __('Name'),
-        __('Race Clock Mode'),
-        __('Timer Duration (seconds)'),
-        __('Minimum Start Delay'),
-        __('Maximum Start Delay'),
-        __('Staging Tones'),
-        __('First Crossing'),
-        __('Win Condition'),
-        __('Number of Laps to Win'),
-        __('Team Racing Mode'),
+        Language.__('Name'),
+        Language.__('Race Clock Mode'),
+        Language.__('Timer Duration (seconds)'),
+        Language.__('Minimum Start Delay'),
+        Language.__('Maximum Start Delay'),
+        Language.__('Staging Tones'),
+        Language.__('First Crossing'),
+        Language.__('Win Condition'),
+        Language.__('Number of Laps to Win'),
+        Language.__('Team Racing Mode'),
     ]]
 
     for race_format in formats:
@@ -141,7 +140,7 @@ def assemble_formats(Database, PageCache):
 
     return payload
 
-def build_leaderboard(leaderboard, **kwargs):
+def build_leaderboard(leaderboard, Language, **kwargs):
     meta = leaderboard['meta']
     if 'primary_leaderboard' in kwargs and kwargs['primary_leaderboard'] in leaderboard:
         primary_leaderboard = leaderboard[kwargs['primary_leaderboard']]
@@ -149,22 +148,22 @@ def build_leaderboard(leaderboard, **kwargs):
         primary_leaderboard = leaderboard[meta['primary_leaderboard']]
 
     if meta['start_behavior'] == 2:
-        total_label = __('Laps Total');
+        total_label = Language.__('Laps Total');
         total_source = 'total_time_laps'
     else:
-        total_label = __('Total');
+        total_label = Language.__('Total');
         total_source = 'total_time'
 
     output = [[
-        __('Seat'),
-        __('Rank'),
-        __('Pilot'),
-        __('Laps'),
-        __(total_label),
-        __('Avg.'),
-        __('Fastest'),
-        __('3 Consecutive'),
-        __('Team'),
+        Language.__('Seat'),
+        Language.__('Rank'),
+        Language.__('Pilot'),
+        Language.__('Laps'),
+        Language.__(total_label),
+        Language.__('Avg.'),
+        Language.__('Fastest'),
+        Language.__('3 Consecutive'),
+        Language.__('Team'),
     ]]
 
     for entry in primary_leaderboard:
@@ -182,26 +181,26 @@ def build_leaderboard(leaderboard, **kwargs):
 
     return output
 
-def assemble_results(Database, PageCache):
+def assemble_results(RHData, PageCache, Language):
     results = PageCache.get_cache()
     payload = []
 
-    payload.append([__('Event Leaderboards') + ': ' + __('Race Totals')])
-    for row in build_leaderboard(results['event_leaderboard'], primary_leaderboard='by_race_time'):
+    payload.append([Language.__('Event Leaderboards') + ': ' + Language.__('Race Totals')])
+    for row in build_leaderboard(results['event_leaderboard'], Language, primary_leaderboard='by_race_time'):
         payload.append(row[1:])
 
     payload.append([''])
-    payload.append([__('Event Leaderboards') + ': ' + __('Fastest Laps')])
-    for row in build_leaderboard(results['event_leaderboard'], primary_leaderboard='by_fastest_lap'):
+    payload.append([Language.__('Event Leaderboards') + ': ' + Language.__('Fastest Laps')])
+    for row in build_leaderboard(results['event_leaderboard'], Language, primary_leaderboard='by_fastest_lap'):
         payload.append(row[1:])
 
     payload.append([''])
-    payload.append([__('Event Leaderboards') + ': ' + __('Fastest 3 Consecutive Laps')])
-    for row in build_leaderboard(results['event_leaderboard'], primary_leaderboard='by_consecutives'):
+    payload.append([Language.__('Event Leaderboards') + ': ' + Language.__('Fastest 3 Consecutive Laps')])
+    for row in build_leaderboard(results['event_leaderboard'], Language, primary_leaderboard='by_consecutives'):
         payload.append(row[1:])
 
     payload.append([''])
-    payload.append([__('Class Leaderboards')])
+    payload.append([Language.__('Class Leaderboards')])
 
     # move unclassified heats to end
     all_classes = sorted(list(results['heats_by_class'].keys()))
@@ -222,38 +221,38 @@ def assemble_results(Database, PageCache):
 
             payload.append([])
             if race_class:
-                payload.append([__('Class') + ': ' + race_class['name']])
+                payload.append([Language.__('Class') + ': ' + race_class['name']])
                 payload.append([])
-                payload.append([__('Class Summary')])
-                for row in build_leaderboard(race_class['leaderboard']):
+                payload.append([Language.__('Class Summary')])
+                for row in build_leaderboard(race_class['leaderboard'], Language):
                     payload.append(row[1:])
             else:
                 if len(results['classes']):
-                    payload.append([__('Unclassified')])
+                    payload.append([Language.__('Unclassified')])
                 else:
-                    payload.append([__('Heats')])
+                    payload.append([Language.__('Heats')])
 
             for heat_id in results['heats_by_class'][class_id]:
                 if heat_id in results['heats']:
                     heat = results['heats'][heat_id]
 
                     payload.append([])
-                    payload.append([__('Heat') + ': ' + heat['note']])
+                    payload.append([Language.__('Heat') + ': ' + heat['note']])
 
                     if len(heat['rounds']) > 1:
                         payload.append([])
-                        payload.append([__('Heat Summary')])
+                        payload.append([Language.__('Heat Summary')])
 
-                        for row in build_leaderboard(heat['leaderboard']):
+                        for row in build_leaderboard(heat['leaderboard'], Language):
                             payload.append(row[1:])
 
                     for heat_round in heat['rounds']:
                         payload.append([])
-                        payload.append([__('Round {0}').format(heat_round['id'])])
+                        payload.append([Language.__('Round {0}').format(heat_round['id'])])
 
                         laptimes = []
 
-                        for row in build_leaderboard(heat_round['leaderboard']):
+                        for row in build_leaderboard(heat_round['leaderboard'], Language):
                             for node in heat_round['nodes']:
                                 if row[0] == node['node_index']:
                                     laplist = []
@@ -270,7 +269,7 @@ def assemble_results(Database, PageCache):
 
 
                         payload.append([])
-                        payload.append([__('Round {0} Times').format(str(heat_round['id']))])
+                        payload.append([Language.__('Round {0} Times').format(str(heat_round['id']))])
 
                         for row in laptimes:
                             payload.append(row)

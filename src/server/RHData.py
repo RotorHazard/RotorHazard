@@ -41,6 +41,7 @@ class RHData():
     def __init__(self, Database):
         self._Database = Database
 
+    # Pilots
     def get_pilot(self, pilot_id):
         return self._Database.Pilot.query.get(pilot_id)
 
@@ -48,6 +49,7 @@ class RHData():
     def get_pilots(self, **kwargs):
         return self._Database.Pilot
 
+    # Heats
     def get_heat(self, heat_id):
         return self._Database.Heat.query.get(heat_id)
 
@@ -55,10 +57,12 @@ class RHData():
     def get_heats(self, **kwargs):
         return self._Database.Heat
 
+    # HeatNodes
     @_Decorators.getter_parameters
     def get_heatNodes(self, **kwargs):
         return self._Database.HeatNode
 
+    # Race Classes
     def get_raceClass(self, raceClass_id):
         return self._Database.RaceClass.query.get(raceClass_id)
 
@@ -66,6 +70,7 @@ class RHData():
     def get_raceClasses(self, **kwargs):
         return self._Database.RaceClass
 
+    # Profiles
     def get_profile(self, profile_id):
         return self._Database.Profiles.query.get(profile_id)
 
@@ -73,6 +78,7 @@ class RHData():
     def get_profiles(self, **kwargs):
         return self._Database.Profiles
 
+    # Formats
     def get_raceFormat(self, raceFormat_id):
         return self._Database.RaceFormat.query.get(raceFormat_id)
 
@@ -80,8 +86,34 @@ class RHData():
     def get_raceFormats(self, **kwargs):
         return self._Database.RaceFormat
 
+    # Race Meta
+    @_Decorators.getter_parameters
+    def get_savedRaceMetas(self, **kwargs):
+        return self._Database.SavedRaceMeta
+
+    # Pilot-Races
+    @_Decorators.getter_parameters
+    def get_savedPilotRaces(self, **kwargs):
+        return self._Database.SavedPilotRace
+
+    # Race Laps
+    @_Decorators.getter_parameters
+    def get_savedRaceLaps(self, **kwargs):
+        return self._Database.SavedRaceLap
+
+    # Splits
+    @_Decorators.getter_parameters
+    def get_lapSplits(self, **kwargs):
+        return self._Database.LapSplit
+
+    # Options
+    @_Decorators.getter_parameters
+    def get_options(self, **kwargs):
+        return self._Database.GlobalSettings
+
     def primeOptionsCache(self):
         settings = self._Database.GlobalSettings.query.all()
+        self._OptionsCache = {} # empty cache
         for setting in settings:
             self._OptionsCache[setting.option_name] = setting.option_value
 
