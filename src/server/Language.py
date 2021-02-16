@@ -3,57 +3,61 @@
 #
 import logging
 import json
-import Options
+import RHData
 import io
 
 logger = logging.getLogger(__name__)
 
-LANGUAGE_FILE_NAME = 'language.json'
+class Language():
+    LANGUAGE_FILE_NAME = 'language.json'
 
-Languages = {}
+    Languages = {}
 
-InitResultStr = None
-InitResultLogLevel = logging.INFO
+    def __init__(self, RHData):
+        self._RHData = RHData
 
-# Load language file
-try:
-    with io.open(LANGUAGE_FILE_NAME, 'r', encoding="utf8") as f:
-        Languages = json.load(f)
-    InitResultStr = 'Language file imported'
-    InitResultLogLevel = logging.DEBUG
-except IOError:
-    InitResultStr = 'No language file found, using defaults'
-    InitResultLogLevel = logging.WARN
-except ValueError:
-    InitResultStr = 'Language file invalid, using defaults'
-    InitResultLogLevel = logging.ERROR
+        self._InitResultStr = None
+        self._InitResultLogLevel = logging.INFO
 
-# Writes a log message describing the result of the module initialization.
-def logInitResultMessage():
-    if InitResultStr:
-        logger.log(InitResultLogLevel, InitResultStr)
+        # Load language file
+        try:
+            with io.open(self.LANGUAGE_FILE_NAME, 'r', encoding="utf8") as f:
+                self._Languages = json.load(f)
+            self._InitResultStr = 'Language file imported'
+            self._InitResultLogLevel = logging.DEBUG
+        except IOError:
+            self._InitResultStr = 'No language file found, using defaults'
+            self._InitResultLogLevel = logging.WARN
+        except ValueError:
+            self._InitResultStr = 'Language file invalid, using defaults'
+            self._InitResultLogLevel = logging.ERROR
 
-def __(text, domain=''):
-    # return translated string
-    if not domain:
-        lang = Options.get('currentLanguage')
+    # Writes a log message describing the result of the module initialization.
+    def logInitResultMessage(self):
+        if self._InitResultStr:
+            logger.log(self._InitResultLogLevel, self._InitResultStr)
 
-    if lang:
-        if lang in Languages:
-            if text in Languages[lang]['values']:
-                return Languages[lang]['values'][text]
-    return text
+    def __(self, text, domain=''):
+        # return translated string
+        if not domain:
+            lang = self._RHData.get_option('currentLanguage')
 
-def getLanguages():
-    # get list of available languages
-    langs = []
-    for lang in Languages:
-        l = {}
-        l['id'] = lang
-        l['name'] = Languages[lang]['name']
-        langs.append(l)
-    return langs
+        if lang:
+            if lang in self._Languages:
+                if text in self._Languages[lang]['values']:
+                    return self._Languages[lang]['values'][text]
+        return text
 
-def getAllLanguages():
-    # return full language dictionary
-    return Languages
+    def getLanguages(self):
+        # get list of available languages
+        langs = []
+        for lang in self._Languages:
+            l = {}
+            l['id'] = lang
+            l['name'] = self._Languages[lang]['name']
+            langs.append(l)
+        return langs
+
+    def getAllLanguages(self):
+        # return full language dictionary
+        return self._Languages

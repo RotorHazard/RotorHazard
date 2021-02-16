@@ -6,12 +6,10 @@ import copy
 import json
 import gevent
 import Database
-import Options
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 import logging
 from monotonic import monotonic
-from Language import __
 from eventmanager import Evt, EventManager
 from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 
@@ -23,7 +21,7 @@ class CacheStatus:
     INVALID = 'invalid'
     VALID = 'valid'
 
-def invalidate_all_caches(DB):
+def invalidate_all_caches(RHData):
     ''' Check all caches and invalidate any paused builds '''
     for race in Database.SavedRaceMeta.query.all():
         race.cacheStatus = CacheStatus.INVALID
@@ -34,15 +32,15 @@ def invalidate_all_caches(DB):
     for race_class in Database.RaceClass.query.all():
         race_class.cacheStatus = CacheStatus.INVALID
 
-    DB.session.commit()
+    Database.DB.session.commit()
 
-    Options.set("eventResults_cacheStatus", CacheStatus.INVALID)
+    RHData.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
 
     Events.trigger(Evt.CACHE_CLEAR)
 
     logger.debug('All Result caches invalidated')
 
-def normalize_cache_status(DB):
+def normalize_cache_status(RHData):
     ''' Check all caches and invalidate any paused builds '''
     for race in Database.SavedRaceMeta.query.all():
         if race.cacheStatus != CacheStatus.VALID:
@@ -56,24 +54,24 @@ def normalize_cache_status(DB):
         if race_class.cacheStatus != CacheStatus.VALID:
             race_class.cacheStatus = CacheStatus.INVALID
 
-    if Options.get("eventResults_cacheStatus") != CacheStatus.VALID:
-        Options.set("eventResults_cacheStatus", CacheStatus.INVALID)
+    if RHData.get_option("eventResults_cacheStatus") != CacheStatus.VALID:
+        RHData.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
 
-    DB.session.commit()
+    Database.DB.session.commit()
 
     global FULL_RESULTS_CACHE_VALID
     FULL_RESULTS_CACHE_VALID = False
 
     logger.debug('All Result caches normalized')
 
-def build_atomic_result_cache(DB, **params):
+def build_atomic_result_cache(**params):
     return {
-        'results': calc_leaderboard(DB, **params),
+        'results': calc_leaderboard(Database.DB, **params),
         'cacheStatus': CacheStatus.VALID
     }
 
 @catchLogExceptionsWrapper
-def build_atomic_results_caches(DB, params):
+def build_atomic_results_caches(RHData, params):
     global FULL_RESULTS_CACHE
     FULL_RESULTS_CACHE = False
     token = monotonic()
@@ -112,18 +110,18 @@ def build_atomic_results_caches(DB, params):
         race_class = Database.RaceClass.query.get(class_id)
         race_class.cacheStatus = token
 
-    Options.set("eventResults_cacheStatus", token)
-    DB.session.commit()
+    RHData.set_option("eventResults_cacheStatus", token)
+    Database.DB.session.commit()
 
     # rebuild race result
     if 'race_id' in params:
         gevent.sleep()
         timing['race'] = monotonic()
         if race.cacheStatus == token:
-            raceResult = build_atomic_result_cache(DB, heat_id=heat_id, round_id=round_id)
+            raceResult = build_atomic_result_cache(Database.DB, heat_id=heat_id, round_id=round_id)
             race.results = raceResult['results']
             race.cacheStatus = raceResult['cacheStatus']
-            DB.session.commit()
+            Database.DB.session.commit()
         logger.debug('Race {0} cache built in {1}s'.format(params['race_id'], monotonic() - timing['race']))
 
     # rebuild heat summary
@@ -131,10 +129,10 @@ def build_atomic_results_caches(DB, params):
         gevent.sleep()
         timing['heat'] = monotonic()
         if heat.cacheStatus == token:
-            heatResult = build_atomic_result_cache(DB, heat_id=heat_id)
+            heatResult = build_atomic_result_cache(Database.DB, heat_id=heat_id)
             heat.results = heatResult['results']
             heat.cacheStatus = heatResult['cacheStatus']
-            DB.session.commit()
+            Database.DB.session.commit()
         logger.debug('Heat {0} cache built in {1}s'.format(heat_id, monotonic() - timing['heat']))
 
     # rebuild class summary
@@ -142,22 +140,22 @@ def build_atomic_results_caches(DB, params):
         gevent.sleep()
         timing['class'] = monotonic()
         if race_class.cacheStatus == token:
-            classResult = build_atomic_result_cache(DB, class_id=class_id)
+            classResult = build_atomic_result_cache(Database.DB, class_id=class_id)
             race_class.results = classResult['results']
             race_class.cacheStatus = classResult['cacheStatus']
-            DB.session.commit()
+            Database.DB.session.commit()
         logger.debug('Class {0} cache built in {1}s'.format(class_id, monotonic() - timing['class']))
 
     # rebuild event summary
     gevent.sleep()
     timing['event'] = monotonic()
-    Options.set("eventResults", json.dumps(calc_leaderboard(DB)))
-    Options.set("eventResults_cacheStatus", CacheStatus.VALID)
+    RHData.set_option("eventResults", json.dumps(calc_leaderboard(Database.DB)))
+    RHData.set_option("eventResults_cacheStatus", CacheStatus.VALID)
     logger.debug('Event cache built in %fs', monotonic() - timing['event'])
 
     logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
 
-def calc_leaderboard(DB, **params):
+def calc_leaderboard(**params):
     ''' Generates leaderboards '''
     USE_CURRENT = False
     USE_ROUND = None
@@ -284,7 +282,7 @@ def calc_leaderboard(DB, **params):
                             holeshot_laps.append(holeshot_lap.id)
 
             # get total laps
-            stat_query = DB.session.query(DB.func.count(Database.SavedRaceLap.id)) \
+            stat_query = Database.DB.session.query(Database.DB.func.count(Database.SavedRaceLap.id)) \
                 .filter(Database.SavedRaceLap.pilot_id == pilot.id, \
                     Database.SavedRaceLap.deleted != 1, \
                     Database.SavedRaceLap.race_id.in_(racelist), \
@@ -323,7 +321,7 @@ def calc_leaderboard(DB, **params):
             total_time_laps.append(laps_total)
 
         else:
-            stat_query = DB.session.query(DB.func.sum(Database.SavedRaceLap.lap_time)) \
+            stat_query = Database.DB.session.query(Database.DB.func.sum(Database.SavedRaceLap.lap_time)) \
                 .filter(Database.SavedRaceLap.pilot_id == pilot, \
                     Database.SavedRaceLap.deleted != 1, \
                     Database.SavedRaceLap.race_id.in_(racelist))
@@ -333,7 +331,7 @@ def calc_leaderboard(DB, **params):
             else:
                 total_time.append(0)
 
-            stat_query = DB.session.query(DB.func.sum(Database.SavedRaceLap.lap_time)) \
+            stat_query = Database.DB.session.query(Database.DB.func.sum(Database.SavedRaceLap.lap_time)) \
                 .filter(Database.SavedRaceLap.pilot_id == pilot, \
                     Database.SavedRaceLap.deleted != 1, \
                     Database.SavedRaceLap.race_id.in_(racelist), \
@@ -367,7 +365,7 @@ def calc_leaderboard(DB, **params):
                     avg_lap = (current_laps[i][-1]['lap_time_stamp'] - current_laps[i][0]['lap_time_stamp']) / (len(current_laps[i]) - 1)
 
             else:
-                stat_query = DB.session.query(DB.func.avg(Database.SavedRaceLap.lap_time)) \
+                stat_query = Database.DB.session.query(Database.DB.func.avg(Database.SavedRaceLap.lap_time)) \
                     .filter(Database.SavedRaceLap.pilot_id == pilot, \
                         Database.SavedRaceLap.deleted != 1, \
                         Database.SavedRaceLap.race_id.in_(racelist), \
@@ -392,7 +390,7 @@ def calc_leaderboard(DB, **params):
                 fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
                 fastest_lap_source.append(None)
             else:
-                stat_query = DB.session.query(DB.func.min(Database.SavedRaceLap.lap_time).label('time'), Database.SavedRaceLap.race_id) \
+                stat_query = Database.DB.session.query(Database.DB.func.min(Database.SavedRaceLap.lap_time).label('time'), Database.SavedRaceLap.race_id) \
                     .filter(Database.SavedRaceLap.pilot_id == pilot, \
                         Database.SavedRaceLap.deleted != 1, \
                         Database.SavedRaceLap.race_id.in_(racelist), \
@@ -408,12 +406,11 @@ def calc_leaderboard(DB, **params):
                     fast_lap_heat = source_query.heat_id
                     fast_lap_heatnote = Database.Heat.query.get(fast_lap_heat).note
 
-                    if fast_lap_heatnote:
-                        source_text = fast_lap_heatnote + ' / ' + __('Round') + ' ' + str(fast_lap_round)
-                    else:
-                        source_text = __('Heat') + ' ' + str(fast_lap_heat) + ' / ' + __('Round') + ' ' + str(fast_lap_round)
-
-                    fastest_lap_source.append(source_text)
+                    fastest_lap_source.append({
+                        'round': fast_lap_round,
+                        'heat': fast_lap_heat,
+                        'note': fast_lap_heatnote
+                        })
 
             fastest_lap.append(fast_lap)
 
@@ -438,7 +435,7 @@ def calc_leaderboard(DB, **params):
             else:
                 for race_id in racelist:
                     gevent.sleep()
-                    thisrace = DB.session.query(Database.SavedRaceLap.lap_time) \
+                    thisrace = Database.DB.session.query(Database.SavedRaceLap.lap_time) \
                         .filter(Database.SavedRaceLap.pilot_id == pilot, \
                             Database.SavedRaceLap.race_id == race_id, \
                             Database.SavedRaceLap.deleted != 1, \
@@ -465,16 +462,16 @@ def calc_leaderboard(DB, **params):
                 else:
                     source_query = Database.SavedRaceMeta.query.get(all_consecutives[0]['race_id'])
                     if source_query:
+
                         fast_lap_round = source_query.round_id
                         fast_lap_heat = source_query.heat_id
                         fast_lap_heatnote = Database.Heat.query.get(fast_lap_heat).note
 
-                        if fast_lap_heatnote:
-                            source_text = fast_lap_heatnote + ' / ' + __('Round') + ' ' + str(fast_lap_round)
-                        else:
-                            source_text = __('Heat') + ' ' + str(fast_lap_heat) + ' / ' + __('Round') + ' ' + str(fast_lap_round)
-
-                        consecutives_source.append(source_text)
+                        consecutives_source.append({
+                            'round': fast_lap_round,
+                            'heat': fast_lap_heat,
+                            'note': fast_lap_heatnote
+                            })
                     else:
                         consecutives_source.append(None)
 

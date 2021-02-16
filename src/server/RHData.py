@@ -10,6 +10,8 @@ import RHUtils
 import copy
 
 class RHData():
+    _OptionsCache = {} # Local Python cache for global settings
+
     class _Decorators():
         @classmethod
         def getter_parameters(cls, func):
@@ -78,3 +80,37 @@ class RHData():
     def get_raceFormats(self, **kwargs):
         return self._Database.RaceFormat
 
+    def primeOptionsCache(self):
+        settings = self._Database.GlobalSettings.query.all()
+        for setting in settings:
+            self._OptionsCache[setting.option_name] = setting.option_value
+
+    def get_option(self, option, default_value=False):
+        try:
+            val = self._OptionsCache[option]
+            if val or val == "":
+                return val
+            else:
+                return default_value
+        except:
+            return default_value
+
+    def set_option(self, option, value):
+        self._OptionsCache[option] = value
+
+        settings = self._Database.GlobalSettings.query.filter_by(option_name=option).one_or_none()
+        if settings:
+            settings.option_value = value
+        else:
+            self._Database.DB.session.add(self._Database.GlobalSettings(option_name=option, option_value=value))
+        self._Database.DB.session.commit()
+
+    def get_optionInt(self, option, default_value=0):
+        try:
+            val = self._OptionsCache[option]
+            if val:
+                return int(val)
+            else:
+                return default_value
+        except:
+            return default_value

@@ -59,14 +59,12 @@ import string
 import json
 
 import Config
-import Options
 import Database
 import Results
 import Language
 import RHData
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
-from Language import __
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 from PageCache import PageCache
 from util.SendAckQueue import SendAckQueue
@@ -162,6 +160,8 @@ Settings_note_msg_text = None
 RACE = RHRace.RHRace() # For storing race management variables
 RHData = RHData.RHData(Database) # Primary race data storage
 PageCache = PageCache(RHData) # For storing page cache
+Language = Language.Language(RHData) # initialize language
+__ = Language.__ # Shortcut to translation function
 
 TONES_NONE = 0
 TONES_ONE = 1
@@ -250,12 +250,12 @@ def uniqueName(desiredName, otherNames):
         return desiredName
 
 def getCurrentProfile():
-    current_profile = Options.getInt('currentProfile')
+    current_profile = RHData.get_optionInt('currentProfile')
     return RHData.get_profile(current_profile)
 
 def getCurrentRaceFormat():
     if RACE.format is None:
-        val = Options.getInt('currentFormat')
+        val = RHData.get_optionInt('currentFormat')
         race_format = RHData.get_raceFormat(val)
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
@@ -264,14 +264,14 @@ def getCurrentRaceFormat():
 
 def getCurrentDbRaceFormat():
     if RACE.format is None or RHRaceFormat.isDbBased(RACE.format):
-        val = Options.getInt('currentFormat')
+        val = RHData.get_optionInt('currentFormat')
         return RHData.get_raceFormat(val)
     else:
         return None
 
 def setCurrentRaceFormat(race_format, **kwargs):
     if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
-        Options.set('currentFormat', race_format.id)
+        RHData.set_option('currentFormat', race_format.id)
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
         RACE.format.id = race_format.id
@@ -365,17 +365,17 @@ def trigger_event(event, evtArgs=None):
 def render_index():
     '''Route to home page.'''
     return render_template('home.html', serverInfo=serverInfo,
-                           getOption=Options.get, __=__, Debug=Config.GENERAL['DEBUG'])
+                           getOption=RHData.get_option, __=__, Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/event')
 def render_event():
     '''Route to heat summary page.'''
-    return render_template('event.html', num_nodes=RACE.num_nodes, serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('event.html', num_nodes=RACE.num_nodes, serverInfo=serverInfo, getOption=RHData.get_option, __=__)
 
 @APP.route('/results')
 def render_results():
     '''Route to round summary page.'''
-    return render_template('results.html', serverInfo=serverInfo, getOption=Options.get, __=__, Debug=Config.GENERAL['DEBUG'])
+    return render_template('results.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__, Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/run')
 @requires_auth
@@ -390,7 +390,7 @@ def render_run():
                 'index': idx
             })
 
-    return render_template('run.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('run.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
@@ -410,7 +410,7 @@ def render_current():
                 'index': idx
             })
 
-    return render_template('current.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('current.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes,
         nodes=nodes,
         cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()))
@@ -419,14 +419,14 @@ def render_current():
 @requires_auth
 def render_marshal():
     '''Route to race management page.'''
-    return render_template('marshal.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('marshal.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/settings')
 @requires_auth
 def render_settings():
     '''Route to settings page.'''
-    return render_template('settings.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('settings.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
         led_events_enabled=led_manager.isEnabled(),
         vrx_enabled=vrx_controller!=None,
@@ -441,20 +441,20 @@ def render_settings():
 @APP.route('/streams')
 def render_stream():
     '''Route to stream index.'''
-    return render_template('streams.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('streams.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/stream/results')
 def render_stream_results():
     '''Route to current race leaderboard stream.'''
-    return render_template('streamresults.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('streamresults.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/stream/node/<int:node_id>')
 def render_stream_node(node_id):
     '''Route to single node overlay for streaming.'''
     if node_id <= RACE.num_nodes:
-        return render_template('streamnode.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+        return render_template('streamnode.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
             node_id=node_id-1
         )
     else:
@@ -463,14 +463,14 @@ def render_stream_node(node_id):
 @APP.route('/stream/class/<int:class_id>')
 def render_stream_class(class_id):
     '''Route to class leaderboard display for streaming.'''
-    return render_template('streamclass.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('streamclass.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         class_id=class_id
     )
 
 @APP.route('/stream/heat/<int:heat_id>')
 def render_stream_heat(heat_id):
     '''Route to heat display for streaming.'''
-    return render_template('streamheat.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('streamheat.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes,
         heat_id=heat_id
     )
@@ -480,26 +480,26 @@ def render_stream_heat(heat_id):
 def render_scanner():
     '''Route to scanner page.'''
 
-    return render_template('scanner.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('scanner.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/decoder')
 @requires_auth
 def render_decoder():
     '''Route to race management page.'''
-    return render_template('decoder.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('decoder.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
 @APP.route('/imdtabler')
 def render_imdtabler():
     '''Route to IMDTabler page.'''
-    return render_template('imdtabler.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('imdtabler.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__)
 
 @APP.route('/updatenodes')
 @requires_auth
 def render_updatenodes():
     '''Route to update nodes page.'''
-    return render_template('updatenodes.html', serverInfo=serverInfo, getOption=Options.get, __=__, \
+    return render_template('updatenodes.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__, \
                            fw_src_str=stm32loader.DEF_BINSRC_STR)
 
 # Debug Routes
@@ -508,13 +508,13 @@ def render_updatenodes():
 @requires_auth
 def render_hardwarelog():
     '''Route to hardware log page.'''
-    return render_template('hardwarelog.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('hardwarelog.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__)
 
 @APP.route('/database')
 @requires_auth
 def render_database():
     '''Route to database page.'''
-    return render_template('database.html', serverInfo=serverInfo, getOption=Options.get, __=__,
+    return render_template('database.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         pilots=Database.Pilot,
         heats=Database.Heat,
         heatnodes=Database.HeatNode,
@@ -529,7 +529,7 @@ def render_database():
 @requires_auth
 def render_vrxstatus():
     '''Route to VRx status debug page.'''
-    return render_template('vrxstatus.html', serverInfo=serverInfo, getOption=Options.get, __=__)
+    return render_template('vrxstatus.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__)
 
 # Documentation Viewer
 
@@ -539,7 +539,7 @@ def render_viewDocs():
     try:
         docfile = request.args.get('d')
 
-        language = Options.get("currentLanguage")
+        language = RHData.get_option("currentLanguage")
         if language:
             translation = language + '-' + docfile
             if os.path.isfile('../../doc/' + translation):
@@ -550,7 +550,7 @@ def render_viewDocs():
 
         return templating.render_template('viewdocs.html',
             serverInfo=serverInfo,
-            getOption=Options.get,
+            getOption=RHData.get_option,
             __=__,
             doc=doc
             )
@@ -1037,7 +1037,7 @@ def hardware_set_all_exit_ats(exit_at_levels):
 @catchLogExceptionsWrapper
 def on_set_start_thresh_lower_amount(data):
     start_thresh_lower_amount = data['start_thresh_lower_amount']
-    Options.set("startThreshLowerAmount", start_thresh_lower_amount)
+    RHData.set_option("startThreshLowerAmount", start_thresh_lower_amount)
     logger.info("set start_thresh_lower_amount to %s percent" % start_thresh_lower_amount)
     emit_start_thresh_lower_amount(noself=True)
 
@@ -1045,7 +1045,7 @@ def on_set_start_thresh_lower_amount(data):
 @catchLogExceptionsWrapper
 def on_set_start_thresh_lower_duration(data):
     start_thresh_lower_duration = data['start_thresh_lower_duration']
-    Options.set("startThreshLowerDuration", start_thresh_lower_duration)
+    RHData.set_option("startThreshLowerDuration", start_thresh_lower_duration)
     logger.info("set start_thresh_lower_duration to %s seconds" % start_thresh_lower_duration)
     emit_start_thresh_lower_duration(noself=True)
 
@@ -1053,7 +1053,7 @@ def on_set_start_thresh_lower_duration(data):
 @catchLogExceptionsWrapper
 def on_set_language(data):
     '''Set interface language.'''
-    Options.set('currentLanguage', data['language'])
+    RHData.set_option('currentLanguage', data['language'])
     DB.session.commit()
 
 @SOCKET_IO.on('cap_enter_at_btn')
@@ -1209,7 +1209,7 @@ def on_alter_heat(data):
                 new_class = RHData.get_raceClass(heat.class_id)
                 new_class.cacheStatus = Results.CacheStatus.INVALID
 
-            Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+            RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
             PageCache.set_valid(False)
 
     DB.session.commit()
@@ -1365,7 +1365,7 @@ def on_alter_race_class(data):
     # alter existing classes
     if 'class_format' in data:
         PageCache.set_valid(False)
-        Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+        RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
         db_update.cacheStatus = Results.CacheStatus.INVALID
 
         races = Database.SavedRaceMeta.query.filter_by(class_id=race_class).all()
@@ -1471,7 +1471,7 @@ def on_alter_pilot(data):
         heatnodes = Database.HeatNode.query.filter_by(pilot_id=pilot_id).all()
         if heatnodes:
             PageCache.set_valid(False)
-            Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+            RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
 
             for heatnode in heatnodes:
                 heat = RHData.get_heat(heatnode.heat_id)
@@ -1572,7 +1572,7 @@ def on_delete_profile():
             'profile_id': profile_id,
             })
 
-        Options.set("currentProfile", first_profile_id)
+        RHData.set_option("currentProfile", first_profile_id)
         on_set_profile(data={ 'profile': first_profile_id })
     else:
         logger.info('Refusing to delete only profile')
@@ -1584,7 +1584,7 @@ def on_set_profile(data, emit_vals=True):
     profile_val = int(data['profile'])
     profile = RHData.get_profile(profile_val)
     if profile:
-        Options.set("currentProfile", data['profile'])
+        RHData.set_option("currentProfile", data['profile'])
         logger.info("Set Profile to '%s'" % profile_val)
         # set freqs, enter_ats, and exit_ats
         freqs = json.loads(profile.frequencies)
@@ -1777,7 +1777,7 @@ def on_restore_database(data):
                 recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
 
                 expand_heats()
-                raceformat_id = Options.getInt('currentFormat')
+                raceformat_id = RHData.get_optionInt('currentFormat')
                 race_format = RHData.get_raceFormat(raceformat_id)
                 setCurrentRaceFormat(race_format)
 
@@ -1986,7 +1986,7 @@ def on_download_logs(data):
 @catchLogExceptionsWrapper
 def on_set_min_lap(data):
     min_lap = data['min_lap']
-    Options.set("MinLapSec", data['min_lap'])
+    RHData.set_option("MinLapSec", data['min_lap'])
 
     trigger_event(Evt.MIN_LAP_TIME_SET, {
         'min_lap': min_lap,
@@ -1999,7 +1999,7 @@ def on_set_min_lap(data):
 @catchLogExceptionsWrapper
 def on_set_min_lap_behavior(data):
     min_lap_behavior = int(data['min_lap_behavior'])
-    Options.set("MinLapBehavior", min_lap_behavior)
+    RHData.set_option("MinLapBehavior", min_lap_behavior)
 
     trigger_event(Evt.MIN_LAP_BEHAVIOR_SET, {
         'min_lap_behavior': min_lap_behavior,
@@ -2103,7 +2103,7 @@ def on_alter_race_format(data):
             if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
                 if 'win_condition' in data or 'start_behavior' in data:
                     PageCache.set_valid(False)
-                    Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+                    RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
 
                     races = Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).all()
                     for race in races:
@@ -2159,7 +2159,7 @@ def on_delete_race_format():
 @catchLogExceptionsWrapper
 def on_set_next_heat_behavior(data):
     next_heat_behavior = int(data['next_heat_behavior'])
-    Options.set("nextHeatBehavior", next_heat_behavior)
+    RHData.set_option("nextHeatBehavior", next_heat_behavior)
     logger.info("set next heat behavior to %s" % next_heat_behavior)
 
 # LED Effects
@@ -2223,14 +2223,14 @@ def on_set_led_effect(data):
         if led_manager.isEnabled():
             led_manager.setEventEffect(data['event'], data['effect'])
 
-        effect_opt = Options.get('ledEffects')
+        effect_opt = RHData.get_option('ledEffects')
         if effect_opt:
             effects = json.loads(effect_opt)
         else:
             effects = {}
 
         effects[data['event']] = data['effect']
-        Options.set('ledEffects', json.dumps(effects))
+        RHData.set_option('ledEffects', json.dumps(effects))
 
         trigger_event(Evt.LED_EFFECT_SET, {
             'effect': data['event'],
@@ -2484,11 +2484,11 @@ def race_start_thread(start_token):
         CLUSTER.doClusterRaceStart()
 
     # set lower EnterAt/ExitAt values if configured
-    if Options.getInt('startThreshLowerAmount') > 0 and Options.getInt('startThreshLowerDuration') > 0:
-        lower_amount = Options.getInt('startThreshLowerAmount')
+    if RHData.get_optionInt('startThreshLowerAmount') > 0 and RHData.get_optionInt('startThreshLowerDuration') > 0:
+        lower_amount = RHData.get_optionInt('startThreshLowerAmount')
         logger.info("Lowering EnterAt/ExitAt values at start of race, amount={0}%, duration={1} secs".\
-                    format(lower_amount, Options.getInt('startThreshLowerDuration')))
-        lower_end_time = RACE.start_time_monotonic + Options.getInt('startThreshLowerDuration')
+                    format(lower_amount, RHData.get_optionInt('startThreshLowerDuration')))
+        lower_end_time = RACE.start_time_monotonic + RHData.get_optionInt('startThreshLowerDuration')
         for node in INTERFACE.nodes:
             if node.frequency > 0 and node.current_pilot_id != RHUtils.PILOT_ID_NONE:
                 if node.current_rssi < node.enter_at_level:
@@ -2609,8 +2609,8 @@ def on_stop_race():
         delta_time = 0
 
     # check if nodes may be set to temporary lower EnterAt/ExitAt values (and still have them)
-    if Options.getInt('startThreshLowerAmount') > 0 and \
-            delta_time < Options.getInt('startThreshLowerDuration'):
+    if RHData.get_optionInt('startThreshLowerAmount') > 0 and \
+            delta_time < RHData.get_optionInt('startThreshLowerDuration'):
         for node in INTERFACE.nodes:
             # if node EnterAt/ExitAt values need to be restored then do it soon
             if node.frequency > 0 and node.current_pilot_id != RHUtils.PILOT_ID_NONE and \
@@ -2652,7 +2652,7 @@ def on_save_laps():
             round_id=max_round+1, \
             heat_id=RACE.current_heat, \
             class_id=heat.class_id, \
-            format_id=Options.get('currentFormat'), \
+            format_id=RHData.get_option('currentFormat'), \
             start_time = RACE.start_time_monotonic, \
             start_time_formatted = RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"), \
             cacheStatus=Results.CacheStatus.INVALID
@@ -2759,7 +2759,7 @@ def on_resave_laps(data):
     logger.info(message)
 
     # run adaptive calibration
-    if Options.getInt('calibrationMode'):
+    if RHData.get_optionInt('calibrationMode'):
         autoUpdateCalibration()
 
     # spawn thread for updating results caches
@@ -2776,7 +2776,7 @@ def on_resave_laps(data):
         })
 
 def build_atomic_result_caches(params):
-    Results.build_atomic_results_caches(DB, params)
+    Results.build_atomic_results_caches(RHData, params)
     emit_result_data()
 
 @SOCKET_IO.on('discard_laps')
@@ -2807,7 +2807,7 @@ def on_discard_laps(**kwargs):
 def clear_laps():
     '''Clear the current laps table.'''
     global RACE
-    RACE.last_race_results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
+    RACE.last_race_results = Results.calc_leaderboard(current_race=RACE, current_profile=getCurrentProfile())
     RACE.last_race_cacheStatus = Results.CacheStatus.VALID
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
     RACE.winning_lap_id = 0
@@ -2878,7 +2878,7 @@ def on_set_current_heat(data):
 
     logger.info('Current heat set: Heat {0}'.format(new_heat_id))
 
-    if Options.getInt('calibrationMode'):
+    if RHData.get_optionInt('calibrationMode'):
         autoUpdateCalibration()
 
     trigger_event(Evt.HEAT_SET, {
@@ -2941,7 +2941,7 @@ def generate_heats(data):
         # build new results if needed
         logger.info("No class cache available for {0}; regenerating".format(input_class))
         race_class.cacheStatus = monotonic()
-        race_class.results = Results.calc_leaderboard(DB, class_id=race_class.id)
+        race_class.results = Results.calc_leaderboard(class_id=race_class.id)
         race_class.cacheStatus = Results.CacheStatus.VALID
         DB.session.commit()
 
@@ -3095,7 +3095,7 @@ def on_simulate_lap(data):
     logger.info('Simulated lap: Node {0}'.format(node_index+1))
     trigger_event(Evt.CROSSING_EXIT, {
         'nodeIndex': node_index,
-        'color': hexToColor(Options.get('colorNode_' + str(node_index), '#ffffff'))
+        'color': hexToColor(RHData.get_option('colorNode_' + str(node_index), '#ffffff'))
         })
     INTERFACE.intf_simulate_lap(node_index, 0)
 
@@ -3174,7 +3174,7 @@ def on_LED_brightness(data):
     brightness = data['brightness']
     strip.setBrightness(brightness)
     strip.show()
-    Options.set("ledBrightness", brightness)
+    RHData.set_option("ledBrightness", brightness)
     trigger_event(Evt.LED_BRIGHTNESS_SET, {
         'level': brightness,
         })
@@ -3182,7 +3182,7 @@ def on_LED_brightness(data):
 @SOCKET_IO.on('set_option')
 @catchLogExceptionsWrapper
 def on_set_option(data):
-    Options.set(data['option'], data['value'])
+    RHData.set_option(data['option'], data['value'])
     trigger_event(Evt.OPTION_SET, {
         'option': data['option'],
         'value': data['value'],
@@ -3202,7 +3202,7 @@ def get_race_elapsed():
 def save_callouts(data):
     # save callouts to Options
     callouts = json.dumps(data['callouts'])
-    Options.set('voiceCallouts', callouts)
+    RHData.set_option('voiceCallouts', callouts)
     logger.info('Set all voice callouts')
     logger.debug('Voice callouts set to: {0}'.format(callouts))
 
@@ -3216,7 +3216,7 @@ def imdtabler_update_freqs(data):
 @catchLogExceptionsWrapper
 def clean_results_cache():
     ''' wipe all results caches '''
-    Results.invalidate_all_caches(DB)
+    Results.invalidate_all_caches(RHData)
     PageCache.set_valid(False)
     emit_result_data()
 
@@ -3352,7 +3352,7 @@ def emit_cluster_status(**params):
 def emit_start_thresh_lower_amount(**params):
     '''Emits current start_thresh_lower_amount.'''
     emit_payload = {
-        'start_thresh_lower_amount': Options.get('startThreshLowerAmount'),
+        'start_thresh_lower_amount': RHData.get_option('startThreshLowerAmount'),
     }
     if ('nobroadcast' in params):
         emit('start_thresh_lower_amount', emit_payload)
@@ -3364,7 +3364,7 @@ def emit_start_thresh_lower_amount(**params):
 def emit_start_thresh_lower_duration(**params):
     '''Emits current start_thresh_lower_duration.'''
     emit_payload = {
-        'start_thresh_lower_duration': Options.get('startThreshLowerDuration'),
+        'start_thresh_lower_duration': RHData.get_option('startThreshLowerDuration'),
     }
     if ('nobroadcast' in params):
         emit('start_thresh_lower_duration', emit_payload)
@@ -3379,7 +3379,7 @@ def emit_node_tuning(**params):
     emit_payload = {
         'profile_ids': [profile.id for profile in Database.Profiles.query.all()],
         'profile_names': [profile.name for profile in Database.Profiles.query.all()],
-        'current_profile': Options.getInt('currentProfile'),
+        'current_profile': RHData.get_optionInt('currentProfile'),
         'profile_name': tune_val.name,
         'profile_description': tune_val.description
     }
@@ -3391,7 +3391,7 @@ def emit_node_tuning(**params):
 def emit_language(**params):
     '''Emits race status.'''
     emit_payload = {
-            'language': Options.get("currentLanguage"),
+            'language': RHData.get_option("currentLanguage"),
             'languages': Language.getLanguages()
         }
     if ('nobroadcast' in params):
@@ -3412,8 +3412,8 @@ def emit_all_languages(**params):
 def emit_min_lap(**params):
     '''Emits current minimum lap.'''
     emit_payload = {
-        'min_lap': Options.get('MinLapSec'),
-        'min_lap_behavior': Options.getInt("MinLapBehavior")
+        'min_lap': RHData.get_option('MinLapSec'),
+        'min_lap_behavior': RHData.get_optionInt("MinLapBehavior")
     }
     if ('nobroadcast' in params):
         emit('min_lap', emit_payload)
@@ -3666,7 +3666,7 @@ def emit_current_leaderboard(**params):
     elif RACE.cacheStatus == Results.CacheStatus.VALID:
         emit_payload = RACE.results
     else:
-        results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
+        results = Results.calc_leaderboard(current_race=RACE, current_profile=getCurrentProfile())
         RACE.results = results
         RACE.cacheStatus = Results.CacheStatus.VALID
         emit_payload = results
@@ -3738,7 +3738,7 @@ def emit_heat_data(**params):
             'name': pilot.name
             })
 
-    if Options.get('pilotSort') == 'callsign':
+    if RHData.get_option('pilotSort') == 'callsign':
         pilots.sort(key=lambda x: (x['callsign'], x['name']))
     else:
         pilots.sort(key=lambda x: (x['name'], x['callsign']))
@@ -3747,7 +3747,7 @@ def emit_heat_data(**params):
         'heats': current_heats,
         'pilot_data': pilots,
         'classes': current_classes,
-        'pilotSort': Options.get('pilotSort'),
+        'pilotSort': RHData.get_option('pilotSort'),
     }
     if ('nobroadcast' in params):
         emit('heat_data', emit_payload)
@@ -3820,7 +3820,7 @@ def emit_pilot_data(**params):
             'locked': locked,
         })
 
-        if Options.get('pilotSort') == 'callsign':
+        if RHData.get_option('pilotSort') == 'callsign':
             pilots_list.sort(key=lambda x: (x['callsign'], x['name']))
         else:
             pilots_list.sort(key=lambda x: (x['name'], x['callsign']))
@@ -3998,7 +3998,7 @@ def emit_cluster_connect_change(connect_flag, **params):
         SOCKET_IO.emit('cluster_connect_change', emit_payload)
 
 def emit_callouts():
-    callouts = Options.get('voiceCallouts')
+    callouts = RHData.get_option('voiceCallouts')
     if callouts:
         emit('callouts', json.loads(callouts))
 
@@ -4346,8 +4346,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         min_lap = 0  # don't enforce min-lap time if running as secondary timer
                         min_lap_behavior = 0
                     else:
-                        min_lap = Options.getInt("MinLapSec")
-                        min_lap_behavior = Options.getInt("MinLapBehavior")
+                        min_lap = RHData.get_optionInt("MinLapSec")
+                        min_lap_behavior = RHData.get_optionInt("MinLapBehavior")
 
                     if RACE.timer_running is False:
                         RACE.node_has_finished[node.index] = True
@@ -4376,7 +4376,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'deleted': False
                         })
 
-                        RACE.results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
+                        RACE.results = Results.calc_leaderboard(current_race=RACE, current_profile=getCurrentProfile())
                         RACE.cacheStatus = Results.CacheStatus.VALID
 
                         trigger_event(Evt.RACE_LAP_RECORDED, {
@@ -4501,14 +4501,14 @@ def node_crossing_callback(node):
             if node.crossing_flag:
                 trigger_event(Evt.CROSSING_ENTER, {
                     'nodeIndex': node.index,
-                    'color': hexToColor(Options.get('colorNode_' + str(node.index), '#ffffff'))
+                    'color': hexToColor(RHData.get_option('colorNode_' + str(node.index), '#ffffff'))
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
                     trigger_event(Evt.CROSSING_EXIT, {
                         'nodeIndex': node.index,
-                        'color': hexToColor(Options.get('colorNode_' + str(node.index), '#ffffff'))
+                        'color': hexToColor(RHData.get_option('colorNode_' + str(node.index), '#ffffff'))
                         })
                 else:
                     node.show_crossing_flag = True
@@ -4649,7 +4649,7 @@ def db_reset_profile():
                              enter_ats = json.dumps(template),
                              exit_ats = json.dumps(template)))
     DB.session.commit()
-    Options.set("currentProfile", 1)
+    RHData.set_option("currentProfile", 1)
     logger.info("Database set default profiles")
 
 def db_reset_race_formats():
@@ -4784,52 +4784,52 @@ def db_reset_race_formats():
 
 def db_reset_options_defaults():
     DB.session.query(Database.GlobalSettings).delete()
-    Options.set("server_api", SERVER_API)
+    RHData.set_option("server_api", SERVER_API)
     # group identifiers
-    Options.set("timerName", __("RotorHazard"))
-    Options.set("timerLogo", "")
+    RHData.set_option("timerName", __("RotorHazard"))
+    RHData.set_option("timerLogo", "")
     # group colors
-    Options.set("hue_0", "212")
-    Options.set("sat_0", "55")
-    Options.set("lum_0_low", "29.2")
-    Options.set("lum_0_high", "46.7")
-    Options.set("contrast_0_low", "#ffffff")
-    Options.set("contrast_0_high", "#ffffff")
+    RHData.set_option("hue_0", "212")
+    RHData.set_option("sat_0", "55")
+    RHData.set_option("lum_0_low", "29.2")
+    RHData.set_option("lum_0_high", "46.7")
+    RHData.set_option("contrast_0_low", "#ffffff")
+    RHData.set_option("contrast_0_high", "#ffffff")
 
-    Options.set("hue_1", "25")
-    Options.set("sat_1", "85.3")
-    Options.set("lum_1_low", "37.6")
-    Options.set("lum_1_high", "54.5")
-    Options.set("contrast_1_low", "#ffffff")
-    Options.set("contrast_1_high", "#000000")
+    RHData.set_option("hue_1", "25")
+    RHData.set_option("sat_1", "85.3")
+    RHData.set_option("lum_1_low", "37.6")
+    RHData.set_option("lum_1_high", "54.5")
+    RHData.set_option("contrast_1_low", "#ffffff")
+    RHData.set_option("contrast_1_high", "#000000")
     # timer state
-    Options.set("currentLanguage", "")
-    Options.set("currentProfile", "1")
+    RHData.set_option("currentLanguage", "")
+    RHData.set_option("currentProfile", "1")
     setCurrentRaceFormat(Database.RaceFormat.query.first())
-    Options.set("calibrationMode", "1")
+    RHData.set_option("calibrationMode", "1")
     # minimum lap
-    Options.set("MinLapSec", "10")
-    Options.set("MinLapBehavior", "0")
+    RHData.set_option("MinLapSec", "10")
+    RHData.set_option("MinLapBehavior", "0")
     # event information
-    Options.set("eventName", __("FPV Race"))
-    Options.set("eventDescription", "")
+    RHData.set_option("eventName", __("FPV Race"))
+    RHData.set_option("eventDescription", "")
     # LED settings
-    Options.set("ledBrightness", "32")
+    RHData.set_option("ledBrightness", "32")
     # LED colors
-    Options.set("colorNode_0", "#001fff")
-    Options.set("colorNode_1", "#ff3f00")
-    Options.set("colorNode_2", "#7fff00")
-    Options.set("colorNode_3", "#ffff00")
-    Options.set("colorNode_4", "#7f00ff")
-    Options.set("colorNode_5", "#ff007f")
-    Options.set("colorNode_6", "#3fff3f")
-    Options.set("colorNode_7", "#00bfff")
+    RHData.set_option("colorNode_0", "#001fff")
+    RHData.set_option("colorNode_1", "#ff3f00")
+    RHData.set_option("colorNode_2", "#7fff00")
+    RHData.set_option("colorNode_3", "#ffff00")
+    RHData.set_option("colorNode_4", "#7f00ff")
+    RHData.set_option("colorNode_5", "#ff007f")
+    RHData.set_option("colorNode_6", "#3fff3f")
+    RHData.set_option("colorNode_7", "#00bfff")
     # Event results cache
-    Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+    RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
 
-    Options.set("startThreshLowerAmount", "0")
-    Options.set("startThreshLowerDuration", "0")
-    Options.set("nextHeatBehavior", "0")
+    RHData.set_option("startThreshLowerAmount", "0")
+    RHData.set_option("startThreshLowerDuration", "0")
+    RHData.set_option("nextHeatBehavior", "0")
 
     logger.info("Reset global settings")
 
@@ -5129,7 +5129,7 @@ def recover_database(dbfile, **kwargs):
             if options_query_data:
                 for opt in options_query_data:
                     if opt['option_name'] in carryoverOpts:
-                        Options.set(opt['option_name'], opt['option_value'])
+                        RHData.set_option(opt['option_name'], opt['option_value'])
 
             logger.info('UI Options restored')
 
@@ -5189,7 +5189,7 @@ def init_race_state():
     expand_heats()
 
     # Send profile values to nodes
-    current_profile = Options.getInt('currentProfile')
+    current_profile = RHData.get_optionInt('currentProfile')
     on_set_profile({'profile': current_profile}, False)
 
     # Set current heat
@@ -5206,12 +5206,12 @@ def init_race_state():
                 RACE.node_teams[heatNode.node_index] = None
 
     # Set race format
-    raceformat_id = Options.getInt('currentFormat')
+    raceformat_id = RHData.get_optionInt('currentFormat')
     race_format = RHData.get_raceFormat(raceformat_id)
     setCurrentRaceFormat(race_format, silent=True)
 
     # Normalize results caches
-    Results.normalize_cache_status(DB)
+    Results.normalize_cache_status(RHData)
 
 def init_interface_state():
     # Cancel current race
@@ -5233,7 +5233,7 @@ def init_LED_effects():
         Evt.SHUTDOWN: "clear"
     }
     # update with DB values (if any)
-    effect_opt = Options.get('ledEffects')
+    effect_opt = RHData.get_option('ledEffects')
     if effect_opt:
         effects.update(json.loads(effect_opt))
     # set effects
@@ -5265,10 +5265,13 @@ def initVRxController():
 
     # If got through import success, create the VRxController object
     vrx_config = Config.VRX_CONTROL
-    return VRxController(Events,
-       vrx_config,
-       RACE,
-       [node.frequency for node in INTERFACE.nodes])
+    return VRxController(
+        RHData,
+        Events,
+        vrx_config,
+        RACE,
+        [node.frequency for node in INTERFACE.nodes],
+        Language)
 
 def killVRxController(*args):
     global vrx_controller
@@ -5428,7 +5431,7 @@ if len(sys.argv) > 0 and CMDARG_JUMP_TO_BL_STR in sys.argv:
         sys.exit(0 if successFlag else 1)
     sys.exit(0)
 
-CLUSTER = ClusterNodeSet()
+CLUSTER = ClusterNodeSet(Language)
 hasMirrors = False
 try:
     for index, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
@@ -5483,8 +5486,6 @@ if RHUtils.checkSetFileOwnerPi(DB_BKP_DIR_NAME):
 if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
     logger.info("Changed '{0}' dir owner from 'root' to 'pi'".format(log.LOGZIP_DIR_NAME))
 
-Options.primeGlobalsCache()
-
 # collect server info for About panel, etc
 serverInfo = buildServerInfo()
 
@@ -5508,7 +5509,7 @@ if RACE.num_nodes > 0:
 
 if not db_inited_flag:
     try:
-        if Options.getInt('server_api') < SERVER_API:
+        if RHData.get_optionInt('server_api') < SERVER_API:
             logger.info('Old server API version; recovering database')
             recover_database(DB_FILE_NAME, startup=True)
         elif not Database.Heat.query.count():
@@ -5566,9 +5567,9 @@ else:
 strip = None
 if Config.LED['LED_COUNT'] > 0:
     led_type = os.environ.get('RH_LEDS', 'ws281x')
-    # note: any calls to 'Options.get()' need to happen after the DB initialization,
+    # note: any calls to 'RHData.get_option()' need to happen after the DB initialization,
     #       otherwise it causes problems when run with no existing DB file
-    led_brightness = Options.getInt("ledBrightness")
+    led_brightness = RHData.get_optionInt("ledBrightness")
     try:
         ledModule = importlib.import_module(led_type + '_leds')
         strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
@@ -5618,13 +5619,13 @@ gevent.spawn(clock_check_thread_function)  # start thread to monitor system cloc
 # register endpoints
 import json_endpoints
 
-APP.register_blueprint(json_endpoints.createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProfile))
+APP.register_blueprint(json_endpoints.createBlueprint(Database, RHData, Results, RACE, serverInfo, getCurrentProfile))
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
-    if not Options.get("secret_key"):
-        Options.set("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
+    if not RHData.get_option("secret_key"):
+        RHData.set_option("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
 
-    APP.config['SECRET_KEY'] = Options.get("secret_key")
+    APP.config['SECRET_KEY'] = RHData.get_option("secret_key")
 
     logger.info("Running http server at port " + str(port_val))
 

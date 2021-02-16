@@ -12,7 +12,6 @@ import logging
 from monotonic import monotonic
 from eventmanager import Evt
 import json
-import Options
 import Results
 import RHUtils
 import gevent
@@ -117,7 +116,7 @@ class PageCache:
                             })
                         if round.cacheStatus == Results.CacheStatus.INVALID:
                             logger.info('Heat %d Round %d cache invalid; rebuilding', heat.heat_id, round.round_id)
-                            results = Results.calc_leaderboard(DB, heat_id=heat.heat_id, round_id=round.round_id)
+                            results = Results.calc_leaderboard(heat_id=heat.heat_id, round_id=round.round_id)
                             round.results = results
                             round.cacheStatus = Results.CacheStatus.VALID
                             DB.session.commit()
@@ -143,7 +142,7 @@ class PageCache:
 
                 if heatdata.cacheStatus == Results.CacheStatus.INVALID:
                     logger.info('Heat %d cache invalid; rebuilding', heat.heat_id)
-                    results = Results.calc_leaderboard(DB, heat_id=heat.heat_id)
+                    results = Results.calc_leaderboard(heat_id=heat.heat_id)
                     heatdata.results = results
                     heatdata.cacheStatus = Results.CacheStatus.VALID
                     DB.session.commit()
@@ -184,7 +183,7 @@ class PageCache:
             for race_class in self._RHData.get_raceClasses():
                 if race_class.cacheStatus == Results.CacheStatus.INVALID:
                     logger.info('Class %d cache invalid; rebuilding', race_class.id)
-                    results = Results.calc_leaderboard(DB, class_id=race_class.id)
+                    results = Results.calc_leaderboard(class_id=race_class.id)
                     race_class.results = results
                     race_class.cacheStatus = Results.CacheStatus.VALID
                     DB.session.commit()
@@ -213,19 +212,19 @@ class PageCache:
             logger.debug('T%d: results by class assembled in: %fs', timing['start'], timing['event'] - timing['by_class'])
 
             gevent.sleep()
-            if Options.get("eventResults_cacheStatus") == Results.CacheStatus.INVALID:
+            if self._RHData.get_option("eventResults_cacheStatus") == Results.CacheStatus.INVALID:
                 logger.info('Event cache invalid; rebuilding')
-                results = Results.calc_leaderboard(DB)
-                Options.set("eventResults", json.dumps(results))
-                Options.set("eventResults_cacheStatus", Results.CacheStatus.VALID)
+                results = Results.calc_leaderboard()
+                self._RHData.set_option("eventResults", json.dumps(results))
+                self._RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.VALID)
                 DB.session.commit()
             else:
                 expires = monotonic() + CACHE_TIMEOUT
                 while True:
                     gevent.idle()
-                    status = Options.get("eventResults_cacheStatus")
+                    status = self._RHData.get_option("eventResults_cacheStatus")
                     if status == Results.CacheStatus.VALID:
-                        results = json.loads(Options.get("eventResults"))
+                        results = json.loads(self._RHData.get_option("eventResults"))
                         break
                     elif monotonic() > expires:
                         logger.warning('Cache build timed out: Event Summary')

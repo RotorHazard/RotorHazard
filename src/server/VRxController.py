@@ -9,12 +9,10 @@ from monotonic import monotonic
 from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics, ESP_COMMANDS
 from VRxCV1_emulator import MQTT_Client
 from eventmanager import Evt
-from Language import __
 import Results
 from RHRace import WinCondition
 import RHUtils
 import Database
-import Options
 
 # Sample configuration:
 #     "VRX_CONTROL": {
@@ -39,7 +37,9 @@ MINIMUM_PAYLOAD = 7
 
 class VRxController:
 
-    def __init__(self, eventmanager, vrx_config, race_obj, seat_frequencies):
+    def __init__(self, RHData, eventmanager, vrx_config, race_obj, seat_frequencies, Language):
+        self._RHData = RHData
+        self._Language = Language
         self.Events = eventmanager
         self.RACE = race_obj
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -91,10 +91,10 @@ class VRxController:
         self.Events.on(Evt.OPTION_SET, 'VRx', self.validate_option)
 
         # Options
-        if Options.get('osd_lapHeader') is False:
-            Options.set('osd_lapHeader', 'L')
-        if Options.get('osd_positionHeader') is False:
-            Options.set('osd_positionHeader', '')
+        if self._RHData.get_option('osd_lapHeader') is False:
+            self._RHData.set_option('osd_lapHeader', 'L')
+        if self._RHData.get_option('osd_positionHeader') is False:
+            self._RHData.set_option('osd_positionHeader', '')
 
     def validate_config(self, supplied_config):
         """Ensure config values are within range and reasonable values"""
@@ -122,10 +122,10 @@ class VRxController:
                 if len(config_item) == 1:
                     if config_item == cv_csum:
                         self.logger.error("Cannot use reserved character '%s' in '%s'"%(cv_csum, args['option']))
-                        Options.set(args['option'], '')
+                        self._RHData.set_option(args['option'], '')
                 elif cv_csum in config_item:
                     self.logger.error("Cannot use reserved character '%s' in '%s'"%(cv_csum, args['option']))
-                    Options.set(args['option'], '')
+                    self._RHData.set_option(args['option'], '')
 
     def do_startup(self,arg):
         self.logger.info("VRx Control Starting up")
@@ -205,8 +205,8 @@ class VRxController:
         '''
 
         RESULTS_TIMEOUT = 5 # maximum time to wait for results to generate
-        LAP_HEADER = Options.get('osd_lapHeader')
-        POS_HEADER = Options.get('osd_positionHeader')
+        LAP_HEADER = self._RHData.get_option('osd_lapHeader')
+        POS_HEADER = self._RHData.get_option('osd_positionHeader')
 
         if 'node_index' in args:
             seat_index = args['node_index']
@@ -668,7 +668,7 @@ class VRxController:
             # See TODO in on_message_status
             self.req_status_targeted("variable", rx_name)
             self.req_status_targeted("static", rx_name)
-            
+
 
 
 
@@ -760,6 +760,9 @@ class VRxController:
         cmd = json.dumps({"osd_visibility" : "E"})
         self._mqttc.publish(topic, cmd)
         return cmd
+
+    def __(*args, **kwargs):
+        self._Language.__(*args, **kwargs)
 
 
 CRED = '\033[91m'
@@ -966,7 +969,7 @@ class VRxBroadcastSeat(BaseVRxSeat):
         cmd = json.dumps({"osd_visibility" : "D"})
         self._mqttc.publish(topic, cmd)
         return cmd
-    
+
     def turn_on_osd(self):
         """Turns on all OSD elements except user message"""
         topic = self._rx_cmd_esp_all_topic

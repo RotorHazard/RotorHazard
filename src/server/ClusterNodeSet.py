@@ -7,7 +7,6 @@ import socketio
 from monotonic import monotonic
 import RHUtils
 from RHRace import RaceStatus
-from Language import __
 import Database
 from util.RunningMedian import RunningMedian
 from util.Averager import Averager
@@ -416,8 +415,10 @@ class SecondaryNode:
             logger.exception("Error sending join-cluster message acknowledgement to secondary {0} at {1}".\
                              format(self.id+1, self.address))
 
+
 class ClusterNodeSet:
-    def __init__(self):
+    def __init__(self, Language):
+        self._Language = Language
         self.secondaries = []
         self.splitSecondaries = []
         self.recEventsSecondaries = []
@@ -477,7 +478,7 @@ class ClusterNodeSet:
                  'availability': round((100.0*totalUpSecs/(totalUpSecs+totalDownSecs) \
                                        if totalUpSecs+totalDownSecs > 0 else 0), 1), \
                  'last_contact': int(nowTime-secondary.lastContactTime) if secondary.lastContactTime >= 0 else \
-                                 (__("connection lost") if secondary.numDisconnects > 0 else __("never connected"))
+                                 (self.__("connection lost") if secondary.numDisconnects > 0 else self.__("never connected"))
                  })
         return {'secondaries': payload}
 
@@ -503,3 +504,6 @@ class ClusterNodeSet:
                 logger.info("Connected at race stop to " + secondary.get_log_str(stoppedRaceFlag=True));
             elif secondary.numDisconnects > 0:
                 logger.warning("Not connected at race stop to " + secondary.get_log_str(stoppedRaceFlag=True));
+
+    def __(*args, **kwargs):
+        self._Language.__(*args, **kwargs)

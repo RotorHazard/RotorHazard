@@ -1442,8 +1442,17 @@ function build_leaderboard(leaderboard, display_type, meta) {
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			if (leaderboard[i].fastest_lap_source) {
+				var source = leaderboard[i].fastest_lap_source;
 				row.append('<td class="fast" title="'+ leaderboard[i].fastest_lap_source +'">'+ lap +'</td>');
-				row.data('source', leaderboard[i].fastest_lap_source);
+
+                if source.fast_lap_heatnote {
+                    var source_text = source.fast_lap_heatnote
+                } else {
+                    var source_text = __('Heat') + ' ' + source.fast_lap_heat;
+                }
+                source_text += ' / ' + __('Round') + ' ' + source.fast_lap_round;
+
+				row.data('source', source_text);
 			} else {
 				row.append('<td class="fast">'+ lap +'</td>');
 			}
@@ -1457,8 +1466,17 @@ function build_leaderboard(leaderboard, display_type, meta) {
 			if (!lap || lap == '0:00.000')
 				lap = '&#8212;';
 			if (leaderboard[i].consecutives_source) {
+				var source = leaderboard[i].consecutives_source;
 				row.append('<td class="consecutive" title="'+ leaderboard[i].consecutives_source +'">'+ lap +'</td>');
-				row.data('source', leaderboard[i].consecutives_source);
+
+                if fast_lap_heatnote {
+                    var source_text = source.fast_lap_heatnote;
+                } else
+                    var source_text = __('Heat') + ' ' + source.fast_lap_heat;
+                }
+                source_text += ' / ' + __('Round') + ' ' + source.fast_lap_round;
+
+				row.data('source', source_text);
 			} else {
 				row.append('<td class="consecutive">'+ lap +'</td>');
 			}
