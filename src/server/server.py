@@ -66,7 +66,7 @@ import RHData
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from ClusterNodeSet import SecondaryNode, ClusterNodeSet
-from PageCache import PageCache
+import PageCache
 from util.SendAckQueue import SendAckQueue
 import RHGPIO
 import util.stm32loader as stm32loader
@@ -158,10 +158,11 @@ server_ipaddress_str = None
 Settings_note_msg_text = None
 
 RACE = RHRace.RHRace() # For storing race management variables
-RHData = RHData.RHData(Database) # Primary race data storage
-PageCache = PageCache(RHData) # For storing page cache
+RHData = RHData.RHData(Database, Events, RACE) # Primary race data storage
+PageCache = PageCache.PageCache(RHData) # For storing page cache
 Language = Language.Language(RHData) # initialize language
 __ = Language.__ # Shortcut to translation function
+RHData.late_init(PageCache, Language) # Give RHData additional references
 
 TONES_NONE = 0
 TONES_ONE = 1
@@ -367,7 +368,6 @@ def render_run():
         led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
-        current_heat=RACE.current_heat, pilots=Database.Pilot,
         nodes=nodes,
         cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()))
 
@@ -536,7 +536,7 @@ def render_viewImg(imgfile):
     '''Route to img called within doc viewer.'''
     return send_file('../../doc/img/' + imgfile)
 
-# Redirect routes
+# Redirect routes (Previous versions/Delta 5)
 @APP.route('/race')
 def redirect_race():
     return redirect("/run", code=301)
@@ -799,7 +799,7 @@ def on_set_frequency(data):
     update_heat_flag = False
     try:  # if running as secondary timer and no pilot is set for node then set one now
         if frequency and getCurrentRaceFormat() is SECONDARY_RACE_FORMAT:
-            heat_node = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).one_or_none()
+            heat_node = RHData.get_heatNodes(filter_by={'heat_id': RACE.current_heat, 'node_index': node_index}, return_type='one_or_none')
             if heat_node and heat_node.pilot_id == RHUtils.PILOT_ID_NONE:
                 pilot = RHData.get_pilot(node_index+1)
                 if pilot:
@@ -1067,148 +1067,26 @@ def on_set_scan(data):
 @catchLogExceptionsWrapper
 def on_add_heat():
     '''Adds the next available heat number to the database.'''
-    new_heat = Database.Heat(class_id=RHUtils.CLASS_ID_NONE, cacheStatus=Results.CacheStatus.INVALID)
-    DB.session.add(new_heat)
-    DB.session.flush()
-    DB.session.refresh(new_heat)
+    RHData.add_heat()
 
-    for node in range(RACE.num_nodes): # Add next heat with empty pilots
-        DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=RHUtils.PILOT_ID_NONE))
-
-    DB.session.commit()
-
-    trigger_event(Evt.HEAT_DUPLICATE, {
-        'heat_id': new_heat.id,
-        })
-
-    logger.info('Heat added: Heat {0}'.format(new_heat.id))
     emit_heat_data()
 
 @SOCKET_IO.on('duplicate_heat')
 @catchLogExceptionsWrapper
 def on_duplicate_heat(data):
-    new_heat_id = duplicate_heat(data['heat'])
-    DB.session.commit()
-
-    trigger_event(Evt.HEAT_DUPLICATE, {
-        'heat_id': new_heat_id,
-        })
-
-    logger.info('Heat {0} duplicated to heat {1}'.format(data['heat'], new_heat_id))
+    RHData.duplicate_heat(data['heat'])
 
     emit_heat_data()
-
-def duplicate_heat(source, **kwargs):
-    '''Adds new heat by duplicating an existing one.'''
-    source_heat = RHData.get_heat(source)
-
-    if source_heat.note:
-        all_heat_notes = [heat.note for heat in RHData.get_heats()]
-        new_heat_note = uniqueName(source_heat.note, all_heat_notes)
-    else:
-        new_heat_note = ''
-
-    if 'dest_class' in kwargs:
-        new_class = kwargs['dest_class']
-    else:
-        new_class = source_heat.class_id
-
-    new_heat = Database.Heat(note=new_heat_note,
-        class_id=new_class,
-        results=None,
-        cacheStatus=Results.CacheStatus.INVALID)
-
-    DB.session.add(new_heat)
-    DB.session.flush()
-    DB.session.refresh(new_heat)
-
-    for source_heatnode in RHData.get_heatNodes(filter_by={'heat_id': source_heat.id}):
-        new_heatnode = Database.HeatNode(heat_id=new_heat.id,
-            node_index=source_heatnode.node_index,
-            pilot_id=source_heatnode.pilot_id)
-        DB.session.add(new_heatnode)
-
-    return new_heat.id
 
 @SOCKET_IO.on('alter_heat')
 @catchLogExceptionsWrapper
 def on_alter_heat(data):
     '''Update heat.'''
-    global RACE
-    heat_id = data['heat']
-    heat = RHData.get_heat(heat_id)
+    heat, race_list = RHData.alter_heat(data)
 
-    if 'note' in data:
-        PageCache.set_valid(False)
-        heat.note = data['note']
-    if 'class' in data:
-        old_class_id = heat.class_id
-        heat.class_id = data['class']
-    if 'pilot' in data:
-        node_index = data['node']
-        heatnode = Database.HeatNode.query.filter_by(heat_id=heat.id, node_index=node_index).one()
-        heatnode.pilot_id = data['pilot']
-
-    # alter existing saved races:
-    race_list = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
-
-    if 'class' in data:
-        if len(race_list):
-            for race_meta in race_list:
-                race_meta.class_id = data['class']
-                # race_meta.cacheStatus=Results.CacheStatus.INVALID
-
-            if old_class_id is not RHUtils.CLASS_ID_NONE:
-                old_class = RHData.get_raceClass(old_class_id)
-                old_class.cacheStatus = Results.CacheStatus.INVALID
-
-    if 'pilot' in data:
-        if len(race_list):
-            for race_meta in race_list:
-                for pilot_race in Database.SavedPilotRace.query.filter_by(race_id=race_meta.id).all():
-                    if pilot_race.node_index == data['node']:
-                        pilot_race.pilot_id = data['pilot']
-                for race_lap in Database.SavedRaceLap.query.filter_by(race_id=race_meta.id).all():
-                    if race_lap.node_index == data['node']:
-                        race_lap.pilot_id = data['pilot']
-
-                race_meta.cacheStatus = Results.CacheStatus.INVALID
-
-            heat.cacheStatus = Results.CacheStatus.INVALID
-
-    if 'pilot' in data or 'class' in data:
-        if len(race_list):
-            if heat.class_id is not RHUtils.CLASS_ID_NONE:
-                new_class = RHData.get_raceClass(heat.class_id)
-                new_class.cacheStatus = Results.CacheStatus.INVALID
-
-            RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
-            PageCache.set_valid(False)
-
-    DB.session.commit()
-
-    if heat_id == RACE.current_heat:
-        RACE.node_pilots = {}
-        RACE.node_teams = {}
-        for heatNode in RHData.get_heatNodes(filter_by={'heat_id': heat_id}):
-            RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
-
-            if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                RACE.node_teams[heatNode.node_index] = RHData.get_pilot(heatNode.pilot_id).team
-            else:
-                RACE.node_teams[heatNode.node_index] = None
-        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
-
-    trigger_event(Evt.HEAT_ALTER, {
-        'heat_id': heat_id,
-        })
-
-    logger.info('Heat {0} altered with {1}'.format(heat_id, data))
     emit_heat_data(noself=True)
-    if len(race_list):
+    if ('pilot' in data or 'class' in data) and len(race_list):
         emit_result_data() # live update rounds page
-
-    if ('pilot' in data or 'class' in data) and Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).first() is not None:
         message = __('Alterations made to heat: {0}').format(heat.note)
         emit_priority_message(message, False)
 
@@ -1216,71 +1094,20 @@ def on_alter_heat(data):
 @catchLogExceptionsWrapper
 def on_delete_heat(data):
     '''Delete heat.'''
-    heat_count = DB.session.query(Database.Heat).count()
-    if heat_count > 1: # keep one profile
-        heat_id = data['heat']
-        heat = RHData.get_heat(heat_id)
-        heatnodes = RHData.get_heatNodes(filter_by={'heat_id': heat.id})
+    heat_id = data['heat']
+    result = RHData.delete_heat(heat_id)
 
-        has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
-
-        if has_race or (RACE.current_heat == heat.id and RACE.race_status != RaceStatus.READY):
-            logger.info('Refusing to delete heat {0}: is in use'.format(heat.id))
-        else:
-            DB.session.delete(heat)
-            for heatnode in heatnodes:
-                DB.session.delete(heatnode)
-            DB.session.commit()
-
-            logger.info('Heat {0} deleted'.format(heat.id))
-
-            trigger_event(Evt.HEAT_DELETE, {
-                'heat_id': heat_id,
-                })
-
-            # if only one heat remaining then set ID to 1
-            if heat_count == 2 and RACE.race_status == RaceStatus.READY:
-                try:
-                    heat_obj = Database.Heat.query.first()
-                    if heat_obj.id != 1:
-                        heatnodes = RHData.get_heatNodes(filter_by={'heat_id': heat_obj.id})
-                        has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat_obj.id).first()
-                        if not has_race:
-                            logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat_obj.id))
-                            heat_obj.id = 1
-                            for heatnode in heatnodes:
-                                heatnode.heat_id = heat_obj.id
-                            DB.session.commit()
-                            RACE.current_heat = 1
-                            heat_id = 1  # set value so heat data is updated below
-                        else:
-                            logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
-                except Exception as ex:
-                    logger.warning("Error adjusting single remaining heat ID: " + str(ex))
-
-            emit_heat_data()
-            if RACE.current_heat == heat_id:  # if current heat was deleted then load new heat data
-                on_set_current_heat({ 'heat': Database.Heat.query.first().id })
-    else:
-        logger.info('Refusing to delete only heat')
+    if result:
+        emit_heat_data()
+        if RACE.current_heat == heat_id:  # if current heat was deleted then load new heat data
+            on_set_current_heat({ 'heat': RHUtils.get_heats(return_type='first').id })
 
 @SOCKET_IO.on('add_race_class')
 @catchLogExceptionsWrapper
 def on_add_race_class():
     '''Adds the next available pilot id number in the database.'''
-    new_race_class = Database.RaceClass(name='New class', format_id=0, cacheStatus=Results.CacheStatus.INVALID)
-    DB.session.add(new_race_class)
-    DB.session.flush()
-    DB.session.refresh(new_race_class)
-    new_race_class.name = ''
-    new_race_class.description = ''
-    DB.session.commit()
+    RHData.add_raceClass()
 
-    trigger_event(Evt.CLASS_ADD, {
-        'class_id': new_race_class.id,
-        })
-
-    logger.info('Class added: Class {0}'.format(new_race_class))
     emit_class_data()
     emit_heat_data() # Update class selections in heat displays
 
@@ -1288,35 +1115,8 @@ def on_add_race_class():
 @catchLogExceptionsWrapper
 def on_duplicate_race_class(data):
     '''Adds new race class by duplicating an existing one.'''
-    source_class_id = data['class']
-    source_class = RHData.get_raceClass(source_class_id)
+    RHData.duplicate_raceClass(data['class'])
 
-    if source_class.name:
-        all_class_names = [race_class.name for race_class in RHData.get_raceClasses()]
-        new_class_name = uniqueName(source_class.name, all_class_names)
-    else:
-        new_class_name = ''
-
-    new_class = Database.RaceClass(name=new_class_name,
-        description=source_class.description,
-        format_id=source_class.format_id,
-        results=None,
-        cacheStatus=Results.CacheStatus.INVALID)
-
-    DB.session.add(new_class)
-    DB.session.flush()
-    DB.session.refresh(new_class)
-
-    for heat in Database.Heat.query.filter_by(class_id=source_class.id).all():
-        duplicate_heat(heat.id, dest_class=new_class.id)
-
-    DB.session.commit()
-
-    trigger_event(Evt.CLASS_DUPLICATE, {
-        'class_id': new_class.id,
-        })
-
-    logger.info('Class {0} duplicated to class {1}'.format(source_class.id, new_class.id))
     emit_class_data()
     emit_heat_data()
 
@@ -1324,43 +1124,12 @@ def on_duplicate_race_class(data):
 @catchLogExceptionsWrapper
 def on_alter_race_class(data):
     '''Update race class.'''
-    race_class = data['class_id']
-    db_update = RHData.get_raceClass(race_class)
+    race_class, race_list = RHData.alter_raceClass(data)
 
-    if 'class_name' in data:
-        PageCache.set_valid(False)
-        db_update.name = data['class_name']
-    if 'class_format' in data:
-        db_update.format_id = data['class_format']
-    if 'class_description' in data:
-        db_update.description = data['class_description']
-
-    # alter existing classes
-    if 'class_format' in data:
-        PageCache.set_valid(False)
-        RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
-        db_update.cacheStatus = Results.CacheStatus.INVALID
-
-        races = Database.SavedRaceMeta.query.filter_by(class_id=race_class).all()
-        for race_meta in races:
-            race_meta.format_id = data['class_format']
-            race_meta.cacheStatus = Results.CacheStatus.INVALID
-
-        heats = Database.Heat.query.filter_by(class_id=race_class).all()
-        for heat in heats:
-            heat.cacheStatus = Results.CacheStatus.INVALID
-
-    DB.session.commit()
-
-    Events.trigger(Evt.CLASS_ALTER, {
-        'class_id': race_class,
-        })
-
-    if 'class_format' in data and Database.SavedRaceMeta.query.filter_by(class_id=race_class).first() is not None:
-        message = __('Alterations made to race class: {0}').format(db_update.name)
+    if 'class_format' in data and len(race_list):
+        message = __('Alterations made to race class: {0}').format(race_class.name)
         emit_priority_message(message, False)
 
-    logger.info('Altered race class {0} to {1}'.format(race_class, data))
     emit_class_data(noself=True)
     if 'class_name' in data:
         emit_heat_data() # Update class names in heat displays
@@ -1373,22 +1142,9 @@ def on_alter_race_class(data):
 @catchLogExceptionsWrapper
 def on_delete_class(data):
     '''Delete class.'''
-    class_id = data['class']
-    race_class = RHData.get_raceClass(class_id)
+    result = RHData.delete_class(data['class'])
 
-    has_race = Database.SavedRaceMeta.query.filter_by(class_id=race_class.id).first()
-
-    if has_race:
-        logger.info('Refusing to delete class {0}: is in use'.format(race_class.id))
-    else:
-        DB.session.delete(race_class)
-        for heat in RHData.get_heats():
-            if heat.class_id == race_class.id:
-                heat.class_id = RHUtils.CLASS_ID_NONE
-
-        DB.session.commit()
-
-        logger.info('Class {0} deleted'.format(race_class.id))
+    if result:
         emit_class_data()
         emit_heat_data()
 
@@ -1396,68 +1152,21 @@ def on_delete_class(data):
 @catchLogExceptionsWrapper
 def on_add_pilot():
     '''Adds the next available pilot id number in the database.'''
-    new_pilot = Database.Pilot(name='New Pilot',
-                           callsign='New Callsign',
-                           team=DEF_TEAM_NAME,
-                           phonetic = '')
-    DB.session.add(new_pilot)
-    DB.session.flush()
-    DB.session.refresh(new_pilot)
-    new_pilot.name = __('~Pilot %d Name') % (new_pilot.id)
-    new_pilot.callsign = __('~Callsign %d') % (new_pilot.id)
-    new_pilot.team = DEF_TEAM_NAME
-    new_pilot.phonetic = ''
-    DB.session.commit()
+    RHData.add_pilot()
 
-    Events.trigger(Evt.PILOT_ADD, {
-        'pilot_id': new_pilot.id,
-        })
-
-    logger.info('Pilot added: Pilot {0}'.format(new_pilot.id))
     emit_pilot_data()
 
 @SOCKET_IO.on('alter_pilot')
 @catchLogExceptionsWrapper
 def on_alter_pilot(data):
     '''Update pilot.'''
-    pilot_id = data['pilot_id']
-    db_update = RHData.get_pilot(pilot_id)
-    if 'callsign' in data:
-        db_update.callsign = data['callsign']
-    if 'team_name' in data:
-        db_update.team = data['team_name']
-    if 'phonetic' in data:
-        db_update.phonetic = data['phonetic']
-    if 'name' in data:
-        db_update.name = data['name']
+    pilot, race_list = RHData.alter_pilot(data)
 
-    DB.session.commit()
-
-    Events.trigger(Evt.PILOT_ALTER, {
-        'pilot_id': pilot_id,
-        })
-
-    logger.info('Altered pilot {0} to {1}'.format(pilot_id, data))
     emit_pilot_data(noself=True) # Settings page, new pilot settings
+
     if 'callsign' in data or 'team_name' in data:
         emit_heat_data() # Settings page, new pilot callsign in heats
-        heatnodes = Database.HeatNode.query.filter_by(pilot_id=pilot_id).all()
-        if heatnodes:
-            PageCache.set_valid(False)
-            RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
-
-            for heatnode in heatnodes:
-                heat = RHData.get_heat(heatnode.heat_id)
-                heat.cacheStatus = Results.CacheStatus.INVALID
-                if heat.class_id != RHUtils.CLASS_ID_NONE:
-                    race_class = RHData.get_raceClass(heat.class_id)
-                    race_class.cacheStatus = Results.CacheStatus.INVALID
-                races = Database.SavedRaceMeta.query.filter_by(heat_id=heatnode.heat_id)
-                for race in races:
-                    race.cacheStatus = Results.CacheStatus.INVALID
-
-            DB.session.commit()
-
+        if len(race_list):
             emit_result_data() # live update rounds page
     if 'phonetic' in data:
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
@@ -1468,47 +1177,18 @@ def on_alter_pilot(data):
 @catchLogExceptionsWrapper
 def on_delete_pilot(data):
     '''Delete heat.'''
-    pilot_id = data['pilot']
-    pilot = RHData.get_pilot(pilot_id)
+    result = RHData.delete_pilot(data['pilot'])
 
-    has_race = Database.SavedPilotRace.query.filter_by(pilot_id=pilot.id).first()
-
-    if has_race:
-        logger.info('Refusing to delete pilot {0}: is in use'.format(pilot.id))
-    else:
-        DB.session.delete(pilot)
-        for heatNode in Database.HeatNode.query.all():
-            if heatNode.pilot_id == pilot.id:
-                heatNode.pilot_id = RHUtils.PILOT_ID_NONE
-        DB.session.commit()
-
-        logger.info('Pilot {0} deleted'.format(pilot.id))
+    if result:
         emit_pilot_data()
         emit_heat_data()
-        RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
 @SOCKET_IO.on('add_profile')
 @catchLogExceptionsWrapper
 def on_add_profile():
     '''Adds new profile (frequency set) in the database.'''
-    profile = getCurrentProfile()
-    new_freqs = default_frequencies()
-
-    new_profile = Database.Profiles(name=__('New Profile'),
-                           description = __('New Profile'),
-                           frequencies = json.dumps(new_freqs),
-                           enter_ats = profile.enter_ats,
-                           exit_ats = profile.exit_ats,
-                           f_ratio = 100)
-    DB.session.add(new_profile)
-    DB.session.flush()
-    DB.session.refresh(new_profile)
-    new_profile.name = __('Profile %s') % new_profile.id
-    DB.session.commit()
-
-    Events.trigger(Evt.PROFILE_ADD, {
-        'profile_id': new_profile.id,
-        })
+    source_profile = getCurrentProfile()
+    new_profile RHData.duplicate_profile(source_profile.id)
 
     on_set_profile(data={ 'profile': new_profile.id })
 
@@ -1517,38 +1197,22 @@ def on_add_profile():
 def on_alter_profile(data):
     ''' update profile '''
     profile = getCurrentProfile()
-    if 'profile_name' in data:
-        profile.name = data['profile_name']
-    if 'profile_description' in data:
-        profile.description = data['profile_description']
-    DB.session.commit()
+    data['profile_id'] = profile.id
+    profile = RHData.alter_profile(data)
 
-    Events.trigger(Evt.PROFILE_ALTER, {
-        'profile_id': profile.id,
-        })
-
-    logger.info('Altered current profile to %s' % (data))
     emit_node_tuning(noself=True)
 
 @SOCKET_IO.on('delete_profile')
 @catchLogExceptionsWrapper
 def on_delete_profile():
     '''Delete profile'''
-    if (DB.session.query(Database.Profiles).count() > 1): # keep one profile
-        profile = getCurrentProfile()
-        profile_id = profile.id
-        DB.session.delete(profile)
-        DB.session.commit()
-        first_profile_id = Database.Profiles.query.first().id
+    profile = getCurrentProfile()
+    RHData.delete_profile(profile.id)
 
-        Events.trigger(Evt.PROFILE_DELETE, {
-            'profile_id': profile_id,
-            })
-
+    if result:
+        first_profile_id = RHData.get_profiles(return_type='first').id
         RHData.set_option("currentProfile", first_profile_id)
         on_set_profile(data={ 'profile': first_profile_id })
-    else:
-        logger.info('Refusing to delete only profile')
 
 @SOCKET_IO.on("set_profile")
 @catchLogExceptionsWrapper
@@ -1576,8 +1240,7 @@ def on_set_profile(data, emit_vals=True):
         else: #handle null data by copying in hardware values
             enter_at_levels = {}
             enter_at_levels["v"] = [node.enter_at_level for node in INTERFACE.nodes]
-            enter_levels_serial = json.dumps(enter_at_levels)
-            profile.enter_ats = enter_levels_serial
+            RHData.alter_profile({'enter_ats': enter_at_levels})
             enter_ats = enter_at_levels["v"]
 
         if profile.exit_ats:
@@ -1588,11 +1251,8 @@ def on_set_profile(data, emit_vals=True):
         else: #handle null data by copying in hardware values
             exit_at_levels = {}
             exit_at_levels["v"] = [node.exit_at_level for node in INTERFACE.nodes]
-            exit_levels_serial = json.dumps(exit_at_levels)
-            profile.exit_ats = exit_levels_serial
+            RHData.alter_profile({'exit_ats': exit_at_levels})
             exit_ats = exit_at_levels["v"]
-
-        DB.session.commit()
 
         Events.trigger(Evt.PROFILE_SET, {
             'profile_id': profile_val,
@@ -1629,14 +1289,12 @@ def on_alter_race(data):
     new_format_id = new_class.format_id
 
     # clear round ids
-    heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).all()
+    heat_races = RHData.savedRaceMetas(filter_by={"heat_id": new_heat_id})
     race_meta.round_id = 0
     dummy_round_counter = -1
     for race in heat_races:
         race.round_id = dummy_round_counter
         dummy_round_counter -= 1
-
-    DB.session.commit()
 
     # assign new heat
     race_meta.heat_id = new_heat_id
