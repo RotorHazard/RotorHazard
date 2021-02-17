@@ -2320,7 +2320,7 @@ def on_stage_race():
                 valid_pilots = True
                 break
 
-    if valid_pilots is False:
+    if request and valid_pilots is False:
         emit_priority_message(__('No valid pilots in race'), True, nobroadcast=True)
 
     CLUSTER.emitToSplits('stage_race')
