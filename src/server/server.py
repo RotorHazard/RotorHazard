@@ -234,21 +234,6 @@ def buildServerInfo():
 
     return infoDict
 
-def uniqueName(desiredName, otherNames):
-    if desiredName in otherNames:
-        newName = desiredName
-        match = re.match('^(.*) ([0-9]*)$', desiredName)
-        if match:
-            nextInt = int(match.group(2))
-            nextInt += 1
-            newName = match.group(1) + ' ' + str(nextInt)
-        else:
-            newName = desiredName + " 2"
-        newName = uniqueName(newName, otherNames)
-        return newName
-    else:
-        return desiredName
-
 def getCurrentProfile():
     current_profile = RHData.get_optionInt('currentProfile')
     return RHData.get_profile(current_profile)
@@ -2024,7 +2009,7 @@ def on_add_race_format():
     '''Adds new format in the database by duplicating an existing one.'''
     source_format = getCurrentRaceFormat()
     all_format_names = [format.name for format in RHData.get_raceFormats()]
-    new_format = Database.RaceFormat(name=uniqueName(source_format.name, all_format_names),
+    new_format = Database.RaceFormat(name=RHUtils.uniqueName(source_format.name, all_format_names),
                              race_mode=source_format.race_mode,
                              race_time_sec=source_format.race_time_sec ,
                              start_delay_min=source_format.start_delay_min,

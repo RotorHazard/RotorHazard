@@ -153,3 +153,20 @@ def catchLogExceptionsWrapper(func):
         except Exception:
             logger.exception("Exception via catchLogExceptionsWrapper")
     return wrapper
+
+# Modifies a name with a human-readable suffix (name 2, name 3, etc.)
+# guaranteed to be unique within supplied list of selections
+def uniqueName(desiredName, otherNames):
+    if desiredName in otherNames:
+        newName = desiredName
+        match = re.match('^(.*) ([0-9]*)$', desiredName)
+        if match:
+            nextInt = int(match.group(2))
+            nextInt += 1
+            newName = match.group(1) + ' ' + str(nextInt)
+        else:
+            newName = desiredName + " 2"
+        newName = uniqueName(newName, otherNames)
+        return newName
+    else:
+        return desiredName
