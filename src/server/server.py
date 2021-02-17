@@ -800,8 +800,8 @@ def on_set_frequency(data):
         data = json.loads(data)
     node_index = data['node']
     frequency = int(data['frequency'])
-    band = str(data['band']) if 'band' in data else None
-    channel = int(data['channel']) if 'channel' in data else None
+    band = str(data['band']) if 'band' in data and data['band'] != None else None
+    channel = int(data['channel']) if 'channel' in data and data['channel'] != None else None
 
     if node_index < 0 or node_index >= RACE.num_nodes:
         logger.info('Unable to set frequency ({0}) on node {1}; node index out of range'.format(frequency, node_index+1))

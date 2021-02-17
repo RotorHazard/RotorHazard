@@ -1704,17 +1704,6 @@ var freq = {
 			frequency: this.frequencies[key]
 		}
 	},
-	getFObjbyFString: function(fstring) {
-		var regex = /([A-Za-z]*)([0-9]*):([0-9]{4})/;
-		var parts = fstring.match(regex);
-		return {
-			key: "" + parts[1] + parts[2],
-			fString: fstring,
-			band: parts[1],
-			channel: parts[2],
-			frequency: parts[3]
-		}
-	},
 	findByFreq: function(frequency) {
 		if (frequency == 0) {
 			return {
