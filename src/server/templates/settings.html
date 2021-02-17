@@ -319,6 +319,11 @@
 			}
 			$('#set_profile').val(msg.current_profile);
 			$('#set_profile_name').val( msg.profile_name);
+			if (msg.profile_ids.length > 1) {
+				$('#delete_profile').show();
+			} else {
+				$('#delete_profile').hide();
+			}
 		});
 
 		$('#set_profile').change(function (event) {
@@ -738,7 +743,7 @@
 
 				var header = $('<h3>Heat ' + heats.heat_id + '</h3>')
 
-				if (!heats.locked) {
+				if (!heats.locked && Object.keys(msg.heats).length > 1) {
 					header.append('<button class="delete_heat btn-danger" data-id="' + heats.heat_id + '" title="Delete Heat ' + heats.heat_id + '">&#215;</button>');
 				}
 				el.append(header);
