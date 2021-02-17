@@ -10,7 +10,7 @@
 # name should be unique and acts as an identifier
 # label becomes visible in the UI and becomes translatable
 # formatter(data) should be used for final handling of file format
-# assembler(Database, PageCache) collects relevant data from timer
+# assembler(RHData, PageCache, Language) collects relevant data from timer
 #   before formatting.
 #
 
