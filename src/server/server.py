@@ -1478,7 +1478,7 @@ def on_alter_pilot(data):
             for heatnode in heatnodes:
                 heat = Database.Heat.query.get(heatnode.heat_id)
                 heat.cacheStatus = Results.CacheStatus.INVALID
-                if heat.class_id != Database.CLASS_ID_NONE:
+                if heat.class_id != RHUtils.CLASS_ID_NONE:
                     race_class = Database.RaceClass.query.get(heat.class_id)
                     race_class.cacheStatus = Results.CacheStatus.INVALID
                 races = Database.SavedRaceMeta.query.filter_by(heat_id=heatnode.heat_id)
@@ -2343,9 +2343,9 @@ def on_stage_race():
 
         trigger_event(Evt.RACE_STAGE)
 
-        if heat_data.class_id != Database.CLASS_ID_NONE:
+        if heat_data.class_id != RHUtils.CLASS_ID_NONE:
             class_format_id = Database.RaceClass.query.get(heat_data.class_id).format_id
-            if class_format_id != Database.FORMAT_ID_NONE:
+            if class_format_id != RHUtils.FORMAT_ID_NONE:
                 class_format = Database.RaceFormat.query.get(class_format_id)
                 setCurrentRaceFormat(class_format)
                 logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
@@ -3091,9 +3091,9 @@ def on_set_current_heat(data):
 
     heat_data = Database.Heat.query.get(new_heat_id)
 
-    if heat_data.class_id != Database.CLASS_ID_NONE:
+    if heat_data.class_id != RHUtils.CLASS_ID_NONE:
         class_format_id = Database.RaceClass.query.get(heat_data.class_id).format_id
-        if class_format_id != Database.FORMAT_ID_NONE:
+        if class_format_id != RHUtils.FORMAT_ID_NONE:
             class_format = Database.RaceFormat.query.get(class_format_id)
             setCurrentRaceFormat(class_format)
             logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
