@@ -2,8 +2,11 @@
 RotorHazard event manager
 '''
 
+import logging
 import gevent
 from monotonic import monotonic
+
+logger = logging.getLogger(__name__)
 
 class EventManager:
     processEventObj = gevent.event.Event()
@@ -31,6 +34,7 @@ class EventManager:
         return True
 
     def trigger(self, event, evtArgs=None):
+        # logger.debug('-Triggered event- {0}'.format(event))
         if event in self.events:
             for name in self.eventOrder[event] or Evt.ALL in self.eventOrder[event]:
                 handler = self.events[event][name]

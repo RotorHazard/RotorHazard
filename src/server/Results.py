@@ -66,7 +66,7 @@ def normalize_cache_status(RHData):
 
 def build_atomic_result_cache(**params):
     return {
-        'results': calc_leaderboard(Database.DB, **params),
+        'results': calc_leaderboard(**params),
         'cacheStatus': CacheStatus.VALID
     }
 
@@ -118,7 +118,7 @@ def build_atomic_results_caches(RHData, params):
         gevent.sleep()
         timing['race'] = monotonic()
         if race.cacheStatus == token:
-            raceResult = build_atomic_result_cache(Database.DB, heat_id=heat_id, round_id=round_id)
+            raceResult = build_atomic_result_cache(heat_id=heat_id, round_id=round_id)
             race.results = raceResult['results']
             race.cacheStatus = raceResult['cacheStatus']
             Database.DB.session.commit()
@@ -129,7 +129,7 @@ def build_atomic_results_caches(RHData, params):
         gevent.sleep()
         timing['heat'] = monotonic()
         if heat.cacheStatus == token:
-            heatResult = build_atomic_result_cache(Database.DB, heat_id=heat_id)
+            heatResult = build_atomic_result_cache(heat_id=heat_id)
             heat.results = heatResult['results']
             heat.cacheStatus = heatResult['cacheStatus']
             Database.DB.session.commit()
@@ -140,7 +140,7 @@ def build_atomic_results_caches(RHData, params):
         gevent.sleep()
         timing['class'] = monotonic()
         if race_class.cacheStatus == token:
-            classResult = build_atomic_result_cache(Database.DB, class_id=class_id)
+            classResult = build_atomic_result_cache(class_id=class_id)
             race_class.results = classResult['results']
             race_class.cacheStatus = classResult['cacheStatus']
             Database.DB.session.commit()
@@ -149,7 +149,7 @@ def build_atomic_results_caches(RHData, params):
     # rebuild event summary
     gevent.sleep()
     timing['event'] = monotonic()
-    RHData.set_option("eventResults", json.dumps(calc_leaderboard(Database.DB)))
+    RHData.set_option("eventResults", json.dumps(calc_leaderboard()))
     RHData.set_option("eventResults_cacheStatus", CacheStatus.VALID)
     logger.debug('Event cache built in %fs', monotonic() - timing['event'])
 

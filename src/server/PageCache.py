@@ -23,15 +23,16 @@ from flask_sqlalchemy import SQLAlchemy
 DB = SQLAlchemy()
 
 class PageCache:
-    def __init__(self, RHData):
+    def __init__(self, RHData, Events):
         self._RHData = RHData
+        self._Events = Events
         self._cache = {} # Cache of complete results page
         self._buildToken = False # Time of result generation or false if no results are being calculated
         self._valid = False # Whether cache is valid
 
     def get_cache(self):
-        logger.debug('getting cache')
         if self._valid: # Output existing calculated results
+            logger.debug('Getting results from cache')
             return self._cache
         else:
             self.update_cache()
@@ -115,7 +116,7 @@ class PageCache:
                                 'laps': laps
                             })
                         if round.cacheStatus == Results.CacheStatus.INVALID:
-                            logger.info('Heat %d Round %d cache invalid; rebuilding', heat.heat_id, round.round_id)
+                            logger.info('Rebuilding Heat %d Round %d cache', heat.heat_id, round.round_id)
                             results = Results.calc_leaderboard(heat_id=heat.heat_id, round_id=round.round_id)
                             round.results = results
                             round.cacheStatus = Results.CacheStatus.VALID
@@ -141,7 +142,7 @@ class PageCache:
                         })
 
                 if heatdata.cacheStatus == Results.CacheStatus.INVALID:
-                    logger.info('Heat %d cache invalid; rebuilding', heat.heat_id)
+                    logger.info('Rebuilding Heat %d cache', heat.heat_id)
                     results = Results.calc_leaderboard(heat_id=heat.heat_id)
                     heatdata.results = results
                     heatdata.cacheStatus = Results.CacheStatus.VALID
@@ -168,7 +169,7 @@ class PageCache:
                 }
 
             timing['round_results'] = monotonic()
-            logger.debug('T%d: round results assembled in: %fs', timing['start'], timing['round_results'] - timing['build_start'])
+            logger.debug('T%d: round results assembled in %.3fs', timing['start'], timing['round_results'] - timing['build_start'])
 
             gevent.sleep()
             heats_by_class = {}
@@ -182,7 +183,7 @@ class PageCache:
             current_classes = {}
             for race_class in self._RHData.get_raceClasses():
                 if race_class.cacheStatus == Results.CacheStatus.INVALID:
-                    logger.info('Class %d cache invalid; rebuilding', race_class.id)
+                    logger.info('Rebuilding Class %d cache', race_class.id)
                     results = Results.calc_leaderboard(class_id=race_class.id)
                     race_class.results = results
                     race_class.cacheStatus = Results.CacheStatus.VALID
@@ -209,11 +210,11 @@ class PageCache:
                 current_classes[race_class.id] = current_class
 
             timing['event'] = monotonic()
-            logger.debug('T%d: results by class assembled in: %fs', timing['start'], timing['event'] - timing['by_class'])
+            logger.debug('T%d: results by class assembled in %.3fs', timing['start'], timing['event'] - timing['by_class'])
 
             gevent.sleep()
             if self._RHData.get_option("eventResults_cacheStatus") == Results.CacheStatus.INVALID:
-                logger.info('Event cache invalid; rebuilding')
+                logger.info('Rebuilding Event cache')
                 results = Results.calc_leaderboard()
                 self._RHData.set_option("eventResults", json.dumps(results))
                 self._RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.VALID)
@@ -233,7 +234,7 @@ class PageCache:
                         break
 
             timing['event_end'] = monotonic()
-            logger.debug('T%d: event results assembled in: %fs', timing['start'], timing['event_end'] - timing['event'])
+            logger.debug('T%d: event results assembled in %.3fs', timing['start'], timing['event_end'] - timing['event'])
 
             payload = {
                 'heats': heats,
@@ -247,11 +248,11 @@ class PageCache:
 
             if error_flag:
                 logger.warning('T%d: Cache results build failed; leaving page cache invalid', timing['start'])
-                emit_priority_message(__("Results did not load completely. Please try again."), False)
-                # trigger_event(Evt.CACHE_FAIL)
+                # *** emit_priority_message(__("Results did not load completely. Please try again."), False)
+                self._Events.trigger(Evt.CACHE_FAIL)
             else:
                 self._valid = True
-                # trigger_event(Evt.CACHE_READY)
+                self._Events.trigger(Evt.CACHE_READY)
 
             logger.debug('T%d: Page cache built in: %fs', timing['start'], monotonic() - timing['build_start'])
 

@@ -4,6 +4,7 @@ RotorHazard Helper and utility functions
 
 import os
 import sys
+import re
 import logging
 import platform
 import subprocess

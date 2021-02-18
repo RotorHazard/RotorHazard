@@ -36,7 +36,14 @@ class RHData():
                     db_query = db_query.order_by(*order)
 
                 if 'return_type' in kwargs:
-                    return getattr(db_query, kwargs['return_type'])()
+                    if kwargs['return_type'] in [
+                        'all',
+                        'first',
+                        'one',
+                        'one_or_none',
+                        'count'
+                        ]:
+                        return getattr(db_query, kwargs['return_type'])()
 
                 return db_query.all()
             return wrapper
@@ -60,13 +67,18 @@ class RHData():
 
     def add_pilot(self):
         new_pilot = self._Database.Pilot(
-            name=self.Language.__('~Pilot %d Name') % (new_pilot.id),
-            callsign=self.Language.__('~Callsign %d') % (new_pilot.id),
-            team=DEF_TEAM_NAME,
+            name='',
+            callsign='',
+            team=RHUtils.DEF_TEAM_NAME,
             phonetic = '')
 
-        self._DB.session.add(new_pilot)
-        self._DB.session.commit()
+        self._Database.DB.session.add(new_pilot)
+        self._Database.DB.session.flush()
+
+        new_pilot.name=self._Language.__('~Pilot %d Name') % (new_pilot.id)
+        new_pilot.callsign=self._Language.__('~Callsign %d') % (new_pilot.id)
+
+        self._Database.DB.session.commit()
 
         self._Events.trigger(Evt.PILOT_ADD, {
             'pilot_id': new_pilot.id,
@@ -92,15 +104,14 @@ class RHData():
 
         self._RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh current leaderboard
 
-        Events.trigger(Evt.PILOT_ALTER, {
+        self._Events.trigger(Evt.PILOT_ALTER, {
             'pilot_id': pilot_id,
             })
 
         logger.info('Altered pilot {0} to {1}'.format(pilot_id, data))
 
+        race_list = []
         if 'callsign' in data or 'team_name' in data:
-            race_list = []
-
             heatnodes = self.get_heatNodes(filter_by={"pilot_id": pilot_id})
             if heatnodes:
                 for heatnode in heatnodes:
@@ -109,9 +120,10 @@ class RHData():
                     if heat.class_id != RHUtils.CLASS_ID_NONE:
                         race_class = self.get_raceClass(heat.class_id)
                         race_class.cacheStatus = Results.CacheStatus.INVALID
-                    race_list.append(self.get_savedRaceMetas(
+                    for race in self.get_savedRaceMetas(
                         filter_by={"heat_id": heatnode.heat_id}
-                        ))
+                        ):
+                        race_list.append(race)
 
             if len(race_list):
                 self._PageCache.set_valid(False)
@@ -127,8 +139,7 @@ class RHData():
     def delete_pilot(self, pilot_id):
         pilot = self.get_pilot(pilot_id)
 
-        has_race = Database.SavedPilotRace.query.filter_by(pilot_id=pilot.id).first()
-        self.get_savedRaceMetas(
+        has_race = self.get_savedPilotRaces(
             filter_by={"pilot_id": pilot.id},
             return_type='first'
             )
@@ -226,7 +237,7 @@ class RHData():
         heat = self.get_heat(heat_id)
 
         if 'note' in data:
-            _PageCache.set_valid(False)
+            self._PageCache.set_valid(False)
             heat.note = data['note']
         if 'class' in data:
             old_class_id = heat.class_id
@@ -283,15 +294,15 @@ class RHData():
 
         # update current race
         if heat_id == self._RACE.current_heat:
-            RACE.node_pilots = {}
-            RACE.node_teams = {}
+            self._RACE.node_pilots = {}
+            self._RACE.node_teams = {}
             for heatNode in self.get_heatNodes(filter_by={'heat_id': heat_id}):
-                RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
+                self._RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
                 if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
-                    RACE.node_teams[heatNode.node_index] = self.get_pilot(heatNode.pilot_id).team
+                    self._RACE.node_teams[heatNode.node_index] = self.get_pilot(heatNode.pilot_id).team
                 else:
-                    RACE.node_teams[heatNode.node_index] = None
+                    self._RACE.node_teams[heatNode.node_index] = None
             self._RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
 
         logger.info('Heat {0} altered with {1}'.format(heat_id, data))
@@ -301,8 +312,8 @@ class RHData():
     def delete_heat(self, heat_id):
         # Deletes heat. Returns True/False success
         heat_count = self.get_heats(return_type='count')
-        if heat_count > 1: # keep at least one heat
-            heat = self.get_heat(heat_id)
+        heat = self.get_heat(heat_id)
+        if heat and heat_count > 1: # keep at least one heat
             heatnodes = self.get_heatNodes(filter_by={'heat_id': heat.id})
 
             has_race = self.get_savedRaceMetas(
@@ -365,7 +376,7 @@ class RHData():
 
     def add_raceClass(self):
         # Add new race class
-        new_class = self._Database.RaceClass(
+        new_race_class = self._Database.RaceClass(
             name='',
             description='',
             format_id=RHUtils.FORMAT_ID_NONE,
@@ -380,7 +391,7 @@ class RHData():
 
         logger.info('Class added: Class {0}'.format(new_race_class))
 
-        return new_class
+        return new_race_class
 
     def duplicate_raceClass(self, source_class_id):
         source_class = self.get_raceClass(source_class_id)
@@ -415,24 +426,32 @@ class RHData():
         return new_class
 
     def alter_raceClass(self, data):
+        # alter existing classes
         race_class_id = data['class_id']
         race_class = self.get_raceClass(race_class_id)
 
+        if not race_class:
+            return False, False
+
         if 'class_name' in data:
-            self._PageCache.set_valid(False)
             race_class.name = data['class_name']
         if 'class_format' in data:
             race_class.format_id = data['class_format']
         if 'class_description' in data:
             race_class.description = data['class_description']
 
-        # alter existing classes
-        if 'class_format' in data:
-            self._PageCache.set_valid(False)
-            self.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
-            race_class.cacheStatus = Results.CacheStatus.INVALID
+        race_list = self.get_savedRaceMetas(filter_by={"class_id": race_class_id})
 
-            race_list = self.get_savedRaceMetas(filter_by={"class_id": race_class_id})
+        if 'class_name' in data:
+            if len(race_list):
+                self._PageCache.set_valid(False)
+
+        if 'class_format' in data:
+            if len(race_list):
+                self._PageCache.set_valid(False)
+                self.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+                race_class.cacheStatus = Results.CacheStatus.INVALID
+
             for race_meta in race_list:
                 race_meta.format_id = data['class_format']
                 race_meta.cacheStatus = Results.CacheStatus.INVALID
@@ -441,7 +460,7 @@ class RHData():
             for heat in heats:
                 heat.cacheStatus = Results.CacheStatus.INVALID
 
-        self._DB.session.commit()
+        self._Database.DB.session.commit()
 
         self._Events.trigger(Evt.CLASS_ALTER, {
             'class_id': race_class_id,
@@ -452,7 +471,7 @@ class RHData():
         return race_class, race_list
 
     def delete_raceClass(self, class_id):
-        race_class = RHData.get_raceClass(class_id)
+        race_class = self.get_raceClass(class_id)
 
         has_race = self.get_savedRaceMetas(
             filter_by={"class_id": race_class.id},
@@ -464,14 +483,14 @@ class RHData():
             return False
         else:
             self._Database.DB.session.delete(race_class)
-            for heat in RHData.get_heats():
+            for heat in self.get_heats():
                 if heat.class_id == race_class.id:
                     heat.class_id = RHUtils.CLASS_ID_NONE
 
             self._Database.DB.session.commit()
 
             self._Events.trigger(Evt.CLASS_DELETE, {
-                'class_id': race_class_id,
+                'class_id': race_class.id,
                 })
 
             logger.info('Class {0} deleted'.format(race_class.id))
@@ -489,18 +508,21 @@ class RHData():
     def duplicate_profile(self, source_profile_id):
         source_profile = self.get_profile(source_profile_id)
 
+        all_profile_names = [profile.name for profile in self.get_profiles()]
+
         if source_profile.name:
-            all_profile_names = [profile.name for profile in self.get_profiles()]
             new_profile_name = RHUtils.uniqueName(source_profile.name, all_profile_names)
         else:
-            new_profile_name = ''
+            new_profile_name = RHUtils.uniqueName(self._Language.__('New Profile'), all_profile_names)
 
-        new_profile = self._Database.Profiles(name=new_profile_name,
+        new_profile = self._Database.Profiles(
+            name=new_profile_name,
             description = '',
-            frequencies = profile.frequencies,
-            enter_ats = profile.enter_ats,
-            exit_ats = profile.exit_ats,
+            frequencies = source_profile.frequencies,
+            enter_ats = source_profile.enter_ats,
+            exit_ats = source_profile.exit_ats,
             f_ratio = 100)
+        self._Database.DB.session.add(new_profile)
         self._Database.DB.session.commit()
 
         self._Events.trigger(Evt.PROFILE_ADD, {
@@ -523,7 +545,7 @@ class RHData():
 
         self._Database.DB.session.commit()
 
-        Events.trigger(Evt.PROFILE_ALTER, {
+        self._Events.trigger(Evt.PROFILE_ALTER, {
             'profile_id': profile.id,
             })
 
@@ -551,14 +573,215 @@ class RHData():
     def get_raceFormat(self, raceFormat_id):
         return self._Database.RaceFormat.query.get(raceFormat_id)
 
+    def duplicate_raceFormat(self, source_format_id):
+        source_format = self.get_raceFormat(source_format_id)
+
+        all_format_names = [format.name for format in self.get_raceFormats()]
+
+        if source_format.name:
+            new_format_name = RHUtils.uniqueName(source_format.name, all_format_names)
+        else:
+            new_format_name = RHUtils.uniqueName(self._Language.__('New Format'), all_format_names)
+
+        new_format = self._Database.RaceFormat(
+            name=new_format_name,
+            race_mode=source_format.race_mode,
+            race_time_sec=source_format.race_time_sec ,
+            start_delay_min=source_format.start_delay_min,
+            start_delay_max=source_format.start_delay_max,
+            staging_tones=source_format.staging_tones,
+            number_laps_win=source_format.number_laps_win,
+            win_condition=source_format.win_condition,
+            team_racing_mode=source_format.team_racing_mode,
+            start_behavior=source_format.start_behavior)
+        self._Database.DB.session.add(new_format)
+        self._Database.DB.session.commit()
+
+        self._Events.trigger(Evt.RACE_FORMAT_ADD, {
+            'format_id': new_format.id,
+            })
+
+        return new_format
+
+    def alter_raceFormat(self, data):
+        race_format = self.get_raceFormat(data['format_id'])
+
+        # Prevent active race format change
+        if self.get_optionInt('currentFormat') == data['format_id'] and \
+            self._RACE.race_status != RaceStatus.READY:
+            logger.warning('Preventing race format alteration: race in progress')
+            return False, False
+
+        if 'format_name' in data:
+            race_format.name = data['format_name']
+        if 'race_mode' in data:
+            race_format.race_mode = data['race_mode']
+        if 'race_time' in data:
+            race_format.race_time_sec = data['race_time']
+        if 'start_delay_min' in data:
+            race_format.start_delay_min = data['start_delay_min']
+        if 'start_delay_max' in data:
+            race_format.start_delay_max = data['start_delay_max']
+        if 'staging_tones' in data:
+            race_format.staging_tones = data['staging_tones']
+        if 'number_laps_win' in data:
+            race_format.number_laps_win = data['number_laps_win']
+        if 'start_behavior' in data:
+            race_format.start_behavior = data['start_behavior']
+        if 'win_condition' in data:
+            race_format.win_condition = data['win_condition']
+        if 'team_racing_mode' in data:
+            race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
+
+        self._Database.DB.session.commit()
+
+        self._RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+
+        race_list = []
+
+        if 'win_condition' in data or 'start_behavior' in data:
+            race_list = self.get_savedRaceMetas(
+                filter_by={"format_id": race_format.id})
+
+            if len(race_list):
+                self._PageCache.set_valid(False)
+                self.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+
+                for race in race_list:
+                    race.cacheStatus = Results.CacheStatus.INVALID
+
+                classes = self.get_raceClasses(
+                    filter_by={"format_id": race_format.id})
+
+                for race_class in classes:
+                    race_class.cacheStatus = Results.CacheStatus.INVALID
+
+                    heats = self.get_heats(
+                        filter_by={"class_id": race_class.id})
+
+                    for heat in heats:
+                        heat.cacheStatus = Results.CacheStatus.INVALID
+
+                self._Database.DB.session.commit()
+
+        self._Events.trigger(Evt.RACE_FORMAT_ALTER, {
+            'race_format': race_format.id,
+            })
+
+        logger.info('Altered format {0} to {1}'.format(race_format.id, data))
+
+        return race_format, race_list
+
+    def delete_raceFormat(self, format_id):
+        # Prevent active race format change
+        if self.get_optionInt('currentFormat') == format_id and \
+            self._RACE.race_status != RaceStatus.READY:
+            logger.warning('Preventing race format deletion: race in progress')
+            return False
+
+        if self.get_savedRaceMetas(filter_by={"format_id": format_id}):
+            logger.warning('Preventing race format deletion: saved race exists')
+            return False
+
+        format_count = self.get_raceFormats(return_type='count')
+        race_format = self.get_raceFormat(format_id)
+        if race_format and format_count > 1: # keep one format
+            self._Database.DB.session.delete(race_format)
+            self._Database.DB.session.commit()
+
+            self._Events.trigger(Evt.RACE_FORMAT_DELETE, {
+                'race_format': format_id,
+                })
+
+            # *** first_raceFormat = self.get_raceFormats(return_type="first")
+            # *** self._RACE.set_raceFormat(first_raceFormat)
+
+            return True
+        else:
+            logger.info('Refusing to delete only format')
+            return False
+
     @_Decorators.getter_parameters
     def get_raceFormats(self, **kwargs):
         return self._Database.RaceFormat
 
     # Race Meta
+    def get_savedRaceMeta(self, raceMeta_id):
+        return self._Database.SavedRaceMeta.query.get(raceMeta_id)
+
     @_Decorators.getter_parameters
     def get_savedRaceMetas(self, **kwargs):
         return self._Database.SavedRaceMeta
+
+    def reassign_savedRaceMeta_heat(self, race_id, new_heat_id):
+        race_meta = self.get_savedRaceMeta(race_id)
+
+        old_heat_id = race_meta.heat_id
+        old_heat = self.get_heat(old_heat_id)
+        old_class = self.get_raceClass(old_heat.class_id)
+        old_format_id = old_class.format_id
+
+        new_heat = self.get_heat(new_heat_id)
+        new_class = self.get_raceClass(new_heat.class_id)
+        new_format_id = new_class.format_id
+
+        # clear round ids
+        heat_races = self.get_savedRaceMetas(filter_by={"heat_id": new_heat_id})
+        race_meta.round_id = 0
+        dummy_round_counter = -1
+        for race in heat_races:
+            race.round_id = dummy_round_counter
+            dummy_round_counter -= 1
+
+        # assign new heat
+        race_meta.heat_id = new_heat_id
+        race_meta.class_id = new_heat.class_id
+        race_meta.format_id = new_format_id
+
+        # renumber rounds
+        self._Database.DB.session.flush()
+        old_heat_races = self.get_savedRaceMetas(
+            filter_by={"heat_id": old_heat_id},
+            order_by={"start_time_formatted": None}
+            )
+        round_counter = 1
+        for race in old_heat_races:
+            race.round_id = round_counter
+            round_counter += 1
+
+        new_heat_races = self.get_savedRaceMetas(
+            filter_by={"heat_id": new_heat_id},
+            order_by={"start_time_formatted": None}
+            )
+        round_counter = 1
+        for race in new_heat_races:
+            race.round_id = round_counter
+            round_counter += 1
+
+        self._Database.DB.session.commit()
+
+        # cache cleaning
+        self._PageCache.set_valid(False)
+
+        new_heat.cacheStatus = Results.CacheStatus.INVALID
+        old_heat.cacheStatus = Results.CacheStatus.INVALID
+
+        if old_format_id != new_format_id:
+            race_meta.cacheStatus = Results.CacheStatus.INVALID
+
+        if old_heat.class_id != new_heat.class_id:
+            new_class.cacheStatus = Results.CacheStatus.INVALID
+            old_class.cacheStatus = Results.CacheStatus.INVALID
+
+        self._Database.DB.session.commit()
+
+        self._Events.trigger(Evt.RACE_ALTER, {
+            'race_id': race_id,
+            })
+
+        logger.info('Race {0} reaasigned to heat {1}'.format(race_id, new_heat_id))
+
+        return race_meta, new_heat
 
     # Pilot-Races
     @_Decorators.getter_parameters

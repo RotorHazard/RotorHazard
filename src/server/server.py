@@ -40,7 +40,6 @@ import io
 import os
 import sys
 import traceback
-import re
 import shutil
 import base64
 import subprocess
@@ -159,7 +158,7 @@ Settings_note_msg_text = None
 
 RACE = RHRace.RHRace() # For storing race management variables
 RHData = RHData.RHData(Database, Events, RACE) # Primary race data storage
-PageCache = PageCache.PageCache(RHData) # For storing page cache
+PageCache = PageCache.PageCache(RHData, Events) # For storing page cache
 Language = Language.Language(RHData) # initialize language
 __ = Language.__ # Shortcut to translation function
 RHData.late_init(PageCache, Language) # Give RHData additional references
@@ -1126,7 +1125,8 @@ def on_alter_race_class(data):
     '''Update race class.'''
     race_class, race_list = RHData.alter_raceClass(data)
 
-    if 'class_format' in data and len(race_list):
+    if ('class_format' in data or 'class_name' in data) and len(race_list):
+        emit_result_data() # live update rounds page
         message = __('Alterations made to race class: {0}').format(race_class.name)
         emit_priority_message(message, False)
 
@@ -1136,13 +1136,11 @@ def on_alter_race_class(data):
     if 'class_format' in data:
         emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
 
-    emit_result_data() # live update rounds page
-
 @SOCKET_IO.on('delete_class')
 @catchLogExceptionsWrapper
 def on_delete_class(data):
     '''Delete class.'''
-    result = RHData.delete_class(data['class'])
+    result = RHData.delete_raceClass(data['class'])
 
     if result:
         emit_class_data()
@@ -1188,7 +1186,7 @@ def on_delete_pilot(data):
 def on_add_profile():
     '''Adds new profile (frequency set) in the database.'''
     source_profile = getCurrentProfile()
-    new_profile RHData.duplicate_profile(source_profile.id)
+    new_profile = RHData.duplicate_profile(source_profile.id)
 
     on_set_profile(data={ 'profile': new_profile.id })
 
@@ -1273,70 +1271,9 @@ def on_set_profile(data, emit_vals=True):
 @SOCKET_IO.on('alter_race')
 @catchLogExceptionsWrapper
 def on_alter_race(data):
-    '''Update heat.'''
-    global RACE
-    race_id = int(data['race_id'])
-    race_meta = Database.SavedRaceMeta.query.get(race_id)
+    '''Update race (retroactively via marshaling).'''
 
-    old_heat_id = race_meta.heat_id
-    old_heat = RHData.get_heats(old_heat_id)
-    old_class = RHData.get_raceClass(old_heat.class_id)
-    old_format_id = old_class.format_id
-
-    new_heat_id = int(data['heat_id'])
-    new_heat = RHData.get_heat(new_heat_id)
-    new_class = RHData.get_raceClass(new_heat.class_id)
-    new_format_id = new_class.format_id
-
-    # clear round ids
-    heat_races = RHData.savedRaceMetas(filter_by={"heat_id": new_heat_id})
-    race_meta.round_id = 0
-    dummy_round_counter = -1
-    for race in heat_races:
-        race.round_id = dummy_round_counter
-        dummy_round_counter -= 1
-
-    # assign new heat
-    race_meta.heat_id = new_heat_id
-    race_meta.class_id = new_heat.class_id
-    race_meta.format_id = new_format_id
-
-    # renumber rounds
-    DB.session.flush()
-    old_heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=old_heat_id).order_by(Database.SavedRaceMeta.start_time_formatted).all()
-    round_counter = 1
-    for race in old_heat_races:
-        race.round_id = round_counter
-        round_counter += 1
-
-    new_heat_races = Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id).order_by(Database.SavedRaceMeta.start_time_formatted).all()
-    round_counter = 1
-    for race in new_heat_races:
-        race.round_id = round_counter
-        round_counter += 1
-
-    DB.session.commit()
-
-    # cache cleaning
-    PageCache.set_valid(False)
-
-    new_heat.cacheStatus = Results.CacheStatus.INVALID
-    old_heat.cacheStatus = Results.CacheStatus.INVALID
-
-    if old_format_id != new_format_id:
-        race_meta.cacheStatus = Results.CacheStatus.INVALID
-
-    if old_heat.class_id != new_heat.class_id:
-        new_class.cacheStatus = Results.CacheStatus.INVALID
-        old_class.cacheStatus = Results.CacheStatus.INVALID
-
-    DB.session.commit()
-
-    Events.trigger(Evt.RACE_ALTER, {
-        'race_id': race_id,
-        })
-
-    logger.info('Race {0} altered with {1}'.format(race_id, data))
+    race_meta, new_heat = RHData.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
     heatnote = new_heat.note
     if heatnote:
@@ -1666,25 +1603,7 @@ def on_set_race_format(data):
 def on_add_race_format():
     '''Adds new format in the database by duplicating an existing one.'''
     source_format = getCurrentRaceFormat()
-    all_format_names = [format.name for format in RHData.get_raceFormats()]
-    new_format = Database.RaceFormat(name=RHUtils.uniqueName(source_format.name, all_format_names),
-                             race_mode=source_format.race_mode,
-                             race_time_sec=source_format.race_time_sec ,
-                             start_delay_min=source_format.start_delay_min,
-                             start_delay_max=source_format.start_delay_max,
-                             staging_tones=source_format.staging_tones,
-                             number_laps_win=source_format.number_laps_win,
-                             win_condition=source_format.win_condition,
-                             team_racing_mode=source_format.team_racing_mode,
-                             start_behavior=source_format.start_behavior)
-    DB.session.add(new_format)
-    DB.session.flush()
-    DB.session.refresh(new_format)
-    DB.session.commit()
-
-    Events.trigger(Evt.RACE_FORMAT_ADD, {
-        'race_format': new_format.id,
-        })
+    new_format = RHData.duplicate_raceFormat(source_format.id)
 
     on_set_race_format(data={ 'race_format': new_format.id })
 
@@ -1692,99 +1611,40 @@ def on_add_race_format():
 @catchLogExceptionsWrapper
 def on_alter_race_format(data):
     ''' update race format '''
-    global RACE
-    if RACE.race_status == RaceStatus.READY:
-        race_format = getCurrentDbRaceFormat()
-        if race_format:
-            emit = False
-            if 'format_name' in data:
-                race_format.name = data['format_name']
-                emit = True
-            if 'race_mode' in data:
-                race_format.race_mode = data['race_mode']
-            if 'race_time' in data:
-                race_format.race_time_sec = data['race_time']
-            if 'start_delay_min' in data:
-                race_format.start_delay_min = data['start_delay_min']
-            if 'start_delay_max' in data:
-                race_format.start_delay_max = data['start_delay_max']
-            if 'staging_tones' in data:
-                race_format.staging_tones = data['staging_tones']
-            if 'number_laps_win' in data:
-                race_format.number_laps_win = data['number_laps_win']
-            if 'start_behavior' in data:
-                race_format.start_behavior = data['start_behavior']
-            if 'win_condition' in data:
-                race_format.win_condition = data['win_condition']
-            if 'team_racing_mode' in data:
-                race_format.team_racing_mode = (True if data['team_racing_mode'] else False)
-            DB.session.commit()
-            RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+    race_format = getCurrentDbRaceFormat()
+    data['format_id'] = race_format.id
+    race_format, race_list = RHData.alter_raceFormat(data)
 
-            Events.trigger(Evt.RACE_FORMAT_ALTER, {
-                'race_format': race_format.id,
-                })
+    if race_format != False:
+        setCurrentRaceFormat(race_format)
 
-            setCurrentRaceFormat(race_format)
-            logger.info('Altered race format to %s' % (data))
-            if emit:
-                emit_race_format()
-                emit_class_data()
+        if 'format_name' in data:
+            emit_race_format()
+            emit_class_data()
 
-            if Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first() is not None:
-                if 'win_condition' in data or 'start_behavior' in data:
-                    PageCache.set_valid(False)
-                    RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
-
-                    races = Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).all()
-                    for race in races:
-                        race.cacheStatus = Results.CacheStatus.INVALID
-
-                    classes = Database.RaceClass.query.filter_by(format_id=race_format.id).all()
-                    for race_class in classes:
-                        race_class.cacheStatus = Results.CacheStatus.INVALID
-
-                        heats = Database.Heat.query.filter_by(class_id=race_class.id).all()
-                        for heat in heats:
-                            heat.cacheStatus = Results.CacheStatus.INVALID
-
-                    DB.session.commit()
-                    emit_result_data()
-
-                message = __('Alterations made to race format: {0}').format(race_format.name)
-                emit_priority_message(message, False)
-
+        if len(race_list):
+            emit_result_data()
+            message = __('Alterations made to race format: {0}').format(race_format.name)
+            emit_priority_message(message, False)
     else:
         emit_priority_message(__('Format alteration prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
-        logger.warning('Preventing race format alteration: race in progress')
 
 @SOCKET_IO.on('delete_race_format')
 @catchLogExceptionsWrapper
 def on_delete_race_format():
     '''Delete profile'''
-    if RACE.race_status == RaceStatus.READY: # prevent format deletion if race running
-        raceformat = getCurrentDbRaceFormat()
-        raceformat_id = raceformat.id
-        if Database.SavedRaceMeta.query.filter_by(format_id=raceformat_id).first() is None:
-            if raceformat and (DB.session.query(Database.RaceFormat).count() > 1): # keep one format
-                DB.session.delete(raceformat)
-                DB.session.commit()
-                first_raceFormat = Database.RaceFormat.query.first()
+    raceformat = getCurrentDbRaceFormat()
+    result = RHData.delete_raceFormat(raceformat.id)
 
-                Events.trigger(Evt.RACE_FORMAT_DELETE, {
-                    'race_format': raceformat_id,
-                    })
-
-                setCurrentRaceFormat(first_raceFormat)
-                emit_race_format()
-            else:
-                logger.info('Refusing to delete only format')
-        else:
-            emit_priority_message(__('Format deletion prevented: saved race exists with this format'), False, nobroadcast=True)
-            logger.warning("Format deletion prevented by saved race")
+    if result:
+        first_raceFormat = RHData.get_raceFormats(return_type="first")
+        setCurrentRaceFormat(first_raceFormat)
+        emit_race_format()
     else:
-        emit_priority_message(__('Format deletion prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
-        logger.warning("Format deletion prevented by active race")
+        if RACE.race_status == RaceStatus.READY:
+            emit_priority_message(__('Format deletion prevented: saved race exists with this format'), False, nobroadcast=True)
+        else:
+            emit_priority_message(__('Format deletion prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
 
 @SOCKET_IO.on("set_next_heat_behavior")
 @catchLogExceptionsWrapper
@@ -2040,7 +1900,10 @@ def findBestValues(node, node_index):
 
     # get commonly used values
     heat = RHData.get_heat(RACE.current_heat)
-    pilot = Database.HeatNode.query.filter_by(heat_id=RACE.current_heat, node_index=node_index).first().pilot_id
+    pilot = RHData.get_heatNodes(
+        filter_by={"heat_id": RACE.current_heat, "node_index": node_index},
+        return_type='first'
+        ).pilot_id
     current_class = heat.class_id
 
     # test for disabled node
@@ -2052,10 +1915,19 @@ def findBestValues(node, node_index):
         }
 
     # test for same heat, same node
-    race_query = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).order_by(-Database.SavedRaceMeta.id).first()
+    race_query = RHData.get_savedRaceMetas(
+        filter_by={"heat_id": heat.id},
+        order_by={"id": "desc"},
+        return_type='first')
 
     if race_query:
-        pilotrace_query = Database.SavedPilotRace.query.filter_by(race_id=race_query.id, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
+        pilotrace_query = RHData.get_savedPilotRaces(
+            filter_by={
+                "race_id": race_query.id,
+                "pilot_id": pilot},
+            order_by={"id": "desc"},
+            return_type='first')
+
         if pilotrace_query:
             logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
             return {
@@ -2064,9 +1936,19 @@ def findBestValues(node, node_index):
             }
 
     # test for same class, same pilot, same node
-    race_query = Database.SavedRaceMeta.query.filter_by(class_id=current_class).order_by(-Database.SavedRaceMeta.id).first()
+    race_query = RHData.get_savedRaceMetas(
+        filter_by={"class_id": current_class},
+        order_by={"id": "desc"},
+        return_type='first')
     if race_query:
-        pilotrace_query = Database.SavedPilotRace.query.filter_by(race_id=race_query.id, node_index=node_index, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
+        pilotrace_query = RHData.get_savedPilotRaces(
+            filter_by={
+                "race_id": race_query.id,
+                "node_index": node_index,
+                "pilot_id": pilot},
+            order_by={"id", "desc"},
+            return_type='first')
+
         if pilotrace_query:
             logger.debug('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
             return {
@@ -2075,7 +1957,12 @@ def findBestValues(node, node_index):
             }
 
     # test for same pilot, same node
-    pilotrace_query = Database.SavedPilotRace.query.filter_by(node_index=node_index, pilot_id=pilot).order_by(-Database.SavedPilotRace.id).first()
+    pilotrace_query = RHData.get_savedPilotRaces(
+        filter_by={
+            "node_index": node_index,
+            "pilot_id": pilot},
+        order_by={"id", "desc"},
+        return_type='first')
     if pilotrace_query:
         logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
         return {
@@ -2084,7 +1971,10 @@ def findBestValues(node, node_index):
         }
 
     # test for same node
-    pilotrace_query = Database.SavedPilotRace.query.filter_by(node_index=node_index).order_by(-Database.SavedPilotRace.id).first()
+    pilotrace_query = RHData.get_savedPilotRaces(
+        filter_by={"node_index": node_index},
+        order_by={"id", "desc"},
+        return_type='first')
     if pilotrace_query:
         logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
         return {
@@ -2362,7 +2252,7 @@ def on_resave_laps(data):
     enter_at = data['enter_at']
     exit_at = data['exit_at']
 
-    Pilotrace = Database.SavedPilotRace.query.filter_by(id=pilotrace_id).one()
+    Pilotrace = RHData.get_savedPilotRaces(filter_by={"id": pilotrace_id}, return_type='one')
     Pilotrace.enter_at = enter_at
     Pilotrace.exit_at = exit_at
 
@@ -2546,7 +2436,7 @@ def generate_heats(data):
             entry = {}
             entry['pilot_id'] = pilot.id
 
-            pilot_node = Database.HeatNode.query.filter_by(pilot_id=pilot.id).first()
+            pilot_node = RHData.get_heatNodes(filter_by={"pilot_id": pilot.id}, return_type='first')
             if pilot_node:
                 entry['node'] = pilot_node.node_index
             else:
@@ -2699,7 +2589,11 @@ def on_delete_lap(data):
         db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'])
 
     try:  # delete any split laps for deleted lap
-        lap_splits = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=lap_number).all()
+        lap_splits = RHData.get_lapSplits(
+            filter_by={
+                "node_index": node_index,
+                "lap_id": lap_number
+            })
         if lap_splits and len(lap_splits) > 0:
             for lap_split in lap_splits:
                 DB.session.delete(lap_split)
@@ -3008,8 +2902,8 @@ def emit_node_tuning(**params):
     '''Emits node tuning values.'''
     tune_val = getCurrentProfile()
     emit_payload = {
-        'profile_ids': [profile.id for profile in Database.Profiles.query.all()],
-        'profile_names': [profile.name for profile in Database.Profiles.query.all()],
+        'profile_ids': [profile.id for profile in RHData.get_profiles()],
+        'profile_names': [profile.name for profile in RHData.get_profiles()],
         'current_profile': RHData.get_optionInt('currentProfile'),
         'profile_name': tune_val.name,
         'profile_description': tune_val.description
@@ -3055,7 +2949,9 @@ def emit_race_format(**params):
     '''Emits race format values.'''
     race_format = getCurrentRaceFormat()
     is_db_race_format = RHRaceFormat.isDbBased(race_format)
-    has_race = not is_db_race_format or Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first()
+    has_race = not is_db_race_format or RHData.get_savedRaceMetas(
+        filter_by={"format_id": race_format.id},
+        return_type='first')
     if has_race:
         locked = True
     else:
@@ -3101,7 +2997,9 @@ def emit_race_formats(**params):
             'team_racing_mode': 1 if race_format.team_racing_mode else 0,
         }
 
-        has_race = Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).first()
+        has_race = RHData.get_savedRaceMetas(
+            filter_by={"format_id": race_format.id},
+            return_type='first')
 
         if has_race:
             format_copy['locked'] = True
@@ -3175,7 +3073,12 @@ def get_splits(node, lap_id, lapCompleted):
     splits = []
     for secondary_index in range(len(CLUSTER.secondaries)):
         if CLUSTER.isSplitSecondaryAvailable(secondary_index):
-            split = Database.LapSplit.query.filter_by(node_index=node,lap_id=lap_id,split_id=secondary_index).one_or_none()
+            split = RHData.get_lapSplits(filter_by={
+                "node_index": node_index,
+                "lap_id": lap_id,
+                "split_id": secondary_index
+                },
+                return_type='one_or_none')
             if split:
                 split_payload = {
                     'split_id': secondary_index,
@@ -3204,7 +3107,9 @@ def emit_race_list(**params):
             pilotraces = []
             for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
                 laps = []
-                for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).order_by(Database.SavedRaceLap.lap_time_stamp).all():
+                for lap in RHData.get_savedRaceLaps(
+                    filter_by={"pilotrace_id": pilotrace.id},
+                    order_by={"lap_time_stamp": None}):
                     laps.append({
                             'id': lap.id,
                             'lap_time_stamp': lap.lap_time_stamp,
@@ -3214,7 +3119,9 @@ def emit_race_list(**params):
                             'deleted': lap.deleted
                         })
 
-                pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
+                pilot_data = RHData.get_pilots(
+                    filter_by={"id": pilotrace.pilot_id},
+                    return_type='first')
                 if pilot_data:
                     nodepilot = pilot_data.callsign
                 else:
@@ -3340,7 +3247,9 @@ def emit_heat_data(**params):
         for heatnode in heatnodes:
             pilots.append(heatnode.pilot_id)
 
-        has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
+        has_race = RHData.get_savedRaceMetas(
+            filter_by={'heat_id': heat.id},
+            return_type="first")
 
         if has_race:
             locked = True
@@ -3397,7 +3306,9 @@ def emit_class_data(**params):
         current_class['description'] = race_class.description
         current_class['format'] = race_class.format_id
 
-        has_race = Database.SavedRaceMeta.query.filter_by(class_id=race_class.id).all()
+        has_race = RHData.get_savedRaceMetas(
+            filter_by={"class_id": race_class.id})
+
         if has_race:
             current_class['locked'] = True
         else:
@@ -3434,7 +3345,9 @@ def emit_pilot_data(**params):
                 opts_str += ' selected'
             opts_str += '>' + name + '</option>'
 
-        has_race = Database.SavedPilotRace.query.filter_by(pilot_id=pilot.id).first()
+        has_race = RHData.get_savedPilotRaces(
+            filter_by={"pilot_id": pilot.id},
+            return_type='first')
 
         if has_race:
             locked = True
@@ -3944,8 +3857,12 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                 lap_timestamp_absolute < RACE.end_time):
 
             # Get the current pilot id on the node
-            pilot_id = Database.HeatNode.query.filter_by( \
-                heat_id=RACE.current_heat, node_index=node.index).one().pilot_id
+            pilot_id = RHData.get_heatNodes(
+                filter_by={
+                    "heat_id": RACE.current_heat,
+                    "node_index": node.index
+                },
+                return_type='one').pilot_id
 
             # reject passes before race start and with disabled (no-pilot) nodes
             if pilot_id != RHUtils.PILOT_ID_NONE:
@@ -4809,11 +4726,17 @@ def recover_database(dbfile, **kwargs):
 
 def expand_heats():
     ''' ensure loaded data includes enough slots for current nodes '''
-    for heat_ids in RHData.get_heats():
+    for heat in RHData.get_heats():
         for node in range(RACE.num_nodes):
-            heat_row = Database.HeatNode.query.filter_by(heat_id=heat_ids.id, node_index=node)
-            if not heat_row.count():
-                DB.session.add(Database.HeatNode(heat_id=heat_ids.id, node_index=node, pilot_id=RHUtils.PILOT_ID_NONE))
+            heat_row_count = RHData.get_heatNodes(
+                filter_by={
+                    "heat_id": heat.id,
+                    "node_index": node
+                },
+                return_type='count')
+
+            if not heat_row_count:
+                DB.session.add(Database.HeatNode(heat_id=heat.id, node_index=node, pilot_id=RHUtils.PILOT_ID_NONE))
 
     DB.session.commit()
 
@@ -4825,8 +4748,9 @@ def init_race_state():
     on_set_profile({'profile': current_profile}, False)
 
     # Set current heat
-    if Database.Heat.query.first():
-        RACE.current_heat = Database.Heat.query.first().id
+    first_heat = RHData.get_heats(return_type="first")
+    if RHData.get_heats(return_type="first"):
+        RACE.current_heat = first_heat.id
         RACE.node_pilots = {}
         RACE.node_teams = {}
         for heatNode in RHData.get_heatNodes(filter_by={'heat_id': RACE.current_heat}):
@@ -5148,13 +5072,13 @@ if not db_inited_flag:
         if RHData.get_optionInt('server_api') < SERVER_API:
             logger.info('Old server API version; recovering database')
             recover_database(DB_FILE_NAME, startup=True)
-        elif not Database.Heat.query.count():
+        elif not RHData.get_heats(return_type='count'):
             logger.info('Heats are empty; recovering database')
             recover_database(DB_FILE_NAME, startup=True)
-        elif not Database.Profiles.query.count():
+        elif not RHData.get_profiles(return_type='count'):
             logger.info('Profiles are empty; recovering database')
             recover_database(DB_FILE_NAME, startup=True)
-        elif not Database.RaceFormat.query.count():
+        elif not RHData.get_raceFormats(return_type='count'):
             logger.info('Formats are empty; recovering database')
             recover_database(DB_FILE_NAME, startup=True)
     except Exception as ex:
