@@ -517,7 +517,7 @@ def calc_leaderboard(DB, **params):
         )))
 
         # determine ranking
-        last_rank = '-'
+        last_rank = None
         last_rank_laps = 0
         last_rank_time = 0
         for i, row in enumerate(leaderboard_by_race_time, start=1):
@@ -538,7 +538,7 @@ def calc_leaderboard(DB, **params):
         )))
 
         # determine ranking
-        last_rank = '-'
+        last_rank = None
         last_rank_laps = 0
         last_rank_time = 0
         for i, row in enumerate(leaderboard_by_race_time, start=1):
@@ -560,7 +560,7 @@ def calc_leaderboard(DB, **params):
     )))
 
     # determine ranking
-    last_rank = '-'
+    last_rank = None
     last_rank_fastest_lap = 0
     for i, row in enumerate(leaderboard_by_fastest_lap, start=1):
         pos = i
@@ -580,7 +580,7 @@ def calc_leaderboard(DB, **params):
     )))
 
     # determine ranking
-    last_rank = '-'
+    last_rank = None
     last_rank_laps = 0
     last_rank_time = 0
     last_rank_consecutive = 0
@@ -716,7 +716,7 @@ def calc_team_leaderboard(RACE):
         )))
 
         # determine ranking
-        last_rank = '-'
+        last_rank = None
         last_rank_laps = 0
         last_rank_time = 0
         for i, row in enumerate(leaderboard_by_race_time, start=1):
@@ -736,7 +736,7 @@ def calc_team_leaderboard(RACE):
         )))
 
         # determine ranking
-        last_rank = '-'
+        last_rank = None
         last_rank_contribution_amt = 0
         last_rank_fastest_lap = 0
         for i, row in enumerate(leaderboard_by_fastest_lap, start=1):
@@ -756,7 +756,7 @@ def calc_team_leaderboard(RACE):
         )))
 
         # determine ranking
-        last_rank = '-'
+        last_rank = None
         last_rank_contribution_amt = 0
         last_rank_laps = 0
         last_rank_time = 0
@@ -900,7 +900,7 @@ def get_lap_info(RACE, seat_index):
     # Current pilot
     lap_info['current'] = {
         'seat': int(seat_index),
-        'position': str(result['position']),
+        'position': int(result['position']),
         'callsign': str(result['callsign']),
         'lap_number': None,
         'last_lap_time': None,
@@ -927,7 +927,7 @@ def get_lap_info(RACE, seat_index):
     if next_rank_split:
         lap_info['next_rank'] = {
             'seat': int(next_rank_split_result['node']),
-            'position': str(next_rank_split_result['position']),
+            'position': None,
             'callsign': str(next_rank_split_result['callsign']),
             'split_time': int(round(next_rank_split, 0 )),
             'lap_number': next_rank_split_result['laps'],
@@ -935,8 +935,13 @@ def get_lap_info(RACE, seat_index):
             'total_time': int(round(next_rank_split_result['total_time_raw'], 0)),
         }
 
-        if next_rank_split_result['laps'] < 1:
-            lap_info['next_rank']['last_lap_time'] = int(round(next_rank_split_result['total_time_raw'], 0))
+        if next_rank_split_result['position']:
+            lap_info['next_rank']['position'] = int(next_rank_split_result['position'])
+
+            if next_rank_split_result['laps'] == 1:
+                lap_info['next_rank']['last_lap_time'] = int(round(next_rank_split_result['total_time_raw'], 0))
+            elif next_rank_split_result['laps'] > 1:
+                lap_info['next_rank']['last_lap_time'] = int(round(next_rank_split_result['last_lap_raw'], 0))
 
     # Race Leader
     lap_info['first_rank'] = None
@@ -944,7 +949,7 @@ def get_lap_info(RACE, seat_index):
     if first_rank_split:
         lap_info['first_rank'] = {
             'seat': int(first_rank_split_result['node']),
-            'position': str(first_rank_split_result['position']),
+            'position': None,
             'callsign': str(first_rank_split_result['callsign']),
             'split_time': int(round(first_rank_split, 0)),
             'lap_number': first_rank_split_result['laps'],
@@ -952,8 +957,13 @@ def get_lap_info(RACE, seat_index):
             'total_time': int(round(first_rank_split_result['total_time_raw'], 0)),
         }
 
-        if next_rank_split_result['laps'] < 1:
-            lap_info['first_rank']['last_lap_time'] = int(round(first_rank_split_result['total_time_raw'], 0))
+        if first_rank_split_result['position']:
+            lap_info['first_rank']['position'] = int(first_rank_split_result['position'])
+
+            if first_rank_split_result['laps'] == 1:
+                lap_info['first_rank']['last_lap_time'] = int(round(first_rank_split_result['total_time_raw'], 0))
+            elif first_rank_split_result['laps'] > 1:
+                lap_info['first_rank']['last_lap_time'] = int(round(first_rank_split_result['last_lap_raw'], 0))
 
     return lap_info
 

@@ -231,16 +231,21 @@ class VRxController:
         LAP_HEADER = Options.get('osd_lapHeader', 'L')
         POS_HEADER = Options.get('osd_positionHeader', '')
         BEST_LAP_TEXT = __('Best Lap')
-        HOLSESHOT_TEXT = __('HS')
+        HOLESHOT_TEXT = __('HS')
 
         # "Pos-Callsign L[n]|0:00:00"
-        message = POS_HEADER + lap_info['current']['position'] + '-' + \
+        if lap_info['current']['position'] == None:
+            lap_info['current']['position'] = '-'
+
+        message = POS_HEADER + str(lap_info['current']['position']) + '-' + \
             lap_info['current']['callsign'][:10] + ' '
 
-        if lap_info['current']['lap_number'] >= 1:
-            message += LAP_HEADER
+        if lap_info['current']['lap_number'] == 0:
+            message += HOLESHOT_TEXT
+        elif lap_info['current']['lap_number'] >= 1:
+            message += LAP_HEADER + str(lap_info['current']['lap_number'])
 
-        message += str(lap_info['current']['lap_number']) + '|' + \
+        message += '|' + \
             RHUtils.time_format(lap_info['current']['last_lap_time'])
 
         if lap_info['race']['win_condition'] == WinCondition.FASTEST_3_CONSECUTIVE:
@@ -289,12 +294,14 @@ class VRxController:
                     # update pilot ahead with split-behind
 
                     # "Pos-Callsign L[n]|0:00:00"
-                    message = POS_HEADER + lap_info['next_rank']['position'] + '-' + lap_info['next_rank']['callsign'][:10] + ' '
+                    message = POS_HEADER + str(lap_info['next_rank']['position']) + '-' + lap_info['next_rank']['callsign'][:10] + ' '
 
-                    if lap_info['next_rank']['lap_number'] >= 1:
-                        message += LAP_HEADER
+                    if lap_info['next_rank']['lap_number'] == 0:
+                        message += HOLESHOT_TEXT
+                    elif lap_info['next_rank']['lap_number'] >= 1:
+                        message += LAP_HEADER + str(lap_info['next_rank']['lap_number'])
 
-                    message += str(lap_info['next_rank']['lap_number']) + '|' + RHUtils.time_format(lap_info['next_rank']['last_lap_time'])
+                    message += '|' + RHUtils.time_format(lap_info['next_rank']['last_lap_time'])
 
                     # "Pos-Callsign L[n]|0:00:00 / -0:00.000 Callsign"
                     message += ' / -' + RHUtils.time_format(lap_info['next_rank']['split_time']) + ' ' + lap_info['current']['callsign'][:10]
