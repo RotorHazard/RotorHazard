@@ -83,9 +83,9 @@ class VRxController:
         self.Events.on(Evt.RACE_START, 'VRx', self.do_race_start, {}, 75)
         self.Events.on(Evt.RACE_FINISH, 'VRx', self.do_race_finish)
         self.Events.on(Evt.RACE_STOP, 'VRx', self.do_race_stop)
-        self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.do_lap_recorded, {}, 200, True)
+        self.Events.on(Evt.RACE_LAP_RECORDED, 'VRx', self.do_lap_recorded_json, {}, 200, True)
         self.Events.on(Evt.LAPS_CLEAR, 'VRx', self.do_laps_clear)
-        self.Events.on(Evt.LAP_DELETE, 'VRx', self.do_lap_recorded)
+        self.Events.on(Evt.LAP_DELETE, 'VRx', self.do_lap_delete_json, {}, 200, True)
         self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200, True)
         self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.do_send_message)
 
@@ -181,8 +181,26 @@ class VRxController:
     def do_lap_recorded_json(self, args):
         """
         Records a lap using the json interface for all the lap objects
+
+        Note: The lap recorded event doesn't occur if the lap is below the min lap time, or there are no pilots, or no heats
         """
-        pass
+
+        try:
+            VL = VRxLap(args)
+        except ValueError as v:
+            self.logger.error(v)
+            return
+
+        print(VL._seat_index)
+
+
+        # fastest lap && 3 consecutive are the most different
+    def do_lap_delete_json(self, args):
+        """
+
+        """
+        self.logger.warning("Called untested do_lap_delete_json")
+        self.do_lap_recorded_json(args)
 
     def do_lap_recorded(self, args):
         '''
@@ -852,6 +870,68 @@ class VRxBroadcastSeat(BaseVRxSeat):
         report_req = json.dumps({"lock":"?"})
         self._mqttc.publish(topic,report_req)
         return report_req
+
+class VRxLap:
+    s_seat_index = "node_index"
+    s_lap_info = "lap_info"
+    s_racelap_info = "race"
+    s_wincondition = "win_condition"
+
+    s_current = "current"
+    # current lap data strings
+    class s_Current:
+        """https://github.com/RotorHazard/RotorHazard/wiki/Specification:-Realtime-lap-information#current-current-lap-data-object"""
+        position = "position"
+        lap_number = "lap_number"
+        last_lap_time = "last_lap_time"
+        total_time = "total_time"
+        total_time_laps = "total_time_laps"
+        consecutives = "consecutives"
+        is_best_lap = "is_best_lap"
+
+    class Current:
+        "Holds current lap data"
+        pass
+
+    def __init__(self, args):
+
+        try:
+            self._seat_index = args[self.s_seat_index]
+        except KeyError:
+            raise KeyError("%s not found in args"%(self.s_seat_index))
+
+        try:
+            wc = args[self.s_lap_info][self.s_racelap_info][self.s_wincondition]
+            self._win_condition = wc
+        except KeyError:
+            raise KeyError("[%s][%s][%s] not found in args"%(
+                            self.s_lap_info,
+                            self.s_racelap_info,
+                            self.s_wincondition
+                            ))
+
+        # Lap info is in the data, and current should always be
+        lap_info = args[self.s_lap_info]
+        cur = lap_info[self.s_current]
+
+        self.parse_cur(cur)
+
+        # TODO we don't get Options.osd_lapHeader or osd_positionHeader because the receiver already has them
+        # However, if that updates in the UI, there needs to be an event for it
+        # vrx_options or something
+        # really, its a config just like camera, and is dependent on the pilot
+
+        # We can ignore callsign
+        position = cur[""]
+
+    def parse_cur(self, cur):
+        c = self.Current
+        c.position = int(cur[self.s_Current.position])
+        c.lap_number = int(cur[self.s_Current.lap_number])
+        c.last_lap_time = int(cur[self.s_Current.last_lap_time])
+        c.total_time = int(cur[self.s_Current.total_time])
+
+
 
 def main():
     # vrxc = VRxController("192.168.0.110",
