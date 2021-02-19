@@ -99,7 +99,7 @@
 
 					pilot_data = leaderboard[i];
 
-					$('#position').html(pilot_data.position);
+					$('#position').html(pilot_data.position != null ? pilot_data.position : '-');
 					$('#callsign').html(pilot_data.callsign);
 					// $('#last_lap').html(pilot_data.last_lap ? pilot_data.last_lap : '0:00.000');
 					// $('#team_name').html(pilot_data.team_name);

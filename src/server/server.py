@@ -4609,6 +4609,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                         trigger_event(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
+                            'lap_info': Results.get_lap_info(RACE, node.index)
                             })
 
                         logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
@@ -5213,8 +5214,6 @@ def recover_database(dbfile, **kwargs):
             "colorNode_5",
             "colorNode_6",
             "colorNode_7",
-            "osd_lapHeader",
-            "osd_positionHeader",
             "startThreshLowerAmount",
             "startThreshLowerDuration",
             "nextHeatBehavior"
