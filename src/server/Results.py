@@ -808,6 +808,54 @@ def calc_team_leaderboard(RACE):
         return leaderboard_output
     return None
 
+class LapInfo():
+    class race:
+        win_condition = None
+
+    class current:
+        seat = None
+        position = None
+        callsign = None
+        lap_number = None
+        last_lap_time = None
+        total_time = None
+        total_time_laps = None
+        consecutives = None
+        is_best_lap = None
+
+    class next_rank:
+        seat = None
+        position = None
+        callsign = None
+        lap_number = None
+        last_lap_time = None
+        total_time = None
+
+    class first_rank:
+        seat = None
+        position = None
+        callsign = None
+        lap_number = None
+        last_lap_time = None
+        total_time = None
+
+    def __init__(self):
+        self.race = self.race()
+        self.current = self.current()
+        self.next_rank = self.next_rank()
+        self.first_rank = self.first_rank()
+
+    def toJSON(self):
+        return {
+            'race': json.dumps(self.race, default=lambda o: o.__dict__),
+            'current': json.dumps(self.current, default=lambda o: o.__dict__),
+            'next_rank': json.dumps(self.next_rank, default=lambda o: o.__dict__),
+            'first_rank': json.dumps(self.first_rank, default=lambda o: o.__dict__)
+        }
+
+    def __repr__(self):
+        return json.dumps(self.toJSON())
+
 def get_lap_info(RACE, seat_index):
     ''' Assembles current lap information for OSD '''
     # Ensure race result cache is valid before calling
@@ -885,85 +933,68 @@ def get_lap_info(RACE, seat_index):
     Set up output objects
     '''
 
-    lap_info = {
-        'race': {},
-        'current': {},
-        'next_rank': {},
-        'first_rank': {},
-    }
+    lap_info = LapInfo()
 
     # Race
-    lap_info['race'] = {
-        'win_condition': win_condition
-    }
+    lap_info.race.win_condition = win_condition
 
     # Current pilot
-    lap_info['current'] = {
-        'seat': int(seat_index),
-        'position': int(result['position']),
-        'callsign': str(result['callsign']),
-        'lap_number': None,
-        'last_lap_time': None,
-        'total_time': int(round(result['total_time_raw'], 0)),
-        'total_time_laps': int(round(result['total_time_laps_raw'], 0)),
-        'consecutives': None,
-        'is_best_lap': bool(is_best_lap),
-    }
+    lap_info.current.seat = int(seat_index),
+    lap_info.current.position = int(result['position']),
+    lap_info.current.callsign = str(result['callsign']),
+    lap_info.current.lap_number = None,
+    lap_info.current.last_lap_time = None,
+    lap_info.current.total_time = int(round(result['total_time_raw'], 0)),
+    lap_info.current.total_time_laps = int(round(result['total_time_laps_raw'], 0)),
+    lap_info.current.consecutives = None,
+    lap_info.current.is_best_lap = bool(is_best_lap),
 
     if result['laps']:
-        lap_info['current']['lap_number'] = result['laps']
-        lap_info['current']['last_lap_time'] = int(round(result['last_lap_raw'], 0))
+        lap_info.current.lap_number = result['laps']
+        lap_info.current.last_lap_time = int(round(result['last_lap_raw'], 0))
     else:
-        lap_info['current']['lap_number'] = 0
-        lap_info['current']['last_lap_time'] = int(round(result['total_time_raw'], 0))
-        lap_info['current']['is_best_lap'] = False
+        lap_info.current.lap_number = 0
+        lap_info.current.last_lap_time = int(round(result['total_time_raw'], 0))
+        lap_info.current.is_best_lap = False
 
     if result['consecutives']:
-        lap_info['current']['consecutives'] = int(round(result['consecutives_raw'], 0))
+        lap_info.current.consecutives = int(round(result['consecutives_raw'], 0))
 
     # Next faster pilot
-    lap_info['next_rank'] = None
-
     if next_rank_split:
-        lap_info['next_rank'] = {
-            'seat': int(next_rank_split_result['node']),
-            'position': None,
-            'callsign': str(next_rank_split_result['callsign']),
-            'split_time': int(round(next_rank_split, 0 )),
-            'lap_number': next_rank_split_result['laps'],
-            'last_lap_time': None,
-            'total_time': int(round(next_rank_split_result['total_time_raw'], 0)),
-        }
+        lap_info.next_rank.seat = int(next_rank_split_result['node']),
+        lap_info.next_rank.position = None,
+        lap_info.next_rank.callsign = str(next_rank_split_result['callsign']),
+        lap_info.next_rank.split_time = int(round(next_rank_split, 0 )),
+        lap_info.next_rank.lap_number = next_rank_split_result['laps'],
+        lap_info.next_rank.last_lap_time = None,
+        lap_info.next_rank.total_time = int(round(next_rank_split_result['total_time_raw'], 0)),
 
         if next_rank_split_result['position']:
-            lap_info['next_rank']['position'] = int(next_rank_split_result['position'])
+            lap_info.next_rank.position = int(next_rank_split_result['position'])
 
             if next_rank_split_result['laps'] == 1:
-                lap_info['next_rank']['last_lap_time'] = int(round(next_rank_split_result['total_time_raw'], 0))
+                lap_info.next_rank.last_lap_time = int(round(next_rank_split_result['total_time_raw'], 0))
             elif next_rank_split_result['laps'] > 1:
-                lap_info['next_rank']['last_lap_time'] = int(round(next_rank_split_result['last_lap_raw'], 0))
+                lap_info.next_rank.last_lap_time = int(round(next_rank_split_result['last_lap_raw'], 0))
 
     # Race Leader
-    lap_info['first_rank'] = None
-
     if first_rank_split:
-        lap_info['first_rank'] = {
-            'seat': int(first_rank_split_result['node']),
-            'position': None,
-            'callsign': str(first_rank_split_result['callsign']),
-            'split_time': int(round(first_rank_split, 0)),
-            'lap_number': first_rank_split_result['laps'],
-            'last_lap_time': None,
-            'total_time': int(round(first_rank_split_result['total_time_raw'], 0)),
-        }
+        lap_info.first_rank.seat = int(first_rank_split_result['node']),
+        lap_info.first_rank.position = None,
+        lap_info.first_rank.callsign = str(first_rank_split_result['callsign']),
+        lap_info.first_rank.split_time = int(round(first_rank_split, 0)),
+        lap_info.first_rank.lap_number = first_rank_split_result['laps'],
+        lap_info.first_rank.last_lap_time = None,
+        lap_info.first_rank.total_time = int(round(first_rank_split_result['total_time_raw'], 0)),
 
         if first_rank_split_result['position']:
-            lap_info['first_rank']['position'] = int(first_rank_split_result['position'])
+            lap_info.first_rank.position = int(first_rank_split_result['position'])
 
             if first_rank_split_result['laps'] == 1:
-                lap_info['first_rank']['last_lap_time'] = int(round(first_rank_split_result['total_time_raw'], 0))
+                lap_info.first_rank.last_lap_time = int(round(first_rank_split_result['total_time_raw'], 0))
             elif first_rank_split_result['laps'] > 1:
-                lap_info['first_rank']['last_lap_time'] = int(round(first_rank_split_result['last_lap_raw'], 0))
+                lap_info.first_rank.last_lap_time = int(round(first_rank_split_result['last_lap_raw'], 0))
 
     return lap_info
 
