@@ -1,5 +1,5 @@
 #include "config.h"
-#if STM32_MODE_FLAG && !defined(__TEST__)
+#if STM32_MODE_FLAG
 #include "stm32_hardware.h"
 
 Stm32Hardware defaultHardware;
