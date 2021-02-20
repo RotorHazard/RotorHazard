@@ -28,9 +28,9 @@
 #define FILTER_IMPL FILTER_MEDIAN
 
 #define PEAK_SENDBUFFER_SINGLE SinglePeakSendBuffer
-#define PEAK_SENDBUFFER_MULTI MultiSendBuffer<Extremum,10>
+#define PEAK_SENDBUFFER_MULTI MultiPeakSendBuffer<10>
 #define NADIR_SENDBUFFER_SINGLE SingleNadirSendBuffer
-#define NADIR_SENDBUFFER_MULTI MultiSendBuffer<Extremum,10>
+#define NADIR_SENDBUFFER_MULTI MultiNadirSendBuffer<10>
 
 //select the send buffer to use here
 #define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_MULTI
@@ -91,15 +91,15 @@ private:
 #ifdef __TEST__
 public:
 #endif
-    SendBuffer<Extremum> *peakSend = nullptr;
-    SendBuffer<Extremum> *nadirSend = nullptr;
+    ExtremumSendBuffer *peakSend = nullptr;
+    ExtremumSendBuffer *nadirSend = nullptr;
     int8_t prevRssiChange = 0; // >0 for raising, <0 for falling
 public:
     Extremum peak = {0, 0, 0};
     Extremum nadir = {MAX_RSSI, 0, 0};
 
     History();
-    void setSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir);
+    void setSendBuffers(ExtremumSendBuffer *peak, ExtremumSendBuffer *nadir);
     inline void startNewPeak(rssi_t rssi, mtime_t ts);
     inline void startNewNadir(rssi_t rssi, mtime_t ts);
     void bufferPeak() {bufferPeak(false);};
