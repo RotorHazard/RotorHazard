@@ -16,3 +16,4 @@ pyserial==3.4.*
 paho-mqtt==1.5.*
 websocket-client==0.57.*
 requests==2.25.*
+cffi==1.14.*
