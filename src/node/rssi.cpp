@@ -295,7 +295,7 @@ void History::recordRssiChange(int delta)
 
 bool History::canSendPeakNext()
 {
-  return peakSend->isEmpty() && (nadirSend->isEmpty() || (peakSend->first().firstTime < nadirSend->first().firstTime));
+  return !peakSend->isEmpty() && (nadirSend->isEmpty() || (peakSend->first().firstTime < nadirSend->first().firstTime));
 }
 
 bool History::canSendNadirNext()
