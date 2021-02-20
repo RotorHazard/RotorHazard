@@ -1,16 +1,16 @@
-# RotorHazard 6 Node STM32 module
+# RotorHazard 6 Node STM32
 
-![RH_6_node_STM32_intro_img](img/RH_6_node_STM32_intro_img.png)
+![RH_6_node_STM32_intro_img](img/RH_6_node_STM32_intro_img.jpg)
 
 ## Features
 
 * Supports 1 to 6 RX5808 nodes
-* Board size is 97mmx87mm, with cutouts for an XT60 & Raspberry Pi connectors
+* Board size is 97mmx87mm, with cut-outs for an XT60 & Raspberry Pi connectors
 * The Raspberry Pi plugs directly into the PCB in a raspberry Pi 'hat' style, to keep things compact
 * Instead of multiple Arduinos, the board uses a single STM32 processor on a 40 pin module, mounted on the PCB
 * The STM32 firmware can be updated via the RotorHazard web GUI using the 'Update Nodes' button (in the 'System' section on the 'Settings' page)
 * The same server and node source code supports both the 6 node STM32 and the (existing) multi-Arduino boards
-* Supports power/battery monitoring and a buzzer (low-battery alarm)
+* Supports power / battery monitoring and a buzzer (low-battery alarm)
 * INA219 (Current sense IC) & DS3231 (Real Time Clock) + RTC battery can be mounted directly to the PCB
 * Connector pads for LED-strips & dedicated regulator
 * Fans can be automatically switched on based on raspberry pi temperature.
@@ -18,10 +18,10 @@
 PCB build instructions can be found [here](BoardBuild.md)
 
 PCB:<br>
-![RH6_Node_PCB_Both](img/RH6_Node_PCB_Both.png)
+![RH6_Node_PCB_Both](img/RH6_Node_PCB_Both.jpg)
 
 ## Cost
-The cost of the required part is approximately £74 (~102.60 USD)
+The cost of the required parts is approximately £74 (~102.60 USD)
 
 For each node add £6, so all 6 nodes would add £36 (~49.90 USD)
 
@@ -29,7 +29,7 @@ All the optional parts add approximately £23 (~31.90 USD)
 
 To fit all parts to the board will cost approximately £133 (~184.40 USD)
 
-Note: The above costs include the raspberry pi 3 + SD card, it may be possible to find the parts cheaper from other suppliers
+Note: The above costs includes the raspberry pi 3b + SD card. Mouser & Banggood were used in the above costings, parts may be cheaper from other suppliers
 
 ## Bill of Materials (BOM)
 The PDF version of the BOM can be found [here](RotorHazard_6_Node_Timer_BOM_V1.0.pdf), the PDF version contains more information and suggested parts / suppliers
@@ -38,11 +38,11 @@ The PDF version of the BOM can be found [here](RotorHazard_6_Node_Timer_BOM_V1.0
 For the PCB:
 Reference                       | Quantity  | Part No.                                                           | Notes
 --------------------------------|-----------|--------------------------------------------------------------------|---------
-PCB                             |   1       | Download the [gerber files](RotorHazard_6_Node_Timer_fab_V1.0.zip) | Click [here](https://www.pcbway.com/project/shareproject/RotorHazard_6_Node_STM32_Lap_Timer.html) to buy from PCBway
+PCB                             |   1       | Download the [gerber files](RotorHazard_6_Node_Timer_fab_V1.0.zip) | You can upload the gerbers files to your favourite PCB supplier or click [here](https://www.pcbway.com/project/shareproject/RotorHazard_6_Node_STM32_Lap_Timer.html) to buy from PCBway<br>Keep default options but consider changing:<br>- The solder mask colour <br>- Select quantity 10 which doesn't cost any more
 P12	                            |   1	    | 2.54mm 20x2 8.51mm tall header                                     | Single strips also work
 P1	                            |   1	    | XT60 Male	                                                         | -
-R2, R7, R8, R9, R11, R12, R13	|   7	    | 100k ohm 5% 0805 resistor                                          | -
-R3, R4, R5, R10, R14            |   5       | 10k ohm 5% 0805 resistor                                           | -
+R2, R7, R8, R9, R11, R12, R13	|   7	    | 100k ohm 5% 0805 resistor                                          | Buy some extra in case you drop one
+R3, R4, R5, R10, R14            |   5       | 10k ohm 5% 0805 resistor                                           | Buy some extra in case you drop one
 U2, U3                          |   2	    | MP1584	                                                         | -
 U2, U3  	                    |   16	    | 2.54mm header pins                                                 | -
 U6	                            |   1	    | STM32F103C8T6 	                                                 | -
@@ -53,7 +53,7 @@ Name                            | Quantity  | Notes
 --------------------------------|-----------|---------
 RASPBERRYPI_3B+                 |   1       | Alternative: Raspberry Pi 4
 8GB+ Micro SD card              |   1       | Any Micro SD card between 8GB and 64GB will work
-M3x8mm screw                    |   11      | Slightly longer screws would also work
+M3x8mm screw                    |   10      | Slightly longer screws would also work
 M2.5x10mm countersunk screw     |   4       | M3 can be used if you widen the raspberry pi mounting holes with a drill, slightly longer screws would also work
   
 You will also require some 3D printed parts for the case and the 11.5mm 3D printed stand offs. If you wish to use a different case then 12mm standoffs should work.
@@ -77,15 +77,16 @@ BZ1	                            |   1       | 12mm x 9.5mm 5V buzzer        | Us
 Q1, Q2	                        |   2	    | GSD SOT-23 N-Channel MOSFET   | 1 is used for optional switched buzzer, the other is used for optional fan enable control, an example is IRLML6344TRPBF
 
 For the Timer Build:
-Reference                       | Quantity      | Notes
+Name	                        | Quantity      | Notes
 --------------------------------|---------------|---------
 Raspberry Pi heat syncs         |   1 set       | Recommended to keep the pi cool
 20x20x6mm heat sync             |   1-6         | Recommended to keep the RX5808's cool
 Thermal glue                    |   1 tube      | Needed to attach the RX5808 heat syncs
 LCD Voltage Screen              |   1           | Used to show the battery voltage on the case
 M2x5mm screw                    |   2           | Used to screw the LCD voltage screen to the case
-Heat shrink                     |   90mm        | Used to attached wifi antenna to the arm, if you are using a modified wifi USB module 
-Wire                            |   As required | Wire may be needed to attach the Voltage monitor and to ground the case to the PCB
+M3x5mm screw                    |   1	      	| Used to secure the Wi-Fi antenna arm, Slightly longer screws would also work
+Heat shrink                     |   90mm        | Used to attached Wi-Fi antenna to the arm, if you are using a modified Wi-Fi USB module 
+Wire                            |   As required | Wire may be needed to attach the voltage monitor and to ground the case to the PCB
 
 ## Tools
 ### Required
@@ -104,14 +105,13 @@ Wire                            |   As required | Wire may be needed to attach t
 5. Pilers
 6. Insulation tape
 7. Copper tape with conductive adhesive
+8. Magnifying glass
 
 
 ## Resources
 
-[RotorHazard 6 Node STM32 module Schematic](RotorHazard_6_Node_Timer_V1.0.pdf)
+[RotorHazard 6 Node STM32 Schematic](RotorHazard_6_Node_Timer_V1.0.pdf)
 
-[Gerber files for RotorHazard 6 Node STM32 module PCB](RotorHazard_6_Node_Timer_fab_V1.0.zip)
+[Gerber files for RotorHazard 6 Node STM32 PCB](RotorHazard_6_Node_Timer_fab_V1.0.zip)
 
-[RotorHazard 6 node STM32 module Board Build Guide](BoardBuild.md)
-
-[RotorHazard 6 node STM32 module Board Build Video]()
+[RotorHazard 6 node STM32 Board Build Guide](BoardBuild.md)

@@ -19,14 +19,14 @@ Fit the resistors
 * 220r (OPTIONAL) (Orange) = R6, R29
 * 0.1r (OPTIONAL) (Pink) = R1
 
-![RH6_Node_PCB_Step1](img/RH6_Node_PCB_Step1.png)
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/RH6_Node_PCB_Step1.png)
 
 ## Step 2 - The raspberry pi header
 Solder the raspberry pi header (P12) (Green) to the board. Solder one pin to start with and then make sure it is aligned straight before soldering the rest
 
-The header should be fitted to the side of the board that doesn't have the RotorHazard logo on it as shown below.
+The header should be fitted to the side of the board that doesn't have the RotorHazard logo on it, as shown below.
 
-![RH6_Node_PCB_Step2](img/RH6_Node_PCB_Step2.png) 
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/RH6_Node_PCB_Step2.png)
 
 ## Step 3 - The regulators
 Solder U4 (OPTIONAL), U2 & U3 with MP1584 modules using 2 pin 2.54mm pin headers, ensuring the correct orientation (see image below)
@@ -45,16 +45,16 @@ Apply power to the board using the temporary connection to P1
 
 Set the DMM to measure voltage
 
-Using a small flat head screw driver 
+Using a small flat head screw driver:
 * Set the voltage between P10 (negative probe, Green) and P6 (positive probe, Pink) to 3.5V - 3.6V using the potentiometer on the 3.3V regulator (U2) (Pink)
 * Set the voltage between P10 (negative probe, Green) and P7 (positive probe, Blue) to 5.1 - 5.2V using the potentiometer on the 5V regulator (U3) (Blue)
 * (Omit if U4 is not fitted) Set the voltage between P10 (negative probe, Green) and P4 (positive probe, Yellow) to 4.9V - 5.0V using the potentiometer on the 5V LED regulator (U4) (Yellow)
 
 Once the correct voltages are set apply some hot glue over the potentiometers on U2-U4 to prevent the setting being changed by accident
 
-TIP: If the WS2812B don't work when connected check you are connected to the DIN end of the rope / panel. Then try changing U4 to 4.5V - 4.6V
+TIP: If the WS2812B LED's don't work when connected check you are connected to the DIN end of the rope / panel. Then try changing U4 to 4.5V - 4.6V
 
-![RH6_Node_PCB_Step3](img/RH6_Node_PCB_Step3.png)
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/RH6_Node_PCB_Step3.png)
 
 ## Step 4 - The LED's (OPTIONAL)
 If you are going to use the two LED's D1 (Green) and D3 (Pink) now is the time to solder them
@@ -63,7 +63,7 @@ Usually surface mount LED's have a green line on one end, this end should point 
 * For D1 the 0V terminal is the side closest to P10
 * For D3 the 0V terminal is the side closest to P18
 
-![RH6_Node_PCB_Step4](img/RH6_Node_PCB_Step4.png)
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/RH6_Node_PCB_Step4.png)
 
 ## Step 5 - The STM32 module (BPill)
 
@@ -83,7 +83,7 @@ If you are using the on board jumper pins and not soldering BOOT0 and BOOT1 to t
 
 Now is a good time to plug in the raspberry pi and check that everything boots up ok. It is recommended to re-do the resistance measurement with the DMM in Step 3 before applying power.
 
-![RH6_Node_PCB_Step5](img/RH6_Node_PCB_Step5.png)
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/RH6_Node_PCB_Step5.png)
 
 ## Step 6 - The RX5808 modules
 Now solder on the RX5808 modules (R1-R6) (Green)
@@ -94,7 +94,7 @@ NOTE: The unused pins are omitted from the PCB. This is to aid de-soldering shou
 
 Now is a good time to plug in the raspberry pi and check that everything boots up ok. It is recommended to re-do the resistance measurement with the DMM in Step 3 before applying power.
 
-![RH6_Node_PCB_Step6](img/RH6_Node_PCB_Step6.png)
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/RH6_Node_PCB_Step6.png)
 
 ## Step 7 - The INA219 (power, voltage & current sense) (OPTIONAL)
 If you wish to solder the INA219 (Green) first ensure the correct alignment of the part. Pin 1 could be indicated by a line on the top edge or by a dot or hash next to pin 1
@@ -113,10 +113,10 @@ Once soldered check there are no shorts with a magnifier.
 
 Lastly attach the 100nF capacitor to C1 (Yellow), you might get away with omitting this but the datasheet recommends it
 
-![RH6_Node_PCB_Step7](img/RH6_Node_PCB_Step7.png)
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/RH6_Node_PCB_Step7.png)
 
 ## Step 8 - The DS3231 (Real Time Clock) (OPTIONAL)
-If you wish to solder the DS3132 (Green) first ensure the correct alignment of the part. Pin 1 is indicated by a dot or hash symbol by pin 1 on the part
+If you wish to solder the DS3231 (Green) first ensure the correct alignment of the part. Pin 1 is indicated by a dot or hash symbol by pin 1 on the part
 
 Make sure the pin 1 of the DS3231 is aligned to the small circle on the solder mask of the PCB.
 
@@ -134,7 +134,7 @@ Attach the 100nF capacitor to C2 (Yellow), you might get away with omitting this
 
 Attach the battery holder to BT1, do not fit the coin cell until the soldering is completed
 
-![RH6_Node_PCB_Step8](img/RH6_Node_PCB_Step8.png)
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/RH6_Node_PCB_Step8.png)
 
 ## Step 9 - The left overs
 If you wish to control the buzzer through a MOSFET which is recommended then fit Q1 (Yellow)
@@ -143,7 +143,7 @@ If you wish to fit the buzzer (BZ1) (Blue) then fit it now
 
 If you wish for the raspberry pi to be able to control if the fans are enabled then solder Q2 (Green) to the board
 
-![RH6_Node_PCB_Step9](img/RH6_Node_PCB_Step9.png)
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/RH6_Node_PCB_Step9.png)
 
 ## Step 10 - The Headers
 The board contains a number of headers, most of which you don't need to fit
@@ -160,6 +160,15 @@ P15 (Pink) is spare GPIO pins to the pi, you may wish to use these for something
 
 P13 (Orange) is provided for the LED connector. 
 
-Once you have a case, remove the temporary power wire from P1 (Purple) then fit the boards into the case and solder the XT60 in place whilst in the case to ensure it fits the hole correctly.
+Once you have a case, remove the temporary power wire from P1 (Purple). Then fit the boards into the case and solder the XT60 in place whilst in the case to ensure it fits in the hole correctly.
 
-![RH6_Node_PCB_Step10](img/RH6_Node_PCB_Step10.png)
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/RH6_Node_PCB_Step10.png)
+
+## The finished product
+Your finished board should look something like this (assuming you fit everything)
+
+Top:
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/6_Node_STM32_PCB_Top.jpg)
+
+Bottom:
+![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/6_Node_STM32_PCB_Bottom.jpg)
