@@ -1,5 +1,5 @@
-#if !defined(__TEST__) && !STM32_MODE_FLAG
 #include "config.h"
+#if TARGET == AVR_TARGET
 #include "rheeprom.h"
 
 //Writes 2-byte word to EEPROM at address.

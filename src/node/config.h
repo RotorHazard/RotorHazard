@@ -4,13 +4,19 @@
 #include <Arduino.h>
 #include "util/rhtypes.h"
 
-#ifdef STM32_CORE_VERSION
-#define STM32_MODE_FLAG 1  // 1 for STM 32-bit processor running multiple nodes
+#define AVR_TARGET 1
+#define STM32_TARGET 2
+#define TEST_TARGET 0
+
+#if defined(STM32_CORE_VERSION)
+#define TARGET STM32_TARGET
+#elif defined(__TEST__)
+#define TARGET TEST_TARGET
 #else
-#define STM32_MODE_FLAG 0  // 0 for Arduino processor running single node
+#define TARGET AVR_TARGET
 #endif
 
-#if !STM32_MODE_FLAG
+#if TARGET == AVR_TARGET
 
 // Set to 1-8 for manual selection of Arduino node ID/address.
 // Set to 0 for automatic selection via hardware pin.
@@ -21,7 +27,7 @@
 
 // ******************************************************************** //
 
-#if STM32_MODE_FLAG
+#if TARGET == STM32_TARGET
     #define MULTI_RHNODE_MAX 8
     #define STM32_SERIALUSB_FLAG 0  // 1 to use BPill USB port for serial link
 #else
@@ -32,14 +38,14 @@
 #endif  // STM32_MODE_FLAG
 
 
-#if STM32_MODE_FLAG || defined(__TEST__)
+#if TARGET == STM32_TARGET || TARGET == TEST_TARGET
 #define ATOMIC_BLOCK(x)
 #define ATOMIC_RESTORESTATE
 #else
 #include <util/atomic.h>
 #endif
 
-#if !STM32_MODE_FLAG
+#if TARGET == AVR_TARGET
 
     // Set to 0 for standard RotorHazard USB node wiring; set to 1 for ArduVidRx USB node wiring
     //   See here for an ArduVidRx example: http://www.etheli.com/ArduVidRx/hw/index.html#promini
@@ -83,6 +89,6 @@
     #define LEGACY_HARDWARE_SELECT_PIN_4 7
     #define LEGACY_HARDWARE_SELECT_PIN_5 8
 
-#endif  // !STM32_MODE_FLAG
+#endif
 
 #endif  // config_h

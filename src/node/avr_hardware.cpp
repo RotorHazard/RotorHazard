@@ -1,5 +1,5 @@
 #include "config.h"
-#if !STM32_MODE_FLAG
+#if TARGET == AVR_TARGET
 #include "avr_hardware.h"
 
 AvrHardware defaultHardware;
