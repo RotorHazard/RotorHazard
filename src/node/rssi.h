@@ -91,12 +91,12 @@ private:
 #ifdef __TEST__
 public:
 #endif
+    SendBuffer<Extremum> *peakSend = nullptr;
+    SendBuffer<Extremum> *nadirSend = nullptr;
     int8_t prevRssiChange = 0; // >0 for raising, <0 for falling
 public:
     Extremum peak = {0, 0, 0};
     Extremum nadir = {MAX_RSSI, 0, 0};
-    SendBuffer<Extremum> *peakSend = nullptr;
-    SendBuffer<Extremum> *nadirSend = nullptr;
 
     History();
     void setSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir);
@@ -105,9 +105,9 @@ public:
     void bufferPeak() {bufferPeak(false);};
     void bufferNadir() {bufferNadir(false);};
     inline void recordRssiChange(int delta);
-    bool canSendPeakNext();
+    ExtremumType nextToSendType();
+    Extremum popNextToSend();
     inline void checkForPeak();
-    bool canSendNadirNext();
     inline void checkForNadir();
     inline void reset();
 };

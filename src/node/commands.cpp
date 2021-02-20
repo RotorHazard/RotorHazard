@@ -253,7 +253,8 @@ void Message::handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal)
     History& history = rssiNode.getHistory();
     // set flag if 'crossing' in progress
     uint8_t flags = state.crossing ? (uint8_t)LAPSTATS_FLAG_CROSSING : (uint8_t)0;
-    if (history.canSendPeakNext())
+    ExtremumType extremumType = history.nextToSendType();
+    if (extremumType == PEAK)
     {
         flags |= LAPSTATS_FLAG_PEAK;
     }
@@ -261,23 +262,19 @@ void Message::handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal)
     ioBufferWriteRssi(buffer, lastPass.rssiNadir);  // lowest rssi since end of last pass
     ioBufferWriteRssi(buffer, state.nodeRssiNadir);
 
-    if (history.canSendPeakNext())
-    {
-        // send peak
-        ioBufferWriteExtremum(buffer, history.peakSend->first(), timeNowVal);
-        history.peakSend->removeFirst();
-    }
-    else if (history.canSendNadirNext())
-    {
-        // send nadir
-        ioBufferWriteExtremum(buffer, history.nadirSend->first(), timeNowVal);
-        history.nadirSend->removeFirst();
-    }
-    else
-    {
-        ioBufferWriteRssi(buffer, 0);
-        buffer.write16(0);
-        buffer.write16(0);
+    switch(extremumType) {
+        case PEAK:
+            // send peak
+            ioBufferWriteExtremum(buffer, history.popNextToSend(), timeNowVal);
+            break;
+        case NADIR:
+            // send nadir
+            ioBufferWriteExtremum(buffer, history.popNextToSend(), timeNowVal);
+            break;
+        default:
+            ioBufferWriteRssi(buffer, 0);
+            buffer.write16(0);
+            buffer.write16(0);
     }
 }
 
