@@ -1,5 +1,5 @@
 #include "config.h"
-#if STM32_MODE_FLAG
+#if TARGET == STM32_TARGET
 #include "stm32_hardware.h"
 
 Stm32Hardware defaultHardware;

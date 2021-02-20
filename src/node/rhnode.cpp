@@ -35,14 +35,12 @@
 // dummy macro
 #define LOG_ERROR(...)
 
-#if defined(__TEST__)
-#include "test_hardware.h"
-#else
-#if STM32_MODE_FLAG
+#if TARGET == STM32_TARGET
 #include "stm32_hardware.h"
-#else
+#elif TARGET == AVR_TARGET
 #include "avr_hardware.h"
-#endif
+#elif TARGET == TEST_TARGET
+#include "test_hardware.h"
 #endif
 
 extern Hardware *hardware;

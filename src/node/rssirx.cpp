@@ -3,7 +3,7 @@
 
 #define MIN_RSSI_DETECT 5 //value for detecting node as installed
 
-#if !STM32_MODE_FLAG
+#if TARGET == AVR_TARGET || TARGET == TEST_TARGET
 class SingleRssiReceiver : public RssiReceivers {
 private:
     RssiNode node;
@@ -134,7 +134,7 @@ public:
     };
 };
 
-#if STM32_MODE_FLAG
+#if TARGET == STM32_TARGET
     PhysicalRssiReceivers defaultRssiReceivers;
 #else
     #if MULTI_RHNODE_MAX == 1
