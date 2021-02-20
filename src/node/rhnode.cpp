@@ -45,6 +45,8 @@
 #endif
 #endif
 
+extern Hardware *hardware;
+
 // Initialize program
 void setup()
 {

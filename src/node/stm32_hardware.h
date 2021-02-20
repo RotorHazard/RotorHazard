@@ -142,13 +142,3 @@ public:
         SysMemBootJump();  // do jump to bootloader in system memory
     }
 };
-
-Stm32Hardware defaultHardware;
-Hardware *hardware = &defaultHardware;
-
-static Message serialMessage(RssiReceivers::rssiRxs, hardware);
-
-void serialEvent()
-{
-    handleStreamEvent(SERIALCOM, serialMessage);
-}
