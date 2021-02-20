@@ -4,7 +4,7 @@
 #include "rhtypes.h"
 #include "sendbuffer.h"
 
-class SinglePeakSendBuffer : public SendBuffer<Extremum>
+class SinglePeakSendBuffer : public ExtremumSendBuffer
 {
     private:
         Extremum buffer = {0, 0, 0}; // only valid if buffer.rssi != 0
@@ -39,7 +39,7 @@ class SinglePeakSendBuffer : public SendBuffer<Extremum>
       }
 };
 
-class SingleNadirSendBuffer : public SendBuffer<Extremum>
+class SingleNadirSendBuffer : public ExtremumSendBuffer
 {
     private:
         Extremum buffer = {MAX_RSSI, 0, 0}; // only valid if buffer.rssi != MAX_RSSI

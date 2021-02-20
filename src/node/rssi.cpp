@@ -227,7 +227,7 @@ History::History()
     setSendBuffers(&defaultPeakSendBuffer, &defaultNadirSendBuffer);
 }
 
-void History::setSendBuffers(SendBuffer<Extremum> *peak, SendBuffer<Extremum> *nadir)
+void History::setSendBuffers(ExtremumSendBuffer *peak, ExtremumSendBuffer *nadir)
 {
     peakSend = peak;
     nadirSend = nadir;
