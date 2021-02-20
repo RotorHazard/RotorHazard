@@ -293,14 +293,37 @@ void History::recordRssiChange(int delta)
   prevRssiChange = constrain(delta, -127, 127);
 }
 
-bool History::canSendPeakNext()
+ExtremumType History::nextToSendType()
 {
-  return !peakSend->isEmpty() && (nadirSend->isEmpty() || (peakSend->first().firstTime < nadirSend->first().firstTime));
+    if (!peakSend->isEmpty() && (nadirSend->isEmpty() || (peakSend->first().firstTime < nadirSend->first().firstTime)))
+    {
+        return PEAK;
+    }
+    else if(!nadirSend->isEmpty() && (peakSend->isEmpty() || (nadirSend->first().firstTime < peakSend->first().firstTime)))
+    {
+        return NADIR;
+    }
+    else
+    {
+        return NONE;
+    }
 }
 
-bool History::canSendNadirNext()
+Extremum History::popNextToSend()
 {
-  return !nadirSend->isEmpty() && (peakSend->isEmpty() || (nadirSend->first().firstTime < peakSend->first().firstTime));
+    Extremum e = {0, 0, 0};
+    switch (nextToSendType())
+    {
+        case PEAK:
+            e = peakSend->first();
+            peakSend->removeFirst();
+            break;
+        case NADIR:
+            e = nadirSend->first();
+            nadirSend->removeFirst();
+            break;
+    }
+    return e;
 }
 
 void History::checkForPeak()

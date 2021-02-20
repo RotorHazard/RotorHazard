@@ -8,6 +8,12 @@ typedef uint32_t mtime_t; // milliseconds
 typedef uint32_t utime_t; // micros
 typedef uint8_t rssi_t;
 
+enum ExtremumType {
+    PEAK = 1,
+    NADIR = -1,
+    NONE = 0
+};
+
 struct Extremum
 {
   rssi_t volatile rssi;
