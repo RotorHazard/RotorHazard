@@ -1,17 +1,24 @@
 #ifndef config_h
 #define config_h
 
+#if !defined(__TEST__) && (defined(_WIN32) || defined(__linux__))
+#include "sil/arduino.h"
+#else
 #include <Arduino.h>
+#endif
 #include "util/rhtypes.h"
 
 #define AVR_TARGET 1
 #define STM32_TARGET 2
+#define SIL_TARGET 3
 #define TEST_TARGET 0
 
 #if defined(STM32_CORE_VERSION)
 #define TARGET STM32_TARGET
 #elif defined(__TEST__)
 #define TARGET TEST_TARGET
+#elif defined(_WIN32) || defined(__linux__)
+#define TARGET SIL_TARGET
 #else
 #define TARGET AVR_TARGET
 #endif
@@ -33,16 +40,16 @@
 #else
     // Set greater than 1 to support multiple freqs per node
     #define MULTI_RHNODE_MAX 1
-    // multi-freq reads
-    #define READS_PER_FREQ 256
 #endif  // STM32_MODE_FLAG
 
+// multi-freq reads
+#define READS_PER_FREQ 256
 
-#if TARGET == STM32_TARGET || TARGET == TEST_TARGET
+#if TARGET == AVR_TARGET
+#include <util/atomic.h>
+#else
 #define ATOMIC_BLOCK(x)
 #define ATOMIC_RESTORESTATE
-#else
-#include <util/atomic.h>
 #endif
 
 #if TARGET == AVR_TARGET
