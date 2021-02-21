@@ -3,7 +3,6 @@
 
 #define MIN_RSSI_DETECT 5 //value for detecting node as installed
 
-#if TARGET == AVR_TARGET || TARGET == TEST_TARGET
 class SingleRssiReceiver : public RssiReceivers {
 private:
     RssiNode node;
@@ -81,7 +80,6 @@ public:
       return nodes[idx].process(rx.readRssi(), usclock.millis());
     };
 };
-#endif
 
 class PhysicalRssiReceivers : public RssiReceivers {
 private:

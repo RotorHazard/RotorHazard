@@ -6,9 +6,9 @@
 uint8_t cmdStatusFlags = 0;
 uint8_t cmdRssiNodeIndex = 0;
 
-byte Message::getPayloadSize()
+uint8_t Message::getPayloadSize()
 {
-    byte size;
+    uint8_t size;
     switch (command)
     {
         case WRITE_FREQUENCY:
@@ -287,7 +287,7 @@ void handleStreamEvent(Stream& stream, Message& msg)
         msg.command = nextByte;
         if (msg.command > 0x50)
         {  // Commands > 0x50 are writes TO this slave
-            byte expectedSize = msg.getPayloadSize();
+            uint8_t expectedSize = msg.getPayloadSize();
             if (expectedSize > 0)
             {
                 msg.buffer.index = 0;
@@ -300,7 +300,7 @@ void handleStreamEvent(Stream& stream, Message& msg)
 
             if (msg.buffer.size > 0)
             {  // If there is pending data, send it
-                stream.write((byte *)msg.buffer.data, msg.buffer.size);
+                stream.write(msg.buffer.data, msg.buffer.size);
                 msg.buffer.size = 0;
             }
         }

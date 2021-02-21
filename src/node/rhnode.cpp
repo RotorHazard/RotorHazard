@@ -41,6 +41,8 @@
 #include "avr_hardware.h"
 #elif TARGET == TEST_TARGET
 #include "test_hardware.h"
+#elif TARGET == SIL_TARGET
+#include "sil/sil_hardware.h"
 #endif
 
 extern Hardware *hardware;

@@ -1,7 +1,9 @@
 #ifndef commands_h
 #define commands_h
 
+#if TARGET != SIL_TARGET
 #include <Stream.h>
+#endif
 #include "io.h"
 #include "rssirx.h"
 #include "hardware.h"
@@ -22,7 +24,7 @@ public:
     uint8_t command;  // code to identify messages
     Buffer buffer;  // request/response payload
 
-    byte getPayloadSize();
+    uint8_t getPayloadSize();
     void handleWriteCommand(bool serialFlag);
     void handleReadCommand(bool serialFlag);
 };
