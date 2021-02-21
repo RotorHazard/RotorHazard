@@ -54,10 +54,10 @@ unittest(gradualCrossing) {
   assertEqual(70, (int)history.nadir.rssi);
   assertEqual(0, (int)history.nadir.duration);
 
-  assertFalse(history.peakSend->isEmpty());
-  assertEqual(130, (int)history.peakSend->first().rssi);
-  assertEqual(time(2)-1, (int)history.peakSend->first().duration);
-  assertTrue(history.nadirSend->isEmpty());
+  assertNotEqual(NONE, history.nextToSendType());
+  assertEqual(130, (int)history.sendBuffer->nextPeak().rssi);
+  assertEqual(time(2)-1, (int)history.sendBuffer->nextPeak().duration);
+  assertEqual(PEAK, history.nextToSendType());
 
   assertEqual(130, (int)state.nodeRssiPeak);
   assertEqual(50, (int)state.nodeRssiNadir);

@@ -5,7 +5,9 @@ template <typename  T> class SendBuffer {
     public:
         virtual bool addPeak(const T& peak, bool force) = 0;
         virtual bool addNadir(const T& nadir, bool force) = 0;
+        /** mainly used for testing */
         virtual const T nextPeak() = 0;
+        /** mainly used for testing */
         virtual const T nextNadir() = 0;
         virtual ExtremumType nextType() = 0;
         virtual const T popNext() = 0;
@@ -37,7 +39,9 @@ class DualSendBuffer: public SendBuffer<Extremum> {
         ExtremumSendBuffer *peakBuffer;
         ExtremumSendBuffer *nadirBuffer;
     public:
-        DualSendBuffer(ExtremumSendBuffer *pb, ExtremumSendBuffer *nb) : peakBuffer(pb), nadirBuffer(nb) {
+        void setSendBuffers(ExtremumSendBuffer *pbuf, ExtremumSendBuffer *nbuf) {
+            peakBuffer = pbuf;
+            nadirBuffer = nbuf;
         }
 
         bool addPeak(const Extremum& peak, bool force) {

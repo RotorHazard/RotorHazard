@@ -221,18 +221,6 @@ void State::reset()
     nodeRssiNadir = MAX_RSSI;
 }
 
-
-History::History()
-{
-    setSendBuffers(&defaultPeakSendBuffer, &defaultNadirSendBuffer);
-}
-
-void History::setSendBuffers(ExtremumSendBuffer *peak, ExtremumSendBuffer *nadir)
-{
-    peakSend = peak;
-    nadirSend = nadir;
-}
-
 void History::startNewPeak(rssi_t rssi, mtime_t ts) {
   // must buffer latest peak to prevent losing it
   bufferPeak(true);
@@ -249,19 +237,14 @@ void History::startNewNadir(rssi_t rssi, mtime_t ts) {
 
 void History::bufferPeak(bool force)
 {
-    if (hasPendingPeak)
+    if (hasPending & PENDING_PEAK)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            bool buffered = peakSend->addIfAvailable(peak);
-            if (buffered)
+            bool buffered = sendBuffer->addPeak(peak, force);
+            if (buffered || force)
             {
-                hasPendingPeak = false;
-            }
-            else if (force)
-            {
-                peakSend->addOrDiscard(peak);
-                hasPendingPeak = false;
+                hasPending &= ~PENDING_PEAK;
             }
         }
     }
@@ -269,19 +252,14 @@ void History::bufferPeak(bool force)
 
 void History::bufferNadir(bool force)
 {
-    if (hasPendingNadir)
+    if (hasPending & PENDING_NADIR)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            bool buffered = nadirSend->addIfAvailable(nadir);
-            if (buffered)
+            bool buffered = sendBuffer->addNadir(nadir, force);
+            if (buffered || force)
             {
-                hasPendingNadir = false;
-            }
-            else if (force)
-            {
-                nadirSend->addOrDiscard(nadir);
-                hasPendingNadir = false;
+                hasPending &= ~PENDING_NADIR;
             }
         }
     }
@@ -295,35 +273,12 @@ void History::recordRssiChange(int delta)
 
 ExtremumType History::nextToSendType()
 {
-    if (!peakSend->isEmpty() && (nadirSend->isEmpty() || (peakSend->first().firstTime < nadirSend->first().firstTime)))
-    {
-        return PEAK;
-    }
-    else if(!nadirSend->isEmpty() && (peakSend->isEmpty() || (nadirSend->first().firstTime < peakSend->first().firstTime)))
-    {
-        return NADIR;
-    }
-    else
-    {
-        return NONE;
-    }
+    return sendBuffer->nextType();
 }
 
 Extremum History::popNextToSend()
 {
-    Extremum e = {0, 0, 0};
-    switch (nextToSendType())
-    {
-        case PEAK:
-            e = peakSend->first();
-            peakSend->removeFirst();
-            break;
-        case NADIR:
-            e = nadirSend->first();
-            nadirSend->removeFirst();
-            break;
-    }
-    return e;
+    return sendBuffer->popNext();
 }
 
 void History::checkForPeak()
@@ -331,7 +286,7 @@ void History::checkForPeak()
   if (prevRssiChange >= 0 && isPeakValid(peak))
   {  // was rising or unchanged
       // declare a new peak
-      hasPendingPeak = true;
+      hasPending |= PENDING_PEAK;
   }
 }
 
@@ -340,17 +295,15 @@ void History::checkForNadir()
   if (prevRssiChange <= 0 && isNadirValid(nadir))
   {  // was falling or unchanged
       // declare a new nadir
-      hasPendingNadir = true;
+      hasPending |= PENDING_NADIR;
   }
 }
 
 void History::reset()
 {
     invalidatePeak(peak);
-    hasPendingPeak = false;
-    peakSend->clear();
     invalidateNadir(nadir);
-    hasPendingNadir = false;
-    nadirSend->clear();
+    hasPending = PENDING_NONE;
+    sendBuffer->clear();
     prevRssiChange = 0;
 }

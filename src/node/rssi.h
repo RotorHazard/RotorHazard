@@ -81,9 +81,13 @@ class History
 private:
     PEAK_SENDBUFFER_IMPL defaultPeakSendBuffer;
     NADIR_SENDBUFFER_IMPL defaultNadirSendBuffer;
+    DualSendBuffer dualSendBuffer;
 
-    bool hasPendingPeak = false;
-    bool hasPendingNadir = false;
+    /** bit flags */
+    uint8_t hasPending = 0;
+#define PENDING_PEAK 2
+#define PENDING_NADIR 1
+#define PENDING_NONE 0
 
     void bufferPeak(bool force);
     void bufferNadir(bool force);
@@ -91,19 +95,26 @@ private:
 #ifdef __TEST__
 public:
 #endif
-    ExtremumSendBuffer *peakSend = nullptr;
-    ExtremumSendBuffer *nadirSend = nullptr;
+    SendBuffer<Extremum> *sendBuffer = nullptr;
     int8_t prevRssiChange = 0; // >0 for raising, <0 for falling
 public:
     Extremum peak = {0, 0, 0};
     Extremum nadir = {MAX_RSSI, 0, 0};
 
-    History();
-    void setSendBuffers(ExtremumSendBuffer *peak, ExtremumSendBuffer *nadir);
+    History() {
+        setSendBuffers(&defaultPeakSendBuffer, &defaultNadirSendBuffer);
+    }
+    inline void setSendBuffer(SendBuffer<Extremum> *buf) {
+        sendBuffer = buf;
+    }
+    inline void setSendBuffers(ExtremumSendBuffer *peak, ExtremumSendBuffer *nadir) {
+        dualSendBuffer.setSendBuffers(peak, nadir);
+        setSendBuffer(&dualSendBuffer);
+    }
     inline void startNewPeak(rssi_t rssi, mtime_t ts);
     inline void startNewNadir(rssi_t rssi, mtime_t ts);
-    void bufferPeak() {bufferPeak(false);};
-    void bufferNadir() {bufferNadir(false);};
+    inline void bufferPeak() {bufferPeak(false);};
+    inline void bufferNadir() {bufferNadir(false);};
     inline void recordRssiChange(int delta);
     ExtremumType nextToSendType();
     Extremum popNextToSend();
