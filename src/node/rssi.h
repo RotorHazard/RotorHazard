@@ -14,19 +14,17 @@
 #include "util/sendbuffer.h"
 #include "util/single-sendbuffer.h"
 #include "util/multi-sendbuffer.h"
+#include "util/unified-sendbuffer.h"
 
 #define MAX_DURATION 0xFFFF
 
-#define FILTER_NONE NoFilter<rssi_t>
-#define FILTER_MEDIAN MedianFilter<rssi_t, SmoothingSamples, 0>
-#define FILTER_100 LowPassFilter100Hz
-#define FILTER_50 LowPassFilter50Hz
-#define FILTER_20 LowPassFilter20Hz
-#define FILTER_15 LowPassFilter15Hz
-
-//select the filter to use here
-#define FILTER_IMPL FILTER_MEDIAN
-
+#define USE_UNIFIED_SENDBUFFER
+#ifdef __TEST__
+#undef USE_UNIFIED_SENDBUFFER
+#endif
+#ifdef USE_UNIFIED_SENDBUFFER
+#define SENDBUFFER UnifiedSendBuffer<Extremum,20>
+#else
 #define PEAK_SENDBUFFER_SINGLE SinglePeakSendBuffer
 #define PEAK_SENDBUFFER_MULTI MultiPeakSendBuffer<10>
 #define NADIR_SENDBUFFER_SINGLE SingleNadirSendBuffer
@@ -35,6 +33,7 @@
 //select the send buffer to use here
 #define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_MULTI
 #define NADIR_SENDBUFFER_IMPL NADIR_SENDBUFFER_MULTI
+#endif
 
 struct Settings
 {
@@ -79,9 +78,13 @@ public:
 class History
 {
 private:
+#ifdef USE_UNIFIED_SENDBUFFER
+    SENDBUFFER defaultSendBuffer;
+#else
     PEAK_SENDBUFFER_IMPL defaultPeakSendBuffer;
     NADIR_SENDBUFFER_IMPL defaultNadirSendBuffer;
     DualSendBuffer dualSendBuffer;
+#endif
 
     /** bit flags */
     uint8_t hasPending = 0;
@@ -102,15 +105,21 @@ public:
     Extremum nadir = {MAX_RSSI, 0, 0};
 
     History() {
+#ifdef USE_UNIFIED_SENDBUFFER
+        setSendBuffer(&defaultSendBuffer);
+#else
         setSendBuffers(&defaultPeakSendBuffer, &defaultNadirSendBuffer);
+#endif
     }
     inline void setSendBuffer(SendBuffer<Extremum> *buf) {
         sendBuffer = buf;
     }
+#ifndef USE_UNIFIED_SENDBUFFER
     inline void setSendBuffers(ExtremumSendBuffer *peak, ExtremumSendBuffer *nadir) {
         dualSendBuffer.setSendBuffers(peak, nadir);
         setSendBuffer(&dualSendBuffer);
     }
+#endif
     inline void startNewPeak(rssi_t rssi, mtime_t ts);
     inline void startNewNadir(rssi_t rssi, mtime_t ts);
     inline void bufferPeak() {bufferPeak(false);};
