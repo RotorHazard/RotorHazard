@@ -3,8 +3,8 @@
 
 template <typename  T> class SendBuffer {
     public:
-        virtual bool addPeak(const T& peak, bool force) = 0;
-        virtual bool addNadir(const T& nadir, bool force) = 0;
+        virtual bool addPeak(const T& peak, bool force = false) = 0;
+        virtual bool addNadir(const T& nadir, bool force = false) = 0;
         /** mainly used for testing */
         virtual const T nextPeak() = 0;
         /** mainly used for testing */
@@ -44,7 +44,7 @@ class DualSendBuffer: public SendBuffer<Extremum> {
             nadirBuffer = nbuf;
         }
 
-        bool addPeak(const Extremum& peak, bool force) {
+        bool addPeak(const Extremum& peak, bool force = false) {
             bool buffered = peakBuffer->addIfAvailable(peak);
             if (!buffered && force)
             {
@@ -53,7 +53,7 @@ class DualSendBuffer: public SendBuffer<Extremum> {
             }
             return buffered;
         }
-        bool addNadir(const Extremum& nadir, bool force) {
+        bool addNadir(const Extremum& nadir, bool force = false) {
             bool buffered = nadirBuffer->addIfAvailable(nadir);
             if (!buffered && force)
             {
