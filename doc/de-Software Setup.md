@@ -190,7 +190,7 @@ sudo python setup.py install
 Java ermöglicht die Berechnung von IMD-Scores. Wenn Sie mit RASPBIAN MIT GRAFISCHER OBERFLÄCHE begonnen haben, sollte dieser Schritt nicht erforderlich sein, da Java standardmäßig installiert ist. Andernfalls:
 
 ```
-sudo apt-get install openjdk-8-jdk
+sudo apt install default-jdk-headless
 ```
 
 ## System vorbereiten

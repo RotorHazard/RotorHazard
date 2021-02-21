@@ -138,7 +138,7 @@ sudo python setup.py install
 ### Soporte Java
 Java permite el cálculo de las puntuaciones de IMD. Si comenzó con RASPBIAN WITH DESKTOP, este paso no debería ser necesario ya que Java está instalado de manera predeterminada. De otra manera:
 ```
-sudo apt-get install openjdk-8-jdk
+sudo apt install default-jdk-headless
 ```
 
 ## Preparar el Sistema

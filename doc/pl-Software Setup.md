@@ -135,7 +135,7 @@ sudo python setup.py install
 ### Java Support
 Java umożliwia kalkulację oceny zniekształceń intermodulacyjnych „IMD score”. Jeśli zainstalowałeś w kroku pierrwszym “RASPBIAN WITH DESKTOP”, ten krok nie powinien być konieczny. W innym wypadku:
 ```
-sudo apt-get install openjdk-8-jdk
+sudo apt install default-jdk-headless
 ```
 
 ## Przygotuj System

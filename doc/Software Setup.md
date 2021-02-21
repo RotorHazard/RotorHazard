@@ -175,7 +175,7 @@ java --version
 ```
 If the response is "command not found" then Java may be installed with:
 ```
-sudo apt-get install openjdk-11-jdk
+sudo apt install default-jdk-headless
 ```
 
 ----------------------------------------------------------------------------
