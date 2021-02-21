@@ -83,9 +83,12 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 
 * An optional [INA219](https://www.adafruit.com/product/904) voltage and current-sensing module may be installed on the PCB at position U10. See [here](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image10.jpg) for a pic. (Make sure sure the pin designators correspond to those on the main board -- if the INA219 is installed backwards it will be destroyed.) If an INA219 is not installed, then a wire jumper needs to be soldered between the Vin+ and Vin- pins of the U10 pads (as noted on the
 [schematic](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/files/RotorHazard_S32_BPill_SCH_R1.pdf)).
+
 * If you install the Boot0 [jumper wire](https://www.adafruit.com/product/1951) (and leave it installed) then the Raspberry Pi will always be able to flash the BPill. Without the wire, flash-updates will work if the RotorHazard firmware is operational on the BPill (it has a jump-to-bootloader command), but if not then you'd need to move the 2-pin header clip to the '1' position on Boot0. The red wire in [this pic](pic/RH_S32_BPill_Boot0Jumper.jpg) is the Boot0 jumper wire.
 
 * Note that during the first-time power up, if the buzzer is constantly beeping (because the BPill is not yet flashed), you can put the 2-pin header-clip on the '1' position of the Boot0 jumper on the BPill module and press the reset button to silence it, and leave it on there until the initial flash of the BPill. After that, the Boot0 wire jumper should be installed and left in place. See the links above for BPill pinouts.
+
+* The recommended method for installing the node firmware onto the BPill processor is to use the `Update Nodes` button (in the 'System' section on the 'Settings' page) on the RotorHazard web GUI. The "dtoverlay=miniuart-bt" line needs to have been added to the "/boot/config.txt" file on the RPi for the flash-update to succeed (see instructions in '[doc/Software Setup.md](../../doc/Software%20Setup.md)').
 
 
 <a name="aboutblue"></a>

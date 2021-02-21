@@ -6,6 +6,8 @@
 
 * [RotorHazard S32_BPill PCB](S32_BPill_PCB/README.md)
 
+* [RotorHazard 6 Node STM32](6_Node_BPill_PCB/README.md)
+
 * [RotorHazard PCB 1.2 (Arduinos)](PCB/README.md)
 
 <br>

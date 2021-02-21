@@ -4,47 +4,81 @@ The central software component of the RotorHazard system is its server, written 
 
 Note: If RotorHazard is already installed, see the [Updating an existing installation](#update) section below.
 
-## Install System (Raspberry Pi)
+## Install RotorHazard on a Raspberry Pi
+
+### 1. Install the Raspberry Pi Operating System
+
 Note: Many of the setup commands below require that the Rasperry Pi has internet access.
 
-Start by installing the Raspberry Pi OS, following the official instructions here: https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit . You may use either Desktop or Lite.
+Install the Raspberry Pi OS, following the official instructions: https://www.raspberrypi.org/help
 
-Configure the interface options on the Raspberry Pi.
-Open a Terminal window and enter the following command:
+The standard-recommended setup is to use a Raspberry Pi 3 board and install the [Raspberry Pi OS](https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit) (32-bit, Desktop).
+
+Tip: Any time you intend to use a monitor (via HDMI) with the Raspberry Pi, connect it before powering up the Pi. Connecting the monitor after power up tends to not work (blank screen).
+
+
+### 2. Configure Interface Options
+
+(The options may be configured using step 2a or 2b below.)
+
+#### 2a. Configure interface options using the desktop
+If Raspberry Pi OS with Desktop was installed, the interface options may be configured via "Preferences" | "Raspberry Pi Configuration" | "Interfaces":
+* Enable SSH, SPI, I2C, and 'Serial Port'
+* Disable 'Serial Console'
+* For remote access to the desktop (using a program like [RealVNC viewer](https://www.realvnc.com/en/connect/download/viewer)), enable VNC
+
+#### 2b. Configure interface options using a terminal window
+If the Pi OS Desktop is not available, the interface options may be configured using the following command:
 ```
 sudo raspi-config
 ```
-Select Interfacing Options and enable: SSH, SPI, and I2C.
+* Select 'Interface Options' and enable: SSH, SPI, and I2C
+* Select 'Interface Options' | 'Serial Port', and configure:
+  * "login shell accessible serial": No
+  * "serial port hardware enabled": Yes
 
-Do system update and upgrade (this can take a few minutes):
+
+### 3. Apply Changes to '/boot/config.txt'
+Open a terminal window and enter:
+```
+sudo nano /boot/config.txt
+```
+Add the following lines to the end of the file:
+```
+dtparam=i2c_baudrate=75000
+dtoverlay=miniuart-bt
+```
+If the Raspberry Pi in use is a Pi 3 model or older (not a Pi 4) then also add this line:
+```
+core_freq=250
+```
+Save and exit (CTRL-X, Y, ENTER)
+
+The first line sets the transfer rate on the I2C bus (which is used to communicate with the Arduino node processors).
+
+The "dtoverlay=miniuart-bt" line moves the high performance UART from the Bluetooth device to the GPIO pins, which is needed for setups like the S32_BPill that use the serial port as the communications channel to the nodes.
+
+The "core_freq" line fixes a potential variable clock-rate issue, described [here](https://www.abelectronics.co.uk/kb/article/1089/i2c--smbus-and-raspbian-stretch-linux). If a Raspberry Pi 4 is being used, the "core_freq" line should be omitted (as per the Raspberry Pi documentation [here](https://www.raspberrypi.org/documentation/configuration/config-txt/overclocking.md)).
+
+
+### 4. Perform System Update
+Using a terminal window, do a system update and upgrade (this can take a few minutes):
 ```
 sudo apt-get update && sudo apt-get upgrade
 ```
 
-Install Python and the Python drivers for the GPIO.
+### 5. Install Python
+Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
 sudo apt install python-dev libffi-dev python-smbus build-essential python-pip git scons swig python-rpi.gpio
 ```
 
-Install the function interface into Python
-```
-sudo pip install cffi
-```
+### 6. Install the RotorHazard Server
+Install the RotorHazard server code under '/home/pi/' on the Raspberry Pi as follows:
 
-Update i2c baud rate
-```
-sudo nano /boot/config.txt
-```
-add the following lines to the end of the file:
-```
-dtparam=i2c_baudrate=75000
-core_freq=250
-```
-Note: The first line sets the transfer rate on the I2C bus (which is used to communicate with the Arduino node processors). The second line fixes a potential variable clock-rate issue, described [here](https://www.abelectronics.co.uk/kb/article/1089/i2c--smbus-and-raspbian-stretch-linux). If a Raspberry Pi 4 is being used, the second line may need to be omitted.
+Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code.
 
-Save and exit the file with Ctrl-X
-
-Install the RotorHazard code under '/home/pi/' on the Raspberry Pi as follows: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
+In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands using a terminal window:
 ```
 cd ~
 wget https://codeload.github.com/RotorHazard/RotorHazard/zip/1.2.3 -O temp.zip
@@ -53,17 +87,19 @@ mv RotorHazard-1.2.3 RotorHazard
 rm temp.zip
 ```
 
-Install RotorHazard server dependencies (be patient, this command may take a few minutes):
+Enter the commands below to install RotorHazard server dependencies (be patient, this may take a few minutes):
 ```
 cd ~/RotorHazard/src/server
 sudo pip install -r requirements.txt
 ```
 
-Update permissions in working folder:
+### 7. Reboot System
+After the above setup steps are performed, the system should be rebooted by entering the following using a terminal window:
 ```
-cd ~/RotorHazard/src
-sudo chmod 777 server
+sudo reboot
 ```
+
+----------------------------------------------------------------------------
 
 ## RotorHazard Node Code
 
@@ -71,10 +107,13 @@ The firmware for the RotorHazard nodes will need to be installed (or updated). T
 
 For Arduino-based node boards, see the '[src/node/readme_Arduino.md](../src/node/readme_Arduino.md)' file for more information and instructions for installing the node firmware code.
 
-For the S32_BPill board, the recommended method for installing the currently-released node firmware is to use the `Update Nodes` button (in the 'System' section on the 'Settings' page) on the RotorHazard web GUI. The steps described in '[src/node/readme_S32_BPill.md](../src/node/readme_S32_BPill.md)' are for developers who wish to build the S32_BPill node firmware from the source code.
+For the S32_BPill board, the recommended method for installing the currently-released node firmware is to use the `Update Nodes` button (in the 'System' section on the 'Settings' page) on the RotorHazard web GUI.<br>
+The "dtoverlay=miniuart-bt" line needs to have been added to the "/boot/config.txt" file for the flash-update to succeed (see instructions above).<br>
+Note that the flash-update steps described in '[src/node/readme_S32_BPill.md](../src/node/readme_S32_BPill.md)' are for developers who wish to build the S32_BPill node firmware from the source code.
 
+----------------------------------------------------------------------------
 
-## Install Optional Components
+## Optional Components
 
 ### Real Time Clock
 
@@ -139,26 +178,21 @@ If the response is "command not found" then Java may be installed with:
 sudo apt-get install openjdk-11-jdk
 ```
 
-## Prepare System
-### Reboot System
-After the above setup steps are performed, the system should be rebooted by entering the following:
-```
-sudo reboot
-```
+----------------------------------------------------------------------------
 
-### Starting the System
+## Running the RotorHazard server
 
 The following instructions will start the web server on the raspberry pi, allowing full control and configuration of the system to run races and save lap times.
 
-#### Manual Start
-Open a terminal and enter the following:
+### Manual Start
+Open a terminal window and enter the following:
 ```
 cd ~/RotorHazard/src/server
 python server.py
 ```
 The server may be stopped by hitting Ctrl-C
 
-#### Start on Boot
+### Start on Boot
 To configure the system to automatically start the RotorHazard server when booting up:
 
 Create a service file:
@@ -191,7 +225,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable rotorhazard.service
 sudo reboot
 ```
-#### Stopping the server service
+### Stopping the server service
 If the RotorHazard server was started as a service during the boot, it may be stopped with a command like this:
 ```
 sudo systemctl stop rotorhazard
@@ -211,8 +245,10 @@ A system shutdown should always be performed before unplugging the power, either
 sudo shutdown now
 ```
 
+----------------------------------------------------------------------------
+
 <a id="update"></a>
-### Updating an existing installation
+## Updating an existing installation
 
 Before updating, any currently-running RotorHazard server should be stopped. If installed as a service, it may be stopped with a command like:
 ```
@@ -238,7 +274,9 @@ cd ~/RotorHazard/src/server
 sudo pip install --upgrade --no-cache-dir -r requirements.txt
 ```
 
-### Enable Port forwarding
+----------------------------------------------------------------------------
+
+## Enable Port forwarding
 The RotorHazard server defaults to port 5000, as this is necessary for some 3rd party integrations. While you can change the port via `HTTP_PORT` in the `config.json` file, a better approach is often to forward the web default port of 80 to 5000.
 
 By default, HTTP uses port 80. Other values will require that the port be included as part of the URL entered into client browsers. If other web services are running on the Pi, port 80 may already be in use and reusing it will cause problems. If port 80 is used directly via `HTTP_PORT`, the server may need to be run using the *sudo* command. With the following commands, the server runs on port 5000 but the system sends the traffic from port 80 to it.
@@ -251,10 +289,10 @@ sudo apt-get install iptables-persistent
 After running these commands, RotorHazard will be available from both ports 80 and 5000. When available by port 80, you may leave the port off when accessing the server: `http://127.0.0.1`
 <br/>
 
------------------------------
+----------------------------------------------------------------------------
 
 <a id="otheros"></a>
-### Other Operating Systems
+## Other Operating Systems
 
 The RotorHazard server may be run on any computer with an operating system that supports Python. In these alternate configurations, one or more hardware nodes may be connected via USB -- see [doc/USB Nodes.md](USB%20Nodes.md) for more information. The server may also be run using simulated (mock) nodes.
 
@@ -296,10 +334,10 @@ If no hardware nodes are configured, the server will operate using simulated (mo
 To view the web-GUI interface, open up a web browser and enter into the address bar: ```localhost:5000``` (If the HTTP_PORT value in the configuration has been changed then use that value instead of 5000). If the server is running then the RotorHazard main page should appear. Note that pages reserved for the race director (Admin/Settings) are password protected with the username and password specified in the configuration.
 <br/>
 
------------------------------
+----------------------------------------------------------------------------
 
 <a id="logging"></a>
-### Logging
+## Logging
 
 The RotorHazard server generates "log" messages containing information about its operations. Below is a sample configuration for logging:
 
