@@ -45,7 +45,7 @@ template <uint8_t N> class MultiPeakSendBuffer : public MultiExtremumSendBuffer<
                     MultiExtremumSendBuffer<N>::buffer.push(e);
                 } else if (e.rssi == last.rssi) {
                     // merge
-                    Extremum merged = {last.rssi, last.firstTime, endTime(e) - last.firstTime};
+                    Extremum merged = {last.rssi, last.firstTime, (uint16_t) (endTime(e) - last.firstTime)};
                     MultiExtremumSendBuffer<N>::buffer.push(merged);
                 }
             } else {
@@ -64,7 +64,7 @@ template <uint8_t N> class MultiNadirSendBuffer : public MultiExtremumSendBuffer
                     MultiExtremumSendBuffer<N>::buffer.push(e);
                 } else if (e.rssi == last.rssi) {
                     // merge
-                    Extremum merged = {last.rssi, last.firstTime, endTime(e) - last.firstTime};
+                    Extremum merged = {last.rssi, last.firstTime, (uint16_t) (endTime(e) - last.firstTime)};
                     MultiExtremumSendBuffer<N>::buffer.push(merged);
                 }
             } else {
