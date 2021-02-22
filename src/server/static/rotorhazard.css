@@ -1,9 +1,47 @@
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 400;
+  src: local(''),
+       url('fonts/Barlow-Light.woff2') format('woff2'),
+       url('fonts/Barlow-Light.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: italic;
+  font-weight: 400;
+  src: local(''),
+       url('fonts/Barlow-LightItalic.woff2') format('woff2'),
+       url('fonts/Barlow-LightItalic.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 700;
+  src: local(''),
+       url('fonts/Barlow-Bold.woff2') format('woff2'),
+       url('fonts/Barlow-Bold.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 700;
+  src: local(''),
+       url('fonts/Barlow-BoldItalic.woff2') format('woff2'),
+       url('fonts/Barlow-BoldItalic.woff') format('woff');
+}
+
 html {
 	background: #fff;
 	color: #000;
 	margin: 0;
 	padding: 0;
 	overflow-x: hidden;
+	font-family: 'Barlow', sans-serif;
+	font-variant-numeric: tabular-nums;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -15,7 +53,6 @@ html {
 
 body {
 	font-size: 1.2em;
-	font-family: sans-serif;
 	margin: 0;
 	padding: 0;
 	display: flex;
@@ -193,6 +230,7 @@ button, select, .button-like {
 	padding: 0.25em 0.5em;
 	color: #fff;
 	font-size: inherit;
+	font-family: inherit;
 	cursor: pointer;
 	min-height: 2em;
 	box-sizing: border-box;
@@ -729,7 +767,6 @@ main.page-home {
 	padding: 0.25em 0;
 	display: block;
 	text-align: center;
-	font-family: monospace;
 	font-weight: bold;
 	margin: 0.5rem 0;
 	position: relative;
