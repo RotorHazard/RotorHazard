@@ -5748,13 +5748,24 @@ if not db_inited_flag:
         elif not Database.RaceFormat.query.count():
             logger.info('Formats are empty; recovering database')
             recover_database(DB_FILE_NAME, startup=True)
+        else:
+            try:  # make sure no problems reading 'Heat' table data
+                Database.Heat.query.all()
+            except Exception as ex:
+                logger.warning('Error reading Heat data; recovering database; err: ' + str(ex))
+                recover_database(DB_FILE_NAME, startup=True)
     except Exception as ex:
         logger.warning('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()
 
 # Initialize internal state with database
 # DB session commit needed to prevent 'application context' errors
-init_race_state()
+try:
+    init_race_state()
+except Exception:
+    logger.exception("Exception in 'init_race_state()'")
+    log.wait_for_queue_empty()
+    sys.exit(1)
 
 # internal secondary race format for LiveTime (needs to be created after initial DB setup)
 global SECONDARY_RACE_FORMAT
