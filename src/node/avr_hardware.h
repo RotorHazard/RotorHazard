@@ -172,8 +172,7 @@ public:
     }
 
     void processStatusFlags(uint8_t statusFlags, RssiNode& rssiNode) {
-        State& state = rssiNode.getState();
-        if (state.activatedFlag)
+        if (rssiNode.active)
         {
             mtime_t ms = millis();
             if (i2cMonitorEnabledFlag)

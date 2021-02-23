@@ -2,6 +2,7 @@
 #define rssi_h
 
 #include "config.h"
+#include "util/persistent-homology.h"
 #include "util/filter.h"
 #include "util/median-filter.h"
 #include "util/lowpass15hz-filter.h"
@@ -17,23 +18,25 @@
 #include "util/unified-sendbuffer.h"
 
 #define MAX_DURATION 0xFFFF
+#define toDuration(ms) uint16_t(min(uint32_t(ms), uint32_t(MAX_DURATION)))
+
+#define HISTORY_SIZE 20
 
 #define USE_UNIFIED_SENDBUFFER
 #ifdef __TEST__
 #undef USE_UNIFIED_SENDBUFFER
 #endif
-#ifdef USE_UNIFIED_SENDBUFFER
-#define SENDBUFFER UnifiedSendBuffer<Extremum,20>
-#else
+
+#define SENDBUFFER UnifiedSendBuffer<Extremum,HISTORY_SIZE>
+
 #define PEAK_SENDBUFFER_SINGLE SinglePeakSendBuffer
-#define PEAK_SENDBUFFER_MULTI MultiPeakSendBuffer<10>
+#define PEAK_SENDBUFFER_MULTI MultiPeakSendBuffer<HISTORY_SIZE/2>
 #define NADIR_SENDBUFFER_SINGLE SingleNadirSendBuffer
-#define NADIR_SENDBUFFER_MULTI MultiNadirSendBuffer<10>
+#define NADIR_SENDBUFFER_MULTI MultiNadirSendBuffer<HISTORY_SIZE/2>
 
 //select the send buffer to use here
 #define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_MULTI
 #define NADIR_SENDBUFFER_IMPL NADIR_SENDBUFFER_MULTI
-#endif
 
 struct Settings
 {
@@ -49,8 +52,6 @@ class State
 public:
     // variables to track the loop time
     utime_t volatile loopTimeMicros = 0;
-    utime_t volatile minLoopTimeMicros = 0xFFFFFFFF;
-    utime_t volatile maxLoopTimeMicros = 0;
     utime_t lastloopMicros = 0;
 
     bool volatile crossing = false; // True when the quad is going through the gate
@@ -64,23 +65,26 @@ public:
     rssi_t volatile nodeRssiPeak = 0; // peak smoothed rssi seen since the node frequency was set
     rssi_t volatile nodeRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since the node frequency was set
 
-    bool volatile activatedFlag = false; // Set true after initial WRITE_FREQUENCY command received
-
     /**
      * Returns the RSSI change since the last reading.
      */
     inline int readRssiFromFilter(Filter<rssi_t>* f);
-    inline void updateLoopTime(utime_t loopMicros, bool updateStats);
+    inline void updateRssiStats();
+    inline void updateLoopTime(utime_t loopMicros);
     inline void resetPass();
     inline void reset();
 };
 
 class History
 {
+#if defined(USE_PH) || defined(__TEST__)
+    friend class RssiNode;
+#endif
 private:
-#ifdef USE_UNIFIED_SENDBUFFER
+#if defined(USE_UNIFIED_SENDBUFFER) || defined(USE_PH)
     SENDBUFFER defaultSendBuffer;
-#else
+#endif
+#if !defined(USE_UNIFIED_SENDBUFFER) || defined(__TEST__)
     PEAK_SENDBUFFER_IMPL defaultPeakSendBuffer;
     NADIR_SENDBUFFER_IMPL defaultNadirSendBuffer;
     DualSendBuffer dualSendBuffer;
@@ -101,6 +105,7 @@ public:
     SendBuffer<Extremum> *sendBuffer = nullptr;
     int8_t prevRssiChange = 0; // >0 for raising, <0 for falling
 public:
+    ExtremumType extremumType = NONE;
     Extremum peak = {0, 0, 0};
     Extremum nadir = {MAX_RSSI, 0, 0};
 
@@ -120,15 +125,15 @@ public:
         setSendBuffer(&dualSendBuffer);
     }
 #endif
-    inline void startNewPeak(rssi_t rssi, mtime_t ts);
-    inline void startNewNadir(rssi_t rssi, mtime_t ts);
+    inline ExtremumType startNewPeak(rssi_t rssi, mtime_t ts);
+    inline ExtremumType startNewNadir(rssi_t rssi, mtime_t ts);
     inline void bufferPeak() {bufferPeak(false);};
     inline void bufferNadir() {bufferNadir(false);};
     inline void recordRssiChange(int delta);
     ExtremumType nextToSendType();
     Extremum popNextToSend();
-    inline void checkForPeak();
-    inline void checkForNadir();
+    inline bool checkForPeak(int rssiChange);
+    inline bool checkForNadir(int rssiChange);
     inline void reset();
 };
 
@@ -145,11 +150,15 @@ class RssiNode
 private:
     LowPassFilter15Hz lpfFilter1;
     LowPassFilter50Hz lpfFilter2;
-    MedianFilter<rssi_t, 51, 0> medianFilter;
+    MedianFilter<rssi_t, 5, 0> medianFilter;
     Composite3Filter<rssi_t> defaultFilter;
 
-    bool needsToSettle = false;
-    mtime_t lastResetTimeMs = 0;
+#if defined(USE_PH) || defined(__TEST__)
+    ConnectedComponent ccs[(HISTORY_SIZE+1)/2];
+#endif
+
+    bool needsToSettle = true;
+    mtime_t lastResetTimeMs;
     struct Settings settings;
     State state;
     History history;
@@ -157,9 +166,15 @@ private:
 
     Filter<rssi_t> *filter;
 
-    void updateHistory(int rssiChange);
-    void checkForCrossing();
+    ExtremumType updateHistory(int rssiChange);
+    bool checkForCrossing(ExtremumType t, int rssiChange);
+#if defined(USE_PH) || defined(__TEST__)
+    bool checkForCrossing_ph(ExtremumType t, uint8_t threshold);
+#endif
+    bool checkForCrossing_old(rssi_t enterThreshold, rssi_t exitThreshold);
 public:
+    bool volatile active = false; // Set true after initial WRITE_FREQUENCY command received
+
     RssiNode();
     void setFilter(Filter<rssi_t> *f);
     void start();

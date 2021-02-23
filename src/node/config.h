@@ -98,4 +98,10 @@
 
 #endif
 
+// use persistent homology detection
+#define USE_PH
+#ifdef __TEST__
+#undef USE_PH
+#endif
+
 #endif  // config_h

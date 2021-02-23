@@ -25,7 +25,7 @@
 #include <Print.h>
 #endif
 
-template<typename T, size_t S, typename IT = typename Helper::Index<(S <= UINT8_MAX), (S <= UINT16_MAX)>::Type> class CircularBuffer : public List<T,S,IT> {
+template<typename T, size_t S, typename IT = typename Helper::Index<(S <= UINT8_MAX), (S <= UINT16_MAX)>::Type> class CircularBuffer final : public List<T,S,IT> {
 public:
 	/**
 	 * The buffer capacity: read only as it cannot ever change.

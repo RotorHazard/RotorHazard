@@ -29,10 +29,14 @@ namespace Helper {
     };
 }
 
-template<typename T, size_t S, typename IT = typename Helper::Index<(S <= UINT8_MAX), (S <= UINT16_MAX)>::Type> class List {
+template<typename IT> class Collection {
+public:
+    virtual IT size() const = 0;
+};
+
+template<typename T, size_t S, typename IT = typename Helper::Index<(S <= UINT8_MAX), (S <= UINT16_MAX)>::Type> class List : public Collection<IT> {
 public:
     virtual T operator [] (IT index) const = 0;
-    virtual IT size() const = 0;
 };
 
 #define CIRCULAR_BUFFER_INT_SAFE

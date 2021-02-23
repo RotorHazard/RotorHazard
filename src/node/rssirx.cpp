@@ -30,7 +30,7 @@ public:
     };
 
     bool readRssi() {
-      return node.process(rx.readRssi(), usclock.millis());
+      return node.active && node.process(rx.readRssi(), usclock.millis());
     };
 };
 
@@ -77,7 +77,7 @@ public:
       } else {
           idx = 0;
       }
-      return nodes[idx].process(rx.readRssi(), usclock.millis());
+      return nodes[idx].active && nodes[idx].process(rx.readRssi(), usclock.millis());
     };
 };
 
@@ -124,7 +124,8 @@ public:
     bool readRssi() {
       bool crossingFlag;
       for (int i=0; i<getCount(); i++) {
-        if (getRssiNode(i).process(getRxModule(i).readRssi(), usclock.millis())) {
+        RssiNode& node = getRssiNode(i);
+        if (node.active && node.process(getRxModule(i).readRssi(), usclock.millis())) {
           crossingFlag = true;
         }
       }

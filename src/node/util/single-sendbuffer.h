@@ -9,22 +9,28 @@ class SinglePeakSendBuffer : public ExtremumSendBuffer
     private:
         Extremum buffer = {0, 0, 0}; // only valid if buffer.rssi != 0
     public:
-      bool isEmpty() {
+      uint8_t size() const {
+          return isFull() ? 1 : 0;
+      }
+      bool isEmpty() const {
           return !isPeakValid(buffer);
       }
-      bool isFull() {
+      bool isFull() const {
           return isPeakValid(buffer);
       }
-      void addOrDiscard(const Extremum& e) {
+      void addOrDiscard(const Extremum& e, bool wasLast = true) {
           if(e.rssi > buffer.rssi) {
               // prefer higher peak
               buffer = e;
-          } else if (e.rssi == buffer.rssi) {
+          } else if (wasLast && e.rssi == buffer.rssi) {
               // merge
               buffer.duration = endTime(e) - buffer.firstTime;
           }
       }
       const Extremum first() {
+          return buffer;
+      }
+      const Extremum last() {
           return buffer;
       }
       void removeFirst() {
@@ -44,22 +50,28 @@ class SingleNadirSendBuffer : public ExtremumSendBuffer
     private:
         Extremum buffer = {MAX_RSSI, 0, 0}; // only valid if buffer.rssi != MAX_RSSI
     public:
-      bool isEmpty() {
+      uint8_t size() const {
+          return isFull() ? 1 : 0;
+      }
+      bool isEmpty() const {
           return !isNadirValid(buffer);
       }
-      bool isFull() {
+      bool isFull() const {
           return isNadirValid(buffer);
       }
-      void addOrDiscard(const Extremum& e) {
+      void addOrDiscard(const Extremum& e, bool wasLast = true) {
           if(e.rssi < buffer.rssi) {
               // prefer lower nadir
               buffer = e;
-          } else if (e.rssi == buffer.rssi) {
+          } else if (wasLast && e.rssi == buffer.rssi) {
               // merge
               buffer.duration = endTime(e) - buffer.firstTime;
           }
       }
       const Extremum first() {
+          return buffer;
+      }
+      const Extremum last() {
           return buffer;
       }
       void removeFirst() {

@@ -131,7 +131,7 @@ void Message::handleWriteCommand(bool serialFlag)
 void ioBufferWriteExtremum(Buffer& buf, const Extremum& e, mtime_t now)
 {
     ioBufferWriteRssi(buf, e.rssi);
-    buf.write16(uint16_t(now - e.firstTime));
+    buf.write16(toDuration(now - e.firstTime));
     buf.write16(e.duration);
 }
 
@@ -222,8 +222,9 @@ void Message::handleReadCommand(bool serialFlag)
     if (activityFlag)
     {
         cmdStatusFlags |= COMM_ACTIVITY;
-        if (serialFlag)
+        if (serialFlag) {
             cmdStatusFlags |= SERIAL_CMD_MSG;
+        }
     }
 
     if (!buffer.isEmpty())
@@ -239,11 +240,11 @@ void Message::handleReadLapPassStats(RssiNode& rssiNode, mtime_t timeNowVal)
     State& state = rssiNode.getState();
     LastPass& lastPass = rssiNode.getLastPass();
     buffer.write8(lastPass.lap);
-    buffer.write16(uint16_t(timeNowVal - lastPass.timestamp));  // ms since lap
+    buffer.write16(toDuration(timeNowVal - lastPass.timestamp));  // ms since lap
     ioBufferWriteRssi(buffer, state.rssi);
     ioBufferWriteRssi(buffer, state.nodeRssiPeak);
     ioBufferWriteRssi(buffer, lastPass.rssiPeak);  // RSSI peak for last lap pass
-    buffer.write16(uint16_t(state.loopTimeMicros));
+    buffer.write16(toDuration(state.loopTimeMicros));
 }
 
 void Message::handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal)

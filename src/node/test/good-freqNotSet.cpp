@@ -11,7 +11,7 @@ unittest(freqNotSet) {
   History& history = rssiNode.getHistory();
   rssiNode.start();
 
-  state.activatedFlag = false;
+  rssiNode.active = false;
 
   sendSignal(nano, 43);
   assertFalse(rssiNode.isStateValid());

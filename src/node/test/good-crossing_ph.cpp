@@ -3,16 +3,18 @@
 #include "../rssi.h"
 #include "util.h"
 
-/**
- * Crossing lasting a single sample.
- */
-unittest(fastCrossing) {
+SENDBUFFER phSendBuffer;
+
+unittest(phCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
   rssiNode.setFilter(&testFilter);
+  Settings& settings = rssiNode.getSettings();
+  settings.enterAtLevel = settings.exitAtLevel = 10;
   State& state = rssiNode.getState();
   LastPass& lastPass = rssiNode.getLastPass();
   History& history = rssiNode.getHistory();
+  history.setSendBuffer(&phSendBuffer);
   rssiNode.start();
 
   rssiNode.active = true;

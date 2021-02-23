@@ -15,9 +15,10 @@ unittest(gradualCrossing) {
   History& history = rssiNode.getHistory();
   rssiNode.start();
 
-  state.activatedFlag = true;
+  rssiNode.active = true;
 
   // prime the state with some background signal
+  sendSignal(nano, 50);
   sendSignal(nano, 50);
   sendSignal(nano, 50);
   assertTrue(rssiNode.isStateValid());
@@ -54,10 +55,9 @@ unittest(gradualCrossing) {
   assertEqual(70, (int)history.nadir.rssi);
   assertEqual(0, (int)history.nadir.duration);
 
-  assertNotEqual(NONE, history.nextToSendType());
   assertEqual(130, (int)history.sendBuffer->nextPeak().rssi);
   assertEqual(time(2)-1, (int)history.sendBuffer->nextPeak().duration);
-  assertEqual(PEAK, history.nextToSendType());
+  assertEqual(NADIR, history.nextToSendType());
 
   assertEqual(130, (int)state.nodeRssiPeak);
   assertEqual(50, (int)state.nodeRssiNadir);
