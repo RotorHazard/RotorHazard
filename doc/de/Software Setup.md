@@ -99,7 +99,7 @@ Die Auswahl der Hardwareadresse ist auch möglich, indem die Hardwarestifte gem�
 
 ### Echtzeituhr
 
-Durch die Installation eines Echtzeituhrmoduls kann der RotorHazard-Timer das korrekte Datum und die korrekte Uhrzeit beibehalten, auch wenn keine Internetverbindung verfügbar ist. Weitere Informationen finden Sie unter '[doc/Real Time Clock.md](de-Real%20Time%20Clock.md)'.
+Durch die Installation eines Echtzeituhrmoduls kann der RotorHazard-Timer das korrekte Datum und die korrekte Uhrzeit beibehalten, auch wenn keine Internetverbindung verfügbar ist. Weitere Informationen finden Sie unter '[doc/Real Time Clock.md](Real%20Time%20Clock.md)'.
 
 ### WS2812b LED-Unterstützung
 
@@ -334,7 +334,7 @@ Nach dem Ausführen dieser Befehle ist RotorHazard an beiden Ports 80 und 5000 v
 
 ### Andere Betriebssysteme
 
-Der RotorHazard-Server kann auf jedem Computer mit einem Betriebssystem ausgeführt werden, das Python unterstützt. In diesen alternativen Konfigurationen können ein oder mehrere Hardwareknoten über USB verbunden sein. Weitere Informationen finden Sie unter [doc/USB Nodes.md](de-USB%20Nodes.md). Der Server kann auch mit simulierten (Schein-) Knoten ausgeführt werden.
+Der RotorHazard-Server kann auf jedem Computer mit einem Betriebssystem ausgeführt werden, das Python unterstützt. In diesen alternativen Konfigurationen können ein oder mehrere Hardwareknoten über USB verbunden sein. Weitere Informationen finden Sie unter [doc/USB Nodes.md](USB%20Nodes.md). Der Server kann auch mit simulierten (Schein-) Knoten ausgeführt werden.
 
 So installieren Sie den RotorHazard-Server auf diesen Systemen:
 
@@ -358,7 +358,7 @@ So führen Sie den RotorHazard-Server auf diesen Systemen aus:
    ```
 4. Der Server kann durch Drücken von Strg-C gestoppt werden
 
-Wenn Hardwareknoten über USB verbunden sind, müssen sie im Abschnitt `SERIAL_PORTS` in der Konfigurationsdatei "src/server/config.json" konfiguriert werden (siehe [doc/USB Nodes.md](de-USB%20Nodes.md) für Details).
+Wenn Hardwareknoten über USB verbunden sind, müssen sie im Abschnitt `SERIAL_PORTS` in der Konfigurationsdatei "src/server/config.json" konfiguriert werden (siehe [doc/USB Nodes.md](USB%20Nodes.md) für Details).
 
 Wenn keine Hardwareknoten konfiguriert sind, arbeitet der Server mit simulierten (Schein-) Knoten. In diesem Modus kann die Web-GUI-Oberfläche untersucht und getestet werden.
 
@@ -404,6 +404,6 @@ Wenn Sie Probleme melden, wird dringend empfohlen, die Schaltfläche "Protokolle
 ---
 
 Siehe auch:
-[doc/Hardware Setup.md](de-Hardware%20Setup.md)<br/>
-[doc/USB Nodes.md](de-USB%20Nodes.md)<br/>
-[doc/User Guide.md](de-User%20Guide.md)
+[doc/Hardware Setup.md](Hardware%20Setup.md)<br/>
+[doc/USB Nodes.md](USB%20Nodes.md)<br/>
+[doc/User Guide.md](User%20Guide.md)

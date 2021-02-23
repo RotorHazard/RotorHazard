@@ -20,7 +20,7 @@
 
 ### Zusätzliche Komponenten
 
-* [HF-Abschirmung](de-Shielding%20and%20Course%20Position.md)
+* [HF-Abschirmung](Shielding%20and%20Course%20Position.md)
 
 ### Optionale Komponenten
 
@@ -39,37 +39,37 @@ Stellen Sie sicher, dass Ihre Empfänger SPI unterstützen. *Wenn dies nicht der
 Entfernen Sie die Abschirmung vom RX5808, die Abschirmung wird normalerweise durch ein paar Lötpunkte an den Kanten gehalten. Verwenden Sie etwas Lötlotdocht, um das Lot zu entfernen und die Abschirmung vom Empfänger zu befreien. Achten Sie darauf, keine Massepads auf dem Empfänger zu beschädigen. In der Regel befinden sich am Rand kleine Löcher, mit denen Sie die Abschirmung leichter entfernen können.
 
 Entfernen Sie den folgenden Widerstand:
-![RX5808 spi mod](img/rx5808-new-top.jpg)
+![RX5808 spi mod](../img/rx5808-new-top.jpg)
 
 Die Abschirmung sollte nach Entfernen des Widerstandes wieder angelötet werden.
 
 ### Empfänger-Knoten
 
 Vollständige Verkabelung der Verbindungen zwischen jedem Arduino und RX5808.
-![Verdrahtung des Empfängerknotens](img/Receivernode.png)
+![Verdrahtung des Empfängerknotens](../img/Receivernode.png)
 
-Hinweis: Ein einfacher Empfängerknoten kann auch über USB konstruiert und angeschlossen werden -- siehe [doc/USB Nodes.md](de-USB%20Nodes.md).
+Hinweis: Ein einfacher Empfängerknoten kann auch über USB konstruiert und angeschlossen werden -- siehe [doc/USB Nodes.md](USB%20Nodes.md).
 
 ### System-Baugruppe
 
 Vollständige Verkabelung der Verbindungen zwischen jedem Arduino und der Raspberry Pi.
 
 Hinweis: Vergewissern Sie sich, dass alle Empfänger-Knoten und die Raspberry Pi an eine gemeinsame Masse angeschlossen sind; wenn nicht, können die i2c-Nachrichten beschädigt werden.
-![Systemverkabelung](img/D5-i2c.png)
+![Systemverkabelung](../img/D5-i2c.png)
 
 ### Hinzufügen einer gerichteten RF-Abschirmung
 
-Eine gerichtete HF-Abschirmung verbessert die Fähigkeit des Systems zur Abwehr von Fehlpässen erheblich. Siehe [HF-Abschirmung](de-Shielding%20and%20Course%20Position.md)
+Eine gerichtete HF-Abschirmung verbessert die Fähigkeit des Systems zur Abwehr von Fehlpässen erheblich. Siehe [HF-Abschirmung](Shielding%20and%20Course%20Position.md)
 
 ### Echtzeituhr
 
-Unter "[doc/Real Time Clock.md](de-Real%20Time%20Clock.md)" finden Sie weitere Informationen über die Installation eines Echtzeituhr-Moduls, mit dem das System das Datum und die Uhrzeit besser verwalten kann.
+Unter "[doc/Real Time Clock.md](Real%20Time%20Clock.md)" finden Sie weitere Informationen über die Installation eines Echtzeituhr-Moduls, mit dem das System das Datum und die Uhrzeit besser verwalten kann.
 
 ### WS2812b LED-Unterstützung
 
-Die Stifte im grünen Kasten sind die, die bereits vom Timer verwendet wurden. An den Pins im roten Kasten schließen Sie das Signal und die Masse der ws2812b-LEDs an.  Die LEDs benötigen eine separate Stromquelle. Siehe WS2812b LED-Unterstützung unter [doc/Software Setup.md](de-Software%20Setup.md).
+Die Stifte im grünen Kasten sind die, die bereits vom Timer verwendet wurden. An den Pins im roten Kasten schließen Sie das Signal und die Masse der ws2812b-LEDs an.  Die LEDs benötigen eine separate Stromquelle. Siehe WS2812b LED-Unterstützung unter [doc/Software Setup.md](Software%20Setup.md).
 
-![led wiring](img/GPIO.jpg)
+![led wiring](../img/GPIO.jpg)
 
 ### Zusätzliche Sensoren
 
@@ -93,11 +93,11 @@ Sensoren (wie BME280 und INA219) können an den I2C-Bus und die Stromversorgungs
 
 ### Mehrere Timer
 
-Mehrere RotorHazard Timer können miteinander verbunden werden (d.h. für Split Timing und Spiegelung) -- siehe [doc/Cluster.md](de-Cluster.md).
+Mehrere RotorHazard Timer können miteinander verbunden werden (d.h. für Split Timing und Spiegelung) -- siehe [doc/Cluster.md](Cluster.md).
 
 ---
 
 Siehe auch:<br/>
-[doc/USB-Knoten.md](de-USB%20Nodes.md)<br/>
-[doc/Software Setup.md](de-Software%20Setup.md)<br/>
-[doc/Benutzerhandbuch.md](de-User%20Guide.md)
+[doc/USB-Knoten.md](USB%20Nodes.md)<br/>
+[doc/Software Setup.md](Software%20Setup.md)<br/>
+[doc/Benutzerhandbuch.md](User%20Guide.md)

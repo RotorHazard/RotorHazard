@@ -38,7 +38,7 @@ Der Wert "Adresse" kann mit Sternchen-Platzhalterzeichen angegeben werden. Wenn 
 
 ### Uhrensynchronisation
 
-Die Genauigkeit der gemeldeten Zwischenzeiten ist höher, wenn alle Uhren ihre Uhren synchronisiert haben. Dies kann durch Hinzufügen von präzisen [Echtzeituhr (RTC) Geräten](de-Real%20Time%20Clock.md) wie [DS3231](https://www.adafruit.com/product/3013)zu allen Timern erreicht werden. NTP kann so konfiguriert werden, dass es wie unten gezeigt zwischen den Timern arbeitet.
+Die Genauigkeit der gemeldeten Zwischenzeiten ist höher, wenn alle Uhren ihre Uhren synchronisiert haben. Dies kann durch Hinzufügen von präzisen [Echtzeituhr (RTC) Geräten](Real%20Time%20Clock.md) wie [DS3231](https://www.adafruit.com/product/3013)zu allen Timern erreicht werden. NTP kann so konfiguriert werden, dass es wie unten gezeigt zwischen den Timern arbeitet.
 
 Auf allen Timern:
 

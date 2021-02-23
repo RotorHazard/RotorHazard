@@ -1,12 +1,12 @@
 # Kalibrierungs- und Sensorabstimmungsparameter
 
-_Wenn Sie Probleme beim Kalibrieren Ihres Timers haben, stellen Sie sicher, dass Sie die [HF-Abschirmung](de-Shielding%20and%20Course%20Position.md) korrekt konstruiert und platziert haben._
+_Wenn Sie Probleme beim Kalibrieren Ihres Timers haben, stellen Sie sicher, dass Sie die [HF-Abschirmung](Shielding%20and%20Course%20Position.md) korrekt konstruiert und platziert haben._
 
 Jeder Knoten verfolgt die Signalstärke (RSSI) auf einer ausgewählten Frequenz und verwendet diese relative Stärke, um zu bestimmen, ob sich ein Sender in der Nähe des Timing-Gates befindet. Mit dem RotorHazard-Zeitmesssystem können Sie jeden Knoten einzeln kalibrieren, um das Verhalten und die Hardwareunterschiede zwischen System und Umgebung auszugleichen.
 
 Ein Knoten kann *Crossing* oder *Clear* sein. Wenn ein Knoten *Clear* ist, glaubt das System, dass sich ein Sender nicht in der Nähe des Timing-Gates befindet, da der RSSI niedrig ist. Wenn es sich um *Crossing* handelt, geht das System davon aus, dass ein Sender am Timing Gate vorbeikommt, da der RSSI hoch ist. Ein Rundenpass wird aufgezeichnet, sobald die *Überfahrt* beendet ist und das System zu *Löschen* zurückkehrt.
 
-![Tuning Graph](img/Tuning%20Graph-06.svg)<br />
+![Tuning Graph](../img/Tuning%20Graph-06.svg)<br />
 _RSSI während eines Rennens erscheint ähnlich wie diese Grafik mit vielen sichtbaren Gipfeln und Tälern. Wenn sich der Sender dem Timing-Gate nähert, steigt das Signal an._
 
 ## Parameter
@@ -23,7 +23,7 @@ Das System wechselt zu *Löschen*, sobald der RSSI-Wert unter diesen Wert fällt
 
 Zwischen *EnterAt* und *ExitAt* bleibt das System je nach vorherigem Status *Crossing* oder *Clear*.
 
-![Sample RSSI Graph](img/Sample%20RSSI%20Graph.svg)
+![Sample RSSI Graph](../img/Sample%20RSSI%20Graph.svg)
 
 ### Kalibrierungsmodus
 
@@ -51,7 +51,7 @@ Auf der Seite *Marschall* können Sie Werte visuell einstellen. Sammeln Sie Date
 
 ### Stellen Sie den Wert *EnterAt* ein
 
-![Tuning Graph](img/Tuning%20Graph-10.svg)
+![Tuning Graph](../img/Tuning%20Graph-10.svg)
 
 * Unterhalb der Spitze aller Torübergänge
 * Über jeder Spitze, wenn sich der Sender nicht in der Nähe des Gates befindet
@@ -59,7 +59,7 @@ Auf der Seite *Marschall* können Sie Werte visuell einstellen. Sammeln Sie Date
 
 ### Stellen Sie den Wert *ExitAt* ein
 
-![Tuning Graph](img/Tuning%20Graph-11.svg)
+![Tuning Graph](../img/Tuning%20Graph-11.svg)
 
 * Unterhalb von Tälern, die während einer Torüberquerung auftreten
 * Über dem niedrigsten Wert, der während einer Runde gesehen wurde
@@ -69,7 +69,7 @@ ExitAt-Werte, die näher an EnterAt liegen, ermöglichen es dem Timer, Runden fr
 
 ### Tuning Beispiel
 
-![Tuning Graph](img/Tuning%20Graph-01.svg)<br />
+![Tuning Graph](../img/Tuning%20Graph-01.svg)<br />
 _Zwei Runden werden aufgezeichnet. Das Signal steigt über *EnterAt* und fällt dann zweimal unter *ExitAt*, einmal an jedem Peak. Innerhalb dieser beiden Kreuzungsfenster findet der Timer nach der Rauschfilterung das stärkste Signal, das als aufgezeichnete Rundenzeit verwendet werden kann._
 
 ### Alternative Tuning Methode
@@ -96,28 +96,28 @@ Ein guter Ausgangspunkt für *ExitAt* ist die Erfassung des Werts mit einem Quad
 
 ### Fehlende Runden (System normalerweise *Löschen*)
 
-![Tuning Graph](img/Tuning%20Graph-04.svg)<br />
+![Tuning Graph](../img/Tuning%20Graph-04.svg)<br />
 _Runden werden nicht aufgezeichnet, wenn RSSI EnterAt nicht erreicht wurde._
 
 * Senken Sie *EnterAt*
 
 ### Fehlende Runden (System normalerweise *Crossing*)
 
-![Tuning Graph](img/Tuning%20Graph-05.svg)<br />
+![Tuning Graph](../img/Tuning%20Graph-05.svg)<br />
 _Runden werden zusammengeführt, wenn *ExitAt* zu hoch ist, weil die erste Rundenüberquerung nie abgeschlossen wird._
 
 * Erhöhen Sie *ExitAt*
 
 ### Runden registrieren sich für andere Teile eines Kurses
 
-![Tuning Graph](img/Tuning%20Graph-03.svg)<br />
+![Tuning Graph](../img/Tuning%20Graph-03.svg)<br />
 _Extra-Kreuzungen treten auf, wenn *EnterAt* zu niedrig ist._
 
 * Erhöhen Sie *EnterAt*, bis *Kreuzungen* erst in der Nähe des Timing-Gates beginnen. (Verwenden Sie nach dem Speichern eines Rennens die Seite *Marschall*, um die besten Werte zu ermitteln und zu speichern.)
 
 ### Viele Runden werden gleichzeitig registriert
 
-![Tuning Graph](img/Tuning%20Graph-02.svg)<br />
+![Tuning Graph](../img/Tuning%20Graph-02.svg)<br />
 _Zu viele Runden treten auf, wenn *ExitAt* zu nahe an *EnterAt* liegt, weil Runden zu schnell beendet werden._
 
 * Erhöhen Sie nach Möglichkeit *EnterAt*
@@ -127,21 +127,21 @@ Die Einstellung *Minimale Rundenzeit* behält immer die erste Überfahrt bei und
 
 ### Die Registrierung der Runden dauert lange
 
-![Tuning Graph](img/Tuning%20Graph-09.svg)<br />
+![Tuning Graph](../img/Tuning%20Graph-09.svg)<br />
 _Die Rundenaufzeichnung dauert lange, wenn *ExiAt* niedrig ist. Dies hat keinen Einfluss auf die Genauigkeit der aufgezeichneten Zeit._
 
 * Erhöhen Sie *ExitAt*
 
 ### Der Knoten kreuzt niemals
 
-![Tuning Graph](img/Tuning%20Graph-07.svg)<br />
+![Tuning Graph](../img/Tuning%20Graph-07.svg)<br />
 _Laps werden nicht registriert, wenn RSSI *EnterAt* nie erreicht ._
 
 * Senken Sie *EnterAt*
 
 ### Der Knoten ist niemals *klar*
 
-![Tuning Graph](img/Tuning%20Graph-08.svg)<br />
+![Tuning Graph](../img/Tuning%20Graph-08.svg)<br />
 _Laps werden nicht abgeschlossen, wenn RSSI niemals unter *ExitAt* fällt ._
 
 * Erhöhen Sie *ExitAt*

@@ -16,7 +16,7 @@ Die Grundlagen des Aufbaus einer Veranstaltung sind die Einrichtung von Piloten,
 
 ## Rennformate erstellen (optional)
 
-Öffnen Sie unter Einstellungen die Rennformate. Passen Sie die [Einstellungen](de-User%20Guide.md#race-format) an oder erstellen Sie neue Formate, damit sie die Art der Startaufstellung Ihrer Gruppe, die Siegbedingungen usw. ändern können.
+Öffnen Sie unter Einstellungen die Rennformate. Passen Sie die [Einstellungen](User%20Guide.md#race-format) an oder erstellen Sie neue Formate, damit sie die Art der Startaufstellung Ihrer Gruppe, die Siegbedingungen usw. ändern können.
 
 ## Läufe und Klassen hinzufügen
 
@@ -28,7 +28,7 @@ Weisen Sie den Klassen Läufe zu, um sie zu verwenden. Wenn ein Rennen für eine
 
 ## Knoten auf Umgebung abstimmen
 
-Sobald der Timer am Rennort läuft, passen Sie die [Knotenparameter und Filtereinstellungen](de-Tuning%20Parameters.md) so an, dass sie der gewünschten Rennart am besten entsprechen. Optional können Sie ein Profil für diesen Ort erstellen, damit Sie es später leicht wieder laden können.
+Sobald der Timer am Rennort läuft, passen Sie die [Knotenparameter und Filtereinstellungen](Tuning%20Parameters.md) so an, dass sie der gewünschten Rennart am besten entsprechen. Optional können Sie ein Profil für diesen Ort erstellen, damit Sie es später leicht wieder laden können.
 
 ## Beispiel
 

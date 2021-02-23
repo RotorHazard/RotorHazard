@@ -535,16 +535,24 @@ def render_vrxstatus():
 @APP.route('/docs')
 def render_viewDocs():
     '''Route to doc viewer.'''
+
+    folderBase = '../../doc/'
+
     try:
         docfile = request.args.get('d')
 
+        while docfile[0:2] == '../':
+            docfile = docfile[3:]
+
+        docPath = folderBase + docfile
+
         language = Options.get("currentLanguage")
         if language:
-            translation = language + '-' + docfile
-            if os.path.isfile('../../doc/' + translation):
-                docfile = translation
+            translated_path = folderBase + language + '/' + docfile
+            if os.path.isfile(translated_path):
+                docPath = translated_path
 
-        with io.open('../../doc/' + docfile, 'r', encoding="utf-8") as f:
+        with io.open(docPath, 'r', encoding="utf-8") as f:
             doc = f.read()
 
         return templating.render_template('viewdocs.html',
@@ -560,7 +568,22 @@ def render_viewDocs():
 @APP.route('/img/<path:imgfile>')
 def render_viewImg(imgfile):
     '''Route to img called within doc viewer.'''
-    return send_file('../../doc/img/' + imgfile)
+
+    folderBase = '../../doc/'
+    folderImg = 'img/'
+
+    while imgfile[0:2] == '../':
+        imgfile = imgfile[3:]
+
+    imgPath = folderBase + folderImg + imgfile
+
+    language = Options.get("currentLanguage")
+    if language:
+        translated_path = folderBase + language + '/' + folderImg + imgfile
+        if os.path.isfile(translated_path):
+            imgPath = translated_docPath
+
+    return send_file(imgPath)
 
 # Redirect routes
 @APP.route('/race')

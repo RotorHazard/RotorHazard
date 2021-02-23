@@ -12,7 +12,7 @@ Das RTC-Modul wird über den I2C-Bus mit dem Raspberry Pi verbunden. Die folgend
 
 Hier ist ein Beispiel für die Verkabelung eines DS3231-Moduls über eine Delta5 V2-Platine:
 
-![DS3231 wiring](img/RH_DS3231_D5PCB.jpg)
+![DS3231 wiring](../img/RH_DS3231_D5PCB.jpg)
 
 Wenn Sie eine der neueren [RotorHazard PCBs](../resources/PCB/README.md) verwenden, gibt es mehrere Stellen auf der Karte, an denen diese Verbindungen verfügbar sind.
 
@@ -145,5 +145,5 @@ Die aktuelle Zeit des RTC-Moduls kann über den Befehl `sudo hwclock -r` abgefra
 ---
 
 Siehe auch:
-[doc/Hardware Setup.md](de-Hardware%20Setup.md)
-[doc/Software Setup.md](de-Software%20Setup.md)
+[doc/Hardware Setup.md](Hardware%20Setup.md)
+[doc/Software Setup.md](Software%20Setup.md)

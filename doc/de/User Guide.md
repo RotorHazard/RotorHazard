@@ -5,9 +5,9 @@
 ### Hardware- und Software-Setup
 
 Befolgen Sie die Anweisungen hier, falls dies noch nicht geschehen ist: <br>
-[Hardware Setup](de-Hardware%20Setup.md)<br>
-[Software Setup](de-Software%20Setup.md)<br>
-[RF shielding](de-Shielding%20and%20Course%20Position.md)
+[Hardware Setup](Hardware%20Setup.md)<br>
+[Software Setup](Software%20Setup.md)<br>
+[RF shielding](Shielding%20and%20Course%20Position.md)
 
 ### Konfigurationsdatei einrichten
 
@@ -59,7 +59,7 @@ Profile enthalten Frequenzen und Knotenoptimierungswerte. Durch Ändern dieser L
 
 #### Sensor-Tuning
 
-Eine ausführliche Beschreibung und Tuning-Anleitung finden Sie hier [doc/Tuning Parameters.md](de-Tuning%20Parameters.md).
+Eine ausführliche Beschreibung und Tuning-Anleitung finden Sie hier [doc/Tuning Parameters.md](Tuning%20Parameters.md).
 
 #### Veranstaltung und Klassen
 
@@ -156,7 +156,7 @@ Wählen Sie die Hitze für das Rennen, das als nächstes ausgeführt werden soll
 
 Starten Sie das Rennen, wenn Sie bereit sind. (Hotkey: <kbd>z</kbd>). Der Timer führt eine schnelle Kommunikation mit dem Server durch, um die Client / Server-Antwortzeit zu kompensieren, und beginnt dann mit dem durch das aktuelle Race-Format definierten Staging-Verfahren.
 
-Die Tuning-Parameter können hier über die Taste eingestellt werden.Eine ausführliche Beschreibung und Tuning-Anleitung finden Sie hier [doc/Tuning Parameters.md](de-Tuning%20Parameters.md).
+Die Tuning-Parameter können hier über die Taste eingestellt werden.Eine ausführliche Beschreibung und Tuning-Anleitung finden Sie hier [doc/Tuning Parameters.md](Tuning%20Parameters.md).
 
 Während des Rennens steht neben jeder gezählten Runde ein "×". Dadurch wird dieser Rundenpass verworfen, sodass seine Zeit auf die nächste Runde verschoben wird. Verwenden Sie diese Option, um fehlerhafte zusätzliche Pässe zu entfernen oder Piloten zu bereinigen, die nach Beendigung des Rennens in der Nähe des Starttors fliegen.
 
