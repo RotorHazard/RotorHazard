@@ -41,117 +41,121 @@ void RssiNode::resetState()
 
 bool RssiNode::process(rssi_t rssi, mtime_t ms)
 {
-    if (needsToSettle)
-    {  // check if RSSI is stable after tune
-        if (millis() - lastResetTimeMs < MIN_TUNETIME)
-        {
-            return false;  // wait until after-tune-delay time is fulfilled
-        }
-        else
-        {
-            needsToSettle = false;  // don't need to check again until next freq change
-        }
+    // check if RSSI is stable after tune
+    if (needsToSettle && (millis() - lastResetTimeMs >= MIN_TUNETIME))
+    {
+        needsToSettle = false;  // don't need to check again until next freq change
     }
 
-    filter->addRawValue(ms, rssi);
+    // wait until after-tune-delay time is fulfilled
+    if (!needsToSettle)
+    {
+        filter->addRawValue(ms, rssi);
 
-    if (filter->isFilled() && state.activatedFlag)
-    {  //don't start operations until after first WRITE_FREQUENCY command is received
+        if (filter->isFilled() && state.activatedFlag)
+        {  //don't start operations until after first WRITE_FREQUENCY command is received
 
-        const int rssiChange = state.readRssiFromFilter(filter);
-
-        /*** update history ***/
-
-        if (rssiChange > 0)
-        {  // RSSI is rising
-
-            // whenever history is rising, record the time and value as a peak
-            history.startNewPeak(state.rssi, state.rssiTimestamp);
-
-            // if RSSI was falling or unchanged, but it's rising now, we found a nadir
-            // copy the values to be sent in the next loop
-            history.checkForNadir();
-        }
-        else if (rssiChange < 0)
-        {  // RSSI is falling
-
-            // whenever history is falling, record the time and value as a nadir
-            history.startNewNadir(state.rssi, state.rssiTimestamp);
-
-            // if RSSI was rising or unchanged, but it's falling now, we found a peak
-            // copy the values to be sent in the next loop
-            history.checkForPeak();
-        }
-        else
-        {  // RSSI is equal
-            if (state.rssi == history.peak.rssi)
-            {  // is peak
-                history.peak.duration = constrain(state.rssiTimestamp - history.peak.firstTime, 0,
-                        MAX_DURATION);
-                if (history.peak.duration == MAX_DURATION)
-                {
-                    history.startNewPeak(state.rssi, state.rssiTimestamp);
-                }
-            }
-            else if (state.rssi == history.nadir.rssi)
-            {  // is nadir
-                history.nadir.duration = constrain(state.rssiTimestamp - history.nadir.firstTime, 0,
-                        MAX_DURATION);
-                if (history.nadir.duration == MAX_DURATION)
-                {
-                    history.startNewNadir(state.rssi, state.rssiTimestamp);
-                }
-            }
-        }
-
-        history.recordRssiChange(rssiChange);
-
-        // try to buffer latest peak/nadir (don't overwrite any unsent peak/nadir)
-        history.bufferPeak();
-        history.bufferNadir();
-
-        /*** crossing transition ***/
-
-        if ((!state.crossing) && state.rssi >= settings.enterAtLevel)
-        {
-            state.crossing = true;  // quad is going through the gate (lap pass starting)
-        }
-        else if (state.crossing && state.rssi < settings.exitAtLevel)
-        {
-            // quad has left the gate
-            endCrossing();
-        }
-
-        /*** pass processing **/
-
-        if (state.crossing)
-        {  //lap pass is in progress
-            // Find the peak rssi and the time it occured during a crossing event
-            if (state.rssi > state.passPeak.rssi)
-            {
-                // this is first time this peak RSSI value was seen, so save value and timestamp
-                initExtremum(state.passPeak, state.rssi, state.rssiTimestamp);
-            }
-            else if (state.rssi == state.passPeak.rssi)
-            {
-                // if at max peak for more than one iteration then track duration
-                // so middle-timestamp value can be returned
-                state.passPeak.duration = constrain(state.rssiTimestamp - state.passPeak.firstTime,
-                        0, MAX_DURATION);
-            }
-        }
-        else
-        {
-            // track lowest rssi seen since end of last pass
-            state.passRssiNadir = min((rssi_t)state.rssi, (rssi_t)state.passRssiNadir);
+            const int rssiChange = state.readRssiFromFilter(filter);
+            updateHistory(rssiChange);
+            checkForCrossing();
         }
     }
 
     // Calculate the time it takes to run the main loop
     utime_t loopMicros = micros();
-    state.updateLoopTime(loopMicros);
+    state.updateLoopTime(loopMicros, !needsToSettle);
 
     return state.crossing;
+}
+
+void RssiNode::updateHistory(int rssiChange)
+{
+    if (rssiChange > 0)
+    {  // RSSI is rising
+
+        // whenever history is rising, record the time and value as a peak
+        history.startNewPeak(state.rssi, state.rssiTimestamp);
+
+        // if RSSI was falling or unchanged, but it's rising now, we found a nadir
+        // copy the values to be sent in the next loop
+        history.checkForNadir();
+    }
+    else if (rssiChange < 0)
+    {  // RSSI is falling
+
+        // whenever history is falling, record the time and value as a nadir
+        history.startNewNadir(state.rssi, state.rssiTimestamp);
+
+        // if RSSI was rising or unchanged, but it's falling now, we found a peak
+        // copy the values to be sent in the next loop
+        history.checkForPeak();
+    }
+    else
+    {  // RSSI is equal
+        if (state.rssi == history.peak.rssi)
+        {  // is peak
+            history.peak.duration = constrain(state.rssiTimestamp - history.peak.firstTime, 0,
+                    MAX_DURATION);
+            if (history.peak.duration == MAX_DURATION)
+            {
+                history.startNewPeak(state.rssi, state.rssiTimestamp);
+            }
+        }
+        else if (state.rssi == history.nadir.rssi)
+        {  // is nadir
+            history.nadir.duration = constrain(state.rssiTimestamp - history.nadir.firstTime, 0,
+                    MAX_DURATION);
+            if (history.nadir.duration == MAX_DURATION)
+            {
+                history.startNewNadir(state.rssi, state.rssiTimestamp);
+            }
+        }
+    }
+
+    history.recordRssiChange(rssiChange);
+
+    // try to buffer latest peak/nadir (don't overwrite any unsent peak/nadir)
+    history.bufferPeak();
+    history.bufferNadir();
+}
+
+void RssiNode::checkForCrossing()
+{
+    /*** crossing transition ***/
+
+    if ((!state.crossing) && state.rssi >= settings.enterAtLevel)
+    {
+        state.crossing = true;  // quad is going through the gate (lap pass starting)
+    }
+    else if (state.crossing && state.rssi < settings.exitAtLevel)
+    {
+        // quad has left the gate
+        endCrossing();
+    }
+
+    /*** pass processing **/
+
+    if (state.crossing)
+    {  //lap pass is in progress
+        // Find the peak rssi and the time it occured during a crossing event
+        if (state.rssi > state.passPeak.rssi)
+        {
+            // this is first time this peak RSSI value was seen, so save value and timestamp
+            initExtremum(state.passPeak, state.rssi, state.rssiTimestamp);
+        }
+        else if (state.rssi == state.passPeak.rssi)
+        {
+            // if at max peak for more than one iteration then track duration
+            // so middle-timestamp value can be returned
+            state.passPeak.duration = constrain(state.rssiTimestamp - state.passPeak.firstTime,
+                    0, MAX_DURATION);
+        }
+    }
+    else
+    {
+        // track lowest rssi seen since end of last pass
+        state.passRssiNadir = min((rssi_t)state.rssi, (rssi_t)state.passRssiNadir);
+    }
 }
 
 // Function called when crossing ends (by RSSI or I2C command)
@@ -194,13 +198,15 @@ int State::readRssiFromFilter(Filter<rssi_t>* filter)
     return (int)rssi - (int)lastRssi;  
 }
 
-void State::updateLoopTime(utime_t loopMicros)
+void State::updateLoopTime(utime_t loopMicros, bool updateStats)
 {
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
         loopTimeMicros = loopMicros - lastloopMicros;
-        minLoopTimeMicros = min(loopTimeMicros, minLoopTimeMicros);
-        maxLoopTimeMicros = max(loopTimeMicros, maxLoopTimeMicros);
+        if (updateStats) {
+            minLoopTimeMicros = min(loopTimeMicros, minLoopTimeMicros);
+            maxLoopTimeMicros = max(loopTimeMicros, maxLoopTimeMicros);
+        }
     }
     lastloopMicros = loopMicros;
 }
@@ -208,17 +214,17 @@ void State::updateLoopTime(utime_t loopMicros)
 void State::resetPass()
 {
     crossing = false;
-    passPeak.rssi = 0;
+    invalidatePeak(passPeak);
     passRssiNadir = MAX_RSSI;
 }
 
 void State::reset()
 {
-    crossing = false;
-    invalidatePeak(passPeak);
-    passRssiNadir = MAX_RSSI;
+    resetPass();
     nodeRssiPeak = 0;
     nodeRssiNadir = MAX_RSSI;
+    minLoopTimeMicros = 0xFFFFFFFF;
+    maxLoopTimeMicros = 0;
 }
 
 void History::startNewPeak(rssi_t rssi, mtime_t ts) {

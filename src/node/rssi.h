@@ -70,7 +70,7 @@ public:
      * Returns the RSSI change since the last reading.
      */
     inline int readRssiFromFilter(Filter<rssi_t>* f);
-    inline void updateLoopTime(utime_t loopMicros);
+    inline void updateLoopTime(utime_t loopMicros, bool updateStats);
     inline void resetPass();
     inline void reset();
 };
@@ -157,6 +157,8 @@ private:
 
     Filter<rssi_t> *filter;
 
+    void updateHistory(int rssiChange);
+    void checkForCrossing();
 public:
     RssiNode();
     void setFilter(Filter<rssi_t> *f);
