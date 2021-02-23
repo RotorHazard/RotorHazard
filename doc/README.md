@@ -25,4 +25,4 @@
 
 * [Build Resources (PCB, etc)](../resources/README.md)
 * [Developer Documentation](Development.md)
-* <a href="https://github.com/RotorHazard/RotorHazard" target="_blank">RotorHazard on GitHub</a> &#10132;&#xFE0E;
+* <a href="https://github.com/RotorHazard/RotorHazard">RotorHazard on GitHub &#10132;&#xFE0E;</a>
