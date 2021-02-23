@@ -3,7 +3,6 @@
 
 #include "filter.h"
 #include "FastRunningMedian.h"
-#define CIRCULAR_BUFFER_INT_SAFE
 #include "CircularBuffer.h"
 
 //non-linear!!!

@@ -3,7 +3,6 @@
 
 #include "rhtypes.h"
 #include "sendbuffer.h"
-#define CIRCULAR_BUFFER_INT_SAFE
 #include "CircularBuffer.h"
 
 template <uint8_t N> class MultiExtremumSendBuffer : public ExtremumSendBuffer

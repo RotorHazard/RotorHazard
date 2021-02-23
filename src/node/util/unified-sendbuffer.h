@@ -3,15 +3,20 @@
 
 #include "rhtypes.h"
 #include "sendbuffer.h"
-#define CIRCULAR_BUFFER_INT_SAFE
 #include "CircularBuffer.h"
 
-template <typename T, uint8_t N> class UnifiedSendBuffer : public SendBuffer<T>
+template <typename T, uint8_t N> class UnifiedSendBuffer : public SendBuffer<T>, public List<T,N>
 {
     private:
         ExtremumType lastAddedType = NONE;
         CircularBuffer<T,N> buffer;
     public:
+        T operator [] (uint8_t index) const {
+            return buffer[index];
+        }
+        uint8_t inline size() const {
+            return buffer.size();
+        }
         bool addPeak(const T& peak, bool force = false) {
             if (lastAddedType != PEAK) {
                 buffer.push(peak);
