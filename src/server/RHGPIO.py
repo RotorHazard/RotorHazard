@@ -23,7 +23,12 @@ def isRealRPiGPIO():
 def isS32BPillBoard():
     return S32BPillBoardFlag
 
+def setS32BPillBoardFlag():
+    global S32BPillBoardFlag
+    S32BPillBoardFlag = True
 
+
+# if input tied low then set flag identifying S32_BPill board
 if RealRPiGPIOFlag:
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(RHGPIO_S32ID_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)

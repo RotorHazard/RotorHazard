@@ -499,7 +499,9 @@ def render_imdtabler():
 def render_updatenodes():
     '''Route to update nodes page.'''
     return render_template('updatenodes.html', serverInfo=serverInfo, getOption=Options.get, __=__, \
-                           fw_src_str=stm32loader.DEF_BINSRC_STR)
+                           fw_src_str=(Config.GENERAL['DEF_NODE_FWUPDATE_URL'] \
+                                       if Config.GENERAL['DEF_NODE_FWUPDATE_URL'] \
+                                       else stm32loader.DEF_BINSRC_STR))
 
 # Debug Routes
 
@@ -5598,14 +5600,17 @@ def initialize_rh_interface():
                 try:
                     importlib.import_module('serial')
                     logger.info("Unable to initialize specified serial node(s): {0}".format(Config.SERIAL_PORTS))
-                    logger.info("If an S32_BPill board is connected, its processor my need to be flash-updated")
-                    # enter serial port name so it's available for node firmware update
-                    if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
-                        INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
-                        Settings_note_msg_text = __("Server is unable to communicate with node processor") + \
-                                ". " + __("If an S32_BPill board is connected, you may attempt to") +\
-                                " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                                __("its processor") + "."
+                    if INTERFACE:
+                        logger.info("If an S32_BPill board is connected, its processor my need to be flash-updated")
+                        # enter serial port name so it's available for node firmware update
+                        if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
+                            INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
+                            Settings_note_msg_text = __("Server is unable to communicate with node processor") + \
+                                    ". " + __("If an S32_BPill board is connected, you may attempt to") +\
+                                    " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                                    __("its processor") + "."
+                    else:
+                        return False  # unable to open serial port
                 except ImportError:
                     logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
                     return False
@@ -5629,6 +5634,10 @@ logger.debug('Program started at {0:.0f}'.format(PROGRAM_START_EPOCH_TIME))
 RHUtils.idAndLogSystemInfo()
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
+
+if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
+    RHGPIO.setS32BPillBoardFlag()
+    logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
 
 logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspberryPi(), \
                                         RHGPIO.isRealRPiGPIO(), RHGPIO.isS32BPillBoard()))
