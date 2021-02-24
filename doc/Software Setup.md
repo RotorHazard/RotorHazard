@@ -72,6 +72,16 @@ Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
 sudo apt install python-dev libffi-dev python-smbus build-essential python-pip git scons swig python-rpi.gpio
 ```
+Check the current default version of Python by entering the following command:
+```
+python --version
+```
+If the version reported is older than Python 3, enter the following commands to switch the default version to Python 3:
+```
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 2
+```
+After the above commands are entered, the system should default to using Python 3. The default version can be switched back and forth via the command: `sudo update-alternatives --config python`
 
 ### 6. Install the RotorHazard Server
 Install the RotorHazard server code under '/home/pi/' on the Raspberry Pi as follows:
