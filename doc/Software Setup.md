@@ -308,7 +308,7 @@ The RotorHazard server may be run on any computer with an operating system that 
 
 To install the RotorHazard server on these systems:
 
-1. If the computer does not already have Python installed, download and install Python version 2.7 from https://www.python.org/downloads . To check if Python is installed, open up a command prompt and enter ```python --version```
+1. If the computer does not already have Python installed, download and install Python from https://www.python.org/downloads . To check if Python is installed, open up a command prompt and enter ```python --version```
 
 1. From the RotorHazard [Releases page on github](https://github.com/RotorHazard/RotorHazard/releases), download the "Source code (zip)" file.
 
@@ -319,7 +319,7 @@ To install the RotorHazard server on these systems:
 1. Install the RotorHazard server dependencies using the 'reqsNonPi.txt' file, using one of the commands below. (Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
   * On a Windows system the command to use will likely be:<br/>```python -m pip install -r reqsNonPi.txt```<br>
 
-Note: If the above command fails with a message like "error: Microsoft Visual C++ 14.0 is required", the Visual C++ Build Tools may downloaded (from [here](http://go.microsoft.com/fwlink/?LinkId=691126&fixForIE=.exe.)) and installed.<br>
+Note: If the above command fails with a message like "error: Microsoft Visual C++ 14.0 is required", the Visual C++ Build Tools may be downloaded (from [here](http://go.microsoft.com/fwlink/?LinkId=691126&fixForIE=.exe.)) and installed.<br>
 
   * On a Linux system the command to use will likely be:<br/>```sudo pip install -r reqsNonPi.txt```
 
