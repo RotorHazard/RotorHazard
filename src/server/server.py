@@ -583,7 +583,7 @@ def render_viewImg(imgfile):
     if language:
         translated_path = folderBase + language + '/' + folderImg + imgfile
         if os.path.isfile(translated_path):
-            imgPath = translated_docPath
+            imgPath = translated_path
 
     return send_file(imgPath)
 
