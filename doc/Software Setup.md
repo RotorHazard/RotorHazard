@@ -70,7 +70,7 @@ sudo apt-get update && sudo apt-get upgrade
 ### 5. Install Python
 Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
-sudo apt install python-dev libffi-dev python-smbus build-essential python-pip git scons swig python-rpi.gpio
+sudo apt install python-dev python3-dev libffi-dev python-smbus build-essential python-pip python3-pip git scons swig python-rpi.gpio python3-rpi.gpio
 ```
 Check the current default version of Python by entering the following command:
 ```
