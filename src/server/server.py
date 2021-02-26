@@ -471,8 +471,9 @@ def render_imdtabler():
 @requires_auth
 def render_updatenodes():
     '''Route to update nodes page.'''
-    return render_template('updatenodes.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__, \
-                           fw_src_str=stm32loader.DEF_BINSRC_STR)
+    return render_template('updatenodes.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__, fw_src_str=(Config.GENERAL['DEF_NODE_FWUPDATE_URL'] \
+                                       if Config.GENERAL['DEF_NODE_FWUPDATE_URL'] \
+                                       else stm32loader.DEF_BINSRC_STR))
 
 # Debug Routes
 
@@ -508,16 +509,24 @@ def render_vrxstatus():
 @APP.route('/docs')
 def render_viewDocs():
     '''Route to doc viewer.'''
+
+    folderBase = '../../doc/'
+
     try:
         docfile = request.args.get('d')
 
+        while docfile[0:2] == '../':
+            docfile = docfile[3:]
+
+        docPath = folderBase + docfile
+
         language = RHData.get_option("currentLanguage")
         if language:
-            translation = language + '-' + docfile
-            if os.path.isfile('../../doc/' + translation):
-                docfile = translation
+            translated_path = folderBase + language + '/' + docfile
+            if os.path.isfile(translated_path):
+                docPath = translated_path
 
-        with io.open('../../doc/' + docfile, 'r', encoding="utf-8") as f:
+        with io.open(docPath, 'r', encoding="utf-8") as f:
             doc = f.read()
 
         return templating.render_template('viewdocs.html',
@@ -533,7 +542,22 @@ def render_viewDocs():
 @APP.route('/img/<path:imgfile>')
 def render_viewImg(imgfile):
     '''Route to img called within doc viewer.'''
-    return send_file('../../doc/img/' + imgfile)
+
+    folderBase = '../../doc/'
+    folderImg = 'img/'
+
+    while imgfile[0:2] == '../':
+        imgfile = imgfile[3:]
+
+    imgPath = folderBase + folderImg + imgfile
+
+    language = Options.get("currentLanguage")
+    if language:
+        translated_path = folderBase + language + '/' + folderImg + imgfile
+        if os.path.isfile(translated_path):
+            imgPath = translated_path
+
+    return send_file(imgPath)
 
 # Redirect routes (Previous versions/Delta 5)
 @APP.route('/race')
@@ -4906,14 +4930,17 @@ def initialize_rh_interface():
                 try:
                     importlib.import_module('serial')
                     logger.info("Unable to initialize specified serial node(s): {0}".format(Config.SERIAL_PORTS))
-                    logger.info("If an S32_BPill board is connected, its processor my need to be flash-updated")
-                    # enter serial port name so it's available for node firmware update
-                    if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
-                        INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
-                        Settings_note_msg_text = __("Server is unable to communicate with node processor") + \
-                                ". " + __("If an S32_BPill board is connected, you may attempt to") +\
-                                " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                                __("its processor") + "."
+                    if INTERFACE:
+                        logger.info("If an S32_BPill board is connected, its processor my need to be flash-updated")
+                        # enter serial port name so it's available for node firmware update
+                        if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
+                            INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
+                            Settings_note_msg_text = __("Server is unable to communicate with node processor") + \
+                                    ". " + __("If an S32_BPill board is connected, you may attempt to") +\
+                                    " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                                    __("its processor") + "."
+                    else:
+                        return False  # unable to open serial port
                 except ImportError:
                     logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
                     return False
@@ -4937,6 +4964,10 @@ logger.debug('Program started at {0:.0f}'.format(PROGRAM_START_EPOCH_TIME))
 RHUtils.idAndLogSystemInfo()
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
+
+if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
+    RHGPIO.setS32BPillBoardFlag()
+    logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
 
 logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspberryPi(), \
                                         RHGPIO.isRealRPiGPIO(), RHGPIO.isS32BPillBoard()))
@@ -5081,13 +5112,24 @@ if not db_inited_flag:
         elif not RHData.get_raceFormats(return_type='count'):
             logger.info('Formats are empty; recovering database')
             recover_database(DB_FILE_NAME, startup=True)
+        else:
+            try:  # make sure no problems reading 'Heat' table data
+                Database.Heat.query.all()
+            except Exception as ex:
+                logger.warning('Error reading Heat data; recovering database; err: ' + str(ex))
+                recover_database(DB_FILE_NAME, startup=True)
     except Exception as ex:
         logger.warning('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()
 
 # Initialize internal state with database
 # DB session commit needed to prevent 'application context' errors
-init_race_state()
+try:
+    init_race_state()
+except Exception:
+    logger.exception("Exception in 'init_race_state()'")
+    log.wait_for_queue_empty()
+    sys.exit(1)
 
 # internal secondary race format for LiveTime (needs to be created after initial DB setup)
 global SECONDARY_RACE_FORMAT
@@ -5110,7 +5152,7 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
     except:
         java_ver = None
         logger.info('Unable to find java; for IMDTabler functionality try:')
-        logger.info('sudo apt-get install openjdk-8-jdk')
+        logger.info('sudo apt install default-jdk-headless')
     if java_ver:
         try:
             imdtabler_ver = subprocess.check_output( \

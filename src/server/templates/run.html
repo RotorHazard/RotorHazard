@@ -18,6 +18,7 @@
 		'team_racing_stat_if_enb',
 		'led_effects',
 		'callouts',
+		'environmental_data',
 		'cluster_status',
 		'vrx_list'
 	];
@@ -1396,7 +1397,6 @@
 					if (!first) {
 						pilots += ', ';
 					}
-					pilots += freq.findByFreq(rotorhazard.nodes[i].fObj.frequency) + ': '
 					for (var p in rotorhazard.pilot_data) {
 						pdata = rotorhazard.pilot_data[p];
 						if (pdata.pilot_id == pilot) {
@@ -1408,6 +1408,7 @@
 							break;
 						}
 					}
+					pilots += ': ' + rotorhazard.nodes[i].fObj.key;
 					first = false;
 				}
 			}

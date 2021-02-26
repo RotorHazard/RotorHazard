@@ -46,9 +46,9 @@ MBR 1100 1852 Diode to D1
 ![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/mainBuildPics/image1.jpg)
 
  
-#### ​3) Install the Header Sockets
+#### ​3) Install the Socket Headers
 
-Solder sockets onto the main PCB at the locations shown below, using the
+Solder socket headers onto the main PCB at the locations shown below, using the
 one pin first technique to ensure they are vertical.
 
 The 20 pin sockets used for attaching the BPill need to be aligned.
@@ -58,7 +58,7 @@ sockets in place while attached to the BPill.
 The recommended installation option for the RX5808 node boards is to use
 [low-profile sockets](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/headers.md)
 in the U1-U8 (9-pin) locations on the PCB. These are shorter and have
-better contacts than standard header sockets. If the low-profile sockets
+better contacts than standard socket headers. If the low-profile sockets
 are used, the pins on the RX5808 node boards should be cut to a length
 of 3.5mm-4.0mm (as measured from the edge of the node PCB) -- the
 [Trimming Jig for RotorHazard S32_BPill

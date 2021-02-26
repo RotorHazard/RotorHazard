@@ -31,6 +31,8 @@ RotorHazard builds on the [Delta5 Race Timer](https://github.com/scottgchin/delt
 ## Documentation
 For instructions on how to build and operate the current version of RotorHazard, follow the [Documentation](https://github.com/RotorHazard/RotorHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest).
 
+See the [RotorHazard Build Resources](resources/README.md) page for information on race-timer circuit boards and 3D-printable cases.
+
 An easy-to-build single node version of RotorHazard may also be constructed -- see [doc/USB Nodes.md](doc/USB%20Nodes.md) for more info.
 
 **Note:** The 'master' branch in the GitHub repository will usually contain the latest development code, which may not be stable. To install or upgrade to the latest stable release, please follow the [Documentation](https://github.com/RotorHazard/RotorHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest) (see "Software Setup Instructions").

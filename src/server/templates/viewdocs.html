@@ -19,6 +19,7 @@
 		var is_http = new RegExp('^https?://');
 		var is_anchor = new RegExp('^#');
 		var is_mail = new RegExp('^mailto:');
+		var is_resources = new RegExp('\.\./resources/');
 
 		output.find('a').each(function(){
 			var url = $(this)[0].href;
@@ -28,7 +29,12 @@
 				}
 				else if (is_http.test(url)) {
 					if(root.test(url)){
-						$(this).attr('href', '/docs?d=' + $(this).attr('href'));
+						if (is_resources.test(url)) {
+							$(this).attr('href', 'https://github.com/RotorHazard/RotorHazard/tree/master/doc/' + $(this).attr('href'));
+							$(this).html($(this).html() + ' &#10132;&#xFE0E;');
+						} else {
+							$(this).attr('href', '/docs?d=' + $(this).attr('href'));
+						}
 					}
 				}
 			}

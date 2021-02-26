@@ -4,7 +4,7 @@ In the standard/recommended build of the S32_BPill board, socket headers are use
 
 ![RH_S32_BPill_sockets](pic/RH_S32_BPill_sockets.jpg)
 
-The recommended installation option for the RX5808 node boards is to use low-profile sockets in the U1-U8 (9-pin) locations on the PCB. Low-profile sockets may be found at [Mouser](https://www.mouser.com/ProductDetail/Mill-Max/801-93-036-10-012000?qs=WZRMhwwaLl%2F7W%252BkSMqBETQ%3D%3D) and [Adafruit](https://www.adafruit.com/product/3646) (where they are described as "Swiss Female Socket Headers"). These are shorter and have better contacts than standard header sockets.
+The recommended installation option for the RX5808 node boards is to use low-profile sockets in the U1-U8 (9-pin) locations on the PCB. Low-profile sockets may be found at [Mouser](https://www.mouser.com/ProductDetail/Mill-Max/801-93-036-10-012000?qs=WZRMhwwaLl%2F7W%252BkSMqBETQ%3D%3D) and [Adafruit](https://www.adafruit.com/product/3646) (where they are described as "Swiss Female Socket Headers"). These are shorter and have better contacts than standard socket headers.
 
 [![SwissSocketHeaders](pic/SwissSocketHeaders.jpg)](https://www.adafruit.com/product/3646)
 
