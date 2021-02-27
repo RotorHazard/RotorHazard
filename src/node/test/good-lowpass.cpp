@@ -124,7 +124,7 @@ unittest(lpf100_with_100hz_signal)
   assertMaxMin(output, offset, freq);
 }
 
-unittest(composite2_with_10hz_signal)
+unittest(composite2_with_20hz_signal)
 {
   LowPassFilter50Hz lpf50;
   MedianFilter<rssi_t, 7, 0> mf;
@@ -132,7 +132,7 @@ unittest(composite2_with_10hz_signal)
   assertFalse(lpf.isFilled());
   double freq = 20;
   rssi_t output[N];
-  int offset = filter("composite2_with_10hz_signal.csv", lpf, freq, output);
+  int offset = filter("composite2_with_20hz_signal.csv", lpf, freq, output);
 
   int t_max = ONE_SEC + offset + (int)(1000.0/2.0/freq);
   int t_zero = ONE_SEC + offset + (int)(1000.0/freq);
@@ -148,7 +148,7 @@ unittest(composite2_with_10hz_signal)
   assertLess((int)expectedMin, (int)zero);
 }
 
-unittest(composite3_with_10hz_signal)
+unittest(composite3_with_20hz_signal)
 {
   LowPassFilter50Hz lpf50;
   LowPassFilter100Hz lpf100;
@@ -157,7 +157,7 @@ unittest(composite3_with_10hz_signal)
   assertFalse(lpf.isFilled());
   double freq = 20;
   rssi_t output[N];
-  int offset = filter("composite3_with_10hz_signal.csv", lpf, freq, output);
+  int offset = filter("composite3_with_20hz_signal.csv", lpf, freq, output);
 
   int t_max = ONE_SEC + offset + (int)(1000.0/2.0/freq);
   int t_zero = ONE_SEC + offset + (int)(1000.0/freq);
@@ -171,6 +171,15 @@ unittest(composite3_with_10hz_signal)
   }
   assertMore((int)expectedMax, (int)maxVal);
   assertLess((int)expectedMin, (int)zero);
+}
+
+unittest(median_with_20hz_signal)
+{
+  MedianFilter<rssi_t, 255, 0> lpf;
+  assertFalse(lpf.isFilled());
+  double freq = 20;
+  rssi_t output[N];
+  filter("median_with_20hz_signal.csv", lpf, freq, output);
 }
 
 unittest_main()
