@@ -21,6 +21,8 @@
 
 	var speakObjsQueue = [];
 	var checkSpeakQueueFlag = true;
+	const LEADER_FLAG_CHAR = 'L';
+	const WINNER_FLAG_CHAR = 'W';
 
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
@@ -143,6 +145,8 @@
 		$('#display_lap_number').prop("checked", rotorhazard.display_lap_number);
 		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
+		$('#beep_race_leader_lap').prop("checked", rotorhazard.beep_race_leader_lap);
+		$('#beep_race_winner_declared').prop("checked", rotorhazard.beep_race_winner_declared);
 		$('#use_mp3_tones').prop("checked", rotorhazard.use_mp3_tones);
 
 		socket.on('race_scheduled', function (msg) {
@@ -201,9 +205,11 @@
 				if (checkSpeakQueueFlag) {
 					if (!isSpeakingFlag) {
 						var obj = speakObjsQueue.shift();
-						if (speakObjsQueue.length > 0)
-							checkSpeakQueueFlag = false;
-						doSpeak(obj);
+						if (speakObjsQueue.length > 0)    //if more items in queue then
+							checkSpeakQueueFlag = false;  //don't check again until speaking begins
+						if (!doSpeak(obj)) {                  //if speaking not triggered then
+							checkSpeakQueueFlag = true;       //don't wait for it
+						}
 					}
 				}  //make sure previous speak has started before checking queue again
 				else if (isSpeakingFlag)
@@ -346,6 +352,9 @@
 				}
 
 				if (ttstext.length > 0) {
+					if (msg.leader_flag) {
+						speak(LEADER_FLAG_CHAR);
+					}
 					speak('<div class="speech">' + ttstext + '</div>');
 				}
 			}
@@ -371,6 +380,9 @@
 		})
 
 		socket.on('phonetic_text', function (msg) {
+			if (msg.winner_flag) {
+				speak(WINNER_FLAG_CHAR);
+			}
 			if (msg.text) {
 				if (!msg.domain || rotorhazard['voice_' + msg.domain]) {
 					speak('<div class="speech">' + __l(msg.text) + '</div>');
@@ -540,13 +552,75 @@
 			rotorhazard.race_formats = msg;
 		});
 
+		$('#beep_race_leader_lap').change(function (event) {
+			rotorhazard.beep_race_leader_lap = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+
+		$('#beep_race_winner_declared').change(function (event) {
+			rotorhazard.beep_race_winner_declared = $(this).prop('checked');
+			rotorhazard.saveData();
+		});
+
 		$('#use_mp3_tones').change(function (event) {
 			rotorhazard.use_mp3_tones = $(this).prop('checked');
 		});
 	});
 
+	function playLeaderTone() {
+		if (rotorhazard.use_mp3_tones) {
+			sound_leader.play();
+		}
+		else {
+			play_beep(75, 1200, rotorhazard.indicator_beep_volume, 'square');
+			setTimeout(function(tone){
+				play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
+			}, 75, 0);
+		}
+	}
+
+	function playWinnerTone() {
+		if (rotorhazard.use_mp3_tones) {
+			sound_winner.play();
+		}
+		else {
+			play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
+			setTimeout(function(tone) {
+				play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
+			}, 50, 0);
+			setTimeout(function(tone) {
+				play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
+			}, 125, 0);
+			setTimeout(function(tone) {
+				play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
+			}, 175, 0);
+			setTimeout(function(tone) {
+				play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
+			}, 250, 0);
+			setTimeout(function(tone) {
+				play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
+			}, 300, 0);
+		}
+	}
+
 	function doSpeak(obj) {
-		$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
+		if (obj.startsWith(LEADER_FLAG_CHAR)) {
+			obj = obj.substring(1);
+			if (rotorhazard.beep_race_leader_lap) {
+				playLeaderTone();
+			}
+		}
+		else if (obj.startsWith(WINNER_FLAG_CHAR)) {
+			obj = obj.substring(1);
+			if (rotorhazard.beep_race_winner_declared) {
+				playWinnerTone();
+			}
+		}
+		if (obj.length > 0) {
+			$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
+			return true;
+		}
+		return false;
 	};
 
 	function speak(obj, priority) {
@@ -731,6 +805,8 @@
 					{{ __('Indicator Beeps') }}
 				</div>
 				<ul>
+					<li><label><input type="checkbox" id="beep_race_leader_lap"> {{ __('Race Leader Lap') }}</label></li>
+					<li><label><input type="checkbox" id="beep_race_winner_declared"> {{ __('Race Winner Declared') }}</label></li>
 					<li><label><input type="checkbox" id="use_mp3_tones"> {{ __('Use MP3 Tones instead of synthetic tones') }}</label></li>
 				</ul>
 			</li>
