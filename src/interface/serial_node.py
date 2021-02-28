@@ -9,6 +9,7 @@ from Node import Node
 from RHInterface import READ_REVISION_CODE, READ_MULTINODE_COUNT, MAX_RETRY_COUNT, \
                         validate_checksum, calculate_checksum, pack_8, unpack_8, unpack_16, \
                         WRITE_CURNODE_INDEX, READ_CURNODE_INDEX, READ_NODE_SLOTIDX, \
+                        READ_FW_VERSION, READ_FW_BUILDDATE, READ_FW_BUILDTIME, FW_TEXT_BLOCK_SIZE, \
                         JUMP_TO_BOOTLOADER
 
 BOOTLOADER_CHILL_TIME = 2 # Delay for USB to switch from bootloader to serial mode
@@ -179,6 +180,29 @@ class SerialNode(Node):
         except Exception:
             self.multi_node_slot_index = -1
 
+    def read_firmware_version(self):
+        # read firmware version string
+        try:
+            data = self.read_block(None, READ_FW_VERSION, FW_TEXT_BLOCK_SIZE, 2, False)
+            self.firmware_version_str = data.decode("utf-8").rstrip('\0') \
+                                          if data != None else None
+        except Exception:
+            logger.exception('Error fetching READ_FW_VERSION for serial node')
+
+    def read_firmware_timestamp(self):
+        # read firmware build date/time strings
+        try:
+            data = self.read_block(None, READ_FW_BUILDDATE, FW_TEXT_BLOCK_SIZE, 2, False)
+            if data != None:
+                self.firmware_timestamp_str = data.decode("utf-8").rstrip('\0')
+                data = self.read_block(None, READ_FW_BUILDTIME, FW_TEXT_BLOCK_SIZE, 2, False)
+                if data != None:
+                    self.firmware_timestamp_str += " " + data.decode("utf-8").rstrip('\0')
+            else:
+                self.firmware_timestamp_str = None
+        except Exception:
+            logger.exception('Error fetching READ_FW_DATE/TIME for serial node')
+
 
 def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
     nodes = []
@@ -219,18 +243,32 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                     baud_idx += 1
             if rev_val:
                 api_level = rev_val & 0xFF
+                node.api_level = api_level
+                node_version_str = None
+                node_timestamp_str = None
+                fver_log_str = ''
+                ftim_log_str = ''
+                if api_level >= 34:  # read firmware version and build timestamp strings
+                    node.read_firmware_version()
+                    if node.firmware_version_str:
+                        node_version_str = node.firmware_version_str
+                        fver_log_str = ", fw_version=" + node.firmware_version_str
+                    node.read_firmware_timestamp()
+                    if node.firmware_timestamp_str:
+                        node_timestamp_str = node.firmware_timestamp_str
+                        ftim_log_str = ", fw_timestamp: " + node.firmware_timestamp_str
                 if multi_count <= 1:
-                    logger.info("Serial node {} found at port '{}', API_level={}, baudrate={}".format(\
-                                index+idxOffset+1, node.serial.name, api_level, node.serial.baudrate))
-                    node.api_level = api_level
+                    logger.info("Serial node {} found at port '{}', API_level={}, baudrate={}{}{}".format(\
+                                index+idxOffset+1, node.serial.name, api_level, node.serial.baudrate, \
+                                fver_log_str, ftim_log_str))
                     nodes.append(node)
                 else:
-                    logger.info("Serial multi-node found at port '{}', count={}, API_level={}, baudrate={}".\
-                                format(node.serial.name, multi_count, api_level, node.serial.baudrate))
+                    logger.info("Serial multi-node found at port '{}', count={}, API_level={}, baudrate={}{}{}".\
+                                format(node.serial.name, multi_count, api_level, node.serial.baudrate, \
+                                fver_log_str, ftim_log_str))
                     node.multi_node_index = 0
                     curnode_index_holder = [-1]  # tracker for index of current node for processor
                     node.multi_curnode_index_holder = curnode_index_holder
-                    node.api_level = api_level
                     node.read_node_slot_index()
                     logger.debug("Serial (multi) node {} (slot={}) added for port '{}'".format(\
                                  index+idxOffset+1, node.multi_node_slot_index+1, node.serial.name))
@@ -241,6 +279,8 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                         node.multi_node_index = nIdx
                         node.multi_curnode_index_holder = curnode_index_holder
                         node.api_level = api_level
+                        node.firmware_version_str = node_version_str
+                        node.firmware_timestamp_str = node_timestamp_str
                         node.read_node_slot_index()
                         logger.debug("Serial (multi) node {} (slot={}) added for port '{}'".format(\
                                      index+idxOffset+1, node.multi_node_slot_index+1, node.serial.name))

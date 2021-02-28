@@ -2,7 +2,7 @@
 RELEASE_VERSION = "3.0.0-dev.2" # Public release version code
 SERVER_API = 30 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 33 # Most recent node API
+NODE_API_BEST = 34 # Most recent node API
 JSON_API = 3 # JSON API version
 
 # This must be the first import for the time being. It is
@@ -190,10 +190,10 @@ def buildServerInfo():
     infoDict['json_api'] = JSON_API
 
     # Node API levels
-    node_api_level = False
+    node_api_level = 0
     infoDict['node_api_match'] = True
 
-    infoDict['node_api_lowest'] = None
+    infoDict['node_api_lowest'] = 0
     infoDict['node_api_levels'] = [None]
 
     if len(INTERFACE.nodes):
@@ -203,10 +203,8 @@ def buildServerInfo():
             infoDict['node_api_levels'] = []
             for node in INTERFACE.nodes:
                 infoDict['node_api_levels'].append(node.api_level)
-
                 if node.api_level is not node_api_level:
                     infoDict['node_api_match'] = False
-
                 if node.api_level < infoDict['node_api_lowest']:
                     infoDict['node_api_lowest'] = node.api_level
 
@@ -223,6 +221,33 @@ def buildServerInfo():
         infoDict['about_html'] += "None (Delta5)"
 
     infoDict['about_html'] += "</li>"
+
+    # Node firmware versions
+    node_fw_version = None
+    infoDict['node_version_match'] = True
+    infoDict['node_fw_versions'] = [None]
+    if len(INTERFACE.nodes):
+        if INTERFACE.nodes[0].firmware_version_str:
+            node_fw_version = INTERFACE.nodes[0].firmware_version_str
+            infoDict['node_fw_versions'] = []
+            for node in INTERFACE.nodes:
+                infoDict['node_fw_versions'].append(\
+                        node.firmware_version_str if node.firmware_version_str else "0")
+                if node.firmware_version_str is not node_fw_version:
+                    infoDict['node_version_match'] = False
+            # if multi-node and all versions same then only include one entry
+            if infoDict['node_version_match'] and INTERFACE.nodes[0].multi_node_index >= 0:
+                infoDict['node_fw_versions'] = infoDict['node_fw_versions'][0:1]
+    if node_fw_version:
+        infoDict['about_html'] += "<li>" + __("Node Version") + ": "
+        if infoDict['node_version_match']:
+            infoDict['about_html'] += str(node_fw_version)
+        else:
+            infoDict['about_html'] += "[ "
+            for idx, ver in enumerate(infoDict['node_fw_versions']):
+                infoDict['about_html'] += str(idx+1) + ":" + str(ver) + " "
+            infoDict['about_html'] += "]"
+        infoDict['about_html'] += "</li>"
 
     infoDict['node_api_best'] = NODE_API_BEST
     if infoDict['node_api_match'] is False or node_api_level < NODE_API_BEST:
@@ -4343,6 +4368,51 @@ def emit_vrx_list(*args, **params):
     else:
         SOCKET_IO.emit('vrx_list', emit_payload)
 
+@SOCKET_IO.on('check_bpillfw_file')
+@catchLogExceptionsWrapper
+def check_bpillfw_file(data):
+    fileStr = data['src_file_str']
+    logger.debug("Checking node firmware file: " + fileStr)
+    dataStr = None
+    try:
+        dataStr = stm32loader.load_source_file(fileStr, False)
+    except Exception as ex:
+        SOCKET_IO.emit('upd_set_info_text', "Error reading firmware file: {}<br><br><br><br>".format(ex))
+        logger.debug("Error reading file '{}' in 'check_bpillfw_file()': {}".format(fileStr, ex))
+        return
+    try:  # find version and build-timestamp strings in firmware '.bin' file
+        rStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_VERSION_PREFIXSTR, \
+                                             INTERFACE.FW_TEXT_BLOCK_SIZE)
+        fwVerStr = rStr if rStr else "(unknown)"
+        rStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_BUILDDATE_PREFIXSTR, \
+                                             INTERFACE.FW_TEXT_BLOCK_SIZE)
+        if rStr:
+            fwTimStr = rStr
+            rStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_BUILDTIME_PREFIXSTR, \
+                                                 INTERFACE.FW_TEXT_BLOCK_SIZE)
+            if rStr:
+                fwTimStr += " " + rStr
+        else:
+            fwTimStr = "unknown"
+        fileSize = len(dataStr)
+        logger.debug("Node update firmware file size={}, version={}, build timestamp: {}".\
+                     format(fileSize, fwVerStr, fwTimStr))
+        infoStr = "Firmware update file size = {}<br>".format(fileSize) + \
+                  "Firmware update version: {} (Build timestamp: {})<br><br>".\
+                  format(fwVerStr, fwTimStr)
+        curNodeStr = INTERFACE.nodes[0].firmware_version_str if len(INTERFACE.nodes) else None
+        if curNodeStr:
+            tStr = INTERFACE.nodes[0].firmware_timestamp_str
+            curNodeStr += " (Build timestamp: {})".format(tStr)
+        else:
+            curNodeStr = "(unknown)"
+        infoStr += "Current firmware version: " + curNodeStr
+        SOCKET_IO.emit('upd_set_info_text', infoStr)
+        SOCKET_IO.emit('upd_enable_update_button')
+    except Exception:
+        SOCKET_IO.emit('upd_set_info_text', "Error processing firmware file: {}<br><br><br><br>".format(ex))
+        logger.exception("Error processing file '{}' in 'check_bpillfw_file()'".format(fileStr))
+
 @SOCKET_IO.on('do_bpillfw_update')
 @catchLogExceptionsWrapper
 def do_bpillfw_update(data):
@@ -4353,19 +4423,22 @@ def do_bpillfw_update(data):
     SOCKET_IO.emit('upd_messages_init', (msgStr + "\n"))
     stop_background_threads()
     gevent.sleep(0.1)
-    jump_to_node_bootloader()
-    INTERFACE.close_fwupd_serial_port()
-    s32Logger = logging.getLogger("stm32loader")
-    def doS32Log(msgStr):  # send message to update-messages window and log file
-        SOCKET_IO.emit('upd_messages_append', msgStr)
-        s32Logger.info(msgStr)
-        gevent.sleep(0.001)  # do thread yield to allow display updates
-    stm32loader.set_console_output_fn(doS32Log)
-    successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
-    msgStr = "Node update " + ("succeeded" if successFlag else "failed")
-    logger.info(msgStr)
-    SOCKET_IO.emit('upd_messages_append', ("\n" + msgStr))
-    SOCKET_IO.emit('upd_messages_finish')  # show 'Close' button
+    try:
+        jump_to_node_bootloader()
+        INTERFACE.close_fwupd_serial_port()
+        s32Logger = logging.getLogger("stm32loader")
+        def doS32Log(msgStr):  # send message to update-messages window and log file
+            SOCKET_IO.emit('upd_messages_append', msgStr)
+            s32Logger.info(msgStr)
+            gevent.sleep(0.001)  # do thread yield to allow display updates
+        stm32loader.set_console_output_fn(doS32Log)
+        successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
+        msgStr = "Node update " + ("succeeded" if successFlag else "failed")
+        logger.info(msgStr)
+        SOCKET_IO.emit('upd_messages_append', ("\n" + msgStr))
+        SOCKET_IO.emit('upd_messages_finish')  # show 'Close' button
+    except:
+        logger.exception("Error in 'do_bpillfw_update()'")
     stm32loader.set_console_output_fn(None)
     gevent.sleep(0.2)
     logger.info("Reinitializing RH interface")
@@ -5603,6 +5676,8 @@ def initialize_rh_interface():
             if (not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0:
                 interfaceModule = importlib.import_module('MockInterface')
                 INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
+                for node in INTERFACE.nodes:  # put mock nodes at latest API level
+                    node.api_level = NODE_API_BEST
                 Settings_note_msg_text = __("Server is using simulated (mock) nodes")
             else:
                 try:

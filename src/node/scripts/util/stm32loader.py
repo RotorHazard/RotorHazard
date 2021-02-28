@@ -730,6 +730,7 @@ except ImportError:
 
 DEF_SERIAL_PORT = "/dev/serial0"
 DEF_BINSRC_STR = "http://www.rotorhazard.com/fw/rel/current/RH_S32_BPill_node.bin"
+MAX_SRC_FILE_SIZE = 999999
 
 GPIO_RESET_PIN = 17
 GPIO_BOOT0_PIN = 27
@@ -799,16 +800,37 @@ def reset_to_run():
         Console_output_fn("Error in 'reset_to_run()': " + str(ex))
 
 # download given URL to buffer
-def download_to_buffer(src_url):
+def download_to_buffer(src_url, log_flag=True):
     resp = urlopen(src_url)
-    src_size = int(resp.headers["Content-Length"])
-    if src_size <= 0:
-        raise RuntimeError("Source-data size is zero, aborting download from: {}".format(src_url))
-    if src_size > 999999:
-        raise RuntimeError("Source-data size too large ({}), aborting download from: {}".format(src_size, src_url))
-    Console_output_fn("Downloading {} bytes from: {}".format(src_size, src_url))
-    return resp.read(src_size)
+    file_size = int(resp.headers["Content-Length"])
+    if file_size <= 0:
+        raise RuntimeError("File data size is zero")
+    if file_size > MAX_SRC_FILE_SIZE:
+        raise RuntimeError("File data size too large ({})".format(file_size))
+    if log_flag:
+        Console_output_fn("Downloading {} bytes from: {}".format(file_size, src_url))
+    return resp.read(file_size)
 
+# read given local file to buffer
+def read_file_to_buffer(file_str, log_flag=True):
+    with open(file_str, "rb") as file_obj:
+        file_obj.seek(0,2)  # seek to end of file
+        file_size = file_obj.tell()
+        if file_size <= 0:
+            raise RuntimeError("File data size is zero")
+        if file_size > MAX_SRC_FILE_SIZE:
+            raise RuntimeError("File data size too large ({})".format(file_size))
+        file_obj.seek(0,0)  # seek back to start of file
+        if log_flag:
+            Console_output_fn("Reading {} bytes from: {}".format(file_size, file_str))
+        return file_obj.read()
+
+# read given source file (URL or local) to buffer
+def load_source_file(src_str, log_flag=True):
+    if src_str.startswith("http://") or src_str.startswith("https://") or src_str.startswith("ftp://"):
+        return download_to_buffer(src_str, log_flag)
+    else:
+        return read_file_to_buffer(src_str, log_flag)
 
 # flash firmware to BPill at given port with data from given file/URL
 def flash_file_to_stm32(portStr, srcStr):
@@ -820,13 +842,10 @@ def flash_file_to_stm32(portStr, srcStr):
 
         binaryData = None
         try:
-            if srcStr.startswith("http://") or srcStr.startswith("https://") or srcStr.startswith("ftp://"):
-                binaryData = bytearray(download_to_buffer(srcStr))
-            elif len(srcStr) > 0:
-                with open(srcStr, "rb") as read_file:
-                    binaryData = bytearray(read_file.read())
+            if len(srcStr) > 0:
+                binaryData = bytearray(load_source_file(srcStr))
         except IOError as ex:
-            Console_output_fn(("Error loading file: " + str(ex)))
+            Console_output_fn("Error loading file from '{}': {}".format(srcStr, ex))
             return False
         
         verboseFlag = False

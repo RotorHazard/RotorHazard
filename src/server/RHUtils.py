@@ -144,6 +144,19 @@ def checkSetFileOwnerPi(fileNameStr):
         logger.exception("Error in 'checkSetFileOwnerPi()'")
     return False
 
+# Scans the given binary-data string for a "prefixed" substring and returns the substring.
+#  dataStr format:  b'PREFIXSTR: substr\0'
+def findPrefixedSubstring(dataStr, prefixStr, maxTextSize):
+    sPos = dataStr.find(prefixStr.encode())
+    if sPos >= 0:
+        sPos += len(prefixStr)
+        ePos = dataStr.find(b'\0', sPos)
+        if ePos < 0:
+            ePos = len(dataStr)
+        if ePos > sPos and ePos - sPos <= maxTextSize:
+            return dataStr[sPos:ePos].decode()
+    return None
+
 # Wrapper to be used as a decorator on thread functions, etc, so their exception
 # details are sent to the log file (instead of 'stderr').
 def catchLogExceptionsWrapper(func):
