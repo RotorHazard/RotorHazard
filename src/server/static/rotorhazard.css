@@ -734,6 +734,17 @@ main.page-home {
 	max-width: 35em;
 }
 
+.page-home h3 {
+	font-size: 2em;
+	padding: 0;
+	color: inherit;
+	background: transparent;
+}
+
+.page-home #description {
+	margin: 1em 0;
+}
+
 .page-home .home-menu {
 	max-width: 20em;
 	margin: 1em auto;
@@ -1280,18 +1291,6 @@ main.page-home {
 	flex: 1;
 }
 
-.page-heats .race_class {
-	padding: 0.5em;
-	border: solid 0.0625em #d1d3d4;
-	border-top: none;
-}
-
-@media (prefers-color-scheme: dark) {
-	.page-heats .race_class {
-		border-color: #4c4c4c;
-	}
-}
-
 .pilots {
 	padding: 0;
 	list-style: none;
@@ -1437,6 +1436,18 @@ main.page-home {
 
 @media (prefers-color-scheme: dark) {
 	.class-info {
+		border-color: #4c4c4c;
+	}
+}
+
+.class-info .description {
+	margin: 0.5em 0;
+	padding-bottom: 1em;
+	border-bottom: solid 0.0625em #d1d3d4;
+}
+
+@media (prefers-color-scheme: dark) {
+	.class-info .description {
 		border-color: #4c4c4c;
 	}
 }

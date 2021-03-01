@@ -12,7 +12,7 @@
 			simpleLineBreaks: true
 		}),
 		md_output = converter.makeHtml({{ doc|tojson }})
-	    var output = $(md_output);
+		var output = $(md_output);
 
 		// internal link rerouting
 		var root = new RegExp(location.host);
