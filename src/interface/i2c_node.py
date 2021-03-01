@@ -3,8 +3,10 @@ import logging
 from monotonic import monotonic
 
 from Node import Node
-from RHInterface import READ_ADDRESS, READ_REVISION_CODE, MAX_RETRY_COUNT,\
-                        validate_checksum, calculate_checksum, unpack_16
+from RHInterface import READ_ADDRESS, READ_REVISION_CODE, MAX_RETRY_COUNT, \
+                        READ_FW_VERSION, READ_FW_BUILDDATE, READ_FW_BUILDTIME, \
+                        FW_TEXT_BLOCK_SIZE, validate_checksum, calculate_checksum, \
+                        unpack_16
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +96,29 @@ class I2CNode(Node):
     def jump_to_bootloader(self, interface):
         pass
 
+    def read_firmware_version(self):
+        # read firmware version string
+        try:
+            data = self.read_block(None, READ_FW_VERSION, FW_TEXT_BLOCK_SIZE, 2)
+            self.firmware_timestamp_str = data.decode("utf-8").rstrip() \
+                                          if data != None else None
+        except Exception:
+            logger.exception('Error fetching READ_FW_VERSION for I2C node')
+
+    def read_firmware_timestamp(self):
+        # read firmware build date/time strings
+        try:
+            data = self.read_block(None, READ_FW_BUILDDATE, FW_TEXT_BLOCK_SIZE, 2)
+            if data != None:
+                self.firmware_timestamp_str = data.decode("utf-8").rstrip()
+                data = self.read_block(None, READ_FW_BUILDTIME, FW_TEXT_BLOCK_SIZE, 2)
+                if data != None:
+                    self.firmware_timestamp_str += " " + data.decode("utf-8").rstrip()
+            else:
+                self.firmware_timestamp_str = None
+        except Exception:
+            logger.exception('Error fetching READ_FW_DATE/TIME for I2C node')
+
 
 def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
     if not isS32BPillFlag:
@@ -108,15 +133,24 @@ def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
             # read NODE_API_LEVEL and verification value:
             data = node.read_block(None, READ_REVISION_CODE, 2, 2)
             rev_val = unpack_16(data) if data != None else None
+            fver_log_str = ''
+            ftim_log_str = ''
             if rev_val:
                 if (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
                     node.api_level = rev_val & 0xFF
+                    if node.api_level >= 34:
+                        node.read_firmware_version()
+                        if node.firmware_version_str:
+                            fver_log_str = ", fw_version=" + node.firmware_version_str
+                        node.read_firmware_timestamp()
+                        if node.firmware_timestamp_str:
+                            ftim_log_str = ", fw_timestamp: " + node.firmware_timestamp_str
                 else:
                     logger.warn("Unable to verify revision code from node {}".format(index+idxOffset+1))
             else:
                 logger.warn("Unable to read revision code from node {}".format(index+idxOffset+1))
-            logger.info("...I2C node {} found at address {}, API_level={}".format(\
-                                    index+idxOffset+1, addr, node.api_level))
+            logger.info("...I2C node {} found at address {}, API_level={}{}{}".format(\
+                        index+idxOffset+1, addr, node.api_level, fver_log_str, ftim_log_str))
             nodes.append(node) # Add new node to RHInterface
         except IOError:
             if not isS32BPillFlag:
@@ -124,5 +158,5 @@ def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
         i2c_helper.i2c_end()
         i2c_helper.i2c_sleep()
         if isS32BPillFlag and len(nodes) == 0:
-            break
+            break  # if S32_BPill and first I2C node not found then stop trying
     return nodes

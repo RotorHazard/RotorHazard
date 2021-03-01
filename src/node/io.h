@@ -3,6 +3,8 @@
 
 #include "config.h"
 
+#define TEXT_BLOCK_SIZE 16   // length of data for 'writeTextBlock()'
+
 class Buffer {
     public:
         uint8_t index = 0;
@@ -47,6 +49,26 @@ class Buffer {
             data[size++] = (v >> 16);
             data[size++] = (v >> 8);
             data[size++] = v;
+        }
+        void writeTextBlock(const char *srcStr) {
+            const char *sPtr = srcStr;
+            int p = 0;
+            while (*sPtr > ' ' && ++p < 99)  // find first space
+                ++sPtr;
+            if (p < 99) {
+                p = 0;
+                do {  // copy data until null (or length limit)
+                    ++sPtr;
+                    write8(*sPtr);
+                }
+                while(++p < TEXT_BLOCK_SIZE && *sPtr > '\0');
+            }
+            else
+                p = 0;
+            while(p < TEXT_BLOCK_SIZE) {  // pad rest with nulls
+                write8('\0');
+                ++p;
+            }
         }
         uint8_t calculateChecksum(uint8_t len) {
             uint8_t checksum = 0;

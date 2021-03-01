@@ -24,6 +24,9 @@ READ_TIME_MILLIS = 0x33      # read current 'millis()' time value
 READ_MULTINODE_COUNT = 0x39  # read # of nodes handled by processor
 READ_CURNODE_INDEX = 0x3A    # read index of current node for processor
 READ_NODE_SLOTIDX = 0x3C     # read node slot index (for multi-node setup)
+READ_FW_VERSION = 0x3D       # read firmware version string
+READ_FW_BUILDDATE = 0x3E     # read firmware build date string
+READ_FW_BUILDTIME = 0x3F     # read firmware build time string
 
 WRITE_FREQUENCY = 0x51       # Sets frequency (2 byte)
 # WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
@@ -35,6 +38,13 @@ JUMP_TO_BOOTLOADER = 0x7E   # jump to bootloader for flash update
 
 LAPSTATS_FLAG_CROSSING = 0x01  # crossing is in progress
 LAPSTATS_FLAG_PEAK = 0x02      # reported extremum is peak
+
+FW_TEXT_BLOCK_SIZE = 16     # length of data returned by 'READ_FW_...' fns
+
+# prefix strings for finding text values in firmware '.bin' files
+FW_VERSION_PREFIXSTR = "FIRMWARE_VERSION: "
+FW_BUILDDATE_PREFIXSTR = "FIRMWARE_BUILDDATE: "
+FW_BUILDTIME_PREFIXSTR = "FIRMWARE_BUILDTIME: "
 
 # features flags for value returned by READ_RHFEAT_FLAGS command
 RHFEAT_STM32_MODE = 0x0004      # STM 32-bit processor running multiple nodes
@@ -104,6 +114,10 @@ def unpack_rssi(node, data):
 class RHInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         BaseHardwareInterface.__init__(self)
+        self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
+        self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
+        self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
+        self.FW_BUILDTIME_PREFIXSTR = FW_BUILDTIME_PREFIXSTR
         self.update_thread = None      # Thread for running the main update loop
         self.fwupd_serial_obj = None   # serial object for in-app update of node firmware
 

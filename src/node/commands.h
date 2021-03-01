@@ -4,7 +4,7 @@
 #include "io.h"
 
 // API level for node; increment when commands are modified
-#define NODE_API_LEVEL 33
+#define NODE_API_LEVEL 34
 
 class Message
 {
@@ -37,6 +37,9 @@ public:
 #define READ_MULTINODE_COUNT 0x39  // read # of nodes handled by this processor
 #define READ_CURNODE_INDEX 0x3A    // read index of current node for this processor
 #define READ_NODE_SLOTIDX 0x3C     // read node slot index (for multi-node setup)
+#define READ_FW_VERSION 0x3D       // read firmware version string
+#define READ_FW_BUILDDATE 0x3E     // read firmware build date string
+#define READ_FW_BUILDTIME 0x3F     // read firmware build time string
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_ENTER_AT_LEVEL 0x71

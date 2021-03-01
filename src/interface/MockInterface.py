@@ -3,12 +3,12 @@
 import os
 import logging
 import gevent # For threads and timing
-import random
-from gevent.lock import BoundedSemaphore # To limit i2c calls
 from monotonic import monotonic # to capture read timing
 
 from Node import Node
 from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
+from RHInterface import FW_TEXT_BLOCK_SIZE, FW_VERSION_PREFIXSTR, \
+                        FW_BUILDDATE_PREFIXSTR, FW_BUILDTIME_PREFIXSTR
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,10 @@ MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 class MockInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         BaseHardwareInterface.__init__(self)
+        self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
+        self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
+        self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
+        self.FW_BUILDTIME_PREFIXSTR = FW_BUILDTIME_PREFIXSTR
         self.update_thread = None # Thread for running the main update loop
 
         # Scans all i2c_addrs to populate nodes array
@@ -31,7 +35,6 @@ class MockInterface(BaseHardwareInterface):
             node.i2c_addr = 2 * index + 8 # Set current loop i2c_addr
             node.index = index
             node.api_valid_flag = True
-            node.api_level = 33
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.nodes.append(node) # Add new node to RHInterface

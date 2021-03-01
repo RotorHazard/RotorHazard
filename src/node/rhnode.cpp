@@ -36,6 +36,9 @@
 
 // Note: Configure Arduino NODE_NUMBER value in 'config.h'
 
+// Firmware version string (prefix allows text to be located in '.bin' file)
+const char *firmwareVersionString = "FIRMWARE_VERSION: 1.1.1";
+
 #if !STM32_MODE_FLAG
 // i2c address for node
 // Node 1 = 8, Node 2 = 10, Node 3 = 12, Node 4 = 14
@@ -170,13 +173,13 @@ void setup()
     nIdx = RssiNode::multiRssiNodeCount;
     while (nIdx > 0)
     {
-    	--nIdx;
+        --nIdx;
         if(RssiNode::rssiNodeArray[nIdx].rssiRead() <= MIN_RSSI_DETECT)
         {  //RX5808 not installed in slot
             if (nIdx < RssiNode::multiRssiNodeCount - 1)
             {  //not last slot; shift down nodes later in array
                 for (int i=nIdx; i<RssiNode::multiRssiNodeCount; ++i)
-                	RssiNode::rssiNodeArray[i].copyNodeData(&RssiNode::rssiNodeArray[i+1]);
+                    RssiNode::rssiNodeArray[i].copyNodeData(&RssiNode::rssiNodeArray[i+1]);
             }
             --RssiNode::multiRssiNodeCount;
         }

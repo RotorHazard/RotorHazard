@@ -5,22 +5,22 @@
 
 	$(document).ready(function () {
 
-		function set_updmsgs_text(text) {
-			upd_msgs_text = text + "\n";
-			$('#upd_messages').html($('<div/>').text(upd_msgs_text).html());
-		}
+		socket.on('upd_set_info_text', function (msg) {
+			$('#info_text').html(msg);
+		});
 
-		function append_to_updmsgs(text) {
-			upd_msgs_text = upd_msgs_text + text + "\n";
-			$('#upd_messages').text(upd_msgs_text);
-		}
+		socket.on('upd_enable_update_button', function () {
+			$('button#do_update').prop('disabled', false);
+		});
 
 		socket.on('upd_messages_init', function (msg) {
-			set_updmsgs_text(msg);
+			upd_msgs_text = msg + "\n";
+			$('#upd_messages').html($('<div/>').text(upd_msgs_text).html());
 		});
 
 		socket.on('upd_messages_append', function (msg) {
-			append_to_updmsgs(msg);
+			upd_msgs_text = upd_msgs_text + msg + "\n";
+			$('#upd_messages').text(upd_msgs_text);
 		});
 
 		socket.on('upd_messages_finish', function () {
@@ -30,25 +30,53 @@
 		$('button#do_update').click(function (event) {
 			$('button#do_update').prop('disabled', true);
 			var data = {
-				src_file_str: $('#src_file_str').val(),
+				src_file_str: $('#src_file_str').val()
 			};
 			socket.emit('do_bpillfw_update', data);
 			return false;
 		});
+
+		$('#src_file_str').on("focusin", function(event) {
+			$('button#do_update').prop('disabled', true);
+			$('#info_text').html("<br><br><br><br>");
+		});
+
+		$('#src_file_str').on("focusout", function(event) {
+			$('button#do_update').prop('disabled', true);
+			$('#info_text').html("Checking firmware file...<br><br><br><br>");
+			var data = {
+				src_file_str: $('#src_file_str').val()
+			};
+			socket.emit('check_bpillfw_file', data);
+		});
+
+		$("#src_file_str").keyup(function(event) {
+			if (event.keyCode === 13) {  // make 'Enter' key on input field trigger file check
+				$("#src_file_str").blur();
+			}
+		});
+
+		$('button#do_update').prop('disabled', true);
+		socket.emit('check_bpillfw_file', { src_file_str: $('#src_file_str').val() });
+
 	});
 </script>
 {% endblock %} {% block content %}
 
 <main class="page-updatenodes">
 <h2>{{ __('Update Node Firmware') }}</h2>
-
+<div id="top_text">
 The processor on the RotorHazard S32_BPill board will be flash-updated using the firmware file below:
-<br />
+</div>
 <br />
 <input type="text" id="src_file_str" value="{{ fw_src_str }}" />
 <br />
 <br />
-<button id="do_update">{{ __('Update') }}</button>&nbsp;
+<div id="info_text">
+Checking firmware file...<br><br><br><br>
+</div>
+<br />
+<button id="do_update" disabled>{{ __('Update') }}</button>&nbsp;
 <a href="/settings" class="debug button-like">{{ __('Cancel') }}</a>
 <br />
 <br />
