@@ -100,7 +100,7 @@ class I2CNode(Node):
         # read firmware version string
         try:
             data = self.read_block(None, READ_FW_VERSION, FW_TEXT_BLOCK_SIZE, 2)
-            self.firmware_timestamp_str = data.decode("utf-8").rstrip() \
+            self.firmware_version_str = bytearray(data).decode("utf-8").rstrip('\0') \
                                           if data != None else None
         except Exception:
             logger.exception('Error fetching READ_FW_VERSION for I2C node')
@@ -110,10 +110,10 @@ class I2CNode(Node):
         try:
             data = self.read_block(None, READ_FW_BUILDDATE, FW_TEXT_BLOCK_SIZE, 2)
             if data != None:
-                self.firmware_timestamp_str = data.decode("utf-8").rstrip()
+                self.firmware_timestamp_str = bytearray(data).decode("utf-8").rstrip('\0')
                 data = self.read_block(None, READ_FW_BUILDTIME, FW_TEXT_BLOCK_SIZE, 2)
                 if data != None:
-                    self.firmware_timestamp_str += " " + data.decode("utf-8").rstrip()
+                    self.firmware_timestamp_str += " " + bytearray(data).decode("utf-8").rstrip('\0')
             else:
                 self.firmware_timestamp_str = None
         except Exception:
