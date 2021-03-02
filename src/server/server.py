@@ -170,94 +170,6 @@ TONES_ALL = 2
 def monotonic_to_epoch_millis(secs):
     return 1000.0*secs + MTONIC_TO_EPOCH_MILLIS_OFFSET
 
-#
-# Server Info
-#
-def buildServerInfo():
-    infoDict = {}
-
-    infoDict['about_html'] = "<ul>"
-
-    # Release Version
-    infoDict['release_version'] = RELEASE_VERSION
-    infoDict['about_html'] += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
-
-    # Server API
-    infoDict['server_api'] = SERVER_API
-    infoDict['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
-
-    # Server API
-    infoDict['json_api'] = JSON_API
-
-    # Node API levels
-    node_api_level = 0
-    infoDict['node_api_match'] = True
-
-    infoDict['node_api_lowest'] = 0
-    infoDict['node_api_levels'] = [None]
-
-    if len(INTERFACE.nodes):
-        if INTERFACE.nodes[0].api_level:
-            node_api_level = INTERFACE.nodes[0].api_level
-            infoDict['node_api_lowest'] = node_api_level
-            infoDict['node_api_levels'] = []
-            for node in INTERFACE.nodes:
-                infoDict['node_api_levels'].append(node.api_level)
-                if node.api_level is not node_api_level:
-                    infoDict['node_api_match'] = False
-                if node.api_level < infoDict['node_api_lowest']:
-                    infoDict['node_api_lowest'] = node.api_level
-
-    infoDict['about_html'] += "<li>" + __("Node API") + ": "
-    if node_api_level:
-        if infoDict['node_api_match']:
-            infoDict['about_html'] += str(node_api_level)
-        else:
-            infoDict['about_html'] += "[ "
-            for idx, level in enumerate(infoDict['node_api_levels']):
-                infoDict['about_html'] += str(idx+1) + ":" + str(level) + " "
-            infoDict['about_html'] += "]"
-    else:
-        infoDict['about_html'] += "None (Delta5)"
-
-    infoDict['about_html'] += "</li>"
-
-    # Node firmware versions
-    node_fw_version = None
-    infoDict['node_version_match'] = True
-    infoDict['node_fw_versions'] = [None]
-    if len(INTERFACE.nodes):
-        if INTERFACE.nodes[0].firmware_version_str:
-            node_fw_version = INTERFACE.nodes[0].firmware_version_str
-            infoDict['node_fw_versions'] = []
-            for node in INTERFACE.nodes:
-                infoDict['node_fw_versions'].append(\
-                        node.firmware_version_str if node.firmware_version_str else "0")
-                if node.firmware_version_str is not node_fw_version:
-                    infoDict['node_version_match'] = False
-            # if multi-node and all versions same then only include one entry
-            if infoDict['node_version_match'] and INTERFACE.nodes[0].multi_node_index >= 0:
-                infoDict['node_fw_versions'] = infoDict['node_fw_versions'][0:1]
-    if node_fw_version:
-        infoDict['about_html'] += "<li>" + __("Node Version") + ": "
-        if infoDict['node_version_match']:
-            infoDict['about_html'] += str(node_fw_version)
-        else:
-            infoDict['about_html'] += "[ "
-            for idx, ver in enumerate(infoDict['node_fw_versions']):
-                infoDict['about_html'] += str(idx+1) + ":" + str(ver) + " "
-            infoDict['about_html'] += "]"
-        infoDict['about_html'] += "</li>"
-
-    infoDict['node_api_best'] = NODE_API_BEST
-    if infoDict['node_api_match'] is False or node_api_level < NODE_API_BEST:
-        # Show Recommended API notice
-        infoDict['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
-
-    infoDict['about_html'] += "</ul>"
-
-    return infoDict
-
 def uniqueName(desiredName, otherNames):
     if desiredName in otherNames:
         newName = desiredName
@@ -4443,6 +4355,8 @@ def do_bpillfw_update(data):
     gevent.sleep(0.2)
     logger.info("Reinitializing RH interface")
     initialize_rh_interface()
+    buildServerInfo()
+    logger.debug("Server info:  " + json.dumps(serverInfoItems))
     init_race_state()
     start_background_threads()
 
@@ -5708,6 +5622,107 @@ def initialize_rh_interface():
         logger.exception("Error initializing RH interface")
         return False
 
+# Create and save server/node information
+def buildServerInfo():
+    global serverInfo
+    global serverInfoItems
+    try:
+        serverInfo = {}
+    
+        serverInfo['about_html'] = "<ul>"
+    
+        # Release Version
+        serverInfo['release_version'] = RELEASE_VERSION
+        serverInfo['about_html'] += "<li>" + __("Version") + ": " + str(RELEASE_VERSION) + "</li>"
+    
+        # Server API
+        serverInfo['server_api'] = SERVER_API
+        serverInfo['about_html'] += "<li>" + __("Server API") + ": " + str(SERVER_API) + "</li>"
+    
+        # Server API
+        serverInfo['json_api'] = JSON_API
+    
+        # Node API levels
+        node_api_level = 0
+        serverInfo['node_api_match'] = True
+    
+        serverInfo['node_api_lowest'] = 0
+        serverInfo['node_api_levels'] = [None]
+    
+        if len(INTERFACE.nodes):
+            if INTERFACE.nodes[0].api_level:
+                node_api_level = INTERFACE.nodes[0].api_level
+                serverInfo['node_api_lowest'] = node_api_level
+                serverInfo['node_api_levels'] = []
+                for node in INTERFACE.nodes:
+                    serverInfo['node_api_levels'].append(node.api_level)
+                    if node.api_level != node_api_level:
+                        serverInfo['node_api_match'] = False
+                    if node.api_level < serverInfo['node_api_lowest']:
+                        serverInfo['node_api_lowest'] = node.api_level
+                # if multi-node and all api levels same then only include one entry
+                if serverInfo['node_api_match'] and INTERFACE.nodes[0].multi_node_index >= 0:
+                    serverInfo['node_api_levels'] = serverInfo['node_api_levels'][0:1]
+    
+        serverInfo['about_html'] += "<li>" + __("Node API") + ": "
+        if node_api_level:
+            if serverInfo['node_api_match']:
+                serverInfo['about_html'] += str(node_api_level)
+            else:
+                serverInfo['about_html'] += "[ "
+                for idx, level in enumerate(serverInfo['node_api_levels']):
+                    serverInfo['about_html'] += str(idx+1) + ":" + str(level) + " "
+                serverInfo['about_html'] += "]"
+        else:
+            serverInfo['about_html'] += "None (Delta5)"
+    
+        serverInfo['about_html'] += "</li>"
+    
+        # Node firmware versions
+        node_fw_version = None
+        serverInfo['node_version_match'] = True
+        serverInfo['node_fw_versions'] = [None]
+        if len(INTERFACE.nodes):
+            if INTERFACE.nodes[0].firmware_version_str:
+                node_fw_version = INTERFACE.nodes[0].firmware_version_str
+                serverInfo['node_fw_versions'] = []
+                for node in INTERFACE.nodes:
+                    serverInfo['node_fw_versions'].append(\
+                            node.firmware_version_str if node.firmware_version_str else "0")
+                    if node.firmware_version_str != node_fw_version:
+                        serverInfo['node_version_match'] = False
+                # if multi-node and all versions same then only include one entry
+                if serverInfo['node_version_match'] and INTERFACE.nodes[0].multi_node_index >= 0:
+                    serverInfo['node_fw_versions'] = serverInfo['node_fw_versions'][0:1]
+        if node_fw_version:
+            serverInfo['about_html'] += "<li>" + __("Node Version") + ": "
+            if serverInfo['node_version_match']:
+                serverInfo['about_html'] += str(node_fw_version)
+            else:
+                serverInfo['about_html'] += "[ "
+                for idx, ver in enumerate(serverInfo['node_fw_versions']):
+                    serverInfo['about_html'] += str(idx+1) + ":" + str(ver) + " "
+                serverInfo['about_html'] += "]"
+            serverInfo['about_html'] += "</li>"
+    
+        serverInfo['node_api_best'] = NODE_API_BEST
+        if serverInfo['node_api_match'] is False or node_api_level < NODE_API_BEST:
+            # Show Recommended API notice
+            serverInfo['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
+    
+        serverInfo['about_html'] += "</ul>"
+
+        # create version of 'serverInfo' without 'about_html' entry
+        serverInfoItems = serverInfo.copy()
+        serverInfoItems.pop('about_html', None)
+        serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
+        serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+    
+        return serverInfo
+    
+    except:
+        logger.exception("Error in 'buildServerInfo()'")
+
 #
 # Program Initialize
 #
@@ -5829,13 +5844,7 @@ if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
 Options.primeGlobalsCache()
 
 # collect server info for About panel, etc
-serverInfo = buildServerInfo()
-
-# create version of 'serverInfo' without 'about_html' entry
-serverInfoItems = serverInfo.copy()
-serverInfoItems.pop('about_html', None)
-serverInfoItems['prog_start_epoch'] = "{0:.0f}".format(PROGRAM_START_EPOCH_TIME)
-serverInfoItems['prog_start_time'] = str(datetime.utcfromtimestamp(PROGRAM_START_EPOCH_TIME/1000.0))
+buildServerInfo()
 logger.debug("Server info:  " + json.dumps(serverInfoItems))
 
 if serverInfo['node_api_match'] is False:
