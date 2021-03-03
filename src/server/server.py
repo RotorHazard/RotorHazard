@@ -99,6 +99,7 @@ ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 DB_FILE_NAME = 'database.db'
 DB_BKP_DIR_NAME = 'db_bkp'
 IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
+NODE_FW_PATHNAME = "firmware/RH_S32_BPill_node.bin"
 
 # check if 'log' directory owned by 'root' and change owner to 'pi' user if so
 if RHUtils.checkSetFileOwnerPi(log.LOG_DIR_NAME):
@@ -186,18 +187,19 @@ def uniqueName(desiredName, otherNames):
         return desiredName
 
 # Return 'DEF_NODE_FWUPDATE_URL' config value; if not set in 'config.json'
-#  then return default value based on server RELEASE_VERSION
+#  then return default value based on BASEDIR and server RELEASE_VERSION
 def getDefNodeFwUpdateUrl():
     try:
         if Config.GENERAL['DEF_NODE_FWUPDATE_URL']:
             return Config.GENERAL['DEF_NODE_FWUPDATE_URL']
-        if RELEASE_VERSION.lower().find("beta") > 0:
-            return Config.BETA_NODE_FWUPDATE_URL_STR
-        elif RELEASE_VERSION.lower().find("dev") > 0:
-            return Config.DEV_NODE_FWUPDATE_URL_STR
+        elif RELEASE_VERSION.lower().find("dev") > 0:  # if "dev" server version then
+            return stm32loader.DEF_BINSRC_STR          # use current "dev" firmware at URL
+        # return path that is up two levels from BASEDIR, and then NODE_FW_PATHNAME
+        return os.path.abspath(os.path.join(os.path.join(os.path.join(BASEDIR, os.pardir), \
+                                                         os.pardir), NODE_FW_PATHNAME))
     except:
         logger.exception("Error determining value for 'DEF_NODE_FWUPDATE_URL'")
-    return Config.REL_NODE_FWUPDATE_URL_STR
+    return "/home/pi/RotorHazard/" + NODE_FW_PATHNAME
 
 def getCurrentProfile():
     current_profile = Options.getInt('currentProfile')

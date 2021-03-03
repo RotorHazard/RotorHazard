@@ -9,11 +9,6 @@ logger = logging.getLogger(__name__)
 
 CONFIG_FILE_NAME = 'config.json'
 
-# default values for 'DEF_NODE_FWUPDATE_URL' (picked based on server RELEASE_VERSION)
-REL_NODE_FWUPDATE_URL_STR = "http://www.rotorhazard.com/fw/rel/current/RH_S32_BPill_node.bin"
-BETA_NODE_FWUPDATE_URL_STR = "http://www.rotorhazard.com/fw/beta/current/RH_S32_BPill_node.bin"
-DEV_NODE_FWUPDATE_URL_STR = "http://www.rotorhazard.com/fw/dev/current/RH_S32_BPill_node.bin"
-
 GENERAL = {}
 HARDWARE = {}
 SENSORS = {}
