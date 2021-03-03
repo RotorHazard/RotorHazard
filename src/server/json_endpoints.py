@@ -107,7 +107,7 @@ def createBlueprint(Database, RHData, Results, RACE, serverInfo, getCurrentProfi
 
         payload = {
             'setup': heat,
-            'leaderboard': Results.calc_leaderboard(heat_id=heat_id)
+            'leaderboard': Results.calc_leaderboard(RHData, heat_id=heat_id)
         }
 
         return json.dumps({"heat": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
@@ -162,7 +162,7 @@ def createBlueprint(Database, RHData, Results, RACE, serverInfo, getCurrentProfi
         if RACE.cacheStatus == Results.CacheStatus.VALID:
             results = RACE.results
         else:
-            results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
+            results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
             RACE.results = results
             RACE.cacheStatus = Results.CacheStatus.VALID
 
@@ -185,7 +185,7 @@ def createBlueprint(Database, RHData, Results, RACE, serverInfo, getCurrentProfi
 
         payload = {
             "heats": heats,
-            "leaderboard": Results.calc_leaderboard()
+            "leaderboard": Results.calc_leaderboard(RHData)
         }
 
         return json.dumps({"races": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
@@ -228,7 +228,7 @@ def createBlueprint(Database, RHData, Results, RACE, serverInfo, getCurrentProfi
             'start_time_formatted': race.start_time_formatted,
             'nodes': pilotraces,
             'sort': RHData.get_option('pilotSort'),
-            'leaderboard': Results.calc_leaderboard(heat_id=heat_id, round_id=round_id)
+            'leaderboard': Results.calc_leaderboard(RHData, heat_id=heat_id, round_id=round_id)
         }
 
         return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}

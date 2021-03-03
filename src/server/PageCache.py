@@ -117,7 +117,7 @@ class PageCache:
                             })
                         if round.cacheStatus == Results.CacheStatus.INVALID:
                             logger.info('Rebuilding Heat %d Round %d cache', heat.heat_id, round.round_id)
-                            results = Results.calc_leaderboard(heat_id=heat.heat_id, round_id=round.round_id)
+                            results = Results.calc_leaderboard(self._RHData, heat_id=heat.heat_id, round_id=round.round_id)
                             round.results = results
                             round.cacheStatus = Results.CacheStatus.VALID
                             DB.session.commit()
@@ -143,7 +143,7 @@ class PageCache:
 
                 if heatdata.cacheStatus == Results.CacheStatus.INVALID:
                     logger.info('Rebuilding Heat %d cache', heat.heat_id)
-                    results = Results.calc_leaderboard(heat_id=heat.heat_id)
+                    results = Results.calc_leaderboard(self._RHData, heat_id=heat.heat_id)
                     heatdata.results = results
                     heatdata.cacheStatus = Results.CacheStatus.VALID
                     DB.session.commit()
@@ -184,7 +184,7 @@ class PageCache:
             for race_class in self._RHData.get_raceClasses():
                 if race_class.cacheStatus == Results.CacheStatus.INVALID:
                     logger.info('Rebuilding Class %d cache', race_class.id)
-                    results = Results.calc_leaderboard(class_id=race_class.id)
+                    results = Results.calc_leaderboard(self._RHData, class_id=race_class.id)
                     race_class.results = results
                     race_class.cacheStatus = Results.CacheStatus.VALID
                     DB.session.commit()
@@ -215,7 +215,7 @@ class PageCache:
             gevent.sleep()
             if self._RHData.get_option("eventResults_cacheStatus") == Results.CacheStatus.INVALID:
                 logger.info('Rebuilding Event cache')
-                results = Results.calc_leaderboard()
+                results = Results.calc_leaderboard(self._RHData)
                 self._RHData.set_option("eventResults", json.dumps(results))
                 self._RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.VALID)
                 DB.session.commit()

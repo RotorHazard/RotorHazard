@@ -2069,7 +2069,7 @@ def race_expire_thread(start_token):
             logger.info("Race count-down timer reached expiration")
             RACE.timer_running = False # indicate race timer no longer running
             Events.trigger(Evt.RACE_FINISH)
-            check_win_condition(RACE, INTERFACE, at_finish=True, start_token=start_token)
+            check_win_condition(RACE, RHData, INTERFACE, at_finish=True, start_token=start_token)
         else:
             logger.debug("Finished unused race-time-expire thread")
 
@@ -2098,7 +2098,7 @@ def on_stop_race():
         RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
         INTERFACE.set_race_status(RaceStatus.DONE)
         Events.trigger(Evt.RACE_STOP)
-        check_win_condition(RACE, INTERFACE)
+        check_win_condition(RACE, RHData, INTERFACE)
 
         if CLUSTER.hasSecondaries():
             CLUSTER.doClusterRaceStop()
@@ -2243,7 +2243,7 @@ def on_resave_laps(data):
     for lap in laps:
         tmp_lap_time_formatted = lap['lap_time']
         if isinstance(tmp_lap_time_formatted, float):
-            tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'])
+            tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'], RHData.get_option('timeFormat'))
         DB.session.add(Database.SavedRaceLap( \
             race_id=race_id, \
             pilotrace_id=pilotrace_id, \
@@ -2310,7 +2310,7 @@ def on_discard_laps(**kwargs):
 def clear_laps():
     '''Clear the current laps table.'''
     global RACE
-    RACE.last_race_results = Results.calc_leaderboard(current_race=RACE, current_profile=getCurrentProfile())
+    RACE.last_race_results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
     RACE.last_race_cacheStatus = Results.CacheStatus.VALID
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
     RACE.winning_lap_id = 0
@@ -2444,7 +2444,7 @@ def generate_heats(data):
         # build new results if needed
         logger.info("No class cache available for {0}; regenerating".format(input_class))
         race_class.cacheStatus = monotonic()
-        race_class.results = Results.calc_leaderboard(class_id=race_class.id)
+        race_class.results = Results.calc_leaderboard(RHData, class_id=race_class.id)
         race_class.cacheStatus = Results.CacheStatus.VALID
         DB.session.commit()
 
@@ -2565,10 +2565,10 @@ def on_delete_lap(data):
 
     if db_next and db_last:
         db_next['lap_time'] = db_next['lap_time_stamp'] - db_last['lap_time_stamp']
-        db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'])
+        db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], RHData.get_option('timeFormat'))
     elif db_next:
         db_next['lap_time'] = db_next['lap_time_stamp']
-        db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'])
+        db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], RHData.get_option('timeFormat'))
 
     try:  # delete any split laps for deleted lap
         lap_splits = RHData.get_lapSplits(
@@ -3186,7 +3186,7 @@ def emit_current_leaderboard(**params):
     elif RACE.cacheStatus == Results.CacheStatus.VALID:
         emit_payload = RACE.results
     else:
-        results = Results.calc_leaderboard(current_race=RACE, current_profile=getCurrentProfile())
+        results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
         RACE.results = results
         RACE.cacheStatus = Results.CacheStatus.VALID
         emit_payload = results
@@ -3204,7 +3204,7 @@ def emit_current_team_leaderboard(**params):
     race_format = getCurrentRaceFormat()
 
     if race_format.team_racing_mode:
-        results = Results.calc_team_leaderboard(RACE)
+        results = Results.calc_team_leaderboard(RACE, RHData)
         RACE.team_results = results
         RACE.team_cacheStatus = Results.CacheStatus.VALID
         emit_payload = results
@@ -3429,7 +3429,7 @@ def emit_race_status_message(**params):
 def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, **params):
     '''Emits phonetic data.'''
     raw_time = lap_time
-    phonetic_time = RHUtils.phonetictime_format(lap_time)
+    phonetic_time = RHUtils.phonetictime_format(lap_time, RHData.get_option('timeFormatPhonetic'))
     pilot = RHData.get_pilot(pilot_id)
     emit_payload = {
         'pilot': pilot.phonetic,
@@ -3477,7 +3477,7 @@ def emit_phonetic_split(pilot_id, split_id, split_time, **params):
     '''Emits phonetic split-pass data.'''
     pilot = RHData.get_pilot(pilot_id)
     phonetic_name = pilot.phonetic or pilot.callsign
-    phonetic_time = RHUtils.phonetictime_format(split_time)
+    phonetic_time = RHUtils.phonetictime_format(split_time, RHData.get_option('timeFormatPhonetic'))
     emit_payload = {
         'pilot_name': phonetic_name,
         'split_id': str(split_id+1),
@@ -3952,7 +3952,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         if lap_time < (min_lap * 1000):  # if lap time less than minimum
                             node.under_min_lap_count += 1
                             logger.info('Pass record under lap minimum ({3}): Node={0}, Lap={1}, LapTime={2}, Count={4}' \
-                                       .format(node.index+1, lap_number, RHUtils.time_format(lap_time), min_lap, node.under_min_lap_count))
+                                       .format(node.index+1, lap_number, RHUtils.time_format(lap_time, RHData.get_option('timeFormat')), min_lap, node.under_min_lap_count))
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
 
@@ -3966,12 +3966,12 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
-                            'lap_time_formatted': RHUtils.time_format(lap_time),
+                            'lap_time_formatted': RHUtils.time_format(lap_time, RHData.get_option('timeFormat')),
                             'source': source,
                             'deleted': False
                         })
 
-                        RACE.results = Results.calc_leaderboard(current_race=RACE, current_profile=getCurrentProfile())
+                        RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
                         RACE.cacheStatus = Results.CacheStatus.VALID
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
@@ -3979,7 +3979,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             })
 
                         logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
-                            .format(node.index+1, lap_number, RHUtils.time_format(lap_time)))
+                            .format(node.index+1, lap_number, RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))))
                         emit_current_laps() # update all laps on the race page
                         emit_current_leaderboard() # generate and update leaderboard
                         check_emit_race_status_message(RACE) # Update race status message
@@ -4005,7 +4005,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                                 (check_leader and \
                                                  pilot_id == Results.get_leading_pilot_id(RACE.results)))
 
-                            check_win_condition(RACE, INTERFACE) # check for and announce winner
+                            check_win_condition(RACE, RHData, INTERFACE) # check for and announce winner
 
                     else:
                         # record lap as 'deleted'
@@ -4013,7 +4013,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
-                            'lap_time_formatted': RHUtils.time_format(lap_time),
+                            'lap_time_formatted': RHUtils.time_format(lap_time, RHData.get_option('timeFormat')),
                             'source': source,
                             'deleted': True
                         })
@@ -4027,10 +4027,10 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
         logger.debug('Pass record dismissed: Node: {0}, Frequency not defined' \
             .format(node.index+1))
 
-def check_win_condition(RACE, INTERFACE, **kwargs):
+def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
     previous_win_status = RACE.win_status
 
-    win_status = Results.check_win_condition(RACE, INTERFACE, **kwargs)
+    win_status = Results.check_win_condition(RACE, RHData, INTERFACE, **kwargs)
 
     if win_status is not None:
         race_format = RACE.format
@@ -4067,7 +4067,7 @@ def check_win_condition(RACE, INTERFACE, **kwargs):
             gevent.sleep(win_status['max_consideration'] / 1000)
             if 'start_token' in kwargs and RACE.start_token == kwargs['start_token']:
                 logger.debug("Maximum win condition consideration time has expired.")
-                check_win_condition(RACE, INTERFACE, forced=True)
+                check_win_condition(RACE, RHData, INTERFACE, forced=True)
 
     return win_status
 
@@ -4405,6 +4405,8 @@ def db_reset_options_defaults():
     RHData.set_option("contrast_1_high", "#000000")
     # timer state
     RHData.set_option("currentLanguage", "")
+    RHData.set_option("timeFormat", "{m}:{s}.{d}"),
+    RHData.set_option("timeFormatPhonetic", "{m} {s}.{d}"),
     RHData.set_option("currentProfile", "1")
     setCurrentRaceFormat(Database.RaceFormat.query.first())
     RHData.set_option("calibrationMode", "1")
@@ -4572,6 +4574,8 @@ def recover_database(dbfile, **kwargs):
             "contrast_1_low",
             "contrast_1_high",
             "currentLanguage",
+            "timeFormat",
+            "timeFormatPhonetic",
             "currentProfile",
             "currentFormat",
             "calibrationMode",
@@ -5168,7 +5172,7 @@ try:
         elif hasMirrors:
             logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
             break
-        secondary = SecondaryNode(index, secondary_info, RACE, DB, getCurrentProfile, \
+        secondary = SecondaryNode(index, secondary_info, RACE, RHData, DB, getCurrentProfile, \
                           emit_split_pass_info, monotonic_to_epoch_millis, \
                           emit_cluster_connect_change, RELEASE_VERSION, Events)
         CLUSTER.addSecondary(secondary)

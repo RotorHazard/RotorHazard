@@ -21,7 +21,7 @@ FORMAT_ID_NONE = 0  # indicator value for unformatted class
 FREQUENCY_ID_NONE = 0       # indicator value for node disabled
 IS_SYS_RASPBERRY_PI = True  # set by 'idAndLogSystemInfo()'
 
-def time_format(millis):
+def time_format(millis, timeformat='{m}:{s}.{d}'):
     '''Convert milliseconds to 00:00.000'''
     if millis is None:
         return ''
@@ -32,9 +32,10 @@ def time_format(millis):
     seconds = over // 1000
     over = over % 1000
     milliseconds = over
-    return '{0:01d}:{1:02d}.{2:03d}'.format(minutes, seconds, milliseconds)
 
-def phonetictime_format(millis):
+    return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(milliseconds).zfill(3))
+
+def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
     '''Convert milliseconds to phonetic'''
     if millis is None:
         return ''
@@ -46,10 +47,10 @@ def phonetictime_format(millis):
     over = over % 1000
     tenths = over // 100
 
-    if minutes > 0:
-        return '{0:01d} {1:02d}.{2:01d}'.format(minutes, seconds, tenths)
-    else:
-        return '{0:01d}.{1:01d}'.format(seconds, tenths)
+    if minutes <= 0:
+        minutes = ''
+
+    return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
 
 def idAndLogSystemInfo():
     global IS_SYS_RASPBERRY_PI
