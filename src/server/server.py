@@ -185,6 +185,20 @@ def uniqueName(desiredName, otherNames):
     else:
         return desiredName
 
+# Return 'DEF_NODE_FWUPDATE_URL' config value; if not set in 'config.json'
+#  then return default value based on server RELEASE_VERSION
+def getDefNodeFwUpdateUrl():
+    try:
+        if Config.GENERAL['DEF_NODE_FWUPDATE_URL']:
+            return Config.GENERAL['DEF_NODE_FWUPDATE_URL']
+        if RELEASE_VERSION.lower().find("beta") > 0:
+            return Config.BETA_NODE_FWUPDATE_URL_STR
+        elif RELEASE_VERSION.lower().find("dev") > 0:
+            return Config.DEV_NODE_FWUPDATE_URL_STR
+    except:
+        logger.exception("Error determining value for 'DEF_NODE_FWUPDATE_URL'")
+    return Config.REL_NODE_FWUPDATE_URL_STR
+
 def getCurrentProfile():
     current_profile = Options.getInt('currentProfile')
     return Database.Profiles.query.get(current_profile)
@@ -436,9 +450,7 @@ def render_imdtabler():
 def render_updatenodes():
     '''Route to update nodes page.'''
     return render_template('updatenodes.html', serverInfo=serverInfo, getOption=Options.get, __=__, \
-                           fw_src_str=(Config.GENERAL['DEF_NODE_FWUPDATE_URL'] \
-                                       if Config.GENERAL['DEF_NODE_FWUPDATE_URL'] \
-                                       else stm32loader.DEF_BINSRC_STR))
+                           fw_src_str=getDefNodeFwUpdateUrl())
 
 # Debug Routes
 
