@@ -463,7 +463,6 @@ class RHInterface(BaseHardwareInterface):
     def set_value_8(self, node, write_command, in_value):
         success = False
         retry_count = 0
-        out_value = None
         while success is False and retry_count <= MAX_RETRY_COUNT:
             if node.write_block(self, write_command, pack_8(in_value)):
                 success = True
@@ -476,7 +475,6 @@ class RHInterface(BaseHardwareInterface):
     def set_value_32(self, node, write_command, in_value):
         success = False
         retry_count = 0
-        out_value = None
         while success is False and retry_count <= MAX_RETRY_COUNT:
             if node.write_block(self, write_command, pack_32(in_value)):
                 success = True
@@ -595,23 +593,26 @@ class RHInterface(BaseHardwareInterface):
         self.intf_error_report_limit = percentVal / 100;
 
     def get_intf_error_report_str(self, forceFlag=False):
-        if self.intf_read_block_count <= 0:
-            return None
-        r_err_ratio = float(self.intf_read_error_count) / float(self.intf_read_block_count) \
-                      if self.intf_read_error_count > 0 else 0
-        w_err_ratio = float(self.intf_write_error_count) / float(self.intf_write_block_count) \
-                      if self.intf_write_block_count > 0 and self.intf_write_error_count > 0 else 0
-        if forceFlag or r_err_ratio > self.intf_error_report_limit or \
-                                    w_err_ratio > self.intf_error_report_limit:
-            retStr = "CommErrors:"
-            if forceFlag or self.intf_write_error_count > 0:
-                retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, \
-                                self.intf_write_block_count, w_err_ratio)
-            retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count, \
-                                self.intf_read_block_count, r_err_ratio)
-            for node in self.nodes:
-                retStr += ", " + node.get_read_error_report_str()
-            return retStr
+        try:
+            if self.intf_read_block_count <= 0:
+                return None
+            r_err_ratio = float(self.intf_read_error_count) / float(self.intf_read_block_count) \
+                          if self.intf_read_error_count > 0 else 0
+            w_err_ratio = float(self.intf_write_error_count) / float(self.intf_write_block_count) \
+                          if self.intf_write_block_count > 0 and self.intf_write_error_count > 0 else 0
+            if forceFlag or r_err_ratio > self.intf_error_report_limit or \
+                                        w_err_ratio > self.intf_error_report_limit:
+                retStr = "CommErrors:"
+                if forceFlag or self.intf_write_error_count > 0:
+                    retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, \
+                                    self.intf_write_block_count, w_err_ratio)
+                retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count, \
+                                    self.intf_read_block_count, r_err_ratio)
+                for node in self.nodes:
+                    retStr += ", " + node.get_read_error_report_str()
+                return retStr
+        except Exception as ex:
+            self.log("Error in RHInterface 'get_intf_error_report_str()': " + str(ex))
         return None
 
 def get_hardware_interface(*args, **kwargs):

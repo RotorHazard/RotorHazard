@@ -6000,11 +6000,8 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         Options.set("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
 
     APP.config['SECRET_KEY'] = Options.get("secret_key")
-
     logger.info("Running http server at port " + str(port_val))
-
     init_interface_state()
-
     Events.trigger(Evt.STARTUP)
 
     try:
@@ -6021,7 +6018,7 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     Events.trigger(Evt.SHUTDOWN)
     rep_str = INTERFACE.get_intf_error_report_str(True)
     if rep_str:
-        logger.info(rep_str)
+        logger.log((logging.INFO if INTERFACE.get_intf_total_error_count() else logging.DEBUG), rep_str)
     stop_background_threads()
     log.wait_for_queue_empty()
     gevent.sleep(2)  # allow system shutdown command to run before program exit
