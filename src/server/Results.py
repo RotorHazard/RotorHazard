@@ -64,9 +64,9 @@ def normalize_cache_status(RHData):
 
     logger.debug('All Result caches normalized')
 
-def build_atomic_result_cache(**params):
+def build_atomic_result_cache(RHData, **params):
     return {
-        'results': calc_leaderboard(**params),
+        'results': calc_leaderboard(RHData, **params),
         'cacheStatus': CacheStatus.VALID
     }
 
@@ -118,7 +118,7 @@ def build_atomic_results_caches(RHData, params):
         gevent.sleep()
         timing['race'] = monotonic()
         if race.cacheStatus == token:
-            raceResult = build_atomic_result_cache(heat_id=heat_id, round_id=round_id)
+            raceResult = build_atomic_result_cache(RHData, heat_id=heat_id, round_id=round_id)
             race.results = raceResult['results']
             race.cacheStatus = raceResult['cacheStatus']
             Database.DB.session.commit()
@@ -129,7 +129,7 @@ def build_atomic_results_caches(RHData, params):
         gevent.sleep()
         timing['heat'] = monotonic()
         if heat.cacheStatus == token:
-            heatResult = build_atomic_result_cache(heat_id=heat_id)
+            heatResult = build_atomic_result_cache(RHData, heat_id=heat_id)
             heat.results = heatResult['results']
             heat.cacheStatus = heatResult['cacheStatus']
             Database.DB.session.commit()
@@ -140,7 +140,7 @@ def build_atomic_results_caches(RHData, params):
         gevent.sleep()
         timing['class'] = monotonic()
         if race_class.cacheStatus == token:
-            classResult = build_atomic_result_cache(class_id=class_id)
+            classResult = build_atomic_result_cache(RHData, class_id=class_id)
             race_class.results = classResult['results']
             race_class.cacheStatus = classResult['cacheStatus']
             Database.DB.session.commit()
@@ -149,13 +149,13 @@ def build_atomic_results_caches(RHData, params):
     # rebuild event summary
     gevent.sleep()
     timing['event'] = monotonic()
-    RHData.set_option("eventResults", json.dumps(calc_leaderboard()))
+    RHData.set_option("eventResults", json.dumps(RHData, calc_leaderboard()))
     RHData.set_option("eventResults_cacheStatus", CacheStatus.VALID)
     logger.debug('Event cache built in %fs', monotonic() - timing['event'])
 
     logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
 
-def calc_leaderboard(**params):
+def calc_leaderboard(RHData, **params):
     ''' Generates leaderboards '''
     USE_CURRENT = False
     USE_ROUND = None
@@ -487,20 +487,20 @@ def calc_leaderboard(**params):
         leaderboard.append({
             'callsign': callsigns[i],
             'laps': max_laps[i],
-            'total_time': RHUtils.time_format(total_time[i]),
+            'total_time': RHUtils.time_format(total_time[i], RHData.get_option('timeFormat')),
             'total_time_raw': total_time[i],
-            'total_time_laps': RHUtils.time_format(total_time_laps[i]),
+            'total_time_laps': RHUtils.time_format(total_time_laps[i], RHData.get_option('timeFormat')),
             'total_time_laps_raw': total_time_laps[i],
-            'average_lap': RHUtils.time_format(average_lap[i]),
+            'average_lap': RHUtils.time_format(average_lap[i], RHData.get_option('timeFormat')),
             'average_lap_raw': average_lap[i],
-            'fastest_lap': RHUtils.time_format(fastest_lap[i]),
+            'fastest_lap': RHUtils.time_format(fastest_lap[i], RHData.get_option('timeFormat')),
             'fastest_lap_raw': fastest_lap[i],
             'team_name': team_names[i],
-            'consecutives': RHUtils.time_format(consecutives[i]),
+            'consecutives': RHUtils.time_format(consecutives[i], RHData.get_option('timeFormat')),
             'consecutives_raw': consecutives[i],
             'fastest_lap_source': fastest_lap_source[i],
             'consecutives_source': consecutives_source,
-            'last_lap': RHUtils.time_format(last_lap[i]),
+            'last_lap': RHUtils.time_format(last_lap[i], RHData.get_option('timeFormat')),
             'last_lap_raw': last_lap[i],
             'pilot_id': pilot,
             'node': nodes[i],
@@ -629,7 +629,7 @@ def calc_leaderboard(**params):
 
     return leaderboard_output
 
-def calc_team_leaderboard(RACE):
+def calc_team_leaderboard(RACE, RHData):
     '''Calculates and returns team-racing info.'''
     # Uses current results cache / requires calc_leaderboard to have been run prior
     race_format = RACE.format
@@ -700,10 +700,10 @@ def calc_team_leaderboard(RACE):
                 'average_lap_raw': average_lap_raw,
                 'average_fastest_lap_raw': average_fastest_lap_raw,
                 'average_consecutives_raw': average_consecutives_raw,
-                'total_time': RHUtils.time_format(teams[team]['total_time_raw']),
-                'average_lap': RHUtils.time_format(average_lap_raw),
-                'average_fastest_lap': RHUtils.time_format(average_fastest_lap_raw),
-                'average_consecutives': RHUtils.time_format(average_consecutives_raw),
+                'total_time': RHUtils.time_format(teams[team]['total_time_raw'], RHData.get_option('timeFormat')),
+                'average_lap': RHUtils.time_format(average_lap_raw, RHData.get_option('timeFormat')),
+                'average_fastest_lap': RHUtils.time_format(average_fastest_lap_raw, RHData.get_option('timeFormat')),
+                'average_consecutives': RHUtils.time_format(average_consecutives_raw, RHData.get_option('timeFormat')),
             })
 
         # sort race_time
@@ -805,23 +805,23 @@ def calc_team_leaderboard(RACE):
         return leaderboard_output
     return None
 
-def check_win_condition(RACE, INTERFACE, **kwargs):
+def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
     if RACE.win_status in [WinStatus.NONE, WinStatus.PENDING_CROSSING, WinStatus.OVERTIME]:
         race_format = RACE.format
         if race_format:
             if race_format.team_racing_mode:
                 if race_format.win_condition == WinCondition.MOST_PROGRESS:
-                    return check_win_team_laps_and_time(RACE, INTERFACE, **kwargs)
+                    return check_win_team_laps_and_time(RACE, RHData, INTERFACE, **kwargs)
                 elif race_format.win_condition == WinCondition.MOST_LAPS:
-                    return check_win_team_most_laps(RACE, INTERFACE, **kwargs)
+                    return check_win_team_most_laps(RACE, RHData, INTERFACE, **kwargs)
                 elif race_format.win_condition == WinCondition.FIRST_TO_LAP_X:
-                    return check_win_team_first_to_x(RACE, INTERFACE, **kwargs)
+                    return check_win_team_first_to_x(RACE, RHData, INTERFACE, **kwargs)
                 elif race_format.win_condition == WinCondition.FASTEST_LAP:
-                    return check_win_team_fastest_lap(RACE, **kwargs)
+                    return check_win_team_fastest_lap(RACE, RHData, **kwargs)
                 elif race_format.win_condition == WinCondition.FASTEST_3_CONSECUTIVE:
-                    return check_win_team_fastest_consecutive(RACE, **kwargs)
+                    return check_win_team_fastest_consecutive(RACE, RHData, **kwargs)
                 elif race_format.win_condition == WinCondition.MOST_LAPS_OVERTIME:
-                    return check_win_team_laps_and_overtime(RACE, INTERFACE, **kwargs)
+                    return check_win_team_laps_and_overtime(RACE, RHData, INTERFACE, **kwargs)
             else:
                 if race_format.win_condition == WinCondition.MOST_PROGRESS:
                     return check_win_laps_and_time(RACE, INTERFACE, **kwargs)
@@ -1156,11 +1156,11 @@ def check_win_fastest_consecutive(RACE, **kwargs):
         'status': WinStatus.NONE
     }
 
-def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
+def check_win_team_laps_and_time(RACE, RHData, INTERFACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         False not in RACE.node_has_finished.values() or \
         'forced' in kwargs: # racing must be completed
-        team_info = calc_team_leaderboard(RACE)
+        team_info = calc_team_leaderboard(RACE, RHData)
         team_leaderboard = team_info['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
         if len(team_leaderboard) > 1 and len(individual_leaderboard):
@@ -1193,7 +1193,7 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
                 }
     elif RACE.race_status == RaceStatus.RACING and RACE.timer_running == False:
         # time has ended; check if winning is assured
-        team_info = calc_team_leaderboard(RACE)
+        team_info = calc_team_leaderboard(RACE, RHData)
         team_leaderboard = team_info['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
         if len(team_leaderboard) > 1 and len(individual_leaderboard):
@@ -1251,11 +1251,11 @@ def check_win_team_laps_and_time(RACE, INTERFACE, **kwargs):
         'status': WinStatus.NONE
     }
 
-def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
+def check_win_team_most_laps(RACE, RHData, INTERFACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         False not in RACE.node_has_finished.values() or \
         'forced' in kwargs: # racing must be completed
-        team_info = calc_team_leaderboard(RACE)
+        team_info = calc_team_leaderboard(RACE, RHData)
         team_leaderboard = team_info['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
         if len(team_leaderboard) > 1 and len(individual_leaderboard):
@@ -1286,7 +1286,7 @@ def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
                 }
     elif RACE.race_status == RaceStatus.RACING and RACE.timer_running == False:
         # time has ended; check if winning is assured
-        team_info = calc_team_leaderboard(RACE)
+        team_info = calc_team_leaderboard(RACE, RHData)
         team_leaderboard = team_info['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
         if len(team_leaderboard) > 1 and len(individual_leaderboard):
@@ -1339,7 +1339,7 @@ def check_win_team_most_laps(RACE, INTERFACE, **kwargs):
         'status': WinStatus.NONE
     }
 
-def check_win_team_laps_and_overtime(RACE, INTERFACE, **kwargs):
+def check_win_team_laps_and_overtime(RACE, RHData, INTERFACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE:
         # manually stopping race always most laps only
         return check_win_team_most_laps(RACE, INTERFACE, forced=True, **kwargs)
@@ -1369,10 +1369,10 @@ def check_win_team_laps_and_overtime(RACE, INTERFACE, **kwargs):
         'status': WinStatus.NONE
     }
 
-def check_win_team_first_to_x(RACE, INTERFACE, **kwargs):
+def check_win_team_first_to_x(RACE, RHData, INTERFACE, **kwargs):
     race_format = RACE.format
     if race_format.number_laps_win: # must have laps > 0 to win
-        team_leaderboard = calc_team_leaderboard(RACE)['by_race_time']
+        team_leaderboard = calc_team_leaderboard(RACE, RHData)['by_race_time']
         individual_leaderboard = RACE.results['by_race_time']
         if len(team_leaderboard) > 1 and len(individual_leaderboard):
             lead_lap = team_leaderboard[0]['laps']
@@ -1404,11 +1404,11 @@ def check_win_team_first_to_x(RACE, INTERFACE, **kwargs):
         'status': WinStatus.NONE
     }
 
-def check_win_team_fastest_lap(RACE, **kwargs):
+def check_win_team_fastest_lap(RACE, RHData, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         False not in RACE.node_has_finished.values() or \
         'forced' in kwargs: # racing must be completed
-        team_leaderboard = calc_team_leaderboard(RACE)['by_avg_fastest_lap']
+        team_leaderboard = calc_team_leaderboard(RACE, RHData)['by_avg_fastest_lap']
         if len(team_leaderboard) > 1:
             if team_leaderboard[0]['laps'] > 0: # must have at least one lap
                 # check for tie
@@ -1428,7 +1428,7 @@ def check_win_team_fastest_lap(RACE, **kwargs):
 
     elif 'at_finish' in kwargs:
         race_format = RACE.format
-        team_leaderboard = calc_team_leaderboard(RACE)['by_avg_fastest_lap']
+        team_leaderboard = calc_team_leaderboard(RACE, RHData)['by_avg_fastest_lap']
         if len(team_leaderboard) > 1:
             if team_leaderboard[0]['laps'] > 0: # must have at least one lap
 
@@ -1465,11 +1465,11 @@ def check_win_team_fastest_lap(RACE, **kwargs):
         'status': WinStatus.NONE
     }
 
-def check_win_team_fastest_consecutive(RACE, **kwargs):
+def check_win_team_fastest_consecutive(RACE, RHData, **kwargs):
     if RACE.race_status == RaceStatus.DONE or \
         False not in RACE.node_has_finished.values() or \
         'forced' in kwargs: # racing must be completed
-        team_leaderboard = calc_team_leaderboard(RACE)['by_avg_consecutives']
+        team_leaderboard = calc_team_leaderboard(RACE, RHData)['by_avg_consecutives']
         if len(team_leaderboard) > 1:
             if team_leaderboard[0]['laps'] > 3: # must have at least 3 laps
                 # check for tie
@@ -1487,7 +1487,7 @@ def check_win_team_fastest_consecutive(RACE, **kwargs):
                     'data': team_leaderboard[0]
                 }
     elif 'at_finish' in kwargs:
-        team_leaderboard = calc_team_leaderboard(RACE)['by_avg_consecutives']
+        team_leaderboard = calc_team_leaderboard(RACE, RHData)['by_avg_consecutives']
         if len(team_leaderboard) > 1:
             fast_consecutives = team_leaderboard[0]['average_consecutives_raw']
             if fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)

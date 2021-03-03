@@ -450,8 +450,6 @@
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap_id is json object
-					var lapTimeStamp = (lap.lap_time_stamp > 0) ? formatTimeMillis(lap.lap_time_stamp) : '';
-
 					var tr = $('<tr>')
 					if (lap.lap_number == 0) {
 						tr.addClass('lap_0');
@@ -470,14 +468,14 @@
 					local_prepend = $('<span class="from_start">');
 
 					if(rotorhazard.display_time_first_pass) {
-						local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp));
+						local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp, {{ getOption('timeFormat')|tojson }}));
 						if(rotorhazard.display_time_start){
 							local_prepend.append(" / ");
 						}
 					}
 
 					if(rotorhazard.display_time_start) {
-						local_prepend.append(formatTimeMillis(lap.lap_time_stamp));
+						local_prepend.append(formatTimeMillis(lap.lap_time_stamp, {{ getOption('timeFormat')|tojson }}));
 					}
 
 					time_td.prepend(local_prepend);

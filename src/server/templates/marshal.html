@@ -393,7 +393,7 @@
 
 					lapData.append('<td>' + lap_index + '</td>');
 					lapData.append('<td>' + (lap.lap_time_stamp / 1000).toFixed(3) + '</td>');
-					lapData.append('<td>' + formatTimeMillis(lap.lap_time) + '</td>');
+					lapData.append('<td>' + formatTimeMillis(lap.lap_time, {{ getOption('timeFormat')|tojson }}) + '</td>');
 					lap_index++;
 				} else {
 					deleted_lap_series.append(lap.crossingStart - 0.001, graph.options.minValue - 10);

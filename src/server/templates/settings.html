@@ -2812,7 +2812,18 @@
 					<option>{{ __('Loading...') }}</option>
 				</select>
 			</li>
-
+			<li>
+				<div class="label-block">
+					<label for="set_time_format">{{ __('Time Format') }}</label>
+				</div>
+				<input type="text" id="set_time_format" class="set-option" data-option="timeFormat" value="{{ getOption('timeFormat') }}">
+			</li>
+			<li>
+				<div class="label-block">
+					<label for="set_time_format_phonetic">{{ __('Phonetic Time Format') }}</label>
+				</div>
+				<input type="text" id="set_time_format_phonetic" class="set-option" data-option="timeFormatPhonetic" value="{{ getOption('timeFormatPhonetic') }}">
+			</li>
 			<li>
 				<div class="label-block">
 					<label for="set_timer_name">{{ __('Timer Name') }}</label>

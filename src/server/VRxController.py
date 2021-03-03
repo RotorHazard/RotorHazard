@@ -350,7 +350,7 @@ class VRxController:
                     'position_prefix': POS_HEADER,
                     'position': str(next_rank_split_result['position']),
                     'callsign': next_rank_split_result['callsign'],
-                    'split_time': RHUtils.time_format(next_rank_split),
+                    'split_time': RHUtils.time_format(next_rank_split, self._RHData.get_option('timeFormat')),
                 }
 
                 osd_next_rank = {
@@ -376,7 +376,7 @@ class VRxController:
                     'position_prefix': POS_HEADER,
                     'position': str(first_rank_split_result['position']),
                     'callsign': first_rank_split_result['callsign'],
-                    'split_time': RHUtils.time_format(first_rank_split),
+                    'split_time': RHUtils.time_format(first_rank_split, self._RHData.get_option('timeFormat')),
                 }
 
             '''

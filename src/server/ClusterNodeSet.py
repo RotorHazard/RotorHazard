@@ -24,12 +24,13 @@ class SecondaryNode:
     TIMEDIFF_MEDIAN_SIZE = 30
     TIMEDIFF_CORRECTION_THRESH_MS = 250  # correct split times if secondary clock more off than this
 
-    def __init__(self, idVal, info, RACE, DB, getCurrentProfile, \
+    def __init__(self, idVal, info, RACE, RHData, DB, getCurrentProfile, \
                  emit_split_pass_info, monotonic_to_epoch_millis, \
                  emit_cluster_connect_change, server_release_version, eventmanager):
         self.id = idVal
         self.info = info
         self.RACE = RACE
+        self.RHData = RHData
         self.DB = DB
         self.getCurrentProfile = getCurrentProfile
         self.emit_split_pass_info = emit_split_pass_info
@@ -323,7 +324,7 @@ class SecondaryNode:
 
                         split_time = split_ts - last_split_ts
                         split_speed = float(self.info['distance'])*1000.0/float(split_time) if 'distance' in self.info else None
-                        split_time_str = RHUtils.time_format(split_time)
+                        split_time_str = RHUtils.time_format(split_time, self.RHData.get_option('timeFormat'))
                         logger.debug('Split pass record: Node {0}, lap {1}, split {2}, time={3}, speed={4}' \
                             .format(node_index+1, lap_count+1, split_id+1, split_time_str, \
                             ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
