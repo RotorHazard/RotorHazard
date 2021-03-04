@@ -3232,7 +3232,8 @@ def emit_heat_data(**params):
         else:
             locked = False
 
-        current_heats[heat_id] = {'pilots': pilots,
+        current_heats[heat_id] = {
+            'pilots': pilots,
             'note': note,
             'heat_id': heat_id,
             'class_id': race_class,

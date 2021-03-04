@@ -9,8 +9,7 @@
 		'language',
 		'frequency_data',
 		'class_data',
-		'heat_data',
-		'pilot_data'
+		'heat_data'
 	];
 
 	$(document).ready(function () {
@@ -46,66 +45,107 @@
 			}
 		});
 
-		socket.on('pilot_data', function (msg) {
+		socket.on('heat_data', function (msg) {
 			$(".pilots").empty();
-			for (var i in msg.pilots) {
-				if (msg.pilots[i]) {
-					var el = $('<li data-id="' + msg.pilots[i].pilot_id + '">');
-					el.append('<div class="name">'+ msg.pilots[i].name + '</div>');
-					el.append('<div class="callsign">' + msg.pilots[i].callsign + '</div>');
-					el.appendTo($('.pilots'));
+			$("#class_list").empty();
+
+			var heats_by_class = {}
+			var active_pilot_ids = []
+			for (var h in msg.heats) {
+				var heat = msg.heats[h];
+
+				// assemble heats by class
+				if (!(heat.class_id in heats_by_class)) {
+					heats_by_class[heat.class_id] = [];
+				}
+				heats_by_class[heat.class_id].push(heat)
+
+				// assemble active pilot list
+				for (p in heat.pilots) {
+					var pilot_id = heat.pilots[p];
+					if (!active_pilot_ids.includes(pilot_id)) {
+						active_pilot_ids.push(pilot_id);
+					}
 				}
 			}
-		});
 
-		socket.on('heat_data', function (msg) {
-			$(".heats").empty();
-			for (var i in msg.heats) {
-				var heats = msg.heats[i];
-				var el = $('<li>');
-				if (heats.note) {
-					el.append('<h3>' + heats.note + '</h3>');
-				} else {
-					el.append('<h3>'+ __('Heat') + ' ' + heats.heat_id + '</h3>');
-				}
+			// assemble class groups
+			for (var c in heats_by_class) {
+				var heat_list = heats_by_class[c]
+				var class_group = $('<li>');
 
-				var nodelist = $('<ol>');
-				var callsign;
-				for (j in heats.pilots) {
-					var heatpilot = heats.pilots[j];
-					var slot = $('<li>');
-					slot.append('<div class="channel-block" data-node="' + j + '"><span class="ch"></span> <span class="fr"></span></div>');
-
-					callsign = __('-None-');
-					for (var k in msg.pilot_data) {
-						if (msg.pilot_data[k].pilot_id == heatpilot) {
-							callsign = msg.pilot_data[k].callsign;
-							break;
-						}
+				class_label = __('Unclassified');
+				class_id = 0;
+				for (var rc in msg.classes) {
+					if (c == msg.classes[rc].id) {
+						var class_data = msg.classes[rc]
+						class_label = class_data.name;
+						class_id = class_data.id;
+						break;
 					}
-
-					slot.append('<div class="pilot-name">' + callsign + '</div>');
-					nodelist.append(slot);
 				}
-				el.append(nodelist);
 
-				// class indicator
-				if (msg.classes.length) {
-					if (heats.class_id) {
-						for (var i in msg.classes) {
-							if (msg.classes[i].id == heats.class_id) {
-								el.append('<div class="race_class">' + msg.classes[i].name + '</div>')
+				class_group.attr('data-class-id', class_id);
+				class_group.append('<h3>' + class_label + '</h3>');
+
+				heat_groups = $('<ol class="heats">');
+
+				for (var h in heat_list) {
+					var heat = heat_list[h];
+					var heat_group = $('<li class="heat">');
+
+					if (heat.note) {
+						var heatname = heat.note;
+					} else {
+						var heatname = __('Heat') + ' ' + heat.heat_id;
+					}
+					heat_group.append('<h4>' + heatname + '</h4>');
+
+					var nodelist = $('<ol>');
+					var callsign;
+					for (p in heat.pilots) {
+						var heatpilot = heat.pilots[p];
+						var slot = $('<li>');
+						slot.append('<div class="channel-block" data-node="' + p + '"><span class="ch"></span> <span class="fr"></span></div>');
+
+						callsign = __('-None-');
+						for (var pd in msg.pilot_data) {
+							if (msg.pilot_data[pd].pilot_id == heatpilot) {
+								callsign = msg.pilot_data[pd].callsign;
 								break;
 							}
 						}
-					} else {
-						el.append('<div class="race_class">' + __('Unclassified') + '</div>');
+
+						slot.append('<div class="pilot-name">' + callsign + '</div>');
+						nodelist.append(slot);
 					}
+
+					heat_group.append(nodelist);
+					heat_groups.append(heat_group);
+					class_group.append(heat_groups);
 				}
 
-				el.appendTo($('.heats'));
+				$('#class_list').append(class_group);
+
+				// move unclassified to end of list
+				$('#class_list').append($('#class_list li[data-class-id="0"]'));
 			}
+
 			freq.updateBlocks();
+
+			// populate pilots
+
+			$('#pilot_list').empty();
+
+			for (var p in msg.pilot_data) {
+				pilot = msg.pilot_data[p];
+				if (active_pilot_ids.includes(pilot.pilot_id)) {
+					var el = $('<li data-id="' + pilot.pilot_id + '">');
+					el.append('<div class="name">'+ pilot.name + '</div>');
+					el.append('<div class="callsign">' + pilot.callsign + '</div>');
+					el.appendTo($('.pilots'));
+				}
+			}
 		});
 
 		socket.on('class_data', function (msg) {
@@ -166,13 +206,13 @@
 
 <!--Display the heats-->
 <h2>{{ __('Heats') }}</h2>
-<ol class="heats">
-	<li class="heat">{{ __('Loading...') }}</li>
-</ol>
+<ul id="class_list">
+	<li>{{ __('Loading...') }}</li>
+</ul>
 
 <!--Display the pilots-->
 <h2>{{ __('Pilots') }}</h2>
-<ul class="pilots">
+<ul id="pilot_list" class="pilots">
 	<li>{{ __('Loading...') }}</li>
 </ul>
 
