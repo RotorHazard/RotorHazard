@@ -226,6 +226,7 @@ def calc_leaderboard(**params):
     max_laps = []
     current_laps = []
     holeshots = []
+    starts = []
 
     for pilot in Database.Pilot.query.filter(Database.Pilot.id != RHUtils.PILOT_ID_NONE):
         gevent.sleep()
@@ -252,6 +253,7 @@ def calc_leaderboard(**params):
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
                 current_laps.append(laps)
+                starts.append(1 if max_lap else 0)
         else:
             # find hole shots
             holeshot_laps = []
@@ -295,6 +297,7 @@ def calc_leaderboard(**params):
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
                 holeshots.append(holeshot_laps)
+                starts.append(len(holeshot_laps))
                 nodes.append(pilotnode)
 
     total_time = []
@@ -503,7 +506,8 @@ def calc_leaderboard(**params):
             'last_lap': RHUtils.time_format(last_lap[i]),
             'last_lap_raw': last_lap[i],
             'pilot_id': pilot,
-            'node': nodes[i],
+            'starts': starts[i],
+            'node': nodes[i]
         })
 
     if race_format and race_format.start_behavior == StartBehavior.STAGGERED:

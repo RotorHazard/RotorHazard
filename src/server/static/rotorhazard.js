@@ -1364,7 +1364,7 @@ jQuery(document).ready(function($){
 }
 
 /* Leaderboards */
-function build_leaderboard(leaderboard, display_type, meta) {
+function build_leaderboard(leaderboard, display_type, meta, display_starts=false) {
 	if (typeof(display_type) === 'undefined')
 		display_type = 'by_race_time';
 	if (typeof(meta) === 'undefined') {
@@ -1387,6 +1387,9 @@ function build_leaderboard(leaderboard, display_type, meta) {
 	header_row.append('<th class="pilot">' + __('Pilot') + '</th>');
 	if (meta.team_racing_mode) {
 		header_row.append('<th class="team">' + __('Team') + '</th>');
+	}
+	if (display_starts == true) {
+		header_row.append('<th class="starts">' + __('Starts') + '</th>');
 	}
 	if (display_type == 'by_race_time' ||
 		display_type == 'heat' ||
@@ -1420,6 +1423,9 @@ function build_leaderboard(leaderboard, display_type, meta) {
 		row.append('<td class="pilot">'+ leaderboard[i].callsign +'</td>');
 		if (meta.team_racing_mode) {
 			row.append('<td class="team">'+ leaderboard[i].team_name +'</td>');
+		}
+		if (display_starts == true) {
+			row.append('<td class="starts">'+ leaderboard[i].starts +'</td>');
 		}
 		if (display_type == 'by_race_time' ||
 		display_type == 'heat' ||
