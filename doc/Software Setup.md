@@ -121,6 +121,8 @@ For the S32_BPill board, the recommended method for installing the currently-rel
 The "dtoverlay=miniuart-bt" line needs to have been added to the "/boot/config.txt" file for the flash-update to succeed (see instructions above).<br>
 Note that the flash-update steps described in '[src/node/readme_S32_BPill.md](../src/node/readme_S32_BPill.md)' are for developers who wish to build the S32_BPill node firmware from the source code.
 
+The node-code version may be viewed in the Server Log, and via the "About RotorHazard" item in the drop-down menu.
+
 ----------------------------------------------------------------------------
 
 ## Optional Components
