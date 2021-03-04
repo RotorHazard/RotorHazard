@@ -1970,7 +1970,7 @@ def findBestValues(node, node_index):
                 "race_id": race_query.id,
                 "node_index": node_index,
                 "pilot_id": pilot},
-            order_by={"id", "desc"},
+            order_by={"id": "desc"},
             return_type='first')
 
         if pilotrace_query:
@@ -1985,7 +1985,7 @@ def findBestValues(node, node_index):
         filter_by={
             "node_index": node_index,
             "pilot_id": pilot},
-        order_by={"id", "desc"},
+        order_by={"id": "desc"},
         return_type='first')
     if pilotrace_query:
         logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
@@ -1997,7 +1997,7 @@ def findBestValues(node, node_index):
     # test for same node
     pilotrace_query = RHData.get_savedPilotRaces(
         filter_by={"node_index": node_index},
-        order_by={"id", "desc"},
+        order_by={"id": "desc"},
         return_type='first')
     if pilotrace_query:
         logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
