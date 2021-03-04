@@ -7,10 +7,11 @@
 class MicroClock
 {
 private:
-    utime_t prevTick = 0;
+    utime_t prevTick;
     volatile mtime_t timeMillis = 0;
     volatile uint16_t excessMicros = 0;
 public:
+    MicroClock();
     /**
      * Returns elapsed microseconds since last tick.
      */

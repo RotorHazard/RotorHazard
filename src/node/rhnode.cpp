@@ -45,33 +45,35 @@
 #endif
 #endif
 
+#define TICK_FOR(expr)  usclock.tick();expr
+
 extern Hardware *hardware;
 
 // Initialize program
 void setup()
 {
-    hardware->init();
+    TICK_FOR(hardware->init());
 
     // if EEPROM-check value matches then read stored values
     for (int i=0; i<RssiReceivers::rssiRxs->getCount(); i++) {
         RxModule& rx = RssiReceivers::rssiRxs->getRxModule(i);
-        hardware->initRxModule(i, rx);
+        TICK_FOR(hardware->initRxModule(i, rx));
         while (!rx.reset()) {
-            delay(1);
+            TICK_FOR(delay(1));
         }
 
         Settings& settings = RssiReceivers::rssiRxs->getSettings(i);
-        hardware->initSettings(i, settings);
+        TICK_FOR(hardware->initSettings(i, settings));
         if (settings.vtxFreq == 1111) // frequency value to power down rx module
         {
             while (!rx.powerDown()) {
-                delay(1);
+                TICK_FOR(delay(1));
             }
         }
         else if (settings.vtxFreq > 0)
         {
             while (!rx.setFrequency(settings.vtxFreq)) {  // Setup rx module to default frequency
-                delay(1);
+                TICK_FOR(delay(1));
             }
         }
     }
