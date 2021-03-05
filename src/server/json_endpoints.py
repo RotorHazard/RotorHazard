@@ -27,25 +27,25 @@ class AlchemyEncoder(json.JSONEncoder):
 
         return json.JSONEncoder.default(self, obj)
 
-def createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProfile):
+def createBlueprint(Database, RHData, Results, RACE, serverInfo, getCurrentProfile):
     DB = Database.DB
     APP = Blueprint('json', __name__)
-    
+
     @APP.route('/api/pilot/all')
     def api_pilot_all():
         pilots = Database.Pilot.query.all()
         payload = []
         for pilot in pilots:
             payload.append(pilot)
-    
+
         return json.dumps({"pilots": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/pilot/<int:pilot_id>')
     def api_pilot(pilot_id):
         pilot = Database.Pilot.query.get(pilot_id)
-    
+
         return json.dumps({"pilot": pilot}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/heat/all')
     def api_heat_all():
         all_heats = {}
@@ -53,19 +53,19 @@ def createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProf
             heat_id = heat.id
             note = heat.note
             race_class = heat.class_id
-    
+
             heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
             pilots = {}
             for pilot in heatnodes:
                 pilots[pilot.node_index] = pilot.pilot_id
-    
+
             has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
-    
+
             if has_race:
                 locked = True
             else:
                 locked = False
-    
+
             all_heats[heat_id] = {
                 'note': note,
                 'heat_id': heat_id,
@@ -73,28 +73,28 @@ def createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProf
                 'nodes_pilots': pilots,
                 'locked': locked
             }
-    
+
         return json.dumps({"heats": all_heats}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/heat/<int:heat_id>')
     def api_heat(heat_id):
         heat = Database.Heat.query.get(heat_id)
         if heat:
             note = heat.note
             race_class = heat.class_id
-    
+
             heatnodes = Database.HeatNode.query.filter_by(heat_id=heat.id).all()
             pilots = {}
             for pilot in heatnodes:
                 pilots[pilot.node_index] = pilot.pilot_id
-    
+
             has_race = Database.SavedRaceMeta.query.filter_by(heat_id=heat.id).first()
-    
+
             if has_race:
                 locked = True
             else:
                 locked = False
-    
+
             heat = {
                 'note': note,
                 'heat_id': heat_id,
@@ -104,59 +104,59 @@ def createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProf
             }
         else:
             heat = None
-    
+
         payload = {
             'setup': heat,
-            'leaderboard': Results.calc_leaderboard(DB, heat_id=heat_id)
+            'leaderboard': Results.calc_leaderboard(heat_id=heat_id)
         }
-    
+
         return json.dumps({"heat": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/class/all')
     def api_class_all():
         race_classes = Database.RaceClass.query.all()
         payload = []
         for race_class in race_classes:
             payload.append(race_class)
-    
+
         return json.dumps({"classes": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/class/<int:class_id>')
     def api_class(class_id):
         race_class = Database.RaceClass.query.get(class_id)
-    
+
         return json.dumps({"class": race_class}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/format/all')
     def api_format_all():
         formats = Database.RaceFormat.query.all()
         payload = []
         for race_format in formats:
             payload.append(race_format)
-    
+
         return json.dumps({"formats": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/format/<int:format_id>')
     def api_format(format_id):
         raceformat = Database.RaceFormat.query.get(format_id)
-    
+
         return json.dumps({"format": raceformat}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/profile/all')
     def api_profile_all():
         profiles = Database.Profiles.query.all()
         payload = []
         for profile in profiles:
             payload.append(profile)
-    
+
         return json.dumps({"profiles": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/profile/<int:profile_id>')
     def api_profile(profile_id):
         profile = Database.Profiles.query.get(profile_id)
-    
+
         return json.dumps({"profile": profile}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/race/current')
     def api_race_current():
         if RACE.cacheStatus == Results.CacheStatus.VALID:
@@ -165,14 +165,14 @@ def createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProf
             results = Results.calc_leaderboard(DB, current_race=RACE, current_profile=getCurrentProfile())
             RACE.results = results
             RACE.cacheStatus = Results.CacheStatus.VALID
-    
+
         payload = {
             "raw_laps": RACE.node_laps,
             "leaderboard": results
         }
-    
+
         return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/race/all')
     def api_race_all():
         heats = []
@@ -182,18 +182,18 @@ def createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProf
                 "id": heat.heat_id,
                 "rounds": max_rounds
             })
-    
+
         payload = {
             "heats": heats,
-            "leaderboard": Results.calc_leaderboard(DB)
+            "leaderboard": Results.calc_leaderboard()
         }
-    
+
         return json.dumps({"races": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/race/<int:heat_id>/<int:round_id>')
     def api_race(heat_id, round_id):
         race = Database.SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).one()
-    
+
         pilotraces = []
         for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=race.id).all():
             laps = []
@@ -206,18 +206,18 @@ def createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProf
                         'source': lap.source,
                         'deleted': lap.deleted
                     })
-    
+
             pilot_data = Database.Pilot.query.filter_by(id=pilotrace.pilot_id).first()
             if pilot_data:
                 nodepilot = pilot_data.callsign
             else:
                 nodepilot = None
-    
-            if Options.get('pilotSort') == 'callsign':
+
+            if RHData.get_option('pilotSort') == 'callsign':
                 pilot_data.sort(key=lambda x: (x['callsign'], x['name']))
             else:
                 pilot_data.sort(key=lambda x: (x['name'], x['callsign']))
-    
+
             pilotraces.append({
                 'callsign': nodepilot,
                 'pilot_id': pilotrace.pilot_id,
@@ -227,12 +227,12 @@ def createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProf
         payload = {
             'start_time_formatted': race.start_time_formatted,
             'nodes': pilotraces,
-            'sort': Options.get('pilotSort'),
-            'leaderboard': Results.calc_leaderboard(DB, heat_id=heat_id, round_id=round_id)
+            'sort': RHData.get_option('pilotSort'),
+            'leaderboard': Results.calc_leaderboard(heat_id=heat_id, round_id=round_id)
         }
-    
+
         return json.dumps({"race": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/status')
     def api_status():
         data = {
@@ -249,13 +249,13 @@ def createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProf
                 "current_heat": RACE.current_heat,
                 "num_nodes": RACE.num_nodes,
                 "race_status": RACE.race_status,
-                "currentProfile": Options.get('currentProfile'),
-                "currentFormat": Options.get('currentFormat'),
+                "currentProfile": RHData.get_option('currentProfile'),
+                "currentFormat": RHData.get_option('currentFormat'),
             }
         }
-    
+
         return json.dumps({"status": data}), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
-    
+
     @APP.route('/api/options')
     def api_options():
         opt_query = Database.GlobalSettings.query.all()
@@ -263,11 +263,11 @@ def createBlueprint(Database, Options, Results, RACE, serverInfo, getCurrentProf
         if opt_query:
             for opt in opt_query:
                 options[opt.option_name] = opt.option_value
-    
+
             payload = options
         else:
             payload = None
-    
+
         return json.dumps({"options": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}
 
     return APP

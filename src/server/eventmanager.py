@@ -2,8 +2,11 @@
 RotorHazard event manager
 '''
 
+import logging
 import gevent
 from monotonic import monotonic
+
+logger = logging.getLogger(__name__)
 
 class EventManager:
     processEventObj = gevent.event.Event()
@@ -31,16 +34,21 @@ class EventManager:
         return True
 
     def trigger(self, event, evtArgs=None):
+        # logger.debug('-Triggered event- {0}'.format(event))
         if event in self.events:
-            for name in self.eventOrder[event]:
+            for name in self.eventOrder[event] or Evt.ALL in self.eventOrder[event]:
                 handler = self.events[event][name]
 
                 args = handler['defaultArgs']
+
                 if evtArgs:
                     if args:
                         args.update(evtArgs)
                     else:
                         args = evtArgs
+
+                if event == Evt.ALL:
+                    args['_eventName'] = event
 
                 if handler['priority'] < 100:
                     # stop any threads with same name
@@ -63,6 +71,8 @@ class EventManager:
                         self.eventThreads[name] = gevent.spawn(handler['handlerFn'], args)
 
 class Evt:
+    # Special
+    ALL = 'all'
     # Program
     STARTUP = 'startup'
     SHUTDOWN = 'shutdown'

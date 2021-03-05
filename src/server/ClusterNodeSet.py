@@ -7,8 +7,8 @@ import socketio
 from monotonic import monotonic
 import RHUtils
 from RHRace import RaceStatus
-from Language import __
 import Database
+from eventmanager import Evt
 from util.RunningMedian import RunningMedian
 from util.Averager import Averager
 
@@ -26,7 +26,7 @@ class SecondaryNode:
 
     def __init__(self, idVal, info, RACE, DB, getCurrentProfile, \
                  emit_split_pass_info, monotonic_to_epoch_millis, \
-                 emit_cluster_connect_change, server_release_version):
+                 emit_cluster_connect_change, server_release_version, eventmanager):
         self.id = idVal
         self.info = info
         self.RACE = RACE
@@ -36,6 +36,7 @@ class SecondaryNode:
         self.monotonic_to_epoch_millis = monotonic_to_epoch_millis
         self.emit_cluster_connect_change = emit_cluster_connect_change
         self.server_release_version = server_release_version
+        self.Events = eventmanager
         addr = info['address']
         if not '://' in addr:
             addr = 'http://' + addr
@@ -69,7 +70,19 @@ class SecondaryNode:
         self.sio.on('pass_record', self.on_pass_record)
         self.sio.on('check_secondary_response', self.on_check_secondary_response)
         self.sio.on('join_cluster_response', self.join_cluster_response)
+        self.Events.on(Evt.ALL, 'cluster', self.event_repeater)
         gevent.spawn(self.secondary_worker_thread)
+
+    def event_repeater(self, args):
+        try:
+            # if there are cluster timers interested in events then emit it out to them
+            if self.hasRecEventsSecondaries():
+                payload = { 'evt_name': args['_eventName'] }
+                del args['_eventName']
+                payload['evt_args'] = json.dumps(args)
+                self.emitEventTrigger(payload)
+        except Exception:
+            logger.exception("Exception in 'Events.trigger()'")
 
     def secondary_worker_thread(self):
         self.startConnectTime = monotonic()
@@ -416,8 +429,10 @@ class SecondaryNode:
             logger.exception("Error sending join-cluster message acknowledgement to secondary {0} at {1}".\
                              format(self.id+1, self.address))
 
+
 class ClusterNodeSet:
-    def __init__(self):
+    def __init__(self, Language):
+        self._Language = Language
         self.secondaries = []
         self.splitSecondaries = []
         self.recEventsSecondaries = []
@@ -477,7 +492,7 @@ class ClusterNodeSet:
                  'availability': round((100.0*totalUpSecs/(totalUpSecs+totalDownSecs) \
                                        if totalUpSecs+totalDownSecs > 0 else 0), 1), \
                  'last_contact': int(nowTime-secondary.lastContactTime) if secondary.lastContactTime >= 0 else \
-                                 (__("connection lost") if secondary.numDisconnects > 0 else __("never connected"))
+                                 (self.__("connection lost") if secondary.numDisconnects > 0 else self.__("never connected"))
                  })
         return {'secondaries': payload}
 
@@ -503,3 +518,6 @@ class ClusterNodeSet:
                 logger.info("Connected at race stop to " + secondary.get_log_str(stoppedRaceFlag=True));
             elif secondary.numDisconnects > 0:
                 logger.warning("Not connected at race stop to " + secondary.get_log_str(stoppedRaceFlag=True));
+
+    def __(*args, **kwargs):
+        self._Language.__(*args, **kwargs)

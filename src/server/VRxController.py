@@ -9,12 +9,10 @@ from monotonic import monotonic
 from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics, ESP_COMMANDS
 from VRxCV1_emulator import MQTT_Client
 from eventmanager import Evt
-from Language import __
 import Results
 from RHRace import WinCondition
 import RHUtils
 import Database
-import Options
 
 # Sample configuration:
 #     "VRX_CONTROL": {
@@ -39,7 +37,9 @@ MINIMUM_PAYLOAD = 7
 
 class VRxController:
 
-    def __init__(self, eventmanager, vrx_config, race_obj, seat_frequencies):
+    def __init__(self, RHData, eventmanager, vrx_config, race_obj, seat_frequencies, Language):
+        self._RHData = RHData
+        self._Language = Language
         self.Events = eventmanager
         self.RACE = race_obj
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -73,8 +73,8 @@ class VRxController:
         self.num_seats = len(seat_frequencies)
 
         self.seat_number_range = (0,7)
-        self._seats = [VRxSeat(self._mqttc, n, seat_frequencies[n], seat_number_range=self.seat_number_range) for n in range(self.num_seats)]
-        self._seat_broadcast = VRxBroadcastSeat(self._mqttc)
+        self._seats = [VRxSeat(self._mqttc, self._Language, n, seat_frequencies[n], seat_number_range=self.seat_number_range) for n in range(self.num_seats)]
+        self._seat_broadcast = VRxBroadcastSeat(self._mqttc, self._Language)
 
         # Events
         self.Events.on(Evt.STARTUP, 'VRx', self.do_startup)
@@ -91,10 +91,10 @@ class VRxController:
         self.Events.on(Evt.OPTION_SET, 'VRx', self.validate_option)
 
         # Options
-        if Options.get('osd_lapHeader') is False:
-            Options.set('osd_lapHeader', 'L')
-        if Options.get('osd_positionHeader') is False:
-            Options.set('osd_positionHeader', '')
+        if self._RHData.get_option('osd_lapHeader') is False:
+            self._RHData.set_option('osd_lapHeader', 'L')
+        if self._RHData.get_option('osd_positionHeader') is False:
+            self._RHData.set_option('osd_positionHeader', '')
 
     def validate_config(self, supplied_config):
         """Ensure config values are within range and reasonable values"""
@@ -122,10 +122,10 @@ class VRxController:
                 if len(config_item) == 1:
                     if config_item == cv_csum:
                         self.logger.error("Cannot use reserved character '%s' in '%s'"%(cv_csum, args['option']))
-                        Options.set(args['option'], '')
+                        self._RHData.set_option(args['option'], '')
                 elif cv_csum in config_item:
                     self.logger.error("Cannot use reserved character '%s' in '%s'"%(cv_csum, args['option']))
-                    Options.set(args['option'], '')
+                    self._RHData.set_option(args['option'], '')
 
     def do_startup(self,arg):
         self.logger.info("VRx Control Starting up")
@@ -159,23 +159,23 @@ class VRxController:
                     pilot = Database.Pilot.query.get(heatseat.pilot_id)
                     self.set_message_direct(heatseat_index, pilot.callsign)
                 else:
-                    self.set_message_direct(heatseat_index, __("-None-"))
+                    self.set_message_direct(heatseat_index, self._Language.__("-None-"))
 
     def do_race_stage(self, arg):
         self.logger.info("VRx Signaling Race Stage")
-        self.set_message_direct(VRxALL, __("Ready"))
+        self.set_message_direct(VRxALL, self._Language.__("Ready"))
 
     def do_race_start(self, arg):
         self.logger.info("VRx Signaling Race Start")
-        self.set_message_direct(VRxALL, __("Go"))
+        self.set_message_direct(VRxALL, self._Language.__("Go"))
 
     def do_race_finish(self, arg):
         self.logger.info("VRx Signaling Race Finish")
-        self.set_message_direct(VRxALL, __("Finish"))
+        self.set_message_direct(VRxALL, self._Language.__("Finish"))
 
     def do_race_stop(self, arg):
         self.logger.info("VRx Signaling Race Stop")
-        self.set_message_direct(VRxALL, __("Race Stopped. Land Now."))
+        self.set_message_direct(VRxALL, self._Language.__("Race Stopped. Land Now."))
 
     def do_send_message(self, arg):
         self.set_message_direct(VRxALL, arg['message'])
@@ -205,8 +205,8 @@ class VRxController:
         '''
 
         RESULTS_TIMEOUT = 5 # maximum time to wait for results to generate
-        LAP_HEADER = Options.get('osd_lapHeader')
-        POS_HEADER = Options.get('osd_positionHeader')
+        LAP_HEADER = self._RHData.get_option('osd_lapHeader')
+        POS_HEADER = self._RHData.get_option('osd_positionHeader')
 
         if 'node_index' in args:
             seat_index = args['node_index']
@@ -341,7 +341,7 @@ class VRxController:
                 osd['last_lap_time'] = result['last_lap']
             else:
                 osd['lap_prefix'] = ''
-                osd['lap_number'] = __('HS')
+                osd['lap_number'] = self._Language.__('HS')
                 osd['last_lap_time'] = result['total_time']
                 osd['is_best_lap'] = False
 
@@ -368,7 +368,7 @@ class VRxController:
                     osd_next_rank['last_lap_time'] = next_rank_split_result['last_lap']
                 else:
                     osd_next_rank['lap_prefix'] = ''
-                    osd_next_rank['lap_number'] = __('HS')
+                    osd_next_rank['lap_number'] = self._Language.__('HS')
                     osd_next_rank['last_lap_time'] = next_rank_split_result['total_time']
 
             if first_rank_split:
@@ -401,7 +401,7 @@ class VRxController:
                 elif osd['is_best_lap']:
                     # pilot in 1st and is best lap
                     # "Pos:Callsign L[n]:0:00:00 / Best"
-                    message += ' / ' + __('Best Lap')
+                    message += ' / ' + self._Language.__('Best Lap')
             else:
                 # WinCondition.MOST_LAPS
                 # WinCondition.FIRST_TO_LAP_X
@@ -499,7 +499,7 @@ class VRxController:
     ###########
 
     def set_seat_frequency(self, seat_number, frequency):
-        fmsg = __("Frequency Change: ") + str(frequency)
+        fmsg = self._Language.__("Frequency Change: ") + str(frequency)
         seat = self._seats[seat_number]
         seat.set_seat_frequency(frequency)
 
@@ -668,7 +668,7 @@ class VRxController:
             # See TODO in on_message_status
             self.req_status_targeted("variable", rx_name)
             self.req_status_targeted("static", rx_name)
-            
+
 
 
 
@@ -761,7 +761,6 @@ class VRxController:
         self._mqttc.publish(topic, cmd)
         return cmd
 
-
 CRED = '\033[91m'
 CEND = '\033[0m'
 def printc(*args):
@@ -770,22 +769,24 @@ def printc(*args):
 class BaseVRxSeat:
     """Seat controller for both the broadcast and individual seats"""
     def __init__(self,
-                 mqtt_client
+                 mqtt_client, Language
                  ):
 
         self._mqttc = mqtt_client
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = logging.getLogger(self._Language.__class__.__name__)
+        self._Language = Language
 
 class VRxSeat(BaseVRxSeat):
     """Commands and Requests apply to all receivers at a seat number"""
     def __init__(self,
                  mqtt_client,
+                 Language,
                  seat_number,
                  seat_frequency,
                  seat_number_range = (0,7), #(min,max)
                  seat_camera_type = 'A'
                  ):
-        BaseVRxSeat.__init__(self, mqtt_client)
+        BaseVRxSeat.__init__(self, mqtt_client, Language)
 
         # RH refers to seats 0 to 7
         self.MIN_SEAT_NUM = seat_number_range[0]
@@ -856,11 +857,11 @@ class VRxSeat(BaseVRxSeat):
 
         time_now = monotonic()
         time_expires = time_now + FREQUENCY_TIMEOUT
-        self.set_message_direct(__("!!! Frequency changing to {0} in <10s !!!").format(frequency))
+        self.set_message_direct(self._Language.__("!!! Frequency changing to {0} in <10s !!!").format(frequency))
         gevent.sleep(10)
 
         self.set_seat_frequency_direct(frequency)
-        self.set_message_direct(__(""))
+        self.set_message_direct(self._Language.__(""))
 
     def set_seat_frequency_direct(self, frequency):
         """Sets all receivers at this seat number to the new frequency"""
@@ -946,9 +947,10 @@ class VRxSeat(BaseVRxSeat):
 
 class VRxBroadcastSeat(BaseVRxSeat):
     def __init__(self,
-                 mqtt_client
+                 mqtt_client,
+                 Language
                  ):
-        BaseVRxSeat.__init__(self, mqtt_client)
+        BaseVRxSeat.__init__(self, mqtt_client, Language)
         self._cv_broadcast_id = clearview.comspecs.clearview_specs['bc_id']
         self._broadcast_cmd_topic = mqtt_publish_topics["cv1"]["receiver_command_all"][0]
         self._rx_cmd_esp_all_topic = mqtt_publish_topics["cv1"]["receiver_command_esp_all_topic"][0]
@@ -966,7 +968,7 @@ class VRxBroadcastSeat(BaseVRxSeat):
         cmd = json.dumps({"osd_visibility" : "D"})
         self._mqttc.publish(topic, cmd)
         return cmd
-    
+
     def turn_on_osd(self):
         """Turns on all OSD elements except user message"""
         topic = self._rx_cmd_esp_all_topic
