@@ -48,9 +48,9 @@ def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
     tenths = over // 100
 
     if minutes <= 0:
-        minutes = ''
-
-    return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
+        return timeformat.format(m='', s=str(seconds), d=str(tenths))
+    else:
+        return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
 
 def idAndLogSystemInfo():
     global IS_SYS_RASPBERRY_PI
