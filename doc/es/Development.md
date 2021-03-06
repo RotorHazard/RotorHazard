@@ -19,25 +19,25 @@ El flujo principal para un contribuidor es el siguiente:
 1. Inicie sesion en GitHub, vaya a [RotorHazard repository](https://github.com/RotorHazard/RotorHazard) y presione `fork`
 2. Luego use el comando line/terminal en su ordenador: `git clone <url to YOUR fork>`
 3. `cd RotorHazard`
-4. `git checkout master`
+4. `git checkout main`
 5. `git checkout -b my-new-code`
 6. Realizar cambios
 7. `git add <files that have changed>`
 8. `git commit`
 9. `git push origin my-new-code`
-10. Cree una solicitud de extracción con la interfaz de usuario de GitHub para combinar los cambios de su nueva sucursal en `RotorHazard/master`
+10. Cree una solicitud de extracción con la interfaz de usuario de GitHub para combinar los cambios de su nueva sucursal en `RotorHazard/main`
 11. Repita desde el paso 4 para otros cambios nuevos
 
-Lo principal a recordar es que se deben crear solicitudes de extracción separadas para ramas separadas. Nunca cree una solicitud de extracción desde su rama `master`.
+Lo principal a recordar es que se deben crear solicitudes de extracción separadas para ramas separadas. Nunca cree una solicitud de extracción desde su rama `main`.
 
 Una vez que haya creado el PR, cada nuevo commit / push en su rama se propagará desde su bifurcación al PR en el repositorio principal de GitHub / RotorHazard. Echa un vistazo a otra rama primero si quieres algo más.
 
-Más tarde, puede obtener los cambios del repositorio RotorHazard en su rama `master` agregando RotorHazard como un control remoto git y fusionándose de la siguiente manera:
+Más tarde, puede obtener los cambios del repositorio RotorHazard en su rama `main` agregando RotorHazard como un control remoto git y fusionándose de la siguiente manera:
 
 1. `git remote add upstream https://github.com/RotorHazard/RotorHazard.git`
-2. `git checkout master`
-3. `git pull upstream master`
-4. `git push origin master` es un paso opcional que actualizará su fork en Github.
+2. `git checkout main`
+3. `git pull upstream main`
+4. `git push origin main` es un paso opcional que actualizará su fork en Github.
 
 <br>
 

@@ -17,25 +17,25 @@ Der Hauptfluss für einen Beitrag ist wie folgt:
 1. Melden Sie sich bei GitHub an, gehen Sie zum [RotorHazard repository](https://github.com/RotorHazard/RotorHazard) und drücken Sie `Fork`.
 2. Verwenden Sie dann die Befehlszeile/Terminal auf Ihrem Computer: `git clone <url zu IHREM fork>`
 3. `cd RotorGefahr`
-4. `git checkout master`
+4. `git checkout main`
 5. `git checkout -b mein-neuer-Code`
 6. Änderungen vornehmen
 7. `git add <Dateien, die sich geändert haben>`
 8. `git commit`
 9. `git push origin mein-neuer-Code`
-10. Erstellen Sie eine Pull-Anfrage unter Verwendung der GitHub-Web-Benutzeroberfläche, um Ihre Änderungen aus Ihrem neuen Zweig in `RotorHazard/master` zusammenzuführen.
+10. Erstellen Sie eine Pull-Anfrage unter Verwendung der GitHub-Web-Benutzeroberfläche, um Ihre Änderungen aus Ihrem neuen Zweig in `RotorHazard/main` zusammenzuführen.
 11. Wiederholen Sie ab Schritt 4 für weitere Änderungen
 
-Vor allem ist zu bedenken, dass separate Pull-Anforderungen für getrennte Zweige erstellt werden sollten.  Erstellen Sie niemals eine "Pull"-Anfrage von Ihrem "Master"-Zweig.
+Vor allem ist zu bedenken, dass separate Pull-Anforderungen für getrennte Zweige erstellt werden sollten.  Erstellen Sie niemals eine "Pull"-Anfrage von Ihrem "main"-Zweig.
 
 Sobald Sie den PR erstellt haben, wird jeder neue Commit/Push in Ihrem Zweig von Ihrem Zweig in den PR im Haupt-Repo von GitHub/RotorHazard übertragen. Checken Sie zuerst einen anderen Zweig aus, wenn Sie etwas anderes wünschen.
 
-Später können Sie die Änderungen aus dem RotorHazard-Repository in Ihren `Master`-Zweig bekommen, indem Sie das RotorHazard-Repository als [git remote](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/configuring-a-remote-for-a-fork) hinzufügen ("upstream") und daraus wie folgt zusammenführen:
+Später können Sie die Änderungen aus dem RotorHazard-Repository in Ihren `main`-Zweig bekommen, indem Sie das RotorHazard-Repository als [git remote](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/configuring-a-remote-for-a-fork) hinzufügen ("upstream") und daraus wie folgt zusammenführen:
 
 1. `git remote add upstream https://github.com/RotorHazard/RotorHazard.git`
-2. `git checkout master`
-3. `git pull upstream master`
-4. `git push origin master` (dies ist ein optionaler Schritt, der Ihr Repository auf GitHub aktualisieren wird)
+2. `git checkout main`
+3. `git pull upstream main`
+4. `git push origin main` (dies ist ein optionaler Schritt, der Ihr Repository auf GitHub aktualisieren wird)
 
 <br>
 

@@ -2,7 +2,7 @@
 
 This guide provides step-by-step instructions for assembling components
 onto a RotorHazard S32_BPill PCB. The
-S32_BPill [schematic](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/files/RotorHazard_S32_BPill_SCH_R1.pdf) also
+S32_BPill [schematic](https://github.com/RotorHazard/RotorHazard/blob/main/resources/S32_BPill_PCB/files/RotorHazard_S32_BPill_SCH_R1.pdf) also
 provides valuable reference information.
 
 Although the order of soldering the components to the main PCB is not
@@ -56,13 +56,13 @@ Install them by first pressing them onto the BPill and soldering the
 sockets in place while attached to the BPill.
 
 The recommended installation option for the RX5808 node boards is to use
-[low-profile sockets](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/headers.md)
+[low-profile sockets](https://github.com/RotorHazard/RotorHazard/blob/main/resources/S32_BPill_PCB/headers.md)
 in the U1-U8 (9-pin) locations on the PCB. These are shorter and have
 better contacts than standard socket headers. If the low-profile sockets
 are used, the pins on the RX5808 node boards should be cut to a length
 of 3.5mm-4.0mm (as measured from the edge of the node PCB) -- the
 [Trimming Jig for RotorHazard S32_BPill
-Nodes](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/trimjig.md) can
+Nodes](https://github.com/RotorHazard/RotorHazard/blob/main/resources/S32_BPill_PCB/trimjig.md) can
 help with this.<br>
 See also: [RotorHazard S32_BPill Node Board Assembly](nodeAssembly.md)
 
@@ -122,7 +122,7 @@ can be checked after the install is completed.
 The optional INA219 module provides voltage and current monitoring data.
 If one is not installed then a wire jumper needs to be soldered between
 the Vin+ and Vin- pins of the U10 pads (as noted on the
-[schematic](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/files/RotorHazard_S32_BPill_SCH_R1.pdf)).
+[schematic](https://github.com/RotorHazard/RotorHazard/blob/main/resources/S32_BPill_PCB/files/RotorHazard_S32_BPill_SCH_R1.pdf)).
 
 If an INA219 is being installed, prepare the module by soldering right
 angle pins to the component side of the board (see below). Make sure the

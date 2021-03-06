@@ -54,7 +54,7 @@ Fahren Sie mit der Maus über oder klicken / tippen Sie auf die schnellste Runde
 * Das Update des Wärmeerzeugers beim Umbenennen der Klasse #332 wurde behoben
 * Fehler behoben: Freqs Callout falsche Frequenzen #336
 * Behoben, dass IMDtabler nicht verwendete Knoten #335 liest
-* Dokumentation zu [Protokollierungskonfiguration](https://github.com/RotorHazard/RotorHazard/blob/master/doc/de-Software%20Setup.md#logging) hinzugefügt
+* Dokumentation zu [Protokollierungskonfiguration](https://github.com/RotorHazard/RotorHazard/blob/main/doc/de-Software%20Setup.md#logging) hinzugefügt
 * Versionshinweisdateien im Dokument hinzugefügt
 * Andere Dokumentationsaktualisierungen
 

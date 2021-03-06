@@ -33,7 +33,7 @@ See the [RotorHazard Build Resources](resources/README.md) page for information 
 
 An easy-to-build single-node version of RotorHazard may also be constructed; see [doc/USB Nodes.md](doc/USB%20Nodes.md) for more info.
 
-**Note:** The 'master' branch in the GitHub repository will usually contain the latest development code, which may not be stable. To install or upgrade to the latest stable release, please follow the [Documentation](https://github.com/RotorHazard/RotorHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest) (see "Software Setup Instructions").
+**Note:** The 'main' branch in the GitHub repository will usually contain the latest development code, which may not be stable. To install or upgrade to the latest stable release, please follow the [Documentation](https://github.com/RotorHazard/RotorHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/RotorHazard/RotorHazard/releases/latest) (see "Software Setup Instructions").
 
 ## Migrating from Delta5
 RotorHazard is compatible with the hardware specifications of the [Delta5 Race Timer](https://github.com/scottgchin/delta5_race_timer). Install the software on  existing hardware per the [setup instructions](doc/Software%20Setup.md), ensuring that you complete a [re-flash of the Arduinos](doc/Software%20Setup.md#rotorhazard-node-code).

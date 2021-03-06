@@ -17,25 +17,25 @@ The main flow for a contributing is as follows:
 1. Login to GitHub, go to the [RotorHazard repository](https://github.com/RotorHazard/RotorHazard) and press `fork`
 2. Then using the command line/terminal on your computer: `git clone <url to YOUR fork>`
 3. `cd RotorHazard`
-4. `git checkout master`
+4. `git checkout main`
 5. `git checkout -b my-new-code`
 6. Make changes
 7. `git add <files that have changed>`
 8. `git commit`
 9. `git push origin my-new-code`
-10. Create a pull request using the GitHub web UI to merge your changes from your new branch into `RotorHazard/master`
+10. Create a pull request using the GitHub web UI to merge your changes from your new branch into `RotorHazard/main`
 11. Repeat from step 4 for new other changes
 
-The primary thing to remember is that separate pull requests should be created for separate branches.  Never create a pull request from your `master` branch.
+The primary thing to remember is that separate pull requests should be created for separate branches.  Never create a pull request from your `main` branch.
 
 Once you have created the PR, every new commit/push in your branch will propagate from your fork into the PR in the main GitHub/RotorHazard repo. Checkout another branch first if you want something else.
 
-Later, you can get the changes from the RotorHazard repository into your `master` branch by adding the RotorHazard repository as a [git remote](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/configuring-a-remote-for-a-fork) ("upstream") and merging from it as follows:
+Later, you can get the changes from the RotorHazard repository into your `main` branch by adding the RotorHazard repository as a [git remote](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/configuring-a-remote-for-a-fork) ("upstream") and merging from it as follows:
 
 1. `git remote add upstream https://github.com/RotorHazard/RotorHazard.git`
-2. `git checkout master`
-3. `git pull upstream master`
-4. `git push origin master` (this is an optional step that will update your repository on GitHub)
+2. `git checkout main`
+3. `git pull upstream main`
+4. `git push origin main` (this is an optional step that will update your repository on GitHub)
 
 <br>
 
