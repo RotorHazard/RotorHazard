@@ -373,20 +373,71 @@
 		socket.on('heat_data', function (msg) {
 			rotorhazard.heats = msg.heats;
 			$('#set_current_heat').empty();
-			for (var i in msg.heats) {
-				var heat = msg.heats[i];
 
-				if (heat.note) {
-					var heatname = heat.note;
-				} else {
-					var heatname = __('Heat') + ' ' + heat.heat_id;
+			// assemble heats by class
+			var heats_by_class = {}
+			var single_class = true;
+			for (var h in msg.heats) {
+				var heat = msg.heats[h];
+				if (!(heat.class_id in heats_by_class)) {
+					heats_by_class[heat.class_id] = [];
 				}
-				rotorhazard.heats[i].heatname = heatname;
+				heats_by_class[heat.class_id].push(heat)
+				if (heat.class_id != 0) {
+					single_class = false;
+				}
+			}
 
-				var opt = $('<option value="' + heat.heat_id + '" data-class="' + heat.class_id + '">');
+			// assemble optgroups
+			if (single_class) {
+				for (var h in msg.heats) {
+					var heat = msg.heats[h];
 
-				opt.html(heatname);
-				$('#set_current_heat').append(opt);
+					if (heat.note) {
+						var heatname = heat.note;
+					} else {
+						var heatname = __('Heat') + ' ' + heat.heat_id;
+					}
+
+					var opt = $('<option value="' + heat.heat_id + '" data-class="' + heat.class_id + '">');
+					opt.html(heatname);
+					$('#set_current_heat').append(opt);
+				}
+			} else {
+				for (var c in heats_by_class) {
+					var heat_list = heats_by_class[c]
+					var optgroup = $('<optgroup>');
+
+					optgroup.attr('label', __('Unclassified'));
+					optgroup.attr('data-id', 0);
+					for (var rc in msg.classes) {
+						if (c == msg.classes[rc].id) {
+							var class_data = msg.classes[rc]
+							optgroup.attr('label', class_data.name);
+							optgroup.attr('data-id', class_data.id);
+							break;
+						}
+					}
+
+					for (var h in heat_list) {
+						var heat = heat_list[h];
+
+						if (heat.note) {
+							var heatname = heat.note;
+						} else {
+							var heatname = __('Heat') + ' ' + heat.heat_id;
+						}
+
+						var opt = $('<option value="' + heat.heat_id + '" data-class="' + heat.class_id + '">');
+
+						opt.html(heatname);
+						optgroup.append(opt)
+					}
+					$('#set_current_heat').append(optgroup);
+				}
+
+				// move unclassified to end of list
+				$('#set_current_heat').append($('#set_current_heat optgroup[data-id="0"]'));
 			}
 
 			socket.emit('load_data', {'load_types': [
