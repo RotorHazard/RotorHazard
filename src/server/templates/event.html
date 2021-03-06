@@ -33,6 +33,9 @@
 			headerLevelStart: 4
 		});
 
+		md_output = converter.makeHtml({{ getOption('eventDescription')|tojson }});
+		$('#description').html($(md_output));
+
 		socket.on('frequency_data', function (msg) {
 			if (msg.fdata.length) {
 				for (var i in msg.fdata) {
@@ -261,8 +264,8 @@
 <main class="page-heats">
 
 <h2>{{ getOption('eventName') }}</h2>
-<div class="event-description">
-	{{ getOption('eventDescription') }}
+<div id="description">
+	<p class="form-note">{{ __('Loading...') }}</p>
 </div>
 
 <!--Display the heats-->
