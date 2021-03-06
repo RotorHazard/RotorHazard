@@ -1075,7 +1075,7 @@ def on_delete_heat(data):
     if result:
         emit_heat_data()
         if RACE.current_heat == heat_id:  # if current heat was deleted then load new heat data
-            on_set_current_heat({ 'heat': RHUtils.get_heats(return_type='first').id })
+            on_set_current_heat({ 'heat': RHData.get_heats(return_type='first').id })
 
 @SOCKET_IO.on('add_race_class')
 @catchLogExceptionsWrapper
