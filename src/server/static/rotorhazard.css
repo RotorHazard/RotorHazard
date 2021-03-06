@@ -1737,6 +1737,12 @@ main.page-home {
 	overflow: auto;
 }
 
+@media (prefers-color-scheme: dark) {
+	.form-note.emphasis {
+		background: #444;
+	}
+}
+
 .form-note.emphasis ul {
 	padding: 0;
 }

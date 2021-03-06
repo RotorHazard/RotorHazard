@@ -226,6 +226,7 @@ def calc_leaderboard(**params):
     max_laps = []
     current_laps = []
     holeshots = []
+    starts = []
 
     for pilot in Database.Pilot.query.filter(Database.Pilot.id != RHUtils.PILOT_ID_NONE):
         gevent.sleep()
@@ -252,10 +253,14 @@ def calc_leaderboard(**params):
                 team_names.append(pilot.team)
                 max_laps.append(max_lap)
                 current_laps.append(laps)
+                starts.append(1 if max_lap > 0 else 0)
         else:
             # find hole shots
             holeshot_laps = []
             pilotnode = None
+            total_laps = 0
+            race_starts = 0
+
             for race in racelist:
                 this_race = Database.SavedRaceMeta.query.get(race)
                 this_race_format = Database.RaceFormat.query.get(this_race.format_id)
@@ -268,33 +273,34 @@ def calc_leaderboard(**params):
                 if len(pilotraces):
                     pilotnode = pilotraces[-1].node_index
 
-                if this_race_format and this_race_format.start_behavior == StartBehavior.FIRST_LAP:
-                    pass
-                else:
                     for pilotrace in pilotraces:
                         gevent.sleep()
-                        holeshot_lap = Database.SavedRaceLap.query \
+
+                        race_laps_query = Database.SavedRaceLap.query \
                             .filter(Database.SavedRaceLap.pilotrace_id == pilotrace.id, \
                                 Database.SavedRaceLap.deleted != 1, \
-                                ).order_by(Database.SavedRaceLap.lap_time_stamp).first()
+                                ).order_by(Database.SavedRaceLap.lap_time_stamp).all()
 
-                        if holeshot_lap:
-                            holeshot_laps.append(holeshot_lap.id)
+                        total_laps += len(race_laps_query)
 
-            # get total laps
-            stat_query = Database.DB.session.query(Database.DB.func.count(Database.SavedRaceLap.id)) \
-                .filter(Database.SavedRaceLap.pilot_id == pilot.id, \
-                    Database.SavedRaceLap.deleted != 1, \
-                    Database.SavedRaceLap.race_id.in_(racelist), \
-                    ~Database.SavedRaceLap.id.in_(holeshot_laps))
+                        if this_race_format and this_race_format.start_behavior == StartBehavior.FIRST_LAP:
+                            if len(race_laps_query):
+                                race_starts += 1
+                        else:
+                            holeshot_lap = race_laps_query[0]
 
-            max_lap = stat_query.scalar()
-            if max_lap > 0:
+                            if holeshot_lap:
+                                holeshot_laps.append(holeshot_lap.id)
+                                race_starts += 1
+                                total_laps -= 1
+
+            if race_starts > 0:
                 pilot_ids.append(pilot.id)
                 callsigns.append(pilot.callsign)
                 team_names.append(pilot.team)
-                max_laps.append(max_lap)
+                max_laps.append(total_laps)
                 holeshots.append(holeshot_laps)
+                starts.append(race_starts)
                 nodes.append(pilotnode)
 
     total_time = []
@@ -503,7 +509,8 @@ def calc_leaderboard(**params):
             'last_lap': RHUtils.time_format(last_lap[i]),
             'last_lap_raw': last_lap[i],
             'pilot_id': pilot,
-            'node': nodes[i],
+            'starts': starts[i],
+            'node': nodes[i]
         })
 
     if race_format and race_format.start_behavior == StartBehavior.STAGGERED:
