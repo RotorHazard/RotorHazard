@@ -1,4 +1,8 @@
-{% extends "layout.html" %} {% block title %}{{ __('Event') }}{% endblock %} {% block head %} {% endblock %} {% block content %}
+{% extends "layout.html" %} {% block title %}{{ __('Event') }}{% endblock %} {% block head %}
+
+<script src="./static/showdown-1.9.1/showdown.min.js"></script>
+
+{% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
 		'all_languages',
@@ -20,6 +24,15 @@
 		for (var i = 0; i < {{ num_nodes }}; i++) {
 			rotorhazard.nodes[i] = new nodeModel();
 		}
+
+		// set up markdown converter
+		var converter = new showdown.Converter({
+			ghCodeBlocks: true,
+			ghCompatibleHeaderId: true,
+			literalMidWordUnderscores: true,
+			simpleLineBreaks: true,
+			headerLevelStart: 4
+		});
 
 		socket.on('frequency_data', function (msg) {
 			if (msg.fdata.length) {
@@ -114,7 +127,9 @@
 					var class_info = $('<div class="class-info">');
 
 					if (race_class.description) {
-						class_info.append('<p>' + race_class.description + '</p>');
+						var md_output = converter.makeHtml(race_class.description)
+						var class_desc = $('<div class="description">').append(md_output);
+						class_info.append(class_desc);
 					}
 
 					if (race_class.format) {

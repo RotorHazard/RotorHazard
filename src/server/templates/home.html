@@ -1,4 +1,8 @@
-{% extends "layout.html" %} {% block title %}{{ __('Home') }}{% endblock %} {% block head %} {% endblock %} {% block content %}
+{% extends "layout.html" %} {% block title %}{{ __('Home') }}{% endblock %} {% block head %}
+
+<script src="./static/showdown-1.9.1/showdown.min.js"></script>
+
+{% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
 		'all_languages',
@@ -11,6 +15,18 @@
 				rotorhazard.interface_language = msg.language;
 			}
 		});
+
+		// set up markdown converter
+		var converter = new showdown.Converter({
+			ghCodeBlocks: true,
+			ghCompatibleHeaderId: true,
+			literalMidWordUnderscores: true,
+			simpleLineBreaks: true,
+			headerLevelStart: 4
+		});
+
+		md_output = converter.makeHtml({{ getOption('eventDescription')|tojson }});
+		$('#description').html($(md_output));
 	});
 </script>
 
@@ -31,8 +47,8 @@
 		<h2>{{ __("Current Event") }}</h2>
 	</div>
 	<div class="panel-content">
-		<h1>{{ getOption('eventName') }}</h1>
-		<p>{{ getOption('eventDescription') }}</p>
+		<h3>{{ getOption('eventName') }}</h3>
+		<div id="description"></div>
 	</div>
 </div>
 
