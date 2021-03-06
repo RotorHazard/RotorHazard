@@ -43,12 +43,12 @@ and let it solidify while holding the pins straight.
 
 ![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/nodeBuildPics/image4.jpg)
 
-7 - If [low profile sockets](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/headers.md)
+7 - If [low profile sockets](https://github.com/RotorHazard/RotorHazard/blob/main/resources/S32_BPill_PCB/headers.md)
 were installed on the main PCB to hold the modules, these 9 pins should be
 trimmed to 3.5mm-4.0mm from the edge of the node board.
 
 If you have access to the [3D printed pin trimming
-jig](https://github.com/RotorHazard/RotorHazard/blob/master/resources/S32_BPill_PCB/trimjig.md),
+jig](https://github.com/RotorHazard/RotorHazard/blob/main/resources/S32_BPill_PCB/trimjig.md),
 slide the jig over the pins and clip to the edge of the jig.
 
 ![](https://github.com/RotorHazard/rhfiles/raw/main/S32_BPill/nodeBuildPics/image1.jpg)

@@ -6,7 +6,7 @@ RotorHazard 2.3.0 provides many new features and fixes, including:
 This release provides significant performance advantages when saving races and viewing the results page, particularly for large events. Race results are now atomically cached for each race, heat, class, and event. A local page cache is also maintained. These caching systems are updated on an as-needed basis, preventing rebuild of the entire results cache.
 
 ### Expanded Win Conditions and First Crossing Behaviors
-Win conditions include common race types and new team racing conditions that use average lap times for the entire team. First crossings can now be hole shots, first lap, or staggered starts. See [Race Formats in the User Guide](https://github.com/RotorHazard/RotorHazard/blob/master/doc/User%20Guide.md#race-format) for more details.
+Win conditions include common race types and new team racing conditions that use average lap times for the entire team. First crossings can now be hole shots, first lap, or staggered starts. See [Race Formats in the User Guide](https://github.com/RotorHazard/RotorHazard/blob/main/doc/User%20Guide.md#race-format) for more details.
 
 ### Retroactive Data Manipulation
 Organizers may now remove locks on saved race data to manipulate assigned pilots, heats, classes, etc. for the correction of event setup errors in prior races.
@@ -15,16 +15,16 @@ Organizers may now remove locks on saved race data to manipulate assigned pilots
 Save, restore, and delete database files in the db_bkp folder from the Database panel in Settings. Also restores database files in older formats.
 
 ### Split Timing Improvements
-Support for multiple cluster/split timers has been fleshed out and improved. See '[doc/Cluster.md](https://github.com/RotorHazard/RotorHazard/blob/master/doc/Cluster.md)' for details.
+Support for multiple cluster/split timers has been fleshed out and improved. See '[doc/Cluster.md](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Cluster.md)' for details.
 
 ### Frequency Reference
-A [Frequency Reference](https://github.com/RotorHazard/RotorHazard/blob/master/doc/Frequency%20Reference.md) has been added to documentation, and can be pulled up in the offline documentation viewer.
+A [Frequency Reference](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Frequency%20Reference.md) has been added to documentation, and can be pulled up in the offline documentation viewer.
 
 ### Python 3 support
 Python 2 is past end of life. RotorHazard 2.3.0 may be run on either Python 2 or Python 3. (This is also the last release to support Python 2; after this release, only Python 3 will be supported.)
 
 ### Official PCB release
-Paweł Fabiszewski has developed a PCB which implements current hardware standards to simplify wiring and component placement, expediting timer builds and improving usability. See [RotorHazard PCB](https://github.com/RotorHazard/RotorHazard/tree/master/resources/PCB) for more details.
+Paweł Fabiszewski has developed a PCB which implements current hardware standards to simplify wiring and component placement, expediting timer builds and improving usability. See [RotorHazard PCB](https://github.com/RotorHazard/RotorHazard/tree/main/resources/PCB) for more details.
 
 ### LiveTime Controls
 Visit /decoder to open a dedicated page for settings which apply when RotorHazard is connected to LiveTime.
@@ -36,9 +36,9 @@ Visit /decoder to open a dedicated page for settings which apply when RotorHazar
 * Retroactive data maniplulation #440
 * Added PCB files and documentation #397
 * Improved results page build and caching #384
-* Added expanded win conditions #339 ([See documentation](https://github.com/RotorHazard/RotorHazard/blob/master/doc/User%20Guide.md#race-format))
+* Added expanded win conditions #339 ([See documentation](https://github.com/RotorHazard/RotorHazard/blob/main/doc/User%20Guide.md#race-format))
 * Added "decoder" page for LiveTime settings #316
-* Added [Frequency Reference](https://github.com/RotorHazard/RotorHazard/blob/master/doc/Frequency%20Reference.md) to documentation
+* Added [Frequency Reference](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Frequency%20Reference.md) to documentation
 * Split timer improvements #377 #378 #399 #402 #404 #417 #439
 * Python 3 compatibility #320 #415 
 * Improved display on iOS #470 
@@ -80,7 +80,7 @@ Visit /decoder to open a dedicated page for settings which apply when RotorHazar
 
 ## Upgrade Notes
 
-To install RotorHazard on a new system, see the instructions in '[doc/Software Setup.md](https://github.com/RotorHazard/RotorHazard/blob/master/doc/Software%20Setup.md)'
+To install RotorHazard on a new system, see the instructions in '[doc/Software Setup.md](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md)'
 
 To update an existing RotorHazard installation to this version:
 ```

@@ -30,7 +30,7 @@
 				else if (is_http.test(url)) {
 					if(root.test(url)){
 						if (is_resources.test(url)) {
-							$(this).attr('href', 'https://github.com/RotorHazard/RotorHazard/tree/master/doc/' + $(this).attr('href'));
+							$(this).attr('href', 'https://github.com/RotorHazard/RotorHazard/tree/main/doc/' + $(this).attr('href'));
 							$(this).html($(this).html() + ' &#10132;&#xFE0E;');
 						} else {
 							$(this).attr('href', '/docs?d=' + $(this).attr('href'));

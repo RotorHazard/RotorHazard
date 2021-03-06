@@ -49,7 +49,7 @@ Mouse over or click/tap on fastest lap or fastest consecutive time to view which
 * Fixed heat generator update on class renaming #332
 * Fixed freqs callout wrong frequencies #336
 * Fixed IMDtabler reads unused nodes #335
-* Added documentation on [logging configuration](https://github.com/RotorHazard/RotorHazard/blob/master/doc/Software%20Setup.md#logging)
+* Added documentation on [logging configuration](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Software%20Setup.md#logging)
 * Added Release Notes files in doc
 * Other documentation updates
 

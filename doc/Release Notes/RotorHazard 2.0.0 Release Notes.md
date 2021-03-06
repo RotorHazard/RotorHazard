@@ -13,7 +13,7 @@
 * Supports BME280 temperature sensor and INA219 voltage sensor 
 
 ### UI
-* Added [keyboard shortcuts](https://github.com/RotorHazard/RotorHazard/blob/master/doc/User%20Guide.md#run) for start race, stop race, save laps, clear laps, manual laps, and dismiss message
+* Added [keyboard shortcuts](https://github.com/RotorHazard/RotorHazard/blob/main/doc/User%20Guide.md#run) for start race, stop race, save laps, clear laps, manual laps, and dismiss message
 * Selectable generated or MP3 tones (each work better on different browsers)
 * Improved use of large screen areas
 * Warn about suspect calibration values
@@ -36,4 +36,4 @@
 
 ## Upgrade Notes
 * The monotonic library is now required. Connect the pi to the internet, change to the server directory, then run "sudo pip install -r requirements.txt" to get it.
-* Use of [directional RF shielding](https://github.com/RotorHazard/RotorHazard/blob/master/doc/Hardware%20Setup.md#add-a-directional-rf-shield) is now considered a required part of the hardware build.
+* Use of [directional RF shielding](https://github.com/RotorHazard/RotorHazard/blob/main/doc/Hardware%20Setup.md#add-a-directional-rf-shield) is now considered a required part of the hardware build.

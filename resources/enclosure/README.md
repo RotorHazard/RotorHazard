@@ -1,5 +1,5 @@
 # 3D Printed Enclosure
-![alt text](https://github.com/Cerberus74/RotorHazard/raw/master/Hardware/3D%20Printed%20Enclosure/Images/FinalRender8Node.png)
+![3D rendering of box with openings for Raspberry Pi, case fans, and voltage display; with RotorHazard branding](Images/FinalRender8Node.png)
 
 ## **Four and Eight Node Printable Enclosures**
 This is pretty much a ground up rework of FreeFormFPV's excellent original work. Not much of the original remains. I've expanded heavily on the original design and hopefully improved it.
@@ -10,7 +10,7 @@ The Original D5 100x100mm V2.0 PCB is a 'click fit' into the new PCB Trays. No f
 
 A POE DC jack is provided so that the timer can be powered at the other end of the network cable (POE injector needed). Be sure to use a THREE PIN DC jack wired properly to disconnect the XT60 socket when in use. Failure to do this may result in the release of magical smoke. The timer may thus be powered either locally by a lipo or remotely over POE.
 
-![alt text](https://github.com/Cerberus74/RotorHazard/raw/master/Hardware/3D%20Printed%20Enclosure/Images/ExplodedView.png)
+![Exploded view of enclosure with insert trays and electronic components](Images/ExplodedView.png)
 ## **Printable Parts:**
 * 8 Node Enclosure Box
 * 4 Node Enclosure Box
@@ -27,7 +27,7 @@ http://tiny.cc/12ri8y
 http://tiny.cc/e7ri8y
 
 **5.5mm 3 pin DC Jack** for POE
-http://tiny.cc/wbsi8y [Wiring Diagram](https://github.com/Cerberus74/RotorHazard/raw/master/Hardware/3D%20Printed%20Enclosure/Images/WireBarrelJack.png)
+http://tiny.cc/wbsi8y [Wiring Diagram](Images/WireBarrelJack.png)
 
 **POE injector/adapter** (optional)
 http://tiny.cc/idsi8y
