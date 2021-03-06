@@ -1399,6 +1399,7 @@ main.page-home {
 	list-style: none;
 	display: flex;
 	flex-wrap: wrap;
+	align-items: flex-start;
 	margin: 0 -0.25em;
 }
 
@@ -1424,6 +1425,7 @@ main.page-home {
 	box-sizing: border-box;
 	display: flex;
 	flex-wrap: wrap;
+	align-items: flex-start;
 }
 
 .race_classes>ol>li>h3,
