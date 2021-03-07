@@ -50,6 +50,7 @@ CHIP_IDS = {
     0x416: "STM32L1xxx6(8/B) Medium-density ultralow power line",
     0x411: "STM32F2xxx",
     0x433: "STM32F4xxD/E",
+    0x431: "STM32F411xx",
     # STM32F3
     0x432: "STM32F373xx/378xx",
     0x422: "STM32F302xB(C)/303xB(C)/358xx",
@@ -851,7 +852,6 @@ def flash_file_to_stm32(portStr, srcStr):
         verboseFlag = False
         memoryAddress = 0x08000000
         goAddress = 0x08000000
-        family = "F1"
         
         isRPiFlag = is_sys_raspberry_pi()
         
@@ -907,7 +907,8 @@ def flash_file_to_stm32(portStr, srcStr):
             deviceId = bootloaderObj.get_id()
             Console_output_fn("Device chip id: 0x%X (%s)" % (deviceId, CHIP_IDS.get(deviceId, "Unknown")))
             successFlag = True
-            
+            family = "F4" if deviceId == 0x431 or deviceId == 0x433 or \
+                     deviceId == 0x413 or deviceId == 0x419 else "F1"
             try:
                 if family != "F4":
                     flash_size = bootloaderObj.get_flash_size(family)
