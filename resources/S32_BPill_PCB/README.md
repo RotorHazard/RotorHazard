@@ -100,7 +100,7 @@ The "Blue Pill" is a module containing an STM32F1 processor and support componen
 
 We like the RobotDyn version more than the generics, but it has become difficult to acquire. In practice, any Blue Pill module with an STM32F103C8T6 processor and a compatible pin layout should work fine with the S32_BPill PCB.
 
-To complicate things further there is another type of "[Black Pill](https://stm32-base.org/boards/STM32F103C8T6-Black-Pill.html)" module out there that has a different (incompatible) pinout, though it doesn't really seem to be used as much. 
+To complicate things further there are other types of "[Black Pill](https://github.com/WeActTC/MiniSTM32F4x1)" modules out there that have different (incompatible) pinouts.
 
 Seaching eBay for "[STM32F103C8T6 Blue Pill](https://www.ebay.com/sch/i.html?_nkw=STM32F103C8T6+Blue+Pill)" should lead to a number of good, cheap options for acquiring compatible modules.
 
