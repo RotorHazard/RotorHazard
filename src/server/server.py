@@ -92,6 +92,7 @@ from data_export import DataExportManager
 APP = Flask(__name__, static_url_path='/static')
 
 HEARTBEAT_THREAD = None
+BACKGROUND_THREADS_ENABLED = True
 HEARTBEAT_DATA_RATE_FACTOR = 5
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
@@ -547,15 +548,20 @@ def redirect_race():
 def redirect_heats():
     return redirect("/event", code=301)
 
-def start_background_threads():
-    INTERFACE.start()
-    global HEARTBEAT_THREAD
-    if HEARTBEAT_THREAD is None:
-        HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
-        logger.debug('Heartbeat thread started')
+def start_background_threads(forceFlag=False):
+    global BACKGROUND_THREADS_ENABLED
+    if BACKGROUND_THREADS_ENABLED or forceFlag:
+        BACKGROUND_THREADS_ENABLED = True
+        INTERFACE.start()
+        global HEARTBEAT_THREAD
+        if HEARTBEAT_THREAD is None:
+            HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
+            logger.debug('Heartbeat thread started')
 
 def stop_background_threads():
     try:
+        global BACKGROUND_THREADS_ENABLED
+        BACKGROUND_THREADS_ENABLED = False
         global HEARTBEAT_THREAD
         if HEARTBEAT_THREAD:
             logger.info('Stopping heartbeat thread')
@@ -4355,14 +4361,16 @@ def do_bpillfw_update(data):
         s32Logger = logging.getLogger("stm32loader")
         def doS32Log(msgStr):  # send message to update-messages window and log file
             SOCKET_IO.emit('upd_messages_append', msgStr)
+            gevent.idle()  # do thread yield to allow display updates
             s32Logger.info(msgStr)
-            gevent.sleep(0.001)  # do thread yield to allow display updates
+            gevent.idle()  # do thread yield to allow display updates
+            log.wait_for_queue_empty()
         stm32loader.set_console_output_fn(doS32Log)
         successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
-        msgStr = "Node update " + ("succeeded" if successFlag else "failed")
+        msgStr = "Node update " + ("succeeded; restarting interface" \
+                                   if successFlag else "failed")
         logger.info(msgStr)
         SOCKET_IO.emit('upd_messages_append', ("\n" + msgStr))
-        SOCKET_IO.emit('upd_messages_finish')  # show 'Close' button
     except:
         logger.exception("Error in 'do_bpillfw_update()'")
     stm32loader.set_console_output_fn(None)
@@ -4372,7 +4380,8 @@ def do_bpillfw_update(data):
     buildServerInfo()
     logger.debug("Server info:  " + json.dumps(serverInfoItems))
     init_race_state()
-    start_background_threads()
+    start_background_threads(True)
+    SOCKET_IO.emit('upd_messages_finish')  # show 'Close' button
 
 @SOCKET_IO.on('set_vrx_node')
 @catchLogExceptionsWrapper
