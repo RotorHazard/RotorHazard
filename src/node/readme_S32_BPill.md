@@ -44,13 +44,13 @@ The following batch/script files are available:
 
 * *install_stm32_boards* : Installs the required support libraries into the Arduino IDE installation. This can take a few minutes, but only needs to be run once to install the libraries
 
-* *build_stm32* : Builds the Arduino node code (for the STM32F103C8 module), creating the firmware file `src/node/build_stm32/RH_S32_BPill_node.bin`
+* *build_stm32* : Builds the S32_BPill node code (for the STM32F103C8 module), creating the firmware file `src/node/build_stm32/RH_S32_BPill_node.bin`
 
-* *build_stm32_f4* : Builds the Arduino node code (for the STM32F411CE "Black Pill" module), creating the firmware file `src/node/build_stm32/RH_S32_BPill_node_F4.bin`
+* *build_stm32_f4* : Builds the S32_BPill node code (for the STM32F411CE "[Black Pill](https://github.com/WeActTC/MiniSTM32F4x1)" module), creating the firmware file `src/node/build_stm32/RH_S32_BPill_node_F4.bin`
 
 * *upload_stm32* : Builds the S32_BPill node code and uploads it using the serial (COM) port specified as the first argument. An optional second argument, "--skipBuild", may be specified to skip the build and upload the last firmware file that was built. See the last step [above](#s32ftdi) for info on using an FTDI for uploading
 
-* *upload_stm32_F4* : Version of 'upload_stm32' for the STM32F411CE "Black Pill" module
+* *upload_stm32_F4* : Version of 'upload_stm32' for the STM32F411CE "[Black Pill](https://github.com/WeActTC/MiniSTM32F4x1)" module
 
 ## Compiling and Uploading with Sloeber Eclipse (S32_BPill Nodes)
 
