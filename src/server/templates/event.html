@@ -25,7 +25,15 @@
 		}
 
 		// set up markdown converter
-		var converter = new showdown.Converter({
+		var event_converter = new showdown.Converter({
+			ghCodeBlocks: true,
+			ghCompatibleHeaderId: true,
+			literalMidWordUnderscores: true,
+			simpleLineBreaks: true,
+			headerLevelStart: 3
+		});
+
+		var class_converter = new showdown.Converter({
 			ghCodeBlocks: true,
 			ghCompatibleHeaderId: true,
 			literalMidWordUnderscores: true,
@@ -33,7 +41,7 @@
 			headerLevelStart: 4
 		});
 
-		md_output = converter.makeHtml({{ getOption('eventDescription')|tojson }});
+		md_output = event_converter.makeHtml({{ getOption('eventDescription')|tojson }});
 		$('#description').html($(md_output));
 
 		socket.on('frequency_data', function (msg) {
@@ -72,29 +80,75 @@
 				}
 			}
 
-			// assemble class groups
-			for (var c in heats_by_class) {
-				var heat_list = heats_by_class[c]
-				var class_group = $('<li>');
+			if (msg.classes.length) {
+				// assemble class groups
+				for (var c in heats_by_class) {
+					var heat_list = heats_by_class[c]
+					var class_group = $('<li>');
 
-				class_label = __('Unclassified');
-				class_id = 0;
-				for (var rc in msg.classes) {
-					if (c == msg.classes[rc].id) {
-						var class_data = msg.classes[rc]
-						class_label = class_data.name;
-						class_id = class_data.id;
-						break;
+					class_label = __('Unclassified');
+					class_id = 0;
+					for (var rc in msg.classes) {
+						if (c == msg.classes[rc].id) {
+							var class_data = msg.classes[rc]
+							class_label = class_data.name;
+							class_id = class_data.id;
+							break;
+						}
 					}
+
+					class_group.attr('data-class-id', class_id);
+					class_group.append('<h3>' + class_label + '</h3>');
+
+					heat_groups = $('<ol class="heats">');
+
+					for (var h in heat_list) {
+						var heat = heat_list[h];
+						var heat_group = $('<li class="heat">');
+
+						if (heat.note) {
+							var heatname = heat.note;
+						} else {
+							var heatname = __('Heat') + ' ' + heat.heat_id;
+						}
+						heat_group.append('<h4>' + heatname + '</h4>');
+
+						var nodelist = $('<ol>');
+						for (p in heat.pilots) {
+							var heatpilot = heat.pilots[p];
+
+							var callsign = false;
+							for (var pd in msg.pilot_data) {
+								if (msg.pilot_data[pd].pilot_id == heatpilot) {
+									callsign = msg.pilot_data[pd].callsign;
+									break;
+								}
+							}
+
+							if (callsign) {
+								var slot = $('<li>');
+								slot.append('<div class="channel-block" data-node="' + p + '"><span class="ch"></span> <span class="fr"></span></div>');
+
+								slot.append('<div class="pilot-name">' + callsign + '</div>');
+								nodelist.append(slot);
+							}
+						}
+
+						heat_group.append(nodelist);
+						heat_groups.append(heat_group);
+						class_group.append(heat_groups);
+					}
+
+					$('#heat_list').append(class_group);
+
+					// move unclassified to end of list
+					$('#heat_list').append($('#heat_list li[data-class-id="0"]'));
 				}
-
-				class_group.attr('data-class-id', class_id);
-				class_group.append('<h3>' + class_label + '</h3>');
-
+			} else {
 				heat_groups = $('<ol class="heats">');
 
-				for (var h in heat_list) {
-					var heat = heat_list[h];
+				for (var h in msg.heats) {
+					var heat = msg.heats[h];
 					var heat_group = $('<li class="heat">');
 
 					if (heat.note) {
@@ -102,7 +156,7 @@
 					} else {
 						var heatname = __('Heat') + ' ' + heat.heat_id;
 					}
-					heat_group.append('<h4>' + heatname + '</h4>');
+					heat_group.append('<h3>' + heatname + '</h3>');
 
 					var nodelist = $('<ol>');
 					for (p in heat.pilots) {
@@ -127,14 +181,11 @@
 
 					heat_group.append(nodelist);
 					heat_groups.append(heat_group);
-					class_group.append(heat_groups);
 				}
 
-				$('#heat_list').append(class_group);
-
-				// move unclassified to end of list
-				$('#heat_list').append($('#heat_list li[data-class-id="0"]'));
+				$('#heat_list').append(heat_groups);
 			}
+
 
 			freq.updateBlocks();
 
@@ -173,7 +224,7 @@
 					var class_info = $('<div class="class-info">');
 
 					if (race_class.description) {
-						var md_output = converter.makeHtml(race_class.description)
+						var md_output = class_converter.makeHtml(race_class.description)
 						var class_desc = $('<div class="description">').append(md_output);
 						class_info.append(class_desc);
 					}
@@ -252,9 +303,11 @@
 					}
 					formatlist.appendTo($('.race_formats'));
 				}
-
+				$('#section-classes').show();
+				$('#section-formats').show();
 			} else {
-				$('.race_classes').append('<p class="form-note">' + __('This is a single-class event.') + '</p>');
+				$('#section-classes').hide();
+				$('#section-formats').hide();
 			}
 		});
 
@@ -263,33 +316,43 @@
 
 <main class="page-heats">
 
-<h2>{{ getOption('eventName') }}</h2>
-<div id="description">
-	<p class="form-note">{{ __('Loading...') }}</p>
+<div id="section-event">
+	<h2>{{ getOption('eventName') }}</h2>
+	<div id="description">
+		<p class="form-note">{{ __('Loading...') }}</p>
+	</div>
 </div>
 
-<!--Display the heats-->
-<h2>{{ __('Heats') }}</h2>
-<ul id="heat_list">
-	<li>{{ __('Loading...') }}</li>
-</ul>
-
-<!--Display the pilots-->
-<h2>{{ __('Pilots') }}</h2>
-<ul id="pilot_list" class="pilots">
-	<li>{{ __('Loading...') }}</li>
-</ul>
-
-<!--Display the classes-->
-<h2>{{ __('Classes') }}</h2>
-<div id="race_classes" class="race_classes">
-	<p class="form-note">{{ __('Loading...') }}</p>
+<div id="section-heats">
+	<!--Display the heats-->
+	<h2>{{ __('Heats') }}</h2>
+	<ul id="heat_list">
+		<li>{{ __('Loading...') }}</li>
+	</ul>
 </div>
 
-<!--Display the formats-->
-<h2>{{ __('Formats') }}</h2>
-<div id="race_formats" class="race_formats">
-	<p class="form-note">{{ __('Loading...') }}</p>
+<div id="section-pilots">
+	<!--Display the pilots-->
+	<h2>{{ __('Pilots') }}</h2>
+	<ul id="pilot_list" class="pilots">
+		<li>{{ __('Loading...') }}</li>
+	</ul>
+</div>
+
+<div id="section-classes">
+	<!--Display the classes-->
+	<h2>{{ __('Classes') }}</h2>
+	<div id="race_classes" class="race_classes">
+		<p class="form-note">{{ __('Loading...') }}</p>
+	</div>
+</div>
+
+<div id="section-formats">
+	<!--Display the formats-->
+	<h2>{{ __('Formats') }}</h2>
+	<div id="race_formats" class="race_formats">
+		<p class="form-note">{{ __('Loading...') }}</p>
+	</div>
 </div>
 
 </main>
