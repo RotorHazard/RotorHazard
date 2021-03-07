@@ -780,6 +780,29 @@ function parseIntOrBoolean(str) {
 
 /* rotorhazard object for local settings/storage */
 var rotorhazard = {
+	raceMode: {
+		0: 'Fixed time',
+		1: 'No Time Limit',
+	},
+	startBehavior: {
+		0: 'Hole Shot',
+		1: 'First Lap',
+		2: 'Staggered Start',
+	},
+	winCondition: {
+		1: 'Most Laps in Fastest Time',
+		5: 'Most Laps Only',
+		6: 'Most Laps Only with Overtime',
+		2: 'First to X Laps',
+		3: 'Fastest Lap',
+		4: 'Fastest 3 Consecutive Laps',
+		0: 'None',
+	},
+	stagingTones: {
+		2: 'Each Second',
+		1: 'One',
+		0: 'None',
+	},
 	language_strings: {},
 	interface_language: '',
 	// text-to-speech callout options

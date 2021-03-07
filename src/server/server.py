@@ -3232,7 +3232,8 @@ def emit_heat_data(**params):
         else:
             locked = False
 
-        current_heats[heat_id] = {'pilots': pilots,
+        current_heats[heat_id] = {
+            'pilots': pilots,
             'note': note,
             'heat_id': heat_id,
             'class_id': race_class,
@@ -3297,6 +3298,15 @@ def emit_class_data(**params):
         raceformat = {}
         raceformat['id'] = race_format.id
         raceformat['name'] = race_format.name
+        raceformat['race_mode'] = race_format.race_mode
+        raceformat['race_time_sec'] = race_format.race_time_sec
+        raceformat['start_delay_min'] = race_format.start_delay_min
+        raceformat['start_delay_max'] = race_format.start_delay_max
+        raceformat['staging_tones'] = race_format.staging_tones
+        raceformat['number_laps_win'] = race_format.number_laps_win
+        raceformat['win_condition'] = race_format.win_condition
+        raceformat['team_racing_mode'] = race_format.team_racing_mode
+        raceformat['start_behavior'] = race_format.start_behavior
         formats.append(raceformat)
 
     emit_payload = {
