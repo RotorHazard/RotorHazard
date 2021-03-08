@@ -4,7 +4,7 @@
 #include "io.h"
 
 // API level for node; increment when commands are modified
-#define NODE_API_LEVEL 34
+#define NODE_API_LEVEL 35
 
 class Message
 {
@@ -40,6 +40,7 @@ public:
 #define READ_FW_VERSION 0x3D       // read firmware version string
 #define READ_FW_BUILDDATE 0x3E     // read firmware build date string
 #define READ_FW_BUILDTIME 0x3F     // read firmware build time string
+#define READ_FW_PROCTYPE 0x40      // read node processor type
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_ENTER_AT_LEVEL 0x71
