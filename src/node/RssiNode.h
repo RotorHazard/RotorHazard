@@ -178,6 +178,10 @@ public:
 #define A5   (19)
 #define A6   (20)
 #define A7   (21)
+#define PB0  (28)
+#define PB1  (29)
+#define PB10 (30)
+#define PB11 (31)
 #endif
 
 #endif  //RSSINODE_H_

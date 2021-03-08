@@ -61,20 +61,20 @@
 
 #if ARDUVIDRX_WIRING_FLAG
 #define RX5808_DATA_PIN 10             //DATA output line to RX5808 module
-#define RX5808_SEL_PIN 11              //CLK output line to RX5808 module
-#define RX5808_CLK_PIN 12              //SEL output line to RX5808 module
+#define RX5808_SEL_PIN 11              //SEL output line to RX5808 module
+#define RX5808_CLK_PIN 12              //CLK output line to RX5808 module
 #define RSSI_INPUT_PIN A7              //RSSI input from RX5808
 #define NODE_RESET_PIN A1              //Pin to reset paired Arduino via command for ISP
 #elif CHORUS_WIRING_FLAG
 #define RX5808_DATA_PIN 10             //DATA output line to RX5808 module
-#define RX5808_SEL_PIN 11              //CLK output line to RX5808 module
-#define RX5808_CLK_PIN 12              //SEL output line to RX5808 module
+#define RX5808_SEL_PIN 11              //SEL output line to RX5808 module
+#define RX5808_CLK_PIN 12              //CLK output line to RX5808 module
 #define RSSI_INPUT_PIN A3              //RSSI input from RX5808
 #define NODE_RESET_PIN A1              //Pin to reset paired Arduino via command for ISP
 #else
 #define RX5808_DATA_PIN 11             //DATA output line to RX5808 module
-#define RX5808_SEL_PIN 10              //CLK output line to RX5808 module
-#define RX5808_CLK_PIN 13              //SEL output line to RX5808 module
+#define RX5808_SEL_PIN 10              //SEL output line to RX5808 module
+#define RX5808_CLK_PIN 13              //CLK output line to RX5808 module
 #define RSSI_INPUT_PIN A0              //RSSI input from RX5808
 #define NODE_RESET_PIN 12              //Pin to reset paired Arduino via command for ISP
 #endif
@@ -89,6 +89,66 @@
 #define LEGACY_HARDWARE_SELECT_PIN_4 7
 #define LEGACY_HARDWARE_SELECT_PIN_5 8
 
-#endif  // !STM32_MODE_FLAG
+#define MODULE_LED_ONSTATE HIGH
+#define MODULE_LED_OFFSTATE LOW
+
+#else  // STM32_MODE_FLAG
+
+#define RX5808_DATA_PIN PB3            //DATA output line to RX5808 modules
+#define RX5808_CLK_PIN PB4             //CLK output line to RX5808 modules
+
+#define RX5808_SEL0_PIN PB6            //SEL output lines to RX5808 modules
+#define RX5808_SEL1_PIN PB7
+#define RX5808_SEL2_PIN PB8
+#define RX5808_SEL3_PIN PB9
+#define RX5808_SEL4_PIN PB12
+#define RX5808_SEL5_PIN PB13
+#define RX5808_SEL6_PIN PB14
+#define RX5808_SEL7_PIN PB15
+
+#define BUZZER_OUTPUT_PIN PA8
+#define BUZZER_OUT_ONSTATE LOW
+#define BUZZER_OUT_OFFSTATE HIGH
+
+#define AUXLED_OUTPUT_PIN PA15
+#define AUXLED_OUT_ONSTATE HIGH
+#define AUXLED_OUT_OFFSTATE LOW
+
+#if !HW_ALT_F4_PINOUT  // pinouts for STM32F103C8T6 "Blue Pill" module
+
+#define RSSI_INPUT0_PIN A0             //RSSI inputs from RX5808 modules
+#define RSSI_INPUT1_PIN A1
+#define RSSI_INPUT2_PIN A2
+#define RSSI_INPUT3_PIN A3
+#define RSSI_INPUT4_PIN A4
+#define RSSI_INPUT5_PIN A5
+#define RSSI_INPUT6_PIN A6
+#define RSSI_INPUT7_PIN A7
+
+#define VOLTAGE_MONITOR_PIN PB1
+#define RPI_SIGNAL_PIN PB0
+
+#else                  // pinouts for STM32F411CEU6 "Black Pill" module
+
+#define RSSI_INPUT0_PIN PB1            //RSSI inputs from RX5808 modules
+#define RSSI_INPUT1_PIN A0
+#define RSSI_INPUT2_PIN A1
+#define RSSI_INPUT3_PIN A2
+#define RSSI_INPUT4_PIN A3
+#define RSSI_INPUT5_PIN A4
+#define RSSI_INPUT6_PIN A5
+#define RSSI_INPUT7_PIN A6
+
+#define VOLTAGE_MONITOR_PIN PB0
+#define RPI_SIGNAL_PIN A7
+
+#endif
+
+#define MODULE_LED_ONSTATE LOW
+#define MODULE_LED_OFFSTATE HIGH
+
+#endif  // if !STM32_MODE_FLAG
+
+#define MODULE_LED_PIN LED_BUILTIN     // status LED on processor module
 
 #endif  // config_h
