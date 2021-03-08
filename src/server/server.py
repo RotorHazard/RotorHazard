@@ -504,7 +504,7 @@ def render_viewImg(imgfile):
 
     imgPath = folderBase + folderImg + imgfile
 
-    language = Options.get("currentLanguage")
+    language = RHData.get_option("currentLanguage")
     if language:
         translated_path = folderBase + language + '/' + folderImg + imgfile
         if os.path.isfile(translated_path):
@@ -1187,7 +1187,7 @@ def on_alter_profile(data):
 def on_delete_profile():
     '''Delete profile'''
     profile = getCurrentProfile()
-    RHData.delete_profile(profile.id)
+    result = RHData.delete_profile(profile.id)
 
     if result:
         first_profile_id = RHData.get_profiles(return_type='first').id
@@ -3056,7 +3056,7 @@ def get_splits(node, lap_id, lapCompleted):
     for secondary_index in range(len(CLUSTER.secondaries)):
         if CLUSTER.isSplitSecondaryAvailable(secondary_index):
             split = RHData.get_lapSplits(filter_by={
-                "node_index": node_index,
+                "node_index": node,
                 "lap_id": lap_id,
                 "split_id": secondary_index
                 },
@@ -4239,7 +4239,6 @@ def db_reset_profile():
     '''Set default profile'''
     DB.session.query(Database.Profiles).delete()
 
-    new_freqs = {}
     new_freqs = default_frequencies()
 
     template = {}

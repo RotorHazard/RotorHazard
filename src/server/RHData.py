@@ -284,7 +284,7 @@ class RHData():
                     new_class.cacheStatus = Results.CacheStatus.INVALID
 
                 self.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
-                _PageCache.set_valid(False)
+                self._PageCache.set_valid(False)
 
         self._Database.DB.session.commit()
 
@@ -349,7 +349,7 @@ class RHData():
                                 for heatnode in heatnodes:
                                     heatnode.heat_id = heat_obj.id
                                 self._Database.DB.session.commit()
-                                RACE.current_heat = 1
+                                self._RACE.current_heat = 1
                                 heat_id = 1  # set value so heat data is updated below
                             else:
                                 logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
@@ -560,7 +560,7 @@ class RHData():
             self._Database.DB.session.delete(profile)
             self._Database.DB.session.commit()
 
-            Events.trigger(Evt.PROFILE_DELETE, {
+            self._Events.trigger(Evt.PROFILE_DELETE, {
                 'profile_id': profile_id,
                 })
 
@@ -576,7 +576,7 @@ class RHData():
     def duplicate_raceFormat(self, source_format_id):
         source_format = self.get_raceFormat(source_format_id)
 
-        all_format_names = [format.name for format in self.get_raceFormats()]
+        all_format_names = [raceformat.name for raceformat in self.get_raceFormats()]
 
         if source_format.name:
             new_format_name = RHUtils.uniqueName(source_format.name, all_format_names)
