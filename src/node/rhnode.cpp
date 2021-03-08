@@ -37,7 +37,7 @@
 // Note: Configure Arduino NODE_NUMBER value in 'config.h'
 
 // Firmware version string (prefix allows text to be located in '.bin' file)
-const char *firmwareVersionString = "FIRMWARE_VERSION: 1.1.1";
+const char *firmwareVersionString = "FIRMWARE_VERSION: 1.1.2";
 
 #if !STM32_MODE_FLAG
 // i2c address for node
@@ -45,8 +45,6 @@ const char *firmwareVersionString = "FIRMWARE_VERSION: 1.1.1";
 // Node 5 = 16, Node 6 = 18, Node 7 = 20, Node 8 = 22
 uint8_t i2cAddress = 6 + (NODE_NUMBER * 2);
 #define SERIALCOM Serial
-#define STATUS_LED_ONSTATE HIGH
-#define STATUS_LED_OFFSTATE LOW
 #define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
 #define EEPROM_ADRW_ENTERAT 2      //address for stored 'enterAtLevel'
 #define EEPROM_ADRW_EXITAT 4       //address for stored 'exitAtLevel'
@@ -56,8 +54,6 @@ uint8_t i2cAddress = 6 + (NODE_NUMBER * 2);
 #define COMMS_MONITOR_TIME_MS 5000 //I2C communications monitor grace/trigger time
 
 #else
-#define STATUS_LED_ONSTATE LOW
-#define STATUS_LED_OFFSTATE HIGH
 #define MIN_RSSI_DETECT 5          //value for detecting node as installed
 #if STM32_SERIALUSB_FLAG
 #define SERIALCOM SerialUSB
@@ -151,7 +147,12 @@ void configI2cAddress()
 // Initialize program
 void setup()
 {
-    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(MODULE_LED_PIN, OUTPUT);
+
+#ifdef AUXLED_OUTPUT_PIN
+    pinMode(AUXLED_OUTPUT_PIN, OUTPUT);
+    digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_OFFSTATE);
+#endif
 
 #if STM32_MODE_FLAG
 
@@ -238,14 +239,14 @@ void setup()
 
 static bool currentStatusLedFlag = false;
 
-void setStatusLed(bool onFlag)
+void setModuleLed(bool onFlag)
 {
     if (onFlag)
     {
         if (!currentStatusLedFlag)
         {
             currentStatusLedFlag = true;
-            digitalWrite(LED_BUILTIN, STATUS_LED_ONSTATE);
+            digitalWrite(MODULE_LED_PIN, MODULE_LED_ONSTATE);
         }
     }
     else
@@ -253,12 +254,51 @@ void setStatusLed(bool onFlag)
         if (currentStatusLedFlag)
         {
             currentStatusLedFlag = false;
-            digitalWrite(LED_BUILTIN, STATUS_LED_OFFSTATE);
+            digitalWrite(MODULE_LED_PIN, MODULE_LED_OFFSTATE);
         }
     }
 }
 
+#ifdef BUZZER_OUTPUT_PIN
+
+static bool currentBuzzerStateFlag = false;
+
+void setBuzzerState(bool onFlag)
+{
+    if (onFlag)
+    {
+        if (!currentBuzzerStateFlag)
+        {
+            currentBuzzerStateFlag = true;
+            pinMode(BUZZER_OUTPUT_PIN, OUTPUT);
+            digitalWrite(BUZZER_OUTPUT_PIN, BUZZER_OUT_ONSTATE);
+#ifdef AUXLED_OUTPUT_PIN
+            digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_ONSTATE);
+#endif
+        }
+    }
+    else
+    {
+        if (currentBuzzerStateFlag)
+        {
+            currentBuzzerStateFlag = false;
+            digitalWrite(BUZZER_OUTPUT_PIN, BUZZER_OUT_OFFSTATE);
+            pinMode(BUZZER_OUTPUT_PIN, INPUT);
+#ifdef AUXLED_OUTPUT_PIN
+            digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_OFFSTATE);
+#endif
+        }
+    }
+}
+
+#endif
+
 static mtime_t loopMillis = 0;
+
+#ifdef BUZZER_OUTPUT_PIN
+static bool waitingForFirstCommsFlag = true;
+#endif
+
 #if !STM32_MODE_FLAG
 static bool commsMonitorEnabledFlag = false;
 static mtime_t commsMonitorLastResetTime = 0;
@@ -357,23 +397,42 @@ void loop()
 
         // Status LED
         if (ms <= 1000)
-        {  //flash three times during first second of running
-            int ti = (int)ms / 100;
-            setStatusLed(ti != 3 && ti != 7);
+        {  //flash twice times during first second of running
+            if (ms >= 500)  //don't check until 500ms elapsed
+            {
+                const int ti = (int)(ms-500) / 100;
+                const bool sFlag = (ti == 1 || ti == 3);
+                setModuleLed(sFlag);
+#ifdef BUZZER_OUTPUT_PIN
+                setBuzzerState(sFlag);
+#endif
+            }
         }
         else if ((int)(ms % 20) == 0)
         {  //only run every 20ms so flashes last longer (brighter)
 
             // if crossing or communications activity then LED on
             if (crossingFlag)
-                setStatusLed(true);
+                setModuleLed(true);
             else if (changeFlags & COMM_ACTIVITY)
             {
-                setStatusLed(true);
+                setModuleLed(true);
                 settingChangedFlags = 0;  // clear COMM_ACTIVITY flag
+#ifdef BUZZER_OUTPUT_PIN
+                if (waitingForFirstCommsFlag && (changeFlags & LAPSTATS_READ))
+                {
+                    waitingForFirstCommsFlag = false;
+                    setBuzzerState(true);  // beep when operations activated
+                }
+#endif
             }
             else
-                setStatusLed(ms % 2000 == 0);  // blink
+            {
+#ifdef BUZZER_OUTPUT_PIN
+                setBuzzerState(false);
+#endif
+                setModuleLed(ms % 2000 == 0);  // blink
+            }
         }
         loopMillis = ms;
     }
@@ -383,13 +442,13 @@ void loop()
 
 void i2cInitialize(bool delayFlag)
 {
-    setStatusLed(true);
+    setModuleLed(true);
 #if !STM32_MODE_FLAG
     Wire.end();  // release I2C pins (SDA & SCL), in case they are "stuck"
 #endif
     if (delayFlag)   // do delay if called via comms monitor
         delay(250);  //  to help bus reset and show longer LED flash
-    setStatusLed(false);
+    setModuleLed(false);
 
     Wire.begin(i2cAddress);  // I2C address setup
     Wire.onReceive(i2cReceive);   // Trigger 'i2cReceive' function on incoming data
