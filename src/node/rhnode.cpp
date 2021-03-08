@@ -36,8 +36,23 @@
 
 // Note: Configure Arduino NODE_NUMBER value in 'config.h'
 
-// Firmware version string (prefix allows text to be located in '.bin' file)
+// firmware version string (prefix allows text to be located in '.bin' file)
 const char *firmwareVersionString = "FIRMWARE_VERSION: 1.1.2";
+
+// build date/time strings
+const char *firmwareBuildDateString = "FIRMWARE_BUILDDATE: " __DATE__;
+const char *firmwareBuildTimeString = "FIRMWARE_BUILDTIME: " __TIME__;
+
+// node processor type
+#if !STM32_MODE_FLAG
+const char *firmwareProcTypeString = "FIRMWARE_PROCTYPE: Arduino";
+#else
+#if !STM32_F4_PROCTYPE
+const char *firmwareProcTypeString = "FIRMWARE_PROCTYPE: STM32F1";
+#else
+const char *firmwareProcTypeString = "FIRMWARE_PROCTYPE: STM32F4";
+#endif
+#endif
 
 #if !STM32_MODE_FLAG
 // i2c address for node
@@ -654,5 +669,12 @@ void doJumpToBootloader()
 }
 
 #endif  // STM32_MODE_FLAG
+
+#else   // __TEST__
+
+const char *firmwareVersionString = "FIRMWARE_VERSION: test";
+const char *firmwareBuildDateString = "FIRMWARE_BUILDDATE: " __DATE__;
+const char *firmwareBuildTimeString = "FIRMWARE_BUILDTIME: " __TIME__;
+const char *firmwareProcTypeString = "FIRMWARE_PROCTYPE: test";
 
 #endif  // __TEST__

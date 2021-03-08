@@ -4,7 +4,6 @@
 
 #ifdef __TEST__
   static uint8_t i2cAddress = 0x08;
-  const char *firmwareVersionString = "FIRMWARE_VERSION: test";
 #else
 #if !STM32_MODE_FLAG
   extern uint8_t i2cAddress;
@@ -13,11 +12,11 @@
 #endif
 #endif
 
-// Build date/time strings (prefix allows text to be located in '.bin' file)
-const char *firmwareBuildDateString = "FIRMWARE_BUILDDATE: " __DATE__;
-const char *firmwareBuildTimeString = "FIRMWARE_BUILDTIME: " __TIME__;
-
-extern const char *firmwareVersionString;  // version string defined in 'rhnode.cpp'
+// informational strings (defined in 'rhnode.cpp')
+extern const char *firmwareVersionString;    // version string
+extern const char *firmwareBuildDateString;  // build date/time strings
+extern const char *firmwareBuildTimeString;
+extern const char *firmwareProcTypeString;   // node processor type
 
 uint8_t settingChangedFlags = 0;
 
@@ -267,6 +266,10 @@ void Message::handleReadCommand(bool serialFlag)
 
         case READ_FW_BUILDTIME:
             buffer.writeTextBlock(firmwareBuildTimeString);
+            break;
+
+        case READ_FW_PROCTYPE:
+            buffer.writeTextBlock(firmwareProcTypeString);
             break;
 
         default:  // If an invalid command is sent, write nothing back, master must react

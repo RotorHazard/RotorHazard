@@ -114,7 +114,7 @@
 #define AUXLED_OUT_ONSTATE HIGH
 #define AUXLED_OUT_OFFSTATE LOW
 
-#if !HW_ALT_F4_PINOUT  // pinouts for STM32F103C8T6 "Blue Pill" module
+#ifndef STM32_F4_PROCTYPE  // pinouts for STM32F103C8T6 "Blue Pill" module
 
 #define RSSI_INPUT0_PIN A0             //RSSI inputs from RX5808 modules
 #define RSSI_INPUT1_PIN A1
@@ -128,7 +128,7 @@
 #define VOLTAGE_MONITOR_PIN PB1
 #define RPI_SIGNAL_PIN PB0
 
-#else                  // pinouts for STM32F411CEU6 "Black Pill" module
+#else                   // pinouts for STM32F411CEU6 "Black Pill" module
 
 #define RSSI_INPUT0_PIN PB1            //RSSI inputs from RX5808 modules
 #define RSSI_INPUT1_PIN A0
