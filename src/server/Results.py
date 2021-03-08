@@ -149,7 +149,7 @@ def build_atomic_results_caches(RHData, params):
     # rebuild event summary
     gevent.sleep()
     timing['event'] = monotonic()
-    RHData.set_option("eventResults", json.dumps(RHData, calc_leaderboard()))
+    RHData.set_option("eventResults", json.dumps(calc_leaderboard(RHData)))
     RHData.set_option("eventResults_cacheStatus", CacheStatus.VALID)
     logger.debug('Event cache built in %fs', monotonic() - timing['event'])
 
@@ -430,7 +430,10 @@ def calc_leaderboard(RHData, **params):
             all_consecutives = []
 
             if USE_CURRENT:
-                thisrace = current_laps[i][1:]
+                if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    thisrace = current_laps[i]
+                else:
+                    thisrace = current_laps[i][1:]
 
                 for j in range(len(thisrace) - 2):
                     gevent.sleep()
@@ -689,14 +692,15 @@ def calc_team_leaderboard(RACE, RHData):
             average_lap_raw = 0
             average_fastest_lap_raw = 0
             average_consecutives_raw = 0
-            if teams[team]['combined_average_lap_raw']:
-                average_lap_raw = float(teams[team]['combined_average_lap_raw']) / teams[team]['contributing']
-
-            if teams[team]['combined_fastest_lap_raw']:
-                average_fastest_lap_raw = float(teams[team]['combined_fastest_lap_raw']) / teams[team]['contributing']
-
-            if teams[team]['combined_consecutives_raw']:
-                average_consecutives_raw = float(teams[team]['combined_consecutives_raw']) / teams[team]['contributing']
+            if teams[team]['contributing']:
+                if teams[team]['combined_average_lap_raw']:
+                    average_lap_raw = float(teams[team]['combined_average_lap_raw']) / teams[team]['contributing']
+    
+                if teams[team]['combined_fastest_lap_raw']:
+                    average_fastest_lap_raw = float(teams[team]['combined_fastest_lap_raw']) / teams[team]['contributing']
+    
+                if teams[team]['combined_consecutives_raw']:
+                    average_consecutives_raw = float(teams[team]['combined_consecutives_raw']) / teams[team]['contributing']
 
             leaderboard.append({
                 'name': team,
@@ -1350,7 +1354,7 @@ def check_win_team_most_laps(RACE, RHData, INTERFACE, **kwargs):
 def check_win_team_laps_and_overtime(RACE, RHData, INTERFACE, **kwargs):
     if RACE.race_status == RaceStatus.DONE:
         # manually stopping race always most laps only
-        return check_win_team_most_laps(RACE, INTERFACE, forced=True, **kwargs)
+        return check_win_team_most_laps(RACE, RHData, INTERFACE, forced=True, **kwargs)
 
     elif (RACE.race_status == RaceStatus.RACING and RACE.timer_running == False) or \
         'at_finish' in kwargs:
@@ -1479,7 +1483,9 @@ def check_win_team_fastest_consecutive(RACE, RHData, **kwargs):
         'forced' in kwargs: # racing must be completed
         team_leaderboard = calc_team_leaderboard(RACE, RHData)['by_avg_consecutives']
         if len(team_leaderboard) > 1:
-            if team_leaderboard[0]['laps'] > 3: # must have at least 3 laps
+            race_format = RACE.format
+            if team_leaderboard[0]['laps'] > 3 or \
+                (race_format.start_behavior == StartBehavior.FIRST_LAP and team_leaderboard[0]['laps'] > 2): # must have at least 3 laps
                 # check for tie
                 if team_leaderboard[1]['contribution_amt'] == team_leaderboard[0]['contribution_amt'] and \
                     team_leaderboard[1]['average_consecutives_raw'] == team_leaderboard[0]['average_consecutives_raw'] and \

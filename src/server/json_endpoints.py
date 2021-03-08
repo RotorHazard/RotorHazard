@@ -213,11 +213,6 @@ def createBlueprint(Database, RHData, Results, RACE, serverInfo, getCurrentProfi
             else:
                 nodepilot = None
 
-            if RHData.get_option('pilotSort') == 'callsign':
-                pilot_data.sort(key=lambda x: (x['callsign'], x['name']))
-            else:
-                pilot_data.sort(key=lambda x: (x['name'], x['callsign']))
-
             pilotraces.append({
                 'callsign': nodepilot,
                 'pilot_id': pilotrace.pilot_id,
