@@ -287,12 +287,13 @@ def calc_leaderboard(RHData, **params):
                             if len(race_laps_query):
                                 race_starts += 1
                         else:
-                            holeshot_lap = race_laps_query[0]
+                            if len(race_laps_query):
+                                holeshot_lap = race_laps_query[0]
 
-                            if holeshot_lap:
-                                holeshot_laps.append(holeshot_lap.id)
-                                race_starts += 1
-                                total_laps -= 1
+                                if holeshot_lap:
+                                    holeshot_laps.append(holeshot_lap.id)
+                                    race_starts += 1
+                                    total_laps -= 1
 
             if race_starts > 0:
                 pilot_ids.append(pilot.id)
