@@ -3313,37 +3313,28 @@ def emit_current_heat(**params):
     callsigns = []
     pilot_ids = []
 
-    # dict for current heat with key=node_index, value=pilot_id
-    node_pilot_dict = dict(Database.HeatNode.query.with_entities(Database.HeatNode.node_index, Database.HeatNode.pilot_id). \
-        filter(Database.HeatNode.heat_id==RACE.current_heat, Database.HeatNode.pilot_id!=RHUtils.PILOT_ID_NONE).all())
-
-    for node_index in range(RACE.num_nodes):
-        pilot_id = node_pilot_dict.get(node_index)
-        if pilot_id:
-            pilot = RHData.get_pilot(pilot_id)
-            if pilot:
-                pilot_ids.append(pilot_id)
-                callsigns.append(pilot.callsign)
-            else:
-                pilot_ids.append(None)
-                callsigns.append(None)
-        else:
-            callsigns.append(None)
-            pilot_ids.append(None)
-
     heat_data = RHData.get_heat(RACE.current_heat)
 
-    heat_note = heat_data.note
-
+    heatNode_data = {}
+    for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
+        heatNode_data[heatNode.node_index] = {
+            'pilot_id': heatNode.pilot_id,
+            'callsign': None
+            }
+        pilot = RHData.get_pilot(heatNode.pilot_id)
+        if pilot:
+            heatNode_data[heatNode.node_index]['callsign'] = pilot.callsign
+        
     heat_format = None
     if heat_data.class_id != RHUtils.CLASS_ID_NONE:
         heat_format = RHData.get_raceClass(heat_data.class_id).format_id
 
     emit_payload = {
         'current_heat': RACE.current_heat,
+        'heatNodes': heatNode_data,
         'callsign': callsigns,
         'pilot_ids': pilot_ids,
-        'heat_note': heat_note,
+        'heat_note': heat_data.note,
         'heat_format': heat_format,
         'heat_class': heat_data.class_id
     }
