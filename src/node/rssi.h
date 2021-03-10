@@ -21,6 +21,7 @@
 #define toDuration(ms) uint16_t(min(uint32_t(ms), uint32_t(MAX_DURATION)))
 
 #define HISTORY_SIZE 20
+#define RSSI_HISTORY_SIZE 800 // NB: need to leave about a 100 bytes free RAM
 
 #define USE_UNIFIED_SENDBUFFER
 #ifdef __TEST__
@@ -56,8 +57,12 @@ public:
 
     bool volatile crossing = false; // True when the quad is going through the gate
     rssi_t volatile rssi = 0; // Smoothed rssi value
-    rssi_t lastRssi = 0;
     mtime_t rssiTimestamp = 0; // timestamp of the smoothed value
+    rssi_t lastRssi = 0;
+#ifdef RSSI_HISTORY
+    CircularBuffer<rssi_t,RSSI_HISTORY_SIZE> rssiHistory;
+    bool volatile rssiHistoryComplete = false;
+#endif
 
     Extremum passPeak = {0, 0, 0}; // peak seen during current pass - only valid if pass.rssi != 0
     rssi_t passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
@@ -150,8 +155,6 @@ class RssiNode
 private:
     LowPassFilter15Hz lpfFilter1;
     LowPassFilter50Hz lpfFilter2;
-    MedianFilter<rssi_t, 5, 0> medianFilter;
-    Composite3Filter<rssi_t> defaultFilter;
 
 #if defined(USE_PH) || defined(__TEST__)
     ConnectedComponent ccs[(HISTORY_SIZE+1)/2];
@@ -173,6 +176,10 @@ private:
 #endif
     bool checkForCrossing_old(rssi_t enterThreshold, rssi_t exitThreshold);
 public:
+    MedianFilter<rssi_t, 5, 0> medianFilter;
+    Composite3Filter<rssi_t> defaultFilter;
+    NoFilter<rssi_t> noFilter;
+
     bool volatile active = false; // Set true after initial WRITE_FREQUENCY command received
 
     RssiNode();

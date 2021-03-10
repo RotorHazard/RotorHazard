@@ -264,6 +264,19 @@ void State::updateRssiStats() {
     {
         nodeRssiNadir = rssi;
     }
+
+#ifdef RSSI_HISTORY
+    if (!rssiHistoryComplete) {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            if (!rssiHistory.isFull()) {
+                rssiHistory.push(rssi);
+            } else {
+                rssiHistoryComplete = true;
+            }
+        }
+    }
+#endif
 }
 
 void State::updateLoopTime(utime_t loopMicros)

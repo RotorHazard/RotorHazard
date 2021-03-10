@@ -15,6 +15,18 @@
 
 #define toSecs(t) (t/1000.0)
 
+rssi_t inputSignal[N];
+size_t inputSize = 0;
+
+void loadSignal(const char* filename) {
+    unsigned int x;
+    FILE *fp = fopen(filename, "r");
+    for (inputSize = 0; inputSize < sizeof(inputSignal) && fscanf(fp, "%u\n", &x) > 0; inputSize++) {
+        inputSignal[inputSize] = x;
+    }
+    fclose(fp);
+}
+
 int filter(char name[], Filter<rssi_t>& lpf, double testFreq, rssi_t output[]) {
     int offset = -1;
     FILE *fp = fopen(name, "wt");
@@ -22,8 +34,14 @@ int filter(char name[], Filter<rssi_t>& lpf, double testFreq, rssi_t output[]) {
         printf("Cannot write to %s\n", name);
     }
     fprintf(fp, "t, in, out\n");
-    for(int t=0; t<N; t++) {
-        rssi_t x = MAX_RSSI/2.0*(1.0+sin(TWO_PI*testFreq*toSecs(t)-HALF_PI));
+    int n = (inputSize > 0) ? inputSize : N;
+    for(int t=0; t<n; t++) {
+        rssi_t x;
+        if (inputSize > 0) {
+            x = inputSignal[t];
+        } else {
+            x = MAX_RSSI/2.0*(1.0+sin(TWO_PI*testFreq*toSecs(t)-HALF_PI));
+        }
         lpf.addRawValue(t, x);
         if (lpf.isFilled()) {
             if (offset == -1) {

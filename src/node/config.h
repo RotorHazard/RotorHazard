@@ -104,4 +104,6 @@
 #undef USE_PH
 #endif
 
+//#define RSSI_HISTORY
+
 #endif  // config_h

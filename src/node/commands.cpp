@@ -3,6 +3,8 @@
 #include "rssi.h"
 #include "commands.h"
 
+#define RSSI_HISTORY_PAYLOAD_SIZE 16
+
 uint8_t cmdStatusFlags = 0;
 uint8_t cmdRssiNodeIndex = 0;
 
@@ -20,6 +22,10 @@ uint8_t Message::getPayloadSize()
             break;
 
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
+            size = 1;
+            break;
+
+        case WRITE_MODE:
             size = 1;
             break;
 
@@ -90,6 +96,11 @@ void Message::handleWriteCommand(bool serialFlag)
                 settings.exitAtLevel = rssiVal;
                 cmdStatusFlags |= EXITAT_CHANGED;
             }
+            break;
+
+        case WRITE_MODE:
+            u8val = buffer.read8();
+            setMode(rssiNode, u8val);
             break;
 
         case WRITE_CURNODE_INDEX:  // index of current node for this processor
@@ -193,6 +204,10 @@ void Message::handleReadCommand(bool serialFlag)
             ioBufferWriteRssi(buffer, state.nodeRssiNadir);
             break;
 
+        case READ_NODE_RSSI_HISTORY:
+            handleReadRssiHistory(rssiNode);
+            break;
+
         case READ_TIME_MILLIS:
             buffer.write32(usclock.millis());
             break;
@@ -276,6 +291,46 @@ void Message::handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal)
             ioBufferWriteRssi(buffer, 0);
             buffer.write16(0);
             buffer.write16(0);
+    }
+}
+
+void Message::handleReadRssiHistory(RssiNode& rssiNode)
+{
+    int i = 0;
+#ifdef RSSI_HISTORY
+    CircularBuffer<rssi_t,RSSI_HISTORY_SIZE>& rssiHistory = rssiNode.getState().rssiHistory;
+    const int n = min(rssiHistory.size(), RSSI_HISTORY_PAYLOAD_SIZE);
+    for (; i<n; i++) {
+        ioBufferWriteRssi(buffer, rssiHistory.shift());
+    }
+    if (i<RSSI_HISTORY_PAYLOAD_SIZE && rssiNode.getState().rssiHistoryComplete) {
+        ioBufferWriteRssi(buffer, MAX_RSSI);
+        i++;
+        rssiNode.getState().rssiHistoryComplete = false;
+    }
+#endif
+    for (; i<RSSI_HISTORY_PAYLOAD_SIZE; i++) {
+        ioBufferWriteRssi(buffer, 0);
+    }
+}
+
+void Message::setMode(RssiNode& rssiNode, uint8_t mode)
+{
+    switch (mode) {
+        case MODE_TIMER:
+            rssiNode.setFilter(&(rssiNode.defaultFilter));
+            rssiNode.resetState();
+            break;
+        case MODE_SCANNER:
+            rssiNode.setFilter(&(rssiNode.medianFilter));
+            rssiNode.resetState();
+            break;
+        case MODE_RAW:
+            rssiNode.setFilter(&(rssiNode.noFilter));
+            rssiNode.resetState();
+            break;
+        default:
+            break;
     }
 }
 
