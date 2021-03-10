@@ -4749,17 +4749,17 @@ def recover_database(dbfile, **kwargs):
 
 def expand_heats():
     ''' ensure loaded data includes enough slots for current nodes '''
-    for heat in RHData.get_heats():
+    heatNode_data = {}
+    for heatNode in RHData.get_heatNodes():
+        if heatNode.heat_id not in heatNode_data:
+            heatNode_data[heatNode.heat_id] = []
+            
+        heatNode_data[heatNode.heat_id].append(heatNode.node_index)
+        
+    for heat_id, nodes in heatNode_data.items():
         for node in range(RACE.num_nodes):
-            heat_row_count = RHData.get_heatNodes(
-                filter_by={
-                    "heat_id": heat.id,
-                    "node_index": node
-                },
-                return_type='count')
-
-            if not heat_row_count:
-                DB.session.add(Database.HeatNode(heat_id=heat.id, node_index=node, pilot_id=RHUtils.PILOT_ID_NONE))
+            if node not in nodes:
+                DB.session.add(Database.HeatNode(heat_id=heat_id, node_index=node, pilot_id=RHUtils.PILOT_ID_NONE))
 
     DB.session.commit()
 
