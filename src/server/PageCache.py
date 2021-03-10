@@ -23,6 +23,8 @@ from flask_sqlalchemy import SQLAlchemy
 DB = SQLAlchemy()
 
 class PageCache:
+    _CACHE_TIMEOUT = 10
+
     def __init__(self, RHData, Events):
         self._RHData = RHData
         self._Events = Events
@@ -31,7 +33,7 @@ class PageCache:
         self._valid = False # Whether cache is valid
 
     def get_cache(self):
-        if self._valid: # Output existing calculated results
+        if self.get_valid(): # Output existing calculated results
             logger.debug('Getting results from cache')
             return self._cache
         else:
@@ -53,6 +55,18 @@ class PageCache:
     def set_valid(self, valid):
         self._valid = valid
 
+    def check_buildToken(self, timing):
+        if self.get_buildToken():
+            while True: # Pause this thread until calculations are completed
+                gevent.idle()
+                if self.get_buildToken() is False:
+                    break
+                elif monotonic() > self.get_buildToken() + self._CACHE_TIMEOUT:
+                    logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
+                    self.set_buildToken(False)
+                    break
+
+
     def update_cache(self):
         '''Builds any invalid atomic result caches and creates final output'''
         timing = {
@@ -60,26 +74,17 @@ class PageCache:
         }
         logger.debug('T%d: Result data build started', timing['start'])
 
-        CACHE_TIMEOUT = 10
-        expires = monotonic() + CACHE_TIMEOUT
+        expires = monotonic() + self._CACHE_TIMEOUT
         error_flag = False
 
-        if self._buildToken: # Don't restart calculation if another calculation thread exists
-            while True: # Pause this thread until calculations are completed
-                gevent.idle()
-                if self._buildToken is False:
-                    break
-                elif monotonic() > self._buildToken + CACHE_TIMEOUT:
-                    logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
-                    self._buildToken = False
-                    break
+        check_buildToken(timing) # Don't restart calculation if another calculation thread exists
 
-        if self._valid: # Output existing calculated results
+        if self.get_valid(): # Output existing calculated results
             logger.info('T%d: Returning valid cache', timing['start'])
 
         else:
             timing['build_start'] = monotonic()
-            self._buildToken = monotonic()
+            self.get_buildToken() = monotonic()
 
             heats = {}
             for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
@@ -122,7 +127,7 @@ class PageCache:
                             round.cacheStatus = Results.CacheStatus.VALID
                             DB.session.commit()
                         else:
-                            expires = monotonic() + CACHE_TIMEOUT
+                            expires = monotonic() + self._CACHE_TIMEOUT
                             while True:
                                 gevent.idle()
                                 if round.cacheStatus == Results.CacheStatus.VALID:
@@ -149,7 +154,7 @@ class PageCache:
                     DB.session.commit()
                 else:
                     checkStatus = True
-                    expires = monotonic() + CACHE_TIMEOUT
+                    expires = monotonic() + self._CACHE_TIMEOUT
                     while True:
                         gevent.idle()
                         if heatdata.cacheStatus == Results.CacheStatus.VALID:
@@ -190,7 +195,7 @@ class PageCache:
                     DB.session.commit()
                 else:
                     checkStatus = True
-                    expires = monotonic() + CACHE_TIMEOUT
+                    expires = monotonic() + self._CACHE_TIMEOUT
                     while True:
                         gevent.idle()
                         if race_class.cacheStatus == Results.CacheStatus.VALID:
@@ -220,7 +225,7 @@ class PageCache:
                 self._RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.VALID)
                 DB.session.commit()
             else:
-                expires = monotonic() + CACHE_TIMEOUT
+                expires = monotonic() + self._CACHE_TIMEOUT
                 while True:
                     gevent.idle()
                     status = self._RHData.get_option("eventResults_cacheStatus")
@@ -243,15 +248,15 @@ class PageCache:
                 'event_leaderboard': results
             }
 
-            self._cache = payload
-            self._buildToken = False
+            self.set_cache(payload)
+            self.set_buildToken(False)
 
             if error_flag:
                 logger.warning('T%d: Cache results build failed; leaving page cache invalid', timing['start'])
                 # *** emit_priority_message(__("Results did not load completely. Please try again."), False)
                 self._Events.trigger(Evt.CACHE_FAIL)
             else:
-                self._valid = True
+                self.set_valid(True)
                 self._Events.trigger(Evt.CACHE_READY)
 
             logger.debug('T%d: Page cache built in: %fs', timing['start'], monotonic() - timing['build_start'])
