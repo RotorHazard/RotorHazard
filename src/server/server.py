@@ -1881,11 +1881,12 @@ def findBestValues(node, node_index):
 
     # get commonly used values
     heat = RHData.get_heat(RACE.current_heat)
-    pilot = RHData.get_heatNodes(
-        filter_by={"heat_id": RACE.current_heat, "node_index": node_index},
-        return_type='first'
-        ).pilot_id
+    pilot = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
     current_class = heat.class_id
+    races = RHData.get_savedRaceMetas()
+    races.sort(key=lambda x: x.id, reverse=True)
+    pilotRaces = RHData.get_savedPilotRaces()
+    pilotRaces.sort(key=lambda x: x.id, reverse=True)
 
     # test for disabled node
     if pilot is RHUtils.PILOT_ID_NONE or node.frequency is RHUtils.FREQUENCY_ID_NONE:
@@ -1896,72 +1897,53 @@ def findBestValues(node, node_index):
         }
 
     # test for same heat, same node
-    race_query = RHData.get_savedRaceMetas(
-        filter_by={"heat_id": heat.id},
-        order_by={"id": "desc"},
-        return_type='first')
-
-    if race_query:
-        pilotrace_query = RHData.get_savedPilotRaces(
-            filter_by={
-                "race_id": race_query.id,
-                "pilot_id": pilot},
-            order_by={"id": "desc"},
-            return_type='first')
-
-        if pilotrace_query:
-            logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
-            return {
-                'enter_at_level': pilotrace_query.enter_at,
-                'exit_at_level': pilotrace_query.exit_at
-            }
-
+    for race in races:
+        if race.heat_id == heat.id:
+            for pilotRace in pilotRaces:
+                if pilotRace.race_id == race.id:
+                    logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
+                    return {
+                        'enter_at_level': pilotRace.enter_at,
+                        'exit_at_level': pilotRace.exit_at
+                    }
+                    break
+            break
+        
     # test for same class, same pilot, same node
-    race_query = RHData.get_savedRaceMetas(
-        filter_by={"class_id": current_class},
-        order_by={"id": "desc"},
-        return_type='first')
-    if race_query:
-        pilotrace_query = RHData.get_savedPilotRaces(
-            filter_by={
-                "race_id": race_query.id,
-                "node_index": node_index,
-                "pilot_id": pilot},
-            order_by={"id": "desc"},
-            return_type='first')
-
-        if pilotrace_query:
-            logger.debug('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
-            return {
-                'enter_at_level': pilotrace_query.enter_at,
-                'exit_at_level': pilotrace_query.exit_at
-            }
+    for race in races:
+        if race.class_id == current_class:
+            for pilotRace in pilotRaces:
+                if pilotRace.race_id == race.id and \
+                    pilotRace.node_index == node_index and \
+                    pilotRace.pilot_id == pilot:
+                    logger.debug('Node {0} calibration: found same pilot+node in other heat with same class'.format(node.index+1))
+                    return {
+                        'enter_at_level': pilotRace.enter_at,
+                        'exit_at_level': pilotRace.exit_at
+                    }
+                    break
+            break
 
     # test for same pilot, same node
-    pilotrace_query = RHData.get_savedPilotRaces(
-        filter_by={
-            "node_index": node_index,
-            "pilot_id": pilot},
-        order_by={"id": "desc"},
-        return_type='first')
-    if pilotrace_query:
-        logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
-        return {
-            'enter_at_level': pilotrace_query.enter_at,
-            'exit_at_level': pilotrace_query.exit_at
-        }
+    for pilotRace in pilotRaces:
+        if pilotRace.node_index == node_index and \
+            pilotRace.pilot_id == pilot:
+            logger.debug('Node {0} calibration: found same pilot+node in other heat with other class'.format(node.index+1))
+            return {
+                'enter_at_level': pilotRace.enter_at,
+                'exit_at_level': pilotRace.exit_at
+            }
+            break
 
     # test for same node
-    pilotrace_query = RHData.get_savedPilotRaces(
-        filter_by={"node_index": node_index},
-        order_by={"id": "desc"},
-        return_type='first')
-    if pilotrace_query:
-        logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
-        return {
-            'enter_at_level': pilotrace_query.enter_at,
-            'exit_at_level': pilotrace_query.exit_at
-        }
+    for pilotRace in pilotRaces:
+        if pilotRace.node_index == node_index:
+            logger.debug('Node {0} calibration: found same node in other heat'.format(node.index+1))
+            return {
+                'enter_at_level': pilotRace.enter_at,
+                'exit_at_level': pilotRace.exit_at
+            }
+            break
 
     # fallback
     logger.debug('Node {0} calibration: no calibration hints found, no change'.format(node.index+1))
