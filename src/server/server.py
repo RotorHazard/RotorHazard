@@ -1908,7 +1908,7 @@ def findBestValues(node, node_index):
                     }
                     break
             break
-        
+
     # test for same class, same pilot, same node
     for race in races:
         if race.class_id == current_class:
@@ -2130,7 +2130,7 @@ def on_save_laps():
         # Loop through laps to copy to saved races
         profile = getCurrentProfile()
         profile_freqs = json.loads(profile.frequencies)
-        
+
         new_race_data = {
             'round_id': max_round+1,
             'heat_id': RACE.current_heat,
@@ -2143,16 +2143,16 @@ def on_save_laps():
         new_race = RHData.add_savedRaceMeta(new_race_data)
 
         race_data = {}
-    
+
         for node_index in range(RACE.num_nodes):
             if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
                 pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
-                
+
                 race_data[node_index] = {
                     'race_id': new_race.id,
                     'pilot_id': pilot_id,
                     'history_values': json.dumps(INTERFACE.nodes[node_index].history_values),
-                    'history_times': json.dumps(INTERFACE.nodes[node_index].history_times), 
+                    'history_times': json.dumps(INTERFACE.nodes[node_index].history_times),
                     'enter_at': INTERFACE.nodes[node_index].enter_at_level,
                     'exit_at': INTERFACE.nodes[node_index].exit_at_level,
                     'laps': RACE.node_laps[node_index]
@@ -2201,7 +2201,7 @@ def on_resave_laps(data):
         'enter_at': enter_at,
         'exit_at': exit_at
         }
-    
+
     RHData.alter_savedPilotRace(pilotrace_data)
 
     new_racedata = {
@@ -2211,12 +2211,12 @@ def on_resave_laps(data):
             'pilot_id': pilot_id,
             'laps': []
         }
-    
+
     for lap in laps:
         tmp_lap_time_formatted = lap['lap_time']
         if isinstance(lap['lap_time'], float):
             tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'], RHData.get_option('timeFormat'))
-                                                         
+
         new_racedata.append({
             'lap_time_stamp': lap['lap_time_stamp'],
             'lap_time': lap['lap_time'],
@@ -2224,7 +2224,7 @@ def on_resave_laps(data):
             'source': lap['source'],
             'deleted': lap['deleted']
             })
-        
+
     RHData.replace_savedRaceLaps(new_racedata)
 
     message = __('Race times adjusted for: Heat {0} Round {1} / {2}').format(heat_id, round_id, callsign)
@@ -2388,7 +2388,7 @@ def generate_heats(data):
             entry['pilot_id'] = pilot.id
 
             pilot_node = RHData.get_recent_pilot_node(pilot.id)
-            
+
             if pilot_node:
                 entry['node'] = pilot_node.node_index
             else:
@@ -3036,54 +3036,54 @@ def get_splits(node, lap_id, lapCompleted):
 def emit_race_list(**params):
     '''Emits race listing'''
     heats = {}
-    for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
-        heatnote = RHData.get_heat(heat.heat_id).note
+    for heat in RHData.get_heats():
+        if RHData.savedRaceMetas_has_heat(heat.id):
+            heatnote = RHData.get_heat(heat.id).note
+            rounds = {}
+            for race in RHData.get_savedRaceMetas_by_heat(heat.id):
+                pilotraces = []
+                for pilotrace in RHData.get_savedPilotRaces_by_savedRaceMeta(race.id):
+                    laps = []
+                    for lap in RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
+                        laps.append({
+                                'id': lap.id,
+                                'lap_time_stamp': lap.lap_time_stamp,
+                                'lap_time': lap.lap_time,
+                                'lap_time_formatted': lap.lap_time_formatted,
+                                'source': lap.source,
+                                'deleted': lap.deleted
+                            })
 
-        rounds = {}
-        for round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
-            pilotraces = []
-            for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
-                laps = []
-                for lap in RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
-                    laps.append({
-                            'id': lap.id,
-                            'lap_time_stamp': lap.lap_time_stamp,
-                            'lap_time': lap.lap_time,
-                            'lap_time_formatted': lap.lap_time_formatted,
-                            'source': lap.source,
-                            'deleted': lap.deleted
-                        })
+                    pilot_data = RHData.get_pilot(pilotrace.pilot_id)
+                    if pilot_data:
+                        nodepilot = pilot_data.callsign
+                    else:
+                        nodepilot = None
 
-                pilot_data = RHData.get_pilot(pilotrace.pilot_id)
-                if pilot_data:
-                    nodepilot = pilot_data.callsign
-                else:
-                    nodepilot = None
-
-                pilotraces.append({
-                    'pilotrace_id': pilotrace.id,
-                    'callsign': nodepilot,
-                    'pilot_id': pilotrace.pilot_id,
-                    'node_index': pilotrace.node_index,
-                    'history_values': json.loads(pilotrace.history_values),
-                    'history_times': json.loads(pilotrace.history_times),
-                    'laps': laps,
-                    'enter_at': pilotrace.enter_at,
-                    'exit_at': pilotrace.exit_at,
-                })
-            rounds[round.round_id] = {
-                'race_id': round.id,
-                'class_id': round.class_id,
-                'format_id': round.format_id,
-                'start_time': round.start_time,
-                'start_time_formatted': round.start_time_formatted,
-                'pilotraces': pilotraces
+                    pilotraces.append({
+                        'pilotrace_id': pilotrace.id,
+                        'callsign': nodepilot,
+                        'pilot_id': pilotrace.pilot_id,
+                        'node_index': pilotrace.node_index,
+                        'history_values': json.loads(pilotrace.history_values),
+                        'history_times': json.loads(pilotrace.history_times),
+                        'laps': laps,
+                        'enter_at': pilotrace.enter_at,
+                        'exit_at': pilotrace.exit_at,
+                    })
+                rounds[race.round_id] = {
+                    'race_id': race.id,
+                    'class_id': race.class_id,
+                    'format_id': race.format_id,
+                    'start_time': race.start_time,
+                    'start_time_formatted': race.start_time_formatted,
+                    'pilotraces': pilotraces
+                }
+            heats[heat.id] = {
+                'heat_id': heat.id,
+                'note': heatnote,
+                'rounds': rounds,
             }
-        heats[heat.heat_id] = {
-            'heat_id': heat.heat_id,
-            'note': heatnote,
-            'rounds': rounds,
-        }
 
     '''
     heats_by_class = {}
@@ -3324,7 +3324,7 @@ def emit_current_heat(**params):
         pilot = RHData.get_pilot(heatNode.pilot_id)
         if pilot:
             heatNode_data[heatNode.node_index]['callsign'] = pilot.callsign
-        
+
     heat_format = None
     if heat_data.class_id != RHUtils.CLASS_ID_NONE:
         heat_format = RHData.get_raceClass(heat_data.class_id).format_id
@@ -4707,9 +4707,9 @@ def expand_heats():
     for heatNode in RHData.get_heatNodes():
         if heatNode.heat_id not in heatNode_data:
             heatNode_data[heatNode.heat_id] = []
-            
+
         heatNode_data[heatNode.heat_id].append(heatNode.node_index)
-        
+
     for heat_id, nodes in heatNode_data.items():
         for node in range(RACE.num_nodes):
             if node not in nodes:
@@ -5149,7 +5149,7 @@ if RACE.num_nodes > 0:
 if not db_inited_flag:
     try:
         RHData.primeOptionsCache() # Ready the Options cache
-        
+
         if not RHData.check_integrity(SERVER_API):
             recover_database(DB_FILE_NAME, startup=True)
 

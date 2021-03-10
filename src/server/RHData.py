@@ -774,6 +774,9 @@ class RHData():
     def get_savedRaceMetas(self, **kwargs):
         return self._Database.SavedRaceMeta
 
+    def get_savedRaceMetas_by_heat(self, heat_id):
+        return self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).order_by(self._Database.SavedRaceMeta.round_id).all()
+    
     def savedRaceMetas_has_raceFormat(self, race_format_id):
         return bool(self._Database.SavedRaceMeta.query.filter_by(format_id=race_format_id).count())
 
@@ -884,6 +887,9 @@ class RHData():
     def get_savedPilotRaces(self, **kwargs):
         return self._Database.SavedPilotRace
 
+    def get_savedPilotRaces_by_savedRaceMeta(self, race_id):
+        return self._Database.SavedPilotRace.query.filter_by(race_id=race_id).all()
+    
     def alter_savedPilotRace(self, data):
         pilotrace = self.get_savedPilotRace(data['pilotrace_id'])
         
