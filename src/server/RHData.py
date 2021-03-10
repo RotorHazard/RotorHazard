@@ -57,6 +57,30 @@ class RHData():
         self._PageCache = PageCache
         self._Language = Language
 
+    # Integrity Checking
+    def check_integrity(self, server_api_value):
+        if self.get_optionInt('server_api') < server_api_value:
+            logger.info('Old server API version; recovering database')
+            return False
+        if not self._Database.Heat.query.count():
+            logger.info('Heats are empty; recovering database')
+            return False
+        if not self._Database.Profiles.query.count():
+            logger.info('Profiles are empty; recovering database')
+            return False
+        if not self._Database.RaceFormat.query.count():
+            logger.info('Formats are empty; recovering database')
+            return False
+        
+        try:  # make sure no problems reading 'Heat' table data
+            Database.Heat.query.all()
+        except Exception as ex:
+            logger.warning('Error reading Heat data; recovering database; err: ' + str(ex))
+            return False
+        
+        return True
+
+    
     # Pilots
     def get_pilot(self, pilot_id):
         return self._Database.Pilot.query.get(pilot_id)

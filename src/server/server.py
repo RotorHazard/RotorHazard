@@ -5195,25 +5195,10 @@ if RACE.num_nodes > 0:
 if not db_inited_flag:
     try:
         RHData.primeOptionsCache() # Ready the Options cache
+        
+        if not RHData.check_integrity(SERVER_API):
+            recover_database(DB_FILE_NAME, startup=True)
 
-        if RHData.get_optionInt('server_api') < SERVER_API:
-            logger.info('Old server API version; recovering database')
-            recover_database(DB_FILE_NAME, startup=True)
-        elif not RHData.get_heats(return_type='count'):
-            logger.info('Heats are empty; recovering database')
-            recover_database(DB_FILE_NAME, startup=True)
-        elif not RHData.get_profiles(return_type='count'):
-            logger.info('Profiles are empty; recovering database')
-            recover_database(DB_FILE_NAME, startup=True)
-        elif not RHData.get_raceFormats(return_type='count'):
-            logger.info('Formats are empty; recovering database')
-            recover_database(DB_FILE_NAME, startup=True)
-        else:
-            try:  # make sure no problems reading 'Heat' table data
-                Database.Heat.query.all()
-            except Exception as ex:
-                logger.warning('Error reading Heat data; recovering database; err: ' + str(ex))
-                recover_database(DB_FILE_NAME, startup=True)
     except Exception as ex:
         logger.warning('Clearing all data after recovery failure:  ' + str(ex))
         db_reset()
