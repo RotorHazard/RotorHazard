@@ -77,25 +77,25 @@ class PageCache:
         expires = monotonic() + self._CACHE_TIMEOUT
         error_flag = False
 
-        check_buildToken(timing) # Don't restart calculation if another calculation thread exists
+        self.check_buildToken(timing) # Don't restart calculation if another calculation thread exists
 
         if self.get_valid(): # Output existing calculated results
             logger.info('T%d: Returning valid cache', timing['start'])
 
         else:
             timing['build_start'] = monotonic()
-            self.get_buildToken() = monotonic()
+            self.set_buildToken(monotonic())
 
             heats = {}
             for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
                 heatdata = self._RHData.get_heat(heat.heat_id)
 
                 rounds = []
-                for round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
+                for heat_round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
 
-                    if Database.SavedRaceLap.query.filter_by(race_id=round.id).first() is not None:
+                    if Database.SavedRaceLap.query.filter_by(race_id=heat_round.id).first() is not None:
                         pilotraces = []
-                        for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
+                        for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=heat_round.id).all():
                             gevent.sleep()
                             laps = []
                             for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
@@ -120,28 +120,28 @@ class PageCache:
                                 'node_index': pilotrace.node_index,
                                 'laps': laps
                             })
-                        if round.cacheStatus == Results.CacheStatus.INVALID:
-                            logger.info('Rebuilding Heat %d Round %d cache', heat.heat_id, round.round_id)
-                            results = Results.calc_leaderboard(self._RHData, heat_id=heat.heat_id, round_id=round.round_id)
-                            round.results = results
-                            round.cacheStatus = Results.CacheStatus.VALID
+                        if heat_round.cacheStatus == Results.CacheStatus.INVALID:
+                            logger.info('Rebuilding Heat %d Round %d cache', heat.heat_id, heat_round.round_id)
+                            results = Results.calc_leaderboard(self._RHData, heat_id=heat.heat_id, round_id=heat_round.round_id)
+                            heat_round.results = results
+                            heat_round.cacheStatus = Results.CacheStatus.VALID
                             DB.session.commit()
                         else:
                             expires = monotonic() + self._CACHE_TIMEOUT
                             while True:
                                 gevent.idle()
-                                if round.cacheStatus == Results.CacheStatus.VALID:
-                                    results = round.results
+                                if heat_round.cacheStatus == Results.CacheStatus.VALID:
+                                    results = heat_round.results
                                     break
                                 elif monotonic() > expires:
-                                    logger.warning('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, round.round_id)
+                                    logger.warning('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, heat_round.round_id)
                                     results = None
                                     error_flag = True
                                     break
 
                         rounds.append({
-                            'id': round.round_id,
-                            'start_time_formatted': round.start_time_formatted,
+                            'id': heat_round.round_id,
+                            'start_time_formatted': heat_round.start_time_formatted,
                             'nodes': pilotraces,
                             'leaderboard': results
                         })
@@ -153,7 +153,6 @@ class PageCache:
                     heatdata.cacheStatus = Results.CacheStatus.VALID
                     DB.session.commit()
                 else:
-                    checkStatus = True
                     expires = monotonic() + self._CACHE_TIMEOUT
                     while True:
                         gevent.idle()
@@ -174,7 +173,7 @@ class PageCache:
                 }
 
             timing['round_results'] = monotonic()
-            logger.debug('T%d: round results assembled in %.3fs', timing['start'], timing['round_results'] - timing['build_start'])
+            logger.debug('T%d: heat_round results assembled in %.3fs', timing['start'], timing['round_results'] - timing['build_start'])
 
             gevent.sleep()
             heats_by_class = {}
@@ -194,7 +193,6 @@ class PageCache:
                     race_class.cacheStatus = Results.CacheStatus.VALID
                     DB.session.commit()
                 else:
-                    checkStatus = True
                     expires = monotonic() + self._CACHE_TIMEOUT
                     while True:
                         gevent.idle()

@@ -73,7 +73,7 @@ class RHData():
             return False
         
         try:  # make sure no problems reading 'Heat' table data
-            Database.Heat.query.all()
+            self._Database.Heat.query.all()
         except Exception as ex:
             logger.warning('Error reading Heat data; recovering database; err: ' + str(ex))
             return False
@@ -197,18 +197,34 @@ class RHData():
     def get_first_heat(self):
         return self._Database.Heat.query.first()
 
-    def add_heat(self):
-        # Add new (empty) heat
+    def add_heat(self, init=None, initPilots=None):
+        # Add new heat
         new_heat = self._Database.Heat(
             class_id=RHUtils.CLASS_ID_NONE,
             cacheStatus=Results.CacheStatus.INVALID
             )
+
+        if 'class_id' in init:
+            new_heat.class_id = init['class_id']
+        if 'note' in init:
+            new_heat.class_id = init['note']
+            
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
         self._Database.DB.session.refresh(new_heat)
 
-        for node in range(self._RACE.num_nodes): # Add next heat with empty pilots
-            self._Database.DB.session.add(self._Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=RHUtils.PILOT_ID_NONE))
+        # Add heatnodes
+        for node_index in range(self._RACE.num_nodes):
+            new_heatNode = self._Database.HeatNode(
+                heat_id=new_heat.id, 
+                node_index=node_index,
+                pilot_id=RHUtils.PILOT_ID_NONE
+            )
+            
+            if initPilots and node_index in initPilots:
+                new_heatNode.pilot_id = initPilots[node_index]
+            
+            self._Database.DB.session.add(new_heatNode)
 
         self._Database.DB.session.commit()
 
@@ -766,6 +782,23 @@ class RHData():
 
     def savedRaceMetas_has_raceClass(self, class_id):
         return bool(self._Database.SavedRaceMeta.query.filter_by(class_id=class_id).count())
+
+    def add_savedRaceMeta(self, data):
+        new_race = self._Database.SavedRaceMeta(
+            round_id=data['round_id'],
+            heat_id=data['heat_id'],
+            class_id=data['class_id'],
+            format_id=data['format_id'],
+            start_time=data['start_time'],
+            start_time_formatted=data['start_time_formatted'],
+            cacheStatus=Results.CacheStatus.INVALID
+        )
+        self._DB.session.add(new_race)
+        self._DB.session.commit()
+        
+        logger.info('Race added: Race {0}'.format(new_race.id))
+
+        return new_race
         
     def reassign_savedRaceMeta_heat(self, race_id, new_heat_id):
         race_meta = self.get_savedRaceMeta(race_id)
@@ -837,6 +870,12 @@ class RHData():
 
         return race_meta, new_heat
 
+    def get_max_round(self, heat_id):
+        self._Database.DB.session.query(
+            self._Database.DB.func.max(
+                self._Database.SavedRaceMeta.round_id
+            )).filter_by(heat_id=heat_id).scalar()
+
     # Pilot-Races
     def get_savedPilotRace(self, race_id):
         return self._Database.SavedPilotRace.query.get(race_id)
@@ -845,10 +884,22 @@ class RHData():
     def get_savedPilotRaces(self, **kwargs):
         return self._Database.SavedPilotRace
 
+    def alter_savedPilotRace(self, data):
+        pilotrace = self.get_savedPilotRace(data['pilotrace_id'])
+        
+        if 'enter_at' in data:
+            pilotrace.enter_at = data['enter_at']
+        if 'exit_at' in data:
+            pilotrace.exit_at = data['exit_at']
+            
+        self._Database.DB.session.commit()
+        
+        return True
+        
     def savedPilotRaces_has_pilot(self, pilot_id):
         return bool(self._Database.SavedPilotRace.query.filter_by(pilot_id=pilot_id).count())
     
-    # Race Laps
+    # Race Laps        
     @_Decorators.getter_parameters
     def get_savedRaceLaps(self, **kwargs):
         return self._Database.SavedRaceLap
@@ -856,11 +907,70 @@ class RHData():
     def get_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
         return self._Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).order_by(self._Database.SavedRaceLap.lap_time_stamp).all()
 
+    # Race general
+    def replace_savedRaceLaps(self, data):
+        self._Database.SavedRaceLap.query.filter_by(pilotrace_id=data['pilotrace_id']).delete()
+        
+        for lap in data['laps']:
+            self._Database.DB.session.add(self._Database.SavedRaceLap(
+                race_id=data['race_id'],
+                pilotrace_id=data['pilotrace_id'],
+                node_index=data['node_index'],
+                pilot_id=data['pilot_id'],
+                lap_time_stamp=lap['lap_time_stamp'],
+                lap_time=lap['lap_time'],
+                lap_time_formatted=lap['lap_time_formatted'],
+                source = lap['source'],
+                deleted = lap['deleted']
+            ))
+                
+        self._Database.DB.session.commit()
+        return True
+        
+    # Race general
+    def add_race_data(self, data):
+        for node_index, node_data  in data.items:
+            new_pilotrace = self._Database.SavedPilotRace(
+                race_id=node_data['race_id'],
+                node_index=node_index,
+                pilot_id=node_data['pilot_id'],
+                history_values=node_data['history_values'],
+                history_times=node_data['history_times'],
+                penalty_time=0,
+                enter_at=node_data['enter_at_level'],
+                exit_at=node_data['exit_at']
+            )
+            
+            self._Database.DB.session.add(new_pilotrace)
+            self._Database.DB.session.flush()
+            self._Database.DB.session.refresh(new_pilotrace)
+
+            for lap in node_data['laps']:
+                self._Database.DB.session.add(Database.SavedRaceLap(
+                    race_id=node_data['race_id'],
+                    pilotrace_id=new_pilotrace.id,
+                    node_index=node_index,
+                    pilot_id=node_data['pilot_id'],
+                    lap_time_stamp=lap['lap_time_stamp'],
+                    lap_time=lap['lap_time'],
+                    lap_time_formatted=lap['lap_time_formatted'],
+                    source = lap['source'],
+                    deleted = lap['deleted']
+                ))
+                
+        self._Database.DB.session.commit()
+        return True
+    
     # Splits
     @_Decorators.getter_parameters
     def get_lapSplits(self, **kwargs):
         return self._Database.LapSplit
 
+    def clear_lapSplits(self):
+        self._DatabaseDB.session.query(Database.LapSplit).delete()
+        self._Database.DB.session.commit()
+        return True
+    
     # Options
     @_Decorators.getter_parameters
     def get_options(self, **kwargs):

@@ -2121,71 +2121,52 @@ def on_save_laps():
 
     if race_has_laps == True:
         PageCache.set_valid(False)
-        race_format = getCurrentRaceFormat()
         heat = RHData.get_heat(RACE.current_heat)
         # Get the last saved round for the current heat
-        max_round = DB.session.query(DB.func.max(Database.SavedRaceMeta.round_id)) \
-                .filter_by(heat_id=RACE.current_heat).scalar()
+        max_round = RHData.get_max_round(RACE.current_heat)
+
         if max_round is None:
             max_round = 0
         # Loop through laps to copy to saved races
         profile = getCurrentProfile()
         profile_freqs = json.loads(profile.frequencies)
+        
+        new_race_data = {
+            'round_id': max_round+1,
+            'heat_id': RACE.current_heat,
+            'class_id': heat.class_id,
+            'format_id': RHData.get_option('currentFormat'),
+            'start_time': RACE.start_time_monotonic,
+            'start_time_formatted': RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            }
 
-        new_race = Database.SavedRaceMeta( \
-            round_id=max_round+1, \
-            heat_id=RACE.current_heat, \
-            class_id=heat.class_id, \
-            format_id=RHData.get_option('currentFormat'), \
-            start_time = RACE.start_time_monotonic, \
-            start_time_formatted = RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"), \
-            cacheStatus=Results.CacheStatus.INVALID
-        )
-        DB.session.add(new_race)
-        DB.session.flush()
-        DB.session.refresh(new_race)
+        new_race = RHData.add_savedRaceMeta(new_race_data)
 
+        race_data = {}
+    
         for node_index in range(RACE.num_nodes):
             if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-                pilot_id = Database.HeatNode.query.filter_by( \
-                    heat_id=RACE.current_heat, node_index=node_index).one().pilot_id
+                pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
+                
+                race_data[node_index] = {
+                    'race_id': new_race.id,
+                    'pilot_id': pilot_id,
+                    'history_values': json.dumps(INTERFACE.nodes[node_index].history_values),
+                    'history_times': json.dumps(INTERFACE.nodes[node_index].history_times), 
+                    'enter_at': INTERFACE.nodes[node_index].enter_at_level,
+                    'exit_at': INTERFACE.nodes[node_index].exit_at_level,
+                    'laps': RACE.node_laps[node_index]
+                    }
 
-                new_pilotrace = Database.SavedPilotRace( \
-                    race_id=new_race.id, \
-                    node_index=node_index, \
-                    pilot_id=pilot_id, \
-                    history_values=json.dumps(INTERFACE.nodes[node_index].history_values), \
-                    history_times=json.dumps(INTERFACE.nodes[node_index].history_times), \
-                    penalty_time=0, \
-                    enter_at=INTERFACE.nodes[node_index].enter_at_level, \
-                    exit_at=INTERFACE.nodes[node_index].exit_at_level
-                )
-                DB.session.add(new_pilotrace)
-                DB.session.flush()
-                DB.session.refresh(new_pilotrace)
-
-                for lap in RACE.node_laps[node_index]:
-                    DB.session.add(Database.SavedRaceLap( \
-                        race_id=new_race.id, \
-                        pilotrace_id=new_pilotrace.id, \
-                        node_index=node_index, \
-                        pilot_id=pilot_id, \
-                        lap_time_stamp=lap['lap_time_stamp'], \
-                        lap_time=lap['lap_time'], \
-                        lap_time_formatted=lap['lap_time_formatted'], \
-                        source = lap['source'], \
-                        deleted = lap['deleted']
-                    ))
-
-        DB.session.commit()
+        RHData.add_race_data()
 
         # spawn thread for updating results caches
-        params = {
+        cache_params = {
             'race_id': new_race.id,
             'heat_id': RACE.current_heat,
             'round_id': new_race.round_id,
         }
-        gevent.spawn(build_atomic_result_caches, params)
+        gevent.spawn(build_atomic_result_caches, cache_params)
 
         Events.trigger(Evt.LAPS_SAVE, {
             'race_id': new_race.id,
@@ -2215,29 +2196,37 @@ def on_resave_laps(data):
     enter_at = data['enter_at']
     exit_at = data['exit_at']
 
-    Pilotrace = RHData.get_savedPilotRace(pilotrace_id)
-    Pilotrace.enter_at = enter_at
-    Pilotrace.exit_at = exit_at
+    pilotrace_data = {
+        'pilotrace_id': pilotrace_id,
+        'enter_at': enter_at,
+        'exit_at': exit_at
+        }
+    
+    RHData.alter_savedPilotRace(pilotrace_data)
 
-    Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).delete()
-
+    new_racedata = {
+            'race_id': race_id,
+            'pilotrace_id': pilotrace_id,
+            'node_index': node,
+            'pilot_id': pilot_id,
+            'laps': []
+        }
+    
     for lap in laps:
         tmp_lap_time_formatted = lap['lap_time']
-        if isinstance(tmp_lap_time_formatted, float):
+        if isinstance(lap['lap_time'], float):
             tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'], RHData.get_option('timeFormat'))
-        DB.session.add(Database.SavedRaceLap( \
-            race_id=race_id, \
-            pilotrace_id=pilotrace_id, \
-            node_index=node, \
-            pilot_id=pilot_id, \
-            lap_time_stamp=lap['lap_time_stamp'], \
-            lap_time=lap['lap_time'], \
-            lap_time_formatted=tmp_lap_time_formatted,\
-            source = lap['source'], \
-            deleted = lap['deleted']
-        ))
+                                                         
+        new_racedata.append({
+            'lap_time_stamp': lap['lap_time_stamp'],
+            'lap_time': lap['lap_time'],
+            'lap_time_formatted': tmp_lap_time_formatted,
+            'source': lap['source'],
+            'deleted': lap['deleted']
+            })
+        
+    RHData.replace_savedRaceLaps(new_racedata)
 
-    DB.session.commit()
     message = __('Race times adjusted for: Heat {0} Round {1} / {2}').format(heat_id, round_id, callsign)
     emit_priority_message(message, False)
     logger.info(message)
@@ -2296,8 +2285,7 @@ def clear_laps():
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
     RACE.winning_lap_id = 0
     db_reset_current_laps() # Clear out the current laps table
-    DB.session.query(Database.LapSplit).delete()
-    DB.session.commit()
+    RHData.clear_lapSplits()
     logger.info('Current laps cleared')
 
 def init_node_cross_fields():
@@ -2488,18 +2476,10 @@ def generate_heats(data):
         letters = __('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
         for idx, heat in enumerate(reversed(generated_heats), start=1):
             ladder = letters[len(generated_heats) - idx]
-            new_heat = Database.Heat(class_id=output_class, cacheStatus=Results.CacheStatus.INVALID, note=ladder + ' ' + suffix)
-            DB.session.add(new_heat)
-            DB.session.flush()
-            DB.session.refresh(new_heat)
-
-            for node in range(RACE.num_nodes): # Add pilots
-                if node in heat:
-                    DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=heat[node]))
-                else:
-                    DB.session.add(Database.HeatNode(heat_id=new_heat.id, node_index=node, pilot_id=RHUtils.PILOT_ID_NONE))
-
-            DB.session.commit()
+            new_heat = RHData.add_heat({
+                'class_id': output_class,
+                'note': ladder + ' ' + suffix
+                }, heat)
 
         logger.info("Generated {0} heats from class {1}".format(len(generated_heats), input_class))
         SOCKET_IO.emit('heat_generate_done')
@@ -4329,7 +4309,7 @@ def db_reset_race_formats():
         race_class.format_id = 0
 
     DB.session.commit()
-    setCurrentRaceFormat(Database.RaceFormat.query.first())
+    setCurrentRaceFormat(RHData.get_first_raceFormat())
     logger.info("Database reset race formats")
 
 def db_reset_options_defaults():
@@ -4357,7 +4337,7 @@ def db_reset_options_defaults():
     RHData.set_option("timeFormat", "{m}:{s}.{d}"),
     RHData.set_option("timeFormatPhonetic", "{m} {s}.{d}"),
     RHData.set_option("currentProfile", "1")
-    setCurrentRaceFormat(Database.RaceFormat.query.first())
+    setCurrentRaceFormat(RHData.get_first_raceFormat())
     RHData.set_option("calibrationMode", "1")
     # minimum lap
     RHData.set_option("MinLapSec", "10")
@@ -4642,7 +4622,7 @@ def recover_database(dbfile, **kwargs):
                             'pilot_id': RHUtils.PILOT_ID_NONE
                         })
 
-                    RACE.current_heat = Database.Heat.query.first().id
+                    RACE.current_heat = RHData.get_first_heat().id
                 else:
                     db_reset_heats()
 
