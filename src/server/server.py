@@ -2932,10 +2932,11 @@ def emit_race_format(**params):
     race_format = getCurrentRaceFormat()
     is_db_race_format = RHRaceFormat.isDbBased(race_format)
     locked = not is_db_race_format or RHData.savedRaceMetas_has_raceFormat(race_format.id)
+    raceFormats = RHData.get_raceFormats()
 
     emit_payload = {
-        'format_ids': [raceformat.id for raceformat in RHData.get_raceFormats()],
-        'format_names': [raceformat.name for raceformat in RHData.get_raceFormats()],
+        'format_ids': [raceformat.id for raceformat in raceFormats],
+        'format_names': [raceformat.name for raceformat in raceFormats],
         'current_format': race_format.id if is_db_race_format else None,
         'format_name': race_format.name,
         'race_mode': race_format.race_mode,
