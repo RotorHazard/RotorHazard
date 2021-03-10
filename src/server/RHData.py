@@ -160,6 +160,8 @@ class RHData():
 
             return True
 
+    def get_recent_pilot_node(self, pilot_id):
+        return self._Database.HeatNode.query.filter_by(pilot_id=pilot_id).order_by(self._Database.HeatNode.id.desc()).first()
     # Heats
     def get_heat(self, heat_id):
         return self._Database.Heat.query.get(heat_id)
@@ -167,6 +169,9 @@ class RHData():
     @_Decorators.getter_parameters
     def get_heats(self, **kwargs):
         return self._Database.Heat
+
+    def get_first_heat(self):
+        return self._Database.Heat.query.first()
 
     def add_heat(self):
         # Add new (empty) heat
@@ -366,6 +371,16 @@ class RHData():
     def get_heatNodes(self, **kwargs):
         return self._Database.HeatNode
 
+    def get_heatNodes_by_heat(self, heat_id):
+        return self._Database.HeatNode.query.filter_by(heat_id=heat_id).order_by(self._Database.HeatNode.node_index).all()
+
+    def get_pilot_from_heatNode(self, heat_id, node_index):
+        heatNode = self._Database.HeatNode.query.filter_by(heat_id=heat_id, node_index=node_index).one_or_none()
+        if heatNode:
+            return heatNode.pilot_id
+        else:
+            return None
+
     # Race Classes
     def get_raceClass(self, raceClass_id):
         return self._Database.RaceClass.query.get(raceClass_id)
@@ -505,6 +520,9 @@ class RHData():
     def get_profiles(self, **kwargs):
         return self._Database.Profiles
 
+    def get_first_profile(self):
+        return self._Database.Profiles.query.first()
+    
     def duplicate_profile(self, source_profile_id):
         source_profile = self.get_profile(source_profile_id)
 
@@ -572,6 +590,13 @@ class RHData():
     # Formats
     def get_raceFormat(self, raceFormat_id):
         return self._Database.RaceFormat.query.get(raceFormat_id)
+
+    @_Decorators.getter_parameters
+    def get_raceFormats(self, **kwargs):
+        return self._Database.RaceFormat
+
+    def get_first_raceFormat(self):
+        return self._Database.RaceFormat.query.first()
 
     def duplicate_raceFormat(self, source_format_id):
         source_format = self.get_raceFormat(source_format_id)
@@ -701,10 +726,6 @@ class RHData():
             logger.info('Refusing to delete only format')
             return False
 
-    @_Decorators.getter_parameters
-    def get_raceFormats(self, **kwargs):
-        return self._Database.RaceFormat
-
     # Race Meta
     def get_savedRaceMeta(self, raceMeta_id):
         return self._Database.SavedRaceMeta.query.get(raceMeta_id)
@@ -713,6 +734,15 @@ class RHData():
     def get_savedRaceMetas(self, **kwargs):
         return self._Database.SavedRaceMeta
 
+    def savedRaceMetas_has_raceFormat(self, race_format_id):
+        return bool(self._Database.SavedRaceMeta.query.filter_by(format_id=race_format_id).count())
+
+    def savedRaceMetas_has_heat(self, heat_id):
+        return bool(self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).count())
+
+    def savedRaceMetas_has_raceClass(self, class_id):
+        return bool(self._Database.SavedRaceMeta.query.filter_by(class_id=class_id).count())
+        
     def reassign_savedRaceMeta_heat(self, race_id, new_heat_id):
         race_meta = self.get_savedRaceMeta(race_id)
 
@@ -784,14 +814,23 @@ class RHData():
         return race_meta, new_heat
 
     # Pilot-Races
+    def get_savedPilotRace(self, race_id):
+        return self._Database.SavedPilotRace.query.get(race_id)
+
     @_Decorators.getter_parameters
     def get_savedPilotRaces(self, **kwargs):
         return self._Database.SavedPilotRace
 
+    def savedPilotRaces_has_pilot(self, pilot_id):
+        return bool(self._Database.SavedPilotRace.query.filter_by(pilot_id=pilot_id).count())
+    
     # Race Laps
     @_Decorators.getter_parameters
     def get_savedRaceLaps(self, **kwargs):
         return self._Database.SavedRaceLap
+
+    def get_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
+        return self._Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).order_by(self._Database.SavedRaceLap.lap_time_stamp).all()
 
     # Splits
     @_Decorators.getter_parameters

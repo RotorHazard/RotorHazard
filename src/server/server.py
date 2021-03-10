@@ -34,7 +34,6 @@ logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
-GEVENT_SUPPORT = True   # For Python Debugger
 
 import io
 import os
@@ -1063,10 +1062,10 @@ def on_duplicate_heat(data):
 @catchLogExceptionsWrapper
 def on_alter_heat(data):
     '''Update heat.'''
-    heat, race_list = RHData.alter_heat(data)
+    heat, altered_race_list = RHData.alter_heat(data)
 
     emit_heat_data(noself=True)
-    if ('pilot' in data or 'class' in data) and len(race_list):
+    if ('pilot' in data or 'class' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
         message = __('Alterations made to heat: {0}').format(heat.note)
         emit_priority_message(message, False)
@@ -1081,7 +1080,7 @@ def on_delete_heat(data):
     if result:
         emit_heat_data()
         if RACE.current_heat == heat_id:  # if current heat was deleted then load new heat data
-            on_set_current_heat({ 'heat': RHData.get_heats(return_type='first').id })
+            on_set_current_heat({ 'heat': RHData.get_first_heat().id })
 
 @SOCKET_IO.on('add_race_class')
 @catchLogExceptionsWrapper
@@ -1105,9 +1104,9 @@ def on_duplicate_race_class(data):
 @catchLogExceptionsWrapper
 def on_alter_race_class(data):
     '''Update race class.'''
-    race_class, race_list = RHData.alter_raceClass(data)
+    race_class, altered_race_list = RHData.alter_raceClass(data)
 
-    if ('class_format' in data or 'class_name' in data) and len(race_list):
+    if ('class_format' in data or 'class_name' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
         message = __('Alterations made to race class: {0}').format(race_class.name)
         emit_priority_message(message, False)
@@ -1190,7 +1189,7 @@ def on_delete_profile():
     result = RHData.delete_profile(profile.id)
 
     if result:
-        first_profile_id = RHData.get_profiles(return_type='first').id
+        first_profile_id = RHData.get_first_profile().id
         RHData.set_option("currentProfile", first_profile_id)
         on_set_profile(data={ 'profile': first_profile_id })
 
@@ -1619,7 +1618,7 @@ def on_delete_race_format():
     result = RHData.delete_raceFormat(raceformat.id)
 
     if result:
-        first_raceFormat = RHData.get_raceFormats(return_type="first")
+        first_raceFormat = RHData.get_first_raceFormat()
         setCurrentRaceFormat(first_raceFormat)
         emit_race_format()
     else:
@@ -1777,7 +1776,7 @@ def on_stage_race():
     global RACE
     valid_pilots = False
     heat_data = RHData.get_heat(RACE.current_heat)
-    heatNodes = RHData.get_heatNodes(filter_by={'heat_id': RACE.current_heat})
+    heatNodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
     for heatNode in heatNodes:
         if heatNode.node_index < RACE.num_nodes:
             if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
@@ -2234,7 +2233,7 @@ def on_resave_laps(data):
     enter_at = data['enter_at']
     exit_at = data['exit_at']
 
-    Pilotrace = RHData.get_savedPilotRaces(filter_by={"id": pilotrace_id}, return_type='one')
+    Pilotrace = RHData.get_savedPilotRace(pilotrace_id)
     Pilotrace.enter_at = enter_at
     Pilotrace.exit_at = exit_at
 
@@ -2321,7 +2320,7 @@ def clear_laps():
 
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
-    heatnodes = RHData.get_heatNodes(filter_by={'heat_id': RACE.current_heat})
+    heatnodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
 
     for node in INTERFACE.nodes:
         node.current_pilot_id = RHUtils.PILOT_ID_NONE
@@ -2362,7 +2361,7 @@ def on_set_current_heat(data):
         '6': None,
         '7': None,
     }
-    for heatNode in RHData.get_heatNodes(filter_by={'heat_id': new_heat_id}):
+    for heatNode in RHData.get_heatNodes_by_heat(new_heat_id):
         RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
         if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
@@ -2418,7 +2417,8 @@ def generate_heats(data):
             entry = {}
             entry['pilot_id'] = pilot.id
 
-            pilot_node = RHData.get_heatNodes(filter_by={"pilot_id": pilot.id}, return_type='first')
+            pilot_node = RHData.get_recent_pilot_node(pilot.id)
+            
             if pilot_node:
                 entry['node'] = pilot_node.node_index
             else:
@@ -2931,13 +2931,7 @@ def emit_race_format(**params):
     '''Emits race format values.'''
     race_format = getCurrentRaceFormat()
     is_db_race_format = RHRaceFormat.isDbBased(race_format)
-    has_race = not is_db_race_format or RHData.get_savedRaceMetas(
-        filter_by={"format_id": race_format.id},
-        return_type='first')
-    if has_race:
-        locked = True
-    else:
-        locked = False
+    locked = not is_db_race_format or RHData.savedRaceMetas_has_raceFormat(race_format.id)
 
     emit_payload = {
         'format_ids': [raceformat.id for raceformat in RHData.get_raceFormats()],
@@ -2979,9 +2973,7 @@ def emit_race_formats(**params):
             'team_racing_mode': 1 if race_format.team_racing_mode else 0,
         }
 
-        has_race = RHData.get_savedRaceMetas(
-            filter_by={"format_id": race_format.id},
-            return_type='first')
+        has_race = RHData.savedRaceMetas_has_raceFormat(race_format.id)
 
         if has_race:
             format_copy['locked'] = True
@@ -3089,9 +3081,7 @@ def emit_race_list(**params):
             pilotraces = []
             for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
                 laps = []
-                for lap in RHData.get_savedRaceLaps(
-                    filter_by={"pilotrace_id": pilotrace.id},
-                    order_by={"lap_time_stamp": None}):
+                for lap in RHData.get_savedRaceLaps_by_savedPilotRace(pilotrace.id):
                     laps.append({
                             'id': lap.id,
                             'lap_time_stamp': lap.lap_time_stamp,
@@ -3101,9 +3091,7 @@ def emit_race_list(**params):
                             'deleted': lap.deleted
                         })
 
-                pilot_data = RHData.get_pilots(
-                    filter_by={"id": pilotrace.pilot_id},
-                    return_type='first')
+                pilot_data = RHData.get_pilot(pilotrace.pilot_id)
                 if pilot_data:
                     nodepilot = pilot_data.callsign
                 else:
@@ -3224,14 +3212,12 @@ def emit_heat_data(**params):
         note = heat.note
         race_class = heat.class_id
 
-        heatnodes = RHData.get_heatNodes(filter_by={'heat_id': heat.id}, order_by={'node_index': None})
+        heatnodes = RHData.get_heatNodes_by_heat(heat.id)
         pilots = []
         for heatnode in heatnodes:
             pilots.append(heatnode.pilot_id)
 
-        has_race = RHData.get_savedRaceMetas(
-            filter_by={'heat_id': heat.id},
-            return_type="first")
+        has_race = RHData.savedRaceMetas_has_heat(heat.id)
 
         if has_race:
             locked = True
@@ -3288,14 +3274,7 @@ def emit_class_data(**params):
         current_class['name'] = race_class.name
         current_class['description'] = race_class.description
         current_class['format'] = race_class.format_id
-
-        has_race = RHData.get_savedRaceMetas(
-            filter_by={"class_id": race_class.id})
-
-        if has_race:
-            current_class['locked'] = True
-        else:
-            current_class['locked'] = False
+        current_class['locked'] = RHData.savedRaceMetas_has_raceClass(race_class.id)
 
         current_classes.append(current_class)
 
@@ -3337,14 +3316,7 @@ def emit_pilot_data(**params):
                 opts_str += ' selected'
             opts_str += '>' + name + '</option>'
 
-        has_race = RHData.get_savedPilotRaces(
-            filter_by={"pilot_id": pilot.id},
-            return_type='first')
-
-        if has_race:
-            locked = True
-        else:
-            locked = False
+        locked = RHData.savedPilotRaces_has_pilot(pilot.id)
 
         pilots_list.append({
             'pilot_id': pilot.id,
@@ -3904,12 +3876,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                 lap_timestamp_absolute < RACE.end_time):
 
             # Get the current pilot id on the node
-            pilot_id = RHData.get_heatNodes(
-                filter_by={
-                    "heat_id": RACE.current_heat,
-                    "node_index": node.index
-                },
-                return_type='one').pilot_id
+            pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node.index)
 
             # reject passes before race start and with disabled (no-pilot) nodes
             if pilot_id != RHUtils.PILOT_ID_NONE:
@@ -4804,12 +4771,12 @@ def init_race_state():
     on_set_profile({'profile': current_profile}, False)
 
     # Set current heat
-    first_heat = RHData.get_heats(return_type="first")
-    if RHData.get_heats(return_type="first"):
+    first_heat = RHData.get_first_heat()
+    if first_heat:
         RACE.current_heat = first_heat.id
         RACE.node_pilots = {}
         RACE.node_teams = {}
-        for heatNode in RHData.get_heatNodes(filter_by={'heat_id': RACE.current_heat}):
+        for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
             RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
             if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
