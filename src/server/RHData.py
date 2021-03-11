@@ -103,14 +103,15 @@ class RHData():
             team=RHUtils.DEF_TEAM_NAME,
             phonetic = '')
 
-        if 'name' in init:
-            new_pilot.name = init['name']
-        if 'callsign' in init:
-            new_pilot.callsign = init['callsign']
-        if 'team' in init:
-            new_pilot.team = init['team']
-        if 'phonetic' in init:
-            new_pilot.phonetic = init['phonetic']
+        if init:
+            if 'name' in init:
+                new_pilot.name = init['name']
+            if 'callsign' in init:
+                new_pilot.callsign = init['callsign']
+            if 'team' in init:
+                new_pilot.team = init['team']
+            if 'phonetic' in init:
+                new_pilot.phonetic = init['phonetic']
 
         self._Database.DB.session.add(new_pilot)
         self._Database.DB.session.flush()
@@ -226,10 +227,11 @@ class RHData():
             cacheStatus=Results.CacheStatus.INVALID
             )
 
-        if 'class_id' in init:
-            new_heat.class_id = init['class_id']
-        if 'note' in init:
-            new_heat.class_id = init['note']
+        if init:
+            if 'class_id' in init:
+                new_heat.class_id = init['class_id']
+            if 'note' in init:
+                new_heat.note = init['note']
 
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
@@ -347,7 +349,7 @@ class RHData():
         if 'pilot' in data or 'class' in data:
             if len(race_list):
                 if heat.class_id is not RHUtils.CLASS_ID_NONE:
-                    new_class = RHData.get_raceClass(heat.class_id)
+                    new_class = self.get_raceClass(heat.class_id)
                     new_class.cacheStatus = Results.CacheStatus.INVALID
 
                 self.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
@@ -614,14 +616,15 @@ class RHData():
             exit_ats = ''
             )
 
-        if 'name' in init:
-            new_profile.name = init['name']
-        if 'frequencies' in init:
-            new_profile.frequencies = init['frequencies']
-        if 'enter_ats' in init:
-            new_profile.enter_ats = init['enter_ats']
-        if 'exit_ats' in init:
-            new_profile.exit_ats = init['exit_ats']
+        if init:
+            if 'name' in init:
+                new_profile.name = init['name']
+            if 'frequencies' in init:
+                new_profile.frequencies = init['frequencies']
+            if 'enter_ats' in init:
+                new_profile.enter_ats = init['enter_ats']
+            if 'exit_ats' in init:
+                new_profile.exit_ats = init['exit_ats']
 
         self._Database.DB.session.add(new_profile)
         self._Database.DB.session.commit()
@@ -719,26 +722,30 @@ class RHData():
             team_racing_mode=False,
             start_behavior=0)
 
-        if 'format_name' in init:
-            race_format.name = init['format_name']
-        if 'race_mode' in init:
-            race_format.race_mode = init['race_mode']
-        if 'race_time' in init:
-            race_format.race_time_sec = init['race_time']
-        if 'start_delay_min' in init:
-            race_format.start_delay_min = init['start_delay_min']
-        if 'start_delay_max' in init:
-            race_format.start_delay_max = init['start_delay_max']
-        if 'staging_tones' in init:
-            race_format.staging_tones = init['staging_tones']
-        if 'number_laps_win' in init:
-            race_format.number_laps_win = init['number_laps_win']
-        if 'start_behavior' in init:
-            race_format.start_behavior = init['start_behavior']
-        if 'win_condition' in init:
-            race_format.win_condition = init['win_condition']
-        if 'team_racing_mode' in init:
-            race_format.team_racing_mode = (True if init['team_racing_mode'] else False)
+        if init:
+            if 'format_name' in init:
+                race_format.name = init['format_name']
+            if 'race_mode' in init:
+                race_format.race_mode = init['race_mode']
+            if 'race_time' in init:
+                race_format.race_time_sec = init['race_time']
+            if 'start_delay_min' in init:
+                race_format.start_delay_min = init['start_delay_min']
+            if 'start_delay_max' in init:
+                race_format.start_delay_max = init['start_delay_max']
+            if 'staging_tones' in init:
+                race_format.staging_tones = init['staging_tones']
+            if 'number_laps_win' in init:
+                race_format.number_laps_win = init['number_laps_win']
+            if 'start_behavior' in init:
+                race_format.start_behavior = init['start_behavior']
+            if 'win_condition' in init:
+                race_format.win_condition = init['win_condition']
+            if 'team_racing_mode' in init:
+                race_format.team_racing_mode = (True if init['team_racing_mode'] else False)
+
+        self._Database.DB.session.add(race_format)
+        self._Database.DB.session.commit()
 
     def duplicate_raceFormat(self, source_format_id):
         source_format = self.get_raceFormat(source_format_id)
@@ -912,8 +919,8 @@ class RHData():
             start_time_formatted=data['start_time_formatted'],
             cacheStatus=Results.CacheStatus.INVALID
         )
-        self._DB.session.add(new_race)
-        self._DB.session.commit()
+        self._Database.DB.session.add(new_race)
+        self._Database.DB.session.commit()
 
         logger.info('Race added: Race {0}'.format(new_race.id))
 
@@ -990,7 +997,7 @@ class RHData():
         return race_meta, new_heat
 
     def get_max_round(self, heat_id):
-        self._Database.DB.session.query(
+        return self._Database.DB.session.query(
             self._Database.DB.func.max(
                 self._Database.SavedRaceMeta.round_id
             )).filter_by(heat_id=heat_id).scalar()
@@ -1051,7 +1058,7 @@ class RHData():
 
     # Race general
     def add_race_data(self, data):
-        for node_index, node_data  in data.items:
+        for node_index, node_data  in data.items():
             new_pilotrace = self._Database.SavedPilotRace(
                 race_id=node_data['race_id'],
                 node_index=node_index,
@@ -1059,7 +1066,7 @@ class RHData():
                 history_values=node_data['history_values'],
                 history_times=node_data['history_times'],
                 penalty_time=0,
-                enter_at=node_data['enter_at_level'],
+                enter_at=node_data['enter_at'],
                 exit_at=node_data['exit_at']
             )
 

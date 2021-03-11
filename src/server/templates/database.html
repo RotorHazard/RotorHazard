@@ -12,7 +12,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for pilot in pilots.query.all() %}
+        {% for pilot in pilots %}
         <tr>
             <td>{{ pilot.id }}</td>
             <td>{{ pilot.callsign }}</td>
@@ -34,7 +34,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for heat in heats.query.all() %}
+        {% for heat in heats %}
         <tr>
             <td>{{ heat.id }}</td>
             <td>{{ heat.note }}</td>
@@ -55,7 +55,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for heatnode in heatnodes.query.all() %}
+        {% for heatnode in heatnodes %}
         <tr>
             <td>{{ heatnode.id }}</td>
             <td>{{ heatnode.heat_id }}</td>
@@ -77,7 +77,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for raceclass in race_class.query.all() %}
+        {% for raceclass in race_class %}
         <tr>
             <td>{{ raceclass.id }}</td>
             <td>{{ raceclass.name }}</td>
@@ -105,7 +105,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for savedracelap in savedraceLap.query.all() %}
+        {% for savedracelap in savedraceLap %}
         <tr>
             <td>{{ savedracelap.id }}</td>
             <td>{{ savedracelap.round_id }}</td>
@@ -136,7 +136,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for profile in profiles.query.all() %}
+        {% for profile in profiles %}
         <tr>
             <td>{{ profile.id }}</td>
             <td>{{ profile.name }}</td>
@@ -166,7 +166,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for raceformat in race_format.query.all() %}
+        {% for raceformat in race_format %}
         <tr>
             <td>{{ raceformat.id }}</td>
             <td>{{ raceformat.name }}</td>
@@ -193,7 +193,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for setting in globalSettings.query.all() %}
+        {% for setting in globalSettings %}
         <tr>
             <td>{{ setting.id }}</td>
             <td>{{ setting.option_name }}</td>

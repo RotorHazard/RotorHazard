@@ -84,11 +84,6 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
 
             locked = RHData.savedRaceMetas_has_heat(heat.id)
 
-            if has_race:
-                locked = True
-            else:
-                locked = False
-
             heat = {
                 'note': note,
                 'heat_id': heat_id,
@@ -171,9 +166,9 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
     def api_race_all():
         heats = []
         for heat in RHData.get_heats():
-            max_rounds = RHData.get_max_round(heat.heat_id)
+            max_rounds = RHData.get_max_round(heat.id)
             heats.append({
-                "id": heat.heat_id,
+                "id": heat.id,
                 "rounds": max_rounds
             })
 
@@ -251,7 +246,8 @@ def createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile):
         options = {}
         if opt_query:
             for opt in opt_query:
-                options[opt.option_name] = opt.option_value
+                if opt.option_name not in ['eventResults', 'secret_key']:
+                    options[opt.option_name] = opt.option_value
 
             payload = options
         else:

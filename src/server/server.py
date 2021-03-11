@@ -448,7 +448,7 @@ def render_database():
         savedraceLap=RHData.get_savedRaceLaps(),
         profiles=RHData.get_profiles(),
         race_format=RHData.get_raceFormats(),
-        globalSettings=RHData.get_globalSettings())
+        globalSettings=RHData.get_options())
 
 @APP.route('/vrxstatus')
 @requires_auth
@@ -2157,7 +2157,7 @@ def on_save_laps():
                     'laps': RACE.node_laps[node_index]
                     }
 
-        RHData.add_race_data()
+        RHData.add_race_data(race_data)
 
         # spawn thread for updating results caches
         cache_params = {
@@ -2216,7 +2216,7 @@ def on_resave_laps(data):
         if isinstance(lap['lap_time'], float):
             tmp_lap_time_formatted = RHUtils.time_format(lap['lap_time'], RHData.get_option('timeFormat'))
 
-        new_racedata.append({
+        new_racedata['laps'].append({
             'lap_time_stamp': lap['lap_time_stamp'],
             'lap_time': lap['lap_time'],
             'lap_time_formatted': tmp_lap_time_formatted,
@@ -4113,7 +4113,7 @@ def db_reset_heats(**kwargs):
     RHData.clear_heats()
     if 'nofill' not in kwargs:
         RHData.add_heat()
-        RACE.current_heat = RHData.get_first_heat()
+        RACE.current_heat = RHData.get_first_heat().id
     logger.info('Database heats reset')
 
 def db_reset_classes():
@@ -4151,11 +4151,11 @@ def db_reset_profile():
         'exit_ats': json.dumps(template)
         })
 
-    RHData.set_option("currentProfile", RHData.get_first_profile())
+    RHData.set_option("currentProfile", RHData.get_first_profile().id)
     logger.info("Database set default profiles")
 
 def db_reset_race_formats():
-    RHData.clear_raceforats()
+    RHData.clear_raceFormats()
     RHData.add_format({
         'name': __("2:00 Standard Race"),
         'race_mode': 0,
@@ -4523,11 +4523,11 @@ def recover_database(dbfile, **kwargs):
             for profile in profiles_query_data:
                 if 'enter_ats' in profile and profile['enter_ats']:
                     enter_ats = json.loads(profile['enter_ats'])
-                    enter_ats["v"] = [val/2 for val in enter_ats["v"]]
+                    enter_ats["v"] = [(val/2 if val else None) for val in enter_ats["v"]]
                     profile['enter_ats'] = json.dumps(enter_ats)
                 if 'exit_ats' in profile and profile['exit_ats']:
                     exit_ats = json.loads(profile['exit_ats'])
-                    exit_ats["v"] = [val/2 for val in exit_ats["v"]]
+                    exit_ats["v"] = [(val/2 if val else None) for val in exit_ats["v"]]
                     profile['exit_ats'] = json.dumps(exit_ats)
 
         # Convert frequencies
@@ -4569,14 +4569,15 @@ def recover_database(dbfile, **kwargs):
                 # build list of heat meta
                 heat_extracted_meta = []
                 for row in heat_query_data:
-                    if row['node_index'] == 0:
-                        new_row = {}
-                        new_row['id'] = row['heat_id']
-                        if 'note' in row:
-                            new_row['note'] = row['note']
-                        if 'class_id' in row:
-                            new_row['class_id'] = row['class_id']
-                        heat_extracted_meta.append(new_row)
+                    if 'node_index' in row:
+                        if row['node_index'] == 0:
+                            new_row = {}
+                            new_row['id'] = row['heat_id']
+                            if 'note' in row:
+                                new_row['note'] = row['note']
+                            if 'class_id' in row:
+                                new_row['class_id'] = row['class_id']
+                            heat_extracted_meta.append(new_row)
 
                 restore_table(Database.Heat, heat_extracted_meta, defaults={
                         'note': None,
