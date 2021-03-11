@@ -5255,7 +5255,7 @@ gevent.spawn(clock_check_thread_function)  # start thread to monitor system cloc
 # register endpoints
 import json_endpoints
 
-APP.register_blueprint(json_endpoints.createBlueprint(Database, RHData, Results, RACE, serverInfo, getCurrentProfile))
+APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not RHData.get_option("secret_key"):
