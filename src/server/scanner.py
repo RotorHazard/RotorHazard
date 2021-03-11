@@ -1,11 +1,14 @@
 import sys
-from flask import Flask, render_template
-from flask_socketio import SocketIO
-import webbrowser
 
 import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
+
+from flask import Flask, render_template
+from flask_socketio import SocketIO
+import webbrowser
+
+import Config
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -16,11 +19,9 @@ if len(sys.argv) < 2:
     print('Please specify serial port, e.g. COM12.')
     exit()
 
-INTERFACE = RHInterface.get_hardware_interface(
-    config={
-        'SERIAL_PORTS': [sys.argv[1]]
-    }
-)
+Config.SERIAL_PORTS = [sys.argv[1]]
+INTERFACE = RHInterface.get_hardware_interface(config=Config)
+print("Nodes detected: {}".format(len(INTERFACE.nodes)))
 
 def log(s):
     print(s)

@@ -18,6 +18,7 @@ READ_RHFEAT_FLAGS = 0x11     # read feature flags value
 READ_REVISION_CODE = 0x22    # read NODE_API_LEVEL and verification value
 READ_NODE_RSSI_PEAK = 0x23   # read 'nodeRssiPeak' value
 READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
+READ_NODE_RSSI_HISTORY = 0x25
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
 READ_TIME_MILLIS = 0x33      # read current 'millis()' time value
@@ -29,6 +30,7 @@ WRITE_FREQUENCY = 0x51       # Sets frequency (2 byte)
 # WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
+WRITE_MODE = 0x73
 WRITE_CURNODE_INDEX = 0x7A  # write index of current node for processor
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 JUMP_TO_BOOTLOADER = 0x7E   # jump to bootloader for flash update
@@ -190,11 +192,7 @@ class RHInterface(BaseHardwareInterface):
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
-                    if node.api_level >= 32:
-                        data = node.read_block(self, READ_LAP_PASS_STATS, 8)
-                        if data != None:
-                            data.extend(node.read_block(self, READ_LAP_EXTREMUMS, 8))
-                    elif node.api_level >= 21:
+                    if node.api_level >= 21:
                         data = node.read_block(self, READ_LAP_STATS, 16)
                     elif node.api_level >= 18:
                         data = node.read_block(self, READ_LAP_STATS, 19)
@@ -348,6 +346,8 @@ class RHInterface(BaseHardwareInterface):
                                             startThreshLowerNode.start_thresh_lower_time:
                             startThreshLowerNode = node
 
+            if node.loop_time > 1500:
+                logger.warning("Abnormal node loop time: {}".format(node.loop_time))
 
         # process any nodes with crossing-flag changes
         self.process_crossings(cross_list)
