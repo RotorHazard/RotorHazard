@@ -440,15 +440,15 @@ def render_hardwarelog():
 def render_database():
     '''Route to database page.'''
     return render_template('database.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
-        pilots=Database.Pilot,
-        heats=Database.Heat,
-        heatnodes=Database.HeatNode,
-        race_class=Database.RaceClass,
-        savedraceMeta=Database.SavedRaceMeta,
-        savedraceLap=Database.SavedRaceLap,
-        profiles=Database.Profiles,
-        race_format=Database.RaceFormat,
-        globalSettings=Database.GlobalSettings)
+        pilots=RHData.get_pilots(),
+        heats=RHData.get_heats(),
+        heatnodes=RHData.get_heatNodes(),
+        race_class=RHData.get_raceClasses(),
+        savedraceMeta=RHData.get_savedRaceMetas(),
+        savedraceLap=RHData.get_savedRaceLaps(),
+        profiles=RHData.get_profiles(),
+        race_format=RHData.get_raceFormats(),
+        globalSettings=RHData.get_globalSettings())
 
 @APP.route('/vrxstatus')
 @requires_auth
@@ -4116,27 +4116,25 @@ def db_reset(**kwargs):
 
 def db_reset_pilots():
     '''Resets database pilots to default.'''
-    DB.session.query(Database.Pilot).delete()
+    RHData.clear_pilots()
     for node in range(RACE.num_nodes):
-        DB.session.add(Database.Pilot(callsign='Callsign {0}'.format(node+1), \
-            name='Pilot {0} Name'.format(node+1), team=DEF_TEAM_NAME, phonetic=''))
-    DB.session.commit()
+        RHData.add_pilot({
+            'callsign': 'Callsign {0}'.format(node+1),
+            'name': 'Pilot {0} Name'.format(node+1)
+            })
     logger.info('Database pilots reset')
 
 def db_reset_heats(**kwargs):
     '''Resets database heats to default.'''
-    DB.session.query(Database.Heat).delete()
-    DB.session.query(Database.HeatNode).delete()
-    DB.session.commit()
+    RHData.clear_heats()
     if 'nofill' not in kwargs:
-        on_add_heat()
-        RACE.current_heat = 1
+        RHData.add_heat()
+        RACE.current_heat = RHData.get_first_heat()
     logger.info('Database heats reset')
 
 def db_reset_classes():
     '''Resets database race classes to default.'''
-    DB.session.query(Database.RaceClass).delete()
-    DB.session.commit()
+    RHData.clear_raceClasses()
     logger.info('Database race classes reset')
 
 def db_reset_current_laps():
@@ -4150,161 +4148,180 @@ def db_reset_current_laps():
 
 def db_reset_saved_races():
     '''Resets database saved races to default.'''
-    DB.session.query(Database.SavedRaceMeta).delete()
-    DB.session.query(Database.SavedPilotRace).delete()
-    DB.session.query(Database.SavedRaceLap).delete()
-    DB.session.commit()
+    RHData.clear_race_data()
     logger.info('Database saved races reset')
 
 def db_reset_profile():
     '''Set default profile'''
-    DB.session.query(Database.Profiles).delete()
+    RHData.clear_profiles()
 
     new_freqs = default_frequencies()
 
     template = {}
     template["v"] = [None for i in range(max(RACE.num_nodes,8))]
 
-    DB.session.add(Database.Profiles(name=__("Default"),
-                             frequencies = json.dumps(new_freqs),
-                             enter_ats = json.dumps(template),
-                             exit_ats = json.dumps(template)))
-    DB.session.commit()
-    RHData.set_option("currentProfile", 1)
+    RHData.add_profile({
+        'name': __("Default"),
+        'frequencies': json.dumps(new_freqs),
+        'enter_ats': json.dumps(template),
+        'exit_ats': json.dumps(template)
+        })
+
+    RHData.set_option("currentProfile", RHData.get_first_profile())
     logger.info("Database set default profiles")
 
 def db_reset_race_formats():
-    DB.session.query(Database.RaceFormat).delete()
-    DB.session.add(Database.RaceFormat(name=__("2:00 Standard Race"),
-                             race_mode=0,
-                             race_time_sec=120,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             staging_tones=1,
-                             number_laps_win=0,
-                             win_condition=WinCondition.MOST_PROGRESS,
-                             team_racing_mode=False,
-                             start_behavior=0))
-    DB.session.add(Database.RaceFormat(name=__("1:30 Whoop Sprint"),
-                             race_mode=0,
-                             race_time_sec=90,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             staging_tones=2,
-                             number_laps_win=0,
-                             win_condition=WinCondition.MOST_PROGRESS,
-                             team_racing_mode=False,
-                             start_behavior=0))
-    DB.session.add(Database.RaceFormat(name=__("3:00 Extended Race"),
-                             race_mode=0,
-                             race_time_sec=210,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             staging_tones=2,
-                             number_laps_win=0,
-                             win_condition=WinCondition.MOST_PROGRESS,
-                             team_racing_mode=False,
-                             start_behavior=0))
-    DB.session.add(Database.RaceFormat(name=__("First to 3 Laps"),
-                             race_mode=1,
-                             race_time_sec=0,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             staging_tones=2,
-                             number_laps_win=3,
-                             win_condition=WinCondition.FIRST_TO_LAP_X,
-                             team_racing_mode=False,
-                             start_behavior=0))
-    DB.session.add(Database.RaceFormat(name=__("Open Practice"),
-                             race_mode=1,
-                             race_time_sec=0,
-                             start_delay_min=0,
-                             start_delay_max=0,
-                             staging_tones=0,
-                             number_laps_win=0,
-                             win_condition=WinCondition.NONE,
-                             team_racing_mode=False,
-                             start_behavior=0))
-    DB.session.add(Database.RaceFormat(name=__("Fastest Lap Qualifier"),
-                             race_mode=0,
-                             race_time_sec=120,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             staging_tones=1,
-                             number_laps_win=0,
-                             win_condition=WinCondition.FASTEST_LAP,
-                             team_racing_mode=False,
-                             start_behavior=0))
-    DB.session.add(Database.RaceFormat(name=__("Fastest 3 Laps Qualifier"),
-                             race_mode=0,
-                             race_time_sec=120,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             staging_tones=1,
-                             number_laps_win=0,
-                             win_condition=WinCondition.FASTEST_3_CONSECUTIVE,
-                             team_racing_mode=False,
-                             start_behavior=0))
-    DB.session.add(Database.RaceFormat(name=__("Lap Count Only"),
-                             race_mode=0,
-                             race_time_sec=120,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             staging_tones=1,
-                             number_laps_win=0,
-                             win_condition=WinCondition.MOST_LAPS,
-                             team_racing_mode=False,
-                             start_behavior=0))
-    DB.session.add(Database.RaceFormat(name=__("Team / Most Laps Wins"),
-                             race_mode=0,
-                             race_time_sec=120,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             staging_tones=2,
-                             number_laps_win=0,
-                             win_condition=WinCondition.MOST_PROGRESS,
-                             team_racing_mode=True,
-                             start_behavior=0))
-    DB.session.add(Database.RaceFormat(name=__("Team / First to 7 Laps"),
-                             race_mode=0,
-                             race_time_sec=120,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             staging_tones=2,
-                             number_laps_win=7,
-                             win_condition=WinCondition.FIRST_TO_LAP_X,
-                             team_racing_mode=True,
-                             start_behavior=0))
-    DB.session.add(Database.RaceFormat(name=__("Team / Fastest Lap Average"),
-                             race_mode=0,
-                             race_time_sec=120,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             staging_tones=2,
-                             number_laps_win=0,
-                             win_condition=WinCondition.FASTEST_LAP,
-                             team_racing_mode=True,
-                             start_behavior=0))
-    DB.session.add(Database.RaceFormat(name=__("Team / Fastest 3 Consecutive Average"),
-                             race_mode=0,
-                             race_time_sec=120,
-                             start_delay_min=2,
-                             start_delay_max=5,
-                             staging_tones=2,
-                             number_laps_win=0,
-                             win_condition=WinCondition.FASTEST_3_CONSECUTIVE,
-                             team_racing_mode=True,
-                             start_behavior=0))
+    RHData.clear_raceforats()
+    RHData.add_format({
+        'name': __("2:00 Standard Race"),
+        'race_mode': 0,
+        'race_time_sec': 120,
+        'start_delay_min': 2,
+        'start_delay_max': 5,
+        'staging_tones': 1,
+        'number_laps_win': 0,
+        'win_condition': WinCondition.MOST_PROGRESS,
+        'team_racing_mode': False,
+        'start_behavior': 0
+        })
+    RHData.add_format({
+        'name': __("1:30 Whoop Sprint"),
+        'race_mode': 0,
+        'race_time_sec': 90,
+        'start_delay_min': 2,
+        'start_delay_max': 5,
+        'staging_tones': 2,
+        'number_laps_win': 0,
+        'win_condition': WinCondition.MOST_PROGRESS,
+        'team_racing_mode': False,
+        'start_behavior': 0
+        })
+    RHData.add_format({
+        'name': __("3:00 Extended Race"),
+        'race_mode': 0,
+        'race_time_sec': 210,
+        'start_delay_min': 2,
+        'start_delay_max': 5,
+        'staging_tones': 2,
+        'number_laps_win': 0,
+        'win_condition': WinCondition.MOST_PROGRESS,
+        'team_racing_mode': False,
+        'start_behavior': 0
+        })
+    RHData.add_format({
+        'name': __("First to 3 Laps"),
+        'race_mode': 1,
+        'race_time_sec': 0,
+        'start_delay_min': 2,
+        'start_delay_max': 5,
+        'staging_tones': 2,
+        'number_laps_win': 3,
+        'win_condition': WinCondition.FIRST_TO_LAP_X,
+        'team_racing_mode': False,
+        'start_behavior': 0
+        })
+    RHData.add_format({
+        'name': __("Open Practice"),
+        'race_mode': 1,
+        'race_time_sec': 0,
+        'start_delay_min': 0,
+        'start_delay_max': 0,
+        'staging_tones': 0,
+        'number_laps_win': 0,
+        'win_condition': WinCondition.NONE,
+        'team_racing_mode': False,
+        'start_behavior': 0
+        })
+    RHData.add_format({
+        'name': __("Fastest Lap Qualifier"),
+        'race_mode': 0,
+        'race_time_sec': 120,
+        'start_delay_min': 2,
+        'start_delay_max': 5,
+        'staging_tones': 1,
+        'number_laps_win': 0,
+        'win_condition': WinCondition.FASTEST_LAP,
+        'team_racing_mode': False,
+        'start_behavior': 0
+        })
+    RHData.add_format({
+        'name': __("Fastest 3 Laps Qualifier"),
+        'race_mode': 0,
+        'race_time_sec': 120,
+        'start_delay_min': 2,
+        'start_delay_max': 5,
+        'staging_tones': 1,
+        'number_laps_win': 0,
+        'win_condition': WinCondition.FASTEST_3_CONSECUTIVE,
+        'team_racing_mode': False,
+        'start_behavior': 0
+        })
+    RHData.add_format({
+        'name': __("Lap Count Only"),
+        'race_mode': 0,
+        'race_time_sec': 120,
+        'start_delay_min': 2,
+        'start_delay_max': 5,
+        'staging_tones': 1,
+        'number_laps_win': 0,
+        'win_condition': WinCondition.MOST_LAPS,
+        'team_racing_mode': False,
+        'start_behavior': 0
+        })
+    RHData.add_format({
+        'name': __("Team / Most Laps Wins"),
+        'race_mode': 0,
+        'race_time_sec': 120,
+        'start_delay_min': 2,
+        'start_delay_max': 5,
+        'staging_tones': 2,
+        'number_laps_win': 0,
+        'win_condition': WinCondition.MOST_PROGRESS,
+        'team_racing_mode': True,
+        'start_behavior': 0
+        })
+    RHData.add_format({
+        'name': __("Team / First to 7 Laps"),
+        'race_mode': 0,
+        'race_time_sec': 120,
+        'start_delay_min': 2,
+        'start_delay_max': 5,
+        'staging_tones': 2,
+        'number_laps_win': 7,
+        'win_condition': WinCondition.FIRST_TO_LAP_X,
+        'team_racing_mode': True,
+        'start_behavior': 0
+        })
+    RHData.add_format({
+        'name': __("Team / Fastest Lap Average"),
+        'race_mode': 0,
+        'race_time_sec': 120,
+        'start_delay_min': 2,
+        'start_delay_max': 5,
+        'staging_tones': 2,
+        'number_laps_win': 0,
+        'win_condition': WinCondition.FASTEST_LAP,
+        'team_racing_mode': True,
+        'start_behavior': 0
+        })
+    RHData.add_format({
+        'name': __("Team / Fastest 3 Consecutive Average"),
+        'race_mode': 0,
+        'race_time_sec': 120,
+        'start_delay_min': 2,
+        'start_delay_max': 5,
+        'staging_tones': 2,
+        'number_laps_win': 0,
+        'win_condition': WinCondition.FASTEST_3_CONSECUTIVE,
+        'team_racing_mode': True,
+        'start_behavior': 0
+        })
 
-    for race_class in RHData.get_raceClasses():
-        race_class.format_id = 0
-
-    DB.session.commit()
     setCurrentRaceFormat(RHData.get_first_raceFormat())
     logger.info("Database reset race formats")
 
 def db_reset_options_defaults():
-    DB.session.query(Database.GlobalSettings).delete()
+    RHData.clear_options()
     RHData.set_option("server_api", SERVER_API)
     # group identifiers
     RHData.set_option("timerName", __("RotorHazard"))
@@ -4695,7 +4712,7 @@ def recover_database(dbfile, **kwargs):
     DB.session.commit()
 
     clean_results_cache()
-    RHData.primeOptionsCache() # refresh Options cache
+    RHData.primeCache() # refresh Options cache
 
     Events.trigger(Evt.DATABASE_RECOVER)
 
@@ -4711,11 +4728,9 @@ def expand_heats():
         heatNode_data[heatNode.heat_id].append(heatNode.node_index)
 
     for heat_id, nodes in heatNode_data.items():
-        for node in range(RACE.num_nodes):
-            if node not in nodes:
-                DB.session.add(Database.HeatNode(heat_id=heat_id, node_index=node, pilot_id=RHUtils.PILOT_ID_NONE))
-
-    DB.session.commit()
+        for node_index in range(RACE.num_nodes):
+            if node_index not in nodes:
+                RHData.add_heatNode(heat_id, node_index)
 
 def init_race_state():
     expand_heats()
@@ -5118,7 +5133,7 @@ if not os.path.exists(DB_FILE_NAME):
     logger.info("No '{0}' file found; creating initial database".format(DB_FILE_NAME))
     db_init()
     db_inited_flag = True
-    RHData.primeOptionsCache() # Ready the Options cache
+    RHData.primeCache() # Ready the Options cache
 
 # check if DB file owned by 'root' and change owner to 'pi' user if so
 if RHUtils.checkSetFileOwnerPi(DB_FILE_NAME):
@@ -5148,7 +5163,7 @@ if RACE.num_nodes > 0:
 # Do data consistency checks
 if not db_inited_flag:
     try:
-        RHData.primeOptionsCache() # Ready the Options cache
+        RHData.primeCache() # Ready the Options cache
 
         if not RHData.check_integrity(SERVER_API):
             recover_database(DB_FILE_NAME, startup=True)
