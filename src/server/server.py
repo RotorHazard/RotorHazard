@@ -1434,7 +1434,6 @@ def on_export_database(data):
 
         if export_result != False:
             try:
-                file_content = export_result
                 emit_payload = {
                     'filename': 'RotorHazard Export ' + datetime.now().strftime('%Y%m%d_%H%M%S') + ' ' + exporter + '.' + export_result['ext'],
                     'encoding': export_result['encoding'],
@@ -3084,21 +3083,6 @@ def emit_race_list(**params):
                 'note': heatnote,
                 'rounds': rounds,
             }
-
-    '''
-    heats_by_class = {}
-    heats_by_class[RHUtils.CLASS_ID_NONE] = [heat.id for heat in Database.Heat.query.filter_by(class_id=RHUtils.CLASS_ID_NONE).all()]
-    for race_class in RHData.get_raceClasses():
-        heats_by_class[race_class.id] = [heat.id for heat in Database.Heat.query.filter_by(class_id=race_class.id).all()]
-
-    current_classes = {}
-    for race_class in RHData.get_raceClasses():
-        current_class = {}
-        current_class['id'] = race_class.id
-        current_class['name'] = race_class.name
-        current_class['description'] = race_class.name
-        current_classes[race_class.id] = current_class
-    '''
 
     emit_payload = {
         'heats': heats,
