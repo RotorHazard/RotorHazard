@@ -776,21 +776,6 @@ def on_set_frequency(data):
     profile.frequencies = json.dumps(freqs)
     logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(node_index+1, band, channel, frequency))
 
-    update_heat_flag = False
-    try:  # if running as secondary timer and no pilot is set for node then set one now
-        if frequency and getCurrentRaceFormat() is SECONDARY_RACE_FORMAT:
-            heat_node = RHData.get_heatNodes(filter_by={'heat_id': RACE.current_heat, 'node_index': node_index}, return_type='one_or_none')
-            if heat_node and heat_node.pilot_id == RHUtils.PILOT_ID_NONE:
-                pilot = RHData.get_pilot(node_index+1)
-                if pilot:
-                    heat_node.pilot_id = pilot.id
-                    update_heat_flag = True
-                    logger.info("Set node {0} pilot to '{1}' for secondary-timer operation".format(node_index+1, pilot.callsign))
-                else:
-                    logger.info("Unable to set node {0} pilot for secondary-timer operation".format(node_index+1))
-    except:
-        logger.exception("Error checking/setting pilot for node {0} in 'on_set_frequency()'".format(node_index+1))
-
     DB.session.commit()
 
     INTERFACE.set_frequency(node_index, frequency)
@@ -803,8 +788,6 @@ def on_set_frequency(data):
         })
 
     emit_frequency_data()
-    if update_heat_flag:
-        emit_heat_data()
 
 @SOCKET_IO.on('set_frequency_preset')
 @catchLogExceptionsWrapper
@@ -1273,7 +1256,8 @@ def on_alter_race(data):
 def on_backup_database():
     '''Backup database.'''
     bkp_name = backup_db_file(True)  # make copy of DB file
-         # read DB data and convert to Base64
+
+    # read DB data and convert to Base64
     with open(bkp_name, mode='rb') as file:
         file_content = base64.encodestring(file.read())
     emit_payload = {
@@ -1957,8 +1941,9 @@ def race_start_thread(start_token):
 
     # clear any lingering crossings at staging (if node rssi < enterAt)
     for node in INTERFACE.nodes:
-        if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != RHUtils.PILOT_ID_NONE and \
-                    node.current_rssi < node.enter_at_level:
+        if node.crossing_flag and node.frequency > 0 and \
+            (getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or 
+            (node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.current_rssi < node.enter_at_level)):
             logger.info("Forcing end crossing for node {0} at staging (rssi={1}, enterAt={2}, exitAt={3})".\
                        format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
             INTERFACE.force_end_crossing(node.index)
@@ -1973,7 +1958,7 @@ def race_start_thread(start_token):
                     format(lower_amount, RHData.get_optionInt('startThreshLowerDuration')))
         lower_end_time = RACE.start_time_monotonic + RHData.get_optionInt('startThreshLowerDuration')
         for node in INTERFACE.nodes:
-            if node.frequency > 0 and node.current_pilot_id != RHUtils.PILOT_ID_NONE:
+            if node.frequency > 0 and (getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
                 if node.current_rssi < node.enter_at_level:
                     diff_val = int((node.enter_at_level-node.exit_at_level)*lower_amount/100)
                     if diff_val > 0:
@@ -2020,7 +2005,8 @@ def race_start_thread(start_token):
             node.history_times = []
             node.under_min_lap_count = 0
             # clear any lingering crossing (if rssi>enterAt then first crossing starts now)
-            if node.crossing_flag and node.frequency > 0 and node.current_pilot_id != RHUtils.PILOT_ID_NONE:
+            if node.crossing_flag and node.frequency > 0 and (
+                getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or node.current_pilot_id != RHUtils.PILOT_ID_NONE):
                 logger.info("Forcing end crossing for node {0} at start (rssi={1}, enterAt={2}, exitAt={3})".\
                            format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
                 INTERFACE.force_end_crossing(node.index)
@@ -2096,8 +2082,10 @@ def on_stop_race():
             delta_time < RHData.get_optionInt('startThreshLowerDuration'):
         for node in INTERFACE.nodes:
             # if node EnterAt/ExitAt values need to be restored then do it soon
-            if node.frequency > 0 and node.current_pilot_id != RHUtils.PILOT_ID_NONE and \
-                                            node.start_thresh_lower_flag:
+            if node.frequency > 0 and (
+                getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or (
+                    node.current_pilot_id != RHUtils.PILOT_ID_NONE and \
+                    node.start_thresh_lower_flag)):
                 node.start_thresh_lower_time = RACE.end_time + 0.1
 
     RACE.timer_running = False # indicate race timer not running
@@ -2532,11 +2520,7 @@ def on_delete_lap(data):
         db_next['lap_time_formatted'] = RHUtils.time_format(db_next['lap_time'], RHData.get_option('timeFormat'))
 
     try:  # delete any split laps for deleted lap
-        lap_splits = RHData.get_lapSplits(
-            filter_by={
-                "node_index": node_index,
-                "lap_id": lap_number
-            })
+        lap_splits = RHData.get_lapSplits_by_lap(node_index, lap_number)
         if lap_splits and len(lap_splits) > 0:
             for lap_split in lap_splits:
                 DB.session.delete(lap_split)
@@ -3009,12 +2993,7 @@ def get_splits(node, lap_id, lapCompleted):
     splits = []
     for secondary_index in range(len(CLUSTER.secondaries)):
         if CLUSTER.isSplitSecondaryAvailable(secondary_index):
-            split = RHData.get_lapSplits(filter_by={
-                "node_index": node,
-                "lap_id": lap_id,
-                "split_id": secondary_index
-                },
-                return_type='one_or_none')
+            split = RHData.get_lapSplit_by_params(node, lap_id, secondary_index)
             if split:
                 split_payload = {
                     'split_id': secondary_index,
@@ -3817,7 +3796,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
             pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node.index)
 
             # reject passes before race start and with disabled (no-pilot) nodes
-            if pilot_id != RHUtils.PILOT_ID_NONE:
+            if getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or pilot_id != RHUtils.PILOT_ID_NONE:
                 if lap_timestamp_absolute >= RACE.start_time_monotonic:
 
                     # if node EnterAt/ExitAt values need to be restored then do it soon
@@ -4001,7 +3980,8 @@ def node_crossing_callback(node):
 
     if RACE.race_status == RaceStatus.RACING:  # if race is in progress
         # if pilot assigned to node and first crossing is complete
-        if node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.first_cross_flag:
+        if getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or (
+            node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.first_cross_flag):
             # first crossing has happened; if 'enter' then show indicator,
             #  if first event is 'exit' then ignore (because will be end of first crossing)
             if node.crossing_flag:
