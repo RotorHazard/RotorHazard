@@ -15,38 +15,6 @@ from RHRace import RaceStatus
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings
 
-    class _Decorators():
-        @classmethod
-        def getter_parameters(cls, func):
-            def wrapper(*args, **kwargs):
-                db_obj = func(*args, **kwargs)
-                db_query = db_obj.query
-
-                if 'filter_by' in kwargs:
-                    db_query = db_query.filter_by(**kwargs['filter_by'])
-
-                if 'order_by' in kwargs:
-                    order = []
-                    for key, val in kwargs['order_by'].items():
-                        if val == 'desc':
-                            order.append(getattr(db_obj, key).desc())
-                        else:
-                            order.append(getattr(db_obj, key))
-
-                    db_query = db_query.order_by(*order)
-
-                if 'return_type' in kwargs:
-                    if kwargs['return_type'] in [
-                        'all',
-                        'first',
-                        'one',
-                        'one_or_none',
-                        'count'
-                        ]:
-                        return getattr(db_query, kwargs['return_type'])()
-
-                return db_query.all()
-            return wrapper
 
     def __init__(self, Database, Events, RACE):
         self._Database = Database
@@ -87,14 +55,12 @@ class RHData():
         for setting in settings:
             self._OptionsCache[setting.option_name] = setting.option_value
 
-
     # Pilots
     def get_pilot(self, pilot_id):
         return self._Database.Pilot.query.get(pilot_id)
 
-    @_Decorators.getter_parameters
-    def get_pilots(self, **kwargs):
-        return self._Database.Pilot
+    def get_pilots(self):
+        return self._Database.Pilot.query.all()
 
     def add_pilot(self, init=None):
         new_pilot = self._Database.Pilot(
@@ -213,9 +179,8 @@ class RHData():
     def get_heat(self, heat_id):
         return self._Database.Heat.query.get(heat_id)
 
-    @_Decorators.getter_parameters
-    def get_heats(self, **kwargs):
-        return self._Database.Heat
+    def get_heats(self):
+        return self._Database.Heat.query.all()
 
     def get_first_heat(self):
         return self._Database.Heat.query.first()
@@ -437,9 +402,8 @@ class RHData():
         return True
 
     # HeatNodes
-    @_Decorators.getter_parameters
-    def get_heatNodes(self, **kwargs):
-        return self._Database.HeatNode
+    def get_heatNodes(self):
+        return self._Database.HeatNode.query.all()
 
     def get_heatNodes_by_heat(self, heat_id):
         return self._Database.HeatNode.query.filter_by(heat_id=heat_id).order_by(self._Database.HeatNode.node_index).all()
@@ -465,9 +429,8 @@ class RHData():
     def get_raceClass(self, raceClass_id):
         return self._Database.RaceClass.query.get(raceClass_id)
 
-    @_Decorators.getter_parameters
-    def get_raceClasses(self, **kwargs):
-        return self._Database.RaceClass
+    def get_raceClasses(self):
+        return self._Database.RaceClass.query.all()
 
     def add_raceClass(self):
         # Add new race class
@@ -601,9 +564,8 @@ class RHData():
     def get_profile(self, profile_id):
         return self._Database.Profiles.query.get(profile_id)
 
-    @_Decorators.getter_parameters
-    def get_profiles(self, **kwargs):
-        return self._Database.Profiles
+    def get_profiles(self):
+        return self._Database.Profiles.query.all()
 
     def get_first_profile(self):
         return self._Database.Profiles.query.first()
@@ -702,9 +664,8 @@ class RHData():
     def get_raceFormat(self, raceFormat_id):
         return self._Database.RaceFormat.query.get(raceFormat_id)
 
-    @_Decorators.getter_parameters
-    def get_raceFormats(self, **kwargs):
-        return self._Database.RaceFormat
+    def get_raceFormats(self):
+        return self._Database.RaceFormat.query.all()
 
     def get_first_raceFormat(self):
         return self._Database.RaceFormat.query.first()
@@ -893,9 +854,8 @@ class RHData():
     def get_savedRaceMeta_by_heat_round(self, heat_id, round_id):
         return self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id, round_id=round_id).one()
 
-    @_Decorators.getter_parameters
-    def get_savedRaceMetas(self, **kwargs):
-        return self._Database.SavedRaceMeta
+    def get_savedRaceMetas(self):
+        return self._Database.SavedRaceMeta.query.all()
 
     def get_savedRaceMetas_by_heat(self, heat_id):
         return self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).order_by(self._Database.SavedRaceMeta.round_id).all()
@@ -1006,9 +966,8 @@ class RHData():
     def get_savedPilotRace(self, race_id):
         return self._Database.SavedPilotRace.query.get(race_id)
 
-    @_Decorators.getter_parameters
-    def get_savedPilotRaces(self, **kwargs):
-        return self._Database.SavedPilotRace
+    def get_savedPilotRaces(self):
+        return self._Database.SavedPilotRace.query.all()
 
     def get_savedPilotRaces_by_savedRaceMeta(self, race_id):
         return self._Database.SavedPilotRace.query.filter_by(race_id=race_id).all()
@@ -1029,9 +988,8 @@ class RHData():
         return bool(self._Database.SavedPilotRace.query.filter_by(pilot_id=pilot_id).count())
 
     # Race Laps
-    @_Decorators.getter_parameters
-    def get_savedRaceLaps(self, **kwargs):
-        return self._Database.SavedRaceLap
+    def get_savedRaceLaps(self):
+        return self._Database.SavedRaceLap.query.all()
 
     def get_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
         return self._Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).order_by(self._Database.SavedRaceLap.lap_time_stamp).all()
@@ -1083,8 +1041,8 @@ class RHData():
                     lap_time_stamp=lap['lap_time_stamp'],
                     lap_time=lap['lap_time'],
                     lap_time_formatted=lap['lap_time_formatted'],
-                    source = lap['source'],
-                    deleted = lap['deleted']
+                    source=lap['source'],
+                    deleted=lap['deleted']
                 ))
 
         self._Database.DB.session.commit()
@@ -1098,9 +1056,21 @@ class RHData():
         return True
 
     # Splits
-    @_Decorators.getter_parameters
-    def get_lapSplits(self, **kwargs):
-        return self._Database.LapSplit
+    def get_lapSplits(self):
+        return self._Database.LapSplit.query.all()
+
+    def get_lapSplits_by_lap(self, node_index, lap_id):
+        return self._Database.LapSplit.query.filter_by(
+            node_index=node_index,
+            lap_id=lap_id
+            ).all()
+
+    def get_lapSplit_by_params(self, node_index, lap_id, split_id):
+        return self._Database.LapSplit.query.filter_by(
+            node_index=node_index,
+            lap_id=lap_id,
+            split_id=split_id
+            ).one_or_none()
 
     def clear_lapSplits(self):
         self._Database.DB.session.query(self._Database.LapSplit).delete()
@@ -1108,9 +1078,8 @@ class RHData():
         return True
 
     # Options
-    @_Decorators.getter_parameters
-    def get_options(self, **kwargs):
-        return self._Database.GlobalSettings
+    def get_options(self):
+        return self._Database.GlobalSettings.query.all()
 
     def get_option(self, option, default_value=False):
         try:
