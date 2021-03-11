@@ -3,11 +3,11 @@
 
 #include "config.h"
 
-class Buffer {
+template<size_t S> class Buffer {
     public:
         uint8_t index = 0;
         uint8_t size = 0;
-        uint8_t data[20];  // Data array for I/O, up to 20 bytes per message
+        uint8_t data[S];  // Data array for I/O, up to 18 bytes per message
 
         bool isEmpty() {
             return size == 0;
@@ -19,34 +19,52 @@ class Buffer {
             size = 0;
         }
         uint8_t read8() {
-            return data[index++];
+            if (index < S) {
+                return data[index++];
+            } else {
+                return 0xFF;
+            }
         }
         uint16_t read16() {
-            uint16_t result;
-            result = data[index++];
-            result = (result << 8) | data[index++];
-            return result;
+            if (index < S-1) {
+                uint16_t result;
+                result = data[index++];
+                result = (result << 8) | data[index++];
+                return result;
+            } else {
+                return 0xFFFF;
+            }
         }
         uint32_t read32() {
-            uint32_t result;
-            result = data[index++];
-            result = (result << 8) | data[index++];
-            result = (result << 8) | data[index++];
-            result = (result << 8) | data[index++];
-            return result;
+            if (index < S-3) {
+                uint32_t result;
+                result = data[index++];
+                result = (result << 8) | data[index++];
+                result = (result << 8) | data[index++];
+                result = (result << 8) | data[index++];
+                return result;
+            } else {
+                return 0xFFFFFFFF;
+            }
         }
         void write8(uint8_t v) {
-            data[size++] = v;
+            if (size < S) {
+                data[size++] = v;
+            }
         }
         void write16(uint16_t v) {
-            data[size++] = (v >> 8);
-            data[size++] = v;
+            if (size < S-1) {
+                data[size++] = (v >> 8);
+                data[size++] = v;
+            }
         }
         void write32(uint32_t v) {
-            data[size++] = (v >> 24);
-            data[size++] = (v >> 16);
-            data[size++] = (v >> 8);
-            data[size++] = v;
+            if (size < S-3) {
+                data[size++] = (v >> 24);
+                data[size++] = (v >> 16);
+                data[size++] = (v >> 8);
+                data[size++] = v;
+            }
         }
         uint8_t calculateChecksum(uint8_t len) {
             uint8_t checksum = 0;

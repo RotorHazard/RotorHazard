@@ -22,7 +22,7 @@ public:
     Message(RssiReceivers *rssiRxs, Hardware *hardware) : rssiRxs(rssiRxs), hardware(hardware) {
     }
     uint8_t command;  // code to identify messages
-    Buffer buffer;  // request/response payload
+    Buffer<18> buffer;  // request/response payload
 
     uint8_t getPayloadSize();
     void handleWriteCommand(bool serialFlag);

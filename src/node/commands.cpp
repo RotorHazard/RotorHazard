@@ -128,7 +128,7 @@ void Message::handleWriteCommand(bool serialFlag)
     command = 0;  // Clear previous command
 }
 
-void ioBufferWriteExtremum(Buffer& buf, const Extremum& e, mtime_t now)
+template <size_t N> void ioBufferWriteExtremum(Buffer<N>& buf, const Extremum& e, mtime_t now)
 {
     ioBufferWriteRssi(buf, e.rssi);
     buf.write16(toDuration(now - e.firstTime));
