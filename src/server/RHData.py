@@ -119,7 +119,7 @@ class RHData():
 
         race_list = []
         if 'callsign' in data or 'team_name' in data:
-            heatnodes = self.get_heatNodes(filter_by={"pilot_id": pilot_id})
+            heatnodes = self._Database.HeatNode.query.filter_by(pilot_id=pilot_id).all()
             if heatnodes:
                 for heatnode in heatnodes:
                     heat = self.get_heat(heatnode.heat_id)
@@ -127,9 +127,7 @@ class RHData():
                     if heat.class_id != RHUtils.CLASS_ID_NONE:
                         race_class = self.get_raceClass(heat.class_id)
                         race_class.cacheStatus = Results.CacheStatus.INVALID
-                    for race in self.get_savedRaceMetas(
-                        filter_by={"heat_id": heatnode.heat_id}
-                        ):
+                    for race in self._Database.SavedRaceMeta.query.filter_by(heat_id=heatnode.heat_id).all():
                         race_list.append(race)
 
             if len(race_list):
@@ -146,12 +144,7 @@ class RHData():
     def delete_pilot(self, pilot_id):
         pilot = self.get_pilot(pilot_id)
 
-        has_race = self.get_savedPilotRaces(
-            filter_by={"pilot_id": pilot.id},
-            return_type='first'
-            )
-
-        if has_race:
+        if self.savedPilotRaces_has_pilot(pilot.id):
             logger.info('Refusing to delete pilot {0}: is in use'.format(pilot.id))
             return False
         else:
@@ -249,7 +242,7 @@ class RHData():
         self._Database.DB.session.flush()
         self._Database.DB.session.refresh(new_heat)
 
-        for source_heatnode in self.get_heatNodes(filter_by={'heat_id': source_heat.id}):
+        for source_heatnode in self.get_heatNodes_by_heat(source_heat.id):
             new_heatnode = self._Database.HeatNode(heat_id=new_heat.id,
                 node_index=source_heatnode.node_index,
                 pilot_id=source_heatnode.pilot_id)
@@ -278,13 +271,12 @@ class RHData():
             heat.class_id = data['class']
         if 'pilot' in data:
             node_index = data['node']
-            heatnode = self.get_heatNodes(
-                filter_by={'heat_id': heat.id, 'node_index':node_index},
-                return_type='one')
+            heatnode = self._Database.HeatNode.query.filter_by(
+                heat_id=heat_id, node_index=node_index).one()
             heatnode.pilot_id = data['pilot']
 
         # alter existing saved races:
-        race_list = self.get_savedRaceMetas(filter_by={"heat_id":heat_id})
+        race_list = self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).all()
 
         if 'class' in data:
             if len(race_list):
@@ -298,12 +290,10 @@ class RHData():
         if 'pilot' in data:
             if len(race_list):
                 for race_meta in race_list:
-                    for pilot_race in self.get_savedPilotRaces(
-                        filter_by={"race_id": race_meta.id}):
+                    for pilot_race in self.get_savedPilotRaces_by_savedRaceMeta(race_meta.id):
                         if pilot_race.node_index == data['node']:
                             pilot_race.pilot_id = data['pilot']
-                    for race_lap in self.get_savedRaceLaps(
-                        filter_by={"race_id": race_meta.id}):
+                    for race_lap in self._Database.SavedRaceLap.query.filter_by(race_id=race_meta.id):
                         if race_lap.node_index == data['node']:
                             race_lap.pilot_id = data['pilot']
 
@@ -330,7 +320,7 @@ class RHData():
         if heat_id == self._RACE.current_heat:
             self._RACE.node_pilots = {}
             self._RACE.node_teams = {}
-            for heatNode in self.get_heatNodes(filter_by={'heat_id': heat_id}):
+            for heatNode in self.get_heatNodes_by_heat(heat_id):
                 self._RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
                 if heatNode.pilot_id is not RHUtils.PILOT_ID_NONE:
@@ -345,13 +335,12 @@ class RHData():
 
     def delete_heat(self, heat_id):
         # Deletes heat. Returns True/False success
-        heat_count = self.get_heats(return_type='count')
+        heat_count = self._Database.Heat.query.count()
         heat = self.get_heat(heat_id)
         if heat and heat_count > 1: # keep at least one heat
-            heatnodes = self.get_heatNodes(filter_by={'heat_id': heat.id})
+            heatnodes = self.get_heatNodes_by_heat(heat.id)
 
-            has_race = self.get_savedRaceMetas(
-                filter_by={"heat_id": heat.id}, return_type='first')
+            has_race = self.savedRaceMetas_has_heat(heat.id)
 
             if has_race or (self._RACE.current_heat == heat.id and self._RACE.race_status != RaceStatus.READY):
                 logger.info('Refusing to delete heat {0}: is in use'.format(heat.id))
@@ -373,11 +362,9 @@ class RHData():
                     try:
                         heat_obj = self._Database.Heat.query.first()
                         if heat_obj.id != 1:
-                            heatnodes = self.get_heatNodes(filter_by={'heat_id': heat_obj.id})
-                            has_race = self.get_savedRaceMetas(
-                                filter_by={"heat_id": heat_obj.id}, return_type='first')
+                            heatnodes = self.get_heatNodes_by_heat(heat_obj.id)
 
-                            if not has_race:
+                            if not self.savedRaceMetas_has_heat(heat_obj.id):
                                 logger.info("Adjusting single remaining heat ({0}) to ID 1".format(heat_obj.id))
                                 heat_obj.id = 1
                                 for heatnode in heatnodes:
@@ -470,7 +457,7 @@ class RHData():
         self._Database.DB.session.flush()
         self._Database.DB.session.refresh(new_class)
 
-        for heat in self.get_heats(filter_by={"class_id": source_class_id}):
+        for heat in self._Database.Heat.query.filter_by(class_id=source_class_id).all():
             self.duplicate_heat(heat.id, dest_class=new_class.id)
 
         self._Database.DB.session.commit()
@@ -498,7 +485,7 @@ class RHData():
         if 'class_description' in data:
             race_class.description = data['class_description']
 
-        race_list = self.get_savedRaceMetas(filter_by={"class_id": race_class_id})
+        race_list = self._Database.SavedRaceMeta.query.filter_by(class_id=race_class_id).all()
 
         if 'class_name' in data:
             if len(race_list):
@@ -514,7 +501,7 @@ class RHData():
                 race_meta.format_id = data['class_format']
                 race_meta.cacheStatus = Results.CacheStatus.INVALID
 
-            heats = self.get_heats(filter_by={"class_id": race_class_id})
+            heats = self._Database.Heat.query.filter_by(class_id=race_class_id).all()
             for heat in heats:
                 heat.cacheStatus = Results.CacheStatus.INVALID
 
@@ -531,10 +518,7 @@ class RHData():
     def delete_raceClass(self, class_id):
         race_class = self.get_raceClass(class_id)
 
-        has_race = self.get_savedRaceMetas(
-            filter_by={"class_id": race_class.id},
-            return_type='first'
-            )
+        has_race = self.savedRaceMetas_has_raceClass(race_class.id)
 
         if has_race:
             logger.info('Refusing to delete class {0}: is in use'.format(race_class.id))
@@ -640,8 +624,7 @@ class RHData():
         return profile
 
     def delete_profile(self, profile_id):
-        profile_count = self.get_heats(return_type='count')
-        if profile_count > 1: # keep one profile
+        if len(self.get_profiles()) > 1: # keep one profile
             profile = self.get_profile(profile_id)
             self._Database.DB.session.delete(profile)
             self._Database.DB.session.commit()
@@ -775,8 +758,7 @@ class RHData():
         race_list = []
 
         if 'win_condition' in data or 'start_behavior' in data:
-            race_list = self.get_savedRaceMetas(
-                filter_by={"format_id": race_format.id})
+            race_list = self._Database.SavedRaceMeta.query.filter_by(format_id=race_format.id).all()
 
             if len(race_list):
                 self._PageCache.set_valid(False)
@@ -785,14 +767,12 @@ class RHData():
                 for race in race_list:
                     race.cacheStatus = Results.CacheStatus.INVALID
 
-                classes = self.get_raceClasses(
-                    filter_by={"format_id": race_format.id})
+                classes = self._Database.RaceClass.query.filter_by(format_id=race_format.id).all()
 
                 for race_class in classes:
                     race_class.cacheStatus = Results.CacheStatus.INVALID
 
-                    heats = self.get_heats(
-                        filter_by={"class_id": race_class.id})
+                    heats = self._Database.Heat.query.filter_by(class_id=race_class.id).all()
 
                     for heat in heats:
                         heat.cacheStatus = Results.CacheStatus.INVALID
@@ -814,13 +794,12 @@ class RHData():
             logger.warning('Preventing race format deletion: race in progress')
             return False
 
-        if self.get_savedRaceMetas(filter_by={"format_id": format_id}):
+        if self.savedRaceMetas_has_raceFormat(format_id):
             logger.warning('Preventing race format deletion: saved race exists')
             return False
 
-        format_count = self.get_raceFormats(return_type='count')
         race_format = self.get_raceFormat(format_id)
-        if race_format and format_count > 1: # keep one format
+        if race_format and len(self.get_raceFormats()) > 1: # keep one format
             self._Database.DB.session.delete(race_format)
             self._Database.DB.session.commit()
 
@@ -899,7 +878,7 @@ class RHData():
         new_format_id = new_class.format_id
 
         # clear round ids
-        heat_races = self.get_savedRaceMetas(filter_by={"heat_id": new_heat_id})
+        heat_races = self.get_savedRaceMetas_by_heat(new_heat_id)
         race_meta.round_id = 0
         dummy_round_counter = -1
         for race in heat_races:
@@ -913,19 +892,15 @@ class RHData():
 
         # renumber rounds
         self._Database.DB.session.flush()
-        old_heat_races = self.get_savedRaceMetas(
-            filter_by={"heat_id": old_heat_id},
-            order_by={"start_time_formatted": None}
-            )
+        old_heat_races = self._Database.SavedRaceMeta.query.filter_by(heat_id=old_heat_id) \
+            .order_by(self._Database.SavedRaceMeta.start_time_formatted).all()
         round_counter = 1
         for race in old_heat_races:
             race.round_id = round_counter
             round_counter += 1
 
-        new_heat_races = self.get_savedRaceMetas(
-            filter_by={"heat_id": new_heat_id},
-            order_by={"start_time_formatted": None}
-            )
+        new_heat_races = self._Database.SavedRaceMeta.query.filter_by(heat_id=new_heat_id) \
+            .order_by(self._Database.SavedRaceMeta.start_time_formatted).all()
         round_counter = 1
         for race in new_heat_races:
             race.round_id = round_counter
