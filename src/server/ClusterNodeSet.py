@@ -520,5 +520,6 @@ class ClusterNodeSet:
             elif secondary.numDisconnects > 0:
                 logger.warning("Not connected at race stop to " + secondary.get_log_str(stoppedRaceFlag=True));
 
-    def __(*args, **kwargs):
-        self._Language.__(*args, **kwargs)
+    def __(self, *args, **kwargs):
+        return self._Language.__(*args, **kwargs)
+        
