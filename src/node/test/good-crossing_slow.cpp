@@ -9,25 +9,24 @@
 unittest(slowCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiNode.setFilter(&testFilter);
+  RssiNode rssiNode;
+  configureTestRssiNode(rssiNode);
   State& state = rssiNode.getState();
   LastPass& lastPass = rssiNode.getLastPass();
   History& history = rssiNode.getHistory();
-  rssiNode.start();
-
-  rssiNode.active = true;
+  rssiNode.start(millis(), micros());
 
   // prime the state with some background signal
-  sendSignal(nano, 50);
-  sendSignal(nano, 50);
-  sendSignal(nano, 50);
+  sendSignal(nano, rssiNode, 50);
+  sendSignal(nano, rssiNode, 50);
+  sendSignal(nano, rssiNode, 50);
   assertTrue(rssiNode.isStateValid());
 
   // enter
-  sendSignal(nano, 130);
+  sendSignal(nano, rssiNode, 130);
   int duration = 3;
   for(int i=0; i<duration; i++) {
-      sendSignal(nano, 130);
+      sendSignal(nano, rssiNode, 130);
   }
 
   assertEqual(130, (int)state.rssi);
@@ -61,7 +60,7 @@ unittest(slowCrossing) {
   history.popNextToSend();
 
   // exit
-  sendSignal(nano, 70);
+  sendSignal(nano, rssiNode, 70);
   assertEqual(70, (int)state.rssi);
   assertEqual(timestamp(5+duration), (int)state.rssiTimestamp);
   assertEqual(130, (int)state.lastRssi);

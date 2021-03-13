@@ -3,9 +3,9 @@
 #include "stm32_hardware.h"
 
 Stm32Hardware defaultHardware;
-Hardware *hardware = &defaultHardware;
+Hardware& hardware = defaultHardware;
 
-static Message serialMessage(RssiReceivers::rssiRxs, hardware);
+static Message serialMessage;
 
 void serialEvent()
 {

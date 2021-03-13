@@ -7,14 +7,21 @@
 
 class RssiReceivers {
 public:
-    static RssiReceivers *const rssiRxs;
+    RssiReceivers() = default;
+    RssiReceivers(const RssiReceivers&) = delete;
+    RssiReceivers(RssiReceivers&&) = delete;
+    RssiReceivers& operator=(const RssiReceivers&) = delete;
+    RssiReceivers& operator=(RssiReceivers&&) = delete;
 
-    virtual RssiNode& getRssiNode(uint8_t idx) = 0;
-    virtual RxModule& getRxModule(uint8_t idx) = 0;
-    virtual Settings& getSettings(uint8_t idx) = 0;
-    uint8_t getSlotIndex(uint8_t idx) { return idx; }
-    virtual uint8_t getCount() = 0;
-    virtual void start() = 0;
-    virtual bool readRssi() = 0;
+    virtual RssiNode& getRssiNode(uint_fast8_t idx) = 0;
+    virtual RxModule& getRxModule(uint_fast8_t idx) = 0;
+    virtual Settings& getSettings(uint_fast8_t idx) = 0;
+    uint_fast8_t getSlotIndex(uint_fast8_t idx) const { return idx; }
+    virtual uint_fast8_t getCount() const = 0;
+    virtual void start(mtime_t ms, utime_t us) = 0;
+    virtual bool readRssi(mtime_t ms, utime_t us) = 0;
 };
+
+extern RssiReceivers& rssiRxs;
+
 #endif

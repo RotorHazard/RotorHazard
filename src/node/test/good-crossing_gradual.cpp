@@ -9,28 +9,27 @@
 unittest(gradualCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiNode.setFilter(&testFilter);
+  RssiNode rssiNode;
+  configureTestRssiNode(rssiNode);
   State& state = rssiNode.getState();
   LastPass& lastPass = rssiNode.getLastPass();
   History& history = rssiNode.getHistory();
-  rssiNode.start();
-
-  rssiNode.active = true;
+  rssiNode.start(millis(), micros());
 
   // prime the state with some background signal
-  sendSignal(nano, 50);
-  sendSignal(nano, 50);
-  sendSignal(nano, 50);
+  sendSignal(nano, rssiNode, 50);
+  sendSignal(nano, rssiNode, 50);
+  sendSignal(nano, rssiNode, 50);
   assertTrue(rssiNode.isStateValid());
 
   // enter
   for(int signal = 50; signal<130; signal++) {
-      sendSignal(nano, signal);
+      sendSignal(nano, rssiNode, signal);
       int expected = signal;
       assertEqual(expected, (int)state.rssi);
       assertEqual(expected, (int)state.nodeRssiPeak);
   }
-  sendSignal(nano, 130);
+  sendSignal(nano, rssiNode, 130);
   assertEqual(130, (int)state.nodeRssiPeak);
   assertEqual(50, (int)state.nodeRssiNadir);
   assertTrue(state.crossing);
@@ -38,11 +37,11 @@ unittest(gradualCrossing) {
 
   // exit
   for(int signal = 130; signal>70; signal--) {
-      sendSignal(nano, signal);
+      sendSignal(nano, rssiNode, signal);
       int expected = signal;
       assertEqual(expected, (int)state.rssi);
   }
-  sendSignal(nano, 70);
+  sendSignal(nano, rssiNode, 70);
   assertEqual(70, (int)state.rssi);
   assertEqual(130, (int)state.nodeRssiPeak);
 

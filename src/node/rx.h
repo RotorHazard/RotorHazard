@@ -19,6 +19,12 @@ class RxModule {
     void serialEnableHigh();
     static bool checkBusAvailable();
   public:
+    RxModule() = default;
+    RxModule(const RxModule&) = delete;
+    RxModule(RxModule&&) = delete;
+    RxModule& operator=(const RxModule&) = delete;
+    RxModule& operator=(RxModule&&) = delete;
+
     void init(uint16_t dataPin, uint16_t clkPin, uint16_t selPin, uint16_t rssiPin);
     bool setFrequency(uint16_t frequency);
     bool setPower(uint32_t options);

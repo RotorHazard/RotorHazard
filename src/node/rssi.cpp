@@ -1,7 +1,6 @@
 #include "config.h"
 #include "rssi.h"
 #include "util/persistent-homology.h"
-#include "util/Lists.h"
 
 #define MIN_TUNETIME 35  // after set freq need to wait this long before read RSSI
 
@@ -12,7 +11,7 @@ inline void initExtremum(Extremum& e, rssi_t rssi, mtime_t ts)
     e.duration = 0;
 }
 
-RssiNode::RssiNode() : defaultFilter(lpfFilter1, lpfFilter2, medianFilter), lastResetTimeMs(millis())
+RssiNode::RssiNode() : defaultFilter(lpfFilter1, lpfFilter2, medianFilter)
 {
     setFilter(&defaultFilter);
 }
@@ -22,9 +21,10 @@ void RssiNode::setFilter(Filter<rssi_t> *f)
     filter = f;
 }
 
-void RssiNode::start()
+void RssiNode::start(const mtime_t ms, const utime_t us)
 {
-    state.lastloopMicros = micros();
+    lastResetTimeMs = ms;
+    state.lastloopMicros = us;
 }
 
 bool RssiNode::isStateValid()
@@ -32,65 +32,59 @@ bool RssiNode::isStateValid()
     return state.nodeRssiNadir <= state.rssi && state.rssi <= state.nodeRssiPeak;
 }
 
-void RssiNode::resetState()
+void RssiNode::resetState(const mtime_t ms)
 {
     filter->reset();
     state.reset();
     history.reset();
     needsToSettle = true;
-    lastResetTimeMs = millis();
+    lastResetTimeMs = ms;
 }
 
 bool RssiNode::process(rssi_t rssi, mtime_t ms)
 {
-    if (active) {
-        filter->addRawValue(ms, rssi);
-        if (filter->isFilled()) {
-            const int rssiChange = state.readRssiFromFilter(filter);
+    filter->addRawValue(ms, rssi);
+    if (filter->isFilled()) {
+        const int rssiChange = state.readRssiFromFilter(filter);
 
-            // wait until after-tune-delay time is fulfilled
-            if (!needsToSettle)
-            {  //don't start operations until after first WRITE_FREQUENCY command is received
+        // wait until after-tune-delay time is fulfilled
+        if (!needsToSettle)
+        {  //don't start operations until after first WRITE_FREQUENCY command is received
 
-                state.updateRssiStats();
-                const ExtremumType currentType = updateHistory(rssiChange);
-                const bool crossing = checkForCrossing(currentType, rssiChange);
+            state.updateRssiStats();
+            const ExtremumType currentType = updateHistory(rssiChange);
+            const bool crossing = checkForCrossing(currentType, rssiChange);
 
-                /*** pass processing **/
+            /*** pass processing **/
 
-                if (crossing)
-                {  //lap pass is in progress
-                    // Find the peak rssi and the time it occured during a crossing event
-                    if (state.rssi > state.passPeak.rssi)
-                    {
-                        // this is first time this peak RSSI value was seen, so save value and timestamp
-                        initExtremum(state.passPeak, state.rssi, state.rssiTimestamp);
-                    }
-                    else if (state.rssi == state.passPeak.rssi)
-                    {
-                        // if at max peak for more than one iteration then track duration
-                        // so middle-timestamp value can be returned
-                        state.passPeak.duration = toDuration(state.rssiTimestamp - state.passPeak.firstTime);
-                    }
-                }
-                else
+            if (crossing)
+            {  //lap pass is in progress
+                // Find the peak rssi and the time it occured during a crossing event
+                if (state.rssi > state.passPeak.rssi)
                 {
-                    // track lowest rssi seen since end of last pass
-                    state.passRssiNadir = min((rssi_t)state.rssi, (rssi_t)state.passRssiNadir);
+                    // this is first time this peak RSSI value was seen, so save value and timestamp
+                    initExtremum(state.passPeak, state.rssi, state.rssiTimestamp);
+                }
+                else if (state.rssi == state.passPeak.rssi)
+                {
+                    // if at max peak for more than one iteration then track duration
+                    // so middle-timestamp value can be returned
+                    state.passPeak.duration = toDuration(state.rssiTimestamp - state.passPeak.firstTime);
                 }
             }
-
-            // check if RSSI is stable after tune
-            if (needsToSettle && (millis() - lastResetTimeMs >= MIN_TUNETIME))
+            else
             {
-                needsToSettle = false;  // don't need to check again until next freq change
+                // track lowest rssi seen since end of last pass
+                state.passRssiNadir = min((rssi_t)state.rssi, (rssi_t)state.passRssiNadir);
             }
         }
-    }
 
-    // Calculate the time it takes to run the main loop
-    utime_t loopMicros = micros();
-    state.updateLoopTime(loopMicros);
+        // check if RSSI is stable after tune
+        if (needsToSettle && (ms - lastResetTimeMs) >= MIN_TUNETIME)
+        {
+            needsToSettle = false;  // don't need to check again until next freq change
+        }
+    }
 
     return state.crossing;
 }
@@ -177,27 +171,33 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
 
     const ExtremumType prevType = sendBuffer.typeAt(sendBuffer.size()-1);
     if (state.crossing && prevType == PEAK && currentType == NADIR) {
-        PostList<Extremum,HISTORY_SIZE> pns(sendBuffer, history.nadir);
-        int8_t lastIdx = pns.size() - 1;
-        calculateNadirPersistentHomology(pns, sendBuffer.typeAt(0), ccs, &lastIdx);
+        int_fast8_t lastIdx = sendBuffer.size();
+        phData[lastIdx] = history.nadir.rssi;
+        for (int_fast8_t i=lastIdx-1; i>=0; i--) {
+            phData[i] = sendBuffer[i].rssi;
+        }
+        calculateNadirPersistentHomology<rssi_t,PH_HISTORY_SIZE>(phData, lastIdx+1, ccs, &lastIdx);
 
         // find lifetime of last value when a nadir
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
-            const uint8_t lastLife = pns[cc.death].rssi - pns[cc.birth].rssi;
+            const uint_fast8_t lastLife = phData[cc.death] - phData[cc.birth];
             if (lastLife > threshold) {
                 endCrossing();
             }
         }
     } else if (!state.crossing && prevType == NADIR && currentType == PEAK) {
-        PostList<Extremum,HISTORY_SIZE> pns(sendBuffer, history.peak);
-        int8_t lastIdx = pns.size() - 1;
-        calculatePeakPersistentHomology(pns, sendBuffer.typeAt(0), ccs, &lastIdx);
+        int_fast8_t lastIdx = sendBuffer.size();
+        phData[lastIdx] = history.peak.rssi;
+        for (int_fast8_t i=lastIdx-1; i>=0; i--) {
+            phData[i] = sendBuffer[i].rssi;
+        }
+        calculatePeakPersistentHomology<rssi_t,PH_HISTORY_SIZE>(phData, lastIdx+1, ccs, &lastIdx);
 
         // find lifetime of last value when a peak
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
-            const uint8_t lastLife = pns[cc.birth].rssi - pns[cc.death].rssi;
+            const uint_fast8_t lastLife = phData[cc.birth] - phData[cc.death];
             if (lastLife > threshold) {
                 state.crossing = true;
             }
@@ -225,7 +225,7 @@ bool RssiNode::checkForCrossing_old(const rssi_t enterThreshold, const rssi_t ex
     return state.crossing;
 }
 
-// Function called when crossing ends (by RSSI or I2C command)
+/*** Function called when crossing ends (by RSSI or I2C command). */
 void RssiNode::endCrossing()
 {
     // save values for lap pass
@@ -279,6 +279,7 @@ void State::updateRssiStats() {
 #endif
 }
 
+/*** Calculate the time it takes to run the main loop. */
 void State::updateLoopTime(utime_t loopMicros)
 {
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)

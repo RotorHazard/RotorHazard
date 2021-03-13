@@ -9,20 +9,19 @@
 unittest(fastCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiNode.setFilter(&testFilter);
+  RssiNode rssiNode;
+  configureTestRssiNode(rssiNode);
   State& state = rssiNode.getState();
   LastPass& lastPass = rssiNode.getLastPass();
   History& history = rssiNode.getHistory();
-  rssiNode.start();
-
-  rssiNode.active = true;
+  rssiNode.start(millis(), micros());
 
   // prime the state with some background signal
-  sendSignal(nano, 50);
+  sendSignal(nano, rssiNode, 50);
   assertFalse(rssiNode.isStateValid());
   // more signal needed
-  sendSignal(nano, 50);
-  sendSignal(nano, 50);
+  sendSignal(nano, rssiNode, 50);
+  sendSignal(nano, rssiNode, 50);
   assertEqual(3*N_2*1000-1000, state.lastloopMicros);
   assertTrue(rssiNode.isStateValid());
   assertEqual(50, (int)state.rssi);
@@ -32,7 +31,7 @@ unittest(fastCrossing) {
   assertEqual(50, (int)state.nodeRssiNadir);
 
   // enter
-  sendSignal(nano, 130);
+  sendSignal(nano, rssiNode, 130);
   assertEqual(130, (int)state.rssi);
   assertEqual(timestamp(4), (int)state.rssiTimestamp);
   assertEqual(50, (int)state.lastRssi);
@@ -56,7 +55,7 @@ unittest(fastCrossing) {
   history.popNextToSend();
 
   // exit
-  sendSignal(nano, 70);
+  sendSignal(nano, rssiNode, 70);
   assertEqual(70, (int)state.rssi);
   assertEqual(timestamp(5), (int)state.rssiTimestamp);
   assertEqual(130, (int)state.lastRssi);
@@ -86,7 +85,7 @@ unittest(fastCrossing) {
   assertEqual(1, (int)lastPass.lap);
 
   // small rise
-  sendSignal(nano, 75);
+  sendSignal(nano, rssiNode, 75);
   assertEqual(75, (int)state.rssi);
   assertEqual(timestamp(6), (int)state.rssiTimestamp);
   assertEqual(70, (int)state.lastRssi);
@@ -119,7 +118,7 @@ unittest(fastCrossing) {
   assertEqual(1, (int)lastPass.lap);
 
   // small fall
-  sendSignal(nano, 60);
+  sendSignal(nano, rssiNode, 60);
 
   assertEqual(75, (int)history.sendBuffer->nextPeak().rssi);
   assertEqual(timestamp(6), (int)history.sendBuffer->nextPeak().firstTime);

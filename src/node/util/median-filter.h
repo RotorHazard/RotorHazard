@@ -6,13 +6,13 @@
 #include "CircularBuffer.h"
 
 //non-linear!!!
-template <typename T, uint8_t N, T default_value> class MedianFilter : public Filter<T>
+template <typename T, uint8_t N, T default_value> class MedianFilter final : public Filter<T>
 {
     private:
       FastRunningMedian<T,N,default_value> median;
       CircularBuffer<mtime_t,(N+1)/2> timestamps; // size is half median window, rounded up
     public:
-      bool isFilled() {
+      bool isFilled() const {
         return median.isFilled();
       }
 
@@ -21,19 +21,19 @@ template <typename T, uint8_t N, T default_value> class MedianFilter : public Fi
         timestamps.push(ts);
       }
 
-      T getFilteredValue() {
+      T getFilteredValue() const {
         return median.getMedian();
       }
 
-      mtime_t getFilterTimestamp() {
+      mtime_t getFilterTimestamp() const {
         return timestamps.first();
       }
 
-      uint8_t getSampleCapacity() {
+      constexpr uint8_t getSampleCapacity() {
         return N;
       }
 
-      uint8_t getTimestampCapacity() {
+      constexpr uint8_t getTimestampCapacity() const {
         return timestamps.capacity;
       }
 

@@ -80,7 +80,7 @@ template<size_t S> class Buffer {
         }
 };
 
-#define ioBufferReadRssi(buf) (buf.read8())
-#define ioBufferWriteRssi(buf, rssi) (buf.write8(rssi))
+template<size_t N> constexpr rssi_t ioBufferReadRssi(Buffer<N>& buf) { return buf.read8(); }
+template<size_t N> constexpr void ioBufferWriteRssi(Buffer<N>& buf, rssi_t rssi) { buf.write8(rssi); }
 
 #endif

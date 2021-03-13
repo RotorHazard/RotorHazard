@@ -10,7 +10,7 @@ template <typename T, uint8_t N> class UnifiedSendBuffer : public SendBuffer<T>,
     private:
         ExtremumType lastAddedType = NONE;
         CircularBuffer<T,N> buffer;
-        uint8_t nextToSendIndex = 0;
+        uint_fast8_t nextToSendIndex = 0;
 
         void add(const T& e) {
             if (!buffer.push(e)) {
@@ -22,18 +22,18 @@ template <typename T, uint8_t N> class UnifiedSendBuffer : public SendBuffer<T>,
 #ifdef __TEST__
 public:
 #endif
-        uint8_t remainingToSend() const {
+        uint_fast8_t remainingToSend() const {
             return buffer.size() - nextToSendIndex;
         }
     public:
-        T operator [] (uint8_t index) const {
+        T operator [] (uint_fast8_t index) const {
             return buffer[index];
         }
-        const ExtremumType typeAt(uint8_t index) const {
+        const ExtremumType typeAt(uint_fast8_t index) const {
             if (index >= buffer.size()) {
                 return NONE;
             } else {
-                uint8_t rem = buffer.size() - index;
+                uint_fast8_t rem = buffer.size() - index;
                 if (lastAddedType == PEAK) {
                     return rem&1 ? PEAK : NADIR;
                 } else if (lastAddedType == NADIR) {
@@ -43,7 +43,7 @@ public:
                 }
             }
         }
-        uint8_t size() const {
+        uint_fast8_t size() const {
             return buffer.size();
         }
         bool addPeak(const T& peak, bool force = false) {

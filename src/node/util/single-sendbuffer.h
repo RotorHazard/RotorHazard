@@ -9,7 +9,7 @@ class SinglePeakSendBuffer : public ExtremumSendBuffer
     private:
         Extremum buffer = {0, 0, 0}; // only valid if buffer.rssi != 0
     public:
-      uint8_t size() const {
+      uint_fast8_t size() const {
           return isFull() ? 1 : 0;
       }
       bool isEmpty() const {
@@ -50,7 +50,7 @@ class SingleNadirSendBuffer : public ExtremumSendBuffer
     private:
         Extremum buffer = {MAX_RSSI, 0, 0}; // only valid if buffer.rssi != MAX_RSSI
     public:
-      uint8_t size() const {
+      uint_fast8_t size() const {
           return isFull() ? 1 : 0;
       }
       bool isEmpty() const {

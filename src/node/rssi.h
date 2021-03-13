@@ -20,7 +20,8 @@
 #define MAX_DURATION 0xFFFF
 #define toDuration(ms) uint16_t(min(uint32_t(ms), uint32_t(MAX_DURATION)))
 
-#define HISTORY_SIZE 20
+#define HISTORY_SIZE 14
+#define PH_HISTORY_SIZE (HISTORY_SIZE+1) // should be odd
 #define RSSI_HISTORY_SIZE 800 // NB: need to leave about a 100 bytes free RAM
 
 #define USE_UNIFIED_SENDBUFFER
@@ -75,7 +76,7 @@ public:
      */
     inline int readRssiFromFilter(Filter<rssi_t>* f);
     inline void updateRssiStats();
-    inline void updateLoopTime(utime_t loopMicros);
+    void updateLoopTime(utime_t loopMicros);
     inline void resetPass();
     inline void reset();
 };
@@ -121,11 +122,11 @@ public:
         setSendBuffers(&defaultPeakSendBuffer, &defaultNadirSendBuffer);
 #endif
     }
-    inline void setSendBuffer(SendBuffer<Extremum> *buf) {
+    void setSendBuffer(SendBuffer<Extremum> *buf) {
         sendBuffer = buf;
     }
 #ifndef USE_UNIFIED_SENDBUFFER
-    inline void setSendBuffers(ExtremumSendBuffer *peak, ExtremumSendBuffer *nadir) {
+    void setSendBuffers(ExtremumSendBuffer *peak, ExtremumSendBuffer *nadir) {
         dualSendBuffer.setSendBuffers(peak, nadir);
         setSendBuffer(&dualSendBuffer);
     }
@@ -157,7 +158,8 @@ private:
     LowPassFilter50Hz lpfFilter2;
 
 #if defined(USE_PH) || defined(__TEST__)
-    ConnectedComponent ccs[(HISTORY_SIZE+1)/2];
+    ConnectedComponent ccs[(PH_HISTORY_SIZE+1)/2];
+    rssi_t phData[PH_HISTORY_SIZE];
 #endif
 
     bool needsToSettle = true;
@@ -183,13 +185,18 @@ public:
     bool volatile active = false; // Set true after initial WRITE_FREQUENCY command received
 
     RssiNode();
+    RssiNode(const RssiNode&) = delete;
+    RssiNode(RssiNode&&) = delete;
+    RssiNode& operator=(const RssiNode&) = delete;
+    RssiNode& operator=(RssiNode&&) = delete;
+
     void setFilter(Filter<rssi_t> *f);
-    void start();
+    void start(mtime_t ms, utime_t us);
     bool isStateValid();
     /**
      * Restarts rssi peak tracking for node.
      */
-    void resetState();
+    void resetState(mtime_t ms);
     bool process(rssi_t rssi, mtime_t ms);
     void endCrossing();
 

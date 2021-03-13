@@ -16,15 +16,11 @@
 class Message
 {
 private:
-    RssiReceivers *const rssiRxs;
-    Hardware *const hardware;
     void handleReadLapPassStats(RssiNode& rssiNode, mtime_t timeNowVal);
     void handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal);
     void handleReadRssiHistory(RssiNode& rssiNode);
     void setMode(RssiNode& rssiNode, uint8_t mode);
 public:
-    Message(RssiReceivers *rssiRxs, Hardware *hardware) : rssiRxs(rssiRxs), hardware(hardware) {
-    }
     uint8_t command;  // code to identify messages
     Buffer<MESSAGE_BUFFER_SIZE> buffer;  // request/response payload
 

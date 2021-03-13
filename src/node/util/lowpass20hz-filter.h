@@ -8,7 +8,7 @@
 
 //Low pass bessel filter order=2 alpha1=0.02
 //constant delay in the pass-band (variably less above)
-class LowPassFilter20Hz : public Filter<rssi_t>
+class LowPassFilter20Hz final : public Filter<rssi_t>
 {
     private:
         float v[3];
@@ -21,7 +21,7 @@ class LowPassFilter20Hz : public Filter<rssi_t>
             v[1] = 0.0;
         }
 
-        bool isFilled() {
+        bool isFilled() const {
             return timestamps.isFull();
         }
 
@@ -37,11 +37,11 @@ class LowPassFilter20Hz : public Filter<rssi_t>
             timestamps.push(ts);
         }
 
-        rssi_t getFilteredValue() {
+        rssi_t getFilteredValue() const {
             return nextValue;
         }
 
-        mtime_t getFilterTimestamp() {
+        mtime_t getFilterTimestamp() const {
             return timestamps.first();
         }
 

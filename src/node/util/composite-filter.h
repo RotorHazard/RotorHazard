@@ -1,6 +1,6 @@
 #include "filter.h"
 
-template <typename T> class Composite2Filter : public Filter<T>
+template <typename T> class Composite2Filter final : public Filter<T>
 {
     private:
         Filter<T>& f1;
@@ -9,7 +9,7 @@ template <typename T> class Composite2Filter : public Filter<T>
         Composite2Filter(Filter<T>& f1, Filter<T>& f2): f1(f1), f2(f2) {
         }
 
-        bool isFilled() {
+        bool isFilled() const {
             return f1.isFilled() && f2.isFilled();
         }
 
@@ -21,11 +21,11 @@ template <typename T> class Composite2Filter : public Filter<T>
             }
         }
 
-        T getFilteredValue() {
+        T getFilteredValue() const {
             return f2.getFilteredValue();
         }
 
-        mtime_t getFilterTimestamp() {
+        mtime_t getFilterTimestamp() const {
             return f2.getFilterTimestamp();
         }
 
@@ -35,7 +35,7 @@ template <typename T> class Composite2Filter : public Filter<T>
         }
 };
 
-template <typename T> class Composite3Filter : public Filter<T>
+template <typename T> class Composite3Filter final : public Filter<T>
 {
     private:
         Filter<T>& f1;
@@ -45,7 +45,7 @@ template <typename T> class Composite3Filter : public Filter<T>
         Composite3Filter(Filter<T>& f1, Filter<T>& f2, Filter<T>& f3): f1(f1), f2(f2), f3(f3) {
         }
 
-        bool isFilled() {
+        bool isFilled() const {
             return f1.isFilled() && f2.isFilled() && f3.isFilled();
         }
 
@@ -60,11 +60,11 @@ template <typename T> class Composite3Filter : public Filter<T>
             }
         }
 
-        T getFilteredValue() {
+        T getFilteredValue() const {
             return f3.getFilteredValue();
         }
 
-        mtime_t getFilterTimestamp() {
+        mtime_t getFilterTimestamp() const {
             return f3.getFilterTimestamp();
         }
 

@@ -1,72 +1,74 @@
-#include "microclock.h"
 #include "rssirx.h"
+#include "microclock.h"
 
-#define MIN_RSSI_DETECT 5 //value for detecting node as installed
+constexpr rssi_t MIN_RSSI_DETECT = 5; //value for detecting node as installed
 
-class SingleRssiReceiver : public RssiReceivers {
+class SingleRssiReceiver final : public RssiReceivers {
 private:
     RssiNode node;
     RxModule rx;
 
 public:
-    RssiNode& getRssiNode(uint8_t idx) {
+    inline RssiNode& getRssiNode(uint_fast8_t idx) {
       return node;
-    };
+    }
 
-    RxModule& getRxModule(uint8_t idx) {
+    inline RxModule& getRxModule(uint_fast8_t idx) {
       return rx;
-    };
+    }
 
-    Settings& getSettings(uint8_t idx) {
+    inline Settings& getSettings(uint_fast8_t idx) {
       return node.getSettings();
-    };
+    }
 
-    uint8_t getCount() {
+    inline uint_fast8_t getCount() const {
       return 1;
-    };
+    }
 
-    void start() {
-      node.start();
-    };
+    inline void start(const mtime_t ms, const utime_t us) {
+      node.start(ms, us);
+    }
 
-    bool readRssi() {
-      return node.active && node.process(rx.readRssi(), usclock.millis());
-    };
+    inline bool readRssi(const mtime_t ms, const utime_t us) {
+      bool crossing = node.active && node.process(rx.readRssi(), ms);
+      node.getState().updateLoopTime(us);
+      return crossing;
+    }
 };
 
-class VirtualRssiReceivers : public RssiReceivers {
+class VirtualRssiReceivers final : public RssiReceivers {
 private:
-    uint8_t nodeCount = MULTI_RHNODE_MAX;
+    uint_fast8_t nodeCount = MULTI_RHNODE_MAX;
     RssiNode nodes[MULTI_RHNODE_MAX];
     RxModule rx;
-    int8_t prevReadIndex = -1;
-    uint16_t readCounter = 0;
+    int_fast8_t prevReadIndex = -1;
+    uint_fast16_t readCounter = 0;
 
 public:
-    RssiNode& getRssiNode(uint8_t idx) {
+    inline RssiNode& getRssiNode(uint_fast8_t idx) {
       return nodes[idx];
-    };
+    }
 
-    RxModule& getRxModule(uint8_t idx) {
+    inline RxModule& getRxModule(uint_fast8_t idx) {
       return rx;
-    };
+    }
 
-    Settings& getSettings(uint8_t idx) {
+    inline Settings& getSettings(uint_fast8_t idx) {
       return nodes[idx].getSettings();
-    };
+    }
 
-    uint8_t getCount() {
+    inline uint_fast8_t getCount() const {
       return nodeCount;
-    };
+    }
 
-    void start() {
-      for (int i=0; i<nodeCount; i++) {
-        nodes[i].start();
+    inline void start(const mtime_t ms, const utime_t us) {
+      for (int_fast8_t i=nodeCount-1; i>=0; i--) {
+        nodes[i].start(ms, us);
       }
-    };
+    }
 
-    bool readRssi() {
-      uint8_t idx;
+    inline bool readRssi(const mtime_t ms, const utime_t us) {
+      uint_fast8_t idx;
       if (nodeCount > 1) {
           // alternate the single rx between different freqs
           idx = (readCounter++ % (READS_PER_FREQ*nodeCount))/READS_PER_FREQ;
@@ -77,60 +79,72 @@ public:
       } else {
           idx = 0;
       }
-      return nodes[idx].active && nodes[idx].process(rx.readRssi(), usclock.millis());
-    };
+      RssiNode& node = nodes[idx];
+      bool crossing = node.active && node.process(rx.readRssi(), ms);
+      node.getState().updateLoopTime(us);
+      return crossing;
+    }
 };
 
-class PhysicalRssiReceivers : public RssiReceivers {
+class PhysicalRssiReceivers final : public RssiReceivers {
 private:
-    uint8_t nodeCount = MULTI_RHNODE_MAX;
-    uint8_t nodeToSlot[MULTI_RHNODE_MAX];
+    uint_fast8_t nodeCount = MULTI_RHNODE_MAX;
+    uint_fast8_t nodeToSlot[MULTI_RHNODE_MAX];
     RssiNode nodes[MULTI_RHNODE_MAX];
     RxModule rxs[MULTI_RHNODE_MAX];
 
 public:
-    RssiNode& getRssiNode(uint8_t idx) {
+    PhysicalRssiReceivers() {
+        for (int_fast8_t i=MULTI_RHNODE_MAX-1; i>=0; i--) {
+            nodeToSlot[i] = i;
+        }
+    }
+
+    inline RssiNode& getRssiNode(uint_fast8_t idx) {
       return nodes[nodeToSlot[idx]];
-    };
+    }
 
-    RxModule& getRxModule(uint8_t idx) {
+    inline RxModule& getRxModule(uint_fast8_t idx) {
       return rxs[nodeToSlot[idx]];
-    };
+    }
 
-    Settings& getSettings(uint8_t idx) {
+    inline Settings& getSettings(uint_fast8_t idx) {
       return nodes[nodeToSlot[idx]].getSettings();
-    };
+    }
 
-    uint8_t getSlotIndex(uint8_t idx) { return nodeToSlot[idx]; };
+    inline uint_fast8_t getSlotIndex(uint_fast8_t idx) { return nodeToSlot[idx]; }
 
-    uint8_t getCount() {
+    inline uint_fast8_t getCount() const {
       return nodeCount;
-    };
+    }
 
-    void start() {
-      int sIdx=0;
-      for (int nIdx=0; nIdx<nodeCount; nIdx++) {
+    inline void start(const mtime_t ms, const utime_t us) {
+      uint_fast8_t sIdx=0;
+      for (int_fast8_t nIdx=MULTI_RHNODE_MAX-1; nIdx>=0; nIdx--) {
           if (rxs[nIdx].readRssi() > MIN_RSSI_DETECT) {
               nodeToSlot[sIdx++] = nIdx;
           }
       }
       nodeCount = sIdx;
 
-      for (int i=0; i<getCount(); i++) {
-        getRssiNode(i).start();
+      for (int_fast8_t i=nodeCount-1; i>=0; i--) {
+          // use latest micros() value
+          getRssiNode(i).start(ms, usclock.tickMicros());
       }
-    };
+    }
 
-    bool readRssi() {
-      bool crossingFlag;
-      for (int i=0; i<getCount(); i++) {
+    inline bool readRssi(const mtime_t ms, const utime_t us) {
+      bool crossingFlag = false;
+      for (int_fast8_t i=getCount()-1; i>=0; i--) {
         RssiNode& node = getRssiNode(i);
-        if (node.active && node.process(getRxModule(i).readRssi(), usclock.millis())) {
+        if (node.active && node.process(getRxModule(i).readRssi(), ms)) {
           crossingFlag = true;
         }
+        // use latest micros() value
+        node.getState().updateLoopTime(usclock.tickMicros());
       }
       return crossingFlag;
-    };
+    }
 };
 
 #if TARGET == STM32_TARGET
@@ -142,4 +156,4 @@ public:
     VirtualRssiReceivers defaultRssiReceivers;
     #endif
 #endif
-RssiReceivers *const RssiReceivers::rssiRxs = &defaultRssiReceivers;
+RssiReceivers& rssiRxs = defaultRssiReceivers;

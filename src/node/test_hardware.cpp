@@ -2,5 +2,5 @@
 #include "test_hardware.h"
 
 TestHardware testHardware;
-Hardware *hardware = &testHardware;
+Hardware& hardware = testHardware;
 #endif

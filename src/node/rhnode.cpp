@@ -45,25 +45,23 @@
 #include "sil/sil_hardware.h"
 #endif
 
-#define TICK_FOR(expr)  usclock.tick();expr
-
-extern Hardware *hardware;
+#define TICK_FOR(expr)  usclock.tickMicros();expr
 
 // Initialize program
 void setup()
 {
-    TICK_FOR(hardware->init());
+    hardware.init();
 
     // if EEPROM-check value matches then read stored values
-    for (int i=0; i<RssiReceivers::rssiRxs->getCount(); i++) {
-        RxModule& rx = RssiReceivers::rssiRxs->getRxModule(i);
-        TICK_FOR(hardware->initRxModule(i, rx));
+    for (int i=0; i<rssiRxs.getCount(); i++) {
+        RxModule& rx = rssiRxs.getRxModule(i);
+        hardware.initRxModule(i, rx);
         while (!rx.reset()) {
             TICK_FOR(delay(1));
         }
 
-        Settings& settings = RssiReceivers::rssiRxs->getSettings(i);
-        TICK_FOR(hardware->initSettings(i, settings));
+        Settings& settings = rssiRxs.getSettings(i);
+        hardware.initSettings(i, settings);
         if (settings.vtxFreq == 1111) // frequency value to power down rx module
         {
             while (!rx.powerDown()) {
@@ -78,25 +76,26 @@ void setup()
         }
     }
 
-    RssiReceivers::rssiRxs->start();
+    rssiRxs.start(usclock.millis(), usclock.tickMicros());
 }
 
-static uint32_t elapsedSinceLastRead = 0;
-static uint8_t currentStatusFlags = 0;
+static utime_t previousTick = 0;
+static uint_fast8_t currentStatusFlags = 0;
 
 // Main loop
 void loop()
 {
-    const uint32_t elapsedSinceLastTick = usclock.tick();
-    elapsedSinceLastRead += elapsedSinceLastTick;
-    if (elapsedSinceLastRead > 1000)
+    const utime_t us = usclock.tickMicros();
+    // unsigned arithmetic to handle roll-over
+    if ((us - previousTick) > 1000)
     {  // limit to once per millisecond
-        const bool crossingFlag = RssiReceivers::rssiRxs->readRssi();
-        elapsedSinceLastRead = 0;
+        const mtime_t ms = usclock.millis();
+        const bool crossingFlag = rssiRxs.readRssi(ms, us);
+        previousTick = us;
 
         // update settings and status LED
 
-        RssiNode& rssiNode = RssiReceivers::rssiRxs->getRssiNode(cmdRssiNodeIndex);
+        RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
         const Settings& settings = rssiNode.getSettings();
 
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -121,7 +120,7 @@ void loop()
             {
                 newVtxFreq = settings.vtxFreq;
             }
-            RxModule& rx = RssiReceivers::rssiRxs->getRxModule(cmdRssiNodeIndex);
+            RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
             if (newVtxFreq == 1111) // frequency value to power down rx module
             {
                 if (rx.isPoweredDown() || rx.powerDown())
@@ -145,34 +144,33 @@ void loop()
 
             if (currentStatusFlags & FREQ_CHANGED)
             {
-                hardware->storeFrequency(newVtxFreq);
-                rssiNode.resetState();  // restart rssi peak tracking for node
+                hardware.storeFrequency(newVtxFreq);
+                rssiNode.resetState(ms);  // restart rssi peak tracking for node
                 currentStatusFlags &= ~FREQ_CHANGED;
             }
         }
 
         if (currentStatusFlags & ENTERAT_CHANGED)
         {
-            hardware->storeEnterAtLevel(settings.enterAtLevel);
+            hardware.storeEnterAtLevel(settings.enterAtLevel);
             currentStatusFlags &= ~ENTERAT_CHANGED;
         }
 
         if (currentStatusFlags & EXITAT_CHANGED)
         {
-            hardware->storeExitAtLevel(settings.exitAtLevel);
+            hardware.storeExitAtLevel(settings.exitAtLevel);
             currentStatusFlags &= ~EXITAT_CHANGED;
         }
 
-        hardware->processStatusFlags(currentStatusFlags, rssiNode);
+        hardware.processStatusFlags(ms, currentStatusFlags, rssiNode);
         currentStatusFlags &= ~LAPSTATS_READ;
         currentStatusFlags &= ~SERIAL_CMD_MSG;
 
         // Status LED
-        mtime_t ms = millis();
         if (ms <= 1000)
         {  //flash three times during first second of running
-            int ti = (int)ms / 100;
-            hardware->setStatusLed(ti != 3 && ti != 7);
+            int ti = (int)(ms / 100);
+            hardware.setStatusLed(ti != 3 && ti != 7);
         }
         else if ((int)(ms % 20) == 0)
         {  //only run every 20ms so flashes last longer (brighter)
@@ -180,16 +178,16 @@ void loop()
             // if crossing or communications activity then LED on
             if (crossingFlag)
             {
-                hardware->setStatusLed(true);
+                hardware.setStatusLed(true);
             }
             else if (currentStatusFlags & COMM_ACTIVITY)
             {
-                hardware->setStatusLed(true);
+                hardware.setStatusLed(true);
                 currentStatusFlags &= ~COMM_ACTIVITY;  // clear COMM_ACTIVITY flag
             }
             else
             {
-                hardware->setStatusLed(ms % 2000 == 0);  // blink
+                hardware.setStatusLed(ms % 2000 == 0);  // blink
             }
         }
     }

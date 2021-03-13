@@ -3,7 +3,7 @@
 
 #include "Collections.h"
 
-template <typename  T> class SendBuffer : public Collection<uint8_t> {
+template <typename  T> class SendBuffer : public Collection<uint_fast8_t> {
     public:
         virtual bool addPeak(const T& peak, bool force = false) = 0;
         virtual bool addNadir(const T& nadir, bool force = false) = 0;
@@ -16,7 +16,7 @@ template <typename  T> class SendBuffer : public Collection<uint8_t> {
         virtual void clear() = 0;
 };
 
-class ExtremumSendBuffer : public Collection<uint8_t> {
+class ExtremumSendBuffer : public Collection<uint_fast8_t> {
     public:
         virtual bool isEmpty() const = 0;
         virtual bool isFull() const = 0;
@@ -61,7 +61,7 @@ class DualSendBuffer: public SendBuffer<Extremum> {
             nadirBuffer = nbuf;
         }
 
-        uint8_t size() const {
+        uint_fast8_t size() const {
             return peakBuffer->size() + nadirBuffer->size();
         }
         bool addPeak(const Extremum& peak, bool force = false) {

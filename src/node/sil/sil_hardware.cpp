@@ -4,9 +4,9 @@
 #include "../commands.h"
 
 SILHardware silHardware;
-Hardware *hardware = &silHardware;
+Hardware& hardware = silHardware;
 
-static Message serialMessage(RssiReceivers::rssiRxs, hardware);
+static Message serialMessage;
 
 void serialEvent() {
     handleStreamEvent(Serial, serialMessage);

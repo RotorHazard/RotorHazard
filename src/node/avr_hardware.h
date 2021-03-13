@@ -171,10 +171,9 @@ public:
         rx.init(dataPin, clkPin, selPin, rssiPin);
     }
 
-    void processStatusFlags(uint8_t statusFlags, RssiNode& rssiNode) {
+    void processStatusFlags(const mtime_t ms, const uint8_t statusFlags, RssiNode& rssiNode) {
         if (rssiNode.active)
         {
-            mtime_t ms = millis();
             if (i2cMonitorEnabledFlag)
             {
                 if ((statusFlags & COMM_ACTIVITY) && (statusFlags & SERIAL_CMD_MSG) == 0)
@@ -188,9 +187,9 @@ public:
                     i2cInitialize(true);
                 }
             }
-            else if ((statusFlags & LAPSTATS_READ) &&
+            else if ((statusFlags & POLLING) &&
                     (statusFlags & SERIAL_CMD_MSG) == 0)
-            {  //if activated and I2C LAPSTATS_READ cmd received then enable comms monitor
+            {  //if activated and I2C POLLING cmd received then enable comms monitor
                 i2cMonitorEnabledFlag = true;
                 i2cMonitorLastResetTime = ms;
             }

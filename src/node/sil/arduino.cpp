@@ -4,7 +4,7 @@
 #include <time.h>
 #include <math.h>
 
-#define ADC_DATA_SIZE 1000
+constexpr size_t ADC_DATA_SIZE = 1000;
 
 void pinMode(uint8_t pin, uint8_t mode) {
 

@@ -3,10 +3,10 @@
 #include "avr_hardware.h"
 
 AvrHardware defaultHardware;
-Hardware *hardware = &defaultHardware;
+Hardware& hardware = defaultHardware;
 
-static Message i2cMessage(RssiReceivers::rssiRxs, hardware);
-static Message serialMessage(RssiReceivers::rssiRxs, hardware);
+static Message i2cMessage;
+static Message serialMessage;
 
 // Function called by twi interrupt service when master sends information to the slave
 // or when master sets up a specific read request

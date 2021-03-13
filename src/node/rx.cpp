@@ -1,7 +1,8 @@
 #include "config.h"
 #include "rx.h"
+#include "microclock.h"
 
-#define RX5808_MIN_BUSTIME 30   // after set freq need to wait this long before setting again
+constexpr mtime_t RX5808_MIN_BUSTIME = 30;  // after set freq need to wait this long before setting again
 
 // Functions for the rx5808 module
 
@@ -19,7 +20,7 @@ static uint16_t freqMhzToRegVal(uint16_t freqInMhz)
 
 bool RxModule::checkBusAvailable()
 {
-    mtime_t timeVal = millis() - lastBusTimeMs;
+    mtime_t timeVal = usclock.millis() - lastBusTimeMs;
     return timeVal >= RX5808_MIN_BUSTIME;
 }
 
@@ -112,7 +113,7 @@ bool RxModule::setFrequency(uint16_t frequency)
     digitalWrite(clkPin, LOW);
     digitalWrite(dataPin, LOW);
 
-    lastBusTimeMs = millis();  // mark time of last tune of RX5808 to freq
+    lastBusTimeMs = usclock.millis();  // mark time of last tune of RX5808 to freq
     return true;
 }
 
@@ -151,7 +152,7 @@ bool RxModule::setPower(uint32_t options)
 
     digitalWrite(dataPin, LOW);
 
-    lastBusTimeMs = millis();
+    lastBusTimeMs = usclock.millis();
     return true;
 }
 

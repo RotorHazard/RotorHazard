@@ -21,11 +21,11 @@ struct Extremum
   uint16_t volatile duration;
 };
 
-#define MAX_RSSI 0xFF
-#define isPeakValid(x) ((x).rssi != 0)
-#define isNadirValid(x) ((x).rssi != MAX_RSSI)
-#define invalidatePeak(x) ((x).rssi = 0)
-#define invalidateNadir(x) ((x).rssi = MAX_RSSI)
-#define endTime(x) ((x).firstTime + (x).duration)
+constexpr rssi_t MAX_RSSI = 0xFF;
+inline bool isPeakValid(const Extremum& x) { return x.rssi != 0; }
+inline bool isNadirValid(const Extremum& x) { return x.rssi != MAX_RSSI; }
+inline void invalidatePeak(Extremum& x) { x.rssi = 0; }
+inline void invalidateNadir(Extremum& x) { x.rssi = MAX_RSSI; }
+inline mtime_t endTime(const Extremum& x) { return x.firstTime + x.duration; }
 
 #endif

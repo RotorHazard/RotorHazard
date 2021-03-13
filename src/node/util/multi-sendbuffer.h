@@ -10,7 +10,7 @@ template <uint8_t N> class MultiExtremumSendBuffer : public ExtremumSendBuffer
     private:
       CircularBuffer<Extremum,N> buffer;
     public:
-      uint8_t size() const {
+      uint_fast8_t size() const {
           return buffer.size();
       }
       bool isEmpty() const {

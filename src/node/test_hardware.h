@@ -34,4 +34,3 @@ public:
 };
 
 extern TestHardware testHardware;
-extern Hardware *hardware;

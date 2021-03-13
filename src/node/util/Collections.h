@@ -17,15 +17,15 @@
 
 namespace Helper {
     template<bool FITS8, bool FITS16> struct Index {
-        using Type = uint32_t;
+        using Type = uint_fast32_t;
     };
 
     template<> struct Index<false, true> {
-        using Type = uint16_t;
+        using Type = uint_fast16_t;
     };
 
     template<> struct Index<true, true> {
-        using Type = uint8_t;
+        using Type = uint_fast8_t;
     };
 }
 

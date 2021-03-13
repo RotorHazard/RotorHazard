@@ -62,7 +62,7 @@ void Message::handleWriteCommand(bool serialFlag)
     buffer.flipForRead();
     bool activityFlag = true;
 
-    RssiNode& rssiNode = rssiRxs->getRssiNode(cmdRssiNodeIndex);
+    RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
     Settings& settings = rssiNode.getSettings();
 
     switch (command)
@@ -105,7 +105,7 @@ void Message::handleWriteCommand(bool serialFlag)
 
         case WRITE_CURNODE_INDEX:  // index of current node for this processor
             u8val = buffer.read8();
-            if (u8val < rssiRxs->getCount() && u8val != cmdRssiNodeIndex) {
+            if (u8val < rssiRxs.getCount() && u8val != cmdRssiNodeIndex) {
               cmdRssiNodeIndex = u8val;
             }
             break;
@@ -116,11 +116,11 @@ void Message::handleWriteCommand(bool serialFlag)
 
         case RESET_PAIRED_NODE:  // reset paired node for ISP
             u8val = buffer.read8();
-            hardware->resetPairedNode(u8val);
+            hardware.resetPairedNode(u8val);
             break;
 
         case JUMP_TO_BOOTLOADER:  // jump to bootloader for flash update
-            hardware->doJumpToBootloader();
+            hardware.doJumpToBootloader();
             break;
 
         default:
@@ -152,14 +152,14 @@ void Message::handleReadCommand(bool serialFlag)
     buffer.flipForWrite();
     bool activityFlag = true;
 
-    RssiNode& rssiNode = rssiRxs->getRssiNode(cmdRssiNodeIndex);
+    RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
     Settings& settings = rssiNode.getSettings();
     State& state = rssiNode.getState();
 
     switch (command)
     {
         case READ_ADDRESS:
-            buffer.write8(hardware->getAddress());
+            buffer.write8(hardware.getAddress());
             break;
 
         case READ_FREQUENCY:
@@ -213,11 +213,11 @@ void Message::handleReadCommand(bool serialFlag)
             break;
 
         case READ_RHFEAT_FLAGS:   // reply with feature flags value
-            buffer.write16(hardware->getFeatureFlags());
+            buffer.write16(hardware.getFeatureFlags());
             break;
 
         case READ_MULTINODE_COUNT:
-            buffer.write8(rssiRxs->getCount());
+            buffer.write8(rssiRxs.getCount());
             break;
 
         case READ_CURNODE_INDEX:
@@ -225,7 +225,7 @@ void Message::handleReadCommand(bool serialFlag)
             break;
 
         case READ_NODE_SLOTIDX:
-            buffer.write8(rssiRxs->getSlotIndex(cmdRssiNodeIndex));
+            buffer.write8(rssiRxs.getSlotIndex(cmdRssiNodeIndex));
             break;
 
         default:  // If an invalid command is sent, write nothing back, master must react
@@ -319,15 +319,15 @@ void Message::setMode(RssiNode& rssiNode, uint8_t mode)
     switch (mode) {
         case MODE_TIMER:
             rssiNode.setFilter(&(rssiNode.defaultFilter));
-            rssiNode.resetState();
+            rssiNode.resetState(usclock.millis());
             break;
         case MODE_SCANNER:
             rssiNode.setFilter(&(rssiNode.medianFilter));
-            rssiNode.resetState();
+            rssiNode.resetState(usclock.millis());
             break;
         case MODE_RAW:
             rssiNode.setFilter(&(rssiNode.noFilter));
-            rssiNode.resetState();
+            rssiNode.resetState(usclock.millis());
             break;
         default:
             break;

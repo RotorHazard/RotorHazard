@@ -38,5 +38,3 @@ public:
         }
     }
 };
-
-extern Hardware *hardware;

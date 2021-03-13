@@ -49,33 +49,31 @@ unittest(historyBuffer_unified_preserves_order) {
 unittest(historyBuffer_unified1_withoutReads) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-  rssiNode.setFilter(&testFilter);
+  RssiNode rssiNode;
+  configureTestRssiNode(rssiNode);
   State& state = rssiNode.getState();
   LastPass& lastPass = rssiNode.getLastPass();
   History& history = rssiNode.getHistory();
   UnifiedSendBuffer<Extremum,2> testBuffer;
   history.setSendBuffer(&testBuffer);
-  rssiNode.start();
-  rssiNode.resetState();
+  rssiNode.start(millis(), micros());
   nano->micros += 40000; // settle time
   assertEqual(NONE, history.nextToSendType());
 
-  rssiNode.active = true;
-
   // prime the state with some background signal
-  sendSignal(nano, 60);
-  sendSignal(nano, 30);
-  sendSignal(nano, 30);
+  sendSignal(nano, rssiNode, 60);
+  sendSignal(nano, rssiNode, 30);
+  sendSignal(nano, rssiNode, 30);
 
   // small extremum peak
-  sendSignal(nano, 60);
+  sendSignal(nano, rssiNode, 60);
   assertEqual(60, (int)history.peak.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(1, history.sendBuffer->size());
   assertEqual(30, (int)history.sendBuffer->nextNadir().rssi);
   assertEqual(time(2)-1, (int)history.sendBuffer->nextNadir().duration);
   // small extremum nadir
-  sendSignal(nano, 40);
+  sendSignal(nano, rssiNode, 40);
   assertEqual(40, (int)history.nadir.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(2, history.sendBuffer->size());
@@ -83,50 +81,50 @@ unittest(historyBuffer_unified1_withoutReads) {
   assertEqual(time(1)-1, (int)history.sendBuffer->nextPeak().duration);
 
   // large extremum peak
-  sendSignal(nano, 80);
+  sendSignal(nano, rssiNode, 80);
   assertEqual(80, (int)history.peak.rssi);
   assertEqual(PEAK, history.nextToSendType());
   assertEqual(40, (int)history.sendBuffer->nextNadir().rssi);
   assertEqual(time(1)-1, (int)history.sendBuffer->nextNadir().duration);
   // large extremum nadir
-  sendSignal(nano, 20);
+  sendSignal(nano, rssiNode, 20);
   assertEqual(20, (int)history.nadir.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(80, (int)history.sendBuffer->nextPeak().rssi);
   assertEqual(time(1)-1, (int)history.sendBuffer->nextPeak().duration);
 
   // large extremum peak
-  sendSignal(nano, 80);
+  sendSignal(nano, rssiNode, 80);
   assertEqual(80, (int)history.peak.rssi);
   assertEqual(PEAK, history.nextToSendType());
   assertEqual(20, (int)history.sendBuffer->nextNadir().rssi);
   assertEqual(time(1)-1, (int)history.sendBuffer->nextNadir().duration);
   // large extremum nadir
-  sendSignal(nano, 20);
+  sendSignal(nano, rssiNode, 20);
   assertEqual(20, (int)history.nadir.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(80, (int)history.sendBuffer->nextPeak().rssi);
   assertEqual(time(1)-1, (int)history.sendBuffer->nextPeak().duration);
 
   // small extremum peak
-  sendSignal(nano, 60);
+  sendSignal(nano, rssiNode, 60);
   assertEqual(60, (int)history.peak.rssi);
   assertEqual(PEAK, history.nextToSendType());
   assertEqual(20, (int)history.sendBuffer->nextNadir().rssi);
   assertEqual(time(1)-1, (int)history.sendBuffer->nextNadir().duration);
   // small extremum nadir
-  sendSignal(nano, 40);
+  sendSignal(nano, rssiNode, 40);
   assertEqual(40, (int)history.nadir.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(60, (int)history.sendBuffer->nextPeak().rssi);
   assertEqual(time(1)-1, (int)history.sendBuffer->nextPeak().duration);
 
-  sendSignal(nano, 60);
+  sendSignal(nano, rssiNode, 60);
   assertEqual(60, (int)history.peak.rssi);
   assertEqual(PEAK, history.nextToSendType());
   assertEqual(40, (int)history.sendBuffer->nextNadir().rssi);
   assertEqual(time(1)-1, (int)history.sendBuffer->nextNadir().duration);
-  sendSignal(nano, 40);
+  sendSignal(nano, rssiNode, 40);
   assertEqual(40, (int)history.nadir.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(60, (int)history.sendBuffer->nextPeak().rssi);
@@ -139,32 +137,31 @@ unittest(historyBuffer_unified1_withoutReads) {
 unittest(historyBuffer_unified1_withReads) {
   GodmodeState* nano = GODMODE();
   nano->reset();
+  RssiNode rssiNode;
+  configureTestRssiNode(rssiNode);
   State& state = rssiNode.getState();
   LastPass& lastPass = rssiNode.getLastPass();
   History& history = rssiNode.getHistory();
   UnifiedSendBuffer<Extremum,2> testBuffer;
   history.setSendBuffer(&testBuffer);
-  rssiNode.start();
-  rssiNode.resetState();
+  rssiNode.start(millis(), micros());
   nano->micros += 40000; // settle time
   assertEqual(NONE, history.nextToSendType());
 
-  rssiNode.active = true;
-
   // prime the state with some background signal
-  sendSignal(nano, 60);
-  sendSignal(nano, 30);
-  sendSignal(nano, 30);
+  sendSignal(nano, rssiNode, 60);
+  sendSignal(nano, rssiNode, 30);
+  sendSignal(nano, rssiNode, 30);
 
   // small extremum peak
-  sendSignal(nano, 60);
+  sendSignal(nano, rssiNode, 60);
   assertEqual(60, (int)history.peak.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(1, history.sendBuffer->size());
   assertEqual(30, (int)history.sendBuffer->nextNadir().rssi);
   assertEqual(time(2)-1, (int)history.sendBuffer->nextNadir().duration);
   // small extremum nadir
-  sendSignal(nano, 40);
+  sendSignal(nano, rssiNode, 40);
   assertEqual(40, (int)history.nadir.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(2, history.sendBuffer->size());
@@ -172,26 +169,26 @@ unittest(historyBuffer_unified1_withReads) {
   assertEqual(time(1)-1, (int)history.sendBuffer->nextPeak().duration);
 
   // large extremum peak
-  sendSignal(nano, 80);
+  sendSignal(nano, rssiNode, 80);
   assertEqual(80, (int)history.peak.rssi);
   assertEqual(PEAK, history.nextToSendType());
   assertEqual(40, (int)history.sendBuffer->nextNadir().rssi);
   assertEqual(time(1)-1, (int)history.sendBuffer->nextNadir().duration);
   // large extremum nadir
-  sendSignal(nano, 20);
+  sendSignal(nano, rssiNode, 20);
   assertEqual(20, (int)history.nadir.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(80, (int)history.sendBuffer->nextPeak().rssi);
   assertEqual(time(1)-1, (int)history.sendBuffer->nextPeak().duration);
 
   // large extremum peak
-  sendSignal(nano, 80);
+  sendSignal(nano, rssiNode, 80);
   assertEqual(80, (int)history.peak.rssi);
   assertEqual(PEAK, history.nextToSendType());
   assertEqual(20, (int)history.sendBuffer->nextNadir().rssi);
   assertEqual(time(1)-1, (int)history.sendBuffer->nextNadir().duration);
   // large extremum nadir
-  sendSignal(nano, 20);
+  sendSignal(nano, rssiNode, 20);
   assertEqual(20, (int)history.nadir.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(80, (int)history.sendBuffer->nextPeak().rssi);
@@ -202,7 +199,7 @@ unittest(historyBuffer_unified1_withReads) {
   assertEqual(1, testBuffer.remainingToSend());
 
   // small extremum peak
-  sendSignal(nano, 60);
+  sendSignal(nano, rssiNode, 60);
   assertEqual(60, (int)history.peak.rssi);
   assertEqual(PEAK, history.nextToSendType());
   assertEqual(20, (int)history.sendBuffer->nextNadir().rssi);
@@ -213,7 +210,7 @@ unittest(historyBuffer_unified1_withReads) {
   assertEqual(1, testBuffer.remainingToSend());
 
   // small extremum nadir
-  sendSignal(nano, 40);
+  sendSignal(nano, rssiNode, 40);
   assertEqual(40, (int)history.nadir.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(60, (int)history.sendBuffer->nextPeak().rssi);
@@ -223,7 +220,7 @@ unittest(historyBuffer_unified1_withReads) {
   history.popNextToSend();
   assertEqual(1, testBuffer.remainingToSend());
 
-  sendSignal(nano, 60);
+  sendSignal(nano, rssiNode, 60);
   assertEqual(60, (int)history.peak.rssi);
   assertEqual(PEAK, history.nextToSendType());
   assertEqual(40, (int)history.sendBuffer->nextNadir().rssi);
@@ -233,7 +230,7 @@ unittest(historyBuffer_unified1_withReads) {
   history.popNextToSend();
   assertEqual(1, testBuffer.remainingToSend());
 
-  sendSignal(nano, 40);
+  sendSignal(nano, rssiNode, 40);
   assertEqual(40, (int)history.nadir.rssi);
   assertEqual(NADIR, history.nextToSendType());
   assertEqual(60, (int)history.sendBuffer->nextPeak().rssi);
