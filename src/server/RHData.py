@@ -68,7 +68,17 @@ class RHData():
 
     # General
     def db_init(self, nofill=False):
-        self.create_all() # Creates tables from database classes/models
+         # Creates tables from database classes/models
+        try:
+            self._Database.DB.create_all()
+            return True
+        except Exception as ex:
+            logger.error('Error creating database: ' + str(ex))
+            return False
+
+        self.reset_all(nofill) # Fill with defaults
+
+    def reset_all(self, nofill=False):
         self.reset_pilots()
         if nofill:
             self.reset_heats(nofill=True)
@@ -78,14 +88,6 @@ class RHData():
         self.reset_profiles()
         self.reset_raceFormats()
         self.reset_options()
-
-    def create_all(self):
-        try:
-            self._Database.DB.create_all()
-            return True
-        except Exception as ex:
-            logger.error('Error creating database: ' + str(ex))
-            return False
 
     def commit(self):
         try:
@@ -102,13 +104,6 @@ class RHData():
         except Exception as ex:
             logger.error('Error closing to database: ' + str(ex))
             return False
-
-    def reset_all(self):
-        self.reset_pilots()
-        self.reset_heats()
-        self.clear_race_data()
-        self.reset_profiles()
-        self.reset_raceFormats()
 
     # File Handling
 
