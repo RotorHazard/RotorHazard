@@ -1660,6 +1660,11 @@ class RHData():
             split_id=split_id
             ).one_or_none()
 
+    def clear_lapSplit(self, lapSplit):
+        self._Database.DB.session.delete(lapSplit)
+        self.commit()
+        return True
+
     def clear_lapSplits(self):
         self._Database.DB.session.query(self._Database.LapSplit).delete()
         self.commit()

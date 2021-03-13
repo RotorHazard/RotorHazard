@@ -24,14 +24,13 @@ class SecondaryNode:
     TIMEDIFF_MEDIAN_SIZE = 30
     TIMEDIFF_CORRECTION_THRESH_MS = 250  # correct split times if secondary clock more off than this
 
-    def __init__(self, idVal, info, RACE, RHData, DB, getCurrentProfile, \
+    def __init__(self, idVal, info, RACE, RHData, getCurrentProfile, \
                  emit_split_pass_info, monotonic_to_epoch_millis, \
                  emit_cluster_connect_change, server_release_version, eventmanager):
         self.id = idVal
         self.info = info
         self.RACE = RACE
         self.RHData = RHData
-        self.DB = DB
         self.getCurrentProfile = getCurrentProfile
         self.emit_split_pass_info = emit_split_pass_info
         self.monotonic_to_epoch_millis = monotonic_to_epoch_millis
@@ -299,7 +298,7 @@ class SecondaryNode:
                     # get timestamp for last lap pass (including lap 0)
                     if len(act_laps_list) > 0:
                         last_lap_ts = act_laps_list[-1]['lap_time_stamp']
-                        last_split_id = self.DB.session.query(self.DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=lap_count).scalar()
+                        last_split_id = Database.DB.session.query(Database.DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=lap_count).scalar()
                         if last_split_id is None: # first split for this lap
                             if split_id > 0:
                                 logger.info('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
@@ -329,10 +328,10 @@ class SecondaryNode:
                             .format(node_index+1, lap_count+1, split_id+1, split_time_str, \
                             ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
 
-                        self.DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=lap_count, \
+                        Database.DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=lap_count, \
                                 split_id=split_id, split_time_stamp=split_ts, split_time=split_time, \
                                 split_time_formatted=split_time_str, split_speed=split_speed))
-                        self.DB.session.commit()
+                        Database.DB.session.commit()
                         self.emit_split_pass_info(pilot_id, split_id, split_time)
 
                 else:

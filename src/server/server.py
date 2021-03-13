@@ -2519,7 +2519,7 @@ def on_delete_lap(data):
         lap_splits = RHData.get_lapSplits_by_lap(node_index, lap_number)
         if lap_splits and len(lap_splits) > 0:
             for lap_split in lap_splits:
-                DB.session.delete(lap_split)
+                RHData.clear_lapsplit(lap_split)
             RHData.commit()
     except:
         logger.exception("Error deleting split laps")
@@ -4457,7 +4457,7 @@ try:
         elif hasMirrors:
             logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
             break
-        secondary = SecondaryNode(index, secondary_info, RACE, RHData, DB, getCurrentProfile, \
+        secondary = SecondaryNode(index, secondary_info, RACE, RHData, getCurrentProfile, \
                           emit_split_pass_info, monotonic_to_epoch_millis, \
                           emit_cluster_connect_change, RELEASE_VERSION, Events)
         CLUSTER.addSecondary(secondary)
