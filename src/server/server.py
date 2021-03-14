@@ -2,7 +2,7 @@
 RELEASE_VERSION = "3.1.0-dev.2" # Public release version code
 SERVER_API = 31 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 34 # Most recent node API
+NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
 
 # This must be the first import for the time being. It is
@@ -3553,6 +3553,9 @@ def check_bpillfw_file(data):
         rStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_VERSION_PREFIXSTR, \
                                              INTERFACE.FW_TEXT_BLOCK_SIZE)
         fwVerStr = rStr if rStr else "(unknown)"
+        rStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_PROCTYPE_PREFIXSTR, \
+                                             INTERFACE.FW_TEXT_BLOCK_SIZE)
+        fwTypStr = (rStr + ", ") if rStr else ""
         rStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_BUILDDATE_PREFIXSTR, \
                                              INTERFACE.FW_TEXT_BLOCK_SIZE)
         if rStr:
@@ -3567,12 +3570,15 @@ def check_bpillfw_file(data):
         logger.debug("Node update firmware file size={}, version={}, build timestamp: {}".\
                      format(fileSize, fwVerStr, fwTimStr))
         infoStr = "Firmware update file size = {}<br>".format(fileSize) + \
-                  "Firmware update version: {} (Build timestamp: {})<br><br>".\
-                  format(fwVerStr, fwTimStr)
+                  "Firmware update version: {} ({}Build timestamp: {})<br><br>".\
+                  format(fwVerStr, fwTypStr, fwTimStr)
         curNodeStr = INTERFACE.nodes[0].firmware_version_str if len(INTERFACE.nodes) else None
         if curNodeStr:
-            tStr = INTERFACE.nodes[0].firmware_timestamp_str
-            curNodeStr += " (Build timestamp: {})".format(tStr)
+            tsStr = INTERFACE.nodes[0].firmware_timestamp_str
+            if tsStr:
+                ptStr = INTERFACE.nodes[0].firmware_proctype_str
+                ptStr = (ptStr + ", ") if ptStr else ""
+                curNodeStr += " ({}Build timestamp: {})".format(ptStr, tsStr)
         else:
             curNodeStr = "(unknown)"
         infoStr += "Current firmware version: " + curNodeStr

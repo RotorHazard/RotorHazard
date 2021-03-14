@@ -11,6 +11,7 @@ class Node:
         self.multi_node_slot_index = -1
         self.rhfeature_flags = 0
         self.firmware_version_str = None
+        self.firmware_proctype_str = None
         self.firmware_timestamp_str = None
         self.frequency = 0
         self.current_rssi = 0
