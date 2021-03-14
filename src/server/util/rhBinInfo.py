@@ -28,6 +28,9 @@ def showFirmwareBinInfo(fileStr):
         rStr = RHUtils.findPrefixedSubstring(dataStr, RHInterface.FW_VERSION_PREFIXSTR, \
                                              RHInterface.FW_TEXT_BLOCK_SIZE)
         fwVerStr = rStr if rStr else "(unknown)"
+        rStr = RHUtils.findPrefixedSubstring(dataStr, RHInterface.FW_PROCTYPE_PREFIXSTR, \
+                                             RHInterface.FW_TEXT_BLOCK_SIZE)
+        fwTypStr = (rStr + ", ") if rStr else ""
         rStr = RHUtils.findPrefixedSubstring(dataStr, RHInterface.FW_BUILDDATE_PREFIXSTR, \
                                              RHInterface.FW_TEXT_BLOCK_SIZE)
         if rStr:
@@ -38,7 +41,7 @@ def showFirmwareBinInfo(fileStr):
                 fwTimStr += " " + rStr
         else:
             fwTimStr = "unknown"
-        print("Firmware file version: {} (Build timestamp: {})".format(fwVerStr, fwTimStr))
+        print("Firmware file version: {} ({}Build timestamp: {})".format(fwVerStr, fwTypStr, fwTimStr))
     except Exception:
         print("Error processing file '{}' in 'check_bpillfw_file()'".format(fileStr))
 
