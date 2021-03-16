@@ -33,6 +33,9 @@ def time_format(millis, timeformat='{m}:{s}.{d}'):
     over = over % 1000
     milliseconds = over
 
+    if not timeformat:
+        timeformat = '{m}:{s}.{d}'
+
     return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(milliseconds).zfill(3))
 
 def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
@@ -46,6 +49,9 @@ def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
     seconds = over // 1000
     over = over % 1000
     tenths = over // 100
+
+    if not timeformat:
+        timeformat = '{m} {s}.{d}'
 
     if minutes <= 0:
         return timeformat.format(m='', s=str(seconds), d=str(tenths))
