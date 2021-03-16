@@ -616,6 +616,9 @@ class RHData():
     def get_heats(self):
         return self._Database.Heat.query.all()
 
+    def get_heats_by_class(self, class_id):
+        return self._Database.Heat.query.filter_by(class_id=class_id).all()
+    
     def get_first_heat(self):
         return self._Database.Heat.query.first()
 
