@@ -123,11 +123,11 @@ function createBandScanner(elementId) {
 }
 
 function registerMessageHandlers(socket, scanners) {
-	socket.on('heartbeat', function (msg) {
-		for (let i = 0; i < msg.current_rssi.length; i++) {
-			let scanner = scanners[i];
-			if (scanner && scanner.isEnabled) {
-				let rssiValue = msg.current_rssi[i];
+	socket.on('scan_data', function (msg) {
+		let scanner = scanners[msg.node];
+		if (scanner && scanner.isEnabled) {
+			for (let i = 0; i < msg.rssi.length; i++) {
+				let rssiValue = msg.rssi[i];
 				let freq = msg.frequency[i];
 				scanner.update(freq, rssiValue);
 			}

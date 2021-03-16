@@ -9,6 +9,7 @@ from Plugins import Plugins
 from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
+READ_MODE = 0x02
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
 READ_LAP_STATS = 0x05
 READ_LAP_PASS_STATS = 0x0D
@@ -19,6 +20,7 @@ READ_REVISION_CODE = 0x22    # read NODE_API_LEVEL and verification value
 READ_NODE_RSSI_PEAK = 0x23   # read 'nodeRssiPeak' value
 READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
 READ_NODE_RSSI_HISTORY = 0x25
+READ_NODE_SCAN_HISTORY = 0x26
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
 READ_TIME_MILLIS = 0x33      # read current 'millis()' time value
@@ -27,10 +29,10 @@ READ_CURNODE_INDEX = 0x3A    # read index of current node for processor
 READ_NODE_SLOTIDX = 0x3C     # read node slot index (for multi-node setup)
 
 WRITE_FREQUENCY = 0x51       # Sets frequency (2 byte)
+WRITE_MODE = 0x52
 # WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
-WRITE_MODE = 0x73
 WRITE_CURNODE_INDEX = 0x7A  # write index of current node for processor
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 JUMP_TO_BOOTLOADER = 0x7E   # jump to bootloader for flash update
@@ -502,6 +504,13 @@ class RHInterface(BaseHardwareInterface):
                 READ_FREQUENCY,
                 1111 if node.api_level >= 24 else 5800)
             node.frequency = 0
+
+    def set_mode(self, node_index, mode):
+        node = self.nodes[node_index]
+        node.mode = self.set_and_validate_value_8(node,
+            WRITE_MODE,
+            READ_MODE,
+            mode)
 
     def transmit_enter_at_level(self, node, level):
         return self.set_and_validate_value_rssi(node,

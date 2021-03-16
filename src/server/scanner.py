@@ -29,19 +29,27 @@ def log(s):
 INTERFACE.hardware_log_callback=log
 
 for node in INTERFACE.nodes:
-    node.set_scan_interval(5645, 5945, 80, 5, 2)
-    INTERFACE.set_frequency(node.index, 5645)
+    INTERFACE.set_mode(node.index, 1)
 
-INTERFACE.start()
-
-def heartbeat_thread_function():
+def scan_thread_function():
     while True:
         gevent.sleep(0.1)
-        heartbeat_data = INTERFACE.get_heartbeat_json()
-        SOCKET_IO.emit('heartbeat', heartbeat_data)
+
+        for node in INTERFACE.nodes:
+            data = node.read_block(INTERFACE, RHInterface.READ_NODE_SCAN_HISTORY, 9)
+            freqs = []
+            rssis = []
+            if data is not None and len(data) > 0:
+                for i in range(0, len(data), 3):
+                    freq = RHInterface.unpack_16(data[i:])
+                    rssi = RHInterface.unpack_8(data[i+2:])
+                    if freq > 0:
+                        freqs.append(freq)
+                        rssis.append(rssi)
+            SOCKET_IO.emit('scan_data', {'node' : node.index, 'frequency' : freqs, 'rssi' : rssis})
         
 
-gevent.spawn(heartbeat_thread_function)
+gevent.spawn(scan_thread_function)
 
 APP = Flask(__name__, static_url_path='/static')
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins='*')

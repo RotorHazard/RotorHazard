@@ -28,7 +28,7 @@ def log(s):
 INTERFACE.hardware_log_callback=log
 
 for node in INTERFACE.nodes:
-    INTERFACE.set_value_8(node, RHInterface.WRITE_MODE, 2)
+    INTERFACE.set_mode(node.index, 2)
     INTERFACE.set_frequency(node.index, freq)
 
 def write_buffer(fname, buf):
