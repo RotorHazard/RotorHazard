@@ -82,5 +82,6 @@ template<size_t S> class Buffer {
 
 template<size_t N> constexpr rssi_t ioBufferReadRssi(Buffer<N>& buf) { return buf.read8(); }
 template<size_t N> constexpr void ioBufferWriteRssi(Buffer<N>& buf, rssi_t rssi) { buf.write8(rssi); }
+template<size_t N> constexpr void ioBufferWriteFreqRssi(Buffer<N>& buf, const FreqRssi& f_r) { buf.write16(f_r.freq); buf.write8(f_r.rssi); }
 
 #endif

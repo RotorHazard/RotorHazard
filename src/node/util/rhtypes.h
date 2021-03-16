@@ -7,6 +7,7 @@
 typedef uint32_t mtime_t; // milliseconds
 typedef uint32_t utime_t; // micros
 typedef uint8_t rssi_t;
+typedef uint16_t freq_t; // MHz
 
 enum ExtremumType {
     PEAK = 1,
@@ -19,6 +20,12 @@ struct Extremum
   rssi_t volatile rssi;
   mtime_t volatile firstTime;
   uint16_t volatile duration;
+};
+
+struct FreqRssi
+{
+    freq_t freq;
+    rssi_t rssi;
 };
 
 constexpr rssi_t MAX_RSSI = 0xFF;

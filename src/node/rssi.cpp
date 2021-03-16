@@ -2,7 +2,7 @@
 #include "rssi.h"
 #include "util/persistent-homology.h"
 
-#define MIN_TUNETIME 35  // after set freq need to wait this long before read RSSI
+constexpr uint16_t MIN_TUNETIME = 35;  // after set freq need to wait this long before read RSSI
 
 inline void initExtremum(Extremum& e, rssi_t rssi, mtime_t ts)
 {
@@ -43,6 +43,8 @@ void RssiNode::resetState(const mtime_t ms)
 
 bool RssiNode::process(rssi_t rssi, mtime_t ms)
 {
+    bool crossing = false;
+
     filter->addRawValue(ms, rssi);
     if (filter->isFilled()) {
         const int rssiChange = state.readRssiFromFilter(filter);
@@ -52,30 +54,16 @@ bool RssiNode::process(rssi_t rssi, mtime_t ms)
         {  //don't start operations until after first WRITE_FREQUENCY command is received
 
             state.updateRssiStats();
-            const ExtremumType currentType = updateHistory(rssiChange);
-            const bool crossing = checkForCrossing(currentType, rssiChange);
-
-            /*** pass processing **/
-
-            if (crossing)
-            {  //lap pass is in progress
-                // Find the peak rssi and the time it occured during a crossing event
-                if (state.rssi > state.passPeak.rssi)
-                {
-                    // this is first time this peak RSSI value was seen, so save value and timestamp
-                    initExtremum(state.passPeak, state.rssi, state.rssiTimestamp);
-                }
-                else if (state.rssi == state.passPeak.rssi)
-                {
-                    // if at max peak for more than one iteration then track duration
-                    // so middle-timestamp value can be returned
-                    state.passPeak.duration = toDuration(state.rssiTimestamp - state.passPeak.firstTime);
-                }
-            }
-            else
-            {
-                // track lowest rssi seen since end of last pass
-                state.passRssiNadir = min((rssi_t)state.rssi, (rssi_t)state.passRssiNadir);
+            switch (settings.mode) {
+                case TIMER:
+                    crossing = timerHandler(rssiChange);
+                    break;
+                case SCANNER:
+                    crossing = scannerHandler(rssiChange);
+                    break;
+                case RAW:
+                    crossing = rawHandler(rssiChange);
+                    break;
             }
         }
 
@@ -86,7 +74,37 @@ bool RssiNode::process(rssi_t rssi, mtime_t ms)
         }
     }
 
-    return state.crossing;
+    return crossing;
+}
+
+bool RssiNode::timerHandler(const int rssiChange) {
+    const ExtremumType currentType = updateHistory(rssiChange);
+    const bool crossing = checkForCrossing(currentType, rssiChange);
+
+    /*** pass processing **/
+
+    if (crossing)
+    {  //lap pass is in progress
+        // Find the peak rssi and the time it occured during a crossing event
+        if (state.rssi > state.passPeak.rssi)
+        {
+            // this is first time this peak RSSI value was seen, so save value and timestamp
+            initExtremum(state.passPeak, state.rssi, state.rssiTimestamp);
+        }
+        else if (state.rssi == state.passPeak.rssi)
+        {
+            // if at max peak for more than one iteration then track duration
+            // so middle-timestamp value can be returned
+            state.passPeak.duration = toDuration(state.rssiTimestamp - state.passPeak.firstTime);
+        }
+    }
+    else
+    {
+        // track lowest rssi seen since end of last pass
+        state.passRssiNadir = min((rssi_t)state.rssi, (rssi_t)state.passRssiNadir);
+    }
+
+    return crossing;
 }
 
 ExtremumType RssiNode::updateHistory(const int rssiChange)
@@ -199,7 +217,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
             ConnectedComponent& cc = ccs[-lastIdx-1];
             const uint_fast8_t lastLife = phData[cc.birth] - phData[cc.death];
             if (lastLife > threshold) {
-                state.crossing = true;
+                startCrossing();
             }
         }
     }
@@ -214,7 +232,8 @@ bool RssiNode::checkForCrossing_old(const rssi_t enterThreshold, const rssi_t ex
 
     if ((!state.crossing) && state.rssi >= enterThreshold)
     {
-        state.crossing = true;  // quad is going through the gate (lap pass starting)
+        // quad is going through the gate (lap pass starting)
+        startCrossing();
     }
     else if (state.crossing && state.rssi < exitThreshold)
     {
@@ -223,6 +242,16 @@ bool RssiNode::checkForCrossing_old(const rssi_t enterThreshold, const rssi_t ex
     }
 
     return state.crossing;
+}
+
+bool RssiNode::isCrossing()
+{
+    return state.crossing;
+}
+
+void RssiNode::startCrossing()
+{
+    state.crossing = true;
 }
 
 /*** Function called when crossing ends (by RSSI or I2C command). */
@@ -240,6 +269,47 @@ void RssiNode::endCrossing()
 
     // reset lap-pass variables
     state.resetPass();
+}
+
+bool RssiNode::scannerHandler(const int rssiChange) {
+    return updateScanHistory(settings.vtxFreq);
+}
+
+bool RssiNode::updateScanHistory(freq_t f)
+{
+#ifdef SCAN_HISTORY
+    if (!scanHistory.isFull())
+    {
+        FreqRssi f_r = {f, state.rssi};
+        scanHistory.push(f_r);
+        return true;
+    } else {
+        return false;
+    }
+#else
+    return false;
+#endif
+}
+
+bool RssiNode::rawHandler(const int rssiChange) {
+    updateRssiHistory();
+    return false;
+}
+
+void RssiNode::updateRssiHistory()
+{
+#ifdef RSSI_HISTORY
+    if (!rssiHistoryComplete) {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            if (!rssiHistory.isFull()) {
+                rssiHistory.push(state.rssi);
+            } else {
+                rssiHistoryComplete = true;
+            }
+        }
+    }
+#endif
 }
 
 
@@ -264,19 +334,6 @@ void State::updateRssiStats() {
     {
         nodeRssiNadir = rssi;
     }
-
-#ifdef RSSI_HISTORY
-    if (!rssiHistoryComplete) {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            if (!rssiHistory.isFull()) {
-                rssiHistory.push(rssi);
-            } else {
-                rssiHistoryComplete = true;
-            }
-        }
-    }
-#endif
 }
 
 /*** Calculate the time it takes to run the main loop. */

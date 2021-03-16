@@ -19,7 +19,7 @@
 
 class Stm32Hardware : public Hardware {
 private:
-    int rx5808SelPinForNodeIndex(int nIdx)
+    uint8_t rx5808SelPinForNodeIndex(uint_fast8_t nIdx)
     {
         switch (nIdx)
         {
@@ -42,7 +42,7 @@ private:
         }
     }
 
-    int rssiInputPinForNodeIndex(int nIdx)
+    uint8_t rssiInputPinForNodeIndex(uint_fast8_t nIdx)
     {
         switch (nIdx)
         {
@@ -78,12 +78,12 @@ public:
         }
     }
 
-    void initRxModule(int nIdx, RxModule& rx)
+    void initRxModule(uint_fast8_t nIdx, RxModule& rx)
     {
-        uint16_t dataPin = PB3;  //DATA (CH1) output line to (all) RX5808 modules
-        uint16_t clkPin = PB4;   //CLK (CH3) output line to (all) RX5808 modules
-        uint16_t selPin = rx5808SelPinForNodeIndex(nIdx);  //SEL (CH2) output line to RX5808 module
-        uint16_t rssiPin = rssiInputPinForNodeIndex(nIdx); //RSSI input from RX5808
+        uint8_t dataPin = PB3;  //DATA (CH1) output line to (all) RX5808 modules
+        uint8_t clkPin = PB4;   //CLK (CH3) output line to (all) RX5808 modules
+        uint8_t selPin = rx5808SelPinForNodeIndex(nIdx);  //SEL (CH2) output line to RX5808 module
+        uint8_t rssiPin = rssiInputPinForNodeIndex(nIdx); //RSSI input from RX5808
         rx.init(dataPin, clkPin, selPin, rssiPin);
     }
 

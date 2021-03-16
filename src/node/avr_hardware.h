@@ -144,7 +144,7 @@ public:
         cbi(ADCSRA, ADPS0);
     }
 
-    void initSettings(int nIdx, Settings& settings)
+    void initSettings(uint_fast8_t nIdx, Settings& settings)
     {
         int offset = nIdx*EEPROM_SETTINGS_SIZE;
         if (eepromReadWord(offset + EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
@@ -162,7 +162,7 @@ public:
         }
     }
 
-    void initRxModule(int nIdx, RxModule& rx)
+    void initRxModule(uint_fast8_t nIdx, RxModule& rx)
     {
         uint16_t dataPin = RX5808_DATA_PIN;  //DATA (CH1) output line to RX5808 module
         uint16_t clkPin = RX5808_CLK_PIN;    //SEL (CH2) output line to RX5808 module
@@ -201,7 +201,7 @@ public:
     }
 
     // Node reset for ISP; resets other node wired to this node's reset pin
-    void resetPairedNode(int pinState)
+    void resetPairedNode(bool pinState)
     {
         if (pinState)
         {
@@ -227,7 +227,7 @@ public:
         return (RHFEAT_STM32_MODE | RHFEAT_JUMPTO_BOOTLDR | RHFEAT_IAP_FIRMWARE);
     }
 
-    void storeFrequency(uint16_t freq)
+    void storeFrequency(freq_t freq)
     {
         eepromWriteWord(EEPROM_ADRW_RXFREQ, freq);
     }

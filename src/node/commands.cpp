@@ -3,7 +3,9 @@
 #include "rssi.h"
 #include "commands.h"
 
-#define RSSI_HISTORY_PAYLOAD_SIZE 16
+constexpr uint_fast16_t RSSI_HISTORY_PAYLOAD_SIZE = 16;
+constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_COUNT = 3;
+constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_SIZE = SCAN_HISTORY_PAYLOAD_COUNT*sizeof(FreqRssi);
 
 uint8_t cmdStatusFlags = 0;
 uint8_t cmdRssiNodeIndex = 0;
@@ -80,6 +82,11 @@ void Message::handleWriteCommand(bool serialFlag)
             }
             break;
 
+        case WRITE_MODE:
+            u8val = buffer.read8();
+            setMode(rssiNode, (Mode)u8val);
+            break;
+
         case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
             rssiVal = ioBufferReadRssi(buffer);
             if (rssiVal != settings.enterAtLevel)
@@ -96,11 +103,6 @@ void Message::handleWriteCommand(bool serialFlag)
                 settings.exitAtLevel = rssiVal;
                 cmdStatusFlags |= EXITAT_CHANGED;
             }
-            break;
-
-        case WRITE_MODE:
-            u8val = buffer.read8();
-            setMode(rssiNode, u8val);
             break;
 
         case WRITE_CURNODE_INDEX:  // index of current node for this processor
@@ -146,6 +148,32 @@ template <size_t N> void ioBufferWriteExtremum(Buffer<N>& buf, const Extremum& e
     buf.write16(e.duration);
 }
 
+void Message::setMode(RssiNode& rssiNode, Mode mode)
+{
+    switch (mode) {
+        case TIMER:
+            rssiNode.setFilter(&(rssiNode.defaultFilter));
+            break;
+        case SCANNER:
+#ifdef SCAN_HISTORY
+            rssiNode.scanHistory.clear();
+#endif
+            rssiNode.setFilter(&(rssiNode.medianFilter));
+            rssiNode.getSettings().vtxFreq = MIN_SCAN_FREQ;
+            cmdStatusFlags |= FREQ_CHANGED;
+            cmdStatusFlags |= FREQ_SET;
+            break;
+        case RAW:
+#ifdef RSSI_HISTORY
+            rssiNode.rssiHistory.clear();
+#endif
+            rssiNode.setFilter(&(rssiNode.noFilter));
+            break;
+    }
+    rssiNode.resetState(usclock.millis());
+    rssiNode.getSettings().mode = mode;
+}
+
 // Generic IO read command handler
 void Message::handleReadCommand(bool serialFlag)
 {
@@ -166,18 +194,22 @@ void Message::handleReadCommand(bool serialFlag)
             buffer.write16(settings.vtxFreq);
             break;
 
+        case READ_MODE:
+            buffer.write8(settings.mode);
+            break;
+
         case READ_LAP_STATS:
             {
             mtime_t timeNowVal = usclock.millis();
             handleReadLapPassStats(rssiNode, timeNowVal);
             handleReadLapExtremums(rssiNode, timeNowVal);
-            cmdStatusFlags |= LAPSTATS_READ;
+            cmdStatusFlags |= POLLING;
             }
             break;
 
         case READ_LAP_PASS_STATS:
             handleReadLapPassStats(rssiNode, usclock.millis());
-            cmdStatusFlags |= LAPSTATS_READ;
+            cmdStatusFlags |= POLLING;
             break;
 
         case READ_LAP_EXTREMUMS:
@@ -193,7 +225,7 @@ void Message::handleReadCommand(bool serialFlag)
             break;
 
         case READ_REVISION_CODE:  // reply with NODE_API_LEVEL and verification value
-            buffer.write16((0x25 << 8) + NODE_API_LEVEL);
+            buffer.write16((0x25 << 8) + (uint16_t)NODE_API_LEVEL);
             break;
 
         case READ_NODE_RSSI_PEAK:
@@ -206,6 +238,12 @@ void Message::handleReadCommand(bool serialFlag)
 
         case READ_NODE_RSSI_HISTORY:
             handleReadRssiHistory(rssiNode);
+            cmdStatusFlags |= POLLING;
+            break;
+
+        case READ_NODE_SCAN_HISTORY:
+            handleReadScanHistory(rssiNode);
+            cmdStatusFlags |= POLLING;
             break;
 
         case READ_TIME_MILLIS:
@@ -268,7 +306,7 @@ void Message::handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal)
     LastPass& lastPass = rssiNode.getLastPass();
     History& history = rssiNode.getHistory();
     // set flag if 'crossing' in progress
-    uint8_t flags = state.crossing ? (uint8_t)LAPSTATS_FLAG_CROSSING : (uint8_t)0;
+    uint8_t flags = rssiNode.isCrossing() ? (uint8_t)LAPSTATS_FLAG_CROSSING : (uint8_t)0;
     ExtremumType extremumType = history.nextToSendType();
     if (extremumType == PEAK)
     {
@@ -298,15 +336,15 @@ void Message::handleReadRssiHistory(RssiNode& rssiNode)
 {
     int i = 0;
 #ifdef RSSI_HISTORY
-    CircularBuffer<rssi_t,RSSI_HISTORY_SIZE>& rssiHistory = rssiNode.getState().rssiHistory;
-    const int n = min(rssiHistory.size(), RSSI_HISTORY_PAYLOAD_SIZE);
+    CircularBuffer<rssi_t,RSSI_HISTORY_SIZE>& rssiHistory = rssiNode.rssiHistory;
+    const uint_fast16_t n = min(rssiHistory.size(), RSSI_HISTORY_PAYLOAD_SIZE);
     for (; i<n; i++) {
         ioBufferWriteRssi(buffer, rssiHistory.shift());
     }
-    if (i<RSSI_HISTORY_PAYLOAD_SIZE && rssiNode.getState().rssiHistoryComplete) {
+    if (i<RSSI_HISTORY_PAYLOAD_SIZE && rssiNode.rssiHistoryComplete) {
         ioBufferWriteRssi(buffer, MAX_RSSI);
         i++;
-        rssiNode.getState().rssiHistoryComplete = false;
+        rssiNode.rssiHistoryComplete = false;
     }
 #endif
     for (; i<RSSI_HISTORY_PAYLOAD_SIZE; i++) {
@@ -314,23 +352,19 @@ void Message::handleReadRssiHistory(RssiNode& rssiNode)
     }
 }
 
-void Message::setMode(RssiNode& rssiNode, uint8_t mode)
+void Message::handleReadScanHistory(RssiNode& rssiNode)
 {
-    switch (mode) {
-        case MODE_TIMER:
-            rssiNode.setFilter(&(rssiNode.defaultFilter));
-            rssiNode.resetState(usclock.millis());
-            break;
-        case MODE_SCANNER:
-            rssiNode.setFilter(&(rssiNode.medianFilter));
-            rssiNode.resetState(usclock.millis());
-            break;
-        case MODE_RAW:
-            rssiNode.setFilter(&(rssiNode.noFilter));
-            rssiNode.resetState(usclock.millis());
-            break;
-        default:
-            break;
+    int i = 0;
+#ifdef SCAN_HISTORY
+    CircularBuffer<FreqRssi,SCAN_HISTORY_SIZE>& scanHistory = rssiNode.scanHistory;
+    const uint_fast8_t n = min(scanHistory.size(), SCAN_HISTORY_PAYLOAD_COUNT);
+    for (; i<n; i++) {
+        ioBufferWriteFreqRssi(buffer, scanHistory.shift());
+    }
+#endif
+    const FreqRssi f_r = {0, 0};
+    for (; i<SCAN_HISTORY_PAYLOAD_COUNT; i++) {
+        ioBufferWriteFreqRssi(buffer, f_r);
     }
 }
 

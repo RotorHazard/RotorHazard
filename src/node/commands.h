@@ -9,9 +9,9 @@
 #include "hardware.h"
 
 // API level for node; increment when commands are modified
-#define NODE_API_LEVEL 33
+constexpr uint16_t NODE_API_LEVEL = 33;
 
-#define MESSAGE_BUFFER_SIZE 18
+constexpr uint8_t MESSAGE_BUFFER_SIZE = 18;
 
 class Message
 {
@@ -19,7 +19,8 @@ private:
     void handleReadLapPassStats(RssiNode& rssiNode, mtime_t timeNowVal);
     void handleReadLapExtremums(RssiNode& rssiNode, mtime_t timeNowVal);
     void handleReadRssiHistory(RssiNode& rssiNode);
-    void setMode(RssiNode& rssiNode, uint8_t mode);
+    void handleReadScanHistory(RssiNode& rssiNode);
+    void setMode(RssiNode& rssiNode, Mode mode);
 public:
     uint8_t command;  // code to identify messages
     Buffer<MESSAGE_BUFFER_SIZE> buffer;  // request/response payload
@@ -31,10 +32,14 @@ public:
 
 void handleStreamEvent(Stream& stream, Message& msg);
 
-#define MIN_FREQ 100
-#define MAX_FREQ 9999
+constexpr freq_t MIN_FREQ = 100;
+constexpr freq_t MIN_SCAN_FREQ = 5645;
+constexpr freq_t MAX_SCAN_FREQ = 5945;
+constexpr freq_t MAX_FREQ = 9999;
+constexpr uint16_t FREQ_INCR = 5;
 
 #define READ_ADDRESS 0x00
+#define READ_MODE 0x02
 #define READ_FREQUENCY 0x03
 #define READ_LAP_STATS 0x05
 #define READ_LAP_PASS_STATS 0x0D
@@ -44,6 +49,7 @@ void handleStreamEvent(Stream& stream, Message& msg);
 #define READ_NODE_RSSI_PEAK 0x23  // read 'state.nodeRssiPeak' value
 #define READ_NODE_RSSI_NADIR 0x24  // read 'state.nodeRssiNadir' value
 #define READ_NODE_RSSI_HISTORY 0x25
+#define READ_NODE_SCAN_HISTORY 0x26
 #define READ_ENTER_AT_LEVEL 0x31
 #define READ_EXIT_AT_LEVEL 0x32
 #define READ_TIME_MILLIS 0x33     // read current 'millis()' value
@@ -52,29 +58,31 @@ void handleStreamEvent(Stream& stream, Message& msg);
 #define READ_NODE_SLOTIDX 0x3C     // read node slot index (for multi-node setup)
 
 #define WRITE_FREQUENCY 0x51
+#define WRITE_MODE 0x52
 #define WRITE_ENTER_AT_LEVEL 0x71
 #define WRITE_EXIT_AT_LEVEL 0x72
-#define WRITE_MODE 0x73
 #define WRITE_CURNODE_INDEX 0x7A   // write index of current node for this processor
 
 #define FORCE_END_CROSSING 0x78  // kill current crossing flag regardless of RSSI value
 #define RESET_PAIRED_NODE 0x79  // command to reset node for ISP
 #define JUMP_TO_BOOTLOADER 0x7E    // jump to bootloader for flash update
 
-#define FREQ_SET        0x01
-#define FREQ_CHANGED    0x02
-#define ENTERAT_CHANGED 0x04
-#define EXITAT_CHANGED  0x08
-#define COMM_ACTIVITY   0x10
-#define LAPSTATS_READ   0x20
-#define SERIAL_CMD_MSG  0x40
+enum StatusFlag
+{
+    FREQ_SET        = 0x01,
+    FREQ_CHANGED    = 0x02,
+    ENTERAT_CHANGED = 0x04,
+    EXITAT_CHANGED  = 0x08,
+    COMM_ACTIVITY   = 0x10,
+    POLLING         = 0x20,
+    SERIAL_CMD_MSG  = 0x40
+};
 
-#define LAPSTATS_FLAG_CROSSING 0x01  // crossing is in progress
-#define LAPSTATS_FLAG_PEAK 0x02      // reported extremum is peak
-
-#define MODE_TIMER 0
-#define MODE_SCANNER 1
-#define MODE_RAW 2
+enum LapStatsFlag
+{
+    LAPSTATS_FLAG_CROSSING = 0x01, // crossing is in progress
+    LAPSTATS_FLAG_PEAK     = 0x02  // reported extremum is peak
+};
 
 extern uint8_t cmdStatusFlags;
 extern uint8_t cmdRssiNodeIndex;

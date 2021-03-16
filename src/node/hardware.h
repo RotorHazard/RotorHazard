@@ -31,15 +31,15 @@ public:
     virtual void init() {
         pinMode(LED_BUILTIN, OUTPUT);
     }
-    virtual void initSettings(int nIdx, Settings& settings) {}
-    virtual void initRxModule(int nIdx, RxModule& rx) = 0;
+    virtual void initSettings(uint_fast8_t nIdx, Settings& settings) {}
+    virtual void initRxModule(uint_fast8_t nIdx, RxModule& rx) = 0;
     virtual void processStatusFlags(mtime_t ms, uint8_t statusFlags, RssiNode& node) {}
-    virtual void resetPairedNode(int pinState) {}
+    virtual void resetPairedNode(bool pinState) {}
     virtual void doJumpToBootloader() {}
     virtual uint8_t getAddress() { return 0; }
     // value returned by READ_RHFEAT_FLAGS command
     virtual uint16_t getFeatureFlags() { return RHFEAT_NONE; }
-    virtual void storeFrequency(uint16_t freq) {}
+    virtual void storeFrequency(freq_t freq) {}
     virtual void storeEnterAtLevel(rssi_t rssi) {}
     virtual void storeExitAtLevel(rssi_t rssi) {}
     virtual void setStatusLed(bool onFlag)

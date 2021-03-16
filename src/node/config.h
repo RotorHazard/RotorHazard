@@ -100,10 +100,16 @@
 
 // use persistent homology detection
 #define USE_PH
+
+// uncomment to activate scanner mode
+//#define SCAN_HISTORY
+// uncomment to activate raw mode
+//#define RSSI_HISTORY
+
 #ifdef __TEST__
 #undef USE_PH
+#define SCAN_HISTORY
+#define RSSI_HISTORY
 #endif
-
-//#define RSSI_HISTORY
 
 #endif  // config_h

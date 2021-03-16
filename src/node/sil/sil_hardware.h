@@ -17,11 +17,11 @@ public:
 #endif
         printf("Hardware initialized\n");
     }
-    void initRxModule(int nIdx, RxModule& rx)
+    void initRxModule(uint_fast8_t nIdx, RxModule& rx)
     {
         printf("Initializing RX module %d\n", nIdx);
     }
-    void initSettings(int nIdx, Settings& settings)
+    void initSettings(uint_fast8_t nIdx, Settings& settings)
     {
         printf("Initializing settings for RX module %d\n", nIdx);
     }

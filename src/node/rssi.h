@@ -17,12 +17,13 @@
 #include "util/multi-sendbuffer.h"
 #include "util/unified-sendbuffer.h"
 
-#define MAX_DURATION 0xFFFF
-#define toDuration(ms) uint16_t(min(uint32_t(ms), uint32_t(MAX_DURATION)))
+constexpr uint16_t MAX_DURATION = 0xFFFF;
+inline uint16_t toDuration(uint32_t ms) { return uint16_t(min(ms, uint32_t(MAX_DURATION))); }
 
-#define HISTORY_SIZE 14
-#define PH_HISTORY_SIZE (HISTORY_SIZE+1) // should be odd
-#define RSSI_HISTORY_SIZE 800 // NB: need to leave about a 100 bytes free RAM
+constexpr uint8_t HISTORY_SIZE = 14;
+constexpr uint8_t PH_HISTORY_SIZE = (HISTORY_SIZE+1); // should be odd
+constexpr uint16_t RSSI_HISTORY_SIZE = 800; // NB: need to leave about a 100 bytes free RAM
+constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 
 #define USE_UNIFIED_SENDBUFFER
 #ifdef __TEST__
@@ -40,30 +41,40 @@
 #define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_MULTI
 #define NADIR_SENDBUFFER_IMPL NADIR_SENDBUFFER_MULTI
 
+enum Mode
+{
+    TIMER = 0,
+    SCANNER = 1,
+    RAW = 2
+};
+
 struct Settings
 {
-    uint16_t volatile vtxFreq = 5800;
+    freq_t volatile vtxFreq = 5800;
     // lap pass begins when RSSI is at or above this level
     rssi_t volatile enterAtLevel = 96;
     // lap pass ends when RSSI goes below this level
     rssi_t volatile exitAtLevel = 80;
+    Mode volatile mode = TIMER;
 };
 
 class State
 {
+    friend class RssiNode;
+#ifdef __TEST__
+public:
+#else
+private:
+#endif
+    bool volatile crossing = false; // True when the quad is going through the gate
 public:
     // variables to track the loop time
     utime_t volatile loopTimeMicros = 0;
     utime_t lastloopMicros = 0;
 
-    bool volatile crossing = false; // True when the quad is going through the gate
     rssi_t volatile rssi = 0; // Smoothed rssi value
     mtime_t rssiTimestamp = 0; // timestamp of the smoothed value
     rssi_t lastRssi = 0;
-#ifdef RSSI_HISTORY
-    CircularBuffer<rssi_t,RSSI_HISTORY_SIZE> rssiHistory;
-    bool volatile rssiHistoryComplete = false;
-#endif
 
     Extremum passPeak = {0, 0, 0}; // peak seen during current pass - only valid if pass.rssi != 0
     rssi_t passRssiNadir = MAX_RSSI; // lowest smoothed rssi seen since end of last pass
@@ -164,14 +175,19 @@ private:
 
     bool needsToSettle = true;
     mtime_t lastResetTimeMs;
-    struct Settings settings;
+    Settings settings;
     State state;
     History history;
-    struct LastPass lastPass;
+    LastPass lastPass;
 
     Filter<rssi_t> *filter;
 
-    ExtremumType updateHistory(int rssiChange);
+    inline bool timerHandler(const int rssiChange);
+    inline bool scannerHandler(const int rssiChange);
+    inline bool rawHandler(const int rssiChange);
+    inline ExtremumType updateHistory(int rssiChange);
+    inline bool updateScanHistory(freq_t f);
+    inline void updateRssiHistory();
     bool checkForCrossing(ExtremumType t, int rssiChange);
 #if defined(USE_PH) || defined(__TEST__)
     bool checkForCrossing_ph(ExtremumType t, uint8_t threshold);
@@ -181,6 +197,14 @@ public:
     MedianFilter<rssi_t, 5, 0> medianFilter;
     Composite3Filter<rssi_t> defaultFilter;
     NoFilter<rssi_t> noFilter;
+
+#ifdef SCAN_HISTORY
+    CircularBuffer<FreqRssi,SCAN_HISTORY_SIZE> scanHistory;
+#endif
+#ifdef RSSI_HISTORY
+    CircularBuffer<rssi_t,RSSI_HISTORY_SIZE> rssiHistory;
+    bool volatile rssiHistoryComplete = false;
+#endif
 
     bool volatile active = false; // Set true after initial WRITE_FREQUENCY command received
 
@@ -198,11 +222,13 @@ public:
      */
     void resetState(mtime_t ms);
     bool process(rssi_t rssi, mtime_t ms);
+    bool isCrossing();
+    void startCrossing();
     void endCrossing();
 
-    struct Settings& getSettings() { return settings; }
-    struct State& getState() { return state; }
-    struct History& getHistory() { return history; }
-    struct LastPass& getLastPass() { return lastPass; }
+    Settings& getSettings() { return settings; }
+    State& getState() { return state; }
+    History& getHistory() { return history; }
+    LastPass& getLastPass() { return lastPass; }
 };
 #endif

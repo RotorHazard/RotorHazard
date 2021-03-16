@@ -96,7 +96,7 @@ void loop()
         // update settings and status LED
 
         RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-        const Settings& settings = rssiNode.getSettings();
+        Settings& settings = rssiNode.getSettings();
 
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
@@ -106,16 +106,33 @@ void loop()
 
         // allow READ_LAP_STATS command to activate operations
         //  so they will resume after node or I2C bus reset
-        if (!rssiNode.active && (currentStatusFlags & LAPSTATS_READ))
+        if (!rssiNode.active && (currentStatusFlags & POLLING))
         {
             rssiNode.active = true;
+        }
+
+        if (crossingFlag && settings.mode == SCANNER)
+        {
+            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+            {
+                settings.vtxFreq += 10;
+                if (settings.vtxFreq > MAX_SCAN_FREQ)
+                {
+                    settings.vtxFreq = MIN_SCAN_FREQ;
+                }
+            }
+            currentStatusFlags |= FREQ_SET;
+            currentStatusFlags |= FREQ_CHANGED;
         }
 
         // update settings
 
         if (currentStatusFlags & FREQ_SET)
         {
-            uint16_t newVtxFreq;
+            // disable node until frequency change complete
+            rssiNode.active = false;
+
+            freq_t newVtxFreq;
             ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
             {
                 newVtxFreq = settings.vtxFreq;
@@ -127,7 +144,6 @@ void loop()
                 {
                     currentStatusFlags &= ~FREQ_SET;
                 }
-                rssiNode.active = false;
             }
             else
             {
@@ -137,14 +153,18 @@ void loop()
                 }
                 if (!rx.isPoweredDown() && rx.setFrequency(newVtxFreq))
                 {
+                    // frequency change complete - re-enable node
+                    rssiNode.active = true;
                     currentStatusFlags &= ~FREQ_SET;
                 }
-                rssiNode.active = true;
             }
 
             if (currentStatusFlags & FREQ_CHANGED)
             {
-                hardware.storeFrequency(newVtxFreq);
+                if (settings.mode != SCANNER)
+                {
+                    hardware.storeFrequency(newVtxFreq);
+                }
                 rssiNode.resetState(ms);  // restart rssi peak tracking for node
                 currentStatusFlags &= ~FREQ_CHANGED;
             }
@@ -163,7 +183,7 @@ void loop()
         }
 
         hardware.processStatusFlags(ms, currentStatusFlags, rssiNode);
-        currentStatusFlags &= ~LAPSTATS_READ;
+        currentStatusFlags &= ~POLLING;
         currentStatusFlags &= ~SERIAL_CMD_MSG;
 
         // Status LED
