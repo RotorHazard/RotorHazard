@@ -320,40 +320,43 @@ class RHData():
 
                     # build list of heat meta
                     heat_extracted_meta = []
-                    for row in heat_query_data:
-                        if 'node_index' in row:
-                            if row['node_index'] == 0:
-                                new_row = {}
-                                new_row['id'] = row['heat_id']
-                                if 'note' in row:
-                                    new_row['note'] = row['note']
-                                if 'class_id' in row:
-                                    new_row['class_id'] = row['class_id']
-                                heat_extracted_meta.append(new_row)
+                    if len(heat_query_data):
+                        for row in heat_query_data:
+                            if 'node_index' in row:
+                                if row['node_index'] == 0:
+                                    new_row = {}
+                                    new_row['id'] = row['heat_id']
+                                    if 'note' in row:
+                                        new_row['note'] = row['note']
+                                    if 'class_id' in row:
+                                        new_row['class_id'] = row['class_id']
+                                    heat_extracted_meta.append(new_row)
+        
+                        self.restore_table(self._Database.Heat, heat_extracted_meta, defaults={
+                                'note': None,
+                                'class_id': RHUtils.CLASS_ID_NONE,
+                                'results': None,
+                                'cacheStatus': Results.CacheStatus.INVALID
+                            })
     
-                    self.restore_table(self._Database.Heat, heat_extracted_meta, defaults={
-                            'note': None,
-                            'class_id': RHUtils.CLASS_ID_NONE,
-                            'results': None,
-                            'cacheStatus': Results.CacheStatus.INVALID
-                        })
-
-                    # extract pilots from heats and load into heatnode
-                    heatnode_extracted_data = []
-                    heatnode_dummy_id = 0
-                    for row in heat_query_data:
-                        heatnode_row = {}
-                        heatnode_row['id'] = heatnode_dummy_id
-                        heatnode_row['heat_id'] = int(row['heat_id'])
-                        heatnode_row['node_index'] = int(row['node_index'])
-                        heatnode_row['pilot_id'] = int(row['pilot_id'])
-                        heatnode_extracted_data.append(heatnode_row)
-                        heatnode_dummy_id += 1
-
-                    self._Database.DB.session.query(self._Database.HeatNode).delete()
-                    self.restore_table(self._Database.HeatNode, heatnode_extracted_data, defaults={
-                            'pilot_id': RHUtils.PILOT_ID_NONE
-                        })
+                        # extract pilots from heats and load into heatnode
+                        heatnode_extracted_data = []
+                        heatnode_dummy_id = 0
+                        for row in heat_query_data:
+                            heatnode_row = {}
+                            heatnode_row['id'] = heatnode_dummy_id
+                            heatnode_row['heat_id'] = int(row['heat_id'])
+                            heatnode_row['node_index'] = int(row['node_index'])
+                            heatnode_row['pilot_id'] = int(row['pilot_id'])
+                            heatnode_extracted_data.append(heatnode_row)
+                            heatnode_dummy_id += 1
+    
+                        self._Database.DB.session.query(self._Database.HeatNode).delete()
+                        self.restore_table(self._Database.HeatNode, heatnode_extracted_data, defaults={
+                                'pilot_id': RHUtils.PILOT_ID_NONE
+                            })
+                    else:
+                        self.reset_heats()
                 else:
                     # current heat structure; use basic migration
 
@@ -405,6 +408,7 @@ class RHData():
                         'cacheStatus': Results.CacheStatus.INVALID
                     })
 
+                self.reset_options()
                 if options_query_data:
                     for opt in options_query_data:
                         if opt['option_name'] in carryoverOpts:
@@ -414,6 +418,12 @@ class RHData():
 
                 recover_status['stage_1'] = True
             except Exception as ex:
+                # failed recovery, db reset
+                self.reset_all()
+                self.commit()
+                self.primeCache() # refresh Options cache
+                self._Events.trigger(Evt.DATABASE_RECOVER)
+                return recover_status
                 logger.warning('Error while writing data from previous database (stage 1):  ' + str(ex))
                 logger.debug(traceback.format_exc())
 

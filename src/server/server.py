@@ -192,7 +192,11 @@ def getCurrentProfile():
 def getCurrentRaceFormat():
     if RACE.format is None:
         val = RHData.get_optionInt('currentFormat')
-        race_format = RHData.get_raceFormat(val)
+        if val:
+            race_format = RHData.get_raceFormat(val)
+        else:
+            race_format = RHData.get_first_raceFormat()
+
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
         RACE.format.id = race_format.id
@@ -4111,9 +4115,18 @@ def init_race_state():
     # Normalize results caches
     Results.normalize_cache_status(RHData)
 
-def init_interface_state():
+def init_interface_state(startup=False):
     # Cancel current race
-    on_stop_race()
+    if startup:
+        RACE.race_status = RaceStatus.READY # Go back to ready state
+        INTERFACE.set_race_status(RaceStatus.READY)
+        led_manager.clear()
+        Events.trigger(Evt.LAPS_CLEAR)
+        RACE.timer_running = False # indicate race timer not running
+        RACE.scheduled = False # also stop any deferred start
+        SOCKET_IO.emit('stop_timer') 
+    else:
+        on_stop_race()
     # Reset laps display
     reset_current_laps()
 
@@ -4630,7 +4643,7 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
 
     APP.config['SECRET_KEY'] = RHData.get_option("secret_key")
     logger.info("Running http server at port " + str(port_val))
-    init_interface_state()
+    init_interface_state(startup=True)
     Events.trigger(Evt.STARTUP)
 
     try:
