@@ -11,6 +11,7 @@ platforms:
       features:
       defines:
         - __AVR_ATmega328__
+        - NUM_SERIAL_PORTS = 1
       warnings:
       flags:
         - -g

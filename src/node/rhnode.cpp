@@ -115,7 +115,7 @@ void loop()
         {
             ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
             {
-                settings.vtxFreq += 10;
+                settings.vtxFreq += FREQ_INCR;
                 if (settings.vtxFreq > MAX_SCAN_FREQ)
                 {
                     settings.vtxFreq = MIN_SCAN_FREQ;
