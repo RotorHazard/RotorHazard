@@ -1464,6 +1464,9 @@ class RHData():
     def get_savedRaceMetas_by_heat(self, heat_id):
         return self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).order_by(self._Database.SavedRaceMeta.round_id).all()
 
+    def get_savedRaceMetas_by_raceClass(self, class_id):
+        return self._Database.SavedRaceMeta.query.filter_by(class_id=class_id).order_by(self._Database.SavedRaceMeta.round_id).all()
+
     def savedRaceMetas_has_raceFormat(self, race_format_id):
         return bool(self._Database.SavedRaceMeta.query.filter_by(format_id=race_format_id).count())
 
@@ -1593,6 +1596,9 @@ class RHData():
 
     def get_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
         return self._Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).order_by(self._Database.SavedRaceLap.lap_time_stamp).all()
+
+    def get_active_savedRaceLaps(self):
+        return self._Database.SavedRaceLap.query.filter(self._Database.SavedRaceLap.deleted != 1).all()
 
     # Race general
     def replace_savedRaceLaps(self, data):
