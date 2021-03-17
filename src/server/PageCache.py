@@ -18,7 +18,6 @@ import gevent
 
 logger = logging.getLogger(__name__)
 
-import Database
 from flask_sqlalchemy import SQLAlchemy
 DB = SQLAlchemy()
 
