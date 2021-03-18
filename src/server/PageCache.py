@@ -23,6 +23,8 @@ from flask_sqlalchemy import SQLAlchemy
 DB = SQLAlchemy()
 
 class PageCache:
+    _CACHE_TIMEOUT = 10
+
     def __init__(self, RHData, Events):
         self._RHData = RHData
         self._Events = Events
@@ -31,7 +33,7 @@ class PageCache:
         self._valid = False # Whether cache is valid
 
     def get_cache(self):
-        if self._valid: # Output existing calculated results
+        if self.get_valid(): # Output existing calculated results
             logger.debug('Getting results from cache')
             return self._cache
         else:
@@ -53,6 +55,18 @@ class PageCache:
     def set_valid(self, valid):
         self._valid = valid
 
+    def check_buildToken(self, timing):
+        if self.get_buildToken():
+            while True: # Pause this thread until calculations are completed
+                gevent.idle()
+                if self.get_buildToken() is False:
+                    break
+                elif monotonic() > self.get_buildToken() + self._CACHE_TIMEOUT:
+                    logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
+                    self.set_buildToken(False)
+                    break
+
+
     def update_cache(self):
         '''Builds any invalid atomic result caches and creates final output'''
         timing = {
@@ -60,37 +74,28 @@ class PageCache:
         }
         logger.debug('T%d: Result data build started', timing['start'])
 
-        CACHE_TIMEOUT = 10
-        expires = monotonic() + CACHE_TIMEOUT
+        expires = monotonic() + self._CACHE_TIMEOUT
         error_flag = False
 
-        if self._buildToken: # Don't restart calculation if another calculation thread exists
-            while True: # Pause this thread until calculations are completed
-                gevent.idle()
-                if self._buildToken is False:
-                    break
-                elif monotonic() > self._buildToken + CACHE_TIMEOUT:
-                    logger.warning('T%d: Timed out waiting for other cache build thread', timing['start'])
-                    self._buildToken = False
-                    break
+        self.check_buildToken(timing) # Don't restart calculation if another calculation thread exists
 
-        if self._valid: # Output existing calculated results
+        if self.get_valid(): # Output existing calculated results
             logger.info('T%d: Returning valid cache', timing['start'])
 
         else:
             timing['build_start'] = monotonic()
-            self._buildToken = monotonic()
+            self.set_buildToken(monotonic())
 
             heats = {}
             for heat in Database.SavedRaceMeta.query.with_entities(Database.SavedRaceMeta.heat_id).distinct().order_by(Database.SavedRaceMeta.heat_id):
                 heatdata = self._RHData.get_heat(heat.heat_id)
 
                 rounds = []
-                for round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
+                for heat_round in Database.SavedRaceMeta.query.distinct().filter_by(heat_id=heat.heat_id).order_by(Database.SavedRaceMeta.round_id):
 
-                    if Database.SavedRaceLap.query.filter_by(race_id=round.id).first() is not None:
+                    if Database.SavedRaceLap.query.filter_by(race_id=heat_round.id).first() is not None:
                         pilotraces = []
-                        for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=round.id).all():
+                        for pilotrace in Database.SavedPilotRace.query.filter_by(race_id=heat_round.id).all():
                             gevent.sleep()
                             laps = []
                             for lap in Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace.id).all():
@@ -115,28 +120,28 @@ class PageCache:
                                 'node_index': pilotrace.node_index,
                                 'laps': laps
                             })
-                        if round.cacheStatus == Results.CacheStatus.INVALID:
-                            logger.info('Rebuilding Heat %d Round %d cache', heat.heat_id, round.round_id)
-                            results = Results.calc_leaderboard(self._RHData, heat_id=heat.heat_id, round_id=round.round_id)
-                            round.results = results
-                            round.cacheStatus = Results.CacheStatus.VALID
+                        if heat_round.cacheStatus == Results.CacheStatus.INVALID:
+                            logger.info('Rebuilding Heat %d Round %d cache', heat.heat_id, heat_round.round_id)
+                            results = Results.calc_leaderboard(self._RHData, heat_id=heat.heat_id, round_id=heat_round.round_id)
+                            heat_round.results = results
+                            heat_round.cacheStatus = Results.CacheStatus.VALID
                             DB.session.commit()
                         else:
-                            expires = monotonic() + CACHE_TIMEOUT
+                            expires = monotonic() + self._CACHE_TIMEOUT
                             while True:
                                 gevent.idle()
-                                if round.cacheStatus == Results.CacheStatus.VALID:
-                                    results = round.results
+                                if heat_round.cacheStatus == Results.CacheStatus.VALID:
+                                    results = heat_round.results
                                     break
                                 elif monotonic() > expires:
-                                    logger.warning('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, round.round_id)
+                                    logger.warning('T%d: Cache build timed out: Heat %d Round %d', timing['start'], heat.heat_id, heat_round.round_id)
                                     results = None
                                     error_flag = True
                                     break
 
                         rounds.append({
-                            'id': round.round_id,
-                            'start_time_formatted': round.start_time_formatted,
+                            'id': heat_round.round_id,
+                            'start_time_formatted': heat_round.start_time_formatted,
                             'nodes': pilotraces,
                             'leaderboard': results
                         })
@@ -148,8 +153,7 @@ class PageCache:
                     heatdata.cacheStatus = Results.CacheStatus.VALID
                     DB.session.commit()
                 else:
-                    checkStatus = True
-                    expires = monotonic() + CACHE_TIMEOUT
+                    expires = monotonic() + self._CACHE_TIMEOUT
                     while True:
                         gevent.idle()
                         if heatdata.cacheStatus == Results.CacheStatus.VALID:
@@ -169,7 +173,7 @@ class PageCache:
                 }
 
             timing['round_results'] = monotonic()
-            logger.debug('T%d: round results assembled in %.3fs', timing['start'], timing['round_results'] - timing['build_start'])
+            logger.debug('T%d: heat_round results assembled in %.3fs', timing['start'], timing['round_results'] - timing['build_start'])
 
             gevent.sleep()
             heats_by_class = {}
@@ -189,8 +193,7 @@ class PageCache:
                     race_class.cacheStatus = Results.CacheStatus.VALID
                     DB.session.commit()
                 else:
-                    checkStatus = True
-                    expires = monotonic() + CACHE_TIMEOUT
+                    expires = monotonic() + self._CACHE_TIMEOUT
                     while True:
                         gevent.idle()
                         if race_class.cacheStatus == Results.CacheStatus.VALID:
@@ -220,7 +223,7 @@ class PageCache:
                 self._RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.VALID)
                 DB.session.commit()
             else:
-                expires = monotonic() + CACHE_TIMEOUT
+                expires = monotonic() + self._CACHE_TIMEOUT
                 while True:
                     gevent.idle()
                     status = self._RHData.get_option("eventResults_cacheStatus")
@@ -243,15 +246,15 @@ class PageCache:
                 'event_leaderboard': results
             }
 
-            self._cache = payload
-            self._buildToken = False
+            self.set_cache(payload)
+            self.set_buildToken(False)
 
             if error_flag:
                 logger.warning('T%d: Cache results build failed; leaving page cache invalid', timing['start'])
                 # *** emit_priority_message(__("Results did not load completely. Please try again."), False)
                 self._Events.trigger(Evt.CACHE_FAIL)
             else:
-                self._valid = True
+                self.set_valid(True)
                 self._Events.trigger(Evt.CACHE_READY)
 
             logger.debug('T%d: Page cache built in: %fs', timing['start'], monotonic() - timing['build_start'])

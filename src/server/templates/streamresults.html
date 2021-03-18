@@ -178,9 +178,6 @@
 				heatname = msg.heat_note;
 
 			$('.current_heat').html(heatname);
-			for (i = 0; i < msg.callsign.length; i++) {
-				$('.callsign_' + i).html(msg.callsign[i]);
-			}
 		});
 
 		socket.on('prestage_ready', function (msg) {

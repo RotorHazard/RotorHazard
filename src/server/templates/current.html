@@ -394,8 +394,9 @@
 				heatname = msg.heat_note;
 
 			$('.current_heat').html(heatname);
-			for (i = 0; i < msg.callsign.length; i++) {
-				$('.callsign_' + i).html(msg.callsign[i]);
+			for (var idx in msg.heatNodes) {
+				hn = msg.heatNodes[idx];
+				$('.callsign_' + idx).html(hn.callsign ? hn.callsign : __('-None-'));
 			}
 		});
 

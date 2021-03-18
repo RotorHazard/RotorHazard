@@ -859,7 +859,6 @@ def check_win_laps_and_time(RACE, INTERFACE, **kwargs):
         leaderboard = RACE.results['by_race_time']
         if len(leaderboard) > 1:
             lead_lap = leaderboard[0]['laps']
-            lead_lap_time = leaderboard[0]['total_time_raw']
 
             if lead_lap > 0: # must have at least one lap
                 # prevent win declaration if there are active crossings coming onto lead lap
@@ -893,7 +892,6 @@ def check_win_laps_and_time(RACE, INTERFACE, **kwargs):
         leaderboard = RACE.results['by_race_time']
         if len(leaderboard) > 1:
             lead_lap = leaderboard[0]['laps']
-            lead_lap_time = leaderboard[0]['total_time_raw']
 
             if lead_lap > 0: # must have at least one lap
                 # prevent win declaration if there are active crossings coming onto lead lap

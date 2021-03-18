@@ -669,10 +669,13 @@
 			rotorhazard.current_heat = msg.current_heat;
 			$('#set_current_heat').val(msg.current_heat);
 
-			rotorhazard.current_pilots = msg.pilot_ids;
-			for (i = 0; i < msg.callsign.length; i++) {
-				$('.callsign_' + i).html(msg.callsign[i] ? msg.callsign[i] : 'None');
+			rotorhazard.current_heatNodes = msg.heatNodes;
+
+			for (var idx in msg.heatNodes) {
+				hn = msg.heatNodes[idx];
+				$('.callsign_' + idx).html(hn.callsign ? hn.callsign : __('-None-'));
 			}
+
 			if (msg.heat_format) {
 				$('#set_race_format').val(msg.heat_format);
 				$('#set_race_format').prop('disabled', true);
@@ -1437,8 +1440,9 @@
 			// %PILOTS% : Current pilot names
 			var pilots = '';
 			var first = true;
-			for (i in rotorhazard.current_pilots) {
-				pilot = rotorhazard.current_pilots[i];
+
+			for (i in rotorhazard.current_heatNodes) {
+				pilot = rotorhazard.current_heatNodes[i].pilot_id;
 				if (pilot && rotorhazard.nodes[i].fObj.frequency) {
 					if (!first) {
 						pilots += ', ';
@@ -1462,8 +1466,8 @@
 			// %FREQS% : Frequencies with current pilot assignments
 			var pilots = '';
 			var first = true;
-			for (i in rotorhazard.current_pilots) {
-				pilot = rotorhazard.current_pilots[i];
+			for (i in rotorhazard.current_heatNodes) {
+				pilot = rotorhazard.current_heatNodes[i].pilot_id;
 				if (pilot && rotorhazard.nodes[i].fObj.frequency) {
 					if (!first) {
 						pilots += ', ';
