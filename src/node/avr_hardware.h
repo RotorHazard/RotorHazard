@@ -171,8 +171,17 @@ public:
         rx.init(dataPin, clkPin, selPin, rssiPin);
     }
 
-    void processStatusFlags(const mtime_t ms, const uint8_t statusFlags, RssiNode& rssiNode) {
-        if (rssiNode.active)
+    void processStatusFlags(const mtime_t ms, const uint8_t statusFlags) {
+        bool anyNodeActive = false;
+        for (int_fast8_t i=rssiRxs.getCount()-1; i>=0; i--) {
+            RssiNode& node = rssiRxs.getRssiNode(i);
+            if (node.active) {
+                anyNodeActive = true;
+                break;
+            }
+        }
+
+        if (anyNodeActive)
         {
             if (i2cMonitorEnabledFlag)
             {

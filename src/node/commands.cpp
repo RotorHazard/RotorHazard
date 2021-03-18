@@ -7,8 +7,8 @@ constexpr uint_fast16_t RSSI_HISTORY_PAYLOAD_SIZE = 16;
 constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_COUNT = 3;
 constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_SIZE = SCAN_HISTORY_PAYLOAD_COUNT*sizeof(FreqRssi);
 
-uint8_t cmdStatusFlags = 0;
-uint8_t cmdRssiNodeIndex = 0;
+uint8_t volatile cmdStatusFlags = 0;
+uint_fast8_t volatile cmdRssiNodeIndex = 0;
 
 uint8_t Message::getPayloadSize()
 {
@@ -76,9 +76,9 @@ void Message::handleWriteCommand(bool serialFlag)
                 if (u16val != settings.vtxFreq)
                 {
                     settings.vtxFreq = u16val;
-                    cmdStatusFlags |= FREQ_CHANGED;
+                    rssiNode.cmdPendingOps |= FREQ_CHANGED;
                 }
-                cmdStatusFlags |= FREQ_SET;
+                rssiNode.cmdPendingOps |= FREQ_SET;
             }
             break;
 
@@ -92,7 +92,7 @@ void Message::handleWriteCommand(bool serialFlag)
             if (rssiVal != settings.enterAtLevel)
             {
                 settings.enterAtLevel = rssiVal;
-                cmdStatusFlags |= ENTERAT_CHANGED;
+                rssiNode.cmdPendingOps |= ENTERAT_CHANGED;
             }
             break;
 
@@ -101,7 +101,7 @@ void Message::handleWriteCommand(bool serialFlag)
             if (rssiVal != settings.exitAtLevel)
             {
                 settings.exitAtLevel = rssiVal;
-                cmdStatusFlags |= EXITAT_CHANGED;
+                rssiNode.cmdPendingOps |= EXITAT_CHANGED;
             }
             break;
 
@@ -150,28 +150,31 @@ template <size_t N> void ioBufferWriteExtremum(Buffer<N>& buf, const Extremum& e
 
 void Message::setMode(RssiNode& rssiNode, Mode mode)
 {
+    Settings& settings = rssiNode.getSettings();
     switch (mode) {
         case TIMER:
             rssiNode.setFilter(&(rssiNode.defaultFilter));
+            settings.mode = mode;
             break;
         case SCANNER:
 #ifdef SCAN_HISTORY
             rssiNode.scanHistory.clear();
-#endif
             rssiNode.setFilter(&(rssiNode.medianFilter));
-            rssiNode.getSettings().vtxFreq = MIN_SCAN_FREQ;
+            settings.vtxFreq = MIN_SCAN_FREQ;
             cmdStatusFlags |= FREQ_CHANGED;
             cmdStatusFlags |= FREQ_SET;
+            settings.mode = mode;
+#endif
             break;
         case RAW:
 #ifdef RSSI_HISTORY
             rssiNode.rssiHistory.clear();
-#endif
             rssiNode.setFilter(&(rssiNode.noFilter));
+            settings.mode = mode;
+#endif
             break;
     }
     rssiNode.resetState(usclock.millis());
-    rssiNode.getSettings().mode = mode;
 }
 
 // Generic IO read command handler

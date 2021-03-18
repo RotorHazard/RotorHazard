@@ -65,8 +65,8 @@ unittest(command_scan)
     assertEqual(10, nano->serialPort[0].dataOut.length());
     assertEqual(1, (int)rssiRxs.getRssiNode(0).scanHistory.size());
     assertEqual(MIN_SCAN_FREQ, read16(nano->serialPort[0].dataOut, 0));
-    assertEqual(MIN_SCAN_FREQ+FREQ_INCR, read16(nano->serialPort[0].dataOut, 3));
-    assertEqual(MIN_SCAN_FREQ+2*FREQ_INCR, read16(nano->serialPort[0].dataOut, 6));
+    assertEqual(MIN_SCAN_FREQ+SCAN_FREQ_INCR, read16(nano->serialPort[0].dataOut, 3));
+    assertEqual(MIN_SCAN_FREQ+2*SCAN_FREQ_INCR, read16(nano->serialPort[0].dataOut, 6));
 }
 
 unittest_main()

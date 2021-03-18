@@ -33,10 +33,7 @@ public:
 void handleStreamEvent(Stream& stream, Message& msg);
 
 constexpr freq_t MIN_FREQ = 100;
-constexpr freq_t MIN_SCAN_FREQ = 5645;
-constexpr freq_t MAX_SCAN_FREQ = 5945;
 constexpr freq_t MAX_FREQ = 9999;
-constexpr uint16_t FREQ_INCR = 5;
 
 #define READ_ADDRESS 0x00
 #define READ_MODE 0x02
@@ -69,13 +66,9 @@ constexpr uint16_t FREQ_INCR = 5;
 
 enum StatusFlag
 {
-    FREQ_SET        = 0x01,
-    FREQ_CHANGED    = 0x02,
-    ENTERAT_CHANGED = 0x04,
-    EXITAT_CHANGED  = 0x08,
-    COMM_ACTIVITY   = 0x10,
-    POLLING         = 0x20,
-    SERIAL_CMD_MSG  = 0x40
+    COMM_ACTIVITY   = 0x1,
+    POLLING         = 0x2,
+    SERIAL_CMD_MSG  = 0x4
 };
 
 enum LapStatsFlag
@@ -84,8 +77,8 @@ enum LapStatsFlag
     LAPSTATS_FLAG_PEAK     = 0x02  // reported extremum is peak
 };
 
-extern uint8_t cmdStatusFlags;
-extern uint8_t cmdRssiNodeIndex;
+extern uint8_t volatile cmdStatusFlags;
+extern uint_fast8_t volatile cmdRssiNodeIndex;
 
 // dummy macro
 #define LOG_ERROR(...)

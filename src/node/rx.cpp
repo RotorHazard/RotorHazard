@@ -1,5 +1,6 @@
 #include "config.h"
 #include "rx.h"
+#include "hardware.h"
 #include "microclock.h"
 
 constexpr mtime_t RX5808_MIN_BUSTIME = 30;  // after set freq need to wait this long before setting again
@@ -29,7 +30,7 @@ void RxModule::init(uint8_t dataPin, uint8_t clkPin, uint8_t selPin, uint8_t rss
     this->dataPin = dataPin;
     this->clkPin = clkPin;
     this->selPin = selPin;
-    this->rssiInputPin = rssiPin;
+    this->rssiPin = rssiPin;
 
     pinMode(dataPin, OUTPUT);
     pinMode(selPin, OUTPUT);
@@ -177,13 +178,7 @@ bool RxModule::powerDown()
 // Read the RSSI value for the current channel
 rssi_t RxModule::readRssi()
 {
-    // reads 5V value as 0-1023, RX5808 is 3.3V powered so RSSI pin will never output the full range
-    int raw = analogRead(rssiInputPin);
-    // clamp upper range to fit scaling
-    if (raw > 0x01FF)
-        raw = 0x01FF;
-    // rescale to fit into a byte and remove some jitter
-    return raw >> 1;
+    return hardware.readADC(rssiPin);
 }
 
 void RxModule::serialSendBit0()

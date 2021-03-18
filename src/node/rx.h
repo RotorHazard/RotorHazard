@@ -9,7 +9,7 @@ class RxModule {
     uint8_t dataPin = 0;
     uint8_t clkPin = 0;
     uint8_t selPin = 0;
-    uint8_t rssiInputPin = 0;
+    uint8_t rssiPin = 0;
     bool rxPoweredDown = false;
     static mtime_t lastBusTimeMs;
 

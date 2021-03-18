@@ -272,22 +272,27 @@ void RssiNode::endCrossing()
 }
 
 bool RssiNode::scannerHandler(const int rssiChange) {
-    return updateScanHistory(settings.vtxFreq);
+    updateScanHistory(settings.vtxFreq);
+    return false;
 }
 
-bool RssiNode::updateScanHistory(freq_t f)
+void RssiNode::updateScanHistory(freq_t f)
 {
 #ifdef SCAN_HISTORY
     if (!scanHistory.isFull())
     {
         FreqRssi f_r = {f, state.rssi};
         scanHistory.push(f_r);
-        return true;
-    } else {
-        return false;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            settings.vtxFreq += SCAN_FREQ_INCR;
+            if (settings.vtxFreq > MAX_SCAN_FREQ) {
+                settings.vtxFreq = MIN_SCAN_FREQ;
+            }
+        }
+        pendingOps |= FREQ_SET;
+        pendingOps |= FREQ_CHANGED;
     }
-#else
-    return false;
 #endif
 }
 

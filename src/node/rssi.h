@@ -41,6 +41,10 @@ constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 #define PEAK_SENDBUFFER_IMPL PEAK_SENDBUFFER_MULTI
 #define NADIR_SENDBUFFER_IMPL NADIR_SENDBUFFER_MULTI
 
+constexpr freq_t MIN_SCAN_FREQ = 5645;
+constexpr freq_t MAX_SCAN_FREQ = 5945;
+constexpr uint16_t SCAN_FREQ_INCR = 5;
+
 enum Mode
 {
     TIMER = 0,
@@ -162,6 +166,14 @@ struct LastPass
     uint8_t volatile lap = 0;
 };
 
+enum PendingOperations
+{
+    FREQ_SET        = 0x01,
+    FREQ_CHANGED    = 0x02,
+    ENTERAT_CHANGED = 0x04,
+    EXITAT_CHANGED  = 0x08
+};
+
 class RssiNode
 {
 private:
@@ -186,7 +198,7 @@ private:
     inline bool scannerHandler(const int rssiChange);
     inline bool rawHandler(const int rssiChange);
     inline ExtremumType updateHistory(int rssiChange);
-    inline bool updateScanHistory(freq_t f);
+    inline void updateScanHistory(freq_t f);
     inline void updateRssiHistory();
     bool checkForCrossing(ExtremumType t, int rssiChange);
 #if defined(USE_PH) || defined(__TEST__)
@@ -207,6 +219,8 @@ public:
 #endif
 
     bool volatile active = false; // Set true after initial WRITE_FREQUENCY command received
+    uint8_t pendingOps;
+    uint8_t volatile cmdPendingOps;
 
     RssiNode();
     RssiNode(const RssiNode&) = delete;

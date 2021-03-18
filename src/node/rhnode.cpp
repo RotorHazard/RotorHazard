@@ -47,6 +47,8 @@
 
 #define TICK_FOR(expr)  usclock.tickMicros();expr
 
+static void processPendingOps(mtime_t ms);
+
 // Initialize program
 void setup()
 {
@@ -95,9 +97,6 @@ void loop()
 
         // update settings and status LED
 
-        RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-        Settings& settings = rssiNode.getSettings();
-
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             currentStatusFlags |= cmdStatusFlags;
@@ -106,83 +105,16 @@ void loop()
 
         // allow READ_LAP_STATS command to activate operations
         //  so they will resume after node or I2C bus reset
-        if (!rssiNode.active && (currentStatusFlags & POLLING))
+        RssiNode& cmdNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+        if (!cmdNode.active && (currentStatusFlags & POLLING))
         {
-            rssiNode.active = true;
+            cmdNode.active = true;
         }
 
-        if (crossingFlag && settings.mode == SCANNER)
-        {
-            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-            {
-                settings.vtxFreq += FREQ_INCR;
-                if (settings.vtxFreq > MAX_SCAN_FREQ)
-                {
-                    settings.vtxFreq = MIN_SCAN_FREQ;
-                }
-            }
-            currentStatusFlags |= FREQ_SET;
-            currentStatusFlags |= FREQ_CHANGED;
-        }
+        processPendingOps(ms);
 
-        // update settings
+        hardware.processStatusFlags(ms, currentStatusFlags);
 
-        if (currentStatusFlags & FREQ_SET)
-        {
-            // disable node until frequency change complete
-            rssiNode.active = false;
-
-            freq_t newVtxFreq;
-            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-            {
-                newVtxFreq = settings.vtxFreq;
-            }
-            RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
-            if (newVtxFreq == 1111) // frequency value to power down rx module
-            {
-                if (rx.isPoweredDown() || rx.powerDown())
-                {
-                    currentStatusFlags &= ~FREQ_SET;
-                }
-            }
-            else
-            {
-                if (rx.isPoweredDown())
-                {
-                    rx.reset();
-                }
-                if (!rx.isPoweredDown() && rx.setFrequency(newVtxFreq))
-                {
-                    // frequency change complete - re-enable node
-                    rssiNode.active = true;
-                    currentStatusFlags &= ~FREQ_SET;
-                }
-            }
-
-            if (currentStatusFlags & FREQ_CHANGED)
-            {
-                if (settings.mode != SCANNER)
-                {
-                    hardware.storeFrequency(newVtxFreq);
-                }
-                rssiNode.resetState(ms);  // restart rssi peak tracking for node
-                currentStatusFlags &= ~FREQ_CHANGED;
-            }
-        }
-
-        if (currentStatusFlags & ENTERAT_CHANGED)
-        {
-            hardware.storeEnterAtLevel(settings.enterAtLevel);
-            currentStatusFlags &= ~ENTERAT_CHANGED;
-        }
-
-        if (currentStatusFlags & EXITAT_CHANGED)
-        {
-            hardware.storeExitAtLevel(settings.exitAtLevel);
-            currentStatusFlags &= ~EXITAT_CHANGED;
-        }
-
-        hardware.processStatusFlags(ms, currentStatusFlags, rssiNode);
         currentStatusFlags &= ~POLLING;
         currentStatusFlags &= ~SERIAL_CMD_MSG;
 
@@ -209,6 +141,65 @@ void loop()
             {
                 hardware.setStatusLed(ms % 2000 == 0);  // blink
             }
+        }
+    }
+}
+
+void processPendingOps(mtime_t ms) {
+    for (int_fast8_t i=rssiRxs.getCount()-1; i>=0; i--) {
+        RssiNode& node = rssiRxs.getRssiNode(i);
+
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            node.pendingOps |= node.cmdPendingOps;
+            node.cmdPendingOps = 0;
+        }
+
+        // update settings
+
+        Settings& settings = node.getSettings();
+        if (node.pendingOps & FREQ_SET) {
+            // disable node until frequency change complete
+            node.active = false;
+
+            freq_t newVtxFreq;
+            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+            {
+                newVtxFreq = settings.vtxFreq;
+            }
+            RxModule& rx = rssiRxs.getRxModule(i);
+            if (newVtxFreq == 1111) { // frequency value to power down rx module
+                if (rx.isPoweredDown() || rx.powerDown()) {
+                    node.pendingOps &= ~FREQ_SET;
+                }
+            } else {
+                if (rx.isPoweredDown()) {
+                    rx.reset();
+                }
+                if (!rx.isPoweredDown() && rx.setFrequency(newVtxFreq)) {
+                    // frequency change complete - re-enable node
+                    node.active = true;
+                    node.pendingOps &= ~FREQ_SET;
+                }
+            }
+
+            if (node.pendingOps & FREQ_CHANGED) {
+                if (settings.mode != SCANNER) {
+                    hardware.storeFrequency(newVtxFreq);
+                }
+                node.resetState(ms);  // restart rssi peak tracking for node
+                node.pendingOps &= ~FREQ_CHANGED;
+            }
+        }
+
+        if (node.pendingOps & ENTERAT_CHANGED) {
+            hardware.storeEnterAtLevel(settings.enterAtLevel);
+            node.pendingOps &= ~ENTERAT_CHANGED;
+        }
+
+        if (node.pendingOps & EXITAT_CHANGED) {
+            hardware.storeExitAtLevel(settings.exitAtLevel);
+            node.pendingOps &= ~EXITAT_CHANGED;
         }
     }
 }

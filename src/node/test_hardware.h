@@ -14,12 +14,12 @@ public:
         printf("Hardware initialized\n");
         isInit = true;
     }
-    void initRxModule(int nIdx, RxModule& rx)
+    void initRxModule(uint_fast8_t nIdx, RxModule& rx)
     {
         printf("Initializing RX module %d\n", nIdx);
         isRxInit[nIdx] = true;
     }
-    void initSettings(int nIdx, Settings& settings)
+    void initSettings(uint_fast8_t nIdx, Settings& settings)
     {
         printf("Initializing settings for RX module %d\n", nIdx);
         isSettingsInit[nIdx] = true;

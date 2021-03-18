@@ -10,11 +10,14 @@
 
 #define AVR_TARGET 1
 #define STM32_TARGET 2
-#define SIL_TARGET 3
+#define ESP32_TARGET 3
+#define SIL_TARGET 5
 #define TEST_TARGET 0
 
 #if defined(STM32_CORE_VERSION)
 #define TARGET STM32_TARGET
+#elif defined(ESP_PLATFORM)
+#define TARGET ESP32_TARGET
 #elif defined(__TEST__)
 #define TARGET TEST_TARGET
 #elif defined(_WIN32) || defined(__linux__)
@@ -37,6 +40,8 @@
 #if TARGET == STM32_TARGET
     #define MULTI_RHNODE_MAX 8
     #define STM32_SERIALUSB_FLAG 0  // 1 to use BPill USB port for serial link
+#elif TARGET == ESP32_TARGET
+    #define MULTI_RHNODE_MAX 6
 #else
     // Set greater than 1 to support multiple freqs per node
     #define MULTI_RHNODE_MAX 1
@@ -101,8 +106,12 @@
 // use persistent homology detection
 #define USE_PH
 
+#if TARGET != AVR_TARGET || MULTI_RHNODE_MAX == 1
+#define SCAN_HISTORY
+#else
 // uncomment to activate scanner mode
 //#define SCAN_HISTORY
+#endif
 // uncomment to activate raw mode
 //#define RSSI_HISTORY
 

@@ -18,7 +18,9 @@ private:
     const uint8_t ledOnValue, ledOffValue;
 
 protected:
+#ifdef LED_BUILTIN
     bool currentStatusLedFlag = false;
+#endif
 
 public:
     Hardware(uint8_t ledOn, uint8_t ledOff) : ledOnValue(ledOn), ledOffValue(ledOff) {
@@ -29,11 +31,27 @@ public:
     Hardware& operator=(Hardware&&) = delete;
 
     virtual void init() {
+#ifdef LED_BUILTIN
         pinMode(LED_BUILTIN, OUTPUT);
+#endif
     }
     virtual void initSettings(uint_fast8_t nIdx, Settings& settings) {}
     virtual void initRxModule(uint_fast8_t nIdx, RxModule& rx) = 0;
-    virtual void processStatusFlags(mtime_t ms, uint8_t statusFlags, RssiNode& node) {}
+    virtual void processStatusFlags(mtime_t ms, uint8_t statusFlags) {}
+    /**
+     * Reads a 3.3V signal from an ADC as an 8-bit value.
+     * Assumes a 10-bit ADC with a 5V range.
+     */
+    virtual uint8_t readADC(uint8_t pin) {
+        // reads 5V value as 0-1023, RX5808 is 3.3V powered so RSSI pin will never output the full range
+        int raw = analogRead(pin);
+        // clamp upper range to fit scaling
+        if (raw > 0x01FF) {
+            raw = 0x01FF;
+        }
+        // rescale to fit into a byte and remove some jitter
+        return raw >> 1;
+    }
     virtual void resetPairedNode(bool pinState) {}
     virtual void doJumpToBootloader() {}
     virtual uint8_t getAddress() { return 0; }
@@ -44,6 +62,7 @@ public:
     virtual void storeExitAtLevel(rssi_t rssi) {}
     virtual void setStatusLed(bool onFlag)
     {
+#ifdef LED_BUILTIN
         if (onFlag)
         {
             if (!currentStatusLedFlag)
@@ -60,6 +79,7 @@ public:
                 digitalWrite(LED_BUILTIN, ledOffValue);
             }
         }
+#endif
     }
 };
 
