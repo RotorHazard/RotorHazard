@@ -53,10 +53,10 @@ def normalize_cache_status(RHData):
         if race_class.cacheStatus != CacheStatus.VALID:
             race_class.cacheStatus = CacheStatus.INVALID
 
+    RHData.commit()
+
     if RHData.get_option("eventResults_cacheStatus") != CacheStatus.VALID:
         RHData.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
-
-    RHData.commit()
 
     global FULL_RESULTS_CACHE_VALID
     FULL_RESULTS_CACHE_VALID = False
@@ -110,7 +110,6 @@ def build_atomic_results_caches(RHData, params):
         race_class.cacheStatus = token
 
     RHData.set_option("eventResults_cacheStatus", token)
-    RHData.commit()
 
     # rebuild race result
     if 'race_id' in params:

@@ -1064,6 +1064,8 @@ class RHData():
             profile.name = data['profile_name']
         if 'profile_description' in data:
             profile.description = data['profile_description']
+        if 'frequencies' in data:
+            profile.frequencies = json.dumps(data['frequencies'])
         if 'enter_ats' in data:
             profile.enter_ats = json.dumps(data['enter_ats'])
         if 'exit_ats' in data:

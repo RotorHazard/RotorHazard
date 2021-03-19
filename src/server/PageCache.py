@@ -217,7 +217,6 @@ class PageCache:
                 results = Results.calc_leaderboard(self._RHData)
                 self._RHData.set_option("eventResults", json.dumps(results))
                 self._RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.VALID)
-                DB.session.commit()
             else:
                 expires = monotonic() + self._CACHE_TIMEOUT
                 while True:

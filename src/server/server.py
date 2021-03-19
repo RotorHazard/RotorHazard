@@ -775,10 +775,12 @@ def on_set_frequency(data):
     freqs["b"][node_index] = band
     freqs["c"][node_index] = channel
     freqs["f"][node_index] = frequency
-    profile.frequencies = json.dumps(freqs)
     logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(node_index+1, band, channel, frequency))
 
-    RHData.commit()
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'frequencies': freqs
+        })
 
     INTERFACE.set_frequency(node_index, frequency)
 
@@ -851,8 +853,10 @@ def set_all_frequencies(freqs):
         profile_freqs["f"][idx] = freqs["f"][idx]
         logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
 
-    profile.frequencies = json.dumps(profile_freqs)
-    RHData.commit()
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'frequencies': profile_freqs
+        })
 
 def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
@@ -900,8 +904,11 @@ def on_set_enter_at_level(data):
         enter_ats["v"].append(None)
 
     enter_ats["v"][node_index] = enter_at_level
-    profile.enter_ats = json.dumps(enter_ats)
-    RHData.commit()
+
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'enter_ats': enter_ats
+        })
 
     INTERFACE.set_enter_at_level(node_index, enter_at_level)
 
@@ -935,8 +942,11 @@ def on_set_exit_at_level(data):
         exit_ats["v"].append(None)
 
     exit_ats["v"][node_index] = exit_at_level
-    profile.exit_ats = json.dumps(exit_ats)
-    RHData.commit()
+    
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'exit_ats': exit_ats
+        })
 
     INTERFACE.set_exit_at_level(node_index, exit_at_level)
 
@@ -992,7 +1002,6 @@ def on_set_start_thresh_lower_duration(data):
 def on_set_language(data):
     '''Set interface language.'''
     RHData.set_option('currentLanguage', data['language'])
-    RHData.commit()
 
 @SOCKET_IO.on('cap_enter_at_btn')
 @catchLogExceptionsWrapper
@@ -2524,7 +2533,6 @@ def on_delete_lap(data):
         if lap_splits and len(lap_splits) > 0:
             for lap_split in lap_splits:
                 RHData.clear_lapsplit(lap_split)
-            RHData.commit()
     except:
         logger.exception("Error deleting split laps")
 
@@ -4036,7 +4044,6 @@ def assign_frequencies():
             })
 
         logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
-    RHData.commit()
 
 def emit_current_log_file_to_socket():
     if Current_log_path_name:
