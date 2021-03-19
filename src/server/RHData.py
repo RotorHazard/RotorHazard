@@ -554,19 +554,20 @@ class RHData():
             if heatnodes:
                 for heatnode in heatnodes:
                     heat = self.get_heat(heatnode.heat_id)
-                    heat.cacheStatus = Results.CacheStatus.INVALID
+                    self.clear_results_heat(heat.id)
+
                     if heat.class_id != RHUtils.CLASS_ID_NONE:
-                        race_class = self.get_raceClass(heat.class_id)
-                        race_class.cacheStatus = Results.CacheStatus.INVALID
+                        self.clear_results_raceClass(heat.class_id)
+
                     for race in self._Database.SavedRaceMeta.query.filter_by(heat_id=heatnode.heat_id).all():
                         race_list.append(race)
 
             if len(race_list):
                 self._PageCache.set_valid(False)
-                self.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+                self.clear_results_event()
 
                 for race in race_list:
-                    race.cacheStatus = Results.CacheStatus.INVALID
+                    self.clear_results_savedRaceMeta(race.id)
 
                 self.commit()
 
@@ -728,8 +729,7 @@ class RHData():
                     race_meta.class_id = data['class']
 
                 if old_class_id is not RHUtils.CLASS_ID_NONE:
-                    old_class = self.get_raceClass(old_class_id)
-                    old_class.cacheStatus = Results.CacheStatus.INVALID
+                    self.clear_results_raceClass(old_class_id)
 
         if 'pilot' in data:
             if len(race_list):
@@ -741,17 +741,16 @@ class RHData():
                         if race_lap.node_index == data['node']:
                             race_lap.pilot_id = data['pilot']
 
-                    race_meta.cacheStatus = Results.CacheStatus.INVALID
+                    self.clear_results_savedRaceMeta(race_meta.id)
 
-                heat.cacheStatus = Results.CacheStatus.INVALID
+                self.clear_results_heat(heat.id)
 
         if 'pilot' in data or 'class' in data:
             if len(race_list):
                 if heat.class_id is not RHUtils.CLASS_ID_NONE:
-                    new_class = self.get_raceClass(heat.class_id)
-                    new_class.cacheStatus = Results.CacheStatus.INVALID
+                    self.clear_results_raceClass(heat.class_id)
 
-                self.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+                self.clear_results_event()
                 self._PageCache.set_valid(False)
 
         self.commit()
@@ -971,16 +970,16 @@ class RHData():
         if 'class_format' in data:
             if len(race_list):
                 self._PageCache.set_valid(False)
-                self.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
-                race_class.cacheStatus = Results.CacheStatus.INVALID
+                self.clear_results_event()
+                self.clear_results_raceClass(race_class.id)
 
             for race_meta in race_list:
                 race_meta.format_id = data['class_format']
-                race_meta.cacheStatus = Results.CacheStatus.INVALID
+                self.clear_results_savedRaceMeta(race_meta.id)
 
             heats = self._Database.Heat.query.filter_by(class_id=race_class_id).all()
             for heat in heats:
-                heat.cacheStatus = Results.CacheStatus.INVALID
+                self.clear_results_heat(heat.id)
 
         self.commit()
 
@@ -1291,20 +1290,20 @@ class RHData():
 
             if len(race_list):
                 self._PageCache.set_valid(False)
-                self.set_option("eventResults_cacheStatus", Results.CacheStatus.INVALID)
+                self.clear_results_event()
 
                 for race in race_list:
-                    race.cacheStatus = Results.CacheStatus.INVALID
+                    self.clear_results_savedRaceMeta(race.id)
 
                 classes = self._Database.RaceClass.query.filter_by(format_id=race_format.id).all()
 
                 for race_class in classes:
-                    race_class.cacheStatus = Results.CacheStatus.INVALID
+                    self.clear_results_raceClass(race_class.id)
 
                     heats = self._Database.Heat.query.filter_by(class_id=race_class.id).all()
 
                     for heat in heats:
-                        heat.cacheStatus = Results.CacheStatus.INVALID
+                        self.clear_results_heat(heat.id)
 
                 self.commit()
 
@@ -1593,15 +1592,15 @@ class RHData():
         # cache cleaning
         self._PageCache.set_valid(False)
 
-        new_heat.cacheStatus = Results.CacheStatus.INVALID
-        old_heat.cacheStatus = Results.CacheStatus.INVALID
+        self.clear_results_heat(new_heat.id)
+        self.clear_results_heat(old_heat.id)
 
         if old_format_id != new_format_id:
             race_meta.cacheStatus = Results.CacheStatus.INVALID
 
         if old_heat.class_id != new_heat.class_id:
-            new_class.cacheStatus = Results.CacheStatus.INVALID
-            old_class.cacheStatus = Results.CacheStatus.INVALID
+            self.clear_results_raceClass(new_class.id)
+            self.clear_results_raceClass(old_class.id)
 
         self.commit()
 
