@@ -13,7 +13,6 @@ import traceback
 import shutil
 import json
 import RHUtils
-import Results
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition
 from Results import CacheStatus
@@ -68,7 +67,7 @@ class RHData():
 
     # General
     def db_init(self, nofill=False):
-         # Creates tables from database classes/models
+        # Creates tables from database classes/models
         try:
             self._Database.DB.create_all()
             return True
@@ -336,7 +335,7 @@ class RHData():
                                 'note': None,
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': Results.CacheStatus.INVALID
+                                'cacheStatus': CacheStatus.INVALID
                             })
 
                         # extract pilots from heats and load into heatnode
@@ -364,7 +363,7 @@ class RHData():
                         self.restore_table(self._Database.Heat, heat_query_data, defaults={
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
-                                'cacheStatus': Results.CacheStatus.INVALID
+                                'cacheStatus': CacheStatus.INVALID
                             })
                         self.restore_table(self._Database.HeatNode, heatNode_query_data, defaults={
                                 'pilot_id': RHUtils.PILOT_ID_NONE
@@ -405,7 +404,7 @@ class RHData():
                         'name': 'New class',
                         'format_id': 0,
                         'results': None,
-                        'cacheStatus': Results.CacheStatus.INVALID
+                        'cacheStatus': CacheStatus.INVALID
                     })
 
                 self.reset_options()
@@ -436,7 +435,7 @@ class RHData():
                     else:
                         self.restore_table(self._Database.SavedRaceMeta, raceMeta_query_data, defaults={
                             'results': None,
-                            'cacheStatus': Results.CacheStatus.INVALID
+                            'cacheStatus': CacheStatus.INVALID
                         })
                         self.restore_table(self._Database.SavedPilotRace, racePilot_query_data, defaults={
                             'history_values': None,
@@ -513,8 +512,8 @@ class RHData():
         self._Database.DB.session.add(new_pilot)
         self._Database.DB.session.flush()
 
-        new_pilot.name=self._Language.__('~Pilot %d Name') % (new_pilot.id)
-        new_pilot.callsign=self._Language.__('~Callsign %d') % (new_pilot.id)
+        new_pilot.name=self.__('~Pilot %d Name') % (new_pilot.id)
+        new_pilot.callsign=self.__('~Callsign %d') % (new_pilot.id)
 
         self.commit()
 
@@ -540,7 +539,7 @@ class RHData():
 
         self.commit()
 
-        self._RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh current leaderboard
+        self._RACE.cacheStatus = CacheStatus.INVALID  # refresh current leaderboard
 
         self._Events.trigger(Evt.PILOT_ALTER, {
             'pilot_id': pilot_id,
@@ -588,7 +587,7 @@ class RHData():
 
             logger.info('Pilot {0} deleted'.format(pilot.id))
 
-            self._RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+            self._RACE.cacheStatus = CacheStatus.INVALID  # refresh leaderboard
 
             return True
 
@@ -627,7 +626,7 @@ class RHData():
         # Add new heat
         new_heat = self._Database.Heat(
             class_id=RHUtils.CLASS_ID_NONE,
-            cacheStatus=Results.CacheStatus.INVALID
+            cacheStatus=CacheStatus.INVALID
             )
 
         if init:
@@ -681,7 +680,7 @@ class RHData():
         new_heat = self._Database.Heat(note=new_heat_note,
             class_id=new_class,
             results=None,
-            cacheStatus=Results.CacheStatus.INVALID)
+            cacheStatus=CacheStatus.INVALID)
 
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
@@ -770,7 +769,7 @@ class RHData():
                     self._RACE.node_teams[heatNode.node_index] = self.get_pilot(heatNode.pilot_id).team
                 else:
                     self._RACE.node_teams[heatNode.node_index] = None
-            self._RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+            self._RACE.cacheStatus = CacheStatus.INVALID  # refresh leaderboard
 
         logger.info('Heat {0} altered with {1}'.format(heat_id, data))
 
@@ -901,7 +900,7 @@ class RHData():
             name='',
             description='',
             format_id=RHUtils.FORMAT_ID_NONE,
-            cacheStatus=Results.CacheStatus.INVALID
+            cacheStatus=CacheStatus.INVALID
             )
         self._Database.DB.session.add(new_race_class)
         self.commit()
@@ -927,7 +926,7 @@ class RHData():
             description=source_class.description,
             format_id=source_class.format_id,
             results=None,
-            cacheStatus=Results.CacheStatus.INVALID)
+            cacheStatus=CacheStatus.INVALID)
 
         self._Database.DB.session.add(new_class)
         self._Database.DB.session.flush()
@@ -1281,7 +1280,7 @@ class RHData():
 
         self.commit()
 
-        self._RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+        self._RACE.cacheStatus = CacheStatus.INVALID  # refresh leaderboard
 
         race_list = []
 
@@ -1334,9 +1333,6 @@ class RHData():
             self._Events.trigger(Evt.RACE_FORMAT_DELETE, {
                 'race_format': format_id,
                 })
-
-            # *** first_raceFormat = self.get_raceFormats(return_type="first")
-            # *** self._RACE.set_raceFormat(first_raceFormat)
 
             return True
         else:
@@ -1537,7 +1533,7 @@ class RHData():
             format_id=data['format_id'],
             start_time=data['start_time'],
             start_time_formatted=data['start_time_formatted'],
-            cacheStatus=Results.CacheStatus.INVALID
+            cacheStatus=CacheStatus.INVALID
         )
         self._Database.DB.session.add(new_race)
         self.commit()
@@ -1596,7 +1592,7 @@ class RHData():
         self.clear_results_heat(old_heat.id)
 
         if old_format_id != new_format_id:
-            race_meta.cacheStatus = Results.CacheStatus.INVALID
+            race_meta.cacheStatus = CacheStatus.INVALID
 
         if old_heat.class_id != new_heat.class_id:
             self.clear_results_raceClass(new_class.id)
@@ -1701,7 +1697,7 @@ class RHData():
 
     # Race general
     def add_race_data(self, data):
-        for node_index, node_data  in data.items():
+        for node_index, node_data in data.items():
             new_pilotrace = self._Database.SavedPilotRace(
                 race_id=node_data['race_id'],
                 node_index=node_index,
