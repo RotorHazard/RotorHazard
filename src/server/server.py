@@ -31,15 +31,12 @@ MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
 # Normal importing resumes here
-import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
 
 import io
 import os
 import sys
-import traceback
-import shutil
 import base64
 import subprocess
 import importlib
@@ -804,7 +801,7 @@ def on_set_frequency_preset(data):
     if data['preset'] == 'All-N1':
         profile = getCurrentProfile()
         profile_freqs = json.loads(profile.frequencies)
-        for idx in range(RACE.num_nodes):
+        for _idx in range(RACE.num_nodes):
             bands.append(profile_freqs["b"][0])
             channels.append(profile_freqs["c"][0])
             freqs.append(profile_freqs["f"][0])
@@ -1133,7 +1130,7 @@ def on_add_pilot():
 @catchLogExceptionsWrapper
 def on_alter_pilot(data):
     '''Update pilot.'''
-    pilot, race_list = RHData.alter_pilot(data)
+    _pilot, race_list = RHData.alter_pilot(data)
 
     emit_pilot_data(noself=True) # Settings page, new pilot settings
 
@@ -1248,7 +1245,7 @@ def on_set_profile(data, emit_vals=True):
 def on_alter_race(data):
     '''Update race (retroactively via marshaling).'''
 
-    race_meta, new_heat = RHData.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
+    _race_meta, new_heat = RHData.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
     heatnote = new_heat.note
     if heatnote:

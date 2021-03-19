@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 class ANSIPixel:
     def __init__(self, count, rows=1):
         '''Constructor'''
-        self.pixels = [0 for i in range(count)]
+        self.pixels = [0 for _i in range(count)]
         self.width = count//rows
 
     def begin(self):
@@ -31,7 +31,7 @@ class ANSIPixel:
             start = end
             row += 1
 
-    def setBrightness(*args, **kwargs):
+    def setBrightness(self, *args, **kwargs):
         pass
 
     def getANSIPx(self, color):

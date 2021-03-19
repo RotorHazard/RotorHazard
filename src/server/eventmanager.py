@@ -29,14 +29,14 @@ class EventManager:
             "unique": unique
         }
 
-        self.eventOrder[event] = [key for key, value in sorted(self.events[event].items(), key=lambda x: x[1]['priority'])]
+        self.eventOrder[event] = [key for key, _value in sorted(self.events[event].items(), key=lambda x: x[1]['priority'])]
 
         return True
 
     def trigger(self, event, evtArgs=None):
         # logger.debug('-Triggered event- {0}'.format(event))
         if event in self.events:
-            for name in self.eventOrder[event] or Evt.ALL in self.eventOrder[event]:
+            for name in self.eventOrder[event] or (Evt.ALL in self.eventOrder[event]):
                 handler = self.events[event][name]
 
                 args = handler['defaultArgs']

@@ -3,7 +3,6 @@
 #
 import logging
 import json
-import RHData
 import io
 
 logger = logging.getLogger(__name__)
