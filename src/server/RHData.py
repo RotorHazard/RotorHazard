@@ -826,6 +826,32 @@ class RHData():
             logger.info('Refusing to delete only heat')
             return False
 
+    def set_results_heat(self, heat_id, data):
+        heat = self.get_heat(heat_id)
+
+        if not heat:
+            return False
+
+        if 'results' in data:
+            heat.results = data['results']
+        if 'cacheStatus' in data:
+            heat.cacheStatus = data['cacheStatus']
+
+        self.commit()
+        return heat
+
+    def clear_results_heat(self, heat_id):
+        self._Database.Heat.query.filter_by(id=heat_id).update({
+            self._Database.Heat.cacheStatus: CacheStatus.INVALID
+            })
+        self.commit()
+
+    def clear_results_heats(self):
+        self._Database.Heat.query.update({
+            self._Database.Heat.cacheStatus: CacheStatus.INVALID
+            })
+        self.commit()
+
     def clear_heats(self):
         self._Database.DB.session.query(self._Database.Heat).delete()
         self._Database.DB.session.query(self._Database.HeatNode).delete()
@@ -989,6 +1015,32 @@ class RHData():
             logger.info('Class {0} deleted'.format(race_class.id))
 
             return True
+
+    def set_results_raceClass(self, class_id, data):
+        race_class = self.get_raceClass(class_id)
+
+        if not race_class:
+            return False
+
+        if 'results' in data:
+            race_class.results = data['results']
+        if 'cacheStatus' in data:
+            race_class.cacheStatus = data['cacheStatus']
+
+        self.commit()
+        return race_class
+
+    def clear_results_raceClass(self, class_id):
+        self._Database.RaceClass.query.filter_by(id=class_id).update({
+            self._Database.RaceClass.cacheStatus: CacheStatus.INVALID
+            })
+        self.commit()
+
+    def clear_results_raceClasses(self):
+        self._Database.RaceClass.query.update({
+            self._Database.RaceClass.cacheStatus: CacheStatus.INVALID
+            })
+        self.commit()
 
     def clear_raceClasses(self):
         self._Database.DB.session.query(self._Database.RaceClass).delete()
@@ -1561,6 +1613,32 @@ class RHData():
 
         return race_meta, new_heat
 
+    def set_results_savedRaceMeta(self, race_id, data):
+        race = self.get_savedRaceMeta(race_id)
+
+        if not race:
+            return False
+
+        if 'results' in data:
+            race.results = data['results']
+        if 'cacheStatus' in data:
+            race.cacheStatus = data['cacheStatus']
+
+        self.commit()
+        return race
+
+    def clear_results_savedRaceMeta(self, race_id):
+        self._Database.SavedRaceMeta.query.filter_by(id=race_id).update({
+            self._Database.SavedRaceMeta.cacheStatus: CacheStatus.INVALID
+            })
+        self.commit()
+
+    def clear_results_savedRaceMetas(self):
+        self._Database.SavedRaceMeta.query.update({
+            self._Database.SavedRaceMeta.cacheStatus: CacheStatus.INVALID
+            })
+        self.commit()
+
     def get_max_round(self, heat_id):
         return self._Database.DB.session.query(
             self._Database.DB.func.max(
@@ -1814,3 +1892,23 @@ class RHData():
         self.set_option("nextHeatBehavior", "0")
 
         logger.info("Reset global settings")
+
+    # Event Results (Options)
+    def set_results_event(self, data):
+        if 'results' in data:
+            self.set_option("eventResults_cacheStatus", data['results'])
+        if 'cacheStatus' in data:
+            self.set_option("eventResults_cacheStatus", data['cacheStatus'])
+
+        return self.get_results_event()
+
+    def get_results_event(self):
+        return {
+            'results': self.get_option("eventResults"),
+            'cacheStatus': self.get_option("eventResults_cacheStatus")
+        }
+
+    def clear_results_event(self):
+        self.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
+        return True
+

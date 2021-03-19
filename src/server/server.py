@@ -2245,6 +2245,7 @@ def on_resave_laps(data):
         })
 
 def build_atomic_result_caches(params):
+    PageCache.set_valid(False)
     Results.build_atomic_results_caches(RHData, params)
     emit_result_data()
 
@@ -2409,10 +2410,9 @@ def generate_heats(data):
     if cacheStatus == Results.CacheStatus.INVALID:
         # build new results if needed
         logger.info("No class cache available for {0}; regenerating".format(input_class))
-        race_class.cacheStatus = monotonic()
-        race_class.results = Results.calc_leaderboard(RHData, class_id=race_class.id)
-        race_class.cacheStatus = Results.CacheStatus.VALID
-        RHData.commit()
+        RHData.set_results_raceClass(race_class.id,
+            Results.build_atomic_result_cache(class_id=race_class.id)
+            )
 
     time_now = monotonic()
     timeout = time_now + RESULTS_TIMEOUT
@@ -4121,6 +4121,7 @@ def init_race_state():
 
     # Normalize results caches
     Results.normalize_cache_status(RHData)
+    PageCache.set_valid(False)
 
 def init_interface_state(startup=False):
     # Cancel current race
