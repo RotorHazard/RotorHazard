@@ -12,7 +12,6 @@ from eventmanager import Evt
 import Results
 from RHRace import WinCondition
 import RHUtils
-import Database
 
 # Sample configuration:
 #     "VRX_CONTROL": {
@@ -152,11 +151,11 @@ class VRxController:
             self.logger.error("Unable to send callsigns. heat_id not found in event.")
             return
 
-        for heatseat in Database.HeatNode.query.filter_by(heat_id=heat_id).all():
+        for heatseat in self._RHData.get_heatNodes_by_Heat(heat_id):
             heatseat_index = heatseat.seat_index
             if heatseat_index < self.num_seats:  # TODO this may break with non-contiguous nodes
                 if heatseat.pilot_id != RHUtils.PILOT_ID_NONE:
-                    pilot = Database.Pilot.query.get(heatseat.pilot_id)
+                    pilot = self._RHData.get_pilot(heatseat.pilot_id) 
                     self.set_message_direct(heatseat_index, pilot.callsign)
                 else:
                     self.set_message_direct(heatseat_index, self._Language.__("-None-"))

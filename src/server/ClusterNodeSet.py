@@ -7,7 +7,6 @@ import socketio
 from monotonic import monotonic
 import RHUtils
 from RHRace import RaceStatus
-import Database
 from eventmanager import Evt
 from util.RunningMedian import RunningMedian
 from util.Averager import Averager
@@ -283,9 +282,8 @@ class SecondaryNode:
 
             if self.RACE.race_status is RaceStatus.RACING:
 
-                pilot_id = Database.HeatNode.query.filter_by( \
-                    heat_id=self.RACE.current_heat, node_index=node_index).one_or_none().pilot_id
-
+                pilot_id = self.RHData.get_pilot_from_heatNode(self.RACE.current_heat, node_index) 
+                
                 if pilot_id != RHUtils.PILOT_ID_NONE:
 
                     # convert split timestamp (epoch ms sine 1970-01-01) to equivalent local 'monotonic' time value
@@ -298,16 +296,18 @@ class SecondaryNode:
                     # get timestamp for last lap pass (including lap 0)
                     if len(act_laps_list) > 0:
                         last_lap_ts = act_laps_list[-1]['lap_time_stamp']
-                        last_split_id = Database.DB.session.query(Database.DB.func.max(Database.LapSplit.split_id)).filter_by(node_index=node_index, lap_id=lap_count).scalar()
-                        if last_split_id is None: # first split for this lap
+                        lap_split = self.RHData.get_lapSplits_by_lap(node_index, lap_count)
+
+                        if len(lap_split) <= 0: # first split for this lap
                             if split_id > 0:
                                 logger.info('Ignoring missing splits before {0} for node {1}'.format(split_id+1, node_index+1))
                             last_split_ts = last_lap_ts
                         else:
+                            last_split_id = lap_split[-1].id 
                             if split_id > last_split_id:
                                 if split_id > last_split_id + 1:
                                     logger.info('Ignoring missing splits between {0} and {1} for node {2}'.format(last_split_id+1, split_id+1, node_index+1))
-                                last_split_ts = Database.LapSplit.query.filter_by(node_index=node_index, lap_id=lap_count, split_id=last_split_id).one().split_time_stamp
+                                last_split_ts = lap_split.split_time_stamp
                             else:
                                 logger.info('Ignoring out-of-order split {0} for node {1}'.format(split_id+1, node_index+1))
                                 last_split_ts = None
@@ -328,10 +328,17 @@ class SecondaryNode:
                             .format(node_index+1, lap_count+1, split_id+1, split_time_str, \
                             ('{0:.2f}'.format(split_speed) if split_speed is not None else 'None')))
 
-                        Database.DB.session.add(Database.LapSplit(node_index=node_index, pilot_id=pilot_id, lap_id=lap_count, \
-                                split_id=split_id, split_time_stamp=split_ts, split_time=split_time, \
-                                split_time_formatted=split_time_str, split_speed=split_speed))
-                        Database.DB.session.commit()
+                        self.RHData.add_lapSplit({
+                            'node_index': node_index,
+                            'pilot_id': pilot_id,
+                            'lap_id': lap_count,
+                            'splid_id': split_id,
+                            'split_time_stamp': split_ts,
+                            'split_time': split_time,
+                            'split_time_formatted': split_time_str,
+                            'split_speed': split_speed
+                        })
+                        
                         self.emit_split_pass_info(pilot_id, split_id, split_time)
 
                 else:

@@ -228,9 +228,9 @@ class RHData():
             raceMeta_query_data = self.get_legacy_table_data(metadata, 'saved_race_meta')
             racePilot_query_data = self.get_legacy_table_data(metadata, 'saved_pilot_race')
             raceLap_query_data = self.get_legacy_table_data(metadata, 'saved_race_lap')
-    
+
             engine.dispose() # close connection after loading
-    
+
             carryoverOpts = [
                 "timerName",
                 "timerLogo",
@@ -331,14 +331,14 @@ class RHData():
                                     if 'class_id' in row:
                                         new_row['class_id'] = row['class_id']
                                     heat_extracted_meta.append(new_row)
-        
+
                         self.restore_table(self._Database.Heat, heat_extracted_meta, defaults={
                                 'note': None,
                                 'class_id': RHUtils.CLASS_ID_NONE,
                                 'results': None,
                                 'cacheStatus': Results.CacheStatus.INVALID
                             })
-    
+
                         # extract pilots from heats and load into heatnode
                         heatnode_extracted_data = []
                         heatnode_dummy_id = 0
@@ -350,7 +350,7 @@ class RHData():
                             heatnode_row['pilot_id'] = int(row['pilot_id'])
                             heatnode_extracted_data.append(heatnode_row)
                             heatnode_dummy_id += 1
-    
+
                         self._Database.DB.session.query(self._Database.HeatNode).delete()
                         self.restore_table(self._Database.HeatNode, heatnode_extracted_data, defaults={
                                 'pilot_id': RHUtils.PILOT_ID_NONE
@@ -615,6 +615,9 @@ class RHData():
 
     def get_heats(self):
         return self._Database.Heat.query.all()
+
+    def get_heats_by_class(self, class_id):
+        return self._Database.Heat.query.filter_by(class_id=class_id).all()
 
     def get_first_heat(self):
         return self._Database.Heat.query.first()
@@ -996,7 +999,7 @@ class RHData():
         self.clear_raceClasses()
         logger.info('Database race classes reset')
         return True
-    
+
     # Profiles
     def get_profile(self, profile_id):
         return self._Database.Profiles.query.get(profile_id)
@@ -1461,6 +1464,9 @@ class RHData():
     def get_savedRaceMetas_by_heat(self, heat_id):
         return self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).order_by(self._Database.SavedRaceMeta.round_id).all()
 
+    def get_savedRaceMetas_by_raceClass(self, class_id):
+        return self._Database.SavedRaceMeta.query.filter_by(class_id=class_id).order_by(self._Database.SavedRaceMeta.round_id).all()
+
     def savedRaceMetas_has_raceFormat(self, race_format_id):
         return bool(self._Database.SavedRaceMeta.query.filter_by(format_id=race_format_id).count())
 
@@ -1591,6 +1597,9 @@ class RHData():
     def get_savedRaceLaps_by_savedPilotRace(self, pilotrace_id):
         return self._Database.SavedRaceLap.query.filter_by(pilotrace_id=pilotrace_id).order_by(self._Database.SavedRaceLap.lap_time_stamp).all()
 
+    def get_active_savedRaceLaps(self):
+        return self._Database.SavedRaceLap.query.filter(self._Database.SavedRaceLap.deleted != 1).all()
+
     # Race general
     def replace_savedRaceLaps(self, data):
         self._Database.SavedRaceLap.query.filter_by(pilotrace_id=data['pilotrace_id']).delete()
@@ -1670,6 +1679,39 @@ class RHData():
             split_id=split_id
             ).one_or_none()
 
+    def add_lapSplit(self, init=None):
+        lap_split = self._Database.LapSplit(
+            node_index=0,
+            pilot_id=RHUtils.PILOT_ID_NONE,
+            lap_id=0,
+            split_id=0,
+            split_time_stamp='',
+            split_time=0,
+            split_time_formatted=0,
+            split_speed=0
+        )
+
+        if init:
+            if 'node_index' in init:
+                lap_split.node_index = init['node_index']
+            if 'pilot_id' in init:
+                lap_split.pilot_id = init['pilot_id']
+            if 'lap_id' in init:
+                lap_split.lap_id = init['lap_id']
+            if 'split_id' in init:
+                lap_split.split_id = init['split_id']
+            if 'split_time_stamp' in init:
+                lap_split.split_time_stamp = init['split_time_stamp']
+            if 'split_time' in init:
+                lap_split.split_time = init['split_time']
+            if 'split_time_formatted' in init:
+                lap_split.split_time_formatted = init['split_time_formatted']
+            if 'split_speed' in init:
+                lap_split.split_speed = init['split_speed']
+
+        self._Database.DB.session.add(lap_split)
+        self.commit()
+
     def clear_lapSplit(self, lapSplit):
         self._Database.DB.session.delete(lapSplit)
         self.commit()
@@ -1718,7 +1760,7 @@ class RHData():
         self._Database.DB.session.query(self._Database.GlobalSettings).delete()
         self.commit()
         return True
-    
+
     def reset_options(self):
         self.clear_options()
         self.set_option("server_api", self._SERVER_API)
@@ -1732,7 +1774,7 @@ class RHData():
         self.set_option("lum_0_high", "46.7")
         self.set_option("contrast_0_low", "#ffffff")
         self.set_option("contrast_0_high", "#ffffff")
-    
+
         self.set_option("hue_1", "25")
         self.set_option("sat_1", "85.3")
         self.set_option("lum_1_low", "37.6")
@@ -1764,9 +1806,9 @@ class RHData():
         self.set_option("colorNode_7", "#00bfff")
         # Event results cache
         self.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
-    
+
         self.set_option("startThreshLowerAmount", "0")
         self.set_option("startThreshLowerDuration", "0")
         self.set_option("nextHeatBehavior", "0")
-    
+
         logger.info("Reset global settings")
