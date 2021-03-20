@@ -185,6 +185,26 @@ def getDefNodeFwUpdateUrl():
         logger.exception("Error determining value for 'DEF_NODE_FWUPDATE_URL'")
     return "/home/pi/RotorHazard/" + NODE_FW_PATHNAME
 
+# Wrapper to be used as a decorator on callback functions that do database calls,
+#  so their exception details are sent to the log file (instead of 'stderr')
+#  and the database session is closed on thread exit (prevents DB-file handles left open).
+def catchLogExcDBCloseWrapper(func):
+    def wrapper(*args, **kwargs):
+        try:
+            retVal = func(*args, **kwargs)
+            try:
+                DB.session.close()
+            except:
+                logger.exception("Error closing DB session in catchLogExcDBCloseWrapper")
+            return retVal
+        except:
+            logger.exception("Exception via catchLogExcDBCloseWrapper")
+            try:
+                DB.session.close()
+            except:
+                logger.exception("Error closing DB session in catchLogExcDBCloseWrapper-catch")
+    return wrapper
+
 def getCurrentProfile():
     current_profile = RHData.get_optionInt('currentProfile')
     return RHData.get_profile(current_profile)
@@ -2025,6 +2045,7 @@ def race_start_thread(start_token):
         emit_race_status() # Race page, to set race button states
         logger.info('Race started at {0} ({1:.0f})'.format(RACE.start_time_monotonic, RACE.start_time_epoch_ms))
 
+@catchLogExceptionsWrapper
 def race_expire_thread(start_token):
     global RACE
     race_format = getCurrentRaceFormat()
@@ -2235,6 +2256,7 @@ def on_resave_laps(data):
         'pilot_id': pilot_id,
         })
 
+@catchLogExceptionsWrapper
 def build_atomic_result_caches(params):
     Results.build_atomic_results_caches(RHData, params)
     emit_result_data()
@@ -3717,6 +3739,7 @@ heartbeat_thread_function.iter_tracker = 0
 heartbeat_thread_function.imdtabler_flag = False
 heartbeat_thread_function.last_error_rep_time = monotonic()
 
+@catchLogExceptionsWrapper
 def clock_check_thread_function():
     ''' Monitor system clock and adjust PROGRAM_START_EPOCH_TIME if significant jump detected.
         (This can happen if NTP synchronization occurs after server starts up.) '''
@@ -3775,7 +3798,7 @@ def check_emit_race_status_message(RACE, **params):
     if RACE.win_status not in [WinStatus.DECLARED, WinStatus.TIE]: # don't call after declared result
         emit_race_status_message(**params)
 
-@catchLogExceptionsWrapper
+@catchLogExcDBCloseWrapper
 def pass_record_callback(node, lap_timestamp_absolute, source):
     '''Handles pass records from the nodes.'''
 
@@ -3955,7 +3978,7 @@ def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
 
     return win_status
 
-@catchLogExceptionsWrapper
+@catchLogExcDBCloseWrapper
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
     gevent.sleep(0.025)  # delay to avoid potential I/O error
     if is_enter_at_flag:
@@ -3973,7 +3996,7 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
         })
         emit_exit_at_level(node)
 
-@catchLogExceptionsWrapper
+@catchLogExcDBCloseWrapper
 def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
