@@ -4147,7 +4147,7 @@ def init_interface_state(startup=False):
         Events.trigger(Evt.LAPS_CLEAR)
         RACE.timer_running = False # indicate race timer not running
         RACE.scheduled = False # also stop any deferred start
-        SOCKET_IO.emit('stop_timer') 
+        SOCKET_IO.emit('stop_timer')
     else:
         on_stop_race()
     # Reset laps display
@@ -4161,11 +4161,18 @@ def init_LED_effects():
         Evt.RACE_FINISH: "stripColorWhite4_4",
         Evt.RACE_STOP: "stripColorRedSolid",
         Evt.LAPS_CLEAR: "clear",
-        Evt.CROSSING_ENTER: "stripColorSolid",
-        Evt.CROSSING_EXIT: "stripColor1_1_4s",
+        Evt.CROSSING_ENTER: "stripSparkle",
+        Evt.CROSSING_EXIT: "none",
         Evt.STARTUP: "rainbowCycle",
         Evt.SHUTDOWN: "clear"
     }
+    if "bitmapRHLogo" in led_manager.getRegisteredEffects() and Config.LED['LED_ROWS'] > 1:
+        effects[Evt.STARTUP] = "bitmapRHLogo"
+        effects[Evt.RACE_STAGE] = "bitmapOrangeSquare"
+        effects[Evt.RACE_START] = "bitmapGreenArrow"
+        effects[Evt.RACE_FINISH] = "bitmapCheckerboard"
+        effects[Evt.RACE_STOP] = "bitmapRedX"
+
     # update with DB values (if any)
     effect_opt = RHData.get_option('ledEffects')
     if effect_opt:
