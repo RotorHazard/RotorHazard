@@ -16,4 +16,6 @@
 
 * [RotorHazard S32_BPill Case](S32_BPill_case/README.md)
 
+* [RotorHazard 6 Node Case](6_node_BPill_case/README.md)
+
 * [3D Printed Enclosure (for Arduino-based PCBs)](enclosure/README.md)
