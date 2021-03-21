@@ -170,21 +170,6 @@ TONES_ALL = 2
 def monotonic_to_epoch_millis(secs):
     return 1000.0*secs + MTONIC_TO_EPOCH_MILLIS_OFFSET
 
-# Return 'DEF_NODE_FWUPDATE_URL' config value; if not set in 'config.json'
-#  then return default value based on BASEDIR and server RELEASE_VERSION
-def getDefNodeFwUpdateUrl():
-    try:
-        if Config.GENERAL['DEF_NODE_FWUPDATE_URL']:
-            return Config.GENERAL['DEF_NODE_FWUPDATE_URL']
-        elif RELEASE_VERSION.lower().find("dev") > 0:  # if "dev" server version then
-            return stm32loader.DEF_BINSRC_STR          # use current "dev" firmware at URL
-        # return path that is up two levels from BASEDIR, and then NODE_FW_PATHNAME
-        return os.path.abspath(os.path.join(os.path.join(os.path.join(BASEDIR, os.pardir), \
-                                                         os.pardir), NODE_FW_PATHNAME))
-    except:
-        logger.exception("Error determining value for 'DEF_NODE_FWUPDATE_URL'")
-    return "/home/pi/RotorHazard/" + NODE_FW_PATHNAME
-
 # Wrapper to be used as a decorator on callback functions that do database calls,
 #  so their exception details are sent to the log file (instead of 'stderr')
 #  and the database session is closed on thread exit (prevents DB-file handles left open).
@@ -204,6 +189,48 @@ def catchLogExcDBCloseWrapper(func):
             except:
                 logger.exception("Error closing DB session in catchLogExcDBCloseWrapper-catch")
     return wrapper
+
+# Return 'DEF_NODE_FWUPDATE_URL' config value; if not set in 'config.json'
+#  then return default value based on BASEDIR and server RELEASE_VERSION
+def getDefNodeFwUpdateUrl():
+    try:
+        if Config.GENERAL['DEF_NODE_FWUPDATE_URL']:
+            return Config.GENERAL['DEF_NODE_FWUPDATE_URL']
+        if RELEASE_VERSION.lower().find("dev") > 0:  # if "dev" server version then
+            retStr = stm32loader.DEF_BINSRC_STR      # use current "dev" firmware at URL
+        else:
+            # return path that is up two levels from BASEDIR, and then NODE_FW_PATHNAME
+            retStr = os.path.abspath(os.path.join(os.path.join(os.path.join(BASEDIR, os.pardir), \
+                                                             os.pardir), NODE_FW_PATHNAME))
+        # check if file with better-matching processor type (i.e., STM32F4) is available
+        try:
+            curTypStr = INTERFACE.nodes[0].firmware_proctype_str if len(INTERFACE.nodes) else None
+            if curTypStr:
+                fwTypStr = getFwfileProctypeStr(retStr)
+                if fwTypStr and curTypStr != fwTypStr:
+                    altFwFNameStr = RHUtils.appendToBaseFilename(retStr, ('_'+curTypStr))
+                    altFwTypeStr = getFwfileProctypeStr(altFwFNameStr)
+                    if curTypStr == altFwTypeStr:
+                        logger.debug("Using better-matching node-firmware file: " + altFwFNameStr)
+                        return altFwFNameStr
+        except Exception as ex:
+            logger.debug("Error checking fw type vs current type: " + str(ex))
+        return retStr
+    except:
+        logger.exception("Error determining value for 'DEF_NODE_FWUPDATE_URL'")
+    return "/home/pi/RotorHazard/" + NODE_FW_PATHNAME
+
+# Returns the processor-type string from the given firmware file, or None if not found
+def getFwfileProctypeStr(fileStr):
+    dataStr = None
+    try:
+        dataStr = stm32loader.load_source_file(fileStr, False)
+        if dataStr:
+            return RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_PROCTYPE_PREFIXSTR, \
+                                                 INTERFACE.FW_TEXT_BLOCK_SIZE)
+    except Exception as ex:
+        logger.debug("Error processing file '{}' in 'getFwfileProctypeStr()': {}".format(fileStr, ex))
+    return None
 
 def getCurrentProfile():
     current_profile = RHData.get_optionInt('currentProfile')
@@ -3549,13 +3576,13 @@ def check_bpillfw_file(data):
         SOCKET_IO.emit('upd_set_info_text', "Error reading firmware file: {}<br><br><br><br>".format(ex))
         logger.debug("Error reading file '{}' in 'check_bpillfw_file()': {}".format(fileStr, ex))
         return
-    try:  # find version and build-timestamp strings in firmware '.bin' file
+    try:  # find version, processor-type and build-timestamp strings in firmware '.bin' file
         rStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_VERSION_PREFIXSTR, \
                                              INTERFACE.FW_TEXT_BLOCK_SIZE)
         fwVerStr = rStr if rStr else "(unknown)"
-        rStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_PROCTYPE_PREFIXSTR, \
+        fwRTypStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_PROCTYPE_PREFIXSTR, \
                                              INTERFACE.FW_TEXT_BLOCK_SIZE)
-        fwTypStr = (rStr + ", ") if rStr else ""
+        fwTypStr = (fwRTypStr + ", ") if fwRTypStr else ""
         rStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_BUILDDATE_PREFIXSTR, \
                                              INTERFACE.FW_TEXT_BLOCK_SIZE)
         if rStr:
@@ -3567,8 +3594,8 @@ def check_bpillfw_file(data):
         else:
             fwTimStr = "unknown"
         fileSize = len(dataStr)
-        logger.debug("Node update firmware file size={}, version={}, build timestamp: {}".\
-                     format(fileSize, fwVerStr, fwTimStr))
+        logger.debug("Node update firmware file size={}, version={}, {}build timestamp: {}".\
+                     format(fileSize, fwVerStr, fwTypStr, fwTimStr))
         infoStr = "Firmware update file size = {}<br>".format(fileSize) + \
                   "Firmware update version: {} ({}Build timestamp: {})<br><br>".\
                   format(fwVerStr, fwTypStr, fwTimStr)
@@ -3576,12 +3603,15 @@ def check_bpillfw_file(data):
         if curNodeStr:
             tsStr = INTERFACE.nodes[0].firmware_timestamp_str
             if tsStr:
-                ptStr = INTERFACE.nodes[0].firmware_proctype_str
-                ptStr = (ptStr + ", ") if ptStr else ""
+                curRTypStr = INTERFACE.nodes[0].firmware_proctype_str
+                ptStr = (curRTypStr + ", ") if curRTypStr else ""
                 curNodeStr += " ({}Build timestamp: {})".format(ptStr, tsStr)
         else:
             curNodeStr = "(unknown)"
         infoStr += "Current firmware version: " + curNodeStr
+        if fwRTypStr and curRTypStr and fwRTypStr != curRTypStr:
+            infoStr += "<br><br><b>Warning</b>: Firmware file processor type ({}) does not match current ({})".\
+                        format(fwRTypStr, curRTypStr)
         SOCKET_IO.emit('upd_set_info_text', infoStr)
         SOCKET_IO.emit('upd_enable_update_button')
     except Exception:

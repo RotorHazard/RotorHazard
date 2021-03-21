@@ -191,3 +191,11 @@ def uniqueName(desiredName, otherNames):
         return newName
     else:
         return desiredName
+
+# Appends the given string to the "base" part of the given filename.
+def appendToBaseFilename(fileNameStr, addStr):
+    sList = fileNameStr.rsplit('.', 1)
+    retStr = sList[0] + addStr
+    if len(sList) > 1:
+        retStr += '.' + sList[1]
+    return retStr

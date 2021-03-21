@@ -21,7 +21,7 @@ set RH_BUILD_WORKDIR=..\
 if exist %RH_BUILD_WORKDIR%*.cpp goto doRunCmd
 set RH_BUILD_WORKDIR=
 :doRunCmd
-set RH_BUILD_PROJNAME=RH_S32_BPill_node_F4
+set RH_BUILD_PROJNAME=RH_S32_BPill_node_STM32F4
 
 if not "%1"=="" goto doRunCont
 echo Serial port for upload must be specified as first parameter
