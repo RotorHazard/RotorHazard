@@ -27,6 +27,7 @@ READ_NODE_SLOTIDX = 0x3C     # read node slot index (for multi-node setup)
 READ_FW_VERSION = 0x3D       # read firmware version string
 READ_FW_BUILDDATE = 0x3E     # read firmware build date string
 READ_FW_BUILDTIME = 0x3F     # read firmware build time string
+READ_FW_PROCTYPE = 0x40      # read node processor type
 
 WRITE_FREQUENCY = 0x51       # Sets frequency (2 byte)
 # WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
@@ -45,6 +46,7 @@ FW_TEXT_BLOCK_SIZE = 16     # length of data returned by 'READ_FW_...' fns
 FW_VERSION_PREFIXSTR = "FIRMWARE_VERSION: "
 FW_BUILDDATE_PREFIXSTR = "FIRMWARE_BUILDDATE: "
 FW_BUILDTIME_PREFIXSTR = "FIRMWARE_BUILDTIME: "
+FW_PROCTYPE_PREFIXSTR = "FIRMWARE_PROCTYPE: "
 
 # features flags for value returned by READ_RHFEAT_FLAGS command
 RHFEAT_STM32_MODE = 0x0004      # STM 32-bit processor running multiple nodes
@@ -118,6 +120,7 @@ class RHInterface(BaseHardwareInterface):
         self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
         self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
         self.FW_BUILDTIME_PREFIXSTR = FW_BUILDTIME_PREFIXSTR
+        self.FW_PROCTYPE_PREFIXSTR = FW_PROCTYPE_PREFIXSTR
         self.update_thread = None      # Thread for running the main update loop
         self.fwupd_serial_obj = None   # serial object for in-app update of node firmware
 
@@ -559,8 +562,8 @@ class RHInterface(BaseHardwareInterface):
         def mock_no_op():
             pass
         serial_obj.name = port_name
-        serial_obj.open = mock_no_op()
-        serial_obj.close = mock_no_op()
+        serial_obj.open = mock_no_op
+        serial_obj.close = mock_no_op
         self.fwupd_serial_obj = serial_obj
 
     def get_fwupd_serial_name(self):
