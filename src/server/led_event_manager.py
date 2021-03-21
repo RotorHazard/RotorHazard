@@ -17,10 +17,10 @@ class LEDEventManager:
 
         # hold
         self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None,
-            [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
+            [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_LAP_RECORDED, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
 
         # do nothing
-        self.registerEffect(LEDEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
+        self.registerEffect(LEDEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_LAP_RECORDED, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
 
 
     def isEnabled(self):
@@ -166,6 +166,10 @@ class LEDEvent:
         {
             "event": Evt.CROSSING_EXIT,
             "label": "Gate Exit"
+        },
+        {
+            "event": Evt.RACE_LAP_RECORDED,
+            "label": "Lap Recorded"
         },
         {
             "event": Evt.STARTUP,

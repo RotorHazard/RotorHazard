@@ -3883,6 +3883,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
+                            'color': hexToColor(RHData.get_option('colorNode_' + str(node.index), '#ffffff')),
+                            'text': lap_number,
                             })
 
                         logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
@@ -4163,6 +4165,7 @@ def init_LED_effects():
         Evt.LAPS_CLEAR: "clear",
         Evt.CROSSING_ENTER: "stripSparkle",
         Evt.CROSSING_EXIT: "none",
+        Evt.RACE_LAP_RECORDED: "none",
         Evt.STARTUP: "rainbowCycle",
         Evt.SHUTDOWN: "clear"
     }
