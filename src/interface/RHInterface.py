@@ -562,8 +562,8 @@ class RHInterface(BaseHardwareInterface):
         def mock_no_op():
             pass
         serial_obj.name = port_name
-        serial_obj.open = mock_no_op()
-        serial_obj.close = mock_no_op()
+        serial_obj.open = mock_no_op
+        serial_obj.close = mock_no_op
         self.fwupd_serial_obj = serial_obj
 
     def get_fwupd_serial_name(self):
