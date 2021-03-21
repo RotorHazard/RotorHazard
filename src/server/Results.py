@@ -396,6 +396,7 @@ def calc_leaderboard(RHData, **params):
                     timed_laps = filter(lambda x : x['lap_number'] > 0, result_pilot['current_laps'])
 
                 fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
+                result_pilot['fastest_lap'] = fast_lap
                 result_pilot['fastest_lap_source'] = None
             else:
                 fast_lap = None
@@ -419,7 +420,7 @@ def calc_leaderboard(RHData, **params):
                                 }
                             break
 
-            result_pilot['fastest_lap'] = fast_lap.lap_time
+                result_pilot['fastest_lap'] = fast_lap.lap_time
 
         gevent.sleep()
         # find best consecutive 3 laps
