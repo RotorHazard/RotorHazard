@@ -26,7 +26,7 @@ RotorHazard Cartridge               | This is the cartridge to hold the 8x8 LED 
 Part                | Qty   | Description
 --------------------|-------|---------------
 M3x8mm              | 10    | Used to attach the PCB to the standoffs, the lid to the case and the legs to the case
-M3x10mm countersunk | 4     | User to attach the Raspberry pi to the case
+M3x10mm countersunk | 4     | Used to attach the Raspberry pi to the case
 Copper tape         | -     | Used for RF shielding, make sure it has conductive adhesive
 26AWG Wire          | -     | 
 
@@ -34,10 +34,10 @@ Copper tape         | -     | Used for RF shielding, make sure it has conductive
 Part                    | Qty   | Description
 ------------------------|-------|---------------
 M3x5mm                  | 1     | Used for attaching the antenna arm, 3x8mm would work
-M2x5mm                  | 2     | Used to attach voltage display to the case
+M2x5mm                  | 2     | Used to attach the voltage display to the case
 40x40x10mm fans         | 2     | 
-M3x16mm                 | 8     | Attaches fans to the case
-M3 nut                  | 8     | Attaches fans to the case
+M3x16mm                 | 8     | Attaches the fans to the case
+M3 nut                  | 8     | Attaches the fans to the case
 8x8 WS218b LED panel    | 1     | LED's for the cartridge print
 2.54mm header 3 pins    | 2     | Connects the cartridge to the lid
 2.54mm socket 3 pins    | 1     | Connects the cartridge to the lid
@@ -62,8 +62,8 @@ The LED cartridge connects to the lid using standard PCB mount 2.54mm headers an
 ![Internet connection is required to view images](https://raw.githubusercontent.com/RotorHazard/rhfiles/main/6_Node_BPill/case/img/RH_Lid_Wiring.jpg)
 ![Internet connection is required to view images](https://raw.githubusercontent.com/RotorHazard/rhfiles/main/6_Node_BPill/case/img/RH_LED_Cartridge.jpg)
 
-## Thermal considerations
-Commercial electronics are typically rated up to 70&deg;C. During initial testing the timer was at around 45&deg;C above ambient, with all 6 nodes active and with heat-syncs fitted.
+## Thermal Considerations
+Commercial electronics are typically rated up to 70&deg;C. During initial testing the timer was around 45&deg;C above ambient, with all 6 nodes active and with heat-syncs fitted.
 
 Whilst this is still within 70&deg;C at room temperature ~21&deg;C these kind of temperatures are not recommended as it can cause the following:
 * Stability issues
@@ -76,7 +76,7 @@ For the majority of people heat-syncs and fans are recommended for optimum cooli
 If you use fans and wish for them to activate automatically and save power + maintain a constant temperature go [here](https://github.com/Aaronsss/Raspberry-Pi-Fan-Control) and follow the install instructions for the automatic fan control which will turn fans on when the pi temperature is 40&deg;C and off again when it is 38&deg;C
 
 ## RF Shielding
-RF shielding is an essential part of RotorHazards timing make sure you shield your timer. There are a number of ways to do this like putting the timer in a metal box
+RF shielding is an essential part of RotorHazards timing, make sure you shield your timer. There are a number of ways to do this like putting the timer in a metal box
 
 The neatest way to do it is to get some copper tape and cover the inside of the box. Be sure to use copper tape with conductive adhesive. Once fitted you can solder a wire to the copper tape and then connect that to the case pads of the PCB. It is recommended to add insulation tape in locations where the PCB comes close to the case. Be sure to leave the end with the grill and centers of the fan covers unshielded
 
