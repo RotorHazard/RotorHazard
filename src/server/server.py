@@ -2347,26 +2347,11 @@ def on_set_current_heat(data):
     new_heat_id = data['heat']
     RACE.current_heat = new_heat_id
 
-    RACE.node_pilots = {
-        '0': 0,
-        '1': 0,
-        '2': 0,
-        '3': 0,
-        '4': 0,
-        '5': 0,
-        '6': 0,
-        '7': 0,
-    }
-    RACE.node_teams = {
-        '0': None,
-        '1': None,
-        '2': None,
-        '3': None,
-        '4': None,
-        '5': None,
-        '6': None,
-        '7': None,
-    }
+    RACE.node_pilots = {}
+    for idx in range(RACE.num_nodes):
+        RACE.node_pilots[idx] = RHUtils.PILOT_ID_NONE 
+        RACE.node_teams[idx] = None
+
     for heatNode in RHData.get_heatNodes_by_heat(new_heat_id):
         RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 

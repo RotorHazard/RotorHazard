@@ -255,7 +255,7 @@ def calc_leaderboard(RHData, **params):
             else:
                 total_laps = 0
 
-            if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+            if profile_freqs["f"][int(node_index)] != RHUtils.FREQUENCY_ID_NONE:
                 leaderboard.append({
                     'pilot_id': pilot.id,
                     'callsign': pilot.callsign,
