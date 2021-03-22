@@ -4392,6 +4392,7 @@ def check_bpillfw_file(data):
                 ptStr = (curRTypStr + ", ") if curRTypStr else ""
                 curNodeStr += " ({}Build timestamp: {})".format(ptStr, tsStr)
         else:
+            curRTypStr = None
             curNodeStr = "(unknown)"
         infoStr += "Current firmware version: " + curNodeStr
         if fwRTypStr and curRTypStr and fwRTypStr != curRTypStr:
@@ -4399,7 +4400,7 @@ def check_bpillfw_file(data):
                         format(fwRTypStr, curRTypStr)
         SOCKET_IO.emit('upd_set_info_text', infoStr)
         SOCKET_IO.emit('upd_enable_update_button')
-    except Exception:
+    except Exception as ex:
         SOCKET_IO.emit('upd_set_info_text', "Error processing firmware file: {}<br><br><br><br>".format(ex))
         logger.exception("Error processing file '{}' in 'check_bpillfw_file()'".format(fileStr))
 
