@@ -106,6 +106,12 @@
 // use persistent homology detection
 #define USE_PH
 
+#if TARGET == ESP32_TARGET
+#define RX_IMPL NativeRxModule
+#else
+#define RX_IMPL BitBangRxModule
+#endif
+
 #if TARGET != AVR_TARGET || MULTI_RHNODE_MAX == 1
 #define SCAN_HISTORY
 #else

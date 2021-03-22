@@ -3,10 +3,10 @@
 
 constexpr rssi_t MIN_RSSI_DETECT = 5; //value for detecting node as installed
 
-class SingleRssiReceiver final : public RssiReceivers {
+template <typename RX> class SingleRssiReceiver final : public RssiReceivers {
 private:
     RssiNode node;
-    RxModule rx;
+    RX rx;
 
 public:
     inline RssiNode& getRssiNode(uint_fast8_t idx) {
@@ -36,11 +36,11 @@ public:
     }
 };
 
-class VirtualRssiReceivers final : public RssiReceivers {
+template <typename RX, uint_fast8_t N> class VirtualRssiReceivers final : public RssiReceivers {
 private:
-    uint_fast8_t nodeCount = MULTI_RHNODE_MAX;
-    RssiNode nodes[MULTI_RHNODE_MAX];
-    RxModule rx;
+    uint_fast8_t nodeCount = N;
+    RssiNode nodes[N];
+    RX rx;
     int_fast8_t prevReadIndex = -1;
     uint_fast16_t readCounter = 0;
 
@@ -62,7 +62,8 @@ public:
     }
 
     inline void start(const mtime_t ms, const utime_t us) {
-        for (int_fast8_t i=nodeCount-1; i>=0; i--) {
+        // preserve order on start
+        for (uint_fast8_t i=0; i<nodeCount; i++) {
             nodes[i].start(ms, us);
         }
     }
@@ -86,16 +87,16 @@ public:
     }
 };
 
-class PhysicalRssiReceivers final : public RssiReceivers {
+template <typename RX, uint_fast8_t N> class PhysicalRssiReceivers final : public RssiReceivers {
 private:
-    uint_fast8_t nodeCount = MULTI_RHNODE_MAX;
-    uint_fast8_t nodeToSlot[MULTI_RHNODE_MAX];
-    RssiNode nodes[MULTI_RHNODE_MAX];
-    RxModule rxs[MULTI_RHNODE_MAX];
+    uint_fast8_t nodeCount = N;
+    uint_fast8_t nodeToSlot[N];
+    RssiNode nodes[N];
+    RX rxs[N];
 
 public:
     PhysicalRssiReceivers() {
-        for (int_fast8_t i=MULTI_RHNODE_MAX-1; i>=0; i--) {
+        for (int_fast8_t i=N-1; i>=0; i--) {
             nodeToSlot[i] = i;
         }
     }
@@ -122,7 +123,8 @@ public:
 
     inline void start(const mtime_t ms, const utime_t us) {
         uint_fast8_t sIdx=0;
-        for (int_fast8_t nIdx=MULTI_RHNODE_MAX-1; nIdx>=0; nIdx--) {
+        // preserve ordering
+        for (uint_fast8_t nIdx=0; nIdx<N; nIdx++) {
             rssi_t rssi = rxs[nIdx].readRssi();
             if (rssi > MIN_RSSI_DETECT) {
                 nodeToSlot[sIdx++] = nIdx;
@@ -130,7 +132,8 @@ public:
         }
         nodeCount = sIdx;
 
-        for (int_fast8_t i=nodeCount-1; i>=0; i--) {
+        // preserve order on start
+        for (uint_fast8_t i=0; i<nodeCount; i++) {
             // use latest micros() value
             getRssiNode(i).start(ms, usclock.tickMicros());
         }
@@ -138,7 +141,8 @@ public:
 
     bool readRssi(const mtime_t ms, const utime_t us) {
         bool anyCrossing = false;
-        for (int_fast8_t i=getCount()-1; i>=0; i--) {
+        // preserve order on read
+        for (uint_fast8_t i=0; i<getCount(); i++) {
             RssiNode& node = getRssiNode(i);
             bool nodeCrossing = node.active && node.process(getRxModule(i).readRssi(), ms);
             if (nodeCrossing) {
@@ -152,12 +156,12 @@ public:
 };
 
 #if TARGET == STM32_TARGET || TARGET == ESP32_TARGET
-    PhysicalRssiReceivers defaultRssiReceivers;
+    PhysicalRssiReceivers<RX_IMPL,MULTI_RHNODE_MAX> defaultRssiReceivers;
 #else
     #if MULTI_RHNODE_MAX == 1
-    SingleRssiReceiver defaultRssiReceivers;
+    SingleRssiReceiver<RX_IMPL> defaultRssiReceivers;
     #else
-    VirtualRssiReceivers defaultRssiReceivers;
+    VirtualRssiReceivers<RX_IMPL,MULTI_RHNODE_MAX> defaultRssiReceivers;
     #endif
 #endif
 RssiReceivers& rssiRxs = defaultRssiReceivers;

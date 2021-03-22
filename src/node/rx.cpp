@@ -32,12 +32,7 @@ void RxModule::init(uint8_t dataPin, uint8_t clkPin, uint8_t selPin, uint8_t rss
     this->selPin = selPin;
     this->rssiPin = rssiPin;
 
-    pinMode(dataPin, OUTPUT);
-    pinMode(selPin, OUTPUT);
-    pinMode(clkPin, OUTPUT);
-    digitalWrite(selPin, HIGH);
-    digitalWrite(clkPin, LOW);
-    digitalWrite(dataPin, LOW);
+    spiInit();
 }
 
 // Reset rx5808 module to wake up from power down
@@ -48,21 +43,7 @@ bool RxModule::reset()
         return false;
     }
 
-    serialEnableHigh();
-    serialEnableLow();
-
-    serialSendBit1();  // Register 0xF
-    serialSendBit1();
-    serialSendBit1();
-    serialSendBit1();
-
-    serialSendBit1();  // Write to register
-
-    for (uint8_t i = 20; i > 0; i--) {
-        serialSendBit0();
-    }
-
-    serialEnableHigh();  // Finished clocking data in
+    spiWrite(0xF, 0x00);
 
     return powerUp();
 }
@@ -78,37 +59,9 @@ bool RxModule::setFrequency(freq_t frequency)
     // Get the hex value to send to the rx module
     uint16_t vtxHex = freqMhzToRegVal(frequency);
 
-    //Channel data from the lookup table, 20 bytes of register data are sent, but the
-    // MSB 4 bits are zeros register address = 0x1, write, data0-15=vtxHex data15-19=0x0
-    serialEnableHigh();
-    serialEnableLow();
-
-    serialSendBit1();  // Register 0x1
-    serialSendBit0();
-    serialSendBit0();
-    serialSendBit0();
-
-    serialSendBit1();  // Write to register
-
-    // D0-D15, note: loop runs backwards as more efficent on AVR
-    for (uint8_t i = 16; i > 0; i--)
-    {
-        if (vtxHex & 0x1)
-        {  // Is bit high or low?
-            serialSendBit1();
-        }
-        else
-        {
-            serialSendBit0();
-        }
-        vtxHex >>= 1;  // Shift bits along to check the next one
-    }
-
-    for (uint8_t i = 4; i > 0; i--) { // Remaining D16-D19
-        serialSendBit0();
-    }
-
-    serialEnableHigh();  // Finished clocking data in
+    //Channel data from the lookup table, 20 bytes of register data are sent, but the MSB 4 bits are zeros.
+    // register address = 0x1, write, data0-15=vtxHex data15-19=0x0
+    spiWrite(0x1, vtxHex);
     delay(2);
 
     digitalWrite(clkPin, LOW);
@@ -126,30 +79,7 @@ bool RxModule::setPower(uint32_t options)
         return false;
     }
 
-    serialEnableHigh();
-    serialEnableLow();
-
-    serialSendBit0();  // Register 0xA
-    serialSendBit1();
-    serialSendBit0();
-    serialSendBit1();
-
-    serialSendBit1();  // Write to register
-
-    for (uint8_t i = 20; i > 0; i--)
-    {
-        if (options & 0x1)
-        {  // Is bit high or low?
-            serialSendBit1();
-        }
-        else
-        {
-            serialSendBit0();
-        }
-        options >>= 1;  // Shift bits along to check the next one
-    }
-
-    serialEnableHigh();  // Finished clocking data in
+    spiWrite(0xA, options);
 
     digitalWrite(dataPin, LOW);
 
@@ -161,8 +91,9 @@ bool RxModule::setPower(uint32_t options)
 bool RxModule::powerUp()
 {
     bool rc = setPower(0b11010000110111110011);
-    if (rc)
+    if (rc) {
         rxPoweredDown = false;
+    }
     return rc;
 }
 
@@ -170,8 +101,9 @@ bool RxModule::powerUp()
 bool RxModule::powerDown()
 {   
     bool rc = setPower(0b11111111111111111111);
-    if (rc)
+    if (rc) {
         rxPoweredDown = true;
+    }
     return rc;
 }
 
@@ -181,7 +113,44 @@ rssi_t RxModule::readRssi()
     return hardware.readADC(rssiPin);
 }
 
-void RxModule::serialSendBit0()
+
+void BitBangRxModule::spiInit()
+{
+    pinMode(dataPin, OUTPUT);
+    pinMode(selPin, OUTPUT);
+    pinMode(clkPin, OUTPUT);
+    digitalWrite(selPin, HIGH);
+    digitalWrite(clkPin, LOW);
+    digitalWrite(dataPin, LOW);
+}
+
+void BitBangRxModule::spiWrite(uint8_t addr, uint32_t data)
+{
+    serialEnableHigh();
+    serialEnableLow();
+    bitBang(addr, 4);
+    serialSendBit1();  // Write to register
+    bitBang(data, 20);
+    serialEnableHigh();  // Finished clocking data in
+}
+
+template <typename T> void BitBangRxModule::bitBang(T bits, const uint_fast8_t size)
+{
+    for (uint_fast8_t i = size; i > 0; i--)
+    {
+        if (bits & 0x1)
+        {  // Is bit high or low?
+            serialSendBit1();
+        }
+        else
+        {
+            serialSendBit0();
+        }
+        bits >>= 1;  // Shift bits along to check the next one
+    }
+}
+
+void BitBangRxModule::serialSendBit0()
 {
     digitalWrite(dataPin, LOW);
     delayMicroseconds(300);
@@ -191,7 +160,7 @@ void RxModule::serialSendBit0()
     delayMicroseconds(300);
 }
 
-void RxModule::serialSendBit1()
+void BitBangRxModule::serialSendBit1()
 {
     digitalWrite(dataPin, HIGH);
     delayMicroseconds(300);
@@ -201,14 +170,35 @@ void RxModule::serialSendBit1()
     delayMicroseconds(300);
 }
 
-void RxModule::serialEnableLow()
+void BitBangRxModule::serialEnableLow()
 {
     digitalWrite(selPin, LOW);
     delayMicroseconds(200);
 }
 
-void RxModule::serialEnableHigh()
+void BitBangRxModule::serialEnableHigh()
 {
     digitalWrite(selPin, HIGH);
     delayMicroseconds(200);
 }
+
+#if TARGET == ESP32_TARGET
+#include <SPI.h>
+
+void NativeRxModule::spiInit()
+{
+    pinMode(selPin, OUTPUT);
+    digitalWrite(selPin, HIGH);
+    SPI.begin(clkPin, -1, dataPin);
+}
+
+void NativeRxModule::spiWrite(uint8_t addr, uint32_t data)
+{
+    uint32_t payload = addr | (1 << 4) | (data << 5);
+    SPI.beginTransaction(SPISettings(1000000, LSBFIRST, SPI_MODE0));
+    digitalWrite(selPin, LOW);
+    SPI.transferBits(payload, NULL, 25);
+    digitalWrite(selPin, HIGH);
+    SPI.endTransaction();
+}
+#endif

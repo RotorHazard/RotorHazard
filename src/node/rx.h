@@ -5,20 +5,20 @@
 
 // currently just RX5808 but could be abstract with sub-classes
 class RxModule {
-  private:
+private:
+    bool rxPoweredDown = false;
+    static mtime_t lastBusTimeMs;
+    static bool checkBusAvailable();
+
+protected:
     uint8_t dataPin = 0;
     uint8_t clkPin = 0;
     uint8_t selPin = 0;
     uint8_t rssiPin = 0;
-    bool rxPoweredDown = false;
-    static mtime_t lastBusTimeMs;
+    virtual void spiInit() = 0;
+    virtual void spiWrite(uint8_t addr, uint32_t data) = 0;
 
-    void serialSendBit0();
-    void serialSendBit1();
-    void serialEnableLow();
-    void serialEnableHigh();
-    static bool checkBusAvailable();
-  public:
+public:
     RxModule() = default;
     RxModule(const RxModule&) = delete;
     RxModule(RxModule&&) = delete;
@@ -35,4 +35,24 @@ class RxModule {
     bool reset();
 };
 
+class BitBangRxModule final : public RxModule {
+private:
+    template <typename T> void bitBang(T bits, const uint_fast8_t size);
+    void serialSendBit0();
+    void serialSendBit1();
+    void serialEnableLow();
+    void serialEnableHigh();
+
+protected:
+    void spiInit();
+    void spiWrite(uint8_t addr, uint32_t data);
+};
+
+#if TARGET == ESP32_TARGET
+class NativeRxModule final : public RxModule {
+protected:
+    void spiInit();
+    void spiWrite(uint8_t addr, uint32_t data);
+};
+#endif
 #endif
