@@ -12,7 +12,7 @@ from RHInterface import READ_REVISION_CODE, READ_MULTINODE_COUNT, MAX_RETRY_COUN
                         JUMP_TO_BOOTLOADER
 
 BOOTLOADER_CHILL_TIME = 2 # Delay for USB to switch from bootloader to serial mode
-SERIAL_BAUD_RATES = [921600, 115200]
+SERIAL_BAUD_RATES = [921600, 500000, 115200]
 DEF_S32BPILL_SERIAL_PORT = "/dev/serial0"
 
 logger = logging.getLogger(__name__)

@@ -33,20 +33,19 @@ for node in INTERFACE.nodes:
 
 def scan_thread_function():
     while True:
-        gevent.sleep(0.1)
-
         for node in INTERFACE.nodes:
             data = node.read_block(INTERFACE, RHInterface.READ_NODE_SCAN_HISTORY, 9)
-            freqs = []
-            rssis = []
             if data is not None and len(data) > 0:
+                freqs = []
+                rssis = []
                 for i in range(0, len(data), 3):
                     freq = RHInterface.unpack_16(data[i:])
                     rssi = RHInterface.unpack_8(data[i+2:])
                     if freq > 0:
                         freqs.append(freq)
                         rssis.append(rssi)
-            SOCKET_IO.emit('scan_data', {'node' : node.index, 'frequency' : freqs, 'rssi' : rssis})
+                SOCKET_IO.emit('scan_data', {'node' : node.index, 'frequency' : freqs, 'rssi' : rssis})
+                gevent.sleep(0.1)
         
 
 gevent.spawn(scan_thread_function)

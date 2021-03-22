@@ -36,6 +36,7 @@
 				<div class="node-list">
 					{% for node in range(num_nodes) %}
 					<div class="node" data-node="{{ node }}">
+						<h3>Node {{ node+1 }}</h3>
 						<div style="height:80%; width:80%; background:#FFFFFF; margin:0 auto;">
 							<canvas id="freq-graph-{{ node }}">
 							</canvas>
