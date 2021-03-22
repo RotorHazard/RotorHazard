@@ -1308,7 +1308,7 @@
 			led_html.append(' ');
 			led_html.append($('<button id="use-led-effect">' + __('Go') + '</button>'));
 
-			$('#LED-effects').append(led_html);
+			$('#LED-effects').html(led_html);
 		});
 
 		$(document).on('click', '#use-led-effect', function (event) {
