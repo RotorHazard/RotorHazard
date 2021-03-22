@@ -17,10 +17,10 @@ class LEDEventManager:
 
         # hold
         self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None,
-            [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_LAP_RECORDED, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
+            [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_LAP_RECORDED, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN, Evt.HEAT_SET, Evt.MESSAGE_INTERRUPT]))
 
         # do nothing
-        self.registerEffect(LEDEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_LAP_RECORDED, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
+        self.registerEffect(LEDEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_LAP_RECORDED, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN, Evt.HEAT_SET, Evt.MESSAGE_INTERRUPT]))
 
 
     def isEnabled(self):
@@ -41,6 +41,9 @@ class LEDEventManager:
 
     def setEventEffect(self, event, name):
         self.events[event] = name
+
+        if name not in self.eventEffects:
+            return None
 
         args = self.eventEffects[name]['defaultArgs']
         if args is None:
@@ -172,13 +175,21 @@ class LEDEvent:
             "label": "Lap Recorded"
         },
         {
+            "event": Evt.HEAT_SET,
+            "label": "Change Heat"
+        },
+        {
             "event": Evt.STARTUP,
             "label": "Server Startup"
         },
         {
             "event": Evt.SHUTDOWN,
             "label": "Server Shutdown"
-        }
+        },
+        {
+            "event": Evt.MESSAGE_INTERRUPT,
+            "label": "Message"
+        },
     ]
 
 class LEDEffect(UserDict):

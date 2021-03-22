@@ -491,5 +491,5 @@ def discover(*args, **kwargs):
         }),
 
     # clear - permanently assigned to LEDEventManager.clear()
-    LEDEffect("clear", "Turn Off", clear, [LEDEvent.NOCONTROL, Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN])
+    LEDEffect("clear", "Turn Off", clear, [LEDEvent.NOCONTROL, Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_LAP_RECORDED, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN, Evt.HEAT_SET, Evt.MESSAGE_INTERRUPT])
     ]

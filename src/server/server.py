@@ -1806,8 +1806,6 @@ def on_stage_race():
         '''Common race start events (do early to prevent processing delay when start is called)'''
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        Events.trigger(Evt.RACE_STAGE)
-
         if heat_data.class_id != RHUtils.CLASS_ID_NONE:
             class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
             if class_format_id != RHUtils.FORMAT_ID_NONE:
@@ -1847,6 +1845,11 @@ def on_stage_race():
         RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
         RACE.start_token = random.random()
         gevent.spawn(race_start_thread, RACE.start_token)
+
+        Events.trigger(Evt.RACE_STAGE, {
+            'hide_stage_timer': MIN != MAX,
+            'pi_starts_at_s': RACE.start_time_monotonic
+            })
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,
@@ -2015,7 +2018,9 @@ def race_start_thread(start_token):
         # !!! RACE STARTS NOW !!!
 
         # do time-critical tasks
-        Events.trigger(Evt.RACE_START)
+        Events.trigger(Evt.RACE_START, {
+            'race': RACE
+            })
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now() # record standard-formatted time
@@ -3869,14 +3874,15 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         emit_pass_record(node, lap_time_stamp)
 
                         # Add the new lap to the database
-                        RACE.node_laps[node.index].append({
+                        lap_data = {
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
                             'lap_time_formatted': RHUtils.time_format(lap_time, RHData.get_option('timeFormat')),
                             'source': source,
                             'deleted': False
-                        })
+                        }
+                        RACE.node_laps[node.index].append(lap_data)
 
                         RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
                         RACE.cacheStatus = Results.CacheStatus.VALID
@@ -3884,7 +3890,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
                             'color': hexToColor(RHData.get_option('colorNode_' + str(node.index), '#ffffff')),
-                            'text': lap_number,
+                            'lap': lap_data,
+                            'results': RACE.results
                             })
 
                         logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
