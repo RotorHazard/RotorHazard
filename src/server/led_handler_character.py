@@ -135,10 +135,12 @@ def scrollText(args):
     if panelHeight >= 16:
         font = ImageFont.truetype("static/fonts/RotorHazardPanel16.ttf", 16)
         w, h = font.getsize(text)
+        h = 16
     else:
         font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
         w, h = font.getsize(text)
-        
+        h = 8
+
     draw_y = int((panelHeight-h)/2)
 
     for i in range(-panelWidth, w + panelWidth):
