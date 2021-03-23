@@ -2348,6 +2348,7 @@ def on_set_current_heat(data):
     RACE.current_heat = new_heat_id
 
     RACE.node_pilots = {}
+    RACE.node_teams = {}
     for idx in range(RACE.num_nodes):
         RACE.node_pilots[idx] = RHUtils.PILOT_ID_NONE 
         RACE.node_teams[idx] = None
@@ -2704,7 +2705,6 @@ def clean_results_cache():
     ''' wipe all results caches '''
     Results.invalidate_all_caches(RHData)
     PageCache.set_valid(False)
-    emit_result_data()
 
 # Socket io emit functions
 

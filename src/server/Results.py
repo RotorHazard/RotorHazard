@@ -241,10 +241,12 @@ def calc_leaderboard(RHData, **params):
     for pilot in RHData.get_pilots():
         gevent.sleep()
         if USE_CURRENT:
+            found_pilot = False
             laps = []
             for node_index in RACE.node_pilots:
                 if RACE.node_pilots[node_index] == pilot.id and node_index < RACE.num_nodes:
                     laps = RACE.get_active_laps()[node_index]
+                    found_pilot = True
                     break
 
             if laps:
@@ -255,7 +257,7 @@ def calc_leaderboard(RHData, **params):
             else:
                 total_laps = 0
 
-            if profile_freqs["f"][int(node_index)] != RHUtils.FREQUENCY_ID_NONE:
+            if found_pilot and profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
                 leaderboard.append({
                     'pilot_id': pilot.id,
                     'callsign': pilot.callsign,
