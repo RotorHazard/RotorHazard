@@ -31,15 +31,12 @@ MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
 # Normal importing resumes here
-import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
 
 import io
 import os
 import sys
-import traceback
-import shutil
 import base64
 import subprocess
 import importlib
@@ -822,10 +819,12 @@ def on_set_frequency(data):
     freqs["b"][node_index] = band
     freqs["c"][node_index] = channel
     freqs["f"][node_index] = frequency
-    profile.frequencies = json.dumps(freqs)
     logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(node_index+1, band, channel, frequency))
 
-    RHData.commit()
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'frequencies': freqs
+        })
 
     INTERFACE.set_frequency(node_index, frequency)
 
@@ -849,7 +848,7 @@ def on_set_frequency_preset(data):
     if data['preset'] == 'All-N1':
         profile = getCurrentProfile()
         profile_freqs = json.loads(profile.frequencies)
-        for idx in range(RACE.num_nodes):
+        for _idx in range(RACE.num_nodes):
             bands.append(profile_freqs["b"][0])
             channels.append(profile_freqs["c"][0])
             freqs.append(profile_freqs["f"][0])
@@ -898,8 +897,10 @@ def set_all_frequencies(freqs):
         profile_freqs["f"][idx] = freqs["f"][idx]
         logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
 
-    profile.frequencies = json.dumps(profile_freqs)
-    RHData.commit()
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'frequencies': profile_freqs
+        })
 
 def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
@@ -947,8 +948,11 @@ def on_set_enter_at_level(data):
         enter_ats["v"].append(None)
 
     enter_ats["v"][node_index] = enter_at_level
-    profile.enter_ats = json.dumps(enter_ats)
-    RHData.commit()
+
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'enter_ats': enter_ats
+        })
 
     INTERFACE.set_enter_at_level(node_index, enter_at_level)
 
@@ -982,8 +986,11 @@ def on_set_exit_at_level(data):
         exit_ats["v"].append(None)
 
     exit_ats["v"][node_index] = exit_at_level
-    profile.exit_ats = json.dumps(exit_ats)
-    RHData.commit()
+    
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'exit_ats': exit_ats
+        })
 
     INTERFACE.set_exit_at_level(node_index, exit_at_level)
 
@@ -1039,7 +1046,6 @@ def on_set_start_thresh_lower_duration(data):
 def on_set_language(data):
     '''Set interface language.'''
     RHData.set_option('currentLanguage', data['language'])
-    RHData.commit()
 
 @SOCKET_IO.on('cap_enter_at_btn')
 @catchLogExceptionsWrapper
@@ -1171,7 +1177,7 @@ def on_add_pilot():
 @catchLogExceptionsWrapper
 def on_alter_pilot(data):
     '''Update pilot.'''
-    pilot, race_list = RHData.alter_pilot(data)
+    _pilot, race_list = RHData.alter_pilot(data)
 
     emit_pilot_data(noself=True) # Settings page, new pilot settings
 
@@ -1286,7 +1292,7 @@ def on_set_profile(data, emit_vals=True):
 def on_alter_race(data):
     '''Update race (retroactively via marshaling).'''
 
-    race_meta, new_heat = RHData.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
+    _race_meta, new_heat = RHData.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
     heatnote = new_heat.note
     if heatnote:
@@ -2285,6 +2291,7 @@ def on_resave_laps(data):
 
 @catchLogExceptionsWrapper
 def build_atomic_result_caches(params):
+    PageCache.set_valid(False)
     Results.build_atomic_results_caches(RHData, params)
     emit_result_data()
 
@@ -2435,10 +2442,9 @@ def generate_heats(data):
     if cacheStatus == Results.CacheStatus.INVALID:
         # build new results if needed
         logger.info("No class cache available for {0}; regenerating".format(input_class))
-        race_class.cacheStatus = monotonic()
-        race_class.results = Results.calc_leaderboard(RHData, class_id=race_class.id)
-        race_class.cacheStatus = Results.CacheStatus.VALID
-        RHData.commit()
+        RHData.set_results_raceClass(race_class.id,
+            Results.build_atomic_result_cache(class_id=race_class.id)
+            )
 
     time_now = monotonic()
     timeout = time_now + RESULTS_TIMEOUT
@@ -2559,7 +2565,6 @@ def on_delete_lap(data):
         if lap_splits and len(lap_splits) > 0:
             for lap_split in lap_splits:
                 RHData.clear_lapsplit(lap_split)
-            RHData.commit()
     except:
         logger.exception("Error deleting split laps")
 
@@ -4081,7 +4086,6 @@ def assign_frequencies():
             })
 
         logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
-    RHData.commit()
 
 def emit_current_log_file_to_socket():
     if Current_log_path_name:
@@ -4159,6 +4163,7 @@ def init_race_state():
 
     # Normalize results caches
     Results.normalize_cache_status(RHData)
+    PageCache.set_valid(False)
 
 def init_interface_state(startup=False):
     # Cancel current race
