@@ -4642,7 +4642,7 @@ if strip:
     # Initialize the library (must be called once before other functions).
     try:
         strip.begin()
-        led_manager = LEDEventManager(Events, strip)
+        led_manager = LEDEventManager(Events, strip, RHData)
         led_effects = Plugins(prefix='led_handler')
         led_effects.discover()
         for led_effect in led_effects:
