@@ -6,7 +6,7 @@ from Node import Node
 from RHInterface import READ_ADDRESS, READ_REVISION_CODE, MAX_RETRY_COUNT, \
                         READ_FW_VERSION, READ_FW_BUILDDATE, READ_FW_BUILDTIME, \
                         FW_TEXT_BLOCK_SIZE, validate_checksum, calculate_checksum, \
-                        unpack_16
+                        unpack_16, READ_FW_PROCTYPE
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +105,15 @@ class I2CNode(Node):
         except Exception:
             logger.exception('Error fetching READ_FW_VERSION for I2C node')
 
+    def read_firmware_proctype(self):
+        # read firmware processor-type string
+        try:
+            data = self.read_block(None, READ_FW_PROCTYPE, FW_TEXT_BLOCK_SIZE, 2)
+            self.firmware_proctype_str = bytearray(data).decode("utf-8").rstrip('\0') \
+                                         if data != None else None
+        except Exception:
+            logger.exception('Error fetching READ_FW_PROCTYPE for I2C node')
+
     def read_firmware_timestamp(self):
         # read firmware build date/time strings
         try:
@@ -134,6 +143,7 @@ def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
             data = node.read_block(None, READ_REVISION_CODE, 2, 2)
             rev_val = unpack_16(data) if data != None else None
             fver_log_str = ''
+            ftyp_log_str = ''
             ftim_log_str = ''
             if rev_val:
                 if (rev_val >> 8) == 0x25:  # if verify passed (fn defined) then set API level
@@ -142,6 +152,10 @@ def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
                         node.read_firmware_version()
                         if node.firmware_version_str:
                             fver_log_str = ", fw_version=" + node.firmware_version_str
+                        if node.api_level >= 35:
+                            node.read_firmware_proctype()
+                            if node.firmware_proctype_str:
+                                ftyp_log_str = ", fw_type=" + node.firmware_proctype_str
                         node.read_firmware_timestamp()
                         if node.firmware_timestamp_str:
                             ftim_log_str = ", fw_timestamp: " + node.firmware_timestamp_str
@@ -149,8 +163,8 @@ def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
                     logger.warn("Unable to verify revision code from node {}".format(index+idxOffset+1))
             else:
                 logger.warn("Unable to read revision code from node {}".format(index+idxOffset+1))
-            logger.info("...I2C node {} found at address {}, API_level={}{}{}".format(\
-                        index+idxOffset+1, addr, node.api_level, fver_log_str, ftim_log_str))
+            logger.info("...I2C node {} found at address {}, API_level={}{}{}{}".format(\
+                        index+idxOffset+1, addr, node.api_level, fver_log_str, ftyp_log_str, ftim_log_str))
             nodes.append(node) # Add new node to RHInterface
         except IOError:
             if not isS32BPillFlag:

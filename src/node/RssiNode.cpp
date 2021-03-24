@@ -17,8 +17,8 @@ void RssiNode::initRx5808Pins(int nIdx)
     nodeIndex = nIdx;
     slotIndex = nIdx;
 #if STM32_MODE_FLAG
-    rx5808DataPin = PB3;  //DATA (CH1) output line to (all) RX5808 modules
-    rx5808ClkPin = PB4;   //CLK (CH3) output line to (all) RX5808 modules
+    rx5808DataPin = RX5808_DATA_PIN;  //DATA (CH1) output line to (all) RX5808 modules
+    rx5808ClkPin = RX5808_CLK_PIN;    //CLK (CH3) output line to (all) RX5808 modules
     rx5808SelPin = rx5808SelPinForNodeIndex(nIdx);  //SEL (CH2) output line to RX5808 module
     rssiInputPin = rssiInputPinForNodeIndex(nIdx);  //RSSI input from RX5808
 #else
@@ -490,21 +490,21 @@ int RssiNode::rx5808SelPinForNodeIndex(int nIdx)
     switch (nIdx)
     {
         case 1:
-            return PB7;
+            return RX5808_SEL1_PIN;
         case 2:
-            return PB8;
+            return RX5808_SEL2_PIN;
         case 3:
-            return PB9;
+            return RX5808_SEL3_PIN;
         case 4:
-            return PB12;
+            return RX5808_SEL4_PIN;
         case 5:
-            return PB13;
+            return RX5808_SEL5_PIN;
         case 6:
-            return PB14;
+            return RX5808_SEL6_PIN;
         case 7:
-            return PB15;
+            return RX5808_SEL7_PIN;
         default:
-            return PB6;
+            return RX5808_SEL0_PIN;
     }
 }
 
@@ -513,21 +513,21 @@ int RssiNode::rssiInputPinForNodeIndex(int nIdx)
     switch (nIdx)
     {
         case 1:
-            return A1;
+            return RSSI_INPUT1_PIN;
         case 2:
-            return A2;
+            return RSSI_INPUT2_PIN;
         case 3:
-            return A3;
+            return RSSI_INPUT3_PIN;
         case 4:
-            return A4;
+            return RSSI_INPUT4_PIN;
         case 5:
-            return A5;
+            return RSSI_INPUT5_PIN;
         case 6:
-            return A6;
+            return RSSI_INPUT6_PIN;
         case 7:
-            return A7;
+            return RSSI_INPUT7_PIN;
         default:
-            return A0;
+            return RSSI_INPUT0_PIN;
     }
 }
 

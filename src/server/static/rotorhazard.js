@@ -493,6 +493,7 @@ function nodeModel() {
 		minValue: 0,
 	});
 	this.series = new TimeSeries();
+	this.crossingSeries = new TimeSeries();
 
 	this.graphPausedTime = false;
 	this.graphPaused = false;
@@ -544,6 +545,10 @@ nodeModel.prototype = {
 		this.graph.addTimeSeries(this.series, {lineWidth:1.7,
 			strokeStyle:'hsl(214, 53%, 60%)',
 			fillStyle:'hsla(214, 53%, 60%, 0.4)'
+		});
+		this.graph.addTimeSeries(this.crossingSeries, {lineWidth:1.7,
+			strokeStyle:'none',
+			fillStyle:'hsla(136, 71%, 70%, 0.3)'
 		});
 		this.graph.streamTo(element, 200); // match delay value to heartbeat in server.py
 	},

@@ -200,14 +200,18 @@
 						rotorhazard.nodes[i].exit_at_level - 10,
 					));
 
+					if (!rotorhazard.nodes[i].graphing && rssiValue) {
+						rotorhazard.nodes[i].graphing = true;
+						rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
+						rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
+					}
+
 					if (rotorhazard.nodes[i].graphing) {
 						rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
-					} else {
-						if (rssiValue) {
-							rotorhazard.nodes[i].graphing = true;
-							rotorhazard.nodes[i].graph.options.maxValue = rssiValue + 100;
-							rotorhazard.nodes[i].graph.options.minValue = Math.max(0, rssiValue - 10);
-							rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
+						if (msg.crossing_flag[i]) {
+							rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), 500);
+						} else{
+							rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), -10);
 						}
 					}
 				}
@@ -1938,6 +1942,149 @@
 			};
 			socket.emit('LED_brightness', data);
 		});
+
+		/* positional RSSI adjustment */
+		var canDrag = false;
+		var isDragging = false;
+		var startingEnter = false;
+		var startingExit = false;
+		var startingY = false;
+		var adjustEnter = true;
+		var isTouchEvent = false;
+
+		function mapRange(val, start, end){
+			return val * (end - start) / 1 + start;
+		}
+
+		function handleGraphInteractionStart(evt, node) {
+			var offset = $(evt.target).offset()
+			if (evt.targetTouches) {
+				var y = (evt.targetTouches[0].pageY - offset.top) / evt.target.offsetHeight;
+			} else {
+				var y = (evt.pageY - offset.top) / evt.target.offsetHeight;
+			}
+
+			var rssi = parseInt(mapRange(y, rotorhazard.nodes[node].graph.options.maxValue, rotorhazard.nodes[node].graph.options.minValue));
+
+			startingEnter = parseInt($('#set_enter_at_level_' + node).val());
+			startingExit = parseInt($('#set_exit_at_level_' + node).val());
+			startingY = y;
+
+			var midPoint = (startingEnter + startingExit) >> 1;
+			adjustEnter = (rssi >= midPoint);
+		}
+
+		function handleGraphInteractionMove(evt, node) {
+			// user drags on graph
+			var offset = $(evt.target).offset()
+			if (evt.targetTouches) {
+				var y = (evt.targetTouches[0].pageY - offset.top) / evt.target.offsetHeight;
+			} else {
+				var y = (evt.pageY - offset.top) / evt.target.offsetHeight;
+			}
+
+			if (Math.abs(y - startingY) > 0.01 || isDragging) { // prevent accidental drag
+				isDragging = true;
+
+				var rssi = parseInt(mapRange(y, rotorhazard.nodes[node].graph.options.maxValue, rotorhazard.nodes[node].graph.options.minValue));
+
+				var enter_control = $('#set_enter_at_level_' + node);
+				var exit_control = $('#set_exit_at_level_' + node);
+
+				if (adjustEnter) {
+					enter_control.val(rssi);
+					enter_control.trigger('change');
+					if (rssi < parseInt(exit_control.val()) + 2)  {
+						exit_control.val(rssi - 2);
+						exit_control.trigger('change');
+					}
+				} else {
+					exit_control.val(rssi);
+					exit_control.trigger('change');
+					if (rssi > parseInt(enter_control.val()) - 2)  {
+						enter_control.val(rssi + 2);
+						enter_control.trigger('change');
+					}
+				}
+			}
+		}
+
+		// mouse handlers
+		$('.rssi-graph').on('mousedown', function(evt){
+			node = $(this).data('node')
+			if (!isTouchEvent) {
+				canDrag = true;
+				handleGraphInteractionStart(evt, node);
+			}
+		})
+		$('.rssi-graph').on('mousemove', function(evt){
+			node = $(this).data('node')
+			if (!isTouchEvent) {
+				if (canDrag) {
+					handleGraphInteractionMove(evt, node);
+					$('#recalc').trigger('click');
+				}
+			}
+		})
+		$('.rssi-graph').on('mouseup', function(evt){
+			node = $(this).data('node')
+			if (!isTouchEvent) {
+				canDrag = false;
+				isDragging = false;
+			}
+			isTouchEvent = false;
+		})
+		$('.rssi-graph').on('mouseout', function(evt){
+			node = $(this).data('node')
+			if (!isTouchEvent) {
+				if (isDragging) {
+					$('#set_enter_at_level_' + node).val(startingEnter);
+					$('#set_enter_at_level_' + node).trigger('change');
+					$('#set_exit_at_level_' + node).val(startingExit);
+					$('#set_exit_at_level_' + node).trigger('change');
+				}
+			}
+			isTouchEvent = false;
+		});
+		$(document).on('mouseup', function(){
+			if (!isTouchEvent) {
+				canDrag = false;
+				isDragging = false;
+			}
+			isTouchEvent = false;
+		});
+
+		// touch handlers
+		$('.rssi-graph').on('touchstart', function(evt) {
+			evt.preventDefault();
+			node = $(this).data('node')
+			if (evt.targetTouches.length == 1) { // pause if multi-touch detected
+				handleGraphInteractionStart(evt, node);
+				handleGraphInteractionMove(evt, node);
+			}
+			isTouchEvent = true;
+		})
+		$('.rssi-graph').on('touchmove', function(evt) {
+			evt.preventDefault();
+			node = $(this).data('node')
+			if (evt.targetTouches.length == 1) { // pause if multi-touch detected
+				handleGraphInteractionMove(evt, node);
+			}
+		})
+		$('.rssi-graph').on('touchend', function(evt){
+			evt.preventDefault();
+			node = $(this).data('node')
+			if (evt.targetTouches && evt.targetTouches.length == 0) { // end only when all touches end
+			}
+		})
+		$('.rssi-graph').on('touchCancel', function(evt) {
+			evt.preventDefault();
+			$('#set_enter_at_level_' + node).val(startingEnter);
+			$('#set_enter_at_level_' + node).trigger('change');
+			$('#set_exit_at_level_' + node).val(startingExit);
+			$('#set_exit_at_level_' + node).trigger('change');
+			isTouchEvent = true;
+		});
 	});
 
 	function speak(obj) {
@@ -2046,7 +2193,7 @@
 			<div class="node" data-node="{{ node }}">
 				<h3>{{ __('Node') }} {{ node + 1 }}</h3>
 				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
-				<div class="rssi-graph">
+				<div class="rssi-graph" data-node="{{ node }}">
 					<button class="pause_graph" data-node="{{ node }}">&#x23ef;&#xFE0E;<span class="screen-reader-text"> {{ __('Pause/Resume Graph') }}</span></button>
 					<canvas id="rssi-graph-{{ node }}">
 					</canvas>

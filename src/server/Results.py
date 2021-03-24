@@ -20,20 +20,16 @@ class CacheStatus:
     INVALID = 'invalid'
     VALID = 'valid'
 
+class Results():
+    def __init__ (self, RHData):
+        self._RHData = RHData
+    
 def invalidate_all_caches(RHData):
     ''' Check all caches and invalidate any paused builds '''
-    for race in RHData.get_savedRaceMetas():
-        race.cacheStatus = CacheStatus.INVALID
-
-    for heat in RHData.get_heats():
-        heat.cacheStatus = CacheStatus.INVALID
-
-    for race_class in RHData.get_raceClasses():
-        race_class.cacheStatus = CacheStatus.INVALID
-
-    RHData.commit()
-
-    RHData.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
+    RHData.clear_results_savedRaceMetas()
+    RHData.clear_results_heats()
+    RHData.clear_results_raceClasses()
+    RHData.clear_results_event()
 
     Events.trigger(Evt.CACHE_CLEAR)
 
@@ -43,23 +39,18 @@ def normalize_cache_status(RHData):
     ''' Check all caches and invalidate any paused builds '''
     for race in RHData.get_savedRaceMetas():
         if race.cacheStatus != CacheStatus.VALID:
-            race.cacheStatus = CacheStatus.INVALID
+            RHData.clear_results_savedRaceMeta(race.id)
 
     for heat in RHData.get_heats():
         if heat.cacheStatus != CacheStatus.VALID:
-            heat.cacheStatus = CacheStatus.INVALID
+            RHData.clear_results_heat(heat.id)
 
     for race_class in RHData.get_raceClasses():
         if race_class.cacheStatus != CacheStatus.VALID:
-            race_class.cacheStatus = CacheStatus.INVALID
+            RHData.clear_results_raceClass(race_class.id)
 
-    if RHData.get_option("eventResults_cacheStatus") != CacheStatus.VALID:
-        RHData.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
-
-    RHData.commit()
-
-    global FULL_RESULTS_CACHE_VALID
-    FULL_RESULTS_CACHE_VALID = False
+    if RHData.get_results_event()['cacheStatus'] != CacheStatus.VALID:
+        RHData.clear_results_event()
 
     logger.debug('All Result caches normalized')
 
@@ -71,15 +62,15 @@ def build_atomic_result_cache(RHData, **params):
 
 @catchLogExceptionsWrapper
 def build_atomic_results_caches(RHData, params):
-    global FULL_RESULTS_CACHE
-    FULL_RESULTS_CACHE = False
     token = monotonic()
     timing = {
         'start': token
     }
 
     if 'race_id' in params:
-        race = RHData.get_savedRaceMeta(params['race_id'])
+        race = RHData.set_results_savedRaceMeta(params['race_id'], {
+            'cacheStatus': token
+            }) 
         if 'round_id' in params:
             round_id = params['round_id']
         else:
@@ -87,7 +78,9 @@ def build_atomic_results_caches(RHData, params):
 
     if 'heat_id' in params:
         heat_id = params['heat_id']
-        heat = RHData.get_heat(heat_id)
+        heat = RHData.set_results_heat(heat_id, {
+            'cacheStatus': token
+            })
     elif 'race_id' in params:
         heat_id = race.heat_id
         heat = RHData.get_heat(heat_id)
@@ -101,16 +94,14 @@ def build_atomic_results_caches(RHData, params):
     else:
         USE_CLASS = False
 
-    if 'race_id' in params:
-        race.cacheStatus = token
-    if 'heat_id' in params:
-        heat.cacheStatus = token
     if USE_CLASS:
-        race_class = RHData.get_raceClass(class_id)
-        race_class.cacheStatus = token
+        race_class = RHData.set_results_raceClass(class_id, {
+            'cacheStatus': token
+            })
 
-    RHData.set_option("eventResults_cacheStatus", token)
-    RHData.commit()
+    RHData.set_results_event({
+        'cacheStatus': token
+        })
 
     # rebuild race result
     if 'race_id' in params:
@@ -118,9 +109,10 @@ def build_atomic_results_caches(RHData, params):
         timing['race'] = monotonic()
         if race.cacheStatus == token:
             raceResult = build_atomic_result_cache(RHData, heat_id=heat_id, round_id=round_id)
-            race.results = raceResult['results']
-            race.cacheStatus = raceResult['cacheStatus']
-            RHData.commit()
+            RHData.set_results_savedRaceMeta(race.id, {
+                'results': raceResult['results'],
+                'cacheStatus': raceResult['cacheStatus']
+            })
         logger.debug('Race {0} cache built in {1}s'.format(params['race_id'], monotonic() - timing['race']))
 
     # rebuild heat summary
@@ -129,9 +121,10 @@ def build_atomic_results_caches(RHData, params):
         timing['heat'] = monotonic()
         if heat.cacheStatus == token:
             heatResult = build_atomic_result_cache(RHData, heat_id=heat_id)
-            heat.results = heatResult['results']
-            heat.cacheStatus = heatResult['cacheStatus']
-            RHData.commit()
+            RHData.set_results_heat(heat.id, {
+                'results': heatResult['results'],
+                'cacheStatus': heatResult['cacheStatus']
+            })
         logger.debug('Heat {0} cache built in {1}s'.format(heat_id, monotonic() - timing['heat']))
 
     # rebuild class summary
@@ -140,16 +133,19 @@ def build_atomic_results_caches(RHData, params):
         timing['class'] = monotonic()
         if race_class.cacheStatus == token:
             classResult = build_atomic_result_cache(RHData, class_id=class_id)
-            race_class.results = classResult['results']
-            race_class.cacheStatus = classResult['cacheStatus']
-            RHData.commit()
+            RHData.set_results_raceClass(race_class.id, {
+                'results': classResult['results'],
+                'cacheStatus': classResult['cacheStatus']
+            })
         logger.debug('Class {0} cache built in {1}s'.format(class_id, monotonic() - timing['class']))
 
     # rebuild event summary
     gevent.sleep()
     timing['event'] = monotonic()
-    RHData.set_option("eventResults", json.dumps(calc_leaderboard(RHData)))
-    RHData.set_option("eventResults_cacheStatus", CacheStatus.VALID)
+    RHData.set_results_event({
+        'results': json.dumps(calc_leaderboard(RHData)),
+        'cacheStatus': CacheStatus.VALID
+        })
     logger.debug('Event cache built in %fs', monotonic() - timing['event'])
 
     logger.debug('Built result caches in {0}'.format(monotonic() - timing['start']))
@@ -241,10 +237,12 @@ def calc_leaderboard(RHData, **params):
     for pilot in RHData.get_pilots():
         gevent.sleep()
         if USE_CURRENT:
+            found_pilot = False
             laps = []
             for node_index in RACE.node_pilots:
                 if RACE.node_pilots[node_index] == pilot.id and node_index < RACE.num_nodes:
                     laps = RACE.get_active_laps()[node_index]
+                    found_pilot = True
                     break
 
             if laps:
@@ -255,7 +253,7 @@ def calc_leaderboard(RHData, **params):
             else:
                 total_laps = 0
 
-            if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+            if found_pilot and profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
                 leaderboard.append({
                     'pilot_id': pilot.id,
                     'callsign': pilot.callsign,

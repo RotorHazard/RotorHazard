@@ -118,10 +118,9 @@ class PageCache:
                             })
                         if race.cacheStatus == Results.CacheStatus.INVALID:
                             logger.info('Rebuilding Heat %d Round %d cache', heat.id, race.round_id)
-                            results = Results.calc_leaderboard(self._RHData, heat_id=heat.id, round_id=race.round_id)
-                            race.results = results
-                            race.cacheStatus = Results.CacheStatus.VALID
-                            DB.session.commit()
+                            build = Results.build_atomic_result_cache(self._RHData, heat_id=heat.id, round_id=race.round_id)
+                            self._RHData.set_results_savedRaceMeta(race.id, build)
+                            results = build['results']
                         else:
                             expires = monotonic() + self._CACHE_TIMEOUT
                             while True:
@@ -141,13 +140,12 @@ class PageCache:
                             'nodes': pilotraces,
                             'leaderboard': results
                         })
-    
+
                     if heat.cacheStatus == Results.CacheStatus.INVALID:
                         logger.info('Rebuilding Heat %d cache', heat.id)
-                        results = Results.calc_leaderboard(self._RHData, heat_id=heat.id)
-                        heat.results = results
-                        heat.cacheStatus = Results.CacheStatus.VALID
-                        DB.session.commit()
+                        build = Results.build_atomic_result_cache(self._RHData, heat_id=heat.id) 
+                        self._RHData.set_results_heat(heat.id, build)
+                        results = build['results']
                     else:
                         expires = monotonic() + self._CACHE_TIMEOUT
                         while True:
@@ -184,10 +182,9 @@ class PageCache:
             for race_class in self._RHData.get_raceClasses():
                 if race_class.cacheStatus == Results.CacheStatus.INVALID:
                     logger.info('Rebuilding Class %d cache', race_class.id)
-                    results = Results.calc_leaderboard(self._RHData, class_id=race_class.id)
-                    race_class.results = results
-                    race_class.cacheStatus = Results.CacheStatus.VALID
-                    DB.session.commit()
+                    build = Results.build_atomic_result_cache(self._RHData, class_id=race_class.id)
+                    self._RHData.set_results_raceClass(race_class.id, build)
+                    results = build['results']
                 else:
                     expires = monotonic() + self._CACHE_TIMEOUT
                     while True:
@@ -212,19 +209,20 @@ class PageCache:
             logger.debug('T%d: results by class assembled in %.3fs', timing['start'], timing['event'] - timing['by_class'])
 
             gevent.sleep()
-            if self._RHData.get_option("eventResults_cacheStatus") == Results.CacheStatus.INVALID:
+            if self._RHData.get_results_event()['cacheStatus'] == Results.CacheStatus.INVALID:
                 logger.info('Rebuilding Event cache')
                 results = Results.calc_leaderboard(self._RHData)
-                self._RHData.set_option("eventResults", json.dumps(results))
-                self._RHData.set_option("eventResults_cacheStatus", Results.CacheStatus.VALID)
-                DB.session.commit()
+                self._RHData.set_results_event({
+                    'results': json.dumps(results),
+                    'cacheStatus': Results.CacheStatus.VALID
+                    })
             else:
                 expires = monotonic() + self._CACHE_TIMEOUT
                 while True:
                     gevent.idle()
-                    status = self._RHData.get_option("eventResults_cacheStatus")
-                    if status == Results.CacheStatus.VALID:
-                        results = json.loads(self._RHData.get_option("eventResults"))
+                    eventCache = self._RHData.get_results_event()
+                    if eventCache['cacheStatus'] == Results.CacheStatus.VALID:
+                        results = json.loads(eventCache['results'])
                         break
                     elif monotonic() > expires:
                         logger.warning('Cache build timed out: Event Summary')

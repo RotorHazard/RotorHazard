@@ -2,7 +2,7 @@
 RELEASE_VERSION = "3.1.0-dev.2" # Public release version code
 SERVER_API = 31 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 34 # Most recent node API
+NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
 
 # This must be the first import for the time being. It is
@@ -31,15 +31,12 @@ MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_
 logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
 # Normal importing resumes here
-import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
 
 import io
 import os
 import sys
-import traceback
-import shutil
 import base64
 import subprocess
 import importlib
@@ -170,21 +167,6 @@ TONES_ALL = 2
 def monotonic_to_epoch_millis(secs):
     return 1000.0*secs + MTONIC_TO_EPOCH_MILLIS_OFFSET
 
-# Return 'DEF_NODE_FWUPDATE_URL' config value; if not set in 'config.json'
-#  then return default value based on BASEDIR and server RELEASE_VERSION
-def getDefNodeFwUpdateUrl():
-    try:
-        if Config.GENERAL['DEF_NODE_FWUPDATE_URL']:
-            return Config.GENERAL['DEF_NODE_FWUPDATE_URL']
-        elif RELEASE_VERSION.lower().find("dev") > 0:  # if "dev" server version then
-            return stm32loader.DEF_BINSRC_STR          # use current "dev" firmware at URL
-        # return path that is up two levels from BASEDIR, and then NODE_FW_PATHNAME
-        return os.path.abspath(os.path.join(os.path.join(os.path.join(BASEDIR, os.pardir), \
-                                                         os.pardir), NODE_FW_PATHNAME))
-    except:
-        logger.exception("Error determining value for 'DEF_NODE_FWUPDATE_URL'")
-    return "/home/pi/RotorHazard/" + NODE_FW_PATHNAME
-
 # Wrapper to be used as a decorator on callback functions that do database calls,
 #  so their exception details are sent to the log file (instead of 'stderr')
 #  and the database session is closed on thread exit (prevents DB-file handles left open).
@@ -204,6 +186,48 @@ def catchLogExcDBCloseWrapper(func):
             except:
                 logger.exception("Error closing DB session in catchLogExcDBCloseWrapper-catch")
     return wrapper
+
+# Return 'DEF_NODE_FWUPDATE_URL' config value; if not set in 'config.json'
+#  then return default value based on BASEDIR and server RELEASE_VERSION
+def getDefNodeFwUpdateUrl():
+    try:
+        if Config.GENERAL['DEF_NODE_FWUPDATE_URL']:
+            return Config.GENERAL['DEF_NODE_FWUPDATE_URL']
+        if RELEASE_VERSION.lower().find("dev") > 0:  # if "dev" server version then
+            retStr = stm32loader.DEF_BINSRC_STR      # use current "dev" firmware at URL
+        else:
+            # return path that is up two levels from BASEDIR, and then NODE_FW_PATHNAME
+            retStr = os.path.abspath(os.path.join(os.path.join(os.path.join(BASEDIR, os.pardir), \
+                                                             os.pardir), NODE_FW_PATHNAME))
+        # check if file with better-matching processor type (i.e., STM32F4) is available
+        try:
+            curTypStr = INTERFACE.nodes[0].firmware_proctype_str if len(INTERFACE.nodes) else None
+            if curTypStr:
+                fwTypStr = getFwfileProctypeStr(retStr)
+                if fwTypStr and curTypStr != fwTypStr:
+                    altFwFNameStr = RHUtils.appendToBaseFilename(retStr, ('_'+curTypStr))
+                    altFwTypeStr = getFwfileProctypeStr(altFwFNameStr)
+                    if curTypStr == altFwTypeStr:
+                        logger.debug("Using better-matching node-firmware file: " + altFwFNameStr)
+                        return altFwFNameStr
+        except Exception as ex:
+            logger.debug("Error checking fw type vs current type: " + str(ex))
+        return retStr
+    except:
+        logger.exception("Error determining value for 'DEF_NODE_FWUPDATE_URL'")
+    return "/home/pi/RotorHazard/" + NODE_FW_PATHNAME
+
+# Returns the processor-type string from the given firmware file, or None if not found
+def getFwfileProctypeStr(fileStr):
+    dataStr = None
+    try:
+        dataStr = stm32loader.load_source_file(fileStr, False)
+        if dataStr:
+            return RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_PROCTYPE_PREFIXSTR, \
+                                                 INTERFACE.FW_TEXT_BLOCK_SIZE)
+    except Exception as ex:
+        logger.debug("Error processing file '{}' in 'getFwfileProctypeStr()': {}".format(fileStr, ex))
+    return None
 
 def getCurrentProfile():
     current_profile = RHData.get_optionInt('currentProfile')
@@ -795,10 +819,12 @@ def on_set_frequency(data):
     freqs["b"][node_index] = band
     freqs["c"][node_index] = channel
     freqs["f"][node_index] = frequency
-    profile.frequencies = json.dumps(freqs)
     logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(node_index+1, band, channel, frequency))
 
-    RHData.commit()
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'frequencies': freqs
+        })
 
     INTERFACE.set_frequency(node_index, frequency)
 
@@ -822,7 +848,7 @@ def on_set_frequency_preset(data):
     if data['preset'] == 'All-N1':
         profile = getCurrentProfile()
         profile_freqs = json.loads(profile.frequencies)
-        for idx in range(RACE.num_nodes):
+        for _idx in range(RACE.num_nodes):
             bands.append(profile_freqs["b"][0])
             channels.append(profile_freqs["c"][0])
             freqs.append(profile_freqs["f"][0])
@@ -871,8 +897,10 @@ def set_all_frequencies(freqs):
         profile_freqs["f"][idx] = freqs["f"][idx]
         logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
 
-    profile.frequencies = json.dumps(profile_freqs)
-    RHData.commit()
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'frequencies': profile_freqs
+        })
 
 def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
@@ -920,8 +948,11 @@ def on_set_enter_at_level(data):
         enter_ats["v"].append(None)
 
     enter_ats["v"][node_index] = enter_at_level
-    profile.enter_ats = json.dumps(enter_ats)
-    RHData.commit()
+
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'enter_ats': enter_ats
+        })
 
     INTERFACE.set_enter_at_level(node_index, enter_at_level)
 
@@ -955,8 +986,11 @@ def on_set_exit_at_level(data):
         exit_ats["v"].append(None)
 
     exit_ats["v"][node_index] = exit_at_level
-    profile.exit_ats = json.dumps(exit_ats)
-    RHData.commit()
+    
+    RHData.alter_profile({
+        'profile_id': profile.id,
+        'exit_ats': exit_ats
+        })
 
     INTERFACE.set_exit_at_level(node_index, exit_at_level)
 
@@ -1012,7 +1046,6 @@ def on_set_start_thresh_lower_duration(data):
 def on_set_language(data):
     '''Set interface language.'''
     RHData.set_option('currentLanguage', data['language'])
-    RHData.commit()
 
 @SOCKET_IO.on('cap_enter_at_btn')
 @catchLogExceptionsWrapper
@@ -1144,7 +1177,7 @@ def on_add_pilot():
 @catchLogExceptionsWrapper
 def on_alter_pilot(data):
     '''Update pilot.'''
-    pilot, race_list = RHData.alter_pilot(data)
+    _pilot, race_list = RHData.alter_pilot(data)
 
     emit_pilot_data(noself=True) # Settings page, new pilot settings
 
@@ -1259,7 +1292,7 @@ def on_set_profile(data, emit_vals=True):
 def on_alter_race(data):
     '''Update race (retroactively via marshaling).'''
 
-    race_meta, new_heat = RHData.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
+    _race_meta, new_heat = RHData.reassign_savedRaceMeta_heat(data['race_id'], data['heat_id'])
 
     heatnote = new_heat.note
     if heatnote:
@@ -2263,6 +2296,7 @@ def on_resave_laps(data):
 
 @catchLogExceptionsWrapper
 def build_atomic_result_caches(params):
+    PageCache.set_valid(False)
     Results.build_atomic_results_caches(RHData, params)
     emit_result_data()
 
@@ -2325,26 +2359,12 @@ def on_set_current_heat(data):
     new_heat_id = data['heat']
     RACE.current_heat = new_heat_id
 
-    RACE.node_pilots = {
-        '0': 0,
-        '1': 0,
-        '2': 0,
-        '3': 0,
-        '4': 0,
-        '5': 0,
-        '6': 0,
-        '7': 0,
-    }
-    RACE.node_teams = {
-        '0': None,
-        '1': None,
-        '2': None,
-        '3': None,
-        '4': None,
-        '5': None,
-        '6': None,
-        '7': None,
-    }
+    RACE.node_pilots = {}
+    RACE.node_teams = {}
+    for idx in range(RACE.num_nodes):
+        RACE.node_pilots[idx] = RHUtils.PILOT_ID_NONE 
+        RACE.node_teams[idx] = None
+
     for heatNode in RHData.get_heatNodes_by_heat(new_heat_id):
         RACE.node_pilots[heatNode.node_index] = heatNode.pilot_id
 
@@ -2427,10 +2447,9 @@ def generate_heats(data):
     if cacheStatus == Results.CacheStatus.INVALID:
         # build new results if needed
         logger.info("No class cache available for {0}; regenerating".format(input_class))
-        race_class.cacheStatus = monotonic()
-        race_class.results = Results.calc_leaderboard(RHData, class_id=race_class.id)
-        race_class.cacheStatus = Results.CacheStatus.VALID
-        RHData.commit()
+        RHData.set_results_raceClass(race_class.id,
+            Results.build_atomic_result_cache(class_id=race_class.id)
+            )
 
     time_now = monotonic()
     timeout = time_now + RESULTS_TIMEOUT
@@ -2551,7 +2570,6 @@ def on_delete_lap(data):
         if lap_splits and len(lap_splits) > 0:
             for lap_split in lap_splits:
                 RHData.clear_lapsplit(lap_split)
-            RHData.commit()
     except:
         logger.exception("Error deleting split laps")
 
@@ -2697,7 +2715,6 @@ def clean_results_cache():
     ''' wipe all results caches '''
     Results.invalidate_all_caches(RHData)
     PageCache.set_valid(False)
-    emit_result_data()
 
 # Socket io emit functions
 
@@ -3554,10 +3571,13 @@ def check_bpillfw_file(data):
         SOCKET_IO.emit('upd_set_info_text', "Error reading firmware file: {}<br><br><br><br>".format(ex))
         logger.debug("Error reading file '{}' in 'check_bpillfw_file()': {}".format(fileStr, ex))
         return
-    try:  # find version and build-timestamp strings in firmware '.bin' file
+    try:  # find version, processor-type and build-timestamp strings in firmware '.bin' file
         rStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_VERSION_PREFIXSTR, \
                                              INTERFACE.FW_TEXT_BLOCK_SIZE)
         fwVerStr = rStr if rStr else "(unknown)"
+        fwRTypStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_PROCTYPE_PREFIXSTR, \
+                                             INTERFACE.FW_TEXT_BLOCK_SIZE)
+        fwTypStr = (fwRTypStr + ", ") if fwRTypStr else ""
         rStr = RHUtils.findPrefixedSubstring(dataStr, INTERFACE.FW_BUILDDATE_PREFIXSTR, \
                                              INTERFACE.FW_TEXT_BLOCK_SIZE)
         if rStr:
@@ -3569,21 +3589,28 @@ def check_bpillfw_file(data):
         else:
             fwTimStr = "unknown"
         fileSize = len(dataStr)
-        logger.debug("Node update firmware file size={}, version={}, build timestamp: {}".\
-                     format(fileSize, fwVerStr, fwTimStr))
+        logger.debug("Node update firmware file size={}, version={}, {}build timestamp: {}".\
+                     format(fileSize, fwVerStr, fwTypStr, fwTimStr))
         infoStr = "Firmware update file size = {}<br>".format(fileSize) + \
-                  "Firmware update version: {} (Build timestamp: {})<br><br>".\
-                  format(fwVerStr, fwTimStr)
+                  "Firmware update version: {} ({}Build timestamp: {})<br><br>".\
+                  format(fwVerStr, fwTypStr, fwTimStr)
         curNodeStr = INTERFACE.nodes[0].firmware_version_str if len(INTERFACE.nodes) else None
         if curNodeStr:
-            tStr = INTERFACE.nodes[0].firmware_timestamp_str
-            curNodeStr += " (Build timestamp: {})".format(tStr)
+            tsStr = INTERFACE.nodes[0].firmware_timestamp_str
+            if tsStr:
+                curRTypStr = INTERFACE.nodes[0].firmware_proctype_str
+                ptStr = (curRTypStr + ", ") if curRTypStr else ""
+                curNodeStr += " ({}Build timestamp: {})".format(ptStr, tsStr)
         else:
+            curRTypStr = None
             curNodeStr = "(unknown)"
         infoStr += "Current firmware version: " + curNodeStr
+        if fwRTypStr and curRTypStr and fwRTypStr != curRTypStr:
+            infoStr += "<br><br><b>Warning</b>: Firmware file processor type ({}) does not match current ({})".\
+                        format(fwRTypStr, curRTypStr)
         SOCKET_IO.emit('upd_set_info_text', infoStr)
         SOCKET_IO.emit('upd_enable_update_button')
-    except Exception:
+    except Exception as ex:
         SOCKET_IO.emit('upd_set_info_text', "Error processing firmware file: {}<br><br><br><br>".format(ex))
         logger.exception("Error processing file '{}' in 'check_bpillfw_file()'".format(fileStr))
 
@@ -4077,7 +4104,6 @@ def assign_frequencies():
             })
 
         logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
-    RHData.commit()
 
 def emit_current_log_file_to_socket():
     if Current_log_path_name:
@@ -4155,6 +4181,7 @@ def init_race_state():
 
     # Normalize results caches
     Results.normalize_cache_status(RHData)
+    PageCache.set_valid(False)
 
 def init_interface_state(startup=False):
     # Cancel current race
