@@ -50,7 +50,6 @@ def dataHandler(args):
     else:
         return False
 
-
 def printCharacter(args):
     if 'strip' in args:
         strip = args['strip']
@@ -63,26 +62,17 @@ def printCharacter(args):
         return False
 
     if 'color' in args:
-        color = args['color']
+        color = convertColor(args['color'])
     else:
         return False
 
-    color_r = color >> 16
-    color_g = (color >> 8) % 256
-    color_b = color % 256
-
-    panelWidth = int(strip.numPixels() / Config.LED['LED_ROWS'])
-    panelHeight = Config.LED['LED_ROWS']
-
-    im = Image.new('RGB', [panelWidth, panelHeight])
-
-    draw = ImageDraw.Draw(im)
+    panel = getPanelImg(strip, Config)
 
     use_small_flag = True
-    if panelHeight >= 16:
+    if panel['height'] >= 16:
         font = ImageFont.truetype("static/fonts/RotorHazardPanel16.ttf", 16)
         w, h = font.getsize(text)
-        if w <= panelWidth - 1:
+        if w <= panel['width'] - 1:
             use_small_flag = False
             h = 16
 
@@ -91,9 +81,9 @@ def printCharacter(args):
         w, h = font.getsize(text)
         h = 8
 
-    draw.text((int((panelWidth-w)/2) + 1, int((panelHeight-h)/2)), text, font=font, fill=(color_r, color_g, color_b))
+    panel['draw'].text((int((panel['width']-w)/2) + 1, int((panel['height']-h)/2)), text, font=font, fill=(color))
 
-    img = im.rotate(90 * Config.LED['PANEL_ROTATE'])
+    img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
 
     setPixels(strip, img)
     strip.show()
@@ -111,28 +101,19 @@ def scrollText(args):
 
     if args['data'] == 'message':
         text = str(args['message'])
-    elif  args['data'] == 'lap_time':
+    elif args['data'] == 'lap_time':
         text = str(args['lap']['lap_time_formatted'])
     else:
         return False
 
     if 'color' in args:
-        color = args['color']
+        color = convertColor(args['color'])
     else:
         return False
 
-    color_r = color >> 16
-    color_g = (color >> 8) % 256
-    color_b = color % 256
+    panel = getPanelImg(strip, Config)
 
-    panelWidth = int(strip.numPixels() / Config.LED['LED_ROWS'])
-    panelHeight = Config.LED['LED_ROWS']
-
-    im = Image.new('RGB', [panelWidth, panelHeight])
-
-    draw = ImageDraw.Draw(im)
-
-    if panelHeight >= 16:
+    if panel['height'] >= 16:
         font = ImageFont.truetype("static/fonts/RotorHazardPanel16.ttf", 16)
         w, h = font.getsize(text)
         h = 16
@@ -141,15 +122,93 @@ def scrollText(args):
         w, h = font.getsize(text)
         h = 8
 
-    draw_y = int((panelHeight-h)/2)
+    draw_y = int((panel['height']-h)/2)
 
-    for i in range(-panelWidth, w + panelWidth):
-        draw.rectangle((0, 0, panelWidth, panelHeight), fill=(0, 0, 0))
-        draw.text((-i, draw_y), text, font=font, fill=(color_r, color_g, color_b))
-        img = im.rotate(90 * Config.LED['PANEL_ROTATE'])
+    for i in range(-panel['width'], w + panel['width']):
+        panel['draw'].rectangle((0, 0, panel['width'], panel['height']), fill=(0, 0, 0))
+        panel['draw'].text((-i, draw_y), text, font=font, fill=(color))
+        img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
         setPixels(strip, img)
         strip.show()
         gevent.sleep(10/1000.0)
+
+def multiLapGrid(args):
+    if 'strip' in args:
+        strip = args['strip']
+    else:
+        return False
+
+    if 'RHData' in args:
+        RHData = args['RHData']
+    else:
+        return False
+
+    if 'results' in args:
+        results = args['results']
+    else:
+        return False
+
+    panel = getPanelImg(strip, Config)
+    if panel['height'] < 16:
+        return False
+
+    half_height = panel['height']/2
+    half_width = panel['width']/2
+
+    font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
+
+    leaderboard = results['by_race_time']
+
+    active_nodes = []
+    for line in leaderboard:
+        active_nodes.append(line['node'])
+
+    active_nodes.sort()
+
+    for line in leaderboard:
+        if line['node'] < 4:
+            if line['laps']:
+                if line['laps'] <= 19:
+                    text = str(line['laps'])
+                else:
+                    text = '+'
+            else:
+                text = line['callsign'][0]
+
+            w, h = font.getsize(text)
+            h = 8
+            color = RHData.get_option('colorNode_' + str(line['node']), '#ffffff')
+
+            # draw positions
+            if active_nodes.index(line['node']) == 0:
+                pos_x = int((half_width - w)/2)
+                pos_y = int(((half_height) - h)/2)
+            elif active_nodes.index(line['node']) == 1:
+                pos_x = int(((half_width - w)/2) + half_width)
+                pos_y = int(((half_height) - h)/2)
+            elif active_nodes.index(line['node']) == 2:
+                pos_x = int((half_width - w)/2)
+                pos_y = int((((half_height) - h)/2) + half_height)
+            elif active_nodes.index(line['node']) == 3:
+                pos_x = int(((half_width - w)/2) + half_width)
+                pos_y = int((((half_height) - h)/2) + half_height)
+
+            panel['draw'].text((pos_x + 1, pos_y), text, font=font, fill=color)
+
+    img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
+    setPixels(strip, img)
+    strip.show()
+
+def getPanelImg(strip, Config):
+    width = int(strip.numPixels() / Config.LED['LED_ROWS'])
+    height = Config.LED['LED_ROWS']
+    im = Image.new('RGB', [width, height])
+    return {
+        'width': width,
+        'height': height,
+        'im': im,
+        'draw': ImageDraw.Draw(im)
+    }
 
 def setPixels(strip, img):
     pos = 0
@@ -170,6 +229,9 @@ def setPixels(strip, img):
 def clearPixels(strip):
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, ColorVal.NONE)
+
+def convertColor(color):
+    return color >> 16, (color >> 8) % 256, color % 256
 
 def discover(*args, **kwargs):
     return [
@@ -227,6 +289,16 @@ def discover(*args, **kwargs):
         }
         ),
     LEDEffect(
+        "textRaceWin",
+        "Text Scroll: Race Winner",
+        scrollText,
+        [Evt.RACE_WIN],
+        {
+        'color': ColorVal.WHITE,
+        'data': 'message'
+        }
+        ),
+    LEDEffect(
         "textStaging",
         "Text: Countdown",
         dataHandler,
@@ -236,5 +308,12 @@ def discover(*args, **kwargs):
         'data': 'staging',
         'time': 5
         }
+        ),
+    LEDEffect(
+        "textLapGrid",
+        "Text: 4-Node Lap Count",
+        multiLapGrid,
+        [Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_LAP_RECORDED, Evt.RACE_FINISH, Evt.RACE_WIN, Evt.RACE_STOP],
+        {}
         ),
     ]
