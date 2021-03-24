@@ -3965,6 +3965,15 @@ def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
                 if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                     win_phon_name = win_status['data']['callsign']
                 emit_phonetic_text(__('Winner is') + ' ' + win_phon_name, 'race_winner', True)
+
+            Events.trigger(Evt.RACE_WIN, {
+                'win_status': win_status,
+                'message': RACE.status_message,
+                'node_index': win_status['data']['node'],
+                'color': hexToColor(RHData.get_option('colorNode_' + str(win_status['data']['node']), '#ffffff')),
+                'results': RACE.results
+                })
+
         elif win_status['status'] == WinStatus.TIE:
             # announce tied
             if win_status['status'] != previous_win_status:

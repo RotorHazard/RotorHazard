@@ -177,6 +177,10 @@ class LEDEvent:
             "label": "Lap Recorded"
         },
         {
+            "event": Evt.RACE_WIN,
+            "label": "Race Winner Declared"
+        },
+        {
             "event": Evt.HEAT_SET,
             "label": "Change Heat"
         },
