@@ -262,7 +262,7 @@ def calc_leaderboard(RHData, **params):
                     'team_name': pilot.team,
                     'laps': total_laps,
                     'holeshots': None,
-                    'starts': 1 if total_laps > 0 else 0,
+                    'starts': 1 if len(laps) > 0 else 0,
                     'node': node_index,
                     'current_laps': laps
                 })
