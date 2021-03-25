@@ -3,12 +3,15 @@
 
 #include "util/rhtypes.h"
 
-// currently just RX5808 but could be abstract with sub-classes
+/**
+ * Functions for the rx5808 module.
+ * See RTC6715 datasheet for spec.
+ */
 class RxModule {
 private:
     bool rxPoweredDown = false;
     static mtime_t lastBusTimeMs;
-    static bool checkBusAvailable();
+    static const bool checkBusAvailable();
 
 protected:
     uint8_t dataPin = 0;
@@ -31,17 +34,15 @@ public:
     rssi_t readRssi();
     bool powerUp();
     bool powerDown();
-    bool isPoweredDown() { return rxPoweredDown; }
+    const bool isPoweredDown() { return rxPoweredDown; }
     bool reset();
 };
 
 class BitBangRxModule final : public RxModule {
 private:
-    template <typename T> void bitBang(T bits, const uint_fast8_t size);
-    void serialSendBit0();
-    void serialSendBit1();
-    void serialEnableLow();
-    void serialEnableHigh();
+    template <typename T> const void bitBang(T bits, uint_fast8_t size);
+    inline const void serialSendBit(bool b);
+    inline const void serialEnable(bool f);
 
 protected:
     void spiInit();

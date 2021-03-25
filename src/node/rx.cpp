@@ -3,9 +3,20 @@
 #include "hardware.h"
 #include "microclock.h"
 
-constexpr mtime_t RX5808_MIN_BUSTIME = 30;  // after set freq need to wait this long before setting again
+constexpr uint8_t SYNTHESIZER_REGISTER_A = 0x00;
+constexpr uint8_t SYNTHESIZER_REGISTER_B = 0x01;
+constexpr uint8_t SYNTHESIZER_REGISTER_C = 0x02;
+constexpr uint8_t SYNTHESIZER_REGISTER_D = 0x03;
+constexpr uint8_t VCO_SWITCHCAP_CONTROL_REGISTER = 0x04;
+constexpr uint8_t DFC_CONTROL_REGISTER = 0x05;
+constexpr uint8_t _6M_AUDIO_DEMODULATOR_CONTROL_REGISTER = 0x06;
+constexpr uint8_t _6M5_AUDIO_DEMODULATOR_CONTROL_REGISTER = 0x07;
+constexpr uint8_t RECEIVER_CONTROL_REGISTER_1 = 0x08;
+constexpr uint8_t RECEIVER_CONTROL_REGISTER_2 = 0x09;
+constexpr uint8_t POWER_DOWN_CONTROL_REGISTER = 0x0A;
+constexpr uint8_t STATE_REGISTER = 0x0F;
 
-// Functions for the rx5808 module
+constexpr mtime_t RX5808_MIN_BUSTIME = 30;  // after set freq need to wait this long before setting again
 
 mtime_t RxModule::lastBusTimeMs = 0;
 
@@ -19,7 +30,7 @@ static uint16_t freqMhzToRegVal(freq_t freqInMhz)
     return (N << 7) + A;
 }
 
-bool RxModule::checkBusAvailable()
+const bool RxModule::checkBusAvailable()
 {
     mtime_t timeVal = usclock.millis() - lastBusTimeMs;
     return timeVal >= RX5808_MIN_BUSTIME;
@@ -43,7 +54,7 @@ bool RxModule::reset()
         return false;
     }
 
-    spiWrite(0xF, 0x00);
+    spiWrite(STATE_REGISTER, 0x00);
 
     return powerUp();
 }
@@ -61,11 +72,7 @@ bool RxModule::setFrequency(freq_t frequency)
 
     //Channel data from the lookup table, 20 bytes of register data are sent, but the MSB 4 bits are zeros.
     // register address = 0x1, write, data0-15=vtxHex data15-19=0x0
-    spiWrite(0x1, vtxHex);
-    delay(2);
-
-    digitalWrite(clkPin, LOW);
-    digitalWrite(dataPin, LOW);
+    spiWrite(SYNTHESIZER_REGISTER_B, vtxHex);
 
     lastBusTimeMs = usclock.millis();  // mark time of last tune of RX5808 to freq
     return true;
@@ -79,9 +86,7 @@ bool RxModule::setPower(uint32_t options)
         return false;
     }
 
-    spiWrite(0xA, options);
-
-    digitalWrite(dataPin, LOW);
+    spiWrite(POWER_DOWN_CONTROL_REGISTER, options);
 
     lastBusTimeMs = usclock.millis();
     return true;
@@ -114,45 +119,43 @@ rssi_t RxModule::readRssi()
 }
 
 
+
 void BitBangRxModule::spiInit()
 {
     pinMode(dataPin, OUTPUT);
     pinMode(selPin, OUTPUT);
     pinMode(clkPin, OUTPUT);
-    digitalWrite(selPin, HIGH);
+    serialEnable(false);
     digitalWrite(clkPin, LOW);
     digitalWrite(dataPin, LOW);
 }
 
 void BitBangRxModule::spiWrite(uint8_t addr, uint32_t data)
 {
-    serialEnableHigh();
-    serialEnableLow();
+    serialEnable(false);
+    serialEnable(true);
     bitBang(addr, 4);
-    serialSendBit1();  // Write to register
+    serialSendBit(true);  // Write to register
     bitBang(data, 20);
-    serialEnableHigh();  // Finished clocking data in
+    serialEnable(false);  // Finished clocking data in
+    digitalWrite(clkPin, LOW);
+    digitalWrite(dataPin, LOW);
 }
 
-template <typename T> void BitBangRxModule::bitBang(T bits, const uint_fast8_t size)
+template <typename T> const void BitBangRxModule::bitBang(T bits, const uint_fast8_t size)
 {
     for (uint_fast8_t i = size; i > 0; i--)
     {
-        if (bits & 0x1)
-        {  // Is bit high or low?
-            serialSendBit1();
-        }
-        else
-        {
-            serialSendBit0();
-        }
+        serialSendBit(bits & 0x1); // Is bit high or low?
         bits >>= 1;  // Shift bits along to check the next one
     }
 }
 
-void BitBangRxModule::serialSendBit0()
+inline const void BitBangRxModule::serialSendBit(const bool b)
 {
-    digitalWrite(dataPin, LOW);
+    digitalWrite(clkPin, LOW);
+    delayMicroseconds(1);
+    digitalWrite(dataPin, b ? HIGH : LOW);
     delayMicroseconds(300);
     digitalWrite(clkPin, HIGH);
     delayMicroseconds(300);
@@ -160,27 +163,13 @@ void BitBangRxModule::serialSendBit0()
     delayMicroseconds(300);
 }
 
-void BitBangRxModule::serialSendBit1()
+inline const void BitBangRxModule::serialEnable(const bool f)
 {
-    digitalWrite(dataPin, HIGH);
-    delayMicroseconds(300);
-    digitalWrite(clkPin, HIGH);
-    delayMicroseconds(300);
-    digitalWrite(clkPin, LOW);
-    delayMicroseconds(300);
-}
-
-void BitBangRxModule::serialEnableLow()
-{
-    digitalWrite(selPin, LOW);
+    // pull low to enable
+    digitalWrite(selPin, f ? LOW : HIGH);
     delayMicroseconds(200);
 }
 
-void BitBangRxModule::serialEnableHigh()
-{
-    digitalWrite(selPin, HIGH);
-    delayMicroseconds(200);
-}
 
 #if TARGET == ESP32_TARGET
 #include <SPI.h>
