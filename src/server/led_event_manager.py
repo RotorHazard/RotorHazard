@@ -11,10 +11,12 @@ class LEDEventManager:
     eventEffects = {}
     eventThread = None
 
-    def __init__(self, eventmanager, strip, RHData):
+    def __init__(self, eventmanager, strip, RHData, RACE, Language):
         self.Events = eventmanager
         self.strip = strip
         self.RHData = RHData
+        self.RACE = RACE
+        self.Language = Language
 
         # hold
         self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None,
@@ -53,6 +55,8 @@ class LEDEventManager:
         args.update({
             'strip': self.strip,
             'RHData': self.RHData,
+            'RACE': self.RACE,
+            'Language': self.Language,
             })
 
         if event in [Evt.SHUTDOWN]:
