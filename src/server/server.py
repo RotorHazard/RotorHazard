@@ -4209,6 +4209,9 @@ def init_LED_effects():
         Evt.CROSSING_ENTER: "stripSparkle",
         Evt.CROSSING_EXIT: "none",
         Evt.RACE_LAP_RECORDED: "none",
+        Evt.RACE_WIN: "none",
+        Evt.MESSAGE_STANDARD: "none",
+        Evt.MESSAGE_INTERRUPT: "none",
         Evt.STARTUP: "rainbowCycle",
         Evt.SHUTDOWN: "clear"
     }

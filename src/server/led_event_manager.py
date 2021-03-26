@@ -185,8 +185,12 @@ class LEDEvent:
             "label": "Race Winner Declared"
         },
         {
-            "event": Evt.HEAT_SET,
-            "label": "Change Heat"
+            "event": Evt.MESSAGE_STANDARD,
+            "label": "Message (Normal)"
+        },
+        {
+            "event": Evt.MESSAGE_INTERRUPT,
+            "label": "Message (Priority)"
         },
         {
             "event": Evt.STARTUP,
@@ -195,10 +199,6 @@ class LEDEvent:
         {
             "event": Evt.SHUTDOWN,
             "label": "Server Shutdown"
-        },
-        {
-            "event": Evt.MESSAGE_INTERRUPT,
-            "label": "Message"
         },
     ]
 

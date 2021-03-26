@@ -253,6 +253,7 @@ class RHData():
                 "calibrationMode",
                 "MinLapSec",
                 "MinLapBehavior",
+                "ledEffects",
                 "ledBrightness",
                 "colorNode_0",
                 "colorNode_1",

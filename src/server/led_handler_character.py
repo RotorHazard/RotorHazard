@@ -285,21 +285,10 @@ def discover(*args, **kwargs):
         }
         ),
     LEDEffect(
-        "textHeat",
-        "Text: Heat ID",
-        dataHandler,
-        [Evt.HEAT_SET],
-        {
-        'color': ColorVal.WHITE,
-        'data': 'heat_id',
-        'time': None
-        }
-        ),
-    LEDEffect(
         "textMessage",
         "Text Scroll: Message",
         scrollText,
-        [Evt.MESSAGE_INTERRUPT],
+        [Evt.MESSAGE_INTERRUPT, Evt.MESSAGE_STANDARD],
         {
         'color': ColorVal.WHITE,
         'data': 'message'
