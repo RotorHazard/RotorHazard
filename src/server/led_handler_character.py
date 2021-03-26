@@ -31,19 +31,25 @@ def dataHandler(args):
             return None
 
         # standard methods
-        if args['data'] == 'lap_number':
+        elif args['data'] == 'lap_number':
             if args['lap']['lap_number'] > 0:
                 args['text'] = args['lap']['lap_number']
             else:
                 return False
 
-        if args['data'] == 'lap_time':
+        elif args['data'] == 'lap_time':
             args['text'] = '{0:.1f}'.format(args['lap']['lap_time'] / 1000)
 
-        if args['data'] == 'heat_id':
+        elif args['data'] == 'position':
+            for line in args['results']['by_race_time']:
+                if args['node_index'] == line['node']:
+                    args['text'] = line['position']
+                    break
+
+        elif args['data'] == 'heat_id':
             args['text'] = args['heat_id']
 
-        if args['data'] == 'message':
+        elif args['data'] == 'message':
             args['text'] = args['message']
 
         printCharacter(args)
@@ -254,6 +260,17 @@ def discover(*args, **kwargs):
         {
         'color': ColorVal.WHITE,
         'data': 'lap_time',
+        'time': 8
+        }
+        ),
+    LEDEffect(
+        "textPosition",
+        "Text: Position",
+        dataHandler,
+        [Evt.RACE_LAP_RECORDED],
+        {
+        'color': ColorVal.WHITE,
+        'data': 'position',
         'time': 8
         }
         ),

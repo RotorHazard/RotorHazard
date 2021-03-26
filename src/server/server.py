@@ -986,7 +986,7 @@ def on_set_exit_at_level(data):
         exit_ats["v"].append(None)
 
     exit_ats["v"][node_index] = exit_at_level
-    
+
     RHData.alter_profile({
         'profile_id': profile.id,
         'exit_ats': exit_ats
@@ -2362,7 +2362,7 @@ def on_set_current_heat(data):
     RACE.node_pilots = {}
     RACE.node_teams = {}
     for idx in range(RACE.num_nodes):
-        RACE.node_pilots[idx] = RHUtils.PILOT_ID_NONE 
+        RACE.node_pilots[idx] = RHUtils.PILOT_ID_NONE
         RACE.node_teams[idx] = None
 
     for heatNode in RHData.get_heatNodes_by_heat(new_heat_id):
