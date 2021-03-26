@@ -76,5 +76,5 @@ class ANSIPixel:
 
 def get_pixel_interface(config, brightness, *args, **kwargs):
     '''Returns the pixel interface.'''
-    logger.info('LED: locally enabled via ANSIPixel')
+    logger.info('LED: locally emulated via ANSIPixel')
     return ANSIPixel(config['LED_COUNT'], config.get('LED_ROWS', 1))

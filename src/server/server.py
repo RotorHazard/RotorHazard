@@ -4666,12 +4666,18 @@ if Config.LED['LED_COUNT'] > 0:
         ledModule = importlib.import_module(led_type + '_leds')
         strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
     except ImportError:
+        # No hardware LED handler, the OpenCV emulation
         try:
-            ledModule = importlib.import_module('ANSI_leds')
+            ledModule = importlib.import_module('cv2_leds')
             strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
         except ImportError:
-            ledModule = None
-            logger.info('LED: disabled (no modules available)')
+            # No OpenCV emulation, try console output
+            try:
+                ledModule = importlib.import_module('ANSI_leds')
+                strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+            except ImportError:
+                ledModule = None
+                logger.info('LED: disabled (no modules available)')
 else:
     logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
 if strip:
