@@ -5,6 +5,7 @@ from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern
 import gevent
 import random
 import math
+from monotonic import monotonic
 
 class Timing:
     VTX_EXPIRE = 4
@@ -301,6 +302,22 @@ def meteor(args):
         strip.show()
         gevent.sleep(a['speedDelay']/1000.0)
 
+def stagingTrigger(args):
+    if args['hide_stage_timer']:
+        args['effect_fn'](args)
+        return None
+
+    start_time = args['pi_starts_at_s']
+
+    while monotonic() < start_time:
+        diff = start_time - monotonic()
+        diff_to_s = diff % 1
+        if diff:
+            gevent.sleep(diff_to_s)
+            args['effect_fn'](args)
+        else:
+            break
+
 def larsonScanner(args):
     if 'strip' in args:
         strip = args['strip']
@@ -384,6 +401,14 @@ def discover(*args, **kwargs):
     LEDEffect("stripColorOrange2_1", "Pattern 2-1 / Orange", showColor, [Evt.STARTUP, Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN], {
         'color': ColorVal.ORANGE,
         'pattern': ColorPattern.TWO_OUT_OF_THREE
+        }),
+    LEDEffect("stripStaging", "Staging Pulse 2-1 / Orange", stagingTrigger, [Evt.RACE_STAGE], {
+        'effect_fn': fade,
+        'color': ColorVal.ORANGE,
+        'pattern': ColorPattern.TWO_OUT_OF_THREE,
+        'ontime': 0,
+        'steps': 0,
+        'outSteps': 10,
         }),
     LEDEffect("stripColorGreenSolid", "Solid / Green", showColor, [Evt.STARTUP, Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN], {
         'color': ColorVal.GREEN,
