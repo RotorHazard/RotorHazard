@@ -161,8 +161,13 @@ def multiLapGrid(args):
     half_height = panel['height']/2
     half_width = panel['width']/2
 
-    font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
-
+    if panel['height'] >= 32:
+        font = ImageFont.truetype("static/fonts/RotorHazardPanel16.ttf", 16)
+        font_h = 16
+    else:
+        font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
+        font_h = 8
+        
     leaderboard = results['by_race_time']
 
     active_nodes = []
@@ -182,7 +187,7 @@ def multiLapGrid(args):
                 text = line['callsign'][0]
 
             w, h = font.getsize(text)
-            h = 8
+            h = font_h
             color = RHData.get_option('colorNode_' + str(line['node']), '#ffffff')
 
             # draw positions

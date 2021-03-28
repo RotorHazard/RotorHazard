@@ -9,7 +9,7 @@ import gevent
 import logging
 logger = logging.getLogger(__name__)
 
-class pygame_LED_emulation:
+class cv2_LED_emulation:
     scale = 16
 
     def __init__(self, count, rows=1):
@@ -35,7 +35,7 @@ class pygame_LED_emulation:
 
         for i in range(len(self.pixels)):
             c = i % self.width
-            r = i // self.height
+            r = i // self.width
             image[r, c] = tuple(reversed(convertColor(self.pixels[i])))
 
         image = cv2.resize(image, (self.width*self.scale, self.height*self.scale), interpolation=cv2.INTER_NEAREST)
@@ -52,4 +52,4 @@ def convertColor(color):
 def get_pixel_interface(config, brightness, *args, **kwargs):
     '''Returns the pixel interface.'''
     logger.info('LED: locally emulated via OpenCV')
-    return pygame_LED_emulation(config['LED_COUNT'], config.get('LED_ROWS', 1))
+    return cv2_LED_emulation(config['LED_COUNT'], config.get('LED_ROWS', 1))

@@ -39,6 +39,7 @@ def showBitmap(args):
             delay = bitmap['delay']
 
             img = img.rotate(90 * Config.LED['PANEL_ROTATE'])
+            img = img.resize((Config.LED['LED_COUNT'] // Config.LED['LED_ROWS'], Config.LED['LED_ROWS']))
 
             setPixels(img)
             strip.show()
