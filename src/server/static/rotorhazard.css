@@ -3,8 +3,8 @@
   font-style: normal;
   font-weight: 400;
   src: local(''),
-       url('fonts/Barlow-Light.woff2') format('woff2'),
-       url('fonts/Barlow-Light.woff') format('woff');
+       url('fonts/BarlowRH-Light.woff2') format('woff2'),
+       url('fonts/BarlowRH-Light.woff') format('woff');
 }
 
 @font-face {
@@ -21,8 +21,8 @@
   font-style: normal;
   font-weight: 700;
   src: local(''),
-       url('fonts/Barlow-Bold.woff2') format('woff2'),
-       url('fonts/Barlow-Bold.woff') format('woff');
+       url('fonts/BarlowRH-Bold.woff2') format('woff2'),
+       url('fonts/BarlowRH-Bold.woff') format('woff');
 }
 
 @font-face {
