@@ -1,8 +1,16 @@
 '''
 LED event manager
 Wires events to handlers
+
+{
+    'manual': False,
+    'include': [],
+    'exclude': [Evt.ALL]
+}
+
 '''
 
+import copy
 from eventmanager import Evt
 from six.moves import UserDict
 
@@ -11,16 +19,26 @@ class LEDEventManager:
     eventEffects = {}
     eventThread = None
 
-    def __init__(self, eventmanager, strip):
+    def __init__(self, eventmanager, strip, RHData, RACE, Language):
         self.Events = eventmanager
         self.strip = strip
+        self.RHData = RHData
+        self.RACE = RACE
+        self.Language = Language
 
         # hold
-        self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None,
-            [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
+        self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None, {
+                'include': [Evt.SHUTDOWN],
+                'exclude': [Evt.STARTUP],
+                'recommended': [Evt.ALL]
+            }))
 
         # do nothing
-        self.registerEffect(LEDEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN]))
+        self.registerEffect(LEDEffect("none", "No Change", lambda *args: None, {
+                'manual': False,
+                'exclude': [Evt.STARTUP],
+                'recommended': [Evt.ALL]
+            }))
 
 
     def isEnabled(self):
@@ -42,12 +60,18 @@ class LEDEventManager:
     def setEventEffect(self, event, name):
         self.events[event] = name
 
-        args = self.eventEffects[name]['defaultArgs']
+        if name not in self.eventEffects:
+            return None
+
+        args = copy.deepcopy(self.eventEffects[name]['defaultArgs'])
         if args is None:
             args = {}
 
         args.update({
             'strip': self.strip,
+            'RHData': self.RHData,
+            'RACE': self.RACE,
+            'Language': self.Language,
             })
 
         if event in [Evt.SHUTDOWN]:
@@ -168,13 +192,29 @@ class LEDEvent:
             "label": "Gate Exit"
         },
         {
+            "event": Evt.RACE_LAP_RECORDED,
+            "label": "Lap Recorded"
+        },
+        {
+            "event": Evt.RACE_WIN,
+            "label": "Race Winner Declared"
+        },
+        {
+            "event": Evt.MESSAGE_STANDARD,
+            "label": "Message (Normal)"
+        },
+        {
+            "event": Evt.MESSAGE_INTERRUPT,
+            "label": "Message (Priority)"
+        },
+        {
             "event": Evt.STARTUP,
             "label": "Server Startup"
         },
         {
             "event": Evt.SHUTDOWN,
             "label": "Server Shutdown"
-        }
+        },
     ]
 
 class LEDEffect(UserDict):

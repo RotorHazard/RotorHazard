@@ -71,7 +71,7 @@ from eventmanager import Evt, EventManager
 Events = EventManager()
 
 # LED imports
-from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorPattern, hexToColor
+from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -986,7 +986,7 @@ def on_set_exit_at_level(data):
         exit_ats["v"].append(None)
 
     exit_ats["v"][node_index] = exit_at_level
-    
+
     RHData.alter_profile({
         'profile_id': profile.id,
         'exit_ats': exit_ats
@@ -1684,20 +1684,36 @@ def emit_led_effect_setup(**params):
         for event in LEDEvent.configurable_events:
             selectedEffect = led_manager.getEventEffect(event['event'])
 
-            effect_list = []
+            effect_list_recommended = []
+            effect_list_normal = []
 
             for effect in effects:
-                if event['event'] in effects[effect]['validEvents']:
-                    effect_list.append({
-                        'name': effect,
-                        'label': __(effects[effect]['label'])
-                    })
+
+                if event['event'] in effects[effect]['validEvents'].get('include', []) or (
+                    event['event'] not in [Evt.SHUTDOWN]
+                    and event['event'] not in effects[effect]['validEvents'].get('exclude', [])
+                    and Evt.ALL not in effects[effect]['validEvents'].get('exclude', [])):
+
+                    if event['event'] in effects[effect]['validEvents'].get('recommended', []) or \
+                        Evt.ALL in effects[effect]['validEvents'].get('recommended', []):
+                        effect_list_recommended.append({
+                            'name': effect,
+                            'label': '* ' + __(effects[effect]['label'])
+                        })
+                    else:
+                        effect_list_normal.append({
+                            'name': effect,
+                            'label': __(effects[effect]['label'])
+                        })
+
+            effect_list_recommended.sort(key=lambda x: x['label'])
+            effect_list_normal.sort(key=lambda x: x['label'])
 
             emit_payload['events'].append({
                 'event': event["event"],
                 'label': __(event["label"]),
                 'selected': selectedEffect,
-                'effects': effect_list
+                'effects': effect_list_recommended + effect_list_normal
             })
 
         # never broadcast
@@ -1710,7 +1726,7 @@ def emit_led_effects(**params):
         effect_list = []
         if effects:
             for effect in effects:
-                if LEDEvent.NOCONTROL not in effects[effect]['validEvents']:
+                if effects[effect]['validEvents'].get('manual', True):
                     effect_list.append({
                         'name': effect,
                         'label': __(effects[effect]['label'])
@@ -1839,8 +1855,6 @@ def on_stage_race():
         '''Common race start events (do early to prevent processing delay when start is called)'''
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
-        Events.trigger(Evt.RACE_STAGE)
-
         if heat_data.class_id != RHUtils.CLASS_ID_NONE:
             class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
             if class_format_id != RHUtils.FORMAT_ID_NONE:
@@ -1880,6 +1894,12 @@ def on_stage_race():
         RACE.start_time_epoch_ms = monotonic_to_epoch_millis(RACE.start_time_monotonic)
         RACE.start_token = random.random()
         gevent.spawn(race_start_thread, RACE.start_token)
+
+        Events.trigger(Evt.RACE_STAGE, {
+            'hide_stage_timer': MIN != MAX,
+            'pi_starts_at_s': RACE.start_time_monotonic,
+            'color': ColorVal.ORANGE
+            })
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,
@@ -2048,7 +2068,10 @@ def race_start_thread(start_token):
         # !!! RACE STARTS NOW !!!
 
         # do time-critical tasks
-        Events.trigger(Evt.RACE_START)
+        Events.trigger(Evt.RACE_START, {
+            'race': RACE,
+            'color': ColorVal.GREEN
+            })
 
         # do secondary start tasks (small delay is acceptable)
         RACE.start_time = datetime.now() # record standard-formatted time
@@ -2117,7 +2140,9 @@ def on_stop_race():
 
         RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
         INTERFACE.set_race_status(RaceStatus.DONE)
-        Events.trigger(Evt.RACE_STOP)
+        Events.trigger(Evt.RACE_STOP, {
+            'color': ColorVal.RED
+        })
         check_win_condition(RACE, RHData, INTERFACE)
 
         if CLUSTER.hasSecondaries():
@@ -2357,7 +2382,7 @@ def on_set_current_heat(data):
     RACE.node_pilots = {}
     RACE.node_teams = {}
     for idx in range(RACE.num_nodes):
-        RACE.node_pilots[idx] = RHUtils.PILOT_ID_NONE 
+        RACE.node_pilots[idx] = RHUtils.PILOT_ID_NONE
         RACE.node_teams[idx] = None
 
     for heatNode in RHData.get_heatNodes_by_heat(new_heat_id):
@@ -3896,20 +3921,24 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         emit_pass_record(node, lap_time_stamp)
 
                         # Add the new lap to the database
-                        RACE.node_laps[node.index].append({
+                        lap_data = {
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
                             'lap_time_formatted': RHUtils.time_format(lap_time, RHData.get_option('timeFormat')),
                             'source': source,
                             'deleted': False
-                        })
+                        }
+                        RACE.node_laps[node.index].append(lap_data)
 
                         RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
                         RACE.cacheStatus = Results.CacheStatus.VALID
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
+                            'color': hexToColor(RHData.get_option('colorNode_' + str(node.index), '#ffffff')),
+                            'lap': lap_data,
+                            'results': RACE.results
                             })
 
                         logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
@@ -3983,6 +4012,15 @@ def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
                 if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                     win_phon_name = win_status['data']['callsign']
                 emit_phonetic_text(__('Winner is') + ' ' + win_phon_name, 'race_winner', True)
+
+            Events.trigger(Evt.RACE_WIN, {
+                'win_status': win_status,
+                'message': RACE.status_message,
+                'node_index': win_status['data']['node'],
+                'color': hexToColor(RHData.get_option('colorNode_' + str(win_status['data']['node']), '#ffffff')),
+                'results': RACE.results
+                })
+
         elif win_status['status'] == WinStatus.TIE:
             # announce tied
             if win_status['status'] != previous_win_status:
@@ -4174,7 +4212,7 @@ def init_interface_state(startup=False):
         Events.trigger(Evt.LAPS_CLEAR)
         RACE.timer_running = False # indicate race timer not running
         RACE.scheduled = False # also stop any deferred start
-        SOCKET_IO.emit('stop_timer') 
+        SOCKET_IO.emit('stop_timer')
     else:
         on_stop_race()
     # Reset laps display
@@ -4183,16 +4221,27 @@ def init_interface_state(startup=False):
 def init_LED_effects():
     # start with defaults
     effects = {
-        Evt.RACE_STAGE: "stripColorOrange2_1",
-        Evt.RACE_START: "stripColorGreenSolid",
-        Evt.RACE_FINISH: "stripColorWhite4_4",
-        Evt.RACE_STOP: "stripColorRedSolid",
+        Evt.RACE_STAGE: "stripColor2_1",
+        Evt.RACE_START: "stripColorSolid",
+        Evt.RACE_FINISH: "stripColor4_4",
+        Evt.RACE_STOP: "stripColorSolid",
         Evt.LAPS_CLEAR: "clear",
-        Evt.CROSSING_ENTER: "stripColorSolid",
-        Evt.CROSSING_EXIT: "stripColor1_1_4s",
+        Evt.CROSSING_ENTER: "stripSparkle",
+        Evt.CROSSING_EXIT: "none",
+        Evt.RACE_LAP_RECORDED: "none",
+        Evt.RACE_WIN: "none",
+        Evt.MESSAGE_STANDARD: "none",
+        Evt.MESSAGE_INTERRUPT: "none",
         Evt.STARTUP: "rainbowCycle",
         Evt.SHUTDOWN: "clear"
     }
+    if "bitmapRHLogo" in led_manager.getRegisteredEffects() and Config.LED['LED_ROWS'] > 1:
+        effects[Evt.STARTUP] = "bitmapRHLogo"
+        effects[Evt.RACE_STAGE] = "bitmapOrangeSquare"
+        effects[Evt.RACE_START] = "bitmapGreenArrow"
+        effects[Evt.RACE_FINISH] = "bitmapCheckerboard"
+        effects[Evt.RACE_STOP] = "bitmapRedX"
+
     # update with DB values (if any)
     effect_opt = RHData.get_option('ledEffects')
     if effect_opt:
@@ -4640,19 +4689,25 @@ if Config.LED['LED_COUNT'] > 0:
         ledModule = importlib.import_module(led_type + '_leds')
         strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
     except ImportError:
+        # No hardware LED handler, the OpenCV emulation
         try:
-            ledModule = importlib.import_module('ANSI_leds')
+            ledModule = importlib.import_module('cv2_leds')
             strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
         except ImportError:
-            ledModule = None
-            logger.info('LED: disabled (no modules available)')
+            # No OpenCV emulation, try console output
+            try:
+                ledModule = importlib.import_module('ANSI_leds')
+                strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+            except ImportError:
+                ledModule = None
+                logger.info('LED: disabled (no modules available)')
 else:
     logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
 if strip:
     # Initialize the library (must be called once before other functions).
     try:
         strip.begin()
-        led_manager = LEDEventManager(Events, strip)
+        led_manager = LEDEventManager(Events, strip, RHData, RACE, Language)
         led_effects = Plugins(prefix='led_handler')
         led_effects.discover()
         for led_effect in led_effects:
@@ -4694,7 +4749,10 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     APP.config['SECRET_KEY'] = RHData.get_option("secret_key")
     logger.info("Running http server at port " + str(port_val))
     init_interface_state(startup=True)
-    Events.trigger(Evt.STARTUP)
+    Events.trigger(Evt.STARTUP, {
+        'color': ColorVal.ORANGE,
+        'message': 'RotorHazard ' + RELEASE_VERSION
+        })
 
     try:
         # the following fn does not return until the server is shutting down
@@ -4707,7 +4765,9 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     except Exception:
         logger.exception("Server exception")
 
-    Events.trigger(Evt.SHUTDOWN)
+    Events.trigger(Evt.SHUTDOWN, {
+        'color': ColorVal.RED
+        })
     rep_str = INTERFACE.get_intf_error_report_str(True)
     if rep_str:
         logger.log((logging.INFO if INTERFACE.get_intf_total_error_count() else logging.DEBUG), rep_str)
