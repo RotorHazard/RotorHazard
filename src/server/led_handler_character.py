@@ -14,8 +14,8 @@ from monotonic import monotonic
 def dataHandler(args):
     if 'data' in args:
         if args['data'] == 'staging':
+            args['time'] = None
             if not args['hide_stage_timer']:
-                args['time'] = None
                 start_time = args['pi_starts_at_s']
 
                 while monotonic() < start_time:
@@ -28,7 +28,9 @@ def dataHandler(args):
                     else:
                         break
 
-            return None
+            else:
+                args['text'] = 'X'
+                printCharacter(args)
 
         # standard methods
         elif args['data'] == 'lap_number':
@@ -70,7 +72,7 @@ def printCharacter(args):
     if 'color' in args:
         color = convertColor(args['color'])
     else:
-        return False
+        color = convertColor(ColorVal.WHITE)
 
     panel = getPanelImg(strip, Config)
 
@@ -115,7 +117,7 @@ def scrollText(args):
     if 'color' in args:
         color = convertColor(args['color'])
     else:
-        return False
+        color = convertColor(ColorVal.WHITE)
 
     panel = getPanelImg(strip, Config)
 
@@ -250,7 +252,6 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
-        'color': ColorVal.WHITE,
         'data': 'lap_number',
         'time': 5
         }
@@ -264,7 +265,6 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
-        'color': ColorVal.WHITE,
         'data': 'lap_time',
         'time': 8
         }
@@ -278,7 +278,6 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
-        'color': ColorVal.WHITE,
         'data': 'position',
         'time': 8
         }
@@ -292,7 +291,6 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
-        'color': ColorVal.WHITE,
         'data': 'lap_time'
         }
         ),
@@ -305,7 +303,6 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.MESSAGE_INTERRUPT, Evt.MESSAGE_STANDARD]
         }, {
-        'color': ColorVal.WHITE,
         'data': 'message'
         }
         ),
@@ -318,7 +315,6 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_WIN]
         }, {
-        'color': ColorVal.WHITE,
         'data': 'message'
         }
         ),
@@ -331,7 +327,6 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_STAGE]
         }, {
-        'color': ColorVal.WHITE,
         'data': 'staging',
         'time': 5
         }
