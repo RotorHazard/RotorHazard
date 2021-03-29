@@ -310,7 +310,8 @@ class RHData():
                             'name': 'New Pilot',
                             'callsign': 'New Callsign',
                             'team': RHUtils.DEF_TEAM_NAME,
-                            'phonetic': ''
+                            'phonetic': '',
+                            'color': None
                         })
                 else:
                     self.reset_pilots()
@@ -353,7 +354,8 @@ class RHData():
 
                         self._Database.DB.session.query(self._Database.HeatNode).delete()
                         self.restore_table(self._Database.HeatNode, heatnode_extracted_data, defaults={
-                                'pilot_id': RHUtils.PILOT_ID_NONE
+                                'pilot_id': RHUtils.PILOT_ID_NONE,
+                                'color': None
                             })
                     else:
                         self.reset_heats()
@@ -367,7 +369,8 @@ class RHData():
                                 'cacheStatus': CacheStatus.INVALID
                             })
                         self.restore_table(self._Database.HeatNode, heatNode_query_data, defaults={
-                                'pilot_id': RHUtils.PILOT_ID_NONE
+                                'pilot_id': RHUtils.PILOT_ID_NONE,
+                                'color': None
                             })
 
                         self._RACE.current_heat = self.get_first_heat().id
@@ -537,7 +540,9 @@ class RHData():
             pilot.phonetic = data['phonetic']
         if 'name' in data:
             pilot.name = data['name']
-
+        if 'color' in data:
+            pilot.color = data['color']
+            
         self.commit()
 
         self._RACE.cacheStatus = CacheStatus.INVALID  # refresh current leaderboard

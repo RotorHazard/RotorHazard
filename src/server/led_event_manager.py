@@ -40,7 +40,6 @@ class LEDEventManager:
                 'recommended': [Evt.ALL]
             }))
 
-
     def isEnabled(self):
         return True
 
@@ -84,6 +83,19 @@ class LEDEventManager:
 
     def clear(self):
         self.eventEffects['clear']['handlerFn']({'strip': self.strip})
+
+    def getDisplayColor(self, node_index):
+        if self.RHData.get_option('ledColorMode', False):
+            for line in self.RACE.results['by_race_time']:
+                if line['node'] == node_index:
+                    color = self.RHData.get_pilot(line['pilot_id']).color
+                    if not color:
+                        color = '#ffffff'
+                    break 
+        else:
+            color = self.RHData.get_option('colorNode_' + str(node_index), '#ffffff')
+        
+        return hexToColor(color)
 
 class NoLEDManager():
     def __init__(self):

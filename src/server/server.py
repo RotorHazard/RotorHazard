@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "3.1.0-dev.3" # Public release version code
-SERVER_API = 31 # Server API version
+SERVER_API = 32 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -2612,7 +2612,7 @@ def on_simulate_lap(data):
     logger.info('Simulated lap: Node {0}'.format(node_index+1))
     Events.trigger(Evt.CROSSING_EXIT, {
         'nodeIndex': node_index,
-        'color': hexToColor(RHData.get_option('colorNode_' + str(node_index), '#ffffff'))
+        'color': led_manager.getDisplayColor(node_index)
         })
     INTERFACE.intf_simulate_lap(node_index, 0)
 
@@ -3308,7 +3308,7 @@ def emit_pilot_data(**params):
 
         locked = RHData.savedPilotRaces_has_pilot(pilot.id)
 
-        pilots_list.append({
+        pilot_data = {
             'pilot_id': pilot.id,
             'callsign': pilot.callsign,
             'team': pilot.team,
@@ -3316,7 +3316,12 @@ def emit_pilot_data(**params):
             'name': pilot.name,
             'team_options': opts_str,
             'locked': locked,
-        })
+        }
+
+        if led_manager.isEnabled():
+            pilot_data['color'] = pilot.color
+
+        pilots_list.append(pilot_data)
 
         if RHData.get_option('pilotSort') == 'callsign':
             pilots_list.sort(key=lambda x: (x['callsign'], x['name']))
@@ -3346,11 +3351,14 @@ def emit_current_heat(**params):
     for heatNode in RHData.get_heatNodes_by_heat(RACE.current_heat):
         heatNode_data[heatNode.node_index] = {
             'pilot_id': heatNode.pilot_id,
-            'callsign': None
+            'callsign': None,
+            'color': heatNode.color,
+            'pilotColor': None
             }
         pilot = RHData.get_pilot(heatNode.pilot_id)
         if pilot:
             heatNode_data[heatNode.node_index]['callsign'] = pilot.callsign
+            heatNode_data[heatNode.node_index]['color'] = pilot.color
 
     heat_format = None
     if heat_data.class_id != RHUtils.CLASS_ID_NONE:
@@ -3936,7 +3944,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
-                            'color': hexToColor(RHData.get_option('colorNode_' + str(node.index), '#ffffff')),
+                            'color': led_manager.getDisplayColor(node.index),
                             'lap': lap_data,
                             'results': RACE.results
                             })
@@ -4017,7 +4025,7 @@ def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
                 'win_status': win_status,
                 'message': RACE.status_message,
                 'node_index': win_status['data']['node'],
-                'color': hexToColor(RHData.get_option('colorNode_' + str(win_status['data']['node']), '#ffffff')),
+                'color': led_manager.getDisplayColor(win_status['data']['node']),
                 'results': RACE.results
                 })
 
@@ -4075,14 +4083,14 @@ def node_crossing_callback(node):
             if node.crossing_flag:
                 Events.trigger(Evt.CROSSING_ENTER, {
                     'nodeIndex': node.index,
-                    'color': hexToColor(RHData.get_option('colorNode_' + str(node.index), '#ffffff'))
+                    'color': led_manager.getDisplayColor(node.index)
                     })
                 node.show_crossing_flag = True
             else:
                 if node.show_crossing_flag:
                     Events.trigger(Evt.CROSSING_EXIT, {
                         'nodeIndex': node.index,
-                        'color': hexToColor(RHData.get_option('colorNode_' + str(node.index), '#ffffff'))
+                        'color': led_manager.getDisplayColor(node.index)
                         })
                 else:
                     node.show_crossing_flag = True

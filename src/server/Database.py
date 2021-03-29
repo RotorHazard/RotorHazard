@@ -23,6 +23,7 @@ class Pilot(DB.Model):
     team = DB.Column(DB.String(80), nullable=False, default=RHUtils.DEF_TEAM_NAME)
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
+    color = DB.Column(DB.String(7), nullable=True)
 
     def __repr__(self):
         return '<Pilot %r>' % self.id
@@ -47,6 +48,7 @@ class HeatNode(DB.Model):
     heat_id = DB.Column(DB.Integer, DB.ForeignKey("heat.id"), nullable=False)
     node_index = DB.Column(DB.Integer, nullable=False)
     pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
+    color = DB.Column(DB.String(6), nullable=True)
 
     def __repr__(self):
         return '<HeatNode %r>' % self.id

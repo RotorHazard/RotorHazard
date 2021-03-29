@@ -112,6 +112,10 @@
 			$('#set_next_heat_behavior').val(1);
 		}
 
+		if (parseInt('{{ getOption('ledColorMode') }}')) {
+			$('#set_ledColorMode').val('{{ getOption('ledColorMode') }}');
+		}
+
 		$('#unlock_race_format_button').html(svg_asset.lock);
 
 		// populate frequency selects
@@ -1053,6 +1057,10 @@
 				var pilot = msg.pilots[i];
 				if (pilot.pilot_id != 0) {
 					var el = $('<li data-id="' + pilot.pilot_id + '">');
+					if ('color' in pilot) {
+						el.append('<label for="color_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Color') + '</label>');
+						el.append('<input type="color" class="set_pilot_color" id="color_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.color + '">');
+					}
 					el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
 					el.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
 					el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
@@ -1063,7 +1071,6 @@
 					phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
 					el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
-
 					if (!pilot.locked) {
 						el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
 					}
@@ -1109,6 +1116,14 @@
 			var data = {
 				pilot_id: parseInt($(this).data('pilot_id')),
 				callsign: $(this).val()
+			};
+			socket.emit('alter_pilot', data);
+		})
+
+		$(document).on("change", '.set_pilot_color', function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				color: $(this).val()
 			};
 			socket.emit('alter_pilot', data);
 		})
@@ -2761,6 +2776,17 @@
 		<h2>{{ __('LED Events') }}</h2>
 	</div>
 	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_ledColorMode">{{ __('Color Mode') }}</label>
+				</div>
+				<select id="set_ledColorMode" class="set-option" data-option="ledColorMode">
+					<option value="0">{{ __('Node') }}</option>
+					<option value="1">{{ __('Pilot') }}</option>
+				</select>
+			</li>
+		</ol>
 		<div id="LED-effect-setup"></div>
 	</div>
 </div>
