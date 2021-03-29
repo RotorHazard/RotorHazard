@@ -19,11 +19,18 @@ class LEDEventManager:
         self.Language = Language
 
         # hold
-        self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None,
-            [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_LAP_RECORDED, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN, Evt.HEAT_SET, Evt.MESSAGE_INTERRUPT]))
+        self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None, {
+                'include': [Evt.SHUTDOWN],
+                'exclude': [Evt.STARTUP],
+                'recommended': [Evt.ALL]
+            }))
 
         # do nothing
-        self.registerEffect(LEDEffect("none", "No Change", lambda *args: None, [LEDEvent.NOCONTROL, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_LAP_RECORDED, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN, Evt.HEAT_SET, Evt.MESSAGE_INTERRUPT]))
+        self.registerEffect(LEDEffect("none", "No Change", lambda *args: None, {
+                'manual': False,
+                'exclude': [Evt.STARTUP],
+                'recommended': [Evt.ALL]
+            }))
 
 
     def isEnabled(self):

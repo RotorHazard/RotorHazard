@@ -379,75 +379,96 @@ def dim(color, decay):
 def discover(*args, **kwargs):
     return [
     # color
-    LEDEffect("stripColor", "Color/Pattern (Args)", showColor, [LEDEvent.NOCONTROL]),
-    LEDEffect("stripColorSolid", "Solid", showColor, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
+    LEDEffect("stripColor", "Color/Pattern (Args)", showColor, {
+        'manual': False,
+        'exclude': [Evt.ALL]
+        }),
+    LEDEffect("stripColorSolid", "Solid", showColor, {
+        'include': [Evt.SHUTDOWN],
+        'recommended': [Evt.RACE_START, Evt.RACE_STOP]
+        }, {
         'pattern': ColorPattern.SOLID
         }),
-    LEDEffect("stripColor1_1", "Pattern 1-1", showColor, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
+    LEDEffect("stripColor1_1", "Pattern 1-1", showColor, {
+        'include': [Evt.SHUTDOWN],
+        }, {
         'pattern': ColorPattern.ALTERNATING
         }),
 
-    LEDEffect("stripColorSolid_4s", "Solid (4s expire)", showColor, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
+    LEDEffect("stripColorSolid_4s", "Solid (4s expire)", showColor, {}, {
         'pattern': ColorPattern.SOLID,
         'time': Timing.VTX_EXPIRE
         }),
-    LEDEffect("stripColor1_1_4s", "Pattern 1-1 (4s expire)", showColor, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
+    LEDEffect("stripColor1_1_4s", "Pattern 1-1 (4s expire)", showColor, {}, {
         'pattern': ColorPattern.ALTERNATING,
         'time': Timing.VTX_EXPIRE
         }),
 
-
-    # register specific items needed for typical events
-    LEDEffect("stripColorOrange2_1", "Pattern 2-1 / Orange", showColor, [Evt.STARTUP, Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN], {
-        'color': ColorVal.ORANGE,
+    LEDEffect("stripColor1_2", "Pattern 1-2", showColor, {
+        'include': [Evt.SHUTDOWN],
+        }, {
+        'pattern': ColorPattern.ONE_OF_THREE
+        }),
+    LEDEffect("stripColor2_1", "Pattern 2-1", showColor, {
+        'include': [Evt.SHUTDOWN],
+        'recommended': [Evt.RACE_STAGE]
+        }, {
         'pattern': ColorPattern.TWO_OUT_OF_THREE
         }),
-    LEDEffect("stripStaging", "Staging Pulse 2-1 / Orange", stagingTrigger, [Evt.RACE_STAGE], {
+    LEDEffect("stripStaging", "Staging Pulse 2-1", stagingTrigger, {
+        'manual': False,
+        'include': [Evt.RACE_STAGE],
+        'exclude': [Evt.ALL],
+        'recommended': [Evt.RACE_STAGE]
+        }, {
         'effect_fn': fade,
-        'color': ColorVal.ORANGE,
         'pattern': ColorPattern.TWO_OUT_OF_THREE,
         'ontime': 0,
         'steps': 0,
         'outSteps': 10,
         }),
-    LEDEffect("stripColorGreenSolid", "Solid / Green", showColor, [Evt.STARTUP, Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN], {
-        'color': ColorVal.GREEN,
-        'pattern': ColorPattern.SOLID,
-        'time': Timing.START_EXPIRE
-        }),
-    LEDEffect("stripColorWhite4_4", "Pattern 4-4", showColor, [Evt.STARTUP, Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN], {
-        'color': ColorVal.WHITE,
+    LEDEffect("stripColor4_4", "Pattern 4-4", showColor, {
+        'include': [Evt.SHUTDOWN],
+        'recommended': [Evt.RACE_FINISH]
+        }, {
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF
-        }),
-    LEDEffect("stripColorRedSolid", "Solid / Red", showColor, [Evt.STARTUP, Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN], {
-        'color': ColorVal.RED,
-        'pattern': ColorPattern.SOLID
         }),
 
     # chase
-    LEDEffect("stripChase", "Chase Pattern 1-2", chase, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
-        'color': ColorVal.WHITE,
+    LEDEffect("stripChase1_2", "Chase Pattern 1-2", chase, {}, {
         'pattern': ColorPattern.ONE_OF_THREE,
+        'speedDelay': 50,
+        'iterations': 5,
+        'offWhenDone': True
+        }),
+    LEDEffect("stripChase2_1", "Chase Pattern 2-1", chase, {}, {
+        'pattern': ColorPattern.TWO_OUT_OF_THREE,
+        'speedDelay': 50,
+        'iterations': 5,
+        'offWhenDone': True
+        }),
+    LEDEffect("stripChase4_4", "Chase Pattern 4-4", chase, {}, {
+        'pattern': ColorPattern.FOUR_ON_FOUR_OFF,
         'speedDelay': 50,
         'iterations': 5,
         'offWhenDone': True
         }),
 
     # rainbow
-    LEDEffect("rainbow", "Rainbow", rainbow, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR]),
-    LEDEffect("rainbowCycle", "Rainbow Cycle", rainbowCycle, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
+    LEDEffect("rainbow", "Rainbow", rainbow, {
+        'include': [Evt.SHUTDOWN],
+        }),
+    LEDEffect("rainbowCycle", "Rainbow Cycle", rainbowCycle, {}, {
         'offWhenDone': True
         }),
 
     # wipe
-    LEDEffect("stripWipe", "Wipe", colorWipe, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
-        'color': ColorVal.WHITE,
+    LEDEffect("stripWipe", "Wipe", colorWipe, {}, {
         'speedDelay': 3,
         }),
 
     # fade
-    LEDEffect("stripFadeIn", "Fade In", fade, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
-        'color': ColorVal.WHITE,
+    LEDEffect("stripFadeIn", "Fade In", fade, {}, {
         'pattern': ColorPattern.SOLID,
         'steps': 50,
         'outSteps': 0,
@@ -456,8 +477,7 @@ def discover(*args, **kwargs):
         'offTime': 0,
         'iterations': 1
         }),
-    LEDEffect("stripPulse", "Pulse 3x", fade, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
-        'color': ColorVal.WHITE,
+    LEDEffect("stripPulse", "Pulse 3x", fade, {}, {
         'pattern': ColorPattern.SOLID,
         'steps': 10,
         'outSteps': 10,
@@ -466,8 +486,7 @@ def discover(*args, **kwargs):
         'offTime': 10,
         'iterations': 3
         }),
-    LEDEffect("stripFadeOut", "Fade Out", fade, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
-        'color': ColorVal.WHITE,
+    LEDEffect("stripFadeOut", "Fade Out", fade, {}, {
         'pattern': ColorPattern.SOLID,
         'steps': 10,
         'outSteps': 128,
@@ -478,8 +497,7 @@ def discover(*args, **kwargs):
         }),
 
     # blink
-    LEDEffect("stripBlink", "Blink 3x", fade, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
-        'color': ColorVal.WHITE,
+    LEDEffect("stripBlink", "Blink 3x", fade, {}, {
         'pattern': ColorPattern.SOLID,
         'steps': 1,
         'speedDelay': 1,
@@ -489,8 +507,7 @@ def discover(*args, **kwargs):
         }),
 
     # sparkle
-    LEDEffect("stripSparkle", "Sparkle", sparkle, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
-        'color': ColorVal.WHITE,
+    LEDEffect("stripSparkle", "Sparkle", sparkle, {}, {
         'chance': 1.0,
         'decay': 0.95,
         'speedDelay': 10,
@@ -498,8 +515,7 @@ def discover(*args, **kwargs):
         }),
 
     # meteor
-    LEDEffect("stripMeteor", "Meteor Fall", meteor, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
-        'color': ColorVal.WHITE,
+    LEDEffect("stripMeteor", "Meteor Fall", meteor, {}, {
         'meteorSize': 10,
         'decay': 0.75,
         'randomDecay': True,
@@ -507,8 +523,7 @@ def discover(*args, **kwargs):
         }),
 
     # larson scanner
-    LEDEffect("stripScanner", "Scanner", larsonScanner, [Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR], {
-        'color': ColorVal.WHITE,
+    LEDEffect("stripScanner", "Scanner", larsonScanner, {}, {
         'eyeSize': 4,
         'speedDelay': 256,
         'returnDelay': 50,
@@ -516,5 +531,9 @@ def discover(*args, **kwargs):
         }),
 
     # clear - permanently assigned to LEDEventManager.clear()
-    LEDEffect("clear", "Turn Off", clear, [LEDEvent.NOCONTROL, Evt.STARTUP, Evt.RACE_STAGE, Evt.CROSSING_ENTER, Evt.CROSSING_EXIT, Evt.RACE_LAP_RECORDED, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.LAPS_CLEAR, Evt.SHUTDOWN, Evt.HEAT_SET, Evt.MESSAGE_INTERRUPT])
+    LEDEffect("clear", "Turn Off", clear, {
+        'manual': False,
+        'include': [Evt.SHUTDOWN],
+        'recommended': [Evt.ALL]
+        })
     ]

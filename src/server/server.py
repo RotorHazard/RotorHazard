@@ -1684,20 +1684,36 @@ def emit_led_effect_setup(**params):
         for event in LEDEvent.configurable_events:
             selectedEffect = led_manager.getEventEffect(event['event'])
 
-            effect_list = []
+            effect_list_recommended = []
+            effect_list_normal = []
 
             for effect in effects:
-                if event['event'] in effects[effect]['validEvents']:
-                    effect_list.append({
-                        'name': effect,
-                        'label': __(effects[effect]['label'])
-                    })
+
+                if event['event'] in effects[effect]['validEvents'].get('include', []) or (
+                    event['event'] not in [Evt.SHUTDOWN]
+                    and event['event'] not in effects[effect]['validEvents'].get('exclude', [])
+                    and Evt.ALL not in effects[effect]['validEvents'].get('exclude', [])):
+
+                    if event['event'] in effects[effect]['validEvents'].get('recommended', []) or \
+                        Evt.ALL in effects[effect]['validEvents'].get('recommended', []):
+                        effect_list_recommended.append({
+                            'name': effect,
+                            'label': '* ' + __(effects[effect]['label'])
+                        })
+                    else:
+                        effect_list_normal.append({
+                            'name': effect,
+                            'label': __(effects[effect]['label'])
+                        })
+
+            effect_list_recommended.sort(key=lambda x: x['label'])
+            effect_list_normal.sort(key=lambda x: x['label'])
 
             emit_payload['events'].append({
                 'event': event["event"],
                 'label': __(event["label"]),
                 'selected': selectedEffect,
-                'effects': effect_list
+                'effects': effect_list_recommended + effect_list_normal
             })
 
         # never broadcast
@@ -1710,7 +1726,7 @@ def emit_led_effects(**params):
         effect_list = []
         if effects:
             for effect in effects:
-                if LEDEvent.NOCONTROL not in effects[effect]['validEvents']:
+                if effects[effect]['validEvents'].get('manual', True):
                     effect_list.append({
                         'name': effect,
                         'label': __(effects[effect]['label'])

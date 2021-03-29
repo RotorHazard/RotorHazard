@@ -49,19 +49,34 @@ def showBitmap(args):
 def discover(*args, **kwargs):
     # state bitmaps
     return [
-    LEDEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, [Evt.STARTUP, Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_FINISH, Evt.RACE_STOP, Evt.SHUTDOWN], {'bitmaps': [
+    LEDEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, {
+            'include': [Evt.SHUTDOWN],
+            'recommended': [Evt.STARTUP]
+        }, {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-RotorHazard.png", "delay": 0}
         ]}),
-    LEDEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, [Evt.RACE_STAGE], {'bitmaps': [
+    LEDEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, {
+            'include': [Evt.SHUTDOWN],
+            'recommended': [Evt.RACE_STAGE]
+        }, {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-pause.png", "delay": 0}
         ]}),
-    LEDEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, [Evt.RACE_START], {'bitmaps': [
+    LEDEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, {
+            'include': [Evt.SHUTDOWN],
+            'recommended': [Evt.RACE_START]
+        }, {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-arrow.png", "delay": 0}
         ]}),
-    LEDEffect("bitmapRedX", "Image: Red X", showBitmap, [Evt.RACE_STOP], {'bitmaps': [
+    LEDEffect("bitmapRedX", "Image: Red X", showBitmap, {
+            'include': [Evt.SHUTDOWN],
+            'recommended': [Evt.RACE_STOP]
+        }, {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-X.png", "delay": 0}
         ]}),
-    LEDEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, [Evt.RACE_FINISH, Evt.RACE_STOP], {'bitmaps': [
+    LEDEffect("bitmapCheckerboard", "Image: Checkerboard", showBitmap, {
+            'include': [Evt.SHUTDOWN],
+            'recommended': [Evt.RACE_FINISH, Evt.RACE_STOP]
+        }, {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-checkerboard.png", "delay": 0}
         ]})
     ]

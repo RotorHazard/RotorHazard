@@ -245,13 +245,16 @@ def convertColor(color):
     return color >> 16, (color >> 8) % 256, color % 256
 
 def discover(*args, **kwargs):
-    return [
+    effects = [
     LEDEffect(
         "textLapNumber",
         "Text: Lap Count",
-        dataHandler,
-        [Evt.RACE_LAP_RECORDED],
-        {
+        dataHandler, {
+            'manual': False,
+            'include': [Evt.RACE_LAP_RECORDED],
+            'exclude': [Evt.ALL],
+            'recommended': [Evt.RACE_LAP_RECORDED]
+        }, {
         'color': ColorVal.WHITE,
         'data': 'lap_number',
         'time': 5
@@ -260,9 +263,12 @@ def discover(*args, **kwargs):
     LEDEffect(
         "textLapTime",
         "Text: Lap Time",
-        dataHandler,
-        [Evt.RACE_LAP_RECORDED],
-        {
+        dataHandler, {
+            'manual': False,
+            'include': [Evt.RACE_LAP_RECORDED],
+            'exclude': [Evt.ALL],
+            'recommended': [Evt.RACE_LAP_RECORDED]
+        }, {
         'color': ColorVal.WHITE,
         'data': 'lap_time',
         'time': 8
@@ -271,9 +277,12 @@ def discover(*args, **kwargs):
     LEDEffect(
         "textPosition",
         "Text: Position",
-        dataHandler,
-        [Evt.RACE_LAP_RECORDED],
-        {
+        dataHandler, {
+            'manual': False,
+            'include': [Evt.RACE_LAP_RECORDED],
+            'exclude': [Evt.ALL],
+            'recommended': [Evt.RACE_LAP_RECORDED]
+        }, {
         'color': ColorVal.WHITE,
         'data': 'position',
         'time': 8
@@ -282,9 +291,12 @@ def discover(*args, **kwargs):
     LEDEffect(
         "scrollLapTime",
         "Text Scroll: Lap Time",
-        scrollText,
-        [Evt.RACE_LAP_RECORDED],
-        {
+        scrollText, {
+            'manual': False,
+            'include': [Evt.RACE_LAP_RECORDED],
+            'exclude': [Evt.ALL],
+            'recommended': [Evt.RACE_LAP_RECORDED]
+        }, {
         'color': ColorVal.WHITE,
         'data': 'lap_time'
         }
@@ -292,9 +304,12 @@ def discover(*args, **kwargs):
     LEDEffect(
         "textMessage",
         "Text Scroll: Message",
-        scrollText,
-        [Evt.MESSAGE_INTERRUPT, Evt.MESSAGE_STANDARD],
-        {
+        scrollText, {
+            'manual': False,
+            'include': [Evt.MESSAGE_INTERRUPT, Evt.MESSAGE_STANDARD],
+            'exclude': [Evt.ALL],
+            'recommended': [Evt.MESSAGE_INTERRUPT, Evt.MESSAGE_STANDARD]
+        }, {
         'color': ColorVal.WHITE,
         'data': 'message'
         }
@@ -302,9 +317,12 @@ def discover(*args, **kwargs):
     LEDEffect(
         "textRaceWin",
         "Text Scroll: Race Winner",
-        scrollText,
-        [Evt.RACE_WIN],
-        {
+        scrollText, {
+            'manual': False,
+            'include': [Evt.RACE_WIN],
+            'exclude': [Evt.ALL],
+            'recommended': [Evt.RACE_WIN]
+        }, {
         'color': ColorVal.WHITE,
         'data': 'message'
         }
@@ -312,19 +330,33 @@ def discover(*args, **kwargs):
     LEDEffect(
         "textStaging",
         "Text: Countdown",
-        dataHandler,
-        [Evt.RACE_STAGE],
-        {
+        dataHandler, {
+            'manual': False,
+            'include': [Evt.RACE_STAGE],
+            'exclude': [Evt.ALL],
+            'recommended': [Evt.RACE_STAGE]
+        }, {
         'color': ColorVal.WHITE,
         'data': 'staging',
         'time': 5
         }
         ),
-    LEDEffect(
-        "textLapGrid",
-        "Text: 4-Node Lap Count",
-        multiLapGrid,
-        [Evt.RACE_STAGE, Evt.RACE_START, Evt.RACE_LAP_RECORDED, Evt.RACE_FINISH, Evt.RACE_WIN, Evt.RACE_STOP],
-        {}
-        ),
     ]
+
+    if (Config.LED['LED_ROWS'] >= 16):
+        effects.append(
+            LEDEffect(
+                "textLapGrid",
+                "Text: 4-Node Lap Count (16h+)",
+                multiLapGrid, {
+                    'recommended': [
+                        Evt.RACE_STAGE,
+                        Evt.RACE_LAP_RECORDED,
+                        Evt.RACE_FINISH,
+                        Evt.RACE_WIN,
+                        Evt.RACE_STOP]
+                }
+            )
+        )
+
+    return effects
