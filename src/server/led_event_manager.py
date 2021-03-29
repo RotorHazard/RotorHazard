@@ -11,6 +11,7 @@ Wires events to handlers
 '''
 
 import copy
+import json
 from eventmanager import Evt
 from six.moves import UserDict
 
@@ -85,16 +86,41 @@ class LEDEventManager:
         self.eventEffects['clear']['handlerFn']({'strip': self.strip})
 
     def getDisplayColor(self, node_index):
-        if self.RHData.get_option('ledColorMode', False):
+        mode = self.RHData.get_optionInt('ledColorMode', 0)
+        
+        if mode == 1: # by pilot
             for line in self.RACE.results['by_race_time']:
                 if line['node'] == node_index:
                     color = self.RHData.get_pilot(line['pilot_id']).color
                     if not color:
                         color = '#ffffff'
                     break 
-        else:
+        elif mode == 2: # by frequency
+
+            profile = self.RHData.get_profile(self.RHData.get_optionInt('currentProfile'))
+            profile_freqs = json.loads(profile.frequencies)
+            freq = profile_freqs["f"][node_index]
+
+            if freq <= 5672:
+                color = '#ffffff'
+            elif freq <= 5711:
+                color = '#ff0000'
+            elif freq <= 5750:
+                color = '#ff8000'
+            elif freq <= 5789:
+                color = '#ffff00'
+            elif freq <= 5829:
+                color = '#00ff00'
+            elif freq <= 5867:
+                color = '#0000ff'
+            elif freq <= 5906:
+                color = '#8000ff'
+            else:
+                color = '#ff0080'
+
+        else: # by node
             color = self.RHData.get_option('colorNode_' + str(node_index), '#ffffff')
-        
+
         return hexToColor(color)
 
 class NoLEDManager():
