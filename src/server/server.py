@@ -4750,7 +4750,8 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     logger.info("Running http server at port " + str(port_val))
     init_interface_state(startup=True)
     Events.trigger(Evt.STARTUP, {
-        'color': ColorVal.ORANGE
+        'color': ColorVal.ORANGE,
+        'message': 'RotorHazard ' + RELEASE_VERSION
         })
 
     try:
