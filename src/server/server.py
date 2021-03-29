@@ -71,7 +71,7 @@ from eventmanager import Evt, EventManager
 Events = EventManager()
 
 # LED imports
-from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorPattern, hexToColor
+from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
@@ -1881,7 +1881,8 @@ def on_stage_race():
 
         Events.trigger(Evt.RACE_STAGE, {
             'hide_stage_timer': MIN != MAX,
-            'pi_starts_at_s': RACE.start_time_monotonic
+            'pi_starts_at_s': RACE.start_time_monotonic,
+            'color': ColorVal.ORANGE
             })
 
         SOCKET_IO.emit('stage_ready', {
@@ -2052,7 +2053,8 @@ def race_start_thread(start_token):
 
         # do time-critical tasks
         Events.trigger(Evt.RACE_START, {
-            'race': RACE
+            'race': RACE,
+            'color': ColorVal.GREEN
             })
 
         # do secondary start tasks (small delay is acceptable)
@@ -2122,7 +2124,9 @@ def on_stop_race():
 
         RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
         INTERFACE.set_race_status(RaceStatus.DONE)
-        Events.trigger(Evt.RACE_STOP)
+        Events.trigger(Evt.RACE_STOP, {
+            'color': ColorVal.RED
+        })
         check_win_condition(RACE, RHData, INTERFACE)
 
         if CLUSTER.hasSecondaries():
@@ -4729,7 +4733,9 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     APP.config['SECRET_KEY'] = RHData.get_option("secret_key")
     logger.info("Running http server at port " + str(port_val))
     init_interface_state(startup=True)
-    Events.trigger(Evt.STARTUP)
+    Events.trigger(Evt.STARTUP, {
+        'color': ColorVal.ORANGE
+        })
 
     try:
         # the following fn does not return until the server is shutting down
@@ -4742,7 +4748,9 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     except Exception:
         logger.exception("Server exception")
 
-    Events.trigger(Evt.SHUTDOWN)
+    Events.trigger(Evt.SHUTDOWN, {
+        'color': ColorVal.RED
+        })
     rep_str = INTERFACE.get_intf_error_report_str(True)
     if rep_str:
         logger.log((logging.INFO if INTERFACE.get_intf_total_error_count() else logging.DEBUG), rep_str)
