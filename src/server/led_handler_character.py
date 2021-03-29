@@ -41,7 +41,7 @@ def dataHandler(args):
             args['text'] = '{0:.1f}'.format(args['lap']['lap_time'] / 1000)
 
         elif args['data'] == 'position':
-            for line in args['results']['by_race_time']:
+            for line in args['RACE'].results['by_race_time']:
                 if args['node_index'] == line['node']:
                     args['text'] = line['position']
                     break
@@ -149,11 +149,6 @@ def multiLapGrid(args):
     else:
         return False
 
-    if 'results' in args:
-        results = args['results']
-    else:
-        return False
-
     panel = getPanelImg(strip, Config)
     if panel['height'] < 16:
         return False
@@ -167,8 +162,8 @@ def multiLapGrid(args):
     else:
         font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
         font_h = 8
-        
-    leaderboard = results['by_race_time']
+
+    leaderboard = args['RACE'].results['by_race_time']
 
     active_nodes = []
     for line in leaderboard:

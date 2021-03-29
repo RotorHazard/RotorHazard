@@ -4221,10 +4221,10 @@ def init_interface_state(startup=False):
 def init_LED_effects():
     # start with defaults
     effects = {
-        Evt.RACE_STAGE: "stripColorOrange2_1",
-        Evt.RACE_START: "stripColorGreenSolid",
-        Evt.RACE_FINISH: "stripColorWhite4_4",
-        Evt.RACE_STOP: "stripColorRedSolid",
+        Evt.RACE_STAGE: "stripColor2_1",
+        Evt.RACE_START: "stripColorSolid",
+        Evt.RACE_FINISH: "stripColor4_4",
+        Evt.RACE_STOP: "stripColorSolid",
         Evt.LAPS_CLEAR: "clear",
         Evt.CROSSING_ENTER: "stripSparkle",
         Evt.CROSSING_EXIT: "none",

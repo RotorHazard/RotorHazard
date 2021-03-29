@@ -1,8 +1,16 @@
 '''
 LED event manager
 Wires events to handlers
+
+{
+    'manual': False,
+    'include': [],
+    'exclude': [Evt.ALL]
+}
+
 '''
 
+import copy
 from eventmanager import Evt
 from six.moves import UserDict
 
@@ -55,7 +63,7 @@ class LEDEventManager:
         if name not in self.eventEffects:
             return None
 
-        args = self.eventEffects[name]['defaultArgs']
+        args = copy.deepcopy(self.eventEffects[name]['defaultArgs'])
         if args is None:
             args = {}
 
