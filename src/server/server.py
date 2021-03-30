@@ -3352,13 +3352,17 @@ def emit_current_heat(**params):
         heatNode_data[heatNode.node_index] = {
             'pilot_id': heatNode.pilot_id,
             'callsign': None,
-            'color': heatNode.color,
-            'pilotColor': None
+            'heatNodeColor': heatNode.color,
+            'pilotColor': None,
+            'activeColor': None
             }
         pilot = RHData.get_pilot(heatNode.pilot_id)
         if pilot:
             heatNode_data[heatNode.node_index]['callsign'] = pilot.callsign
-            heatNode_data[heatNode.node_index]['color'] = pilot.color
+            heatNode_data[heatNode.node_index]['pilotColor'] = pilot.color
+
+        if led_manager.isEnabled():
+            heatNode_data[heatNode.node_index]['activeColor'] = led_manager.getDisplayColor(heatNode.node_index)
 
     heat_format = None
     if heat_data.class_id != RHUtils.CLASS_ID_NONE:
@@ -4245,7 +4249,7 @@ def init_LED_effects():
     }
     if "bitmapRHLogo" in led_manager.getRegisteredEffects() and Config.LED['LED_ROWS'] > 1:
         effects[Evt.STARTUP] = "bitmapRHLogo"
-        effects[Evt.RACE_STAGE] = "bitmapOrangeSquare"
+        effects[Evt.RACE_STAGE] = "bitmapOrangeEllipsis"
         effects[Evt.RACE_START] = "bitmapGreenArrow"
         effects[Evt.RACE_FINISH] = "bitmapCheckerboard"
         effects[Evt.RACE_STOP] = "bitmapRedX"

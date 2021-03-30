@@ -27,12 +27,12 @@ function median(arr){
 	return (values[half - 1] + values[half]) / 2.0;
 }
 
-function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
-	// Pad to 2 or 3 digits, default is 2
-	function pad(n, z=2) {
-		return ('00' + n).slice(-z);
-	}
+// Pad to 2 or 3 digits, default is 2
+function pad(n, z=2) {
+	return ('000000' + n).slice(-z);
+}
 
+function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
 	s = Math.round(s);
 	var ms = s % 1000;
 	s = (s - ms) / 1000;
@@ -47,6 +47,10 @@ function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
 	formatted_time = formatted_time.replace('{m}', mins)
 
 	return formatted_time;
+}
+
+function colorvalToHex(color) {
+	return '#' + pad(color.toString(16), 6);
 }
 
 function convertColor(color) {

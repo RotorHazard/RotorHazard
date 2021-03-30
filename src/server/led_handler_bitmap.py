@@ -55,11 +55,11 @@ def discover(*args, **kwargs):
         }, {'bitmaps': [
         {"image": "static/image/LEDpanel-16x16-RotorHazard.png", "delay": 0}
         ]}),
-    LEDEffect("bitmapOrangeSquare", "Image: Orange Pause Icon", showBitmap, {
+    LEDEffect("bitmapOrangeEllipsis", "Image: Orange Ellipsis", showBitmap, {
             'include': [Evt.SHUTDOWN],
             'recommended': [Evt.RACE_STAGE]
         }, {'bitmaps': [
-        {"image": "static/image/LEDpanel-16x16-pause.png", "delay": 0}
+        {"image": "static/image/LEDpanel-16x16-ellipsis.png", "delay": 0}
         ]}),
     LEDEffect("bitmapGreenArrow", "Image: Green Upward Arrow", showBitmap, {
             'include': [Evt.SHUTDOWN],

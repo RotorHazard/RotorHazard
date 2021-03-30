@@ -70,12 +70,11 @@ class RHData():
         # Creates tables from database classes/models
         try:
             self._Database.DB.create_all()
+            self.reset_all(nofill) # Fill with defaults
             return True
         except Exception as ex:
             logger.error('Error creating database: ' + str(ex))
             return False
-
-        self.reset_all(nofill) # Fill with defaults
 
     def reset_all(self, nofill=False):
         self.reset_pilots()
@@ -255,14 +254,8 @@ class RHData():
                 "MinLapBehavior",
                 "ledEffects",
                 "ledBrightness",
-                "colorNode_0",
-                "colorNode_1",
-                "colorNode_2",
-                "colorNode_3",
-                "colorNode_4",
-                "colorNode_5",
-                "colorNode_6",
-                "colorNode_7",
+                "ledColorNodes",
+                "ledColorFreqs",
                 "osd_lapHeader",
                 "osd_positionHeader",
                 "startThreshLowerAmount",
@@ -313,6 +306,9 @@ class RHData():
                             'phonetic': '',
                             'color': None
                         })
+                    for pilot in self._Database.Pilot.query.all():
+                        if not pilot.color:
+                            pilot.color = RHUtils.hslToHex(False, 100, 50)
                 else:
                     self.reset_pilots()
 
@@ -421,14 +417,14 @@ class RHData():
 
                 recover_status['stage_1'] = True
             except Exception as ex:
+                logger.warning('Error while writing data from previous database (stage 1):  ' + str(ex))
+                logger.debug(traceback.format_exc())
                 # failed recovery, db reset
                 self.reset_all()
                 self.commit()
                 self.primeCache() # refresh Options cache
                 self._Events.trigger(Evt.DATABASE_RECOVER)
                 return recover_status
-                logger.warning('Error while writing data from previous database (stage 1):  ' + str(ex))
-                logger.debug(traceback.format_exc())
 
             # stage 2: recover race result data
             if recover_status['stage_1'] == True:
@@ -497,11 +493,14 @@ class RHData():
         return self._Database.Pilot.query.all()
 
     def add_pilot(self, init=None):
+        color = RHUtils.hslToHex(False, 100, 50)
+
         new_pilot = self._Database.Pilot(
             name='',
             callsign='',
             team=RHUtils.DEF_TEAM_NAME,
-            phonetic = '')
+            phonetic='',
+            color=color)
 
         if init:
             if 'name' in init:
@@ -512,7 +511,9 @@ class RHData():
                 new_pilot.team = init['team']
             if 'phonetic' in init:
                 new_pilot.phonetic = init['phonetic']
-
+            if 'color' in init:
+                new_pilot.color = init['color']
+                
         self._Database.DB.session.add(new_pilot)
         self._Database.DB.session.flush()
 
@@ -542,7 +543,7 @@ class RHData():
             pilot.name = data['name']
         if 'color' in data:
             pilot.color = data['color']
-            
+
         self.commit()
 
         self._RACE.cacheStatus = CacheStatus.INVALID  # refresh current leaderboard
@@ -1876,15 +1877,6 @@ class RHData():
         self.set_option("eventDescription", "")
         # LED settings
         self.set_option("ledBrightness", "32")
-        # LED colors
-        self.set_option("colorNode_0", "#001fff")
-        self.set_option("colorNode_1", "#ff3f00")
-        self.set_option("colorNode_2", "#7fff00")
-        self.set_option("colorNode_3", "#ffff00")
-        self.set_option("colorNode_4", "#7f00ff")
-        self.set_option("colorNode_5", "#ff007f")
-        self.set_option("colorNode_6", "#3fff3f")
-        self.set_option("colorNode_7", "#00bfff")
         # Event results cache
         self.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
 

@@ -677,7 +677,18 @@
 
 			for (var idx in msg.heatNodes) {
 				hn = msg.heatNodes[idx];
-				$('.callsign_' + idx).html(hn.callsign ? hn.callsign : __('-None-'));
+				cs = $('.callsign_' + idx)
+				cs.html(hn.callsign ? hn.callsign : __('-None-'));
+
+				if (hn.activeColor) {
+					color = colorvalToHex(hn.activeColor)
+
+					cs
+						.css('background-color', color)
+						.css('color', contrastColor(color));
+
+				}
+
 			}
 
 			if (msg.heat_format) {
