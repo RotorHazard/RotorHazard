@@ -98,6 +98,22 @@ void i2cTransmit();
 void serialEvent();
 #endif
 
+#ifdef RPI_SIGNAL_PIN
+bool rpiActiveSignalFlag = false;
+mtime_t rpiLastActiveTimeMs = 0;
+#define RPI_INACTIVE_DELAYMS 9000  // if no RPi signal for this long then "inactive"
+// have AUX LED mostly on if RPi status is "active"
+#define AUXLED_OUT_ONSTATE (rpiActiveSignalFlag ? LOW : HIGH)
+#define AUXLED_OUT_OFFSTATE (rpiActiveSignalFlag ? HIGH : LOW)
+#else
+#define AUXLED_OUT_ONSTATE HIGH
+#define AUXLED_OUT_OFFSTATE LOW
+#endif
+
+#ifdef AUXLED_OUTPUT_PIN
+bool auxLedOutEnabledFlag = false;
+#endif
+
 #if (!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))
 // Configure the I2C address based on input-pin level.
 void configI2cAddress()
@@ -262,6 +278,10 @@ void setModuleLed(bool onFlag)
         {
             currentStatusLedFlag = true;
             digitalWrite(MODULE_LED_PIN, MODULE_LED_ONSTATE);
+#ifdef AUXLED_OUTPUT_PIN
+            if (auxLedOutEnabledFlag)
+                digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_ONSTATE);
+#endif
         }
     }
     else
@@ -270,6 +290,10 @@ void setModuleLed(bool onFlag)
         {
             currentStatusLedFlag = false;
             digitalWrite(MODULE_LED_PIN, MODULE_LED_OFFSTATE);
+#ifdef AUXLED_OUTPUT_PIN
+            if (auxLedOutEnabledFlag)
+                digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_OFFSTATE);
+#endif
         }
     }
 }
@@ -287,9 +311,6 @@ void setBuzzerState(bool onFlag)
             currentBuzzerStateFlag = true;
             pinMode(BUZZER_OUTPUT_PIN, OUTPUT);
             digitalWrite(BUZZER_OUTPUT_PIN, BUZZER_OUT_ONSTATE);
-#ifdef AUXLED_OUTPUT_PIN
-            digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_ONSTATE);
-#endif
         }
     }
     else
@@ -299,9 +320,6 @@ void setBuzzerState(bool onFlag)
             currentBuzzerStateFlag = false;
             digitalWrite(BUZZER_OUTPUT_PIN, BUZZER_OUT_OFFSTATE);
             pinMode(BUZZER_OUTPUT_PIN, INPUT);
-#ifdef AUXLED_OUTPUT_PIN
-            digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_OFFSTATE);
-#endif
         }
     }
 }
@@ -448,6 +466,32 @@ void loop()
 #endif
                 setModuleLed(ms % 2000 == 0);  // blink
             }
+
+#ifdef RPI_SIGNAL_PIN
+            const int rpiSigVal = digitalRead(RPI_SIGNAL_PIN);
+            if (rpiActiveSignalFlag)
+            {  //RPi is currently "active"
+                if (rpiSigVal == RPI_SIGNAL_ONSTATE)
+                {  //new RPI status/heartbeat signal detected
+                    rpiLastActiveTimeMs = ms;
+                }
+                else if (ms - rpiLastActiveTimeMs > RPI_INACTIVE_DELAYMS)
+                {  //enough time has elapsed to declare RPi "inactive" (shutdown)
+                    rpiActiveSignalFlag = false;
+                    setModuleLed(true);            // turn AUX LED off
+                    setModuleLed(false);
+                    auxLedOutEnabledFlag = false;  // keep AUX LED off
+                }
+            }
+            else if (rpiSigVal == RPI_SIGNAL_ONSTATE)
+            {  //RPi is going from "inactive" to "active"
+                rpiActiveSignalFlag = true;
+                rpiLastActiveTimeMs = ms;
+                auxLedOutEnabledFlag = true;  // enable AUX LED
+                setModuleLed(true);   // turn AUX LED on right away
+                setModuleLed(false);
+            }
+#endif
         }
         loopMillis = ms;
     }
