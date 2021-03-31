@@ -23,7 +23,6 @@
 		'vrx_list'
 	];
 
-
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
@@ -1321,6 +1320,9 @@
 			led_html.append(' ');
 			led_html.append(led_select);
 			led_html.append(' ');
+			led_html.append('<label for="set_led_color" class="screen-reader-text">' + __('LED Color') + '</label>');
+			led_html.append('<button id="set_led_color" class="color-picker" style="background-color: #ff6a00"/>');
+			led_html.append(' ');
 			led_html.append($('<button id="use-led-effect">' + __('Go') + '</button>'));
 
 			$('#LED-effects').html(led_html);
@@ -1328,7 +1330,8 @@
 
 		$(document).on('click', '#use-led-effect', function (event) {
 			var data = {
-				effect: $('#led-effects-select').val()
+				effect: $('#led-effects-select').val(),
+				color: rgbtoHex($('#set_led_color').css('background-color'))
 			};
 			socket.emit('use_led_effect', data);
 		});
@@ -1354,6 +1357,15 @@
 				socket.emit('LED_solid', data);
 				return false;
 		});
+
+		$(document).on("click", '#set_led_color', function (event) {
+			src_hexcolor = rgbtoHex($(event.target).css('background-color'));
+
+			color_picker(src_hexcolor, function(h, s, l){
+				hexcolor = hslToHex(h, s, l);
+				$(event.target).css('background-color', hexcolor);
+			})
+		})
 
 		$('#set_led_brightness').on('input', function (event) {
 			var val = brightness_logsl.value($(this).val());
@@ -2310,14 +2322,14 @@
 		</div>
 
 		<div class="control-set">
-			<button class="LED-color" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
-			<button class="LED-color" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
-			<button class="LED-color" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
-			<button class="LED-color" data-rgb="#ffff00"><span style="background-color:#ffff00"></span></button>
-			<button class="LED-color" data-rgb="#7f00ff"><span style="background-color:#7f00ff"></span></button>
-			<button class="LED-color" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
-			<button class="LED-color" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
-			<button class="LED-color" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
+			<button class="LED-color color-picker" data-rgb="#001fff" style="background-color:#001fff"></button>
+			<button class="LED-color color-picker" data-rgb="#ff3f00" style="background-color:#ff3f00"></button>
+			<button class="LED-color color-picker" data-rgb="#7fff00" style="background-color:#7fff00"></button>
+			<button class="LED-color color-picker" data-rgb="#ffff00" style="background-color:#ffff00"></button>
+			<button class="LED-color color-picker" data-rgb="#7f00ff" style="background-color:#7f00ff"></button>
+			<button class="LED-color color-picker" data-rgb="#ff007f" style="background-color:#ff007f"></button>
+			<button class="LED-color color-picker" data-rgb="#3fff3f" style="background-color:#3fff3f"></button>
+			<button class="LED-color color-picker" data-rgb="#00bfff" style="background-color:#00bfff"></button>
 		</div>
 
 		<ol class="form">
@@ -2327,12 +2339,6 @@
 					<p class="desc">{{ __('Level') }}: <span id="led_brightness_value"></span></p>
 				</div>
 				<input type="range" id="set_led_brightness" min="1" max="25">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_led_color">{{ __('LED Color') }}</label>
-				</div>
-				<input type="color" id="set_led_color" />
 			</li>
 		</ol>
 

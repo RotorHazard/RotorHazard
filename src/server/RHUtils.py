@@ -205,9 +205,9 @@ def hslToHex(h, s, l):
     if not h:
         h = random.randint(0, 359)
     if not s:
-        s = random.randint(0, 99)
+        s = random.randint(0, 100)
     if not l:
-        l = random.randint(0, 99)
+        l = random.randint(0, 100)
 
     h = h / 360.0;
     s = s / 100.0;

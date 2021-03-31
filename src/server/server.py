@@ -1771,9 +1771,11 @@ def on_use_led_effect(data):
             led_manager.setEventEffect(Evt.LED_MANUAL, data['effect'])
         Events.trigger(Evt.LED_SET_MANUAL, data)  # setup manual effect on mirror timers
 
-        args = None
+        args = {}
         if 'args' in data:
             args = data['args']
+        if 'color' in data:
+            args['color'] = hexToColor(data['color'])
 
         Events.trigger(Evt.LED_MANUAL, args)
 
