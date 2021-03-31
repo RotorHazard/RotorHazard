@@ -33,6 +33,19 @@ class EventManager:
 
         return True
 
+    def off(self, event, name):
+        if event not in self.events:
+            return True
+
+        if name not in self.events[event]:
+            return True
+
+        del(self.events[event][name])
+
+        self.eventOrder[event] = [key for key, _value in sorted(self.events[event].items(), key=lambda x: x[1]['priority'])]
+
+        return True
+
     def trigger(self, event, evtArgs=None):
         # logger.debug('-Triggered event- {0}'.format(event))
         if event in self.events:

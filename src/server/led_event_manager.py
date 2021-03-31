@@ -63,11 +63,16 @@ class LEDEventManager:
         if name not in self.eventEffects:
             return None
 
+        if name == 'none':
+            self.Events.off(event, 'LED')
+            return True
+
         args = copy.deepcopy(self.eventEffects[name]['defaultArgs'])
         if args is None:
             args = {}
 
         args.update({
+            'handlerFn': self.eventEffects[name]['handlerFn'],
             'strip': self.strip,
             'RHData': self.RHData,
             'RACE': self.RACE,
@@ -77,10 +82,10 @@ class LEDEventManager:
 
         if event in [Evt.SHUTDOWN]:
             # event is direct (blocking)
-            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 50)
+            self.Events.on(event, 'LED', self.activateEffect, args, 50)
         else:
             # event is normal (threaded/non-blocking)
-            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 150)
+            self.Events.on(event, 'LED', self.activateEffect, args, 150)
         return True
 
     def clear(self):
@@ -146,6 +151,13 @@ class LEDEventManager:
             color = '#ffffff'
 
         return hexToColor(color)
+
+    def activateEffect(self, args):
+        args['handlerFn'](args)
+        self.activateIdle(args)
+
+    def activateIdle(self, args):
+        pass
 
 class NoLEDManager():
     def __init__(self):
