@@ -6,7 +6,8 @@
 
 import Config
 from eventmanager import Evt
-from led_event_manager import LEDEffect, Color, ColorVal
+from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal
+from RHRace import RaceStatus
 import gevent
 from PIL import Image, ImageFont, ImageDraw
 from monotonic import monotonic
@@ -14,7 +15,7 @@ from monotonic import monotonic
 def dataHandler(args):
     if 'data' in args:
         if args['data'] == 'staging':
-            args['time'] = None
+            args['time'] = 0
             if not args['hide_stage_timer']:
                 start_time = args['pi_starts_at_s']
 
@@ -96,11 +97,6 @@ def printCharacter(args):
     setPixels(strip, img)
     strip.show()
 
-    if 'time' in args and args['time'] is not None:
-        gevent.sleep(float(args['time']))
-        clearPixels(strip)
-        strip.show()
-
 def scrollText(args):
     if 'strip' in args:
         strip = args['strip']
@@ -146,8 +142,8 @@ def multiLapGrid(args):
     else:
         return False
 
-    if 'RHData' in args:
-        RHData = args['RHData']
+    if 'RACE' in args:
+        RACE = args['RACE']
     else:
         return False
 
@@ -181,7 +177,11 @@ def multiLapGrid(args):
                 else:
                     text = '+'
             else:
-                text = line['callsign'][0]
+                if RACE.race_status == RaceStatus.DONE:
+                    text = str(line['laps'])
+                else:
+                    # first callsign character
+                    text = line['callsign'][0]
 
             w, h = font.getsize(text)
             h = font_h
@@ -291,7 +291,8 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
-        'data': 'lap_time'
+        'data': 'lap_time',
+        'time': 2
         }
         ),
     LEDEffect(
@@ -303,7 +304,8 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.MESSAGE_INTERRUPT, Evt.MESSAGE_STANDARD, Evt.STARTUP]
         }, {
-        'data': 'message'
+        'data': 'message',
+        'time': 0
         }
         ),
     LEDEffect(
@@ -315,7 +317,8 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_WIN]
         }, {
-        'data': 'message'
+        'data': 'message',
+        'time': 2
         }
         ),
     LEDEffect(
@@ -337,14 +340,17 @@ def discover(*args, **kwargs):
         effects.append(
             LEDEffect(
                 "textLapGrid",
-                "Text: 4-Node Lap Count (16h+)",
+                "Text: 4-Node Lap Count",
                 multiLapGrid, {
+                    'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING],
                     'recommended': [
                         Evt.RACE_STAGE,
                         Evt.RACE_LAP_RECORDED,
                         Evt.RACE_FINISH,
                         Evt.RACE_WIN,
                         Evt.RACE_STOP]
+                }, {
+                'time': 4
                 }
             )
         )

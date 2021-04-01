@@ -1901,6 +1901,14 @@
 				return false;
 		});
 
+		$('button.LED-off').click(function (event) {
+				var data = {
+					off: true
+				};
+				socket.emit('LED_solid', data);
+				return false;
+		});
+
 		$(document).on("click", '#set_led_color', function (event) {
 			src_hexcolor = rgbtoHex($(event.target).css('background-color'));
 
@@ -2810,7 +2818,7 @@
 	</div>
 	<div class="panel-content">
 		<div class="control-set">
-			<button class="LED-color" data-rgb="#000000">{{ __('Turn Off') }}</button>
+			<button class="LED-off">{{ __('Turn Off') }}</button>
 		</div>
 
 		<div class="control-set">

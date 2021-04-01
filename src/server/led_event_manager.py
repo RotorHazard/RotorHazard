@@ -12,11 +12,14 @@ Wires events to handlers
 
 import copy
 import json
+import RHRace
+import gevent
 from eventmanager import Evt
 from six.moves import UserDict
 
 class LEDEventManager:
     events = {}
+    idleArgs = {}
     eventEffects = {}
     eventThread = None
 
@@ -29,13 +32,15 @@ class LEDEventManager:
 
         # hold
         self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None, {
-                'include': [Evt.SHUTDOWN],
+                'include': [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
                 'exclude': [Evt.STARTUP],
                 'recommended': [Evt.ALL]
+            }, {
+                'preventIdle': True
             }))
 
         # do nothing
-        self.registerEffect(LEDEffect("none", "No Change", lambda *args: None, {
+        self.registerEffect(LEDEffect("none", "No Effect", lambda *args: None, {
                 'manual': False,
                 'exclude': [Evt.STARTUP],
                 'recommended': [Evt.ALL]
@@ -80,16 +85,21 @@ class LEDEventManager:
             'manager': self,
             })
 
-        if event in [Evt.SHUTDOWN]:
-            # event is direct (blocking)
-            self.Events.on(event, 'LED', self.activateEffect, args, 50)
+        if event in [LEDEvent.IDLE_READY, LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING]:
+            # event is idle
+            self.idleArgs[event] = args
         else:
-            # event is normal (threaded/non-blocking)
-            self.Events.on(event, 'LED', self.activateEffect, args, 150)
+            if event in [Evt.SHUTDOWN]:
+                priority = 50 # event is direct (blocking)
+            else:
+                priority = 150 # event is normal (threaded/non-blocking)
+
+                self.Events.on(event, 'LED', self.activateEffect, args, priority)
         return True
 
     def clear(self):
-        self.eventEffects['clear']['handlerFn']({'strip': self.strip})
+        self.setEventEffect(Evt.LED_MANUAL, 'clear')
+        self.Events.trigger(Evt.LED_MANUAL, {'time': None, 'preventIdle': True})
 
     def getDisplayColor(self, node_index):
         mode = self.RHData.get_optionInt('ledColorMode', 0)
@@ -154,10 +164,30 @@ class LEDEventManager:
 
     def activateEffect(self, args):
         args['handlerFn'](args)
-        self.activateIdle(args)
+        if 'preventIdle' not in args or not args['preventIdle']:
+            if 'time' in args:
+                time = args['time']
+            else:
+                time = 0
+
+            if time:
+                gevent.sleep(float(time))
+
+            self.activateIdle(args)
 
     def activateIdle(self, args):
-        pass
+        gevent.idle()
+        event = None
+        if self.RACE.race_status == RHRace.RaceStatus.DONE:
+            event = LEDEvent.IDLE_DONE
+        elif self.RACE.race_status == RHRace.RaceStatus.READY:
+            event = LEDEvent.IDLE_READY
+        elif self.RACE.race_status == RHRace.RaceStatus.RACING:
+            event = LEDEvent.IDLE_RACING
+
+        if event and event in self.events:
+            self.eventEffects[self.events[event]]['handlerFn'](self.idleArgs[event])
+
 
 class NoLEDManager():
     def __init__(self):
@@ -234,7 +264,9 @@ class ColorPattern:
     FOUR_ON_FOUR_OFF = [4, 4]
 
 class LEDEvent:
-    NOCONTROL = 'noControlDisplay'
+    IDLE_READY = 'ledIdleReady'
+    IDLE_DONE = 'ledIdleDone'
+    IDLE_RACING = 'ledIdleRacing'
 
     configurable_events = [
         {
@@ -288,6 +320,18 @@ class LEDEvent:
         {
             "event": Evt.SHUTDOWN,
             "label": "Server Shutdown"
+        },
+        {
+            "event": IDLE_READY,
+            "label": "Idle: System Ready"
+        },
+        {
+            "event": IDLE_RACING,
+            "label": "Idle: Racing"
+        },
+        {
+            "event": IDLE_DONE,
+            "label": "Idle: Race Stopped"
         },
     ]
 
