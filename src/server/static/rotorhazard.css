@@ -1823,7 +1823,7 @@ td.speak {
 }
 
 .pilots input {
-	flex: 1 1 auto;
+	flex: 1 1 0;
 	min-width: 0;
 }
 
@@ -2099,6 +2099,22 @@ footer svg {
 	}
 }
 
+button.color-picker {
+	width: 2em;
+	padding: 0;
+	background: transparent;
+}
+
+#color-picker {
+	padding: 0.5em;
+}
+
+#color-picker-swatch {
+	width: 100%;
+	height: 2em;
+	background: hsl(var(--color-picker-hue), var(--color-picker-sat), var(--color-picker-lum));
+	margin: 0.5em 0;
+}
 
 /* ************* */
 /* Print Styling */

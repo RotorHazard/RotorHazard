@@ -27,12 +27,12 @@ function median(arr){
 	return (values[half - 1] + values[half]) / 2.0;
 }
 
-function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
-	// Pad to 2 or 3 digits, default is 2
-	function pad(n, z=2) {
-		return ('00' + n).slice(-z);
-	}
+// Pad to 2 or 3 digits, default is 2
+function pad(n, z=2) {
+	return ('000000' + n).slice(-z);
+}
 
+function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
 	s = Math.round(s);
 	var ms = s % 1000;
 	s = (s - ms) / 1000;
@@ -47,6 +47,10 @@ function formatTimeMillis(s, timeformat='{m}:{s}.{d}') {
 	formatted_time = formatted_time.replace('{m}', mins)
 
 	return formatted_time;
+}
+
+function colorvalToHex(color) {
+	return '#' + pad(color.toString(16), 6);
 }
 
 function convertColor(color) {
@@ -78,6 +82,14 @@ function contrastColor(hexcolor) {
 	}
 }
 
+function rgbtoHex(rgb) {
+    rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+    function hex(x) {
+        return ("0" + parseInt(x).toString(16)).slice(-2);
+    }
+    return "#" + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
+}
+
 function hslToHex(h, s, l) {
 	h = parseInt(h.replace(/[^0-9\.]/gi, '')) / 360;
 	s = parseInt(s.replace(/[^0-9\.]/gi, '')) / 100;
@@ -106,6 +118,33 @@ function hslToHex(h, s, l) {
 		return hex.length === 1 ? '0' + hex : hex;
 	};
 	return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function hexToHsl(hex) {
+	var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+		r = parseInt(result[1], 16);
+		g = parseInt(result[2], 16);
+		b = parseInt(result[3], 16);
+		r /= 255, g /= 255, b /= 255;
+		var max = Math.max(r, g, b), min = Math.min(r, g, b);
+		var h, s, l = (max + min) / 2;
+		if(max == min){
+			h = s = 0; // achromatic
+		}else{
+			var d = max - min;
+			s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+			switch(max){
+				case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+				case g: h = (b - r) / d + 2; break;
+				case b: h = (r - g) / d + 4; break;
+			}
+			h /= 6;
+		}
+	var HSL = new Object();
+	HSL['h']=h * 360;
+	HSL['s']=s * 100;
+	HSL['l']=l * 100;
+	return HSL;
 }
 
 function LogSlider(options) {
@@ -1836,3 +1875,65 @@ var freq = {
 		}
 	}
 }
+
+/* Color picker */
+var color_picker_el = $('<div id="color-picker" class="popup">');
+color_picker_el.append('<h2>' + __('Select Color') + '</h2>');
+color_picker_el.append('<div id="color-picker-swatch">');
+color_picker_el.append('<input type="range" id="color-picker-hue" min="0" max="359">');
+color_picker_el.append('<input type="range" id="color-picker-sat" min="0" max="100">');
+color_picker_el.append('<input type="range" id="color-picker-lum" min="25" max="100">');
+color_picker_el.append('<button id="color-picker-confirm">' + __('Select') + '</button>');
+
+function color_picker(loadColor=false, callback=false) {
+	$.magnificPopup.open({
+		items: {
+			src: color_picker_el,
+			type: 'inline',
+		},
+		closeOnBgClick: false,
+		showCloseBtn: false,
+		enableEscapeKey: true,
+		callbacks: {
+			open: function() {
+				if (loadColor) {
+					hslObj = hexToHsl(loadColor)
+					$('#color-picker-hue').val(hslObj.h)
+					$('#color-picker-sat').val(hslObj.s)
+					$('#color-picker-lum').val(hslObj.l)
+				} else {
+					$('#color-picker-hue').val(212)
+					$('#color-picker-sat').val(100)
+					$('#color-picker-lum').val(50)
+				}
+				$('html').css('--color-picker-hue', $('#color-picker-hue').val());
+				$('html').css('--color-picker-sat', $('#color-picker-sat').val() + '%');
+				$('html').css('--color-picker-lum', $('#color-picker-lum').val() + '%');
+			},
+			beforeClose: function() {
+				var hue = $('#color-picker-hue').val()
+				var sat = $('#color-picker-sat').val()
+				var lum = $('#color-picker-lum').val()
+				if (typeof callback === 'function') {
+					callback(hue, sat, lum);
+				}
+			}
+		}
+	});
+}
+
+$(document).on('input', '#color-picker-hue', function (event) {
+	$('html').css('--color-picker-hue', $('#color-picker-hue').val());
+});
+
+$(document).on('input', '#color-picker-sat', function (event) {
+	$('html').css('--color-picker-sat', $('#color-picker-sat').val() + '%');
+});
+
+$(document).on('input', '#color-picker-lum', function (event) {
+	$('html').css('--color-picker-lum', $('#color-picker-lum').val() + '%');
+});
+
+$(document).on('click', '#color-picker-confirm', function(){
+	$.magnificPopup.close();
+})

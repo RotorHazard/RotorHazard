@@ -10,6 +10,7 @@ import platform
 import subprocess
 import glob
 import socket
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -199,3 +200,43 @@ def appendToBaseFilename(fileNameStr, addStr):
     if len(sList) > 1:
         retStr += '.' + sList[1]
     return retStr
+
+def hslToHex(h, s, l):
+    if not h:
+        h = random.randint(0, 359)
+    if not s:
+        s = random.randint(0, 100)
+    if not l:
+        l = random.randint(0, 100)
+
+    h = h / 360.0;
+    s = s / 100.0;
+    l = l / 100.0;
+
+    if s == 0:
+        r = g = b = l
+    else:
+        def hue2rgb(p, q, t):
+            if t < 0:
+                t += 1
+            if t > 1:
+                t -= 1
+            if t < 1 / 6:
+                return p + (q - p) * 6 * t
+            if t < 1 / 2:
+                return q;
+            if t < 2 / 3:
+                return p + (q - p) * (2 / 3 - t) * 6
+            return p
+
+        if l < 0.5:
+            q = l * (1 + s)
+        else:
+            q = l + s - l * s;
+
+        p = 2 * l - q;
+        r = int(round(hue2rgb(p, q, h + 1 / 3) * 255))
+        g = int(round(hue2rgb(p, q, h) * 255))
+        b = int(round(hue2rgb(p, q, h - 1 / 3) * 255))
+
+    return '#{0:02x}{1:02x}{2:02x}'.format(r, g, b)

@@ -11,6 +11,7 @@ Wires events to handlers
 '''
 
 import copy
+import json
 from eventmanager import Evt
 from six.moves import UserDict
 
@@ -39,7 +40,6 @@ class LEDEventManager:
                 'exclude': [Evt.STARTUP],
                 'recommended': [Evt.ALL]
             }))
-
 
     def isEnabled(self):
         return True
@@ -72,6 +72,7 @@ class LEDEventManager:
             'RHData': self.RHData,
             'RACE': self.RACE,
             'Language': self.Language,
+            'manager': self,
             })
 
         if event in [Evt.SHUTDOWN]:
@@ -84,6 +85,67 @@ class LEDEventManager:
 
     def clear(self):
         self.eventEffects['clear']['handlerFn']({'strip': self.strip})
+
+    def getDisplayColor(self, node_index):
+        mode = self.RHData.get_optionInt('ledColorMode', 0)
+        color = False
+
+        if mode == 1: # by pilot
+            for line in self.RACE.results['by_race_time']:
+                if line['node'] == node_index:
+                    color = self.RHData.get_pilot(line['pilot_id']).color
+                    break
+        elif mode == 2: # by frequency
+
+            profile = self.RHData.get_profile(self.RHData.get_optionInt('currentProfile'))
+            profile_freqs = json.loads(profile.frequencies)
+            freq = profile_freqs["f"][node_index]
+
+            colorFreqSerial = self.RHData.get_option('ledColorFreqs', False)
+            if colorFreqSerial:
+                colorFreqs = json.loads(colorFreqSerial)
+                color = colorFreqs[node_index]
+            else:
+                if freq <= 5672:
+                    color = '#ffffff' # White
+                elif freq <= 5711:
+                    color = '#ff0000' # Red
+                elif freq <= 5750:
+                    color = '#ff8000' # Orange
+                elif freq <= 5789:
+                    color = '#ffff00' # Yellow
+                elif freq <= 5829:
+                    color = '#00ff00' # Green
+                elif freq <= 5867:
+                    color = '#0000ff' # Blue
+                elif freq <= 5906:
+                    color = '#8000ff' # Dark Violet
+                else:
+                    color = '#ff0080' # Deep Pink
+
+        else: # by node
+            colorNodeSerial = self.RHData.get_option('ledColorNodes', False)
+            if colorNodeSerial:
+                colorNodes = json.loads(colorNodeSerial)
+            else:
+                colorNodes = [
+                    "#001fff", # Blue
+                    "#ff3f00", # Orange
+                    "#7fff00", # Lime green
+                    "#ffff00", # Yellow
+                    "#7f00ff", # Magenta
+                    "#ff007f", # Purple
+                    "#3fff3f", # Mint
+                    "#00bfff", # Cyan
+                ]
+
+            if node_index + 1 < len(colorNodes):
+                color = colorNodes[node_index]
+
+        if not color:
+            color = '#ffffff'
+
+        return hexToColor(color)
 
 class NoLEDManager():
     def __init__(self):

@@ -1,7 +1,7 @@
 '''LED visual effects'''
 
 from eventmanager import Evt
-from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern
+from led_event_manager import LEDEffect, Color, ColorVal, ColorPattern
 import gevent
 import random
 import math
@@ -10,6 +10,13 @@ from monotonic import monotonic
 class Timing:
     VTX_EXPIRE = 4
     START_EXPIRE = 8
+
+def leaderProxy(args):
+    if 'effectFn' in args and 'node_index' in args:
+        leader = args['RACE'].results['by_race_time'][0]
+        if leader['node'] == args['node_index']:
+            args['effectFn'](args)
+    return False
 
 def led_on(strip, color=ColorVal.WHITE, pattern=ColorPattern.SOLID, offset=0):
     if pattern == ColorPattern.SOLID:
@@ -194,7 +201,7 @@ def fade(args):
     # effect should never exceed 3Hz (prevent seizures)
     a['offTime'] = min(333-((a['steps']*a['speedDelay'])+(a['outSteps']*a['speedDelay'])+a['onTime']), a['offTime'])
 
-    for i in range(a['iterations']):
+    for _i in range(a['iterations']):
         # fade in
         if a['steps']:
             led_off(strip)
@@ -339,7 +346,7 @@ def larsonScanner(args):
 
     led_off(strip)
 
-    for k in range(a['iterations']):
+    for _k in range(a['iterations']):
         for i in range(strip.numPixels()-a['eyeSize']-1):
             strip.setPixelColor(i-1, ColorVal.NONE)
 
@@ -528,6 +535,48 @@ def discover(*args, **kwargs):
         'speedDelay': 256,
         'returnDelay': 50,
         'iterations': 3
+        }),
+
+    # leader color proxies
+    LEDEffect("stripColorSolidLeader", "Solid (Leader only)", leaderProxy, {
+        'include': [Evt.RACE_LAP_RECORDED],
+        'exclude': [Evt.ALL],
+        'recommended': [Evt.RACE_LAP_RECORDED]
+        }, {
+        'effectFn': showColor,
+        'pattern': ColorPattern.SOLID
+        }),
+    LEDEffect("stripColor1_1Leader", "Pattern 1-1 (Leader only)", leaderProxy, {
+        'include': [Evt.RACE_LAP_RECORDED],
+        'exclude': [Evt.ALL],
+        'recommended': [Evt.RACE_LAP_RECORDED]
+        }, {
+        'effectFn': showColor, 
+        'pattern': ColorPattern.ALTERNATING
+        }),
+    LEDEffect("stripColor1_2Leader", "Pattern 1-2 (Leader only)", leaderProxy, {
+        'include': [Evt.RACE_LAP_RECORDED],
+        'exclude': [Evt.ALL],
+        'recommended': [Evt.RACE_LAP_RECORDED]
+        }, {
+        'effectFn': showColor,
+        'pattern': ColorPattern.ONE_OF_THREE
+        }),
+    LEDEffect("stripColor2_1Leader", "Pattern 2-1 (Leader only)", leaderProxy, {
+        'include': [Evt.RACE_LAP_RECORDED],
+        'exclude': [Evt.ALL],
+        'recommended': [Evt.RACE_LAP_RECORDED]
+        }, {
+        'effectFn': showColor,
+        'pattern': ColorPattern.TWO_OUT_OF_THREE
+        }),
+    LEDEffect("stripColor4_4Leader", "Pattern 4-4 (Leader only)", leaderProxy, {
+        'include': [Evt.RACE_LAP_RECORDED],
+        'exclude': [Evt.ALL],
+        'recommended': [Evt.RACE_LAP_RECORDED]
+        }, {
+        'effectFn': showColor,
+        'pattern': ColorPattern.FOUR_ON_FOUR_OFF
         }),
 
     # clear - permanently assigned to LEDEventManager.clear()

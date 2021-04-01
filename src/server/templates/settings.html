@@ -112,6 +112,10 @@
 			$('#set_next_heat_behavior').val(1);
 		}
 
+		if (parseInt('{{ getOption('ledColorMode') }}')) {
+			$('#set_ledColorMode').val('{{ getOption('ledColorMode') }}');
+		}
+
 		$('#unlock_race_format_button').html(svg_asset.lock);
 
 		// populate frequency selects
@@ -1055,15 +1059,18 @@
 					var el = $('<li data-id="' + pilot.pilot_id + '">');
 					el.append('<label for="name_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Name') + '</label>');
 					el.append('<input type="text" class="set_pilot_name" id="name_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.name + '" placeholder="' + __('Name') +'">');
+					if ('color' in pilot) {
+						el.append('<label for="color_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Color') + '</label>');
+						el.append('<button class="set_pilot_color color-picker" id="color_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" data-color="' + pilot.color + '" style="background-color:' + pilot.color + '">');
+					}
 					el.append('<label for="callsign_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Callsign') + '</label>');
-					el.append('<input type="text" class="set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
+					el.append('<input type="text" class="callsign set_pilot_callsign" id="callsign_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.callsign + '" placeholder="' + __('Callsign') +'">');
 					el.append('<label for="phonetic_' + pilot.pilot_id + '" class="screen-reader-text">' + __('Phonetic') +'</label>');
 					var phonetic = $('<div class="phonetic">');
 					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
 					phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
 					el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
-
 					if (!pilot.locked) {
 						el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
 					}
@@ -1111,6 +1118,21 @@
 				callsign: $(this).val()
 			};
 			socket.emit('alter_pilot', data);
+		})
+
+		$(document).on("click", '.set_pilot_color', function (event) {
+			pilot_id = parseInt($(event.target).data('pilot_id'));
+			src_hexcolor = $(event.target).data('color');
+
+			color_picker(src_hexcolor, function(h, s, l){
+				hexcolor = hslToHex(h, s, l)
+				var data = {
+					pilot_id: pilot_id,
+					color: hexcolor
+				};
+				socket.emit('alter_pilot', data);
+				$('#color_' + pilot_id).data('color', hexcolor).css('background-color', hexcolor);
+			})
 		})
 
 		$(document).on("change", '.set_pilot_team', function (event) {
@@ -1852,6 +1874,9 @@
 			led_html.append(' ');
 			led_html.append(led_select);
 			led_html.append(' ');
+			led_html.append('<label for="set_led_color" class="screen-reader-text">' + __('LED Color') + '</label>');
+			led_html.append('<button id="set_led_color" class="color-picker" style="background-color: #ff6a00"/>');
+			led_html.append(' ');
 			led_html.append($('<button id="use-led-effect">' + __('Go') + '</button>'));
 
 			$('#LED-effects').html(led_html);
@@ -1859,7 +1884,8 @@
 
 		$(document).on('click', '#use-led-effect', function (event) {
 			var data = {
-				effect: $('#led-effects-select').val()
+				effect: $('#led-effects-select').val(),
+				color: rgbtoHex($('#set_led_color').css('background-color'))
 			};
 			socket.emit('use_led_effect', data);
 		});
@@ -1875,16 +1901,14 @@
 				return false;
 		});
 
-		$('#set_led_color').change(function (event) {
-				var colors = convertColor($(this).val());
-				var data = {
-					red: colors.r,
-					green: colors.g,
-					blue: colors.b,
-				};
-				socket.emit('LED_solid', data);
-				return false;
-		});
+		$(document).on("click", '#set_led_color', function (event) {
+			src_hexcolor = rgbtoHex($(event.target).css('background-color'));
+
+			color_picker(src_hexcolor, function(h, s, l){
+				hexcolor = hslToHex(h, s, l);
+				$(event.target).css('background-color', hexcolor);
+			})
+		})
 
 		socket.on('led_effect_setup_data', function (msg) {
 			var led_html = $('<ol class="form">');
@@ -2761,6 +2785,19 @@
 		<h2>{{ __('LED Events') }}</h2>
 	</div>
 	<div class="panel-content">
+		<ol class="form">
+			<li>
+				<div class="label-block">
+					<label for="set_ledColorMode">{{ __('Color Mode') }}</label>
+				</div>
+				<select id="set_ledColorMode" class="set-option" data-option="ledColorMode">
+					<option value="0">{{ __('Node') }}</option>
+					<option value="1">{{ __('Pilot') }}</option>
+					<option value="2">{{ __('Frequency') }}</option>
+				</select>
+			</li>
+		</ol>
+		<hr />
 		<div id="LED-effect-setup"></div>
 	</div>
 </div>
@@ -2777,14 +2814,14 @@
 		</div>
 
 		<div class="control-set">
-			<button class="LED-color" data-rgb="#001fff"><span style="background-color:#001fff"></span></button>
-			<button class="LED-color" data-rgb="#ff3f00"><span style="background-color:#ff3f00"></span></button>
-			<button class="LED-color" data-rgb="#7fff00"><span style="background-color:#7fff00"></span></button>
-			<button class="LED-color" data-rgb="#ffff00"><span style="background-color:#ffff00"></span></button>
-			<button class="LED-color" data-rgb="#7f00ff"><span style="background-color:#7f00ff"></span></button>
-			<button class="LED-color" data-rgb="#ff007f"><span style="background-color:#ff007f"></span></button>
-			<button class="LED-color" data-rgb="#3fff3f"><span style="background-color:#3fff3f"></span></button>
-			<button class="LED-color" data-rgb="#00bfff"><span style="background-color:#00bfff"></span></button>
+			<button class="LED-color color-picker" data-rgb="#001fff" style="background-color:#001fff"></button>
+			<button class="LED-color color-picker" data-rgb="#ff3f00" style="background-color:#ff3f00"></button>
+			<button class="LED-color color-picker" data-rgb="#7fff00" style="background-color:#7fff00"></button>
+			<button class="LED-color color-picker" data-rgb="#ffff00" style="background-color:#ffff00"></button>
+			<button class="LED-color color-picker" data-rgb="#7f00ff" style="background-color:#7f00ff"></button>
+			<button class="LED-color color-picker" data-rgb="#ff007f" style="background-color:#ff007f"></button>
+			<button class="LED-color color-picker" data-rgb="#3fff3f" style="background-color:#3fff3f"></button>
+			<button class="LED-color color-picker" data-rgb="#00bfff" style="background-color:#00bfff"></button>
 		</div>
 
 		<ol class="form">
@@ -2794,12 +2831,6 @@
 					<p class="desc">{{ __('Level') }}: <span id="led_brightness_value"></span></p>
 				</div>
 				<input type="range" id="set_led_brightness" min="1" max="25">
-			</li>
-			<li>
-				<div class="label-block">
-					<label for="set_led_color">{{ __('LED Color') }}</label>
-				</div>
-				<input type="color" id="set_led_color" />
 			</li>
 		</ol>
 
