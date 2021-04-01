@@ -1,5 +1,5 @@
 '''RotorHazard server script'''
-RELEASE_VERSION = "3.1.0-dev.3" # Public release version code
+RELEASE_VERSION = "3.1.0-dev.4" # Public release version code
 SERVER_API = 32 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
@@ -2627,7 +2627,7 @@ def on_LED_solid(data):
         led_red = data['red']
         led_green = data['green']
         led_blue = data['blue']
-    
+
         on_use_led_effect({
             'effect': "stripColor",
             'args': {
