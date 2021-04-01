@@ -309,8 +309,6 @@ def stagingTrigger(args):
         else:
             break
 
-    gevent.sleep(float(2))
-
 def larsonScanner(args):
     if 'strip' in args:
         strip = args['strip']
