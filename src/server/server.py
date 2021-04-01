@@ -1690,7 +1690,7 @@ def emit_led_effect_setup(**params):
             for effect in effects:
 
                 if event['event'] in effects[effect]['validEvents'].get('include', []) or (
-                    event['event'] not in [Evt.SHUTDOWN]
+                    event['event'] not in [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_RACING, LEDEvent.IDLE_READY]
                     and event['event'] not in effects[effect]['validEvents'].get('exclude', [])
                     and Evt.ALL not in effects[effect]['validEvents'].get('exclude', [])):
 
@@ -2154,7 +2154,6 @@ def on_stop_race():
         logger.debug('No active race to stop')
         RACE.race_status = RaceStatus.READY # Go back to ready state
         INTERFACE.set_race_status(RaceStatus.READY)
-        led_manager.clear()
         Events.trigger(Evt.LAPS_CLEAR)
         delta_time = 0
 
@@ -2622,18 +2621,21 @@ def on_simulate_lap(data):
 @catchLogExceptionsWrapper
 def on_LED_solid(data):
     '''LED Solid Color'''
-    led_red = data['red']
-    led_green = data['green']
-    led_blue = data['blue']
-
-    on_use_led_effect({
-        'effect': "stripColor",
-        'args': {
-            'color': Color(led_red,led_green,led_blue),
-            'pattern': ColorPattern.SOLID,
-            'time': None
-        }
-    })
+    if 'off' in data and data['off']:
+        led_manager.clear()
+    else:
+        led_red = data['red']
+        led_green = data['green']
+        led_blue = data['blue']
+    
+        on_use_led_effect({
+            'effect': "stripColor",
+            'args': {
+                'color': Color(led_red,led_green,led_blue),
+                'pattern': ColorPattern.SOLID,
+                'preventIdle': True
+            }
+        })
 
 @SOCKET_IO.on('LED_chase')
 @catchLogExceptionsWrapper
@@ -4222,7 +4224,6 @@ def init_interface_state(startup=False):
     if startup:
         RACE.race_status = RaceStatus.READY # Go back to ready state
         INTERFACE.set_race_status(RaceStatus.READY)
-        led_manager.clear()
         Events.trigger(Evt.LAPS_CLEAR)
         RACE.timer_running = False # indicate race timer not running
         RACE.scheduled = False # also stop any deferred start
@@ -4247,7 +4248,10 @@ def init_LED_effects():
         Evt.MESSAGE_STANDARD: "none",
         Evt.MESSAGE_INTERRUPT: "none",
         Evt.STARTUP: "rainbowCycle",
-        Evt.SHUTDOWN: "clear"
+        Evt.SHUTDOWN: "clear",
+        LEDEvent.IDLE_DONE: "clear",
+        LEDEvent.IDLE_READY: "clear",
+        LEDEvent.IDLE_RACING: "clear",
     }
     if "bitmapRHLogo" in led_manager.getRegisteredEffects() and Config.LED['LED_ROWS'] > 1:
         effects[Evt.STARTUP] = "bitmapRHLogo"

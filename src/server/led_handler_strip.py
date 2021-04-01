@@ -1,21 +1,20 @@
 '''LED visual effects'''
 
 from eventmanager import Evt
-from led_event_manager import LEDEffect, Color, ColorVal, ColorPattern
+from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern
 import gevent
 import random
 import math
 from monotonic import monotonic
 
-class Timing:
-    VTX_EXPIRE = 4
-    START_EXPIRE = 8
-
 def leaderProxy(args):
-    if 'effectFn' in args and 'node_index' in args:
+    if 'effectFn' in args:
         leader = args['RACE'].results['by_race_time'][0]
-        if leader['node'] == args['node_index']:
+        if leader['starts']:
+            if 'node_index' not in args or args['node_index'] != leader['node']:
+                args['color'] = args['manager'].getDisplayColor(leader['node'])
             args['effectFn'](args)
+            return True
     return False
 
 def led_on(strip, color=ColorVal.WHITE, pattern=ColorPattern.SOLID, offset=0):
@@ -48,7 +47,6 @@ def chase(args):
         'pattern': ColorPattern.ONE_OF_THREE,
         'speedDelay': 50,
         'iterations': 5,
-        'offWhenDone': True
     }
     a.update(args)
 
@@ -57,9 +55,6 @@ def chase(args):
     for i in range(a['iterations'] * sum(a['pattern'])):
         led_on(strip, a['color'], a['pattern'], i)
         gevent.sleep(a['speedDelay']/1000.0)
-
-    if a['offWhenDone']:
-        led_off(strip)
 
 def color_wheel(pos):
     """Generate rainbow colors across 0-255 positions."""
@@ -95,19 +90,12 @@ def rainbowCycle(args):
     else:
         wait_ms = 2
 
-    if args and 'iterations' in args:
-        iterations = args['iterations']
-    else:
-        iterations = 3
-
-    for j in range(256*iterations):
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
-        strip.show()
-        gevent.sleep(wait_ms/1000.0)
-
-    if 'offWhenDone' in args and args['offWhenDone']:
-        led_off(strip)
+    while True:
+        for j in range(256):
+            for i in range(strip.numPixels()):
+                strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
+            strip.show()
+            gevent.sleep(wait_ms/1000.0)
 
 '''
 def theaterChaseRainbow(strip, wait_ms=25):
@@ -140,10 +128,6 @@ def showColor(args):
         pattern = ColorPattern.SOLID
 
     led_on(strip, color, pattern)
-
-    if 'time' in args and args['time'] is not None:
-        gevent.sleep(float(args['time']))
-        led_off(strip)
 
 def clear(args):
     if 'strip' in args:
@@ -389,38 +373,34 @@ def discover(*args, **kwargs):
     LEDEffect("stripColor", "Color/Pattern (Args)", showColor, {
         'manual': False,
         'exclude': [Evt.ALL]
+        }, {
+        'time': 4
         }),
     LEDEffect("stripColorSolid", "Solid", showColor, {
         'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_START, Evt.RACE_STOP]
         }, {
-        'pattern': ColorPattern.SOLID
+        'pattern': ColorPattern.SOLID,
+        'time': 4
         }),
     LEDEffect("stripColor1_1", "Pattern 1-1", showColor, {
         'include': [Evt.SHUTDOWN],
         }, {
-        'pattern': ColorPattern.ALTERNATING
-        }),
-
-    LEDEffect("stripColorSolid_4s", "Solid (4s expire)", showColor, {}, {
-        'pattern': ColorPattern.SOLID,
-        'time': Timing.VTX_EXPIRE
-        }),
-    LEDEffect("stripColor1_1_4s", "Pattern 1-1 (4s expire)", showColor, {}, {
         'pattern': ColorPattern.ALTERNATING,
-        'time': Timing.VTX_EXPIRE
+        'time': 4
         }),
-
     LEDEffect("stripColor1_2", "Pattern 1-2", showColor, {
         'include': [Evt.SHUTDOWN],
         }, {
-        'pattern': ColorPattern.ONE_OF_THREE
+        'pattern': ColorPattern.ONE_OF_THREE,
+        'time': 4
         }),
     LEDEffect("stripColor2_1", "Pattern 2-1", showColor, {
         'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_STAGE]
         }, {
-        'pattern': ColorPattern.TWO_OUT_OF_THREE
+        'pattern': ColorPattern.TWO_OUT_OF_THREE,
+        'time': 4
         }),
     LEDEffect("stripStaging", "Staging Pulse 2-1", stagingTrigger, {
         'manual': False,
@@ -433,45 +413,47 @@ def discover(*args, **kwargs):
         'ontime': 0,
         'steps': 0,
         'outSteps': 10,
+        'time': 2
         }),
     LEDEffect("stripColor4_4", "Pattern 4-4", showColor, {
         'include': [Evt.SHUTDOWN],
         'recommended': [Evt.RACE_FINISH]
         }, {
-        'pattern': ColorPattern.FOUR_ON_FOUR_OFF
+        'pattern': ColorPattern.FOUR_ON_FOUR_OFF,
+        'time': 4
         }),
 
     # chase
     LEDEffect("stripChase1_2", "Chase Pattern 1-2", chase, {}, {
         'pattern': ColorPattern.ONE_OF_THREE,
         'speedDelay': 50,
-        'iterations': 5,
-        'offWhenDone': True
+        'iterations': 5
         }),
     LEDEffect("stripChase2_1", "Chase Pattern 2-1", chase, {}, {
         'pattern': ColorPattern.TWO_OUT_OF_THREE,
         'speedDelay': 50,
         'iterations': 5,
-        'offWhenDone': True
         }),
     LEDEffect("stripChase4_4", "Chase Pattern 4-4", chase, {}, {
         'pattern': ColorPattern.FOUR_ON_FOUR_OFF,
         'speedDelay': 50,
         'iterations': 5,
-        'offWhenDone': True
         }),
 
     # rainbow
     LEDEffect("rainbow", "Rainbow", rainbow, {
-        'include': [Evt.SHUTDOWN],
+        'include': [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
+        }, {
+        'time': 4
         }),
-    LEDEffect("rainbowCycle", "Rainbow Cycle", rainbowCycle, {}, {
-        'offWhenDone': True
-        }),
+    LEDEffect("rainbowCycle", "Rainbow Cycle", rainbowCycle, {
+        'include': [LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING]
+        }, {}),
 
     # wipe
     LEDEffect("stripWipe", "Wipe", colorWipe, {}, {
         'speedDelay': 3,
+        'time': 2
         }),
 
     # fade
@@ -482,7 +464,8 @@ def discover(*args, **kwargs):
         'speedDelay': 10,
         'onTime': 0,
         'offTime': 0,
-        'iterations': 1
+        'iterations': 1,
+        'time': 4
         }),
     LEDEffect("stripPulse", "Pulse 3x", fade, {}, {
         'pattern': ColorPattern.SOLID,
@@ -491,7 +474,8 @@ def discover(*args, **kwargs):
         'speedDelay': 1,
         'onTime': 10,
         'offTime': 10,
-        'iterations': 3
+        'iterations': 3,
+        'time': 3
         }),
     LEDEffect("stripFadeOut", "Fade Out", fade, {}, {
         'pattern': ColorPattern.SOLID,
@@ -500,7 +484,8 @@ def discover(*args, **kwargs):
         'speedDelay': 1,
         'onTime': 0,
         'offTime': 0,
-        'iterations': 1
+        'iterations': 1,
+        'time': 4
         }),
 
     # blink
@@ -510,7 +495,8 @@ def discover(*args, **kwargs):
         'speedDelay': 1,
         'onTime': 100,
         'offTime': 100,
-        'iterations': 3
+        'iterations': 3,
+        'time': 3
         }),
 
     # sparkle
@@ -518,7 +504,8 @@ def discover(*args, **kwargs):
         'chance': 1.0,
         'decay': 0.95,
         'speedDelay': 10,
-        'iterations': 50
+        'iterations': 50,
+        'time': 0
         }),
 
     # meteor
@@ -526,7 +513,8 @@ def discover(*args, **kwargs):
         'meteorSize': 10,
         'decay': 0.75,
         'randomDecay': True,
-        'speedDelay': 1
+        'speedDelay': 1,
+        'time': 0
         }),
 
     # larson scanner
@@ -534,55 +522,63 @@ def discover(*args, **kwargs):
         'eyeSize': 4,
         'speedDelay': 256,
         'returnDelay': 50,
-        'iterations': 3
+        'iterations': 3,
+        'time': 0
         }),
 
     # leader color proxies
-    LEDEffect("stripColorSolidLeader", "Solid (Leader only)", leaderProxy, {
-        'include': [Evt.RACE_LAP_RECORDED],
+    LEDEffect("stripColorSolidLeader", "Solid / Leader", leaderProxy, {
+        'include': [Evt.RACE_LAP_RECORDED, LEDEvent.IDLE_RACING, LEDEvent.IDLE_DONE],
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
         'effectFn': showColor,
-        'pattern': ColorPattern.SOLID
+        'pattern': ColorPattern.SOLID,
+        'time': 4
         }),
-    LEDEffect("stripColor1_1Leader", "Pattern 1-1 (Leader only)", leaderProxy, {
-        'include': [Evt.RACE_LAP_RECORDED],
+    LEDEffect("stripColor1_1Leader", "Pattern 1-1 / Leader", leaderProxy, {
+        'include': [Evt.RACE_LAP_RECORDED, LEDEvent.IDLE_RACING, LEDEvent.IDLE_DONE],
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
         'effectFn': showColor, 
-        'pattern': ColorPattern.ALTERNATING
+        'pattern': ColorPattern.ALTERNATING,
+        'time': 4
         }),
-    LEDEffect("stripColor1_2Leader", "Pattern 1-2 (Leader only)", leaderProxy, {
-        'include': [Evt.RACE_LAP_RECORDED],
+    LEDEffect("stripColor1_2Leader", "Pattern 1-2 / Leader", leaderProxy, {
+        'include': [Evt.RACE_LAP_RECORDED, LEDEvent.IDLE_RACING, LEDEvent.IDLE_DONE],
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
         'effectFn': showColor,
-        'pattern': ColorPattern.ONE_OF_THREE
+        'pattern': ColorPattern.ONE_OF_THREE,
+        'time': 4
         }),
-    LEDEffect("stripColor2_1Leader", "Pattern 2-1 (Leader only)", leaderProxy, {
-        'include': [Evt.RACE_LAP_RECORDED],
+    LEDEffect("stripColor2_1Leader", "Pattern 2-1 / Leader", leaderProxy, {
+        'include': [Evt.RACE_LAP_RECORDED, LEDEvent.IDLE_RACING, LEDEvent.IDLE_DONE],
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
         'effectFn': showColor,
-        'pattern': ColorPattern.TWO_OUT_OF_THREE
+        'pattern': ColorPattern.TWO_OUT_OF_THREE,
+        'time': 4
         }),
-    LEDEffect("stripColor4_4Leader", "Pattern 4-4 (Leader only)", leaderProxy, {
-        'include': [Evt.RACE_LAP_RECORDED],
+    LEDEffect("stripColor4_4Leader", "Pattern 4-4 / Leader", leaderProxy, {
+        'include': [Evt.RACE_LAP_RECORDED, LEDEvent.IDLE_RACING, LEDEvent.IDLE_DONE],
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
         'effectFn': showColor,
-        'pattern': ColorPattern.FOUR_ON_FOUR_OFF
+        'pattern': ColorPattern.FOUR_ON_FOUR_OFF,
+        'time': 4
         }),
 
     # clear - permanently assigned to LEDEventManager.clear()
     LEDEffect("clear", "Turn Off", clear, {
         'manual': False,
-        'include': [Evt.SHUTDOWN],
+        'include': [Evt.SHUTDOWN, LEDEvent.IDLE_DONE, LEDEvent.IDLE_READY, LEDEvent.IDLE_RACING],
         'recommended': [Evt.ALL]
+        }, {
+            'time': 8
         })
     ]
