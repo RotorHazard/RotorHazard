@@ -147,6 +147,11 @@ def multiLapGrid(args):
     else:
         return False
 
+    if args['RACE'].results and 'by_race_time' in args['RACE'].results:
+        leaderboard = args['RACE'].results['by_race_time']
+    else:
+        return False
+
     panel = getPanelImg(strip, Config)
     if panel['height'] < 16:
         return False
@@ -160,8 +165,6 @@ def multiLapGrid(args):
     else:
         font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
         font_h = 8
-
-    leaderboard = args['RACE'].results['by_race_time']
 
     active_nodes = []
     for line in leaderboard:

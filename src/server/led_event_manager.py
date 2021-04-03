@@ -106,10 +106,12 @@ class LEDEventManager:
         color = False
 
         if mode == 1: # by pilot
-            for line in self.RACE.results['by_race_time']:
-                if line['node'] == node_index:
-                    color = self.RHData.get_pilot(line['pilot_id']).color
-                    break
+            if self.RACE.results and 'by_race_time' in self.RACE.results:
+                color = '#ffffff'
+                for line in self.RACE.results['by_race_time']:
+                    if line['node'] == node_index:
+                        color = self.RHData.get_pilot(line['pilot_id']).color
+                        break
         elif mode == 2: # by frequency
 
             profile = self.RHData.get_profile(self.RHData.get_optionInt('currentProfile'))

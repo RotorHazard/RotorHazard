@@ -9,12 +9,13 @@ from monotonic import monotonic
 
 def leaderProxy(args):
     if 'effectFn' in args:
-        leader = args['RACE'].results['by_race_time'][0]
-        if leader['starts']:
-            if 'node_index' not in args or args['node_index'] != leader['node']:
-                args['color'] = args['manager'].getDisplayColor(leader['node'])
-            args['effectFn'](args)
-            return True
+        if args['RACE'].results and 'by_race_time' in args['RACE'].results and len(args['RACE'].results['by_race_time']):
+            leader = args['RACE'].results['by_race_time'][0]
+            if leader['starts']:
+                if 'node_index' not in args or args['node_index'] != leader['node']:
+                    args['color'] = args['manager'].getDisplayColor(leader['node'])
+                args['effectFn'](args)
+                return True
     return False
 
 def led_on(strip, color=ColorVal.WHITE, pattern=ColorPattern.SOLID, offset=0):
