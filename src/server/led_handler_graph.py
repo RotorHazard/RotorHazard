@@ -5,12 +5,9 @@
 #    sudo pip install pillow
 
 import Config
-from eventmanager import Evt
-from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal
-from RHRace import RaceStatus
+from led_event_manager import LEDEffect, Color, ColorVal
 import gevent
-from PIL import Image, ImageFont, ImageDraw
-from monotonic import monotonic
+from PIL import Image, ImageDraw
 
 def rssiGraph(args):
     if 'strip' in args:
@@ -43,9 +40,9 @@ def rssiGraph(args):
             rssi_range = rssi_max - rssi_min
 
             if rssi_range:
-                point = (rssi_max - rssi_val) / rssi_range * panel['height']
+                point = (rssi_max - rssi_val) / float(rssi_range) * panel['height']
 
-                panel['draw'].rectangle((barWidth * node.index, point, barWidth * node.index + barWidth, panel['height']), fill=color)
+                panel['draw'].rectangle((barWidth * node.index, point, (barWidth * node.index) + barWidth - 1, panel['height']), fill=color)
 
         img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
         setPixels(strip, img)
