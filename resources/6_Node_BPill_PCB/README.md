@@ -48,15 +48,15 @@ U2, U3  	                    |   16	    | 2.54mm header pins                    
 U6	                            |   1	    | STM32F103C8T6 	                                                 | -
 RX1, RX2, RX3, RX4, RX5, RX6    |   1-6	    | RX5808	                                                         | 1 of these is required for each node you wish to fit
 
-For the timer build:
+For the timer assembly:
 Name                            | Quantity  | Notes
 --------------------------------|-----------|---------
 RASPBERRYPI_3B+                 |   1       | Alternative: Raspberry Pi 4
 8GB+ Micro SD card              |   1       | Any Micro SD card between 8GB and 64GB will work
-M3x8mm screw                    |   10      | Slightly longer screws would also work
-M2.5x10mm countersunk screw     |   4       | M3 can be used if you widen the raspberry pi mounting holes with a drill, slightly longer screws would also work
   
 You will also require some 3D printed parts for the case and the 11.5mm 3D printed stand offs. If you wish to use a different case then 12mm standoffs should work.
+
+Details on 3D printed parts and mechanical assembly can be found [here](../6_node_BPill_case/README.md)
   
 ### Optional
 For the PCB:
@@ -76,17 +76,13 @@ U4	                            |   1	    | MP1584	                    | Fit if y
 BZ1	                            |   1       | 12mm x 9.5mm 5V buzzer        | Used for low voltage alarm
 Q1, Q2	                        |   2	    | GSD SOT-23 N-Channel MOSFET   | 1 is used for optional switched buzzer, the other is used for optional fan enable control, an example is IRLML6344TRPBF
 
-For the Timer Build:
+For the timer assembly:
 Name	                        | Quantity      | Notes
 --------------------------------|---------------|---------
 Raspberry Pi heat syncs         |   1 set       | Recommended to keep the pi cool
 20x20x6mm heat sync             |   1-6         | Recommended to keep the RX5808's cool
 Thermal glue                    |   1 tube      | Needed to attach the RX5808 heat syncs
 LCD Voltage Screen              |   1           | Used to show the battery voltage on the case
-M2x5mm screw                    |   2           | Used to screw the LCD voltage screen to the case
-M3x5mm screw                    |   1	      	| Used to secure the Wi-Fi antenna arm, Slightly longer screws would also work
-Heat shrink                     |   90mm        | Used to attached Wi-Fi antenna to the arm, if you are using a modified Wi-Fi USB module 
-Wire                            |   As required | Wire may be needed to attach the voltage monitor and to ground the case to the PCB
 
 ## Tools
 ### Required
@@ -115,3 +111,5 @@ Wire                            |   As required | Wire may be needed to attach t
 [Gerber files for RotorHazard 6 Node STM32 PCB](RotorHazard_6_Node_Timer_fab_V1.0.zip)
 
 [RotorHazard 6 node STM32 Board Build Guide](BoardBuild.md)
+
+[3D printed parts & mechanical assembly](../6_node_BPill_case/README.md)
