@@ -2996,7 +2996,12 @@ def build_page_cache():
                 gevent.idle()
                 status = Options.get("eventResults_cacheStatus")
                 if status == Results.CacheStatus.VALID:
-                    results = json.loads(Options.get("eventResults"))
+                    try:
+                        results = json.loads(Options.get("eventResults"))
+                    except:
+                        # load failed, set invalid
+                        logger.error('Event Summary Cache failed; setting invalid')
+                        Options.set("eventResults_cacheStatus", Results.CacheStatus.INVALID)
                     break
                 elif monotonic() > expires:
                     logger.warning('Cache build timed out: Event Summary')
