@@ -218,6 +218,8 @@ def assemble_results(RHData, PageCache, Language):
         if valid_heats:
             if class_id in results['classes']:
                 race_class = results['classes'][class_id]
+            else:
+                race_class = False
 
             payload.append([])
             if race_class:
@@ -237,7 +239,11 @@ def assemble_results(RHData, PageCache, Language):
                     heat = results['heats'][heat_id]
 
                     payload.append([])
-                    payload.append([Language.__('Heat') + ': ' + heat['note']])
+
+                    if heat['note']:
+                        payload.append([Language.__('Heat') + ': ' + heat['note']])
+                    else:
+                        payload.append([Language.__('Heat') + ' ' + str(heat_id)])
 
                     if len(heat['rounds']) > 1:
                         payload.append([])
