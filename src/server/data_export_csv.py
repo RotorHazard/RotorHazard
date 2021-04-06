@@ -58,7 +58,7 @@ def assemble_heats(RHData, PageCache, Language):
 
         row = [note, race_class]
 
-        heatnodes = RHData.get_heatNodes(filter_by={'heat_id': heat.id}, order_by={'node_index': None})
+        heatnodes = RHData.get_heatNodes_by_heat(heat.id)
         pilots = {}
         for heatnode in heatnodes:
             if heatnode.pilot_id != RHUtils.PILOT_ID_NONE:
