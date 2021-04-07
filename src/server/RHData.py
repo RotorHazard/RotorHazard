@@ -85,6 +85,7 @@ class RHData():
         self.clear_race_data()
         self.reset_profiles()
         self.reset_raceFormats()
+        self.reset_raceClasses()
         self.reset_options()
 
     def commit(self):
@@ -1740,6 +1741,7 @@ class RHData():
         self._Database.DB.session.query(self._Database.SavedRaceMeta).delete()
         self._Database.DB.session.query(self._Database.SavedPilotRace).delete()
         self._Database.DB.session.query(self._Database.SavedRaceLap).delete()
+        self._Database.DB.session.query(self._Database.LapSplit).delete()
         self.commit()
         logger.info('Database saved races reset')
         return True
