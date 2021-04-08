@@ -5,7 +5,6 @@ logger = logging.getLogger(__name__)
 import RHUtils
 import io
 import csv
-from sqlalchemy.ext.declarative import DeclarativeMeta
 from data_export import DataExporter
 
 def write_csv(data):
@@ -48,7 +47,6 @@ def assemble_pilots(RHData, PageCache, Language):
 def assemble_heats(RHData, PageCache, Language):
     payload = [[Language.__('Name'), Language.__('Class'), Language.__('Pilots')]]
     for heat in RHData.get_heats():
-        heat_id = heat.id
         note = heat.note
 
         if heat.class_id != RHUtils.CLASS_ID_NONE:
@@ -59,7 +57,6 @@ def assemble_heats(RHData, PageCache, Language):
         row = [note, race_class]
 
         heatnodes = RHData.get_heatNodes_by_heat(heat.id)
-        pilots = {}
         for heatnode in heatnodes:
             if heatnode.pilot_id != RHUtils.PILOT_ID_NONE:
                 row.append(RHData.get_pilot(heatnode.pilot_id).callsign)
@@ -133,7 +130,7 @@ def assemble_formats(RHData, PageCache, Language):
             race_format.start_delay_max,
             tones[race_format.staging_tones],
             start_behaviors[race_format.start_behavior],
-            race_format.win_condition,
+            win_conditions[race_format.win_condition],
             race_format.number_laps_win,
             race_format.team_racing_mode,
         ])
