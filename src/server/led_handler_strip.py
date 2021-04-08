@@ -13,7 +13,7 @@ def leaderProxy(args):
             leader = args['RACE'].results['by_race_time'][0]
             if leader['starts']:
                 if 'node_index' not in args or args['node_index'] != leader['node']:
-                    args['color'] = args['manager'].getDisplayColor(leader['node'])
+                    args['color'] = args['manager'].getDisplayColor(leader['node'], from_result=True)
                 args['effectFn'](args)
                 return True
     return False
@@ -542,7 +542,7 @@ def discover(*args, **kwargs):
         'exclude': [Evt.ALL],
         'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
-        'effectFn': showColor, 
+        'effectFn': showColor,
         'pattern': ColorPattern.ALTERNATING,
         'time': 4
         }),

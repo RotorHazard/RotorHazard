@@ -188,7 +188,7 @@ def multiLapGrid(args):
 
             w, h = font.getsize(text)
             h = font_h
-            color = convertColor(args['manager'].getDisplayColor(line['node']))
+            color = convertColor(args['manager'].getDisplayColor(line['node'], from_result=True))
 
             # draw positions
             if active_nodes.index(line['node']) == 0:

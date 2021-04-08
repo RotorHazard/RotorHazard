@@ -14,6 +14,7 @@ import copy
 import json
 import RHRace
 import gevent
+from Results import CacheStatus
 from eventmanager import Evt
 from six.moves import UserDict
 
@@ -101,17 +102,30 @@ class LEDEventManager:
         self.setEventEffect(Evt.LED_MANUAL, 'clear')
         self.Events.trigger(Evt.LED_MANUAL, {'time': None, 'preventIdle': True})
 
-    def getDisplayColor(self, node_index):
+    def getDisplayColor(self, node_index, from_result=False):
         mode = self.RHData.get_optionInt('ledColorMode', 0)
         color = False
 
         if mode == 1: # by pilot
-            if self.RACE.results and 'by_race_time' in self.RACE.results:
-                color = '#ffffff'
-                for line in self.RACE.results['by_race_time']:
-                    if line['node'] == node_index:
-                        color = self.RHData.get_pilot(line['pilot_id']).color
-                        break
+            color = '#ffffff'
+            if from_result:
+                if self.RACE.last_race_results and self.RACE.last_race_cacheStatus == CacheStatus.VALID and 'by_race_time' in self.RACE.last_race_results:
+                    for line in self.RACE.last_race_results['by_race_time']:
+                        if line['node'] == node_index:
+                            color = self.RHData.get_pilot(line['pilot_id']).color
+                            break
+                elif self.RACE.results and 'by_race_time' in self.RACE.results:
+                    for line in self.RACE.results['by_race_time']:
+                        if line['node'] == node_index:
+                            color = self.RHData.get_pilot(line['pilot_id']).color
+                            break
+            else:
+                if self.RACE.current_heat:
+                    for heatNode in self.RHData.get_heatNodes_by_heat(self.RACE.current_heat):
+                        if heatNode.node_index == node_index:
+                            if heatNode.pilot_id:
+                                color = self.RHData.get_pilot(heatNode.pilot_id).color
+                            break
         elif mode == 2: # by frequency
 
             profile = self.RHData.get_profile(self.RHData.get_optionInt('currentProfile'))
