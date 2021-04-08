@@ -222,7 +222,13 @@ class PageCache:
                     gevent.idle()
                     eventCache = self._RHData.get_results_event()
                     if eventCache['cacheStatus'] == Results.CacheStatus.VALID:
-                        results = json.loads(eventCache['results'])
+                        try:
+                            results = json.loads(eventCache['results'])
+                        except:
+                            self._RHData.set_results_event({
+                                'results': False,
+                                'cacheStatus': Results.CacheStatus.INVALID
+                                })
                         break
                     elif monotonic() > expires:
                         logger.warning('Cache build timed out: Event Summary')
