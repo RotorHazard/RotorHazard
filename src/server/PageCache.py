@@ -75,6 +75,7 @@ class PageCache:
 
         expires = monotonic() + self._CACHE_TIMEOUT
         error_flag = False
+        results = None
 
         self.check_buildToken(timing) # Don't restart calculation if another calculation thread exists
 
