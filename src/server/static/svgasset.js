@@ -4,4 +4,5 @@ var svg_asset = {
 	extended_menu: '<svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="-8 0 19.7 16"><circle fill="currentColor" cx="1.85" cy="1.85" r="1.85"/><circle fill="currentColor" cx="1.85" cy="8" r="1.85"/><circle fill="currentColor" cx="1.85" cy="14.15" r="1.85"/></svg>',
 	pause: '<svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><title>Pause</title><circle cx="8" cy="8" r="7.6" opacity=".8"/><path fill="#fff" d="M3.7 3.7H7v8.7H3.7z"/><path fill="#fff" d="M9 3.7h3.3v8.7H9z"/></svg>',
 	play: '<svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><title>Play</title><circle cx="8" cy="8" r="7.6" opacity=".8"/><path fill="#fff" d="M5.3 12.3V3.7l7 4.3z"/></svg>',
+	capture: '<svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="currentColor" d="M0 14h16v2H0zM10 6V0H6v6H3l5 7 5-7z"/></svg>',
 };

@@ -2238,13 +2238,13 @@
 					<div class="enter-exit-control">
 						<label for="set_enter_at_level_{{ node }}">{{ __('EnterAt') }}</label>
 						<input type="number" id="set_enter_at_level_{{ node }}" class="set_enter_at_level" data-node="{{ node }}" min="0" max="999">
-						<button class="cap_enter_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
+						<button class="cap_enter_at_btn" data-node_index="{{ node }}" title="{{ __('Capture current RSSI') }}"><svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="currentColor" d="M0 14h16v2H0zM10 6V0H6v6H3l5 7 5-7z"/></svg></button>
 					</div>
 
 					<div class="enter-exit-control">
 						<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
 						<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
-						<button class="cap_exit_at_btn" data-node_index="{{ node }}">{{ __('Capture') }}</button>
+						<button class="cap_exit_at_btn" data-node_index="{{ node }}" title="{{ __('Capture current RSSI') }}"><svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="currentColor" d="M0 14h16v2H0zM10 6V0H6v6H3l5 7 5-7z"/></svg></button>
 					</div>
 				</div>
 				<table>

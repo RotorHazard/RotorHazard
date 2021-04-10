@@ -251,6 +251,10 @@ button, select, .button-like {
 	color: var(--contrast_0_low);
 }
 
+button svg {
+	vertical-align: text-bottom;
+}
+
 .button-like {
 	line-height: 1.8;
 	padding: 0 0.5em;
@@ -1170,7 +1174,6 @@ main.page-home {
 
 .unlock svg {
 	height: 1em;
-	vertical-align: text-top;
 }
 
 .item-blocks .duplicate {
