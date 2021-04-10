@@ -98,20 +98,43 @@ void i2cTransmit();
 void serialEvent();
 #endif
 
+void setModuleLed(bool onFlag);
+
+#if defined(RPI_SIGNAL_PIN) || defined(AUXLED_OUTPUT_PIN) || defined(BUZZER_OUTPUT_PIN)
+void handleRpiSignalAndShutdownActions(mtime_t curTimeMs);
+#endif
+
 #ifdef RPI_SIGNAL_PIN
-bool rpiActiveSignalFlag = false;
-mtime_t rpiLastActiveTimeMs = 0;
+static volatile bool rpiActiveSignalFlag = false;
+static volatile mtime_t rpiLastActiveTimeMs = 0;
 #define RPI_INACTIVE_DELAYMS 9000  // if no RPi signal for this long then "inactive"
+#define RPI_MISSING_DELAYMS 2000
+#define GET_RPI_ACTIVESIG_FLAG() (rpiActiveSignalFlag)
+#define GET_RPI_LASTACTIVE_TIMEMS() (rpiLastActiveTimeMs)
 // have AUX LED mostly on if RPi status is "active"
 #define AUXLED_OUT_ONSTATE (rpiActiveSignalFlag ? LOW : HIGH)
 #define AUXLED_OUT_OFFSTATE (rpiActiveSignalFlag ? HIGH : LOW)
 #else
+#define GET_RPI_ACTIVESIG_FLAG() (false)
+#define GET_RPI_LASTACTIVE_TIMEMS() (0)
 #define AUXLED_OUT_ONSTATE HIGH
 #define AUXLED_OUT_OFFSTATE LOW
 #endif
 
 #ifdef AUXLED_OUTPUT_PIN
-bool auxLedOutEnabledFlag = false;
+static volatile bool auxLedOutEnabledFlag = false;
+#endif
+
+#ifdef BUZZER_OUTPUT_PIN
+void setBuzzerState(bool onFlag);
+static volatile int buzzerBeepDurationCounter = 0;
+static volatile int lastCommActivityTimeMs = 0;
+#endif
+
+#if defined(AUXLED_OUTPUT_PIN) || defined(BUZZER_OUTPUT_PIN)
+static volatile bool shutdownButtonPressedFlag = false;
+static volatile bool shutdownHasBeenStartedFlag = false;
+static volatile bool rpiSignalMissingFlag = false;
 #endif
 
 #if (!STM32_MODE_FLAG) && ((!defined(NODE_NUMBER)) || (!NODE_NUMBER))
@@ -268,70 +291,6 @@ void setup()
 #endif
 }
 
-static bool currentStatusLedFlag = false;
-
-void setModuleLed(bool onFlag)
-{
-    if (onFlag)
-    {
-        if (!currentStatusLedFlag)
-        {
-            currentStatusLedFlag = true;
-            digitalWrite(MODULE_LED_PIN, MODULE_LED_ONSTATE);
-#ifdef AUXLED_OUTPUT_PIN
-            if (auxLedOutEnabledFlag)
-                digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_ONSTATE);
-#endif
-        }
-    }
-    else
-    {
-        if (currentStatusLedFlag)
-        {
-            currentStatusLedFlag = false;
-            digitalWrite(MODULE_LED_PIN, MODULE_LED_OFFSTATE);
-#ifdef AUXLED_OUTPUT_PIN
-            if (auxLedOutEnabledFlag)
-                digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_OFFSTATE);
-#endif
-        }
-    }
-}
-
-#ifdef BUZZER_OUTPUT_PIN
-
-static bool currentBuzzerStateFlag = false;
-
-void setBuzzerState(bool onFlag)
-{
-    if (onFlag)
-    {
-        if (!currentBuzzerStateFlag)
-        {
-            currentBuzzerStateFlag = true;
-            pinMode(BUZZER_OUTPUT_PIN, OUTPUT);
-            digitalWrite(BUZZER_OUTPUT_PIN, BUZZER_OUT_ONSTATE);
-        }
-    }
-    else
-    {
-        if (currentBuzzerStateFlag)
-        {
-            currentBuzzerStateFlag = false;
-            digitalWrite(BUZZER_OUTPUT_PIN, BUZZER_OUT_OFFSTATE);
-            pinMode(BUZZER_OUTPUT_PIN, INPUT);
-        }
-    }
-}
-
-#endif
-
-static mtime_t loopMillis = 0;
-
-#ifdef BUZZER_OUTPUT_PIN
-static bool waitingForFirstCommsFlag = true;
-#endif
-
 #if !STM32_MODE_FLAG
 static bool commsMonitorEnabledFlag = false;
 static mtime_t commsMonitorLastResetTime = 0;
@@ -340,25 +299,30 @@ static mtime_t commsMonitorLastResetTime = 0;
 // Main loop
 void loop()
 {
+    static mtime_t loopMillis = 0;
+#ifdef BUZZER_OUTPUT_PIN
+    static bool waitingForFirstCommsFlag = true;
+#endif
+
 #if STM32_MODE_FLAG && STM32_SERIALUSB_FLAG
     serialEvent();  // need to check serial-USB for data (called automatically if Serial)
 #endif
 
-    mtime_t ms = millis();
-    if (ms > loopMillis)
+    mtime_t curTimeMs = millis();
+    if (curTimeMs > loopMillis)
     {  // limit to once per millisecond
 
         // read raw RSSI close to taking timestamp
         bool crossingFlag;
         if (RssiNode::multiRssiNodeCount <= (uint8_t)1)
-            crossingFlag = RssiNode::rssiNodeArray[0].rssiProcess(ms);
+            crossingFlag = RssiNode::rssiNodeArray[0].rssiProcess(curTimeMs);
         else
         {
             crossingFlag = false;
             for (uint8_t nIdx=0; nIdx<RssiNode::multiRssiNodeCount; ++nIdx)
             {
-                RssiNode::rssiNodeArray[nIdx].rssiProcess(ms);
-                ms = millis();
+                RssiNode::rssiNodeArray[nIdx].rssiProcess(curTimeMs);
+                curTimeMs = millis();
             }
         }
 
@@ -406,9 +370,9 @@ void loop()
         {
             if (changeFlags & COMM_ACTIVITY)
             {  //communications activity detected; update comms monitor time
-                commsMonitorLastResetTime = ms;
+                commsMonitorLastResetTime = curTimeMs;
             }
-            else if (ms - commsMonitorLastResetTime > COMMS_MONITOR_TIME_MS)
+            else if (curTimeMs - commsMonitorLastResetTime > COMMS_MONITOR_TIME_MS)
             {  //too long since last communications activity detected
                 commsMonitorEnabledFlag = false;
                 // redo init, which should release I2C pins (SDA & SCL) if "stuck"
@@ -419,7 +383,7 @@ void loop()
                 (changeFlags & SERIAL_CMD_MSG) == (uint8_t)0)
         {  //if activated and I2C LAPSTATS_READ cmd received then enable comms monitor
             commsMonitorEnabledFlag = true;
-            commsMonitorLastResetTime = ms;
+            commsMonitorLastResetTime = curTimeMs;
         }
 
         if (changeFlags & ENTERAT_CHANGED)
@@ -429,11 +393,11 @@ void loop()
 #endif
 
         // Status LED
-        if (ms <= 1000)
-        {  //flash twice times during first second of running
-            if (ms >= 500)  //don't check until 500ms elapsed
+        if (curTimeMs <= 1000)
+        {  //flash two times during first second of running
+            if (curTimeMs >= 500)  //don't check until 500ms elapsed
             {
-                const int ti = (int)(ms-500) / 100;
+                const int ti = (int)(curTimeMs-500) / 100;
                 const bool sFlag = (ti == 1 || ti == 3);
                 setModuleLed(sFlag);
 #ifdef BUZZER_OUTPUT_PIN
@@ -441,9 +405,16 @@ void loop()
 #endif
             }
         }
-        else if ((int)(ms % 20) == 0)
-        {  //only run every 20ms so flashes last longer (brighter)
+        else if ((int)(curTimeMs % 20) == 0)
+        {  //only run every 20ms (so flashes/beeps last longer and less CPU load)
 
+#ifdef BUZZER_OUTPUT_PIN
+            if (buzzerBeepDurationCounter > 0)
+            {
+                if (--buzzerBeepDurationCounter <= 0)
+                    setBuzzerState(false);
+            }
+#endif
             // if crossing or communications activity then LED on
             if (crossingFlag)
                 setModuleLed(true);
@@ -452,48 +423,29 @@ void loop()
                 setModuleLed(true);
                 settingChangedFlags = 0;  // clear COMM_ACTIVITY flag
 #ifdef BUZZER_OUTPUT_PIN
+                lastCommActivityTimeMs = curTimeMs;
                 if (waitingForFirstCommsFlag && (changeFlags & LAPSTATS_READ))
                 {
                     waitingForFirstCommsFlag = false;
                     setBuzzerState(true);  // beep when operations activated
+                    buzzerBeepDurationCounter = 1;
                 }
 #endif
             }
             else
-            {
-#ifdef BUZZER_OUTPUT_PIN
-                setBuzzerState(false);
-#endif
-                setModuleLed(ms % 2000 == 0);  // blink
-            }
+                setModuleLed(curTimeMs % 2000 == 0);  // blink
 
-#ifdef RPI_SIGNAL_PIN
-            const int rpiSigVal = digitalRead(RPI_SIGNAL_PIN);
-            if (rpiActiveSignalFlag)
-            {  //RPi is currently "active"
-                if (rpiSigVal == RPI_SIGNAL_ONSTATE)
-                {  //new RPI status/heartbeat signal detected
-                    rpiLastActiveTimeMs = ms;
-                }
-                else if (ms - rpiLastActiveTimeMs > RPI_INACTIVE_DELAYMS)
-                {  //enough time has elapsed to declare RPi "inactive" (shutdown)
-                    rpiActiveSignalFlag = false;
-                    setModuleLed(true);            // turn AUX LED off
-                    setModuleLed(false);
-                    auxLedOutEnabledFlag = false;  // keep AUX LED off
-                }
-            }
-            else if (rpiSigVal == RPI_SIGNAL_ONSTATE)
-            {  //RPi is going from "inactive" to "active"
-                rpiActiveSignalFlag = true;
-                rpiLastActiveTimeMs = ms;
-                auxLedOutEnabledFlag = true;  // enable AUX LED
-                setModuleLed(true);   // turn AUX LED on right away
-                setModuleLed(false);
-            }
+#if defined(RPI_SIGNAL_PIN) || defined(AUXLED_OUTPUT_PIN) || defined(BUZZER_OUTPUT_PIN)
+            handleRpiSignalAndShutdownActions(curTimeMs);
 #endif
         }
-        loopMillis = ms;
+
+#ifdef AUXLED_OUTPUT_PIN  // show fast blink while shutdown button pressed
+        if (shutdownButtonPressedFlag && (!shutdownHasBeenStartedFlag) && (!rpiSignalMissingFlag))
+            digitalWrite(AUXLED_OUTPUT_PIN, ((int)((curTimeMs/2) % 40) == 0) ? HIGH : LOW);
+#endif
+
+        loopMillis = curTimeMs;
     }
 }
 
@@ -650,6 +602,220 @@ void serialEvent()
             }
         }
     }
+}
+
+void setModuleLed(bool onFlag)
+{
+    static bool currentStatusLedFlag = false;
+
+    if (onFlag)
+    {
+        if (!currentStatusLedFlag)
+        {
+            currentStatusLedFlag = true;
+            digitalWrite(MODULE_LED_PIN, MODULE_LED_ONSTATE);
+#ifdef AUXLED_OUTPUT_PIN
+            if (auxLedOutEnabledFlag)
+                digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_ONSTATE);
+#endif
+        }
+    }
+    else
+    {
+        if (currentStatusLedFlag)
+        {
+            currentStatusLedFlag = false;
+            digitalWrite(MODULE_LED_PIN, MODULE_LED_OFFSTATE);
+#ifdef AUXLED_OUTPUT_PIN
+            if (auxLedOutEnabledFlag)
+                digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_OFFSTATE);
+#endif
+        }
+    }
+}
+
+#ifdef BUZZER_OUTPUT_PIN
+void setBuzzerState(bool onFlag)
+{
+    static bool currentBuzzerStateFlag = false;
+
+    if (onFlag)
+    {
+        if (!currentBuzzerStateFlag)
+        {
+            currentBuzzerStateFlag = true;
+            pinMode(BUZZER_OUTPUT_PIN, OUTPUT);
+            digitalWrite(BUZZER_OUTPUT_PIN, BUZZER_OUT_ONSTATE);
+        }
+    }
+    else
+    {
+        if (currentBuzzerStateFlag)
+        {
+            currentBuzzerStateFlag = false;
+            digitalWrite(BUZZER_OUTPUT_PIN, BUZZER_OUT_OFFSTATE);
+            pinMode(BUZZER_OUTPUT_PIN, INPUT);
+        }
+    }
+}
+#endif
+
+#if defined(RPI_SIGNAL_PIN) || defined(AUXLED_OUTPUT_PIN) || defined(BUZZER_OUTPUT_PIN)
+
+void handleRpiSignalAndShutdownActions(mtime_t curTimeMs)
+{
+#if defined(AUXLED_OUTPUT_PIN) || defined(BUZZER_OUTPUT_PIN)
+    static bool prevSdButtonFlag = false;
+    static bool prevSdStartedFlag = false;
+#endif
+
+#ifdef RPI_SIGNAL_PIN
+            const int rpiSigVal = digitalRead(RPI_SIGNAL_PIN);
+            if (rpiActiveSignalFlag)
+            {  //RPi is currently "active"
+                if (rpiSigVal == RPI_SIGNAL_ONSTATE)
+                {  //new RPI status/heartbeat signal detected
+                    rpiLastActiveTimeMs = curTimeMs;
+                }
+                else if (curTimeMs - rpiLastActiveTimeMs > RPI_INACTIVE_DELAYMS)
+                {  //enough time has elapsed to declare RPi "inactive" (shutdown)
+                    rpiActiveSignalFlag = false;
+                }
+#ifdef BUZZER_OUTPUT_PIN
+                else if ((!shutdownHasBeenStartedFlag) && (!rpiSignalMissingFlag) &&
+                         rpiLastActiveTimeMs > 0 &&
+                         curTimeMs - rpiLastActiveTimeMs > RPI_MISSING_DELAYMS &&
+                         curTimeMs - lastCommActivityTimeMs > RPI_INACTIVE_DELAYMS*10)
+                {  //RPi heartbeat stopped and no recent comms (so not system-reset via server)
+                    rpiSignalMissingFlag = prevSdStartedFlag = true;  // signal shutdown in progress
+                }
+#endif
+            }
+            else if (rpiSigVal == RPI_SIGNAL_ONSTATE)
+            {  //RPi is going from "inactive" to "active"
+                rpiActiveSignalFlag = true;
+                rpiLastActiveTimeMs = curTimeMs;
+#ifdef BUZZER_OUTPUT_PIN
+                if (rpiSignalMissingFlag)
+                {  //RPi previously detected as missing; indicate no longer missing
+                    rpiSignalMissingFlag = false;
+                    if (!shutdownHasBeenStartedFlag)  // if shutdown not really in progress then
+                        prevSdStartedFlag = false;    // clear tracking flag
+                }
+#endif
+#ifdef AUXLED_OUTPUT_PIN
+                auxLedOutEnabledFlag = true;  // enable AUX LED
+#endif
+                setModuleLed(true);   // turn AUX LED on right away
+                setModuleLed(false);
+            }
+#endif  // RPI_SIGNAL_PIN
+
+#if defined(AUXLED_OUTPUT_PIN) || defined(BUZZER_OUTPUT_PIN)
+            if ((!shutdownHasBeenStartedFlag) && (!rpiSignalMissingFlag))
+            {
+                if (GET_RPI_ACTIVESIG_FLAG() || GET_RPI_LASTACTIVE_TIMEMS() == 0)
+                {  //RPi state is "active" (or no active signal seen at all)
+                    if (shutdownButtonPressedFlag)
+                    {
+                        if (!prevSdButtonFlag)
+                        {  //shutdown button was just pressed
+#ifdef BUZZER_OUTPUT_PIN  // do short beep when shutdown button pressed
+                            setBuzzerState(true);
+                            buzzerBeepDurationCounter = 1;
+#endif
+#ifdef AUXLED_OUTPUT_PIN
+                            auxLedOutEnabledFlag = false;  // don't update AUX LED elsewhere
+#endif
+                        }
+                    }
+                    else if (prevSdButtonFlag)
+                    {  //shutdown button released before shutdown started
+#ifdef AUXLED_OUTPUT_PIN
+                        if (GET_RPI_LASTACTIVE_TIMEMS() > 0)
+                            auxLedOutEnabledFlag = true;  // resume AUX LED updates
+                        digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_OFFSTATE);
+#endif
+                    }
+                }
+                else if (shutdownButtonPressedFlag)
+                {  //RPi went inactive while button pressed; treat as shutdown
+                    shutdownHasBeenStartedFlag = true;
+                    shutdownButtonPressedFlag = prevSdButtonFlag = false;
+                }
+            }
+            else
+            {  //shutdown has been started
+                if (!prevSdStartedFlag)
+                {  //shutdown just started
+#ifdef AUXLED_OUTPUT_PIN  // show steady AUX LED
+                    auxLedOutEnabledFlag = false;  // disable AUX LED updates
+                    digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_OFFSTATE);
+#endif
+#ifdef BUZZER_OUTPUT_PIN  // play semi-long beep
+                    prevSdStartedFlag = true;
+                    buzzerBeepDurationCounter = 1010;
+                    setBuzzerState(true);
+#else
+                    shutdownHasBeenStartedFlag = rpiSignalMissingFlag = false;
+#endif
+                }
+#ifdef BUZZER_OUTPUT_PIN
+                else
+                {  //shutdown is in progress
+                    if (buzzerBeepDurationCounter > 500)
+                    {
+                        if (buzzerBeepDurationCounter <= 1000)
+                        {  //stop playing long beep
+                            buzzerBeepDurationCounter = 0;
+                            setBuzzerState(false);
+                        }
+                    }
+                    else if (GET_RPI_ACTIVESIG_FLAG())
+                    {
+                        if ((int)(curTimeMs % 1000) == 0)
+                        {  //play periodic short beeps until shutdown is complete
+                            buzzerBeepDurationCounter = 1;
+                            setBuzzerState(true);
+                        }
+                    }
+                    else if (GET_RPI_LASTACTIVE_TIMEMS() > 0)
+                    {  //shutdown has completed; reset flags in case system resumes
+                        prevSdStartedFlag = shutdownHasBeenStartedFlag =
+                                                   rpiSignalMissingFlag = false;
+                        prevSdButtonFlag = shutdownButtonPressedFlag = false;
+#ifdef AUXLED_OUTPUT_PIN  // turn off AUX LED
+                        auxLedOutEnabledFlag = false;  // disable AUX LED updates
+                        digitalWrite(AUXLED_OUTPUT_PIN, AUXLED_OUT_OFFSTATE);
+#endif
+                        buzzerBeepDurationCounter = 30;  // play final long beep
+                        setBuzzerState(true);
+                    }
+                }
+#endif  // BUZZER_OUTPUT_PIN
+            }
+            prevSdButtonFlag = shutdownButtonPressedFlag;
+
+#endif  // defined(AUXLED_OUTPUT_PIN) || defined(BUZZER_OUTPUT_PIN)
+}
+#endif  // defined(RPI_SIGNAL_PIN) || defined(AUXLED_OUTPUT_PIN) || defined(BUZZER_OUTPUT_PIN)
+
+// Handle status message sent from server
+void handleStatusMessage(byte msgTypeVal, byte msgDataVal)
+{
+#if defined(AUXLED_OUTPUT_PIN) || defined(BUZZER_OUTPUT_PIN)
+    switch (msgTypeVal)
+    {
+        case STATMSG_SDBUTTON_STATE:
+            shutdownButtonPressedFlag = (msgDataVal != (byte)0);
+            break;
+
+        case STATMSG_SHUTDOWN_STARTED:
+            shutdownButtonPressedFlag = false;
+            shutdownHasBeenStartedFlag = true;
+            break;
+    }
+#endif
 }
 
 #if STM32_MODE_FLAG

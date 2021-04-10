@@ -34,11 +34,17 @@ WRITE_FREQUENCY = 0x51       # Sets frequency (2 byte)
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
 WRITE_CURNODE_INDEX = 0x7A  # write index of current node for processor
+SEND_STATUS_MESSAGE = 0x75  # send status message from server to node
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 JUMP_TO_BOOTLOADER = 0x7E   # jump to bootloader for flash update
 
 LAPSTATS_FLAG_CROSSING = 0x01  # crossing is in progress
 LAPSTATS_FLAG_PEAK = 0x02      # reported extremum is peak
+
+# upper-byte values for SEND_STATUS_MESSAGE payload (lower byte is data)
+STATMSG_SDBUTTON_STATE = 0x01    # shutdown button state (1=pressed, 0=released)
+STATMSG_SHUTDOWN_STARTED = 0x02  # system shutdown started
+STATMSG_SERVER_IDLE = 0x03       # server-idle tick message
 
 FW_TEXT_BLOCK_SIZE = 16     # length of data returned by 'READ_FW_...' fns
 
@@ -553,6 +559,20 @@ class RHInterface(BaseHardwareInterface):
                 node.jump_to_bootloader(self)
                 return
         self.log("Unable to find any nodes with jump-to-bootloader support")
+
+    def send_status_message(self, msgTypeVal, msgDataVal):
+        if len(self.nodes) > 0:
+            return self.nodes[0].send_status_message(self, msgTypeVal, msgDataVal)
+        return False
+
+    def send_shutdown_button_state(self, stateVal):
+        return self.send_status_message(STATMSG_SDBUTTON_STATE, stateVal)
+
+    def send_shutdown_started_message(self):
+        return self.send_status_message(STATMSG_SHUTDOWN_STARTED, 0)
+
+    def send_server_idle_message(self):
+        return self.send_status_message(STATMSG_SERVER_IDLE, 0)
 
     def set_fwupd_serial_obj(self, serial_obj):
         self.fwupd_serial_obj = serial_obj

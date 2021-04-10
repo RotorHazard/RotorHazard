@@ -7,10 +7,10 @@ from monotonic import monotonic
 
 from Node import Node
 from RHInterface import READ_REVISION_CODE, READ_MULTINODE_COUNT, MAX_RETRY_COUNT, \
-                        validate_checksum, calculate_checksum, pack_8, unpack_8, unpack_16, \
+                        validate_checksum, calculate_checksum, pack_8, pack_16, unpack_8, unpack_16, \
                         WRITE_CURNODE_INDEX, READ_CURNODE_INDEX, READ_NODE_SLOTIDX, \
                         READ_FW_VERSION, READ_FW_BUILDDATE, READ_FW_BUILDTIME, FW_TEXT_BLOCK_SIZE, \
-                        JUMP_TO_BOOTLOADER, READ_FW_PROCTYPE
+                        JUMP_TO_BOOTLOADER, READ_FW_PROCTYPE, SEND_STATUS_MESSAGE
 
 BOOTLOADER_CHILL_TIME = 2 # Delay for USB to switch from bootloader to serial mode
 SERIAL_BAUD_RATES = [921600, 115200]
@@ -171,6 +171,18 @@ class SerialNode(Node):
                 self.serial.close()
         except Exception as ex:
             self.node_log(interface, 'Error sending JUMP_TO_BOOTLOADER message to serial node {0}: {1}'.format(self.index+1, ex))
+
+    def send_status_message(self, interface, msgTypeVal, msgDataVal):
+        # send status message to node
+        try:
+            if self.api_level >= 35:
+                data = ((msgTypeVal & 0xFF) << 8) | (msgDataVal & 0xFF)
+#                self.node_log(interface, 'Sending status message to serial node {}: 0x{:04X}'.format(self.index+1, data))
+                self.write_block(interface, SEND_STATUS_MESSAGE, pack_16(data), False)
+                return True
+        except Exception as ex:
+            self.node_log(interface, 'Error sending status message to serial node {}: {}'.format(self.index+1, ex))
+        return False
 
     def read_node_slot_index(self):
         # read node slot index (physical slot position of node on S32_BPill PCB)
