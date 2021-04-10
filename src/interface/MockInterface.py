@@ -167,6 +167,18 @@ class MockInterface(BaseHardwareInterface):
     def jump_to_bootloader(self):
         self.log("MockInterace - no jump-to-bootloader support")
 
+    def send_status_message(self, msgTypeVal, msgDataVal):
+        return False
+
+    def send_shutdown_button_state(self, stateVal):
+        return False
+
+    def send_shutdown_started_message(self):
+        return False
+
+    def send_server_idle_message(self):
+        return False
+
     def get_fwupd_serial_name(self):
         return None
 

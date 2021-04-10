@@ -1505,6 +1505,8 @@ def on_export_database_file(data):
 @catchLogExceptionsWrapper
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
+    if  INTERFACE.send_shutdown_started_message():
+        gevent.sleep(0.25)  # give shutdown-started message a chance to transmit to node
     Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
@@ -4354,11 +4356,22 @@ def jump_to_node_bootloader():
 def shutdown_button_thread_fn():
     try:
         logger.debug("Started shutdown-button-handler thread")
+        idleCntr = 0
         while True:
             gevent.sleep(0.050)
-            if not ShutdownButtonInputHandler.isEnabled():
-                break
-            ShutdownButtonInputHandler.pollProcessInput(monotonic())
+            if not ShutdownButtonInputHandler.isEnabled():  # if button handler disabled
+                break                                       #  then exit thread
+            # poll button input and invoke callbacks
+            bStatFlg = ShutdownButtonInputHandler.pollProcessInput(monotonic())
+            # while background thread not started and button not pressed
+            #  send periodic server-idle messages to node
+            if (HEARTBEAT_THREAD is None) and BACKGROUND_THREADS_ENABLED and INTERFACE:
+                idleCntr += 1
+                if idleCntr >= 74:
+                    if idleCntr >= 80:
+                        idleCntr = 0    # show pattern on node LED via messages
+                    if (not bStatFlg) and (idleCntr % 2 == 0):
+                        INTERFACE.send_server_idle_message()
     except KeyboardInterrupt:
         logger.info("shutdown_button_thread_fn terminated by keyboard interrupt")
         raise
@@ -4379,10 +4392,13 @@ def stop_shutdown_button_thread():
 
 def shutdown_button_pressed():
     logger.debug("Detected shutdown button pressed")
+    INTERFACE.send_shutdown_button_state(1)
 
 def shutdown_button_released(longPressReachedFlag):
     logger.debug("Detected shutdown button released, longPressReachedFlag={}".\
                 format(longPressReachedFlag))
+    if not longPressReachedFlag:
+        INTERFACE.send_shutdown_button_state(0)
 
 def shutdown_button_long_press():
     logger.info("Detected shutdown button long press; performing shutdown now")

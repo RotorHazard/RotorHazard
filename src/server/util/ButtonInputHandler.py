@@ -37,17 +37,18 @@ class ButtonInputHandler:
             logger.exception("Exception error in ButtonInputHandler setup")
 
     # function called on a periodic basis to poll the input and invoke callbacks
+    # returns True if button currently pressed or long press detected
     def pollProcessInput(self, nowTimeSecs):
         try:
             if self.enabledFlag:
                 inLvl = GPIO.input(self.gpioPinNum)
                 if self.lastInputLevel == GPIO.HIGH:
-                    if inLvl == GPIO.LOW:
+                    if inLvl == GPIO.LOW:  # new button press detected
                         self.pressedStartTimeSecs = nowTimeSecs
                         self.longPressReachedFlag = False
                         self.buttonPressedCallbackFn()
                 elif self.lastInputLevel == GPIO.LOW:
-                    if inLvl == GPIO.LOW:
+                    if inLvl == GPIO.LOW:  # button long-press detected
                         if self.pressedStartTimeSecs > 0 and \
                                     (nowTimeSecs - self.pressedStartTimeSecs) * 1000 > \
                                     self.buttonLongPressDelayMs:
@@ -57,11 +58,13 @@ class ButtonInputHandler:
                     else:
                         self.buttonReleasedCallbackFn(self.longPressReachedFlag)
                 self.lastInputLevel = inLvl
+                return (inLvl == GPIO.LOW) or self.longPressReachedFlag
         except:
             self.errorLoggedCount += 1
             # log the first ten, but then only 1 per 100 after that
             if self.errorLoggedCount <= 10 or self.errorLoggedCount % 100 == 0:
                 self.logger.exception("Exception error in ButtonInputHandler 'pollProcessInput()'")
+        return False
 
     def setEnabled(self, flgVal=True):
         self.enabledFlag = flgVal

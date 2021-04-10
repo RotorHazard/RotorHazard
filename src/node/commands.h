@@ -47,6 +47,7 @@ public:
 #define WRITE_EXIT_AT_LEVEL 0x72
 #define WRITE_CURNODE_INDEX 0x7A   // write index of current node for this processor
 
+#define SEND_STATUS_MESSAGE 0x75   // send status message from server to node
 #define FORCE_END_CROSSING 0x78    // kill current crossing flag regardless of RSSI value
 #define RESET_PAIRED_NODE 0x79     // command to reset node for ISP
 #define JUMP_TO_BOOTLOADER 0x7E    // jump to bootloader for flash update
@@ -61,6 +62,11 @@ public:
 
 #define LAPSTATS_FLAG_CROSSING 0x01  // crossing is in progress
 #define LAPSTATS_FLAG_PEAK 0x02      // reported extremum is peak
+
+// upper-byte values for SEND_STATUS_MESSAGE payload (lower byte is data)
+#define STATMSG_SDBUTTON_STATE 0x01    // shutdown button state (1=pressed, 0=released)
+#define STATMSG_SHUTDOWN_STARTED 0x02  // system shutdown started
+#define STATMSG_SERVER_IDLE 0x03       // server-idle tick message
 
 RssiNode *getCmdRssiNodePtr();
 
