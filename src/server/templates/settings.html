@@ -625,6 +625,7 @@
 		});
 
 		$('button.pause_graph').click(function (event) {
+			var btn = $(this);
 			var node = rotorhazard.nodes[parseInt($(this).data('node'))]
 			if (node.graphPaused) {
 				node.graph.options.scaleSmoothing = 0.125;
@@ -634,6 +635,7 @@
 					fillStyle:'hsla(214, 53%, 60%, 0.4)'
 				});
 				node.graph.start();
+				btn.html(svg_asset.pause);
 			} else {
 				node.graph.stop();
 				node.graphPausedTime = new Date().getTime();
@@ -645,6 +647,7 @@
 					fillStyle:'hsla(214, 53%, 60%, 0.4)'
 				});
 				node.graph.render(node.canvas, node.graphPausedTime);
+				btn.html(svg_asset.play);
 			}
 			node.graphPaused = !node.graphPaused;
 		});
@@ -2226,7 +2229,7 @@
 				<h3>{{ __('Node') }} {{ node + 1 }}</h3>
 				<div class="channel-block" data-node="{{ node }}"><span class="ch"></span> <span class="fr"></span></div>
 				<div class="rssi-graph" data-node="{{ node }}">
-					<button class="pause_graph" data-node="{{ node }}">&#x23ef;&#xFE0E;<span class="screen-reader-text"> {{ __('Pause/Resume Graph') }}</span></button>
+					<button class="pause_graph" data-node="{{ node }}"><svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><title>Pause</title><circle cx="8" cy="8" r="7.6" opacity=".8"/><path fill="#fff" d="M3.7 3.7H7v8.7H3.7z"/><path fill="#fff" d="M9 3.7h3.3v8.7H9z"/></svg></button>
 					<canvas id="rssi-graph-{{ node }}">
 					</canvas>
 				</div>
