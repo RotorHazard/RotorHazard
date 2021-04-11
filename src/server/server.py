@@ -1757,8 +1757,11 @@ def on_backup_database():
     '''Backup database.'''
     bkp_name = backup_db_file(True)  # make copy of DB file
          # read DB data and convert to Base64
-    with open(bkp_name, mode='rb') as file:
-        file_content = base64.encodestring(file.read())
+    with open(bkp_name, mode='rb') as file_obj:
+        file_content = file_obj.read()
+    file_content = base64.encodebytes(file_content).decode() \
+                                    if getattr(base64, "encodebytes", None) \
+                                    else base64.encodestring(file_content)  # for Python 2.7
     emit_payload = {
         'file_name': os.path.basename(bkp_name),
         'file_data' : file_content
@@ -2007,7 +2010,10 @@ def on_download_logs(data):
         try:
             # read logs-zip file data and convert to Base64
             with open(zip_path_name, mode='rb') as file_obj:
-                file_content = base64.encodestring(file_obj.read())
+                file_content = file_obj.read()
+            file_content = base64.encodebytes(file_content).decode() \
+                                            if getattr(base64, "encodebytes", None) \
+                                            else base64.encodestring(file_content)  # for Python 2.7
             emit_payload = {
                 'file_name': os.path.basename(zip_path_name),
                 'file_data' : file_content
