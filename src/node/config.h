@@ -111,8 +111,6 @@
 #define BUZZER_OUT_OFFSTATE HIGH
 
 #define AUXLED_OUTPUT_PIN PA15
-#define AUXLED_OUT_ONSTATE HIGH
-#define AUXLED_OUT_OFFSTATE LOW
 
 #ifndef STM32_F4_PROCTYPE  // pinouts for STM32F103C8T6 "Blue Pill" module
 
@@ -126,7 +124,13 @@
 #define RSSI_INPUT7_PIN A7
 
 #define VOLTAGE_MONITOR_PIN PB1
+
+// on the S32_BPill PCB this pin is connected to RPi GPIO24, which should be
+//  configured for "heartbeat" on the RPi in "/boot/config.txt" like this:
+//    dtoverlay=act-led,gpio=24
+//    dtparam=act_led_trigger=heartbeat
 #define RPI_SIGNAL_PIN PB0
+#define RPI_SIGNAL_ONSTATE HIGH
 
 #else                   // pinouts for STM32F411CEU6 "Black Pill" module
 
@@ -140,7 +144,9 @@
 #define RSSI_INPUT7_PIN A6
 
 #define VOLTAGE_MONITOR_PIN PB0
+
 #define RPI_SIGNAL_PIN A7
+#define RPI_SIGNAL_ONSTATE HIGH
 
 #endif
 

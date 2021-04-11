@@ -18,6 +18,9 @@ extern const char *firmwareBuildDateString;  // build date/time strings
 extern const char *firmwareBuildTimeString;
 extern const char *firmwareProcTypeString;   // node processor type
 
+// Handle status message sent from server (defined in 'rhnode.cpp')
+void handleStatusMessage(byte msgTypeVal, byte msgDataVal);
+
 uint8_t settingChangedFlags = 0;
 
 RssiNode *cmdRssiNodePtr = &(RssiNode::rssiNodeArray[0]);  //current RssiNode for commands
@@ -42,6 +45,10 @@ byte Message::getPayloadSize()
 
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
             size = 1;
+            break;
+
+        case SEND_STATUS_MESSAGE:  // status message sent from server to node
+            size = 2;
             break;
 
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
@@ -138,6 +145,11 @@ void Message::handleWriteCommand(bool serialFlag)
             nIdx = buffer.read8();
             if (nIdx < RssiNode::multiRssiNodeCount && nIdx != cmdRssiNodePtr->getNodeIndex())
                 cmdRssiNodePtr = &(RssiNode::rssiNodeArray[nIdx]);
+            break;
+
+        case SEND_STATUS_MESSAGE:  // status message sent from server to node
+            u16val = buffer.read16();  // upper byte is message type, lower byte is data
+            handleStatusMessage((byte)(u16val >> 8), (byte)(u16val & 0x00FF));
             break;
 
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value

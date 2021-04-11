@@ -63,6 +63,7 @@ from ClusterNodeSet import SecondaryNode, ClusterNodeSet
 import PageCache
 from util.SendAckQueue import SendAckQueue
 import RHGPIO
+from util.ButtonInputHandler import ButtonInputHandler
 import util.stm32loader as stm32loader
 
 # Events manager
@@ -151,6 +152,7 @@ Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
 server_ipaddress_str = None
 Settings_note_msg_text = None
+ShutdownButtonInputHandler = None
 
 RACE = RHRace.RHRace() # For storing race management variables
 RHData = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
@@ -575,9 +577,11 @@ def start_background_threads(forceFlag=False):
         if HEARTBEAT_THREAD is None:
             HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
             logger.debug('Heartbeat thread started')
+        start_shutdown_button_thread()
 
 def stop_background_threads():
     try:
+        stop_shutdown_button_thread()
         global BACKGROUND_THREADS_ENABLED
         BACKGROUND_THREADS_ENABLED = False
         global HEARTBEAT_THREAD
@@ -1501,6 +1505,8 @@ def on_export_database_file(data):
 @catchLogExceptionsWrapper
 def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
+    if  INTERFACE.send_shutdown_started_message():
+        gevent.sleep(0.25)  # give shutdown-started message a chance to transmit to node
     Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
@@ -4347,6 +4353,57 @@ def jump_to_node_bootloader():
     except Exception:
         logger.error("Error executing jump to node bootloader")
 
+def shutdown_button_thread_fn():
+    try:
+        logger.debug("Started shutdown-button-handler thread")
+        idleCntr = 0
+        while True:
+            gevent.sleep(0.050)
+            if not ShutdownButtonInputHandler.isEnabled():  # if button handler disabled
+                break                                       #  then exit thread
+            # poll button input and invoke callbacks
+            bStatFlg = ShutdownButtonInputHandler.pollProcessInput(monotonic())
+            # while background thread not started and button not pressed
+            #  send periodic server-idle messages to node
+            if (HEARTBEAT_THREAD is None) and BACKGROUND_THREADS_ENABLED and INTERFACE:
+                idleCntr += 1
+                if idleCntr >= 74:
+                    if idleCntr >= 80:
+                        idleCntr = 0    # show pattern on node LED via messages
+                    if (not bStatFlg) and (idleCntr % 2 == 0):
+                        INTERFACE.send_server_idle_message()
+    except KeyboardInterrupt:
+        logger.info("shutdown_button_thread_fn terminated by keyboard interrupt")
+        raise
+    except SystemExit:
+        raise
+    except Exception:
+        logger.exception("Exception error in 'shutdown_button_thread_fn()'")
+    logger.debug("Exited shutdown-button-handler thread");
+
+def start_shutdown_button_thread():
+    if ShutdownButtonInputHandler and not ShutdownButtonInputHandler.isEnabled():
+        ShutdownButtonInputHandler.setEnabled(True)
+        gevent.spawn(shutdown_button_thread_fn)
+
+def stop_shutdown_button_thread():
+    if ShutdownButtonInputHandler:
+        ShutdownButtonInputHandler.setEnabled(False)
+
+def shutdown_button_pressed():
+    logger.debug("Detected shutdown button pressed")
+    INTERFACE.send_shutdown_button_state(1)
+
+def shutdown_button_released(longPressReachedFlag):
+    logger.debug("Detected shutdown button released, longPressReachedFlag={}".\
+                format(longPressReachedFlag))
+    if not longPressReachedFlag:
+        INTERFACE.send_shutdown_button_state(0)
+
+def shutdown_button_long_press():
+    logger.info("Detected shutdown button long press; performing shutdown now")
+    on_shutdown_pi()
+
 def initialize_rh_interface():
     try:
         global INTERFACE, Settings_note_msg_text
@@ -4543,6 +4600,20 @@ if Current_log_path_name and RHUtils.checkSetFileOwnerPi(Current_log_path_name):
 logger.info("Using log file: {0}".format(Current_log_path_name))
 
 if RHUtils.isSysRaspberryPi() and RHGPIO.isS32BPillBoard():
+    try:
+        if Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN']:
+            logger.debug("Configuring shutdown-button handler, pin={}, delayMs={}".format(\
+                         Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'], \
+                         Config.GENERAL['SHUTDOWN_BUTTON_DELAYMS']))
+            ShutdownButtonInputHandler = ButtonInputHandler(
+                            Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'], logger, \
+                            shutdown_button_pressed, shutdown_button_released, \
+                            shutdown_button_long_press,
+                            Config.GENERAL['SHUTDOWN_BUTTON_DELAYMS'], False)
+            start_shutdown_button_thread()
+    except Exception:
+        logger.exception("Error setting up shutdown-button handler")
+
     logger.debug("Resetting S32_BPill processor")
     s32logger = logging.getLogger("stm32loader")
     stm32loader.set_console_output_fn(lambda msgStr: s32logger.info(msgStr))

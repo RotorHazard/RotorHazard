@@ -6,7 +6,7 @@ from Node import Node
 from RHInterface import READ_ADDRESS, READ_REVISION_CODE, MAX_RETRY_COUNT, \
                         READ_FW_VERSION, READ_FW_BUILDDATE, READ_FW_BUILDTIME, \
                         FW_TEXT_BLOCK_SIZE, validate_checksum, calculate_checksum, \
-                        unpack_16, READ_FW_PROCTYPE
+                        pack_16, unpack_16, READ_FW_PROCTYPE, SEND_STATUS_MESSAGE
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +127,18 @@ class I2CNode(Node):
                 self.firmware_timestamp_str = None
         except Exception:
             logger.exception('Error fetching READ_FW_DATE/TIME for I2C node')
+
+    def send_status_message(self, interface, msgTypeVal, msgDataVal):
+        # send status message to node
+        try:
+            if self.api_level >= 35:
+                data = ((msgTypeVal & 0xFF) << 8) | (msgDataVal & 0xFF)
+#                self.node_log(interface, 'Sending status message to I2C node {}: 0x{:04X}'.format(self.index+1, data))
+                self.write_block(interface, SEND_STATUS_MESSAGE, pack_16(data))
+                return True
+        except Exception as ex:
+            self.node_log(interface, 'Error sending status message to I2C node {}: {}'.format(self.index+1, ex))
+        return False
 
 
 def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
