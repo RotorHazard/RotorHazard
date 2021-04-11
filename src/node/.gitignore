@@ -8,6 +8,7 @@
 /Release/
 /build_arduino/
 /build_stm32/
+/build_stm32_f4/
 /spec.d
 /core
 /libraries
