@@ -183,11 +183,18 @@ sudo python setup.py install
 ### Java Support
 Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
 ```
-java --version
+java -version
 ```
-If the response is "command not found" then Java may be installed with:
+If the response is "command not found" then Java needs to be installed.
+
+For the Raspberry Pi 3 or Pi 4, use the following command:
 ```
 sudo apt install default-jdk-headless
+```
+
+For the Raspberry Pi Zero (or an older-model Pi), use this command:
+```
+sudo apt install openjdk-8-jdk-headless
 ```
 
 ----------------------------------------------------------------------------
