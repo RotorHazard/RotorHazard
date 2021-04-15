@@ -91,7 +91,7 @@ _Laps are not recorded if RSSI does not reach EnterAt._
 
 ### Missing Laps (System usually *Crossing*)
 ![Tuning Graph](img/Tuning%20Graph-05.svg)<br />
-_Laps are merged together if *ExitAt* is too high because the first lap crossing never completes._
+_Laps are merged together if *ExitAt* is too low because the first lap crossing never completes._
 * Raise *ExitAt*
 
 ### Laps register on other parts of a course
