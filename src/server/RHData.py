@@ -1361,7 +1361,7 @@ class RHData():
     def reset_raceFormats(self):
         self.clear_raceFormats()
         self.add_format({
-            'name': self.__("2:00 Standard Race"),
+            'format_name': self.__("2:00 Standard Race"),
             'race_mode': 0,
             'race_time_sec': 120,
             'start_delay_min': 2,
@@ -1373,7 +1373,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'name': self.__("1:30 Whoop Sprint"),
+            'format_name': self.__("1:30 Whoop Sprint"),
             'race_mode': 0,
             'race_time_sec': 90,
             'start_delay_min': 2,
@@ -1385,7 +1385,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'name': self.__("3:00 Extended Race"),
+            'format_name': self.__("3:00 Extended Race"),
             'race_mode': 0,
             'race_time_sec': 210,
             'start_delay_min': 2,
@@ -1397,7 +1397,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'name': self.__("First to 3 Laps"),
+            'format_name': self.__("First to 3 Laps"),
             'race_mode': 1,
             'race_time_sec': 0,
             'start_delay_min': 2,
@@ -1409,7 +1409,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'name': self.__("Open Practice"),
+            'format_name': self.__("Open Practice"),
             'race_mode': 1,
             'race_time_sec': 0,
             'start_delay_min': 0,
@@ -1421,7 +1421,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'name': self.__("Fastest Lap Qualifier"),
+            'format_name': self.__("Fastest Lap Qualifier"),
             'race_mode': 0,
             'race_time_sec': 120,
             'start_delay_min': 2,
@@ -1433,7 +1433,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'name': self.__("Fastest 3 Laps Qualifier"),
+            'format_name': self.__("Fastest 3 Laps Qualifier"),
             'race_mode': 0,
             'race_time_sec': 120,
             'start_delay_min': 2,
@@ -1445,7 +1445,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'name': self.__("Lap Count Only"),
+            'format_name': self.__("Lap Count Only"),
             'race_mode': 0,
             'race_time_sec': 120,
             'start_delay_min': 2,
@@ -1457,7 +1457,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'name': self.__("Team / Most Laps Wins"),
+            'format_name': self.__("Team / Most Laps Wins"),
             'race_mode': 0,
             'race_time_sec': 120,
             'start_delay_min': 2,
@@ -1469,7 +1469,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'name': self.__("Team / First to 7 Laps"),
+            'format_name': self.__("Team / First to 7 Laps"),
             'race_mode': 0,
             'race_time_sec': 120,
             'start_delay_min': 2,
@@ -1481,7 +1481,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'name': self.__("Team / Fastest Lap Average"),
+            'format_name': self.__("Team / Fastest Lap Average"),
             'race_mode': 0,
             'race_time_sec': 120,
             'start_delay_min': 2,
@@ -1493,7 +1493,7 @@ class RHData():
             'start_behavior': 0
             })
         self.add_format({
-            'name': self.__("Team / Fastest 3 Consecutive Average"),
+            'format_name': self.__("Team / Fastest 3 Consecutive Average"),
             'race_mode': 0,
             'race_time_sec': 120,
             'start_delay_min': 2,
@@ -1505,6 +1505,7 @@ class RHData():
             'start_behavior': 0
             })
 
+        self.commit()
         logger.info("Database reset race formats")
         return True
 
