@@ -52,6 +52,12 @@ If the Raspberry Pi in use is a Pi 3 model or older (not a Pi 4) then also add t
 ```
 core_freq=250
 ```
+<a id="s32btconfig"></a>If your hardware is the S32_BPill setup with [shutdown button](Shutdown%20Button.md) and AUX LED then add these lines:
+```
+dtoverlay=act-led,gpio=24
+dtparam=act_led_trigger=heartbeat
+dtoverlay=gpio-shutdown,gpio_pin=18,debounce=5000
+```
 Save and exit (CTRL-X, Y, ENTER)
 
 The first line sets the transfer rate on the I2C bus (which is used to communicate with the Arduino node processors).
@@ -59,6 +65,8 @@ The first line sets the transfer rate on the I2C bus (which is used to communica
 The "dtoverlay=miniuart-bt" line moves the high performance UART from the Bluetooth device to the GPIO pins, which is needed for setups like the S32_BPill that use the serial port as the communications channel to the nodes.
 
 The "core_freq" line fixes a potential variable clock-rate issue, described [here](https://www.abelectronics.co.uk/kb/article/1089/i2c--smbus-and-raspbian-stretch-linux). If a Raspberry Pi 4 is being used, the "core_freq" line should be omitted (as per the Raspberry Pi documentation [here](https://www.raspberrypi.org/documentation/configuration/config-txt/overclocking.md)).
+
+For the S32_BPill setup, the "dtoverlay=act-led,gpio=24" and "dtparam=act_led_trigger=heartbeat" lines configure a Raspberry-Pi-heartbeat signal that the BPill processor monitors to track the status of the Pi.  The "dtoverlay=gpio-shutdown..." line makes it so the shutdown button still operates if the RotorHazard server is not running.
 
 
 ### 4. Perform System Update
