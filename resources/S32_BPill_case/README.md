@@ -10,7 +10,7 @@ The RotorHazard S32_BPill case is the recommended enclosure to use with the [S32
 
 * Mounting posts for the Raspberry Pi on the bottom, with openings on the front and side for accessing Pi connectors
 
-* Contains mounting holes for a power button, shutdown button, status LED, and (optional) fans
+* Contains mounting holes for a power button, [shutdown button](../../doc/Shutdown%20Button.md), status LED, and (optional) fans
 
 * Lid may be attached with screws, or magnets may be installed in provided mounts
 
