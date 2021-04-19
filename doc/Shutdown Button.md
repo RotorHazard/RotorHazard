@@ -40,6 +40,14 @@ When the Raspberry Pi is detected (by the BPill processor on S32_BPill board) as
 
 * When a system shutdown is in progress, the buzzer will emit a series of short beeps (for several seconds), followed by a long beep. (At this point it is safe to power down the timer.)
 
+### Configuration Parameters
+
+The following parameters may be configured (in 'src/server/config.json') under "GENERAL":
+
+* SHUTDOWN_BUTTON_GPIOPIN : The GPIO pin number on the Raspberry Pi for the shutdown button (defaults to 18)
+
+* SHUTDOWN_BUTTON_DELAYMS : The length of time (in milliseconds) that the button needs to be held to initiate a shutdown (defaults to 2500)
+
 <br/>
 
 -----------------------------
