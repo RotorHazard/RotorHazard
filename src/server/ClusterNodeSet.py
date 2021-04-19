@@ -148,12 +148,18 @@ class SecondaryNode:
                                 # if there was no response to last query then disconnect (and reconnect next loop)
                                 elif self.lastCheckQueryTime > self.lastContactTime:
                                     if self.lastCheckQueryTime - self.lastContactTime > 3.9:
-                                        logger.warning("Disconnecting after no response for 'check_secondary_query'" \
-                                                    " received for secondary {0} at {1}".format(self.id+1, self.address))
-                                        # calling 'disconnect()' will usually invoke 'on_disconnect()', but
-                                        #  'disconnect()' can be slow to return, so we update status now
-                                        self.on_disconnect()
-                                        self.sio.disconnect()
+                                        if len(self.timeDiffMedianObj.sorted_) > 0:
+                                            logger.warning("Disconnecting after no response for 'check_secondary_query'" \
+                                                        " received for secondary {0} at {1}".format(self.id+1, self.address))
+                                            # calling 'disconnect()' will usually invoke 'on_disconnect()', but
+                                            #  'disconnect()' can be slow to return, so we update status now
+                                            self.on_disconnect()
+                                            self.sio.disconnect()
+                                        else:  # if never any responses then may be old server version on secondary timer
+                                            logger.warning("No response for 'check_secondary_query'" \
+                                                           " received for secondary {0} at {1} (may need upgrade)".\
+                                                           format(self.id+1, self.address))
+                                            self.lastCheckQueryTime = self.lastContactTime = now_time
                                     else:
                                         logger.debug("No response for 'check_secondary_query' received "\
                                                      "after {0:.1f} secs for secondary {1} at {2}".\
