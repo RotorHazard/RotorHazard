@@ -151,7 +151,7 @@ serverInfoItems = None
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
 server_ipaddress_str = None
-Settings_note_msg_text = None
+ui_server_messages = {}
 ShutdownButtonInputHandler = None
 
 RACE = RHRace.RHRace() # For storing race management variables
@@ -399,13 +399,38 @@ def render_marshal():
 @requires_auth
 def render_settings():
     '''Route to settings page.'''
+
+    server_messages_formatted = ''
+
+    if len(ui_server_messages):
+        for key, item in ui_server_messages.items():
+            message = '<li class="' + key
+
+            if 'state' in item and item['state']:
+                message += '-' + item['state']
+
+            message += '">'
+
+            if 'header' in item and item['header']:
+                message += '<strong>' + item['header'] + ':</strong> '
+
+            message += item['message']
+            message += '</li>'
+
+            server_messages_formatted += message
+
+    if Config.GENERAL['configFile'] == -1:
+        server_messages_formatted += '<li class="config-bad"><strong>' + __('Warning') + ': ' + '</strong>' + __('The config.json file is invalid. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') + '</li>'
+
+    elif Config.GENERAL['configFile'] == 0:
+        server_messages_formatted += '<li class="config-none"><strong>' + __('Warning') + ': ' + '</strong>' + __('No configuration file was loaded. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') +'</li>'
+
     return render_template('settings.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
         led_events_enabled=led_manager.isEnabled(),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
-        ConfigFile=Config.GENERAL['configFile'],
-        note_message_text=Settings_note_msg_text,
+        server_messages=server_messages_formatted,
         cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()),
         node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
         is_raspberry_pi=RHUtils.isSysRaspberryPi(),
@@ -4406,8 +4431,7 @@ def shutdown_button_long_press():
 
 def initialize_rh_interface():
     try:
-        global INTERFACE, Settings_note_msg_text
-        Settings_note_msg_text = None
+        global INTERFACE, ui_server_messages
         rh_interface_name = os.environ.get('RH_INTERFACE', 'RH') + "Interface"
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
@@ -4438,7 +4462,11 @@ def initialize_rh_interface():
                 INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
                 for node in INTERFACE.nodes:  # put mock nodes at latest API level
                     node.api_level = NODE_API_BEST
-                Settings_note_msg_text = __("Server is using simulated (mock) nodes")
+                ui_server_messages['mock'] = {
+                    'state': 'in-use',
+                    'header': __('Notice'),
+                    'message': __("Server is using simulated (mock) nodes")
+                }
             else:
                 try:
                     importlib.import_module('serial')
@@ -4448,10 +4476,14 @@ def initialize_rh_interface():
                         # enter serial port name so it's available for node firmware update
                         if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
                             INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
-                            Settings_note_msg_text = __("Server is unable to communicate with node processor") + \
+                            ui_server_messages['stm32'] = {
+                                'state': 'no-comms',
+                                'header': __('Warning'),
+                                'message': __("Server is unable to communicate with node processor") + \
                                     ". " + __("If an S32_BPill board is connected, you may attempt to") +\
                                     " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
                                     __("its processor") + "."
+                                }
                     else:
                         return False  # unable to open serial port
                 except ImportError:
