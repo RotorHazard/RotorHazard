@@ -1135,7 +1135,7 @@ class RHData():
             'profile_id': profile.id,
             })
 
-        logger.info('Altered profile {0} to {1}'.format(profile.id, data))
+        logger.debug('Altered profile {0} to {1}'.format(profile.id, data))
 
         return profile
 
