@@ -4449,6 +4449,11 @@ def initialize_rh_interface():
                 except ImportError:
                     logger.warning("Unable to import libraries for I2C nodes; try:  " +\
                                    "sudo pip install --upgrade --no-cache-dir -r requirements.txt")
+                    ui_server_messages['i2c'] = {
+                        'state': 'library',
+                        'header': __('Warning'),
+                        'message': __("Unable to import libraries for I2C nodes. Try: <code>sudo pip install --upgrade --no-cache-dir -r requirements.txt</sudo>")
+                    }
                 RACE.num_nodes = 0
                 INTERFACE.pass_record_callback = pass_record_callback
                 INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
@@ -4488,6 +4493,11 @@ def initialize_rh_interface():
                         return False  # unable to open serial port
                 except ImportError:
                     logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
+                    ui_server_messages['serial'] = {
+                        'state': 'error',
+                        'header': __('Error'),
+                        'message': __("Unable to import library for serial node(s); is 'pyserial' installed?")
+                    }
                     return False
 
         RACE.num_nodes = len(INTERFACE.nodes)  # save number of nodes found
@@ -4619,6 +4629,11 @@ logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspbe
                                         RHGPIO.isRealRPiGPIO(), RHGPIO.isS32BPillBoard()))
 if RHUtils.isSysRaspberryPi() and not RHGPIO.isRealRPiGPIO():
     logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install RPi.GPIO")
+    ui_server_messages['gpio'] = {
+        'state': 'no-access',
+        'header': __('Warning'),
+        'message': __("Unable to access real GPIO on Pi. Try: <code>sudo pip install RPi.GPIO</sudo>")
+    }
 
 # log results of module initializations
 Config.logInitResultMessage()
@@ -4695,6 +4710,11 @@ try:
             hasMirrors = True
         elif hasMirrors:
             logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
+            ui_server_messages['secondary'] = {
+                'state': 'mirror',
+                'header': __('Notice'),
+                'message': __("Mirror secondaries must be last; ignoring remaining secondary config")
+            }
             break
         secondary = SecondaryNode(index, secondary_info, RACE, RHData, getCurrentProfile, \
                           emit_split_pass_info, monotonic_to_epoch_millis, \
@@ -4702,9 +4722,19 @@ try:
         CLUSTER.addSecondary(secondary)
 except:
     logger.exception("Error adding secondary to cluster")
+    ui_server_messages['secondary'] = {
+        'state': 'error',
+        'header': __('Error'),
+        'message': __('Secondary configuration is invalid.')
+    }
 
 if RACE.num_nodes == 0:
     logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
+    ui_server_messages['node'] = {
+        'state': 'none',
+        'header': __('Warning'),
+        'message': __("No receiver nodes found")
+    }
 else:
     logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
     # if I2C nodes then only report comm errors if > 1.0%
@@ -4740,14 +4770,33 @@ logger.debug("Server info:  " + json.dumps(serverInfoItems))
 
 if serverInfo['node_api_match'] is False:
     logger.info('** WARNING: Node API mismatch. **')
+    ui_server_messages['node-match'] = {
+        'header': __('Warning'),
+        'message': __("Node versions do not match and may not function similarly.")
+    }
 
 if RACE.num_nodes > 0:
     if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
         logger.info('** WARNING: Node firmware is out of date and may not function properly **')
+        ui_server_messages['node'] = {
+            'state': 'api-not-supported',
+            'header': __('Warning'),
+            'message': __("Node firmware is out of date and may not function properly.")
+        }
     elif serverInfo['node_api_lowest'] < NODE_API_BEST:
         logger.info('** NOTICE: Node firmware update is available **')
+        ui_server_messages['node'] = {
+            'state': 'api-low',
+            'header': __('Notice'),
+            'message': __("Node firmware update is available.")
+        }
     elif serverInfo['node_api_lowest'] > NODE_API_BEST:
         logger.warning('** WARNING: Node firmware is newer than this server version supports **')
+        ui_server_messages['node'] = {
+            'state': 'api-high',
+            'header': __('Warning'),
+            'message': __("Node firmware is newer than this server version and may not function properly.")
+        }
 
 # Do data consistency checks
 if not db_inited_flag:
