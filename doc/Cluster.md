@@ -66,7 +66,7 @@ On all timers:
 
 	sudo systemctl stop systemd-timesyncd
 	sudo systemctl disable systemd-timesyncd
-	sudo ​/etc/init.d/ntp restart
+	sudo service ntp restart
 
 ### Random number generator
 
@@ -84,21 +84,23 @@ Then, restart rng-tools with
 
 ### Notes
 
+For best results, the primary and secondary timers should be running the same version of the RotorHazard server.
+
 Missed/incorrect split times will have no impact on the recording of lap times by the primary timer.
 
-To enable the announcement of split times, see the "*Cluster/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a cluster/secondary timer connects and disconnects, select the "*Cluster Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a cluster timer is connected.)
+To enable the announcement of split times, see the "*Cluster/Split Timer*" option on the *Settings* page in the *Audio Control* section. To enable audio indicators of when a cluster/secondary timer connects and disconnects, select the "*Cluster Timer Connect / Disconnect*" checkbox under "*Indicator Beeps*". (Note that these options will only be visible if a secondary timer is configured.)
 
-The status of connected cluster timers may be viewed on the *Settings* page in the *System* section. (This status information is also available on the *Run* page.) The following items are displayed:
- * *Address* - Network address for the cluster timer (click to bring up the web-GUI for the timer)
- * *S* or *M* - After the address will be an 'S' if split timer or an 'M' if mirror timer
- * *Latency: min avg max last* - Network latency (in milliseconds) for heartbeat/query messages
- * *Disconns* - Number of times the cluster timer has been disconnected
- * *Contacts* - Number of network contacts with the cluster timer
- * *TimeDiff* - Time difference (in milliseconds) between system clocks on primary and cluster timer
- * *UpSecs* - Number of seconds the cluster timer has been connected
- * *DownSecs* - Number of seconds the cluster timer has been disconnected
- * *Avail* - Availability rating (as a percentage) for the cluster timer
- * *LastContact* - Time (in seconds) since last contact with the timer, or a status message
+The status of connected secondary timers may be viewed on the *Settings* page in the *Status* section. (This status information is also available on the *Run* page.) The following items are displayed:
+ * *Address* - Network address for the secondary timer (click to bring up the web-GUI for the timer)
+ * *Type* - After the address will be an 'S' if split timer or an 'M' if mirror timer
+ * *Latency: last min avg max* - Network latency (in milliseconds) for heartbeat/query messages
+ * *Disconnects* - Number of times the secondary timer has been disconnected
+ * *Contacts* - Number of network contacts with the secondary timer
+ * *Time Diff* - Time difference (in milliseconds) between system clocks on primary and secondary timer
+ * *Up* - Number of seconds the secondary timer has been connected
+ * *Down* - Number of seconds the secondary timer has been disconnected
+ * *Availability* - Availability rating (as a percentage) for the secondary timer
+ * *Last Contact* - Time (in seconds) since last contact with the timer, or a status message
 
 Doing normal operation, lap history-data will not be saved on the secondary timer(s). To view lap history-data and perform marshaling on a secondary timer, hit the '*Save Laps*' button on the secondary timer before the race is saved or discarded on the primary, and then go to the *Marshal* page on the secondary timer.
 
