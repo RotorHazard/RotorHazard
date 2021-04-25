@@ -4503,12 +4503,6 @@ def initialize_rh_interface():
                         return False  # unable to open serial port
                 except ImportError:
                     logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
-                    set_ui_message(
-                        'serial',
-                        __("Unable to import library for serial node(s); is 'pyserial' installed?"),
-                        header='Error',
-                        subclass='error'
-                        )
                     return False
 
         RACE.num_nodes = len(INTERFACE.nodes)  # save number of nodes found
