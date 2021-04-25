@@ -408,9 +408,7 @@ def render_marshal():
 @requires_auth
 def render_settings():
     '''Route to settings page.'''
-
     server_messages_formatted = ''
-
     if len(ui_server_messages):
         for key, item in ui_server_messages.items():
             message = '<li class="' + key
@@ -419,17 +417,13 @@ def render_settings():
             if 'header' in item and item['header']:
                 message += ' ' + item['header'].lower()
             message += '">'
-
             if 'header' in item and item['header']:
                 message += '<strong>' + item['header'] + ':</strong> '
-
             message += item['message']
             message += '</li>'
             server_messages_formatted += message
-
     if Config.GENERAL['configFile'] == -1:
         server_messages_formatted += '<li class="config config-bad warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('The config.json file is invalid. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') + '</li>'
-
     elif Config.GENERAL['configFile'] == 0:
         server_messages_formatted += '<li class="config config-none warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('No configuration file was loaded. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') +'</li>'
 
