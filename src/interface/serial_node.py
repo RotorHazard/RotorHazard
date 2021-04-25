@@ -253,9 +253,12 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                         if (rev_val & 0xFF) >= 32:  # check node API level
                             data = node.read_block(None, READ_MULTINODE_COUNT, 1, 2, False)
                             multi_count = unpack_8(data) if data != None else None
-                        if multi_count is None or multi_count < 1 or multi_count > 32:
+                        if multi_count is None or multi_count < 0 or multi_count > 32:
                             logger.error('Bad READ_MULTINODE_COUNT value fetched from serial node:  ' + str(multi_count))
                             multi_count = 1
+                        elif multi_count == 0:
+                            logger.warning('Fetched READ_MULTINODE_COUNT value of zero from serial node (no modules detected)')
+                            multi_count = 0
                 except Exception:
                     multi_count = 1
                     logger.exception('Error fetching READ_MULTINODE_COUNT for serial node')
@@ -284,10 +287,15 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                         node_timestamp_str = node.firmware_timestamp_str
                         ftim_log_str = ", fw_timestamp: " + node.firmware_timestamp_str
                 if multi_count <= 1:
-                    logger.info("Serial node {} found at port '{}', API_level={}, baudrate={}{}{}{}".format(\
-                                index+idxOffset+1, node.serial.name, api_level, node.serial.baudrate, \
-                                fver_log_str, ftyp_log_str, ftim_log_str))
-                    nodes.append(node)
+                    if multi_count > 0:
+                        logger.info("Serial node {} found at port '{}', API_level={}, baudrate={}{}{}{}".format(\
+                                    index+idxOffset+1, node.serial.name, api_level, node.serial.baudrate, \
+                                    fver_log_str, ftyp_log_str, ftim_log_str))
+                        nodes.append(node)
+                    else:
+                        logger.info("Serial node (with zero modules) found at port '{}', API_level={}, baudrate={}{}{}{}".format(\
+                                    node.serial.name, api_level, node.serial.baudrate, \
+                                    fver_log_str, ftyp_log_str, ftim_log_str))
                 else:
                     logger.info("Serial multi-node found at port '{}', count={}, API_level={}, baudrate={}{}{}{}".\
                                 format(node.serial.name, multi_count, api_level, node.serial.baudrate, \

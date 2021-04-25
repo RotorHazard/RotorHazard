@@ -4482,7 +4482,7 @@ def initialize_rh_interface():
                     importlib.import_module('serial')
                     logger.info("Unable to initialize specified serial node(s): {0}".format(Config.SERIAL_PORTS))
                     if INTERFACE:
-                        logger.info("If an S32_BPill board is connected, its processor my need to be flash-updated")
+                        logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
                         # enter serial port name so it's available for node firmware update
                         if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
                             INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
