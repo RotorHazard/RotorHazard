@@ -3726,6 +3726,7 @@ def do_bpillfw_update(data):
     stm32loader.set_console_output_fn(None)
     gevent.sleep(0.2)
     logger.info("Reinitializing RH interface")
+    ui_server_messages.clear()
     initialize_rh_interface()
     buildServerInfo()
     logger.debug("Server info:  " + json.dumps(serverInfoItems))
