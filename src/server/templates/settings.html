@@ -1947,20 +1947,11 @@
 {% endblock %} {% block content %}
 <main class="page-settings">
 
-{% if ConfigFile == -1 %}
-	<div class="config-bad">
-		<p><strong>{{ __('The config.json file is invalid. Falling back to default configuration.') | safe }}</strong></p>
-		<p>{{ __('To ensure your config.json file is valid JSON format, consider using a validator such as <a href="https://jsonlint.com/">JSONLint</a>.') | safe }}</p>
-	</div>
-{% elif ConfigFile == 0 %}
-	<div class="config-none">
-		<p><strong>{{ __('No configuration file was loaded. Falling back to default configuration.') | safe }}</strong></p>
-		<p>{{ __('Copy <em>server/config-dist.json</em> to <em>server/config.json</em> and then update settings for your server port number, admin username/password, and LED configuration.') | safe }}</p>
-	</div>
-{% endif %}
-{% if note_message_text %}
-	<div class="config-none">
-		<p><strong>Note: </strong>{{ note_message_text | safe }}</p>
+{% if server_messages %}
+	<div class="server-messages">
+		<ul>
+			{{ server_messages | safe }}
+		</ul>
 	</div>
 {% endif %}
 
