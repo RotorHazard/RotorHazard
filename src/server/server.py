@@ -151,7 +151,6 @@ serverInfoItems = None
 Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
 server_ipaddress_str = None
-Settings_note_msg_text = None
 ShutdownButtonInputHandler = None
 
 RACE = RHRace.RHRace() # For storing race management variables
@@ -164,6 +163,16 @@ RHData.late_init(PageCache, Language) # Give RHData additional references
 TONES_NONE = 0
 TONES_ONE = 1
 TONES_ALL = 2
+
+ui_server_messages = {}
+def set_ui_message(mainclass, message, header=None, subclass=None):
+    item = {}
+    item['message'] = message
+    if header:
+        item['header'] = __(header)
+    if subclass:
+        item['subclass'] = subclass
+    ui_server_messages[mainclass] = item
 
 # convert 'monotonic' time to epoch milliseconds since 1970-01-01
 def monotonic_to_epoch_millis(secs):
@@ -399,13 +408,31 @@ def render_marshal():
 @requires_auth
 def render_settings():
     '''Route to settings page.'''
+    server_messages_formatted = ''
+    if len(ui_server_messages):
+        for key, item in ui_server_messages.items():
+            message = '<li class="' + key
+            if 'subclass' in item and item['subclass']:
+                message += ' ' + key + '-' + item['subclass']
+            if 'header' in item and item['header']:
+                message += ' ' + item['header'].lower()
+            message += '">'
+            if 'header' in item and item['header']:
+                message += '<strong>' + item['header'] + ':</strong> '
+            message += item['message']
+            message += '</li>'
+            server_messages_formatted += message
+    if Config.GENERAL['configFile'] == -1:
+        server_messages_formatted += '<li class="config config-bad warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('The config.json file is invalid. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') + '</li>'
+    elif Config.GENERAL['configFile'] == 0:
+        server_messages_formatted += '<li class="config config-none warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('No configuration file was loaded. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') +'</li>'
+
     return render_template('settings.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
         led_events_enabled=led_manager.isEnabled(),
         vrx_enabled=vrx_controller!=None,
         num_nodes=RACE.num_nodes,
-        ConfigFile=Config.GENERAL['configFile'],
-        note_message_text=Settings_note_msg_text,
+        server_messages=server_messages_formatted,
         cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()),
         node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
         is_raspberry_pi=RHUtils.isSysRaspberryPi(),
@@ -3693,6 +3720,7 @@ def do_bpillfw_update(data):
     stm32loader.set_console_output_fn(None)
     gevent.sleep(0.2)
     logger.info("Reinitializing RH interface")
+    ui_server_messages.clear()
     initialize_rh_interface()
     buildServerInfo()
     logger.debug("Server info:  " + json.dumps(serverInfoItems))
@@ -4406,8 +4434,7 @@ def shutdown_button_long_press():
 
 def initialize_rh_interface():
     try:
-        global INTERFACE, Settings_note_msg_text
-        Settings_note_msg_text = None
+        global INTERFACE
         rh_interface_name = os.environ.get('RH_INTERFACE', 'RH') + "Interface"
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
@@ -4425,6 +4452,12 @@ def initialize_rh_interface():
                 except ImportError:
                     logger.warning("Unable to import libraries for I2C nodes; try:  " +\
                                    "sudo pip install --upgrade --no-cache-dir -r requirements.txt")
+                    set_ui_message(
+                        'i2c',
+                        __("Unable to import libraries for I2C nodes. Try: <code>sudo pip install --upgrade --no-cache-dir -r requirements.txt</code>"),
+                        header='Warning',
+                        subclass='no-library'
+                        )
                 RACE.num_nodes = 0
                 INTERFACE.pass_record_callback = pass_record_callback
                 INTERFACE.new_enter_or_exit_at_callback = new_enter_or_exit_at_callback
@@ -4438,7 +4471,12 @@ def initialize_rh_interface():
                 INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
                 for node in INTERFACE.nodes:  # put mock nodes at latest API level
                     node.api_level = NODE_API_BEST
-                Settings_note_msg_text = __("Server is using simulated (mock) nodes")
+                set_ui_message(
+                    'mock',
+                    __("Server is using simulated (mock) nodes"),
+                    header='Notice',
+                    subclass='in-use'
+                    )
             else:
                 try:
                     importlib.import_module('serial')
@@ -4448,10 +4486,13 @@ def initialize_rh_interface():
                         # enter serial port name so it's available for node firmware update
                         if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
                             INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
-                            Settings_note_msg_text = __("Server is unable to communicate with node processor") + \
-                                    ". " + __("If an S32_BPill board is connected, you may attempt to") +\
-                                    " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
-                                    __("its processor") + "."
+                            set_ui_message(
+                                'stm32',
+                                 __("Server is unable to communicate with node processor.") +
+                                    __('If an S32_BPill board is connected, you may attempt to <a href="/updatenodes">flash-update</a> its processor.'),
+                                header='Warning',
+                                subclass='no-comms'
+                                )
                     else:
                         return False  # unable to open serial port
                 except ImportError:
@@ -4587,6 +4628,12 @@ logger.debug("isRPi={}, isRealGPIO={}, isS32BPill={}".format(RHUtils.isSysRaspbe
                                         RHGPIO.isRealRPiGPIO(), RHGPIO.isS32BPillBoard()))
 if RHUtils.isSysRaspberryPi() and not RHGPIO.isRealRPiGPIO():
     logger.warning("Unable to access real GPIO on Pi; try:  sudo pip install RPi.GPIO")
+    set_ui_message(
+        'gpio',
+        __("Unable to access real GPIO on Pi. Try: <code>sudo pip install RPi.GPIO</code>"),
+        header='Warning',
+        subclass='no-access'
+        )
 
 # log results of module initializations
 Config.logInitResultMessage()
@@ -4663,6 +4710,12 @@ try:
             hasMirrors = True
         elif hasMirrors:
             logger.warning('** Mirror secondaries must be last - ignoring remaining secondary config **')
+            set_ui_message(
+                'secondary',
+                __("Mirror secondaries must be last; ignoring part of secondary configuration"),
+                header='Notice',
+                subclass='mirror'
+                )
             break
         secondary = SecondaryNode(index, secondary_info, RACE, RHData, getCurrentProfile, \
                           emit_split_pass_info, monotonic_to_epoch_millis, \
@@ -4670,9 +4723,22 @@ try:
         CLUSTER.addSecondary(secondary)
 except:
     logger.exception("Error adding secondary to cluster")
+    set_ui_message(
+        'secondary',
+        __('Secondary configuration is invalid.'),
+        header='Error',
+        subclass='error'
+        )
 
 if RACE.num_nodes == 0:
     logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
+    set_ui_message(
+        'node',
+        __("No receiver nodes found"),
+        header='Warning',
+        subclass='none'
+        )
+
 else:
     logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
     # if I2C nodes then only report comm errors if > 1.0%
@@ -4708,14 +4774,37 @@ logger.debug("Server info:  " + json.dumps(serverInfoItems))
 
 if serverInfo['node_api_match'] is False:
     logger.info('** WARNING: Node API mismatch. **')
+    set_ui_message(
+        'node-match',
+        __("Node versions do not match and may not function similarly."),
+        header='Warning',
+        )
 
 if RACE.num_nodes > 0:
     if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
         logger.info('** WARNING: Node firmware is out of date and may not function properly **')
+        set_ui_message(
+            'node',
+            __("Node firmware is out of date and may not function properly."),
+            header='Warning',
+            subclass='api-not-supported'
+            )
     elif serverInfo['node_api_lowest'] < NODE_API_BEST:
         logger.info('** NOTICE: Node firmware update is available **')
+        set_ui_message(
+            'node',
+            __("Node firmware update is available."),
+            header='Notice',
+            subclass='api-low'
+            )
     elif serverInfo['node_api_lowest'] > NODE_API_BEST:
         logger.warning('** WARNING: Node firmware is newer than this server version supports **')
+        set_ui_message(
+            'node',
+            __("Node firmware is newer than this server version and may not function properly."),
+            header='Warning',
+            subclass='api-high'
+            )
 
 # Do data consistency checks
 if not db_inited_flag:
