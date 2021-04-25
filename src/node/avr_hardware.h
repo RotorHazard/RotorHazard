@@ -232,10 +232,6 @@ public:
         return i2cAddress;
     }
 
-    uint16_t getFeatureFlags() {
-        return (RHFEAT_STM32_MODE | RHFEAT_JUMPTO_BOOTLDR | RHFEAT_IAP_FIRMWARE);
-    }
-
     void storeFrequency(freq_t freq)
     {
         eepromWriteWord(EEPROM_ADRW_RXFREQ, freq);
