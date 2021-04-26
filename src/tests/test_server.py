@@ -12,6 +12,7 @@ sys.path.append('../interface')
 os.environ['RH_INTERFACE'] = 'Mock'
 
 import server
+import log
 from Node import Node
 
 class ServerTest(unittest.TestCase):
@@ -20,6 +21,7 @@ class ServerTest(unittest.TestCase):
 
     def tearDown(self):
         self.client.disconnect()
+        log.close_logging()
 
     def get_response(self, event):
         responses = self.client.get_received()

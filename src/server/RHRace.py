@@ -4,7 +4,7 @@ class RHRace():
     '''Class to hold race management variables.'''
     def __init__(self):
         # setup/options
-        self.num_nodes = 0
+        self._num_nodes = 0
         self.current_heat = 1 # heat ID
         self.node_pilots = {} # current race pilots, by node, filled on heat change
         self.node_teams = {} # current race teams, by node, filled on heat change
@@ -50,6 +50,17 @@ class RHRace():
             deleted
         '''
 
+    @property
+    def num_nodes(self):
+        return self._num_nodes
+
+    @num_nodes.setter
+    def num_nodes(self, new_value):
+        self._num_nodes = new_value
+        self.node_laps = {}
+        for idx in range(self._num_nodes):
+            self.node_laps[idx] = []
+
     def get_active_laps(self):
         # return active (non-deleted) laps objects
         filtered = {}
@@ -58,7 +69,7 @@ class RHRace():
         return filtered
 
     def any_laps_recorded(self):
-        for node_index in range(self.num_nodes):
+        for node_index in range(self._num_nodes):
             if len(self.node_laps[node_index]) > 0:
                 return True
         return False

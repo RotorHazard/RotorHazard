@@ -233,7 +233,7 @@ class VRxCV_emulator:
         except KeyboardInterrupt:
             self._mqttc.disconnect_gracefully()
         except:
-            raise r
+            raise
 
     def _on_message_kick(self,client, userdata, message):
         self._mqttc.disconnect_gracefully()

@@ -22,7 +22,10 @@ void setChecksum(char data[], int len) {
 }
 
 void sendData(GodmodeState* state, const char data[], int len, Message& msg) {
-    state->serialPort[0].dataIn = String(data);
+    static char szData[32];
+    memcpy(szData, data, len);
+    szData[len] = '\0';
+    state->serialPort[0].dataIn = String(szData);
     for (int i=0; i<len; i++) {
         handleStreamEvent(Serial, msg);
     }

@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 class ConnectedComponent:
 	def __init__(self, idx, birth, death):
