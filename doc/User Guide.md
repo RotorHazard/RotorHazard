@@ -157,6 +157,8 @@ When a race is over, use the "Stop Race" button (Hotkey: <kbd>x</kbd>) to discon
 
 Once a race has concluded, you must choose "Save Laps" or "Discard Laps" before starting another race. "Save Laps" (Hotkey: <kbd>c</kbd>) will store race results to the database and display them on the "Results" page. "Discard Laps" (Hotkey: <kbd>v</kbd>) will discard the race results. Saving laps will automatically advance the heat selection to the next heat with the same class as the saved race.
 
+(The spacebar can also be used as a hotkey for the Start, Stop and Save functions.)
+
 The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. _Audio Control_ and _LED Control_ are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race. "Time Until Race Start" will schedule a race to be run at a future time. Operators may use this to set a hard limit on the amount of time allowed for pilots to prepare, or to start the timer and then participate in the race themselves.
 
 ### Marshal
