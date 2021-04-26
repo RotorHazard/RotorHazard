@@ -3,24 +3,29 @@
 
 #include "rhtypes.h"
 #include "sendbuffer.h"
-#define CIRCULAR_BUFFER_INT_SAFE
 #include "CircularBuffer.h"
 
-template <typename T, uint8_t N> class MultiSendBuffer : public SendBuffer<T>
+template <uint8_t N> class MultiExtremumSendBuffer : public ExtremumSendBuffer
 {
     private:
-        CircularBuffer<T,N> buffer;
+      CircularBuffer<Extremum,N> buffer;
     public:
-      bool isEmpty() {
+      uint_fast8_t size() const {
+          return buffer.size();
+      }
+      bool isEmpty() const {
           return buffer.isEmpty();
       }
-      bool isFull() {
+      bool isFull() const {
           return buffer.isFull();
       }
-      void addOrDiscard(const T& e) {
-          buffer.push(e);
+      void addOrDiscard(const Extremum& e, bool wasLast) {
+          add(e);
       }
-      const T first() {
+      const Extremum first() {
+          return buffer.first();
+      }
+      const Extremum last() {
           return buffer.first();
       }
       void removeFirst() {
@@ -30,9 +35,56 @@ template <typename T, uint8_t N> class MultiSendBuffer : public SendBuffer<T>
           buffer.clear();
       }
     protected:
-      void add(const T& e) {
+      void add(const Extremum& e) {
           buffer.push(e);
       }
+      void removeLast() {
+          buffer.pop();
+      }
+};
+
+template <uint8_t N> class MultiPeakSendBuffer : public MultiExtremumSendBuffer<N>
+{
+    public:
+        void addOrDiscard(const Extremum& e, bool wasLast = true) {
+            if (MultiExtremumSendBuffer<N>::isFull()) {
+                Extremum last = MultiExtremumSendBuffer<N>::last();
+                if (e.rssi > last.rssi) {
+                    // prefer higher peak
+                    MultiExtremumSendBuffer<N>::removeLast();
+                    MultiExtremumSendBuffer<N>::add(e);
+                } else if (wasLast && e.rssi == last.rssi) {
+                    // merge
+                    Extremum merged = {last.rssi, last.firstTime, (uint16_t) (endTime(e) - last.firstTime)};
+                    MultiExtremumSendBuffer<N>::removeLast();
+                    MultiExtremumSendBuffer<N>::add(merged);
+                }
+            } else {
+                MultiExtremumSendBuffer<N>::add(e);
+            }
+        }
+};
+
+template <uint8_t N> class MultiNadirSendBuffer : public MultiExtremumSendBuffer<N>
+{
+    public:
+        void addOrDiscard(const Extremum& e, bool wasLast = true) {
+            if (MultiExtremumSendBuffer<N>::isFull()) {
+                Extremum last = MultiExtremumSendBuffer<N>::last();
+                if (e.rssi < last.rssi) {
+                    // prefer lower peak
+                    MultiExtremumSendBuffer<N>::removeLast();
+                    MultiExtremumSendBuffer<N>::add(e);
+                } else if (wasLast && e.rssi == last.rssi) {
+                    // merge
+                    Extremum merged = {last.rssi, last.firstTime, (uint16_t) (endTime(e) - last.firstTime)};
+                    MultiExtremumSendBuffer<N>::removeLast();
+                    MultiExtremumSendBuffer<N>::add(merged);
+                }
+            } else {
+                MultiExtremumSendBuffer<N>::add(e);
+            }
+        }
 };
 
 #endif

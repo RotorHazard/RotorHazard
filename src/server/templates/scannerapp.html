@@ -1,7 +1,7 @@
 <html>
 	<head>
 		<script type="text/javascript" src="./static/jquery-3.2.1/jquery.min.js"></script>
-		<script type="text/javascript" src="./static/socket.io-1.3.5/socket.io.min.js"></script>
+		<script type="text/javascript" src="./static/socket.io-2.2.0/socket.io.min.js"></script>
 		<script type="text/javascript" src="./static/chart/Chart.min.js"></script>
 		<script type="text/javascript" src="./static/scanner.js"></script>
 		<link rel="stylesheet" href="./static/chart/Chart.min.css"></link>
@@ -36,6 +36,7 @@
 				<div class="node-list">
 					{% for node in range(num_nodes) %}
 					<div class="node" data-node="{{ node }}">
+						<h3>Node {{ node+1 }}</h3>
 						<div style="height:80%; width:80%; background:#FFFFFF; margin:0 auto;">
 							<canvas id="freq-graph-{{ node }}">
 							</canvas>

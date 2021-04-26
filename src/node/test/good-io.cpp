@@ -3,7 +3,7 @@
 
 unittest(io8)
 {
-  Buffer buf;
+  Buffer<1> buf;
   uint8_t expected = 254;
   buf.write8(expected);
   assertEqual(1, buf.size);
@@ -16,7 +16,7 @@ unittest(io8)
 
 unittest(io16)
 {
-  Buffer buf;
+  Buffer<2> buf;
   uint16_t expected = 254*254;
   buf.write16(expected);
   assertEqual(2, buf.size);
@@ -29,7 +29,7 @@ unittest(io16)
 
 unittest(io32)
 {
-  Buffer buf;
+  Buffer<4> buf;
   uint32_t expected = 254*254*254*254;
   buf.write32(expected);
   assertEqual(4, buf.size);

@@ -1,5 +1,6 @@
 #include <ArduinoUnitTests.h>
 #include <Godmode.h>
+#include "../rssi.h"
 #include "util.h"
 
 /**
@@ -8,31 +9,27 @@
 unittest(gradualCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
-
-  RssiNode::multiRssiNodeCount = 1;
-  RssiNode *rssiNodePtr = &(RssiNode::rssiNodeArray[0]);
-  rssiNodePtr->rssiSetFilter(&testFilter);
-  rssiNodePtr->rssiInit();
-
-  rssiNodePtr->setActivatedFlag(true);
+  RssiNode rssiNode;
+  configureTestRssiNode(rssiNode);
+  State& state = rssiNode.getState();
+  LastPass& lastPass = rssiNode.getLastPass();
+  History& history = rssiNode.getHistory();
+  rssiNode.start(millis(), micros());
 
   // prime the state with some background signal
-  sendSignal(rssiNodePtr, nano, 50);
-  sendSignal(rssiNodePtr, nano, 50);
-  assertTrue(rssiNodePtr->rssiStateValid());
-
-  struct State & state = rssiNodePtr->getState();
-  struct History & history = rssiNodePtr->getHistory();
-  struct LastPass & lastPass = rssiNodePtr->getLastPass();
+  sendSignal(nano, rssiNode, 50);
+  sendSignal(nano, rssiNode, 50);
+  sendSignal(nano, rssiNode, 50);
+  assertTrue(rssiNode.isStateValid());
 
   // enter
   for(int signal = 50; signal<130; signal++) {
-      sendSignal(rssiNodePtr, nano, signal);
+      sendSignal(nano, rssiNode, signal);
       int expected = signal;
       assertEqual(expected, (int)state.rssi);
       assertEqual(expected, (int)state.nodeRssiPeak);
   }
-  sendSignal(rssiNodePtr, nano, 130);
+  sendSignal(nano, rssiNode, 130);
   assertEqual(130, (int)state.nodeRssiPeak);
   assertEqual(50, (int)state.nodeRssiNadir);
   assertTrue(state.crossing);
@@ -40,11 +37,11 @@ unittest(gradualCrossing) {
 
   // exit
   for(int signal = 130; signal>70; signal--) {
-      sendSignal(rssiNodePtr, nano, signal);
+      sendSignal(nano, rssiNode, signal);
       int expected = signal;
       assertEqual(expected, (int)state.rssi);
   }
-  sendSignal(rssiNodePtr, nano, 70);
+  sendSignal(nano, rssiNode, 70);
   assertEqual(70, (int)state.rssi);
   assertEqual(130, (int)state.nodeRssiPeak);
 
@@ -57,10 +54,9 @@ unittest(gradualCrossing) {
   assertEqual(70, (int)history.nadir.rssi);
   assertEqual(0, (int)history.nadir.duration);
 
-  assertFalse(history.peakSend->isEmpty());
-  assertEqual(130, (int)history.peakSend->first().rssi);
-  assertEqual(time(2)-1, (int)history.peakSend->first().duration);
-  assertTrue(history.nadirSend->isEmpty());
+  assertEqual(130, (int)history.sendBuffer->nextPeak().rssi);
+  assertEqual(time(2)-1, (int)history.sendBuffer->nextPeak().duration);
+  assertEqual(NADIR, history.nextToSendType());
 
   assertEqual(130, (int)state.nodeRssiPeak);
   assertEqual(50, (int)state.nodeRssiNadir);

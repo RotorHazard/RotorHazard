@@ -3,13 +3,11 @@
 
 #include "config.h"
 
-#define TEXT_BLOCK_SIZE 16   // length of data for 'writeTextBlock()'
-
-class Buffer {
+template<size_t S> class Buffer {
     public:
         uint8_t index = 0;
         uint8_t size = 0;
-        uint8_t data[20];  // Data array for I/O, up to 20 bytes per message
+        uint8_t data[S];  // Data array for I/O, up to 18 bytes per message
 
         bool isEmpty() {
             return size == 0;
@@ -21,53 +19,51 @@ class Buffer {
             size = 0;
         }
         uint8_t read8() {
-            return data[index++];
+            if (index < S) {
+                return data[index++];
+            } else {
+                return 0xFF;
+            }
         }
         uint16_t read16() {
-            uint16_t result;
-            result = data[index++];
-            result = (result << 8) | data[index++];
-            return result;
+            if (index < S-1) {
+                uint16_t result;
+                result = data[index++];
+                result = (result << 8) | data[index++];
+                return result;
+            } else {
+                return 0xFFFF;
+            }
         }
         uint32_t read32() {
-            uint32_t result;
-            result = data[index++];
-            result = (result << 8) | data[index++];
-            result = (result << 8) | data[index++];
-            result = (result << 8) | data[index++];
-            return result;
+            if (index < S-3) {
+                uint32_t result;
+                result = data[index++];
+                result = (result << 8) | data[index++];
+                result = (result << 8) | data[index++];
+                result = (result << 8) | data[index++];
+                return result;
+            } else {
+                return 0xFFFFFFFF;
+            }
         }
         void write8(uint8_t v) {
-            data[size++] = v;
+            if (size < S) {
+                data[size++] = v;
+            }
         }
         void write16(uint16_t v) {
-            data[size++] = (v >> 8);
-            data[size++] = v;
+            if (size < S-1) {
+                data[size++] = (v >> 8);
+                data[size++] = v;
+            }
         }
         void write32(uint32_t v) {
-            data[size++] = (v >> 24);
-            data[size++] = (v >> 16);
-            data[size++] = (v >> 8);
-            data[size++] = v;
-        }
-        void writeTextBlock(const char *srcStr) {
-            const char *sPtr = srcStr;
-            int p = 0;
-            while (*sPtr > ' ' && ++p < 99)  // find first space
-                ++sPtr;
-            if (p < 99) {
-                p = 0;
-                do {  // copy data until null (or length limit)
-                    ++sPtr;
-                    write8(*sPtr);
-                }
-                while(++p < TEXT_BLOCK_SIZE && *sPtr > '\0');
-            }
-            else
-                p = 0;
-            while(p < TEXT_BLOCK_SIZE) {  // pad rest with nulls
-                write8('\0');
-                ++p;
+            if (size < S-3) {
+                data[size++] = (v >> 24);
+                data[size++] = (v >> 16);
+                data[size++] = (v >> 8);
+                data[size++] = v;
             }
         }
         uint8_t calculateChecksum(uint8_t len) {
@@ -84,7 +80,8 @@ class Buffer {
         }
 };
 
-#define ioBufferReadRssi(buf) (buf.read8())
-#define ioBufferWriteRssi(buf, rssi) (buf.write8(rssi))
+template<size_t N> constexpr rssi_t ioBufferReadRssi(Buffer<N>& buf) { return buf.read8(); }
+template<size_t N> constexpr void ioBufferWriteRssi(Buffer<N>& buf, rssi_t rssi) { buf.write8(rssi); }
+template<size_t N> constexpr void ioBufferWriteFreqRssi(Buffer<N>& buf, const FreqRssi& f_r) { buf.write16(f_r.freq); buf.write8(f_r.rssi); }
 
 #endif

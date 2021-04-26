@@ -7,6 +7,13 @@
 typedef uint32_t mtime_t; // milliseconds
 typedef uint32_t utime_t; // micros
 typedef uint8_t rssi_t;
+typedef uint16_t freq_t; // MHz
+
+enum ExtremumType {
+    PEAK = 1,
+    NADIR = -1,
+    NONE = 0
+};
 
 struct Extremum
 {
@@ -15,10 +22,17 @@ struct Extremum
   uint16_t volatile duration;
 };
 
-#define MAX_RSSI 0xFF
-#define isPeakValid(x) ((x).rssi != 0)
-#define isNadirValid(x) ((x).rssi != MAX_RSSI)
-#define invalidatePeak(x) ((x).rssi = 0)
-#define invalidateNadir(x) ((x).rssi = MAX_RSSI)
+struct FreqRssi
+{
+    freq_t freq;
+    rssi_t rssi;
+};
+
+constexpr rssi_t MAX_RSSI = 0xFF;
+inline bool isPeakValid(const Extremum& x) { return x.rssi != 0; }
+inline bool isNadirValid(const Extremum& x) { return x.rssi != MAX_RSSI; }
+inline void invalidatePeak(Extremum& x) { x.rssi = 0; }
+inline void invalidateNadir(Extremum& x) { x.rssi = MAX_RSSI; }
+inline mtime_t endTime(const Extremum& x) { return x.firstTime + x.duration; }
 
 #endif

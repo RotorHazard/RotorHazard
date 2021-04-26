@@ -12,7 +12,7 @@
 //
 // Constructor:
 // FastRunningMedian<datatype_of_content, size_of_sliding_window, default_value>
-// maximim size_of_sliding_window is 255
+// maximum size_of_sliding_window is 255
 // Methods:
 // addValue(val) adds a new value to the buffers (and kicks the oldest)
 // getMedian() returns the current median value
@@ -28,28 +28,18 @@
 
 #include <inttypes.h>
 
-template <typename T, uint8_t N, T default_value> class FastRunningMedian {
+template <typename T, uint8_t N, T default_value> class FastRunningMedian final {
 
 public:
 	FastRunningMedian() {
-		_buffer_ptr = N;
-		_median_ptr = N/2;
-		_unfilled = N;
-
-		// Init buffers
-		uint8_t i = N;
-		while( i > 0 ) {
-			i--;
-			_inbuffer[i] = default_value;
-			_sortbuffer[i] = default_value;
-		}
+	    init();
 	}
 
-	bool isFilled() {
+	bool isFilled() const {
 		return _unfilled == 0;
 	}
 
-	T getMedian() {
+	T getMedian() const {
 		// buffers are always sorted.
 		return _sortbuffer[_median_ptr];
 	}
@@ -72,7 +62,7 @@ public:
 		_inbuffer[_buffer_ptr] = new_value;  // fill the new value in the cyclic buffer
 
 		// search the old_value in the sorted buffer
-		uint8_t i = N;
+		uint_fast8_t i = N;
 		while(i > 0) {
 			i--;
 			if (old_value == _sortbuffer[i])
@@ -85,7 +75,7 @@ public:
 		// the sortbuffer is always sorted, except the [i]-element..
 		if (new_value > old_value) {
 			//  if the new value is bigger than the old one, make a bubble sort upwards
-			for(uint8_t p=i, q=i+1; q < N; p++, q++) {
+			for(uint_fast8_t p=i, q=i+1; q < N; p++, q++) {
 				// bubble sort step
 				if (_sortbuffer[p] > _sortbuffer[q]) {
 					T tmp = _sortbuffer[p];
@@ -98,7 +88,7 @@ public:
 			}
 		} else {
 			// else new_value is smaller than the old one, bubble downwards
-			for(int p=i-1, q=i; q > 0; p--, q--) {
+			for(int_fast16_t p=i-1, q=i; q > 0; p--, q--) {
 				if (_sortbuffer[p] > _sortbuffer[q]) {
 					T tmp = _sortbuffer[p];
 					_sortbuffer[p] = _sortbuffer[q];
@@ -111,18 +101,36 @@ public:
 		}
 	}
 
+    void reset() {
+        init();
+    }
+
 private:
 	// Pointer to the last added element in _inbuffer
-	uint8_t _buffer_ptr;
+	uint_fast8_t _buffer_ptr;
 	// position of the median value in _sortbuffer
-	uint8_t _median_ptr;
+	uint_fast8_t _median_ptr;
 	// number of unfilled entries in the buffer
-	uint8_t _unfilled;
+	uint_fast8_t _unfilled;
 
 	// cyclic buffer for incoming values
 	T _inbuffer[N];
 	// sorted buffer
 	T _sortbuffer[N];
+
+    void init() {
+        _buffer_ptr = N;
+        _median_ptr = N/2;
+        _unfilled = N;
+
+        // Init buffers
+        uint_fast8_t i = N;
+        while( i > 0 ) {
+            i--;
+            _inbuffer[i] = default_value;
+            _sortbuffer[i] = default_value;
+        }
+    }
 };
 
 // --- END OF FILE ---

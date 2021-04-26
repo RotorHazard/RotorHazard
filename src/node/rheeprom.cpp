@@ -1,8 +1,6 @@
-#ifndef __TEST__
 #include "config.h"
+#if TARGET == AVR_TARGET
 #include "rheeprom.h"
-
-#if !STM32_MODE_FLAG
 
 //Writes 2-byte word to EEPROM at address.
 void eepromWriteWord(int addr, uint16_t val)
@@ -16,8 +14,6 @@ uint16_t eepromReadWord(int addr)
 {
     uint8_t lb = EEPROM.read(addr);
     uint8_t hb = EEPROM.read(addr + 1);
-    return (((uint16_t) hb) << (uint16_t)8) + lb;
+    return (((uint16_t) hb) << 8) + lb;
 }
-
-#endif
 #endif

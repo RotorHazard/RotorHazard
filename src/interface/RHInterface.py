@@ -9,6 +9,7 @@ from Plugins import Plugins
 from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
+READ_MODE = 0x02
 READ_FREQUENCY = 0x03       # Gets channel frequency (2 byte)
 READ_LAP_STATS = 0x05
 READ_LAP_PASS_STATS = 0x0D
@@ -18,6 +19,8 @@ READ_RHFEAT_FLAGS = 0x11     # read feature flags value
 READ_REVISION_CODE = 0x22    # read NODE_API_LEVEL and verification value
 READ_NODE_RSSI_PEAK = 0x23   # read 'nodeRssiPeak' value
 READ_NODE_RSSI_NADIR = 0x24  # read 'nodeRssiNadir' value
+READ_NODE_RSSI_HISTORY = 0x25
+READ_NODE_SCAN_HISTORY = 0x26
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
 READ_TIME_MILLIS = 0x33      # read current 'millis()' time value
@@ -30,6 +33,7 @@ READ_FW_BUILDTIME = 0x3F     # read firmware build time string
 READ_FW_PROCTYPE = 0x40      # read node processor type
 
 WRITE_FREQUENCY = 0x51       # Sets frequency (2 byte)
+WRITE_MODE = 0x52
 # WRITE_FILTER_RATIO = 0x70   # node API_level>=10 uses 16-bit value
 WRITE_ENTER_AT_LEVEL = 0x71
 WRITE_EXIT_AT_LEVEL = 0x72
@@ -167,7 +171,7 @@ class RHInterface(BaseHardwareInterface):
                 if flags_val:
                     node.rhfeature_flags = flags_val
                     # if first node that supports in-app fw update then save port name
-                    if (not self.fwupd_serial_obj) and node.serial and \
+                    if (not self.fwupd_serial_obj) and hasattr(node, 'serial') and \
                             (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
                         self.set_fwupd_serial_obj(node.serial)
 
@@ -213,11 +217,7 @@ class RHInterface(BaseHardwareInterface):
         for node in self.nodes:
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
-                    if node.api_level >= 32:
-                        data = node.read_block(self, READ_LAP_PASS_STATS, 8)
-                        if data != None:
-                            data.extend(node.read_block(self, READ_LAP_EXTREMUMS, 8))
-                    elif node.api_level >= 21:
+                    if node.api_level >= 21:
                         data = node.read_block(self, READ_LAP_STATS, 16)
                     elif node.api_level >= 18:
                         data = node.read_block(self, READ_LAP_STATS, 19)
@@ -371,6 +371,8 @@ class RHInterface(BaseHardwareInterface):
                                             startThreshLowerNode.start_thresh_lower_time:
                             startThreshLowerNode = node
 
+            if node.loop_time > 1500:
+                logger.warning("Abnormal node loop time: {}".format(node.loop_time))
 
         # process any nodes with crossing-flag changes
         self.process_crossings(cross_list)
@@ -523,6 +525,13 @@ class RHInterface(BaseHardwareInterface):
                 READ_FREQUENCY,
                 1111 if node.api_level >= 24 else 5800)
             node.frequency = 0
+
+    def set_mode(self, node_index, mode):
+        node = self.nodes[node_index]
+        node.mode = self.set_and_validate_value_8(node,
+            WRITE_MODE,
+            READ_MODE,
+            mode)
 
     def transmit_enter_at_level(self, node, level):
         return self.set_and_validate_value_rssi(node,

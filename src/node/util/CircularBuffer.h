@@ -19,26 +19,13 @@
 #define CIRCULAR_BUFFER_H_
 #include <stdint.h>
 #include <stddef.h>
+#include "Collections.h"
 
 #ifdef CIRCULAR_BUFFER_DEBUG
 #include <Print.h>
 #endif
 
-namespace Helper {
-	template<bool FITS8, bool FITS16> struct Index {
-		using Type = uint32_t;
-	};
-
-	template<> struct Index<false, true> {
-		using Type = uint16_t;
-	};
-
-	template<> struct Index<true, true> {
-		using Type = uint8_t;
-	};
-}
-
-template<typename T, size_t S, typename IT = typename Helper::Index<(S <= UINT8_MAX), (S <= UINT16_MAX)>::Type> class CircularBuffer {
+template<typename T, size_t S, typename IT = typename Helper::Index<(S <= UINT8_MAX), (S <= UINT16_MAX)>::Type> class CircularBuffer final : public List<T,S,IT> {
 public:
 	/**
 	 * The buffer capacity: read only as it cannot ever change.

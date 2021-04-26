@@ -2,6 +2,7 @@
 /*.bin
 /*.gcda
 /*.gcno
+/*.csv
 /.settings
 /.cproject
 /.project
