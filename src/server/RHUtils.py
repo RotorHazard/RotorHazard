@@ -99,7 +99,7 @@ def getLocalIPAddress():
     if IP:
         return IP
     # use alternate method that does not rely on internet access
-    ips = subprocess.check_output(['hostname', '--all-ip-addresses'])
+    ips = subprocess.check_output(['hostname', '--all-ip-addresses']).decode("utf-8").rstrip()
     logger.debug("Result of 'hostname --all-ip-addresses': " + str(ips))
     if ips:
         for IP in ips.split(' '):
