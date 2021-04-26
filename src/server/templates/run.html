@@ -1880,6 +1880,10 @@
 							$('#stop_race').trigger('click');
 							$("#main_panel").focus();  // make sure focus not on Heat selector
 						}
+						else if (!($('#save_laps').prop('disabled'))) {
+							$('#save_laps').trigger('click');
+							$("#main_panel").focus();  // make sure focus not on Heat selector
+						}
 					}
 					e.preventDefault();  // consume key event
 					break;
