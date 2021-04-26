@@ -3722,6 +3722,8 @@ def do_bpillfw_update(data):
     logger.info("Reinitializing RH interface")
     ui_server_messages.clear()
     initialize_rh_interface()
+    if RACE.num_nodes <= 0:
+        SOCKET_IO.emit('upd_messages_append', "\nWarning: No receiver nodes found")
     buildServerInfo()
     logger.debug("Server info:  " + json.dumps(serverInfoItems))
     init_race_state()
@@ -4432,7 +4434,7 @@ def shutdown_button_long_press():
     logger.info("Detected shutdown button long press; performing shutdown now")
     on_shutdown_pi()
 
-def initialize_rh_interface():
+def _do_init_rh_interface():
     try:
         global INTERFACE
         rh_interface_name = os.environ.get('RH_INTERFACE', 'RH') + "Interface"
@@ -4508,6 +4510,19 @@ def initialize_rh_interface():
     except:
         logger.exception("Error initializing RH interface")
         return False
+
+def initialize_rh_interface():
+    if not _do_init_rh_interface():
+        return False
+    if RACE.num_nodes == 0:
+        logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
+        set_ui_message(
+            'node',
+            __("No receiver nodes found"),
+            header='Warning',
+            subclass='none'
+            )
+    return True
 
 # Create and save server/node information
 def buildServerInfo():
@@ -4730,16 +4745,7 @@ except:
         subclass='error'
         )
 
-if RACE.num_nodes == 0:
-    logger.warning('*** WARNING: NO RECEIVER NODES FOUND ***')
-    set_ui_message(
-        'node',
-        __("No receiver nodes found"),
-        header='Warning',
-        subclass='none'
-        )
-
-else:
+if RACE.num_nodes > 0:
     logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
     # if I2C nodes then only report comm errors if > 1.0%
     if hasattr(INTERFACE.nodes[0], 'i2c_addr'):
