@@ -147,7 +147,7 @@ Select the Heat for the race which is to be run next.
 
 Start the race when ready. (Hotkey: <kbd>z</kbd>) The timer will do a quick communication to the server to  compensate for client/server response time, then begin the staging procedure defined by the current race format.
 
-Tuning parameters can be adjusted here via the "⚠" button. See [doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
+Tuning parameters can be adjusted here by clicking on/touching any of the graphs for each node. See [doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
 
 During the race, there is an "×" next to each counted lap. This will discard that lap pass, so its time is moved to the next lap. Use this to remove errant extra passes, or clean up pilots flying close to the start gate after their race finished.
 
