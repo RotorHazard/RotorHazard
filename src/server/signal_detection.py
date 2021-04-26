@@ -4,7 +4,7 @@ import csv
 import Database
 from flask import Flask
 import json
-from persistent_homology import calculatePeakPersistentHomology
+import persistent_homology as ph
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -38,18 +38,12 @@ for rec in q:
 
 def plot_race(race):
 	print("ID {} round {} heat {} pilot {} laps {}".format(*race[0:-2]))
-	ph = calculatePeakPersistentHomology(race[-1])
-	ph = sorted(ph, key=lambda cc: cc.lifetime(), reverse=True)
-	data = np.array([cc.to_pair() for cc in ph])
-	print("Top peaks:\n{}".format(data[0:race[-3]]))
+	ccs = ph.calculatePeakPersistentHomology(race[-1])
+	ccs = ph.sortByLifetime(ccs)
+	print("Top peaks:\n{}".format([str(cc) for cc in ccs[0:race[-3]]]))
 	fig, axs = plt.subplots(1, 2, figsize=(8,4))
 	axs[0].plot(race[-2], race[-1])
-	axs[1].scatter(data[:,1], data[:,0], s=2, color='blue')
-	minv = np.min(data)-5
-	maxv = np.max(data)+5
-	axs[1].set_xlim((minv, maxv))
-	axs[1].set_ylim((minv, maxv))
-	axs[1].plot([minv,maxv],[minv,maxv], "--", c='gray')
+	ph.plotPersistenceDiagram(axs[1], ccs)
 	plt.show()
 	
 def export(race):

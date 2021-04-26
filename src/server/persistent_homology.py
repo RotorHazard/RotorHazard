@@ -1,3 +1,5 @@
+import numpy as np
+import matplotlib.pyplot as plt
 
 class ConnectedComponent:
 	def __init__(self, idx, birth, death):
@@ -6,6 +8,9 @@ class ConnectedComponent:
 		self.birth = birth
 		self.death = death
 
+	def __str__(self):
+		return "{} -> {} ({})".format(self.birth[1], self.death[1], self.lifetime())
+
 	def __repr__(self):
 		return "{} -> {}".format(self.birth, self.death)
 
@@ -13,7 +18,7 @@ class ConnectedComponent:
 		return [self.birth[1], self.death[1]]
 
 	def lifetime(self):
-		return self.birth[1] - self.death[1]
+		return abs(self.birth[1] - self.death[1])
 	
 def calculatePeakPersistentHomology(data):
 	ccs = []
@@ -49,8 +54,14 @@ def calculatePeakPersistentHomology(data):
 
 	return ccs
 
-def testPeakPersistentHomology():
-	data = [30, 29, 41, 4, 114, 1, 3, 2, 33, 9, 112, 40, 118]
-	ph = calculatePeakPersistentHomology(data)
-	ph = sorted(ph, key=lambda cc: cc.lifetime(), reverse=True)
-	assert str(ph) == '[(12, 118) -> (5, 1), (4, 114) -> (5, 1), (10, 112) -> (11, 40), (2, 41) -> (3, 4), (8, 33) -> (9, 9), (0, 30) -> (1, 29), (6, 3) -> (7, 2)]'
+def sortByLifetime(ccs):
+	return sorted(ccs, key=lambda cc: cc.lifetime(), reverse=True)
+
+def plotPersistenceDiagram(axs, ccs):
+	data = np.array([cc.to_pair() for cc in ccs])
+	axs.scatter(data[:,1], data[:,0], s=2, color='blue')
+	minv = np.min(data)*0.95
+	maxv = np.max(data)*1.05
+	axs.set_xlim((minv, maxv))
+	axs.set_ylim((minv, maxv))
+	axs.plot([minv,maxv],[minv,maxv], "--", c='gray')

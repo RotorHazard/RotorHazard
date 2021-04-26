@@ -8,7 +8,7 @@ function ConnectedComponent(idx, birth, death) {
 		return "("+this.birth+") -> ("+this.death+")";
 	};
 	this.lifetime = function() {
-		return this.birth[1] - this.death[1];
+		return Math.abs(this.birth[1] - this.death[1]);
 	};
 }
 	
