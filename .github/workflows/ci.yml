@@ -1,0 +1,53 @@
+name: BetaHazard
+
+on:
+  push:
+    branches: [ BetaHazard ]
+  pull_request:
+    branches: [ BetaHazard ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install codecov coverage flake8
+        cd src/server
+        pip install -r requirements.txt
+        cd ../..
+    - name: Lint with flake8
+      run: |
+        cd src/server
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        cd ../interface
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        cd ../..
+    - name: Python tests
+      run: |
+        cd src/tests
+        coverage run -m unittest discover
+        cd ../..
+    - name: Node tests
+      run: |
+        cd src/node
+        bundle install
+        bundle exec arduino_ci.rb
+        cd ../..
+    - name: Code coverage
+      run: |
+        codecov
