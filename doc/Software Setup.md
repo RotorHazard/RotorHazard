@@ -75,6 +75,7 @@ Using a terminal window, do a system update and upgrade (this can take a few min
 sudo apt-get update && sudo apt-get upgrade
 ```
 
+<a id="python"></a>
 ### 5. Install Python
 Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
@@ -294,6 +295,8 @@ cp RotorHazard.old/src/server/config.json RotorHazard/src/server/
 cp RotorHazard.old/src/server/database.db RotorHazard/src/server/
 ```
 The previous installation ends up in the 'RotorHazard.old' directory, which may be deleted or moved.
+
+For RotorHazard the minimum version of Python supported is 3.5. If your Python is older than this, you should upgrade using the steps in the "Install RotorHazard" section under "5. [Install Python](#python)."
 
 The RotorHazard server dependencies should also be updated (be patient, this command may take a few minutes):
 ```
