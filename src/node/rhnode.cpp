@@ -687,6 +687,7 @@ void handleRpiSignalAndShutdownActions(mtime_t curTimeMs)
                          curTimeMs - rpiLastActiveTimeMs > RPI_MISSING_DELAYMS &&
                          curTimeMs - lastCommActivityTimeMs > RPI_INACTIVE_DELAYMS*10)
                 {  //RPi heartbeat stopped and no recent comms (so not system-reset via server)
+                    rpiActiveSignalFlag = false;
                     rpiSignalMissingFlag = prevSdStartedFlag = true;  // signal shutdown in progress
                 }
 #endif
