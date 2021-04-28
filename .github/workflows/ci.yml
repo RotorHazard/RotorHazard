@@ -46,8 +46,11 @@ jobs:
       run: |
         cd src/node
         bundle install
-        bundle exec arduino_ci.rb
+        ./run-ci-tests.sh
         cd ../..
+      shell: bash
 
     - name: Upload code coverage
       uses: codecov/codecov-action@v1
+      with:
+        functionalities: gcov
