@@ -167,7 +167,7 @@ class RHInterface(BaseHardwareInterface):
                 if flags_val:
                     node.rhfeature_flags = flags_val
                     # if first node that supports in-app fw update then save port name
-                    if (not self.fwupd_serial_obj) and node.serial and \
+                    if (not self.fwupd_serial_obj) and hasattr(node, 'serial') and node.serial and \
                             (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
                         self.set_fwupd_serial_obj(node.serial)
 
