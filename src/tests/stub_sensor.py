@@ -1,8 +1,4 @@
-import sys
-
-sys.path.append('../interface')
-
-from sensor import Sensor, Reading
+from sensors import Sensor, Reading
 
 class StubSensor(Sensor):
     def __init__(self):

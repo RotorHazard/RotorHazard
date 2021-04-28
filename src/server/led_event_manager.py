@@ -12,10 +12,10 @@ Wires events to handlers
 
 import copy
 import json
-import RHRace
+from . import RHRace
 import gevent
-from Results import CacheStatus
-from eventmanager import Evt
+from .Results import CacheStatus
+from .eventmanager import Evt
 from six.moves import UserDict
 
 class LEDEventManager:

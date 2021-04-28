@@ -1,13 +1,11 @@
 # ButtonInputHandler:  Handler for a button connected to a GPIO input pin
 
-import sys
-
 try:
     import RPi.GPIO as GPIO
 except ImportError:
-    import util.FakeRPiGPIO as GPIO
+    from . import FakeRPiGPIO as GPIO
 except:  # need extra exception catch for CI tests
-    import util.FakeRPiGPIO as GPIO
+    from . import FakeRPiGPIO as GPIO
 # if RPi.GPIO not available then use FakeRiGPIO from https://github.com/sn4k3/FakeRPi
 
 class ButtonInputHandler:

@@ -5,8 +5,8 @@ import gevent
 import time
 from monotonic import monotonic
 
-from Node import Node
-from RHInterface import READ_REVISION_CODE, READ_MULTINODE_COUNT, MAX_RETRY_COUNT, \
+from .Node import Node
+from .RHInterface import READ_REVISION_CODE, READ_MULTINODE_COUNT, MAX_RETRY_COUNT, \
                         validate_checksum, calculate_checksum, pack_8, pack_16, unpack_8, unpack_16, \
                         WRITE_CURNODE_INDEX, READ_CURNODE_INDEX, READ_NODE_SLOTIDX, \
                         READ_FW_VERSION, READ_FW_BUILDDATE, READ_FW_BUILDTIME, FW_TEXT_BLOCK_SIZE, \

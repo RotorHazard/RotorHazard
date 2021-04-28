@@ -1,7 +1,7 @@
 '''LED visual effects'''
 
-from eventmanager import Evt
-from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern
+from server.eventmanager import Evt
+from server.led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern
 import gevent
 import random
 import math

@@ -4,12 +4,8 @@ import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
 
-import Config
-
-sys.path.append('../interface')
-sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
-
-import RHInterface
+from server import Config
+from interface import RHInterface
 
 if len(sys.argv) < 3:
     print('Please specify serial port, e.g. COM12, and a frequency.')

@@ -27,6 +27,20 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
 * Connect other systems to extend functionality via MQTT or JSON API
 * Send realtime lap data to LiveTime
 
+## Quick start
+
+To run server:
+```
+cd src
+python -m server/server
+```
+
+To run tests:
+```
+cd src
+python -m unittest discover
+```
+
 ## Documentation
 For instructions on how to build and operate the current version of RotorHazard, follow the [Documentation](https://github.com/pulquero/BetaHazard/releases/latest#documentation) link on the [lastest-release page](https://github.com/pulquero/BetaHazard/releases/latest).
 

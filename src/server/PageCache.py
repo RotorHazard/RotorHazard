@@ -10,10 +10,9 @@ if new data becomes available during the build process.
 
 import logging
 from monotonic import monotonic
-from eventmanager import Evt
+from .eventmanager import Evt
 import json
-import Results
-import RHUtils
+from . import Results, RHUtils
 import gevent
 
 logger = logging.getLogger(__name__)

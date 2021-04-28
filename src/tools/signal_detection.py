@@ -1,17 +1,17 @@
 import sys
 from pathlib import Path
 import csv
-import Database
+from server import Database
 from flask import Flask
 import json
-import persistent_homology as ph
+from server import persistent_homology as ph
 import numpy as np
 import matplotlib.pyplot as plt
 
 db_file = sys.argv[1] if len(sys.argv) > 1 else 'database.db'
 
 APP = Flask(__name__)
-APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_file
+APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../' + db_file
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 DB = Database.DB
 DB.init_app(APP)

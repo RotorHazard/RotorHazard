@@ -1,7 +1,7 @@
 # coding=UTF-8
 
 import logging
-from sensor import Sensor, Reading
+from . import Sensor, Reading
 
 logger = logging.getLogger(__name__)
 

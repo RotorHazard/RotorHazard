@@ -8,7 +8,7 @@ import io
 logger = logging.getLogger(__name__)
 
 class Language():
-    LANGUAGE_FILE_NAME = 'language.json'
+    LANGUAGE_FILE_NAME = 'server/language.json'
 
     Languages = {}
 

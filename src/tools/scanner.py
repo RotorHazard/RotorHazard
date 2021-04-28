@@ -8,12 +8,8 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO
 import webbrowser
 
-import Config
-
-sys.path.append('../interface')
-sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
-
-import RHInterface
+from server import Config
+from interface import RHInterface
 
 if len(sys.argv) < 2:
     print('Please specify serial port, e.g. COM12.')
@@ -50,7 +46,7 @@ def scan_thread_function():
 
 gevent.spawn(scan_thread_function)
 
-APP = Flask(__name__, static_url_path='/static')
+APP = Flask(__name__, template_folder='../server/templates', static_folder='../server/static',static_url_path='/static')
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins='*')
 
 def __(s):

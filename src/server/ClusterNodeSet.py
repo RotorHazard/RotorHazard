@@ -5,11 +5,11 @@ import gevent
 import json
 import socketio
 from monotonic import monotonic
-import RHUtils
-from RHRace import RaceStatus
-from eventmanager import Evt
-from util.RunningMedian import RunningMedian
-from util.Averager import Averager
+from . import RHUtils
+from .RHRace import RaceStatus
+from .eventmanager import Evt
+from .util.RunningMedian import RunningMedian
+from .util.Averager import Averager
 
 logger = logging.getLogger(__name__)
 

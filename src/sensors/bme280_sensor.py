@@ -1,7 +1,7 @@
 # coding=UTF-8
 import logging
 
-from sensor import I2CSensor, Reading
+from . import I2CSensor, Reading
 import bme280
 
 logger = logging.getLogger(__name__)

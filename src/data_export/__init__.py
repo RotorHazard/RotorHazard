@@ -15,7 +15,8 @@
 #
 
 import logging
-from Plugins import Plugins
+from interface.Plugins import Plugins
+import data_export as export_pkg
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class DataExportManager():
 
     def readPlugins(self):
         exporter_plugins = Plugins(prefix='data_export')
-        exporter_plugins.discover()
+        exporter_plugins.discover(export_pkg)
 
         for exporter in exporter_plugins:
             self.registerExporter(exporter)

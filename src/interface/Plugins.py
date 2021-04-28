@@ -7,13 +7,13 @@ from six.moves import UserList
 
 logger = logging.getLogger(__name__)
 
-
-def search_modules(prefix=None, suffix=None):
+def search_modules(pkg, prefix=None, suffix=None):
     plugin_modules = []
-    for loader, name, ispkg in pkgutil.iter_modules():
+    pkg_prefix = pkg.__name__ + '.'
+    for loader, name, ispkg in pkgutil.iter_modules(pkg.__path__):
         if (prefix is None or name.startswith(prefix+'_')) and (suffix is None or name.endswith('_'+suffix)):
             try:
-                plugin_module = importlib.import_module(name)
+                plugin_module = importlib.import_module(pkg_prefix+name)
                 plugin_modules.append(plugin_module)
                 logger.info('Loaded module {0}'.format(name))
             except ImportError as ex:
@@ -27,8 +27,8 @@ class Plugins(UserList):
         self.prefix = prefix
         self.suffix = suffix
 
-    def discover(self, includeOffset=False, *args, **kwargs):
-        for plugin_module in search_modules(prefix = self.prefix, suffix = self.suffix):
+    def discover(self, pkg, includeOffset=False, *args, **kwargs):
+        for plugin_module in search_modules(pkg, prefix = self.prefix, suffix = self.suffix):
             if includeOffset:
                 kwargs['idxOffset'] = len(self.data)
             try:

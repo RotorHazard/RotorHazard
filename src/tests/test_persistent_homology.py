@@ -1,9 +1,4 @@
-import sys
-
-sys.path.append('../server')
-sys.path.append('../interface')
-
-from persistent_homology import *
+from server.persistent_homology import *
 import unittest
 
 class PersistentHomologyTest(unittest.TestCase):

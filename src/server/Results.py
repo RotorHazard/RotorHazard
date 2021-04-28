@@ -5,12 +5,12 @@
 import copy
 import json
 import gevent
-import RHUtils
-from RHUtils import catchLogExceptionsWrapper
+from . import RHUtils
+from .RHUtils import catchLogExceptionsWrapper
 import logging
 from monotonic import monotonic
-from eventmanager import Evt, EventManager
-from RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
+from .eventmanager import Evt, EventManager
+from .RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
 
 Events = EventManager()
 

@@ -2,8 +2,8 @@
 import logging
 from monotonic import monotonic
 
-from Node import Node
-from RHInterface import READ_ADDRESS, READ_REVISION_CODE, MAX_RETRY_COUNT, \
+from .Node import Node
+from .RHInterface import READ_ADDRESS, READ_REVISION_CODE, MAX_RETRY_COUNT, \
                         READ_FW_VERSION, READ_FW_BUILDDATE, READ_FW_BUILDTIME, \
                         FW_TEXT_BLOCK_SIZE, validate_checksum, calculate_checksum, \
                         pack_16, unpack_16, READ_FW_PROCTYPE, SEND_STATUS_MESSAGE

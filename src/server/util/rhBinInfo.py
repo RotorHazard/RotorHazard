@@ -2,20 +2,14 @@
 #
 # Example Usage:
 #
-# cd ~/RotorHazard/server
-# python util/rhBinInfo.py http://www.rotorhazard.com/fw/rel/current/RH_S32_BPill_node.bin
+# cd ~/RotorHazard/src
+# python -m server.util.rhBinInfo http://www.rotorhazard.com/fw/rel/current/RH_S32_BPill_node.bin
 #
 
 import sys
 
-sys.path.append('../server')
-sys.path.append('../interface')
-sys.path.append('../../server')
-sys.path.append('../../interface')
-
-import RHUtils
-import util.stm32loader as stm32loader
-import RHInterface
+from server import RHUtils, RHInterface
+from . import stm32loader as stm32loader
 
 def showFirmwareBinInfo(fileStr):
     dataStr = None

@@ -1,10 +1,7 @@
-'''python -m unittest discover'''
-import sys
 import unittest
 
-sys.path.append('../interface')
-
-from Sensors import Sensors
+from sensors import Sensors
+import tests as tests_pkg
 
 class SensorsTest(unittest.TestCase):
     def setUp(self):
@@ -14,7 +11,7 @@ class SensorsTest(unittest.TestCase):
         pass
 
     def test_update(self):
-        self.sensors.discover()
+        self.sensors.discover(tests_pkg)
         self.assertEqual(len(self.sensors), 1)
         before = self.sensors[0].getReadings()
         self.sensors.update_environmental_data()

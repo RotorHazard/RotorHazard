@@ -6,10 +6,10 @@ try:
     import RPi.GPIO as GPIO
     RealRPiGPIOFlag = True
 except ImportError:
-    import util.FakeRPiGPIO as GPIO
+    from .util import FakeRPiGPIO as GPIO
     RealRPiGPIOFlag = False
 except:  # need extra exception catch for Travis CI tests
-    import util.FakeRPiGPIO as GPIO
+    from .util import FakeRPiGPIO as GPIO
     RealRPiGPIOFlag = False
 # if RPi.GPIO not available then use FakeRiGPIO from https://github.com/sn4k3/FakeRPi
 

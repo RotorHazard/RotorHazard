@@ -1,19 +1,14 @@
-'''python -m unittest discover'''
 import os
-import sys
 import unittest
 import socketio
 import gevent
 from datetime import datetime
 
-sys.path.append('../server')
-sys.path.append('../interface')
-
 os.environ['RH_INTERFACE'] = 'Mock'
 
-import server
-import log
-from Node import Node
+from server import server, log
+from interface.Node import Node
+import tests as tests_pkg
 
 class ServerTest(unittest.TestCase):
     def setUp(self):
@@ -31,6 +26,7 @@ class ServerTest(unittest.TestCase):
         self.fail('No response of type {0}'.format(event))
 
     def test_sensors(self):
+        server.SENSORS.discover(tests_pkg)
         self.assertTrue(any(s.name == 'TestSensor' for s in server.SENSORS))
 
     def test_add_pilot(self):

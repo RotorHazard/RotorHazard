@@ -107,7 +107,7 @@ rm temp.zip
 
 Enter the commands below to install RotorHazard server dependencies (be patient, this may take a few minutes):
 ```
-cd ~/RotorHazard/src/server
+cd ~/RotorHazard/src
 sudo pip install -r requirements.txt
 ```
 
@@ -143,7 +143,7 @@ The installation of a real-time clock module allows the RotorHazard timer to mai
 
 Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)' (which is among the libraries installed via the `sudo pip install -r requirements.txt` command.
 
-The **LED_COUNT** value needs to be set in the `src/server/config.json` file. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
+The **LED_COUNT** value needs to be set in the `src/config.json` file. See the `src/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
 ```
 LED_COUNT:  Number of LED pixels in strip (or panel)
 LED_PIN:  GPIO pin connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
@@ -214,8 +214,8 @@ The following instructions will start the web server on the raspberry pi, allowi
 ### Manual Start
 Open a terminal window and enter the following:
 ```
-cd ~/RotorHazard/src/server
-python server.py
+cd ~/RotorHazard/src
+python -m server.server
 ```
 The server may be stopped by hitting Ctrl-C
 
@@ -233,8 +233,8 @@ Description=RotorHazard Server
 After=multi-user.target
 
 [Service]
-WorkingDirectory=/home/pi/RotorHazard/src/server
-ExecStart=/usr/bin/python server.py
+WorkingDirectory=/home/pi/RotorHazard/src
+ExecStart=/usr/bin/python -m server.server
 
 [Install]
 WantedBy=multi-user.target
@@ -290,14 +290,14 @@ unzip temp.zip
 mv RotorHazard RotorHazard.old
 mv RotorHazard-1.2.3 RotorHazard
 rm temp.zip
-cp RotorHazard.old/src/server/config.json RotorHazard/src/server/
-cp RotorHazard.old/src/server/database.db RotorHazard/src/server/
+cp RotorHazard.old/src/config.json RotorHazard/src/
+cp RotorHazard.old/src/database.db RotorHazard/src/
 ```
 The previous installation ends up in the 'RotorHazard.old' directory, which may be deleted or moved.
 
 The RotorHazard server dependencies should also be updated (be patient, this command may take a few minutes):
 ```
-cd ~/RotorHazard/src/server
+cd ~/RotorHazard/src
 sudo pip install --upgrade --no-cache-dir -r requirements.txt
 ```
 
@@ -331,7 +331,7 @@ To install the RotorHazard server on these systems:
 
 1. Unzip the downloaded file into a directory (aka folder) on the computer.
 
-1. Open up a command prompt and navigate to the ```src/server``` directory in the RotorHazard files (using the 'cd' command).
+1. Open up a command prompt and navigate to the ```src``` directory in the RotorHazard files (using the 'cd' command).
 
 1. Install the RotorHazard server dependencies using the 'reqsNonPi.txt' file, using one of the commands below. (Note that this command may require administrator access to the computer, and the command may take a few minutes to finish).
   * On a Windows system the command to use will likely be:<br/>```python -m pip install -r reqsNonPi.txt```<br>
@@ -343,9 +343,9 @@ Note: If the above command fails with a message like "error: Microsoft Visual C+
 
 To run the RotorHazard server on these systems:
 
-1. Open up a command prompt and navigate to the ```src/server``` directory in the RotorHazard files (if not already there).
+1. Open up a command prompt and navigate to the ```src``` directory in the RotorHazard files (if not already there).
 
-1. Enter: ```python server.py```
+1. Enter: ```python -m server.server```
 
 1. If the server starts up properly, you should see various log messages, including one like this:
     ```
@@ -379,7 +379,7 @@ The RotorHazard server generates "log" messages containing information about its
 ```
 The following log levels may be specified:  DEBUG, INFO, WARNING, WARN, ERROR, FATAL, CRITICAL, NONE
 
-If the FILELOG_LEVEL value is not NONE then the server will generate log files in the `src/server/logs` directory. A new log file is created each time the server starts, with each file having a unique name based on the current date and time (i.e., "rh_20200621_181239.log"). Setting FILELOG_LEVEL to DEBUG will result in more detailed log messages being stored in the log file, which can be useful when debugging problems.
+If the FILELOG_LEVEL value is not NONE then the server will generate log files in the `src/logs` directory. A new log file is created each time the server starts, with each file having a unique name based on the current date and time (i.e., "rh_20200621_181239.log"). Setting FILELOG_LEVEL to DEBUG will result in more detailed log messages being stored in the log file, which can be useful when debugging problems.
 
 The FILELOG_NUM_KEEP value is the number of log files to keep; the rest will be deleted (oldest first).
 
@@ -389,7 +389,7 @@ If the SYSLOG_LEVEL value is not NONE then the server will send log messages to 
 
 The current Server Log may be displayed via the "View Server Log" item in the drop-down menu. The displayed log is "live" in that it will update as new messages are generated. The log can be displayed in a separate window by clicking on the "View Server Log" menu item with the right-mouse button and selecting the "Open Link in New Window" (or similar) option.
 
-Clicking on the "Select Text" button will select all the displayed log text, which may then be copied and pasted. Clicking on the "Download Logs" button will create and download a '.zip' archive file containing all available log files and the current configuration and database files. The '.zip' archive file can also be generated by running the server with the following command:  `python server.py --ziplogs`
+Clicking on the "Select Text" button will select all the displayed log text, which may then be copied and pasted. Clicking on the "Download Logs" button will create and download a '.zip' archive file containing all available log files and the current configuration and database files. The '.zip' archive file can also be generated by running the server with the following command:  `python -m server.server --ziplogs`
 
 **When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended.**
 

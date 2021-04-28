@@ -10,7 +10,7 @@ JSON_API = 3 # JSON API version
 # because there is a lot of code run through imports, and
 # we would miss messages otherwise.
 import logging
-import log
+from . import log
 from datetime import datetime
 from monotonic import monotonic
 
@@ -52,35 +52,30 @@ import random
 import string
 import json
 
-import Config
-import Database
-import Results
-import Language
-import RHData
-import RHUtils
-from RHUtils import catchLogExceptionsWrapper
-from ClusterNodeSet import SecondaryNode, ClusterNodeSet
-import PageCache
-from util.SendAckQueue import SendAckQueue
-import RHGPIO
-from util.ButtonInputHandler import ButtonInputHandler
-import util.stm32loader as stm32loader
+from . import Config, Database, Results, Language, RHData, RHUtils
+from .RHUtils import catchLogExceptionsWrapper
+from .ClusterNodeSet import SecondaryNode, ClusterNodeSet
+from . import PageCache
+from .util.SendAckQueue import SendAckQueue
+from . import RHGPIO
+from .util.ButtonInputHandler import ButtonInputHandler
+from .util import stm32loader
 
 # Events manager
-from eventmanager import Evt, EventManager
+from .eventmanager import Evt, EventManager
 
 Events = EventManager()
 
 # LED imports
-from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
+from .led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
 
-sys.path.append('../interface')
-sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
-
-from Plugins import Plugins, search_modules
-from Sensors import Sensors
-import RHRace
-from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus
+import helpers as helper_pkg
+import sensors as sensor_pkg
+import leds as led_pkg
+from interface.Plugins import Plugins, search_modules
+from sensors import Sensors
+from . import RHRace
+from .RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus
 from data_export import DataExportManager
 
 APP = Flask(__name__, static_url_path='/static')
@@ -91,7 +86,7 @@ HEARTBEAT_DATA_RATE_FACTOR = 5
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 
-DB_FILE_NAME = 'database.db'
+DB_FILE_NAME = os.environ.get('RH_DATABASE', 'database.db')
 DB_BKP_DIR_NAME = 'db_bkp'
 IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 NODE_FW_PATHNAME = "firmware/RH_S32_BPill_node.bin"
@@ -4316,7 +4311,7 @@ def initVRxController():
             vrx_enabled = vrx_config["ENABLED"]
             if vrx_enabled:
                 try:
-                    from VRxController import VRxController
+                    from .VRxController import VRxController
                 except ImportError as e:
                     logger.error("VRxController unable to be imported")
                     logger.error(e)
@@ -4435,7 +4430,7 @@ def shutdown_button_long_press():
 def initialize_rh_interface():
     try:
         global INTERFACE
-        rh_interface_name = os.environ.get('RH_INTERFACE', 'RH') + "Interface"
+        rh_interface_name ='interface.' + os.environ.get('RH_INTERFACE', 'RH') + "Interface"
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
@@ -4467,7 +4462,7 @@ def initialize_rh_interface():
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
         if (not INTERFACE) or (not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0:
             if (not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0:
-                interfaceModule = importlib.import_module('MockInterface')
+                interfaceModule = importlib.import_module('interface.MockInterface')
                 INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
                 for node in INTERFACE.nodes:  # put mock nodes at latest API level
                     node.api_level = NODE_API_BEST
@@ -4668,7 +4663,7 @@ if RHUtils.isSysRaspberryPi() and RHGPIO.isS32BPillBoard():
     stm32loader.set_console_output_fn(None)
 
 hardwareHelpers = {}
-for helper in search_modules(suffix='helper'):
+for helper in search_modules(helper_pkg, suffix='helper'):
     try:
         hardwareHelpers[helper.__name__] = helper.create(Config)
     except Exception as ex:
@@ -4748,7 +4743,7 @@ else:
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
 
-SENSORS.discover(config=Config.SENSORS, **hardwareHelpers)
+SENSORS.discover(sensor_pkg, config=Config.SENSORS, **hardwareHelpers)
 
 # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
 db_inited_flag = False
@@ -4869,41 +4864,40 @@ if Config.LED['LED_COUNT'] > 0:
     # note: any calls to 'RHData.get_option()' need to happen after the DB initialization,
     #       otherwise it causes problems when run with no existing DB file
     led_brightness = RHData.get_optionInt("ledBrightness")
+    led_pkg_prefix = led_pkg.__name__ + '.'
     try:
-        ledModule = importlib.import_module(led_type + '_leds')
+        ledModule = importlib.import_module(led_pkg_prefix + led_type + '_leds')
         strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
     except ImportError:
         # No hardware LED handler, the OpenCV emulation
         try:
-            ledModule = importlib.import_module('cv2_leds')
+            ledModule = importlib.import_module(led_pkg_prefix + 'cv2_leds')
             strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
         except ImportError:
             # No OpenCV emulation, try console output
             try:
-                ledModule = importlib.import_module('ANSI_leds')
+                ledModule = importlib.import_module(led_pkg_prefix + 'ANSI_leds')
                 strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
             except ImportError:
                 ledModule = None
                 logger.info('LED: disabled (no modules available)')
 else:
     logger.debug('LED: disabled (configured LED_COUNT is <= 0)')
+
+led_manager = None
 if strip:
     # Initialize the library (must be called once before other functions).
     try:
         strip.begin()
         led_manager = LEDEventManager(Events, strip, RHData, RACE, Language)
-        led_effects = Plugins(prefix='led_handler')
-        led_effects.discover()
-        for led_effect in led_effects:
-            led_manager.registerEffect(led_effect)
-        init_LED_effects()
     except:
         logger.exception("Error initializing LED support")
-        led_manager = NoLEDManager()
 elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
     led_manager = ClusterLEDManager()
+
+if led_manager:
     led_effects = Plugins(prefix='led_handler')
-    led_effects.discover()
+    led_effects.discover(led_pkg)
     for led_effect in led_effects:
         led_manager.registerEffect(led_effect)
     init_LED_effects()
@@ -4922,7 +4916,7 @@ export_manager = DataExportManager(RHData, PageCache, Language)
 gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
 
 # register endpoints
-import json_endpoints
+from . import json_endpoints
 
 APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
 

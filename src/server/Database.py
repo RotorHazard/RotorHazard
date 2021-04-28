@@ -2,7 +2,7 @@
 Database module
 '''
 
-import RHUtils
+from . import RHUtils
 from flask_sqlalchemy import SQLAlchemy
 
 DB = SQLAlchemy()

@@ -9,8 +9,8 @@ import logging
 import json
 
 # mqtt topics are flipped for the VRX
-from mqtt_topics import mqtt_publish_topics as mqtt_sub_topics
-from mqtt_topics import mqtt_subscribe_topics as mqtt_pub_topics
+from .mqtt_topics import mqtt_publish_topics as mqtt_sub_topics
+from .mqtt_topics import mqtt_subscribe_topics as mqtt_pub_topics
 
 from paho.mqtt.client import topic_matches_sub
 from paho.mqtt.client import CONNACK_ACCEPTED

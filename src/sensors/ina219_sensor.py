@@ -1,5 +1,5 @@
 import logging
-from sensor import I2CSensor, Reading
+from . import I2CSensor, Reading
 import ina219
 
 logger = logging.getLogger(__name__)

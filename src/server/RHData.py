@@ -12,10 +12,10 @@ import os
 import traceback
 import shutil
 import json
-import RHUtils
-from eventmanager import Evt
-from RHRace import RaceStatus, WinCondition
-from Results import CacheStatus
+from . import RHUtils
+from .eventmanager import Evt
+from .RHRace import RaceStatus, WinCondition
+from .Results import CacheStatus
 
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings

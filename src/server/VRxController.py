@@ -6,12 +6,12 @@ import gevent
 import traceback
 from monotonic import monotonic
 
-from mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics, ESP_COMMANDS
-from VRxCV1_emulator import MQTT_Client
-from eventmanager import Evt
-import Results
-from RHRace import WinCondition
-import RHUtils
+from .mqtt_topics import mqtt_publish_topics, mqtt_subscribe_topics, ESP_COMMANDS
+from .VRxCV1_emulator import MQTT_Client
+from .eventmanager import Evt
+from . import Results
+from .RHRace import WinCondition
+from . import RHUtils
 
 # Sample configuration:
 #     "VRX_CONTROL": {

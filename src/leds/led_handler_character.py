@@ -4,10 +4,10 @@
 #    sudo apt-get install libjpeg-dev
 #    sudo pip install pillow
 
-import Config
-from eventmanager import Evt
-from led_event_manager import LEDEffect, LEDEvent, Color, ColorVal
-from RHRace import RaceStatus
+from server import Config
+from server.eventmanager import Evt
+from server.led_event_manager import LEDEffect, LEDEvent, Color, ColorVal
+from server.RHRace import RaceStatus
 import gevent
 from PIL import Image, ImageFont, ImageDraw
 from monotonic import monotonic

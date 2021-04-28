@@ -4,9 +4,9 @@
 #    sudo apt-get install libjpeg-dev
 #    sudo pip install pillow
 
-import Config
-from eventmanager import Evt
-from led_event_manager import LEDEffect, Color
+from server import Config
+from server.eventmanager import Evt
+from server.led_event_manager import LEDEffect, Color
 import gevent
 from PIL import Image
 
@@ -47,13 +47,14 @@ def showBitmap(args):
 
 def discover(*args, **kwargs):
     # state bitmaps
+    IMAGE_PATH = 'server/static/image/'
     return [
     LEDEffect("bitmapRHLogo", "Image: RotorHazard", showBitmap, {
             'include': [Evt.SHUTDOWN],
             'recommended': [Evt.STARTUP]
         }, {
             'bitmaps': [
-                {"image": "static/image/LEDpanel-16x16-RotorHazard.png", "delay": 0}
+                {"image": IMAGE_PATH + "LEDpanel-16x16-RotorHazard.png", "delay": 0}
                 ],
             'time': 60
             },
@@ -63,7 +64,7 @@ def discover(*args, **kwargs):
             'recommended': [Evt.RACE_STAGE]
         }, {
             'bitmaps': [
-                {"image": "static/image/LEDpanel-16x16-ellipsis.png", "delay": 0}
+                {"image": IMAGE_PATH + "LEDpanel-16x16-ellipsis.png", "delay": 0}
                 ],
             'time': 8
         }),
@@ -72,7 +73,7 @@ def discover(*args, **kwargs):
             'recommended': [Evt.RACE_START]
         }, {
             'bitmaps': [
-                {"image": "static/image/LEDpanel-16x16-arrow.png", "delay": 0}
+                {"image": IMAGE_PATH + "LEDpanel-16x16-arrow.png", "delay": 0}
                 ],
             'time': 8
         }),
@@ -81,7 +82,7 @@ def discover(*args, **kwargs):
             'recommended': [Evt.RACE_STOP]
         }, {
             'bitmaps': [
-                {"image": "static/image/LEDpanel-16x16-X.png", "delay": 0}
+                {"image": IMAGE_PATH + "LEDpanel-16x16-X.png", "delay": 0}
                 ],
             'time': 8
         }),
@@ -90,7 +91,7 @@ def discover(*args, **kwargs):
             'recommended': [Evt.RACE_FINISH, Evt.RACE_STOP]
         }, {
             'bitmaps': [
-                {"image": "static/image/LEDpanel-16x16-checkerboard.png", "delay": 0}
+                {"image": IMAGE_PATH + "LEDpanel-16x16-checkerboard.png", "delay": 0}
                 ],
         'time': 20
         })

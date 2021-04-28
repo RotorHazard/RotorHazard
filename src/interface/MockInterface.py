@@ -5,9 +5,9 @@ import logging
 import gevent # For threads and timing
 from monotonic import monotonic # to capture read timing
 
-from Node import Node
-from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
-from RHInterface import FW_TEXT_BLOCK_SIZE, FW_VERSION_PREFIXSTR, \
+from .Node import Node
+from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
+from .RHInterface import FW_TEXT_BLOCK_SIZE, FW_VERSION_PREFIXSTR, \
                         FW_BUILDDATE_PREFIXSTR, FW_BUILDTIME_PREFIXSTR, \
                         FW_PROCTYPE_PREFIXSTR
 

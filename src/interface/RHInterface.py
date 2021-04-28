@@ -5,8 +5,9 @@ import logging
 import gevent # For threads and timing
 from monotonic import monotonic # to capture read timing
 
-from Plugins import Plugins
-from BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
+import interface as node_pkg
+from .Plugins import Plugins
+from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_MODE = 0x02
@@ -177,7 +178,7 @@ class RHInterface(BaseHardwareInterface):
 
 
     def discover_nodes(self, *args, **kwargs):
-        self.nodes.discover(includeOffset=True, *args, **kwargs)
+        self.nodes.discover(node_pkg, includeOffset=True, *args, **kwargs)
 
 
     #
