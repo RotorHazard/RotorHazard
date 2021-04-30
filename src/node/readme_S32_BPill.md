@@ -10,7 +10,7 @@ Support for STM32 processors in the Arduino IDE is provided by the [STM32duino p
 
 1. In the "Preferences" dialog add the following link to the "Additional Boards Managers URLs" field:
 
-`https://github.com/stm32duino/BoardManagerFiles/raw/master/STM32/package_stm_index.json`
+`https://github.com/stm32duino/BoardManagerFiles/raw/master/package_stmicroelectronics_index.json`
 
 2. In the "Tools" menu, select "Board" | "Boards Manager"; select "Contributed" type; select "STM32 Cores", select a version and click on install. (The newest version is usually the one you want.) After the installation is complete you can close the Board Manager.
 
@@ -63,7 +63,7 @@ The node code may also be edited and built using the [Sloeber-Eclipse IDE](http:
   * Open "Arduino > Preferences"
   * In the tree view that pops up, go to "Arduino > Third party index url's" and add the STM32 support package URL:
 
-`https://raw.githubusercontent.com/stm32duino/BoardManagerFiles/master/STM32/package_stm_index.json`
+`https://github.com/stm32duino/BoardManagerFiles/raw/master/package_stmicroelectronics_index.json`
 
 3. In "Arduino | Preferences | Platforms and Boards" select 'STM32 Core' version 1.7.0 <br>
   Note:  There are newer version availble, but it seems like if version >= 1.8.0 is used then the builds fail

@@ -19,6 +19,6 @@ set RH_BUILD_WORKDIR=
 set RH_BUILD_PROJNAME=RH_S32_BPill_node
 
 echo on
-"%ARDUINO_CMD%" --verify --board STM32:stm32:GenF1:pnum=BLUEPILL_F103C8 --pref xserial=generic,usb=none,xusb=FS,opt=osstd,rtlib=nano --pref "build.path=%RH_BUILD_WORKDIR%build_stm32" --pref build.project_name=%RH_BUILD_PROJNAME% "%RH_BUILD_WORKDIR%rhnode.cpp" %1 %2 %3 %4 %5 %6 %7 %8 %9
+"%ARDUINO_CMD%" --verify --board STMicroelectronics:stm32:GenF1:pnum=BLUEPILL_F103C8 --pref xserial=generic,usb=none,xusb=FS,opt=osstd,rtlib=nano --pref "build.path=%RH_BUILD_WORKDIR%build_stm32" --pref build.project_name=%RH_BUILD_PROJNAME% "%RH_BUILD_WORKDIR%rhnode.cpp" %1 %2 %3 %4 %5 %6 %7 %8 %9
 @echo off
 :ex

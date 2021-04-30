@@ -7,8 +7,7 @@ on:
     branches: [ BetaHazard ]
 
 jobs:
-  build:
-
+  tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -54,3 +53,27 @@ jobs:
       uses: codecov/codecov-action@v1
       with:
         functionalities: gcov
+
+  node-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        board:
+          - "arduino:avr:nano:cpu=atmega328"
+          - "STMicroelectronics:stm32:GenF1:pnum=BLUEPILL_F103C8,xserial=generic,usb=none,xusb=FS,opt=osstd,rtlib=nano"
+        include:
+          - board: "arduino:avr:nano:cpu=atmega328"
+            platform: "arduino:avr"
+          - board: "STMicroelectronics:stm32:GenF1:pnum=BLUEPILL_F103C8,xserial=generic,usb=none,xusb=FS,opt=osstd,rtlib=nano"
+            platform: "STMicroelectronics:stm32"
+            opts: "--additional-urls https://github.com/stm32duino/BoardManagerFiles/raw/master/package_stmicroelectronics_index.json"
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: arduino/setup-arduino-cli@v1.1.1
+    - run: |
+        arduino-cli update ${{ matrix.opts }}
+        arduino-cli core install ${{ matrix.platform }} ${{ matrix.opts }}
+        arduino-cli compile -b ${{ matrix.board }} src/node
+  
