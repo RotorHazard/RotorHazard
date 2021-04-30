@@ -23,7 +23,7 @@
 		});
 
 		socket.on('current_laps', function (msg) {
-			current_laps = msg;
+			current_laps = msg.current;
 			show_current_laps();
 		});
 
@@ -86,8 +86,10 @@
 		}
 
 		socket.on('leaderboard', function (msg) {
-			primary_leaderboard = msg.meta.primary_leaderboard;
-			leaderboard = msg[primary_leaderboard];
+			var race = msg.current.leaderboard;
+
+			primary_leaderboard = race.meta.primary_leaderboard;
+			leaderboard = race[primary_leaderboard];
 
 			found_streamnode = false;
 

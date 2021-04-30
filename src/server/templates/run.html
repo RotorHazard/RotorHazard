@@ -494,7 +494,7 @@
 		});
 
 		socket.on('current_laps', function (msg) {
-			current_laps = msg;
+			current_laps = msg.current;
 			show_current_laps();
 		});
 
@@ -565,22 +565,24 @@
 		}
 
 		socket.on('leaderboard', function (msg) {
-			leaderboard = msg.meta.primary_leaderboard;
+			var race = msg.current;
+
+			var heatname = __('Heat') + ' ' + race.heat;
+			if (race.heat_note)
+				heatname = race.heat_note;
+			$('.current_heat').html(heatname);
+
+			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
 			$('#leaderboard').empty();
-			$('#leaderboard').append(build_leaderboard(msg[leaderboard], 'current', msg.meta));
-		});
+			$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta));
 
-		socket.on('team_leaderboard', function (msg) {
 			$('#team_leaderboard').empty();
-
-			if (msg && 'meta' in msg) {
-				team_leaderboard = msg.meta.primary_leaderboard;
-				$('#team_leaderboard').append(build_team_leaderboard(msg[team_leaderboard], team_leaderboard, msg.meta));
+			if (race.team_leaderboard && 'meta' in race.team_leaderboard) {
+				leaderboard_type = race.team_leaderboard.meta.primary_leaderboard;
+				$('#team_leaderboard').append(build_team_leaderboard(race.team_leaderboard[leaderboard_type], leaderboard_type, race.team_leaderboard.meta));
 			}
-		});
 
-		socket.on('race_status_message', function (msg) {
-			$('.race_status_message').html(msg.team_laps_str);
+			$('.race_status_message').html(race.status_msg);
 		});
 
 		socket.on('phonetic_data', function (msg) {

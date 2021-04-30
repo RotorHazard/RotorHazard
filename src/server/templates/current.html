@@ -6,11 +6,10 @@
 		'frequency_data',
 		'pilot_data',
 		'race_format',
-		'leaderboard_cache',
+		'leaderboard',
 		'current_laps',
 		'race_status',
 		'current_heat',
-		'team_racing_stat_if_enb'
 	];
 
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
@@ -230,7 +229,13 @@
 		});
 
 		socket.on('current_laps', function (msg) {
-			current_laps = msg;
+			if (msg && 'last_race' in msg) {
+				var race = msg.last_race;
+			} else {
+				var race = msg.current;
+			}
+
+			current_laps = race;
 			show_current_laps();
 		});
 
@@ -298,22 +303,28 @@
 		}
 
 		socket.on('leaderboard', function (msg) {
-			leaderboard = msg.meta.primary_leaderboard;
-			$('#leaderboard').empty();
-			$('#leaderboard').append(build_leaderboard(msg[leaderboard], 'current', msg.meta));
-		});
-
-		socket.on('team_leaderboard', function (msg) {
-			$('#team_leaderboard').empty();
-
-			if (msg && 'meta' in msg) {
-				team_leaderboard = msg.meta.primary_leaderboard;
-				$('#team_leaderboard').append(build_team_leaderboard(msg[team_leaderboard], team_leaderboard, msg.meta));
+			if (msg && 'last_race' in msg) {
+				var race = msg.last_race;
+			} else {
+				var race = msg.current;
 			}
-		});
 
-		socket.on('race_status_message', function (msg) {
-			$('.race_status_message').html(msg.team_laps_str);
+			var heatname = __('Heat') + ' ' + race.heat;
+			if (race.heat_note)
+				heatname = race.heat_note;
+			$('.current_heat').html(heatname);
+
+			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
+			$('#leaderboard').empty();
+			$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta));
+
+			$('#team_leaderboard').empty();
+			if (race.team_leaderboard && 'meta' in race.team_leaderboard) {
+				leaderboard_type = race.team_leaderboard.meta.primary_leaderboard;
+				$('#team_leaderboard').append(build_team_leaderboard(race.team_leaderboard[leaderboard_type], leaderboard_type, race.team_leaderboard.meta));
+			}
+
+			$('.race_status_message').html(race.status_msg);
 		});
 
 		socket.on('phonetic_data', function (msg) {
@@ -389,11 +400,6 @@
 		})
 
 		socket.on('current_heat', function (msg) {
-			var heatname = __('Heat') + ' ' + msg.current_heat;
-			if (msg.heat_note)
-				heatname = msg.heat_note;
-
-			$('.current_heat').html(heatname);
 			for (var idx in msg.heatNodes) {
 				hn = msg.heatNodes[idx];
 				$('.callsign_' + idx).html(hn.callsign ? hn.callsign : __('-None-'));

@@ -40,6 +40,7 @@ import sys
 import base64
 import subprocess
 import importlib
+import copy
 from functools import wraps
 from collections import OrderedDict
 from six import unichr, string_types
@@ -154,6 +155,7 @@ server_ipaddress_str = None
 ShutdownButtonInputHandler = None
 
 RACE = RHRace.RHRace() # For storing race management variables
+LAST_RACE = None
 RHData = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
 PageCache = PageCache.PageCache(RHData, Events) # For storing page cache
 Language = Language.Language(RHData) # initialize language
@@ -271,6 +273,7 @@ def setCurrentRaceFormat(race_format, **kwargs):
         RACE.format = RHRaceFormat.copy(race_format)
         RACE.format.id = race_format.id
         RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+        RACE.team_cacheStatus = Results.CacheStatus.INVALID
     else:
         RACE.format = race_format
 
@@ -782,8 +785,6 @@ def on_load_data(data):
             emit_min_lap(nobroadcast=True)
         elif load_type == 'leaderboard':
             emit_current_leaderboard(nobroadcast=True)
-        elif load_type == 'leaderboard_cache':
-            emit_current_leaderboard(nobroadcast=True, use_cache=True)
         elif load_type == 'current_laps':
             emit_current_laps(nobroadcast=True)
         elif load_type == 'race_status':
@@ -1220,6 +1221,7 @@ def on_alter_pilot(data):
         emit_heat_data() # Settings page, new pilot phonetic in heats. Needed?
 
     RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh current leaderboard
+    RACE.team_cacheStatus = Results.CacheStatus.INVALID
 
 @SOCKET_IO.on('delete_pilot')
 @catchLogExceptionsWrapper
@@ -1867,6 +1869,7 @@ def on_get_pi_time():
 @catchLogExceptionsWrapper
 def on_stage_race():
     global RACE
+    global LAST_RACE
     valid_pilots = False
     heat_data = RHData.get_heat(RACE.current_heat)
     heatNodes = RHData.get_heatNodes_by_heat(RACE.current_heat)
@@ -1905,7 +1908,7 @@ def on_stage_race():
 
         clear_laps() # Clear laps before race start
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
-        RACE.last_race_cacheStatus = Results.CacheStatus.INVALID # invalidate last race results cache
+        LAST_RACE = None # clear all previous race data
         RACE.timer_running = False # indicate race timer not running
         RACE.race_status = RaceStatus.STAGING
         RACE.win_status = WinStatus.NONE
@@ -1925,7 +1928,6 @@ def on_stage_race():
         emit_current_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
         emit_race_format()
-        check_emit_race_status_message(RACE) # Update race status message
 
         MIN = min(race_format.start_delay_min, race_format.start_delay_max) # in case values are reversed
         MAX = max(race_format.start_delay_min, race_format.start_delay_max)
@@ -2212,6 +2214,7 @@ def on_stop_race():
 
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
+    emit_current_leaderboard()
 
 @SOCKET_IO.on('save_laps')
 @catchLogExceptionsWrapper
@@ -2374,7 +2377,6 @@ def on_discard_laps(**kwargs):
     emit_race_status() # Race page, to set race button states
     RACE.win_status = WinStatus.NONE
     RACE.status_message = ''
-    check_emit_race_status_message(RACE) # Update race status message
 
     if 'saved' in kwargs and kwargs['saved'] == True:
         # discarding follows a save action
@@ -2388,8 +2390,8 @@ def on_discard_laps(**kwargs):
 def clear_laps():
     '''Clear the current laps table.'''
     global RACE
-    RACE.last_race_results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
-    RACE.last_race_cacheStatus = Results.CacheStatus.VALID
+    global LAST_RACE
+    LAST_RACE = copy.deepcopy(RACE)
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
     RACE.winning_lap_id = 0
     reset_current_laps() # Clear out the current laps table
@@ -2452,10 +2454,10 @@ def on_set_current_heat(data):
         })
 
     RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+    RACE.team_cacheStatus = Results.CacheStatus.INVALID
     emit_current_heat() # Race page, to update heat selection button
     emit_current_leaderboard() # Race page, to update callsigns in leaderboard
     emit_race_format()
-    check_emit_race_status_message(RACE) # Update race status message
 
 @SOCKET_IO.on('generate_heats')
 def on_generate_heats(data):
@@ -2640,9 +2642,9 @@ def on_delete_lap(data):
 
     logger.info('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
     RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
+    RACE.team_cacheStatus = Results.CacheStatus.INVALID
     emit_current_laps() # Race page, update web client
     emit_current_leaderboard() # Race page, update web client
-    check_emit_race_status_message(RACE) # Update race status message
 
 @SOCKET_IO.on('simulate_lap')
 @catchLogExceptionsWrapper
@@ -3040,56 +3042,62 @@ def emit_race_formats(**params):
     else:
         SOCKET_IO.emit('race_formats', emit_payload)
 
+def build_laps_list(active_race=RACE):
+    current_laps = []
+    for node in range(active_race.num_nodes):
+        node_laps = []
+        fastest_lap_time = float("inf")
+        fastest_lap_index = None
+        last_lap_id = -1
+        for idx, lap in enumerate(active_race.node_laps[node]):
+            if not lap['deleted']:
+                lap_number = lap['lap_number'];
+                if active_race.format and active_race.format.start_behavior == StartBehavior.FIRST_LAP:
+                    lap_number += 1
+
+                splits = get_splits(node, lap['lap_number'], True)
+                node_laps.append({
+                    'lap_index': idx,
+                    'lap_number': lap_number,
+                    'lap_raw': lap['lap_time'],
+                    'lap_time': lap['lap_time_formatted'],
+                    'lap_time_stamp': lap['lap_time_stamp'],
+                    'splits': splits
+                })
+                last_lap_id = lap['lap_number']
+                if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
+                    fastest_lap_time = lap['lap_time']
+                    fastest_lap_index = idx
+
+        splits = get_splits(node, last_lap_id+1, False)
+        if splits:
+            node_laps.append({
+                'lap_number': last_lap_id+1,
+                'lap_time': '',
+                'lap_time_stamp': 0,
+                'splits': splits
+            })
+        current_laps.append({
+            'laps': node_laps,
+            'fastest_lap_index': fastest_lap_index,
+        })
+    current_laps = {
+        'node_index': current_laps
+    }
+    return current_laps
+
 def emit_current_laps(**params):
     '''Emits current laps.'''
     global RACE
-    race_format = getCurrentRaceFormat()
-    if 'use_cache' in params and RACE.last_race_cacheStatus == Results.CacheStatus.VALID:
-        emit_payload = RACE.last_race_laps
-    else:
-        current_laps = []
-        for node in range(RACE.num_nodes):
-            node_laps = []
-            fastest_lap_time = float("inf")
-            fastest_lap_index = None
-            last_lap_id = -1
-            for idx, lap in enumerate(RACE.node_laps[node]):
-                if not lap['deleted']:
-                    lap_number = lap['lap_number'];
-                    if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
-                        lap_number += 1
+    global LAST_RACE
 
-                    splits = get_splits(node, lap['lap_number'], True)
-                    node_laps.append({
-                        'lap_index': idx,
-                        'lap_number': lap_number,
-                        'lap_raw': lap['lap_time'],
-                        'lap_time': lap['lap_time_formatted'],
-                        'lap_time_stamp': lap['lap_time_stamp'],
-                        'splits': splits
-                    })
-                    last_lap_id = lap['lap_number']
-                    if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
-                        fastest_lap_time = lap['lap_time']
-                        fastest_lap_index = idx
+    emit_payload = {
+        'current': {}
+    }
+    emit_payload['current'] = build_laps_list(RACE)
 
-            splits = get_splits(node, last_lap_id+1, False)
-            if splits:
-                node_laps.append({
-                    'lap_number': last_lap_id+1,
-                    'lap_time': '',
-                    'lap_time_stamp': 0,
-                    'splits': splits
-                })
-            current_laps.append({
-                'laps': node_laps,
-                'fastest_lap_index': fastest_lap_index,
-            })
-        current_laps = {
-            'node_index': current_laps
-        }
-        emit_payload = current_laps
-        RACE.last_race_laps = current_laps
+    if LAST_RACE is not None:
+        emit_payload['last_race'] = build_laps_list(LAST_RACE)
 
     if ('nobroadcast' in params):
         emit('current_laps', emit_payload)
@@ -3202,40 +3210,50 @@ def emit_result_data_thread(params, sid=None):
 def emit_current_leaderboard(**params):
     '''Emits leaderboard.'''
     global RACE
-    if 'use_cache' in params and RACE.last_race_cacheStatus == Results.CacheStatus.VALID:
-        emit_payload = RACE.last_race_results
-    elif RACE.cacheStatus == Results.CacheStatus.VALID:
-        emit_payload = RACE.results
+
+    emit_payload = {
+        'current': {}
+    }
+
+    # current
+    emit_payload['current']['heat'] = RACE.current_heat
+    emit_payload['current']['heat_note'] = RHData.get_heat(RACE.current_heat).note
+    emit_payload['current']['status_msg'] = RACE.status_message
+
+    if RACE.cacheStatus == Results.CacheStatus.VALID:
+        emit_payload['current']['leaderboard'] = RACE.results
     else:
         results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
         RACE.results = results
         RACE.cacheStatus = Results.CacheStatus.VALID
-        emit_payload = results
+        emit_payload['current']['leaderboard'] = results
 
-    emit_current_team_leaderboard()
+    if RACE.format.team_racing_mode:
+        if RACE.team_cacheStatus == Results.CacheStatus.VALID:
+            emit_payload['current']['team_leaderboard'] = RACE.team_results
+        else:
+            team_results = Results.calc_team_leaderboard(RACE, RHData)
+            RACE.team_results = team_results
+            RACE.team_cacheStatus = Results.CacheStatus.VALID
+            emit_payload['current']['team_leaderboard'] = team_results
+
+    # cache
+    if LAST_RACE is not None:
+        emit_payload['last_race'] = {}
+        emit_payload['last_race']['status_msg'] = LAST_RACE.status_message
+
+        if LAST_RACE.cacheStatus == Results.CacheStatus.VALID:
+            emit_payload['last_race']['leaderboard'] = LAST_RACE.results
+            emit_payload['last_race']['heat'] = LAST_RACE.current_heat
+            emit_payload['last_race']['heat_note'] = RHData.get_heat(LAST_RACE.current_heat).note
+
+        if LAST_RACE.team_cacheStatus == Results.CacheStatus.VALID and LAST_RACE.format.team_racing_mode:
+            emit_payload['last_race']['team_leaderboard'] = LAST_RACE.team_results
 
     if ('nobroadcast' in params):
         emit('leaderboard', emit_payload)
     else:
         SOCKET_IO.emit('leaderboard', emit_payload)
-
-def emit_current_team_leaderboard(**params):
-    '''Emits team leaderboard.'''
-    global RACE
-    race_format = getCurrentRaceFormat()
-
-    if race_format.team_racing_mode:
-        results = Results.calc_team_leaderboard(RACE, RHData)
-        RACE.team_results = results
-        RACE.team_cacheStatus = Results.CacheStatus.VALID
-        emit_payload = results
-    else:
-        emit_payload = None
-
-    if ('nobroadcast' in params):
-        emit('team_leaderboard', emit_payload)
-    else:
-        SOCKET_IO.emit('team_leaderboard', emit_payload)
 
 def emit_heat_data(**params):
     '''Emits heat data.'''
@@ -3424,15 +3442,6 @@ def emit_current_heat(**params):
         emit('current_heat', emit_payload)
     else:
         SOCKET_IO.emit('current_heat', emit_payload)
-
-def emit_race_status_message(**params):
-    '''Emits given team-racing status info.'''
-    global RACE
-    emit_payload = {'team_laps_str': RACE.status_message}
-    if ('nobroadcast' in params):
-        emit('race_status_message', emit_payload)
-    else:
-        SOCKET_IO.emit('race_status_message', emit_payload)
 
 def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, **params):
     '''Emits phonetic data.'''
@@ -3904,10 +3913,6 @@ def ms_from_program_start():
     milli_sec = delta_time * 1000.0
     return milli_sec
 
-def check_emit_race_status_message(RACE, **params):
-    if RACE.win_status not in [WinStatus.DECLARED, WinStatus.TIE]: # don't call after declared result
-        emit_race_status_message(**params)
-
 @catchLogExcDBCloseWrapper
 def pass_record_callback(node, lap_timestamp_absolute, source):
     '''Handles pass records from the nodes.'''
@@ -3992,6 +3997,10 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
                         RACE.cacheStatus = Results.CacheStatus.VALID
 
+                        if RACE.format.team_racing_mode:
+                            RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
+                            RACE.team_cacheStatus = Results.CacheStatus.VALID
+
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': node.index,
                             'color': led_manager.getDisplayColor(node.index),
@@ -4003,7 +4012,6 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             .format(node.index+1, lap_number, RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))))
                         emit_current_laps() # update all laps on the race page
                         emit_current_leaderboard() # generate and update leaderboard
-                        check_emit_race_status_message(RACE) # Update race status message
 
                         if lap_number == 0:
                             emit_first_pass_registered(node.index) # play first-pass sound
@@ -4061,11 +4069,9 @@ def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
             # announce winner
             if race_format.team_racing_mode:
                 RACE.status_message = __('Winner is') + ' ' + __('Team') + ' ' + win_status['data']['name']
-                emit_race_status_message()
                 emit_phonetic_text(RACE.status_message, 'race_winner', True)
             else:
                 RACE.status_message = __('Winner is') + ' ' + win_status['data']['callsign']
-                emit_race_status_message()
                 win_phon_name = RHData.get_pilot(win_status['data']['pilot_id']).phonetic
                 if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                     win_phon_name = win_status['data']['callsign']
@@ -4074,8 +4080,8 @@ def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
             Events.trigger(Evt.RACE_WIN, {
                 'win_status': win_status,
                 'message': RACE.status_message,
-                'node_index': win_status['data']['node'],
-                'color': led_manager.getDisplayColor(win_status['data']['node']),
+                'node_index': win_status['data']['node'] if 'node' in win_status['data'] else None,
+                'color': led_manager.getDisplayColor(win_status['data']['node']) if 'node' in win_status['data'] else None,
                 'results': RACE.results
                 })
 
@@ -4083,13 +4089,11 @@ def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
             # announce tied
             if win_status['status'] != previous_win_status:
                 RACE.status_message = __('Race Tied')
-                emit_race_status_message()
                 emit_phonetic_text(RACE.status_message, 'race_winner')
         elif win_status['status'] == WinStatus.OVERTIME:
             # announce overtime
             if win_status['status'] != previous_win_status:
                 RACE.status_message = __('Race Tied: Overtime')
-                emit_race_status_message()
                 emit_phonetic_text(RACE.status_message, 'race_winner')
 
         if 'max_consideration' in win_status:
@@ -4216,6 +4220,7 @@ def reset_current_laps():
         RACE.node_laps[idx] = []
 
     RACE.cacheStatus = Results.CacheStatus.INVALID
+    RACE.team_cacheStatus = Results.CacheStatus.INVALID
     logger.debug('Database current laps reset')
 
 def expand_heats():
