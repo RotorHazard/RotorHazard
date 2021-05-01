@@ -21,3 +21,5 @@ cffi==1.14.*
 smbus2==0.4.*
 RPi.GPIO==0.7.*
 rpi-ws281x==4.2.*
+pi-ina219==1.4.*
+RPi.bme280==0.2.*
