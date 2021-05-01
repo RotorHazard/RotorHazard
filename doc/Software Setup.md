@@ -234,6 +234,7 @@ Description=RotorHazard Server
 After=multi-user.target
 
 [Service]
+User=pi
 WorkingDirectory=/home/pi/RotorHazard/src/server
 ExecStart=/usr/bin/python server.py
 
