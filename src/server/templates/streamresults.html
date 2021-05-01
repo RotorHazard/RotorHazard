@@ -168,9 +168,17 @@
 			if (race.team_leaderboard && 'meta' in race.team_leaderboard) {
 				leaderboard_type = race.team_leaderboard.meta.primary_leaderboard;
 				$('#team_leaderboard').append(build_team_leaderboard(race.team_leaderboard[leaderboard_type], leaderboard_type, race.team_leaderboard.meta));
+				$('#team_leaderboard').show();
+			} else {
+				$('#team_leaderboard').hide();
 			}
 
-			$('.race_status_message').html(race.status_msg);
+			if (race.status_msg) {
+				$('.race_status_message').html(race.status_msg);
+				$('.race_status_message').slideDown();
+			} else {
+				$('.race_status_message').slideUp();
+			}
 		});
 
 		socket.on('prestage_ready', function (msg) {

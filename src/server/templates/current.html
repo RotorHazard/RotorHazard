@@ -9,7 +9,6 @@
 		'leaderboard',
 		'current_laps',
 		'race_status',
-		'current_heat',
 	];
 
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
@@ -241,6 +240,7 @@
 
 		function show_current_laps() {
 			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
+				$('.callsign_' + i).html(node_index.pilot.callsign ? node_index.pilot.callsign : __('-None-'));
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
@@ -398,13 +398,6 @@
 				}
 			}
 		})
-
-		socket.on('current_heat', function (msg) {
-			for (var idx in msg.heatNodes) {
-				hn = msg.heatNodes[idx];
-				$('.callsign_' + idx).html(hn.callsign ? hn.callsign : __('-None-'));
-			}
-		});
 
 		socket.on('prestage_ready', function (msg) {
 			request_time = new Date();
