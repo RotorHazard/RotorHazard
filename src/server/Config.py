@@ -16,6 +16,7 @@ LED = {}
 SERIAL_PORTS = []
 LOGGING = {}
 VRX_CONTROL = {}
+CHORUS = {}
 
 # LED strip configuration:
 LED['LED_COUNT']      = 0       # Number of LED pixels.
@@ -69,6 +70,8 @@ try:
         LED.update(ExternalConfig['LED'])
     if 'VRX_CONTROL' in ExternalConfig:
         VRX_CONTROL.update(ExternalConfig['VRX_CONTROL'])
+    if 'CHORUS' in ExternalConfig:
+        CHORUS.update(ExternalConfig['CHORUS'])
 
 
     '''

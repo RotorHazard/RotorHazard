@@ -140,6 +140,7 @@ Current_log_path_name = log.later_stage_setup(Config.LOGGING, SOCKET_IO)
 INTERFACE = None  # initialized later
 SENSORS = Sensors()
 CLUSTER = None    # initialized later
+CHORUS_API = None    # initialized later
 ClusterSendAckQueueObj = None
 serverInfo = None
 serverInfoItems = None
@@ -1889,7 +1890,6 @@ def on_stage_race():
 
     if RACE.race_status == RaceStatus.READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
-        INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
         if heat_data.class_id != RHUtils.CLASS_ID_NONE:
             class_format_id = RHData.get_raceClass(heat_data.class_id).format_id
@@ -3714,9 +3714,9 @@ def do_bpillfw_update(data):
         logger.exception("Error in 'do_bpillfw_update()'")
     stm32loader.set_console_output_fn(None)
     gevent.sleep(0.2)
-    logger.info("Reinitializing RH interface")
+    logger.info("Reinitializing hardware interface")
     ui_server_messages.clear()
-    initialize_rh_interface()
+    initialize_hardware_interface()
     buildServerInfo()
     logger.debug("Server info:  " + json.dumps(serverInfoItems))
     init_race_state()
@@ -3736,8 +3736,10 @@ def set_vrx_node(data):
         logger.error("Can't set VRx {0} to node {1}: Controller unavailable".format(vrx_id, node))
 
 @catchLogExceptionsWrapper
-def emit_pass_record(node, lap_time_stamp):
+def emit_pass_record(node, lap_number, lap_time_stamp):
     '''Emits 'pass_record' message (will be consumed by primary timer in cluster, livetime, etc).'''
+    if CHORUS_API:
+        CHORUS_API.emit_pass_record(node, lap_number, lap_time_stamp)
     payload = {
         'node': node.index,
         'frequency': node.frequency,
@@ -3971,7 +3973,7 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref = None):
                     if lap_ok_flag:
 
                         # emit 'pass_record' message (to primary timer in cluster, livetime, etc).
-                        emit_pass_record(node, lap_time_stamp)
+                        emit_pass_record(node, lap_number, lap_time_stamp)
 
                         # Add the new lap to the database
                         lap_data = {
@@ -4429,7 +4431,7 @@ def shutdown_button_long_press():
     logger.info("Detected shutdown button long press; performing shutdown now")
     on_shutdown_pi()
 
-def initialize_rh_interface():
+def initialize_hardware_interface():
     try:
         global INTERFACE
         rh_interface_name ='interface.' + os.environ.get('RH_INTERFACE', 'RH') + "Interface"
@@ -4503,7 +4505,7 @@ def initialize_rh_interface():
         INTERFACE.node_crossing_callback = node_crossing_callback
         return True
     except:
-        logger.exception("Error initializing RH interface")
+        logger.exception("Error initializing hardware interface")
         return False
 
 # Create and save server/node information
@@ -4671,7 +4673,7 @@ for helper in search_modules(helper_pkg, suffix='helper'):
     except Exception as ex:
         logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
-resultFlag = initialize_rh_interface()
+resultFlag = initialize_hardware_interface()
 if not resultFlag:
     log.wait_for_queue_empty()
     sys.exit(1)
@@ -4915,12 +4917,18 @@ if vrx_controller:
 # data exporters
 export_manager = DataExportManager(RHData, PageCache, Language)
 
-gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
-
 # register endpoints
 from . import json_endpoints
 
 APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
+
+if 'API_PORT' in Config.CHORUS and Config.CHORUS['API_PORT']:
+    from .chorus_api import ChorusAPI
+    import serial
+
+    chorusPort = Config.CHORUS['API_PORT']
+    chorusSerial = serial.Serial(port=chorusPort, baudrate=115200, timeout=0.1)
+    CHORUS_API = ChorusAPI(chorusSerial, INTERFACE, SENSORS, connect_handler, on_stop_race, lambda : on_reset_auto_calibration({}))
 
 def start(port_val = Config.GENERAL['HTTP_PORT']):
     if not RHData.get_option("secret_key"):
@@ -4928,6 +4936,9 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
 
     APP.config['SECRET_KEY'] = RHData.get_option("secret_key")
     logger.info("Running http server at port " + str(port_val))
+    gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
+    if CHORUS_API:
+        gevent.spawn(CHORUS_API.chorus_api_thread_function)
     init_interface_state(startup=True)
     Events.trigger(Evt.STARTUP, {
         'color': ColorVal.ORANGE,

@@ -13,14 +13,12 @@ from .RHInterface import FW_TEXT_BLOCK_SIZE, FW_VERSION_PREFIXSTR, \
 
 logger = logging.getLogger(__name__)
 
-UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.5')) # Main update loop delay
-
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 
 class MockInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
-        BaseHardwareInterface.__init__(self)
+        super().__init__(update_sleep=0.5)
         self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
         self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
         self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
@@ -62,14 +60,6 @@ class MockInterface(BaseHardwareInterface):
             self.log('Stopping background thread')
             self.update_thread.kill(block=True, timeout=0.5)
             self.update_thread = None
-
-    def update_loop(self):
-        try:
-            while True:
-                self.update()
-                gevent.sleep(UPDATE_SLEEP)
-        except KeyboardInterrupt:
-            logger.info("Update thread terminated by keyboard interrupt")
 
     def update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
@@ -148,18 +138,8 @@ class MockInterface(BaseHardwareInterface):
     def transmit_enter_at_level(self, node, level):
         return level
 
-    def set_enter_at_level(self, node_index, level):
-        node = self.nodes[node_index]
-        if node.api_valid_flag:
-            node.enter_at_level = self.transmit_enter_at_level(node, level)
-
     def transmit_exit_at_level(self, node, level):
         return level
-
-    def set_exit_at_level(self, node_index, level):
-        node = self.nodes[node_index]
-        if node.api_valid_flag:
-            node.exit_at_level = self.transmit_exit_at_level(node, level)
 
     def force_end_crossing(self, node_index):
         pass

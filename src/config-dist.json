@@ -22,6 +22,10 @@
 		"PANEL_ROTATE": 0,
 		"INVERTED_PANEL_ROWS": false
 	},
+	"CHORUS": {
+		"HARDWARE_PORT": "",
+		"API_PORT": ""
+	},
 	"LOGGING": {
 		"CONSOLE_LEVEL": "INFO",
 		"SYSLOG_LEVEL": "NONE",

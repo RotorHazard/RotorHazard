@@ -64,7 +64,6 @@ RHFEAT_STM32_MODE = 0x0004      # STM 32-bit processor running multiple nodes
 RHFEAT_JUMPTO_BOOTLDR = 0x0008  # JUMP_TO_BOOTLOADER command supported
 RHFEAT_IAP_FIRMWARE = 0x0010    # in-application programming of firmware supported
 
-UPDATE_SLEEP = float(os.environ.get('RH_UPDATE_INTERVAL', '0.1')) # Main update loop delay
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 
@@ -126,7 +125,7 @@ def unpack_rssi(node, data):
 
 class RHInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
-        BaseHardwareInterface.__init__(self)
+        super().__init__()
         self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
         self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
         self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
@@ -195,21 +194,6 @@ class RHInterface(BaseHardwareInterface):
             self.log('Stopping background thread')
             self.update_thread.kill(block=True, timeout=0.5)
             self.update_thread = None
-
-    def update_loop(self):
-        while True:
-            try:
-                while True:
-                    self.update()
-                    gevent.sleep(UPDATE_SLEEP)
-            except KeyboardInterrupt:
-                logger.info("Update thread terminated by keyboard interrupt")
-                raise
-            except SystemExit:
-                raise
-            except Exception:
-                logger.exception('Exception in RHInterface update_loop():')
-                gevent.sleep(UPDATE_SLEEP*10)
 
     def update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
@@ -441,7 +425,7 @@ class RHInterface(BaseHardwareInterface):
         while success is False and retry_count <= MAX_RETRY_COUNT:
             node.write_block(self, write_command, pack_16(in_value))
             out_value = self.get_value_16(node, read_command)
-                   # confirm same value (also handle negative value)
+            # confirm same value (also handle negative value)
             if out_value == in_value or out_value == in_value + (1 << 16):
                 success = True
             else:
@@ -460,7 +444,7 @@ class RHInterface(BaseHardwareInterface):
         while success is False and retry_count <= MAX_RETRY_COUNT:
             node.write_block(self, write_command, pack_32(in_value))
             out_value = self.get_value_32(node, read_command)
-                   # confirm same value (also handle negative value)
+            # confirm same value (also handle negative value)
             if out_value == in_value or out_value == in_value + (1 << 32):
                 success = True
             else:
@@ -540,23 +524,11 @@ class RHInterface(BaseHardwareInterface):
             READ_ENTER_AT_LEVEL,
             level)
 
-    def set_enter_at_level(self, node_index, level):
-        node = self.nodes[node_index]
-        if node.api_valid_flag and node.is_valid_rssi(level):
-            if self.transmit_enter_at_level(node, level):
-                node.enter_at_level = level
-
     def transmit_exit_at_level(self, node, level):
         return self.set_and_validate_value_rssi(node,
             WRITE_EXIT_AT_LEVEL,
             READ_EXIT_AT_LEVEL,
             level)
-
-    def set_exit_at_level(self, node_index, level):
-        node = self.nodes[node_index]
-        if node.api_valid_flag and node.is_valid_rssi(level):
-            if self.transmit_exit_at_level(node, level):
-                node.exit_at_level = level
 
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]

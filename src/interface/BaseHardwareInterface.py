@@ -1,3 +1,4 @@
+import os
 import gevent
 import logging
 from monotonic import monotonic
@@ -7,8 +8,7 @@ CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at lev
 
 logger = logging.getLogger(__name__)
 
-
-class BaseHardwareInterface(object):
+class BaseHardwareInterface:
 
     LAP_SOURCE_REALTIME = 0
     LAP_SOURCE_MANUAL = 1
@@ -19,7 +19,9 @@ class BaseHardwareInterface(object):
     RACE_STATUS_RACING = 1
     RACE_STATUS_DONE = 2
 
-    def __init__(self):
+    def __init__(self, update_sleep=0.1):
+        # Main update loop delay
+        self.update_sleep = float(os.environ.get('RH_UPDATE_INTERVAL', update_sleep))
         self.calibration_threshold = 20
         self.calibration_offset = 10
         self.trigger_threshold = 20
@@ -36,6 +38,21 @@ class BaseHardwareInterface(object):
 
     def log(self, message):
         logger.info('Interface: {0}'.format(message))
+
+    def update_loop(self):
+        while True:
+            try:
+                while True:
+                    self.update()
+                    gevent.sleep(self.update_sleep)
+            except KeyboardInterrupt:
+                logger.info("Update thread terminated by keyboard interrupt")
+                raise
+            except SystemExit:
+                raise
+            except Exception:
+                logger.exception('Exception in {} update_loop():'.format(type(self).__name__))
+                gevent.sleep(self.update_sleep*10)
 
     def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list):
         if node.scan_interval == 0:
@@ -127,24 +144,24 @@ class BaseHardwareInterface(object):
     def set_race_status(self, race_status):
         self.race_status = race_status
 
-    def set_calibration_threshold_global(self, threshold):
-        return threshold  # dummy function; no longer supported
+    def set_enter_at_level(self, node_index, level):
+        node = self.nodes[node_index]
+        if node.api_valid_flag and node.is_valid_rssi(level):
+            if self.transmit_enter_at_level(node, level):
+                node.enter_at_level = level
 
-    def enable_calibration_mode(self):
-        pass  # dummy function; no longer supported
-
-    def set_calibration_offset_global(self, offset):
-        return offset  # dummy function; no longer supported
-
-    def set_trigger_threshold_global(self, threshold):
-        return threshold  # dummy function; no longer supported
+    def set_exit_at_level(self, node_index, level):
+        node = self.nodes[node_index]
+        if node.api_valid_flag and node.is_valid_rssi(level):
+            if self.transmit_exit_at_level(node, level):
+                node.exit_at_level = level
 
     def start_capture_enter_at_level(self, node_index):
         node = self.nodes[node_index]
         if node.cap_enter_at_flag is False and node.api_valid_flag:
             node.cap_enter_at_total = 0
             node.cap_enter_at_count = 0
-                   # set end time for capture of RSSI level:
+            # set end time for capture of RSSI level:
             node.cap_enter_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
             node.cap_enter_at_flag = True
             return True
@@ -155,7 +172,7 @@ class BaseHardwareInterface(object):
         if node.cap_exit_at_flag is False and node.api_valid_flag:
             node.cap_exit_at_total = 0
             node.cap_exit_at_count = 0
-                   # set end time for capture of RSSI level:
+            # set end time for capture of RSSI level:
             node.cap_exit_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
             node.cap_exit_at_flag = True
             return True
