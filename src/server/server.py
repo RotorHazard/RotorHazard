@@ -3902,15 +3902,20 @@ def check_emit_race_status_message(RACE, **params):
         emit_race_status_message(**params)
 
 @catchLogExcDBCloseWrapper
-def pass_record_callback(node, lap_timestamp_absolute, source):
+def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref = None):
     '''Handles pass records from the nodes.'''
 
-    logger.debug('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, lap_timestamp_absolute))
+    if race_start_ts_ref is None:
+        race_start_ts_ref = RACE.start_time_monotonic
+    lap_timestamp_secs = lap_ts_ref - race_start_ts_ref
+    lap_timestamp_absolute = lap_timestamp_secs + RACE.start_time_monotonic
+    lap_time_stamp = lap_timestamp_secs * 1000 # store as milliseconds
+
+    logger.debug('Raw pass record: node: {0}, lap timestamp: {1}'.format(node.index+1, lap_time_stamp))
     node.pass_crossing_flag = False  # clear the "synchronized" version of the crossing flag
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
-    global RACE
     profile_freqs = json.loads(getCurrentProfile().frequencies)
     if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end (RACE.duration_ms is invalid while race is in progress)
@@ -3928,9 +3933,6 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     # if node EnterAt/ExitAt values need to be restored then do it soon
                     if node.start_thresh_lower_flag:
                         node.start_thresh_lower_time = monotonic()
-
-                    lap_time_stamp = (lap_timestamp_absolute - RACE.start_time_monotonic)
-                    lap_time_stamp *= 1000 # store as milliseconds
 
                     lap_number = len(RACE.get_active_laps()[node.index])
 
