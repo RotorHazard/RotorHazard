@@ -268,6 +268,9 @@ def getCurrentRaceFormat():
     if RACE.format is None:
         val = Options.getInt('currentFormat')
         race_format = Database.RaceFormat.query.get(val)
+        if not race_format:
+            race_format = Database.RaceFormat.query.first()
+            Options.set('currentFormat', race_format.id)
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
         RACE.format.id = race_format.id
