@@ -249,6 +249,9 @@ def getCurrentRaceFormat():
         val = RHData.get_optionInt('currentFormat')
         if val:
             race_format = RHData.get_raceFormat(val)
+            if not race_format:
+                race_format = RHData.get_first_raceFormat()
+                RHData.set_option('currentFormat', race_format.id)
         else:
             race_format = RHData.get_first_raceFormat()
 
