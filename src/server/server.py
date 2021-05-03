@@ -3077,9 +3077,21 @@ def build_laps_list(active_race=RACE):
                 'lap_time_stamp': 0,
                 'splits': splits
             })
+
+        if active_race.node_pilots[node]:
+            pilot = RHData.get_pilot(active_race.node_pilots[node])
+            pilot_data = {
+                'id': pilot.id,
+                'name': pilot.name,
+                'callsign': pilot.callsign
+            }
+        else:
+            pilot_data = None
+            
         current_laps.append({
             'laps': node_laps,
             'fastest_lap_index': fastest_lap_index,
+            'pilot': pilot_data 
         })
     current_laps = {
         'node_index': current_laps

@@ -8,6 +8,7 @@
 		'race_format',
 		'leaderboard',
 		'current_laps',
+		'current_heat',
 		'race_status',
 	];
 
@@ -240,7 +241,7 @@
 
 		function show_current_laps() {
 			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
-				$('.callsign_' + i).html(node_index.pilot.callsign ? node_index.pilot.callsign : __('-None-'));
+				$('#recent .callsign_' + i).html('callsign' in node_index.pilot ? node_index.pilot.callsign : __('-None-'));
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
@@ -305,14 +306,21 @@
 		socket.on('leaderboard', function (msg) {
 			if (msg && 'last_race' in msg) {
 				var race = msg.last_race;
+				var heatname = __('Heat') + ' ' + msg.current.heat;
+				if (msg.current.heat_note)
+					heatname = msg.current.heat_note;
+				$('.current-heat').html(heatname);
+
+				$('#next-race').slideDown();
 			} else {
 				var race = msg.current;
+				$('#next-race').slideUp();
 			}
 
 			var heatname = __('Heat') + ' ' + race.heat;
 			if (race.heat_note)
 				heatname = race.heat_note;
-			$('.current_heat').html(heatname);
+			$('.recent_heat').html(heatname);
 
 			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
 			$('#leaderboard').empty();
@@ -398,6 +406,14 @@
 				}
 			}
 		})
+
+		socket.on('current_heat', function (msg) {
+			for (var idx in msg.heatNodes) {
+				hn = msg.heatNodes[idx];
+				cs = $('#next-race .callsign_' + idx)
+				cs.html(hn.callsign ? hn.callsign : __('-None-'));
+			}
+		});
 
 		socket.on('prestage_ready', function (msg) {
 			request_time = new Date();
@@ -636,13 +652,30 @@
 {% endblock %} {% block content %}
 <main class="page-racepublic">
 
-<div class="panel">
+<div class="panel" id="next-race" style="display: none">
+	<div class="panel-header">
+		<h2>{{ __('Next Race') }}</h2>
+	</div>
+	<div class="panel-content">
+		<h3 class="current-heat">{{ __('Loading...') }}</h3>
+		<div class="race-results">
+			{% for node in nodes %}
+			<div class="node" data-id="{{ node.index }}">
+				<h4 class="callsign_{{ node.index }}">{{ __('Loading...') }}</h4>
+				<div class="channel-block" data-node="{{ node.index }}"><span class="ch"></span> <span class="fr"></span></div>
+			</div>
+			{% endfor %}
+		</div>
+	</div>
+</div>
+
+<div class="panel" id="recent">
 	<div class="panel-content">
 		<div class="timer">
 			<div class="timing-clock"><div class="warning" title="{{ __('Browser Sync Loss') }}">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
 		</div>
 
-		<h2 class="current_heat">{{ __('Loading...') }}</h2>
+		<h2 class="recent_heat">{{ __('Loading...') }}</h2>
 
 		<!--Display the race leaderboard-->
 		<div id="leaderboard"></div>
