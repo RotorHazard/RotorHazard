@@ -74,6 +74,8 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 
 ## Notes
 
+* For the S32_BPill board the RotorHazard server must be version 3.0.0 or later.
+
 * The recommended voltage regulators for the board are Pololu [D36V28F5](https://www.pololu.com/product/3782) (5V) and Pololu [D24V22F3](https://www.pololu.com/product/2857) (3.3V). See [here for additional notes](files/PololuCompatibilityWithRaceTimer.txt) about Pololu voltage regulators.
 
 <a name="rtc"> </a>
@@ -101,9 +103,9 @@ The "Blue Pill" is a module containing an STM32F1 processor and support componen
 
 We like the RobotDyn version more than the generics, but it has become difficult to acquire. In practice, any Blue Pill module with an STM32F103C8T6 processor and a compatible pin layout should work fine with the S32_BPill PCB.
 
-To complicate things further there are other types of "[Black Pill](https://github.com/WeActTC/MiniSTM32F4x1)" modules out there that have different (incompatible) pinouts.
-
 Seaching eBay for "[STM32F103C8T6 Blue Pill](https://www.ebay.com/sch/i.html?_nkw=STM32F103C8T6+Blue+Pill)" should lead to a number of good, cheap options for acquiring compatible modules.
+
+Note that there are other types of "Black Pill" modules out there with different pinouts. It is possible (with some tweaking) to use an STM32F4 ("Black Pill") module with the S32_BPill PCB; see [here for more information](stm32f4module.md).
 
 <br>
 
