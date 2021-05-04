@@ -6,11 +6,10 @@
 		'frequency_data',
 		'pilot_data',
 		'race_format',
-		'leaderboard_cache',
+		'leaderboard',
 		'current_laps',
-		'race_status',
 		'current_heat',
-		'team_racing_stat_if_enb'
+		'race_status',
 	];
 
 	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
@@ -230,12 +229,19 @@
 		});
 
 		socket.on('current_laps', function (msg) {
-			current_laps = msg;
+			if (msg && 'last_race' in msg) {
+				var race = msg.last_race;
+			} else {
+				var race = msg.current;
+			}
+
+			current_laps = race;
 			show_current_laps();
 		});
 
 		function show_current_laps() {
 			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
+				$('#recent .callsign_' + i).html('callsign' in node_index.pilot ? node_index.pilot.callsign : __('-None-'));
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
@@ -298,22 +304,35 @@
 		}
 
 		socket.on('leaderboard', function (msg) {
-			leaderboard = msg.meta.primary_leaderboard;
-			$('#leaderboard').empty();
-			$('#leaderboard').append(build_leaderboard(msg[leaderboard], 'current', msg.meta));
-		});
+			if (msg && 'last_race' in msg) {
+				var race = msg.last_race;
+				var heatname = __('Heat') + ' ' + msg.current.heat;
+				if (msg.current.heat_note)
+					heatname = msg.current.heat_note;
+				$('.current-heat').html(heatname);
 
-		socket.on('team_leaderboard', function (msg) {
-			$('#team_leaderboard').empty();
-
-			if (msg && 'meta' in msg) {
-				team_leaderboard = msg.meta.primary_leaderboard;
-				$('#team_leaderboard').append(build_team_leaderboard(msg[team_leaderboard], team_leaderboard, msg.meta));
+				$('#next-race').slideDown();
+			} else {
+				var race = msg.current;
+				$('#next-race').slideUp();
 			}
-		});
 
-		socket.on('race_status_message', function (msg) {
-			$('.race_status_message').html(msg.team_laps_str);
+			var heatname = __('Heat') + ' ' + race.heat;
+			if (race.heat_note)
+				heatname = race.heat_note;
+			$('.recent_heat').html(heatname);
+
+			leaderboard_type = race.leaderboard.meta.primary_leaderboard;
+			$('#leaderboard').empty();
+			$('#leaderboard').append(build_leaderboard(race.leaderboard[leaderboard_type], 'current', race.leaderboard.meta));
+
+			$('#team_leaderboard').empty();
+			if (race.team_leaderboard && 'meta' in race.team_leaderboard) {
+				leaderboard_type = race.team_leaderboard.meta.primary_leaderboard;
+				$('#team_leaderboard').append(build_team_leaderboard(race.team_leaderboard[leaderboard_type], leaderboard_type, race.team_leaderboard.meta));
+			}
+
+			$('.race_status_message').html(race.status_msg);
 		});
 
 		socket.on('phonetic_data', function (msg) {
@@ -389,14 +408,10 @@
 		})
 
 		socket.on('current_heat', function (msg) {
-			var heatname = __('Heat') + ' ' + msg.current_heat;
-			if (msg.heat_note)
-				heatname = msg.heat_note;
-
-			$('.current_heat').html(heatname);
 			for (var idx in msg.heatNodes) {
 				hn = msg.heatNodes[idx];
-				$('.callsign_' + idx).html(hn.callsign ? hn.callsign : __('-None-'));
+				cs = $('#next-race .callsign_' + idx)
+				cs.html(hn.callsign ? hn.callsign : __('-None-'));
 			}
 		});
 
@@ -637,13 +652,30 @@
 {% endblock %} {% block content %}
 <main class="page-racepublic">
 
-<div class="panel">
+<div class="panel" id="next-race" style="display: none">
+	<div class="panel-header">
+		<h2>{{ __('Next Race') }}</h2>
+	</div>
+	<div class="panel-content">
+		<h3 class="current-heat">{{ __('Loading...') }}</h3>
+		<div class="race-results">
+			{% for node in nodes %}
+			<div class="node" data-id="{{ node.index }}">
+				<h4 class="callsign_{{ node.index }}">{{ __('Loading...') }}</h4>
+				<div class="channel-block" data-node="{{ node.index }}"><span class="ch"></span> <span class="fr"></span></div>
+			</div>
+			{% endfor %}
+		</div>
+	</div>
+</div>
+
+<div class="panel" id="recent">
 	<div class="panel-content">
 		<div class="timer">
 			<div class="timing-clock"><div class="warning" title="{{ __('Browser Sync Loss') }}">&#9888;&#xFE0E;</div><div class="time-display">--:--</div></div>
 		</div>
 
-		<h2 class="current_heat">{{ __('Loading...') }}</h2>
+		<h2 class="recent_heat">{{ __('Loading...') }}</h2>
 
 		<!--Display the race leaderboard-->
 		<div id="leaderboard"></div>

@@ -8,6 +8,7 @@
 		'race_format',
 		'leaderboard',
 		'current_laps',
+		'current_heat'
 	];
 
 	rotorhazard.show_messages = false;
@@ -22,8 +23,32 @@
 			}
 		});
 
+		/*
+		socket.on('current_heat', function (msg) {
+			for (var idx in msg.heatNodes) {
+				hn = msg.heatNodes[streamnode];
+				if (hn.activeColor) {
+					color = colorvalToHex(hn.activeColor)
+					$('html').css('--pilot_color', color);
+					$('html').css('--contrast_pilot_color', contrastColor(color));
+					$('html').css('--position_foreground_color', color);
+					$('html').css('--position_background_color', contrastColor(color));
+					$('html').css('--fast_lap_color', color);
+					$('html').css('--contrast_fast_lap_color', contrastColor(color));
+				} else {
+					$('html').css('--pilot_color', 'hsl(var(--hue_0), var(--sat_0), var(--lum_0_low))');
+					$('html').css('--contrast_pilot_color', 'var(--contrast_0_low)');
+					$('html').css('--position_background_color', 'hsl(var(--hue_1), var(--sat_1), var(--lum_1_high))');
+					$('html').css('--position_foreground_color', 'var(--contrast_1_high)');
+					$('html').css('--fast_lap_color', 'hsl(var(--hue_1), var(--sat_1), var(--lum_1_high))');
+					$('html').css('--contrast_fast_lap_color', 'var(--contrast_1_high)');
+				}
+			}
+		});
+		*/
+
 		socket.on('current_laps', function (msg) {
-			current_laps = msg;
+			current_laps = msg.current;
 			show_current_laps();
 		});
 
@@ -86,8 +111,10 @@
 		}
 
 		socket.on('leaderboard', function (msg) {
-			primary_leaderboard = msg.meta.primary_leaderboard;
-			leaderboard = msg[primary_leaderboard];
+			var race = msg.current.leaderboard;
+
+			primary_leaderboard = race.meta.primary_leaderboard;
+			leaderboard = race[primary_leaderboard];
 
 			found_streamnode = false;
 
