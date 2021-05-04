@@ -7,6 +7,7 @@ from monotonic import monotonic # to capture read timing
 
 import interface as node_pkg
 from .Plugins import Plugins
+from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
@@ -43,6 +44,9 @@ SEND_STATUS_MESSAGE = 0x75  # send status message from server to node
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 JUMP_TO_BOOTLOADER = 0x7E   # jump to bootloader for flash update
 
+SCANNER_MODE = 1
+RSSI_HISTORY_MODE = 2
+
 LAPSTATS_FLAG_CROSSING = 0x01  # crossing is in progress
 LAPSTATS_FLAG_PEAK = 0x02      # reported extremum is peak
 
@@ -69,47 +73,11 @@ MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 
 logger = logging.getLogger(__name__)
 
-
-def unpack_8(data):
-    return data[0]
-
-def pack_8(data):
-    return [int(data & 0xFF)]
-
-def unpack_16(data):
-    '''Returns the full variable from 2 bytes input.'''
-    result = data[0]
-    result = (result << 8) | data[1]
-    return result
-
-def pack_16(data):
-    '''Returns a 2 part array from the full variable.'''
-    part_a = (data >> 8)
-    part_b = (data & 0xFF)
-    return [int(part_a), int(part_b)]
-
-def unpack_32(data):
-    '''Returns the full variable from 4 bytes input.'''
-    result = data[0]
-    result = (result << 8) | data[1]
-    result = (result << 8) | data[2]
-    result = (result << 8) | data[3]
-    return result
-
-def pack_32(data):
-    '''Returns a 4 part array from the full variable.'''
-    part_a = (data >> 24)
-    part_b = (data >> 16) & 0xFF
-    part_c = (data >> 8) & 0xFF
-    part_d = (data & 0xFF)
-    return [int(part_a), int(part_b), int(part_c), int(part_d)]
-
-
-def calculate_checksum(data):
+def calculate_checksum(data: bytearray):
     checksum = sum(data) & 0xFF
     return checksum
 
-def validate_checksum(data):
+def validate_checksum(data: bytearray):
     '''Returns True if the checksum matches the data.'''
     if not data:
         return False
@@ -134,20 +102,14 @@ class RHInterface(BaseHardwareInterface):
         self.update_thread = None      # Thread for running the main update loop
         self.fwupd_serial_obj = None   # serial object for in-app update of node firmware
 
-        self.intf_read_block_count = 0  # number of blocks read by all nodes
-        self.intf_read_error_count = 0  # number of read errors for all nodes
-        self.intf_write_block_count = 0  # number of blocks write by all nodes
-        self.intf_write_error_count = 0  # number of write errors for all nodes
-        self.intf_error_report_limit = 0.0  # log if ratio of comm errors is larger
-
         self.nodes = Plugins(suffix='node')
         self.discover_nodes(*args, **kwargs)
 
         self.data_loggers = []
         for node in self.nodes:
-            node.frequency = self.get_value_16(node, READ_FREQUENCY)
+            node.frequency = node.get_value_16(READ_FREQUENCY)
             if not node.frequency:
-                raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
+                raise RuntimeError('Unable to read frequency value from node {0}'.format(node))
             node.init()
             if node.api_level >= 10:
                 node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
@@ -155,19 +117,18 @@ class RHInterface(BaseHardwareInterface):
                     node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
                 node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
                 node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
-                if node.multi_node_index < 0:  # (multi-nodes will always have default values)
-                    logger.debug("Node {}: Freq={}, EnterAt={}, ExitAt={}".format(\
-                                 node.index+1, node.frequency, node.enter_at_level, node.exit_at_level))
+                logger.debug("Node {}: Freq={}, EnterAt={}, ExitAt={}".format(\
+                             node, node.frequency, node.enter_at_level, node.exit_at_level))
 
                 if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
                     self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
-                    logger.info("Data logging enabled for node {0}".format(node.index+1))
+                    logger.info("Data logging enabled for node {0}".format(node))
                 else:
                     self.data_loggers.append(None)
             else:
-                logger.warn("Node {} has obsolete API_level ({})".format(node.index+1, node.api_level))
+                logger.warning("Node {} has obsolete API_level ({})".format(node, node.api_level))
             if node.api_level >= 32:
-                flags_val = self.get_value_16(node, READ_RHFEAT_FLAGS)
+                flags_val = node.get_value_16(READ_RHFEAT_FLAGS)
                 if flags_val:
                     node.rhfeature_flags = flags_val
                     # if first node that supports in-app fw update then save port name
@@ -184,18 +145,7 @@ class RHInterface(BaseHardwareInterface):
     # Update Loop
     #
 
-    def start(self):
-        if self.update_thread is None:
-            self.log('Starting background thread')
-            self.update_thread = gevent.spawn(self.update_loop)
-
-    def stop(self):
-        if self.update_thread:
-            self.log('Stopping background thread')
-            self.update_thread.kill(block=True, timeout=0.5)
-            self.update_thread = None
-
-    def update(self):
+    def _update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
         cross_list = []  # list of nodes with crossing-flag changes
         startThreshLowerNode = None
@@ -203,20 +153,20 @@ class RHInterface(BaseHardwareInterface):
             if node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
                     if node.api_level >= 21:
-                        data = node.read_block(self, READ_LAP_STATS, 16)
+                        data = node.read_block(READ_LAP_STATS, 16)
                     elif node.api_level >= 18:
-                        data = node.read_block(self, READ_LAP_STATS, 19)
+                        data = node.read_block(READ_LAP_STATS, 19)
                     elif node.api_level >= 17:
-                        data = node.read_block(self, READ_LAP_STATS, 28)
+                        data = node.read_block(READ_LAP_STATS, 28)
                     elif node.api_level >= 13:
-                        data = node.read_block(self, READ_LAP_STATS, 20)
+                        data = node.read_block(READ_LAP_STATS, 20)
                     else:
-                        data = node.read_block(self, READ_LAP_STATS, 18)
+                        data = node.read_block(READ_LAP_STATS, 18)
                     server_roundtrip = node.io_response - node.io_request
                     server_oneway = server_roundtrip / 2
                     readtime = node.io_response - server_oneway
                 else:
-                    data = node.read_block(self, READ_LAP_STATS, 17)
+                    data = node.read_block(READ_LAP_STATS, 17)
 
                 if data != None and len(data) > 0:
                     lap_id = data[0]
@@ -282,7 +232,7 @@ class RHInterface(BaseHardwareInterface):
                                             else:
                                                 pn_history.peakLastTime = unpack_16(data[offset_peakLastTime:])   # ms *since* the last peak time
                                         elif rssi_val > 0:
-                                            self.log('History peak RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
+                                            logger.info('History peak RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node))
                                     else:
                                         rssi_val = unpack_rssi(node, data[offset_nadirRssi:])
                                         if node.is_valid_rssi(rssi_val):
@@ -293,7 +243,7 @@ class RHInterface(BaseHardwareInterface):
                                             else:
                                                 pn_history.nadirLastTime = unpack_16(data[offset_nadirLastTime:])
                                         elif rssi_val > 0:
-                                            self.log('History nadir RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
+                                            logger.info('History nadir RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node))
                                 else:
                                     rssi_val = unpack_rssi(node, data[offset_peakRssi:])
                                     if node.is_valid_rssi(rssi_val):
@@ -344,8 +294,8 @@ class RHInterface(BaseHardwareInterface):
                         node.bad_rssi_count += 1
                         # log the first ten, but then only 1 per 100 after that
                         if node.bad_rssi_count <= 10 or node.bad_rssi_count % 100 == 0:
-                            self.log('RSSI reading ({}) out of range on Node {}; rejected; count={}'.\
-                                     format(rssi_val, node.index+1, node.bad_rssi_count))
+                            logger.info('RSSI reading ({}) out of range on Node {}; rejected; count={}'.\
+                                     format(rssi_val, node, node.bad_rssi_count))
 
                 # check if node is set to temporary lower EnterAt/ExitAt values
                 if node.start_thresh_lower_flag:
@@ -379,118 +329,17 @@ class RHInterface(BaseHardwareInterface):
     # Internal helper functions for setting single values
     #
 
-    def get_value_8(self, node, command):
-        data = node.read_block(self, command, 1)
-        result = None
-        if data != None:
-            result = unpack_8(data)
-        return result
-
-    def get_value_16(self, node, command):
-        data = node.read_block(self, command, 2)
-        result = None
-        if data != None:
-            result = unpack_16(data)
-        return result
-
-    def get_value_32(self, node, command):
-        data = node.read_block(self, command, 4)
-        result = None
-        if data != None:
-            result = unpack_32(data)
-        return result
-
-    def set_and_validate_value_8(self, node, write_command, read_command, in_value):
-        success = False
-        retry_count = 0
-        out_value = None
-        while success is False and retry_count <= MAX_RETRY_COUNT:
-            node.write_block(self, write_command, pack_8(in_value))
-            out_value = self.get_value_8(node, read_command)
-            if out_value == in_value:
-                success = True
-            else:
-                retry_count = retry_count + 1
-                self.log('Value 8v Not Set (retry={0}): cmd={1}, val={2}, node={3}'.\
-                         format(retry_count, write_command, in_value, node.index+1))
-
-        if out_value == None:
-            out_value = in_value
-        return out_value
-
-    def set_and_validate_value_16(self, node, write_command, read_command, in_value):
-        success = False
-        retry_count = 0
-        out_value = None
-        while success is False and retry_count <= MAX_RETRY_COUNT:
-            node.write_block(self, write_command, pack_16(in_value))
-            out_value = self.get_value_16(node, read_command)
-            # confirm same value (also handle negative value)
-            if out_value == in_value or out_value == in_value + (1 << 16):
-                success = True
-            else:
-                retry_count = retry_count + 1
-                self.log('Value 16v Not Set (retry={0}): cmd={1}, val={2}, node={3}'.\
-                         format(retry_count, write_command, in_value, node.index+1))
-
-        if out_value == None:
-            out_value = in_value
-        return out_value
-
-    def set_and_validate_value_32(self, node, write_command, read_command, in_value):
-        success = False
-        retry_count = 0
-        out_value = None
-        while success is False and retry_count <= MAX_RETRY_COUNT:
-            node.write_block(self, write_command, pack_32(in_value))
-            out_value = self.get_value_32(node, read_command)
-            # confirm same value (also handle negative value)
-            if out_value == in_value or out_value == in_value + (1 << 32):
-                success = True
-            else:
-                retry_count = retry_count + 1
-                self.log('Value Not Set 32v (retry={0}): cmd={1}, val={2}, node={3}'.\
-                         format(retry_count, write_command, in_value, node.index+1))
-
-        if out_value == None:
-            out_value = in_value
-        return out_value
-
-    def set_value_8(self, node, write_command, in_value):
-        success = False
-        retry_count = 0
-        while success is False and retry_count <= MAX_RETRY_COUNT:
-            if node.write_block(self, write_command, pack_8(in_value)):
-                success = True
-            else:
-                retry_count = retry_count + 1
-                self.log('Value 8 Not Set (retry={0}): cmd={1}, val={2}, node={3}'.\
-                         format(retry_count, write_command, in_value, node.index+1))
-        return success
-
-    def set_value_32(self, node, write_command, in_value):
-        success = False
-        retry_count = 0
-        while success is False and retry_count <= MAX_RETRY_COUNT:
-            if node.write_block(self, write_command, pack_32(in_value)):
-                success = True
-            else:
-                retry_count = retry_count + 1
-                self.log('Value 32 Not Set (retry={0}): cmd={1}, val={2}, node={3}'.\
-                         format(retry_count, write_command, in_value, node.index+1))
-        return success
-
     def set_and_validate_value_rssi(self, node, write_command, read_command, in_value):
         if node.api_level >= 18:
-            return self.set_and_validate_value_8(node, write_command, read_command, in_value)
+            return node.set_and_validate_value_8(write_command, read_command, in_value)
         else:
-            return self.set_and_validate_value_16(node, write_command, read_command, in_value)
+            return node.set_and_validate_value_16(write_command, read_command, in_value)
 
     def get_value_rssi(self, node, command):
         if node.api_level >= 18:
-            return self.get_value_8(node, command)
+            return node.get_value_8(command)
         else:
-            return self.get_value_16(node, command)
+            return node.get_value_16(command)
 
     #
     # External functions for setting data
@@ -500,12 +349,12 @@ class RHInterface(BaseHardwareInterface):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
         if frequency:
-            node.frequency = self.set_and_validate_value_16(node,
+            node.frequency = node.set_and_validate_value_16(
                 WRITE_FREQUENCY,
                 READ_FREQUENCY,
                 frequency)
         else:  # if freq=0 (node disabled) then write frequency value to power down rx module, but save 0 value
-            self.set_and_validate_value_16(node,
+            node.set_and_validate_value_16(
                 WRITE_FREQUENCY,
                 READ_FREQUENCY,
                 1111 if node.api_level >= 24 else 5800)
@@ -513,7 +362,7 @@ class RHInterface(BaseHardwareInterface):
 
     def set_mode(self, node_index, mode):
         node = self.nodes[node_index]
-        node.mode = self.set_and_validate_value_8(node,
+        node.mode = node.set_and_validate_value_8(
             WRITE_MODE,
             READ_MODE,
             mode)
@@ -533,18 +382,32 @@ class RHInterface(BaseHardwareInterface):
     def force_end_crossing(self, node_index):
         node = self.nodes[node_index]
         if node.api_level >= 14:
-            self.set_value_8(node, FORCE_END_CROSSING, 0)
+            node.set_value_8(FORCE_END_CROSSING, 0)
 
     def jump_to_bootloader(self):
         for node in self.nodes:
-            if (node.rhfeature_flags & RHFEAT_JUMPTO_BOOTLDR) != 0:
-                node.jump_to_bootloader(self)
+            if (node.rhfeature_flags & RHFEAT_JUMPTO_BOOTLDR) != 0 and hasattr(node, 'jump_to_bootloader'):
+                node.jump_to_bootloader()
                 return
-        self.log("Unable to find any nodes with jump-to-bootloader support")
+        logger.info("Unable to find any nodes with jump-to-bootloader support")
+
+    def read_rssi_history(self, node_index):
+        node = self.nodes[node_index]
+        data = node.read_block(READ_NODE_SCAN_HISTORY, 9)
+        freqs = []
+        rssis = []
+        if data is not None and len(data) > 0:
+            for i in range(0, len(data), 3):
+                freq = unpack_16(data[i:])
+                rssi = unpack_8(data[i+2:])
+                if freq > 0:
+                    freqs.append(freq)
+                    rssis.append(rssi)
+        return freqs, rssis
 
     def send_status_message(self, msgTypeVal, msgDataVal):
         if len(self.nodes) > 0:
-            return self.nodes[0].send_status_message(self, msgTypeVal, msgDataVal)
+            return self.nodes[0].send_status_message(msgTypeVal, msgDataVal)
         return False
 
     def send_shutdown_button_state(self, stateVal):
@@ -576,49 +439,7 @@ class RHInterface(BaseHardwareInterface):
             if self.fwupd_serial_obj:
                 self.fwupd_serial_obj.close()
         except Exception as ex:
-            self.log("Error closing FW node serial port: " + str(ex))
-
-    def inc_intf_read_block_count(self):
-        self.intf_read_block_count += 1
-
-    def inc_intf_read_error_count(self):
-        self.intf_read_error_count += 1
-
-    def inc_intf_write_block_count(self):
-        self.intf_write_block_count += 1
-
-    def inc_intf_write_error_count(self):
-        self.intf_write_error_count += 1
-
-    def get_intf_total_error_count(self):
-        return self.intf_read_error_count + self.intf_write_error_count
-
-    # log comm errors if error percentage is >= this value
-    def set_intf_error_report_percent_limit(self, percentVal):
-        self.intf_error_report_limit = percentVal / 100;
-
-    def get_intf_error_report_str(self, forceFlag=False):
-        try:
-            if self.intf_read_block_count <= 0:
-                return None
-            r_err_ratio = float(self.intf_read_error_count) / float(self.intf_read_block_count) \
-                          if self.intf_read_error_count > 0 else 0
-            w_err_ratio = float(self.intf_write_error_count) / float(self.intf_write_block_count) \
-                          if self.intf_write_block_count > 0 and self.intf_write_error_count > 0 else 0
-            if forceFlag or r_err_ratio > self.intf_error_report_limit or \
-                                        w_err_ratio > self.intf_error_report_limit:
-                retStr = "CommErrors:"
-                if forceFlag or self.intf_write_error_count > 0:
-                    retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, \
-                                    self.intf_write_block_count, w_err_ratio)
-                retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count, \
-                                    self.intf_read_block_count, r_err_ratio)
-                for node in self.nodes:
-                    retStr += ", " + node.get_read_error_report_str()
-                return retStr
-        except Exception as ex:
-            self.log("Error in RHInterface 'get_intf_error_report_str()': " + str(ex))
-        return None
+            logger.info("Error closing FW node serial port: " + str(ex))
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the RotorHazard interface object.'''

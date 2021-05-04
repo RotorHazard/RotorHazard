@@ -4,7 +4,7 @@ try:
     from smbus2 import SMBus # For i2c comms
 except:
     from smbus import SMBus
-import gevent
+import gevent.lock
 import os
 import logging
 from monotonic import monotonic
@@ -36,8 +36,10 @@ class I2CBus(object):
         if callable(callback):
             with self.i2c_rlock_obj:
                 self.i2c_sleep()
-                val = callback()
-                self.i2c_end()
+                try:
+                    val = callback()
+                finally:
+                    self.i2c_end()
         return val
 
     def with_i2c_quietly(self, callback):
@@ -45,7 +47,6 @@ class I2CBus(object):
             self.with_i2c(callback)
         except IOError as err:
             logger.info('I2C error: {0}'.format(err))
-            self.i2c_end()
 
 
 def create(config):

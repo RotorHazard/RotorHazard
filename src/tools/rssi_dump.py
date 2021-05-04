@@ -1,9 +1,9 @@
-import sys
-
 import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
 
+import logging
+import sys
 from server import Config
 from interface import RHInterface
 
@@ -13,15 +13,12 @@ if len(sys.argv) < 3:
     
 showLoopTime = len(sys.argv) > 3
 
+logging.basicConfig(level=logging.INFO)
+
 Config.SERIAL_PORTS = [sys.argv[1]]
 freq = int(sys.argv[2])
 INTERFACE = RHInterface.get_hardware_interface(config=Config)
 print("Nodes detected: {}".format(len(INTERFACE.nodes)))
-
-def log(s):
-    print(s)
-
-INTERFACE.hardware_log_callback=log
 
 for node in INTERFACE.nodes:
     INTERFACE.set_mode(node.index, 2)

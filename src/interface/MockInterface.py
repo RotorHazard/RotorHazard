@@ -2,8 +2,8 @@
 
 import os
 import logging
-import gevent # For threads and timing
 from monotonic import monotonic # to capture read timing
+import random
 
 from .Node import Node
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
@@ -16,6 +16,11 @@ logger = logging.getLogger(__name__)
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 
+class MockNode(Node):
+    @property
+    def addr(self):
+        return 'mock:'+str(self.index)
+
 class MockInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         super().__init__(update_sleep=0.5)
@@ -26,13 +31,10 @@ class MockInterface(BaseHardwareInterface):
         self.FW_PROCTYPE_PREFIXSTR = FW_PROCTYPE_PREFIXSTR
         self.update_thread = None # Thread for running the main update loop
 
-        # Scans all i2c_addrs to populate nodes array
         self.nodes = [] # Array to hold each node object
         self.data = []
-        # i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
         for index in range(int(os.environ.get('RH_NODES', '8'))):
-            node = Node() # New node instance
-            node.i2c_addr = 2 * index + 8 # Set current loop i2c_addr
+            node = MockNode() # New node instance
             node.index = index
             node.api_valid_flag = True
             node.enter_at_level = 90
@@ -50,18 +52,7 @@ class MockInterface(BaseHardwareInterface):
     # Update Loop
     #
 
-    def start(self):
-        if self.update_thread is None:
-            self.log('Starting background thread.')
-            self.update_thread = gevent.spawn(self.update_loop)
-
-    def stop(self):
-        if self.update_thread:
-            self.log('Stopping background thread')
-            self.update_thread.kill(block=True, timeout=0.5)
-            self.update_thread = None
-
-    def update(self):
+    def _update(self):
         upd_list = []  # list of nodes with new laps (node, new_lap_id, lap_timestamp)
         cross_list = []  # list of nodes with crossing-flag changes
         startThreshLowerNode = None
@@ -96,7 +87,7 @@ class MockInterface(BaseHardwareInterface):
                         node.current_rssi = rssi_val
                         self.process_lap_stats(node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list)
                     else:
-                        self.log('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
+                        logger.info('RSSI reading ({0}) out of range on Node {1}; rejected'.format(rssi_val, node.index+1))
 
                 # check if node is set to temporary lower EnterAt/ExitAt values
                 if node.start_thresh_lower_flag:
@@ -135,6 +126,10 @@ class MockInterface(BaseHardwareInterface):
         else:  # if freq=0 (node disabled) then write default freq, but save 0 value
             node.frequency = 0
 
+    def set_mode(self, node_index, mode):
+        node = self.nodes[node_index]
+        node.mode = mode
+
     def transmit_enter_at_level(self, node, level):
         return level
 
@@ -144,8 +139,10 @@ class MockInterface(BaseHardwareInterface):
     def force_end_crossing(self, node_index):
         pass
 
-    def jump_to_bootloader(self):
-        self.log("MockInterace - no jump-to-bootloader support")
+    def read_rssi_history(self, node_index):
+        freqs = list(range(5645, 5945, 5))
+        rssis = [random.randint(0, 200) for f in freqs]
+        return freqs, rssis
 
     def send_status_message(self, msgTypeVal, msgDataVal):
         return False
@@ -164,27 +161,6 @@ class MockInterface(BaseHardwareInterface):
 
     def close_fwupd_serial_port(self):
         pass
-
-    def inc_intf_read_block_count(self):
-        pass
-
-    def inc_intf_read_error_count(self):
-        pass
-
-    def inc_intf_write_block_count(self):
-        pass
-
-    def inc_intf_write_error_count(self):
-        pass
-
-    def get_intf_total_error_count(self):
-        return 0
-
-    def set_intf_error_report_percent_limit(self, percentVal):
-        pass
-
-    def get_intf_error_report_str(self, forceFlag=False):
-        return None
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''

@@ -1,68 +1,54 @@
-import sys
-
 import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
 
+import logging
+import sys
 from flask import Flask, render_template
 from flask_socketio import SocketIO
 import webbrowser
 
 from server import Config
-from interface import RHInterface
+from interface import RHInterface, MockInterface
 
-if len(sys.argv) < 2:
-    print('Please specify serial port, e.g. COM12.')
-    exit()
+def scan(port, socket):
+    if port == 'MOCK':
+        INTERFACE = MockInterface.get_hardware_interface()
+    else:
+        Config.SERIAL_PORTS = [port]
+        INTERFACE = RHInterface.get_hardware_interface(config=Config)
+    print("Nodes detected: {}".format(len(INTERFACE.nodes)))
+    
+    for node in INTERFACE.nodes:
+        INTERFACE.set_mode(node.index, RHInterface.SCANNER_MODE)
+    
+    def scan_thread_function():
+        while True:
+            for node in INTERFACE.nodes:
+                freqs, rssis = INTERFACE.read_rssi_history(node.index)
+                if freqs and rssis:
+                    socket.emit('scan_data', {'node' : node.index, 'frequency' : freqs, 'rssi' : rssis})
+                    gevent.sleep(0.1)
+            
+    
+    gevent.spawn(scan_thread_function)
+    return INTERFACE
 
-Config.SERIAL_PORTS = [sys.argv[1]]
-INTERFACE = RHInterface.get_hardware_interface(config=Config)
-print("Nodes detected: {}".format(len(INTERFACE.nodes)))
+def start(com_port, web_port = 5080):
+    APP = Flask(__name__, template_folder='../server/templates', static_folder='../server/static',static_url_path='/static')
+    SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins='*')
+    INTERFACE = scan(com_port, SOCKET_IO)
+    
+    @APP.route('/')
+    def scanner():
+        return render_template('scannerapp.html', num_nodes=len(INTERFACE.nodes), __=lambda s: s)
 
-def log(s):
-    print(s)
-
-INTERFACE.hardware_log_callback=log
-
-for node in INTERFACE.nodes:
-    INTERFACE.set_mode(node.index, 1)
-
-def scan_thread_function():
-    while True:
-        for node in INTERFACE.nodes:
-            data = node.read_block(INTERFACE, RHInterface.READ_NODE_SCAN_HISTORY, 9)
-            if data is not None and len(data) > 0:
-                freqs = []
-                rssis = []
-                for i in range(0, len(data), 3):
-                    freq = RHInterface.unpack_16(data[i:])
-                    rssi = RHInterface.unpack_8(data[i+2:])
-                    if freq > 0:
-                        freqs.append(freq)
-                        rssis.append(rssi)
-                SOCKET_IO.emit('scan_data', {'node' : node.index, 'frequency' : freqs, 'rssi' : rssis})
-                gevent.sleep(0.1)
-        
-
-gevent.spawn(scan_thread_function)
-
-APP = Flask(__name__, template_folder='../server/templates', static_folder='../server/static',static_url_path='/static')
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins='*')
-
-def __(s):
-    return s
-
-@APP.route('/')
-def scanner():
-    return render_template('scannerapp.html', num_nodes=len(INTERFACE.nodes), __=__)
-
-def start(port_val = 5080):
-    print("Running http server at port {0}".format(port_val))
+    print("Running http server at port {0}".format(web_port))
     def openWindow():
-        webbrowser.open('http://127.0.0.1:'+str(port_val))
+        webbrowser.open('http://127.0.0.1:'+str(web_port))
     gevent.spawn(openWindow)
     try:
-        SOCKET_IO.run(APP, host='0.0.0.0', port=port_val, debug=True, use_reloader=False)
+        SOCKET_IO.run(APP, host='0.0.0.0', port=web_port, debug=True, use_reloader=False)
     except KeyboardInterrupt:
         print("Server terminated by keyboard interrupt")
     except Exception as ex:
@@ -70,4 +56,12 @@ def start(port_val = 5080):
 
 # Start HTTP server
 if __name__ == '__main__':
-    start()
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger('socketio').setLevel(logging.WARN)
+    logging.getLogger('engineio').setLevel(logging.WARN)
+    logging.getLogger('geventwebsocket').setLevel(logging.WARN)
+    if len(sys.argv) < 2:
+        print('Please specify serial port, e.g. COM12.')
+        exit()
+    port = sys.argv[1]
+    start(port)

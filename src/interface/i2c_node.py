@@ -1,105 +1,41 @@
 '''RotorHazard I2C interface layer.'''
 import logging
-from monotonic import monotonic
 
 from .Node import Node
-from .RHInterface import READ_ADDRESS, READ_REVISION_CODE, MAX_RETRY_COUNT, \
+from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32
+from .RHInterface import READ_ADDRESS, READ_REVISION_CODE, \
                         READ_FW_VERSION, READ_FW_BUILDDATE, READ_FW_BUILDTIME, \
-                        FW_TEXT_BLOCK_SIZE, validate_checksum, calculate_checksum, \
-                        pack_16, unpack_16, READ_FW_PROCTYPE, SEND_STATUS_MESSAGE
+                        FW_TEXT_BLOCK_SIZE, \
+                        READ_FW_PROCTYPE, SEND_STATUS_MESSAGE
 
 logger = logging.getLogger(__name__)
 
 
 class I2CNode(Node):
     def __init__(self, index, addr, i2c_helper):
-        Node.__init__(self)
+        super().__init__()
         self.index = index
         self.i2c_addr = addr
         self.i2c_helper = i2c_helper
 
-    def read_block(self, interface, command, size, max_retries=MAX_RETRY_COUNT):
-        '''
-        Read i2c data given command, and data size.
-        '''
-        self.inc_read_block_count(interface)
-        success = False
-        retry_count = 0
-        data = None
-        while success is False and retry_count <= max_retries:
-            try:
-                def _read():
-                    self.io_request = monotonic()
-                    _data = self.i2c_helper.i2c.read_i2c_block_data(self.i2c_addr, command, size + 1)
-                    self.io_response = monotonic()
-                    if validate_checksum(_data):
-                        return _data
-                    else:
-                        return None
-                data = self.i2c_helper.with_i2c(_read)
-                if data:
-                    success = True
-                    data = data[:-1]
-                else:
-                    # self.log('Invalid Checksum ({0}): {1}'.format(retry_count, data))
-                    retry_count = retry_count + 1
-                    if retry_count <= max_retries:
-                        if retry_count > 1:  # don't log the occasional single retry
-                            interface.log('Retry (checksum) in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
-                    else:
-                        interface.log('Retry (checksum) limit reached in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
-                    self.inc_read_error_count(interface)
-            except IOError as err:
-                interface.log('Read Error: ' + str(err))
-                self.i2c_helper.i2c_end()
-                retry_count = retry_count + 1
-                if retry_count <= max_retries:
-                    if retry_count > 1:  # don't log the occasional single retry
-                        interface.log('Retry (IOError) in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
-                else:
-                    interface.log('Retry (IOError) limit reached in read_block:  addr={0} cmd={1} size={2} retry={3} ts={4}'.format(self.i2c_addr, command, size, retry_count, self.i2c_helper.i2c_timestamp))
-                self.inc_read_error_count(interface)
-        return data
+    @property
+    def addr(self):
+        return 'i2c:'+str(self.i2c_addr)
 
-    def write_block(self, interface, command, data):
-        '''
-        Write i2c data given command, and data.
-        '''
-        interface.inc_intf_write_block_count()
-        success = False
-        retry_count = 0
-        data_with_checksum = data
-        if self.api_level <= 19:
-            data_with_checksum.append(command)
-        data_with_checksum.append(calculate_checksum(data_with_checksum))
-        while success is False and retry_count <= MAX_RETRY_COUNT:
-            try:
-                def _write():
-                    # self.io_request = monotonic()
-                    self.i2c_helper.i2c.write_i2c_block_data(self.i2c_addr, command, data_with_checksum)
-                    # self.io_response = monotonic()
-                    return True
-                success = self.i2c_helper.with_i2c(_write)
-                if success is None:
-                    success = False
-            except IOError as err:
-                interface.log('Write Error: ' + str(err))
-                self.i2c_helper.i2c_end()
-                retry_count = retry_count + 1
-                if retry_count <= MAX_RETRY_COUNT:
-                    interface.log('Retry (IOError) in write_block:  addr={0} cmd={1} data={2} retry={3} ts={4}'.format(self.i2c_addr, command, data, retry_count, self.i2c_helper.i2c_timestamp))
-                else:
-                    interface.log('Retry (IOError) limit reached in write_block:  addr={0} cmd={1} data={2} retry={3} ts={4}'.format(self.i2c_addr, command, data, retry_count, self.i2c_helper.i2c_timestamp))
-                interface.inc_intf_write_error_count()
-        return success
+    def _read_command(self, command, size):
+        def _read():
+            return self.i2c_helper.i2c.read_i2c_block_data(self.i2c_addr, command, size + 1)
+        return self.i2c_helper.with_i2c(_read)
 
-    def jump_to_bootloader(self, interface):
-        pass
+    def _write_command(self, command, data):
+        def _write():
+            self.i2c_helper.i2c.write_i2c_block_data(self.i2c_addr, command, data)
+        self.i2c_helper.with_i2c(_write)
 
     def read_firmware_version(self):
         # read firmware version string
         try:
-            data = self.read_block(None, READ_FW_VERSION, FW_TEXT_BLOCK_SIZE, 2)
+            data = self.read_block_any(READ_FW_VERSION, FW_TEXT_BLOCK_SIZE, 2)
             self.firmware_version_str = bytearray(data).decode("utf-8").rstrip('\0') \
                                           if data != None else None
         except Exception:
@@ -108,7 +44,7 @@ class I2CNode(Node):
     def read_firmware_proctype(self):
         # read firmware processor-type string
         try:
-            data = self.read_block(None, READ_FW_PROCTYPE, FW_TEXT_BLOCK_SIZE, 2)
+            data = self.read_block_any(READ_FW_PROCTYPE, FW_TEXT_BLOCK_SIZE, 2)
             self.firmware_proctype_str = bytearray(data).decode("utf-8").rstrip('\0') \
                                          if data != None else None
         except Exception:
@@ -117,10 +53,10 @@ class I2CNode(Node):
     def read_firmware_timestamp(self):
         # read firmware build date/time strings
         try:
-            data = self.read_block(None, READ_FW_BUILDDATE, FW_TEXT_BLOCK_SIZE, 2)
+            data = self.read_block_any(READ_FW_BUILDDATE, FW_TEXT_BLOCK_SIZE, 2)
             if data != None:
                 self.firmware_timestamp_str = bytearray(data).decode("utf-8").rstrip('\0')
-                data = self.read_block(None, READ_FW_BUILDTIME, FW_TEXT_BLOCK_SIZE, 2)
+                data = self.read_block(READ_FW_BUILDTIME, FW_TEXT_BLOCK_SIZE, 2)
                 if data != None:
                     self.firmware_timestamp_str += " " + bytearray(data).decode("utf-8").rstrip('\0')
             else:
@@ -128,22 +64,21 @@ class I2CNode(Node):
         except Exception:
             logger.exception('Error fetching READ_FW_DATE/TIME for I2C node')
 
-    def send_status_message(self, interface, msgTypeVal, msgDataVal):
+    def send_status_message(self, msgTypeVal, msgDataVal):
         # send status message to node
         try:
             if self.api_level >= 35:
                 data = ((msgTypeVal & 0xFF) << 8) | (msgDataVal & 0xFF)
-#                self.node_log(interface, 'Sending status message to I2C node {}: 0x{:04X}'.format(self.index+1, data))
-                self.write_block(interface, SEND_STATUS_MESSAGE, pack_16(data))
+#                logger.warning('Sending status message to I2C node {}: 0x{:04X}'.format(self.index+1, data))
+                self.write_block_any(SEND_STATUS_MESSAGE, pack_16(data))
                 return True
         except Exception as ex:
-            self.node_log(interface, 'Error sending status message to I2C node {}: {}'.format(self.index+1, ex))
+            logger.warning('Error sending status message to I2C node {}: {}'.format(self.index+1, ex))
         return False
 
 
-def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
-    if not isS32BPillFlag:
-        logger.info("Searching for I2C nodes...")
+def discover(idxOffset, i2c_helper, *args, **kwargs):
+    logger.info("Searching for I2C nodes...")
     nodes = []
     # Scans all i2c_addrs to populate nodes array
     i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
@@ -152,7 +87,7 @@ def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
             i2c_helper.i2c.read_i2c_block_data(addr, READ_ADDRESS, 1)
             node = I2CNode(index+idxOffset, addr, i2c_helper) # New node instance
             # read NODE_API_LEVEL and verification value:
-            data = node.read_block(None, READ_REVISION_CODE, 2, 2)
+            data = node.read_block_any(READ_REVISION_CODE, 2, 2)
             rev_val = unpack_16(data) if data != None else None
             fver_log_str = ''
             ftyp_log_str = ''
@@ -179,10 +114,9 @@ def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
                         index+idxOffset+1, addr, node.api_level, fver_log_str, ftyp_log_str, ftim_log_str))
             nodes.append(node) # Add new node to RHInterface
         except IOError:
-            if not isS32BPillFlag:
-                logger.info("...No I2C node at address {0}".format(addr))
+            logger.info("...No I2C node at address {0}".format(addr))
         i2c_helper.i2c_end()
         i2c_helper.i2c_sleep()
-        if isS32BPillFlag and len(nodes) == 0:
-            break  # if S32_BPill and first I2C node not found then stop trying
+        if len(nodes) == 0:
+            break  # if first I2C node not found then stop trying
     return nodes

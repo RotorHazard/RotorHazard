@@ -28,7 +28,7 @@ LOG_FILENAME_STR = "rh.log"
 LOG_DIR_NAME = "logs"
 LOGZIP_DIR_NAME = "logs/zip"
 
-CONSOLE_FORMAT_STR = "%(message)s"
+CONSOLE_FORMAT_STR = "%(name)s [%(levelname)s] %(message)s"
 SYSLOG_FORMAT_STR = "<-RotorHazard-> %(name)s [%(levelname)s] %(message)s"
 FILELOG_FORMAT_STR = "%(asctime)s.%(msecs)03d: %(name)s [%(levelname)s] %(message)s"
 
