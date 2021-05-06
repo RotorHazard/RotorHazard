@@ -18,7 +18,7 @@ class EventManager:
     def __init__(self):
         pass
 
-    def on(self, event, name, handlerFn, defaultArgs=None, priority=200, unique=False):
+    def on(self, event, name, handlerFn, defaultArgs={}, priority=200, unique=False):
         if event not in self.events:
             self.events[event] = {}
 
@@ -48,10 +48,17 @@ class EventManager:
 
     def trigger(self, event, evtArgs=None):
         # logger.debug('-Triggered event- {0}'.format(event))
-        if event in self.events:
-            for name in self.eventOrder[event] or (Evt.ALL in self.eventOrder[event]):
-                handler = self.events[event][name]
+        evt_list = []
+        if event in self.eventOrder:
+            for name in self.eventOrder[event]:
+                evt_list.append([event, name])
+        if Evt.ALL in self.eventOrder:
+            for name in self.eventOrder[Evt.ALL]:
+                evt_list.append([Evt.ALL, name])
 
+        if len(evt_list):
+            for ev, name in evt_list:
+                handler = self.events[ev][name]
                 args = handler['defaultArgs']
 
                 if evtArgs:
@@ -60,7 +67,7 @@ class EventManager:
                     else:
                         args = evtArgs
 
-                if event == Evt.ALL:
+                if ev == Evt.ALL:
                     args['_eventName'] = event
 
                 if handler['priority'] < 100:

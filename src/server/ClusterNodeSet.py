@@ -25,7 +25,7 @@ class SecondaryNode:
 
     def __init__(self, idVal, info, RACE, RHData, getCurrentProfile, \
                  emit_split_pass_info, monotonic_to_epoch_millis, \
-                 emit_cluster_connect_change, server_release_version, eventmanager):
+                 emit_cluster_connect_change, server_release_version):
         self.id = idVal
         self.info = info
         self.RACE = RACE
@@ -35,7 +35,6 @@ class SecondaryNode:
         self.monotonic_to_epoch_millis = monotonic_to_epoch_millis
         self.emit_cluster_connect_change = emit_cluster_connect_change
         self.server_release_version = server_release_version
-        self.Events = eventmanager
         addr = info['address']
         if not '://' in addr:
             addr = 'http://' + addr
@@ -69,19 +68,7 @@ class SecondaryNode:
         self.sio.on('pass_record', self.on_pass_record)
         self.sio.on('check_secondary_response', self.on_check_secondary_response)
         self.sio.on('join_cluster_response', self.join_cluster_response)
-        self.Events.on(Evt.ALL, 'cluster', self.event_repeater)
         gevent.spawn(self.secondary_worker_thread)
-
-    def event_repeater(self, args):
-        try:
-            # if there are cluster timers interested in events then emit it out to them
-            if self.hasRecEventsSecondaries():
-                payload = { 'evt_name': args['_eventName'] }
-                del args['_eventName']
-                payload['evt_args'] = json.dumps(args)
-                self.emitEventTrigger(payload)
-        except Exception:
-            logger.exception("Exception in 'Events.trigger()'")
 
     def secondary_worker_thread(self):
         self.startConnectTime = monotonic()
@@ -444,11 +431,25 @@ class SecondaryNode:
 
 
 class ClusterNodeSet:
-    def __init__(self, Language):
+    def __init__(self, Language, eventmanager):
         self._Language = Language
         self.secondaries = []
         self.splitSecondaries = []
         self.recEventsSecondaries = []
+        self.Events = eventmanager
+
+        self.Events.on(Evt.ALL, 'cluster', self.event_repeater)
+
+    def event_repeater(self, args):
+        try:
+            # if there are cluster timers interested in events then emit it out to them
+            if self.hasRecEventsSecondaries():
+                payload = { 'evt_name': args['_eventName'] }
+                del args['_eventName']
+                payload['evt_args'] = json.dumps(args, default=lambda x: '<not serializiable>')
+                self.emitEventTrigger(payload)
+        except Exception as ex:
+            logger.exception("Exception in 'Events.trigger()': " + ex)
 
     def addSecondary(self, secondary):
         self.secondaries.append(secondary)

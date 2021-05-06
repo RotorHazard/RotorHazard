@@ -4728,7 +4728,7 @@ if len(sys.argv) > 0 and CMDARG_JUMP_TO_BL_STR in sys.argv:
         sys.exit(0 if successFlag else 1)
     sys.exit(0)
 
-CLUSTER = ClusterNodeSet(Language)
+CLUSTER = ClusterNodeSet(Language, Events)
 hasMirrors = False
 try:
     for index, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
@@ -4754,7 +4754,7 @@ try:
             break
         secondary = SecondaryNode(index, secondary_info, RACE, RHData, getCurrentProfile, \
                           emit_split_pass_info, monotonic_to_epoch_millis, \
-                          emit_cluster_connect_change, RELEASE_VERSION, Events)
+                          emit_cluster_connect_change, RELEASE_VERSION)
         CLUSTER.addSecondary(secondary)
 except:
     logger.exception("Error adding secondary to cluster")
