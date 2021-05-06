@@ -11,16 +11,16 @@ JSON_API = 3 # JSON API version
 # we would miss messages otherwise.
 import logging
 import log
-from datetime import datetime
+from datetime import datetime, timezone
 from monotonic import monotonic
 
 log.early_stage_setup()
 logger = logging.getLogger(__name__)
 
-EPOCH_START = datetime(1970, 1, 1)
+EPOCH_START = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 # program-start time, in milliseconds since 1970-01-01
-PROGRAM_START_EPOCH_TIME = int((datetime.now() - EPOCH_START).total_seconds() * 1000)
+PROGRAM_START_EPOCH_TIME = int((datetime.now(timezone.utc) - EPOCH_START).total_seconds() * 1000)
 
 # program-start time (in milliseconds, starting at zero)
 PROGRAM_START_MTONIC = monotonic()
@@ -3886,7 +3886,7 @@ def clock_check_thread_function():
             if RACE.any_races_started:  # stop monitoring after any race started
                 break
             time_now = monotonic()
-            epoch_now = int((datetime.now() - EPOCH_START).total_seconds() * 1000)
+            epoch_now = int((datetime.now(timezone.utc) - EPOCH_START).total_seconds() * 1000)
             diff_ms = epoch_now - monotonic_to_epoch_millis(time_now)
             if abs(diff_ms) > 30000:
                 PROGRAM_START_EPOCH_TIME += diff_ms
