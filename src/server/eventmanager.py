@@ -4,6 +4,7 @@ RotorHazard event manager
 
 import logging
 import gevent
+import copy
 from monotonic import monotonic
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ class EventManager:
         if len(evt_list):
             for ev, name in evt_list:
                 handler = self.events[ev][name]
-                args = handler['defaultArgs']
+                args = copy.copy(handler['defaultArgs'])
 
                 if evtArgs:
                     if args:
