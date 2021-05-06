@@ -134,27 +134,22 @@ class LEDEventManager:
             profile_freqs = json.loads(profile.frequencies)
             freq = profile_freqs["f"][node_index]
 
-            colorFreqSerial = self.RHData.get_option('ledColorFreqs', False)
-            if colorFreqSerial:
-                colorFreqs = json.loads(colorFreqSerial)
-                color = colorFreqs[node_index]
+            if freq <= 5672:
+                color = '#ffffff' # White
+            elif freq <= 5711:
+                color = '#ff0000' # Red
+            elif freq <= 5750:
+                color = '#ff8000' # Orange
+            elif freq <= 5789:
+                color = '#ffff00' # Yellow
+            elif freq <= 5829:
+                color = '#00ff00' # Green
+            elif freq <= 5867:
+                color = '#0000ff' # Blue
+            elif freq <= 5906:
+                color = '#8000ff' # Dark Violet
             else:
-                if freq <= 5672:
-                    color = '#ffffff' # White
-                elif freq <= 5711:
-                    color = '#ff0000' # Red
-                elif freq <= 5750:
-                    color = '#ff8000' # Orange
-                elif freq <= 5789:
-                    color = '#ffff00' # Yellow
-                elif freq <= 5829:
-                    color = '#00ff00' # Green
-                elif freq <= 5867:
-                    color = '#0000ff' # Blue
-                elif freq <= 5906:
-                    color = '#8000ff' # Dark Violet
-                else:
-                    color = '#ff0080' # Deep Pink
+                color = '#ff0080' # Deep Pink
 
         else: # by node
             colorNodeSerial = self.RHData.get_option('ledColorNodes', False)
@@ -162,18 +157,17 @@ class LEDEventManager:
                 colorNodes = json.loads(colorNodeSerial)
             else:
                 colorNodes = [
-                    "#001fff", # Blue
-                    "#ff3f00", # Orange
-                    "#7fff00", # Lime green
-                    "#ffff00", # Yellow
-                    "#7f00ff", # Magenta
-                    "#ff007f", # Purple
-                    "#3fff3f", # Mint
-                    "#00bfff", # Cyan
+                    "#0022ff", # Blue
+                    "#ff5500", # Orange
+                    "#00ff22", # Green
+                    "#ff0022", # Magenta
+                    "#ddff00", # Yellow
+                    "#7700ff", # Purple
+                    "#00ffdd", # Teal
+                    "#aaaaaa", # White
                 ]
 
-            if node_index + 1 < len(colorNodes):
-                color = colorNodes[node_index]
+            color = colorNodes[node_index % len(colorNodes)]
 
         if not color:
             color = '#ffffff'
