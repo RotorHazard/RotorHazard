@@ -88,6 +88,7 @@ class VRxController:
         self.Events.on(Evt.FREQUENCY_SET, 'VRx', self.do_frequency_set, {}, 200, True)
         self.Events.on(Evt.MESSAGE_INTERRUPT, 'VRx', self.do_send_message)
         self.Events.on(Evt.OPTION_SET, 'VRx', self.validate_option)
+        self.Events.on(Evt.SHUTDOWN, "VRx", self.do_shutdown)
 
         # Options
         if self._RHData.get_option('osd_lapHeader') is False:
@@ -142,6 +143,13 @@ class VRxController:
         # Update the DB with receivers that exist and their status
         # (Because the pi was already running, they should all be connected to the broker)
         # Even if the server.py is restarted, the broker continues to run:)
+
+    def do_shutdown(self, arg):
+        self.logger.info("VRx Control Shutting down")
+        self._seat_broadcast.clear_user_message()
+        self._seat_broadcast.turn_on_osd()
+        self._seat_broadcast.set_wifi_state(clearview.comspecs.cv_device_limits["wifi_mode_ap"])
+
 
     def do_heat_set(self, arg):
         self.logger.info("VRx Signaling Heat Set")
@@ -955,9 +963,16 @@ class VRxBroadcastSeat(BaseVRxSeat):
         self._rx_cmd_esp_all_topic = mqtt_publish_topics["cv1"]["receiver_command_esp_all_topic"][0]
 
     def set_message_direct(self, message):
-        """Send a raw message to all OSD's"""
+        """Send a raw 'user message' to all OSD's"""
         topic = self._rx_cmd_esp_all_topic
         cmd = json.dumps({"user_msg" : message})
+        self._mqttc.publish(topic, cmd)
+        return cmd
+
+    def clear_user_message(self):
+        """Clears the raw 'user message' on all OSD's"""
+        topic = self._rx_cmd_esp_all_topic
+        cmd = json.dumps({"user_msg" : ""}) # empty string
         self._mqttc.publish(topic, cmd)
         return cmd
 
@@ -992,11 +1007,17 @@ class VRxBroadcastSeat(BaseVRxSeat):
         cmd = ESP_COMMANDS["Request Variable Status"]
         self._mqttc.publish(topic,cmd)
 
-    def get_seat_lock_status(self,):
-        topic = mqtt_publish_topics["cv1"]["receiver_command_esp_all_topic"][0]
+    def get_seat_lock_status(self):
+        topic = self._rx_cmd_esp_all_topic
         report_req = json.dumps({"lock":"?"})
         self._mqttc.publish(topic,report_req)
         return report_req
+
+    def set_wifi_state(self, wifi_state):
+        topic = self._rx_cmd_esp_all_topic
+        cmd = json.dumps({"wifi": wifi_state})
+        self._mqttc.publish(topic, cmd)
+        return cmd
 
 class ClearViewValInterpret:
     """Holds constants of the protocols"""
