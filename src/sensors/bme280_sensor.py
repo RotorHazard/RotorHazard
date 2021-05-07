@@ -8,13 +8,13 @@ logger = logging.getLogger(__name__)
 
 
 class BME280Sensor(I2CSensor):
-    def __init__(self, name, addr, i2c_helper):
-        I2CSensor.__init__(self, name, i2c_helper)
+    def __init__(self, name, addr, i2c_bus):
+        super().__init__(name=name, i2c_bus=i2c_bus)
         self.address = addr
-        self.readData()
+        self._readData()
 
-    def readData(self):
-        self.data = bme280.sample(self.i2c_helper.i2c, self.address)
+    def _readData(self):
+        self.data = bme280.sample(self.i2c_bus.i2c, self.address)
 
     @Reading(units='°C')
     def temperature(self):
@@ -32,14 +32,15 @@ class BME280Sensor(I2CSensor):
 def discover(config, i2c_helper, *args, **kwargs):
     sensors = []
     supported_bme280_addrs = [0x76, 0x77]
-    for addr in supported_bme280_addrs:
-        url = I2CSensor.url(addr)
-        sensor_config = config.get(url, {})
-        name = sensor_config.get('name', url)
-        try:
-            sensors.append(BME280Sensor(name, addr, i2c_helper))
-            logger.info("BME280 found at address 0x{:02x} ('{}')".format(addr, name))
-        except IOError:
-            if sensor_config:
-                logger.info("No BME280 found at address 0x{:02x}".format(addr))
+    for i2c_bus in i2c_helper:
+        for addr in supported_bme280_addrs:
+            url = I2CSensor.url(addr)
+            sensor_config = config.get(url, {})
+            name = sensor_config.get('name', url)
+            try:
+                sensors.append(BME280Sensor(name, addr, i2c_bus))
+                logger.info("BME280 found on bus {} at address 0x{:02x} ('{}')".format(i2c_bus.id, addr, name))
+            except IOError:
+                lvl = logging.INFO if sensor_config else logging.DEBUG
+                logger.log(lvl, "No BME280 found on bus {} at address 0x{:02x}".format(i2c_bus.id, addr))
     return sensors

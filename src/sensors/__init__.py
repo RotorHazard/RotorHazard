@@ -27,16 +27,16 @@ class I2CSensor(Sensor):
     def url(addr):
         return 'i2c:' + hex(addr)
 
-    def __init__(self, name, i2c_helper):
-        Sensor.__init__(self, name)
-        self.i2c_helper = i2c_helper
+    def __init__(self, name, i2c_bus):
+        super().__init__(name=name)
+        self.i2c_bus = i2c_bus
 
     def update(self):
-        self.i2c_helper.with_i2c_quietly(self.readData)
+        self.i2c_bus.with_i2c_quietly(self._readData)
 
 class Sensors(Plugins):
     def __init__(self):
-        Plugins.__init__(self, suffix='sensor')
+        super().__init__(suffix='sensor')
         self.environmental_data_update_tracker = 0
 
     def update_environmental_data(self):
