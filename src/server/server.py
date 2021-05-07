@@ -714,9 +714,10 @@ def on_join_cluster_ex(data=None):
     global is_mirror
     tmode = str(data.get('mode', SecondaryNode.SPLIT_MODE)) if data else None
     if tmode != SecondaryNode.MIRROR_MODE:
-        is_mirror = True
         setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
         emit_race_format()
+    if tmode == SecondaryNode.MIRROR_MODE:
+        is_mirror = True
     logger.info("Joined cluster" + ((" as '" + tmode + "' timer") if tmode else ""))
     Events.trigger(Evt.CLUSTER_JOIN)
     emit_join_cluster_response()
