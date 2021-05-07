@@ -160,7 +160,7 @@ class LEDEventManager:
                     "#0022ff", # Blue
                     "#ff5500", # Orange
                     "#00ff22", # Green
-                    "#ff0022", # Magenta
+                    "#ff0055", # Magenta
                     "#ddff00", # Yellow
                     "#7700ff", # Purple
                     "#00ffdd", # Teal
