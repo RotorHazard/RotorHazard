@@ -35,7 +35,6 @@ class MockInterface(BaseHardwareInterface):
         self.FW_PROCTYPE_PREFIXSTR = FW_PROCTYPE_PREFIXSTR
         self.update_thread = None # Thread for running the main update loop
 
-        self.nodes = [] # Array to hold each node object
         self.data = []
         for index in range(int(os.environ.get('RH_NODES', '8'))):
             node = MockNode(index) # New node instance

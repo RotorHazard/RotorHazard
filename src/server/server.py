@@ -616,6 +616,16 @@ def stop_background_threads():
     except Exception:
         logger.error("Error stopping background threads")
 
+def shutdown():
+    stop_background_threads()
+    INTERFACE.close()
+    gevent.sleep(0.5)
+    def stopSocketIo(socket_io):
+        if socket_io:
+            socket_io.stop
+    gevent.spawn(stopSocketIo, SOCKET_IO)  # shut down flask http server
+
+
 #
 # Socket IO Events
 #
@@ -1534,9 +1544,7 @@ def on_shutdown_pi():
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
     logger.info('Performing system shutdown')
-    stop_background_threads()
-    gevent.sleep(0.5)
-    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
+    shutdown()
     if RHUtils.isSysRaspberryPi():
         gevent.sleep(0.1)
         logger.debug("Executing system command:  sudo shutdown now")
@@ -1554,9 +1562,7 @@ def on_reboot_pi():
     CLUSTER.emit('reboot_pi')
     emit_priority_message(__('Server is rebooting.'), True)
     logger.info('Performing system reboot')
-    stop_background_threads()
-    gevent.sleep(0.5)
-    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
+    shutdown()
     if RHUtils.isSysRaspberryPi():
         gevent.sleep(0.1)
         logger.debug("Executing system command:  sudo reboot now")
@@ -1574,9 +1580,7 @@ def on_kill_server():
     CLUSTER.emit('kill_server')
     emit_priority_message(__('Server has stopped.'), True)
     logger.info('Killing RotorHazard server')
-    stop_background_threads()
-    gevent.sleep(0.5)
-    gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
+    shutdown()
 
 @SOCKET_IO.on('download_logs')
 @catchLogExceptionsWrapper
@@ -3904,7 +3908,7 @@ def check_emit_race_status_message(RACE, **params):
         emit_race_status_message(**params)
 
 @catchLogExcDBCloseWrapper
-def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref = None):
+def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
     '''Handles pass records from the nodes.'''
 
     if race_start_ts_ref is None:
@@ -4671,8 +4675,9 @@ if RHUtils.isSysRaspberryPi() and RHGPIO.isS32BPillBoard():
 
 hardwareHelpers = {}
 for helper in search_modules(helper_pkg, suffix='helper'):
+    helper_key = helper.__name__[len(helper_pkg.__name__)+1:]
     try:
-        hardwareHelpers[helper.__name__] = helper.create(Config)
+        hardwareHelpers[helper_key] = helper.create(Config)
     except Exception as ex:
         logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
@@ -4966,6 +4971,7 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
     if rep_str:
         logger.log((logging.INFO if INTERFACE.get_intf_total_error_count() else logging.DEBUG), rep_str)
     stop_background_threads()
+    INTERFACE.close()
     log.wait_for_queue_empty()
     gevent.sleep(2)  # allow system shutdown command to run before program exit
     log.close_logging()

@@ -20,6 +20,7 @@ class BaseHardwareInterface:
     RACE_STATUS_DONE = 2
 
     def __init__(self, update_sleep=0.1):
+        self.nodes = []
         # Main update loop delay
         self.update_sleep = float(os.environ.get('RH_UPDATE_INTERVAL', update_sleep))
         self.calibration_threshold = 20
@@ -47,6 +48,10 @@ class BaseHardwareInterface:
             logger.info('Stopping background thread')
             self.update_thread.kill(block=True, timeout=0.5)
             self.update_thread = None
+
+    def close(self):
+        for node in self.nodes:
+            node.close()
 
     def _update_loop(self):
         while True:

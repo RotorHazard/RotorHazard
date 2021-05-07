@@ -1,6 +1,5 @@
 import os
 import unittest
-import socketio
 import gevent
 from datetime import datetime
 
@@ -16,6 +15,10 @@ class ServerTest(unittest.TestCase):
 
     def tearDown(self):
         self.client.disconnect()
+
+    @classmethod
+    def tearDownClass(cls):
+        server.shutdown()
         log.close_logging()
 
     def get_response(self, event):

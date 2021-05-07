@@ -14,6 +14,7 @@ HARDWARE = {}
 SENSORS = {}
 LED = {}
 SERIAL_PORTS = []
+SOCKET_PORTS = []
 LOGGING = {}
 VRX_CONTROL = {}
 CHORUS = {}
@@ -92,6 +93,8 @@ try:
         SENSORS.update(ExternalConfig['SENSORS'])
     if 'SERIAL_PORTS' in ExternalConfig:
         SERIAL_PORTS.extend(ExternalConfig['SERIAL_PORTS'])
+    if 'SOCKET_PORTS' in ExternalConfig:
+        SOCKET_PORTS.extend(ExternalConfig['SOCKET_PORTS'])
     GENERAL['configFile'] = 1
     InitResultStr = "Using configuration file '{0}'".format(CONFIG_FILE_NAME)
     InitResultLogLevel = logging.INFO

@@ -2,7 +2,6 @@
 import logging
 
 from .Node import Node
-from interface import unpack_8
 from . import RHInterface as rhi
 
 logger = logging.getLogger(__name__)
@@ -40,20 +39,18 @@ def discover(idxOffset, i2c_helper, *args, **kwargs):
     next_index = idxOffset
     for i2c_bus in i2c_helper:
         for addr in i2c_addrs:
+            node = I2CNode(next_index, addr, i2c_bus)
             try:
-                node_addr = unpack_8(i2c_bus.i2c.read_i2c_block_data(addr, rhi.READ_ADDRESS, 1))
+                node_addr = rhi.read_address(node)
                 if node_addr == addr:
-                    node = I2CNode(next_index, addr, i2c_bus) # New node instance
                     logger.info("...I2C node {} found at address {}".format(node, addr))
                     multi_nodes = rhi.build_nodes(node)
                     next_index += len(multi_nodes)
                     nodes.extend(multi_nodes)
-                else:
-                    logger.warning("Reported address {} does not match actual address {}".format(node_addr, addr))
+                elif node_addr:
+                    logger.error("Reported address {} does not match actual address {}".format(node_addr, addr))
             except IOError:
                 logger.info("...No I2C node at address {}".format(addr))
-            i2c_bus.i2c_end()
-            i2c_bus.i2c_sleep()
             if len(nodes) == 0:
                 break  # if first I2C node not found then stop trying
     return nodes

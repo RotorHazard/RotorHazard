@@ -1,4 +1,4 @@
-'''RotorHazard hardware interface layer.'''
+'''RotorHazard serial interface layer.'''
 import logging
 import serial # For serial comms
 import gevent
@@ -23,6 +23,9 @@ class SerialNode(Node):
     @property
     def addr(self):
         return 'serial:'+self.serial_io.port
+
+    def close(self):
+        self.serial_io.close()
 
     def _create(self, index):
         return SerialNode(index, self.serial_io)
@@ -62,15 +65,14 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
         next_index = idxOffset
         for comm in config_ser_ports:
             def search_baud_rates(comm, node_index):
-                for baud_idx, baudrate in enumerate(SERIAL_BAUD_RATES):
+                for baudrate in SERIAL_BAUD_RATES:
                     logger.info("Trying {} with baud rate {}".format(comm, baudrate))
                     serial_obj = serial.Serial(port=None, baudrate=baudrate, timeout=0.25)
                     serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
                     serial_obj.setRTS(0)
                     serial_obj.setPort(comm)
                     serial_obj.open()  # open port (now that DTR is configured for no change)
-                    if baud_idx > 0:
-                        gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for Arduino USB
+                    gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for Arduino USB
                     node = SerialNode(node_index, serial_obj)
                     if rhi.read_revision_code(node):
                         logger.info('Node with API level {} found at baudrate {}'.format(node.api_level, baudrate))
@@ -79,7 +81,8 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                 return None
 
             node = search_baud_rates(comm, next_index)
-            multi_nodes = rhi.build_nodes(node)
-            next_index += len(multi_nodes)
-            nodes.extend(multi_nodes)
+            if node:
+                multi_nodes = rhi.build_nodes(node)
+                next_index += len(multi_nodes)
+                nodes.extend(multi_nodes)
     return nodes

@@ -82,6 +82,7 @@ def unpack_rssi(node, data):
 class RHInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         super().__init__()
+        self.warn_loop_time = kwargs['warn_loop_time'] if 'warn_loop_time' in kwargs else 1500
         self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
         self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
         self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
@@ -294,8 +295,8 @@ class RHInterface(BaseHardwareInterface):
                                             startThreshLowerNode.start_thresh_lower_time:
                             startThreshLowerNode = node
 
-            if node.loop_time > 1500:
-                logger.warning("Abnormal node loop time: {}".format(node.loop_time))
+            if node.loop_time > self.warn_loop_time:
+                logger.warning("Abnormal node loop time: {}us".format(node.loop_time))
 
         # process any nodes with crossing-flag changes
         self.process_crossings(cross_list)
@@ -459,6 +460,15 @@ def read_multinode_count(node):
         multi_count = None
     return multi_count
 
+def read_address(node):
+    try:
+        data = node.read_block_any(READ_ADDRESS, 1, 2)
+        node_addr = unpack_8(data) if data != None else None
+    except Exception:
+        logger.exception('Error fetching READ_ADDRESS for node {}'.format(node))
+        node_addr = None
+    return node_addr
+
 def read_revision_code(node):
     try:
         data = node.read_block_any(READ_REVISION_CODE, 2, 2)
@@ -508,7 +518,10 @@ def read_firmware_timestamp(node):
 
 def build_nodes(node):
     nodes = []
-    if node and node.api_level > 0:
+    if node.api_level == 0:
+        read_revision_code(node)
+
+    if node.api_level > 0:
         if node.api_level >= 10:
             node.api_valid_flag = True  # set flag for newer API functions supported
         if node.api_valid_flag and node.api_level >= 18:
@@ -539,7 +552,7 @@ def build_nodes(node):
         if multi_count == 0:
             logger.info("Node (with zero modules) found at {}: {}".format(node.addr, ', '.join(info_strs)))
         elif multi_count == 1:
-            logger.info("Node {} found at {}: {}".format(node.addr, ', '.join(info_strs)))
+            logger.info("Node {} found at {}: {}".format(node, node.addr, ', '.join(info_strs)))
             nodes.append(node)
         else:
             logger.info("Multi-node (with {} modules) found at {}: {}".format(multi_count, node.addr, ', '.join(info_strs)))

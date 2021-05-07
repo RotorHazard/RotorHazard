@@ -1,4 +1,3 @@
-import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
 
@@ -53,6 +52,8 @@ def start(com_port, web_port = 5080):
         print("Server terminated by keyboard interrupt")
     except Exception as ex:
         print("Server exception: {0}".format(ex))
+
+    INTERFACE.close()
 
 # Start HTTP server
 if __name__ == '__main__':

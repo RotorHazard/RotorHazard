@@ -1,5 +1,11 @@
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
 #endif
 #include <inttypes.h>
 #include "../util/CircularBuffer.h"
@@ -28,9 +34,9 @@ class Stream {
 private:
     CircularBuffer<uint8_t,128> buffer;
 public:
-    void bufferRead(const uint8_t data[], size_t size);
+    void copyToBuffer(const uint8_t data[], size_t size);
     int read();
-    size_t write(const uint8_t *buffer, size_t size);
+    size_t write(const uint8_t* buffer, size_t size);
 };
 
 extern Stream Serial;

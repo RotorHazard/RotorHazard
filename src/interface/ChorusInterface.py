@@ -66,7 +66,6 @@ class ChorusInterface(BaseHardwareInterface):
                 last_node = resp[1]
             else:
                 logger.warning("Invalid response received")
-        self.nodes = [] # Array to hold each node object
 
         for index in range(int(last_node)):
             node = ChorusNode(index, self.serial_line)

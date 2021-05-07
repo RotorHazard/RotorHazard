@@ -58,4 +58,5 @@ try:
 except:
     fname = 'rssi_dump.csv'
     write_buffer(fname, dataBuffer)
+    INTERFACE.close()
     raise
