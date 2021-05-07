@@ -44,7 +44,19 @@ def dataHandler(args):
             args['text'] = '{0:.1f}'.format(args['lap']['lap_time'] / 1000)
 
         elif args['data'] == 'position':
-            for line in args['RACE'].results['by_race_time']:
+            if 'results' in args and args['results']:
+                result = args['results']
+            elif 'RACE' in args and hasattr(args['RACE'], 'results'):
+                result = args['RACE'].results
+            else:
+                return False
+
+            if 'meta' in result and 'primary_leaderboard' in result['meta']: 
+                leaderboard = result[result['meta']['primary_leaderboard']]
+            else:
+                return False
+
+            for line in leaderboard:
                 if args['node_index'] == line['node']:
                     args['text'] = line['position']
                     break
@@ -145,10 +157,17 @@ def multiLapGrid(args):
     if 'RACE' in args:
         RACE = args['RACE']
     else:
+        RACE = None
+
+    if 'results' in args and args['results']:
+        result = args['results']
+    elif 'RACE' in args and hasattr(args['RACE'], 'results'):
+        result = args['RACE'].results
+    else:
         return False
 
-    if args['RACE'].results and 'by_race_time' in args['RACE'].results:
-        leaderboard = args['RACE'].results['by_race_time']
+    if result and 'meta' in result and 'primary_leaderboard' in result['meta']: 
+        leaderboard = result[result['meta']['primary_leaderboard']]
     else:
         return False
 
@@ -180,7 +199,7 @@ def multiLapGrid(args):
                 else:
                     text = '+'
             else:
-                if RACE.race_status == RaceStatus.DONE:
+                if not RACE or RACE.race_status == RaceStatus.DONE:
                     text = str(line['laps'])
                 else:
                     # first callsign character
