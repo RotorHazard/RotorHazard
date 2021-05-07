@@ -53,6 +53,8 @@ def dataHandler(args):
 
             if 'meta' in result and 'primary_leaderboard' in result['meta']: 
                 leaderboard = result[result['meta']['primary_leaderboard']]
+                if not len(leaderboard):
+                    return False
             else:
                 return False
 
@@ -168,6 +170,8 @@ def multiLapGrid(args):
 
     if result and 'meta' in result and 'primary_leaderboard' in result['meta']: 
         leaderboard = result[result['meta']['primary_leaderboard']]
+        if not len(leaderboard):
+            return False
     else:
         return False
 
