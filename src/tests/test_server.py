@@ -256,8 +256,7 @@ class ServerTest(unittest.TestCase):
         # trigger livetime client mode
         self.client.emit('get_version')
         server.RACE.race_status = 1
-        node = Node()
-        node.index = 0
+        node = Node(0)
         server.RACE.start_time_monotonic = 10
         server.RACE.start_time_epoch_ms = server.monotonic_to_epoch_millis(server.RACE.start_time_monotonic)
         server.pass_record_callback(node, 19.8+server.RACE.start_time_monotonic, 0)

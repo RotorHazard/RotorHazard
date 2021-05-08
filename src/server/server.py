@@ -4550,7 +4550,7 @@ def buildServerInfo():
                     if node.api_level < serverInfo['node_api_lowest']:
                         serverInfo['node_api_lowest'] = node.api_level
                 # if multi-node and all api levels same then only include one entry
-                if serverInfo['node_api_match'] and INTERFACE.nodes[0].is_shared():
+                if serverInfo['node_api_match'] and INTERFACE.nodes[0].is_multi_node():
                     serverInfo['node_api_levels'] = serverInfo['node_api_levels'][0:1]
 
         serverInfo['about_html'] += "<li>" + __("Node API") + ": "
@@ -4581,7 +4581,7 @@ def buildServerInfo():
                     if node.firmware_version_str != node_fw_version:
                         serverInfo['node_version_match'] = False
                 # if multi-node and all versions same then only include one entry
-                if serverInfo['node_version_match'] and INTERFACE.nodes[0].is_shared():
+                if serverInfo['node_version_match'] and INTERFACE.nodes[0].is_multi_node():
                     serverInfo['node_fw_versions'] = serverInfo['node_fw_versions'][0:1]
         if node_fw_version:
             serverInfo['about_html'] += "<li>" + __("Node Version") + ": "

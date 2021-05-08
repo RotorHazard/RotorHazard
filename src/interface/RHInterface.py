@@ -2,13 +2,13 @@
 
 import os
 import logging
-import gevent # For threads and timing
 from monotonic import monotonic # to capture read timing
 
 import interface as node_pkg
 from .Plugins import Plugins
 from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
+from .Node import SharedIOLine
 
 READ_ADDRESS = 0x00         # Gets i2c address of arduino (1 byte)
 READ_MODE = 0x02
@@ -68,21 +68,9 @@ RHFEAT_STM32_MODE = 0x0004      # STM 32-bit processor running multiple nodes
 RHFEAT_JUMPTO_BOOTLDR = 0x0008  # JUMP_TO_BOOTLOADER command supported
 RHFEAT_IAP_FIRMWARE = 0x0010    # in-application programming of firmware supported
 
-MAX_RETRY_COUNT = 4 # Limit of I/O retries
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 
 logger = logging.getLogger(__name__)
-
-def calculate_checksum(data: bytearray):
-    checksum = sum(data) & 0xFF
-    return checksum
-
-def validate_checksum(data: bytearray):
-    '''Returns True if the checksum matches the data.'''
-    if not data:
-        return False
-    checksum = calculate_checksum(data[:-1])
-    return checksum == data[-1]
 
 def unpack_rssi(node, data):
     if node.api_level >= 18:
@@ -110,7 +98,7 @@ class RHInterface(BaseHardwareInterface):
             node.frequency = node.get_value_16(READ_FREQUENCY)
             if not node.frequency:
                 raise RuntimeError('Unable to read frequency value from node {0}'.format(node))
-            node.init()
+
             if node.api_level >= 10:
                 node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
                 if node.api_level >= 13:
@@ -438,8 +426,138 @@ class RHInterface(BaseHardwareInterface):
         try:
             if self.fwupd_serial_obj:
                 self.fwupd_serial_obj.close()
-        except Exception as ex:
-            logger.info("Error closing FW node serial port: " + str(ex))
+        except Exception:
+            logger.exception("Error closing FW node serial port")
+
+
+def send_status_message(node, msgTypeVal, msgDataVal):
+    # send status message to node
+    try:
+        if node.api_level >= 35:
+            data = ((msgTypeVal & 0xFF) << 8) | (msgDataVal & 0xFF)
+#                logger.info('Sending status message to serial node {}: 0x{:04X}'.format(self, data))
+            node.write_block_any(SEND_STATUS_MESSAGE, pack_16(data))
+            return True
+    except Exception:
+        logger.exception('Error sending status message to node {}'.format(node))
+    return False
+
+def read_node_slot_index(node):
+    # read node slot index (physical slot position of node on S32_BPill PCB)
+    try:
+        node.multi_node_slot_index = node.get_value_8(READ_NODE_SLOTIDX)
+    except Exception:
+        logger.exception('Error fetching READ_NODE_SLOTIDX for node {}'.format(node))
+    return node.multi_node_slot_index
+
+def read_multinode_count(node):
+    try:
+        data = node.read_block_any(READ_MULTINODE_COUNT, 1, 2)
+        multi_count = unpack_8(data) if data != None else None
+    except Exception:
+        logger.exception('Error fetching READ_MULTINODE_COUNT for node {}'.format(node))
+        multi_count = None
+    return multi_count
+
+def read_revision_code(node):
+    try:
+        data = node.read_block_any(READ_REVISION_CODE, 2, 2)
+        rev_code = unpack_16(data) if data != None else None
+        # check verification code
+        if rev_code and (rev_code >> 8) == 0x25:
+            node.api_level = rev_code & 0xFF
+            return node.api_level
+    except Exception:
+        logger.exception('Error fetching READ_REVISION_CODE for node {}'.format(node))
+    return None
+
+def read_firmware_version(node):
+    # read firmware version string
+    try:
+        data = node.read_block_any(READ_FW_VERSION, FW_TEXT_BLOCK_SIZE, 2)
+        node.firmware_version_str = bytearray(data).decode("utf-8").rstrip('\0') \
+                                      if data != None else None
+    except Exception:
+        logger.exception('Error fetching READ_FW_VERSION for node {}'.format(node))
+    return node.firmware_version_str
+
+def read_firmware_proctype(node):
+    # read firmware processor-type string
+    try:
+        data = node.read_block_any(READ_FW_PROCTYPE, FW_TEXT_BLOCK_SIZE, 2)
+        node.firmware_proctype_str = bytearray(data).decode("utf-8").rstrip('\0') \
+                                     if data != None else None
+    except Exception:
+        logger.exception('Error fetching READ_FW_PROCTYPE for node {}'.format(node))
+    return node.firmware_proctype_str
+
+def read_firmware_timestamp(node):
+    # read firmware build date/time strings
+    try:
+        data = node.read_block_any(READ_FW_BUILDDATE, FW_TEXT_BLOCK_SIZE, 2)
+        if data != None:
+            node.firmware_timestamp_str = bytearray(data).decode("utf-8").rstrip('\0')
+            data = node.read_block_any(READ_FW_BUILDTIME, FW_TEXT_BLOCK_SIZE, 2)
+            if data != None:
+                node.firmware_timestamp_str += " " + bytearray(data).decode("utf-8").rstrip('\0')
+        else:
+            node.firmware_timestamp_str = None
+    except Exception:
+        logger.exception('Error fetching READ_FW_DATE/TIME for node {}'.format(node))
+    return node.firmware_timestamp_str
+
+def build_nodes(node):
+    nodes = []
+    if node and node.api_level > 0:
+        if node.api_level >= 10:
+            node.api_valid_flag = True  # set flag for newer API functions supported
+        if node.api_valid_flag and node.api_level >= 18:
+            node.max_rssi_value = 255
+        else:
+            node.max_rssi_value = 999
+
+        if node.api_level >= 32:  # check node API level
+            multi_count = read_multinode_count(node)
+            if multi_count is None or multi_count > 32:
+                logger.error('Bad READ_MULTINODE_COUNT value {} fetched from node {}'.format(multi_count, node))
+                multi_count = 1
+            elif multi_count == 0:
+                logger.warning('Fetched READ_MULTINODE_COUNT value of zero from node {} (no vrx modules detected)'.format(node))
+        else:
+            multi_count = 1
+
+        info_strs = ["API level={}".format(node.api_level)]
+        if node.api_level >= 34:  # read firmware version and build timestamp strings
+            if read_firmware_version(node):
+                info_strs.append("fw version={}".format(node.firmware_version_str))
+                if node.api_level >= 35:
+                    if read_firmware_proctype(node):
+                        info_strs.append("fw type={}".format(node.firmware_proctype_str))
+            if read_firmware_timestamp(node):
+                info_strs.append("fw timestamp: {}".format(node.firmware_timestamp_str))
+
+        if multi_count == 0:
+            logger.info("Node (with zero modules) found at {}: {}".format(node.addr, ', '.join(info_strs)))
+        elif multi_count == 1:
+            logger.info("Node {} found at {}: {}".format(node.addr, ', '.join(info_strs)))
+            nodes.append(node)
+        else:
+            logger.info("Multi-node (with {} modules) found at {}: {}".format(multi_count, node.addr, ', '.join(info_strs)))
+            node.io_line = SharedIOLine(WRITE_CURNODE_INDEX, READ_CURNODE_INDEX)
+            node.multi_node_index = 0
+            node.read_node_slot_index()
+            logger.debug("Node {} (slot={}) added at {}".format(node, node.multi_node_slot_index+1, node.addr))
+            nodes.append(node)
+            next_index = node.index + 1
+            for multi_idx in range(1, multi_count):
+                other_node = node.create_multi_node(next_index, multi_idx)
+                other_node.read_node_slot_index()
+                logger.debug("Node {} (slot={}) added at {}".format(node, node.multi_node_slot_index+1, node.addr))
+                nodes.append(other_node)
+                next_index += 1
+    else:
+        logger.error('Unable to fetch revision code for node at {}'.format(node.addr))
+    return nodes
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the RotorHazard interface object.'''

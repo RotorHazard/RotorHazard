@@ -30,8 +30,8 @@ class SerialLine:
 
 class ChorusNode(Node):
     def __init__(self, index, io_line):
-        super().__init__(io_line=io_line)
-        self.index = index
+        super().__init__(index=index, io_line=io_line)
+        self.api_valid_flag = True
 
     def send_command(self, command, in_value):
         with self.io_line:
@@ -70,7 +70,6 @@ class ChorusInterface(BaseHardwareInterface):
 
         for index in range(int(last_node)):
             node = ChorusNode(index, self.serial_line)
-            node.api_valid_flag = True
             self.nodes.append(node)
 
         with self.serial_line:

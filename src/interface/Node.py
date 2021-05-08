@@ -6,8 +6,10 @@ Command agnostic behaviour only.
 import logging
 from monotonic import monotonic
 import gevent.lock
-from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32
-from .RHInterface import MAX_RETRY_COUNT, validate_checksum, calculate_checksum
+from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32, \
+                        validate_checksum, calculate_checksum
+
+MAX_RETRY_COUNT = 4 # Limit of I/O retries
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +43,15 @@ class SharedIOLine:
 
 class Node:
     '''Node class represents the arduino/rx pair.'''
-    def __init__(self, io_line=None):
-        self.api_level = 0
-        self.api_valid_flag = False
-        self.index = -1
+    def __init__(self, index, io_line=None):
+        self.index = index
         # logical node index
         self.multi_node_index = None
         # physical slot position
         self.multi_node_slot_index = None
         self.io_line = io_line if io_line else IndividualIOLine()
+        self.api_level = 0
+        self.api_valid_flag = False
         self.rhfeature_flags = 0
         self.firmware_version_str = None
         self.firmware_proctype_str = None
@@ -60,7 +62,7 @@ class Node:
         self.node_nadir_rssi = 0
         self.pass_peak_rssi = 0
         self.pass_nadir_rssi = 0
-        self.max_rssi_value = 999
+        self.max_rssi_value = 255
         self.node_lap_id = -1
         self.current_pilot_id = 0
         self.first_cross_flag = False
@@ -107,16 +109,18 @@ class Node:
         self.write_error_count = 0
         self.read_error_count = 0
 
-    def init(self):
-        if self.api_level >= 10:
-            self.api_valid_flag = True  # set flag for newer API functions supported
-        if self.api_valid_flag and self.api_level >= 18:
-            self.max_rssi_value = 255
-        else:
-            self.max_rssi_value = 999
+    def create_multi_node(self, index, multi_index):
+        multi_node = self._create(index)
+        multi_node.multi_node_index = multi_index
+        multi_node.io_line = self.io_line
+        multi_node.api_level = self.api_level
+        multi_node.firmware_version_str = self.firmware_version_str
+        multi_node.firmware_proctype_str = self.firmware_proctype_str
+        multi_node.firmware_timestamp_str = self.firmware_timestamp_str
+        return multi_node
 
-    def is_shared(self):
-        return isinstance(self.io_line, SharedIOLine)
+    def is_multi_node(self):
+        return self.multi_node_index is not None
 
     def set_scan_interval(self, minFreq, maxFreq, maxInterval, minInterval, zoom):
         if minFreq > 0 and minFreq <= maxFreq and minInterval > 0 and minInterval <= maxInterval and zoom > 0:

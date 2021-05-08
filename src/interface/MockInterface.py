@@ -17,6 +17,10 @@ MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 
 class MockNode(Node):
+    def __init__(self, index):
+        super().__init__(index=index)
+        self.api_valid_flag = True
+
     @property
     def addr(self):
         return 'mock:'+str(self.index)
@@ -34,9 +38,7 @@ class MockInterface(BaseHardwareInterface):
         self.nodes = [] # Array to hold each node object
         self.data = []
         for index in range(int(os.environ.get('RH_NODES', '8'))):
-            node = MockNode() # New node instance
-            node.index = index
-            node.api_valid_flag = True
+            node = MockNode(index) # New node instance
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.nodes.append(node) # Add new node to RHInterface

@@ -32,3 +32,15 @@ def pack_32(data):
     part_c = (data >> 8) & 0xFF
     part_d = (data & 0xFF)
     return [int(part_a), int(part_b), int(part_c), int(part_d)]
+
+
+def calculate_checksum(data: bytearray):
+    checksum = sum(data) & 0xFF
+    return checksum
+
+def validate_checksum(data: bytearray):
+    '''Returns True if the checksum matches the data.'''
+    if not data:
+        return False
+    checksum = calculate_checksum(data[:-1])
+    return checksum == data[-1]
