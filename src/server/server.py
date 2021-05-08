@@ -745,6 +745,9 @@ def on_cluster_event_trigger(data):
     if is_mirror:
         if evtName == Evt.RACE_STAGE:
             RACE.race_status = RaceStatus.STAGING
+            RACE.results = None
+            if led_manager.isEnabled():
+                led_manager.setDisplayColorCache(evtArgs['race_node_colors'])
         elif evtName == Evt.RACE_START:
             RACE.race_status = RaceStatus.RACING
         elif evtName == Evt.RACE_STOP:
@@ -1965,11 +1968,16 @@ def on_stage_race():
         RACE.start_token = random.random()
         gevent.spawn(race_start_thread, RACE.start_token)
 
-        Events.trigger(Evt.RACE_STAGE, {
+        eventPayload = {
             'hide_stage_timer': MIN != MAX,
             'pi_starts_at_s': RACE.start_time_monotonic,
-            'color': ColorVal.ORANGE
-            })
+            'color': ColorVal.ORANGE,
+        }
+        
+        if led_manager.isEnabled():
+            eventPayload['race_node_colors'] = led_manager.getNodeColors(RACE.num_nodes) 
+
+        Events.trigger(Evt.RACE_STAGE, eventPayload)
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,

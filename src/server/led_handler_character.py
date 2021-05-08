@@ -279,7 +279,7 @@ def discover(*args, **kwargs):
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
         'data': 'lap_number',
-        'time': 5
+        'time': 4
         }
         ),
     LEDEffect(
@@ -292,7 +292,7 @@ def discover(*args, **kwargs):
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
         'data': 'lap_time',
-        'time': 8
+        'time': 4
         }
         ),
     LEDEffect(
@@ -305,7 +305,7 @@ def discover(*args, **kwargs):
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
         'data': 'position',
-        'time': 8
+        'time': 4
         }
         ),
     LEDEffect(

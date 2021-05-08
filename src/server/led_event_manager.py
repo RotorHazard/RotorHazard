@@ -23,6 +23,7 @@ class LEDEventManager:
     idleArgs = {}
     eventEffects = {}
     eventThread = None
+    displayColorCache = []
 
     def __init__(self, eventmanager, strip, RHData, RACE, Language, INTERFACE):
         self.Events = eventmanager
@@ -104,7 +105,20 @@ class LEDEventManager:
         self.setEventEffect(Evt.LED_MANUAL, 'clear')
         self.Events.trigger(Evt.LED_MANUAL, {'time': None, 'preventIdle': True})
 
+    def setDisplayColorCache(self, colorCache):
+        self.displayColorCache = colorCache
+
+    def getNodeColors(self, num_nodes):
+        colors = []
+        for node_index in range(num_nodes):
+            colors.append(self.getDisplayColor(node_index))
+
+        return colors
+
     def getDisplayColor(self, node_index, from_result=False):
+        if node_index < len(self.displayColorCache):
+            return self.displayColorCache[node_index]
+
         mode = self.RHData.get_optionInt('ledColorMode', 0)
         color = False
 
