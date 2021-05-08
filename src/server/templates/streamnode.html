@@ -8,10 +8,11 @@
 		'race_format',
 		'leaderboard_cache',
 		'current_laps',
+		'pilot_data',
 	];
 
 	rotorhazard.show_messages = false;
-	streamnode = {{ node_id }}
+	streamnode = {{ node_id }};
 
 	$(document).ready(function () {
 		rotorhazard.show_messages = false;
@@ -20,6 +21,22 @@
 			if (msg.language) {
 				rotorhazard.interface_language = msg.language;
 			}
+		});
+
+		socket.on('pilot_data', function(msg) {
+			let imgUrl = msg.pilots[streamnode].logo;
+			if (!imgUrl) {
+				imgUrl = "/static/image/RotorHazard Logo.svg";
+			}
+			$('#avatar>img').attr('src', imgUrl);
+		});
+
+		socket.on('stage_ready', function(msg) {
+			$('#avatar').attr('style', 'display: none');
+		});
+
+		socket.on('stop_timer', function(msg) {
+			$('#avatar').attr('style', 'display: initial');
 		});
 
 		socket.on('current_laps', function (msg) {
@@ -140,5 +157,8 @@
 		<div id="rank_stat"></div>
 	</div>
 	<div id="current_laps"></div>
+	<div id="avatar" style="position: absolute; top: 50%; left: 50%; transform: translateX(-50%) translateY(-50%)">
+		<img width="128" height="128"/>
+	</div>
 </main>
 {% endblock %}

@@ -1073,6 +1073,10 @@
 					phonetic.append('<input type="text" class="set_pilot_phonetic" id="phonetic_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.phonetic + '" placeholder="' + __('Phonetic') + '">');
 					phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
+					var pilot_url = $('<div class="pilot_url">');
+					pilot_url.append('<label for="pilot_url_' + pilot.id + '" class="screen-reader-text">' + __('URL') + '</label>');
+					pilot_url.append('<input type="url" class="pilot_url set_pilot_url" id="pilot_url_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.url + '" placeholder="' + __('URL') +'">');
+					el.append(pilot_url);
 					el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
 					if (!pilot.locked) {
 						el.append('<button class="delete_pilot btn-danger" data-id="' + pilot.pilot_id + '" title="Delete Pilot ' + pilot.callsign + '">&#215;</button>');
@@ -1109,7 +1113,7 @@
 				name: $(this).val()
 			};
 			socket.emit('alter_pilot', data);
-		})
+		});
 
 		$(document).on("focus", '.set_pilot_callsign', function(){
 			$(this).select();
@@ -1121,7 +1125,7 @@
 				callsign: $(this).val()
 			};
 			socket.emit('alter_pilot', data);
-		})
+		});
 
 		$(document).on("click", '.set_pilot_color', function (event) {
 			pilot_id = parseInt($(event.target).data('pilot_id'));
@@ -1136,7 +1140,19 @@
 				socket.emit('alter_pilot', data);
 				$('#color_' + pilot_id).data('color', hexcolor).css('background-color', hexcolor);
 			})
-		})
+		});
+
+		$(document).on("focus", '.set_pilot_url', function(){
+			$(this).select();
+		});
+
+		$(document).on("change", '.set_pilot_url', function (event) {
+			var data = {
+				pilot_id: parseInt($(this).data('pilot_id')),
+				url: $(this).val()
+			};
+			socket.emit('alter_pilot', data);
+		});
 
 		$(document).on("change", '.set_pilot_team', function (event) {
 			var data = {

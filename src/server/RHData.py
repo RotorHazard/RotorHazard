@@ -532,6 +532,7 @@ class RHData():
         return new_pilot
 
     def alter_pilot(self, data):
+        print(data)
         pilot_id = data['pilot_id']
         pilot = self._Database.Pilot.query.get(pilot_id)
         if 'callsign' in data:
@@ -544,6 +545,8 @@ class RHData():
             pilot.name = data['name']
         if 'color' in data:
             pilot.color = data['color']
+        if 'url' in data:
+            pilot.url = data['url']
 
         self.commit()
 

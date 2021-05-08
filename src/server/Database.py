@@ -24,6 +24,7 @@ class Pilot(DB.Model):
     phonetic = DB.Column(DB.String(80), nullable=False)
     name = DB.Column(DB.String(120), nullable=False)
     color = DB.Column(DB.String(7), nullable=True)
+    url = DB.Column(DB.String(255), nullable=True)
 
     def __repr__(self):
         return '<Pilot %r>' % self.id
