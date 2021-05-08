@@ -104,7 +104,7 @@ def printCharacter(args):
         w, h = font.getsize(text)
         h = 8
 
-    panel['draw'].text((int((panel['width']-w)/2) + 1, int((panel['height']-h)/2)), text, font=font, fill=(color))
+    panel['draw'].text((int((panel['width']-w)/2), int((panel['height']-h)/2)), text, font=font, fill=(color))
 
     img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
 
