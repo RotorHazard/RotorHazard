@@ -144,20 +144,23 @@ The installation of a real-time clock module allows the RotorHazard timer to mai
 
 Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)' (which is among the libraries installed via the `sudo pip install -r requirements.txt` command.
 
-The **LED_COUNT** value needs to be set in the `src/server/config.json` file. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
+The **LED_COUNT** value must be set in the `src/server/config.json` file; other LED configuration options will attempt to use reasonable defaults. **LED_ROWS** must be set for multiline displays. See the `src/server/config-dist.json` file for the default configuration of the 'LED' settings. The following items may be set:
 ```
 LED_COUNT:  Number of LED pixels in strip (or panel)
+LED_ROWS:  Number of rows in a multiline LED display panel (LED_COUNT must be evenly divisible by this value; default 1)
 LED_PIN:  GPIO pin connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
 LED_FREQ_HZ:  LED signal frequency in hertz (usually 800000)
 LED_DMA:  DMA channel to use for generating signal (default 10)
 LED_INVERT:  True to invert the signal (when using NPN transistor level shift)
 LED_CHANNEL:  Set to '1' for GPIOs 13, 19, 41, 45 or 53
 LED_STRIP:  Strip type and color ordering (default is 'GRB')
-LED_ROWS:  Number of rows in LED-panel array (1 for strip)
 PANEL_ROTATE:  Optional panel-rotation value (default 0)
-INVERTED_PANEL_ROWS:  Optional panel row-inversion (default false)
+INVERTED_PANEL_ROWS:  Optional even-index row inversion for LED panels (default false)
 ```
+***LED_PIN*** is the GPIO number, not the hardware pin index.
 If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
+
+Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, you must run the server with `sudo` or connect LEDs to a different GPIO pin.
 
 ### Java Support
 Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
@@ -211,7 +214,10 @@ ExecStart=/usr/bin/python server.py
 [Install]
 WantedBy=multi-user.target
 ```
-save and exit (CTRL-X, Y, ENTER).
+
+Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, remove `User=pi` from this config.
+
+Save and exit (CTRL-X, Y, ENTER).
 
 Update permissions:
 ```
