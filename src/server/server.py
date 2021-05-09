@@ -132,9 +132,8 @@ TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' 
 BASEDIR = os.getcwd()
 APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-DB = Database.DB
-DB.init_app(APP)
-DB.app = APP
+Database.DB.init_app(APP)
+Database.DB.app = APP
 
 # start SocketIO service
 SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'])
@@ -188,15 +187,12 @@ def catchLogExcDBCloseWrapper(func):
     def wrapper(*args, **kwargs):
         try:
             retVal = func(*args, **kwargs)
-            try:
-                DB.session.close()
-            except:
-                logger.exception("Error closing DB session in catchLogExcDBCloseWrapper")
+            RHData.close()
             return retVal
         except:
             logger.exception("Exception via catchLogExcDBCloseWrapper")
             try:
-                DB.session.close()
+                RHData.close()
             except:
                 logger.exception("Error closing DB session in catchLogExcDBCloseWrapper-catch")
     return wrapper
