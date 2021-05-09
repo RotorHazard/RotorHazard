@@ -29,6 +29,7 @@ class BaseHardwareInterface(object):
         self.pass_record_callback = None # Function added in server.py
         self.new_enter_or_exit_at_callback = None # Function added in server.py
         self.node_crossing_callback = None # Function added in server.py
+        self.nodes = []
 
     # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
@@ -212,6 +213,9 @@ class BaseHardwareInterface(object):
             'node': node.index,
             'frequency': node.frequency
         }
+
+    def set_frequency(self, node_index, frequency):
+        pass
 
 
 class PeakNadirHistory:
