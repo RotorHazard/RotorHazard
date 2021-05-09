@@ -2178,6 +2178,7 @@ def race_expire_thread(start_token):
             RACE.timer_running = False # indicate race timer no longer running
             Events.trigger(Evt.RACE_FINISH)
             check_win_condition(RACE, RHData, INTERFACE, at_finish=True, start_token=start_token)
+            emit_current_leaderboard()
         else:
             logger.debug("Finished unused race-time-expire thread")
 
@@ -4059,6 +4060,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                                  pilot_id == Results.get_leading_pilot_id(RACE.results)))
 
                             check_win_condition(RACE, RHData, INTERFACE) # check for and announce winner
+                            if RACE.win_status == WinStatus.DECLARED:
+                                emit_current_leaderboard()  # show declared winner on leaderboard
 
                     else:
                         # record lap as 'deleted'
