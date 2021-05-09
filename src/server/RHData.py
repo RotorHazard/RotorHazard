@@ -122,10 +122,10 @@ class RHData():
                 time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
                 bkp_name = self._DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
             if copy_flag:
-                shutil.copy2(self._DB_FILE_NAME, bkp_name);
+                shutil.copy2(self._DB_FILE_NAME, bkp_name)
                 logger.info('Copied database file to:  ' + bkp_name)
             else:
-                os.renames(self._DB_FILE_NAME, bkp_name);
+                os.renames(self._DB_FILE_NAME, bkp_name)
                 logger.info('Moved old database file to:  ' + bkp_name)
             RHUtils.checkSetFileOwnerPi(bkp_name)
         except Exception:
@@ -1868,8 +1868,8 @@ class RHData():
         self.set_option("contrast_1_high", "#000000")
         # timer state
         self.set_option("currentLanguage", "")
-        self.set_option("timeFormat", "{m}:{s}.{d}"),
-        self.set_option("timeFormatPhonetic", "{m} {s}.{d}"),
+        self.set_option("timeFormat", "{m}:{s}.{d}")
+        self.set_option("timeFormatPhonetic", "{m} {s}.{d}")
         self.set_option("currentProfile", "1")
         self.set_option("calibrationMode", "1")
         # minimum lap
