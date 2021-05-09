@@ -152,7 +152,7 @@ Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
 server_ipaddress_str = None
 ShutdownButtonInputHandler = None
-is_mirror = False
+Server_is_mirror = False
 
 RACE = RHRace.RHRace() # For storing race management variables
 LAST_RACE = None
@@ -707,13 +707,13 @@ def on_join_cluster():
 @SOCKET_IO.on('join_cluster_ex')
 @catchLogExceptionsWrapper
 def on_join_cluster_ex(data=None):
-    global is_mirror
+    global Server_is_mirror
     tmode = str(data.get('mode', SecondaryNode.SPLIT_MODE)) if data else None
     if tmode != SecondaryNode.MIRROR_MODE:
         setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
         emit_race_format()
     if tmode == SecondaryNode.MIRROR_MODE:
-        is_mirror = True
+        Server_is_mirror = True
     logger.info("Joined cluster" + ((" as '" + tmode + "' timer") if tmode else ""))
     Events.trigger(Evt.CLUSTER_JOIN)
     emit_join_cluster_response()
@@ -736,7 +736,7 @@ def on_cluster_event_trigger(data):
     evtArgs = json.loads(data['evt_args']) if 'evt_args' in data else None
 
     # set mirror timer state
-    if is_mirror:
+    if Server_is_mirror:
         if evtName == Evt.RACE_STAGE:
             RACE.race_status = RaceStatus.STAGING
             RACE.results = None
