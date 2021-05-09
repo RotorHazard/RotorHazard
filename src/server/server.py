@@ -2545,7 +2545,7 @@ def generate_heats(data):
         # build new results if needed
         logger.info("No class cache available for {0}; regenerating".format(input_class))
         RHData.set_results_raceClass(race_class.id,
-            Results.build_atomic_result_cache(class_id=race_class.id)
+            Results.build_atomic_result_cache(RHData, class_id=race_class.id)
             )
 
     time_now = monotonic()
