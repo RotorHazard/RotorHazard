@@ -195,7 +195,7 @@ def later_stage_setup(config, socket):
 
     (lvl, err_str) = get_logging_level_for_item(logging_config, SYSLOG_LEVEL_STR, err_str, logging.NOTSET)
     if lvl > 0 and lvl < LEVEL_NONE_VALUE:
-        system_logger = logging.handlers.SysLogHandler("/dev/log", level=lvl) \
+        system_logger = logging.handlers.SysLogHandler("/dev/log") \
                         if platform.system() != "Windows" else \
                         logging.handlers.NTEventLogHandler("RotorHazard")
         system_logger.setLevel(lvl)
