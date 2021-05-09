@@ -24,12 +24,13 @@ class LEDEventManager:
     eventEffects = {}
     eventThread = None
 
-    def __init__(self, eventmanager, strip, RHData, RACE, Language):
+    def __init__(self, eventmanager, strip, RHData, RACE, Language, INTERFACE):
         self.Events = eventmanager
         self.strip = strip
         self.RHData = RHData
         self.RACE = RACE
         self.Language = Language
+        self.INTERFACE = INTERFACE
 
         # hold
         self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None, {
@@ -83,6 +84,7 @@ class LEDEventManager:
             'RHData': self.RHData,
             'RACE': self.RACE,
             'Language': self.Language,
+            'INTERFACE': self.INTERFACE,
             'manager': self,
             })
 
