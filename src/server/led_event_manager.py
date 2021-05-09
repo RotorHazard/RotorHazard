@@ -40,23 +40,26 @@ class LEDEventManager:
             return False
 
     def setEventEffect(self, event, name):
-        self.events[event] = name
+        if name in self.eventEffects:
+            self.events[event] = name
 
-        args = self.eventEffects[name]['defaultArgs']
-        if args is None:
-            args = {}
+            args = self.eventEffects[name]['defaultArgs']
+            if args is None:
+                args = {}
+    
+            args.update({
+                'strip': self.strip,
+                })
 
-        args.update({
-            'strip': self.strip,
-            })
-
-        if event in [Evt.SHUTDOWN]:
-            # event is direct (blocking)
-            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 50)
+            if event in [Evt.SHUTDOWN]:
+                # event is direct (blocking)
+                self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 50)
+            else:
+                # event is normal (threaded/non-blocking)
+                self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 150)
+            return True
         else:
-            # event is normal (threaded/non-blocking)
-            self.Events.on(event, 'LED', self.eventEffects[name]['handlerFn'], args, 150)
-        return True
+            return False
 
     def clear(self):
         self.eventEffects['clear']['handlerFn']({'strip': self.strip})
