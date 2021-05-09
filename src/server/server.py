@@ -731,8 +731,6 @@ def on_check_secondary_query(data):
 @catchLogExceptionsWrapper
 def on_cluster_event_trigger(data):
     ''' Received event trigger from primary. '''
-    global RACE
-    global is_mirror
 
     evtName = data['evt_name']
     evtArgs = json.loads(data['evt_args']) if 'evt_args' in data else None
@@ -1851,8 +1849,6 @@ def on_use_led_effect(data):
 @SOCKET_IO.on('schedule_race')
 @catchLogExceptionsWrapper
 def on_schedule_race(data):
-    global RACE
-
     RACE.scheduled_time = monotonic() + (data['m'] * 60) + data['s']
     RACE.scheduled = True
 
@@ -1870,8 +1866,6 @@ def on_schedule_race(data):
 @SOCKET_IO.on('cancel_schedule_race')
 @catchLogExceptionsWrapper
 def cancel_schedule_race():
-    global RACE
-
     RACE.scheduled = False
 
     Events.trigger(Evt.RACE_SCHEDULE_CANCEL)
@@ -1894,7 +1888,6 @@ def on_get_pi_time():
 @SOCKET_IO.on('stage_race')
 @catchLogExceptionsWrapper
 def on_stage_race():
-    global RACE
     global LAST_RACE
     valid_pilots = False
     heat_data = RHData.get_heat(RACE.current_heat)
@@ -2084,7 +2077,6 @@ def findBestValues(node, node_index):
 
 @catchLogExceptionsWrapper
 def race_start_thread(start_token):
-    global RACE
 
     # clear any lingering crossings at staging (if node rssi < enterAt)
     for node in INTERFACE.nodes:
@@ -2177,7 +2169,6 @@ def race_start_thread(start_token):
 
 @catchLogExceptionsWrapper
 def race_expire_thread(start_token):
-    global RACE
     race_format = getCurrentRaceFormat()
     if race_format and race_format.race_mode == 0: # count down
         gevent.sleep(race_format.race_time_sec)
@@ -2194,7 +2185,6 @@ def race_expire_thread(start_token):
 @catchLogExceptionsWrapper
 def on_stop_race():
     '''Stops the race and stops registering laps.'''
-    global RACE
 
     CLUSTER.emitToSplits('stop_race')
     if RACE.race_status == RaceStatus.RACING:
@@ -2398,7 +2388,6 @@ def build_atomic_result_caches(params):
 @catchLogExceptionsWrapper
 def on_discard_laps(**kwargs):
     '''Clear the current laps without saving.'''
-    global RACE
     CLUSTER.emitToSplits('discard_laps')
     clear_laps()
     RACE.race_status = RaceStatus.READY # Flag status as ready to start next race
@@ -2420,7 +2409,6 @@ def on_discard_laps(**kwargs):
 
 def clear_laps():
     '''Clear the current laps table.'''
-    global RACE
     global LAST_RACE
     LAST_RACE = copy.deepcopy(RACE)
     RACE.laps_winner_name = None  # clear winner in first-to-X-laps race
@@ -2448,7 +2436,6 @@ def init_node_cross_fields():
 @catchLogExceptionsWrapper
 def on_set_current_heat(data):
     '''Update the current heat variable.'''
-    global RACE
     new_heat_id = data['heat']
     RACE.current_heat = new_heat_id
 
@@ -3131,9 +3118,6 @@ def build_laps_list(active_race=RACE):
 
 def emit_current_laps(**params):
     '''Emits current laps.'''
-    global RACE
-    global LAST_RACE
-
     emit_payload = {
         'current': {}
     }
@@ -3252,7 +3236,6 @@ def emit_result_data_thread(params, sid=None):
 
 def emit_current_leaderboard(**params):
     '''Emits leaderboard.'''
-    global RACE
 
     emit_payload = {
         'current': {}
@@ -3831,7 +3814,6 @@ def heartbeat_thread_function():
     '''Emits current rssi data.'''
     while True:
         try:
-            global RACE
             node_data = INTERFACE.get_heartbeat_json()
 
             SOCKET_IO.emit('heartbeat', node_data)
@@ -3965,7 +3947,6 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
-    global RACE
     profile_freqs = json.loads(getCurrentProfile().frequencies)
     if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end (RACE.duration_ms is invalid while race is in progress)
