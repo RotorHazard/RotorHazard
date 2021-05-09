@@ -17,6 +17,8 @@
 import logging
 from Plugins import Plugins
 
+logger = logging.getLogger(__name__)
+
 class DataExportManager():
     exporters = {}
 
