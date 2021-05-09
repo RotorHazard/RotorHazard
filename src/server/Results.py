@@ -1533,7 +1533,7 @@ def get_leading_pilot_id(results):
             return results_list[0]['pilot_id']
     except Exception:
         logger.exception("Error in Results 'get_leading_pilot_id()'")
-    return Database.PILOT_ID_NONE
+    return RHUtils.PILOT_ID_NONE
 
 def get_leading_team_name(results):
     try:
