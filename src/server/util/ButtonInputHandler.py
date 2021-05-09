@@ -76,6 +76,6 @@ class ButtonInputHandler:
     def isEnabled(self):
         return self.enabledFlag
 
-    def noop(self):
+    def noop(self, param1=None):
         pass
     
