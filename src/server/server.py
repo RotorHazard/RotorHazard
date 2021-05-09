@@ -153,6 +153,7 @@ Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
 server_ipaddress_str = None
 ShutdownButtonInputHandler = None
+is_mirror = False
 
 RACE = RHRace.RHRace() # For storing race management variables
 LAST_RACE = None
@@ -710,10 +711,13 @@ def on_join_cluster():
 @SOCKET_IO.on('join_cluster_ex')
 @catchLogExceptionsWrapper
 def on_join_cluster_ex(data=None):
+    global is_mirror
     tmode = str(data.get('mode', SecondaryNode.SPLIT_MODE)) if data else None
     if tmode != SecondaryNode.MIRROR_MODE:
         setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
         emit_race_format()
+    if tmode == SecondaryNode.MIRROR_MODE:
+        is_mirror = True
     logger.info("Joined cluster" + ((" as '" + tmode + "' timer") if tmode else ""))
     Events.trigger(Evt.CLUSTER_JOIN)
     emit_join_cluster_response()
@@ -731,13 +735,36 @@ def on_check_secondary_query(data):
 @catchLogExceptionsWrapper
 def on_cluster_event_trigger(data):
     ''' Received event trigger from primary. '''
+    global RACE
+    global is_mirror
+
     evtName = data['evt_name']
     evtArgs = json.loads(data['evt_args']) if 'evt_args' in data else None
+
+    # set mirror timer state
+    if is_mirror:
+        if evtName == Evt.RACE_STAGE:
+            RACE.race_status = RaceStatus.STAGING
+            RACE.results = None
+            if led_manager.isEnabled():
+                led_manager.setDisplayColorCache(evtArgs['race_node_colors'])
+        elif evtName == Evt.RACE_START:
+            RACE.race_status = RaceStatus.RACING
+        elif evtName == Evt.RACE_STOP:
+            RACE.race_status = RaceStatus.DONE
+        elif evtName == Evt.LAPS_CLEAR:
+            RACE.race_status = RaceStatus.READY
+        elif evtName == Evt.RACE_LAP_RECORDED:
+            RACE.results = evtArgs['results']
+
+    evtArgs.pop('RACE', None) # remove race if exists
+
     if evtName != Evt.LED_SET_MANUAL:
         Events.trigger(evtName, evtArgs)
     # special handling for LED Control via primary timer
     elif 'effect' in evtArgs and led_manager.isEnabled():
         led_manager.setEventEffect(Evt.LED_MANUAL, evtArgs['effect'])
+
 
 @SOCKET_IO.on('cluster_message_ack')
 @catchLogExceptionsWrapper
@@ -1941,11 +1968,16 @@ def on_stage_race():
         RACE.start_token = random.random()
         gevent.spawn(race_start_thread, RACE.start_token)
 
-        Events.trigger(Evt.RACE_STAGE, {
+        eventPayload = {
             'hide_stage_timer': MIN != MAX,
             'pi_starts_at_s': RACE.start_time_monotonic,
-            'color': ColorVal.ORANGE
-            })
+            'color': ColorVal.ORANGE,
+        }
+        
+        if led_manager.isEnabled():
+            eventPayload['race_node_colors'] = led_manager.getNodeColors(RACE.num_nodes) 
+
+        Events.trigger(Evt.RACE_STAGE, eventPayload)
 
         SOCKET_IO.emit('stage_ready', {
             'hide_stage_timer': MIN != MAX,

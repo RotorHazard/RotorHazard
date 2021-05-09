@@ -9,8 +9,20 @@ from monotonic import monotonic
 
 def leaderProxy(args):
     if 'effectFn' in args:
-        if args['RACE'].results and 'by_race_time' in args['RACE'].results and len(args['RACE'].results['by_race_time']):
-            leader = args['RACE'].results['by_race_time'][0]
+        if 'results' in args and args['results']:
+            result = args['results']
+        elif 'RACE' in args and hasattr(args['RACE'], 'results'):
+            result = args['RACE'].results
+        else:
+            return False
+
+        if 'meta' in result and 'primary_leaderboard' in result['meta']: 
+            leaderboard = result[result['meta']['primary_leaderboard']]
+        else:
+            return False
+
+        if len(leaderboard):
+            leader = leaderboard[0]
             if leader['starts']:
                 if 'node_index' not in args or args['node_index'] != leader['node']:
                     args['color'] = args['manager'].getDisplayColor(leader['node'], from_result=True)

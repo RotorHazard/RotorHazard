@@ -44,7 +44,21 @@ def dataHandler(args):
             args['text'] = '{0:.1f}'.format(args['lap']['lap_time'] / 1000)
 
         elif args['data'] == 'position':
-            for line in args['RACE'].results['by_race_time']:
+            if 'results' in args and args['results']:
+                result = args['results']
+            elif 'RACE' in args and hasattr(args['RACE'], 'results'):
+                result = args['RACE'].results
+            else:
+                return False
+
+            if 'meta' in result and 'primary_leaderboard' in result['meta']: 
+                leaderboard = result[result['meta']['primary_leaderboard']]
+                if not len(leaderboard):
+                    return False
+            else:
+                return False
+
+            for line in leaderboard:
                 if args['node_index'] == line['node']:
                     args['text'] = line['position']
                     break
@@ -90,7 +104,7 @@ def printCharacter(args):
         w, h = font.getsize(text)
         h = 8
 
-    panel['draw'].text((int((panel['width']-w)/2) + 1, int((panel['height']-h)/2)), text, font=font, fill=(color))
+    panel['draw'].text((int((panel['width']-w)/2), int((panel['height']-h)/2)), text, font=font, fill=(color))
 
     img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
 
@@ -145,10 +159,19 @@ def multiLapGrid(args):
     if 'RACE' in args:
         RACE = args['RACE']
     else:
+        RACE = None
+
+    if 'results' in args and args['results']:
+        result = args['results']
+    elif 'RACE' in args and hasattr(args['RACE'], 'results'):
+        result = args['RACE'].results
+    else:
         return False
 
-    if args['RACE'].results and 'by_race_time' in args['RACE'].results:
-        leaderboard = args['RACE'].results['by_race_time']
+    if result and 'meta' in result and 'primary_leaderboard' in result['meta']: 
+        leaderboard = result[result['meta']['primary_leaderboard']]
+        if not len(leaderboard):
+            return False
     else:
         return False
 
@@ -180,7 +203,7 @@ def multiLapGrid(args):
                 else:
                     text = '+'
             else:
-                if RACE.race_status == RaceStatus.DONE:
+                if not RACE or RACE.race_status == RaceStatus.DONE:
                     text = str(line['laps'])
                 else:
                     # first callsign character
@@ -256,7 +279,7 @@ def discover(*args, **kwargs):
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
         'data': 'lap_number',
-        'time': 5
+        'time': 4
         }
         ),
     LEDEffect(
@@ -269,7 +292,7 @@ def discover(*args, **kwargs):
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
         'data': 'lap_time',
-        'time': 8
+        'time': 4
         }
         ),
     LEDEffect(
@@ -282,7 +305,7 @@ def discover(*args, **kwargs):
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
         'data': 'position',
-        'time': 8
+        'time': 4
         }
         ),
     LEDEffect(
