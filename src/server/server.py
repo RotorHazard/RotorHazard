@@ -2666,7 +2666,7 @@ def on_delete_lap(data):
         lap_splits = RHData.get_lapSplits_by_lap(node_index, lap_number)
         if lap_splits and len(lap_splits) > 0:
             for lap_split in lap_splits:
-                RHData.clear_lapsplit(lap_split)
+                RHData.clear_lapSplit(lap_split)
     except:
         logger.exception("Error deleting split laps")
 
