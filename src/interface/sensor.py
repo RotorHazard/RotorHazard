@@ -21,6 +21,9 @@ class Sensor:
     def update(self):
         pass
 
+    def readData(self):
+        return None
+
 class I2CSensor(Sensor):
     @staticmethod
     def url(addr):
