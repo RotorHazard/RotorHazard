@@ -1,6 +1,6 @@
 import logging
 from sensor import I2CSensor, Reading
-import ina219
+import ina219  #pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 

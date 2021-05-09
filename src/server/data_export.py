@@ -15,7 +15,7 @@
 #
 
 import logging
-from Plugins import Plugins
+from Plugins import Plugins  #pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 

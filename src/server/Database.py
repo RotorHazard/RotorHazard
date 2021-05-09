@@ -5,6 +5,8 @@ Database module
 import RHUtils
 from flask_sqlalchemy import SQLAlchemy
 
+#pylint: disable=no-member
+
 DB = SQLAlchemy()
 
 #

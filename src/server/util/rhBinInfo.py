@@ -15,7 +15,7 @@ sys.path.append('../../interface')
 
 import RHUtils
 import util.stm32loader as stm32loader
-import RHInterface
+import RHInterface  #pylint: disable=import-error
 
 def showFirmwareBinInfo(fileStr):
     dataStr = None

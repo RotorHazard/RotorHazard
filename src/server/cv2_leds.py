@@ -3,9 +3,8 @@
 # to use this emulator, run:
 #    sudo pip install opencv-python
 
-import numpy as np
-import cv2
-import gevent
+import numpy as np  #pylint: disable=import-error
+import cv2  #pylint: disable=import-error
 import logging
 logger = logging.getLogger(__name__)
 

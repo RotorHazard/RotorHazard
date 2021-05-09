@@ -78,8 +78,8 @@ from led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, 
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
-from Plugins import Plugins, search_modules
-from Sensors import Sensors
+from Plugins import Plugins, search_modules  #pylint: disable=import-error
+from Sensors import Sensors  #pylint: disable=import-error
 import RHRace
 from RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus
 from data_export import DataExportManager

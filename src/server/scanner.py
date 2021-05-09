@@ -10,7 +10,7 @@ gevent.monkey.patch_all()
 sys.path.append('../interface')
 sys.path.append('/home/pi/RotorHazard/src/interface')  # Needed to run on startup
 
-import RHInterface
+import RHInterface  #pylint: disable=import-error
 
 if len(sys.argv) < 2:
     print('Please specify serial port, e.g. COM12.')
