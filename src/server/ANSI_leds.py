@@ -31,7 +31,7 @@ class ANSIPixel:
             start = end
             row += 1
 
-    def setBrightness(*args, **kwargs):
+    def setBrightness(self, *args, **kwargs):
         pass
 
     def getANSIPx(self, color):
