@@ -133,11 +133,11 @@ class I2CNode(Node):
         try:
             if self.api_level >= 35:
                 data = ((msgTypeVal & 0xFF) << 8) | (msgDataVal & 0xFF)
-#                self.node_log(interface, 'Sending status message to I2C node {}: 0x{:04X}'.format(self.index+1, data))
+#                logger.info(interface, 'Sending status message to I2C node {}: 0x{:04X}'.format(self.index+1, data))
                 self.write_block(interface, SEND_STATUS_MESSAGE, pack_16(data))
                 return True
         except Exception as ex:
-            self.node_log(interface, 'Error sending status message to I2C node {}: {}'.format(self.index+1, ex))
+            logger.error(interface, 'Error sending status message to I2C node {}: {}'.format(self.index+1, ex))
         return False
 
 
