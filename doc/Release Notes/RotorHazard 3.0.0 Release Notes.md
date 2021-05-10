@@ -1,7 +1,5 @@
 # RotorHazard 3.0.0 Release Notes
 
-# RotorHazard 3.0.0 Release Notes
-
 RotorHazard 3.0.0 provides many new features and fixes, including:
 
 ### Support for STM32 hardware
@@ -20,13 +18,13 @@ Selecting a frequency now stores the band/channel information instead of just nu
 On the tuning dialog, drawing on the graph will immediately update enter and exit values. The "Tuning" button is removed for each node on the `Run` page as clicking on the graph itself opens this dialog.
 
 ### UI refresh
-The UI has undergone a minor update, including a customized typeface. Heats listed on the `Run` page are sorted into classes. Disallowed actions no longer appear as UI options. The spacebar functions as a general-purpose hotkey for advancing the event.
+The UI has undergone a minor update, including a customized typeface. Disallowed actions no longer appear as UI options. The spacebar functions as a general-purpose hotkey for advancing the event.
 
 ### Cluster terminology has changed
 A "Master" timer is now known as a "Primary" timer and "Slave" timers are now known as "Secondary" timers. Existing 'SLAVE' keys in the config.json file are still accepted, but their use is deprecated. Please migrate to 'SECONDARY' keys as documented in [Cluster.md](https://github.com/RotorHazard/RotorHazard/blob/3.0.0/doc/Cluster.md).
 
 ### End of support for Python 2
-Python 2 is past end of life. RotorHazard 3.0 only officially supports Python 3 and some features will no longer function if run with Python 2. [See documentation for upgrade instructions](https://github.com/RotorHazard/RotorHazard/blob/3.0.0-beta.1/doc/Software%20Setup.md#5-install-python).
+Python 2 is past end of life. RotorHazard 3.0 only officially supports Python 3 and some features will no longer function if run with Python 2. [See documentation for upgrade instructions](https://github.com/RotorHazard/RotorHazard/blob/3.0.0/doc/Software%20Setup.md#5-install-python).
 
 <a name="documentation"></a>
 ## Documentation
