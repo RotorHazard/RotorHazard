@@ -14,6 +14,7 @@
 	"SERIAL_PORTS": [],
 	"LED": {
 		"LED_COUNT": 0,
+		"LED_ROWS": 1,
 		"LED_PIN": 10,
 		"LED_FREQ_HZ": 800000,
 		"LED_DMA": 10,
