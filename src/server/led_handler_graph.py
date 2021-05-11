@@ -20,6 +20,9 @@ def rssiGraph(args):
     else:
         return False
 
+    if len(INTERFACE.nodes) < 1:
+        return False
+
     panel = getPanelImg(strip, Config)
 
     if panel['width'] < len(INTERFACE.nodes):
