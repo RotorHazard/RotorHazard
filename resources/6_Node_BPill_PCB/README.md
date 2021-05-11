@@ -42,7 +42,7 @@ PCB                             |   1       | Download the [gerber files](RotorH
 P12	                            |   1	    | 2.54mm 20x2 8.51mm tall header                                     | Single strips also work
 P1	                            |   1	    | XT60 Male	                                                         | -
 R2, R7, R8, R9, R11, R12, R13	|   7	    | 100k ohm 5% 0805 resistor                                          | Buy some extra in case you drop one
-R3, R4, R5, R10, R14            |   5       | 10k ohm 5% 0805 resistor                                           | Buy some extra in case you drop one
+R3, R10                         |   2       | 10k ohm 5% 0805 resistor                                           | Buy some extra in case you drop one
 U2, U3                          |   2	    | MP1584	                                                         | -
 U2, U3  	                    |   16	    | 2.54mm header pins                                                 | -
 U6	                            |   1	    | STM32F103C8T6 	                                                 | -
@@ -74,7 +74,7 @@ P4	                            |   1	    | 3 pin JST SM Female	        | Fit if 
 U4	                            |   8	    | 2.54mm header pins            | Fit if you want to use RGB LED rope / tape
 U4	                            |   1	    | MP1584	                    | Fit if you want to use RGB LED rope / tape
 BZ1	                            |   1       | 12mm x 9.5mm 5V buzzer        | Used for low voltage alarm
-Q1, Q2	                        |   2	    | GSD SOT-23 N-Channel MOSFET   | 1 is used for optional switched buzzer, the other is used for optional fan enable control, an example is IRLML6344TRPBF
+Q2  	                        |   1	    | GSD SOT-23 N-Channel MOSFET   | Used for optional fan enable control, an example is IRLML6344TRPBF
 
 For the timer assembly:
 Name	                        | Quantity      | Notes

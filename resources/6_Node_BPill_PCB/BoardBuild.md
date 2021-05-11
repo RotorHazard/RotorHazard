@@ -10,12 +10,12 @@ Select the jumper positions that you want on the board (Green):
 * JP2 = Select if the coin battery should power the DS3231 or STM32 module RTC
 * JP3 = Select to power fans from Vbatt or 5V
 * JP4 = If you want the fans on constantly bridge this
-* JP5 = If you don't want to use a MOSFET on the buzzer bridge this
+* JP5 = Bridge this to enable the buzzer
 * JP6 = If you aren't using a current sense resistor bridge this
 
 Fit the resistors
 * 100k (Blue) = R2, R7, R8, R9, R11, R12, R13
-* 10k  (Yellow) = R3, R4, R5, R10, R14
+* 10k  (Yellow) = R3, R10
 * 220r (OPTIONAL) (Orange) = R6, R29
 * 0.1r (OPTIONAL) (Pink) = R1
 
@@ -69,15 +69,13 @@ Usually surface mount LED's have a green line on one end, this end should point 
 
 It is recommended to fit the STM32 module directly to the board, but you may also wish to use headers so it can be removed. Using headers won't work with the current case design as the PCB will be too tall.
 
-You can choose to connect the on board BOOT0 and BOOT1 pins to the STM32 pins which will mean you don't have to change the header pins to program for the first time. If you wish to use these you will need to solder wires to BOOT0 and BOO1 holes under U6 and then solder to the corresponding BOOT pins on the STM32 module. If you do solder the BOOT pins to the board remove the included headers!
-
 It should be noted that the pins on the STM32 may be slightly bent and the hole tolerance on the board is quite small so it may a few minutes to align the holes correctly, be patient it will fit. A good technique is to start in one corner push the pins in from the other side and work up the board pushing the pins in. 
 
 Once the STM32 is soldered, cut the STM32 module pins to the right length to prevent them shorting to something underneath.
 
 It is recommended to cut off the 4 pins (Pink) that come off the STM32 module by the XT60 so you can solder the XT60 more easily. You won't need these pins unless you plan to do software development.
 
-If you are using the on board jumper pins and not soldering BOOT0 and BOOT1 to the board then you should connect them in the following way
+The on board jumper pins should be configured as follows:
 * For normal operation BOOT0 and BOOT1 both in position 0
 * To program the firmware to the STM32 module for the first time BOOT0 = 1, BOOT1 = 0
 
@@ -137,8 +135,6 @@ Attach the battery holder to BT1, do not fit the coin cell until the soldering i
 ![Internet connection is required to view this image](https://github.com/RotorHazard/rhfiles/raw/main/6_Node_BPill/PCBBuildPics/RH6_Node_PCB_Step8.png)
 
 ## Step 9 - The left overs
-If you wish to control the buzzer through a MOSFET which is recommended then fit Q1 (Yellow)
-
 If you wish to fit the buzzer (BZ1) (Blue) then fit it now
 
 If you wish for the raspberry pi to be able to control if the fans are enabled then solder Q2 (Green) to the board
