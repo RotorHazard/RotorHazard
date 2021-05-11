@@ -40,7 +40,7 @@ jobs:
         cd src/node
         ./scripts/build_sil.sh
         cd ..
-        coverage run -m unittest discover
+        coverage run --branch -m unittest discover
         cd ..
 
     - name: Node tests
