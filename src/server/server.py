@@ -741,7 +741,10 @@ def on_cluster_event_trigger(data):
             RACE.race_status = RaceStatus.STAGING
             RACE.results = None
             if led_manager.isEnabled():
-                led_manager.setDisplayColorCache(evtArgs['race_node_colors'])
+                if 'race_node_colors' in evtArgs and isinstance(evtArgs['race_node_colors'], list):
+                    led_manager.setDisplayColorCache(evtArgs['race_node_colors'])
+                else:
+                    RHData.set_option('ledColorMode', 0)
         elif evtName == Evt.RACE_START:
             RACE.race_status = RaceStatus.RACING
         elif evtName == Evt.RACE_STOP:
@@ -1962,9 +1965,11 @@ def on_stage_race():
             'pi_starts_at_s': RACE.start_time_monotonic,
             'color': ColorVal.ORANGE,
         }
-        
+
         if led_manager.isEnabled():
-            eventPayload['race_node_colors'] = led_manager.getNodeColors(RACE.num_nodes) 
+            eventPayload['race_node_colors'] = led_manager.getNodeColors(RACE.num_nodes)
+        else: 
+            eventPayload['race_node_colors'] = None
 
         Events.trigger(Evt.RACE_STAGE, eventPayload)
 
