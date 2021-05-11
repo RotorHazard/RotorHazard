@@ -207,7 +207,7 @@ def assemble_results(RHData, PageCache, Language):
 
         valid_heats = False;
         if len(results['heats_by_class'][class_id]):
-            for heat in results['heats_by_class'].keys():
+            for heat in results['heats_by_class'][class_id]:
                 if heat in results['heats']:
                     valid_heats = True
                     break
