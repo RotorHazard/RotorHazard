@@ -84,7 +84,7 @@ def printCharacter(args):
     else:
         return False
 
-    if 'color' in args:
+    if 'color' in args and 'color':
         color = convertColor(args['color'])
     else:
         color = convertColor(ColorVal.WHITE)
@@ -124,7 +124,7 @@ def scrollText(args):
     else:
         return False
 
-    if 'color' in args:
+    if 'color' in args and 'color':
         color = convertColor(args['color'])
     else:
         color = convertColor(ColorVal.WHITE)
