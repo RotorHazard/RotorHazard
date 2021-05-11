@@ -204,9 +204,9 @@ class LEDEventManager:
             if time:
                 gevent.sleep(float(time))
 
-            self.activateIdle(args)
+            self.activateIdle()
 
-    def activateIdle(self, args):
+    def activateIdle(self):
         gevent.idle()
         event = None
         if self.RACE.race_status == RHRace.RaceStatus.DONE:
