@@ -29,16 +29,28 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
 
 ## Quick start
 
-To run server:
+To run the server:
 ```
 cd src
-python -m server/server
+python3 -m server.server
 ```
 
-To run tests:
+To run the scanner tool:
 ```
 cd src
-python -m unittest discover
+python3 -m tools.scanner COM3
+```
+
+To run the RSSI dump tool:
+```
+cd src
+python3 -m tools.rssi_dump COM3 5890
+```
+
+To run the tests:
+```
+cd src
+python3 -m unittest discover
 ```
 
 ## Documentation

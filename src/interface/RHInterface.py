@@ -380,7 +380,7 @@ class RHInterface(BaseHardwareInterface):
                 return
         logger.info("Unable to find any nodes with jump-to-bootloader support")
 
-    def read_rssi_history(self, node_index):
+    def read_scan_history(self, node_index):
         node = self.nodes[node_index]
         data = node.read_block(READ_NODE_SCAN_HISTORY, 9)
         freqs = []
@@ -393,6 +393,10 @@ class RHInterface(BaseHardwareInterface):
                     freqs.append(freq)
                     rssis.append(rssi)
         return freqs, rssis
+
+    def read_rssi_history(self, node_index):
+        node = self.nodes[node_index]
+        return node.read_block(READ_NODE_RSSI_HISTORY, 16)
 
     def send_status_message(self, msgTypeVal, msgDataVal):
         if len(self.nodes) > 0:

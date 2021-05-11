@@ -140,10 +140,13 @@ class MockInterface(BaseHardwareInterface):
     def force_end_crossing(self, node_index):
         pass
 
-    def read_rssi_history(self, node_index):
+    def read_scan_history(self, node_index):
         freqs = list(range(5645, 5945, 5))
         rssis = [random.randint(0, 200) for f in freqs]
         return freqs, rssis
+
+    def read_rssi_history(self, node_index):
+        return [random.randint(0, 200) for _ in range(16)]
 
     def send_status_message(self, msgTypeVal, msgDataVal):
         return False

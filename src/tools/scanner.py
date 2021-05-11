@@ -24,7 +24,7 @@ def scan(port, socket):
     def scan_thread_function():
         while True:
             for node in INTERFACE.nodes:
-                freqs, rssis = INTERFACE.read_rssi_history(node.index)
+                freqs, rssis = INTERFACE.read_scan_history(node.index)
                 if freqs and rssis:
                     socket.emit('scan_data', {'node' : node.index, 'frequency' : freqs, 'rssi' : rssis})
                     gevent.sleep(0.1)
