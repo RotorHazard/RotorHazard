@@ -16,7 +16,7 @@ def leaderProxy(args):
         else:
             return False
 
-        if 'meta' in result and 'primary_leaderboard' in result['meta']: 
+        if result and 'meta' in result and 'primary_leaderboard' in result['meta']: 
             leaderboard = result[result['meta']['primary_leaderboard']]
         else:
             return False
