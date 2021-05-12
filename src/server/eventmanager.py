@@ -19,7 +19,10 @@ class EventManager:
     def __init__(self):
         pass
 
-    def on(self, event, name, handlerFn, defaultArgs={}, priority=200, unique=False):
+    def on(self, event, name, handlerFn, defaultArgs=None, priority=200, unique=False):
+        if defaultArgs == None:
+            defaultArgs = {}
+
         if event not in self.events:
             self.events[event] = {}
 
@@ -71,25 +74,26 @@ class EventManager:
                 if ev == Evt.ALL:
                     args['_eventName'] = event
 
-                if handler['priority'] < 100:
-                    # stop any threads with same name
-                    if name in self.eventThreads:
-                        if self.eventThreads[name] is not None:
-                            self.eventThreads[name].kill()
-                            self.eventThreads[name] = None
+                if handler['unique']:
+                    threadName = name + str(monotonic())
+                else:
+                    threadName = name
 
+                # stop any threads with same name
+                for token in self.eventThreads.copy():
+                    if token in self.eventThreads and self.eventThreads[token]['name'] == name:
+                        self.eventThreads[token]['thread'].kill(block=False)
+                    if token in self.eventThreads and self.eventThreads[token]['thread'].dead:
+                        self.eventThreads.pop(token, False)
+
+                if handler['priority'] < 100:
                     handler['handlerFn'](args)
                 else:
-                    # restart thread with same name regardless of status
-                    if name in self.eventThreads:
-                        if self.eventThreads[name] is not None:
-                            self.eventThreads[name].kill()
-
-                    if handler['unique']:
-                        token = monotonic()
-                        self.eventThreads[name + str(token)] = gevent.spawn(handler['handlerFn'], args)
-                    else:
-                        self.eventThreads[name] = gevent.spawn(handler['handlerFn'], args)
+                    greenlet = gevent.spawn(handler['handlerFn'], args)
+                    self.eventThreads[greenlet.minimal_ident] = {
+                        'name': threadName,
+                        'thread': greenlet
+                        }
 
 class Evt:
     # Special

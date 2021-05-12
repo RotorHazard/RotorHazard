@@ -438,6 +438,7 @@ class ClusterNodeSet:
         self.recEventsSecondaries = []
         self.Events = eventmanager
 
+    def init_repeater(self):
         self.Events.on(Evt.ALL, 'cluster', self.event_repeater, priority=75, unique=True)
 
     def event_repeater(self, args):

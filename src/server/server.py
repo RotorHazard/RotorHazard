@@ -702,7 +702,9 @@ def on_join_cluster():
     setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
     emit_race_format()
     logger.info("Joined cluster")
-    Events.trigger(Evt.CLUSTER_JOIN)
+    Events.trigger(Evt.CLUSTER_JOIN, {
+                'message': __('Joined cluster')
+                })
 
 @SOCKET_IO.on('join_cluster_ex')
 @catchLogExceptionsWrapper
@@ -715,7 +717,9 @@ def on_join_cluster_ex(data=None):
     if tmode == SecondaryNode.MIRROR_MODE:
         Server_is_mirror = True
     logger.info("Joined cluster" + ((" as '" + tmode + "' timer") if tmode else ""))
-    Events.trigger(Evt.CLUSTER_JOIN)
+    Events.trigger(Evt.CLUSTER_JOIN, {
+                'message': __('Joined cluster')
+                })
     emit_join_cluster_response()
 
 @SOCKET_IO.on('check_secondary_query')
@@ -741,7 +745,10 @@ def on_cluster_event_trigger(data):
             RACE.race_status = RaceStatus.STAGING
             RACE.results = None
             if led_manager.isEnabled():
-                led_manager.setDisplayColorCache(evtArgs['race_node_colors'])
+                if 'race_node_colors' in evtArgs and isinstance(evtArgs['race_node_colors'], list):
+                    led_manager.setDisplayColorCache(evtArgs['race_node_colors'])
+                else:
+                    RHData.set_option('ledColorMode', 0)
         elif evtName == Evt.RACE_START:
             RACE.race_status = RaceStatus.RACING
         elif evtName == Evt.RACE_STOP:
@@ -753,7 +760,7 @@ def on_cluster_event_trigger(data):
 
     evtArgs.pop('RACE', None) # remove race if exists
 
-    if evtName != Evt.LED_SET_MANUAL:
+    if evtName not in [Evt.STARTUP, Evt.LED_SET_MANUAL]:
         Events.trigger(evtName, evtArgs)
     # special handling for LED Control via primary timer
     elif 'effect' in evtArgs and led_manager.isEnabled():
@@ -1560,10 +1567,10 @@ def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
     if  INTERFACE.send_shutdown_started_message():
         gevent.sleep(0.25)  # give shutdown-started message a chance to transmit to node
-    Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
     logger.info('Performing system shutdown')
+    Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
     gevent.sleep(0.5)
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
@@ -1580,10 +1587,10 @@ def on_shutdown_pi():
 @catchLogExceptionsWrapper
 def on_reboot_pi():
     '''Reboot the raspberry pi.'''
-    Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('reboot_pi')
     emit_priority_message(__('Server is rebooting.'), True)
     logger.info('Performing system reboot')
+    Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
     gevent.sleep(0.5)
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
@@ -1600,10 +1607,10 @@ def on_reboot_pi():
 @catchLogExceptionsWrapper
 def on_kill_server():
     '''Shutdown this server.'''
-    Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('kill_server')
     emit_priority_message(__('Server has stopped.'), True)
     logger.info('Killing RotorHazard server')
+    Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
     gevent.sleep(0.5)
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
@@ -1962,9 +1969,11 @@ def on_stage_race():
             'pi_starts_at_s': RACE.start_time_monotonic,
             'color': ColorVal.ORANGE,
         }
-        
+
         if led_manager.isEnabled():
-            eventPayload['race_node_colors'] = led_manager.getNodeColors(RACE.num_nodes) 
+            eventPayload['race_node_colors'] = led_manager.getNodeColors(RACE.num_nodes)
+        else: 
+            eventPayload['race_node_colors'] = None
 
         Events.trigger(Evt.RACE_STAGE, eventPayload)
 
@@ -4776,6 +4785,9 @@ except:
         header='Error',
         subclass='error'
         )
+
+if CLUSTER and CLUSTER.hasRecEventsSecondaries():
+    CLUSTER.init_repeater()
 
 if RACE.num_nodes > 0:
     logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))

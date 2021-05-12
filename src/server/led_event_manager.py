@@ -17,6 +17,9 @@ import gevent
 from Results import CacheStatus
 from eventmanager import Evt
 from six.moves import UserDict
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LEDEventManager:
     events = {}
@@ -189,7 +192,9 @@ class LEDEventManager:
         return hexToColor(color)
 
     def activateEffect(self, args):
-        args['handlerFn'](args)
+        result = args['handlerFn'](args)
+        if result == False:
+            logger.debug('LED effect %s produced no output', args['handlerFn'])
         if 'preventIdle' not in args or not args['preventIdle']:
             if 'time' in args:
                 time = args['time']
@@ -199,9 +204,9 @@ class LEDEventManager:
             if time:
                 gevent.sleep(float(time))
 
-            self.activateIdle(args)
+            self.activateIdle()
 
-    def activateIdle(self, args):
+    def activateIdle(self):
         gevent.idle()
         event = None
         if self.RACE.race_status == RHRace.RaceStatus.DONE:
@@ -346,6 +351,10 @@ class LEDEvent:
         {
             "event": Evt.SHUTDOWN,
             "label": "Server Shutdown"
+        },
+        {
+            "event": Evt.CLUSTER_JOIN,
+            "label": "Joined Timer Cluster"
         },
         {
             "event": IDLE_READY,
