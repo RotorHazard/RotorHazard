@@ -75,7 +75,7 @@ class EventManager:
                     args['_eventName'] = event
 
                 if handler['unique']:
-                    threadName = name + monotonic()
+                    threadName = name + str(monotonic())
                 else:
                     threadName = name
 
@@ -94,8 +94,6 @@ class EventManager:
                         'name': threadName,
                         'thread': greenlet
                         }
-                    
-                logger.debug(greenlet.minimal_ident)
 
 class Evt:
     # Special
