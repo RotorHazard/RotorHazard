@@ -4782,6 +4782,9 @@ except:
         subclass='error'
         )
 
+if CLUSTER and CLUSTER.hasRecEventsSecondaries():
+    CLUSTER.init_repeater()
+
 if RACE.num_nodes > 0:
     logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
     # if I2C nodes then only report comm errors if > 1.0%
