@@ -1563,10 +1563,10 @@ def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
     if  INTERFACE.send_shutdown_started_message():
         gevent.sleep(0.25)  # give shutdown-started message a chance to transmit to node
-    Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
     logger.info('Performing system shutdown')
+    Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
     gevent.sleep(0.5)
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
@@ -1583,10 +1583,10 @@ def on_shutdown_pi():
 @catchLogExceptionsWrapper
 def on_reboot_pi():
     '''Reboot the raspberry pi.'''
-    Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('reboot_pi')
     emit_priority_message(__('Server is rebooting.'), True)
     logger.info('Performing system reboot')
+    Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
     gevent.sleep(0.5)
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
@@ -1603,10 +1603,10 @@ def on_reboot_pi():
 @catchLogExceptionsWrapper
 def on_kill_server():
     '''Shutdown this server.'''
-    Events.trigger(Evt.SHUTDOWN)
     CLUSTER.emit('kill_server')
     emit_priority_message(__('Server has stopped.'), True)
     logger.info('Killing RotorHazard server')
+    Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
     gevent.sleep(0.5)
     gevent.spawn(SOCKET_IO.stop)  # shut down flask http server
