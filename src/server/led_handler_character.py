@@ -326,9 +326,9 @@ def discover(*args, **kwargs):
         "Text Scroll: Message",
         scrollText, {
             'manual': False,
-            'include': [Evt.MESSAGE_INTERRUPT, Evt.MESSAGE_STANDARD, Evt.STARTUP],
+            'include': [Evt.MESSAGE_INTERRUPT, Evt.MESSAGE_STANDARD, Evt.STARTUP, Evt.CLUSTER_JOIN],
             'exclude': [Evt.ALL],
-            'recommended': [Evt.MESSAGE_INTERRUPT, Evt.MESSAGE_STANDARD, Evt.STARTUP]
+            'recommended': [Evt.MESSAGE_INTERRUPT, Evt.MESSAGE_STANDARD, Evt.STARTUP, Evt.CLUSTER_JOIN]
         }, {
         'data': 'message',
         'time': 0

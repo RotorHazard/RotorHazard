@@ -353,6 +353,10 @@ class LEDEvent:
             "label": "Server Shutdown"
         },
         {
+            "event": Evt.CLUSTER_JOIN,
+            "label": "Joined Timer Cluster"
+        },
+        {
             "event": IDLE_READY,
             "label": "Idle: System Ready"
         },

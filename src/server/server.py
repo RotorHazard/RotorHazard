@@ -702,7 +702,9 @@ def on_join_cluster():
     setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
     emit_race_format()
     logger.info("Joined cluster")
-    Events.trigger(Evt.CLUSTER_JOIN)
+    Events.trigger(Evt.CLUSTER_JOIN, {
+                'message': __('Joined cluster')
+                })
 
 @SOCKET_IO.on('join_cluster_ex')
 @catchLogExceptionsWrapper
@@ -715,7 +717,9 @@ def on_join_cluster_ex(data=None):
     if tmode == SecondaryNode.MIRROR_MODE:
         Server_is_mirror = True
     logger.info("Joined cluster" + ((" as '" + tmode + "' timer") if tmode else ""))
-    Events.trigger(Evt.CLUSTER_JOIN)
+    Events.trigger(Evt.CLUSTER_JOIN, {
+                'message': __('Joined cluster')
+                })
     emit_join_cluster_response()
 
 @SOCKET_IO.on('check_secondary_query')
