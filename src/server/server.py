@@ -760,7 +760,7 @@ def on_cluster_event_trigger(data):
 
     evtArgs.pop('RACE', None) # remove race if exists
 
-    if evtName != Evt.LED_SET_MANUAL:
+    if evtName not in [Evt.STARTUP, Evt.LED_SET_MANUAL]:
         Events.trigger(evtName, evtArgs)
     # special handling for LED Control via primary timer
     elif 'effect' in evtArgs and led_manager.isEnabled():
