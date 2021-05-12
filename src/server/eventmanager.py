@@ -19,7 +19,10 @@ class EventManager:
     def __init__(self):
         pass
 
-    def on(self, event, name, handlerFn, defaultArgs={}, priority=200, unique=False):
+    def on(self, event, name, handlerFn, defaultArgs=None, priority=200, unique=False):
+        if defaultArgs == None:
+            defaultArgs = {}
+
         if event not in self.events:
             self.events[event] = {}
 
