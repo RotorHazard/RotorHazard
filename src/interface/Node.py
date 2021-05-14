@@ -24,6 +24,8 @@ class IndividualIOLine:
         pass
 
 class SharedIOLine:
+    REENTRANT_IO_LINE = IndividualIOLine()
+
     def __init__(self, select_write_cmd, select_read_cmd):
         self.select_write_cmd = select_write_cmd
         self.select_read_cmd = select_read_cmd
@@ -32,7 +34,10 @@ class SharedIOLine:
 
     def select(self, node):
         if self.curr_multi_node_index != node.multi_node_index:
+            curr_io_line = node.io_line
+            node.io_line = SharedIOLine.REENTRANT_IO_LINE
             self.curr_multi_node_index = node.set_and_validate_value_8(self.select_write_cmd, self.select_read_cmd, node.multi_node_index)
+            node.io_line = curr_io_line
         return self.curr_multi_node_index == node.multi_node_index
 
     def __enter__(self):
@@ -117,6 +122,8 @@ class Node:
         multi_node.multi_node_index = multi_index
         multi_node.io_line = self.io_line
         multi_node.api_level = self.api_level
+        multi_node.api_valid_flag = self.api_valid_flag
+        multi_node.rhfeature_flags = self.rhfeature_flags
         multi_node.firmware_version_str = self.firmware_version_str
         multi_node.firmware_proctype_str = self.firmware_proctype_str
         multi_node.firmware_timestamp_str = self.firmware_timestamp_str

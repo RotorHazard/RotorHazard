@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <signal.h>
 
 constexpr size_t ADC_DATA_SIZE = 1000;
 
@@ -110,7 +111,7 @@ void Stream::copyToBuffer(const uint8_t data[], size_t size) {
 }
 
 #ifdef _WIN32
-static HANDLE hCom;
+static HANDLE hCom = 0;
 
 size_t Stream::write(const uint8_t* buffer, size_t size) {
     DWORD dwBytesWritten;
@@ -120,11 +121,17 @@ size_t Stream::write(const uint8_t* buffer, size_t size) {
     return dwBytesWritten;
 }
 
+void closeSerial() {
+    if (hCom > 0) {
+        CloseHandle(hCom);
+        hCom = 0;
+    }
+}
+
 void initSerial(const char* comPort) {
     hCom = CreateFileA(comPort, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hCom == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Error opening %s (maybe you meant \\\\.\\%s): %d\n", comPort, comPort, GetLastError());
-        hCom = 0;
         return;
     }
     DCB dcb;
@@ -132,8 +139,7 @@ void initSerial(const char* comPort) {
     dcb.DCBlength = sizeof(DCB);
     if (!GetCommState(hCom, &dcb)) {
         fprintf(stderr, "Error getting comm state: %d\n", GetLastError());
-        CloseHandle(hCom);
-        hCom = 0;
+        closeSerial();
         return;
     }
     dcb.BaudRate = CBR_115200;
@@ -142,17 +148,17 @@ void initSerial(const char* comPort) {
     dcb.StopBits = ONESTOPBIT;
     if (!SetCommState(hCom, &dcb)) {
         fprintf(stderr, "Error setting comm state: %d\n", GetLastError());
-        CloseHandle(hCom);
-        hCom = 0;
+        closeSerial();
         return;
     }
     COMMTIMEOUTS ctos = {MAXDWORD, 0, 0, 0, 1};
     if (!SetCommTimeouts(hCom, &ctos)) {
         fprintf(stderr, "Error setting comm timeouts: %d\n", GetLastError());
-        CloseHandle(hCom);
-        hCom = 0;
+        closeSerial();
         return;
     }
+
+    fprintf(stderr, "Opened %s\n", comPort);
 }
 
 void perform_io() {
@@ -172,7 +178,7 @@ void perform_io() {
     }
 }
 #else
-static int sockfd = -1;
+static int sockfd = 0;
 
 size_t Stream::write(const uint8_t* buffer, size_t size) {
     ssize_t bytesWritten = ::write(sockfd, buffer, size);
@@ -182,11 +188,18 @@ size_t Stream::write(const uint8_t* buffer, size_t size) {
     return bytesWritten;
 }
 
+void closeSocket() {
+    if (sockfd > 0) {
+        close(sockfd);
+        sockfd = 0;
+    }
+}
+
 void initSocket(const char* host, int port) {
     struct hostent* hostinfo = gethostbyname(host);
     if (hostinfo == nullptr) {
         fprintf(stderr, "Unknown host %s\n", host);
-        exit(-1);
+        return;
     }
 
     sockaddr_in sock_addr;
@@ -197,7 +210,7 @@ void initSocket(const char* host, int port) {
     sockfd = socket(PF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         fprintf(stderr, "Failed to create socket\n");
-        exit(-1);
+        return;
     }
 
     bool connected = false;
@@ -211,9 +224,11 @@ void initSocket(const char* host, int port) {
     }
     if (!connected) {
         fprintf(stderr, "Failed to connect to %s:%d\n", host, port);
-        close(sockfd);
-        exit(-1);
+        closeSocket();
+        return;
     }
+
+    fprintf(stderr, "Connected to %s:%d\n", host, port);
 }
 
 void perform_io() {
@@ -246,8 +261,18 @@ void loadRssiFile(const char* filename) {
     adcDataIndex = 0;
 }
 
+static volatile sig_atomic_t keepRunning = 1;
+
+void onTerminate(int signum)
+{
+    keepRunning = 0;
+}
+
 int main(int argc, const char* argv[])
 {
+    signal(SIGINT, onTerminate);
+    signal(SIGTERM, onTerminate);
+
     const char* addr = nullptr;
     const char* rssiFile = nullptr;
     int argIdx = 1;
@@ -298,7 +323,7 @@ int main(int argc, const char* argv[])
     setup();
 
     unsigned long last_io = 0;
-    for (;;) {
+    while (keepRunning) {
 
         loop();
 
@@ -308,6 +333,13 @@ int main(int argc, const char* argv[])
             last_io = t;
         }
     }
+
+    fprintf(stderr, "\nTerminating...\n");
+#ifdef _WIN32
+    closeSerial();
+#else
+    closeSocket();
+#endif
 
     return 0;
 }

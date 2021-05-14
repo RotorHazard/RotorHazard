@@ -43,8 +43,10 @@
 #elif TARGET == ESP32_TARGET
     #define MULTI_RHNODE_MAX 6
 #else
-    // Set greater than 1 to support multiple freqs per node
-    #define MULTI_RHNODE_MAX 1
+    #ifndef MULTI_RHNODE_MAX
+        // Set greater than 1 to support multiple freqs per node
+        #define MULTI_RHNODE_MAX 1
+    #endif
 #endif  // STM32_MODE_FLAG
 
 // multi-freq reads

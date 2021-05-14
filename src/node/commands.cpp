@@ -107,7 +107,7 @@ void Message::handleWriteCommand(bool serialFlag)
 
         case WRITE_CURNODE_INDEX:  // index of current node for this processor
             u8val = buffer.read8();
-            if (u8val < rssiRxs.getCount() && u8val != cmdRssiNodeIndex) {
+            if (u8val < rssiRxs.getCount()) {
               cmdRssiNodeIndex = u8val;
             }
             break;

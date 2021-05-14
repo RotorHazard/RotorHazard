@@ -38,15 +38,23 @@ jobs:
     - name: Python tests
       run: |
         cd src/node
-        ./scripts/build_sil.sh
+        ./scripts/build_sil.sh 0
+        ./scripts/build_sil.sh 1
+        ./scripts/build_sil.sh 4
         cd ..
-        coverage run --branch -m unittest discover
+        coverage run --branch -m unittest discover -v
         cd ..
+
+    - name: Install Arduino CI
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 2.6
+        working-directory: src/node
+        bundler-cache: true
 
     - name: Node tests
       run: |
         cd src/node
-        bundle install
         ./run-ci-tests.sh
         cd ../..
       shell: bash

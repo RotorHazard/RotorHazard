@@ -562,14 +562,14 @@ def build_nodes(node):
             logger.info("Multi-node (with {} modules) found at {}: {}".format(multi_count, node.addr, ', '.join(info_strs)))
             node.io_line = SharedIOLine(WRITE_CURNODE_INDEX, READ_CURNODE_INDEX)
             node.multi_node_index = 0
-            node.read_node_slot_index()
+            read_node_slot_index(node)
             logger.debug("Node {} (slot={}) added at {}".format(node, node.multi_node_slot_index+1, node.addr))
             nodes.append(node)
             next_index = node.index + 1
             for multi_idx in range(1, multi_count):
                 other_node = node.create_multi_node(next_index, multi_idx)
-                other_node.read_node_slot_index()
-                logger.debug("Node {} (slot={}) added at {}".format(node, node.multi_node_slot_index+1, node.addr))
+                read_node_slot_index(other_node)
+                logger.debug("Node {} (slot={}) added at {}".format(other_node, other_node.multi_node_slot_index+1, other_node.addr))
                 nodes.append(other_node)
                 next_index += 1
     else:
