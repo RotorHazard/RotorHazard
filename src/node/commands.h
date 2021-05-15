@@ -9,9 +9,10 @@
 #include "hardware.h"
 
 // API level for node; increment when commands are modified
-constexpr uint16_t NODE_API_LEVEL = 33;
+constexpr uint16_t NODE_API_LEVEL = 35;
 
 constexpr uint8_t MESSAGE_BUFFER_SIZE = 18;
+constexpr uint8_t TEXT_SIZE = 16;
 
 class Message
 {
@@ -23,7 +24,7 @@ private:
     void setMode(RssiNode& rssiNode, Mode mode);
 public:
     uint8_t command;  // code to identify messages
-    Buffer<MESSAGE_BUFFER_SIZE> buffer;  // request/response payload
+    Buffer<MESSAGE_BUFFER_SIZE,TEXT_SIZE> buffer;  // request/response payload
 
     uint8_t getPayloadSize();
     void handleWriteCommand(bool serialFlag);
@@ -53,6 +54,10 @@ constexpr freq_t MAX_FREQ = 9999;
 #define READ_MULTINODE_COUNT 0x39  // read # of nodes handled by this processor
 #define READ_CURNODE_INDEX 0x3A    // read index of current node for this processor
 #define READ_NODE_SLOTIDX 0x3C     // read node slot index (for multi-node setup)
+#define READ_FW_VERSION 0x3D       // read firmware version string
+#define READ_FW_BUILDDATE 0x3E     // read firmware build date string
+#define READ_FW_BUILDTIME 0x3F     // read firmware build time string
+#define READ_FW_PROCTYPE 0x40      // read node processor type
 
 #define WRITE_FREQUENCY 0x51
 #define WRITE_MODE 0x52
@@ -60,6 +65,7 @@ constexpr freq_t MAX_FREQ = 9999;
 #define WRITE_EXIT_AT_LEVEL 0x72
 #define WRITE_CURNODE_INDEX 0x7A   // write index of current node for this processor
 
+#define SEND_STATUS_MESSAGE 0x75   // send status message from server to node
 #define FORCE_END_CROSSING 0x78  // kill current crossing flag regardless of RSSI value
 #define RESET_PAIRED_NODE 0x79  // command to reset node for ISP
 #define JUMP_TO_BOOTLOADER 0x7E    // jump to bootloader for flash update

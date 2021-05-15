@@ -3,12 +3,18 @@
 
 #include "config.h"
 
-template<size_t S> class Buffer {
+template<size_t S, size_t T> class Buffer {
     public:
         uint8_t index = 0;
         uint8_t size = 0;
         uint8_t data[S];  // Data array for I/O, up to 18 bytes per message
 
+        constexpr size_t capacity() {
+            return S;
+        }
+        constexpr size_t textLength() {
+            return T;
+        }
         bool isEmpty() {
             return size == 0;
         }
@@ -66,6 +72,13 @@ template<size_t S> class Buffer {
                 data[size++] = v;
             }
         }
+        void writeText(const char *str) {
+            if (size < S-(T-1)) {
+                strncpy((char*)data, str, T-1);
+                data[T-1] = '\0';
+                size += T;
+            }
+        }
         uint8_t calculateChecksum(uint8_t len) {
             uint8_t checksum = 0;
             for (int i = 0; i < len; i++)
@@ -80,8 +93,8 @@ template<size_t S> class Buffer {
         }
 };
 
-template<size_t N> constexpr rssi_t ioBufferReadRssi(Buffer<N>& buf) { return buf.read8(); }
-template<size_t N> constexpr void ioBufferWriteRssi(Buffer<N>& buf, rssi_t rssi) { buf.write8(rssi); }
-template<size_t N> constexpr void ioBufferWriteFreqRssi(Buffer<N>& buf, const FreqRssi& f_r) { buf.write16(f_r.freq); buf.write8(f_r.rssi); }
+template<size_t N,size_t T> constexpr rssi_t ioBufferReadRssi(Buffer<N,T>& buf) { return buf.read8(); }
+template<size_t N,size_t T> constexpr void ioBufferWriteRssi(Buffer<N,T>& buf, rssi_t rssi) { buf.write8(rssi); }
+template<size_t N,size_t T> constexpr void ioBufferWriteFreqRssi(Buffer<N,T>& buf, const FreqRssi& f_r) { buf.write16(f_r.freq); buf.write8(f_r.rssi); }
 
 #endif

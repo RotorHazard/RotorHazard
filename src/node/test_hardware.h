@@ -31,6 +31,10 @@ public:
             printf("Status LED changed to %d\n", onFlag);
         }
     }
+
+    const char* getProcessorType() {
+      return "Test";
+    }
 };
 
 extern TestHardware testHardware;

@@ -37,9 +37,14 @@
 
 // ******************************************************************** //
 
+#define USB_SERIAL_TYPE 1
+#define PIN_SERIAL_TYPE 2
+
+#define SERIAL_TYPE USB_SERIAL_TYPE
+
 #if TARGET == STM32_TARGET
     #define MULTI_RHNODE_MAX 8
-    #define STM32_SERIALUSB_FLAG 0  // 1 to use BPill USB port for serial link
+    #define SERIAL_TYPE PIN_SERIAL_TYPE // USB_SERIAL_TYPE to use BPill USB port for serial link
 #elif TARGET == ESP32_TARGET
     #define MULTI_RHNODE_MAX 6
 #else

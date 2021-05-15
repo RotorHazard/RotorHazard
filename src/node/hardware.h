@@ -55,6 +55,7 @@ public:
     virtual void resetPairedNode(bool pinState) {}
     virtual void doJumpToBootloader() {}
     virtual uint8_t getAddress() { return 0; }
+    virtual const char* getProcessorType() = 0;
     // value returned by READ_RHFEAT_FLAGS command
     virtual uint16_t getFeatureFlags() { return RHFEAT_NONE; }
     virtual void storeFrequency(freq_t freq) {}

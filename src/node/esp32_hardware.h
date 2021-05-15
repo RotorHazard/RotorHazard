@@ -71,6 +71,10 @@ public:
         rx.init(dataPin, clkPin, selPin, rssiPin);
     }
 
+    const char* getProcessorType() {
+      return "ESP32";
+    }
+
     uint8_t readADC(uint8_t pin) {
         int raw = analogRead(pin);
         // rescale to fit into a byte

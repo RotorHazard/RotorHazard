@@ -8,6 +8,8 @@
 #include <unistd.h>
 #endif
 #include <inttypes.h>
+#include <string.h>
+
 #include "../util/CircularBuffer.h"
 
 #define HIGH 1

@@ -4,8 +4,9 @@
 
 #define SERIAL_BAUD_RATE 921600
 
-#if STM32_SERIALUSB_FLAG
+#if SERIAL_TYPE == USB_SERIAL_TYPE
 #define SERIALCOM SerialUSB
+void serialEvent();
 #else
 #define SERIALCOM Serial
 #endif
@@ -85,6 +86,10 @@ public:
         uint8_t selPin = rx5808SelPinForNodeIndex(nIdx);  //SEL (CH2) output line to RX5808 module
         uint8_t rssiPin = rssiInputPinForNodeIndex(nIdx); //RSSI input from RX5808
         rx.init(dataPin, clkPin, selPin, rssiPin);
+    }
+
+    const char* getProcessorType() {
+      return "STM32F1";
     }
 
     uint16_t getFeatureFlags() {

@@ -223,8 +223,8 @@ public:
         }
     }
 
-    void doJumpToBootloader()
-    {
+    const char* getProcessorType() {
+      return "Arduino";
     }
 
     uint8_t getAddress()

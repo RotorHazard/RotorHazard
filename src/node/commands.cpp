@@ -3,6 +3,8 @@
 #include "rssi.h"
 #include "commands.h"
 
+extern void handleStatusMessage(uint8_t msgType, uint8_t data);
+
 constexpr uint_fast16_t RSSI_HISTORY_PAYLOAD_SIZE = 16;
 constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_COUNT = 3;
 constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_SIZE = SCAN_HISTORY_PAYLOAD_COUNT*sizeof(FreqRssi);
@@ -15,36 +17,19 @@ uint8_t Message::getPayloadSize()
     uint8_t size;
     switch (command)
     {
-        case WRITE_FREQUENCY:
-            size = 2;
-            break;
-
         case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
-            size = 1;
-            break;
-
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-            size = 1;
-            break;
-
         case WRITE_MODE:
-            size = 1;
-            break;
-
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
-            size = 1;
-            break;
-
         case RESET_PAIRED_NODE:  // reset paired node for ISP
-            size = 1;
-            break;
-
         case WRITE_CURNODE_INDEX:  // index of current node for this processor
-            size = 1;
-            break;
-
         case JUMP_TO_BOOTLOADER:  // jump to bootloader for flash update
             size = 1;
+            break;
+
+        case WRITE_FREQUENCY:
+        case SEND_STATUS_MESSAGE:
+            size = 2;
             break;
 
         default:  // invalid command
@@ -112,6 +97,11 @@ void Message::handleWriteCommand(bool serialFlag)
             }
             break;
 
+        case SEND_STATUS_MESSAGE:  // status message sent from server to node
+            u16val = buffer.read16();  // upper byte is message type, lower byte is data
+            handleStatusMessage((uint8_t)(u16val >> 8), (uint8_t)(u16val & 0x00FF));
+            break;
+
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
             rssiNode.endCrossing();
             break;
@@ -141,7 +131,7 @@ void Message::handleWriteCommand(bool serialFlag)
     command = 0;  // Clear previous command
 }
 
-template <size_t N> void ioBufferWriteExtremum(Buffer<N>& buf, const Extremum& e, mtime_t now)
+template <size_t N,size_t T> void ioBufferWriteExtremum(Buffer<N,T>& buf, const Extremum& e, mtime_t now)
 {
     ioBufferWriteRssi(buf, e.rssi);
     buf.write16(toDuration(now - e.firstTime));
@@ -267,6 +257,22 @@ void Message::handleReadCommand(bool serialFlag)
 
         case READ_NODE_SLOTIDX:
             buffer.write8(rssiRxs.getSlotIndex(cmdRssiNodeIndex));
+            break;
+
+        case READ_FW_VERSION:
+            buffer.writeText("Beta");
+            break;
+
+        case READ_FW_BUILDDATE:
+            buffer.writeText(__DATE__);
+            break;
+
+        case READ_FW_BUILDTIME:
+            buffer.writeText(__TIME__);
+            break;
+
+        case READ_FW_PROCTYPE:
+            buffer.writeText(hardware.getProcessorType());
             break;
 
         default:  // If an invalid command is sent, write nothing back, master must react

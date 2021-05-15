@@ -37,4 +37,7 @@ public:
             printf("\e[0m");
         }
     }
+    const char* getProcessorType() {
+        return "Host";
+    }
 };
