@@ -4,9 +4,9 @@ gevent.monkey.patch_all()
 import logging
 import sys
 from server import Config
-from interface import RHInterface, MockInterface, unpack_16
+from interface import RHInterface, MockInterface
 
-def start(port, freq, showLoopTime, write_buffer):
+def start(port, freq, write_buffer):
     if port == 'MOCK':
         INTERFACE = MockInterface.get_hardware_interface()
     else:
@@ -20,19 +20,11 @@ def start(port, freq, showLoopTime, write_buffer):
 
     count = 1
     dataBuffer = []
-    minLoopTime = 9999999
-    maxLoopTime = 0
     try:
         while True:
             gevent.sleep(0.1)
 
             for node in INTERFACE.nodes:
-                if showLoopTime:
-                    data = node.read_block(RHInterface.READ_LAP_PASS_STATS, 8)
-                    loopTime = unpack_16(data[6:])
-                    minLoopTime = min(loopTime, minLoopTime)
-                    maxLoopTime = max(loopTime, maxLoopTime)
-                    print("Loop time: {} (min {}, max {})".format(loopTime, minLoopTime, maxLoopTime))
                 data = INTERFACE.read_rssi_history(node.index)
                 if data is not None and len(data) > 0:
                     for rssi in data:
@@ -63,5 +55,4 @@ if __name__ == '__main__':
         exit()
     port = sys.argv[1]
     freq = int(sys.argv[2])
-    showLoopTime = len(sys.argv) > 3
-    start(port, freq, showLoopTime, write_buffer)
+    start(port, freq, write_buffer)

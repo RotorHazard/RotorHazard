@@ -9,7 +9,7 @@ class RssiDumpTest(unittest.TestCase):
             nonlocal buffers
             buffers[filename] = buf
 
-        thread = gevent.spawn(rssi_dump.start, 'MOCK', 5885, False, write_buffer)
+        thread = gevent.spawn(rssi_dump.start, 'MOCK', 5885, write_buffer)
         gevent.sleep(0.3)
         thread.kill()
         self.assertGreater(len(buffers), 0)
