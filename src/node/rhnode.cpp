@@ -87,10 +87,6 @@ static uint_fast8_t currentStatusFlags = 0;
 // Main loop
 void loop()
 {
-    #if TARGET == STM32_TARGET && SERIAL_TYPE == USB_SERIAL_TYPE
-    serialEvent();
-    #endif
-
     const utime_t us = usclock.tickMicros();
     // unsigned arithmetic to handle roll-over
     if ((us - previousTick) > 1000)  // limit to once per millisecond

@@ -37,14 +37,13 @@
 
 // ******************************************************************** //
 
-#define USB_SERIAL_TYPE 1
-#define PIN_SERIAL_TYPE 2
-
-#define SERIAL_TYPE USB_SERIAL_TYPE
-
 #if TARGET == STM32_TARGET
-    #define MULTI_RHNODE_MAX 8
-    #define SERIAL_TYPE PIN_SERIAL_TYPE // USB_SERIAL_TYPE to use BPill USB port for serial link
+    // currently, STM32F1 is not fast enough to support more than 4 nodes at 1ms loop time
+    #define MULTI_RHNODE_MAX 4
+    // ensure U(S)ART support is "Enabled (generic Serial)"
+    // use USB support "None" (or "CDC (no generic Serial)") to use serial over UART pins
+    // use USB support "CDC (generic Serial)" to use serial over USB port
+    // i.e. -DUSBCON -DUSBD_USE_CDC
 #elif TARGET == ESP32_TARGET
     #define MULTI_RHNODE_MAX 6
 #else

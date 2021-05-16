@@ -4,12 +4,7 @@
 
 #define SERIAL_BAUD_RATE 921600
 
-#if SERIAL_TYPE == USB_SERIAL_TYPE
-#define SERIALCOM SerialUSB
-void serialEvent();
-#else
 #define SERIALCOM Serial
-#endif
 
 // address for STM32 bootloader
 #if defined(STM32F1)
