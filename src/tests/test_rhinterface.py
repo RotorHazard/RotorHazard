@@ -31,8 +31,22 @@ class RHInterfaceTest(unittest.TestCase):
             intf.set_exit_at_level(0, 34)
             self.assertEqual(intf.nodes[0].exit_at_level, 34)
             intf.start()
+
+            # test laps
             gevent.sleep(10)
             self.assertGreater(laps, 0)
+
+            # test scan
+            node = intf.nodes[0]
+            intf.set_frequency_scan(0, True)
+            self.assertEqual(node.scan_enabled, True)
+            intf.start()
+            gevent.sleep(10)
+            self.assertGreater(len(node.scan_data), 0)
+            intf.set_frequency_scan(0, False)
+            self.assertEqual(node.scan_enabled, False)
+            self.assertEqual(len(node.scan_data), 0)
+
             intf.stop()
             intf.close()
         finally:
@@ -77,4 +91,4 @@ class RHInterfaceTest(unittest.TestCase):
             self.node_proc.terminate()
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main() 

@@ -44,6 +44,7 @@ SEND_STATUS_MESSAGE = 0x75  # send status message from server to node
 FORCE_END_CROSSING = 0x78   # kill current crossing flag regardless of RSSI value
 JUMP_TO_BOOTLOADER = 0x7E   # jump to bootloader for flash update
 
+TIMER_MODE = 0
 SCANNER_MODE = 1
 RSSI_HISTORY_MODE = 2
 
@@ -139,7 +140,11 @@ class RHInterface(BaseHardwareInterface):
         cross_list = []  # list of nodes with crossing-flag changes
         startThreshLowerNode = None
         for node in self.nodes:
-            if node.frequency:
+            if node.scan_enabled and callable(self.read_scan_history):
+                freqs, rssis = self.read_scan_history(node.index)
+                for freq, rssi in zip(freqs, rssis):
+                    node.scan_data[freq] = rssi
+            elif node.frequency:
                 if node.api_valid_flag or node.api_level >= 5:
                     if node.api_level >= 21:
                         data = node.read_block(READ_LAP_STATS, 16)
@@ -355,6 +360,18 @@ class RHInterface(BaseHardwareInterface):
             WRITE_MODE,
             READ_MODE,
             mode)
+
+    def set_frequency_scan(self, node_index, scan_enabled):
+        '''Frequency scanning protocol'''
+        node = self.nodes[node_index]
+        if scan_enabled != node.scan_enabled:
+            self.set_mode(node_index, SCANNER_MODE if scan_enabled else TIMER_MODE)
+            node.scan_enabled = scan_enabled
+            # reset/clear data
+            node.scan_data = {}
+            # restore original frequency
+            if not scan_enabled:
+                self.set_frequency(node_index, node.frequency)
 
     def transmit_enter_at_level(self, node, level):
         return self.set_and_validate_value_rssi(node,

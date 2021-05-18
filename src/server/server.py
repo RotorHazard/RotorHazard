@@ -531,7 +531,7 @@ def render_vrxstatus():
 def render_viewDocs():
     '''Route to doc viewer.'''
 
-    folderBase = '../../doc/'
+    folderBase = '../doc/'
 
     try:
         docfile = request.args.get('d')
@@ -950,16 +950,6 @@ def hardware_set_all_frequencies(freqs):
             'channel': freqs["c"][idx]
             })
 
-@catchLogExceptionsWrapper
-def restore_node_frequency(node_index):
-    ''' Restore frequency for given node index (update hardware) '''
-    gevent.sleep(0.250)  # pause to get clear of heartbeat actions for scanner
-    profile = getCurrentProfile()
-    profile_freqs = json.loads(profile.frequencies)
-    freq = profile_freqs["f"][node_index]
-    INTERFACE.set_frequency(node_index, freq)
-    logger.info('Frequency restored: Node {0} Frequency {1}'.format(node_index+1, freq))
-
 @SOCKET_IO.on('set_enter_at_level')
 @catchLogExceptionsWrapper
 def on_set_enter_at_level(data):
@@ -1102,19 +1092,9 @@ def on_cap_exit_at_btn(data):
 @catchLogExceptionsWrapper
 def on_set_scan(data):
     node_index = data['node']
-    minScanFreq = data['min_scan_frequency']
-    maxScanFreq = data['max_scan_frequency']
-    maxScanInterval = data['max_scan_interval']
-    minScanInterval = data['min_scan_interval']
-    scanZoom = data['scan_zoom']
-    node = INTERFACE.nodes[node_index]
-    node.set_scan_interval(minScanFreq, maxScanFreq, maxScanInterval, minScanInterval, scanZoom)
-    if node.scan_enabled:
-        HEARTBEAT_DATA_RATE_FACTOR = 50
-    else:
-        HEARTBEAT_DATA_RATE_FACTOR = 5
-        gevent.sleep(0.100)  # pause/spawn to get clear of heartbeat actions for scanner
-        gevent.spawn(restore_node_frequency, node_index)
+    scan_enabled = data['scan']
+    if hasattr(INTERFACE, 'set_frequency_scan'):
+        INTERFACE.set_frequency_scan(node_index, scan_enabled)
 
 @SOCKET_IO.on('add_heat')
 @catchLogExceptionsWrapper
@@ -2884,6 +2864,11 @@ def emit_environmental_data(**params):
     else:
         SOCKET_IO.emit('environmental_data', emit_payload)
 
+def emit_scan_data(node):
+    freqs = sorted(node.scan_data)
+    rssis = [node.scan_data[freq] for freq in freqs]
+    SOCKET_IO.emit('scan_data', {'node' : node.index, 'frequency' : freqs, 'rssi' : rssis})
+
 def emit_enter_and_exit_at_levels(**params):
     '''Emits enter-at and exit-at levels for nodes.'''
     profile = getCurrentProfile()
@@ -3795,6 +3780,13 @@ def heartbeat_thread_function():
                 heartbeat_thread_function.imdtabler_flag = False
                 emit_imdtabler_rating()
 
+            scanners = [node for node in INTERFACE.nodes if node.scan_enabled]
+            if scanners:
+                SCANNER_UPDATE_FACTOR = 2
+                scan_counter = heartbeat_thread_function.iter_tracker % (SCANNER_UPDATE_FACTOR*len(scanners))
+                if (scan_counter % SCANNER_UPDATE_FACTOR) == 1:
+                    emit_scan_data(scanners[scan_counter//SCANNER_UPDATE_FACTOR])
+
             # emit rest of node data, but less often:
             if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
                 emit_node_data()
@@ -3804,19 +3796,19 @@ def heartbeat_thread_function():
                 emit_cluster_status()
 
             # collect vrx lock status
-            if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
+            if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 1:
                 if vrx_controller:
                     # if vrx_controller.has_connection
                     vrx_controller.get_seat_lock_status()
                     vrx_controller.request_variable_status()
 
-            if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 4:
+            if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 5:
                 # emit display status with offset
                 if vrx_controller:
                     emit_vrx_list()
 
             # emit environment data less often:
-            if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
+            if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 2:
                 SENSORS.update_environmental_data()
                 emit_environmental_data()
 

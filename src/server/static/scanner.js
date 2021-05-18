@@ -125,7 +125,7 @@ function createBandScanner(elementId) {
 function registerMessageHandlers(socket, scanners) {
 	socket.on('scan_data', function (msg) {
 		let scanner = scanners[msg.node];
-		if (scanner && scanner.isEnabled) {
+		if (scanner) {
 			for (let i = 0; i < msg.rssi.length; i++) {
 				let rssiValue = msg.rssi[i];
 				let freq = msg.frequency[i];

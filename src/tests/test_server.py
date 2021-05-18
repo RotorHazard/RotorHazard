@@ -162,31 +162,21 @@ class ServerTest(unittest.TestCase):
         })
         self.client.emit('set_scan', {
             'node': 0,
-            'min_scan_frequency': 5645,
-            'max_scan_frequency': 5945,
-            'max_scan_interval': 1,
-            'min_scan_interval': 1,
-            'scan_zoom': 1,
+            'scan': True,
         })
         # allow some scanning to happen
-        new_freq = 5888
-        while new_freq == 5888:
-            gevent.sleep(0.5)
-            resp = self.get_response('heartbeat')
-            new_freq = resp['frequency'][0]
+        gevent.sleep(0.5)
+        resp = self.get_response('scan_data')
+        num_freqs = len(resp['frequency'])
+        self.assertGreater(num_freqs, 0)
+        self.assertEqual(len(resp['rssi']), num_freqs)
 
         self.client.emit('set_scan', {
             'node': 0,
-            'min_scan_frequency': 0,
-            'max_scan_frequency': 0,
-            'max_scan_interval': 0,
-            'min_scan_interval': 0,
-            'scan_zoom': 0,
+            'scan': False,
         })
         # check original frequency is restored
         gevent.sleep(0.5)
-        resp = self.get_response('heartbeat')
-        gevent.sleep(0.25)
         resp = self.get_response('heartbeat')
         self.assertEqual(resp['frequency'][0], 5888)
 

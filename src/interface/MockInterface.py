@@ -9,7 +9,8 @@ from .Node import Node
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 from .RHInterface import FW_TEXT_BLOCK_SIZE, FW_VERSION_PREFIXSTR, \
                         FW_BUILDDATE_PREFIXSTR, FW_BUILDTIME_PREFIXSTR, \
-                        FW_PROCTYPE_PREFIXSTR
+                        FW_PROCTYPE_PREFIXSTR, \
+                        TIMER_MODE, SCANNER_MODE, RSSI_HISTORY_MODE
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,11 @@ class MockInterface(BaseHardwareInterface):
         cross_list = []  # list of nodes with crossing-flag changes
         startThreshLowerNode = None
         for index, node in enumerate(self.nodes):
-            if node.frequency:
+            if node.scan_enabled and callable(self.read_scan_history):
+                freqs, rssis = self.read_scan_history(node.index)
+                for freq, rssi in zip(freqs, rssis):
+                    node.scan_data[freq] = rssi
+            elif node.frequency:
                 readtime = monotonic()
 
                 node_data = self.data[index]
@@ -130,6 +135,18 @@ class MockInterface(BaseHardwareInterface):
     def set_mode(self, node_index, mode):
         node = self.nodes[node_index]
         node.mode = mode
+
+    def set_frequency_scan(self, node_index, scan_enabled):
+        '''Frequency scanning protocol'''
+        node = self.nodes[node_index]
+        if scan_enabled != node.scan_enabled:
+            self.set_mode(node_index, SCANNER_MODE if scan_enabled else TIMER_MODE)
+            node.scan_enabled = scan_enabled
+            # reset/clear data
+            node.scan_data = {}
+            # restore original frequency
+            if not scan_enabled:
+                self.set_frequency(node_index, node.frequency)
 
     def transmit_enter_at_level(self, node, level):
         return level

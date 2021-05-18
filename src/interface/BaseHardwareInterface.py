@@ -69,47 +69,46 @@ class BaseHardwareInterface:
                 gevent.sleep(self.update_sleep*10)
 
     def process_lap_stats(self, node, readtime, lap_id, ms_val, cross_flag, pn_history, cross_list, upd_list):
-        if node.scan_interval == 0:
-            if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
-                node.crossing_flag = cross_flag
-                if cross_flag:
-                    node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
-                if callable(self.node_crossing_callback):
-                    cross_list.append(node)
+        if cross_flag is not None and cross_flag != node.crossing_flag:  # if 'crossing' status changed
+            node.crossing_flag = cross_flag
+            if cross_flag:
+                node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
+            if callable(self.node_crossing_callback):
+                cross_list.append(node)
 
-            # calc lap timestamp
-            if ms_val < 0 or ms_val > 9999999:
-                ms_val = 0  # don't allow negative or too-large value
-                lap_timestamp = 0
-            else:
-                lap_timestamp = readtime - (ms_val / 1000.0)
+        # calc lap timestamp
+        if ms_val < 0 or ms_val > 9999999:
+            ms_val = 0  # don't allow negative or too-large value
+            lap_timestamp = 0
+        else:
+            lap_timestamp = readtime - (ms_val / 1000.0)
 
-            # if new lap detected for node then append item to updates list
-            if lap_id != node.node_lap_id:
-                upd_list.append((node, lap_id, lap_timestamp))
+        # if new lap detected for node then append item to updates list
+        if lap_id != node.node_lap_id:
+            upd_list.append((node, lap_id, lap_timestamp))
 
-            # check if capturing enter-at level for node
-            if node.cap_enter_at_flag:
-                node.cap_enter_at_total += node.current_rssi
-                node.cap_enter_at_count += 1
-                if self.milliseconds() >= node.cap_enter_at_millis:
-                    node.enter_at_level = int(round(node.cap_enter_at_total / node.cap_enter_at_count))
-                    node.cap_enter_at_flag = False
-                    # if too close node peak then set a bit below node-peak RSSI value:
-                    if node.node_peak_rssi > 0 and node.node_peak_rssi - node.enter_at_level < ENTER_AT_PEAK_MARGIN:
-                        node.enter_at_level = node.node_peak_rssi - ENTER_AT_PEAK_MARGIN
-                    if callable(self.new_enter_or_exit_at_callback):
-                        gevent.spawn(self.new_enter_or_exit_at_callback, node, True)
+        # check if capturing enter-at level for node
+        if node.cap_enter_at_flag:
+            node.cap_enter_at_total += node.current_rssi
+            node.cap_enter_at_count += 1
+            if self.milliseconds() >= node.cap_enter_at_millis:
+                node.enter_at_level = int(round(node.cap_enter_at_total / node.cap_enter_at_count))
+                node.cap_enter_at_flag = False
+                # if too close node peak then set a bit below node-peak RSSI value:
+                if node.node_peak_rssi > 0 and node.node_peak_rssi - node.enter_at_level < ENTER_AT_PEAK_MARGIN:
+                    node.enter_at_level = node.node_peak_rssi - ENTER_AT_PEAK_MARGIN
+                if callable(self.new_enter_or_exit_at_callback):
+                    gevent.spawn(self.new_enter_or_exit_at_callback, node, True)
 
-            # check if capturing exit-at level for node
-            if node.cap_exit_at_flag:
-                node.cap_exit_at_total += node.current_rssi
-                node.cap_exit_at_count += 1
-                if self.milliseconds() >= node.cap_exit_at_millis:
-                    node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
-                    node.cap_exit_at_flag = False
-                    if callable(self.new_enter_or_exit_at_callback):
-                        gevent.spawn(self.new_enter_or_exit_at_callback, node, False)
+        # check if capturing exit-at level for node
+        if node.cap_exit_at_flag:
+            node.cap_exit_at_total += node.current_rssi
+            node.cap_exit_at_count += 1
+            if self.milliseconds() >= node.cap_exit_at_millis:
+                node.exit_at_level = int(round(node.cap_exit_at_total / node.cap_exit_at_count))
+                node.cap_exit_at_flag = False
+                if callable(self.new_enter_or_exit_at_callback):
+                    gevent.spawn(self.new_enter_or_exit_at_callback, node, False)
 
         # prune history data if race is not running (keep last 60s)
         if self.race_status is BaseHardwareInterface.RACE_STATUS_READY:
@@ -216,20 +215,11 @@ class BaseHardwareInterface:
 
     def get_heartbeat_json(self):
         json = {
-            'current_rssi': [node.current_rssi for node in self.nodes],
-            'frequency': [node.frequency for node in self.nodes],
-            'loop_time': [node.loop_time for node in self.nodes],
-            'crossing_flag': [node.crossing_flag for node in self.nodes]
+            'current_rssi': [node.current_rssi if not node.scan_enabled else 0 for node in self.nodes],
+            'frequency': [node.frequency if not node.scan_enabled else 0 for node in self.nodes],
+            'loop_time': [node.loop_time if not node.scan_enabled else 0 for node in self.nodes],
+            'crossing_flag': [node.crossing_flag if not node.scan_enabled else False for node in self.nodes]
         }
-        for i, node in enumerate(self.nodes):
-            if node.scan_enabled:
-                new_freq = node.frequency + node.scan_interval
-                if new_freq < node.min_scan_frequency or new_freq > node.max_scan_frequency:
-                    new_freq = node.min_scan_frequency
-                    node.scan_interval = int(node.scan_interval/node.scan_zoom)
-                    if node.scan_interval < node.min_scan_interval:
-                        node.scan_interval = node.max_scan_interval
-                self.set_frequency(i, new_freq)
         return json
 
     def get_calibration_threshold_json(self):
