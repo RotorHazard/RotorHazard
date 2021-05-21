@@ -20,8 +20,14 @@ unittest(ph_peak)
         40,
         118
     };
+    uint_fast8_t sortedIdxs[pn_size(testData)];
+    for (int i=0; i<pn_size(testData); i++) {
+        sortedIdxs[i] = i;
+    }
+    sort<rssi_t>(testData, sortedIdxs, pn_size(testData));
+
     ConnectedComponent ccs[(pn_size(testData)+1)/2];
-    uint_fast8_t numCCs = calculatePeakPersistentHomology<rssi_t,pn_size(testData)>(testData, pn_size(testData), ccs);
+    uint_fast8_t numCCs = calculatePeakPersistentHomology<rssi_t,pn_size(testData)>(testData, sortedIdxs, pn_size(testData), ccs);
     assertEqual(7, numCCs);
     uint8_t expectedBirths[] = {12, 4, 10, 2, 8, 0, 6};
     uint8_t expectedDeaths[] = {5, 5, 11, 3, 9, 1, 7};
@@ -37,10 +43,10 @@ unittest(ph_peak)
     }
 
     int_fast8_t peakIdx = 4;
-    calculatePeakPersistentHomology<rssi_t,pn_size(testData)>(testData, pn_size(testData), ccs, &peakIdx);
+    calculatePeakPersistentHomology<rssi_t,pn_size(testData)>(testData, sortedIdxs, pn_size(testData), ccs, &peakIdx);
     assertEqual(-2, peakIdx);
     int_fast8_t nadirIdx = 7;
-    calculatePeakPersistentHomology<rssi_t,pn_size(testData)>(testData, pn_size(testData), ccs, &nadirIdx);
+    calculatePeakPersistentHomology<rssi_t,pn_size(testData)>(testData, sortedIdxs, pn_size(testData), ccs, &nadirIdx);
     assertEqual(7, nadirIdx);
 }
 
@@ -61,8 +67,14 @@ unittest(ph_nadir)
         215,
         137
     };
+    uint_fast8_t sortedIdxs[pn_size(testData)];
+    for (int i=0; i<pn_size(testData); i++) {
+        sortedIdxs[i] = i;
+    }
+    sort<rssi_t>(testData, sortedIdxs, pn_size(testData));
+
     ConnectedComponent ccs[(pn_size(testData)+1)/2];
-    uint_fast8_t numCCs = calculateNadirPersistentHomology<rssi_t,pn_size(testData)>(testData, pn_size(testData), ccs);
+    uint_fast8_t numCCs = calculateNadirPersistentHomology<rssi_t,pn_size(testData)>(testData, sortedIdxs, pn_size(testData), ccs);
     assertEqual(7, numCCs);
     uint8_t expectedBirths[] = {12, 4, 10, 2, 8, 0, 6};
     uint8_t expectedDeaths[] = {5, 5, 11, 3, 9, 1, 7};
@@ -78,10 +90,10 @@ unittest(ph_nadir)
     }
 
     int_fast8_t nadirIdx = 4;
-    calculateNadirPersistentHomology<rssi_t,pn_size(testData)>(testData, pn_size(testData), ccs, &nadirIdx);
+    calculateNadirPersistentHomology<rssi_t,pn_size(testData)>(testData, sortedIdxs, pn_size(testData), ccs, &nadirIdx);
     assertEqual(-2, nadirIdx);
     int_fast8_t peakIdx = 7;
-    calculateNadirPersistentHomology<rssi_t,pn_size(testData)>(testData, pn_size(testData), ccs, &peakIdx);
+    calculateNadirPersistentHomology<rssi_t,pn_size(testData)>(testData, sortedIdxs, pn_size(testData), ccs, &peakIdx);
     assertEqual(7, peakIdx);
 }
 
@@ -93,8 +105,14 @@ unittest(ph_degenerate)
         220,
         120
     };
+    uint_fast8_t sortedIdxs[pn_size(testData)];
+    for (int i=0; i<pn_size(testData); i++) {
+        sortedIdxs[i] = i;
+    }
+    sort<rssi_t>(testData, sortedIdxs, pn_size(testData));
+
     ConnectedComponent ccs[(pn_size(testData)+1)/2];
-    uint_fast8_t numCCs = calculatePeakPersistentHomology<rssi_t,pn_size(testData)>(testData, pn_size(testData), ccs);
+    uint_fast8_t numCCs = calculatePeakPersistentHomology<rssi_t,pn_size(testData)>(testData, sortedIdxs, pn_size(testData), ccs);
     assertEqual(2, numCCs);
     uint8_t expectedBirths[] = {2, 0};
     uint8_t expectedDeaths[] = {1, 1};

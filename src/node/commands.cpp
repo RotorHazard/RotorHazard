@@ -260,7 +260,7 @@ void Message::handleReadCommand(bool serialFlag)
             break;
 
         case READ_FW_VERSION:
-            buffer.writeText("Beta");
+            buffer.writeText("B1.1");
             break;
 
         case READ_FW_BUILDDATE:

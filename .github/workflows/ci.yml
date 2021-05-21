@@ -37,11 +37,7 @@ jobs:
 
     - name: Python tests
       run: |
-        cd src/node
-        ./scripts/build_sil.sh 0
-        ./scripts/build_sil.sh 1
-        ./scripts/build_sil.sh 4
-        cd ..
+        cd src
         coverage run --branch -m unittest discover -v
         cd ..
 

@@ -9,9 +9,21 @@ struct ConnectedComponent {
 };
 
 template <size_t N> static ConnectedComponent *idxToCC[N];
-template <size_t N> static uint_fast8_t sortedIdxs[N];
 
-template <typename T, size_t N> uint_fast8_t calculatePeakPersistentHomology(const T pns[], const uint_fast8_t size, ConnectedComponent ccs[], int_fast8_t *idxPtr = nullptr) {
+template <typename T> static void sort(const T pns[], uint_fast8_t sortedIdxs[], const uint_fast8_t size) {
+    // insertion sort
+    for (uint_fast8_t i=1; i<size; i++) {
+        const uint_fast8_t idx = sortedIdxs[i];
+        const T v = pns[idx];
+        int_fast8_t j = i-1;
+        for (; j>=0 && pns[sortedIdxs[j]] > v; j--) {
+            sortedIdxs[j+1] = sortedIdxs[j];
+        }
+        sortedIdxs[j+1] = idx;
+    }
+}
+
+template <typename T, size_t N> uint_fast8_t calculatePeakPersistentHomology(const T pns[], const uint_fast8_t sortedIdxs[], const uint_fast8_t size, ConnectedComponent ccs[], int_fast8_t *idxPtr = nullptr) {
     static_assert(N <= 127, "can't exceed 127 - 7-bit indices");
 
     ExtremumType firstType;
@@ -24,32 +36,10 @@ template <typename T, size_t N> uint_fast8_t calculatePeakPersistentHomology(con
         altType = PEAK;
     }
 
-    // initialisation & pre-sort
-    for (uint_fast8_t i=0; i<size; i++) {
-        idxToCC<N>[i] = nullptr;
-        ExtremumType t = i&1 ? altType : firstType;
-        if (t == PEAK) {
-            sortedIdxs<N>[(i+size)/2] = i;
-        } else {
-            sortedIdxs<N>[i/2] = i;
-        }
-    }
-
-    // insertion sort
-    for (uint_fast8_t i=1; i<size; i++) {
-        const uint_fast8_t idx = sortedIdxs<N>[i];
-        const T v = pns[idx];
-        int_fast8_t j = i-1;
-        for (; j>=0 && pns[sortedIdxs<N>[j]] > v; j--) {
-            sortedIdxs<N>[j+1] = sortedIdxs<N>[j];
-        }
-        sortedIdxs<N>[j+1] = idx;
-    }
-
-    const uint_fast8_t minIdx = sortedIdxs<N>[0];
+    const uint_fast8_t minIdx = sortedIdxs[0];
     uint_fast8_t ccCount = 0;
     for (int_fast8_t i=size-1; i>=0; i--) {
-        const uint_fast8_t idx = sortedIdxs<N>[i];
+        const uint_fast8_t idx = sortedIdxs[i];
         const ExtremumType etype = idx&1 ? altType : firstType;
         if (etype == PEAK) {
             // peak
@@ -81,7 +71,7 @@ template <typename T, size_t N> uint_fast8_t calculatePeakPersistentHomology(con
     return ccCount;
 }
 
-template <typename T, size_t N> uint_fast8_t calculateNadirPersistentHomology(const T pns[], uint_fast8_t size, ConnectedComponent ccs[], int_fast8_t *idxPtr = nullptr) {
+template <typename T, size_t N> uint_fast8_t calculateNadirPersistentHomology(const T pns[], const uint_fast8_t sortedIdxs[], uint_fast8_t size, ConnectedComponent ccs[], int_fast8_t *idxPtr = nullptr) {
     static_assert(N <= 127, "can't exceed 127 - 7-bit indices");
 
     ExtremumType firstType;
@@ -94,32 +84,10 @@ template <typename T, size_t N> uint_fast8_t calculateNadirPersistentHomology(co
         altType = PEAK;
     }
 
-    // initialisation & pre-sort
-    for (uint_fast8_t i=0; i<size; i++) {
-        idxToCC<N>[i] = nullptr;
-        ExtremumType t = i&1 ? altType : firstType;
-        if (t == NADIR) {
-            sortedIdxs<N>[(i+size)/2] = i;
-        } else {
-            sortedIdxs<N>[i/2] = i;
-        }
-    }
-
-    // insertion sort
-    for (uint_fast8_t i=1; i<size; i++) {
-        const uint_fast8_t idx = sortedIdxs<N>[i];
-        const T v = pns[idx];
-        int_fast8_t j = i-1;
-        for (; j>=0 && pns[sortedIdxs<N>[j]] < v; j--) {
-            sortedIdxs<N>[j+1] = sortedIdxs<N>[j];
-        }
-        sortedIdxs<N>[j+1] = idx;
-    }
-
-    const uint_fast8_t maxIdx = sortedIdxs<N>[0];
+    const uint_fast8_t maxIdx = sortedIdxs[size-1];
     uint_fast8_t ccCount = 0;
-    for (int_fast8_t i=size-1; i>=0; i--) {
-        const uint_fast8_t idx = sortedIdxs<N>[i];
+    for (int_fast8_t i=0; i<size; i++) {
+        const uint_fast8_t idx = sortedIdxs[i];
         const ExtremumType etype = idx&1 ? altType : firstType;
         if (etype == PEAK) {
             // peak

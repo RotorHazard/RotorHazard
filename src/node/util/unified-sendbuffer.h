@@ -9,16 +9,21 @@ template <typename T, uint8_t N> class UnifiedSendBuffer : public SendBuffer<T>,
 {
     private:
         ExtremumType lastAddedType = NONE;
-        CircularBuffer<T,N> buffer;
         uint_fast8_t nextToSendIndex = 0;
 
-        void add(const T& e) {
-            if (!buffer.push(e)) {
+    protected:
+        CircularBuffer<T,N> buffer;
+
+        virtual bool add(const T& e) {
+            bool hadCapacity = buffer.push(e);
+            if (!hadCapacity) {
                 if (nextToSendIndex > 0) {
                     nextToSendIndex--;
                 }
             }
+            return hadCapacity;
         }
+
 #ifdef __TEST__
 public:
 #endif
@@ -107,4 +112,44 @@ public:
         }
 };
 
+template <uint8_t N> class SortedUnifiedSendBuffer : public UnifiedSendBuffer<Extremum,N> {
+    public:
+        uint_fast8_t sortedIdxs[N];
+
+    protected:
+        bool add(const Extremum& e) {
+            bool hadCapacity = UnifiedSendBuffer<Extremum,N>::add(e);
+            if (!hadCapacity) {
+                const int_fast8_t lastIdx = UnifiedSendBuffer<Extremum,N>::buffer.size()-1;
+                int_fast8_t shift = 0;
+                for (int_fast8_t i=0; i<lastIdx; i++) {
+                    if (sortedIdxs[i] == 0) {
+                        shift = 1;
+                    }
+                    sortedIdxs[i] = sortedIdxs[i+shift] - 1;
+                }
+            }
+            const rssi_t v = e.rssi;
+            const int_fast8_t idx = UnifiedSendBuffer<Extremum,N>::buffer.size()-1;
+            int_fast8_t j = idx-1;
+            for (; j>=0 && UnifiedSendBuffer<Extremum,N>::buffer[sortedIdxs[j]].rssi > v; j--) {
+                sortedIdxs[j+1] = sortedIdxs[j];
+            }
+            sortedIdxs[j+1] = idx;
+            return hadCapacity;
+        }
+
+    public:
+        void removeLast() {
+            UnifiedSendBuffer<Extremum,N>::removeLast();
+            const int_fast8_t lastIdx = UnifiedSendBuffer<Extremum,N>::buffer.size();
+            int_fast8_t shift = 0;
+            for (int_fast8_t i=0; i<lastIdx; i++) {
+                if (sortedIdxs[i] == lastIdx) {
+                    shift = 1;
+                }
+                sortedIdxs[i] = sortedIdxs[i+shift];
+            }
+        }
+};
 #endif

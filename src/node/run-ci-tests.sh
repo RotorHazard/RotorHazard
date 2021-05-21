@@ -8,5 +8,5 @@ do
 	mkdir $cov_dir
 	mv *.gcov $cov_dir
 	rm *.gcda
-	rm *.gcno;
+	rm *.gcno
 done

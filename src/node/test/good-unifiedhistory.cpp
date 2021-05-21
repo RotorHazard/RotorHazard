@@ -237,4 +237,49 @@ unittest(historyBuffer_unified1_withReads) {
   assertEqual(time(1)-1, (int)history.sendBuffer->nextPeak().duration);
 }
 
+unittest(historyBuffer_sorted) {
+    SortedUnifiedSendBuffer<3> testBuffer;
+    Extremum e1 = {80,0,0};
+    testBuffer.addPeak(e1);
+    Extremum e2 = {30,0,0};
+    testBuffer.addNadir(e2);
+    assertEqual(2, (int)testBuffer.size());
+    e2 = testBuffer[testBuffer.sortedIdxs[0]];
+    e1 = testBuffer[testBuffer.sortedIdxs[1]];
+    assertEqual(30, (int)e2.rssi);
+    assertEqual(80, (int)e1.rssi);
+
+    Extremum e3 = {70,0,0};
+    testBuffer.addPeak(e3);
+    assertEqual(3, (int)testBuffer.size());
+    e2 = testBuffer[testBuffer.sortedIdxs[0]];
+    e3 = testBuffer[testBuffer.sortedIdxs[1]];
+    e1 = testBuffer[testBuffer.sortedIdxs[2]];
+    assertEqual(30, (int)e2.rssi);
+    assertEqual(70, (int)e3.rssi);
+    assertEqual(80, (int)e1.rssi);
+
+    Extremum e4 = {20,0,0};
+    testBuffer.addNadir(e4);
+    assertEqual(3, (int)testBuffer.size());
+    e4 = testBuffer[testBuffer.sortedIdxs[0]];
+    e2 = testBuffer[testBuffer.sortedIdxs[1]];
+    e3 = testBuffer[testBuffer.sortedIdxs[2]];
+    assertEqual(20, (int)e4.rssi);
+    assertEqual(30, (int)e2.rssi);
+    assertEqual(70, (int)e3.rssi);
+
+    testBuffer.removeLast();
+    assertEqual(2, (int)testBuffer.size());
+    e2 = testBuffer[testBuffer.sortedIdxs[0]];
+    e3 = testBuffer[testBuffer.sortedIdxs[1]];
+    assertEqual(30, (int)e2.rssi);
+    assertEqual(70, (int)e3.rssi);
+
+    testBuffer.removeLast();
+    assertEqual(1, (int)testBuffer.size());
+    e2 = testBuffer[testBuffer.sortedIdxs[0]];
+    assertEqual(30, (int)e2.rssi);
+}
+
 unittest_main()

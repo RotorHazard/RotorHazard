@@ -8,9 +8,11 @@ SENDBUFFER phSendBuffer;
 unittest(phCrossing) {
   GodmodeState* nano = GODMODE();
   nano->reset();
+  phSendBuffer.clear();
   RssiNode rssiNode;
   configureTestRssiNode(rssiNode);
   Settings& settings = rssiNode.getSettings();
+  settings.usePh = true;
   settings.enterAtLevel = settings.exitAtLevel = 10;
   State& state = rssiNode.getState();
   LastPass& lastPass = rssiNode.getLastPass();
@@ -129,6 +131,30 @@ unittest(phCrossing) {
   assertEqual(timestamp(5), (int)history.sendBuffer->nextNadir().firstTime);
   assertEqual(time(1)-1, (int)history.sendBuffer->nextNadir().duration);
   history.popNextToSend();
+}
+
+unittest(preparePhData)
+{
+    phSendBuffer.clear();
+    RssiNode rssiNode;
+    configureTestRssiNode(rssiNode);
+    History& history = rssiNode.getHistory();
+    history.setSendBuffer(&phSendBuffer);
+    Extremum e1 = {50,0,0};
+    phSendBuffer.addPeak(e1);
+    Extremum e2 = {20,0,0};
+    phSendBuffer.addNadir(e2);
+    Extremum e3 = {60,0,0};
+    phSendBuffer.addPeak(e3);
+    rssiNode.preparePhData(30);
+    assertEqual(50, (int)rssiNode.phData[0]);
+    assertEqual(20, (int)rssiNode.phData[1]);
+    assertEqual(60, (int)rssiNode.phData[2]);
+    assertEqual(30, (int)rssiNode.phData[3]);
+    assertEqual(1, (int)rssiNode.phSortedIdxs[0]);
+    assertEqual(3, (int)rssiNode.phSortedIdxs[1]);
+    assertEqual(0, (int)rssiNode.phSortedIdxs[2]);
+    assertEqual(2, (int)rssiNode.phSortedIdxs[3]);
 }
 
 unittest_main()
