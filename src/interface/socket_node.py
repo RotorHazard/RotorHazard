@@ -71,6 +71,7 @@ def discover(idxOffset, config, *args, **kwargs):
                     while True:
                         conn, client_addr = server.accept()
                         logger.info("Connection from {}:{}".format(client_addr[0], client_addr[1]))
+                        conn.settimeout(2)
                         node = SocketNode(next_index, conn)
                         multi_nodes = rhi.build_nodes(node)
                         next_index += len(multi_nodes)

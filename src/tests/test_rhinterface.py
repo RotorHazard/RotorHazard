@@ -26,12 +26,7 @@ class RHInterfaceTest(unittest.TestCase):
             intf = RHInterface(config=config, warn_loop_time=66000)
             intf.pass_record_callback = on_pass
             self.assertEqual(len(intf.nodes), 1)
-            intf.set_frequency(0, 5885)
-            self.assertEqual(intf.nodes[0].frequency, 5885)
-            intf.set_enter_at_level(0, 33)
-            self.assertEqual(intf.nodes[0].enter_at_level, 33)
-            intf.set_exit_at_level(0, 34)
-            self.assertEqual(intf.nodes[0].exit_at_level, 34)
+            self.check_settings(intf)
             intf.start()
 
             # test laps
@@ -71,12 +66,7 @@ class RHInterfaceTest(unittest.TestCase):
             intf = RHInterface(config=config, warn_loop_time=66000)
             intf.pass_record_callback = on_pass
             self.assertEqual(len(intf.nodes), 4)
-            intf.set_frequency(0, 5885)
-            self.assertEqual(intf.nodes[0].frequency, 5885)
-            intf.set_enter_at_level(1, 33)
-            self.assertEqual(intf.nodes[1].enter_at_level, 33)
-            intf.set_exit_at_level(2, 34)
-            self.assertEqual(intf.nodes[2].exit_at_level, 34)
+            self.check_settings(intf)
             intf.start()
             gevent.sleep(10)
             self.assertGreater(laps, 0)
@@ -101,6 +91,15 @@ class RHInterfaceTest(unittest.TestCase):
             self.node_proc.terminate()
             self.node_proc.wait()
         self.gcov('test_rhnode0')
+
+    def check_settings(self, intf):
+        for i in range(len(intf.nodes)):
+            intf.set_frequency(i, 5885)
+            self.assertEqual(intf.nodes[i].frequency, 5885)
+            intf.set_enter_at_level(i, 23)
+            self.assertEqual(intf.nodes[i].enter_at_level, 23)
+            intf.set_exit_at_level(i, 24)
+            self.assertEqual(intf.nodes[i].exit_at_level, 24)
 
     def gcov(self, testname):
         subprocess.run("gcov -b -c *.cpp", cwd='node', shell=True)

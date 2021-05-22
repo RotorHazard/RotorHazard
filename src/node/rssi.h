@@ -52,14 +52,25 @@ enum Mode
     RAW = 2
 };
 
+#ifdef USE_PH
+#define DEFAULT_ENTER_AT_LEVEL 40
+#define DEFAULT_EXIT_AT_LEVEL 40
+#else
+#define DEFAULT_ENTER_AT_LEVEL 96
+#define DEFAULT_EXIT_AT_LEVEL 80
+#endif
+
 struct Settings
 {
     freq_t volatile vtxFreq = 5800;
     // lap pass begins when RSSI is at or above this level
-    rssi_t volatile enterAtLevel = 96;
+    rssi_t volatile enterAtLevel = DEFAULT_ENTER_AT_LEVEL;
     // lap pass ends when RSSI goes below this level
-    rssi_t volatile exitAtLevel = 80;
+    rssi_t volatile exitAtLevel = DEFAULT_EXIT_AT_LEVEL;
     Mode volatile mode = TIMER;
+#ifdef __TEST__
+    bool volatile usePh = false;
+#endif
 };
 
 class State
@@ -202,7 +213,7 @@ private:
     inline void updateRssiHistory();
     bool checkForCrossing(ExtremumType t, int rssiChange);
 #if defined(USE_PH) || defined(__TEST__)
-    bool checkForCrossing_ph(ExtremumType t, uint8_t threshold);
+    bool checkForCrossing_ph(ExtremumType t, uint8_t enterThreshold, uint8_t exitThreshold);
 #endif
     bool checkForCrossing_old(rssi_t enterThreshold, rssi_t exitThreshold);
 public:

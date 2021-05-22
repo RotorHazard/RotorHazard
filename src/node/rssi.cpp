@@ -165,11 +165,10 @@ ExtremumType RssiNode::updateHistory(const int rssiChange)
 bool RssiNode::checkForCrossing(const ExtremumType t, const int rssiChange)
 {
 #if defined(USE_PH)
-    uint8_t level = (settings.enterAtLevel == settings.exitAtLevel) ? settings.enterAtLevel : 20;
-    return checkForCrossing_ph(t, level);
+    return checkForCrossing_ph(t, settings.enterAtLevel, settings.exitAtLevel);
 #elif defined(__TEST__)
-    if (settings.enterAtLevel == settings.exitAtLevel) {
-        return checkForCrossing_ph(t, settings.enterAtLevel);
+    if (settings.usePh) {
+        return checkForCrossing_ph(t, settings.enterAtLevel, settings.exitAtLevel);
     } else {
         return checkForCrossing_old(settings.enterAtLevel, settings.exitAtLevel);
     }
@@ -179,7 +178,7 @@ bool RssiNode::checkForCrossing(const ExtremumType t, const int rssiChange)
 }
 
 #if defined(USE_PH) || defined(__TEST__)
-bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t threshold)
+bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t enterThreshold, const uint8_t exitThreshold)
 {
     const SENDBUFFER& sendBuffer = *((SENDBUFFER*)(history.sendBuffer));
 
@@ -200,7 +199,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
             const uint_fast8_t lastLife = phData[cc.death] - phData[cc.birth];
-            if (lastLife > threshold) {
+            if (lastLife > exitThreshold) {
                 endCrossing();
             }
         }
@@ -216,7 +215,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
             const uint_fast8_t lastLife = phData[cc.birth] - phData[cc.death];
-            if (lastLife > threshold) {
+            if (lastLife > enterThreshold) {
                 startCrossing();
             }
         }

@@ -6,6 +6,10 @@ extern void setup();
 extern void loop();
 extern void serialEvent();
 
+uint8_t read8(String& s, int i) {
+    return s[i];
+}
+
 uint16_t read16(String& s, int i) {
     uint8_t b1 = s[i++];
     uint8_t b2 = s[i++];
@@ -31,6 +35,19 @@ void sendData(GodmodeState* state, const char data[], int len, Message& msg) {
     }
 }
 
+unittest(command_enterAtLevel)
+{
+    GodmodeState* nano = GODMODE();
+    nano->reset();
+    Message serialMessage;
+    setup();
+    const char cmd[] = {READ_ENTER_AT_LEVEL};
+    sendData(nano, cmd, sizeof(cmd), serialMessage);
+    assertEqual(2, nano->serialPort[0].dataOut.length());
+    Settings& settings = rssiRxs.getSettings(0);
+    assertEqual(settings.enterAtLevel, read8(nano->serialPort[0].dataOut, 0));
+}
+
 unittest(command_freq)
 {
     GodmodeState* nano = GODMODE();
@@ -40,7 +57,8 @@ unittest(command_freq)
     const char cmd[] = {READ_FREQUENCY};
     sendData(nano, cmd, sizeof(cmd), serialMessage);
     assertEqual(3, nano->serialPort[0].dataOut.length());
-    assertEqual(5800, read16(nano->serialPort[0].dataOut, 0));
+    Settings& settings = rssiRxs.getSettings(0);
+    assertEqual(settings.vtxFreq, read16(nano->serialPort[0].dataOut, 0));
 }
 
 unittest(command_scan)

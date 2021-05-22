@@ -10,6 +10,9 @@ const static int N_TS = testFilter.getTimestampCapacity();
 void configureTestRssiNode(RssiNode& rssiNode) {
     testFilter.reset();
     rssiNode.setFilter(&testFilter);
+    Settings& settings = rssiNode.getSettings();
+    settings.enterAtLevel = 96;
+    settings.exitAtLevel = 80;
 }
 
 void sendSignal(GodmodeState* nano, RssiNode& rssiNode, int rssi) {
