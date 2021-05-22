@@ -2,14 +2,14 @@
 /*.bin
 /*.gcda
 /*.gcno
+/*.gcov
 /*.csv
 /.settings
 /.cproject
 /.project
 /Release/
-/build_arduino/
-/build_stm32/
-/build_stm32_f4/
+/build_*
+/test_*
 /spec.d
 /core
 /libraries
