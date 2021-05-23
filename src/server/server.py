@@ -28,8 +28,6 @@ PROGRAM_START_MTONIC = monotonic()
 # offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
 MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_MTONIC
 
-logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
-
 # Normal importing resumes here
 import gevent.monkey
 gevent.monkey.patch_all()
@@ -38,19 +36,19 @@ import io
 import os
 import sys
 import base64
+import argparse
 import subprocess
 import importlib
 import functools
+import socket
+import random
+import string
+import json
 from collections import OrderedDict
 from six import unichr, string_types
 
 from flask import Flask, send_file, request, Response, session, templating, redirect
 from flask_socketio import SocketIO, emit
-
-import socket
-import random
-import string
-import json
 
 from . import Config, Database, Results, Language, \
     RHData, RHRace, RHUtils, PageCache, RHGPIO, \
@@ -100,24 +98,25 @@ CMDARG_ZIP_LOGS_STR = '--ziplogs'        # create logs .zip file
 CMDARG_JUMP_TO_BL_STR = '--jumptobl'     # send jump-to-bootloader command to node
 CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill processor
 
-if __name__ == '__main__' and len(sys.argv) > 1:
-    if CMDARG_VERSION_LONG_STR in sys.argv or CMDARG_VERSION_SHORT_STR in sys.argv:
-        sys.exit(0)
-    if CMDARG_ZIP_LOGS_STR in sys.argv:
-        log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
-        sys.exit(0)
-    if CMDARG_JUMP_TO_BL_STR not in sys.argv:  # handle jump-to-bootloader argument later
-        if CMDARG_FLASH_BPILL_STR in sys.argv:
-            argIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
-            portStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
-                                                len(Config.SERIAL_PORTS) > 0 else None
-            srcStr = sys.argv[argIdx] if argIdx < len(sys.argv) else None
-            if srcStr and srcStr.startswith("--"):  # use next arg as src file (optional)
-                srcStr = None                       #  unless arg is switch param
-            successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
-            sys.exit(0 if successFlag else 1)
-        print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
-        sys.exit(1)
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument(CMDARG_VERSION_LONG_STR, CMDARG_VERSION_SHORT_STR, action='version', version=RELEASE_VERSION)
+arg_parser.add_argument(CMDARG_ZIP_LOGS_STR, action='store_true', help='zip log files')
+arg_parser.add_argument(CMDARG_JUMP_TO_BL_STR, action='store_true', help='jump to bootloader')
+arg_parser.add_argument(CMDARG_FLASH_BPILL_STR, action='store', nargs='?', metavar='source', const=stm32loader.DEF_BINSRC_STR, help='flash an STM32 BluePill processor')
+
+args = arg_parser.parse_args(None if __name__ == '__main__' else [])
+if args.ziplogs:
+    log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
+    sys.exit(0)
+if not args.jumptobl:  # handle jump-to-bootloader argument later
+    if args.flashbpill:
+        portStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
+                                            len(Config.SERIAL_PORTS) > 0 else None
+        srcStr = args.flashbpill
+        successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
+        sys.exit(0 if successFlag else 1)
+
+logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 
@@ -4683,16 +4682,13 @@ if not resultFlag:
     log.wait_for_queue_empty()
     sys.exit(1)
 
-if len(sys.argv) > 0 and CMDARG_JUMP_TO_BL_STR in sys.argv:
+if args.jumptobl:
     stop_background_threads()
     jump_to_node_bootloader()
-    if CMDARG_FLASH_BPILL_STR in sys.argv:
-        argIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
+    if args.flashbpill:
         portStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
                                             len(Config.SERIAL_PORTS) > 0 else None
-        srcStr = sys.argv[argIdx] if argIdx < len(sys.argv) else None
-        if srcStr and srcStr.startswith("--"):  # use next arg as src file (optional)
-            srcStr = None                       #  unless arg is switch param
+        srcStr = args.flashbpill
         successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
         sys.exit(0 if successFlag else 1)
     sys.exit(0)

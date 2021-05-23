@@ -13,6 +13,6 @@ goto ex
 :ardFound
 
 echo on
-"%ARDUINO_CMD%" --pref boardsmanager.additional.urls=https://github.com/stm32duino/BoardManagerFiles/raw/master/STM32/package_stm_index.json --install-boards STM32:stm32 %1 %2 %3 %4 %5 %6 %7 %8 %9
+"%ARDUINO_CMD%" --pref boardsmanager.additional.urls=https://github.com/stm32duino/BoardManagerFiles/raw/master/package_stmicroelectronics_index.json --install-boards STM32:stm32 %1 %2 %3 %4 %5 %6 %7 %8 %9
 @echo off
 :ex

@@ -12,8 +12,8 @@ echo Unable to run command: %ARDUINO_CMD%
 goto ex
 :ardFound
 
-if exist util\stm32loader.py goto stmLdrFound
-echo Unable to find program file: util\stm32loader.py
+if exist ..\server\util\stm32loader.py goto stmLdrFound
+echo Unable to find program file: ..\server\util\stm32loader.py
 goto ex
 :stmLdrFound
 
@@ -35,6 +35,7 @@ echo on
 @echo off
 :doUpload
 echo on
-python util\stm32loader.py %RH_UPLOAD_SERIALPORT% "%RH_BUILD_WORKDIR%build_stm32\%RH_BUILD_PROJNAME%.bin"
+cd ..
+python3 -m server.util.stm32loader %RH_UPLOAD_SERIALPORT% "node\%RH_BUILD_WORKDIR%build_stm32\%RH_BUILD_PROJNAME%.bin"
 @echo off
 :ex
