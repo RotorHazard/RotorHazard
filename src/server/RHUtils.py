@@ -59,6 +59,12 @@ def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
     else:
         return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
 
+def isVersionPython2():
+    return sys.version.startswith("2.")
+
+def getPythonVersionStr():
+    return sys.version.split()[0]
+
 def idAndLogSystemInfo():
     global IS_SYS_RASPBERRY_PI
     IS_SYS_RASPBERRY_PI = False
@@ -74,7 +80,7 @@ def idAndLogSystemInfo():
             IS_SYS_RASPBERRY_PI = True
             logger.info("Host machine: " + modelStr.strip('\0'))
         logger.info("Host OS: {} {}".format(platform.system(), platform.release()))
-        logger.info("Python version: {}".format(sys.version.split('\n')[0].strip()))
+        logger.info("Python version: {}".format(getPythonVersionStr()))
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
 

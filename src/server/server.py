@@ -11,16 +11,17 @@ JSON_API = 3 # JSON API version
 # we would miss messages otherwise.
 import logging
 import log
-from datetime import datetime, timezone
+from datetime import datetime
 from monotonic import monotonic
+import RHTimeFns
 
 log.early_stage_setup()
 logger = logging.getLogger(__name__)
 
-EPOCH_START = datetime(1970, 1, 1, tzinfo=timezone.utc)
+EPOCH_START = RHTimeFns.getEpochStartTime()
 
 # program-start time, in milliseconds since 1970-01-01
-PROGRAM_START_EPOCH_TIME = int((datetime.now(timezone.utc) - EPOCH_START).total_seconds() * 1000)
+PROGRAM_START_EPOCH_TIME = int((RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds() * 1000)
 
 # program-start time (in milliseconds, starting at zero)
 PROGRAM_START_MTONIC = monotonic()
@@ -3906,7 +3907,7 @@ def clock_check_thread_function():
             if RACE.any_races_started:  # stop monitoring after any race started
                 break
             time_now = monotonic()
-            epoch_now = int((datetime.now(timezone.utc) - EPOCH_START).total_seconds() * 1000)
+            epoch_now = int((RHTimeFns.getUtcDateTimeNow() - EPOCH_START).total_seconds() * 1000)
             diff_ms = epoch_now - monotonic_to_epoch_millis(time_now)
             if abs(diff_ms) > 30000:
                 PROGRAM_START_EPOCH_TIME += diff_ms
@@ -4673,6 +4674,15 @@ def buildServerInfo():
 logger.info('Release: {0} / Server API: {1} / Latest Node API: {2}'.format(RELEASE_VERSION, SERVER_API, NODE_API_BEST))
 logger.debug('Program started at {0:.0f}'.format(PROGRAM_START_EPOCH_TIME))
 RHUtils.idAndLogSystemInfo()
+
+if RHUtils.isVersionPython2():
+    logger.warning("Python version is obsolete: " + RHUtils.getPythonVersionStr())
+    set_ui_message('python',
+        (__("Python version") + " (" + RHUtils.getPythonVersionStr() + ") " + \
+         __("is obsolete and no longer supported; see") + \
+         " <a href=\"docs?d=Software Setup.md#python\">Software Settings</a> " + \
+         __("doc for upgrade instructions")),
+        header='Warning', subclass='old-python')
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
 
