@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import DeclarativeMeta
 from flask.blueprints import Blueprint
 
 class AlchemyEncoder(json.JSONEncoder):
-    def default(self, obj):
+    def default(self, obj):  #pylint: disable=arguments-differ
         if isinstance(obj.__class__, DeclarativeMeta):
             # an SQLAlchemy class
             fields = {}

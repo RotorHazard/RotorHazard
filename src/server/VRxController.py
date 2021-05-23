@@ -27,7 +27,7 @@ import RHUtils
 # git clone https://github.com/ryaniftron/clearview_interface_public.git --depth 1
 # cd ~/clearview_interface_public/src/clearview-py
 # python2 -m pip install -e .
-import clearview
+import clearview  #pylint: disable=import-error
 
 VRxALL = -1
 MINIMUM_PAYLOAD = 7

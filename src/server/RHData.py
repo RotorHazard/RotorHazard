@@ -27,6 +27,8 @@ class RHData():
         self._SERVER_API = SERVER_API
         self._DB_FILE_NAME = DB_FILE_NAME
         self._DB_BKP_DIR_NAME = DB_BKP_DIR_NAME
+        self._PageCache = None
+        self._Language = None
 
     def late_init(self, PageCache, Language):
         self._PageCache = PageCache

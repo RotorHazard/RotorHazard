@@ -3,7 +3,6 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO
 import webbrowser
 
-import gevent
 import gevent.monkey
 gevent.monkey.patch_all()
 

@@ -93,7 +93,7 @@ class SecondaryNode:
                                 if self.lastContactTime > 0:  # if current status is connected
                                     logger.info("Error connecting to secondary {0} at {1}: {2}".format(self.id+1, self.address, ex))
                                     if not self.sio.connected:  # if not connected then
-                                        self.on_disconnect();   # invoke disconnect function to update status
+                                        self.on_disconnect()    # invoke disconnect function to update status
                                 else:
                                     err_msg = "Unable to connect to secondary {0} at {1}: {2}".format(self.id+1, self.address, ex)
                                     if monotonic() <= self.startConnectTime + self.info['timeout']:
@@ -208,7 +208,7 @@ class SecondaryNode:
                                         self.id+1, self.address, self.secondaryModeStr))
                 else:
                     downSecs = int(round(self.lastContactTime - self.startConnectTime)) if self.startConnectTime > 0 else 0
-                    logger.info("Reconnected to " + self.get_log_str(downSecs, False));
+                    logger.info("Reconnected to " + self.get_log_str(downSecs, False))
                     self.totalDownTimeSecs += downSecs
                 payload = {
                     'mode': self.secondaryModeStr
@@ -234,7 +234,7 @@ class SecondaryNode:
                 self.numDisconnects += 1
                 self.numDisconnsDuringRace += 1
                 upSecs = int(round(self.startConnectTime - self.firstContactTime)) if self.firstContactTime > 0 else 0
-                logger.warning("Disconnected from " + self.get_log_str(upSecs));
+                logger.warning("Disconnected from " + self.get_log_str(upSecs))
                 self.totalUpTimeSecs += upSecs
                 if self.emit_cluster_connect_change:
                     self.emit_cluster_connect_change(False)
@@ -515,7 +515,7 @@ class ClusterNodeSet:
         for secondary in self.secondaries:
             secondary.numDisconnsDuringRace = 0
             if secondary.lastContactTime > 0:
-                logger.info("Connected at race start to " + secondary.get_log_str());
+                logger.info("Connected at race start to " + secondary.get_log_str())
                 if abs(secondary.timeDiffMedianMs) > SecondaryNode.TIMEDIFF_CORRECTION_THRESH_MS:
                     secondary.timeCorrectionMs = secondary.timeDiffMedianMs
                     logger.info("Secondary {0} clock not synchronized with primary, timeDiff={1}ms".\
@@ -530,9 +530,9 @@ class ClusterNodeSet:
     def doClusterRaceStop(self):
         for secondary in self.secondaries:
             if secondary.lastContactTime > 0:
-                logger.info("Connected at race stop to " + secondary.get_log_str(stoppedRaceFlag=True));
+                logger.info("Connected at race stop to " + secondary.get_log_str(stoppedRaceFlag=True))
             elif secondary.numDisconnects > 0:
-                logger.warning("Not connected at race stop to " + secondary.get_log_str(stoppedRaceFlag=True));
+                logger.warning("Not connected at race stop to " + secondary.get_log_str(stoppedRaceFlag=True))
 
     def __(self, *args, **kwargs):
         return self._Language.__(*args, **kwargs)

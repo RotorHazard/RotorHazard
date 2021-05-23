@@ -161,7 +161,7 @@ class RHInterface(BaseHardwareInterface):
                 else:
                     self.data_loggers.append(None)
             else:
-                logger.warn("Node {} has obsolete API_level ({})".format(node.index+1, node.api_level))
+                logger.warning("Node {} has obsolete API_level ({})".format(node.index+1, node.api_level))
             if node.api_level >= 32:
                 flags_val = self.get_value_16(node, READ_RHFEAT_FLAGS)
                 if flags_val:
@@ -272,7 +272,7 @@ class RHInterface(BaseHardwareInterface):
                         offset_passNadirRssi = 16
                         offset_nodeNadirRssi = 18
                         offset_peakRssi = 20
-                        offset_peakTime = 22
+                        offset_peakFirstTime = 22
                         offset_nadirRssi = 24
                         offset_nadirFirstTime = 26
 
@@ -438,7 +438,7 @@ class RHInterface(BaseHardwareInterface):
         while success is False and retry_count <= MAX_RETRY_COUNT:
             node.write_block(self, write_command, pack_16(in_value))
             out_value = self.get_value_16(node, read_command)
-                   # confirm same value (also handle negative value)
+            # confirm same value (also handle negative value)
             if out_value == in_value or out_value == in_value + (1 << 16):
                 success = True
             else:
@@ -457,7 +457,7 @@ class RHInterface(BaseHardwareInterface):
         while success is False and retry_count <= MAX_RETRY_COUNT:
             node.write_block(self, write_command, pack_32(in_value))
             out_value = self.get_value_32(node, read_command)
-                   # confirm same value (also handle negative value)
+            # confirm same value (also handle negative value)
             if out_value == in_value or out_value == in_value + (1 << 32):
                 success = True
             else:
@@ -613,7 +613,7 @@ class RHInterface(BaseHardwareInterface):
 
     # log comm errors if error percentage is >= this value
     def set_intf_error_report_percent_limit(self, percentVal):
-        self.intf_error_report_limit = percentVal / 100;
+        self.intf_error_report_limit = percentVal / 100
 
     def get_intf_error_report_str(self, forceFlag=False):
         try:

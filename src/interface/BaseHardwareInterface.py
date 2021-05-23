@@ -145,7 +145,7 @@ class BaseHardwareInterface(object):
         if node.cap_enter_at_flag is False and node.api_valid_flag:
             node.cap_enter_at_total = 0
             node.cap_enter_at_count = 0
-                   # set end time for capture of RSSI level:
+            # set end time for capture of RSSI level:
             node.cap_enter_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
             node.cap_enter_at_flag = True
             return True
@@ -156,7 +156,7 @@ class BaseHardwareInterface(object):
         if node.cap_exit_at_flag is False and node.api_valid_flag:
             node.cap_exit_at_total = 0
             node.cap_exit_at_count = 0
-                   # set end time for capture of RSSI level:
+            # set end time for capture of RSSI level:
             node.cap_exit_at_millis = self.milliseconds() + CAP_ENTER_EXIT_AT_MILLIS
             node.cap_exit_at_flag = True
             return True

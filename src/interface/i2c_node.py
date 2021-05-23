@@ -172,9 +172,9 @@ def discover(idxOffset, i2c_helper, isS32BPillFlag=False, *args, **kwargs):
                         if node.firmware_timestamp_str:
                             ftim_log_str = ", fw_timestamp: " + node.firmware_timestamp_str
                 else:
-                    logger.warn("Unable to verify revision code from node {}".format(index+idxOffset+1))
+                    logger.warning("Unable to verify revision code from node {}".format(index+idxOffset+1))
             else:
-                logger.warn("Unable to read revision code from node {}".format(index+idxOffset+1))
+                logger.warning("Unable to read revision code from node {}".format(index+idxOffset+1))
             logger.info("...I2C node {} found at address {}, API_level={}{}{}{}".format(\
                         index+idxOffset+1, addr, node.api_level, fver_log_str, ftyp_log_str, ftim_log_str))
             nodes.append(node) # Add new node to RHInterface

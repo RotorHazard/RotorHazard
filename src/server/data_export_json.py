@@ -95,7 +95,7 @@ def assemble_formats(RHData, PageCache, Language):
         Language.__('One'),
         Language.__('Each Second')
     ]
-    win_conditions = [
+    win_conditions = [  #pylint: disable=unused-variable
         Language.__('None'),
         Language.__('Most Laps in Fastest Time'),
         Language.__('First to X Laps'),
@@ -199,7 +199,7 @@ def assemble_settings_complete(RHData, PageCache, Language):
     return payload
 
 class AlchemyEncoder(json.JSONEncoder):
-    def default(self, obj):
+    def default(self, obj):  #pylint: disable=arguments-differ
         if isinstance(obj.__class__, DeclarativeMeta):
             # an SQLAlchemy class
             fields = {}

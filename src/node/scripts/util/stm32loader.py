@@ -169,7 +169,7 @@ class Stm32Bootloader:
         """STM32 native bootloader command values."""
 
         # pylint: disable=too-few-public-methods
-        # FIXME turn into intenum
+        # FIXME turn into intenum   pylint: disable=fixme
 
         # See ST AN3155, AN4872
         GET = 0x00
@@ -198,7 +198,7 @@ class Stm32Bootloader:
         """STM32 native bootloader reply status codes."""
 
         # pylint: disable=too-few-public-methods
-        # FIXME turn into intenum
+        # FIXME turn into intenum   pylint: disable=fixme
 
         # See ST AN3155, AN4872
         ACK = 0x79
@@ -960,7 +960,7 @@ def flash_file_to_stm32(portStr, srcStr):
 
 
 if __name__ == '__main__':
-    portStr = sys.argv[1] if len(sys.argv) > 1 else None
-    srcStr = sys.argv[2] if len(sys.argv) > 2 else None
-    successFlag = flash_file_to_stm32(portStr, srcStr)
-    sys.exit(0 if successFlag else 1)
+    argPortStr = sys.argv[1] if len(sys.argv) > 1 else None
+    argSrcStr = sys.argv[2] if len(sys.argv) > 2 else None
+    flashSuccessFlag = flash_file_to_stm32(argPortStr, argSrcStr)
+    sys.exit(0 if flashSuccessFlag else 1)

@@ -82,7 +82,7 @@ def main():
     WINDOW_SIZE  = 10000
 
     w = RunningMedian(WINDOW_SIZE)
-    n = NaiveRunningMedian(WINDOW_SIZE) # For comparison checks
+#     n = NaiveRunningMedian(WINDOW_SIZE) # For comparison checks
 
     for i in range(SAMPLES):
         sample = random.randint(0, 1000)
@@ -94,11 +94,11 @@ def main():
         if i % 1000 == 0: print("%5d\t%d" % (i, wm))
 
         # Check against naive implementation, change False to True
-        if False:
-            n.insert(sample)
-            nm = n.median()
-
-            assert nm == wm, "%d != %d" % (wm, nm)
+#         if False:
+#             n.insert(sample)
+#             nm = n.median()
+# 
+#             assert nm == wm, "%d != %d" % (wm, nm)
 
 if __name__ == "__main__":
     main()

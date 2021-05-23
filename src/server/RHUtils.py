@@ -215,9 +215,9 @@ def hslToHex(h, s, l):
     if not l:
         l = random.randint(0, 100)
 
-    h = h / 360.0;
-    s = s / 100.0;
-    l = l / 100.0;
+    h = h / 360.0
+    s = s / 100.0
+    l = l / 100.0
 
     if s == 0:
         r = g = b = l
@@ -230,7 +230,7 @@ def hslToHex(h, s, l):
             if t < 1 / 6:
                 return p + (q - p) * 6 * t
             if t < 1 / 2:
-                return q;
+                return q
             if t < 2 / 3:
                 return p + (q - p) * (2 / 3 - t) * 6
             return p
@@ -238,9 +238,9 @@ def hslToHex(h, s, l):
         if l < 0.5:
             q = l * (1 + s)
         else:
-            q = l + s - l * s;
+            q = l + s - l * s
 
-        p = 2 * l - q;
+        p = 2 * l - q
         r = int(round(hue2rgb(p, q, h + 1 / 3) * 255))
         g = int(round(hue2rgb(p, q, h) * 255))
         b = int(round(hue2rgb(p, q, h - 1 / 3) * 255))

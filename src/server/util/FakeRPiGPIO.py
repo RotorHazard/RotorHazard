@@ -66,7 +66,7 @@ def setup(channel, mode, initial=None, pull_up_down=None):
     :param pull_up_down:
     :return:
     """
-    pass
+    pass  #pylint: disable=unnecessary-pass
 
 
 def gpio_function(pin):
@@ -79,7 +79,7 @@ def gpio_function(pin):
     return None
 
 
-def input(channel):
+def input(channel):  #pylint: disable=redefined-builtin
     """
     To read the value of a GPIO pin:
     :param channel:
@@ -116,7 +116,7 @@ def cleanup(channel=None):
     :param channel: It is possible that you only want to clean up one channel, leaving some set up when your program exits
     :return:
     """
-    pass
+    pass  #pylint: disable=unnecessary-pass
 
 
 def wait_for_edge(channel, edge_type):
@@ -126,7 +126,7 @@ def wait_for_edge(channel, edge_type):
     :param edge_type:
     :return:
     """
-    pass
+    pass  #pylint: disable=unnecessary-pass
 
 
 def add_event_detect(channel, edge_type, callback=None, bouncetime=0):
@@ -137,7 +137,7 @@ def add_event_detect(channel, edge_type, callback=None, bouncetime=0):
     :param edge_type:
     :return:
     """
-    pass
+    pass  #pylint: disable=unnecessary-pass
 
 
 def add_event_callback(channel, callback, bouncetime=0):
@@ -150,4 +150,4 @@ def remove_event_detect(channel):
     :param channel:
     :return:
     """
-    pass
+    pass  #pylint: disable=unnecessary-pass

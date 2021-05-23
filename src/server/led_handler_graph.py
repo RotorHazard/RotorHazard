@@ -23,7 +23,7 @@ def rssiGraph(args):
     if len(INTERFACE.nodes) < 1:
         return False
 
-    panel = getPanelImg(strip, Config)
+    panel = getPanelImg(strip)
 
     if panel['width'] < len(INTERFACE.nodes):
         barWidth = 1
@@ -53,7 +53,7 @@ def rssiGraph(args):
 
         gevent.idle()
 
-def getPanelImg(strip, Config):
+def getPanelImg(strip):
     width = int(strip.numPixels() / Config.LED['LED_ROWS'])
     height = Config.LED['LED_ROWS']
     im = Image.new('RGB', [width, height])

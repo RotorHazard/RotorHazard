@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def search_modules(prefix=None, suffix=None):
     plugin_modules = []
-    for loader, name, ispkg in pkgutil.iter_modules():
+    for loader, name, ispkg in pkgutil.iter_modules():  #pylint: disable=unused-variable
         if (prefix is None or name.startswith(prefix+'_')) and (suffix is None or name.endswith('_'+suffix)):
             try:
                 plugin_module = importlib.import_module(name)

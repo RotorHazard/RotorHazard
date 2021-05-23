@@ -145,10 +145,10 @@ def build_leaderboard(leaderboard, Language, **kwargs):
         primary_leaderboard = leaderboard[meta['primary_leaderboard']]
 
     if meta['start_behavior'] == 2:
-        total_label = Language.__('Laps Total');
+        total_label = Language.__('Laps Total')
         total_source = 'total_time_laps'
     else:
-        total_label = Language.__('Total');
+        total_label = Language.__('Total')
         total_source = 'total_time'
 
     output = [[
@@ -205,7 +205,7 @@ def assemble_results(RHData, PageCache, Language):
 
     for class_id in all_classes:
 
-        valid_heats = False;
+        valid_heats = False
         if len(results['heats_by_class'][class_id]):
             for heat in results['heats_by_class'][class_id]:
                 if heat in results['heats']:

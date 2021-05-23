@@ -254,9 +254,7 @@ class ClusterLEDManager():
             return False
         return nothing
 
-'''
-Generic data structures for working with LED commands
-'''
+# Generic data structures for working with LED commands
 
 def Color(red, green, blue):
     """Convert the provided red, green, blue color to a 24-bit color value.

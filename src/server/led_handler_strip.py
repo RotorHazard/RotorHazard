@@ -110,7 +110,7 @@ def rainbowCycle(args):
             strip.show()
             gevent.sleep(wait_ms/1000.0)
 
-'''
+'''  #pylint: disable=pointless-string-statement
 def theaterChaseRainbow(strip, wait_ms=25):
     """Rainbow movie theater light style chaser animation."""
     led_on(strip, ColorVal.NONE)
@@ -207,12 +207,10 @@ def fade(args):
                 c = dim(a['color'], j/float(a['steps']))
                 led_on(strip, c, a['pattern'])
                 strip.show()
-                gevent.sleep(a['speedDelay']/1000.0);
-            else:
-                led_on(strip, a['color'], a['pattern'])
+                gevent.sleep(a['speedDelay']/1000.0)
 
             led_on(strip, a['color'], a['pattern'])
-            gevent.sleep(a['onTime']/1000.0);
+            gevent.sleep(a['onTime']/1000.0)
 
         # fade out
         if a['outSteps']:
@@ -221,14 +219,11 @@ def fade(args):
                 c = dim(a['color'], j/float(a['outSteps']))
                 led_on(strip, c, a['pattern'])
                 strip.show()
-                gevent.sleep(a['speedDelay']/1000.0);
-
-            else:
-                led_off(strip)
+                gevent.sleep(a['speedDelay']/1000.0)
 
             led_off(strip)
 
-        gevent.sleep(a['offTime']/1000.0);
+        gevent.sleep(a['offTime']/1000.0)
 
 def sparkle(args):
     if 'strip' in args:
@@ -269,7 +264,7 @@ def sparkle(args):
                     strip.setPixelColor(px, a['color'])
 
         strip.show()
-        gevent.sleep(a['speedDelay']/1000.0);
+        gevent.sleep(a['speedDelay']/1000.0)
 
 def meteor(args):
     if 'strip' in args:
@@ -370,9 +365,9 @@ def larsonScanner(args):
         gevent.sleep(a['returnDelay']/1000.0)
 
 def dim(color, decay):
-    r = (color & 0x00ff0000) >> 16;
-    g = (color & 0x0000ff00) >> 8;
-    b = (color & 0x000000ff);
+    r = (color & 0x00ff0000) >> 16
+    g = (color & 0x0000ff00) >> 8
+    b = (color & 0x000000ff)
 
     r = 0 if r <= 1 else int(r*decay)
     g = 0 if g <= 1 else int(g*decay)

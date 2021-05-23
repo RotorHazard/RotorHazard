@@ -89,7 +89,7 @@ def printCharacter(args):
     else:
         color = convertColor(ColorVal.WHITE)
 
-    panel = getPanelImg(strip, Config)
+    panel = getPanelImg(strip)
 
     use_small_flag = True
     if panel['height'] >= 16:
@@ -129,7 +129,7 @@ def scrollText(args):
     else:
         color = convertColor(ColorVal.WHITE)
 
-    panel = getPanelImg(strip, Config)
+    panel = getPanelImg(strip)
 
     if panel['height'] >= 16:
         font = ImageFont.truetype("static/fonts/RotorHazardPanel16.ttf", 16)
@@ -175,7 +175,7 @@ def multiLapGrid(args):
     else:
         return False
 
-    panel = getPanelImg(strip, Config)
+    panel = getPanelImg(strip)
     if panel['height'] < 16:
         return False
 
@@ -233,7 +233,7 @@ def multiLapGrid(args):
     setPixels(strip, img)
     strip.show()
 
-def getPanelImg(strip, Config):
+def getPanelImg(strip):
     width = int(strip.numPixels() / Config.LED['LED_ROWS'])
     height = Config.LED['LED_ROWS']
     im = Image.new('RGB', [width, height])

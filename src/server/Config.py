@@ -71,7 +71,7 @@ try:
         VRX_CONTROL.update(ExternalConfig['VRX_CONTROL'])
 
 
-    '''
+    '''  #pylint: disable=pointless-string-statement
     # Subtree updating
     try:
         bitmaptree = LED['BITMAPS']

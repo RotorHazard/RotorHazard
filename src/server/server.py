@@ -117,14 +117,14 @@ if __name__ == '__main__' and len(sys.argv) > 1:
         sys.exit(0)
     if CMDARG_JUMP_TO_BL_STR not in sys.argv:  # handle jump-to-bootloader argument later
         if CMDARG_FLASH_BPILL_STR in sys.argv:
-            argIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
-            portStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
+            flashPillArgIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
+            flashPillPortStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
                                                 len(Config.SERIAL_PORTS) > 0 else None
-            srcStr = sys.argv[argIdx] if argIdx < len(sys.argv) else None
-            if srcStr and srcStr.startswith("--"):  # use next arg as src file (optional)
-                srcStr = None                       #  unless arg is switch param
-            successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
-            sys.exit(0 if successFlag else 1)
+            flashPillSrcStr = sys.argv[flashPillArgIdx] if flashPillArgIdx < len(sys.argv) else None
+            if flashPillSrcStr and flashPillSrcStr.startswith("--"):  # use next arg as src file (optional)
+                flashPillSrcStr = None                       #  unless arg is switch param
+            flashPillSuccessFlag = stm32loader.flash_file_to_stm32(flashPillPortStr, flashPillSrcStr)
+            sys.exit(0 if flashPillSuccessFlag else 1)
         print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
         sys.exit(1)
 
@@ -157,6 +157,7 @@ Server_is_mirror = False
 
 RACE = RHRace.RHRace() # For storing race management variables
 LAST_RACE = None
+SECONDARY_RACE_FORMAT = None
 RHData = RHData.RHData(Database, Events, RACE, SERVER_API, DB_FILE_NAME, DB_BKP_DIR_NAME) # Primary race data storage
 PageCache = PageCache.PageCache(RHData, Events) # For storing page cache
 Language = Language.Language(RHData) # initialize language
@@ -257,7 +258,7 @@ def getCurrentRaceFormat():
 
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
-        RACE.format.id = race_format.id
+        RACE.format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
     return RACE.format
 
 def getCurrentDbRaceFormat():
@@ -272,7 +273,7 @@ def setCurrentRaceFormat(race_format, **kwargs):
         RHData.set_option('currentFormat', race_format.id)
         # create a shared instance
         RACE.format = RHRaceFormat.copy(race_format)
-        RACE.format.id = race_format.id
+        RACE.format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
         RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
         RACE.team_cacheStatus = Results.CacheStatus.INVALID
     else:
@@ -1130,6 +1131,7 @@ def on_cap_exit_at_btn(data):
 @SOCKET_IO.on('set_scan')
 @catchLogExceptionsWrapper
 def on_set_scan(data):
+    global HEARTBEAT_DATA_RATE_FACTOR
     node_index = data['node']
     minScanFreq = data['min_scan_frequency']
     maxScanFreq = data['max_scan_frequency']
@@ -1380,9 +1382,11 @@ def on_backup_database():
     # read DB data and convert to Base64
     with open(bkp_name, mode='rb') as file_obj:
         file_content = file_obj.read()
-    file_content = base64.encodebytes(file_content).decode() \
-                                    if getattr(base64, "encodebytes", None) \
-                                    else base64.encodestring(file_content)  # for Python 2.7
+    if hasattr(base64, "encodebytes"):
+        file_content = base64.encodebytes(file_content).decode()
+    else:
+        file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method
+    
     emit_payload = {
         'file_name': os.path.basename(bkp_name),
         'file_data' : file_content
@@ -1628,9 +1632,11 @@ def on_download_logs(data):
             # read logs-zip file data and convert to Base64
             with open(zip_path_name, mode='rb') as file_obj:
                 file_content = file_obj.read()
-            file_content = base64.encodebytes(file_content).decode() \
-                                            if getattr(base64, "encodebytes", None) \
-                                            else base64.encodestring(file_content)  # for Python 2.7
+            if hasattr(base64, "encodebytes"):
+                file_content = base64.encodebytes(file_content).decode()
+            else:
+                file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method
+
             emit_payload = {
                 'file_name': os.path.basename(zip_path_name),
                 'file_data' : file_content
@@ -1923,7 +1929,7 @@ def on_stage_race():
             on_discard_laps()  # if no laps then allow restart
 
     if RACE.race_status == RaceStatus.READY: # only initiate staging if ready
-        '''Common race start events (do early to prevent processing delay when start is called)'''
+        # common race start events (do early to prevent processing delay when start is called)
         INTERFACE.enable_calibration_mode() # Nodes reset triggers on next pass
 
         if heat_data.class_id != RHUtils.CLASS_ID_NONE:
@@ -2039,7 +2045,6 @@ def findBestValues(node, node_index):
                         'enter_at_level': pilotRace.enter_at,
                         'exit_at_level': pilotRace.exit_at
                     }
-                    break
             break
 
     # test for same class, same pilot, same node
@@ -2054,7 +2059,6 @@ def findBestValues(node, node_index):
                         'enter_at_level': pilotRace.enter_at,
                         'exit_at_level': pilotRace.exit_at
                     }
-                    break
             break
 
     # test for same pilot, same node
@@ -2066,7 +2070,6 @@ def findBestValues(node, node_index):
                 'enter_at_level': pilotRace.enter_at,
                 'exit_at_level': pilotRace.exit_at
             }
-            break
 
     # test for same node
     for pilotRace in pilotRaces:
@@ -2076,7 +2079,6 @@ def findBestValues(node, node_index):
                 'enter_at_level': pilotRace.enter_at,
                 'exit_at_level': pilotRace.exit_at
             }
-            break
 
     # fallback
     logger.debug('Node {0} calibration: no calibration hints found, no change'.format(node.index+1))
@@ -2187,7 +2189,7 @@ def race_expire_thread(start_token):
             logger.info("Race count-down timer reached expiration")
             RACE.timer_running = False # indicate race timer no longer running
             Events.trigger(Evt.RACE_FINISH)
-            check_win_condition(RACE, RHData, INTERFACE, at_finish=True, start_token=start_token)
+            check_win_condition(at_finish=True, start_token=start_token)
             emit_current_leaderboard()
         else:
             logger.debug("Finished unused race-time-expire thread")
@@ -2218,7 +2220,7 @@ def on_stop_race():
         Events.trigger(Evt.RACE_STOP, {
             'color': ColorVal.RED
         })
-        check_win_condition(RACE, RHData, INTERFACE)
+        check_win_condition()
 
         if CLUSTER.hasSecondaries():
             CLUSTER.doClusterRaceStop()
@@ -2495,9 +2497,9 @@ def on_generate_heats(data):
 
 @catchLogExceptionsWrapper
 def generate_heats(data):
+    '''Generate heats from qualifying class'''
     RESULTS_TIMEOUT = 30 # maximum time to wait for results to generate
 
-    '''Generate heats from qualifying class'''
     input_class = int(data['input_class'])
     output_class = int(data['output_class'])
     suffix = data['suffix']
@@ -3080,7 +3082,7 @@ def build_laps_list(active_race=RACE):
         last_lap_id = -1
         for idx, lap in enumerate(active_race.node_laps[node]):
             if not lap['deleted']:
-                lap_number = lap['lap_number'];
+                lap_number = lap['lap_number']
                 if active_race.format and active_race.format.start_behavior == StartBehavior.FIRST_LAP:
                     lap_number += 1
 
@@ -3655,15 +3657,15 @@ def emit_vrx_list(*args, **params):
     ''' get list of connected VRx devices '''
     if vrx_controller:
         # if vrx_controller.has_connection:
-            vrx_list = {}
-            for vrx in vrx_controller.rx_data:
-                vrx_list[vrx] = vrx_controller.rx_data[vrx]
+        vrx_list = {}
+        for vrx in vrx_controller.rx_data:
+            vrx_list[vrx] = vrx_controller.rx_data[vrx]
 
-            emit_payload = {
-                'enabled': True,
-                'connection': True,
-                'vrx': vrx_list
-            }
+        emit_payload = {
+            'enabled': True,
+            'connection': True,
+            'vrx': vrx_list
+        }
         # else:
             # emit_payload = {
             #     'enabled': True,
@@ -3819,10 +3821,9 @@ def emit_exporter_list():
 #
 
 def heartbeat_thread_function():
-    '''Allow time for connection handshake to terminate before emitting data'''
-    gevent.sleep(0.010)
+    '''Emits current rssi data, etc'''
+    gevent.sleep(0.010)  # allow time for connection handshake to terminate before emitting data
 
-    '''Emits current rssi data.'''
     while True:
         try:
             node_data = INTERFACE.get_heartbeat_json()
@@ -4069,7 +4070,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                                 (check_leader and \
                                                  pilot_id == Results.get_leading_pilot_id(RACE.results)))
 
-                            check_win_condition(RACE, RHData, INTERFACE) # check for and announce winner
+                            check_win_condition() # check for and announce winner
                             if RACE.win_status == WinStatus.DECLARED:
                                 emit_current_leaderboard()  # show declared winner on leaderboard
 
@@ -4093,7 +4094,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
         logger.debug('Pass record dismissed: Node: {0}, Frequency not defined' \
             .format(node.index+1))
 
-def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
+def check_win_condition(**kwargs):
     previous_win_status = RACE.win_status
 
     win_status = Results.check_win_condition(RACE, RHData, INTERFACE, **kwargs)
@@ -4138,7 +4139,7 @@ def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
             gevent.sleep(win_status['max_consideration'] / 1000)
             if 'start_token' in kwargs and RACE.start_token == kwargs['start_token']:
                 logger.debug("Maximum win condition consideration time has expired.")
-                check_win_condition(RACE, RHData, INTERFACE, forced=True)
+                check_win_condition(forced=True)
 
     return win_status
 
@@ -4451,7 +4452,7 @@ def shutdown_button_thread_fn():
         raise
     except Exception:
         logger.exception("Exception error in 'shutdown_button_thread_fn()'")
-    logger.debug("Exited shutdown-button-handler thread");
+    logger.debug("Exited shutdown-button-handler thread")
 
 def start_shutdown_button_thread():
     if ShutdownButtonInputHandler and not ShutdownButtonInputHandler.isEnabled():
@@ -4729,7 +4730,7 @@ if RHUtils.isSysRaspberryPi() and RHGPIO.isS32BPillBoard():
 
     logger.debug("Resetting S32_BPill processor")
     s32logger = logging.getLogger("stm32loader")
-    stm32loader.set_console_output_fn(lambda msgStr: s32logger.info(msgStr))
+    stm32loader.set_console_output_fn(s32logger.info)
     stm32loader.reset_to_run()
     stm32loader.set_console_output_fn(None)
 
@@ -4749,20 +4750,20 @@ if len(sys.argv) > 0 and CMDARG_JUMP_TO_BL_STR in sys.argv:
     stop_background_threads()
     jump_to_node_bootloader()
     if CMDARG_FLASH_BPILL_STR in sys.argv:
-        argIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
-        portStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
+        bootJumpArgIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
+        bootJumpPortStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
                                             len(Config.SERIAL_PORTS) > 0 else None
-        srcStr = sys.argv[argIdx] if argIdx < len(sys.argv) else None
-        if srcStr and srcStr.startswith("--"):  # use next arg as src file (optional)
-            srcStr = None                       #  unless arg is switch param
-        successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
-        sys.exit(0 if successFlag else 1)
+        bootJumpSrcStr = sys.argv[bootJumpArgIdx] if bootJumpArgIdx < len(sys.argv) else None
+        if bootJumpSrcStr and bootJumpSrcStr.startswith("--"):  # use next arg as src file (optional)
+            bootJumpSrcStr = None                       #  unless arg is switch param
+        bootJumpSuccessFlag = stm32loader.flash_file_to_stm32(bootJumpPortStr, bootJumpSrcStr)
+        sys.exit(0 if bootJumpSuccessFlag else 1)
     sys.exit(0)
 
 CLUSTER = ClusterNodeSet(Language, Events)
 hasMirrors = False
 try:
-    for index, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
+    for sec_idx, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
         if isinstance(secondary_info, string_types):
             secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
         if 'address' not in secondary_info:
@@ -4783,7 +4784,7 @@ try:
                 subclass='mirror'
                 )
             break
-        secondary = SecondaryNode(index, secondary_info, RACE, RHData, getCurrentProfile, \
+        secondary = SecondaryNode(sec_idx, secondary_info, RACE, RHData, getCurrentProfile, \
                           emit_split_pass_info, monotonic_to_epoch_millis, \
                           emit_cluster_connect_change, RELEASE_VERSION)
         CLUSTER.addSecondary(secondary)
@@ -4889,7 +4890,6 @@ except Exception:
     sys.exit(1)
 
 # internal secondary race format for LiveTime (needs to be created after initial DB setup)
-global SECONDARY_RACE_FORMAT
 SECONDARY_RACE_FORMAT = RHRaceFormat(name=__("Secondary"),
                          race_mode=1,
                          race_time_sec=0,
@@ -4912,11 +4912,11 @@ if os.path.exists(IMDTABLER_JAR_NAME):  # if 'IMDTabler.jar' is available
         logger.info('sudo apt install default-jdk-headless')
     if java_ver:
         try:
-            imdtabler_ver = subprocess.check_output( \
+            chk_imdtabler_ver = subprocess.check_output( \
                         'java -jar ' + IMDTABLER_JAR_NAME + ' -v', \
                         stderr=subprocess.STDOUT, shell=True).decode("utf-8").rstrip()
             Use_imdtabler_jar_flag = True  # indicate IMDTabler.jar available
-            logger.debug('Found installed: ' + imdtabler_ver)
+            logger.debug('Found installed: ' + chk_imdtabler_ver)
         except Exception:
             logger.exception('Error checking IMDTabler:  ')
 else:

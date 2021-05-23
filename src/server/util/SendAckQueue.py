@@ -35,7 +35,7 @@ class SendAckQueue:
                 #  (other messages in queue will be retried and ack'd later)
                 self.emitMessageQueue.queue.appendleft((messageType, messagePayload, waitForAckFlag))
                 if hasattr(self.emitMessageQueue, 'getters') and self.emitMessageQueue.getters:
-                    self.emitMessageQueue._schedule_unlock()
+                    self.emitMessageQueue._schedule_unlock()  #pylint: disable=protected-access
                 # notify queue-worker thread to send message immediately
                 self.ackNotifyEventObj.set()
         except Exception as ex:
@@ -47,7 +47,7 @@ class SendAckQueue:
             if self.anyAcksReceivedFlag:
                 if messagePayload:  # if payload then ack is for message currently in queue
                     if not self.emitMessageQueue.empty():
-                        (qMsgType, qMsgPayload, qWaitAckFlag) = self.emitMessageQueue.peek()
+                        (qMsgType, qMsgPayload, qWaitAckFlag) = self.emitMessageQueue.peek()  #pylint: disable=unused-variable
                         if messageType == qMsgType:
                             if messagePayload == qMsgPayload:
                                 self.emitMessageQueue.get_nowait()
