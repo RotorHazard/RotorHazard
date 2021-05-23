@@ -1576,6 +1576,20 @@ class RHData():
         race_meta.class_id = new_heat.class_id
         race_meta.format_id = new_format_id
 
+        # reassign pilots to pilotRaces
+        new_pilots = self.get_heatNodes_by_heat(new_heat_id)
+        for np in new_pilots:
+            for pilot_race in self.get_savedPilotRaces_by_savedRaceMeta(race_id):
+                if pilot_race.node_index == np.node_index:
+                    pilot_race.pilot_id = np.pilot_id
+                    for lap in self.get_savedRaceLaps_by_savedPilotRace(pilot_race.id):
+                        lap.pilot_id = np.pilot_id
+                    break
+
+                if pilot_race.node_index == np.node_index:
+                    pilot_race.pilot_id = np.pilot_id
+                    break
+
         # renumber rounds
         self._Database.DB.session.flush()
         old_heat_races = self._Database.SavedRaceMeta.query.filter_by(heat_id=old_heat_id) \
