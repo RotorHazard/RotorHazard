@@ -25,18 +25,20 @@ private:
         switch (nIdx)
         {
             case 0:
-                return PB7;
+                return PB6;
             case 1:
-                return PB8;
+                return PB7;
             case 2:
-                return PB9;
+                return PB8;
             case 3:
-                return PB12;
+                return PB9;
             case 4:
-                return PB13;
+                return PB12;
             case 5:
-                return PB14;
+                return PB13;
             case 6:
+                return PB14;
+            case 7:
                 return PB15;
             default:
                 return PB6;
@@ -48,18 +50,20 @@ private:
         switch (nIdx)
         {
             case 0:
-                return A1;
+                return A0;
             case 1:
-                return A2;
+                return A1;
             case 2:
-                return A3;
+                return A2;
             case 3:
-                return A4;
+                return A3;
             case 4:
-                return A5;
+                return A4;
             case 5:
-                return A6;
+                return A5;
             case 6:
+                return A6;
+            case 7:
                 return A7;
             default:
                 return A0;
