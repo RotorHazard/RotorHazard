@@ -4,9 +4,9 @@
 #    sudo apt-get install libjpeg-dev
 #    sudo pip install pillow
 
-from server import Config
 from server.eventmanager import Evt
-from server.led_event_manager import LEDEffect, Color
+from leds import setPixels
+from server.led_event_manager import LEDEffect
 import gevent
 from PIL import Image
 
@@ -16,36 +16,20 @@ def showBitmap(args):
     else:
         return False
 
-    def setPixels(img):
-        pos = 0
-        for row in range(0, img.height):
-            for col in range(0, img.width):
-                if pos >= strip.numPixels():
-                    return
-
-                c = col
-                if Config.LED['INVERTED_PANEL_ROWS']:
-                    if row % 2 == 0:
-                        c = 15 - col
-
-                px = img.getpixel((c, row))
-                strip.setPixelColor(pos, Color(px[0], px[1], px[2]))
-                pos += 1
-
     bitmaps = args['bitmaps']
     if bitmaps and bitmaps is not None:
         for bitmap in bitmaps:
             img = Image.open(bitmap['image'])
             delay = bitmap['delay']
 
-            img = img.rotate(90 * Config.LED['PANEL_ROTATE'])
-            img = img.resize((Config.LED['LED_COUNT'] // Config.LED['LED_ROWS'], Config.LED['LED_ROWS']))
+            img = img.rotate(90 * args['panelRotate'])
+            img = img.resize((strip.numPixels() // args['ledRows'], args['ledRows']))
 
-            setPixels(img)
+            setPixels(strip, img, args['invertedPanelRows'])
             strip.show()
             gevent.sleep(delay/1000.0)
 
-def discover(*args, **kwargs):
+def discover(config, *args, **kwargs):
     # state bitmaps
     IMAGE_PATH = 'server/static/image/'
     return [
@@ -53,6 +37,9 @@ def discover(*args, **kwargs):
             'include': [Evt.SHUTDOWN],
             'recommended': [Evt.STARTUP]
         }, {
+            'ledRows': config['LED_ROWS'],
+            'panelRotate': config['PANEL_ROTATE'],
+            'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
             'bitmaps': [
                 {"image": IMAGE_PATH + "LEDpanel-16x16-RotorHazard.png", "delay": 0}
                 ],
@@ -63,6 +50,9 @@ def discover(*args, **kwargs):
             'include': [Evt.SHUTDOWN],
             'recommended': [Evt.RACE_STAGE]
         }, {
+            'ledRows': config['LED_ROWS'],
+            'panelRotate': config['PANEL_ROTATE'],
+            'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
             'bitmaps': [
                 {"image": IMAGE_PATH + "LEDpanel-16x16-ellipsis.png", "delay": 0}
                 ],
@@ -72,6 +62,9 @@ def discover(*args, **kwargs):
             'include': [Evt.SHUTDOWN],
             'recommended': [Evt.RACE_START]
         }, {
+            'ledRows': config['LED_ROWS'],
+            'panelRotate': config['PANEL_ROTATE'],
+            'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
             'bitmaps': [
                 {"image": IMAGE_PATH + "LEDpanel-16x16-arrow.png", "delay": 0}
                 ],
@@ -81,6 +74,9 @@ def discover(*args, **kwargs):
             'include': [Evt.SHUTDOWN],
             'recommended': [Evt.RACE_STOP]
         }, {
+            'ledRows': config['LED_ROWS'],
+            'panelRotate': config['PANEL_ROTATE'],
+            'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
             'bitmaps': [
                 {"image": IMAGE_PATH + "LEDpanel-16x16-X.png", "delay": 0}
                 ],
@@ -90,9 +86,12 @@ def discover(*args, **kwargs):
             'include': [Evt.SHUTDOWN],
             'recommended': [Evt.RACE_FINISH, Evt.RACE_STOP]
         }, {
+            'ledRows': config['LED_ROWS'],
+            'panelRotate': config['PANEL_ROTATE'],
+            'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
             'bitmaps': [
                 {"image": IMAGE_PATH + "LEDpanel-16x16-checkerboard.png", "delay": 0}
                 ],
-        'time': 20
+            'time': 20
         })
     ]

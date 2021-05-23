@@ -1,10 +1,12 @@
 '''LED visual effects'''
 
 from server.eventmanager import Evt
-from server.led_event_manager import LEDEffect, LEDEvent, Color, ColorVal, ColorPattern
+from leds import Color, ColorVal
+from server.led_event_manager import LEDEffect, LEDEvent, ColorPattern
 import gevent
 import random
 import math
+from itertools import repeat
 from monotonic import monotonic
 
 def leaderProxy(args):
@@ -91,7 +93,8 @@ def rainbowCycle(args):
     else:
         wait_ms = 2
 
-    while True:
+    loop = range(args['iterations']) if 'iterations' in args else repeat(True)
+    for _ in loop:
         for j in range(256):
             for i in range(strip.numPixels()):
                 strip.setPixelColor(i, color_wheel((int(i * 256 / strip.numPixels()) + j) & 255))
@@ -295,20 +298,21 @@ def meteor(args):
         gevent.sleep(a['speedDelay']/1000.0)
 
 def stagingTrigger(args):
-    if args['hide_stage_timer']:
+    if 'hide_stage_timer' in args and args['hide_stage_timer']:
         args['effect_fn'](args)
         return None
 
-    start_time = args['pi_starts_at_s']
-
-    while monotonic() < start_time:
-        diff = start_time - monotonic()
-        diff_to_s = diff % 1
-        if diff:
-            gevent.sleep(diff_to_s)
-            args['effect_fn'](args)
-        else:
-            break
+    if 'pi_starts_at_s' in args:
+        start_time = args['pi_starts_at_s']
+    
+        while monotonic() < start_time:
+            diff = start_time - monotonic()
+            diff_to_s = diff % 1
+            if diff:
+                gevent.sleep(diff_to_s)
+                args['effect_fn'](args)
+            else:
+                break
 
 def larsonScanner(args):
     if 'strip' in args:

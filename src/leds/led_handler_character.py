@@ -4,30 +4,33 @@
 #    sudo apt-get install libjpeg-dev
 #    sudo pip install pillow
 
-from server import Config
 from server.eventmanager import Evt
-from server.led_event_manager import LEDEffect, LEDEvent, Color, ColorVal
+from leds import ColorVal, setPixels
+from server.led_event_manager import LEDEffect, LEDEvent
 from server.RHRace import RaceStatus
 import gevent
 from PIL import Image, ImageFont, ImageDraw
 from monotonic import monotonic
 
+FONT_PATH = 'server/static/fonts'
+
 def dataHandler(args):
     if 'data' in args:
         if args['data'] == 'staging':
             args['time'] = 0
-            if not args['hide_stage_timer']:
-                start_time = args['pi_starts_at_s']
-
-                while monotonic() < start_time:
-                    diff = start_time - monotonic()
-                    diff_to_s = diff % 1
-                    if diff:
-                        gevent.sleep(diff_to_s)
-                        args['text'] = int(diff)
-                        printCharacter(args)
-                    else:
-                        break
+            if 'hide_stage_timer' not in args or not args['hide_stage_timer']:
+                if 'pi_starts_at_s' in args:
+                    start_time = args['pi_starts_at_s']
+    
+                    while monotonic() < start_time:
+                        diff = start_time - monotonic()
+                        diff_to_s = diff % 1
+                        if diff:
+                            gevent.sleep(diff_to_s)
+                            args['text'] = int(diff)
+                            printCharacter(args)
+                        else:
+                            break
 
             else:
                 args['text'] = 'X'
@@ -75,26 +78,26 @@ def printCharacter(args):
     else:
         color = convertColor(ColorVal.WHITE)
 
-    panel = getPanelImg(strip, Config)
+    panel = getPanelImg(strip, args['ledRows'])
 
     use_small_flag = True
     if panel['height'] >= 16:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel16.ttf", 16)
+        font = ImageFont.truetype(FONT_PATH+"/RotorHazardPanel16.ttf", 16)
         w, h = font.getsize(text)
         if w <= panel['width'] - 1:
             use_small_flag = False
             h = 16
 
     if use_small_flag:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
+        font = ImageFont.truetype(FONT_PATH+"/RotorHazardPanel8.ttf", 8)
         w, h = font.getsize(text)
         h = 8
 
     panel['draw'].text((int((panel['width']-w)/2) + 1, int((panel['height']-h)/2)), text, font=font, fill=(color))
 
-    img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
+    img = panel['im'].rotate(90 * args['panelRotate'])
 
-    setPixels(strip, img)
+    setPixels(strip, img, args['invertedPanelRows'])
     strip.show()
 
 def scrollText(args):
@@ -115,14 +118,14 @@ def scrollText(args):
     else:
         color = convertColor(ColorVal.WHITE)
 
-    panel = getPanelImg(strip, Config)
+    panel = getPanelImg(strip, args['ledRows'])
 
     if panel['height'] >= 16:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel16.ttf", 16)
+        font = ImageFont.truetype(FONT_PATH+"/RotorHazardPanel16.ttf", 16)
         w, h = font.getsize(text)
         h = 16
     else:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
+        font = ImageFont.truetype(FONT_PATH+"/RotorHazardPanel8.ttf", 8)
         w, h = font.getsize(text)
         h = 8
 
@@ -131,8 +134,8 @@ def scrollText(args):
     for i in range(-panel['width'], w + panel['width']):
         panel['draw'].rectangle((0, 0, panel['width'], panel['height']), fill=(0, 0, 0))
         panel['draw'].text((-i, draw_y), text, font=font, fill=(color))
-        img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
-        setPixels(strip, img)
+        img = panel['im'].rotate(90 * args['panelRotate'])
+        setPixels(strip, img, args['invertedPanelRows'])
         strip.show()
         gevent.sleep(10/1000.0)
 
@@ -152,7 +155,7 @@ def multiLapGrid(args):
     else:
         return False
 
-    panel = getPanelImg(strip, Config)
+    panel = getPanelImg(strip, args['ledRows'])
     if panel['height'] < 16:
         return False
 
@@ -160,10 +163,10 @@ def multiLapGrid(args):
     half_width = panel['width']/2
 
     if panel['height'] >= 32:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel16.ttf", 16)
+        font = ImageFont.truetype(FONT_PATH+"/RotorHazardPanel16.ttf", 16)
         font_h = 16
     else:
-        font = ImageFont.truetype("static/fonts/RotorHazardPanel8.ttf", 8)
+        font = ImageFont.truetype(FONT_PATH+"/RotorHazardPanel8.ttf", 8)
         font_h = 8
 
     active_nodes = []
@@ -206,13 +209,12 @@ def multiLapGrid(args):
 
             panel['draw'].text((pos_x + 1, pos_y), text, font=font, fill=color)
 
-    img = panel['im'].rotate(90 * Config.LED['PANEL_ROTATE'])
-    setPixels(strip, img)
+    img = panel['im'].rotate(90 * args['panelRotate'])
+    setPixels(strip, img, args['invertedPanelRows'])
     strip.show()
 
-def getPanelImg(strip, Config):
-    width = int(strip.numPixels() / Config.LED['LED_ROWS'])
-    height = Config.LED['LED_ROWS']
+def getPanelImg(strip, height):
+    width = int(strip.numPixels() / height)
     im = Image.new('RGB', [width, height])
     return {
         'width': width,
@@ -221,22 +223,6 @@ def getPanelImg(strip, Config):
         'draw': ImageDraw.Draw(im)
     }
 
-def setPixels(strip, img):
-    pos = 0
-    for row in range(0, img.height):
-        for col in range(0, img.width):
-            if pos >= strip.numPixels():
-                return
-
-            c = col
-            if Config.LED['INVERTED_PANEL_ROWS']:
-                if row % 2 == 0:
-                    c = 15 - col
-
-            px = img.getpixel((c, row))
-            strip.setPixelColor(pos, Color(px[0], px[1], px[2]))
-            pos += 1
-
 def clearPixels(strip):
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, ColorVal.NONE)
@@ -244,7 +230,7 @@ def clearPixels(strip):
 def convertColor(color):
     return color >> 16, (color >> 8) % 256, color % 256
 
-def discover(*args, **kwargs):
+def discover(config, *args, **kwargs):
     effects = [
     LEDEffect(
         "textLapNumber",
@@ -255,6 +241,9 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
+        'ledRows': config['LED_ROWS'],
+        'panelRotate': config['PANEL_ROTATE'],
+        'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
         'data': 'lap_number',
         'time': 5
         }
@@ -268,6 +257,9 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
+        'ledRows': config['LED_ROWS'],
+        'panelRotate': config['PANEL_ROTATE'],
+        'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
         'data': 'lap_time',
         'time': 8
         }
@@ -281,6 +273,9 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
+        'ledRows': config['LED_ROWS'],
+        'panelRotate': config['PANEL_ROTATE'],
+        'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
         'data': 'position',
         'time': 8
         }
@@ -294,6 +289,9 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_LAP_RECORDED]
         }, {
+        'ledRows': config['LED_ROWS'],
+        'panelRotate': config['PANEL_ROTATE'],
+        'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
         'data': 'lap_time',
         'time': 2
         }
@@ -307,6 +305,9 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.MESSAGE_INTERRUPT, Evt.MESSAGE_STANDARD, Evt.STARTUP]
         }, {
+        'ledRows': config['LED_ROWS'],
+        'panelRotate': config['PANEL_ROTATE'],
+        'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
         'data': 'message',
         'time': 0
         }
@@ -320,6 +321,9 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_WIN]
         }, {
+        'ledRows': config['LED_ROWS'],
+        'panelRotate': config['PANEL_ROTATE'],
+        'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
         'data': 'message',
         'time': 2
         }
@@ -333,13 +337,16 @@ def discover(*args, **kwargs):
             'exclude': [Evt.ALL],
             'recommended': [Evt.RACE_STAGE]
         }, {
+        'ledRows': config['LED_ROWS'],
+        'panelRotate': config['PANEL_ROTATE'],
+        'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
         'data': 'staging',
         'time': 5
         }
         ),
     ]
 
-    if (Config.LED['LED_ROWS'] >= 16):
+    if (config['LED_ROWS'] >= 16):
         effects.append(
             LEDEffect(
                 "textLapGrid",
@@ -353,6 +360,9 @@ def discover(*args, **kwargs):
                         Evt.RACE_WIN,
                         Evt.RACE_STOP]
                 }, {
+                'ledRows': config['LED_ROWS'],
+                'panelRotate': config['PANEL_ROTATE'],
+                'invertedPanelRows': config['INVERTED_PANEL_ROWS'],
                 'time': 4
                 }
             )

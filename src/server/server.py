@@ -65,7 +65,8 @@ from .eventmanager import Evt, EventManager
 Events = EventManager()
 
 # LED imports
-from .led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
+from leds import Color, ColorVal, hexToColor
+from .led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, ColorPattern
 
 import helpers as helper_pkg
 import sensors as sensor_pkg
@@ -4902,7 +4903,7 @@ elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
 
 if led_manager:
     led_effects = Plugins(prefix='led_handler')
-    led_effects.discover(led_pkg)
+    led_effects.discover(led_pkg, config=Config.LED)
     for led_effect in led_effects:
         led_manager.registerEffect(led_effect)
     init_LED_effects()

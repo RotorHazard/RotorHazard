@@ -18,7 +18,8 @@ paho-mqtt==1.5.*
 websocket-client==0.57.*
 requests==2.25.*
 cffi==1.14.*
+Pillow==8.2.*
+numpy==1.20.*
 smbus2==0.4.*
 RPi.GPIO==0.7.*
 rpi-ws281x==4.2.*
-numpy==1.20.*

@@ -3,7 +3,7 @@ RotorHazard event manager
 '''
 
 import logging
-import gevent
+import gevent.event
 from monotonic import monotonic
 
 logger = logging.getLogger(__name__)
