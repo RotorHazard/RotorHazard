@@ -1532,16 +1532,17 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 				lap = '&#8212;';
 			if (leaderboard[i].fastest_lap_source) {
 				var source = leaderboard[i].fastest_lap_source;
-				row.append('<td class="fast" title="'+ leaderboard[i].fastest_lap_source +'">'+ lap +'</td>');
+				row.append('<td class="fast">'+ lap +'</td>');
 
-                if (source.fast_lap_heatnote) {
-                    var source_text = source.fast_lap_heatnote
-                } else {
-                    var source_text = __('Heat') + ' ' + source.fast_lap_heat;
-                }
-                source_text += ' / ' + __('Round') + ' ' + source.fast_lap_round;
+				if (source.note) {
+					var source_text = source.note
+				} else {
+					var source_text = __('Heat') + ' ' + source.heat;
+				}
+				source_text += ' / ' + __('Round') + ' ' + source.round;
 
 				row.data('source', source_text);
+				row.attr('title', source_text);
 			} else {
 				row.append('<td class="fast">'+ lap +'</td>');
 			}
@@ -1556,16 +1557,17 @@ function build_leaderboard(leaderboard, display_type, meta, display_starts=false
 				lap = '&#8212;';
 			if (leaderboard[i].consecutives_source) {
 				var source = leaderboard[i].consecutives_source;
-				row.append('<td class="consecutive" title="'+ leaderboard[i].consecutives_source +'">'+ lap +'</td>');
+				row.append('<td class="consecutive">'+ lap +'</td>');
 
-                if (source.fast_lap_heatnote) {
-                    var source_text = source.fast_lap_heatnote;
-                } else {
-                    var source_text = __('Heat') + ' ' + source.fast_lap_heat;
-                }
-                source_text += ' / ' + __('Round') + ' ' + source.fast_lap_round;
+				if (source.note) {
+					var source_text = source.note;
+				} else {
+					var source_text = __('Heat') + ' ' + source.heat;
+				}
+				source_text += ' / ' + __('Round') + ' ' + source.round;
 
 				row.data('source', source_text);
+				row.attr('title', source_text);
 			} else {
 				row.append('<td class="consecutive">'+ lap +'</td>');
 			}
