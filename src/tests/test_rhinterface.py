@@ -20,7 +20,7 @@ class RHInterfaceTest(unittest.TestCase):
                 nonlocal laps
                 laps += 1
     
-            config = Config
+            config = Config()
             config.SERIAL_PORTS = []
             config.SOCKET_PORTS = [7881]
             intf = RHInterface(config=config, warn_loop_time=66000)
@@ -60,7 +60,7 @@ class RHInterfaceTest(unittest.TestCase):
                 nonlocal laps
                 laps += 1
     
-            config = Config
+            config = Config()
             config.SERIAL_PORTS = []
             config.SOCKET_PORTS = [7884]
             intf = RHInterface(config=config, warn_loop_time=66000)
@@ -81,7 +81,7 @@ class RHInterfaceTest(unittest.TestCase):
         subprocess.run("./scripts/build_ci.sh 0", cwd='node', shell=True)
         self.node_proc = subprocess.Popen(["node/build_ci/rhnode0", "COUNTER", "127.0.0.1:7880"])
         try:
-            config = Config
+            config = Config()
             config.SERIAL_PORTS = []
             config.SOCKET_PORTS = [7880]
             intf = RHInterface(config=config, warn_loop_time=66000)

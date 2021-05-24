@@ -14,8 +14,9 @@ def scan(port, socket):
     if port == 'MOCK':
         INTERFACE = MockInterface.get_hardware_interface()
     else:
-        Config.SERIAL_PORTS = [port]
-        INTERFACE = RHInterface.get_hardware_interface(config=Config)
+        config = Config()
+        config.SERIAL_PORTS = [port]
+        INTERFACE = RHInterface.get_hardware_interface(config=config)
     print("Nodes detected: {}".format(len(INTERFACE.nodes)))
     
     for node in INTERFACE.nodes:
