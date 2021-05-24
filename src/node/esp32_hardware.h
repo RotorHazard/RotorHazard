@@ -13,17 +13,19 @@ private:
         switch (nIdx)
         {
             case 0:
-                return 16;
+                return RX5808_SEL0_PIN;
             case 1:
-                return 5;
+                return RX5808_SEL1_PIN;
             case 2:
-                return 4;
+                return RX5808_SEL2_PIN;
             case 3:
-                return 15;
+                return RX5808_SEL3_PIN;
             case 4:
-                return 25;
+                return RX5808_SEL4_PIN;
+            case 5:
+                return RX5808_SEL5_PIN;
             default:
-                return 26;
+                return RX5808_SEL0_PIN;
         }
     }
 
@@ -32,17 +34,19 @@ private:
         switch (nIdx)
         {
             case 0:
-                return A0;
+                return RSSI_INPUT0_PIN;
             case 1:
-                return A3;
+                return RSSI_INPUT1_PIN;
             case 2:
-                return A6;
+                return RSSI_INPUT2_PIN;
             case 3:
-                return A7;
+                return RSSI_INPUT3_PIN;
             case 4:
-                return A4;
+                return RSSI_INPUT4_PIN;
+            case 5:
+                return RSSI_INPUT5_PIN;
             default:
-                return A5;
+                return RSSI_INPUT0_PIN;
         }
     }
 

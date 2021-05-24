@@ -20,7 +20,11 @@
 constexpr uint16_t MAX_DURATION = 0xFFFF;
 inline uint16_t toDuration(uint32_t ms) { return uint16_t(min(ms, uint32_t(MAX_DURATION))); }
 
+#if TARGET == AVR_TARGET
+constexpr uint8_t HISTORY_SIZE = 14;
+#else
 constexpr uint8_t HISTORY_SIZE = 6;
+#endif
 constexpr uint8_t PH_HISTORY_SIZE = (HISTORY_SIZE+1); // should be odd, +1 to allow for current value
 constexpr uint16_t RSSI_HISTORY_SIZE = 800; // NB: need to leave about a 100 bytes free RAM
 constexpr uint8_t SCAN_HISTORY_SIZE = 4;

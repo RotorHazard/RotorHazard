@@ -16,6 +16,13 @@
 
 #if defined(STM32_CORE_VERSION)
 #define TARGET STM32_TARGET
+#define STM32F1_VARIANT 1
+#define STM32F4_VARIANT 4
+#ifdef STM32F4
+#define VARIANT STM32F4_VARIANT
+#else
+#define VARIANT STM32F1_VARIANT
+#endif
 #elif defined(ESP_PLATFORM)
 #define TARGET ESP32_TARGET
 #elif defined(__TEST__)
@@ -129,6 +136,51 @@
 #undef USE_PH
 #define SCAN_HISTORY
 #define RSSI_HISTORY
+#endif
+
+#if TARGET == ESP32_TARGET
+    #define RX5808_SEL0_PIN 16
+    #define RX5808_SEL1_PIN 5
+    #define RX5808_SEL2_PIN 4
+    #define RX5808_SEL3_PIN 15
+    #define RX5808_SEL4_PIN 25
+    #define RX5808_SEL5_PIN 26
+
+    #define RSSI_INPUT0_PIN A0
+    #define RSSI_INPUT1_PIN A3
+    #define RSSI_INPUT2_PIN A6
+    #define RSSI_INPUT3_PIN A7
+    #define RSSI_INPUT4_PIN A4
+    #define RSSI_INPUT5_PIN A5
+#elif TARGET == STM32_TARGET
+    #define RX5808_SEL0_PIN PB6
+    #define RX5808_SEL1_PIN PB7
+    #define RX5808_SEL2_PIN PB8
+    #define RX5808_SEL3_PIN PB9
+    #define RX5808_SEL4_PIN PB12
+    #define RX5808_SEL5_PIN PB13
+    #define RX5808_SEL6_PIN PB14
+    #define RX5808_SEL7_PIN PB15
+
+    #if VARIANT == STM32F1_VARIANT
+    #define RSSI_INPUT0_PIN A0
+    #define RSSI_INPUT1_PIN A1
+    #define RSSI_INPUT2_PIN A2
+    #define RSSI_INPUT3_PIN A3
+    #define RSSI_INPUT4_PIN A4
+    #define RSSI_INPUT5_PIN A5
+    #define RSSI_INPUT6_PIN A6
+    #define RSSI_INPUT7_PIN A7
+    #elif VARIANT == STM32F4_VARIANT
+    #define RSSI_INPUT0_PIN PB1
+    #define RSSI_INPUT1_PIN A0
+    #define RSSI_INPUT2_PIN A1
+    #define RSSI_INPUT3_PIN A2
+    #define RSSI_INPUT4_PIN A3
+    #define RSSI_INPUT5_PIN A4
+    #define RSSI_INPUT6_PIN A5
+    #define RSSI_INPUT7_PIN A6
+    #endif
 #endif
 
 #endif  // config_h

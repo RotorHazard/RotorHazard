@@ -8,6 +8,7 @@
 #define RHFEAT_STM32_MODE ((uint16_t)0x0004)      // STM 32-bit processor running multiple nodes
 #define RHFEAT_JUMPTO_BOOTLDR ((uint16_t)0x0008)  // JUMP_TO_BOOTLOADER command supported
 #define RHFEAT_IAP_FIRMWARE ((uint16_t)0x0010)    // in-application programming of firmware supported
+#define RHFEAT_PH ((uint16_t)0x0100)    // in-application programming of firmware supported
 #define RHFEAT_NONE ((uint16_t)0)
 
 // dummy macro
@@ -57,12 +58,17 @@ public:
     virtual uint8_t getAddress() { return 0; }
     virtual const char* getProcessorType() = 0;
     // value returned by READ_RHFEAT_FLAGS command
-    virtual uint16_t getFeatureFlags() { return RHFEAT_NONE; }
+    virtual uint16_t getFeatureFlags() {
+#ifdef USE_PH
+        return RHFEAT_PH;
+#else
+        return RHFEAT_NONE;
+#endif
+    }
     virtual void storeFrequency(freq_t freq) {}
     virtual void storeEnterAtLevel(rssi_t rssi) {}
     virtual void storeExitAtLevel(rssi_t rssi) {}
-    virtual void setStatusLed(bool onFlag)
-    {
+    virtual void setStatusLed(bool onFlag) {
 #ifdef LED_BUILTIN
         if (onFlag)
         {

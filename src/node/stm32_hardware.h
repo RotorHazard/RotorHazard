@@ -7,7 +7,7 @@
 #define SERIALCOM Serial
 
 // address for STM32 bootloader
-#if defined(STM32F1)
+#if VARIANT == STM32F1_VARIANT
 #define BOOTLOADER_ADDRESS 0x1FFFF000
 #else
 #define BOOTLOADER_ADDRESS 0x1FFF0000
@@ -20,23 +20,23 @@ private:
         switch (nIdx)
         {
             case 0:
-                return PB6;
+                return RX5808_SEL0_PIN;
             case 1:
-                return PB7;
+                return RX5808_SEL1_PIN;
             case 2:
-                return PB8;
+                return RX5808_SEL2_PIN;
             case 3:
-                return PB9;
+                return RX5808_SEL3_PIN;
             case 4:
-                return PB12;
+                return RX5808_SEL4_PIN;
             case 5:
-                return PB13;
+                return RX5808_SEL5_PIN;
             case 6:
-                return PB14;
+                return RX5808_SEL6_PIN;
             case 7:
-                return PB15;
+                return RX5808_SEL7_PIN;
             default:
-                return PB6;
+                return RX5808_SEL0_PIN;
         }
     }
 
@@ -45,23 +45,23 @@ private:
         switch (nIdx)
         {
             case 0:
-                return A0;
+                return RSSI_INPUT0_PIN;
             case 1:
-                return A1;
+                return RSSI_INPUT1_PIN;
             case 2:
-                return A2;
+                return RSSI_INPUT2_PIN;
             case 3:
-                return A3;
+                return RSSI_INPUT3_PIN;
             case 4:
-                return A4;
+                return RSSI_INPUT4_PIN;
             case 5:
-                return A5;
+                return RSSI_INPUT5_PIN;
             case 6:
-                return A6;
+                return RSSI_INPUT6_PIN;
             case 7:
-                return A7;
+                return RSSI_INPUT7_PIN;
             default:
-                return A0;
+                return RSSI_INPUT0_PIN;
         }
     }
 
@@ -88,11 +88,15 @@ public:
     }
 
     const char* getProcessorType() {
+#if VARIANT == STM32F1_VARIANT
       return "STM32F1";
+#elif VARIANT == STM32F4_VARIANT
+      return "STM32F4";
+#endif
     }
 
     uint16_t getFeatureFlags() {
-        return RHFEAT_STM32_MODE | RHFEAT_JUMPTO_BOOTLDR | RHFEAT_IAP_FIRMWARE;
+        return Hardware::getFeatureFlags() | RHFEAT_STM32_MODE | RHFEAT_JUMPTO_BOOTLDR | RHFEAT_IAP_FIRMWARE;
     }
 
     // Jump to STM32 built-in bootloader; based on code from
