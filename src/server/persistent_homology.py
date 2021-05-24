@@ -16,6 +16,10 @@ class ConnectedComponent:
 	def to_pair(self):
 		return [self.birth[1], self.death[1]]
 
+	def to_upair(self):
+		'''Unsigned/unordered pair'''
+		return [self.death[1], self.birth[1]] if self.death[1] < self.birth[1] else [self.birth[1], self.death[1]]
+
 	def lifetime(self):
 		return abs(self.birth[1] - self.death[1])
 	
