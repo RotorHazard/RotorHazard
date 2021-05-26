@@ -5,14 +5,17 @@ from . import Sensor, Reading
 
 logger = logging.getLogger(__name__)
 
+def file_url(file):
+    return 'file://' + file
 
 class TemperatureSensor(Sensor):
-    def __init__(self, name):
-        Sensor.__init__(self, name)
+    def __init__(self, file, name):
+        super().__init__(self, url=file_url(file), name=name)
+        self.file = file
         self.update()
 
     def update(self):
-        with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+        with open(self.file, 'r') as f:
             self._temp = float(f.read())/1000.0
 
     @Reading(units='°C')
@@ -20,18 +23,19 @@ class TemperatureSensor(Sensor):
         return self._temp
 
 class BatterySensor(Sensor):
-    def __init__(self, name):
-        Sensor.__init__(self, name)
+    def __init__(self, file, name):
+        super().__init__(self, url=file_url(file), name=name)
+        self.file = file
         self.update()
 
     def update(self):
-        with open('/sys/class/power_supply/battery/temp', 'r') as f:
+        with open(self.file+'/temp', 'r') as f:
             self._temp = float(f.read())/10.0
-        with open('/sys/class/power_supply/battery/current_now', 'r') as f:
+        with open(self.file+'/current_now', 'r') as f:
             self._current = float(f.read())/1000.0
-        with open('/sys/class/power_supply/battery/voltage_now', 'r') as f:
+        with open(self.file+'/voltage_now', 'r') as f:
             self._voltage = float(f.read())/1000000.0
-        with open('/sys/class/power_supply/battery/capacity', 'r') as f:
+        with open(self.file+'/capacity', 'r') as f:
             self._capacity = float(f.read())
 
     @Reading(units='°C')
@@ -51,21 +55,31 @@ class BatterySensor(Sensor):
         return self._capacity
 
 
-def discover(*args, **kwargs):
+def discover(config, *args, **kwargs):
     sensors = []
 
     try:
-        with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
-            sensors.append(TemperatureSensor('Core'))
-        logger.info('Core temperature available')
+        file = '/sys/class/thermal/thermal_zone0/temp'
+        with open(file, 'r') as f:
+            url = file_url(file)
+            sensor_config = config.get(url, {})
+            if sensor_config.get('enabled', True):
+                name = sensor_config.get('name', 'Core')
+                sensors.append(TemperatureSensor(file, name))
+                logger.info("Core temperature available ('{}')".format(name))
     except IOError as err:
         logger.debug('Core temperature not available ({0})'.format(err))
 
     try:
-        with open('/sys/class/power_supply/battery/present', 'r') as f:
+        file = '/sys/class/power_supply/battery'
+        with open(file+'/present', 'r') as f:
             if int(f.read()) == 1:
-                sensors.append(BatterySensor('Battery'))
-                logger.info('Battery status available')
+                url = file_url(file)
+                sensor_config = config.get(url, {})
+                if sensor_config.get('enabled', True):
+                    name = sensor_config.get('name', 'Battery')
+                    sensors.append(BatterySensor(file, name))
+                    logger.info("Battery status available ('{}')".format(name))
     except IOError as err:
         logger.debug('Battery status not available ({0})'.format(err))
 

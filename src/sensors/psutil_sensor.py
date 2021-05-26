@@ -3,41 +3,46 @@
 import psutil
 from . import Sensor, Reading
 
+def psutil_sensor_url(unit_name, sub_label):
+    return 'psutil:' + unit_name + '/' + sub_label
 
-class TemperatureSensor(Sensor):
-    def __init__(self, name, subname):
-        fullname = "{} ({})".format(name, subname) if subname else name
-        Sensor.__init__(self, fullname)
-        self.subname = subname
+def psutil_sensor_name(unit_name, sub_label):
+    return 'psutil:' + unit_name + '/' + sub_label
+
+class PsUtilSensor(Sensor):
+    def __init__(self, name, unit_name, sub_label):
+        super().__init__(url=psutil_sensor_url(unit_name, sub_label), name=name)
+        self.unit_name = unit_name
+        self.sub_label = sub_label
         self.update()
+
+class TemperatureSensor(PsUtilSensor):
+    def __init__(self, name, unit_name, sub_label):
+        super().__init__(name=name, unit_name=unit_name, sub_label=sub_label)
 
     def update(self):
         temps = psutil.sensors_temperatures()
-        self._temp = next(filter(lambda s: s.label==self.subname, temps[self.name]), None).current
+        self._temp = next(filter(lambda s: s.label==self.sub_label, temps[self.unit_name]), None).current
 
     @Reading(units='°C')
     def temperature(self):
         return self._temp
 
-class FanSensor(Sensor):
-    def __init__(self, name, subname):
-        fullname = "{} ({})".format(name, subname) if subname else name
-        Sensor.__init__(self, fullname)
-        self.subname = subname
-        self.update()
+class FanSensor(PsUtilSensor):
+    def __init__(self, name, unit_name, sub_label):
+        super().__init__(name=name, unit_name=unit_name, sub_label=sub_label)
 
     def update(self):
         fans = psutil.sensors_fans()
-        self._rpm = next(filter(lambda s: s.label==self.subname, fans[self.name]), None).current
+        self._rpm = next(filter(lambda s: s.label==self.sub_label, fans[self.unit_name]), None).current
 
     @Reading(units='rpm')
     def speed(self):
         return self._rpm
 
-class BatterySensor(Sensor):
-    def __init__(self, name):
-        Sensor.__init__(self, name)
-        self.update()
+class BatterySensor(PsUtilSensor):
+    def __init__(self, name, unit_name, sub_label):
+        super().__init__(name=name, unit_name=unit_name, sub_label=sub_label)
 
     def update(self):
         batt = psutil.sensors_battery()
@@ -48,22 +53,38 @@ class BatterySensor(Sensor):
         return self._capacity
 
 
-def discover(*args, **kwargs):
+def discover(config, *args, **kwargs):
     sensors = []
 
     if hasattr(psutil, 'sensors_battery'):
-        sensors.append(BatterySensor('Battery'))
+        unit_name = 'battery'
+        sub_label = ''
+        url = psutil_sensor_url(unit_name, sub_label)
+        sensor_config = config.get(url, {})
+        if sensor_config.get('enabled', True):
+            name = sensor_config.get('name', 'Battery')
+            sensors.append(BatterySensor(name, unit_name, sub_label))
 
     if hasattr(psutil, 'sensors_temperatures'):
         temps = psutil.sensors_temperatures()
-        for name, slist in temps.items():
-            for s in slist:
-                sensors.append(TemperatureSensor(name, s.label))
+        for unit_name, sub_sensors in temps.items():
+            for sub_sensor in sub_sensors:
+                sub_label = sub_sensor.label
+                url = psutil_sensor_url(unit_name, sub_label)
+                sensor_config = config.get(url, {})
+                if sensor_config.get('enabled', True):
+                    name = sensor_config.get('name', psutil_sensor_name(unit_name, sub_label))
+                    sensors.append(TemperatureSensor(name, unit_name, sub_label))
 
     if hasattr(psutil, 'sensors_fans'):
         fans = psutil.sensors_fans()
-        for name, slist in fans.items():
-            for s in slist:
-                sensors.append(FanSensor(name, s.label))
+        for unit_name, sub_sensors in fans.items():
+            for sub_sensor in sub_sensors:
+                sub_label = sub_sensor.label
+                url = psutil_sensor_url(unit_name, sub_label)
+                sensor_config = config.get(url, {})
+                if sensor_config.get('enabled', True):
+                    name = sensor_config.get('name', psutil_sensor_name(unit_name, sub_label))
+                    sensors.append(FanSensor(name, unit_name, sub_label))
 
     return sensors

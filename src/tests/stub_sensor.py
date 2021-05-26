@@ -2,7 +2,7 @@ from sensors import Sensor, Reading
 
 class StubSensor(Sensor):
     def __init__(self):
-        Sensor.__init__(self, 'TestSensor')
+        Sensor.__init__(self, 'test:/test', 'TestSensor')
         self.value = 0
 
     @Reading(units='')

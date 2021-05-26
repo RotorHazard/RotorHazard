@@ -1,5 +1,5 @@
 import logging
-from . import I2CSensor, Reading
+from . import I2CSensor, i2c_url, Reading
 import ina219
 
 logger = logging.getLogger(__name__)
@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class INA219Sensor(I2CSensor):
     def __init__(self, name, addr, i2c_bus, config={}):
-        super().__init__(name=name, i2c_bus=i2c_bus)
+        super().__init__(name=name, i2c_addr=addr, i2c_bus=i2c_bus)
         max_current = float(config['max_current']) if 'max_current' in config else None
         self.device = ina219.INA219(0.1, address=addr, max_expected_amps=max_current)
         self.device.configure()
@@ -39,13 +39,14 @@ def discover(config, i2c_helper, *args, **kwargs):
     supported_ina219_addrs = [0x40, 0x41, 0x44, 0x45]
     for i2c_bus in i2c_helper:
         for addr in supported_ina219_addrs:
-            url = I2CSensor.url(addr)
+            url = i2c_url(i2c_bus.id, addr)
             sensor_config = config.get(url, {})
-            name = sensor_config.get('name', url)
-            try:
-                sensors.append(INA219Sensor(name, addr, i2c_bus, sensor_config))
-                logger.info("INA219 found on bus {} at address 0x{:#02x} ('{}')".format(i2c_bus.id, addr, name))
-            except IOError:
-                lvl = logging.INFO if sensor_config else logging.DEBUG
-                logger.log(lvl, "No INA219 found on bus {} at address 0x{:#02x}".format(i2c_bus.id, addr))
+            if sensor_config.get('enabled', True):
+                name = sensor_config.get('name', url)
+                try:
+                    sensors.append(INA219Sensor(name, addr, i2c_bus, sensor_config))
+                    logger.info("INA219 found on bus {} at address 0x{:#02x} ('{}')".format(i2c_bus.id, addr, name))
+                except IOError:
+                    lvl = logging.INFO if sensor_config else logging.DEBUG
+                    logger.log(lvl, "No INA219 found on bus {} at address 0x{:#02x}".format(i2c_bus.id, addr))
     return sensors

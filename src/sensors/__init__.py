@@ -8,7 +8,8 @@ def Reading(units):
     return decorator
 
 class Sensor:
-    def __init__(self, name):
+    def __init__(self, url, name):
+        self.url = url
         self.name = name
 
     def getReadings(self):
@@ -22,13 +23,13 @@ class Sensor:
     def update(self):
         pass
 
-class I2CSensor(Sensor):
-    @staticmethod
-    def url(addr):
-        return 'i2c:' + hex(addr)
+def i2c_url(bus_id, addr):
+    return 'i2c:' + id + '/' + hex(addr)
 
-    def __init__(self, name, i2c_bus):
-        super().__init__(name=name)
+class I2CSensor(Sensor):
+    def __init__(self, name, i2c_addr, i2c_bus):
+        super().__init__(url=i2c_url(i2c_bus.id, i2c_addr), name=name)
+        self.i2c_address = i2c_addr
         self.i2c_bus = i2c_bus
 
     def update(self):
