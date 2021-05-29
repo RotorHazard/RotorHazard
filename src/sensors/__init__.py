@@ -1,5 +1,8 @@
 '''Sensor class for the hardware interface.'''
 from interface.Plugins import Plugins
+import logging
+
+logger = logging.getLogger(__name__)
 
 def Reading(units):
     def decorator(func):
@@ -11,6 +14,15 @@ class Sensor:
     def __init__(self, url, name):
         self.url = url
         self.name = name
+        self.description = ''
+
+    def getMeasures(self):
+        measures = []
+        for fname in dir(self):
+            f = getattr(self, fname)
+            if hasattr(f, 'units'):
+                measures.append(f.__name__)
+        return measures
 
     def getReadings(self):
         readings = {}
@@ -39,6 +51,10 @@ class Sensors(Plugins):
     def __init__(self):
         super().__init__(suffix='sensor')
         self.environmental_data_update_tracker = 0
+
+    def _post_discover(self):
+        for sensor in self:
+            logger.info("{} ({}): {} ({})".format(sensor.name, sensor.url, sensor.description, ', '.join(sensor.getMeasures())))
 
     def update_environmental_data(self):
         '''Updates environmental data.'''

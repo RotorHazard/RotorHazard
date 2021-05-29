@@ -28,9 +28,36 @@ class ServerTest(unittest.TestCase):
                 return resp['args'][0]
         self.fail('No response of type {0}'.format(event))
 
+    def get_responses(self, *events):
+        responses = self.client.get_received()
+        evt_resps = filter(lambda resp: resp['name'] in events, responses)
+        return [resp['args'][0] for resp in evt_resps]
+
     def test_sensors(self):
+        server.SENSORS.clear()
+
+        # discovery
         server.SENSORS.discover(tests_pkg)
-        self.assertTrue(any(s.name == 'TestSensor' for s in server.SENSORS))
+        self.assertEqual(len(server.SENSORS), 1)
+        expected_name = 'TestSensor'
+        self.assertEqual(server.SENSORS[0].name, expected_name)
+
+        # environmental data
+        server.rhconfig.SENSORS['test:/test'] = {
+            'max_alarms': {
+                'counter': 1
+            }
+        }
+        server.emit_environmental_data()
+        resp = self.get_response('environmental_data')
+        self.assertEqual(resp[0][expected_name]['counter']['value'], 0)
+
+        # alarms
+        server.SENSORS[0].update()
+        server.emit_environmental_data()
+        resps = self.get_responses('environmental_data', 'priority_message')
+        self.assertEqual(resps[0][0][expected_name]['counter']['value'], 1)
+        self.assertEqual(resps[1]['key'], expected_name+' counter')
 
     def test_add_pilot(self):
         self.client.emit('load_data', {'load_types': ['pilot_data']})

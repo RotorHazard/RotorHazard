@@ -37,3 +37,7 @@ class Plugins(UserList):
                 logger.debug('Plugin {0} not loaded (not supported - required arguments are not available)'.format(plugin_module.__name__))
             except AttributeError as err:
                 logger.error('Error loading plugin {0}: {1}'.format(plugin_module.__name__, err))
+        self._post_discover()
+
+    def _post_discover(self):
+        pass

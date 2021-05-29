@@ -12,6 +12,7 @@ class TemperatureSensor(Sensor):
     def __init__(self, file, name):
         super().__init__(self, url=file_url(file), name=name)
         self.file = file
+        self.description = 'Core temperature'
         self.update()
 
     def update(self):
@@ -26,6 +27,7 @@ class BatterySensor(Sensor):
     def __init__(self, file, name):
         super().__init__(self, url=file_url(file), name=name)
         self.file = file
+        self.description = 'Battery'
         self.update()
 
     def update(self):
@@ -58,29 +60,29 @@ class BatterySensor(Sensor):
 def discover(config, *args, **kwargs):
     sensors = []
 
-    try:
-        file = '/sys/class/thermal/thermal_zone0/temp'
-        with open(file, 'r') as f:
-            url = file_url(file)
-            sensor_config = config.get(url, {})
-            if sensor_config.get('enabled', True):
+    file = '/sys/class/thermal/thermal_zone0/temp'
+    url = file_url(file)
+    sensor_config = config.get(url, {})
+    if sensor_config.get('enabled', True):
+        try:
+            with open(file, 'r') as f:
                 name = sensor_config.get('name', 'Core')
                 sensors.append(TemperatureSensor(file, name))
-                logger.info("Core temperature available ('{}')".format(name))
-    except IOError as err:
-        logger.debug('Core temperature not available ({0})'.format(err))
+        except IOError as err:
+            lvl = logging.INFO if sensor_config else logging.DEBUG
+            logger.log(lvl, 'Core temperature not available ({0})'.format(err))
 
-    try:
-        file = '/sys/class/power_supply/battery'
-        with open(file+'/present', 'r') as f:
-            if int(f.read()) == 1:
-                url = file_url(file)
-                sensor_config = config.get(url, {})
-                if sensor_config.get('enabled', True):
+    file = '/sys/class/power_supply/battery'
+    url = file_url(file)
+    sensor_config = config.get(url, {})
+    if sensor_config.get('enabled', True):
+        try:
+            with open(file+'/present', 'r') as f:
+                if int(f.read()) == 1:
                     name = sensor_config.get('name', 'Battery')
                     sensors.append(BatterySensor(file, name))
-                    logger.info("Battery status available ('{}')".format(name))
-    except IOError as err:
-        logger.debug('Battery status not available ({0})'.format(err))
+        except IOError as err:
+            lvl = logging.INFO if sensor_config else logging.DEBUG
+            logger.log(lvl, 'Battery status not available ({0})'.format(err))
 
     return sensors

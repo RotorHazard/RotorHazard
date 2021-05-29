@@ -19,12 +19,22 @@ The pins in the green box is what were already used by the timer. The pins in th
 Sensors (such as BME280 and INA219) may be attached to the I2C bus and power pins. See the '..._sensor.py' files in the "src/interface" directory for implementation examples. The sensors need to be specified in the "src/server/config.json" file -- in the sample configuration below, a BME280 sensor is configured at I2C address 0x76 (as "Climate") and a INA219 sensor is configured at address 0x40 (as "Battery").
 ```
     "SENSORS": {
-            "i2c:0x76": {
-                    "name": "Climate"
+            "i2c:1:0x76": {
+                    "name": "Climate",
+                    "max_alarms": {
+                    	"temperature": 45
+                    }
             },
-            "i2c:0x40": {
+            "i2c:1:0x40": {
                     "name": "Battery",
-                    "max_current": 0.1
+                    "max_current": 0.1,
+                    "min_alarms": {
+	                    "voltage": 14.8
+                    },
+                    "max_alarms": {
+	                    "current": 1000,
+	                    "power": 1000
+                    }
             }
     },
 ```

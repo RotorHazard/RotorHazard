@@ -2770,11 +2770,12 @@ def emit_frontend_load(**params):
     else:
         SOCKET_IO.emit('load_all')
 
-def emit_priority_message(message, interrupt=False, **params):
+def emit_priority_message(message, interrupt=False, key=None, **params):
     ''' Emits message to all clients '''
     emit_payload = {
         'message': message,
-        'interrupt': interrupt
+        'interrupt': interrupt,
+        'key': key
     }
     if ('nobroadcast' in params):
         emit('priority_message', emit_payload)
@@ -2861,13 +2862,28 @@ def emit_environmental_data(**params):
     '''Emits environmental data.'''
     emit_payload = []
     for sensor in SENSORS:
-        readings = sensor.getReadings()
-        emit_payload.append({sensor.name: readings})
+        emit_payload.append({sensor.name: sensor.getReadings()})
 
     if ('nobroadcast' in params):
         emit('environmental_data', emit_payload)
     else:
         SOCKET_IO.emit('environmental_data', emit_payload)
+
+    # check sensor alarms
+    for sensor in SENSORS:
+        sensor_config = rhconfig.SENSORS.get(sensor.url, {})
+        min_alarms = sensor_config.get('min_alarms', {})
+        max_alarms = sensor_config.get('max_alarms', {})
+        for m, r in sensor.getReadings().items():
+            val = r['value']
+            unit = r['units']
+            msg_key = sensor.name+' '+m
+            min_threshold = min_alarms.get(m, None)
+            if min_threshold is not None and val <= min_threshold:
+                emit_priority_message("{}: {} {}{} <= {}{}".format(sensor.name, m, val, unit, min_threshold, unit), key=msg_key)
+            max_threshold = max_alarms.get(m, None)
+            if max_threshold is not None and val >= max_threshold:
+                emit_priority_message("{}: {} {}{} >= {}{}".format(sensor.name, m, val, unit, max_threshold, unit), key=msg_key)
 
 def emit_scan_data(node):
     freqs = sorted(node.scan_data)

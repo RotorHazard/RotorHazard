@@ -1203,21 +1203,37 @@ var socket = false;
 var standard_message_queue = [];
 var interrupt_message_queue = [];
 
+function add_to_message_queue(msg_obj, message_queue) {
+	if (msg_obj.key) {
+		// remove old version
+		let idx = message_queue.findIndex(function(q_obj) {
+			return q_obj.key === msg_obj.key;
+		});
+		message_queue.splice(idx, 1);
+	}
+	msg_obj.timestamp = new Date()
+	message_queue.push(msg_obj);
+}
+
 function get_standard_message() {
 	if (rotorhazard.show_messages) {
-		msg = standard_message_queue[0];
-		$('#banner-msg .message').html(msg);
+		let msgs = standard_message_queue.map(function(msg_obj) {
+			return '<p>'+msg_obj.timestamp.toLocaleTimeString()+': '+msg_obj.message+'</p>'
+		}).join('');
+		$('#banner-msg .message').html(msgs);
 		$('#banner-msg').slideDown();
 	}
 }
 
 function get_interrupt_message() {
 	if (rotorhazard.show_messages) {
-		msg = interrupt_message_queue[0];
+		let msgs = interrupt_message_queue.map(function(msg_obj) {
+			return '<p>'+msg_obj.timestamp.toLocaleTimeString()+': '+msg_obj.message+'</p>'
+		}).join('');
 
 		var message_el = $('<div class="priority-message-interrupt popup">');
 		message_el.append('<h2>' + __('Alert') + '</h2>');
-		message_el.append('<div class="popup-content"><p>' + msg + '</p></div>');
+		message_el.append('<div class="popup-content">' + msgs + '</div>');
 
 		$.magnificPopup.open({
 			items: {
@@ -1225,10 +1241,8 @@ function get_interrupt_message() {
 				type: 'inline',
 			},
 			callbacks: {
-				afterClose: function(){
-					interrupt_message_queue.shift()
-					if (interrupt_message_queue.length)
-						get_interrupt_message()
+				afterClose: function() {
+					interrupt_message_queue.length = 0;
 				}
 			}
 		});
@@ -1383,24 +1397,17 @@ jQuery(document).ready(function($){
 	// popup messaging
 	socket.on('priority_message', function (msg) {
 		if (msg.interrupt) {
-			interrupt_message_queue.push(msg.message);
-			if (interrupt_message_queue.length == 1) {
-				get_interrupt_message()
-			}
+			add_to_message_queue(msg, interrupt_message_queue);
+			get_interrupt_message(interrupt_message_queue);
 		} else {
-			standard_message_queue.push(msg.message);
-			if (standard_message_queue.length == 1) {
-				get_standard_message()
-			}
+			add_to_message_queue(msg, standard_message_queue);
+			get_standard_message(standard_message_queue);
 		}
 	});
 
 	$(document).on('click', '#banner-msg', function(el){
 		$('#banner-msg').slideUp(400, function(){
-			standard_message_queue.shift()
-			if (standard_message_queue.length) {
-				get_standard_message()
-			}
+			standard_message_queue.length = 0;
 		});
 	});
 
@@ -1408,10 +1415,7 @@ jQuery(document).ready(function($){
 		if (e.which == 27) {
 			if ($('#banner-msg').is(':visible')) {
 				$('#banner-msg').slideUp(400, function(){
-					standard_message_queue.shift()
-					if (standard_message_queue.length) {
-						get_standard_message()
-					}
+					standard_message_queue.length = 0;
 				});
 			}
 		}

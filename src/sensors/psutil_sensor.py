@@ -19,6 +19,7 @@ class PsUtilSensor(Sensor):
 class TemperatureSensor(PsUtilSensor):
     def __init__(self, name, unit_name, sub_label):
         super().__init__(name=name, unit_name=unit_name, sub_label=sub_label)
+        self.description = 'Temperature'
 
     def update(self):
         temps = psutil.sensors_temperatures()
@@ -31,6 +32,7 @@ class TemperatureSensor(PsUtilSensor):
 class FanSensor(PsUtilSensor):
     def __init__(self, name, unit_name, sub_label):
         super().__init__(name=name, unit_name=unit_name, sub_label=sub_label)
+        self.description = 'Fan'
 
     def update(self):
         fans = psutil.sensors_fans()
@@ -43,6 +45,7 @@ class FanSensor(PsUtilSensor):
 class BatterySensor(PsUtilSensor):
     def __init__(self, name, unit_name, sub_label):
         super().__init__(name=name, unit_name=unit_name, sub_label=sub_label)
+        self.description = 'Battery'
 
     def update(self):
         batt = psutil.sensors_battery()
