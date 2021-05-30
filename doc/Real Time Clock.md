@@ -8,13 +8,15 @@ The RTC module uses an onboard coin-cell battery ([CR1220](https://www.adafruit.
 
 ### Wiring
 
+If you're using an [S32_BPill PCB](../resources/S32_BPill_PCB/README.md), mounting points for two types of RTC modules are provided. For other PCBs, see below.
+
 The RTC module connects to the Raspberry Pi via the I2C bus.  The following four pads on the RTC module need to be wired to the corresponding connections going to the Pi:  `Vin, GND, SCL, SDA`.  If using the DS3231 or PCF8523, the Vin pad can be wired to 3.3V or 5V.  For the DS1307 use 5V.  The other pads (besides those four) on the RTC module should be left unconnected.
 
 Here is an example of wiring a DS3231 module via a Delta5 V2 PCB:
 
 ![DS3231 wiring](img/RH_DS3231_D5PCB.jpg)
 
-If you're using one of the newer [RotorHazard PCBs](../resources/PCB/README.md), there are several places on the board where these connections are available.
+If you're using one of the newer (Arduino-based) [RotorHazard PCBs](../resources/PCB/README.md), there are several places on the board where these connections are available.
 
 ### Configuration
 
