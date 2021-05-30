@@ -614,6 +614,8 @@ def start_background_threads(forceFlag=False):
 def stop_background_threads():
     try:
         stop_shutdown_button_thread()
+        if CLUSTER:
+            CLUSTER.shutdown()
         global BACKGROUND_THREADS_ENABLED
         BACKGROUND_THREADS_ENABLED = False
         global HEARTBEAT_THREAD
@@ -860,7 +862,8 @@ def on_broadcast_message(data):
 @catchLogExceptionsWrapper
 def on_set_frequency(data):
     '''Set node frequency.'''
-    CLUSTER.emitToSplits('set_frequency', data)
+    if CLUSTER:
+        CLUSTER.emitToSplits('set_frequency', data)
     if isinstance(data, string_types): # LiveTime compatibility
         data = json.loads(data)
     node_index = data['node']
@@ -906,7 +909,8 @@ def on_set_frequency(data):
 @catchLogExceptionsWrapper
 def on_set_frequency_preset(data):
     ''' Apply preset frequencies '''
-    CLUSTER.emitToSplits('set_frequency_preset', data)
+    if CLUSTER:
+        CLUSTER.emitToSplits('set_frequency_preset', data)
     bands = []
     channels = []
     freqs = []
@@ -1572,7 +1576,8 @@ def on_shutdown_pi():
     '''Shutdown the raspberry pi.'''
     if  INTERFACE.send_shutdown_started_message():
         gevent.sleep(0.25)  # give shutdown-started message a chance to transmit to node
-    CLUSTER.emit('shutdown_pi')
+    if CLUSTER:
+        CLUSTER.emit('shutdown_pi')
     emit_priority_message(__('Server has shut down.'), True)
     logger.info('Performing system shutdown')
     Events.trigger(Evt.SHUTDOWN)
@@ -1592,7 +1597,8 @@ def on_shutdown_pi():
 @catchLogExceptionsWrapper
 def on_reboot_pi():
     '''Reboot the raspberry pi.'''
-    CLUSTER.emit('reboot_pi')
+    if CLUSTER:
+        CLUSTER.emit('reboot_pi')
     emit_priority_message(__('Server is rebooting.'), True)
     logger.info('Performing system reboot')
     Events.trigger(Evt.SHUTDOWN)
@@ -1612,7 +1618,8 @@ def on_reboot_pi():
 @catchLogExceptionsWrapper
 def on_kill_server():
     '''Shutdown this server.'''
-    CLUSTER.emit('kill_server')
+    if CLUSTER:
+        CLUSTER.emit('kill_server')
     emit_priority_message(__('Server has stopped.'), True)
     logger.info('Killing RotorHazard server')
     Events.trigger(Evt.SHUTDOWN)
@@ -1915,7 +1922,8 @@ def on_stage_race():
     if request and valid_pilots is False:
         emit_priority_message(__('No valid pilots in race'), True, nobroadcast=True)
 
-    CLUSTER.emitToSplits('stage_race')
+    if CLUSTER:
+        CLUSTER.emitToSplits('stage_race')
     race_format = getCurrentRaceFormat()
 
     if RACE.race_status != RaceStatus.READY:
@@ -2199,7 +2207,8 @@ def race_expire_thread(start_token):
 def on_stop_race():
     '''Stops the race and stops registering laps.'''
 
-    CLUSTER.emitToSplits('stop_race')
+    if CLUSTER:
+        CLUSTER.emitToSplits('stop_race')
     if RACE.race_status == RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
         delta_time = RACE.end_time - RACE.start_time_monotonic
@@ -2222,7 +2231,7 @@ def on_stop_race():
         })
         check_win_condition()
 
-        if CLUSTER.hasSecondaries():
+        if CLUSTER and CLUSTER.hasSecondaries():
             CLUSTER.doClusterRaceStop()
 
     else:
@@ -2401,7 +2410,8 @@ def build_atomic_result_caches(params):
 @catchLogExceptionsWrapper
 def on_discard_laps(**kwargs):
     '''Clear the current laps without saving.'''
-    CLUSTER.emitToSplits('discard_laps')
+    if CLUSTER:
+        CLUSTER.emitToSplits('discard_laps')
     clear_laps()
     RACE.race_status = RaceStatus.READY # Flag status as ready to start next race
     INTERFACE.set_race_status(RaceStatus.READY)
@@ -2936,10 +2946,11 @@ def emit_enter_and_exit_at_levels(**params):
 
 def emit_cluster_status(**params):
     '''Emits cluster status information.'''
-    if ('nobroadcast' in params):
-        emit('cluster_status', CLUSTER.getClusterStatusInfo())
-    else:
-        SOCKET_IO.emit('cluster_status', CLUSTER.getClusterStatusInfo())
+    if CLUSTER:
+        if ('nobroadcast' in params):
+            emit('cluster_status', CLUSTER.getClusterStatusInfo())
+        else:
+            SOCKET_IO.emit('cluster_status', CLUSTER.getClusterStatusInfo())
 
 def emit_start_thresh_lower_amount(**params):
     '''Emits current start_thresh_lower_amount.'''
@@ -3146,24 +3157,25 @@ def emit_current_laps(**params):
 
 def get_splits(node, lap_id, lapCompleted):
     splits = []
-    for secondary_index in range(len(CLUSTER.secondaries)):
-        if CLUSTER.isSplitSecondaryAvailable(secondary_index):
-            split = RHData.get_lapSplit_by_params(node, lap_id, secondary_index)
-            if split:
-                split_payload = {
-                    'split_id': secondary_index,
-                    'split_raw': split.split_time,
-                    'split_time': split.split_time_formatted,
-                    'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
-                }
-            elif lapCompleted:
-                split_payload = {
-                    'split_id': secondary_index,
-                    'split_time': '-'
-                }
-            else:
-                break
-            splits.append(split_payload)
+    if CLUSTER:
+        for secondary_index in range(len(CLUSTER.secondaries)):
+            if CLUSTER.isSplitSecondaryAvailable(secondary_index):
+                split = RHData.get_lapSplit_by_params(node, lap_id, secondary_index)
+                if split:
+                    split_payload = {
+                        'split_id': secondary_index,
+                        'split_raw': split.split_time,
+                        'split_time': split.split_time_formatted,
+                        'split_speed': '{0:.2f}'.format(split.split_speed) if split.split_speed is not None else None
+                    }
+                elif lapCompleted:
+                    split_payload = {
+                        'split_id': secondary_index,
+                        'split_time': '-'
+                    }
+                else:
+                    break
+                splits.append(split_payload)
     return splits
 
 def emit_race_list(**params):

@@ -62,6 +62,7 @@ class SecondaryNode:
         self.timeDiffMedianMs = 0
         self.timeCorrectionMs = 0
         self.progStartEpoch = 0
+        self.runningFlag = True
         self.sio = socketio.Client(reconnection=False, request_timeout=1)
         self.sio.on('connect', self.on_connect)
         self.sio.on('disconnect', self.on_disconnect)
@@ -73,10 +74,10 @@ class SecondaryNode:
     def secondary_worker_thread(self):
         self.startConnectTime = monotonic()
         gevent.sleep(0.1)
-        while True:
+        while self.runningFlag:
             try:
                 gevent.sleep(1)
-                if self.lastContactTime <= 0:
+                if self.lastContactTime <= 0:  # if current status is not connected
                     oldSecsSinceDis = self.secsSinceDisconnect
                     self.secsSinceDisconnect = monotonic() - self.startConnectTime
                     if self.secsSinceDisconnect >= 1.0:  # if disconnect just happened then wait a second before reconnect
@@ -110,10 +111,10 @@ class SecondaryNode:
                                             logger.warning(err_msg)     # if never connected then give up
                                             logger.warning("Reached timeout; no longer trying to connect to secondary {0} at {1}".\
                                                         format(self.id+1, self.address))
-                                            if self.emit_cluster_connect_change:
+                                            if self.runningFlag and self.emit_cluster_connect_change:
                                                 self.emit_cluster_connect_change(False)  # play one disconnect tone
                                             return  # exit worker thread
-                else:
+                else:  # if current status is connected
                     now_time = monotonic()
                     if not self.freqsSentFlag:
                         try:
@@ -149,11 +150,14 @@ class SecondaryNode:
                                     if self.lastCheckQueryTime - self.lastContactTime > 3.9:
                                         if len(self.timeDiffMedianObj.sorted_) > 0:
                                             logger.warning("Disconnecting after no response for 'check_secondary_query'" \
-                                                        " received for secondary {0} at {1}".format(self.id+1, self.address))
+                                                     " received for secondary {0} at {1}".format(self.id+1, self.address))
                                             # calling 'disconnect()' will usually invoke 'on_disconnect()', but
-                                            #  'disconnect()' can be slow to return, so we update status now
-                                            self.on_disconnect()
-                                            self.sio.disconnect()
+                                            #  'disconnect()' can be slow to return, so force-update status if needed
+                                            gevent.spawn(self.do_sio_disconnect)
+                                            if self.wait_for_sio_disconnect(1.0):
+                                                logger.info("Forcing 'disconnected' status for stuck connection on" \
+                                                            " secondary {0} at {1}".format(self.id+1, self.address))
+                                                self.on_disconnect()
                                         else:  # if never any responses then may be old server version on secondary timer
                                             logger.warning("No response for 'check_secondary_query'" \
                                                            " received for secondary {0} at {1} (may need upgrade)".\
@@ -177,9 +181,19 @@ class SecondaryNode:
                 raise
             except SystemExit:
                 raise
-            except Exception:
-                logger.exception("Exception in SecondaryNode worker thread for secondary {0}".format(self.id+1))
-                gevent.sleep(9)
+            except Exception as ex:
+                if type(ex) is ValueError and "connected" in str(ex):  # if error was because already connected
+                    if self.lastContactTime <= 0:  # if current tracked status is not connected
+                        logger.debug("Ignoring connect error from sio-already-connected on secondary {0}".\
+                                     format(self.id+1))
+                    else:
+                        logger.info("Forcing 'disconnected' status after sio-already-connected error on" \
+                                    " secondary {0}".format(self.id+1))
+                        self.on_disconnect()
+                else:
+                    logger.exception("Exception in SecondaryNode worker thread for secondary {} (sio.conn={})".\
+                                     format(self.id+1, self.sio.connected))
+                    gevent.sleep(9)
 
     def emit(self, event, data = None):
         try:
@@ -217,7 +231,7 @@ class SecondaryNode:
                 if (not self.isMirrorMode) and \
                         (self.RACE.race_status == RaceStatus.STAGING or self.RACE.race_status == RaceStatus.RACING):
                     self.emit('stage_race')  # if race in progress then make sure running on secondary
-                if self.emit_cluster_connect_change:
+                if self.runningFlag and self.emit_cluster_connect_change:
                     self.emit_cluster_connect_change(True)
             else:
                 self.lastContactTime = monotonic()
@@ -236,13 +250,34 @@ class SecondaryNode:
                 upSecs = int(round(self.startConnectTime - self.firstContactTime)) if self.firstContactTime > 0 else 0
                 logger.warning("Disconnected from " + self.get_log_str(upSecs))
                 self.totalUpTimeSecs += upSecs
-                if self.emit_cluster_connect_change:
+                if self.runningFlag and self.emit_cluster_connect_change:
                     self.emit_cluster_connect_change(False)
             else:
                 logger.debug("Received extra 'on_disconnect' event for secondary {0} at {1}".format(self.id+1, self.address))
         except Exception:
             logger.exception("Error handling Cluster 'on_disconnect' for secondary {0} at {1}".\
                              format(self.id+1, self.address))
+
+    def do_sio_disconnect(self):
+        try:
+            if self.sio.connected:
+                self.sio.disconnect()
+                logger.debug("Returned from 'sio.disconnect()' call for secondary {0} at {1}".\
+                             format(self.id+1, self.address))
+        except Exception:
+            logger.exception("Error calling 'sio.disconnect()' for secondary {0} at {1}".\
+                             format(self.id+1, self.address))
+
+    def wait_for_sio_disconnect(self, maxWaitSecs):
+        dly = maxWaitSecs / 10
+        cnt = 10 if dly > 0 else 0
+        while True:
+            if not self.sio.connected:
+                return False
+            if cnt <= 0:
+                return True
+            cnt -= 1
+            gevent.sleep(dly)
 
     def get_log_str(self, timeSecs=None, upTimeFlag=True, stoppedRaceFlag=False):
         if timeSecs is None:
@@ -451,6 +486,10 @@ class ClusterNodeSet:
                 self.emitEventTrigger(payload)
         except Exception as ex:
             logger.exception("Exception in 'Events.trigger()': " + ex)
+
+    def shutdown(self):
+        for secondary in self.secondaries:
+            secondary.runningFlag = False
 
     def addSecondary(self, secondary):
         self.secondaries.append(secondary)
