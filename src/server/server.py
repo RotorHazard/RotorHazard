@@ -3421,6 +3421,7 @@ def emit_pilot_data(**params):
 
         pilot_data = {
             'pilot_id': pilot.id,
+            'url': pilot.url,
             'team': pilot.team,
             'phonetic': pilot.phonetic,
             'team_options': opts_str,
@@ -3428,8 +3429,11 @@ def emit_pilot_data(**params):
         }
 
         if pilot.url:
-            pilot_web_data = web.get_pilot_data(pilot.url)
-            pilot_data.update(pilot_web_data)
+            try:
+                pilot_web_data = web.get_pilot_data(pilot.url)
+                pilot_data.update(pilot_web_data)
+            except:
+                logger.debug('Invalid url: {}'.format(pilot.url), exc_info=True)
 
         # local overrides
         if pilot.name:
