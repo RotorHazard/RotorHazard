@@ -4,10 +4,10 @@ import psutil
 from . import Sensor, Reading
 
 def psutil_sensor_url(unit_name, sub_label):
-    return 'psutil:' + unit_name + '/' + sub_label
+    return "psutil:{}/{}".format(unit_name, sub_label)
 
 def psutil_sensor_name(unit_name, sub_label):
-    return 'psutil:' + unit_name + '/' + sub_label
+    return "{} ({})".format(unit_name, sub_label)
 
 class PsUtilSensor(Sensor):
     def __init__(self, name, unit_name, sub_label):

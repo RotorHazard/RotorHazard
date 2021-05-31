@@ -36,7 +36,7 @@ class Sensor:
         pass
 
 def i2c_url(bus_id, addr):
-    return 'i2c:' + id + '/' + hex(addr)
+    return "i2c:{}/{:#04x}".format(bus_id, addr)
 
 class I2CSensor(Sensor):
     def __init__(self, name, i2c_addr, i2c_bus):
