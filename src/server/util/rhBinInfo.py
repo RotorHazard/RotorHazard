@@ -3,12 +3,13 @@
 # Example Usage:
 #
 # cd ~/RotorHazard/src
-# python -m server.util.rhBinInfo http://www.rotorhazard.com/fw/rel/current/RH_S32_BPill_node.bin
+# python3 -m server.util.rhBinInfo http://www.rotorhazard.com/fw/rel/current/RH_S32_BPill_node.bin
 #
 
 import sys
 
-from server import RHUtils, RHInterface
+from interface import RHInterface
+from server import RHUtils
 from . import stm32loader as stm32loader
 
 def showFirmwareBinInfo(fileStr):

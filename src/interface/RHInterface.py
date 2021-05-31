@@ -201,7 +201,7 @@ class RHInterface(BaseHardwareInterface):
                         offset_passNadirRssi = 16
                         offset_nodeNadirRssi = 18
                         offset_peakRssi = 20
-                        offset_peakTime = 22
+                        offset_peakFirstTime = 22
                         offset_nadirRssi = 24
                         offset_nadirFirstTime = 26
 

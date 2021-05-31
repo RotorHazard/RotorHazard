@@ -78,13 +78,16 @@ def printCharacter(args):
     else:
         color = convertColor(ColorVal.WHITE)
 
-    panel = getPanelImg(strip, args['ledRows'])
+    height = args['ledRows']
+    width = strip.numPixels() // height
+    im = Image.new('RGB', [width, height])
+    draw = ImageDraw.Draw(im)
 
     use_small_flag = True
-    if panel['height'] >= 16:
+    if height >= 16:
         font = ImageFont.truetype(FONT_PATH+"/RotorHazardPanel16.ttf", 16)
         w, h = font.getsize(text)
-        if w <= panel['width'] - 1:
+        if w <= width - 1:
             use_small_flag = False
             h = 16
 
@@ -93,9 +96,9 @@ def printCharacter(args):
         w, h = font.getsize(text)
         h = 8
 
-    panel['draw'].text((int((panel['width']-w)/2) + 1, int((panel['height']-h)/2)), text, font=font, fill=(color))
+    draw.text((int((width-w)/2) + 1, int((height-h)/2)), text, font=font, fill=(color))
 
-    img = panel['im'].rotate(90 * args['panelRotate'])
+    img = im.rotate(90 * args['panelRotate'])
 
     setPixels(strip, img, args['invertedPanelRows'])
     strip.show()
@@ -118,9 +121,12 @@ def scrollText(args):
     else:
         color = convertColor(ColorVal.WHITE)
 
-    panel = getPanelImg(strip, args['ledRows'])
+    height = args['ledRows']
+    width = strip.numPixels() // height
+    im = Image.new('RGB', [width, height])
+    draw = ImageDraw.Draw(im)
 
-    if panel['height'] >= 16:
+    if height >= 16:
         font = ImageFont.truetype(FONT_PATH+"/RotorHazardPanel16.ttf", 16)
         w, h = font.getsize(text)
         h = 16
@@ -129,12 +135,12 @@ def scrollText(args):
         w, h = font.getsize(text)
         h = 8
 
-    draw_y = int((panel['height']-h)/2)
+    draw_y = int((height-h)/2)
 
-    for i in range(-panel['width'], w + panel['width']):
-        panel['draw'].rectangle((0, 0, panel['width'], panel['height']), fill=(0, 0, 0))
-        panel['draw'].text((-i, draw_y), text, font=font, fill=(color))
-        img = panel['im'].rotate(90 * args['panelRotate'])
+    for i in range(-width, w + width):
+        draw.rectangle((0, 0, width, height), fill=(0, 0, 0))
+        draw.text((-i, draw_y), text, font=font, fill=(color))
+        img = im.rotate(90 * args['panelRotate'])
         setPixels(strip, img, args['invertedPanelRows'])
         strip.show()
         gevent.sleep(10/1000.0)
@@ -155,14 +161,17 @@ def multiLapGrid(args):
     else:
         return False
 
-    panel = getPanelImg(strip, args['ledRows'])
-    if panel['height'] < 16:
+    height = args['ledRows']
+    width = strip.numPixels() // height
+    im = Image.new('RGB', [width, height])
+    draw = ImageDraw.Draw(im)
+    if height < 16:
         return False
 
-    half_height = panel['height']/2
-    half_width = panel['width']/2
+    half_height = height/2
+    half_width = width/2
 
-    if panel['height'] >= 32:
+    if height >= 32:
         font = ImageFont.truetype(FONT_PATH+"/RotorHazardPanel16.ttf", 16)
         font_h = 16
     else:
@@ -207,21 +216,11 @@ def multiLapGrid(args):
                 pos_x = int(((half_width - w)/2) + half_width)
                 pos_y = int((((half_height) - h)/2) + half_height)
 
-            panel['draw'].text((pos_x + 1, pos_y), text, font=font, fill=color)
+            draw.text((pos_x + 1, pos_y), text, font=font, fill=color)
 
-    img = panel['im'].rotate(90 * args['panelRotate'])
+    img = im.rotate(90 * args['panelRotate'])
     setPixels(strip, img, args['invertedPanelRows'])
     strip.show()
-
-def getPanelImg(strip, height):
-    width = int(strip.numPixels() / height)
-    im = Image.new('RGB', [width, height])
-    return {
-        'width': width,
-        'height': height,
-        'im': im,
-        'draw': ImageDraw.Draw(im)
-    }
 
 def clearPixels(strip):
     for i in range(strip.numPixels()):

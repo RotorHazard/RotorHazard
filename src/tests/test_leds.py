@@ -1,7 +1,8 @@
 import unittest
 
-from leds import led_handler_strip, led_handler_bitmap, led_handler_character
+from leds import led_handler_strip, led_handler_bitmap, led_handler_character, led_handler_graph
 from server.RHRace import RHRace
+from interface.MockInterface import MockInterface
 
 class MockPixel:
     def __init__(self, count):
@@ -24,7 +25,7 @@ class MockPixel:
         self.frames.append(self.pixels.copy())
 
 class MockManager:
-    def getDisplayColor(self, n, from_result):
+    def getDisplayColor(self, n, from_result=False):
         return 1
 
 class LedsTest(unittest.TestCase):
@@ -36,6 +37,9 @@ class LedsTest(unittest.TestCase):
 
     def test_character(self):
         self.run_effects(led_handler_character)
+
+    def test_graph(self):
+        self.run_effects(led_handler_graph)
 
     def run_effects(self, module):
         strip = MockPixel(36)
@@ -54,7 +58,8 @@ class LedsTest(unittest.TestCase):
             'hide_stage_timer': True,
             'message': 'Test',
             'strip': strip,
-            'manager': MockManager()
+            'manager': MockManager(),
+            'INTERFACE': MockInterface()
         }
         config = {'LED_ROWS': 6, 'PANEL_ROTATE': False, 'INVERTED_PANEL_ROWS': False}
         effects = module.discover(config)

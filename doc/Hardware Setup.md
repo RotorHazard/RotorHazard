@@ -38,7 +38,6 @@ Sensors (such as BME280 and INA219) may be attached to the I2C bus and power pin
             }
     },
 ```
-Note that BME280 and INA219 sensors require the installation of support libraries -- see [doc/Software Setup.md](Software%20Setup.md#ina219-voltagecurrent-support).
 
 ### Multiple Timers
 Multiple RotorHazard timers may be connected together (i.e., for split timing and mirroring) -- see [doc/Cluster.md](Cluster.md).

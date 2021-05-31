@@ -48,6 +48,13 @@
 		--lum_1_high: {{ getOption("lum_1_high") }}%;
 		--contrast_1_low: {{ getOption("contrast_1_low") }};
 		--contrast_1_high: {{ getOption("contrast_1_high") }};
+
+		--pilot_color: hsl(var(--hue_0), var(--sat_0), var(--lum_0_low));
+		--contrast_pilot_color: var(--contrast_0_low);
+		--position_background_color: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
+		--position_foreground_color: var(--contrast_1_high);
+		--fast_lap_color: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
+		--contrast_fast_lap_color: var(--contrast_1_high);
 	}
 
 	</style>

@@ -1,13 +1,50 @@
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 400;
+  src: local(''),
+       url('fonts/BarlowRH-Light.woff2') format('woff2'),
+       url('fonts/BarlowRH-Light.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: italic;
+  font-weight: 400;
+  src: local(''),
+       url('fonts/Barlow-LightItalic.woff2') format('woff2'),
+       url('fonts/Barlow-LightItalic.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 700;
+  src: local(''),
+       url('fonts/BarlowRH-Bold.woff2') format('woff2'),
+       url('fonts/BarlowRH-Bold.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: italic;
+  font-weight: 700;
+  src: local(''),
+       url('fonts/Barlow-BoldItalic.woff2') format('woff2'),
+       url('fonts/Barlow-BoldItalic.woff') format('woff');
+}
+
 html {
 	background: transparent;
 	color: #000;
 	margin: 0;
 	padding: 0;
+	font-family: 'Barlow', sans-serif;
+	font-variant-numeric: tabular-nums;
 }
 
 body {
 	font-size: 1.2em;
-	font-family: sans-serif;
 	margin: 0;
 	padding: 0;
 }
@@ -168,4 +205,14 @@ main {
 
 .leaderboard .channel {
 	width: 5em;
+}
+
+.race_status_message {
+	padding: 1rem;
+	background: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
+	color: var(--contrast_1_high);
+	font-size: 2rem;
+	font-weight: 700;
+	text-align: center;
+	display: none;
 }

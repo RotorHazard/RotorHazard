@@ -12,29 +12,19 @@ class Language():
 
     Languages = {}
 
+
     def __init__(self, RHData):
         self._RHData = RHData
-
-        self._InitResultStr = None
-        self._InitResultLogLevel = logging.INFO
 
         # Load language file
         try:
             with io.open(self.LANGUAGE_FILE_NAME, 'r', encoding="utf8") as f:
                 self._Languages = json.load(f)
-            self._InitResultStr = 'Language file imported'
-            self._InitResultLogLevel = logging.DEBUG
+            logger.debug('Language file imported')
         except IOError:
-            self._InitResultStr = 'No language file found, using defaults'
-            self._InitResultLogLevel = logging.WARN
+            logger.warn('No language file found, using defaults')
         except ValueError:
-            self._InitResultStr = 'Language file invalid, using defaults'
-            self._InitResultLogLevel = logging.ERROR
-
-    # Writes a log message describing the result of the module initialization.
-    def logInitResultMessage(self):
-        if self._InitResultStr:
-            logger.log(self._InitResultLogLevel, self._InitResultStr)
+            logger.error('Language file invalid, using defaults')
 
     def __(self, text, domain=''):
         # return translated string

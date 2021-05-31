@@ -76,9 +76,9 @@ class QueuedLogEventHandler(logging.Handler):
                 print("Error processing log-event queue: " + str(ex))
                 gevent.sleep(5)
 
-    def emit(self, log_rec):
+    def emit(self, record):
         try:
-            self.log_record_queue.put(log_rec, timeout=1)
+            self.log_record_queue.put(record, timeout=1)
         except Exception as ex:
             print("Error adding record to log-event queue: " + str(ex))
 
@@ -195,7 +195,7 @@ def later_stage_setup(config, socket):
 
     (lvl, err_str) = get_logging_level_for_item(logging_config, SYSLOG_LEVEL_STR, err_str, logging.NOTSET)
     if lvl > 0 and lvl < LEVEL_NONE_VALUE:
-        system_logger = logging.handlers.SysLogHandler("/dev/log", level=lvl) \
+        system_logger = logging.handlers.SysLogHandler("/dev/log") \
                         if platform.system() != "Windows" else \
                         logging.handlers.NTEventLogHandler("RotorHazard")
         system_logger.setLevel(lvl)
@@ -278,7 +278,7 @@ def close_logging():
                 root.removeHandler(dest_hndlr)
                 dest_hndlr.close()
         root.handlers[:] = []
-        logging._handlerList = []
+        logging._handlerList = []  #pylint: disable=protected-access
     except Exception as ex:
         print("Error closing logging: " + str(ex))
 
@@ -329,7 +329,7 @@ def create_log_files_zip(logger, config_file, db_file):
             logger.info("Creating logs .zip file: {0}".format(zip_path_name))
             gevent.sleep(0.1)  # pause to let log message get written
             zip_file_obj = zipfile.ZipFile(zip_path_name, 'w', zipfile.ZIP_DEFLATED)
-            for root, dirs, files in os.walk(LOG_DIR_NAME):  # @UnusedVariable
+            for root, dirs, files in os.walk(LOG_DIR_NAME):  #pylint: disable=unused-variable
                 if root == LOG_DIR_NAME:  # don't include sub-directories
                     for fname in files:
                         zip_file_obj.write(os.path.join(root, fname))

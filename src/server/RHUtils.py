@@ -59,6 +59,12 @@ def phonetictime_format(millis, timeformat='{m} {s}.{d}'):
     else:
         return timeformat.format(m=str(minutes), s=str(seconds).zfill(2), d=str(tenths))
 
+def isVersionPython2():
+    return sys.version.startswith("2.")
+
+def getPythonVersionStr():
+    return sys.version.split()[0]
+
 def idAndLogSystemInfo():
     global IS_SYS_RASPBERRY_PI
     IS_SYS_RASPBERRY_PI = False
@@ -74,7 +80,7 @@ def idAndLogSystemInfo():
             IS_SYS_RASPBERRY_PI = True
             logger.info("Host machine: " + modelStr.strip('\0'))
         logger.info("Host OS: {} {}".format(platform.system(), platform.release()))
-        logger.info("Python version: {}".format(sys.version.split('\n')[0].strip()))
+        logger.info("Python version: {}".format(getPythonVersionStr()))
     except Exception:
         logger.exception("Error in 'idAndLogSystemInfo()'")
 
@@ -99,7 +105,7 @@ def getLocalIPAddress():
     if IP:
         return IP
     # use alternate method that does not rely on internet access
-    ips = subprocess.check_output(['hostname', '--all-ip-addresses'])
+    ips = subprocess.check_output(['hostname', '--all-ip-addresses']).decode("utf-8").rstrip()
     logger.debug("Result of 'hostname --all-ip-addresses': " + str(ips))
     if ips:
         for IP in ips.split(' '):
@@ -209,9 +215,9 @@ def hslToHex(h, s, l):
     if not l:
         l = random.randint(0, 100)
 
-    h = h / 360.0;
-    s = s / 100.0;
-    l = l / 100.0;
+    h = h / 360.0
+    s = s / 100.0
+    l = l / 100.0
 
     if s == 0:
         r = g = b = l
@@ -224,7 +230,7 @@ def hslToHex(h, s, l):
             if t < 1 / 6:
                 return p + (q - p) * 6 * t
             if t < 1 / 2:
-                return q;
+                return q
             if t < 2 / 3:
                 return p + (q - p) * (2 / 3 - t) * 6
             return p
@@ -232,9 +238,9 @@ def hslToHex(h, s, l):
         if l < 0.5:
             q = l * (1 + s)
         else:
-            q = l + s - l * s;
+            q = l + s - l * s
 
-        p = 2 * l - q;
+        p = 2 * l - q
         r = int(round(hue2rgb(p, q, h + 1 / 3) * 255))
         g = int(round(hue2rgb(p, q, h) * 255))
         b = int(round(hue2rgb(p, q, h - 1 / 3) * 255))

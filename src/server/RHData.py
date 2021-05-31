@@ -27,6 +27,8 @@ class RHData():
         self._SERVER_API = SERVER_API
         self._DB_FILE_NAME = DB_FILE_NAME
         self._DB_BKP_DIR_NAME = DB_BKP_DIR_NAME
+        self._PageCache = None
+        self._Language = None
 
     def late_init(self, PageCache, Language):
         self._PageCache = PageCache
@@ -122,10 +124,10 @@ class RHData():
                 time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
                 bkp_name = self._DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
             if copy_flag:
-                shutil.copy2(self._DB_FILE_NAME, bkp_name);
+                shutil.copy2(self._DB_FILE_NAME, bkp_name)
                 logger.info('Copied database file to:  ' + bkp_name)
             else:
-                os.renames(self._DB_FILE_NAME, bkp_name);
+                os.renames(self._DB_FILE_NAME, bkp_name)
                 logger.info('Moved old database file to:  ' + bkp_name)
             RHUtils.checkSetFileOwnerPi(bkp_name)
         except Exception:
@@ -1579,6 +1581,20 @@ class RHData():
         race_meta.class_id = new_heat.class_id
         race_meta.format_id = new_format_id
 
+        # reassign pilots to pilotRaces
+        new_pilots = self.get_heatNodes_by_heat(new_heat_id)
+        for np in new_pilots:
+            for pilot_race in self.get_savedPilotRaces_by_savedRaceMeta(race_id):
+                if pilot_race.node_index == np.node_index:
+                    pilot_race.pilot_id = np.pilot_id
+                    for lap in self.get_savedRaceLaps_by_savedPilotRace(pilot_race.id):
+                        lap.pilot_id = np.pilot_id
+                    break
+
+                if pilot_race.node_index == np.node_index:
+                    pilot_race.pilot_id = np.pilot_id
+                    break
+
         # renumber rounds
         self._Database.DB.session.flush()
         old_heat_races = self._Database.SavedRaceMeta.query.filter_by(heat_id=old_heat_id) \
@@ -1871,8 +1887,8 @@ class RHData():
         self.set_option("contrast_1_high", "#000000")
         # timer state
         self.set_option("currentLanguage", "")
-        self.set_option("timeFormat", "{m}:{s}.{d}"),
-        self.set_option("timeFormatPhonetic", "{m} {s}.{d}"),
+        self.set_option("timeFormat", "{m}:{s}.{d}")
+        self.set_option("timeFormatPhonetic", "{m} {s}.{d}")
         self.set_option("currentProfile", "1")
         self.set_option("calibrationMode", "1")
         # minimum lap

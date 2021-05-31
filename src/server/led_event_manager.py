@@ -18,19 +18,24 @@ from leds import hexToColor
 from .Results import CacheStatus
 from .eventmanager import Evt
 from six.moves import UserDict
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LEDEventManager:
     events = {}
     idleArgs = {}
     eventEffects = {}
     eventThread = None
+    displayColorCache = []
 
-    def __init__(self, eventmanager, strip, RHData, RACE, Language):
+    def __init__(self, eventmanager, strip, RHData, RACE, Language, INTERFACE):
         self.Events = eventmanager
         self.strip = strip
         self.RHData = RHData
         self.RACE = RACE
         self.Language = Language
+        self.INTERFACE = INTERFACE
 
         # hold
         self.registerEffect(LEDEffect("hold", "Hold", lambda *args: None, {
@@ -84,6 +89,7 @@ class LEDEventManager:
             'RHData': self.RHData,
             'RACE': self.RACE,
             'Language': self.Language,
+            'INTERFACE': self.INTERFACE,
             'manager': self,
             })
 
@@ -103,7 +109,20 @@ class LEDEventManager:
         self.setEventEffect(Evt.LED_MANUAL, 'clear')
         self.Events.trigger(Evt.LED_MANUAL, {'time': None, 'preventIdle': True})
 
+    def setDisplayColorCache(self, colorCache):
+        self.displayColorCache = colorCache
+
+    def getNodeColors(self, num_nodes):
+        colors = []
+        for node_index in range(num_nodes):
+            colors.append(self.getDisplayColor(node_index))
+
+        return colors
+
     def getDisplayColor(self, node_index, from_result=False):
+        if node_index < len(self.displayColorCache):
+            return self.displayColorCache[node_index]
+
         mode = self.RHData.get_optionInt('ledColorMode', 0)
         color = False
 
@@ -133,27 +152,22 @@ class LEDEventManager:
             profile_freqs = json.loads(profile.frequencies)
             freq = profile_freqs["f"][node_index]
 
-            colorFreqSerial = self.RHData.get_option('ledColorFreqs', False)
-            if colorFreqSerial:
-                colorFreqs = json.loads(colorFreqSerial)
-                color = colorFreqs[node_index]
+            if freq <= 5672:
+                color = '#ffffff' # White
+            elif freq <= 5711:
+                color = '#ff0000' # Red
+            elif freq <= 5750:
+                color = '#ff8000' # Orange
+            elif freq <= 5789:
+                color = '#ffff00' # Yellow
+            elif freq <= 5829:
+                color = '#00ff00' # Green
+            elif freq <= 5867:
+                color = '#0000ff' # Blue
+            elif freq <= 5906:
+                color = '#8000ff' # Dark Violet
             else:
-                if freq <= 5672:
-                    color = '#ffffff' # White
-                elif freq <= 5711:
-                    color = '#ff0000' # Red
-                elif freq <= 5750:
-                    color = '#ff8000' # Orange
-                elif freq <= 5789:
-                    color = '#ffff00' # Yellow
-                elif freq <= 5829:
-                    color = '#00ff00' # Green
-                elif freq <= 5867:
-                    color = '#0000ff' # Blue
-                elif freq <= 5906:
-                    color = '#8000ff' # Dark Violet
-                else:
-                    color = '#ff0080' # Deep Pink
+                color = '#ff0080' # Deep Pink
 
         else: # by node
             colorNodeSerial = self.RHData.get_option('ledColorNodes', False)
@@ -161,18 +175,17 @@ class LEDEventManager:
                 colorNodes = json.loads(colorNodeSerial)
             else:
                 colorNodes = [
-                    "#001fff", # Blue
-                    "#ff3f00", # Orange
-                    "#7fff00", # Lime green
-                    "#ffff00", # Yellow
-                    "#7f00ff", # Magenta
-                    "#ff007f", # Purple
-                    "#3fff3f", # Mint
-                    "#00bfff", # Cyan
+                    "#0022ff", # Blue
+                    "#ff5500", # Orange
+                    "#00ff22", # Green
+                    "#ff0055", # Magenta
+                    "#ddff00", # Yellow
+                    "#7700ff", # Purple
+                    "#00ffdd", # Teal
+                    "#aaaaaa", # White
                 ]
 
-            if node_index + 1 < len(colorNodes):
-                color = colorNodes[node_index]
+            color = colorNodes[node_index % len(colorNodes)]
 
         if not color:
             color = '#ffffff'
@@ -180,7 +193,9 @@ class LEDEventManager:
         return hexToColor(color)
 
     def activateEffect(self, args):
-        args['handlerFn'](args)
+        result = args['handlerFn'](args)
+        if result == False:
+            logger.debug('LED effect %s produced no output', args['handlerFn'])
         if 'preventIdle' not in args or not args['preventIdle']:
             if 'time' in args:
                 time = args['time']
@@ -190,9 +205,9 @@ class LEDEventManager:
             if time:
                 gevent.sleep(float(time))
 
-            self.activateIdle(args)
+            self.activateIdle()
 
-    def activateIdle(self, args):
+    def activateIdle(self):
         gevent.idle()
         event = None
         if self.RACE.race_status == RHRace.RaceStatus.DONE:
@@ -240,9 +255,7 @@ class ClusterLEDManager():
             return False
         return nothing
 
-'''
-Generic data structures for working with LED commands
-'''
+# Generic data structures for working with LED commands
 
 class ColorPattern:
     SOLID = None
@@ -310,6 +323,10 @@ class LEDEvent:
         {
             "event": Evt.SHUTDOWN,
             "label": "Server Shutdown"
+        },
+        {
+            "event": Evt.CLUSTER_JOIN,
+            "label": "Joined Timer Cluster"
         },
         {
             "event": IDLE_READY,

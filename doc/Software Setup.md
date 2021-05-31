@@ -75,6 +75,7 @@ Using a terminal window, do a system update and upgrade (this can take a few min
 sudo apt-get update && sudo apt-get upgrade
 ```
 
+<a id="python"></a>
 ### 5. Install Python
 Using a terminal window, install Python and the Python drivers for the GPIO:
 ```
@@ -108,7 +109,7 @@ rm temp.zip
 Enter the commands below to install RotorHazard server dependencies (be patient, this may take a few minutes):
 ```
 cd ~/RotorHazard/src
-sudo pip install -r requirements.txt
+sudo python3 -m pip install -r requirements.txt
 ```
 
 ### 7. Reboot System
@@ -143,50 +144,23 @@ The installation of a real-time clock module allows the RotorHazard timer to mai
 
 Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)' (which is among the libraries installed via the `sudo pip install -r requirements.txt` command.
 
-The **LED_COUNT** value needs to be set in the `src/config.json` file. See the `src/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
+The **LED_COUNT** value must be set in the `src/config.json` file. See the `src/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
 ```
 LED_COUNT:  Number of LED pixels in strip (or panel)
+LED_ROWS:  Number of rows in a multiline LED display panel (LED_COUNT must be evenly divisible by this value; default 1)
 LED_PIN:  GPIO pin connected to the pixels (default 10 uses SPI '/dev/spidev0.0')
 LED_FREQ_HZ:  LED signal frequency in hertz (usually 800000)
 LED_DMA:  DMA channel to use for generating signal (default 10)
 LED_INVERT:  True to invert the signal (when using NPN transistor level shift)
 LED_CHANNEL:  Set to '1' for GPIOs 13, 19, 41, 45 or 53
 LED_STRIP:  Strip type and color ordering (default is 'GRB')
-LED_ROWS:  Number of rows in LED-panel array (1 for strip)
 PANEL_ROTATE:  Optional panel-rotation value (default 0)
-INVERTED_PANEL_ROWS:  Optional panel row-inversion (default false)
+INVERTED_PANEL_ROWS:  Optional even-index row inversion for LED panels (default false)
 ```
+***LED_PIN*** is the GPIO number, not the hardware pin index.
 If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR', 'BRG', 'BGR', 'RGBW', 'RBGW', 'GRBW',  'GBRW', 'BRGW', 'BGRW'
 
-### INA219 Voltage/Current Support
-The ina219 interface is provided by the following project:
-https://github.com/chrisb2/pi_ina219
-
-Clone the repository onto the Pi:
-```
-cd ~
-sudo git clone https://github.com/chrisb2/pi_ina219.git
-cd pi_ina219
-```
-Install the Python library:
-```
-sudo python setup.py install
-```
-
-### BME280 Temperature Support
-The bme280 interface is provided by the following project:
-https://github.com/rm-hull/bme280
-
-Clone the repository onto the Pi:
-```
-cd ~
-sudo git clone https://github.com/rm-hull/bme280.git
-cd bme280
-```
-Install the Python library:
-```
-sudo python setup.py install
-```
+Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, you must run the server with `sudo` or connect LEDs to a different GPIO pin. If using a service file to start the server on boot, it may be run as root by leaving out the "User=pi" line.
 
 ### Java Support
 Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
@@ -215,7 +189,7 @@ The following instructions will start the web server on the raspberry pi, allowi
 Open a terminal window and enter the following:
 ```
 cd ~/RotorHazard/src
-python -m server.server
+python3 -m server.server
 ```
 The server may be stopped by hitting Ctrl-C
 
@@ -233,13 +207,17 @@ Description=RotorHazard Server
 After=multi-user.target
 
 [Service]
+User=pi
 WorkingDirectory=/home/pi/RotorHazard/src
-ExecStart=/usr/bin/python -m server.server
+ExecStart=/usr/bin/python3 -m server.server
 
 [Install]
 WantedBy=multi-user.target
 ```
-save and exit (CTRL-X, Y, ENTER).
+
+Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, remove `User=pi` from this config.
+
+Save and exit (CTRL-X, Y, ENTER).
 
 Update permissions:
 ```
@@ -295,6 +273,8 @@ cp RotorHazard.old/src/database.db RotorHazard/src/
 ```
 The previous installation ends up in the 'RotorHazard.old' directory, which may be deleted or moved.
 
+For RotorHazard the minimum version of Python supported is 3.7. If your Python is older than this, you should upgrade using the steps in the "Install RotorHazard" section under "5. [Install Python](#python)."
+
 The RotorHazard server dependencies should also be updated (be patient, this command may take a few minutes):
 ```
 cd ~/RotorHazard/src
@@ -345,7 +325,7 @@ To run the RotorHazard server on these systems:
 
 1. Open up a command prompt and navigate to the ```src``` directory in the RotorHazard files (if not already there).
 
-1. Enter: ```python -m server.server```
+1. Enter: ```python3 -m server.server```
 
 1. If the server starts up properly, you should see various log messages, including one like this:
     ```
@@ -389,7 +369,7 @@ If the SYSLOG_LEVEL value is not NONE then the server will send log messages to 
 
 The current Server Log may be displayed via the "View Server Log" item in the drop-down menu. The displayed log is "live" in that it will update as new messages are generated. The log can be displayed in a separate window by clicking on the "View Server Log" menu item with the right-mouse button and selecting the "Open Link in New Window" (or similar) option.
 
-Clicking on the "Select Text" button will select all the displayed log text, which may then be copied and pasted. Clicking on the "Download Logs" button will create and download a '.zip' archive file containing all available log files and the current configuration and database files. The '.zip' archive file can also be generated by running the server with the following command:  `python -m server.server --ziplogs`
+Clicking on the "Select Text" button will select all the displayed log text, which may then be copied and pasted. Clicking on the "Download Logs" button will create and download a '.zip' archive file containing all available log files and the current configuration and database files. The '.zip' archive file can also be generated by running the server with the following command:  `python3 -m server.server --ziplogs`
 
 **When reporting issues, using the "Download Logs" button and including the generated '.zip' file is highly recommended.**
 

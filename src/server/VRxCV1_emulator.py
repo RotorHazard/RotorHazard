@@ -3,10 +3,7 @@
 import paho.mqtt.client as mqtt_client
 import socket
 import argparse
-import sys
 import logging
-
-import json
 
 # mqtt topics are flipped for the VRX
 from .mqtt_topics import mqtt_publish_topics as mqtt_sub_topics
@@ -20,10 +17,7 @@ from paho.mqtt.client import CONNACK_REFUSED_SERVER_UNAVAILABLE
 from paho.mqtt.client import CONNACK_REFUSED_BAD_USERNAME_PASSWORD
 from paho.mqtt.client import CONNACK_REFUSED_NOT_AUTHORIZED
 
-
-
 import time
-
 
 class MQTT_Client:
     """General Purpose MQTT Client"""
@@ -45,15 +39,13 @@ class MQTT_Client:
 
         # Start MQTT Client
         self._client = mqtt_client.Client(client_id=client_id, clean_session=True)
-        
+
         self._set_will()
         self._bind_log_callback()
 
         self._bind_message_callbacks()
-        
-        self.initialize_mqtt() 
 
-        
+        self.initialize_mqtt() 
 
     # call this once
     def initialize_mqtt(self):
@@ -83,25 +75,20 @@ class MQTT_Client:
         self.message_callback_remove = self._client.message_callback_remove
         self.subscribe = self._client.subscribe
 
-     
-
     def on_message(self,client, userdata, message):
         self.logger.warning("Warning: Uncaptured message topic received: \n\t*Topic '%s'\n\t*Message:'%s'"%(message.topic,message.payload.strip()))
         self.logger.warning("\tIf this happens, make sure to bind the message to a function if subscribed to it.")
 
         # client.topic_matches_sub("cv/+","cv/a")
         if topic_matches_sub(self._subscribed_topics["receiver_response_targeted"] , message.topic):
-            self.logger.info("on_message TODO sloppy fallback. Captured direct response from ", message.topic.split('/')[-1])
+            self.logger.info("on_message TODO sloppy fallback. Captured direct response from %s", message.topic.split('/')[-1])
             #try parsing
-
 
     def on_subscribe(self,client, userdata, mid, granted_qos):
         raise NotImplementedError
 
-
-
     def on_log(self, mqttc, obj, level, string):
-        if self.debug == True:
+        if self._debug == True:
             self.logger.debug("%s %s %s"%(obj,level,string))
 
     def _set_will(self):
@@ -129,7 +116,7 @@ class MQTT_Client:
         """
         if self._subscribe_topics_dict_at_start is not None:
             subscribe_topics = self._subscribe_topics_dict_at_start
-             # Subscibe to all topics
+            # Subscibe to all topics
             for rec_ver in subscribe_topics:
                 rec_topics = subscribe_topics[rec_ver]
                 for topic_key in rec_topics:
@@ -162,9 +149,6 @@ class MQTT_Client:
                     # or see _add_message_callbacks in VRxCV_emulator
                     self.logger.info("Subscribing to %s"% rec_topic)
                     self._subscribed_topics[topic_key] = rec_topic
-
-
-        
 
     def on_connect(self, client, userdata, flags, rc, properties=None):
         if rc != 0:
@@ -232,10 +216,8 @@ class VRxCV_emulator:
             #self._mqttc.loop_start()
         except KeyboardInterrupt:
             self._mqttc.disconnect_gracefully()
-        except:
-            raise
 
-    def _on_message_kick(self,client, userdata, message):
+    def _on_message_kick(self, _client, _userdata, _message):
         self._mqttc.disconnect_gracefully()
 
     def _add_message_callbacks(self):
@@ -267,14 +249,10 @@ class VRxCV_emulator:
             else:
                 raise TypeError("rec_topic not of correct type: %s"%rec_topic)
                     
-            self.logger.debug("\tBinding callback \n\t\t*Function: 'self.%s'\n\t\t*Topic: '%s'"%(callback.__name__,rec_topic))
+            #self.logger.debug("\tBinding callback \n\t\t*Function: 'self.%s'\n\t\t*Topic: '%s'"%(callback.__name__,rec_topic))
             self._mqttc.message_callback_add(rec_topic, 
                                              callback)
-        
 
-        
-
-        
         # try:
         #     while True:
         #         pass
@@ -282,14 +260,6 @@ class VRxCV_emulator:
         #     self._mqttc.disconnect_gracefully()
         #     # self._mqttc._client.disconnect()
         #     # self._mqttc._client.loop_stop()
-        
-
-
-
-    
-
-
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -302,13 +272,7 @@ def main():
 
     args = parser.parse_args()
 
-    vrx = VRxCV_emulator("1.0", args.serial_number,args.address,node_number=0 )
-    
-
-
-
-
+    _vrx = VRxCV_emulator("1.0", args.serial_number,args.address,node_number=0 )
 
 if __name__ == "__main__":
     main()
-

@@ -6,7 +6,8 @@ The RotorHazard PCB 1.2 implements current hardware standards to simplify wiring
 
 Download the [gerber file](Gerber_PCB%20RotorHazard%20PCB%20rev.%201.2.zip) to produce a board or send to a PCB manufacturer. Manufacturers often require bulk purchases, so check with other RotorHazard users near you before purchasing in case there is stock available or to split the cost of an order.
 
-[View Board Schematic (PDF)](Schematic_RotorHazard-PCB-1_2_RC_2020-08-20_19-56-33.pdf)
+[View Board Schematic (PDF)](Schematic_RotorHazard-PCB-1_2_RC_2020-08-20_19-56-33.pdf)<br>
+[View Board Dimensions (JPG)](RH_PCB_1_2_dimensions.jpg)
 
 ## Features
 

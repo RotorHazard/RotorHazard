@@ -147,7 +147,7 @@ Select the Heat for the race which is to be run next.
 
 Start the race when ready. (Hotkey: <kbd>z</kbd>) The timer will do a quick communication to the server to  compensate for client/server response time, then begin the staging procedure defined by the current race format.
 
-Tuning parameters can be adjusted here via the "⚠" button. See [doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
+Tuning parameters can be adjusted here by clicking on/touching any of the graphs for each node. See [doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
 
 During the race, there is an "×" next to each counted lap. This will discard that lap pass, so its time is moved to the next lap. Use this to remove errant extra passes, or clean up pilots flying close to the start gate after their race finished.
 
@@ -156,6 +156,8 @@ Pressing the "+ Lap" button will manually trigger a lap pass for that node.
 When a race is over, use the "Stop Race" button (Hotkey: <kbd>x</kbd>) to discontinue counting laps. You need to do this  even if the timer reaches zero in a "Count Down" format—a popular race format allows pilots to finish the lap they are on when time expires. For best results, clear the timing gate and allow all valid crossings to end before stopping the race.
 
 Once a race has concluded, you must choose "Save Laps" or "Discard Laps" before starting another race. "Save Laps" (Hotkey: <kbd>c</kbd>) will store race results to the database and display them on the "Results" page. "Discard Laps" (Hotkey: <kbd>v</kbd>) will discard the race results. Saving laps will automatically advance the heat selection to the next heat with the same class as the saved race.
+
+(The spacebar can also be used as a hotkey for the Start, Stop and Save functions.)
 
 The Race Management panel provides quick access to change the current Race Format, Profile, Minimum Lap Time, or Team Racing Mode. _Audio Control_ and _LED Control_ are the same as the Settings page. The History Export dumps a CSV file to be downloaded of the recorded RSSI values in the most recently completed race. "Time Until Race Start" will schedule a race to be run at a future time. Operators may use this to set a hard limit on the amount of time allowed for pilots to prepare, or to start the timer and then participate in the race themselves.
 
