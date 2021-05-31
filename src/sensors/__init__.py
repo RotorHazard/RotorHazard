@@ -35,17 +35,16 @@ class Sensor:
     def update(self):
         pass
 
-def i2c_url(bus_id, addr):
-    return "i2c:{}/{:#04x}".format(bus_id, addr)
 
 class I2CSensor(Sensor):
     def __init__(self, name, i2c_addr, i2c_bus):
-        super().__init__(url=i2c_url(i2c_bus.id, i2c_addr), name=name)
+        super().__init__(url=i2c_bus.url_of(i2c_addr), name=name)
         self.i2c_address = i2c_addr
         self.i2c_bus = i2c_bus
 
     def update(self):
         self.i2c_bus.with_i2c_quietly(self._readData)
+
 
 class Sensors(Plugins):
     def __init__(self):

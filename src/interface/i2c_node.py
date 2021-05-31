@@ -13,17 +13,21 @@ class I2CNode(Node):
         self.i2c_addr = addr
         self.i2c_bus = i2c_bus
 
+
     @property
     def addr(self):
-        return 'i2c:'+str(self.i2c_addr)
+        return self.i2c_bus.url_of(self.i2c_addr)
+
 
     def _create(self, index):
         return I2CNode(index, self.i2c_addr, self.i2c_bus)
+
 
     def _read_command(self, command, size):
         def _read():
             return self.i2c_bus.i2c.read_i2c_block_data(self.i2c_addr, command, size + 1)
         return self.i2c_bus.with_i2c(_read)
+
 
     def _write_command(self, command, data):
         def _write():

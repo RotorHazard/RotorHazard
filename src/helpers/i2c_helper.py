@@ -4,6 +4,7 @@ try:
     from smbus2 import SMBus # For i2c comms
 except:
     from smbus import SMBus
+from . import i2c_url
 import gevent.lock
 import os
 import logging
@@ -21,8 +22,13 @@ class I2CBus(object):
         self.i2c_rlock_obj = gevent.lock.RLock()  # for limiting i2c to 1 read/write at a time
         self.i2c_timestamp = -1
 
+    def url_of(self, addr):
+        return i2c_url(self.id, addr)
+
+
     def i2c_end(self):
         self.i2c_timestamp = monotonic()
+
 
     def i2c_sleep(self):
         if self.i2c_timestamp == -1:
@@ -31,6 +37,7 @@ class I2CBus(object):
         if (time_remaining > 0):
             # print("i2c sleep {0}".format(time_remaining))
             gevent.sleep(time_remaining)
+
 
     def with_i2c(self, callback):
         val = None
@@ -42,6 +49,7 @@ class I2CBus(object):
                 finally:
                     self.i2c_end()
         return val
+
 
     def with_i2c_quietly(self, callback):
         try:

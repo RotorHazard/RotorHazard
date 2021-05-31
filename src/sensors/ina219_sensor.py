@@ -1,5 +1,5 @@
 import logging
-from . import I2CSensor, i2c_url, Reading
+from . import I2CSensor, Reading
 import ina219
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ def discover(config, i2c_helper, *args, **kwargs):
     supported_ina219_addrs = [0x40, 0x41, 0x44, 0x45]
     for i2c_bus in i2c_helper:
         for addr in supported_ina219_addrs:
-            url = i2c_url(i2c_bus.id, addr)
+            url = i2c_bus.url_of(addr)
             sensor_config = config.get(url, {})
             if sensor_config.get('enabled', True):
                 name = sensor_config.get('name', url)

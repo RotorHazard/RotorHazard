@@ -3,10 +3,10 @@
 try:
     import RPi.GPIO as GPIO
 except ImportError:
-    from . import FakeRPiGPIO as GPIO
+    from fake_rpi.RPi import GPIO
 except:  # need extra exception catch for CI tests
-    from . import FakeRPiGPIO as GPIO
-# if RPi.GPIO not available then use FakeRiGPIO from https://github.com/sn4k3/FakeRPi
+    from fake_rpi.RPi import GPIO
+
 
 class ButtonInputHandler:
     """ Handler for a button connected to a GPIO input pin """
@@ -31,6 +31,7 @@ class ButtonInputHandler:
             GPIO.setup(gpioPinNum, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         except:
             logger.exception("Exception error in ButtonInputHandler setup")
+
 
     # function called on a periodic basis to poll the input and invoke callbacks
     # returns True if button currently pressed or long press detected
@@ -62,6 +63,7 @@ class ButtonInputHandler:
                 self.logger.exception("Exception error in ButtonInputHandler 'pollProcessInput()'")
         return False
 
+
     def setEnabled(self, flgVal=True):
         self.enabledFlag = flgVal
         if not flgVal:
@@ -69,9 +71,10 @@ class ButtonInputHandler:
             self.lastInputLevel = GPIO.UNKNOWN
             self.pressedStartTimeSecs = 0
 
+
     def isEnabled(self):
         return self.enabledFlag
 
+
     def noop(self, param1=None):
         pass
-    

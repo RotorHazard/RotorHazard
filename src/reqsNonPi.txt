@@ -18,5 +18,7 @@ paho-mqtt==1.5.*
 websocket-client==0.57.*
 requests==2.25.*
 cffi==1.14.*
+fake-rpi==0.7.*
+Pillow==8.2.*
 psutil==5.8.*
 numpy==1.20.*
