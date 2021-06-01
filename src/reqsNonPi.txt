@@ -22,3 +22,4 @@ fake-rpi==0.7.*
 Pillow==8.2.*
 psutil==5.8.*
 numpy==1.20.*
+jenkspy==0.2.*

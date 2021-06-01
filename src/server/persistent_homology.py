@@ -1,4 +1,5 @@
 import numpy as np
+import jenkspy
 
 class ConnectedComponent:
 	def __init__(self, idx, birth, death):
@@ -7,22 +8,28 @@ class ConnectedComponent:
 		self.birth = birth
 		self.death = death
 
+
 	def __str__(self):
 		return "{} -> {} ({})".format(self.birth[1], self.death[1], self.lifetime())
+
 
 	def __repr__(self):
 		return "{} -> {}".format(self.birth, self.death)
 
+
 	def to_pair(self):
 		return [self.birth[1], self.death[1]]
+
 
 	def to_upair(self):
 		'''Unsigned/unordered pair'''
 		return [self.death[1], self.birth[1]] if self.death[1] < self.birth[1] else [self.birth[1], self.death[1]]
 
+
 	def lifetime(self):
 		return abs(self.birth[1] - self.death[1])
 	
+
 def calculatePeakPersistentHomology(data):
 	ccs = []
 	N = len(data)
@@ -57,8 +64,17 @@ def calculatePeakPersistentHomology(data):
 
 	return ccs
 
+
 def sortByLifetime(ccs):
 	return sorted(ccs, key=lambda cc: cc.lifetime(), reverse=True)
+
+
+def findBreak(ccs):
+	lifetimes = np.unique([cc.lifetime() for cc in ccs])
+	breaks = jenkspy.jenks_breaks(lifetimes, nb_class=2)
+	i = np.flatnonzero(lifetimes==breaks[1])[0]
+	return (lifetimes[i] + lifetimes[i+1])/2
+
 
 def plotPersistenceDiagram(axs, ccs):
 	data = np.array([cc.to_pair() for cc in ccs])
@@ -68,3 +84,14 @@ def plotPersistenceDiagram(axs, ccs):
 	axs.set_xlim((minv, maxv))
 	axs.set_ylim((minv, maxv))
 	axs.plot([minv,maxv],[minv,maxv], "--", c='gray')
+
+
+def plotLifetimes(axs, ccs):
+	data = np.array([[cc.death[1], cc.lifetime()] for cc in ccs])
+	axs.scatter(data[:,0], data[:,1], s=2, color='blue')
+	minx = np.min(data[:,0])*0.95
+	maxx = np.max(data[:,0])*1.05
+	miny = np.min(data[:,1])*0.95
+	maxy = np.max(data[:,1])*1.05
+	axs.set_xlim((minx, maxx))
+	axs.set_ylim((miny, maxy))
