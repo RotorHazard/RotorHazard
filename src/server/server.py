@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 RELEASE_VERSION = "3.1.0-dev.7" # Public release version code
-SERVER_API = 32 # Server API version
+SERVER_API = 32+1 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
 JSON_API = 3 # JSON API version
@@ -3421,7 +3421,7 @@ def emit_pilot_data(**params):
 
         pilot_data = {
             'pilot_id': pilot.id,
-            'url': pilot.url,
+            'url': pilot.url if pilot.url else '',
             'team': pilot.team,
             'phonetic': pilot.phonetic,
             'team_options': opts_str,

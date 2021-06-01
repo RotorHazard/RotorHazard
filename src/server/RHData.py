@@ -168,22 +168,24 @@ class RHData():
 
                         if db_update is None:
                             new_data = class_type()
-                            for col in class_type.__table__.columns.keys():
-                                if col in row_data.keys():
-                                    setattr(new_data, col, row_data[col])
-                                else:
-                                    setattr(new_data, col, kwargs['defaults'][col])
+                            for col in class_type.__table__.columns:
+                                colName = col.name
+                                if colName in row_data.keys():
+                                    setattr(new_data, colName, row_data[colName])
+                                elif colName in kwargs['defaults']:
+                                    setattr(new_data, colName, kwargs['defaults'][colName])
 
                             #logger.info('DEBUG row_data add:  ' + str(getattr(new_data, match_name)))
                             self._Database.DB.session.add(new_data)
                         else:
                             #logger.info('DEBUG row_data update:  ' + str(getattr(row_data, match_name)))
-                            for col in class_type.__table__.columns.keys():
-                                if col in row_data.keys():
-                                    setattr(db_update, col, row_data[col])
-                                else:
-                                    if col != 'id':
-                                        setattr(db_update, col, kwargs['defaults'][col])
+                            for col in class_type.__table__.columns:
+                                colName = col.name
+                                if colName in row_data.keys():
+                                    setattr(db_update, colName, row_data[colName])
+                                elif colName in kwargs['defaults']:
+                                    if colName != 'id':
+                                        setattr(db_update, colName, kwargs['defaults'][colName])
 
                         self._Database.DB.session.flush()
                 logger.info('Database table "{0}" restored'.format(class_type.__name__))
