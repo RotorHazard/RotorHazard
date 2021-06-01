@@ -2853,7 +2853,7 @@ def emit_frequency_data(**params):
     profile_freqs = json.loads(getCurrentProfile().frequencies)
 
     fdata = []
-    for idx in range(RACE.num_nodes):
+    for idx in range(len(profile_freqs["f"])):
         fdata.append({
                 'band': profile_freqs["b"][idx],
                 'channel': profile_freqs["c"][idx],

@@ -285,8 +285,8 @@ class RHData():
                 for profile in profiles_query_data:
                     if 'frequencies' in profile and profile['frequencies']:
                         freqs = json.loads(profile['frequencies'])
-                        freqs["b"] = [None for _i in range(max(self._RACE.num_nodes,8))]
-                        freqs["c"] = [None for _i in range(max(self._RACE.num_nodes,8))]
+                        freqs["b"] = [None for _i in range(self._RACE.num_nodes)]
+                        freqs["c"] = [None for _i in range(self._RACE.num_nodes)]
                         profile['frequencies'] = json.dumps(freqs)
 
             recover_status['stage_0'] = True
@@ -398,8 +398,8 @@ class RHData():
                     self.restore_table(self._Database.Profiles, profiles_query_data, defaults={
                             'name': self.__("Migrated Profile"),
                             'frequencies': json.dumps(self.default_frequencies()),
-                            'enter_ats': json.dumps({'v': [None for _i in range(max(self._RACE.num_nodes,8))]}),
-                            'exit_ats': json.dumps({'v': [None for _i in range(max(self._RACE.num_nodes,8))]}),
+                            'enter_ats': json.dumps({'v': [None for _i in range(self._RACE.num_nodes)]}),
+                            'exit_ats': json.dumps({'v': [None for _i in range(self._RACE.num_nodes)]}),
                             'f_ratio': None
                         })
                 else:
@@ -1172,7 +1172,7 @@ class RHData():
         new_freqs = self.default_frequencies()
 
         template = {}
-        template["v"] = [None for _i in range(max(self._RACE.num_nodes,8))]
+        template["v"] = [None for _i in range(self._RACE.num_nodes)]
 
         self.add_profile({
             'name': self.__("Default"),
