@@ -129,6 +129,7 @@ class RHInterface(BaseHardwareInterface):
         self.FW_PROCTYPE_PREFIXSTR = FW_PROCTYPE_PREFIXSTR
         self.update_thread = None      # Thread for running the main update loop
         self.fwupd_serial_obj = None   # serial object for in-app update of node firmware
+        self.info_node_obj = None      # node object containing info (like node version, etc)
 
         self.intf_read_block_count = 0  # number of blocks read by all nodes
         self.intf_read_error_count = 0  # number of read errors for all nodes
@@ -140,39 +141,51 @@ class RHInterface(BaseHardwareInterface):
         self.discover_nodes(*args, **kwargs)
 
         self.data_loggers = []
-        for node in self.nodes:
-            node.frequency = self.get_value_16(node, READ_FREQUENCY)
-            if not node.frequency:
-                raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
-            node.init()
-            if node.api_level >= 10:
-                node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
-                if node.api_level >= 13:
-                    node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
-                node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
-                node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
-                if node.multi_node_index < 0:  # (multi-nodes will always have default values)
-                    logger.debug("Node {}: Freq={}, EnterAt={}, ExitAt={}".format(\
-                                 node.index+1, node.frequency, node.enter_at_level, node.exit_at_level))
-
-                if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
-                    self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
-                    logger.info("Data logging enabled for node {0}".format(node.index+1))
+        if len(self.nodes) > 0:
+            for node in self.nodes:
+                node.frequency = self.get_value_16(node, READ_FREQUENCY)
+                if not node.frequency:
+                    raise RuntimeError('Unable to read frequency value from node {0}'.format(node.index+1))
+                node.init()
+                if node.api_level >= 10:
+                    node.node_peak_rssi = self.get_value_rssi(node, READ_NODE_RSSI_PEAK)
+                    if node.api_level >= 13:
+                        node.node_nadir_rssi = self.get_value_rssi(node, READ_NODE_RSSI_NADIR)
+                    node.enter_at_level = self.get_value_rssi(node, READ_ENTER_AT_LEVEL)
+                    node.exit_at_level = self.get_value_rssi(node, READ_EXIT_AT_LEVEL)
+                    if node.multi_node_index < 0:  # (multi-nodes will always have default values)
+                        logger.debug("Node {}: Freq={}, EnterAt={}, ExitAt={}".format(\
+                                     node.index+1, node.frequency, node.enter_at_level, node.exit_at_level))
+    
+                    if "RH_RECORD_NODE_{0}".format(node.index+1) in os.environ:
+                        self.data_loggers.append(open("data_{0}.csv".format(node.index+1), 'w'))
+                        logger.info("Data logging enabled for node {0}".format(node.index+1))
+                    else:
+                        self.data_loggers.append(None)
                 else:
-                    self.data_loggers.append(None)
-            else:
-                logger.warning("Node {} has obsolete API_level ({})".format(node.index+1, node.api_level))
-            if node.api_level >= 32:
+                    logger.warning("Node {} has obsolete API_level ({})".format(node.index+1, node.api_level))
+                if node.api_level >= 32:
+                    flags_val = self.get_value_16(node, READ_RHFEAT_FLAGS)
+                    if flags_val:
+                        node.rhfeature_flags = flags_val
+                        # if first node that supports in-app fw update then save port name
+                        if (not self.fwupd_serial_obj) and hasattr(node, 'serial') and node.serial and \
+                                (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
+                            self.set_fwupd_serial_obj(node.serial)
+        else:
+            node = self.info_node_obj  # handle S32_BPill board with no receiver modules attached
+            if node and node.api_level >= 32:
                 flags_val = self.get_value_16(node, READ_RHFEAT_FLAGS)
                 if flags_val:
                     node.rhfeature_flags = flags_val
-                    # if first node that supports in-app fw update then save port name
+                    # if node supports in-app fw update then save port name
                     if (not self.fwupd_serial_obj) and hasattr(node, 'serial') and node.serial and \
                             (node.rhfeature_flags & (RHFEAT_STM32_MODE|RHFEAT_IAP_FIRMWARE)) != 0:
                         self.set_fwupd_serial_obj(node.serial)
-
+            
 
     def discover_nodes(self, *args, **kwargs):
+        kwargs['set_info_node_obj_fn'] = self.set_info_node_obj
         self.nodes.discover(includeOffset=True, *args, **kwargs)
 
 
@@ -558,12 +571,15 @@ class RHInterface(BaseHardwareInterface):
             if (node.rhfeature_flags & RHFEAT_JUMPTO_BOOTLDR) != 0:
                 node.jump_to_bootloader(self)
                 return
+        node = self.get_info_node_obj()
+        if node and (node.rhfeature_flags & RHFEAT_JUMPTO_BOOTLDR) != 0:
+            node.jump_to_bootloader(self)
+            return
         self.log("Unable to find any nodes with jump-to-bootloader support")
 
     def send_status_message(self, msgTypeVal, msgDataVal):
-        if len(self.nodes) > 0:
-            return self.nodes[0].send_status_message(self, msgTypeVal, msgDataVal)
-        return False
+        node = self.get_info_node_obj()
+        return node.send_status_message(self, msgTypeVal, msgDataVal) if node else False
 
     def send_shutdown_button_state(self, stateVal):
         return self.send_status_message(STATMSG_SDBUTTON_STATE, stateVal)
@@ -595,6 +611,14 @@ class RHInterface(BaseHardwareInterface):
                 self.fwupd_serial_obj.close()
         except Exception as ex:
             self.log("Error closing FW node serial port: " + str(ex))
+
+    def set_info_node_obj(self, node):
+        self.info_node_obj = node
+
+    def get_info_node_obj(self):
+        if self.info_node_obj:
+            return self.info_node_obj
+        return self.nodes[0] if self.nodes and len(self.nodes) > 0 else None
 
     def inc_intf_read_block_count(self):
         self.intf_read_block_count += 1

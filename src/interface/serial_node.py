@@ -257,7 +257,7 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                             logger.error('Bad READ_MULTINODE_COUNT value fetched from serial node:  ' + str(multi_count))
                             multi_count = 1
                         elif multi_count == 0:
-                            logger.warning('Fetched READ_MULTINODE_COUNT value of zero from serial node (no modules detected)')
+                            logger.debug('Fetched READ_MULTINODE_COUNT value of zero from serial node (no modules detected)')
                             multi_count = 0
                 except Exception:
                     multi_count = 1
@@ -293,6 +293,8 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                                     fver_log_str, ftyp_log_str, ftim_log_str))
                         nodes.append(node)
                     else:
+                        if 'set_info_node_obj_fn' in kwargs:
+                            kwargs['set_info_node_obj_fn'](node)  # set 'info_node_obj' in RHInterface
                         logger.info("Serial node (with zero modules) found at port '{}', API_level={}, baudrate={}{}{}{}".format(\
                                     node.serial.name, api_level, node.serial.baudrate, \
                                     fver_log_str, ftyp_log_str, ftim_log_str))

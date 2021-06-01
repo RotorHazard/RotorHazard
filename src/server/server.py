@@ -3729,11 +3729,12 @@ def check_bpillfw_file(data):
         infoStr = "Firmware update file size = {}<br>".format(fileSize) + \
                   "Firmware update version: {} ({}Build timestamp: {})<br><br>".\
                   format(fwVerStr, fwTypStr, fwTimStr)
-        curNodeStr = INTERFACE.nodes[0].firmware_version_str if len(INTERFACE.nodes) else None
+        info_node = INTERFACE.get_info_node_obj()
+        curNodeStr = info_node.firmware_version_str if info_node else None
         if curNodeStr:
-            tsStr = INTERFACE.nodes[0].firmware_timestamp_str
+            tsStr = info_node.firmware_timestamp_str
             if tsStr:
-                curRTypStr = INTERFACE.nodes[0].firmware_proctype_str
+                curRTypStr = info_node.firmware_proctype_str
                 ptStr = (curRTypStr + ", ") if curRTypStr else ""
                 curNodeStr += " ({}Build timestamp: {})".format(ptStr, tsStr)
         else:
@@ -4537,20 +4538,22 @@ def _do_init_rh_interface():
             else:
                 try:
                     importlib.import_module('serial')
-                    logger.info("Unable to initialize specified serial node(s): {0}".format(Config.SERIAL_PORTS))
                     if INTERFACE:
-                        logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
-                        # enter serial port name so it's available for node firmware update
-                        if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
-                            INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
-                            set_ui_message(
-                                'stm32',
-                                 __("Server is unable to communicate with node processor.") +
-                                    __('If an S32_BPill board is connected, you may attempt to <a href="/updatenodes">flash-update</a> its processor.'),
-                                header='Warning',
-                                subclass='no-comms'
-                                )
+                        if not (getattr(INTERFACE, "get_info_node_obj") and INTERFACE.get_info_node_obj()):
+                            logger.info("Unable to initialize serial node(s): {0}".format(Config.SERIAL_PORTS))
+                            logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
+                            # enter serial port name so it's available for node firmware update
+                            if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
+                                INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
+                                set_ui_message(
+                                    'stm32',
+                                     __("Server is unable to communicate with node processor.") +
+                                        __('If an S32_BPill board is connected, you may attempt to <a href="/updatenodes">flash-update</a> its processor.'),
+                                    header='Warning',
+                                    subclass='no-comms'
+                                    )
                     else:
+                        logger.info("Unable to initialize specified serial node(s): {0}".format(Config.SERIAL_PORTS))
                         return False  # unable to open serial port
                 except ImportError:
                     logger.info("Unable to import library for serial node(s) - is 'pyserial' installed?")
@@ -4606,20 +4609,24 @@ def buildServerInfo():
         serverInfo['node_api_lowest'] = 0
         serverInfo['node_api_levels'] = [None]
 
-        if len(INTERFACE.nodes):
-            if INTERFACE.nodes[0].api_level:
-                node_api_level = INTERFACE.nodes[0].api_level
+        info_node = INTERFACE.get_info_node_obj()
+        if info_node:
+            if info_node.api_level:
+                node_api_level = info_node.api_level
                 serverInfo['node_api_lowest'] = node_api_level
-                serverInfo['node_api_levels'] = []
-                for node in INTERFACE.nodes:
-                    serverInfo['node_api_levels'].append(node.api_level)
-                    if node.api_level != node_api_level:
-                        serverInfo['node_api_match'] = False
-                    if node.api_level < serverInfo['node_api_lowest']:
-                        serverInfo['node_api_lowest'] = node.api_level
-                # if multi-node and all api levels same then only include one entry
-                if serverInfo['node_api_match'] and INTERFACE.nodes[0].multi_node_index >= 0:
-                    serverInfo['node_api_levels'] = serverInfo['node_api_levels'][0:1]
+                if len(INTERFACE.nodes):
+                    serverInfo['node_api_levels'] = []
+                    for node in INTERFACE.nodes:
+                        serverInfo['node_api_levels'].append(node.api_level)
+                        if node.api_level != node_api_level:
+                            serverInfo['node_api_match'] = False
+                        if node.api_level < serverInfo['node_api_lowest']:
+                            serverInfo['node_api_lowest'] = node.api_level
+                    # if multi-node and all api levels same then only include one entry
+                    if serverInfo['node_api_match'] and INTERFACE.nodes[0].multi_node_index >= 0:
+                        serverInfo['node_api_levels'] = serverInfo['node_api_levels'][0:1]
+                else:
+                    serverInfo['node_api_levels'] = [node_api_level]
 
         serverInfo['about_html'] += "<li>" + __("Node API") + ": "
         if node_api_level:
@@ -4639,18 +4646,21 @@ def buildServerInfo():
         node_fw_version = None
         serverInfo['node_version_match'] = True
         serverInfo['node_fw_versions'] = [None]
-        if len(INTERFACE.nodes):
-            if INTERFACE.nodes[0].firmware_version_str:
-                node_fw_version = INTERFACE.nodes[0].firmware_version_str
-                serverInfo['node_fw_versions'] = []
-                for node in INTERFACE.nodes:
-                    serverInfo['node_fw_versions'].append(\
-                            node.firmware_version_str if node.firmware_version_str else "0")
-                    if node.firmware_version_str != node_fw_version:
-                        serverInfo['node_version_match'] = False
-                # if multi-node and all versions same then only include one entry
-                if serverInfo['node_version_match'] and INTERFACE.nodes[0].multi_node_index >= 0:
-                    serverInfo['node_fw_versions'] = serverInfo['node_fw_versions'][0:1]
+        if info_node:
+            if info_node.firmware_version_str:
+                node_fw_version = info_node.firmware_version_str
+                if len(INTERFACE.nodes):
+                    serverInfo['node_fw_versions'] = []
+                    for node in INTERFACE.nodes:
+                        serverInfo['node_fw_versions'].append(\
+                                node.firmware_version_str if node.firmware_version_str else "0")
+                        if node.firmware_version_str != node_fw_version:
+                            serverInfo['node_version_match'] = False
+                    # if multi-node and all versions same then only include one entry
+                    if serverInfo['node_version_match'] and INTERFACE.nodes[0].multi_node_index >= 0:
+                        serverInfo['node_fw_versions'] = serverInfo['node_fw_versions'][0:1]
+                else:
+                    serverInfo['node_fw_versions'] = [node_fw_version]
         if node_fw_version:
             serverInfo['about_html'] += "<li>" + __("Node Version") + ": "
             if serverInfo['node_version_match']:

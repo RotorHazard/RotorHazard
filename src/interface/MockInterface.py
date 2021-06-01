@@ -185,6 +185,9 @@ class MockInterface(BaseHardwareInterface):
     def close_fwupd_serial_port(self):
         pass
 
+    def get_info_node_obj(self):
+        return self.nodes[0] if self.nodes and len(self.nodes) > 0 else None
+
     def inc_intf_read_block_count(self):
         pass
 
