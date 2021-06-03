@@ -37,10 +37,3 @@ def pack_32(data):
 def calculate_checksum(data: bytearray):
     checksum = sum(data) & 0xFF
     return checksum
-
-def validate_checksum(data: bytearray):
-    '''Returns True if the checksum matches the data.'''
-    if not data:
-        return False
-    checksum = calculate_checksum(data[:-1])
-    return checksum == data[-1]

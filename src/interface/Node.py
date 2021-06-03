@@ -7,7 +7,7 @@ import logging
 from monotonic import monotonic
 import gevent.lock
 from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32, \
-                        validate_checksum, calculate_checksum
+                        calculate_checksum
 
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
 
@@ -181,48 +181,37 @@ class Node:
         self.inc_read_block_count()
         success = False
         retry_count = 0
+
+        def log_io_error(msg):
+            nonlocal retry_count
+            retry_count += 1
+            if retry_count <= max_retries:
+                logger.warning('Retry ({4}) in _read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
+            else:
+                logger.warning('Retry ({4}) limit reached in _read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
+            self.inc_read_error_count()
+            gevent.sleep(0.025)
+
         data = None
         while success is False and retry_count <= max_retries:
             try:
                 self.io_request = monotonic()
                 data = self._read_command(command, size)
                 self.io_response = monotonic()
-                if validate_checksum(data):
-                    if len(data) == size + 1:
+                if data and len(data) == size + 1:
+                    # validate checksum
+                    expected_checksum = calculate_checksum(data[:-1])
+                    actual_checksum = data[-1]
+                    if actual_checksum == expected_checksum:
                         data = data[:-1]
                         success = True
                     else:
-                        retry_count += 1
-                        if retry_count <= max_retries:
-                            logger.warning('Retry (bad length {4}) in read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count, len(data)-1))
-                        else:
-                            logger.warning('Retry (bad length {4}) limit reached in read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count, len(data)-1))
-                        self.inc_read_error_count()
-                        gevent.sleep(0.025)
+                        log_io_error("checksum was {} expected {}".format(actual_checksum, expected_checksum))
                 else:
-                    # logger.warning('Invalid Checksum ({0}): {1}'.format(retry_count, data))
-                    retry_count += 1
-                    if data and len(data) > 0:
-                        if retry_count <= max_retries:
-                            logger.warning('Retry (checksum) in read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count))
-                        else:
-                            logger.warning('Retry (checksum) limit reached in read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count))
-                    else:
-                        if retry_count <= max_retries:
-                            logger.warning('Retry (no data) in read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count))
-                        else:
-                            logger.warning('Retry (no data) limit reached in read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count))
-                    self.inc_read_error_count()
-                    gevent.sleep(0.025)
+                    log_io_error("bad length {}".format(len(data)) if data else "no data")
             except IOError as err:
-                logger.warning('Read Error: {}'.format(err))
-                retry_count += 1
-                if retry_count <= max_retries:
-                    logger.warning('Retry (IOError) in read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count))
-                else:
-                    logger.warning('Retry (IOError) limit reached in read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count))
-                self.inc_read_error_count()
-                gevent.sleep(0.025)
+                logger.warning('Read error: {}'.format(err))
+                log_io_error("I/O error")
         return data if success else None
 
     def write_block(self, command, data):
