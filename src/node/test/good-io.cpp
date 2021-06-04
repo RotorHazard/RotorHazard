@@ -73,4 +73,13 @@ unittest(ioTooLongText)
   assertEqual('\0', buf.data[buf.textLength()-1]);
 }
 
+unittest(checksum)
+{
+  Buffer<3,2> buf;
+  buf.write8(200);
+  buf.write8(145);
+  uint8_t checksum = buf.calculateChecksum(2);
+  assertEqual(89, (int)checksum);
+}
+
 unittest_main()

@@ -3,6 +3,7 @@
 
 #include "config.h"
 
+// S >= T
 template<size_t S, size_t T> class Buffer {
     public:
         uint8_t index = 0;
