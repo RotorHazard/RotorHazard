@@ -64,7 +64,7 @@ def discover(config, *args, **kwargs):
         sub_label = ''
         url = psutil_sensor_url(unit_name, sub_label)
         sensor_config = config.get(url, {})
-        if sensor_config.get('enabled', True):
+        if sensor_config.get('enabled', True) and psutil.sensors_battery():
             name = sensor_config.get('name', 'Battery')
             sensors.append(BatterySensor(name, unit_name, sub_label))
 
