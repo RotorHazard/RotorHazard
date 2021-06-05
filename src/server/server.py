@@ -1145,6 +1145,17 @@ def hardware_set_all_exit_ats(exit_at_levels):
                 'exit_at_level': INTERFACE.nodes[idx].exit_at_level
                 })
 
+@SOCKET_IO.on('set_autotune')
+@catchLogExceptionsWrapper
+def on_set_autotune(data):
+    node_index = data['node']
+    autotune = data['autotune']
+
+    if node_index < 0 or node_index >= RACE.num_nodes:
+        logger.info('Unable to set autotune ({0}) on node {1}; node index out of range'.format(autotune, node_index+1))
+        return
+
+    INTERFACE.nodes[node_index].autotune = autotune
 
 @SOCKET_IO.on("set_start_thresh_lower_amount")
 @catchLogExceptionsWrapper
@@ -3066,7 +3077,8 @@ def emit_enter_and_exit_at_levels(**params):
 
     emit_payload = {
         'enter_at_levels': profile_enter_ats["v"][:RACE.num_nodes],
-        'exit_at_levels': profile_exit_ats["v"][:RACE.num_nodes]
+        'exit_at_levels': profile_exit_ats["v"][:RACE.num_nodes],
+        'autotune': [node.autotune for node in INTERFACE.nodes]
     }
     if ('nobroadcast' in params):
         emit('enter_and_exit_at_levels', emit_payload)

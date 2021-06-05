@@ -3,10 +3,12 @@
 import os
 import logging
 from monotonic import monotonic # to capture read timing
+import gevent
 
 import interface as node_pkg
 from .Plugins import Plugins
 from interface import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32
+from interface import persistent_homology as ph
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
 from .Node import Node, NodeManager
 
@@ -68,6 +70,7 @@ FW_PROCTYPE_PREFIXSTR = "FIRMWARE_PROCTYPE: "
 RHFEAT_STM32_MODE = 0x0004      # STM 32-bit processor running multiple nodes
 RHFEAT_JUMPTO_BOOTLDR = 0x0008  # JUMP_TO_BOOTLOADER command supported
 RHFEAT_IAP_FIRMWARE = 0x0010    # in-application programming of firmware supported
+RHFEAT_PH = 0x0100
 
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 
@@ -500,6 +503,25 @@ class RHInterface(BaseHardwareInterface):
             startThreshLowerNode.start_thresh_lower_flag = False
             startThreshLowerNode.start_thresh_lower_time = 0
 
+    def set_race_status(self, race_status):
+        super().set_race_status(race_status)
+        if race_status == BaseHardwareInterface.RACE_STATUS_DONE:
+            gevent.spawn(self.calibrate_nodes)
+
+    def calibrate_nodes(self):
+        for node in self.nodes:
+            if node.autotune and (node.rhfeature_flags&RHFEAT_PH) and node.first_cross_flag and node.history_values:
+                ccs = ph.calculatePeakPersistentHomology(node.history_values)
+                lo, hi = ph.findBreak(ccs)
+                diff = hi - lo
+                # cap changes to 20%
+                learning_rate = 0.2
+                enter_level = int((lo + diff/2 - node.enter_at_level)*learning_rate + node.enter_at_level)
+                # set exit a bit lower to register a pass sooner
+                exit_level = int((lo + diff/4 - node.exit_at_level)*learning_rate + node.exit_at_level)
+                logger.info('Calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
+                self.set_enter_at_level(node.index, enter_level)
+                self.set_exit_at_level(node.index, exit_level)
 
     #
     # Internal helper functions for setting single values

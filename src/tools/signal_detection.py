@@ -1,12 +1,10 @@
 import sys
-from pathlib import Path
 import csv
 from server import Database
 from flask import Flask
 import json
-from server import persistent_homology as ph
+from interface import persistent_homology as ph
 import matplotlib.pyplot as plt
-import numpy as np
 
 def load_races(db_file):
 	APP = Flask(__name__)
@@ -50,15 +48,16 @@ def analyze_race(race, show_plots=True):
 	ccs = ph.sortByLifetime(ccs)
 	laps = race[-3]
 	print("Lap peaks:\n{}".format([str(cc) for cc in ccs[0:laps]]))
-	threshold = ph.findBreak(ccs)
+	min_bound, max_bound = ph.findBreak(ccs)
+	threshold = (min_bound + max_bound)/2
 	print("Estimated peaks ({}): {}\n".format(threshold, len([cc for cc in ccs if cc.lifetime()>threshold])))
 	if show_plots:
-		fig, axs = plt.subplots(1, 3, figsize=(8,4))
+		_fig, axs = plt.subplots(1, 3, figsize=(8,4))
 		axs[0].plot(race[-2], race[-1])
 		ph.plotPersistenceDiagram(axs[1], ccs)
 		ph.plotLifetimes(axs[2], ccs)
 		plt.show()
-	return (race[3], threshold)
+	return (race[3], min_bound, max_bound)
 	
 
 def export(race, csv_path):
@@ -71,12 +70,15 @@ def export(race, csv_path):
 if __name__ == '__main__':
 	db_file = sys.argv[1] if len(sys.argv) > 1 else 'database.db'
 	races = load_races(db_file)
-	node_thresholds = {}
+	node_bounds = {}
 	for race in races:
-		node, threshold = analyze_race(race, show_plots=False)
-		if node not in node_thresholds:
-			node_thresholds[node] =[]
-		node_thresholds[node].append(threshold)
-	for node, thresholds in node_thresholds.items():
-		np.mean(thresholds)
-		print("Node {}: mean threshold {} (stddev {})".format(node, np.mean(thresholds), np.std(thresholds)))
+		node, min_bound, max_bound = analyze_race(race, show_plots=False)
+		if node not in node_bounds:
+			node_bounds[node] = ([], [])
+		node_bounds[node][0].append(min_bound)
+		node_bounds[node][1].append(max_bound)
+	for node, bounds in node_bounds.items():
+		lower_bound = max(bounds[0])
+		upper_bound = min(bounds[1])
+		threshold = (lower_bound + upper_bound)/2
+		print("Node {}: threshold {}".format(node, threshold))

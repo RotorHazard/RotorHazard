@@ -1,4 +1,5 @@
 '''Class to hold race management variables.'''
+from interface.BaseHardwareInterface import BaseHardwareInterface
 
 class RHRace():
     '''Class to hold race management variables.'''
@@ -93,10 +94,10 @@ class WinStatus():
     OVERTIME = 4
 
 class RaceStatus():
-    READY = 0
-    STAGING = 3
-    RACING = 1
-    DONE = 2
+    READY = BaseHardwareInterface.RACE_STATUS_READY
+    STAGING = BaseHardwareInterface.RACE_STATUS_STAGING
+    RACING = BaseHardwareInterface.RACE_STATUS_RACING
+    DONE = BaseHardwareInterface.RACE_STATUS_DONE
 
 class CacheStatus:
     INVALID = 'invalid'

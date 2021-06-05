@@ -73,7 +73,7 @@ def findBreak(ccs):
 	lifetimes = np.unique([cc.lifetime() for cc in ccs])
 	breaks = jenkspy.jenks_breaks(lifetimes, nb_class=2)
 	i = np.flatnonzero(lifetimes==breaks[1])[0]
-	return (lifetimes[i] + lifetimes[i+1])/2
+	return (lifetimes[i], lifetimes[i+1])
 
 
 def plotPersistenceDiagram(axs, ccs):
@@ -83,7 +83,7 @@ def plotPersistenceDiagram(axs, ccs):
 	maxv = np.max(data)*1.05
 	axs.set_xlim((minv, maxv))
 	axs.set_ylim((minv, maxv))
-	axs.plot([minv,maxv],[minv,maxv], "--", c='gray')
+	axs.plot([minv,maxv], [minv,maxv], "--", c='gray')
 
 
 def plotLifetimes(axs, ccs):

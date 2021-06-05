@@ -214,6 +214,7 @@ class Node(CommandsWithRetry):
 
         self.enter_at_level = 0
         self.exit_at_level = 0
+        self.autotune = False
 
         self.start_thresh_lower_flag = False  # True while EnterAt/ExitAt lowered at start of race
         self.start_thresh_lower_time = 0      # time when EnterAt/ExitAt should be restored
@@ -242,6 +243,7 @@ class Node(CommandsWithRetry):
         self.history_times = []
         self.history_count = 0
         self.empty_history_count = 0
+        self.node_lap_id = -1
         self.under_min_lap_count = 0
 
     def is_valid_rssi(self, value):

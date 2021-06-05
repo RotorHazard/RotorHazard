@@ -602,6 +602,8 @@
 				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
 				rotorhazard.nodes[i].exit_at_level = msg.exit_at_levels[i];
+				$('#set_autotune_' + i).prop('checked', msg.autotune[i]);
+				rotorhazard.nodes[i].autotune = msg.autotune[i];
 
 				$('#node_notice_' + i).html(rotorhazard.nodes[i].checkValues());
 				rotorhazard.nodes[i].updateThresholds();
@@ -689,6 +691,15 @@
 				rotorhazard.nodes[data.node].exit_at_level = data.exit_at_level;
 				rotorhazard.nodes[data.node].updateThresholds();
 			}
+		});
+
+		$('.set_autotune').change(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				autotune: $(this).prop('checked'),
+			};
+			socket.emit('set_autotune', data);
+			rotorhazard.nodes[data.node].autotune = data.autotune;
 		});
 
 		$('button.cap_enter_at_btn').click(function (event) {
@@ -2252,6 +2263,11 @@
 						<label for="set_exit_at_level_{{ node }}">{{ __('ExitAt') }}</label>
 						<input type="number" id="set_exit_at_level_{{ node }}" class="set_exit_at_level" data-node="{{ node }}" min="0" max="999">
 						<button class="cap_exit_at_btn" data-node_index="{{ node }}" title="{{ __('Capture current RSSI') }}"><svg height="1em" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="currentColor" d="M0 14h16v2H0zM10 6V0H6v6H3l5 7 5-7z"/></svg></button>
+					</div>
+
+					<div class="enter-exit-control">
+						<label for="set_autotune_{{ node }}">{{ __('Autotune') }}</label>
+						<input type="checkbox" id="set_autotune_{{ node }}" class="set_autotune" data-node="{{ node }}">
 					</div>
 				</div>
 				<table>
