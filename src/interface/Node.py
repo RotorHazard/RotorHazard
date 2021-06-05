@@ -23,6 +23,7 @@ class IndividualIOLine:
     def __exit__(self, exc_type, exc_value, traceback):
         pass
 
+
 class SharedIOLine:
     REENTRANT_IO_LINE = IndividualIOLine()
 
@@ -45,6 +46,7 @@ class SharedIOLine:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.lock.__exit__(exc_type, exc_value, traceback)
+
 
 class Node:
     '''Node class represents the arduino/rx pair.'''
@@ -126,22 +128,6 @@ class Node:
 
     def is_multi_node(self):
         return self.multi_node_index is not None
-
-    def get_settings_json(self):
-        return {
-            'frequency': self.frequency,
-            'current_rssi': self.current_rssi,
-            'enter_at_level': self.enter_at_level,
-            'exit_at_level': self.exit_at_level
-        }
-
-    def get_heartbeat_json(self):
-        return {
-            'current_rssi': self.current_rssi,
-            'node_peak_rssi': self.node_peak_rssi,
-            'pass_peak_rssi': self.pass_peak_rssi,
-            'pass_nadir_rssi': self.pass_nadir_rssi
-        }
 
     def is_valid_rssi(self, value):
         return value > 0 and value < self.max_rssi_value

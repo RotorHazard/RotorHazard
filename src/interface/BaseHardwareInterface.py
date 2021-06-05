@@ -8,6 +8,7 @@ CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at lev
 
 logger = logging.getLogger(__name__)
 
+
 class BaseHardwareInterface:
 
     LAP_SOURCE_REALTIME = 0
@@ -23,9 +24,6 @@ class BaseHardwareInterface:
         self.nodes = []
         # Main update loop delay
         self.update_sleep = float(os.environ.get('RH_UPDATE_INTERVAL', update_sleep))
-        self.calibration_threshold = 20
-        self.calibration_offset = 10
-        self.trigger_threshold = 20
         self.start_time = 1000*monotonic() # millis
         self.environmental_data_update_tracker = 0
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
@@ -205,14 +203,6 @@ class BaseHardwareInterface:
     # Get Json Node Data Functions
     #
 
-    def get_settings_json(self):
-        return {
-            'nodes': [node.get_settings_json() for node in self.nodes],
-            'calibration_threshold': self.calibration_threshold,
-            'calibration_offset': self.calibration_offset,
-            'trigger_threshold': self.trigger_threshold
-        }
-
     def get_heartbeat_json(self):
         json = {
             'current_rssi': [node.current_rssi if not node.scan_enabled else 0 for node in self.nodes],
@@ -221,21 +211,6 @@ class BaseHardwareInterface:
             'crossing_flag': [node.crossing_flag if not node.scan_enabled else False for node in self.nodes]
         }
         return json
-
-    def get_calibration_threshold_json(self):
-        return {
-            'calibration_threshold': self.calibration_threshold
-        }
-
-    def get_calibration_offset_json(self):
-        return {
-            'calibration_offset': self.calibration_offset
-        }
-
-    def get_trigger_threshold_json(self):
-        return {
-            'trigger_threshold': self.trigger_threshold
-        }
 
     def get_frequency_json(self, node_index):
         node = self.nodes[node_index]
