@@ -309,6 +309,7 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                     logger.debug("Serial (multi) node {} (slot={}) added for port '{}'".format(\
                                  index+idxOffset+1, node.multi_node_slot_index+1, node.serial.name))
                     nodes.append(node)
+                    slots_str = str(node.multi_node_slot_index+1)
                     for nIdx in range(1, multi_count):
                         idxOffset += 1
                         node = SerialNode(index+idxOffset, node_serial_obj)
@@ -321,6 +322,8 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                         logger.debug("Serial (multi) node {} (slot={}) added for port '{}'".format(\
                                      index+idxOffset+1, node.multi_node_slot_index+1, node.serial.name))
                         nodes.append(node)
+                        slots_str += ' ' + str(node.multi_node_slot_index+1)
+                    logger.info("Receiver modules found at slot positions: " + slots_str)
             else:
                 logger.error('Unable to fetch revision code for serial node at "{0}"'.format(comm))
     return nodes
