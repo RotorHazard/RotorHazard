@@ -4046,7 +4046,7 @@ def do_bpillfw_update(data):
         SOCKET_IO.emit('upd_messages_append', "\nWarning: No receiver nodes found")
 
     buildServerInfo()
-    logger.debug("Server info:  " + json.dumps(serverInfoItems))
+    reportServerInfo()
     init_race_state()
     start_background_threads(True)
     SOCKET_IO.emit('upd_messages_finish')  # show 'Close' button
@@ -4851,13 +4851,12 @@ def initialize_hardware_interface():
                         # enter serial port name so it's available for node firmware update
                         if hasattr(INTERFACE, "fwupd_serial_port"):
                             INTERFACE.fwupd_serial_port = rhconfig.SERIAL_PORTS[0]
-                            set_ui_message(
-                                'stm32',
-                                 __("Server is unable to communicate with node processor.") +
-                                    __('If an S32_BPill board is connected, you may attempt to <a href="/updatenodes">flash-update</a> its processor.'),
-                                header='Warning',
-                                subclass='no-comms'
-                                )
+                            set_ui_message('stm32', \
+                                 __("Server is unable to communicate with node processor") + ". " + \
+                                      __("If an S32_BPill board is connected, you may attempt to") + \
+                                      " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                                      __("its processor."), \
+                                header='Warning', subclass='no-comms')
                     else:
                         return False  # unable to open serial port
                 except ImportError:
@@ -4975,6 +4974,36 @@ def buildServerInfo():
 
     except:
         logger.exception("Error in 'buildServerInfo()'")
+
+# Log server/node information
+def reportServerInfo():
+    logger.debug("Server info:  " + json.dumps(serverInfoItems))
+    if 'node_api_match' in serverInfo and serverInfo['node_api_match'] is False:
+        logger.info('** WARNING: Node API mismatch **')
+        set_ui_message('node-match',
+            __("Node versions do not match and may not function similarly"), header='Warning')
+    if 'node_api_lowest' in serverInfo and RACE.num_nodes > 0:
+        if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
+            logger.info('** WARNING: Node firmware is out of date and may not function properly **')
+            msgStr = __("Node firmware is out of date and may not function properly")
+            if hasattr(INTERFACE, 'fwupd_serial_port') and INTERFACE.fwupd_serial_port != None:
+                msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
+                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                          __("its processor.")
+            set_ui_message('node-obs', msgStr, header='Warning', subclass='api-not-supported')
+        elif serverInfo['node_api_lowest'] < NODE_API_BEST:
+            logger.info('** NOTICE: Node firmware update is available **')
+            msgStr = __("Node firmware update is available")
+            if hasattr(INTERFACE, 'fwupd_serial_port') and INTERFACE.fwupd_serial_port != None:
+                msgStr += ". " + __("If an S32_BPill board is connected, you should") + \
+                          " <a href=\"/updatenodes\">" + __("flash-update") + "</a> " + \
+                          __("its processor.")
+            set_ui_message('node-old', msgStr, header='Notice', subclass='api-low')
+        elif serverInfo['node_api_lowest'] > NODE_API_BEST:
+            logger.warning('** WARNING: Node firmware is newer than this server version supports **')
+            set_ui_message('node-newer',
+                __("Node firmware is newer than this server version and may not function properly"),
+                header='Warning', subclass='api-high')
 
 #
 # Program Initialize
@@ -5137,41 +5166,7 @@ if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
 
 # collect server info for About panel, etc
 buildServerInfo()
-logger.debug("Server info:  " + json.dumps(serverInfoItems))
-
-if 'node_api_match' in serverInfo and serverInfo['node_api_match'] is False:
-    logger.info('** WARNING: Node API mismatch. **')
-    set_ui_message(
-        'node-match',
-        __("Node versions do not match and may not function similarly."),
-        header='Warning',
-        )
-
-if 'node_api_lowest' in serverInfo and RACE.num_nodes > 0:
-    if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
-        logger.info('** WARNING: Node firmware is out of date and may not function properly **')
-        set_ui_message(
-            'node',
-            __("Node firmware is out of date and may not function properly."),
-            header='Warning',
-            subclass='api-not-supported'
-            )
-    elif serverInfo['node_api_lowest'] < NODE_API_BEST:
-        logger.info('** NOTICE: Node firmware update is available **')
-        set_ui_message(
-            'node',
-            __("Node firmware update is available."),
-            header='Notice',
-            subclass='api-low'
-            )
-    elif serverInfo['node_api_lowest'] > NODE_API_BEST:
-        logger.warning('** WARNING: Node firmware is newer than this server version supports **')
-        set_ui_message(
-            'node',
-            __("Node firmware is newer than this server version and may not function properly."),
-            header='Warning',
-            subclass='api-high'
-            )
+reportServerInfo()
 
 # Do data consistency checks
 if not db_inited_flag:
