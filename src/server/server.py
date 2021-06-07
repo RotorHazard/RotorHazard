@@ -2047,7 +2047,8 @@ def findBestValues(node, node_index):
     for race in races:
         if race.heat_id == heat.id:
             for pilotRace in pilotRaces:
-                if pilotRace.race_id == race.id:
+                if pilotRace.race_id == race.id and \
+                    pilotRace.node_index == node_index:
                     logger.debug('Node {0} calibration: found same pilot+node in same heat'.format(node.index+1))
                     return {
                         'enter_at_level': pilotRace.enter_at,
