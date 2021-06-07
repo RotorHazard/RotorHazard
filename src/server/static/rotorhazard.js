@@ -633,7 +633,8 @@ function timerModel() {
 	this.time_s = false; // simplified relative time in seconds
 	this.count_up = false; // use fixed-length timer
 	this.duration = 0; // fixed-length duration, in seconds
-	this.allow_expire = false; // prevent expire callbacks until timer runs 1 loop
+	this.has_looped = false; // prevent expire callbacks until timer runs 1 loop
+	this.allow_expire = true; // prevent multiple expire callbacks
 
 	this.drift_history = [];
 	this.drift_history_samples = 10;
@@ -656,10 +657,13 @@ function timerModel() {
 					self.time_s = new_time_s;
 
 					if (self.time_s <= 0) {
-						continue_timer = false;
-						self.running = false;
-						if (self.allow_expire && self.callbacks.expire instanceof Function) {
+						// continue_timer = false;
+						// self.running = false;
+						if (self.has_looped && self.allow_expire && self.callbacks.expire instanceof Function) {
 							self.callbacks.expire(self);
+							self.allow_expire = false;
+						} else if (self.callbacks.step instanceof Function) {
+							self.callbacks.step(self);
 						}
 					} else {
 						if (self.callbacks.step instanceof Function) {
@@ -691,7 +695,7 @@ function timerModel() {
 			}
 		}
 
-		self.allow_expire = true;
+		self.has_looped = true;
 
 		if (continue_timer) {
 			var now = window.performance.now()
@@ -796,24 +800,36 @@ function timerModel() {
 			return __l('Ready');
 		}
 
+		var floor_time = Math.trunc(this.time_s);
+		var display_time = Math.abs(floor_time);
+
+		/*
 		if (this.time_s >= 0 && !this.count_up) {
 			var display_time = Math.abs(Math.ceil(this.time_s));
 		} else {
 			var display_time = Math.abs(Math.floor(this.time_s));
 		}
+		*/
+
+		if (this.count_up) {
+			var sign = this.time_s >= 0 ? '' : '-';
+		} else {
+			sign = this.time_s <= 0 ? '' : '-';
+		}
 
 		var hour = Math.floor(display_time / 3600);
-		display_time = display_time - (hour * 3600);
+		display_time = display_time % 3600;
 		var minute = Math.floor(display_time / 60);
 		var second = display_time % 60;
+		var decimal = pad(Math.abs(this.time_s).toFixed(1) - floor_time, 1)
 
 		second = (second < 10) ? '0' + second : second; // Pad zero if under 10
 		minute = (minute < 10) ? '0' + minute : minute;
 
 		if (hour) {
-			return hour + ':' + minute + ':' + second;
+			return sign + hour + ':' + minute + ':' + second + '.' + decimal;
 		} else {
-			return minute + ':' + second;
+			return sign + minute + ':' + second + '.' + decimal;
 		}
 	}
 }
@@ -1146,7 +1162,7 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 		}
 	} else {
 		if (!timer.count_up) {
-			if (timer.time_s <= 5) { // Final seconds
+			if (timer.time_s <= 5 && timer.time_s > 0) { // Final seconds
 				if (timer.time_s * 10 % 10 == 0) {
 					if( rotorhazard.use_mp3_tones){
 						sound_stage.play();
