@@ -1074,7 +1074,7 @@
 					phonetic.append('<button class="speak_pilot" data-pilot_id="' + pilot.pilot_id + '">&#9658;&#65038; <span class="screen-reader-text">' + __('Play') + '</span></button>');
 					el.append(phonetic);
 					var pilot_url = $('<div class="pilot_url">');
-					pilot_url.append('<label for="pilot_url_' + pilot.id + '" class="screen-reader-text">' + __('URL') + '</label>');
+					pilot_url.append('<label for="pilot_url_' + pilot.pilot_id + '" class="screen-reader-text">' + __('URL') + '</label>');
 					pilot_url.append('<input type="url" class="pilot_url set_pilot_url" id="pilot_url_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '" value="' + pilot.url + '" placeholder="' + __('URL') +'">');
 					el.append(pilot_url);
 					el.append('<div class="pilot-team"><label for="set_pilot_team_' + pilot.pilot_id + '">' + __('Team') + '</label><select class="set_pilot_team" id="set_pilot_team_' + pilot.pilot_id + '" data-pilot_id="' + pilot.pilot_id + '">' + pilot.team_options + '</select></div>');
@@ -1098,7 +1098,7 @@
 				$(this).empty();
 
 				for (var i in msg.pilots) {
-					$(this).append('<option value="'+ msg.pilots[i].id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>');
+					$(this).append('<option value="'+ msg.pilots[i].pilot_id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>');
 				}
 			});
 		});

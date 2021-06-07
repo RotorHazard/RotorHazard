@@ -3429,11 +3429,8 @@ def emit_pilot_data(**params):
         }
 
         if pilot.url:
-            try:
-                pilot_web_data = web.get_pilot_data(pilot.url)
-                pilot_data.update(pilot_web_data)
-            except:
-                logger.debug('Invalid url: {}'.format(pilot.url), exc_info=True)
+            pilot_web_data = web.get_pilot_data(pilot.url)
+            pilot_data.update(pilot_web_data)
 
         # local overrides
         if pilot.name:

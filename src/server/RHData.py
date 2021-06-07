@@ -536,7 +536,6 @@ class RHData():
         return new_pilot
 
     def alter_pilot(self, data):
-        print(data)
         pilot_id = data['pilot_id']
         pilot = self._Database.Pilot.query.get(pilot_id)
         if 'callsign' in data:
