@@ -1493,7 +1493,7 @@ def on_backup_database():
         file_content = base64.encodebytes(file_content).decode()
     else:
         file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method
-    
+
     emit_payload = {
         'file_name': os.path.basename(bkp_name),
         'file_data' : file_content
@@ -2102,7 +2102,7 @@ def on_stage_race():
 
         if led_manager.isEnabled():
             eventPayload['race_node_colors'] = led_manager.getNodeColors(RACE.num_nodes)
-        else: 
+        else:
             eventPayload['race_node_colors'] = None
 
         Events.trigger(Evt.RACE_STAGE, eventPayload)
