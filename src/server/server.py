@@ -1390,7 +1390,7 @@ def on_backup_database():
         file_content = base64.encodebytes(file_content).decode()
     else:
         file_content = base64.encodestring(file_content)  #pylint: disable=deprecated-method
-    
+
     emit_payload = {
         'file_name': os.path.basename(bkp_name),
         'file_data' : file_content
@@ -1987,7 +1987,7 @@ def on_stage_race():
 
         if led_manager.isEnabled():
             eventPayload['race_node_colors'] = led_manager.getNodeColors(RACE.num_nodes)
-        else: 
+        else:
             eventPayload['race_node_colors'] = None
 
         Events.trigger(Evt.RACE_STAGE, eventPayload)
@@ -2266,71 +2266,71 @@ def on_save_laps():
     '''Save current laps data to the database.'''
 
     # Determine if race is empty
-    race_has_laps = False
-    for node_index in RACE.node_laps:
-        if RACE.node_laps[node_index]:
-            race_has_laps = True
-            break
+    # race_has_laps = False
+    # for node_index in RACE.node_laps:
+    #    if RACE.node_laps[node_index]:
+    #        race_has_laps = True
+    #        break
 
-    if race_has_laps == True:
-        PageCache.set_valid(False)
-        heat = RHData.get_heat(RACE.current_heat)
-        # Get the last saved round for the current heat
-        max_round = RHData.get_max_round(RACE.current_heat)
+    # if race_has_laps == True:
+    PageCache.set_valid(False)
+    heat = RHData.get_heat(RACE.current_heat)
+    # Get the last saved round for the current heat
+    max_round = RHData.get_max_round(RACE.current_heat)
 
-        if max_round is None:
-            max_round = 0
-        # Loop through laps to copy to saved races
-        profile = getCurrentProfile()
-        profile_freqs = json.loads(profile.frequencies)
+    if max_round is None:
+        max_round = 0
+    # Loop through laps to copy to saved races
+    profile = getCurrentProfile()
+    profile_freqs = json.loads(profile.frequencies)
 
-        new_race_data = {
-            'round_id': max_round+1,
-            'heat_id': RACE.current_heat,
-            'class_id': heat.class_id,
-            'format_id': RHData.get_option('currentFormat'),
-            'start_time': RACE.start_time_monotonic,
-            'start_time_formatted': RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"),
-            }
-
-        new_race = RHData.add_savedRaceMeta(new_race_data)
-
-        race_data = {}
-
-        for node_index in range(RACE.num_nodes):
-            if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-                pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
-
-                race_data[node_index] = {
-                    'race_id': new_race.id,
-                    'pilot_id': pilot_id,
-                    'history_values': json.dumps(INTERFACE.nodes[node_index].history_values),
-                    'history_times': json.dumps(INTERFACE.nodes[node_index].history_times),
-                    'enter_at': INTERFACE.nodes[node_index].enter_at_level,
-                    'exit_at': INTERFACE.nodes[node_index].exit_at_level,
-                    'laps': RACE.node_laps[node_index]
-                    }
-
-        RHData.add_race_data(race_data)
-
-        # spawn thread for updating results caches
-        cache_params = {
-            'race_id': new_race.id,
-            'heat_id': RACE.current_heat,
-            'round_id': new_race.round_id,
+    new_race_data = {
+        'round_id': max_round+1,
+        'heat_id': RACE.current_heat,
+        'class_id': heat.class_id,
+        'format_id': RHData.get_option('currentFormat'),
+        'start_time': RACE.start_time_monotonic,
+        'start_time_formatted': RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"),
         }
-        gevent.spawn(build_atomic_result_caches, cache_params)
 
-        Events.trigger(Evt.LAPS_SAVE, {
-            'race_id': new_race.id,
-            })
+    new_race = RHData.add_savedRaceMeta(new_race_data)
 
-        logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
-        on_discard_laps(saved=True) # Also clear the current laps
-    else:
-        on_discard_laps()
-        message = __('Discarding empty race')
-        emit_priority_message(message, False, nobroadcast=True)
+    race_data = {}
+
+    for node_index in range(RACE.num_nodes):
+        if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+            pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
+
+            race_data[node_index] = {
+                'race_id': new_race.id,
+                'pilot_id': pilot_id,
+                'history_values': json.dumps(INTERFACE.nodes[node_index].history_values),
+                'history_times': json.dumps(INTERFACE.nodes[node_index].history_times),
+                'enter_at': INTERFACE.nodes[node_index].enter_at_level,
+                'exit_at': INTERFACE.nodes[node_index].exit_at_level,
+                'laps': RACE.node_laps[node_index]
+                }
+
+    RHData.add_race_data(race_data)
+
+    # spawn thread for updating results caches
+    cache_params = {
+        'race_id': new_race.id,
+        'heat_id': RACE.current_heat,
+        'round_id': new_race.round_id,
+    }
+    gevent.spawn(build_atomic_result_caches, cache_params)
+
+    Events.trigger(Evt.LAPS_SAVE, {
+        'race_id': new_race.id,
+        })
+
+    logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
+    on_discard_laps(saved=True) # Also clear the current laps
+    # else:
+    #    on_discard_laps()
+    #    message = __('Discarding empty race')
+    #    emit_priority_message(message, False, nobroadcast=True)
 
 @SOCKET_IO.on('resave_laps')
 @catchLogExceptionsWrapper
@@ -3130,11 +3130,11 @@ def build_laps_list(active_race=RACE):
             }
         else:
             pilot_data = None
-            
+
         current_laps.append({
             'laps': node_laps,
             'fastest_lap_index': fastest_lap_index,
-            'pilot': pilot_data 
+            'pilot': pilot_data
         })
     current_laps = {
         'node_index': current_laps
