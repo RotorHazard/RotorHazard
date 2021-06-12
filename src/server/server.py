@@ -367,7 +367,7 @@ def render_results():
 @requires_auth
 def render_run():
     '''Route to race management page.'''
-    frequencies = [node.frequency for node in INTERFACE.nodes]
+    frequencies = INTERFACE.get_node_frequencies()
     nodes = []
     for idx, freq in enumerate(frequencies):
         if freq:
@@ -386,7 +386,7 @@ def render_run():
 @APP.route('/current')
 def render_current():
     '''Route to race management page.'''
-    frequencies = [node.frequency for node in INTERFACE.nodes]
+    frequencies = INTERFACE.get_node_frequencies()
     nodes = []
     for idx, freq in enumerate(frequencies):
         if freq:
@@ -4430,7 +4430,7 @@ def initVRxController():
         Events,
         vrx_config,
         RACE,
-        [node.frequency for node in INTERFACE.nodes],
+        INTERFACE.get_node_frequencies(),
         Language)
 
 def killVRxController(*args):

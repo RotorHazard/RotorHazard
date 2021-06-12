@@ -3,6 +3,7 @@ import gevent
 import logging
 from monotonic import monotonic
 
+FREQUENCY_NONE = 0
 ENTER_AT_PEAK_MARGIN = 5 # closest that captured enter-at level can be to node peak RSSI
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
 
@@ -199,6 +200,9 @@ class BaseHardwareInterface:
             return True
         return False
 
+    def get_node_frequencies(self):
+        return [node.frequency if not node.scan_enabled else FREQUENCY_NONE for node in self.nodes]
+
     #
     # Get Json Node Data Functions
     #
@@ -206,7 +210,7 @@ class BaseHardwareInterface:
     def get_heartbeat_json(self):
         json = {
             'current_rssi': [node.current_rssi if not node.scan_enabled else 0 for node in self.nodes],
-            'frequency': [node.frequency if not node.scan_enabled else 0 for node in self.nodes],
+            'frequency': self.get_node_frequencies(),
             'loop_time': [node.loop_time if not node.scan_enabled else 0 for node in self.nodes],
             'crossing_flag': [node.crossing_flag if not node.scan_enabled else False for node in self.nodes]
         }
