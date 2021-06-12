@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 @functools.lru_cache(maxsize=128)
 def get_pilot_data(url):
-    TIMEOUT = 0.5
+    TIMEOUT = 0.7
     web_data = {}
     try:
         if url.startswith('https://league.ifpv.co.uk/pilots/'):

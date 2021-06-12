@@ -4,7 +4,6 @@ import serial # For serial comms
 import gevent
 import time
 
-from .Node import Node
 from interface import pack_8
 from . import RHInterface as rhi
 
@@ -15,20 +14,11 @@ DEF_S32BPILL_SERIAL_PORT = "/dev/serial0"
 logger = logging.getLogger(__name__)
 
 
-class SerialNode(Node):
-    def __init__(self, index, node_serial_obj):
-        super().__init__(index=index)
-        self.serial_io = node_serial_obj
-
-    @property
-    def addr(self):
-        return 'serial:'+self.serial_io.port
-
-    def close(self):
-        self.serial_io.close()
-
-    def _create(self, index):
-        return SerialNode(index, self.serial_io)
+class SerialNodeManager(rhi.RHNodeManager):
+    def __init__(self, serial_obj):
+        super().__init__()
+        self.serial_io = serial_obj
+        self.addr = 'serial:'+self.serial_io.port
 
     def _read_command(self, command, size):
         self.serial_io.flushInput()
@@ -41,11 +31,14 @@ class SerialNode(Node):
         data_with_cmd.extend(data)
         self.serial_io.write(data_with_cmd)
 
+    def close(self):
+        self.serial_io.close()
+
     def jump_to_bootloader(self):
         try:
             if self.api_level >= 32:
                 logger.info('Sending JUMP_TO_BOOTLOADER message to serial node {0}'.format(self))
-                self.write_block_any(rhi.JUMP_TO_BOOTLOADER, pack_8(0))
+                self.write_command(rhi.JUMP_TO_BOOTLOADER, pack_8(0))
                 self.serial_io.flushInput()
                 time.sleep(0.1)
                 self.serial_io.flushInput()
@@ -56,7 +49,7 @@ class SerialNode(Node):
 
 
 def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
-    nodes = []
+    node_managers = []
     config_ser_ports = getattr(config, 'SERIAL_PORTS', [])
     if isS32BPillFlag and len(config_ser_ports) == 0:
         config_ser_ports.append(DEF_S32BPILL_SERIAL_PORT)
@@ -64,25 +57,19 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
     if config_ser_ports:
         next_index = idxOffset
         for comm in config_ser_ports:
-            def search_baud_rates(comm, node_index):
-                for baudrate in SERIAL_BAUD_RATES:
-                    logger.info("Trying {} with baud rate {}".format(comm, baudrate))
-                    serial_obj = serial.Serial(port=None, baudrate=baudrate, timeout=0.25)
-                    serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
-                    serial_obj.setRTS(0)
-                    serial_obj.setPort(comm)
-                    serial_obj.open()  # open port (now that DTR is configured for no change)
-                    gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for Arduino USB
-                    node = SerialNode(node_index, serial_obj)
-                    if rhi.read_revision_code(node):
-                        logger.info('Node with API level {} found at baudrate {}'.format(node.api_level, baudrate))
-                        return node
+            for baudrate in SERIAL_BAUD_RATES:
+                logger.info("Trying {} with baud rate {}".format(comm, baudrate))
+                serial_obj = serial.Serial(port=None, baudrate=baudrate, timeout=0.25)
+                serial_obj.setDTR(0)  # clear in case line is tied to node-processor reset
+                serial_obj.setRTS(0)
+                serial_obj.setPort(comm)
+                serial_obj.open()  # open port (now that DTR is configured for no change)
+                gevent.sleep(BOOTLOADER_CHILL_TIME)  # delay needed for Arduino USB
+                node_manager = SerialNodeManager(serial_obj)
+                if node_manager.discover_nodes(next_index):
+                    logger.info('{} node(s) with API level {} found at baudrate {}'.format(len(node_manager.nodes), node_manager.api_level, baudrate))
+                    next_index += len(node_manager.nodes)
+                    node_managers.append(node_manager)
+                else:
                     serial_obj.close()
-                return None
-
-            node = search_baud_rates(comm, next_index)
-            if node:
-                multi_nodes = rhi.build_nodes(node)
-                next_index += len(multi_nodes)
-                nodes.extend(multi_nodes)
-    return nodes
+    return node_managers

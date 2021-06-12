@@ -22,6 +22,7 @@ class BaseHardwareInterface:
     RACE_STATUS_DONE = 2
 
     def __init__(self, update_sleep=0.1):
+        self.node_managers = []
         self.nodes = []
         # Main update loop delay
         self.update_sleep = float(os.environ.get('RH_UPDATE_INTERVAL', update_sleep))
@@ -39,18 +40,18 @@ class BaseHardwareInterface:
 
     def start(self):
         if self.update_thread is None:
-            logger.info('Starting background thread')
+            logger.info('Starting {} background thread'.format(type(self).__name__))
             self.update_thread = gevent.spawn(self._update_loop)
 
     def stop(self):
         if self.update_thread:
-            logger.info('Stopping background thread')
+            logger.info('Stopping {} background thread'.format(type(self).__name__))
             self.update_thread.kill(block=True, timeout=0.5)
             self.update_thread = None
 
     def close(self):
-        for node in self.nodes:
-            node.close()
+        for manager in self.node_managers:
+            manager.close()
 
     def _update_loop(self):
         while True:
@@ -168,19 +169,19 @@ class BaseHardwareInterface:
 
     def set_enter_at_level(self, node_index, level):
         node = self.nodes[node_index]
-        if node.api_valid_flag and node.is_valid_rssi(level):
+        if node.manager.api_valid_flag and node.is_valid_rssi(level):
             if self.transmit_enter_at_level(node, level):
                 node.enter_at_level = level
 
     def set_exit_at_level(self, node_index, level):
         node = self.nodes[node_index]
-        if node.api_valid_flag and node.is_valid_rssi(level):
+        if node.manager.api_valid_flag and node.is_valid_rssi(level):
             if self.transmit_exit_at_level(node, level):
                 node.exit_at_level = level
 
     def start_capture_enter_at_level(self, node_index):
         node = self.nodes[node_index]
-        if node.cap_enter_at_flag is False and node.api_valid_flag:
+        if node.cap_enter_at_flag is False and node.manager.api_valid_flag:
             node.cap_enter_at_total = 0
             node.cap_enter_at_count = 0
             # set end time for capture of RSSI level:
@@ -191,7 +192,7 @@ class BaseHardwareInterface:
 
     def start_capture_exit_at_level(self, node_index):
         node = self.nodes[node_index]
-        if node.cap_exit_at_flag is False and node.api_valid_flag:
+        if node.cap_exit_at_flag is False and node.manager.api_valid_flag:
             node.cap_exit_at_total = 0
             node.cap_exit_at_count = 0
             # set end time for capture of RSSI level:
@@ -224,29 +225,37 @@ class BaseHardwareInterface:
         }
 
     @property
-    def intf_read_block_count(self):
+    def intf_read_command_count(self):
         total = 0
+        for manager in self.node_managers:
+            total += manager.read_command_count
         for node in self.nodes:
-            total += node.read_block_count
+            total += node.read_command_count
         return total
 
     @property
     def intf_read_error_count(self):
         total = 0
+        for manager in self.node_managers:
+            total += manager.read_error_count
         for node in self.nodes:
             total += node.read_error_count
         return total
 
     @property
-    def intf_write_block_count(self):
+    def intf_write_command_count(self):
         total = 0
+        for manager in self.node_managers:
+            total += manager.write_command_count
         for node in self.nodes:
-            total += node.write_block_count
+            total += node.write_command_count
         return total
 
     @property
     def intf_write_error_count(self):
         total = 0
+        for manager in self.node_managers:
+            total += manager.write_error_count
         for node in self.nodes:
             total += node.write_error_count
         return total
@@ -260,20 +269,20 @@ class BaseHardwareInterface:
 
     def get_intf_error_report_str(self, forceFlag=False):
         try:
-            if self.intf_read_block_count <= 0:
+            if self.intf_read_command_count <= 0:
                 return None
-            r_err_ratio = float(self.intf_read_error_count) / float(self.intf_read_block_count) \
+            r_err_ratio = float(self.intf_read_error_count) / float(self.intf_read_command_count) \
                           if self.intf_read_error_count > 0 else 0
-            w_err_ratio = float(self.intf_write_error_count) / float(self.intf_write_block_count) \
-                          if self.intf_write_block_count > 0 and self.intf_write_error_count > 0 else 0
+            w_err_ratio = float(self.intf_write_error_count) / float(self.intf_write_command_count) \
+                          if self.intf_write_command_count > 0 and self.intf_write_error_count > 0 else 0
             if forceFlag or r_err_ratio > self.intf_error_report_limit or \
                                         w_err_ratio > self.intf_error_report_limit:
                 retStr = "CommErrors:"
                 if forceFlag or self.intf_write_error_count > 0:
                     retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, \
-                                    self.intf_write_block_count, w_err_ratio)
+                                    self.intf_write_command_count, w_err_ratio)
                 retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count, \
-                                    self.intf_read_block_count, r_err_ratio)
+                                    self.intf_read_command_count, r_err_ratio)
                 for node in self.nodes:
                     retStr += ", " + node.get_read_error_report_str()
                 return retStr

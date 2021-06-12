@@ -17,8 +17,7 @@ def search_modules(pkg, prefix=None, suffix=None):
                 plugin_modules.append(plugin_module)
                 logger.info('Loaded module {0}'.format(name))
             except ImportError as ex:
-                logger.debug('Module {0} not imported (not supported or may require additional dependencies)'.format(name))
-                logger.debug(ex)
+                logger.debug('Module {0} not imported (not supported or may require additional dependencies)\n\t{1}'.format(name, ex))
     return plugin_modules
 
 class Plugins(UserList):
@@ -33,8 +32,8 @@ class Plugins(UserList):
                 kwargs['idxOffset'] = len(self.data)
             try:
                 self.data.extend(plugin_module.discover(*args, **kwargs))
-            except TypeError:
-                logger.debug('Plugin {0} not loaded (not supported - required arguments are not available)'.format(plugin_module.__name__))
+            except TypeError as ex:
+                logger.debug('Plugin {0} not loaded (not supported - required arguments are not available)\n\t{1}'.format(plugin_module.__name__, ex))
             except AttributeError as err:
                 logger.error('Error loading plugin {0}: {1}'.format(plugin_module.__name__, err))
         self._post_discover()

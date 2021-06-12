@@ -7,6 +7,7 @@ import gevent
 class ChorusTest(unittest.TestCase):
     class DummySerial:
         def __init__(self, handler):
+            self.port = 'COM'
             self.handler = handler
             self.buffer = []
 

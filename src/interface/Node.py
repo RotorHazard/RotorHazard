@@ -13,33 +13,169 @@ MAX_RETRY_COUNT = 4 # Limit of I/O retries
 
 logger = logging.getLogger(__name__)
 
-class IndividualIOLine:
+
+class CommandsWithRetry:
+    def __init__(self, manager):
+        self.manager = manager
+
+        self.io_request = None # request time of last I/O read
+        self.io_response = None # response time of last I/O read
+
+        self.write_command_count = 0
+        self.read_command_count = 0
+        self.write_error_count = 0
+        self.read_error_count = 0
+
+    def read_command(self, command, size, max_retries=MAX_RETRY_COUNT):
+        self.read_command_count += 1
+        success = False
+        retry_count = 0
+
+        def log_io_error(msg):
+            nonlocal retry_count
+            retry_count += 1
+            if retry_count <= max_retries:
+                logger.warning('Retry ({4}) in read_command: addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
+            else:
+                logger.warning('Retry ({4}) limit reached in read_command: addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
+            self.read_error_count += 1
+            gevent.sleep(0.025)
+
+        data = None
+        while success is False and retry_count <= max_retries:
+            try:
+                self.io_request = monotonic()
+                data = self.manager._read_command(command, size)
+                self.io_response = monotonic()
+                if data and len(data) == size + 1:
+                    # validate checksum
+                    expected_checksum = calculate_checksum(data[:-1])
+                    actual_checksum = data[-1]
+                    if actual_checksum == expected_checksum:
+                        data = data[:-1]
+                        success = True
+                    else:
+                        log_io_error("checksum was {} expected {}".format(actual_checksum, expected_checksum))
+                else:
+                    log_io_error("bad length {}".format(len(data)) if data else "no data")
+            except IOError as err:
+                logger.warning('Read error: {}'.format(err))
+                log_io_error("I/O error")
+        return data if success else None
+
+    def write_command(self, command, data, max_retries=MAX_RETRY_COUNT):
+        self.write_command_count += 1
+        success = False
+        retry_count = 0
+
+        def log_io_error(msg):
+            nonlocal retry_count
+            retry_count += 1
+            if retry_count <= max_retries:
+                logger.warning('Retry ({4}) in write_command: addr={0} cmd={1:#02x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
+            else:
+                logger.warning('Retry ({4}) limit reached in write_command: addr={0} cmd={1:#02x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
+            self.write_error_count += 1
+            gevent.sleep(0.025)
+
+        data_with_checksum = bytearray()
+        data_with_checksum.extend(data)
+        data_with_checksum.append(calculate_checksum(data_with_checksum))
+        while success is False and retry_count <= max_retries:
+            try:
+                self.manager._write_command(command, data_with_checksum)
+                success = True
+            except IOError as err:
+                logger.warning('Write Error: {}'.format(err))
+                log_io_error('I/O error')
+        return success
+
+    def get_value_8(self, command, max_retries=MAX_RETRY_COUNT):
+        data = self.read_command(command, 1, max_retries)
+        return unpack_8(data) if data is not None else None
+
+    def get_value_16(self, command, max_retries=MAX_RETRY_COUNT):
+        data = self.read_command(command, 2, max_retries)
+        return unpack_16(data) if data is not None else None
+
+    def get_value_32(self, command):
+        data = self.read_command(command, 4)
+        return unpack_32(data) if data is not None else None
+
+    def set_value_8(self, command, val):
+        self.write_command(command, pack_8(val))
+
+    def set_value_16(self, command, val):
+        self.write_command(command, pack_16(val))
+
+    def set_value_32(self, command, val):
+        self.write_command(command, pack_32(val))
+
+    def set_and_validate_value(self, write_func, write_command, read_func, read_command, in_value, size, max_retries=MAX_RETRY_COUNT):
+        success = False
+        retry_count = 0
+        out_value = None
+        while success is False and retry_count <= max_retries:
+            write_func(write_command, in_value)
+            out_value = read_func(read_command, size)
+            if out_value == in_value:
+                success = True
+            else:
+                retry_count += 1
+                logger.info('Value not set (retry={0}): cmd={1:#02x}, set={2}, get={3}, node={4}'.\
+                         format(retry_count, write_command, in_value, out_value, self))
+        return out_value if out_value is not None else in_value
+
+    def set_and_validate_value_8(self, write_command, read_command, val):
+        return self.set_and_validate_value(self.set_value_8, write_command, self.get_value_8, read_command, val, 1)
+
+    def set_and_validate_value_16(self, write_command, read_command, val):
+        return self.set_and_validate_value(self.set_value_16, write_command, self.get_value_16, read_command, val, 2)
+
+    def set_and_validate_value_32(self, write_command, read_command, val):
+        return self.set_and_validate_value(self.set_value_32, write_command, self.get_value_32, read_command, val, 4)
+
+
+class NodeManager(CommandsWithRetry):
+    def __init__(self):
+        super().__init__(manager=self)
+        self.nodes = []
+        self.lock = gevent.lock.RLock()
+
+    def is_multi_node(self):
+        return len(self.nodes) > 1
+
+    def add_node(self, index):
+        node = self._create_node(index, len(self.nodes))
+        self.nodes.append(node)
+        return node
+
+    def _create_node(self, index, multi_node_index):
+        return Node(index, multi_node_index, self)
+
+    def read_command(self, command, size, max_retries=MAX_RETRY_COUNT):
+        '''
+        Read data given command, and data size.
+        '''
+        with self:  # only allow one greenlet at a time
+            return super().read_command(command, size, max_retries)
+
+    def write_command(self, command, data, max_retries=MAX_RETRY_COUNT):
+        '''
+        Write data given command, and data.
+        '''
+        with self:  # only allow one greenlet at a time
+            return super().write_command(command, data, max_retries)
+
+    def set_and_validate_value(self, write_func, write_command, read_func, read_command, val, size, max_retries=MAX_RETRY_COUNT):
+        with self:  # only allow one greenlet at a time
+            return super().set_and_validate_value(write_func, write_command, read_func, read_command, val, size, max_retries)
+
     def select(self, node):
         return True
 
-    def __enter__(self):
+    def close(self):
         pass
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        pass
-
-
-class SharedIOLine:
-    REENTRANT_IO_LINE = IndividualIOLine()
-
-    def __init__(self, select_write_cmd, select_read_cmd):
-        self.select_write_cmd = select_write_cmd
-        self.select_read_cmd = select_read_cmd
-        self.lock = gevent.lock.RLock()
-        self.curr_multi_node_index = None
-
-    def select(self, node):
-        if self.curr_multi_node_index != node.multi_node_index:
-            curr_io_line = node.io_line
-            node.io_line = SharedIOLine.REENTRANT_IO_LINE
-            self.curr_multi_node_index = node.set_and_validate_value_8(self.select_write_cmd, self.select_read_cmd, node.multi_node_index)
-            node.io_line = curr_io_line
-        return self.curr_multi_node_index == node.multi_node_index
 
     def __enter__(self):
         self.lock.__enter__()
@@ -48,28 +184,24 @@ class SharedIOLine:
         self.lock.__exit__(exc_type, exc_value, traceback)
 
 
-class Node:
+class Node(CommandsWithRetry):
     '''Node class represents the arduino/rx pair.'''
-    def __init__(self, index, io_line=None):
+    def __init__(self, index, multi_node_index, manager):
+        super().__init__(manager=manager)
+        # logical node index within an interface
         self.index = index
-        # logical node index
-        self.multi_node_index = None
+        # logical node index within a manager
+        self.multi_node_index = multi_node_index
         # physical slot position
         self.multi_node_slot_index = None
-        self.io_line = io_line if io_line else IndividualIOLine()
-        self.api_level = 0
-        self.api_valid_flag = False
-        self.rhfeature_flags = 0
-        self.firmware_version_str = None
-        self.firmware_proctype_str = None
-        self.firmware_timestamp_str = None
+        self.addr = "{}#{}".format(self.manager.addr, self.multi_node_index)
+
         self.frequency = 0
         self.current_rssi = 0
         self.node_peak_rssi = 0
         self.node_nadir_rssi = 0
         self.pass_peak_rssi = 0
         self.pass_nadir_rssi = 0
-        self.max_rssi_value = 255
         self.node_lap_id = -1
         self.current_pilot_id = 0
         self.first_cross_flag = False
@@ -103,223 +235,33 @@ class Node:
         self.scan_enabled = False
         self.scan_data = {}
 
-        self.io_request = None # request time of last I/O read
-        self.io_response = None # response time of last I/O read
-        
-        self.write_block_count = 0
-        self.read_block_count = 0
-        self.write_error_count = 0
-        self.read_error_count = 0
-
-    def close(self):
-        pass
-
-    def create_multi_node(self, index, multi_index):
-        multi_node = self._create(index)
-        multi_node.multi_node_index = multi_index
-        multi_node.io_line = self.io_line
-        multi_node.api_level = self.api_level
-        multi_node.api_valid_flag = self.api_valid_flag
-        multi_node.rhfeature_flags = self.rhfeature_flags
-        multi_node.firmware_version_str = self.firmware_version_str
-        multi_node.firmware_proctype_str = self.firmware_proctype_str
-        multi_node.firmware_timestamp_str = self.firmware_timestamp_str
-        return multi_node
-
-    def is_multi_node(self):
-        return self.multi_node_index is not None
-
     def is_valid_rssi(self, value):
-        return value > 0 and value < self.max_rssi_value
-
-    def inc_write_block_count(self):
-        self.write_block_count += 1
-
-    def inc_read_block_count(self):
-        self.read_block_count += 1
-
-    def inc_write_error_count(self):
-        self.write_error_count += 1
-
-    def inc_read_error_count(self):
-        self.read_error_count += 1
+        return value > 0 and value < self.manager.max_rssi_value
 
     def get_read_error_report_str(self):
-        return "Node{0}:{1}/{2}({3:.2%})".format(self.index+1, self.read_error_count, \
-                self.read_block_count, (float(self.read_error_count) / float(self.read_block_count)))
+        return "Node {0}: {1}/{2} ({3:.2%})".format(self, self.read_error_count, \
+                self.read_command_count, (float(self.read_error_count) / float(self.read_command_count)))
 
-    def read_block(self, command, size, max_retries=MAX_RETRY_COUNT):
+    def read_command(self, command, size, max_retries=MAX_RETRY_COUNT):
         '''
         Read data given command, and data size.
         '''
-        with self.io_line:  # only allow one greenlet at a time
-            if self.io_line.select(self):
-                return self._read_block(command, size, max_retries)
+        with self.manager:  # only allow one greenlet at a time
+            if self.manager.select(self):
+                return super().read_command(command, size, max_retries)
 
-    def read_block_any(self, command, size, max_retries=MAX_RETRY_COUNT):
-        '''
-        Read data given command, and data size.
-        '''
-        with self.io_line:  # only allow one greenlet at a time
-            return self._read_block(command, size, max_retries)
-
-    def _read_block(self, command, size, max_retries=MAX_RETRY_COUNT):
-        self.inc_read_block_count()
-        success = False
-        retry_count = 0
-
-        def log_io_error(msg):
-            nonlocal retry_count
-            retry_count += 1
-            if retry_count <= max_retries:
-                logger.warning('Retry ({4}) in _read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
-            else:
-                logger.warning('Retry ({4}) limit reached in _read_block:  addr={0} cmd={1:#02x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
-            self.inc_read_error_count()
-            gevent.sleep(0.025)
-
-        data = None
-        while success is False and retry_count <= max_retries:
-            try:
-                self.io_request = monotonic()
-                data = self._read_command(command, size)
-                self.io_response = monotonic()
-                if data and len(data) == size + 1:
-                    # validate checksum
-                    expected_checksum = calculate_checksum(data[:-1])
-                    actual_checksum = data[-1]
-                    if actual_checksum == expected_checksum:
-                        data = data[:-1]
-                        success = True
-                    else:
-                        log_io_error("checksum was {} expected {}".format(actual_checksum, expected_checksum))
-                else:
-                    log_io_error("bad length {}".format(len(data)) if data else "no data")
-            except IOError as err:
-                logger.warning('Read error: {}'.format(err))
-                log_io_error("I/O error")
-        return data if success else None
-
-    def write_block(self, command, data):
+    def write_command(self, command, data, max_retries=MAX_RETRY_COUNT):
         '''
         Write data given command, and data.
         '''
-        with self.io_line:  # only allow one greenlet at a time
-            if self.io_line.select(self):
-                return self._write_block(command, data)
+        with self.manager:  # only allow one greenlet at a time
+            if self.manager.select(self):
+                return super().write_command(command, data, max_retries)
 
-    def write_block_any(self, command, data):
-        '''
-        Write data given command, and data.
-        '''
-        with self.io_line:  # only allow one greenlet at a time
-            return self._write_block(command, data)
-
-    def _write_block(self, command, data):
-            self.inc_write_block_count()
-            success = False
-            retry_count = 0
-            data_with_checksum = bytearray()
-            data_with_checksum.extend(data)
-            data_with_checksum.append(calculate_checksum(data_with_checksum))
-            while success is False and retry_count <= MAX_RETRY_COUNT:
-                try:
-                    self._write_command(command, data_with_checksum)
-                    success = True
-                except IOError as err:
-                    logger.warning('Write Error: {}'.format(err))
-                    retry_count += 1
-                    if retry_count <= MAX_RETRY_COUNT:
-                        logger.warning('Retry (IOError) in write_block:  addr={0} cmd={1:#02x} data={2} retry={3}'.format(self.addr, command, data, retry_count))
-                    else:
-                        logger.warning('Retry (IOError) limit reached in write_block:  addr={0} cmd={1:#02x} data={2} retry={3}'.format(self.addr, command, data, retry_count))
-                    self.inc_write_error_count()
-                    gevent.sleep(0.025)
-            return success
-
-    def _get_value(self, command, read_func):
-        with self.io_line:  # only allow one greenlet at a time
-            if self.io_line.select(self):
-                return read_func(command)
-
-    def get_value_8(self, command):
-        return self._get_value(command, self._get_value_8)
-
-    def get_value_16(self, command):
-        return self._get_value(command, self._get_value_16)
-
-    def get_value_32(self, command):
-        return self._get_value(command, self._get_value_32)
-
-    def _get_value_8(self, command):
-        data = self._read_block(command, 1)
-        return unpack_8(data) if data is not None else None
-
-    def _get_value_16(self, command):
-        data = self._read_block(command, 2)
-        return unpack_16(data) if data is not None else None
-
-    def _get_value_32(self, command):
-        data = self._read_block(command, 4)
-        return unpack_32(data) if data is not None else None
-
-    def _set_value(self, write_command, in_value, write_func, size):
-        success = False
-        retry_count = 0
-        while success is False and retry_count <= MAX_RETRY_COUNT:
-            with self.io_line:  # only allow one greenlet at a time
-                if self.io_line.select(self):
-                    if write_func(write_command, in_value):
-                        success = True
-                    else:
-                        retry_count += 1
-                        logger.info('{}bit value not set (retry={}): cmd={}, val={}, node={}'.\
-                                 format(size, retry_count, write_command, in_value, self))
-        return success
-
-    def set_value_8(self, write_command, in_value):
-        self._set_value(write_command, in_value, self._set_value_8, 8)
-
-    def set_value_16(self, write_command, in_value):
-        self._set_value(write_command, in_value, self._set_value_16, 16)
-
-    def set_value_32(self, write_command, in_value):
-        self._set_value(write_command, in_value, self._set_value_32, 32)
-
-    def _set_value_8(self, command, val):
-        self._write_block(command, pack_8(val))
-
-    def _set_value_16(self, command, val):
-        self._write_block(command, pack_16(val))
-
-    def _set_value_32(self, command, val):
-        self._write_block(command, pack_32(val))
-
-    def _set_and_validate_value(self, write_command, read_command, in_value, write_func, read_func, size):
-        success = False
-        retry_count = 0
-        out_value = None
-        while success is False and retry_count <= MAX_RETRY_COUNT:
-            with self.io_line:  # only allow one greenlet at a time
-                if self.io_line.select(self):
-                    write_func(write_command, in_value)
-                    out_value = read_func(read_command)
-                    if out_value == in_value:
-                        success = True
-                    else:
-                        retry_count += 1
-                        logger.info('{}bit value not set (retry={}): cmd={}, val={}, node={}'.\
-                                 format(size, retry_count, write_command, in_value, self))
-        return out_value if out_value is not None else in_value
-
-    def set_and_validate_value_8(self, write_command, read_command, in_value):
-        return self._set_and_validate_value(write_command, read_command, in_value, self._set_value_8, self._get_value_8, 8)
-
-    def set_and_validate_value_16(self, write_command, read_command, in_value):
-        return self._set_and_validate_value(write_command, read_command, in_value, self._set_value_16, self._get_value_16, 16)
-
-    def set_and_validate_value_32(self, write_command, read_command, in_value):
-        return self._set_and_validate_value(write_command, read_command, in_value, self._set_value_32, self._get_value_32, 32)
+    def set_and_validate_value(self, write_func, write_command, read_func, read_command, val, size, max_retries=MAX_RETRY_COUNT):
+        with self.manager:  # only allow one greenlet at a time
+            if self.manager.select(self):
+                return super().set_and_validate_value(write_func, write_command, read_func, read_command, val, size, max_retries)
 
     def __str__(self):
-        return str(self.index+1)
+        return "{}@{}".format(self.index+1, self.addr)

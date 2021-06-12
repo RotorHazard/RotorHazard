@@ -1,20 +1,28 @@
 '''Chorus hardware interface layer.'''
 
 import logging
-import gevent.lock
+import gevent
 import serial
 
 from .Node import Node
 from .BaseHardwareInterface import BaseHardwareInterface
+from interface.Node import NodeManager
 
 RETRY_COUNT=5
 
 logger = logging.getLogger(__name__)
 
-class SerialLine:
+
+class ChorusNodeManager(NodeManager):
     def __init__(self, serial_io):
+        super().__init__()
         self.serial_io = serial_io
-        self.lock = gevent.lock.RLock()
+        self.api_valid_flag = True
+        self.max_rssi_value = 2700
+        self.addr = 'serial:'+self.serial_io.port
+
+    def _create_node(self, index, multi_node_index):
+        return ChorusNode(index, multi_node_index, self)
 
     def write(self, data):
         self.serial_io.write(data.encode('UTF-8'))
@@ -22,21 +30,18 @@ class SerialLine:
     def read(self):
         return self.serial_io.read_until()[:-1]
 
-    def __enter__(self):
-        self.lock.__enter__()
+    def close(self):
+        self.serial_io.close()
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.lock.__exit__(exc_type, exc_value, traceback)
 
 class ChorusNode(Node):
-    def __init__(self, index, io_line):
-        super().__init__(index=index, io_line=io_line)
-        self.api_valid_flag = True
+    def __init__(self, index, multi_node_index, manager):
+        super().__init__(index=index, multi_node_index=multi_node_index, manager=manager)
 
     def send_command(self, command, in_value):
-        with self.io_line:
-            self.io_line.write('R{0}{1}{2:04x}\n'.format(self.index, command, in_value))
-            out_value = int(self.io_line.read()[3:7], 16)
+        with self.manager:
+            self.manager.write('R{0}{1}{2:04x}\n'.format(self.index, command, in_value))
+            out_value = int(self.manager.read()[3:7], 16)
             return out_value
 
     def set_and_validate_value_4x(self, command, in_value):
@@ -52,28 +57,30 @@ class ChorusNode(Node):
                 logger.warning('Value Not Set (retry={0}): cmd={1}, val={2}, node={3}'.\
                          format(retry_count, command, in_value, self.index+1))
         return out_value if out_value is not None else in_value
-            
+
+
 class ChorusInterface(BaseHardwareInterface):
     def __init__(self, serial_io):
         super().__init__()
-        self.serial_line = SerialLine(serial_io)
+        self.node_manager = ChorusNodeManager(serial_io)
+        self.node_managers = [self.node_manager]
         self.update_thread = None # Thread for running the main update loop
 
-        with self.serial_line:
-            self.serial_line.write('N0\n')
-            resp = self.serial_line.read()
+        with self.node_manager:
+            self.node_manager.write('N0\n')
+            resp = self.node_manager.read()
             if resp:
                 last_node = resp[1]
             else:
                 logger.warning("Invalid response received")
 
         for index in range(int(last_node)):
-            node = ChorusNode(index, self.serial_line)
+            node = self.node_manager.add_node(index)
             self.nodes.append(node)
 
-        with self.serial_line:
-            self.serial_line.write('R*R2\n')
-            self.serial_line.read()
+        with self.node_manager:
+            self.node_manager.write('R*R2\n')
+            self.node_manager.read()
             for node in self.nodes:
                 node.set_and_validate_value_4x('M', 0)
 
@@ -82,8 +89,8 @@ class ChorusInterface(BaseHardwareInterface):
     #
 
     def _update(self):
-        with self.serial_line:
-            data = self.serial_line.read()
+        with self.node_manager:
+            data = self.node_manager.read()
         if data:
             self._process_message(data)
 
@@ -92,7 +99,7 @@ class ChorusInterface(BaseHardwareInterface):
             node_addr = data[1]
             cmd = data[2]
             if cmd == 'L':
-                lap_id = int(data[3:5], 16)
+                _lap_id = int(data[3:5], 16)
                 lap_ts = int(data[5:13], 16)
                 gevent.spawn(self.pass_record_callback, int(node_addr), lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, 0)
 
@@ -116,7 +123,8 @@ class ChorusInterface(BaseHardwareInterface):
         return node.set_and_validate_value_4x('T', level)
 
     def force_end_crossing(self, node_index):
-        node = self.nodes[node_index]
+        _node = self.nodes[node_index]
+
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''

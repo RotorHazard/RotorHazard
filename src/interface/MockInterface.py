@@ -5,46 +5,44 @@ import logging
 from monotonic import monotonic # to capture read timing
 import random
 
-from .Node import Node
+from .Node import NodeManager
 from .BaseHardwareInterface import BaseHardwareInterface, PeakNadirHistory
-from .RHInterface import FW_TEXT_BLOCK_SIZE, FW_VERSION_PREFIXSTR, \
-                        FW_BUILDDATE_PREFIXSTR, FW_BUILDTIME_PREFIXSTR, \
-                        FW_PROCTYPE_PREFIXSTR, \
-                        TIMER_MODE, SCANNER_MODE, RSSI_HISTORY_MODE
+from .RHInterface import TIMER_MODE, SCANNER_MODE, RSSI_HISTORY_MODE
 
 logger = logging.getLogger(__name__)
 
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 
-class MockNode(Node):
-    def __init__(self, index):
-        super().__init__(index=index)
-        self.api_valid_flag = True
 
-    @property
-    def addr(self):
-        return 'mock:'+str(self.index)
+class MockNodeManager(NodeManager):
+    def __init__(self):
+        super().__init__()
+        self.api_level = 0
+        self.api_valid_flag = True
+        self.max_rssi_value = 255
+        self.addr = 'mock:'
+        self.firmware_version_str = 'Mock'
+        self.firmware_proctype_str = 'Mock'
+        self.firmware_timestamp_str = ''
+
 
 class MockInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         super().__init__(update_sleep=0.5)
-        self.FW_TEXT_BLOCK_SIZE = FW_TEXT_BLOCK_SIZE
-        self.FW_VERSION_PREFIXSTR = FW_VERSION_PREFIXSTR
-        self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
-        self.FW_BUILDTIME_PREFIXSTR = FW_BUILDTIME_PREFIXSTR
-        self.FW_PROCTYPE_PREFIXSTR = FW_PROCTYPE_PREFIXSTR
         self.update_thread = None # Thread for running the main update loop
 
         self.data = []
         for index in range(int(os.environ.get('RH_NODES', '8'))):
-            node = MockNode(index) # New node instance
+            manager = MockNodeManager()
+            node = manager.add_node(index) # New node instance
             node.enter_at_level = 90
             node.exit_at_level = 80
-            self.nodes.append(node) # Add new node to RHInterface
+            self.node_managers.append(manager)
+            self.nodes.append(node)
             try:
-                f = open("mock_data_{0}.csv".format(index+1))
-                logger.info("Loaded mock_data_{0}.csv".format(index+1))
+                f = open("mock_data_{0}.csv".format(node.index+1))
+                logger.info("Loaded mock_data_{0}.csv".format(node.index+1))
             except IOError:
                 f = None
             self.data.append(f)
@@ -177,11 +175,6 @@ class MockInterface(BaseHardwareInterface):
     def send_server_idle_message(self):
         return False
 
-    def get_fwupd_serial_name(self):
-        return None
-
-    def close_fwupd_serial_port(self):
-        pass
 
 def get_hardware_interface(*args, **kwargs):
     '''Returns the interface object.'''

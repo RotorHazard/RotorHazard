@@ -214,7 +214,7 @@ def getDefNodeFwUpdateUrl():
                                                              os.pardir), NODE_FW_PATHNAME))
         # check if file with better-matching processor type (i.e., STM32F4) is available
         try:
-            curTypStr = INTERFACE.nodes[0].firmware_proctype_str if len(INTERFACE.nodes) else None
+            curTypStr = INTERFACE.node_managers[0].firmware_proctype_str if len(INTERFACE.node_managers) else None
             if curTypStr:
                 fwTypStr = getFwfileProctypeStr(retStr)
                 if fwTypStr and curTypStr != fwTypStr:
@@ -455,7 +455,7 @@ def render_settings():
         num_nodes=RACE.num_nodes,
         server_messages=server_messages_formatted,
         cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()),
-        node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
+        node_fw_updatable=(hasattr(INTERFACE, 'fwupd_serial_port') and INTERFACE.fwupd_serial_port!=None),
         is_raspberry_pi=RHUtils.isSysRaspberryPi(),
         Debug=rhconfig.GENERAL['DEBUG'])
 
@@ -2201,7 +2201,7 @@ def race_start_thread(start_token):
                     if diff_val > 0:
                         new_enter_at = node.enter_at_level - diff_val
                         new_exit_at = max(node.exit_at_level - diff_val, 0)
-                        if node.api_valid_flag and node.is_valid_rssi(new_enter_at):
+                        if node.manager.api_valid_flag and node.is_valid_rssi(new_enter_at):
                             logger.info("For node {0} lowering EnterAt from {1} to {2} and ExitAt from {3} to {4}"\
                                     .format(node.index+1, node.enter_at_level, new_enter_at, node.exit_at_level, new_exit_at))
                             node.start_thresh_lower_time = lower_end_time  # set time when values will be restored
@@ -3911,11 +3911,11 @@ def check_bpillfw_file(data):
         infoStr = "Firmware update file size = {}<br>".format(fileSize) + \
                   "Firmware update version: {} ({}Build timestamp: {})<br><br>".\
                   format(fwVerStr, fwTypStr, fwTimStr)
-        curNodeStr = INTERFACE.nodes[0].firmware_version_str if len(INTERFACE.nodes) else None
+        curNodeStr = INTERFACE.node_managers[0].firmware_version_str if len(INTERFACE.node_managers) else None
         if curNodeStr:
-            tsStr = INTERFACE.nodes[0].firmware_timestamp_str
+            tsStr = INTERFACE.node_managers[0].firmware_timestamp_str
             if tsStr:
-                curRTypStr = INTERFACE.nodes[0].firmware_proctype_str
+                curRTypStr = INTERFACE.node_managers[0].firmware_proctype_str
                 ptStr = (curRTypStr + ", ") if curRTypStr else ""
                 curNodeStr += " ({}Build timestamp: {})".format(ptStr, tsStr)
         else:
@@ -3936,7 +3936,7 @@ def check_bpillfw_file(data):
 @catchLogExceptionsWrapper
 def do_bpillfw_update(data):
     srcStr = data['src_file_str']
-    portStr = INTERFACE.get_fwupd_serial_name()
+    portStr = INTERFACE.fwupd_serial_port
     msgStr = "Performing S32_BPill update, port='{}', file: {}".format(portStr, srcStr)
     logger.info(msgStr)
     SOCKET_IO.emit('upd_messages_init', (msgStr + "\n"))
@@ -3944,7 +3944,7 @@ def do_bpillfw_update(data):
     gevent.sleep(0.1)
     try:
         jump_to_node_bootloader()
-        INTERFACE.close_fwupd_serial_port()
+        INTERFACE.close()
         s32Logger = logging.getLogger("stm32loader")
         def doS32Log(msgStr):  # send message to update-messages window and log file
             SOCKET_IO.emit('upd_messages_append', msgStr)
@@ -4764,8 +4764,8 @@ def initialize_hardware_interface():
             if (not rhconfig.SERIAL_PORTS) or len(rhconfig.SERIAL_PORTS) <= 0:
                 interfaceModule = importlib.import_module('interface.MockInterface')
                 INTERFACE = interfaceModule.get_hardware_interface(config=rhconfig, **hardwareHelpers)
-                for node in INTERFACE.nodes:  # put mock nodes at latest API level
-                    node.api_level = NODE_API_BEST
+                for node_manager in INTERFACE.node_managers:  # put mock nodes at latest API level
+                    node_manager.api_level = NODE_API_BEST
                 set_ui_message(
                     'mock',
                     __("Server is using simulated (mock) nodes"),
@@ -4779,8 +4779,8 @@ def initialize_hardware_interface():
                     if INTERFACE:
                         logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
                         # enter serial port name so it's available for node firmware update
-                        if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
-                            INTERFACE.set_mock_fwupd_serial_obj(rhconfig.SERIAL_PORTS[0])
+                        if hasattr(INTERFACE, "fwupd_serial_port"):
+                            INTERFACE.fwupd_serial_port = rhconfig.SERIAL_PORTS[0]
                             set_ui_message(
                                 'stm32',
                                  __("Server is unable to communicate with node processor.") +
@@ -4831,19 +4831,19 @@ def buildServerInfo():
         serverInfo['node_api_lowest'] = 0
         serverInfo['node_api_levels'] = [None]
 
-        if len(INTERFACE.nodes):
-            if INTERFACE.nodes[0].api_level:
-                node_api_level = INTERFACE.nodes[0].api_level
+        if len(INTERFACE.node_managers):
+            if INTERFACE.node_managers[0].api_level:
+                node_api_level = INTERFACE.node_managers[0].api_level
                 serverInfo['node_api_lowest'] = node_api_level
                 serverInfo['node_api_levels'] = []
-                for node in INTERFACE.nodes:
-                    serverInfo['node_api_levels'].append(node.api_level)
-                    if node.api_level != node_api_level:
+                for node_manager in INTERFACE.node_managers:
+                    serverInfo['node_api_levels'].append(node_manager.api_level)
+                    if node_manager.api_level != node_api_level:
                         serverInfo['node_api_match'] = False
-                    if node.api_level < serverInfo['node_api_lowest']:
-                        serverInfo['node_api_lowest'] = node.api_level
+                    if node_manager.api_level < serverInfo['node_api_lowest']:
+                        serverInfo['node_api_lowest'] = node_manager.api_level
                 # if multi-node and all api levels same then only include one entry
-                if serverInfo['node_api_match'] and INTERFACE.nodes[0].is_multi_node():
+                if serverInfo['node_api_match'] and INTERFACE.node_managers[0].is_multi_node():
                     serverInfo['node_api_levels'] = serverInfo['node_api_levels'][0:1]
 
         serverInfo['about_html'] += "<li>" + __("Node API") + ": "
@@ -4864,17 +4864,17 @@ def buildServerInfo():
         node_fw_version = None
         serverInfo['node_version_match'] = True
         serverInfo['node_fw_versions'] = [None]
-        if len(INTERFACE.nodes):
-            if INTERFACE.nodes[0].firmware_version_str:
-                node_fw_version = INTERFACE.nodes[0].firmware_version_str
+        if len(INTERFACE.node_managers):
+            if hasattr(INTERFACE.node_managers[0], 'firmware_version_str') and INTERFACE.node_managers[0].firmware_version_str:
+                node_fw_version = INTERFACE.node_managers[0].firmware_version_str
                 serverInfo['node_fw_versions'] = []
-                for node in INTERFACE.nodes:
+                for node_manager in INTERFACE.node_managers:
                     serverInfo['node_fw_versions'].append(\
-                            node.firmware_version_str if node.firmware_version_str else "0")
-                    if node.firmware_version_str != node_fw_version:
+                            node_manager.firmware_version_str if node_manager.firmware_version_str else "0")
+                    if node_manager.firmware_version_str != node_fw_version:
                         serverInfo['node_version_match'] = False
                 # if multi-node and all versions same then only include one entry
-                if serverInfo['node_version_match'] and INTERFACE.nodes[0].is_multi_node():
+                if serverInfo['node_version_match'] and INTERFACE.node_managers[0].is_multi_node():
                     serverInfo['node_fw_versions'] = serverInfo['node_fw_versions'][0:1]
         if node_fw_version:
             serverInfo['about_html'] += "<li>" + __("Node Version") + ": "
@@ -5034,8 +5034,10 @@ if CLUSTER and CLUSTER.hasRecEventsSecondaries():
 if RACE.num_nodes > 0:
     logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
     # if I2C nodes then only report comm errors if > 1.0%
-    if hasattr(INTERFACE.nodes[0], 'i2c_addr'):
-        INTERFACE.set_intf_error_report_percent_limit(1.0)
+    for node_manager in INTERFACE.node_managers:
+        if hasattr(node_manager, 'i2c_addr'):
+            INTERFACE.set_intf_error_report_percent_limit(1.0)
+            break
 
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)

@@ -24,31 +24,37 @@ class RHInterfaceTest(unittest.TestCase):
             config.SERIAL_PORTS = []
             config.SOCKET_PORTS = [7881]
             intf = RHInterface(config=config, warn_loop_time=66000)
-            intf.pass_record_callback = on_pass
-            self.assertEqual(len(intf.nodes), 1)
-            self.check_settings(intf)
-            intf.start()
-
-            # test laps
-            gevent.sleep(10)
-            self.assertGreater(laps, 0)
-
-            # test scan
-            node = intf.nodes[0]
-            intf.set_frequency_scan(0, True)
-            self.assertEqual(node.scan_enabled, True)
-            intf.start()
-            gevent.sleep(10)
-            self.assertGreater(len(node.scan_data), 0)
-            intf.set_frequency_scan(0, False)
-            self.assertEqual(node.scan_enabled, False)
-            self.assertEqual(len(node.scan_data), 0)
-
-            intf.stop()
-            intf.close()
+            try:
+                intf.pass_record_callback = on_pass
+                self.assertEqual(len(intf.nodes), 1)
+                for i in range(len(intf.nodes)):
+                    self.assertEqual(intf.nodes[i].index, i)
+                    self.assertEqual(intf.nodes[i].multi_node_index, i)
+                    self.assertEqual(intf.nodes[i].multi_node_slot_index, i)
+                self.check_settings(intf)
+                intf.start()
+    
+                # test laps
+                gevent.sleep(10)
+                self.assertGreater(laps, 0)
+    
+                # test scan
+                node = intf.nodes[0]
+                intf.set_frequency_scan(0, True)
+                self.assertEqual(node.scan_enabled, True)
+                gevent.sleep(10)
+                self.assertGreater(len(node.scan_data), 0)
+                intf.set_frequency_scan(0, False)
+                self.assertEqual(node.scan_enabled, False)
+                self.assertEqual(len(node.scan_data), 0)
+    
+                intf.send_shutdown_started_message()
+            finally:
+                intf.stop()
+                intf.close()
         finally:
             self.node_proc.terminate()
-            self.node_proc.wait()
+            self.node_proc.wait(timeout=30)
         self.gcov('test_rhnode1')
 
     def test_multinode(self):
@@ -64,17 +70,26 @@ class RHInterfaceTest(unittest.TestCase):
             config.SERIAL_PORTS = []
             config.SOCKET_PORTS = [7884]
             intf = RHInterface(config=config, warn_loop_time=66000)
-            intf.pass_record_callback = on_pass
-            self.assertEqual(len(intf.nodes), 4)
-            self.check_settings(intf)
-            intf.start()
-            gevent.sleep(10)
-            self.assertGreater(laps, 0)
-            intf.stop()
-            intf.close()
+            try:
+                intf.pass_record_callback = on_pass
+                self.assertEqual(len(intf.nodes), 4)
+                for i in range(len(intf.nodes)):
+                    self.assertEqual(intf.nodes[i].index, i)
+                    self.assertEqual(intf.nodes[i].multi_node_index, i)
+                    self.assertEqual(intf.nodes[i].multi_node_slot_index, i)
+                self.check_settings(intf)
+                intf.start()
+    
+                gevent.sleep(10)
+                self.assertGreater(laps, 0)
+    
+                intf.send_shutdown_started_message()
+            finally:
+                intf.stop()
+                intf.close()
         finally:
             self.node_proc.terminate()
-            self.node_proc.wait()
+            self.node_proc.wait(timeout=30)
         self.gcov('test_rhnode4')
 
     def test_no_nodes(self):
@@ -85,11 +100,19 @@ class RHInterfaceTest(unittest.TestCase):
             config.SERIAL_PORTS = []
             config.SOCKET_PORTS = [7880]
             intf = RHInterface(config=config, warn_loop_time=66000)
-            self.assertEqual(len(intf.nodes), 0)
-            intf.close()
+            try:
+                self.assertEqual(len(intf.nodes), 0)
+                intf.start()
+    
+                gevent.sleep(1)
+    
+                intf.send_shutdown_started_message()
+            finally:
+                intf.stop()
+                intf.close()
         finally:
             self.node_proc.terminate()
-            self.node_proc.wait()
+            self.node_proc.wait(timeout=30)
         self.gcov('test_rhnode0')
 
     def check_settings(self, intf):

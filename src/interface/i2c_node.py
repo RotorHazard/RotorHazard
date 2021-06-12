@@ -1,33 +1,22 @@
 '''RotorHazard I2C interface layer.'''
 import logging
 
-from .Node import Node
 from . import RHInterface as rhi
 
 logger = logging.getLogger(__name__)
 
 
-class I2CNode(Node):
-    def __init__(self, index, addr, i2c_bus):
-        super().__init__(index=index)
-        self.i2c_addr = addr
+class I2CNodeManager(rhi.RHNodeManager):
+    def __init__(self, i2c_addr, i2c_bus):
+        super().__init__()
+        self.i2c_addr = i2c_addr
         self.i2c_bus = i2c_bus
-
-
-    @property
-    def addr(self):
-        return self.i2c_bus.url_of(self.i2c_addr)
-
-
-    def _create(self, index):
-        return I2CNode(index, self.i2c_addr, self.i2c_bus)
-
+        self.addr = self.i2c_bus.url_of(self.i2c_addr)
 
     def _read_command(self, command, size):
         def _read():
             return self.i2c_bus.i2c.read_i2c_block_data(self.i2c_addr, command, size + 1)
         return self.i2c_bus.with_i2c(_read)
-
 
     def _write_command(self, command, data):
         def _write():
@@ -37,24 +26,24 @@ class I2CNode(Node):
 
 def discover(idxOffset, i2c_helper, *args, **kwargs):
     logger.info("Searching for I2C nodes...")
-    nodes = []
+    node_managers = []
     # Scans all i2c_addrs to populate nodes array
     i2c_addrs = [8, 10, 12, 14, 16, 18, 20, 22] # Software limited to 8 nodes
     next_index = idxOffset
     for i2c_bus in i2c_helper:
-        for addr in i2c_addrs:
-            node = I2CNode(next_index, addr, i2c_bus)
+        for i2c_addr in i2c_addrs:
+            node_manager = I2CNodeManager(i2c_addr, i2c_bus)
             try:
-                node_addr = rhi.read_address(node)
-                if node_addr == addr:
-                    logger.info("...I2C node {} found at address {}".format(node, addr))
-                    multi_nodes = rhi.build_nodes(node)
-                    next_index += len(multi_nodes)
-                    nodes.extend(multi_nodes)
+                node_addr = node_manager.read_address()
+                if node_addr == i2c_addr:
+                    if node_manager.discover_nodes(next_index):
+                        logger.info('...{} I2C node(s) with API level {} found at address {}'.format(len(node_manager.nodes), node_manager.api_level, i2c_addr))
+                        next_index += len(node_manager.nodes)
+                        node_managers.append(node_manager)
                 elif node_addr:
-                    logger.error("Reported address {} does not match actual address {}".format(node_addr, addr))
+                    logger.error("Reported address {} does not match actual address {}".format(node_addr, i2c_addr))
             except IOError:
-                logger.info("...No I2C node at address {}".format(addr))
-            if len(nodes) == 0:
+                logger.info("...No I2C nodes at address {}".format(i2c_addr))
+            if len(node_managers) == 0:
                 break  # if first I2C node not found then stop trying
-    return nodes
+    return node_managers
