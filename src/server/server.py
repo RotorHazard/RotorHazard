@@ -176,9 +176,11 @@ def set_ui_message(mainclass, message, header=None, subclass=None):
         item['subclass'] = subclass
     ui_server_messages[mainclass] = item
 
+
 # convert 'monotonic' time to epoch milliseconds since 1970-01-01
 def monotonic_to_epoch_millis(secs):
     return 1000.0*secs + MTONIC_TO_EPOCH_MILLIS_OFFSET
+
 
 # Wrapper to be used as a decorator on callback functions that do database calls,
 #  so their exception details are sent to the log file (instead of 'stderr')
@@ -196,6 +198,7 @@ def catchLogExcDBCloseWrapper(func):
             except:
                 logger.exception("Error closing DB session in catchLogExcDBCloseWrapper-catch")
     return wrapper
+
 
 # Return 'DEF_NODE_FWUPDATE_URL' config value; if not set in 'config.json'
 #  then return default value based on BASEDIR and server RELEASE_VERSION
@@ -227,6 +230,7 @@ def getDefNodeFwUpdateUrl():
         logger.exception("Error determining value for 'DEF_NODE_FWUPDATE_URL'")
     return "/home/pi/RotorHazard/" + NODE_FW_PATHNAME
 
+
 # Returns the processor-type string from the given firmware file, or None if not found
 def getFwfileProctypeStr(fileStr):
     dataStr = None
@@ -239,9 +243,11 @@ def getFwfileProctypeStr(fileStr):
         logger.debug("Error processing file '{}' in 'getFwfileProctypeStr()': {}".format(fileStr, ex))
     return None
 
+
 def getCurrentProfile():
     current_profile = RHData.get_optionInt('currentProfile')
     return RHData.get_profile(current_profile)
+
 
 def getCurrentRaceFormat():
     if RACE.format is None:
@@ -259,12 +265,14 @@ def getCurrentRaceFormat():
         RACE.format.id = race_format.id  #pylint: disable=attribute-defined-outside-init
     return RACE.format
 
+
 def getCurrentDbRaceFormat():
     if RACE.format is None or RHRaceFormat.isDbBased(RACE.format):
         val = RHData.get_optionInt('currentFormat')
         return RHData.get_raceFormat(val)
     else:
         return None
+
 
 def setCurrentRaceFormat(race_format, **kwargs):
     if RHRaceFormat.isDbBased(race_format): # stored in DB, not internal race format
@@ -279,6 +287,7 @@ def setCurrentRaceFormat(race_format, **kwargs):
 
     if 'silent' not in kwargs:
         emit_current_laps()
+
 
 class RHRaceFormat():
     def __init__(self, name, race_mode, race_time_sec, start_delay_min, start_delay_max, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
@@ -318,12 +327,14 @@ def check_auth(username, password):
     '''Check if a username password combination is valid.'''
     return username == rhconfig.GENERAL['ADMIN_USERNAME'] and password == rhconfig.GENERAL['ADMIN_PASSWORD']
 
+
 def authenticate():
     '''Sends a 401 response that enables basic auth.'''
     return Response(
         'Could not verify your access level for that URL.\n'
         'You have to login with proper credentials', 401,
         {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
 
 def requires_auth(f):
     @functools.wraps(f)
@@ -333,6 +344,7 @@ def requires_auth(f):
             return authenticate()
         return f(*args, **kwargs)
     return decorated
+
 
 # Flask template render with exception catch, so exception
 # details are sent to the log file (instead of 'stderr').
@@ -353,15 +365,18 @@ def render_index():
     return render_template('home.html', serverInfo=serverInfo,
                            getOption=RHData.get_option, __=__, Debug=rhconfig.GENERAL['DEBUG'])
 
+
 @APP.route('/event')
 def render_event():
     '''Route to heat summary page.'''
     return render_template('event.html', num_nodes=RACE.num_nodes, serverInfo=serverInfo, getOption=RHData.get_option, __=__)
 
+
 @APP.route('/results')
 def render_results():
     '''Route to round summary page.'''
     return render_template('results.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__, Debug=rhconfig.GENERAL['DEBUG'])
+
 
 @APP.route('/run')
 @requires_auth
@@ -383,6 +398,7 @@ def render_run():
         nodes=nodes,
         cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()))
 
+
 @APP.route('/current')
 def render_current():
     '''Route to race management page.'''
@@ -400,12 +416,14 @@ def render_current():
         nodes=nodes,
         cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()))
 
+
 @APP.route('/marshal')
 @requires_auth
 def render_marshal():
     '''Route to race management page.'''
     return render_template('marshal.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
+
 
 @APP.route('/settings')
 @requires_auth
@@ -441,17 +459,20 @@ def render_settings():
         is_raspberry_pi=RHUtils.isSysRaspberryPi(),
         Debug=rhconfig.GENERAL['DEBUG'])
 
+
 @APP.route('/streams')
 def render_stream():
     '''Route to stream index.'''
     return render_template('streams.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
+
 @APP.route('/stream/results')
 def render_stream_results():
     '''Route to current race leaderboard stream.'''
     return render_template('streamresults.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
+
 
 @APP.route('/stream/node/<int:node_id>')
 def render_stream_node(node_id):
@@ -463,12 +484,14 @@ def render_stream_node(node_id):
     else:
         return False
 
+
 @APP.route('/stream/class/<int:class_id>')
 def render_stream_class(class_id):
     '''Route to class leaderboard display for streaming.'''
     return render_template('streamclass.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         class_id=class_id
     )
+
 
 @APP.route('/stream/heat/<int:heat_id>')
 def render_stream_heat(heat_id):
@@ -478,6 +501,7 @@ def render_stream_heat(heat_id):
         heat_id=heat_id
     )
 
+
 @APP.route('/scanner')
 @requires_auth
 def render_scanner():
@@ -486,6 +510,7 @@ def render_scanner():
     return render_template('scanner.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
+
 @APP.route('/decoder')
 @requires_auth
 def render_decoder():
@@ -493,10 +518,12 @@ def render_decoder():
     return render_template('decoder.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
         num_nodes=RACE.num_nodes)
 
+
 @APP.route('/imdtabler')
 def render_imdtabler():
     '''Route to IMDTabler page.'''
     return render_template('imdtabler.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__)
+
 
 @APP.route('/updatenodes')
 @requires_auth
@@ -513,6 +540,7 @@ def render_hardwarelog():
     '''Route to hardware log page.'''
     return render_template('hardwarelog.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__)
 
+
 @APP.route('/database')
 @requires_auth
 def render_database():
@@ -527,6 +555,7 @@ def render_database():
         profiles=RHData.get_profiles(),
         race_format=RHData.get_raceFormats(),
         globalSettings=RHData.get_options())
+
 
 @APP.route('/vrxstatus')
 @requires_auth
@@ -569,6 +598,7 @@ def render_viewDocs():
         logger.exception("Exception in render_template")
     return "Error rendering documentation"
 
+
 @APP.route('/img/<path:imgfile>')
 def render_viewImg(imgfile):
     '''Route to img called within doc viewer.'''
@@ -589,14 +619,17 @@ def render_viewImg(imgfile):
 
     return send_file(imgPath)
 
+
 # Redirect routes (Previous versions/Delta 5)
 @APP.route('/race')
 def redirect_race():
     return redirect("/run", code=301)
 
+
 @APP.route('/heats')
 def redirect_heats():
     return redirect("/event", code=301)
+
 
 def start_background_threads(forceFlag=False):
     global BACKGROUND_THREADS_ENABLED
@@ -608,6 +641,7 @@ def start_background_threads(forceFlag=False):
             HEARTBEAT_THREAD = gevent.spawn(heartbeat_thread_function)
             logger.debug('Heartbeat thread started')
         start_shutdown_button_thread()
+
 
 def stop_background_threads():
     try:
@@ -624,6 +658,7 @@ def stop_background_threads():
         INTERFACE.stop()
     except Exception:
         logger.error("Error stopping background threads")
+
 
 def shutdown():
     Events.trigger(Evt.SHUTDOWN)
@@ -649,6 +684,7 @@ def connect_handler():
     # push initial data
     emit_frontend_load(nobroadcast=True)
 
+
 @SOCKET_IO.on('disconnect')
 def disconnect_handler():
     '''Emit disconnect event.'''
@@ -663,6 +699,7 @@ def on_get_version():
     ver_parts = RELEASE_VERSION.split('.')
     return {'major': ver_parts[0], 'minor': ver_parts[1]}
 
+
 @SOCKET_IO.on('get_timestamp')
 @catchLogExceptionsWrapper
 def on_get_timestamp():
@@ -672,6 +709,7 @@ def on_get_timestamp():
         now = monotonic()
     return {'timestamp': monotonic_to_epoch_millis(now)}
 
+
 @SOCKET_IO.on('get_settings')
 @catchLogExceptionsWrapper
 def on_get_settings():
@@ -680,6 +718,7 @@ def on_get_settings():
         'trigger_rssi': node.enter_at_level
         } for node in INTERFACE.nodes
     ]}
+
 
 @SOCKET_IO.on('reset_auto_calibration')
 @catchLogExceptionsWrapper
@@ -699,6 +738,7 @@ def emit_cluster_msg_to_primary(messageType, messagePayload, waitForAckFlag=True
         ClusterSendAckQueueObj = SendAckQueue(20, SOCKET_IO, logger)
     ClusterSendAckQueueObj.put(messageType, messagePayload, waitForAckFlag)
 
+
 def emit_join_cluster_response():
     '''Emits 'join_cluster_response' message to primary timer.'''
     payload = {
@@ -706,8 +746,10 @@ def emit_join_cluster_response():
     }
     emit_cluster_msg_to_primary('join_cluster_response', payload, False)
 
+
 def has_joined_cluster():
     return True if ClusterSendAckQueueObj else False
+
 
 @SOCKET_IO.on('join_cluster')
 @catchLogExceptionsWrapper
@@ -718,6 +760,7 @@ def on_join_cluster():
     Events.trigger(Evt.CLUSTER_JOIN, {
                 'message': __('Joined cluster')
                 })
+
 
 @SOCKET_IO.on('join_cluster_ex')
 @catchLogExceptionsWrapper
@@ -735,6 +778,7 @@ def on_join_cluster_ex(data=None):
                 })
     emit_join_cluster_response()
 
+
 @SOCKET_IO.on('check_secondary_query')
 @catchLogExceptionsWrapper
 def on_check_secondary_query(data):
@@ -743,6 +787,7 @@ def on_check_secondary_query(data):
         'timestamp': monotonic_to_epoch_millis(monotonic())
     }
     SOCKET_IO.emit('check_secondary_response', payload)
+
 
 @SOCKET_IO.on('cluster_event_trigger')
 @catchLogExceptionsWrapper
@@ -860,6 +905,7 @@ def on_load_data(data):
         elif load_type == 'hardware_log_init':
             emit_current_log_file_to_socket()
 
+
 @SOCKET_IO.on('broadcast_message')
 @catchLogExceptionsWrapper
 def on_broadcast_message(data):
@@ -914,6 +960,7 @@ def on_set_frequency(data):
 
     emit_frequency_data()
 
+
 @SOCKET_IO.on('set_frequency_preset')
 @catchLogExceptionsWrapper
 def on_set_frequency_preset(data):
@@ -962,6 +1009,7 @@ def on_set_frequency_preset(data):
     emit_frequency_data()
     hardware_set_all_frequencies(payload)
 
+
 def set_all_frequencies(freqs):
     ''' Set frequencies for all nodes (but do not update hardware) '''
     # Set DB
@@ -979,6 +1027,7 @@ def set_all_frequencies(freqs):
         'frequencies': profile_freqs
         })
 
+
 def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
     logger.debug("Sending frequency values to nodes: " + str(freqs["f"]))
@@ -991,6 +1040,7 @@ def hardware_set_all_frequencies(freqs):
             'band': freqs["b"][idx],
             'channel': freqs["c"][idx]
             })
+
 
 @SOCKET_IO.on('set_enter_at_level')
 @catchLogExceptionsWrapper
@@ -1030,6 +1080,7 @@ def on_set_enter_at_level(data):
 
     logger.info('Node enter-at set: Node {0} Level {1}'.format(node_index+1, enter_at_level))
 
+
 @SOCKET_IO.on('set_exit_at_level')
 @catchLogExceptionsWrapper
 def on_set_exit_at_level(data):
@@ -1068,6 +1119,7 @@ def on_set_exit_at_level(data):
 
     logger.info('Node exit-at set: Node {0} Level {1}'.format(node_index+1, exit_at_level))
 
+
 def hardware_set_all_enter_ats(enter_at_levels):
     '''send update to nodes'''
     logger.debug("Sending enter-at values to nodes: " + str(enter_at_levels))
@@ -1079,6 +1131,7 @@ def hardware_set_all_enter_ats(enter_at_levels):
                 'node': idx,
                 'enter_at_level': INTERFACE.nodes[idx].enter_at_level
                 })
+
 
 def hardware_set_all_exit_ats(exit_at_levels):
     '''send update to nodes'''
@@ -1092,6 +1145,7 @@ def hardware_set_all_exit_ats(exit_at_levels):
                 'exit_at_level': INTERFACE.nodes[idx].exit_at_level
                 })
 
+
 @SOCKET_IO.on("set_start_thresh_lower_amount")
 @catchLogExceptionsWrapper
 def on_set_start_thresh_lower_amount(data):
@@ -1099,6 +1153,7 @@ def on_set_start_thresh_lower_amount(data):
     RHData.set_option("startThreshLowerAmount", start_thresh_lower_amount)
     logger.info("set start_thresh_lower_amount to %s percent" % start_thresh_lower_amount)
     emit_start_thresh_lower_amount(noself=True)
+
 
 @SOCKET_IO.on("set_start_thresh_lower_duration")
 @catchLogExceptionsWrapper
@@ -1108,11 +1163,13 @@ def on_set_start_thresh_lower_duration(data):
     logger.info("set start_thresh_lower_duration to %s seconds" % start_thresh_lower_duration)
     emit_start_thresh_lower_duration(noself=True)
 
+
 @SOCKET_IO.on('set_language')
 @catchLogExceptionsWrapper
 def on_set_language(data):
     '''Set interface language.'''
     RHData.set_option('currentLanguage', data['language'])
+
 
 @SOCKET_IO.on('cap_enter_at_btn')
 @catchLogExceptionsWrapper
@@ -1122,6 +1179,7 @@ def on_cap_enter_at_btn(data):
     if INTERFACE.start_capture_enter_at_level(node_index):
         logger.info('Starting capture of enter-at level for node {0}'.format(node_index+1))
 
+
 @SOCKET_IO.on('cap_exit_at_btn')
 @catchLogExceptionsWrapper
 def on_cap_exit_at_btn(data):
@@ -1129,6 +1187,7 @@ def on_cap_exit_at_btn(data):
     node_index = data['node_index']
     if INTERFACE.start_capture_exit_at_level(node_index):
         logger.info('Starting capture of exit-at level for node {0}'.format(node_index+1))
+
 
 @SOCKET_IO.on('set_scan')
 @catchLogExceptionsWrapper
@@ -1138,6 +1197,7 @@ def on_set_scan(data):
     if hasattr(INTERFACE, 'set_frequency_scan'):
         INTERFACE.set_frequency_scan(node_index, scan_enabled)
 
+
 @SOCKET_IO.on('add_heat')
 @catchLogExceptionsWrapper
 def on_add_heat():
@@ -1146,12 +1206,14 @@ def on_add_heat():
 
     emit_heat_data()
 
+
 @SOCKET_IO.on('duplicate_heat')
 @catchLogExceptionsWrapper
 def on_duplicate_heat(data):
     RHData.duplicate_heat(data['heat'])
 
     emit_heat_data()
+
 
 @SOCKET_IO.on('alter_heat')
 @catchLogExceptionsWrapper
@@ -1165,6 +1227,7 @@ def on_alter_heat(data):
         message = __('Alterations made to heat: {0}').format(heat.note)
         emit_priority_message(message, False)
 
+
 @SOCKET_IO.on('delete_heat')
 @catchLogExceptionsWrapper
 def on_delete_heat(data):
@@ -1177,6 +1240,7 @@ def on_delete_heat(data):
         if RACE.current_heat == heat_id:  # if current heat was deleted then load new heat data
             on_set_current_heat({ 'heat': RHData.get_first_heat().id })
 
+
 @SOCKET_IO.on('add_race_class')
 @catchLogExceptionsWrapper
 def on_add_race_class():
@@ -1186,6 +1250,7 @@ def on_add_race_class():
     emit_class_data()
     emit_heat_data() # Update class selections in heat displays
 
+
 @SOCKET_IO.on('duplicate_race_class')
 @catchLogExceptionsWrapper
 def on_duplicate_race_class(data):
@@ -1194,6 +1259,7 @@ def on_duplicate_race_class(data):
 
     emit_class_data()
     emit_heat_data()
+
 
 @SOCKET_IO.on('alter_race_class')
 @catchLogExceptionsWrapper
@@ -1212,6 +1278,7 @@ def on_alter_race_class(data):
     if 'class_format' in data:
         emit_current_heat(noself=True) # in case race operator is a different client, update locked format dropdown
 
+
 @SOCKET_IO.on('delete_class')
 @catchLogExceptionsWrapper
 def on_delete_class(data):
@@ -1222,6 +1289,7 @@ def on_delete_class(data):
         emit_class_data()
         emit_heat_data()
 
+
 @SOCKET_IO.on('add_pilot')
 @catchLogExceptionsWrapper
 def on_add_pilot():
@@ -1229,6 +1297,7 @@ def on_add_pilot():
     RHData.add_pilot()
 
     emit_pilot_data()
+
 
 @SOCKET_IO.on('alter_pilot')
 @catchLogExceptionsWrapper
@@ -1248,6 +1317,7 @@ def on_alter_pilot(data):
     RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh current leaderboard
     RACE.team_cacheStatus = Results.CacheStatus.INVALID
 
+
 @SOCKET_IO.on('delete_pilot')
 @catchLogExceptionsWrapper
 def on_delete_pilot(data):
@@ -1258,6 +1328,7 @@ def on_delete_pilot(data):
         emit_pilot_data()
         emit_heat_data()
 
+
 @SOCKET_IO.on('add_profile')
 @catchLogExceptionsWrapper
 def on_add_profile():
@@ -1266,6 +1337,7 @@ def on_add_profile():
     new_profile = RHData.duplicate_profile(source_profile.id)
 
     on_set_profile({ 'profile': new_profile.id })
+
 
 @SOCKET_IO.on('alter_profile')
 @catchLogExceptionsWrapper
@@ -1276,6 +1348,7 @@ def on_alter_profile(data):
     profile = RHData.alter_profile(data)
 
     emit_node_tuning(noself=True)
+
 
 @SOCKET_IO.on('delete_profile')
 @catchLogExceptionsWrapper
@@ -1288,6 +1361,7 @@ def on_delete_profile():
         first_profile_id = RHData.get_first_profile().id
         RHData.set_option("currentProfile", first_profile_id)
         on_set_profile({ 'profile': first_profile_id })
+
 
 @SOCKET_IO.on("set_profile")
 @catchLogExceptionsWrapper
@@ -1345,6 +1419,7 @@ def on_set_profile(data, emit_vals=True):
     else:
         logger.warning('Invalid set_profile value: ' + str(profile_val))
 
+
 @SOCKET_IO.on('alter_race')
 @catchLogExceptionsWrapper
 def on_alter_race(data):
@@ -1363,6 +1438,7 @@ def on_alter_race(data):
 
     emit_race_list(nobroadcast=True)
     emit_result_data()
+
 
 @SOCKET_IO.on('backup_database')
 @catchLogExceptionsWrapper
@@ -1390,6 +1466,7 @@ def on_backup_database():
     emit('database_bkp_done', emit_payload)
     on_list_backups()
 
+
 @SOCKET_IO.on('list_backups')
 @catchLogExceptionsWrapper
 def on_list_backups():
@@ -1410,6 +1487,7 @@ def on_list_backups():
         }
 
     emit('backups_list', emit_payload)
+
 
 @SOCKET_IO.on('restore_database')
 @catchLogExceptionsWrapper
@@ -1454,6 +1532,7 @@ def on_restore_database(data):
         message = __('Database recovery failed for: {0}').format(backup_file)
         emit_priority_message(message, False, nobroadcast=True)
 
+
 @SOCKET_IO.on('delete_database')
 @catchLogExceptionsWrapper
 def on_delete_database_file(data):
@@ -1478,6 +1557,7 @@ def on_delete_database_file(data):
             on_list_backups()
         else:
             logger.warning('Unable to delete {0}: File does not exist'.format(backup_file))
+
 
 @SOCKET_IO.on('reset_database')
 @catchLogExceptionsWrapper
@@ -1524,6 +1604,7 @@ def on_reset_database(data):
 
     Events.trigger(Evt.DATABASE_RESET)
 
+
 @SOCKET_IO.on('export_database')
 @catchLogExceptionsWrapper
 def on_export_database_file(data):
@@ -1557,6 +1638,7 @@ def on_export_database_file(data):
     logger.error('Data exporter "{0}" not found'.format(exporter))
     emit_priority_message(__('Data export failed. (See log)'), False, nobroadcast=True)
 
+
 @SOCKET_IO.on('shutdown_pi')
 @catchLogExceptionsWrapper
 def on_shutdown_pi():
@@ -1577,6 +1659,7 @@ def on_shutdown_pi():
     else:
         logger.warning("Not executing system shutdown command because not RPi")
 
+
 @SOCKET_IO.on('reboot_pi')
 @catchLogExceptionsWrapper
 def on_reboot_pi():
@@ -1595,6 +1678,7 @@ def on_reboot_pi():
     else:
         logger.warning("Not executing system reboot command because not RPi")
 
+
 @SOCKET_IO.on('kill_server')
 @catchLogExceptionsWrapper
 def on_kill_server():
@@ -1604,6 +1688,7 @@ def on_kill_server():
     emit_priority_message(__('Server has stopped.'), True)
     logger.info('Killing RotorHazard server')
     shutdown()
+
 
 @SOCKET_IO.on('download_logs')
 @catchLogExceptionsWrapper
@@ -1633,6 +1718,7 @@ def on_download_logs(data):
         except Exception:
             logger.exception("Error downloading logs-zip file")
 
+
 @SOCKET_IO.on("set_min_lap")
 @catchLogExceptionsWrapper
 def on_set_min_lap(data):
@@ -1646,6 +1732,7 @@ def on_set_min_lap(data):
     logger.info("set min lap time to %s seconds" % min_lap)
     emit_min_lap(noself=True)
 
+
 @SOCKET_IO.on("set_min_lap_behavior")
 @catchLogExceptionsWrapper
 def on_set_min_lap_behavior(data):
@@ -1658,6 +1745,7 @@ def on_set_min_lap_behavior(data):
 
     logger.info("set min lap behavior to %s" % min_lap_behavior)
     emit_min_lap(noself=True)
+
 
 @SOCKET_IO.on("set_race_format")
 @catchLogExceptionsWrapper
@@ -1679,6 +1767,7 @@ def on_set_race_format(data):
         logger.info("Format change prevented by active race")
         emit_race_format()
 
+
 @SOCKET_IO.on('add_race_format')
 @catchLogExceptionsWrapper
 def on_add_race_format():
@@ -1687,6 +1776,7 @@ def on_add_race_format():
     new_format = RHData.duplicate_raceFormat(source_format.id)
 
     on_set_race_format(data={ 'race_format': new_format.id })
+
 
 @SOCKET_IO.on('alter_race_format')
 @catchLogExceptionsWrapper
@@ -1710,6 +1800,7 @@ def on_alter_race_format(data):
     else:
         emit_priority_message(__('Format alteration prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
 
+
 @SOCKET_IO.on('delete_race_format')
 @catchLogExceptionsWrapper
 def on_delete_race_format():
@@ -1726,6 +1817,7 @@ def on_delete_race_format():
             emit_priority_message(__('Format deletion prevented: saved race exists with this format'), False, nobroadcast=True)
         else:
             emit_priority_message(__('Format deletion prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
+
 
 @SOCKET_IO.on("set_next_heat_behavior")
 @catchLogExceptionsWrapper
@@ -1783,6 +1875,7 @@ def emit_led_effect_setup(**params):
         # never broadcast
         emit('led_effect_setup_data', emit_payload)
 
+
 def emit_led_effects(**params):
     if led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries()):
         effects = led_manager.getRegisteredEffects()
@@ -1802,6 +1895,7 @@ def emit_led_effects(**params):
 
         # never broadcast
         emit('led_effects', emit_payload)
+
 
 @SOCKET_IO.on('set_led_event_effect')
 @catchLogExceptionsWrapper
@@ -1825,6 +1919,7 @@ def on_set_led_effect(data):
             })
 
         logger.info('Set LED event {0} to effect {1}'.format(data['event'], data['effect']))
+
 
 @SOCKET_IO.on('use_led_effect')
 @catchLogExceptionsWrapper
@@ -1862,6 +1957,7 @@ def on_schedule_race(data):
 
     emit_priority_message(__("Next race begins in {0:01d}:{1:02d}".format(data['m'], data['s'])), True)
 
+
 @SOCKET_IO.on('cancel_schedule_race')
 @catchLogExceptionsWrapper
 def cancel_schedule_race():
@@ -1876,6 +1972,7 @@ def cancel_schedule_race():
 
     emit_priority_message(__("Scheduled race cancelled"), False)
 
+
 @SOCKET_IO.on('get_pi_time')
 @catchLogExceptionsWrapper
 def on_get_pi_time():
@@ -1883,6 +1980,7 @@ def on_get_pi_time():
     emit('pi_time', {
         'pi_time_s': monotonic()
     })
+
 
 @SOCKET_IO.on('stage_race')
 @catchLogExceptionsWrapper
@@ -1980,6 +2078,7 @@ def on_stage_race():
     else:
         logger.info("Attempted to stage race while status is not 'ready'")
 
+
 def autoUpdateCalibration():
     ''' Apply best tuning values to nodes '''
     for node_index, node in enumerate(INTERFACE.nodes):
@@ -1999,6 +2098,7 @@ def autoUpdateCalibration():
 
     logger.info('Updated calibration with best discovered values')
     emit_enter_and_exit_at_levels()
+
 
 def findBestValues(node, node_index):
     ''' Search race history for best tuning values '''
@@ -2071,6 +2171,7 @@ def findBestValues(node, node_index):
         'enter_at_level': node.enter_at_level,
         'exit_at_level': node.exit_at_level
     }
+
 
 @catchLogExceptionsWrapper
 def race_start_thread(start_token):
@@ -2164,6 +2265,7 @@ def race_start_thread(start_token):
         emit_race_status() # Race page, to set race button states
         logger.info('Race started at {0} ({1:.0f})'.format(RACE.start_time_monotonic, RACE.start_time_epoch_ms))
 
+
 @catchLogExceptionsWrapper
 def race_expire_thread(start_token):
     race_format = getCurrentRaceFormat()
@@ -2178,6 +2280,7 @@ def race_expire_thread(start_token):
             emit_current_leaderboard()
         else:
             logger.debug("Finished unused race-time-expire thread")
+
 
 @SOCKET_IO.on('stop_race')
 @catchLogExceptionsWrapper
@@ -2235,6 +2338,7 @@ def on_stop_race():
     SOCKET_IO.emit('stop_timer') # Loop back to race page to start the timer counting up
     emit_race_status() # Race page, to set race button states
     emit_current_leaderboard()
+
 
 @SOCKET_IO.on('save_laps')
 @catchLogExceptionsWrapper
@@ -2308,6 +2412,7 @@ def on_save_laps():
         message = __('Discarding empty race')
         emit_priority_message(message, False, nobroadcast=True)
 
+
 @SOCKET_IO.on('resave_laps')
 @catchLogExceptionsWrapper
 def on_resave_laps(data):
@@ -2377,11 +2482,13 @@ def on_resave_laps(data):
         'pilot_id': pilot_id,
         })
 
+
 @catchLogExceptionsWrapper
 def build_atomic_result_caches(params):
     PageCache.set_valid(False)
     Results.build_atomic_results_caches(RHData, params)
     emit_result_data()
+
 
 @SOCKET_IO.on('discard_laps')
 @catchLogExceptionsWrapper
@@ -2407,6 +2514,7 @@ def on_discard_laps(**kwargs):
 
     Events.trigger(Evt.LAPS_CLEAR)
 
+
 def clear_laps():
     '''Clear the current laps table.'''
     global LAST_RACE
@@ -2416,6 +2524,7 @@ def clear_laps():
     reset_current_laps() # Clear out the current laps table
     RHData.clear_lapSplits()
     logger.info('Current laps cleared')
+
 
 def init_node_cross_fields():
     '''Sets the 'current_pilot_id' and 'cross' values on each node.'''
@@ -2431,6 +2540,7 @@ def init_node_cross_fields():
 
         node.first_cross_flag = False
         node.show_crossing_flag = False
+
 
 @SOCKET_IO.on('set_current_heat')
 @catchLogExceptionsWrapper
@@ -2477,10 +2587,12 @@ def on_set_current_heat(data):
     emit_current_leaderboard() # Race page, to update callsigns in leaderboard
     emit_race_format()
 
+
 @SOCKET_IO.on('generate_heats')
 def on_generate_heats(data):
     '''Spawn heat generator thread'''
     gevent.spawn(generate_heats, data)
+
 
 @catchLogExceptionsWrapper
 def generate_heats(data):
@@ -2604,6 +2716,7 @@ def generate_heats(data):
         logger.warning("Unable to generate heats from class {0}: can't get valid results".format(input_class))
         SOCKET_IO.emit('heat_generate_done')
 
+
 @SOCKET_IO.on('delete_lap')
 @catchLogExceptionsWrapper
 def on_delete_lap(data):
@@ -2664,6 +2777,7 @@ def on_delete_lap(data):
     emit_current_laps() # Race page, update web client
     emit_current_leaderboard() # Race page, update web client
 
+
 @SOCKET_IO.on('simulate_lap')
 @catchLogExceptionsWrapper
 def on_simulate_lap(data):
@@ -2675,6 +2789,7 @@ def on_simulate_lap(data):
         'color': led_manager.getDisplayColor(node_index)
         })
     INTERFACE.intf_simulate_lap(node_index, 0)
+
 
 @SOCKET_IO.on('LED_solid')
 @catchLogExceptionsWrapper
@@ -2696,6 +2811,7 @@ def on_LED_solid(data):
             }
         })
 
+
 @SOCKET_IO.on('LED_chase')
 @catchLogExceptionsWrapper
 def on_LED_chase(data):
@@ -2714,6 +2830,7 @@ def on_LED_chase(data):
         }
     })
 
+
 @SOCKET_IO.on('LED_RB')
 @catchLogExceptionsWrapper
 def on_LED_RB():
@@ -2724,6 +2841,7 @@ def on_LED_RB():
             'time': 5
         }
     })
+
 
 @SOCKET_IO.on('LED_RBCYCLE')
 @catchLogExceptionsWrapper
@@ -2736,6 +2854,7 @@ def on_LED_RBCYCLE():
         }
     })
 
+
 @SOCKET_IO.on('LED_RBCHASE')
 @catchLogExceptionsWrapper
 def on_LED_RBCHASE():
@@ -2746,6 +2865,7 @@ def on_LED_RBCHASE():
             'time': 5
         }
     })
+
 
 @SOCKET_IO.on('LED_brightness')
 @catchLogExceptionsWrapper
@@ -2759,6 +2879,7 @@ def on_LED_brightness(data):
         'level': brightness,
         })
 
+
 @SOCKET_IO.on('set_option')
 @catchLogExceptionsWrapper
 def on_set_option(data):
@@ -2767,6 +2888,7 @@ def on_set_option(data):
         'option': data['option'],
         'value': data['value'],
         })
+
 
 @SOCKET_IO.on('get_race_scheduled')
 @catchLogExceptionsWrapper
@@ -2777,6 +2899,7 @@ def get_race_elapsed():
         'scheduled_at': RACE.scheduled_time
     })
 
+
 @SOCKET_IO.on('save_callouts')
 @catchLogExceptionsWrapper
 def save_callouts(data):
@@ -2786,11 +2909,13 @@ def save_callouts(data):
     logger.info('Set all voice callouts')
     logger.debug('Voice callouts set to: {0}'.format(callouts))
 
+
 @SOCKET_IO.on('imdtabler_update_freqs')
 @catchLogExceptionsWrapper
 def imdtabler_update_freqs(data):
     ''' Update IMDTabler page with new frequencies list '''
     emit_imdtabler_data(data['freq_list'].replace(',',' ').split())
+
 
 @SOCKET_IO.on('clean_cache')
 @catchLogExceptionsWrapper
@@ -2807,6 +2932,7 @@ def emit_frontend_load(**params):
         emit('load_all')
     else:
         SOCKET_IO.emit('load_all')
+
 
 def emit_priority_message(message, interrupt=False, key=None, **params):
     ''' Emits message to all clients '''
@@ -2831,6 +2957,7 @@ def emit_priority_message(message, interrupt=False, key=None, **params):
 
         SOCKET_IO.emit('priority_message', emit_payload)
 
+
 def emit_race_status(**params):
     '''Emits race status.'''
     race_format = getCurrentRaceFormat()
@@ -2847,6 +2974,7 @@ def emit_race_status(**params):
         emit('race_status', emit_payload)
     else:
         SOCKET_IO.emit('race_status', emit_payload)
+
 
 def emit_frequency_data(**params):
     '''Emits node data.'''
@@ -2882,6 +3010,7 @@ def emit_frequency_data(**params):
     if Use_imdtabler_jar_flag:
         heartbeat_thread_function.imdtabler_flag = True
 
+
 def emit_node_data(**params):
     '''Emits node data.'''
     emit_payload = {
@@ -2895,6 +3024,7 @@ def emit_node_data(**params):
         emit('node_data', emit_payload)
     else:
         SOCKET_IO.emit('node_data', emit_payload)
+
 
 def emit_environmental_data(**params):
     '''Emits environmental data.'''
@@ -2923,10 +3053,12 @@ def emit_environmental_data(**params):
             if max_threshold is not None and val >= max_threshold:
                 emit_priority_message("{}: {} {}{} >= {}{}".format(sensor.name, m, val, unit, max_threshold, unit), key=msg_key)
 
+
 def emit_scan_data(node):
     freqs = sorted(node.scan_data)
     rssis = [node.scan_data[freq] for freq in freqs]
     SOCKET_IO.emit('scan_data', {'node' : node.index, 'frequency' : freqs, 'rssi' : rssis})
+
 
 def emit_enter_and_exit_at_levels(**params):
     '''Emits enter-at and exit-at levels for nodes.'''
@@ -2943,6 +3075,7 @@ def emit_enter_and_exit_at_levels(**params):
     else:
         SOCKET_IO.emit('enter_and_exit_at_levels', emit_payload)
 
+
 def emit_cluster_status(**params):
     '''Emits cluster status information.'''
     if CLUSTER:
@@ -2950,6 +3083,7 @@ def emit_cluster_status(**params):
             emit('cluster_status', CLUSTER.getClusterStatusInfo())
         else:
             SOCKET_IO.emit('cluster_status', CLUSTER.getClusterStatusInfo())
+
 
 def emit_start_thresh_lower_amount(**params):
     '''Emits current start_thresh_lower_amount.'''
@@ -2963,6 +3097,7 @@ def emit_start_thresh_lower_amount(**params):
     else:
         SOCKET_IO.emit('start_thresh_lower_amount', emit_payload)
 
+
 def emit_start_thresh_lower_duration(**params):
     '''Emits current start_thresh_lower_duration.'''
     emit_payload = {
@@ -2974,6 +3109,7 @@ def emit_start_thresh_lower_duration(**params):
         emit('start_thresh_lower_duration', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('start_thresh_lower_duration', emit_payload)
+
 
 def emit_node_tuning(**params):
     '''Emits node tuning values.'''
@@ -2990,6 +3126,7 @@ def emit_node_tuning(**params):
     else:
         SOCKET_IO.emit('node_tuning', emit_payload)
 
+
 def emit_language(**params):
     '''Emits race status.'''
     emit_payload = {
@@ -3001,6 +3138,7 @@ def emit_language(**params):
     else:
         SOCKET_IO.emit('language', emit_payload)
 
+
 def emit_all_languages(**params):
     '''Emits full language dictionary.'''
     emit_payload = {
@@ -3010,6 +3148,7 @@ def emit_all_languages(**params):
         emit('all_languages', emit_payload)
     else:
         SOCKET_IO.emit('all_languages', emit_payload)
+
 
 def emit_min_lap(**params):
     '''Emits current minimum lap.'''
@@ -3021,6 +3160,7 @@ def emit_min_lap(**params):
         emit('min_lap', emit_payload)
     else:
         SOCKET_IO.emit('min_lap', emit_payload)
+
 
 def emit_race_format(**params):
     '''Emits race format values.'''
@@ -3050,6 +3190,7 @@ def emit_race_format(**params):
     else:
         SOCKET_IO.emit('race_format', emit_payload)
         emit_current_leaderboard()
+
 
 def emit_race_formats(**params):
     '''Emits all race formats.'''
@@ -3082,6 +3223,7 @@ def emit_race_formats(**params):
         emit('race_formats', emit_payload)
     else:
         SOCKET_IO.emit('race_formats', emit_payload)
+
 
 def build_laps_list(active_race=RACE):
     current_laps = []
@@ -3139,6 +3281,7 @@ def build_laps_list(active_race=RACE):
     }
     return current_laps
 
+
 def emit_current_laps(**params):
     '''Emits current laps.'''
     emit_payload = {
@@ -3153,6 +3296,7 @@ def emit_current_laps(**params):
         emit('current_laps', emit_payload)
     else:
         SOCKET_IO.emit('current_laps', emit_payload)
+
 
 def get_splits(node, lap_id, lapCompleted):
     splits = []
@@ -3176,6 +3320,7 @@ def get_splits(node, lap_id, lapCompleted):
                     break
                 splits.append(split_payload)
     return splits
+
 
 def emit_race_list(**params):
     '''Emits race listing'''
@@ -3240,12 +3385,14 @@ def emit_race_list(**params):
     else:
         SOCKET_IO.emit('race_list', emit_payload)
 
+
 def emit_result_data(**params):
     ''' kick off non-blocking thread to generate data'''
     if request:
         gevent.spawn(emit_result_data_thread, params, request.sid)
     else:
         gevent.spawn(emit_result_data_thread, params)
+
 
 @catchLogExceptionsWrapper
 def emit_result_data_thread(params, sid=None):
@@ -3257,6 +3404,7 @@ def emit_result_data_thread(params, sid=None):
             emit('result_data', emit_payload, namespace='/', room=sid)
         else:
             SOCKET_IO.emit('result_data', emit_payload, namespace='/')
+
 
 def emit_current_leaderboard(**params):
     '''Emits leaderboard.'''
@@ -3304,6 +3452,7 @@ def emit_current_leaderboard(**params):
         emit('leaderboard', emit_payload)
     else:
         SOCKET_IO.emit('leaderboard', emit_payload)
+
 
 def emit_heat_data(**params):
     '''Emits heat data.'''
@@ -3366,6 +3515,7 @@ def emit_heat_data(**params):
     else:
         SOCKET_IO.emit('heat_data', emit_payload)
 
+
 def emit_class_data(**params):
     '''Emits class data.'''
     current_classes = []
@@ -3405,6 +3555,7 @@ def emit_class_data(**params):
         emit('class_data', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('class_data', emit_payload)
+
 
 def emit_pilot_data(**params):
     '''Emits pilot data.'''
@@ -3458,6 +3609,7 @@ def emit_pilot_data(**params):
     else:
         SOCKET_IO.emit('pilot_data', emit_payload)
 
+
 def emit_current_heat(**params):
     '''Emits the current heat.'''
     callsigns = []
@@ -3500,6 +3652,7 @@ def emit_current_heat(**params):
     else:
         SOCKET_IO.emit('current_heat', emit_payload)
 
+
 def emit_race_status_message(**params):
     '''Emits given team-racing status info.'''
     emit_payload = {'team_laps_str': RACE.status_message}
@@ -3507,6 +3660,7 @@ def emit_race_status_message(**params):
         emit('race_status_message', emit_payload)
     else:
         SOCKET_IO.emit('race_status_message', emit_payload)
+
 
 def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_flag=False, **params):
     '''Emits phonetic data.'''
@@ -3529,6 +3683,7 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, leader_
     else:
         SOCKET_IO.emit('phonetic_data', emit_payload)
 
+
 def emit_first_pass_registered(node_idx, **params):
     '''Emits when first pass (lap 0) is registered during a race'''
     emit_payload = {
@@ -3543,6 +3698,7 @@ def emit_first_pass_registered(node_idx, **params):
     else:
         SOCKET_IO.emit('first_pass_registered', emit_payload)
 
+
 def emit_phonetic_text(text_str, domain=False, winner_flag=False, **params):
     '''Emits given phonetic text.'''
     emit_payload = {
@@ -3554,6 +3710,7 @@ def emit_phonetic_text(text_str, domain=False, winner_flag=False, **params):
         emit('phonetic_text', emit_payload)
     else:
         SOCKET_IO.emit('phonetic_text', emit_payload)
+
 
 def emit_phonetic_split(pilot_id, split_id, split_time, **params):
     '''Emits phonetic split-pass data.'''
@@ -3570,9 +3727,11 @@ def emit_phonetic_split(pilot_id, split_id, split_time, **params):
     else:
         SOCKET_IO.emit('phonetic_split_call', emit_payload)
 
+
 def emit_split_pass_info(pilot_id, split_id, split_time):
     emit_current_laps()  # update all laps on the race page
     emit_phonetic_split(pilot_id, split_id, split_time)
+
 
 def emit_enter_at_level(node, **params):
     '''Emits enter-at level for given node.'''
@@ -3585,6 +3744,7 @@ def emit_enter_at_level(node, **params):
     else:
         SOCKET_IO.emit('node_enter_at_level', emit_payload)
 
+
 def emit_exit_at_level(node, **params):
     '''Emits exit-at level for given node.'''
     emit_payload = {
@@ -3595,6 +3755,7 @@ def emit_exit_at_level(node, **params):
         emit('node_exit_at_level', emit_payload)
     else:
         SOCKET_IO.emit('node_exit_at_level', emit_payload)
+
 
 def emit_node_crossing_change(node, **params):
     '''Emits crossing-flag change for given node.'''
@@ -3607,6 +3768,7 @@ def emit_node_crossing_change(node, **params):
     else:
         SOCKET_IO.emit('node_crossing_change', emit_payload)
 
+
 def emit_cluster_connect_change(connect_flag, **params):
     '''Emits connect/disconnect tone for cluster timer.'''
     emit_payload = {
@@ -3617,10 +3779,12 @@ def emit_cluster_connect_change(connect_flag, **params):
     else:
         SOCKET_IO.emit('cluster_connect_change', emit_payload)
 
+
 def emit_callouts():
     callouts = RHData.get_option('voiceCallouts')
     if callouts:
         emit('callouts', json.loads(callouts))
+
 
 def emit_imdtabler_page(**params):
     '''Emits IMDTabler page, using current profile frequencies.'''
@@ -3637,6 +3801,7 @@ def emit_imdtabler_page(**params):
             emit_imdtabler_data(fs_list, imdtabler_ver)
         except Exception:
             logger.exception('emit_imdtabler_page exception')
+
 
 def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
     '''Emits IMDTabler data for given frequencies.'''
@@ -3658,6 +3823,7 @@ def emit_imdtabler_data(fs_list, imdtabler_ver=None, **params):
     else:
         SOCKET_IO.emit('imdtabler_data', emit_payload)
 
+
 def emit_imdtabler_rating():
     '''Emits IMDTabler rating for current profile frequencies.'''
     try:
@@ -3678,6 +3844,7 @@ def emit_imdtabler_rating():
             'imd_rating': imd_val
         }
     SOCKET_IO.emit('imdtabler_rating', emit_payload)
+
 
 def emit_vrx_list(*args, **params):
     ''' get list of connected VRx devices '''
@@ -3707,6 +3874,7 @@ def emit_vrx_list(*args, **params):
         emit('vrx_list', emit_payload)
     else:
         SOCKET_IO.emit('vrx_list', emit_payload)
+
 
 @SOCKET_IO.on('check_bpillfw_file')
 @catchLogExceptionsWrapper
@@ -3763,6 +3931,7 @@ def check_bpillfw_file(data):
         SOCKET_IO.emit('upd_set_info_text', "Error processing firmware file: {}<br><br><br><br>".format(ex))
         logger.exception("Error processing file '{}' in 'check_bpillfw_file()'".format(fileStr))
 
+
 @SOCKET_IO.on('do_bpillfw_update')
 @catchLogExceptionsWrapper
 def do_bpillfw_update(data):
@@ -3812,6 +3981,7 @@ def do_bpillfw_update(data):
     start_background_threads(True)
     SOCKET_IO.emit('upd_messages_finish')  # show 'Close' button
 
+
 @SOCKET_IO.on('set_vrx_node')
 @catchLogExceptionsWrapper
 def set_vrx_node(data):
@@ -3823,6 +3993,7 @@ def set_vrx_node(data):
         logger.info("Set VRx {0} to node {1}".format(vrx_id, node))
     else:
         logger.error("Can't set VRx {0} to node {1}: Controller unavailable".format(vrx_id, node))
+
 
 @catchLogExceptionsWrapper
 def emit_pass_record(node, lap_number, lap_time_stamp):
@@ -3938,6 +4109,7 @@ heartbeat_thread_function.iter_tracker = 0
 heartbeat_thread_function.imdtabler_flag = False
 heartbeat_thread_function.last_error_rep_time = monotonic()
 
+
 @catchLogExceptionsWrapper
 def clock_check_thread_function():
     ''' Monitor system clock and adjust PROGRAM_START_EPOCH_TIME if significant jump detected.
@@ -3972,11 +4144,13 @@ def clock_check_thread_function():
     except Exception:
         logger.exception('Exception in clock_check_thread')
 
+
 def ms_from_race_start():
     '''Return milliseconds since race start.'''
     delta_time = monotonic() - RACE.start_time_monotonic
     milli_sec = delta_time * 1000.0
     return milli_sec
+
 
 def ms_to_race_start():
     '''Return milliseconds since race start.'''
@@ -3987,11 +4161,13 @@ def ms_to_race_start():
     else:
         return None
 
+
 def ms_from_program_start():
     '''Returns the elapsed milliseconds since the start of the program.'''
     delta_time = monotonic() - PROGRAM_START_MTONIC
     milli_sec = delta_time * 1000.0
     return milli_sec
+
 
 @catchLogExcDBCloseWrapper
 def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
@@ -4140,6 +4316,7 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
         logger.debug('Pass record dismissed: Node: {0}, Frequency not defined' \
             .format(node.index+1))
 
+
 def check_win_condition(**kwargs):
     previous_win_status = RACE.win_status
 
@@ -4189,6 +4366,7 @@ def check_win_condition(**kwargs):
 
     return win_status
 
+
 @catchLogExcDBCloseWrapper
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
     gevent.sleep(0.025)  # delay to avoid potential I/O error
@@ -4206,6 +4384,7 @@ def new_enter_or_exit_at_callback(node, is_enter_at_flag):
             'exit_at_level': node.exit_at_level
         })
         emit_exit_at_level(node)
+
 
 @catchLogExcDBCloseWrapper
 def node_crossing_callback(node):
@@ -4233,6 +4412,7 @@ def node_crossing_callback(node):
                 else:
                     node.show_crossing_flag = True
 
+
 def default_frequencies():
     '''Set node frequencies, R1367 for 4, IMD6C+ for 5+.'''
     if RACE.num_nodes < 5:
@@ -4255,6 +4435,7 @@ def default_frequencies():
 
     return freqs
 
+
 def assign_frequencies():
     '''Assign frequencies to nodes'''
     profile = getCurrentProfile()
@@ -4271,6 +4452,7 @@ def assign_frequencies():
 
         logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(idx+1, freqs["b"][idx], freqs["c"][idx], freqs["f"][idx]))
 
+
 def emit_current_log_file_to_socket():
     if Current_log_path_name:
         try:
@@ -4280,6 +4462,7 @@ def emit_current_log_file_to_socket():
             logger.exception("Error sending current log file to socket")
     log.start_socket_forward_handler()
 
+
 def db_init(nofill=False):
     '''Initialize database.'''
     RHData.db_init(nofill)
@@ -4288,12 +4471,14 @@ def db_init(nofill=False):
     Events.trigger(Evt.DATABASE_INITIALIZE)
     logger.info('Database initialized')
 
+
 def db_reset():
     '''Resets database.'''
     RHData.reset_all()
     reset_current_laps()
     assign_frequencies()
     logger.info('Database reset')
+
 
 def reset_current_laps():
     '''Resets database current laps to default.'''
@@ -4304,6 +4489,7 @@ def reset_current_laps():
     RACE.cacheStatus = Results.CacheStatus.INVALID
     RACE.team_cacheStatus = Results.CacheStatus.INVALID
     logger.debug('Database current laps reset')
+
 
 def expand_heats():
     ''' ensure loaded data includes enough slots for current nodes '''
@@ -4318,6 +4504,7 @@ def expand_heats():
         for node_index in range(RACE.num_nodes):
             if node_index not in nodes:
                 RHData.add_heatNode(heat_id, node_index)
+
 
 def init_race_state():
     expand_heats()
@@ -4351,6 +4538,7 @@ def init_race_state():
     Results.normalize_cache_status(RHData)
     PageCache.set_valid(False)
 
+
 def init_interface_state(startup=False):
     # Cancel current race
     if startup:
@@ -4364,6 +4552,7 @@ def init_interface_state(startup=False):
         on_stop_race()
     # Reset laps display
     reset_current_laps()
+
 
 def init_LED_effects():
     # start with defaults
@@ -4401,6 +4590,7 @@ def init_LED_effects():
     for item in effects:
         led_manager.setEventEffect(item, effects[item])
 
+
 def initVRxController():
     try:
         vrx_config = rhconfig.VRX_CONTROL
@@ -4433,10 +4623,12 @@ def initVRxController():
         INTERFACE.get_node_frequencies(),
         Language)
 
+
 def killVRxController(*args):
     global vrx_controller
     logger.info('Killing VRxController')
     vrx_controller = None
+
 
 def determineHostAddress(maxRetrySecs=10):
     ''' Determines local host IP address.  Will wait and retry to get valid IP, in
@@ -4467,6 +4659,7 @@ def determineHostAddress(maxRetrySecs=10):
     logger.info("Host machine is '{0}' at {1}".format(hNameStr, ipAddrStr))
     return ipAddrStr
 
+
 def jump_to_node_bootloader():
     if hasattr(INTERFACE, 'jump_to_bootloader'):
         try:
@@ -4475,6 +4668,7 @@ def jump_to_node_bootloader():
             logger.error("Error executing jump to node bootloader")
     else:
         logger.info("No jump-to-bootloader support")
+
 
 def shutdown_button_thread_fn():
     try:
@@ -4504,18 +4698,22 @@ def shutdown_button_thread_fn():
         logger.exception("Exception error in 'shutdown_button_thread_fn()'")
     logger.debug("Exited shutdown-button-handler thread")
 
+
 def start_shutdown_button_thread():
     if ShutdownButtonInputHandler and not ShutdownButtonInputHandler.isEnabled():
         ShutdownButtonInputHandler.setEnabled(True)
         gevent.spawn(shutdown_button_thread_fn)
 
+
 def stop_shutdown_button_thread():
     if ShutdownButtonInputHandler:
         ShutdownButtonInputHandler.setEnabled(False)
 
+
 def shutdown_button_pressed():
     logger.debug("Detected shutdown button pressed")
     INTERFACE.send_shutdown_button_state(1)
+
 
 def shutdown_button_released(longPressReachedFlag):
     logger.debug("Detected shutdown button released, longPressReachedFlag={}".\
@@ -4523,9 +4721,11 @@ def shutdown_button_released(longPressReachedFlag):
     if not longPressReachedFlag:
         INTERFACE.send_shutdown_button_state(0)
 
+
 def shutdown_button_long_press():
     logger.info("Detected shutdown button long press; performing shutdown now")
     on_shutdown_pi()
+
 
 def initialize_hardware_interface():
     try:
@@ -5022,6 +5222,7 @@ if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     chorusSerial = serial.Serial(port=chorusPort, baudrate=115200, timeout=0.1)
     CHORUS_API = ChorusAPI(chorusSerial, INTERFACE, SENSORS, connect_handler, on_stop_race, lambda : on_reset_auto_calibration({}))
 
+
 def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
     if not RHData.get_option("secret_key"):
         RHData.set_option("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
@@ -5059,6 +5260,7 @@ def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
     log.wait_for_queue_empty()
     gevent.sleep(2)  # allow system shutdown command to run before program exit
     log.close_logging()
+
 
 # Start HTTP server
 if __name__ == '__main__':

@@ -608,6 +608,7 @@ nodeModel.prototype = {
 const TONES_NONE = 0;
 const TONES_ONE = 1;
 const TONES_ALL = 2;
+const TONES_3_2_1 = 3;
 
 function timerModel() {
 	// interval control
@@ -849,9 +850,10 @@ var rotorhazard = {
 		0: 'None',
 	},
 	stagingTones: {
-		2: 'Each Second',
-		1: 'One',
-		0: 'None',
+		TONES_ALL: 'Each Second',
+		TONES_3_2_1: '3-2-1',
+		TONES_ONE: 'One',
+		TONES_NONE: 'None',
 	},
 	language_strings: {},
 	interface_language: '',
@@ -1100,6 +1102,17 @@ rotorhazard.timer.race.callbacks.start = function(timer){
 		}
 	}
 }
+
+function playStageToneOnSecond(time_s){
+	if (time_s * 10 % 10 == 0) {
+		if( rotorhazard.use_mp3_tones){
+			sound_stage.play();
+		} else {
+			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
+		}
+	}
+}
+
 rotorhazard.timer.race.callbacks.step = function(timer){
 	if (timer.warn_until < window.performance.now()) {
 		$('.timing-clock .warning').hide();
@@ -1110,14 +1123,7 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 		if (timer.hidden_staging
 			&& timer.staging_tones == TONES_ALL) {
 			// beep every second during staging if timer is hidden
-			if (timer.time_s * 10 % 10 == 0) {
-				if( rotorhazard.use_mp3_tones){
-					sound_stage.play();
-				}
-				else {
-					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-				}
-			}
+			playStageToneOnSecond(timer.time_s);
 		} else if (timer.time_s == -30
 			|| timer.time_s == -20
 			|| timer.time_s == -10) {
@@ -1125,14 +1131,10 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 		} else if (timer.staging_tones == TONES_ALL
 			&& timer.time_s >= -5) {
 			// staging beep for last 5 seconds before start
-			if (timer.time_s * 10 % 10 == 0) {
-				if( rotorhazard.use_mp3_tones){
-					sound_stage.play();
-				}
-				else {
-					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-				}
-			}
+			playStageToneOnSecond(timer.time_s);
+		} else if (timer.staging_tones == TONES_3_2_1
+			&& timer.time_s >= -3) {
+			playStageToneOnSecond(timer.time_s);
 		}
 	} else if (timer.time_s == 0 ||
 		(!timer.count_up && timer.time_s == timer.duration)
@@ -1147,14 +1149,7 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 	} else {
 		if (!timer.count_up) {
 			if (timer.time_s <= 5) { // Final seconds
-				if (timer.time_s * 10 % 10 == 0) {
-					if( rotorhazard.use_mp3_tones){
-						sound_stage.play();
-					}
-					else {
-						play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-					}
-				}
+				playStageToneOnSecond(timer.time_s);
 			} else if (timer.time_s == 10) { // announce 10s only when counting down
 				if (rotorhazard.voice_race_timer != 0)
 					speak('<div>10 ' + __l('Seconds') + '</div>', true);

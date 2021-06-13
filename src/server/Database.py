@@ -31,6 +31,7 @@ class Pilot(DB.Model):
     def __repr__(self):
         return '<Pilot %r>' % self.id
 
+
 class Heat(DB.Model):
     __tablename__ = 'heat'
     id = DB.Column(DB.Integer, primary_key=True)
@@ -41,6 +42,7 @@ class Heat(DB.Model):
 
     def __repr__(self):
         return '<Heat %r>' % self.id
+
 
 class HeatNode(DB.Model):
     __tablename__ = 'heat_node'
@@ -56,6 +58,7 @@ class HeatNode(DB.Model):
     def __repr__(self):
         return '<HeatNode %r>' % self.id
 
+
 class RaceClass(DB.Model):
     __tablename__ = 'race_class'
     id = DB.Column(DB.Integer, primary_key=True)
@@ -67,6 +70,7 @@ class RaceClass(DB.Model):
 
     def __repr__(self):
         return '<RaceClass %r>' % self.id
+
 
 class LapSplit(DB.Model):
     __tablename__ = 'lap_split'
@@ -86,6 +90,7 @@ class LapSplit(DB.Model):
     def __repr__(self):
         return '<LapSplit %r>' % self.pilot_id
 
+
 class SavedRaceMeta(DB.Model):
     __tablename__ = 'saved_race_meta'
     __table_args__ = (
@@ -103,6 +108,7 @@ class SavedRaceMeta(DB.Model):
 
     def __repr__(self):
         return '<SavedRaceMeta %r>' % self.id
+
 
 class SavedPilotRace(DB.Model):
     __tablename__ = 'saved_pilot_race'
@@ -123,6 +129,7 @@ class SavedPilotRace(DB.Model):
     def __repr__(self):
         return '<SavedPilotRace %r>' % self.id
 
+
 class SavedRaceLap(DB.Model):
     __tablename__ = 'saved_race_lap'
     id = DB.Column(DB.Integer, primary_key=True)
@@ -139,11 +146,13 @@ class SavedRaceLap(DB.Model):
     def __repr__(self):
         return '<SavedRaceLap %r>' % self.id
 
+
 class LapSource:
     REALTIME = 0
     MANUAL = 1
     RECALC = 2
     AUTOMATIC = 3
+
 
 class Profiles(DB.Model):
     __tablename__ = 'profiles'
@@ -154,6 +163,7 @@ class Profiles(DB.Model):
     enter_ats = DB.Column(DB.String(80), nullable=True)
     exit_ats = DB.Column(DB.String(80), nullable=True)
     f_ratio = DB.Column(DB.Integer, nullable=True)
+
 
 class RaceFormat(DB.Model):
     __tablename__ = 'race_format'
@@ -168,6 +178,7 @@ class RaceFormat(DB.Model):
     win_condition = DB.Column(DB.Integer, nullable=False)
     team_racing_mode = DB.Column(DB.Boolean, nullable=False)
     start_behavior = DB.Column(DB.Integer, nullable=False)
+
 
 class GlobalSettings(DB.Model):
     __tablename__ = 'global_settings'
