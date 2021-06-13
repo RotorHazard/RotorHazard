@@ -1898,7 +1898,7 @@ class RHData():
     # Event Results (Options)
     def set_results_event(self, data):
         if 'results' in data:
-            self.set_option("eventResults_cacheStatus", data['results'])
+            self.set_option("eventResults", data['results'])
         if 'cacheStatus' in data:
             self.set_option("eventResults_cacheStatus", data['cacheStatus'])
 
