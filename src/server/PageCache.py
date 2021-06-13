@@ -230,6 +230,9 @@ class PageCache:
                                 'results': False,
                                 'cacheStatus': Results.CacheStatus.INVALID
                                 })
+                            results = None
+                            error_flag = True
+                            logger.error('T%d: Unable to retrieve "valid" event cache from RHData')
                         break
                     elif monotonic() > expires:
                         logger.warning('Cache build timed out: Event Summary')
