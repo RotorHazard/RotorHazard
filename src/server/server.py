@@ -1533,6 +1533,8 @@ def on_list_backups():
 @catchLogExceptionsWrapper
 def on_restore_database(data):
     '''Restore database.'''
+    global RACE
+    global LAST_RACE
     success = None
     if 'backup_file' in data:
         backup_file = data['backup_file']
@@ -1542,6 +1544,8 @@ def on_restore_database(data):
             logger.info('Found {0}: starting restoration...'.format(backup_file))
             RHData.close()
 
+            RACE = RHRace.RHRace() # Reset all RACE values
+            LAST_RACE = RACE
             try:
                 RHData.recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
                 clean_results_cache()
