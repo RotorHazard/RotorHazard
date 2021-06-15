@@ -3125,7 +3125,7 @@ def build_laps_list(active_race=RACE):
                 'splits': splits
             })
 
-        if active_race.node_pilots[node]:
+        if len(active_race.node_pilots) and active_race.node_pilots[node]:
             pilot = RHData.get_pilot(active_race.node_pilots[node])
             pilot_data = {
                 'id': pilot.id,
