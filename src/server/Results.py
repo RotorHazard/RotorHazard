@@ -241,7 +241,7 @@ def calc_leaderboard(rhDataObj, **params):
             node_index = 0
             laps = []
             for node_index in raceObj.node_pilots:
-                if raceObj.node_pilots[node_index] == pilot.id and node_index < raceObj.num_nodes:
+                if raceObj.node_pilots[node_index] == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
                     laps = raceObj.get_active_laps()[node_index]
                     found_pilot = True
                     break

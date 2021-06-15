@@ -241,7 +241,7 @@
 
 		function show_current_laps() {
 			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
-				$('#recent .callsign_' + i).html('callsign' in node_index.pilot ? node_index.pilot.callsign : __('-None-'));
+				$('#recent .callsign_' + i).html(node_index.pilot && 'callsign' in node_index.pilot ? node_index.pilot.callsign : __('-None-'));
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
 				$.each(node_index.laps, function (j, lap) { // j is loop num, lap is json object
