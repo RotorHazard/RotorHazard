@@ -12,6 +12,7 @@ import os
 import traceback
 import shutil
 import json
+import glob
 import RHUtils
 from eventmanager import Evt
 from RHRace import RaceStatus, WinCondition
@@ -108,7 +109,7 @@ class RHData():
 
     # File Handling
 
-    def backup_db_file(self, copy_flag):
+    def backup_db_file(self, copy_flag, prefix_str=None):
         self.close()
         try:     # generate timestamp from last-modified time of database file
             time_str = datetime.fromtimestamp(os.stat(self._DB_FILE_NAME).st_mtime).strftime('%Y%m%d_%H%M%S')
@@ -116,6 +117,8 @@ class RHData():
             time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
         try:
             (dbname, dbext) = os.path.splitext(self._DB_FILE_NAME)
+            if prefix_str:
+                dbname = prefix_str + dbname
             bkp_name = self._DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
             if not os.path.exists(self._DB_BKP_DIR_NAME):
                 os.makedirs(self._DB_BKP_DIR_NAME)
@@ -133,6 +136,33 @@ class RHData():
         except Exception:
             logger.exception('Error backing up database file')
         return bkp_name
+
+    def delete_old_db_autoBkp_files(self, num_keep_val, prefix_str, DB_AUTOBKP_NUM_KEEP_STR):
+        num_del = 0
+        try:
+            num_keep_val = int(num_keep_val)  # make sure this is numeric
+            if num_keep_val > 0:
+                (dbname, dbext) = os.path.splitext(self._DB_FILE_NAME)
+                if prefix_str:
+                    dbname = prefix_str + dbname
+                file_list = list(filter(os.path.isfile, glob.glob(self._DB_BKP_DIR_NAME + \
+                                                        '/' + dbname + '*' + dbext)))
+                file_list.sort(key=os.path.getmtime)  # sort by last-modified time
+                if len(file_list) > num_keep_val:
+                    if num_keep_val > 0:
+                        file_list = file_list[:(-num_keep_val)]
+                    for del_path in file_list:
+                        os.remove(del_path)
+                        num_del += 1
+            elif num_keep_val < 0:
+                raise ValueError("Negative value")
+            if num_del > 0:
+                logger.info("Removed {} old DB-autoBkp file(s)".format(num_del))
+        except ValueError:
+            logger.error("Value for '{}' in configuration is invalid: {}".\
+                            format(DB_AUTOBKP_NUM_KEEP_STR, num_keep_val))
+        except Exception as ex:
+            logger.error("Error removing old DB-autoBkp files: " + str(ex))
 
     # Migration
 
@@ -1923,4 +1953,3 @@ class RHData():
     def clear_results_event(self):
         self.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
         return True
-
