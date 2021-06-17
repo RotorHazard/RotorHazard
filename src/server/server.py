@@ -681,7 +681,8 @@ def stop_background_threads():
         logger.error("Error stopping background threads")
 
 
-def shutdown():
+def shutdown(msg):
+    emit_priority_message(msg, True, event=Evt.SHUTDOWN)
     Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
     INTERFACE.close()
@@ -1703,9 +1704,8 @@ def on_shutdown_pi():
         gevent.sleep(0.25)  # give shutdown-started message a chance to transmit to node
     if CLUSTER:
         CLUSTER.emit('shutdown_pi')
-    emit_priority_message(__('Server has shut down.'), True)
     logger.info('Performing system shutdown')
-    shutdown()
+    shutdown(__('Server has shut down.'))
     if RHUtils.isSysRaspberryPi():
         gevent.sleep(0.1)
         logger.debug("Executing system command:  sudo shutdown now")
@@ -1722,9 +1722,8 @@ def on_reboot_pi():
     '''Reboot the raspberry pi.'''
     if CLUSTER:
         CLUSTER.emit('reboot_pi')
-    emit_priority_message(__('Server is rebooting.'), True)
     logger.info('Performing system reboot')
-    shutdown()
+    shutdown(__('Server is rebooting.'))
     if RHUtils.isSysRaspberryPi():
         gevent.sleep(0.1)
         logger.debug("Executing system command:  sudo reboot now")
@@ -1741,9 +1740,8 @@ def on_kill_server():
     '''Shutdown this server.'''
     if CLUSTER:
         CLUSTER.emit('kill_server')
-    emit_priority_message(__('Server has stopped.'), True)
     logger.info('Killing RotorHazard server')
-    shutdown()
+    shutdown(__('Server has stopped.'))
 
 
 @SOCKET_IO.on('download_logs')
@@ -3006,7 +3004,7 @@ def emit_frontend_load(**params):
         SOCKET_IO.emit('load_all')
 
 
-def emit_priority_message(message, interrupt=False, key=None, **params):
+def emit_priority_message(message, interrupt=False, key=None, event=None, **params):
     ''' Emits message to all clients '''
     emit_payload = {
         'message': message,
@@ -3019,12 +3017,14 @@ def emit_priority_message(message, interrupt=False, key=None, **params):
         if interrupt:
             Events.trigger(Evt.MESSAGE_INTERRUPT, {
                 'message': message,
-                'interrupt': interrupt
+                'interrupt': interrupt,
+                'event': event
                 })
         else:
             Events.trigger(Evt.MESSAGE_STANDARD, {
                 'message': message,
-                'interrupt': interrupt
+                'interrupt': interrupt,
+                'event': event
                 })
 
         SOCKET_IO.emit('priority_message', emit_payload)

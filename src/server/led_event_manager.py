@@ -193,6 +193,10 @@ class LEDEventManager:
         return hexToColor(color)
 
     def activateEffect(self, args):
+        # check related event is not shutdown
+        if 'event' in args and args['event'] == Evt.SHUTDOWN:
+            return False
+
         result = args['handlerFn'](args)
         if result == False:
             logger.debug('LED effect %s produced no output', args['handlerFn'])
