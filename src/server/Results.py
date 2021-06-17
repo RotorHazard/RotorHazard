@@ -411,7 +411,7 @@ def calc_leaderboard(rhDataObj, **params):
                     result_pilot['fastest_lap_source'] = None
                 else:
                     for race in selected_races:
-                        if race.id == lap.race_id:
+                        if race.id == fast_lap.race_id:
                             result_pilot['fastest_lap_source'] = {
                                 'round': race.round_id,
                                 'heat': race.heat_id,
