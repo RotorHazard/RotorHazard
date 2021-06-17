@@ -1594,7 +1594,7 @@ def on_shutdown_pi():
         gevent.sleep(0.25)  # give shutdown-started message a chance to transmit to node
     if CLUSTER:
         CLUSTER.emit('shutdown_pi')
-    emit_priority_message(__('Server has shut down.'), True)
+    emit_priority_message(__('Server has shut down.'), True, caller='shutdown')
     logger.info('Performing system shutdown')
     Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
@@ -1615,7 +1615,7 @@ def on_reboot_pi():
     '''Reboot the raspberry pi.'''
     if CLUSTER:
         CLUSTER.emit('reboot_pi')
-    emit_priority_message(__('Server is rebooting.'), True)
+    emit_priority_message(__('Server is rebooting.'), True, caller='shutdown')
     logger.info('Performing system reboot')
     Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
@@ -1636,7 +1636,7 @@ def on_kill_server():
     '''Shutdown this server.'''
     if CLUSTER:
         CLUSTER.emit('kill_server')
-    emit_priority_message(__('Server has stopped.'), True)
+    emit_priority_message(__('Server has stopped.'), True, caller='shutdown')
     logger.info('Killing RotorHazard server')
     Events.trigger(Evt.SHUTDOWN)
     stop_background_threads()
@@ -2850,7 +2850,7 @@ def emit_frontend_load(**params):
     else:
         SOCKET_IO.emit('load_all')
 
-def emit_priority_message(message, interrupt=False, **params):
+def emit_priority_message(message, interrupt=False, caller=False, **params):
     ''' Emits message to all clients '''
     emit_payload = {
         'message': message,
@@ -2862,12 +2862,14 @@ def emit_priority_message(message, interrupt=False, **params):
         if interrupt:
             Events.trigger(Evt.MESSAGE_INTERRUPT, {
                 'message': message,
-                'interrupt': interrupt
+                'interrupt': interrupt,
+                'caller': caller
                 })
         else:
             Events.trigger(Evt.MESSAGE_STANDARD, {
                 'message': message,
-                'interrupt': interrupt
+                'interrupt': interrupt,
+                'caller': caller
                 })
 
         SOCKET_IO.emit('priority_message', emit_payload)
