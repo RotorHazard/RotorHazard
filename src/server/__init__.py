@@ -57,6 +57,7 @@ class Config:
         self.GENERAL['DEF_NODE_FWUPDATE_URL'] = ''
         self.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'] = 18
         self.GENERAL['SHUTDOWN_BUTTON_DELAYMS'] = 2500
+        self.GENERAL['DB_AUTOBKP_NUM_KEEP'] = 30
 
     def load(self, file=FILE_NAME):
         # override defaults above with config from file

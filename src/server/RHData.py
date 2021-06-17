@@ -12,6 +12,7 @@ import os
 import traceback
 import shutil
 import json
+import glob
 from types import MappingProxyType
 from . import RHUtils
 from .eventmanager import Evt
@@ -112,7 +113,7 @@ class RHData():
 
     # File Handling
 
-    def backup_db_file(self, copy_flag):
+    def backup_db_file(self, copy_flag, prefix_str=''):
         self.close()
         try:     # generate timestamp from last-modified time of database file
             time_str = datetime.fromtimestamp(os.stat(self._DB_FILE_NAME).st_mtime).strftime('%Y%m%d_%H%M%S')
@@ -120,6 +121,7 @@ class RHData():
             time_str = datetime.now().strftime('%Y%m%d_%H%M%S')
         try:
             (dbname, dbext) = os.path.splitext(self._DB_FILE_NAME)
+            dbname = prefix_str + dbname
             bkp_name = self._DB_BKP_DIR_NAME + '/' + dbname + '_' + time_str + dbext
             if not os.path.exists(self._DB_BKP_DIR_NAME):
                 os.makedirs(self._DB_BKP_DIR_NAME)
@@ -134,9 +136,27 @@ class RHData():
                 os.renames(self._DB_FILE_NAME, bkp_name)
                 logger.info('Moved old database file to:  ' + bkp_name)
             RHUtils.checkSetFileOwnerPi(bkp_name)
-        except Exception:
-            logger.exception('Error backing up database file')
+        except Exception as ex:
+            logger.exception("Error backing up database file: {}".format(ex))
         return bkp_name
+
+    def delete_old_db_autoBkp_files(self, num_keep_val, prefix_str=''):
+        try:
+            if num_keep_val > 0:
+                (dbname, dbext) = os.path.splitext(self._DB_FILE_NAME)
+                dbname = prefix_str + dbname
+                file_list = list(filter(os.path.isfile, glob.glob(self._DB_BKP_DIR_NAME + \
+                                                        '/' + dbname + '*' + dbext)))
+                file_list.sort(key=os.path.getmtime)  # sort by last-modified time
+                num_del = 0
+                if len(file_list) > num_keep_val:
+                    for del_path in file_list[:(-num_keep_val)]:
+                        os.remove(del_path)
+                        num_del += 1
+
+                logger.info("Removed {} old DB-autoBkp file(s)".format(num_del))
+        except Exception as ex:
+            logger.error("Error removing old DB-autoBkp files: {}".format(ex))
 
     # Migration
 

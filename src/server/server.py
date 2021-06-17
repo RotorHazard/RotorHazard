@@ -174,7 +174,7 @@ Use_imdtabler_jar_flag = False  # set True if IMDTabler.jar is available
 vrx_controller = None
 server_ipaddress_str = None
 ShutdownButtonInputHandler = None
-Server_is_mirror = False
+Server_secondary_mode = None
 
 RACE = RHRace.RHRace() # For storing race management variables
 LAST_RACE = None
@@ -786,14 +786,26 @@ def on_join_cluster():
 @SOCKET_IO.on('join_cluster_ex')
 @catchLogExceptionsWrapper
 def on_join_cluster_ex(data=None):
-    global Server_is_mirror
-    tmode = str(data.get('mode', SecondaryNode.SPLIT_MODE)) if data else None
-    if tmode != SecondaryNode.MIRROR_MODE:
+    global Server_secondary_mode
+    prev_mode = Server_secondary_mode
+    Server_secondary_mode = str(data.get('mode', SecondaryNode.SPLIT_MODE)) if data else None
+    logger.info("Joined cluster" + ((" as '" + Server_secondary_mode + "' timer") \
+                                    if Server_secondary_mode else ""))
+    if Server_secondary_mode != SecondaryNode.MIRROR_MODE:  # mode is split timer
+        try:  # if first time joining and DB contains races then backup DB and clear races
+            if prev_mode is None and len(RHData.get_savedRaceMetas()) > 0:
+                logger.info("Making database autoBkp and clearing races on split timer")
+                RHData.backup_db_file(True, "autoBkp_")
+                RHData.clear_race_data()
+                reset_current_laps()
+                emit_current_laps()
+                emit_result_data()
+                RHData.delete_old_db_autoBkp_files(Config.GENERAL['DB_AUTOBKP_NUM_KEEP'], \
+                                                   "autoBkp_")
+        except:
+            logger.exception("Error making db-autoBkp / clearing races on split timer")
         setCurrentRaceFormat(SECONDARY_RACE_FORMAT)
         emit_race_format()
-    if tmode == SecondaryNode.MIRROR_MODE:
-        Server_is_mirror = True
-    logger.info("Joined cluster" + ((" as '" + tmode + "' timer") if tmode else ""))
     Events.trigger(Evt.CLUSTER_JOIN, {
                 'message': __('Joined cluster')
                 })
@@ -819,7 +831,7 @@ def on_cluster_event_trigger(data):
     evtArgs = json.loads(data['evt_args']) if 'evt_args' in data else None
 
     # set mirror timer state
-    if Server_is_mirror:
+    if Server_secondary_mode == SecondaryNode.MIRROR_MODE:
         if evtName == Evt.RACE_STAGE:
             RACE.race_status = RHRace.RaceStatus.STAGING
             RACE.results = None
@@ -2554,8 +2566,6 @@ def build_atomic_result_caches(params):
 @catchLogExceptionsWrapper
 def on_discard_laps(**kwargs):
     '''Clear the current laps without saving.'''
-    if CLUSTER:
-        CLUSTER.emitToSplits('discard_laps')
     clear_laps()
     RACE.race_status = RHRace.RaceStatus.READY # Flag status as ready to start next race
     INTERFACE.set_race_status(RHRace.RaceStatus.READY)
@@ -2571,6 +2581,8 @@ def on_discard_laps(**kwargs):
     else:
         # discarding does not follow a save action
         Events.trigger(Evt.LAPS_DISCARD)
+        if CLUSTER:
+            CLUSTER.emitToSplits('discard_laps')
 
     Events.trigger(Evt.LAPS_CLEAR)
 
