@@ -78,7 +78,7 @@ void setup()
         }
     }
 
-    rssiRxs.start(usclock.millis(), usclock.tickMicros());
+    rssiRxs.start(usclock.millis(), usclock);
 }
 
 static utime_t previousTick = 0;
@@ -92,7 +92,7 @@ void loop()
     if ((us - previousTick) > 1000)  // limit to once per millisecond
     {
         const mtime_t ms = usclock.millis();
-        const bool crossingFlag = rssiRxs.readRssi(ms, us);
+        const bool crossingFlag = rssiRxs.readRssi(ms, usclock);
         previousTick = us;
 
         // update settings and status LED

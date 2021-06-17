@@ -12,7 +12,7 @@ unittest(freqNotSet) {
   History& history = rssiNode.getHistory();
 
   rssiNode.active = false;
-  rssiRxs.start(millis(), micros());
+  rssiRxs.start(millis(), usclock);
 
   readRssi(nano, 43);
   assertFalse(rssiNode.isStateValid());

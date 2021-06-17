@@ -26,7 +26,7 @@ void sendSignal(GodmodeState* nano, RssiNode& rssiNode, int rssi) {
 void readRssi(GodmodeState* nano, int rssi) {
     nano->analogPin[0] = rssi<<1;
     for(int t=0; t<N_2; t++) {
-      rssiRxs.readRssi(millis(), micros());
+      rssiRxs.readRssi(millis(), usclock);
       milliTick(nano);
     }
 }

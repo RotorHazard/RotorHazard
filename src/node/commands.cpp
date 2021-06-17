@@ -42,73 +42,95 @@ uint8_t Message::getPayloadSize()
 // Generic IO write command handler
 void Message::handleWriteCommand(bool serialFlag)
 {
-    uint8_t u8val;
-    uint16_t u16val;
-    rssi_t rssiVal;
-
     buffer.flipForRead();
     bool activityFlag = true;
-
-    RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-    Settings& settings = rssiNode.getSettings();
 
     switch (command)
     {
         case WRITE_FREQUENCY:
-            u16val = buffer.read16();
-            if (u16val >= MIN_FREQ && u16val <= MAX_FREQ)
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-                if (u16val != settings.vtxFreq)
+                freq_t freq = buffer.read16();
+                if (freq >= MIN_FREQ && freq <= MAX_FREQ)
                 {
-                    settings.vtxFreq = u16val;
-                    rssiNode.cmdPendingOps |= FREQ_CHANGED;
+                    RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                    Settings& settings = rssiNode.getSettings();
+                    if (freq != settings.vtxFreq)
+                    {
+                        settings.vtxFreq = freq;
+                        rssiNode.cmdPendingOps |= FREQ_CHANGED;
+                    }
+                    rssiNode.cmdPendingOps |= FREQ_SET;
                 }
-                rssiNode.cmdPendingOps |= FREQ_SET;
             }
             break;
 
         case WRITE_MODE:
-            u8val = buffer.read8();
-            setMode(rssiNode, (Mode)u8val);
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                uint8_t mode = buffer.read8();
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                setMode(rssiNode, (Mode)mode);
+            }
             break;
 
         case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
-            rssiVal = ioBufferReadRssi(buffer);
-            if (rssiVal != settings.enterAtLevel)
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-                settings.enterAtLevel = rssiVal;
-                rssiNode.cmdPendingOps |= ENTERAT_CHANGED;
+                rssi_t rssiVal = ioBufferReadRssi(buffer);
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                Settings& settings = rssiNode.getSettings();
+                if (rssiVal != settings.enterAtLevel)
+                {
+                    settings.enterAtLevel = rssiVal;
+                    rssiNode.cmdPendingOps |= ENTERAT_CHANGED;
+                }
             }
             break;
 
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-            rssiVal = ioBufferReadRssi(buffer);
-            if (rssiVal != settings.exitAtLevel)
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-                settings.exitAtLevel = rssiVal;
-                rssiNode.cmdPendingOps |= EXITAT_CHANGED;
+                rssi_t rssiVal = ioBufferReadRssi(buffer);
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                Settings& settings = rssiNode.getSettings();
+                if (rssiVal != settings.exitAtLevel)
+                {
+                    settings.exitAtLevel = rssiVal;
+                    rssiNode.cmdPendingOps |= EXITAT_CHANGED;
+                }
             }
             break;
 
         case WRITE_CURNODE_INDEX:  // index of current node for this processor
-            u8val = buffer.read8();
-            if (u8val < rssiRxs.getCount()) {
-              cmdRssiNodeIndex = u8val;
+            {
+                uint8_t idx = buffer.read8();
+                if (idx < rssiRxs.getCount()) {
+                    cmdRssiNodeIndex = idx;
+                }
             }
             break;
 
         case SEND_STATUS_MESSAGE:  // status message sent from server to node
-            u16val = buffer.read16();  // upper byte is message type, lower byte is data
-            handleStatusMessage((uint8_t)(u16val >> 8), (uint8_t)(u16val & 0x00FF));
+            {
+                uint16_t msg = buffer.read16();  // upper byte is message type, lower byte is data
+                handleStatusMessage((uint8_t)(msg >> 8), (uint8_t)(msg & 0x00FF));
+            }
             break;
 
         case FORCE_END_CROSSING:  // kill current crossing flag regardless of RSSI value
-            rssiNode.endCrossing();
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                rssiNode.endCrossing();
+            }
             break;
 
         case RESET_PAIRED_NODE:  // reset paired node for ISP
-            u8val = buffer.read8();
-            hardware.resetPairedNode(u8val);
+            {
+                uint8_t pinState = buffer.read8();
+                hardware.resetPairedNode(pinState);
+            }
             break;
 
         case JUMP_TO_BOOTLOADER:  // jump to bootloader for flash update
@@ -124,8 +146,9 @@ void Message::handleWriteCommand(bool serialFlag)
     if (activityFlag)
     {
         cmdStatusFlags |= COMM_ACTIVITY;
-        if (serialFlag)
+        if (serialFlag) {
             cmdStatusFlags |= SERIAL_CMD_MSG;
+        }
     }
 
     command = 0;  // Clear previous command
@@ -173,10 +196,6 @@ void Message::handleReadCommand(bool serialFlag)
     buffer.flipForWrite();
     bool activityFlag = true;
 
-    RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-    Settings& settings = rssiNode.getSettings();
-    State& state = rssiNode.getState();
-
     switch (command)
     {
         case READ_ADDRESS:
@@ -184,37 +203,75 @@ void Message::handleReadCommand(bool serialFlag)
             break;
 
         case READ_FREQUENCY:
-            buffer.write16(settings.vtxFreq);
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                Settings& settings = rssiNode.getSettings();
+                buffer.write16(settings.vtxFreq);
+            } else {
+                buffer.write16(0xFFFF);
+            }
             break;
 
         case READ_MODE:
-            buffer.write8(settings.mode);
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                Settings& settings = rssiNode.getSettings();
+                buffer.write8(settings.mode);
+            } else {
+                buffer.write8(0xFF);
+            }
             break;
 
         case READ_LAP_STATS:
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-            mtime_t timeNowVal = usclock.millis();
-            handleReadLapPassStats(rssiNode, timeNowVal);
-            handleReadLapExtremums(rssiNode, timeNowVal);
-            cmdStatusFlags |= POLLING;
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                mtime_t timeNowVal = usclock.millis();
+                handleReadLapPassStats(rssiNode, timeNowVal);
+                handleReadLapExtremums(rssiNode, timeNowVal);
+                cmdStatusFlags |= POLLING;
             }
             break;
 
         case READ_LAP_PASS_STATS:
-            handleReadLapPassStats(rssiNode, usclock.millis());
-            cmdStatusFlags |= POLLING;
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                handleReadLapPassStats(rssiNode, usclock.millis());
+                cmdStatusFlags |= POLLING;
+            }
             break;
 
         case READ_LAP_EXTREMUMS:
-            handleReadLapExtremums(rssiNode, usclock.millis());
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                handleReadLapExtremums(rssiNode, usclock.millis());
+            }
             break;
 
         case READ_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
-            ioBufferWriteRssi(buffer, settings.enterAtLevel);
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                Settings& settings = rssiNode.getSettings();
+                ioBufferWriteRssi(buffer, settings.enterAtLevel);
+            } else {
+                ioBufferWriteRssi(buffer, MAX_RSSI);
+            }
             break;
 
         case READ_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
-            ioBufferWriteRssi(buffer, settings.exitAtLevel);
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                Settings& settings = rssiNode.getSettings();
+                ioBufferWriteRssi(buffer, settings.exitAtLevel);
+            } else {
+                ioBufferWriteRssi(buffer, MAX_RSSI);
+            }
             break;
 
         case READ_REVISION_CODE:  // reply with NODE_API_LEVEL and verification value
@@ -222,21 +279,43 @@ void Message::handleReadCommand(bool serialFlag)
             break;
 
         case READ_NODE_RSSI_PEAK:
-            ioBufferWriteRssi(buffer, state.nodeRssiPeak);
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                State& state = rssiNode.getState();
+                ioBufferWriteRssi(buffer, state.nodeRssiPeak);
+            } else {
+                ioBufferWriteRssi(buffer, 0);
+            }
             break;
 
         case READ_NODE_RSSI_NADIR:
-            ioBufferWriteRssi(buffer, state.nodeRssiNadir);
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                State& state = rssiNode.getState();
+                ioBufferWriteRssi(buffer, state.nodeRssiNadir);
+            } else {
+                ioBufferWriteRssi(buffer, MAX_RSSI);
+            }
             break;
 
         case READ_NODE_RSSI_HISTORY:
-            handleReadRssiHistory(rssiNode);
-            cmdStatusFlags |= POLLING;
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                handleReadRssiHistory(rssiNode);
+                cmdStatusFlags |= POLLING;
+            }
             break;
 
         case READ_NODE_SCAN_HISTORY:
-            handleReadScanHistory(rssiNode);
-            cmdStatusFlags |= POLLING;
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
+                handleReadScanHistory(rssiNode);
+                cmdStatusFlags |= POLLING;
+            }
             break;
 
         case READ_TIME_MILLIS:
@@ -252,15 +331,25 @@ void Message::handleReadCommand(bool serialFlag)
             break;
 
         case READ_CURNODE_INDEX:
-            buffer.write8(cmdRssiNodeIndex);
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                buffer.write8(cmdRssiNodeIndex);
+            } else {
+                buffer.write8(0xFF);
+            }
             break;
 
         case READ_NODE_SLOTIDX:
-            buffer.write8(rssiRxs.getSlotIndex(cmdRssiNodeIndex));
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                buffer.write8(rssiRxs.getSlotIndex(cmdRssiNodeIndex));
+            } else {
+                buffer.write8(0xFF);
+            }
             break;
 
         case READ_FW_VERSION:
-            buffer.writeText("B1.1");
+            buffer.writeText("B1.2");
             break;
 
         case READ_FW_BUILDDATE:

@@ -11,8 +11,8 @@
         rssirx.getSettings(i); \
         assertEqual(i, rssirx.getSlotIndex(i)); \
     } \
-    rssirx.start(0,0); \
-    assertFalse(rssirx.readRssi(0, 0)); \
+    rssirx.start(0, usclock); \
+    assertFalse(rssirx.readRssi(0, usclock)); \
 }
 
 unittest(single_rx)

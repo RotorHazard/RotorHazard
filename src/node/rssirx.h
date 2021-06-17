@@ -22,8 +22,8 @@ public:
     virtual Settings& getSettings(uint_fast8_t idx) = 0;
     virtual uint_fast8_t getSlotIndex(uint_fast8_t idx) const { return idx; }
     virtual uint_fast8_t getCount() const = 0;
-    virtual void start(mtime_t ms, utime_t us) = 0;
-    virtual bool readRssi(mtime_t ms, utime_t us) = 0;
+    virtual void start(mtime_t ms, MicroClock& uclock) = 0;
+    virtual bool readRssi(mtime_t ms, MicroClock& uclock) = 0;
 };
 
 
@@ -37,12 +37,12 @@ public:
     inline RxModule& getRxModule(uint_fast8_t idx) { return rx; }
     inline Settings& getSettings(uint_fast8_t idx) { return node.getSettings(); }
     inline uint_fast8_t getCount() const { return 1; }
-    inline void start(const mtime_t ms, const utime_t us) {
-        node.start(ms, us);
+    inline void start(const mtime_t ms, MicroClock& uclock) {
+        node.start(ms, uclock.tickMicros());
     }
-    inline bool readRssi(const mtime_t ms, const utime_t us) {
+    inline bool readRssi(const mtime_t ms, MicroClock& uclock) {
         bool crossing = node.active && node.process(rx.readRssi(), ms);
-        node.getState().updateLoopTime(us);
+        node.getState().updateLoopTime(uclock.tickMicros());
         return crossing;
     }
 };
@@ -61,13 +61,13 @@ public:
     inline RxModule& getRxModule(uint_fast8_t idx) { return rx; }
     inline Settings& getSettings(uint_fast8_t idx) { return nodes[idx].getSettings(); }
     inline uint_fast8_t getCount() const { return nodeCount; }
-    inline void start(const mtime_t ms, const utime_t us) {
+    inline void start(const mtime_t ms, MicroClock& uclock) {
         // preserve order on start
         for (uint_fast8_t i=0; i<nodeCount; i++) {
-            nodes[i].start(ms, us);
+            nodes[i].start(ms, uclock.tickMicros());
         }
     }
-    inline bool readRssi(const mtime_t ms, const utime_t us) {
+    inline bool readRssi(const mtime_t ms, MicroClock& uclock) {
         if (nodeCount > 0) {
             uint_fast8_t idx;
             if (nodeCount > 1) {
@@ -82,7 +82,7 @@ public:
             }
             RssiNode& node = nodes[idx];
             bool crossing = node.active && node.process(rx.readRssi(), ms);
-            node.getState().updateLoopTime(us);
+            node.getState().updateLoopTime(uclock.tickMicros());
             return crossing;
         } else {
             return false;
@@ -110,7 +110,7 @@ public:
     inline Settings& getSettings(uint_fast8_t idx) { return nodes[nodeToSlot[idx]].getSettings(); }
     inline uint_fast8_t getSlotIndex(uint_fast8_t idx) { return nodeToSlot[idx]; }
     inline uint_fast8_t getCount() const { return nodeCount; }
-    inline void start(const mtime_t ms, const utime_t us) {
+    inline void start(const mtime_t ms, MicroClock& uclock) {
         uint_fast8_t sIdx=0;
         // preserve ordering
         for (uint_fast8_t nIdx=0; nIdx<N; nIdx++) {
@@ -123,11 +123,10 @@ public:
 
         // preserve order on start
         for (uint_fast8_t i=0; i<nodeCount; i++) {
-            // use latest micros() value
-            getRssiNode(i).start(ms, usclock.tickMicros());
+            getRssiNode(i).start(ms, uclock.tickMicros());
         }
     }
-    inline bool readRssi(const mtime_t ms, const utime_t us) {
+    inline bool readRssi(const mtime_t ms, MicroClock& uclock) {
         bool anyCrossing = false;
         // preserve order on read
         for (uint_fast8_t i=0; i<getCount(); i++) {
@@ -136,8 +135,7 @@ public:
             if (nodeCrossing) {
                 anyCrossing = true;
             }
-            // use latest micros() value
-            node.getState().updateLoopTime(usclock.tickMicros());
+            node.getState().updateLoopTime(uclock.tickMicros());
         }
         return anyCrossing;
     }
