@@ -2,12 +2,18 @@ import functools
 import requests
 import re as regex
 import logging
+from .socketio import SOCKET_IO
+from flask import current_app
+import json
+from .RHUtils import FREQS
 
 logger = logging.getLogger(__name__)
 
+TIMEOUT = 5
+
+
 @functools.lru_cache(maxsize=128)
 def get_pilot_data(url):
-    TIMEOUT = 0.7
     web_data = {}
     try:
         if url.startswith('https://league.ifpv.co.uk/pilots/'):
@@ -36,3 +42,78 @@ def get_pilot_data(url):
     except BaseException as err:
         logger.debug("Error connecting to '{}': {}".format(url, err))
     return web_data
+
+
+IFPV_BANDS = {
+    'rb': 'R',
+    'fs': 'F'
+}
+
+
+def convert_ifpv_freq(ifpv_bc):
+    groups = regex.search("([a-z]+)([0-9]+)", ifpv_bc)
+    b = IFPV_BANDS[groups.group(1)]
+    c = int(groups.group(2))
+    f = FREQS[b+str(c)]
+    return b, c, f
+
+
+@SOCKET_IO.on('sync_event')
+def on_sync_event():
+    rhdata = current_app.rhserver['RHData']
+    event_url = rhdata.get_option('eventURL', '')
+    if not event_url:
+        return
+
+    resp = requests.get(event_url, timeout=TIMEOUT)
+    event_data = resp.json()
+    event_name = event_data['event']['name']
+    freqs = json.loads(event_data['event']['frequencies'])
+    rhfreqs = [convert_ifpv_freq(f) for f in freqs]
+
+    profiles_by_name = {}
+    for rhprofile in rhdata.get_profiles():
+        profiles_by_name[rhprofile.name] = rhprofile
+    profile_data = {'profile_name': event_name,
+                    'frequencies': {'b': [b for b,_,_ in rhfreqs],
+                                    'c': [c for _,c,_ in rhfreqs],
+                                    'f': [f for _,_,f in rhfreqs]
+                                    }
+                    }
+    if event_name in profiles_by_name:
+        # update existing profile
+        rhprofile = profiles_by_name[event_name]
+        profile_data['profile_id'] = rhprofile.id
+        rhdata.alter_profile(profile_data)
+    else:
+        # add new profile
+        rhdata.add_profile(profile_data)
+
+    pilots_by_url = {}
+    for rhpilot in rhdata.get_pilots():
+        pilots_by_url[rhpilot.url] = rhpilot
+
+    heats = {}
+    for pilot in event_data['pilots']:
+        url = pilot['pilot_url']
+        heat = pilot['heat']-1
+        node = pilot['car']-1
+        if url not in pilots_by_url:
+            # add new pilot
+            rhdata.add_pilot({'url': url})
+
+        if heat not in heats:
+            heats[heat] = {}
+        heats[heat][node] = rhpilot.id
+        
+
+    rhheats = rhdata.get_heats()
+    for h in range(min(len(heats), len(rhheats))):
+        for node, pilot_id in heats[h].items():
+            rhdata.alter_heat({'heat': rhheats[h].id, 'node': node, 'pilot': pilot_id})
+    for h in range(len(rhheats), len(heats)):
+        rhdata.add_heat(initPilots=heats[h])
+
+    current_app.rhserver['on_set_profile']({'profile': rhprofile.id})
+    current_app.rhserver['emit_pilot_data']()
+    current_app.rhserver['emit_heat_data']()

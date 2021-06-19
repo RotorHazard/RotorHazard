@@ -832,6 +832,7 @@
 			}
 			freq.updateBlocks();
 			init_popup_generics();
+			$('button#sync_event').prop('disabled', false);
 		});
 
 		$(document).on("change", '.set_heat_note', function (event) {
@@ -1045,6 +1046,11 @@
 			$(race_class).prop('disabled', false);
 		});
 
+		$('button#sync_event').click(function (event) {
+			$(this).prop('disabled', true);
+			socket.emit('sync_event')
+		});
+
 		$('button#add_race_class').click(function (event) {
 			socket.emit('add_race_class');
 			return false;
@@ -1106,10 +1112,15 @@
 			});
 
 			$('.set_pilot_position').each(function(){
-				$(this).empty();
+				let selectbox = $(this);
+				selected = selectbox.val();
+				selectbox.empty();
 
 				for (var i in msg.pilots) {
-					$(this).append('<option value="'+ msg.pilots[i].pilot_id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>');
+					selectbox.append('<option value="'+ msg.pilots[i].pilot_id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>');
+				}
+				if (selected < msg.pilots.length) {
+					selectbox.val(selected);
 				}
 			});
 		});
@@ -2357,6 +2368,12 @@
 			</li>
 			<li>
 				<div class="label-block">
+					<label for="set_event_url">{{ __('Event URL') }}</label>
+				</div>
+				<input type="text" id="set_event_url" class="set-option" data-option="eventURL" value="{{ getOption('eventURL', '') }}">
+			</li>
+			<li>
+				<div class="label-block">
 					<label for="set_event_description">{{ __('Event Description') }}</label>
 				</div>
 				<textarea id="set_event_description" class="set-option" data-option="eventDescription" maxlength="256">{{ getOption('eventDescription') }}</textarea>
@@ -2367,6 +2384,7 @@
 			<p class="form-note">{{ __('Loading...') }}</p>
 		</div>
 		<div class="control-set">
+			<button id="sync_event">{{ __('Sync Event') }}</button>
 			<button id="add_race_class">+ {{ __('Add Class') }}</button>
 		</div>
 

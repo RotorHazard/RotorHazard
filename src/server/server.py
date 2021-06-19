@@ -165,6 +165,8 @@ Language = Language.Language(RHData) # initialize language
 __ = Language.__ # Shortcut to translation function
 RHData.late_init(PageCache, Language) # Give RHData additional references
 
+APP.rhserver = vars()
+
 TONES_NONE = 0
 TONES_ONE = 1
 TONES_ALL = 2
@@ -1306,9 +1308,9 @@ def on_delete_class(data):
 
 @SOCKET_IO.on('add_pilot')
 @catchLogExceptionsWrapper
-def on_add_pilot():
+def on_add_pilot(data={}):
     '''Adds the next available pilot id number in the database.'''
-    RHData.add_pilot()
+    RHData.add_pilot(data)
 
     emit_pilot_data()
 
@@ -1403,7 +1405,7 @@ def on_set_profile(data, emit_vals=True):
         else: #handle null data by copying in hardware values
             enter_at_levels = {}
             enter_at_levels["v"] = [node.enter_at_level for node in INTERFACE.nodes]
-            RHData.alter_profile({'enter_ats': enter_at_levels})
+            RHData.alter_profile({'profile_id': profile_val, 'enter_ats': enter_at_levels})
             enter_ats = enter_at_levels["v"]
 
         if profile.exit_ats:
@@ -1414,7 +1416,7 @@ def on_set_profile(data, emit_vals=True):
         else: #handle null data by copying in hardware values
             exit_at_levels = {}
             exit_at_levels["v"] = [node.exit_at_level for node in INTERFACE.nodes]
-            RHData.alter_profile({'exit_ats': exit_at_levels})
+            RHData.alter_profile({'profile_id': profile_val, 'exit_ats': exit_at_levels})
             exit_ats = exit_at_levels["v"]
 
         Events.trigger(Evt.PROFILE_SET, {
@@ -2993,7 +2995,8 @@ def emit_frequency_data(**params):
     profile_freqs = json.loads(getCurrentProfile().frequencies)
 
     fdata = []
-    for idx in range(min(RACE.num_nodes, len(profile_freqs["f"]))):
+    num_freqs = min(RACE.num_nodes, len(profile_freqs["f"]))
+    for idx in range(num_freqs):
         fdata.append({
                 'band': profile_freqs["b"][idx],
                 'channel': profile_freqs["c"][idx],
@@ -3010,7 +3013,7 @@ def emit_frequency_data(**params):
         SOCKET_IO.emit('frequency_data', emit_payload)
 
         # send changes to LiveTime
-        for n in range(RACE.num_nodes):
+        for n in range(num_freqs):
             # if session.get('LiveTime', False):
             SOCKET_IO.emit('frequency_set', {
                 'node': n,
@@ -3572,8 +3575,17 @@ def emit_class_data(**params):
 
 def emit_pilot_data(**params):
     '''Emits pilot data.'''
+    pilot_objs = RHData.get_pilots()
+
+    # prefetch web data
+    web_gs = {}
+    for pilot in pilot_objs:
+        if pilot.url:
+            g = gevent.spawn(web.get_pilot_data, pilot.url)
+            web_gs[pilot.id] = g
+
     pilots_list = []
-    for pilot in RHData.get_pilots():
+    for pilot in pilot_objs:
         opts_str = '' # create team-options string for each pilot, with current team selected
         for name in TEAM_NAMES_LIST:
             opts_str += '<option value="' + name + '"'
@@ -3585,6 +3597,8 @@ def emit_pilot_data(**params):
 
         pilot_data = {
             'pilot_id': pilot.id,
+            'name': pilot.name,
+            'callsign': pilot.callsign,
             'url': pilot.url if pilot.url else '',
             'team': pilot.team,
             'phonetic': pilot.phonetic,
@@ -3593,13 +3607,14 @@ def emit_pilot_data(**params):
         }
 
         if pilot.url:
-            pilot_web_data = web.get_pilot_data(pilot.url)
+            gevent.wait([web_gs[pilot.id]])
+            pilot_web_data = web_gs[pilot.id].value
             pilot_data.update(pilot_web_data)
 
         # local overrides
-        if pilot.name:
+        if not pilot.name.startswith('~'):
             pilot_data['name'] = pilot.name
-        if pilot.callsign:
+        if not pilot.callsign.startswith('~'):
             pilot_data['callsign'] = pilot.callsign
 
         if led_manager.isEnabled():

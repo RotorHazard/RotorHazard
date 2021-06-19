@@ -66,6 +66,22 @@ class ServerTest(unittest.TestCase):
         self.client.emit('add_pilot')
         resp = self.get_response('pilot_data')
         self.assertEqual(len(resp['pilots']), num_pilots+1)
+        last_pilot = resp['pilots'][-1]
+        self.assertGreater(len(last_pilot['name']), 0)
+        self.assertGreater(len(last_pilot['callsign']), 0)
+
+    def test_add_pilot_init(self):
+        self.client.emit('load_data', {'load_types': ['pilot_data']})
+        resp = self.get_response('pilot_data')
+        num_pilots = len(resp['pilots'])
+        self.client.emit('add_pilot', {'name': 'foobar', 'callsign': 'Test new', 'team': 'Team T'})
+        resp = self.get_response('pilot_data')
+        self.assertEqual(len(resp['pilots']), num_pilots+1)
+        pilots_by_id = sorted(resp['pilots'], key=lambda p: p['pilot_id'])
+        last_pilot = pilots_by_id[-1]
+        self.assertEqual(last_pilot['name'], 'foobar')
+        self.assertEqual(last_pilot['callsign'], 'Test new')
+        self.assertEqual(last_pilot['team'], 'Team T')
 
     def test_alter_pilot(self):
         for i in range(1, len(server.INTERFACE.nodes)):

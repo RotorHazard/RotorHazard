@@ -497,33 +497,24 @@ class RHData():
     def get_pilots(self):
         return self._Database.Pilot.query.all()
 
-    def add_pilot(self, init=None):
-        color = RHUtils.hslToHex(False, 100, 50)
+    def add_pilot(self, init={}):
+        default_color = RHUtils.hslToHex(False, 100, 50)
 
         new_pilot = self._Database.Pilot(
-            name='',
-            callsign='',
-            team=RHUtils.DEF_TEAM_NAME,
-            phonetic='',
-            color=color)
+            name=init['name'] if 'name' in init else '',
+            callsign=init['callsign'] if 'callsign' in init else '',
+            team=init['team'] if 'team' in init else RHUtils.DEF_TEAM_NAME,
+            phonetic=init['phonetic'] if 'phonetic' in init else '',
+            color=init['color'] if init and 'color' in init else default_color,
+            url=init['url'] if init and 'url' in init else None)
 
-        if init:
-            if 'name' in init:
-                new_pilot.name = init['name']
-            if 'callsign' in init:
-                new_pilot.callsign = init['callsign']
-            if 'team' in init:
-                new_pilot.team = init['team']
-            if 'phonetic' in init:
-                new_pilot.phonetic = init['phonetic']
-            if 'color' in init:
-                new_pilot.color = init['color']
-                
         self._Database.DB.session.add(new_pilot)
         self._Database.DB.session.flush()
 
-        new_pilot.name=self.__('~Pilot %d Name') % (new_pilot.id)
-        new_pilot.callsign=self.__('~Callsign %d') % (new_pilot.id)
+        if not new_pilot.name:
+            new_pilot.name=self.__('~Pilot %d Name') % (new_pilot.id)
+        if not new_pilot.callsign:
+            new_pilot.callsign=self.__('~Callsign %d') % (new_pilot.id)
 
         self.commit()
 
@@ -636,18 +627,17 @@ class RHData():
     def get_first_heat(self):
         return self._Database.Heat.query.first()
 
-    def add_heat(self, init=None, initPilots=None):
+    def add_heat(self, init={}, initPilots={}):
         # Add new heat
         new_heat = self._Database.Heat(
             class_id=RHUtils.CLASS_ID_NONE,
             cacheStatus=CacheStatus.INVALID
             )
 
-        if init:
-            if 'class_id' in init:
-                new_heat.class_id = init['class_id']
-            if 'note' in init:
-                new_heat.note = init['note']
+        if 'class_id' in init:
+            new_heat.class_id = init['class_id']
+        if 'note' in init:
+            new_heat.note = init['note']
 
         self._Database.DB.session.add(new_heat)
         self._Database.DB.session.flush()
@@ -661,7 +651,7 @@ class RHData():
                 pilot_id=RHUtils.PILOT_ID_NONE
             )
 
-            if initPilots and node_index in initPilots:
+            if node_index in initPilots:
                 new_heatNode.pilot_id = initPilots[node_index]
 
             self._Database.DB.session.add(new_heatNode)
@@ -1074,26 +1064,17 @@ class RHData():
     def get_first_profile(self):
         return self._Database.Profiles.query.first()
 
-    def add_profile(self, init=None):
+    def add_profile(self, init={}):
         new_profile = self._Database.Profiles(
-            name='',
-            frequencies = '',
-            enter_ats = '',
-            exit_ats = ''
+            name = init['profile_name'] if 'profile_name' in init else '',
+            frequencies = json.dumps(init['frequencies']) if 'frequencies' in init else '',
+            enter_ats = json.dumps(init['enter_ats']) if 'enter_ats' in init else '',
+            exit_ats = json.dumps(init['exit_ats']) if 'exit_ats' in init else ''
             )
-
-        if init:
-            if 'name' in init:
-                new_profile.name = init['name']
-            if 'frequencies' in init:
-                new_profile.frequencies = init['frequencies']
-            if 'enter_ats' in init:
-                new_profile.enter_ats = init['enter_ats']
-            if 'exit_ats' in init:
-                new_profile.exit_ats = init['exit_ats']
 
         self._Database.DB.session.add(new_profile)
         self.commit()
+        return new_profile
 
     def duplicate_profile(self, source_profile_id):
         source_profile = self.get_profile(source_profile_id)
@@ -1174,10 +1155,10 @@ class RHData():
         template["v"] = [None for _i in range(self._RACE.num_nodes)]
 
         self.add_profile({
-            'name': self.__("Default"),
-            'frequencies': json.dumps(new_freqs),
-            'enter_ats': json.dumps(template),
-            'exit_ats': json.dumps(template)
+            'profile_name': self.__("Default"),
+            'frequencies': new_freqs,
+            'enter_ats': template,
+            'exit_ats': template
             })
 
         self.set_option("currentProfile", self.get_first_profile().id)
