@@ -50,7 +50,8 @@ from collections import OrderedDict
 from six import unichr, string_types
 
 from flask import Flask, send_file, request, Response, session, templating, redirect
-from flask_socketio import SocketIO, emit
+from flask_socketio import emit
+from .socketio import SOCKET_IO
 
 from . import Config, Database, Results, Language, \
     RHData, RHRace, RHUtils, PageCache, RHGPIO, \
@@ -134,7 +135,9 @@ Database.DB.init_app(APP)
 Database.DB.app = APP
 
 # start SocketIO service
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=rhconfig.GENERAL['CORS_ALLOWED_HOSTS'])
+SOCKET_IO.server_options['async_mode'] = 'gevent'
+SOCKET_IO.server_options['cors_allowed_origins'] = rhconfig.GENERAL['CORS_ALLOWED_HOSTS']
+SOCKET_IO.init_app(APP)
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.
@@ -2990,7 +2993,7 @@ def emit_frequency_data(**params):
     profile_freqs = json.loads(getCurrentProfile().frequencies)
 
     fdata = []
-    for idx in range(len(profile_freqs["f"])):
+    for idx in range(min(RACE.num_nodes, len(profile_freqs["f"]))):
         fdata.append({
                 'band': profile_freqs["b"][idx],
                 'channel': profile_freqs["c"][idx],
