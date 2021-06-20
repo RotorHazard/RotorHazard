@@ -231,9 +231,18 @@ class Node(CommandsWithRetry):
 
         self.history_values = []
         self.history_times = []
+        self.history_count = 0
+        self.empty_history_count = 0
 
         self.scan_enabled = False
         self.scan_data = {}
+
+    def reset(self):
+        self.history_values = [] # clear race history
+        self.history_times = []
+        self.history_count = 0
+        self.empty_history_count = 0
+        self.under_min_lap_count = 0
 
     def is_valid_rssi(self, value):
         return value > 0 and value < self.manager.max_rssi_value

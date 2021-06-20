@@ -119,9 +119,13 @@ class BaseHardwareInterface:
                     if not len(node.history_times): #prevent while from destroying itself
                         break
 
+        # get and process history data (except when race is over)
         if pn_history and self.race_status != BaseHardwareInterface.RACE_STATUS_DONE:
-            # get and process history data (except when race is over)
-            pn_history.addTo(readtime, node.history_values, node.history_times)
+            if not pn_history.isEmpty():
+                pn_history.addTo(readtime, node.history_values, node.history_times)
+                node.history_count += 1
+            else:
+                node.empty_history_count += 1
 
     def process_crossings(self, cross_list):
         '''
@@ -166,6 +170,12 @@ class BaseHardwareInterface:
 
     def set_race_status(self, race_status):
         self.race_status = race_status
+        if race_status == BaseHardwareInterface.RACE_STATUS_DONE:
+            msg = ['RSSI history buffering utilisation:']
+            for node in self.nodes:
+                total_count = node.history_count + node.empty_history_count
+                msg.append("Node {} {:.2%}".format(node, node.history_count/total_count if total_count > 0 else 0))
+            logger.debug('\n'.join(msg))
 
     def set_enter_at_level(self, node_index, level):
         node = self.nodes[node_index]
@@ -300,6 +310,10 @@ class PeakNadirHistory:
         self.nadirRssi = 0
         self.nadirFirstTime = 0
         self.nadirLastTime = 0
+
+    def isEmpty(self):
+        return self.peakRssi == 0 and self.peakFirstTime == 0 and self.peakLastTime == 0 \
+            and self.nadirRssi == 0 and self.nadirFirstTime == 0 and self.nadirLastTime == 0
 
     def addTo(self, readtime, history_values, history_times):
         if self.peakRssi > 0:

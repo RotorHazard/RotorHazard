@@ -2241,9 +2241,7 @@ def race_start_thread(start_token):
         RACE.start_time = datetime.now() # record standard-formatted time
 
         for node in INTERFACE.nodes:
-            node.history_values = [] # clear race history
-            node.history_times = []
-            node.under_min_lap_count = 0
+            node.reset()
             # clear any lingering crossing (if rssi>enterAt then first crossing starts now)
             if node.crossing_flag and node.frequency > 0 and (
                 getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or node.current_pilot_id != RHUtils.PILOT_ID_NONE):

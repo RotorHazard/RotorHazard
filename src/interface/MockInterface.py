@@ -16,12 +16,12 @@ MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 
 
 class MockNodeManager(NodeManager):
-    def __init__(self):
+    def __init__(self, index):
         super().__init__()
         self.api_level = 0
         self.api_valid_flag = True
         self.max_rssi_value = 255
-        self.addr = 'mock:'
+        self.addr = 'mock:'+str(index)
         self.firmware_version_str = 'Mock'
         self.firmware_proctype_str = 'Mock'
         self.firmware_timestamp_str = ''
@@ -34,7 +34,7 @@ class MockInterface(BaseHardwareInterface):
 
         self.data = []
         for index in range(int(os.environ.get('RH_NODES', '8'))):
-            manager = MockNodeManager()
+            manager = MockNodeManager(index)
             node = manager.add_node(index) # New node instance
             node.enter_at_level = 90
             node.exit_at_level = 80
