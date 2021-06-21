@@ -2567,11 +2567,11 @@ def on_discard_laps(**kwargs):
     clear_laps()
     RACE.race_status = RHRace.RaceStatus.READY # Flag status as ready to start next race
     INTERFACE.set_race_status(RHRace.RaceStatus.READY)
+    RACE.win_status = RHRace.WinStatus.NONE
+    RACE.status_message = ''
     emit_current_laps() # Race page, blank laps to the web client
     emit_current_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
-    RACE.win_status = RHRace.WinStatus.NONE
-    RACE.status_message = ''
 
     if 'saved' in kwargs and kwargs['saved'] == True:
         # discarding follows a save action
