@@ -2246,6 +2246,7 @@ def race_start_thread(start_token):
             pass
 
         # !!! RACE STARTS NOW !!!
+        RACE.start_time = datetime.now() # record standard-formatted time
 
         # do time-critical tasks
         Events.trigger(Evt.RACE_START, {
@@ -2254,7 +2255,6 @@ def race_start_thread(start_token):
             })
 
         # do secondary start tasks (small delay is acceptable)
-        RACE.start_time = datetime.now() # record standard-formatted time
 
         for node in INTERFACE.nodes:
             node.reset()

@@ -102,7 +102,7 @@ class LEDEventManager:
             else:
                 priority = 150 # event is normal (threaded/non-blocking)
 
-                self.Events.on(event, 'LED', self.activateEffect, args, priority)
+            self.Events.on(event, 'LED', self.activateEffect, args, priority)
         return True
 
     def clear(self):
