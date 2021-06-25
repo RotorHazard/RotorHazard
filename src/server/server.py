@@ -70,6 +70,7 @@ Events = EventManager()
 # LED imports
 from leds import Color, ColorVal, hexToColor
 from .led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, ColorPattern
+from .audio_event_manager import AudioEventManager
 
 import helpers as helper_pkg
 import sensors as sensor_pkg
@@ -103,7 +104,7 @@ CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill process
 
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument('--version', '-v', action='version', version=RELEASE_VERSION)
-arg_parser.add_argument('--config', '-c', action='store', metavar='file_name', default=Config.FILE_NAME, help='use this configuration file')
+arg_parser.add_argument('--config', '-c', action='store', metavar='file_name', help='use this configuration file')
 arg_parser.add_argument('--database', '-db', action='store', metavar='db_name', help='use this database (file name or URL)')
 arg_parser.add_argument('--autostart', '-a', action='store_true', help='Automatically start a race')
 arg_parser.add_argument('--ziplogs', action='store_true', help='zip log files')
@@ -111,7 +112,13 @@ arg_parser.add_argument('--jumptobl', action='store_true', help='jump to bootloa
 arg_parser.add_argument('--flashbpill', action='store', nargs='?', metavar='source', const=stm32loader.DEF_BINSRC_STR, help='flash an STM32 BluePill processor')
 
 args = arg_parser.parse_args(None if __name__ == '__main__' else [])
+
 config_file_name = args.config;
+if not config_file_name:
+    config_file_name = os.environ.get('RH_CONFIG')
+if not config_file_name:
+    config_file_name = Config.FILE_NAME
+
 rhconfig = Config()
 rhconfig.load(config_file_name)
 
@@ -178,10 +185,6 @@ __ = Language.__ # Shortcut to translation function
 RHData.late_init(PageCache, Language) # Give RHData additional references
 
 APP.rhserver = vars()
-
-TONES_NONE = 0
-TONES_ONE = 1
-TONES_ALL = 2
 
 ui_server_messages = {}
 def set_ui_message(mainclass, message, header=None, subclass=None):
@@ -2245,6 +2248,15 @@ def race_start_thread(start_token):
                             .format(node.index+1, node.current_rssi, node.enter_at_level))
 
     # do non-blocking delay before time-critical code
+    time_remaining = RACE.start_time_monotonic - monotonic()
+    countdown_time = int(time_remaining)
+    for secs_remaining in range(countdown_time, 0, -1):
+        gevent.sleep(time_remaining - secs_remaining) # sleep until next whole second
+        evt_data = {'time_remaining': secs_remaining,
+                    'countdown_time': countdown_time}
+        Events.trigger(Evt.RACE_START_COUNTDOWN, evt_data)
+        time_remaining = RACE.start_time_monotonic - monotonic()
+
     while (monotonic() < RACE.start_time_monotonic - 0.5):
         gevent.sleep(0.1)
 
@@ -5249,6 +5261,9 @@ vrx_controller = initVRxController()
 
 if vrx_controller:
     Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
+
+audio_manager = AudioEventManager(Events, RHData, RACE, rhconfig.AUDIO)
+audio_manager.install_default_effects()
 
 # data exporters
 export_manager = DataExportManager(RHData, PageCache, Language)

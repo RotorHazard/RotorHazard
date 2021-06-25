@@ -29,6 +29,7 @@ If Raspberry Pi OS with Desktop was installed, the interface options may be conf
 
 #### 2b. Configure interface options using a terminal window
 If the Pi OS Desktop is not available, the interface options may be configured using the following command:
+
 ```
 sudo raspi-config
 ```
@@ -40,19 +41,23 @@ sudo raspi-config
 
 ### 3. Apply Changes to '/boot/config.txt'
 Open a terminal window and enter:
+
 ```
 sudo nano /boot/config.txt
 ```
 Add the following lines to the end of the file:
+
 ```
 dtparam=i2c_baudrate=75000
 dtoverlay=miniuart-bt
 ```
 If the Raspberry Pi in use is a Pi 3 model or older (not a Pi 4) then also add this line:
+
 ```
 core_freq=250
 ```
 <a id="s32btconfig"></a>If your hardware is the S32_BPill setup with [shutdown button](Shutdown%20Button.md) and AUX LED then add these lines:
+
 ```
 dtoverlay=act-led,gpio=24
 dtparam=act_led_trigger=heartbeat
@@ -71,6 +76,7 @@ For the S32_BPill setup, the "dtoverlay=act-led,gpio=24" and "dtparam=act_led_tr
 
 ### 4. Perform System Update
 Using a terminal window, do a system update and upgrade (this can take a few minutes):
+
 ```
 sudo apt-get update && sudo apt-get upgrade
 ```
@@ -78,14 +84,17 @@ sudo apt-get update && sudo apt-get upgrade
 <a id="python"></a>
 ### 5. Install Python
 Using a terminal window, install Python and the Python drivers for the GPIO:
+
 ```
 sudo apt install python-dev python3-dev libffi-dev python-smbus build-essential python-pip python3-pip git scons swig python-rpi.gpio python3-rpi.gpio
 ```
 Check the current default version of Python by entering the following command:
+
 ```
 python --version
 ```
 If the version reported is older than Python 3, enter the following commands to switch the default version to Python 3:
+
 ```
 sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
 sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 2
@@ -98,6 +107,7 @@ Install the RotorHazard server code under '/home/pi/' on the Raspberry Pi as fol
 Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code.
 
 In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands using a terminal window:
+
 ```
 cd ~
 wget https://codeload.github.com/RotorHazard/RotorHazard/zip/1.2.3 -O temp.zip
@@ -107,6 +117,7 @@ rm temp.zip
 ```
 
 Enter the commands below to install RotorHazard server dependencies (be patient, this may take a few minutes):
+
 ```
 cd ~/RotorHazard/src
 sudo python3 -m pip install -r requirements.txt
@@ -114,6 +125,7 @@ sudo python3 -m pip install -r requirements.txt
 
 ### 7. Reboot System
 After the above setup steps are performed, the system should be rebooted by entering the following using a terminal window:
+
 ```
 sudo reboot
 ```
@@ -145,6 +157,7 @@ The installation of a real-time clock module allows the RotorHazard timer to mai
 Support for WS2812b LED strips (and panels) is provided by the Python library '[rpi-ws281x](https://github.com/rpi-ws281x/rpi-ws281x-python)' (which is among the libraries installed via the `sudo pip install -r requirements.txt` command.
 
 The **LED_COUNT** value must be set in the `src/config.json` file. See the `src/config-dist.json` file for the default configuration of the 'LED' settings.  The following items may be set:
+
 ```
 LED_COUNT:  Number of LED pixels in strip (or panel)
 LED_ROWS:  Number of rows in a multiline LED display panel (LED_COUNT must be evenly divisible by this value; default 1)
@@ -163,20 +176,66 @@ If specified, the **LED_STRIP** value must be one of: 'RGB', 'RBG', 'GRB', 'GBR'
 Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be run as root. If the error message `Can't open /dev/mem: Permission denied` or `mmap() failed` appears on startup, you must run the server with `sudo` or connect LEDs to a different GPIO pin. If using a service file to start the server on boot, it may be run as root by leaving out the "User=pi" line.
 
 ### Java Support
+
 Java enables the calculating of IMD scores, which is helpful for selecting frequency sets with less interference between VTXs. To determine if Java is installed, run the following command:
+
 ```
 java -version
 ```
 If the response is "command not found" then Java needs to be installed.
 
 For the Raspberry Pi 3 or Pi 4, use the following command:
+
 ```
 sudo apt install default-jdk-headless
 ```
-
 For the Raspberry Pi Zero (or an older-model Pi), use this command:
+
 ```
 sudo apt install openjdk-8-jdk-headless
+```
+
+### Server Audio
+
+Install Bluetooth audio support:
+
+```
+sudo apt-get install bluealsa
+sudo usermod -G bluetooth -a pi
+```
+Example `~/.asoundrc` to use Bluetooth audio by default:
+
+```
+pcm.!default {
+	type plug
+	slave.pcm {
+		type bluealsa
+		device "11:44:55:DD:EE:FF"
+		profile "a2dp"
+	}
+}
+
+defaults.bluealsa {
+	device "00:00:00:00:00:00"
+	profile "a2dp"
+}
+```
+Install nanoTTS:
+
+```
+sudo apt-get install libasound2-dev
+git clone https://github.com/gmn/nanotts
+cd nanotts
+make
+sudo make install
+```
+Configure RotorHazard, `src/config.json`:
+
+```
+	"AUDIO": {
+		"PLAYER": ["aplay"],
+		"TTS": ["nanotts", "-p", "-i"]
+	}
 ```
 
 ----------------------------------------------------------------------------
@@ -187,6 +246,7 @@ The following instructions will start the web server on the raspberry pi, allowi
 
 ### Manual Start
 Open a terminal window and enter the following:
+
 ```
 cd ~/RotorHazard/src
 python3 -m server.server
@@ -197,10 +257,12 @@ The server may be stopped by hitting Ctrl-C
 To configure the system to automatically start the RotorHazard server when booting up:
 
 Create a service file:
+
 ```
 sudo nano /lib/systemd/system/rotorhazard.service
 ```
 with the following contents
+
 ```
 [Unit]
 Description=RotorHazard Server
@@ -220,11 +282,13 @@ Running LEDs from certain GPIO pins (such as GPIO18) requires the server to be r
 Save and exit (CTRL-X, Y, ENTER).
 
 Update permissions:
+
 ```
 sudo chmod 644 /lib/systemd/system/rotorhazard.service
 ```
 
 Enable the service:
+
 ```
 sudo systemctl daemon-reload
 sudo systemctl enable rotorhazard.service
@@ -232,20 +296,24 @@ sudo reboot
 ```
 ### Stopping the server service
 If the RotorHazard server was started as a service during the boot, it may be stopped with a command like this:
+
 ```
 sudo systemctl stop rotorhazard
 ```
 To disable the service (so it no longer runs when the system starts up), enter:
+
 ```
 sudo systemctl disable rotorhazard.service
 ```
 To query the status of the service:
+
 ```
 sudo systemctl status rotorhazard.service
 ```
 
 ### Shutting down the System
 A system shutdown should always be performed before unplugging the power, either by clicking on the 'Shutdown' button on the 'Settings' page, or by entering the following in a terminal:
+
 ```
 sudo shutdown now
 ```
@@ -256,11 +324,13 @@ sudo shutdown now
 ## Updating an existing installation
 
 Before updating, any currently-running RotorHazard server should be stopped. If installed as a service, it may be stopped with a command like:
+
 ```
 sudo systemctl stop rotorhazard
 ```
 
 To update an existing RotorHazard installation: Go to the [Latest Release page](https://github.com/RotorHazard/RotorHazard/releases/latest) for the project and note the version code. In the commands below, replace the two occurrences of "1.2.3" with the current version code, and enter the commands:
+
 ```
 cd ~
 wget https://codeload.github.com/RotorHazard/RotorHazard/zip/1.2.3 -O temp.zip
@@ -276,6 +346,7 @@ The previous installation ends up in the 'RotorHazard.old' directory, which may 
 For RotorHazard the minimum version of Python supported is 3.7. If your Python is older than this, you should upgrade using the steps in the "Install RotorHazard" section under "5. [Install Python](#python)."
 
 The RotorHazard server dependencies should also be updated (be patient, this command may take a few minutes):
+
 ```
 cd ~/RotorHazard/src
 sudo pip install --upgrade --no-cache-dir -r requirements.txt
@@ -328,6 +399,7 @@ To run the RotorHazard server on these systems:
 1. Enter: ```python3 -m server.server```
 
 1. If the server starts up properly, you should see various log messages, including one like this:
+
     ```
     Running http server at port 5000
     ```

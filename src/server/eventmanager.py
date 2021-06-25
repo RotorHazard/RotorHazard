@@ -145,6 +145,7 @@ class Evt:
     RACE_SCHEDULE = 'raceSchedule'
     RACE_SCHEDULE_CANCEL = 'raceScheduleCancel'
     RACE_STAGE = 'raceStage'
+    RACE_START_COUNTDOWN = 'raceStartCountdown'
     RACE_START = 'raceStart'
     RACE_FINISH = 'raceFinish'
     RACE_STOP = 'raceStop'

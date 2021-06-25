@@ -17,6 +17,7 @@ class Config:
         self.SOCKET_PORTS = []
         self.LOGGING = {}
         self.VRX_CONTROL = {}
+        self.AUDIO = {}
         self.CHORUS = {}
         self.apply_defaults()
 
@@ -70,6 +71,8 @@ class Config:
                 self.LOGGING.update(externalConfig['LOGGING'])
             if 'LED' in externalConfig:
                 self.LED.update(externalConfig['LED'])
+            if 'AUDIO' in externalConfig:
+                self.AUDIO.update(externalConfig['AUDIO'])
             if 'VRX_CONTROL' in externalConfig:
                 self.VRX_CONTROL.update(externalConfig['VRX_CONTROL'])
             if 'CHORUS' in externalConfig:

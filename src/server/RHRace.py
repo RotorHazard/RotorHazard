@@ -77,6 +77,12 @@ class StartBehavior():
     FIRST_LAP = 1
     STAGGERED = 2
 
+class StagingTones():
+    TONES_NONE = 0
+    TONES_ONE = 1
+    TONES_ALL = 2
+    TONES_3_2_1 = 3
+
 class WinCondition():
     NONE = 0
     MOST_PROGRESS = 1 # most laps in fastest time

@@ -23,6 +23,10 @@
 		"PANEL_ROTATE": 0,
 		"INVERTED_PANEL_ROWS": false
 	},
+	"AUDIO": {
+		"PLAYER": "",
+		"TTS": ""
+	},
 	"CHORUS": {
 		"HARDWARE_PORT": "",
 		"API_PORT": ""

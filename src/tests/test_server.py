@@ -3,11 +3,12 @@ import unittest
 import gevent
 from datetime import datetime
 
-os.environ['RH_INTERFACE'] = 'Mock'
+os.environ['RH_CONFIG'] = 'config-dist.json'
 TEST_DB = 'test-database.db'
 if os.path.isfile(TEST_DB):
     os.remove(TEST_DB)
 os.environ['RH_DATABASE'] = TEST_DB
+os.environ['RH_INTERFACE'] = 'Mock'
 
 from server import server, log
 from interface.Node import NodeManager

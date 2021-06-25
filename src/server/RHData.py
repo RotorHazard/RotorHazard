@@ -14,7 +14,7 @@ import shutil
 import json
 from . import RHUtils
 from .eventmanager import Evt
-from .RHRace import RaceStatus, WinCondition
+from .RHRace import RaceStatus, WinCondition, StagingTones
 from .Results import CacheStatus
 
 class RHData():
@@ -385,7 +385,7 @@ class RHData():
                         'race_time_sec': 120,
                         'start_delay_min': 2,
                         'start_delay_max': 5,
-                        'staging_tones': 2,
+                        'staging_tones': StagingTones.TONES_ALL,
                         'number_laps_win': 0,
                         'win_condition': WinCondition.MOST_LAPS,
                         'team_racing_mode': False,
@@ -1182,7 +1182,7 @@ class RHData():
             race_time_sec=0,
             start_delay_min=0,
             start_delay_max=0,
-            staging_tones=0,
+            staging_tones=StagingTones.TONES_NONE,
             number_laps_win=0,
             win_condition=0,
             team_racing_mode=False,
@@ -1353,7 +1353,7 @@ class RHData():
             'race_time_sec': 120,
             'start_delay_min': 2,
             'start_delay_max': 5,
-            'staging_tones': 1,
+            'staging_tones': StagingTones.TONES_ONE,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': False,
@@ -1365,7 +1365,7 @@ class RHData():
             'race_time_sec': 90,
             'start_delay_min': 2,
             'start_delay_max': 5,
-            'staging_tones': 2,
+            'staging_tones': StagingTones.TONES_ALL,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': False,
@@ -1377,7 +1377,7 @@ class RHData():
             'race_time_sec': 210,
             'start_delay_min': 2,
             'start_delay_max': 5,
-            'staging_tones': 2,
+            'staging_tones': StagingTones.TONES_ALL,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': False,
@@ -1389,7 +1389,7 @@ class RHData():
             'race_time_sec': 0,
             'start_delay_min': 2,
             'start_delay_max': 5,
-            'staging_tones': 2,
+            'staging_tones': StagingTones.TONES_ALL,
             'number_laps_win': 3,
             'win_condition': WinCondition.FIRST_TO_LAP_X,
             'team_racing_mode': False,
@@ -1401,7 +1401,7 @@ class RHData():
             'race_time_sec': 0,
             'start_delay_min': 0,
             'start_delay_max': 0,
-            'staging_tones': 0,
+            'staging_tones': StagingTones.TONES_NONE,
             'number_laps_win': 0,
             'win_condition': WinCondition.NONE,
             'team_racing_mode': False,
@@ -1413,7 +1413,7 @@ class RHData():
             'race_time_sec': 120,
             'start_delay_min': 2,
             'start_delay_max': 5,
-            'staging_tones': 1,
+            'staging_tones': StagingTones.TONES_ONE,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_LAP,
             'team_racing_mode': False,
@@ -1425,7 +1425,7 @@ class RHData():
             'race_time_sec': 120,
             'start_delay_min': 2,
             'start_delay_max': 5,
-            'staging_tones': 1,
+            'staging_tones': StagingTones.TONES_ONE,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_3_CONSECUTIVE,
             'team_racing_mode': False,
@@ -1437,7 +1437,7 @@ class RHData():
             'race_time_sec': 120,
             'start_delay_min': 2,
             'start_delay_max': 5,
-            'staging_tones': 1,
+            'staging_tones': StagingTones.TONES_ONE,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_LAPS,
             'team_racing_mode': False,
@@ -1449,7 +1449,7 @@ class RHData():
             'race_time_sec': 120,
             'start_delay_min': 2,
             'start_delay_max': 5,
-            'staging_tones': 2,
+            'staging_tones': StagingTones.TONES_ALL,
             'number_laps_win': 0,
             'win_condition': WinCondition.MOST_PROGRESS,
             'team_racing_mode': True,
@@ -1461,7 +1461,7 @@ class RHData():
             'race_time_sec': 120,
             'start_delay_min': 2,
             'start_delay_max': 5,
-            'staging_tones': 2,
+            'staging_tones': StagingTones.TONES_ALL,
             'number_laps_win': 7,
             'win_condition': WinCondition.FIRST_TO_LAP_X,
             'team_racing_mode': True,
@@ -1473,7 +1473,7 @@ class RHData():
             'race_time_sec': 120,
             'start_delay_min': 2,
             'start_delay_max': 5,
-            'staging_tones': 2,
+            'staging_tones': StagingTones.TONES_ALL,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_LAP,
             'team_racing_mode': True,
@@ -1485,7 +1485,7 @@ class RHData():
             'race_time_sec': 120,
             'start_delay_min': 2,
             'start_delay_max': 5,
-            'staging_tones': 2,
+            'staging_tones': StagingTones.TONES_ALL,
             'number_laps_win': 0,
             'win_condition': WinCondition.FASTEST_3_CONSECUTIVE,
             'team_racing_mode': True,
@@ -1908,4 +1908,3 @@ class RHData():
     def clear_results_event(self):
         self.set_option("eventResults_cacheStatus", CacheStatus.INVALID)
         return True
-
