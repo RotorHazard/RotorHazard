@@ -4061,8 +4061,10 @@ def heartbeat_thread_function():
 
     while True:
         try:
-            node_data = INTERFACE.get_heartbeat_json()
+            if CHORUS_API:
+                CHORUS_API.emit_rssi('*')
 
+            node_data = INTERFACE.get_heartbeat_json()
             SOCKET_IO.emit('heartbeat', node_data)
             heartbeat_thread_function.iter_tracker += 1
 
@@ -5261,7 +5263,7 @@ def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
     logger.info("Running http server at port " + str(port_val))
     gevent.spawn(clock_check_thread_function)  # start thread to monitor system clock
     if CHORUS_API:
-        gevent.spawn(CHORUS_API.chorus_api_thread_function)
+        chorus_thread = gevent.spawn(CHORUS_API.chorus_api_thread_function)
     init_interface_state(startup=True)
     Events.trigger(Evt.STARTUP, {
         'color': ColorVal.ORANGE,
@@ -5285,6 +5287,9 @@ def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
     rep_str = INTERFACE.get_intf_error_report_str(True)
     if rep_str:
         logger.log((logging.INFO if INTERFACE.get_intf_total_error_count() else logging.DEBUG), rep_str)
+    if CHORUS_API:
+        chorus_thread.kill(block=True, timeout=0.5)
+        chorus_thread = None
     stop_background_threads()
     INTERFACE.close()
     log.wait_for_queue_empty()

@@ -12,11 +12,14 @@ class ChorusTest(unittest.TestCase):
             self.buffer = []
 
         def write(self, raw_data):
-            msg = bytes.decode(raw_data)[:-1]
-            response = self.handler(msg)
-            self.buffer.append(response)
+            msgs = bytes.decode(raw_data)[:-1]
+            for msg in msgs.split('\n'):
+                response = self.handler(msg)
+                self.buffer.append(response)
 
         def read_until(self):
+            while not self.buffer:
+                gevent.sleep(0.1)
             data = self.buffer.pop(0)
             return data
 
@@ -56,6 +59,15 @@ class ChorusTest(unittest.TestCase):
         api.emit_pass_record(mock_intf.nodes[0], 1, 98)
         gevent.sleep(0)
         self.assertEqual(laps, 1)
+
+        intf.start()
+        mock_intf.nodes[0].current_rssi = 66
+        mock_intf.nodes[3].current_rssi = 67
+        api.emit_rssi('*')
+        gevent.sleep(0.5)
+        intf.stop()
+        self.assertEqual(intf.nodes[0].current_rssi, 66)
+        self.assertEqual(intf.nodes[3].current_rssi, 67)
 
 if __name__ == '__main__':
     unittest.main()

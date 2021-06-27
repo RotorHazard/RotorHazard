@@ -17,6 +17,9 @@ class ChorusAPI():
     def emit_pass_record(self, node, lap_number, lap_time_stamp):
         self.serial_io.write("S{0}L{1:02x}{2:08x}\n".format(node.index, lap_number, int(lap_time_stamp)).encode("UTF-8"))
 
+    def emit_rssi(self, node_addr):
+        self.serial_io.write(self._getRssiResponse(node_addr).encode("UTF-8"))
+
     def _getRssiResponse(self, node_addr):
         node_data = self.INTERFACE.get_heartbeat_json()
         response = ''

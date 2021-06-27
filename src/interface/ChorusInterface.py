@@ -96,12 +96,15 @@ class ChorusInterface(BaseHardwareInterface):
 
     def _process_message(self, data):
         if data[0] == 'S':
-            node_addr = data[1]
+            node_addr = int(data[1])
             cmd = data[2]
             if cmd == 'L':
                 _lap_id = int(data[3:5], 16)
                 lap_ts = int(data[5:13], 16)
-                gevent.spawn(self.pass_record_callback, int(node_addr), lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, 0)
+                gevent.spawn(self.pass_record_callback, node_addr, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, 0)
+            elif cmd == 'r':
+                node = self.nodes[node_addr]
+                node.current_rssi = int(data[3:7], 16)
 
     #
     # External functions for setting data
