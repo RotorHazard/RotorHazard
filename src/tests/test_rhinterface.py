@@ -4,12 +4,14 @@ import unittest
 from interface.RHInterface import RHInterface
 from server import Config
 import gevent
+import platform
 import subprocess
 
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
+@unittest.skipUnless(platform.system() == 'Linux', 'Test is only supported on Linux currently')
 class RHInterfaceTest(unittest.TestCase):
     def test_node(self):
         subprocess.run("./scripts/build_ci.sh 1", cwd='node', shell=True)

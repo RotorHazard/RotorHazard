@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 
 class Config:
     FILE_NAME = 'config.json'
+    DB_FILE_NAME = 'database.db'
 
     def __init__(self):
         self.GENERAL = {}
@@ -42,6 +43,7 @@ class Config:
 
         # other default configurations
         self.GENERAL['HTTP_PORT'] = 5000
+        self.GENERAL['DATABASE'] = ''
         self.GENERAL['SECRET_KEY'] = random.random()
         self.GENERAL['ADMIN_USERNAME'] = 'admin'
         self.GENERAL['ADMIN_PASSWORD'] = 'rotorhazard'

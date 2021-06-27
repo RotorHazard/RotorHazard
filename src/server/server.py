@@ -86,7 +86,6 @@ HEARTBEAT_DATA_RATE_FACTOR = 5
 
 ERROR_REPORT_INTERVAL_SECS = 600  # delay between comm-error reports to log
 
-DB_FILE_NAME = os.environ.get('RH_DATABASE', 'database.db')
 DB_BKP_DIR_NAME = 'db_bkp'
 IMDTABLER_JAR_NAME = 'static/IMDTabler.jar'
 NODE_FW_PATHNAME = "firmware/RH_S32_BPill_node.bin"
@@ -105,6 +104,7 @@ CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill process
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument('--version', '-v', action='version', version=RELEASE_VERSION)
 arg_parser.add_argument('--config', '-c', action='store', metavar='file_name', default=Config.FILE_NAME, help='use this configuration file')
+arg_parser.add_argument('--database', '-db', action='store', metavar='db_name', help='use this database (file name or URL)')
 arg_parser.add_argument('--ziplogs', action='store_true', help='zip log files')
 arg_parser.add_argument('--jumptobl', action='store_true', help='jump to bootloader')
 arg_parser.add_argument('--flashbpill', action='store', nargs='?', metavar='source', const=stm32loader.DEF_BINSRC_STR, help='flash an STM32 BluePill processor')
@@ -113,6 +113,17 @@ args = arg_parser.parse_args(None if __name__ == '__main__' else [])
 config_file_name = args.config;
 rhconfig = Config()
 rhconfig.load(config_file_name)
+
+DB_FILE_NAME = args.database
+if not DB_FILE_NAME and args.config:
+    DB_FILE_NAME = rhconfig.GENERAL['DATABASE']
+if not DB_FILE_NAME:
+    DB_FILE_NAME = os.environ.get('RH_DATABASE')
+if not DB_FILE_NAME:
+    DB_FILE_NAME = rhconfig.GENERAL['DATABASE']
+if not DB_FILE_NAME:
+    DB_FILE_NAME = Config.DB_FILE_NAME
+
 if args.ziplogs:
     log.create_log_files_zip(logger, config_file_name, DB_FILE_NAME)
     sys.exit(0)
@@ -129,7 +140,7 @@ logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 
 BASEDIR = os.getcwd()
-APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
+APP.config['SQLALCHEMY_DATABASE_URI'] = DB_FILE_NAME if '://' in DB_FILE_NAME else 'sqlite:///' + os.path.join(BASEDIR, DB_FILE_NAME)
 APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 Database.DB.init_app(APP)
 Database.DB.app = APP
