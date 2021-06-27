@@ -29,7 +29,7 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
 
 ## Improvements
 
-* Lap detection based on persistent homology.
+* Lap detection based on topological signal processing (persistent homology).
 * Multi-frequency node support on Arduino Nanos (track more than one frequency per node).
 * Frequency band scanner (UI and standalone tool).
 * Link pilots with their MultiGP or iFPV accounts.
