@@ -212,7 +212,7 @@ class ServerTest(unittest.TestCase):
             'scan': True,
         })
         # allow some scanning to happen
-        gevent.sleep(0.5)
+        gevent.sleep(1)
         resp = self.get_response('scan_data')
         num_freqs = len(resp['frequency'])
         self.assertGreater(num_freqs, 0)

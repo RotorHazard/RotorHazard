@@ -2,8 +2,12 @@ import unittest
 
 from sensors import Sensors, I2CSensor
 import sys
-import fake_rpi
-sys.modules['smbus'] = fake_rpi.smbus
+
+try:
+    from smbus2 import SMBus
+except:
+    import fake_rpi
+    sys.modules['smbus2'] = fake_rpi.smbus
 
 from helpers.i2c_helper import I2CBus
 import tests as tests_pkg
@@ -13,10 +17,8 @@ class SensorsTest(unittest.TestCase):
         self.i2c_bus = I2CBus(1)
         self.sensors = Sensors()
 
-
     def tearDown(self):
         pass
-
 
     def test_update(self):
         self.sensors.discover(tests_pkg)
@@ -26,7 +28,6 @@ class SensorsTest(unittest.TestCase):
         self.sensors.update_environmental_data()
         after = self.sensors[0].getReadings()
         self.assertEqual(after['counter']['value'], before['counter']['value']+1)
-
 
     def test_i2c_sensor(self):
         sensor = I2CSensor('i2c test', 8, self.i2c_bus)
