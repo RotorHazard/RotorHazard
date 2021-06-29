@@ -4,6 +4,7 @@ import os
 import logging
 from monotonic import monotonic # to capture read timing
 import gevent
+import bisect
 
 import interface as node_pkg
 from .Plugins import Plugins
@@ -506,11 +507,11 @@ class RHInterface(BaseHardwareInterface):
     def set_race_status(self, race_status):
         super().set_race_status(race_status)
         if race_status == BaseHardwareInterface.RACE_STATUS_DONE:
-            gevent.spawn(self.calibrate_nodes)
+            gevent.spawn(self.ai_calibrate_nodes)
 
-    def calibrate_nodes(self):
+    def ai_calibrate_nodes(self):
         for node in self.nodes:
-            if node.autotune and (node.rhfeature_flags&RHFEAT_PH) and node.first_cross_flag and node.history_values:
+            if node.ai_calibrate and (node.manager.rhfeature_flags&RHFEAT_PH) and node.first_cross_flag and node.history_values:
                 ccs = ph.calculatePeakPersistentHomology(node.history_values)
                 lo, hi = ph.findBreak(ccs)
                 diff = hi - lo
@@ -519,9 +520,35 @@ class RHInterface(BaseHardwareInterface):
                 enter_level = int((lo + diff/2 - node.enter_at_level)*learning_rate + node.enter_at_level)
                 # set exit a bit lower to register a pass sooner
                 exit_level = int((lo + diff/4 - node.exit_at_level)*learning_rate + node.exit_at_level)
-                logger.info('Calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
+                logger.info('AI calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
                 self.set_enter_at_level(node.index, enter_level)
                 self.set_exit_at_level(node.index, exit_level)
+
+    def calibrate_nodes(self, start_time, race_laps):
+        for i, node in enumerate(self.nodes):
+            if node.calibrate and (node.manager.rhfeature_flags&RHFEAT_PH) and node.history_values:
+                lap_ts = [start_time + lap['lap_time_stamp']/1000 for lap in race_laps[i] if not lap['deleted']]
+                if lap_ts:
+                    ccs = ph.calculatePeakPersistentHomology(node.history_values)
+                    ccs.sort(key=lambda cc: node.history_times[cc.birth[0]])
+                    birth_ts = [node.history_times[cc.birth[0]] for cc in ccs]
+                    pass_idxs = []
+                    for lap_timestamp in lap_ts:
+                        idx = bisect.bisect_left(birth_ts, lap_timestamp)
+                        if idx == 0 or birth_ts[idx] == lap_timestamp:
+                            pass_idxs.append(idx)
+                        elif ccs[idx].lifetime() > ccs[idx-1].lifetime():
+                            pass_idxs.append(idx)
+                        else:
+                            pass_idxs.append(idx-1)
+                    hi = min([ccs[j].lifetime() for j in pass_idxs])
+                    lo = max([cc.lifetime() for cc in ccs if cc.lifetime()<hi]+[0])
+                    diff = hi - lo
+                    enter_level = lo + diff//2
+                    exit_level = lo + diff//4
+                    logger.info('Calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
+                    self.set_enter_at_level(node.index, enter_level)
+                    self.set_exit_at_level(node.index, exit_level)
 
     #
     # Internal helper functions for setting single values

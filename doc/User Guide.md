@@ -57,7 +57,13 @@ Choose a preset or manually select frequencies for each node. Arbitrary frequenc
 
 Profiles contain frequencies and node tuning values. Changing this list immediately activates the selected profile, and changing current frequencies and node tuning immediately saves to the profile.
 
-#### Sensor Tuning
+#### Node Tuning
+
+##### New
+
+See [doc/Calibration.md](Calibration.md) for a detailed description and tuning guide.
+
+##### Old/Deprecated
 See [doc/Tuning Parameters.md](Tuning%20Parameters.md) for a detailed description and tuning guide.
 
 #### Event and Classes

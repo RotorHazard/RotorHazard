@@ -159,6 +159,9 @@ class BaseHardwareInterface:
                         gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
                     node.node_lap_id = lap_id
 
+    def calibrate_nodes(self, race_laps):
+        pass
+
     #
     # External functions for setting data
     #
@@ -174,7 +177,7 @@ class BaseHardwareInterface:
             msg = ['RSSI history buffering utilisation:']
             for node in self.nodes:
                 total_count = node.history_count + node.empty_history_count
-                msg.append("Node {} {:.2%}".format(node, node.history_count/total_count if total_count > 0 else 0))
+                msg.append("\tNode {} {:.2%}".format(node, node.history_count/total_count if total_count > 0 else 0))
             logger.debug('\n'.join(msg))
 
     def set_enter_at_level(self, node_index, level):

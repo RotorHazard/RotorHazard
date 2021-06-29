@@ -602,8 +602,10 @@
 				rotorhazard.nodes[i].enter_at_level = msg.enter_at_levels[i];
 				$('#set_exit_at_level_' + i).val(msg.exit_at_levels[i]);
 				rotorhazard.nodes[i].exit_at_level = msg.exit_at_levels[i];
-				$('#set_autotune_' + i).prop('checked', msg.autotune[i]);
-				rotorhazard.nodes[i].autotune = msg.autotune[i];
+				$('#set_ai_calibrate_' + i).prop('checked', msg.ai_calibrate[i]);
+				rotorhazard.nodes[i].ai_calibrate = msg.ai_calibrate[i];
+				$('#set_calibrate_' + i).prop('checked', msg.calibrate[i]);
+				rotorhazard.nodes[i].calibrate = msg.calibrate[i];
 
 				$('#node_notice_' + i).html(rotorhazard.nodes[i].checkValues());
 				rotorhazard.nodes[i].updateThresholds();
@@ -693,13 +695,22 @@
 			}
 		});
 
-		$('.set_autotune').change(function (event) {
+		$('.set_ai_calibrate').change(function (event) {
 			var data = {
 				node: parseInt($(this).data('node')),
-				autotune: $(this).prop('checked'),
+				ai_calibrate: $(this).prop('checked'),
 			};
-			socket.emit('set_autotune', data);
-			rotorhazard.nodes[data.node].autotune = data.autotune;
+			socket.emit('set_calibration_mode', data);
+			rotorhazard.nodes[data.node].ai_calibrate = data.ai_calibrate;
+		});
+
+		$('.set_calibrate').change(function (event) {
+			var data = {
+				node: parseInt($(this).data('node')),
+				calibrate: $(this).prop('checked'),
+			};
+			socket.emit('set_calibration_mode', data);
+			rotorhazard.nodes[data.node].calibrate = data.calibrate;
 		});
 
 		$('button.cap_enter_at_btn').click(function (event) {
@@ -2277,8 +2288,13 @@
 					</div>
 
 					<div class="enter-exit-control">
-						<label for="set_autotune_{{ node }}">{{ __('Autotune') }}</label>
-						<input type="checkbox" id="set_autotune_{{ node }}" class="set_autotune" data-node="{{ node }}">
+						<label for="set_calibrate_{{ node }}">{{ __('Auto-calibration') }}</label>
+						<input type="checkbox" id="set_calibrate_{{ node }}" class="set_calibrate" data-node="{{ node }}">
+					</div>
+
+					<div class="enter-exit-control">
+						<label for="set_ai_calibrate_{{ node }}">{{ __('AI calibration') }}</label>
+						<input type="checkbox" id="set_ai_calibrate_{{ node }}" class="set_ai_calibrate" data-node="{{ node }}">
 					</div>
 				</div>
 				<table>

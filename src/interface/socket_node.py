@@ -48,7 +48,7 @@ def discover(idxOffset, config, *args, **kwargs):
                 logger.info("Listening on {}".format(port))
                 server.listen()
                 try:
-                    while True:
+                    while True: # while server socket doesn't time-out
                         conn, client_addr = server.accept()
                         logger.info("Connection from {}:{}".format(client_addr[0], client_addr[1]))
                         conn.settimeout(2)

@@ -53,9 +53,14 @@ class RHRace():
     @num_nodes.setter
     def num_nodes(self, new_value):
         self._num_nodes = new_value
+        self.reset()
+
+    def reset(self):
         self.node_laps = {}
         for idx in range(self._num_nodes):
             self.node_laps[idx] = []
+        self.cacheStatus = CacheStatus.INVALID
+        self.team_cacheStatus = CacheStatus.INVALID
 
     def get_active_laps(self):
         # return active (non-deleted) laps objects
@@ -70,18 +75,22 @@ class RHRace():
                 return True
         return False
 
+
 RACE_START_DELAY_EXTRA_SECS = 0.9  # amount of extra time added to prestage time
+
 
 class StartBehavior():
     HOLESHOT = 0
     FIRST_LAP = 1
     STAGGERED = 2
 
+
 class StagingTones():
     TONES_NONE = 0
     TONES_ONE = 1
     TONES_ALL = 2
     TONES_3_2_1 = 3
+
 
 class WinCondition():
     NONE = 0
@@ -92,6 +101,7 @@ class WinCondition():
     MOST_LAPS = 5 # lap count only
     MOST_LAPS_OVERTIME = 6 # lap count only, laps and time after T=0
 
+
 class WinStatus():
     NONE = 0
     TIE = 1
@@ -99,11 +109,13 @@ class WinStatus():
     DECLARED = 3
     OVERTIME = 4
 
+
 class RaceStatus():
     READY = BaseHardwareInterface.RACE_STATUS_READY
     STAGING = BaseHardwareInterface.RACE_STATUS_STAGING
     RACING = BaseHardwareInterface.RACE_STATUS_RACING
     DONE = BaseHardwareInterface.RACE_STATUS_DONE
+
 
 class CacheStatus:
     INVALID = 'invalid'

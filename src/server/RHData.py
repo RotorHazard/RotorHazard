@@ -1877,7 +1877,7 @@ class RHData():
         self.set_option("timeFormat", "{m}:{s}.{d}")
         self.set_option("timeFormatPhonetic", "{m} {s}.{d}")
         self.set_option("currentProfile", "1")
-        self.set_option("calibrationMode", "1")
+        self.set_option("calibrationMode", "0")
         # minimum lap
         self.set_option("MinLapSec", "10")
         self.set_option("MinLapBehavior", "0")

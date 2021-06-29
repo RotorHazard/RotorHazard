@@ -508,6 +508,19 @@
 		}
 
 		function precalc_rx_data() {
+			return precalc_rx_data_old();
+		}
+
+		function precalc_rx_data_ph() {
+			var laps = [];
+			for(var idx in current_race_data.history_values) {
+				var rssi = current_race_data.history_values[idx];
+				var time = current_race_data.history_times[idx];
+			}
+			return laps;
+		}
+
+		function precalc_rx_data_old() {
 			// calc laps
 			var enterat = parseInt($('#enterat').val());
 			var exitat = parseInt($('#exitat').val());
