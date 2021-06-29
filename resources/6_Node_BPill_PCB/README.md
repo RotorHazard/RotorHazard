@@ -112,4 +112,4 @@ LCD Voltage Screen              |   1           | Used to show the battery volta
 
 [RotorHazard 6 node STM32 Board Build Guide](BoardBuild.md)
 
-[3D printed parts & mechanical assembly](../6_node_BPill_case/README.md)
+[3D printed parts & mechanical assembly](../6_node_BPill_case/readme.md)
