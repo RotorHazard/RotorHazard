@@ -1256,7 +1256,6 @@ def on_set_scan(data):
 def on_add_heat():
     '''Adds the next available heat number to the database.'''
     RHData.add_heat()
-
     emit_heat_data()
 
 
@@ -1264,7 +1263,6 @@ def on_add_heat():
 @catchLogExceptionsWrapper
 def on_duplicate_heat(data):
     RHData.duplicate_heat(data['heat'])
-
     emit_heat_data()
 
 
@@ -1273,7 +1271,8 @@ def on_duplicate_heat(data):
 def on_alter_heat(data):
     '''Update heat.'''
     heat, altered_race_list = RHData.alter_heat(data)
-
+    if RACE.current_heat == heat.id:  # if current heat was altered then update heat data
+        set_current_heat_data(heat.id)
     emit_heat_data(noself=True)
     if ('pilot' in data or 'class' in data) and len(altered_race_list):
         emit_result_data() # live update rounds page
@@ -1287,11 +1286,14 @@ def on_delete_heat(data):
     '''Delete heat.'''
     heat_id = data['heat']
     result = RHData.delete_heat(heat_id)
-
-    if result:
+    if result is not None:
+        if RACE.current_heat == result:  # if current heat was deleted then load new heat data
+            heat_id = RHData.get_first_heat().id
+            if RACE.current_heat != heat_id:
+                logger.info('Changing current heat to Heat {0}'.format(heat_id))
+                RACE.current_heat = heat_id
+            set_current_heat_data(heat_id)
         emit_heat_data()
-        if RACE.current_heat == heat_id:  # if current heat was deleted then load new heat data
-            on_set_current_heat({ 'heat': RHData.get_first_heat().id })
 
 
 @SOCKET_IO.on('add_race_class')
@@ -1299,7 +1301,6 @@ def on_delete_heat(data):
 def on_add_race_class():
     '''Adds the next available pilot id number in the database.'''
     RHData.add_raceClass()
-
     emit_class_data()
     emit_heat_data() # Update class selections in heat displays
 
@@ -1309,7 +1310,6 @@ def on_add_race_class():
 def on_duplicate_race_class(data):
     '''Adds new race class by duplicating an existing one.'''
     RHData.duplicate_raceClass(data['class'])
-
     emit_class_data()
     emit_heat_data()
 
@@ -1337,7 +1337,6 @@ def on_alter_race_class(data):
 def on_delete_class(data):
     '''Delete class.'''
     result = RHData.delete_raceClass(data['class'])
-
     if result:
         emit_class_data()
         emit_heat_data()
@@ -1348,7 +1347,6 @@ def on_delete_class(data):
 def on_add_pilot(data={}):
     '''Adds the next available pilot id number in the database.'''
     RHData.add_pilot(data)
-
     emit_pilot_data()
 
 
@@ -2612,13 +2610,7 @@ def init_node_cross_fields():
         node.show_crossing_flag = False
 
 
-@SOCKET_IO.on('set_current_heat')
-@catchLogExceptionsWrapper
-def on_set_current_heat(data):
-    '''Update the current heat variable.'''
-    new_heat_id = data['heat']
-    RACE.current_heat = new_heat_id
-
+def set_current_heat_data(new_heat_id):
     RACE.node_pilots = {}
     RACE.node_teams = {}
     for idx in range(RACE.num_nodes):
@@ -2642,8 +2634,6 @@ def on_set_current_heat(data):
             setCurrentRaceFormat(class_format)
             logger.info("Forcing race format from class setting: '{0}' ({1})".format(class_format.name, class_format_id))
 
-    logger.info('Current heat set: Heat {0}'.format(new_heat_id))
-
     if RHData.get_optionInt('calibrationMode'):
         autoUpdateCalibration()
 
@@ -2656,6 +2646,16 @@ def on_set_current_heat(data):
     emit_current_heat() # Race page, to update heat selection button
     emit_current_leaderboard() # Race page, to update callsigns in leaderboard
     emit_race_format()
+
+
+@SOCKET_IO.on('set_current_heat')
+@catchLogExceptionsWrapper
+def on_set_current_heat(data):
+    '''Update the current heat variable and data.'''
+    new_heat_id = data['heat']
+    logger.info('Setting current heat to Heat {0}'.format(new_heat_id))
+    RACE.current_heat = new_heat_id
+    set_current_heat_data(new_heat_id)
 
 
 @SOCKET_IO.on('generate_heats')

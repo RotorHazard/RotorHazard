@@ -805,7 +805,7 @@ class RHData():
         return heat, race_list
 
     def delete_heat(self, heat_id):
-        # Deletes heat. Returns True/False success
+        # Deletes heat. Returns heat-ID if successful, None if not
         heat_count = self._Database.Heat.query.count()
         heat = self._Database.Heat.query.get(heat_id)
         if heat and heat_count > 1: # keep at least one heat
@@ -815,7 +815,7 @@ class RHData():
 
             if has_race or (self._RACE.current_heat == heat.id and self._RACE.race_status != RaceStatus.READY):
                 logger.info('Refusing to delete heat {0}: is in use'.format(heat.id))
-                return False
+                return None
             else:
                 self._Database.DB.session.delete(heat)
                 for heatnode in heatnodes:
@@ -842,16 +842,16 @@ class RHData():
                                     heatnode.heat_id = heat_obj.id
                                 self.commit()
                                 self._RACE.current_heat = 1
-                                heat_id = 1  # set value so heat data is updated below
+                                heat_id = 1  # set value so heat data is updated
                             else:
                                 logger.warning("Not changing single remaining heat ID ({0}): is in use".format(heat_obj.id))
                     except Exception as ex:
                         logger.warning("Error adjusting single remaining heat ID: " + str(ex))
 
-                return True
+                return heat_id
         else:
             logger.info('Refusing to delete only heat')
-            return False
+            return None
 
     def set_results_heat(self, heat_id, data):
         heat = self._Database.Heat.query.get(heat_id)
