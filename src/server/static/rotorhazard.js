@@ -7,6 +7,11 @@ const SPLMSK_PILOT_NAME = 0x01
 const SPLMSK_SPLIT_ID = 0x02
 const SPLMSK_SPLIT_TIME = 0x04
 
+// minimum value in logarithmic volume range and limit value for "zero" volume
+const MIN_LOG_VOLUME = 0.01;
+const MIN_LOG_VOL_LIM = MIN_LOG_VOLUME + MIN_LOG_VOLUME/1000.0;
+const MAX_LOG_VOLUME = 1.0;
+
 /* global functions */
 function supportsLocalStorage() {
 	try {
@@ -435,41 +440,39 @@ var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 //callback to use on end of tone
 /* https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep/29641185#29641185 */
 function play_beep(duration, frequency, volume, type, fadetime, callback) {
-	var oscillator = globalAudioCtx.createOscillator();
-	var gainNode = globalAudioCtx.createGain();
-
-	oscillator.connect(gainNode);
-	gainNode.connect(globalAudioCtx.destination);
-
-	if (!duration)
-		duration = 500;
-
-	if (volume) {
+	if (volume && volume > MIN_LOG_VOL_LIM) {
+		var oscillator = globalAudioCtx.createOscillator();
+		var gainNode = globalAudioCtx.createGain();
+	
+		oscillator.connect(gainNode);
+		gainNode.connect(globalAudioCtx.destination);
+	
+		if (!duration)
+			duration = 500;
+	
 		gainNode.gain.value = volume;
-	} else {
-		gainNode.gain.value = 1;
+	
+		if (frequency)
+			oscillator.frequency.value = frequency;
+		if (type)
+			oscillator.type = type;
+		if (!fadetime)
+			fadetime = 1;
+		if (callback)
+			oscillator.onended = callback;
+	
+		if(isFirefox)
+			fadetime = 0;
+	
+		oscillator.start();
+		setTimeout(function(fade){
+			gainNode.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + fade);
+		}, duration, fadetime);
+		/*
+		setTimeout(function(){
+			oscillator.stop();
+		}, duration + (fadetime * 1000));*/
 	}
-
-	if (frequency)
-		oscillator.frequency.value = frequency;
-	if (type)
-		oscillator.type = type;
-	if (!fadetime)
-		fadetime = 1;
-	if (callback)
-		oscillator.onended = callback;
-
-	if(isFirefox)
-		fadetime = 0;
-
-	oscillator.start();
-	setTimeout(function(fade){
-		gainNode.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + fade);
-	}, duration, fadetime);
-	/*
-	setTimeout(function(){
-		oscillator.stop();
-	}, duration + (fadetime * 1000));*/
 };
 
 function __(text) {
