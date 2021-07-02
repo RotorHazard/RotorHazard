@@ -488,6 +488,42 @@ function play_mp3_beep(audio_obj, volume) {
 	}
 };
 
+function playLeaderTone() {
+	if (rotorhazard.use_mp3_tones) {
+		play_mp3_beep(sound_leader, rotorhazard.indicator_beep_volume);
+	}
+	else {
+		play_beep(75, 1200, rotorhazard.indicator_beep_volume, 'square');
+		setTimeout(function(tone){
+			play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
+		}, 75, 0);
+	}
+};
+
+function playWinnerTone() {
+	if (rotorhazard.use_mp3_tones) {
+		play_mp3_beep(sound_winner, rotorhazard.indicator_beep_volume);
+	}
+	else {
+		play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
+		setTimeout(function(tone) {
+			play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
+		}, 50, 0);
+		setTimeout(function(tone) {
+			play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
+		}, 125, 0);
+		setTimeout(function(tone) {
+			play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
+		}, 175, 0);
+		setTimeout(function(tone) {
+			play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
+		}, 250, 0);
+		setTimeout(function(tone) {
+			play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
+		}, 300, 0);
+	}
+};
+
 function doSpeak(obj) {
 	if (obj.startsWith(LEADER_FLAG_CHAR)) {
 		obj = obj.substring(1);
