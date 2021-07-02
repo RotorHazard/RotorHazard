@@ -641,8 +641,8 @@
 
 		socket.on('first_pass_registered', function (msg) {
 			if (!rotorhazard.beep_crossing_exited && rotorhazard.beep_on_first_pass_button) {
-				if( rotorhazard.use_mp3_tones){
-					sound_beep.play();
+				if (rotorhazard.use_mp3_tones) {
+					play_mp3_beep(sound_beep, rotorhazard.indicator_beep_volume);
 				}
 				else {
 					play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
@@ -859,8 +859,8 @@
 		$('button.simulate_lap').click(function (event) {
 			// if(!$(this).prop('disabled')) {
 				if (rotorhazard.beep_manual_lap_button) {
-					if( rotorhazard.use_mp3_tones){
-						sound_beep.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_beep, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(35, node_tone[$(this).data('node')], rotorhazard.indicator_beep_volume, 'sawtooth');
@@ -1153,8 +1153,8 @@
 		socket.on('node_crossing_change', function (msg) {
 			if (msg.crossing_flag) {
 				if (rotorhazard.beep_crossing_entered)
-					if( rotorhazard.use_mp3_tones){
-						sound_enter.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_enter, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
@@ -1162,8 +1162,8 @@
 			}
 			else {
 				if (rotorhazard.beep_crossing_exited) {
-						if( rotorhazard.use_mp3_tones){
-							sound_exit.play();
+						if (rotorhazard.use_mp3_tones) {
+							play_mp3_beep(sound_exit, rotorhazard.indicator_beep_volume);
 						}
 						else {
 							play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
@@ -1178,8 +1178,8 @@
 		socket.on('cluster_connect_change', function (msg) {
 			if (rotorhazard.beep_cluster_connect) {
 				if (msg.connect_flag) {
-					if( rotorhazard.use_mp3_tones){
-						sound_cconnect.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_cconnect, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(120, 225, rotorhazard.indicator_beep_volume, 'square');
@@ -1189,8 +1189,8 @@
 					}
 				}
 				else {
-					if( rotorhazard.use_mp3_tones){
-						sound_cdisconnect.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_cdisconnect, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(80, 200, rotorhazard.indicator_beep_volume, 'square');
@@ -1887,7 +1887,7 @@
 
 	function playLeaderTone() {
 		if (rotorhazard.use_mp3_tones) {
-			sound_leader.play();
+			play_mp3_beep(sound_leader, rotorhazard.indicator_beep_volume);
 		}
 		else {
 			play_beep(75, 1200, rotorhazard.indicator_beep_volume, 'square');
@@ -1899,7 +1899,7 @@
 
 	function playWinnerTone() {
 		if (rotorhazard.use_mp3_tones) {
-			sound_winner.play();
+			play_mp3_beep(sound_winner, rotorhazard.indicator_beep_volume);
 		}
 		else {
 			play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');

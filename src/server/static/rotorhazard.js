@@ -481,6 +481,13 @@ function play_beep(duration, frequency, volume, type, fadetime, callback) {
 	}
 };
 
+function play_mp3_beep(audio_obj, volume) {
+	if (volume && volume > MIN_LOG_VOL_LIM) {
+		audio_obj.volume = volume;
+		audio_obj.play();
+	}
+};
+
 function doSpeak(obj) {
 	if (obj.startsWith(LEADER_FLAG_CHAR)) {
 		obj = obj.substring(1);
@@ -1132,8 +1139,8 @@ rotorhazard.timer.race.callbacks.start = function(timer){
 	if (timer.staging_tones == TONES_ONE
 		&& timer.max_delay >= 1) {
 		// beep on start if single staging tone
-		if( rotorhazard.use_mp3_tones){
-			sound_stage.play();
+		if (rotorhazard.use_mp3_tones) {
+			play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 		}
 		else {
 			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
@@ -1151,8 +1158,8 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 			&& timer.staging_tones == TONES_ALL) {
 			// beep every second during staging if timer is hidden
 			if (timer.time_s * 10 % 10 == 0) {
-				if( rotorhazard.use_mp3_tones){
-					sound_stage.play();
+				if (rotorhazard.use_mp3_tones) {
+					play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 				}
 				else {
 					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
@@ -1166,8 +1173,8 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 			&& timer.time_s >= -5) {
 			// staging beep for last 5 seconds before start
 			if (timer.time_s * 10 % 10 == 0) {
-				if( rotorhazard.use_mp3_tones){
-					sound_stage.play();
+				if (rotorhazard.use_mp3_tones) {
+					play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 				}
 				else {
 					play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
@@ -1178,8 +1185,8 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 		(!timer.count_up && timer.time_s == timer.duration)
 		) {
 		// play start tone
-		if( rotorhazard.use_mp3_tones){
-			sound_buzzer.play();
+		if (rotorhazard.use_mp3_tones) {
+			play_mp3_beep(sound_buzzer, rotorhazard.tone_volume);
 		}
 		else {
 			play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);
@@ -1188,8 +1195,8 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 		if (!timer.count_up) {
 			if (timer.time_s <= 5) { // Final seconds
 				if (timer.time_s * 10 % 10 == 0) {
-					if( rotorhazard.use_mp3_tones){
-						sound_stage.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_stage, rotorhazard.tone_volume);
 					}
 					else {
 						play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
@@ -1224,8 +1231,8 @@ rotorhazard.timer.race.callbacks.step = function(timer){
 }
 rotorhazard.timer.race.callbacks.expire = function(timer){
 	// play expired tone
-	if( rotorhazard.use_mp3_tones){
-		sound_buzzer.play();
+	if (rotorhazard.use_mp3_tones) {
+		play_mp3_beep(sound_buzzer, rotorhazard.tone_volume);
 	}
 	else {
 		play_beep(700, 880, rotorhazard.tone_volume, 'triangle', 0.25);

@@ -1709,8 +1709,8 @@
 		socket.on('node_crossing_change', function (msg) {
 			if (msg.crossing_flag) {
 				if (rotorhazard.beep_crossing_entered) {
-					if( rotorhazard.use_mp3_tones){
-						sound_enter.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_enter, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
@@ -1719,8 +1719,8 @@
 			}
 			else {
 				if (rotorhazard.beep_crossing_exited) {
-					if( rotorhazard.use_mp3_tones){
-						sound_exit.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_exit, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
@@ -1735,8 +1735,8 @@
 		socket.on('cluster_connect_change', function (msg) {
 			if (rotorhazard.beep_cluster_connect) {
 				if (msg.connect_flag) {
-					if( rotorhazard.use_mp3_tones){
-						sound_cconnect.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_cconnect, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(120, 225, rotorhazard.indicator_beep_volume, 'square');
@@ -1746,8 +1746,8 @@
 					}
 				}
 				else {
-					if( rotorhazard.use_mp3_tones){
-						sound_cdisconnect.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_cdisconnect, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(80, 200, rotorhazard.indicator_beep_volume, 'square');

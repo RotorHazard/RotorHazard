@@ -578,7 +578,7 @@
 
 	function playLeaderTone() {
 		if (rotorhazard.use_mp3_tones) {
-			sound_leader.play();
+			play_mp3_beep(sound_leader, rotorhazard.indicator_beep_volume);
 		}
 		else {
 			play_beep(75, 1200, rotorhazard.indicator_beep_volume, 'square');
@@ -590,7 +590,7 @@
 
 	function playWinnerTone() {
 		if (rotorhazard.use_mp3_tones) {
-			sound_winner.play();
+			play_mp3_beep(sound_winner, rotorhazard.indicator_beep_volume);
 		}
 		else {
 			play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
