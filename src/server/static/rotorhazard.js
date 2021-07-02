@@ -537,9 +537,11 @@ function doSpeak(obj) {
 			playWinnerTone();
 		}
 	}
-	if (obj.length > 0) {
-		$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
-		return true;
+	if (rotorhazard.voice_volume && rotorhazard.voice_volume > MIN_LOG_VOL_LIM) {
+		if (obj.length > 0) {
+			$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
+			return true;
+		}
 	}
 	return false;
 };
