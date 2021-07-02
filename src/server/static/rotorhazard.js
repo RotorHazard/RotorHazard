@@ -12,6 +12,12 @@ const MIN_LOG_VOLUME = 0.01;
 const MIN_LOG_VOL_LIM = MIN_LOG_VOLUME + MIN_LOG_VOLUME/1000.0;
 const MAX_LOG_VOLUME = 1.0;
 
+const LEADER_FLAG_CHAR = 'L';
+const WINNER_FLAG_CHAR = 'W';
+
+var speakObjsQueue = [];
+var checkSpeakQueueFlag = true;
+
 /* global functions */
 function supportsLocalStorage() {
 	try {
@@ -472,6 +478,37 @@ function play_beep(duration, frequency, volume, type, fadetime, callback) {
 		setTimeout(function(){
 			oscillator.stop();
 		}, duration + (fadetime * 1000));*/
+	}
+};
+
+function doSpeak(obj) {
+	if (obj.startsWith(LEADER_FLAG_CHAR)) {
+		obj = obj.substring(1);
+		if (rotorhazard.beep_race_leader_lap) {
+			playLeaderTone();
+		}
+	}
+	else if (obj.startsWith(WINNER_FLAG_CHAR)) {
+		obj = obj.substring(1);
+		if (rotorhazard.beep_race_winner_declared) {
+			playWinnerTone();
+		}
+	}
+	if (obj.length > 0) {
+		$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
+		return true;
+	}
+	return false;
+};
+
+function speak(obj, priority) {
+	if (typeof(priority)=='undefined')
+		priority = false;
+
+	if (priority) {
+		speakObjsQueue.unshift(obj);
+	} else {
+		speakObjsQueue.push(obj);
 	}
 };
 
