@@ -22,17 +22,12 @@
 		'vrx_list'
 	];
 
-	var volume_logsl = new LogSlider({maxpos: 100, minval: 0.01, maxval: 1});
+	var volume_logsl = new LogSlider({maxpos: 100, minval: MIN_LOG_VOLUME, maxval: MAX_LOG_VOLUME});
 	var brightness_logsl = new LogSlider({maxpos: 25, minval: 5, maxval: 255});
 
 	var request_time;
 	var request_pi_time;
 	var resume_check = true;
-
-	var speakObjsQueue = [];
-	var checkSpeakQueueFlag = true;
-	const LEADER_FLAG_CHAR = 'L';
-	const WINNER_FLAG_CHAR = 'W';
 
 	function race_kickoff(msg) {
 		rotorhazard.timer.stopAll();
@@ -646,8 +641,8 @@
 
 		socket.on('first_pass_registered', function (msg) {
 			if (!rotorhazard.beep_crossing_exited && rotorhazard.beep_on_first_pass_button) {
-				if( rotorhazard.use_mp3_tones){
-					sound_beep.play();
+				if (rotorhazard.use_mp3_tones) {
+					play_mp3_beep(sound_beep, rotorhazard.indicator_beep_volume);
 				}
 				else {
 					play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
@@ -864,8 +859,8 @@
 		$('button.simulate_lap').click(function (event) {
 			// if(!$(this).prop('disabled')) {
 				if (rotorhazard.beep_manual_lap_button) {
-					if( rotorhazard.use_mp3_tones){
-						sound_beep.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_beep, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(35, node_tone[$(this).data('node')], rotorhazard.indicator_beep_volume, 'sawtooth');
@@ -1158,8 +1153,8 @@
 		socket.on('node_crossing_change', function (msg) {
 			if (msg.crossing_flag) {
 				if (rotorhazard.beep_crossing_entered)
-					if( rotorhazard.use_mp3_tones){
-						sound_enter.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_enter, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(25, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'square');
@@ -1167,8 +1162,8 @@
 			}
 			else {
 				if (rotorhazard.beep_crossing_exited) {
-						if( rotorhazard.use_mp3_tones){
-							sound_exit.play();
+						if (rotorhazard.use_mp3_tones) {
+							play_mp3_beep(sound_exit, rotorhazard.indicator_beep_volume);
 						}
 						else {
 							play_beep(35, node_tone[msg.node_index], rotorhazard.indicator_beep_volume, 'sawtooth', 0.02);
@@ -1183,8 +1178,8 @@
 		socket.on('cluster_connect_change', function (msg) {
 			if (rotorhazard.beep_cluster_connect) {
 				if (msg.connect_flag) {
-					if( rotorhazard.use_mp3_tones){
-						sound_cconnect.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_cconnect, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(120, 225, rotorhazard.indicator_beep_volume, 'square');
@@ -1194,8 +1189,8 @@
 					}
 				}
 				else {
-					if( rotorhazard.use_mp3_tones){
-						sound_cdisconnect.play();
+					if (rotorhazard.use_mp3_tones) {
+						play_mp3_beep(sound_cdisconnect, rotorhazard.indicator_beep_volume);
 					}
 					else {
 						play_beep(80, 200, rotorhazard.indicator_beep_volume, 'square');
@@ -1890,72 +1885,6 @@
 		});
 	});
 
-	function playLeaderTone() {
-		if (rotorhazard.use_mp3_tones) {
-			sound_leader.play();
-		}
-		else {
-			play_beep(75, 1200, rotorhazard.indicator_beep_volume, 'square');
-			setTimeout(function(tone){
-				play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 75, 0);
-		}
-	}
-
-	function playWinnerTone() {
-		if (rotorhazard.use_mp3_tones) {
-			sound_winner.play();
-		}
-		else {
-			play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
-			setTimeout(function(tone) {
-				play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 50, 0);
-			setTimeout(function(tone) {
-				play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
-			}, 125, 0);
-			setTimeout(function(tone) {
-				play_beep(75, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 175, 0);
-			setTimeout(function(tone) {
-				play_beep(50, 1200, rotorhazard.indicator_beep_volume, 'square');
-			}, 250, 0);
-			setTimeout(function(tone) {
-				play_beep(100, 1800, rotorhazard.indicator_beep_volume, 'square');
-			}, 300, 0);
-		}
-	}
-
-	function doSpeak(obj) {
-		if (obj.startsWith(LEADER_FLAG_CHAR)) {
-			obj = obj.substring(1);
-			if (rotorhazard.beep_race_leader_lap) {
-				playLeaderTone();
-			}
-		}
-		else if (obj.startsWith(WINNER_FLAG_CHAR)) {
-			obj = obj.substring(1);
-			if (rotorhazard.beep_race_winner_declared) {
-				playWinnerTone();
-			}
-		}
-		if (obj.length > 0) {
-			$(obj).articulate('setVoice','name', rotorhazard.voice_language).articulate('speak');
-			return true;
-		}
-		return false;
-	};
-
-	function speak(obj, priority) {
-		if (typeof(priority)=='undefined')
-			priority = false;
-
-		if (priority) {
-			speakObjsQueue.unshift(obj);
-		} else {
-			speakObjsQueue.push(obj);
-		}
-	};
 </script>
 {% endblock %} {% block content %}
 <main class="page-race">
@@ -2248,7 +2177,7 @@
 					<label for="set_voice_volume">{{ __('Voice Volume') }}</label>
 					<p class="desc">{{ __('Volume') }}: <span id="voice_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_voice_volume" min="1" max="100">
+				<input type="range" id="set_voice_volume" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
@@ -2269,7 +2198,7 @@
 					<label for="set_tone_volume">{{ __('Tone Volume') }}</label>
 					<p class="desc">{{ __('Volume') }}: <span id="tone_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_tone_volume" min="1" max="100">
+				<input type="range" id="set_tone_volume" min="0" max="100">
 			</li>
 			<li>
 				<div class="label-block">
@@ -2293,7 +2222,7 @@
 					<label for="set_indicator_volume">{{ __('Indicator Beeps Volume') }}</label>
 					<p class="desc">{{ __('Volume') }}: <span id="indicator_volume_value"></span></p>
 				</div>
-				<input type="range" id="set_indicator_volume" min="1" max="100">
+				<input type="range" id="set_indicator_volume" min="0" max="100">
 			</li>
 		</ol>
 	</div>
