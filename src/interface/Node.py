@@ -44,6 +44,7 @@ class CommandsWithRetry:
         data = None
         while success is False and retry_count <= max_retries:
             try:
+                self.io_response = None
                 self.io_request = monotonic()
                 data = self.manager._read_command(command, size)
                 self.io_response = monotonic()
@@ -59,8 +60,7 @@ class CommandsWithRetry:
                 else:
                     log_io_error("bad length {}".format(len(data)) if data else "no data")
             except IOError as err:
-                logger.warning('Read error: {}'.format(err))
-                log_io_error("I/O error")
+                log_io_error(err)
         return data if success else None
 
     def write_command(self, command, data, max_retries=MAX_RETRY_COUNT):
@@ -72,7 +72,7 @@ class CommandsWithRetry:
             nonlocal retry_count
             retry_count += 1
             if retry_count <= max_retries:
-                logger.warning('Retry ({4}) in write_command: addr={0} cmd={1:#02x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
+                logger.debug('Retry ({4}) in write_command: addr={0} cmd={1:#02x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
             else:
                 logger.warning('Retry ({4}) limit reached in write_command: addr={0} cmd={1:#02x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
             self.write_error_count += 1
@@ -86,8 +86,7 @@ class CommandsWithRetry:
                 self.manager._write_command(command, data_with_checksum)
                 success = True
             except IOError as err:
-                logger.warning('Write Error: {}'.format(err))
-                log_io_error('I/O error')
+                log_io_error(err)
         return success
 
     def get_value_8(self, command, max_retries=MAX_RETRY_COUNT):
