@@ -1970,13 +1970,7 @@ def on_stage_race():
         RACE.status_message = ''
         RACE.any_races_started = True
 
-        RACE.node_has_finished = {}
-        for heatNode in heatNodes:
-            if heatNode.node_index < RACE.num_nodes:
-                if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
-                    RACE.node_has_finished[heatNode.node_index] = False
-                else:
-                    RACE.node_has_finished[heatNode.node_index] = None
+        RACE.init_node_finished_flags(heatNodes)
 
         INTERFACE.set_race_status(RaceStatus.STAGING)
         emit_current_laps() # Race page, blank laps to the web client
@@ -4049,8 +4043,9 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         min_lap = RHData.get_optionInt("MinLapSec")
                         min_lap_behavior = RHData.get_optionInt("MinLapBehavior")
 
+                    node_not_finished_flag = not RACE.get_node_finished_flag(node.index)
                     if RACE.timer_running is False:
-                        RACE.node_has_finished[node.index] = True
+                        RACE.set_node_finished_flag(node.index)
 
                     lap_time_fmtstr = RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))
                     lap_ts_fmtstr = RHUtils.time_format(lap_time_stamp, RHData.get_option('timeFormat'))
@@ -4124,16 +4119,24 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         if lap_number > 0:
                             check_leader = race_format.win_condition != WinCondition.NONE and \
                                            RACE.win_status != WinStatus.DECLARED
+                            # announce pilot lap number unless winner declared and pilot has finished final lap
+                            lap_id = lap_number if race_format.win_condition == WinCondition.NONE or \
+                                                   RACE.win_status != WinStatus.DECLARED or \
+                                                   node_not_finished_flag else None
                             if RACE.format.team_racing_mode:
                                 team = RHData.get_pilot(pilot_id).team
                                 team_laps = RACE.team_results['meta']['teams'][team]['laps']
                                 logger.debug('Lap pass: Node={}, lap={}, pilot={} -> Team {} lap {}' \
                                         .format(node.index+1, lap_number, pilot_namestr, team, team_laps))
-                                emit_phonetic_data(pilot_id, lap_number, lap_time, team, team_laps, \
+                                # if winning team has been declared then don't announce team lap number
+                                if race_format.win_condition != WinCondition.NONE and \
+                                                       RACE.win_status == WinStatus.DECLARED:
+                                    team_laps = None
+                                emit_phonetic_data(pilot_id, lap_id, lap_time, team, team_laps, \
                                                 (check_leader and \
                                                  team == Results.get_leading_team_name(RACE.team_results)))
                             else:
-                                emit_phonetic_data(pilot_id, lap_number, lap_time, None, None, \
+                                emit_phonetic_data(pilot_id, lap_id, lap_time, None, None, \
                                                 (check_leader and \
                                                  pilot_id == Results.get_leading_pilot_id(RACE.results)))
 

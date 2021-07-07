@@ -1,5 +1,7 @@
 '''Class to hold race management variables.'''
 
+import RHUtils
+
 class RHRace():
     '''Class to hold race management variables.'''
     def __init__(self):
@@ -44,6 +46,24 @@ class RHRace():
             source
             deleted
         '''
+
+    def init_node_finished_flags(self, heatNodes):
+        self.node_has_finished = {}
+        for heatNode in heatNodes:
+            if heatNode.node_index < self.num_nodes:
+                if heatNode.pilot_id != RHUtils.PILOT_ID_NONE:
+                    self.node_has_finished[heatNode.node_index] = False
+                else:
+                    self.node_has_finished[heatNode.node_index] = None
+
+    def set_node_finished_flag(self, node_index):
+        self.node_has_finished[node_index] = True
+
+    def get_node_finished_flag(self, node_index):
+        return self.node_has_finished.get(node_index, None)
+
+    def check_all_nodes_finished(self):
+        return False not in self.node_has_finished.values()
 
     def get_active_laps(self):
         # return active (non-deleted) laps objects
