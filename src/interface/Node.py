@@ -208,6 +208,8 @@ class Node(CommandsWithRetry):
         self.loop_time = 10 # microseconds
         self.crossing_flag = False
         self.pass_crossing_flag = False
+        self.enter_at_timestamp = 0
+        self.exit_at_timestamp = 0
         self.debug_pass_count = 0
         self.bad_rssi_count = 0
 
