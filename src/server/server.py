@@ -2200,7 +2200,7 @@ def race_start_thread(start_token):
             gevent.spawn(race_expire_thread, start_token)
 
         emit_race_status() # Race page, to set race button states
-        logger.info('Race started at {0} ({1:.0f})'.format(RACE.start_time_monotonic, RACE.start_time_epoch_ms))
+        logger.info('Race started at {:.3f} ({:.0f})'.format(RACE.start_time_monotonic, RACE.start_time_epoch_ms))
 
 @catchLogExceptionsWrapper
 def race_expire_thread(start_token):
@@ -2245,7 +2245,7 @@ def do_stop_race_actions():
         milli_sec = delta_time * 1000.0
         RACE.duration_ms = milli_sec
 
-        logger.info('Race stopped at {0} ({1:.0f}), duration {2}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), RACE.duration_ms))
+        logger.info('Race stopped at {:.3f} ({:.0f}), duration {:.3f}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), RACE.duration_ms))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
@@ -4002,7 +4002,6 @@ def ms_from_program_start():
 def pass_record_callback(node, lap_timestamp_absolute, source):
     '''Handles pass records from the nodes.'''
 
-    logger.debug('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, lap_timestamp_absolute))
     node.pass_crossing_flag = False  # clear the "synchronized" version of the crossing flag
     node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
@@ -4053,16 +4052,36 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     if RACE.timer_running is False:
                         RACE.node_has_finished[node.index] = True
 
+                    lap_time_fmtstr = RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))
+                    lap_ts_fmtstr = RHUtils.time_format(lap_time_stamp, RHData.get_option('timeFormat'))
+                    pilot_namestr = RHData.get_pilot(pilot_id).callsign
+
                     lap_ok_flag = True
                     if lap_number != 0:  # if initial lap then always accept and don't check lap time; else:
                         if lap_time < (min_lap * 1000):  # if lap time less than minimum
                             node.under_min_lap_count += 1
-                            logger.info('Pass record under lap minimum ({3}): Node={0}, Lap={1}, LapTime={2}, Count={4}' \
-                                       .format(node.index+1, lap_number, RHUtils.time_format(lap_time, RHData.get_option('timeFormat')), min_lap, node.under_min_lap_count))
+                            logger.info('Pass record under lap minimum ({}): Node={}, lap={}, lapTime={}, sinceStart={}, count={}, source={}, pilot: {}' \
+                                       .format(min_lap, node.index+1, lap_number, \
+                                               lap_time_fmtstr, lap_ts_fmtstr, \
+                                               node.under_min_lap_count, INTERFACE.get_lap_source_str(source), \
+                                               pilot_namestr))
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
 
                     if lap_ok_flag:
+
+                        if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
+                            enter_fmtstr = RHUtils.time_format((node.enter_at_timestamp-RACE.start_time_monotonic)*1000, \
+                                                               RHData.get_option('timeFormat')) \
+                                           if node.enter_at_timestamp else "0"
+                            exit_fmtstr = RHUtils.time_format((node.exit_at_timestamp-RACE.start_time_monotonic)*1000, \
+                                                              RHData.get_option('timeFormat')) \
+                                           if node.exit_at_timestamp else "0"
+                            logger.debug('Lap pass: Node={}, lap={}, lapTime={}, sinceStart={}, abs_ts={:.3f}, source={}, enter={}, exit={}, dur={:.0f}ms, pilot: {}' \
+                                        .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
+                                                lap_timestamp_absolute, INTERFACE.get_lap_source_str(source), \
+                                                enter_fmtstr, exit_fmtstr, \
+                                                (node.exit_at_timestamp-node.enter_at_timestamp)*1000, pilot_namestr))
 
                         # emit 'pass_record' message (to primary timer in cluster, livetime, etc).
                         emit_pass_record(node, lap_time_stamp)
@@ -4072,7 +4091,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
-                            'lap_time_formatted': RHUtils.time_format(lap_time, RHData.get_option('timeFormat')),
+                            'lap_time_formatted': lap_time_fmtstr,
                             'source': source,
                             'deleted': False
                         }
@@ -4092,8 +4111,6 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'results': RACE.results
                             })
 
-                        logger.debug('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
-                            .format(node.index+1, lap_number, RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))))
                         emit_current_laps() # update all laps on the race page
                         emit_current_leaderboard() # generate and update leaderboard
 
@@ -4109,8 +4126,10 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                            RACE.win_status != WinStatus.DECLARED
                             if RACE.format.team_racing_mode:
                                 team = RHData.get_pilot(pilot_id).team
-                                team_data = RACE.team_results['meta']['teams'][team]
-                                emit_phonetic_data(pilot_id, lap_number, lap_time, team, team_data['laps'], \
+                                team_laps = RACE.team_results['meta']['teams'][team]['laps']
+                                logger.debug('Lap pass: Node={}, lap={}, pilot={} -> Team {} lap {}' \
+                                        .format(node.index+1, lap_number, pilot_namestr, team, team_laps))
+                                emit_phonetic_data(pilot_id, lap_number, lap_time, team, team_laps, \
                                                 (check_leader and \
                                                  team == Results.get_leading_team_name(RACE.team_results)))
                             else:
@@ -4128,19 +4147,19 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_time_stamp,
                             'lap_time': lap_time,
-                            'lap_time_formatted': RHUtils.time_format(lap_time, RHData.get_option('timeFormat')),
+                            'lap_time_formatted': lap_time_fmtstr,
                             'source': source,
                             'deleted': True
                         })
                 else:
-                    logger.debug('Pass record dismissed: Node: {0}, Race not started' \
-                        .format(node.index+1))
+                    logger.debug('Pass record dismissed: Node {}, Race not started (abs_ts={:.3f}, source={})' \
+                        .format(node.index+1, lap_timestamp_absolute, INTERFACE.get_lap_source_str(source)))
             else:
-                logger.debug('Pass record dismissed: Node: {0}, Pilot not defined' \
-                    .format(node.index+1))
+                logger.debug('Pass record dismissed: Node {}, Pilot not defined (abs_ts={:.3f}, source={})' \
+                    .format(node.index+1, lap_timestamp_absolute, INTERFACE.get_lap_source_str(source)))
     else:
-        logger.debug('Pass record dismissed: Node: {0}, Frequency not defined' \
-            .format(node.index+1))
+        logger.debug('Pass record dismissed: Node {}, Frequency not defined (abs_ts={:.3f}, source={})' \
+            .format(node.index+1, lap_timestamp_absolute, INTERFACE.get_lap_source_str(source)))
 
 def check_win_condition(**kwargs):
     previous_win_status = RACE.win_status
@@ -4154,10 +4173,14 @@ def check_win_condition(**kwargs):
         if win_status['status'] == WinStatus.DECLARED:
             # announce winner
             if race_format.team_racing_mode:
-                RACE.status_message = __('Winner is') + ' ' + __('Team') + ' ' + win_status['data']['name']
+                win_str = win_status['data']['name']
+                RACE.status_message = __('Winner is') + ' ' + __('Team') + ' ' + win_str
+                logger.info("Race status msg:  Winner is Team " + win_str)
                 emit_phonetic_text(RACE.status_message, 'race_winner', True)
             else:
-                RACE.status_message = __('Winner is') + ' ' + win_status['data']['callsign']
+                win_str = win_status['data']['callsign']
+                RACE.status_message = __('Winner is') + ' ' + win_str
+                logger.info("Race status msg:  Winner is " + win_str)
                 win_phon_name = RHData.get_pilot(win_status['data']['pilot_id']).phonetic
                 if len(win_phon_name) <= 0:  # if no phonetic then use callsign
                     win_phon_name = win_status['data']['callsign']
@@ -4175,18 +4198,20 @@ def check_win_condition(**kwargs):
             # announce tied
             if win_status['status'] != previous_win_status:
                 RACE.status_message = __('Race Tied')
+                logger.info("Race status msg:  Race Tied")
                 emit_phonetic_text(RACE.status_message, 'race_winner')
         elif win_status['status'] == WinStatus.OVERTIME:
             # announce overtime
             if win_status['status'] != previous_win_status:
                 RACE.status_message = __('Race Tied: Overtime')
+                logger.info("Race status msg:  Race Tied: Overtime")
                 emit_phonetic_text(RACE.status_message, 'race_winner')
 
         if 'max_consideration' in win_status:
-            logger.debug("Waiting {0}ms to declare winner.".format(win_status['max_consideration']))
+            logger.info("Waiting {0}ms to declare winner.".format(win_status['max_consideration']))
             gevent.sleep(win_status['max_consideration'] / 1000)
             if 'start_token' in kwargs and RACE.start_token == kwargs['start_token']:
-                logger.debug("Maximum win condition consideration time has expired.")
+                logger.info("Maximum win condition consideration time has expired.")
                 check_win_condition(forced=True)
 
     return win_status
