@@ -2239,7 +2239,7 @@ def do_stop_race_actions():
         milli_sec = delta_time * 1000.0
         RACE.duration_ms = milli_sec
 
-        logger.info('Race stopped at {:.3f} ({:.0f}), duration {:.3f}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), RACE.duration_ms))
+        logger.info('Race stopped at {:.3f} ({:.0f}), duration {:.0f}ms'.format(RACE.end_time, monotonic_to_epoch_millis(RACE.end_time), RACE.duration_ms))
 
         min_laps_list = []  # show nodes with laps under minimum (if any)
         for node in INTERFACE.nodes:
@@ -2709,8 +2709,14 @@ def on_delete_lap(data):
         })
 
     logger.info('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
-    RACE.cacheStatus = Results.CacheStatus.INVALID  # refresh leaderboard
-    RACE.team_cacheStatus = Results.CacheStatus.INVALID
+
+    RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
+    RACE.cacheStatus = Results.CacheStatus.VALID
+    if RACE.format.team_racing_mode:
+        RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
+        RACE.team_cacheStatus = Results.CacheStatus.VALID
+    check_win_condition(deletedLap=True)  # handle possible change in win status
+
     emit_current_laps() # Race page, update web client
     emit_current_leaderboard() # Race page, update web client
 
@@ -4166,58 +4172,76 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
 def check_win_condition(**kwargs):
     previous_win_status = RACE.win_status
+    win_not_decl_flag = RACE.win_status in [WinStatus.NONE, WinStatus.PENDING_CROSSING, WinStatus.OVERTIME]
+    del_lap_flag = 'deletedLap' in kwargs
 
-    win_status = Results.check_win_condition(RACE, RHData, INTERFACE, **kwargs)
+    # if winner not yet declared or racer lap was deleted then check win condition
+    win_status_dict = Results.check_win_condition_result(RACE, RHData, INTERFACE, **kwargs) \
+                      if win_not_decl_flag or del_lap_flag else None
 
-    if win_status is not None:
+    if win_status_dict is not None:
         race_format = RACE.format
-        RACE.win_status = win_status['status']
+        RACE.win_status = win_status_dict['status']
 
-        if win_status['status'] == WinStatus.DECLARED:
+        # if racer lap was deleted and result is winner un-declared
+        if del_lap_flag and RACE.win_status != previous_win_status and \
+                            RACE.win_status == WinStatus.NONE:
+            RACE.win_status = WinStatus.NONE
+            RACE.status_message = ''
+            logger.info("Race status msg:  <None>")
+            return win_status_dict
+
+        if win_status_dict['status'] == WinStatus.DECLARED:
             # announce winner
             if race_format.team_racing_mode:
-                win_str = win_status['data']['name']
-                RACE.status_message = __('Winner is') + ' ' + __('Team') + ' ' + win_str
-                logger.info("Race status msg:  Winner is Team " + win_str)
-                emit_phonetic_text(RACE.status_message, 'race_winner', True)
+                win_str = win_status_dict['data']['name']
+                status_msg_str = __('Winner is') + ' ' + __('Team') + ' ' + win_str
+                log_msg_str = "Race status msg:  Winner is Team " + win_str
+                phonetic_str = status_msg_str
             else:
-                win_str = win_status['data']['callsign']
-                RACE.status_message = __('Winner is') + ' ' + win_str
-                logger.info("Race status msg:  Winner is " + win_str)
-                win_phon_name = RHData.get_pilot(win_status['data']['pilot_id']).phonetic
+                win_str = win_status_dict['data']['callsign']
+                status_msg_str = __('Winner is') + ' ' + win_str
+                log_msg_str = "Race status msg:  Winner is " + win_str
+                win_phon_name = RHData.get_pilot(win_status_dict['data']['pilot_id']).phonetic
                 if len(win_phon_name) <= 0:  # if no phonetic then use callsign
-                    win_phon_name = win_status['data']['callsign']
-                emit_phonetic_text(__('Winner is') + ' ' + win_phon_name, 'race_winner', True)
+                    win_phon_name = win_status_dict['data']['callsign']
+                phonetic_str = __('Winner is') + ' ' + win_phon_name
 
-            Events.trigger(Evt.RACE_WIN, {
-                'win_status': win_status,
-                'message': RACE.status_message,
-                'node_index': win_status['data']['node'] if 'node' in win_status['data'] else None,
-                'color': led_manager.getDisplayColor(win_status['data']['node']) if 'node' in win_status['data'] else None,
-                'results': RACE.results
-                })
+            # if racer lap was deleted then only output if win-status details changed
+            if (not del_lap_flag) or RACE.win_status != previous_win_status or \
+                                        status_msg_str != RACE.status_message:
+                RACE.status_message = status_msg_str
+                logger.info(log_msg_str)
+                emit_phonetic_text(phonetic_str, 'race_winner', True)
+                Events.trigger(Evt.RACE_WIN, {
+                    'win_status': win_status_dict,
+                    'message': RACE.status_message,
+                    'node_index': win_status_dict['data']['node'] if 'node' in win_status_dict['data'] else None,
+                    'color': led_manager.getDisplayColor(win_status_dict['data']['node']) if 'node' in win_status_dict['data'] else None,
+                    'results': RACE.results
+                    })
 
-        elif win_status['status'] == WinStatus.TIE:
+        elif win_status_dict['status'] == WinStatus.TIE:
             # announce tied
-            if win_status['status'] != previous_win_status:
+            if win_status_dict['status'] != previous_win_status:
                 RACE.status_message = __('Race Tied')
                 logger.info("Race status msg:  Race Tied")
                 emit_phonetic_text(RACE.status_message, 'race_winner')
-        elif win_status['status'] == WinStatus.OVERTIME:
+        elif win_status_dict['status'] == WinStatus.OVERTIME:
             # announce overtime
-            if win_status['status'] != previous_win_status:
+            if win_status_dict['status'] != previous_win_status:
                 RACE.status_message = __('Race Tied: Overtime')
                 logger.info("Race status msg:  Race Tied: Overtime")
                 emit_phonetic_text(RACE.status_message, 'race_winner')
 
-        if 'max_consideration' in win_status:
-            logger.info("Waiting {0}ms to declare winner.".format(win_status['max_consideration']))
-            gevent.sleep(win_status['max_consideration'] / 1000)
+        if 'max_consideration' in win_status_dict:
+            logger.info("Waiting {0}ms to declare winner.".format(win_status_dict['max_consideration']))
+            gevent.sleep(win_status_dict['max_consideration'] / 1000)
             if 'start_token' in kwargs and RACE.start_token == kwargs['start_token']:
                 logger.info("Maximum win condition consideration time has expired.")
                 check_win_condition(forced=True)
 
-    return win_status
+    return win_status_dict
 
 @catchLogExcDBCloseWrapper
 def new_enter_or_exit_at_callback(node, is_enter_at_flag):
