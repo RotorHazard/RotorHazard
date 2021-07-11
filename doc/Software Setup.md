@@ -295,6 +295,7 @@ sudo iptables-save
 sudo apt-get install iptables-persistent
 ```
 After running these commands, RotorHazard will be available from both ports 80 and 5000. When available by port 80, you may leave the port off when accessing the server: `http://127.0.0.1`
+Note: Services that would be normally available on default port 80, now will be available on port 8080.
 <br/>
 
 ----------------------------------------------------------------------------
