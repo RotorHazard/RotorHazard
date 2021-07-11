@@ -290,6 +290,7 @@ By default, HTTP uses port 80. Other values will require that the port be includ
 
 ```
 sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 5000
+sudo iptables -A PREROUTING -t nat -p tcp --dport 8080 -j REDIRECT --to-ports 80
 sudo iptables-save
 sudo apt-get install iptables-persistent
 ```
