@@ -294,8 +294,9 @@ sudo iptables -A PREROUTING -t nat -p tcp --dport 8080 -j REDIRECT --to-ports 80
 sudo iptables-save
 sudo apt-get install iptables-persistent
 ```
-After running these commands, RotorHazard will be available from both ports 80 and 5000. When available by port 80, you may leave the port off when accessing the server: `http://127.0.0.1`
-Note: Services that would be normally available on default port 80, now will be available on port 8080.
+After running these commands, RotorHazard will be available from both ports 80 and 5000. When available by port 80, you may leave the port off when accessing the server, i.e.: `http://127.0.0.1`
+
+Note: The second *iptables* command will forward port 8080 to 80, so services that would normally be available on port 80 will instead be available on port 8080. If port 80 services are not present or if other services are using port 8080, this *iptables* command may be omitted.
 <br/>
 
 ----------------------------------------------------------------------------
