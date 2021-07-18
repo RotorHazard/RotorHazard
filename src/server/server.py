@@ -2667,6 +2667,7 @@ def on_delete_lap(data):
         return
 
     RACE.node_laps[node_index][lap_index]['deleted'] = True
+    RACE.node_laps[node_index][lap_index]['late_lap'] = False
 
     time = RACE.node_laps[node_index][lap_index]['lap_time_stamp']
 
@@ -2708,7 +2709,7 @@ def on_delete_lap(data):
         'node_index': node_index,
         })
 
-    logger.info('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
+    logger.info('Lap deleted: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
     RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
     RACE.cacheStatus = Results.CacheStatus.VALID
@@ -4071,9 +4072,10 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                 lap_ok_flag = False
                         elif RACE.format.team_racing_mode and RACE.win_status == WinStatus.DECLARED:
                             lap_late_flag = True  # "late" lap pass (after team race winner declared)
-                            logger.info('Ignoring lap after team race winner declared: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}' \
+                            logger.info('Ignoring lap after team race winner declared: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}, Team {}' \
                                        .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
-                                               INTERFACE.get_lap_source_str(source), pilot_namestr))
+                                               INTERFACE.get_lap_source_str(source), pilot_namestr, \
+                                               RHData.get_pilot(pilot_id).team))
 
                     if lap_ok_flag:
 
@@ -4101,7 +4103,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             'lap_time': lap_time,
                             'lap_time_formatted': lap_time_fmtstr,
                             'source': source,
-                            'deleted': lap_late_flag  # delete if lap pass is after team race winner declared
+                            'deleted': lap_late_flag,  # delete if lap pass is after team race winner declared
+                            'late_lap': lap_late_flag
                         }
                         RACE.node_laps[node.index].append(lap_data)
 
@@ -4190,6 +4193,11 @@ def check_win_condition(**kwargs):
     if win_status_dict is not None:
         race_format = RACE.format
         RACE.win_status = win_status_dict['status']
+
+        if RACE.win_status != WinStatus.NONE and logger.getEffectiveLevel() <= logging.DEBUG:
+            logger.debug("Pilot lap counts: " + Results.get_pilot_lap_counts_str(RACE.results))
+            if race_format.team_racing_mode:
+                logger.debug("Team lap totals: " + Results.get_team_lap_totals_str(RACE.team_results))
 
         # if racer lap was deleted and result is winner un-declared
         if del_lap_flag and RACE.win_status != previous_win_status and \
