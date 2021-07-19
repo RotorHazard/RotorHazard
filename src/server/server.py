@@ -2721,6 +2721,51 @@ def on_delete_lap(data):
     emit_current_laps() # Race page, update web client
     emit_current_leaderboard() # Race page, update web client
 
+@SOCKET_IO.on('restore_deleted_lap')
+@catchLogExceptionsWrapper
+def on_restore_deleted_lap(data):
+    '''Restore a deleted (or "late") lap.'''
+
+    node_index = data['node']
+    lap_index = data['lap_index']
+
+    if node_index is None or lap_index is None:
+        logger.error("Bad parameter in 'on_restore_deleted_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
+        return
+
+    lap_obj = RACE.node_laps[node_index][lap_index]
+
+    lap_obj['deleted'] = False
+    lap_obj['late_lap'] = False
+
+    lap_number = 0  # adjust lap numbers and times as needed
+    last_lap_ts = 0
+    for idx, lap in enumerate(RACE.node_laps[node_index]):
+        if not lap['deleted']:
+            if idx >= lap_index:
+                lap['lap_number'] = lap_number
+                lap['lap_time'] = lap['lap_time_stamp'] - last_lap_ts
+                lap['lap_time_formatted'] = RHUtils.time_format(lap['lap_time'], RHData.get_option('timeFormat'))
+            last_lap_ts = lap['lap_time_stamp']
+            lap_number += 1
+
+    Events.trigger(Evt.LAP_RESTORE_DELETED, {
+        #'race': RACE,  # TODO this causes exceptions via 'json.loads()', so leave out for now
+        'node_index': node_index,
+        })
+
+    logger.info('Restored deleted lap: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
+
+    RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
+    RACE.cacheStatus = Results.CacheStatus.VALID
+    if RACE.format.team_racing_mode:
+        RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
+        RACE.team_cacheStatus = Results.CacheStatus.VALID
+    check_win_condition(deletedLap=True)  # handle possible change in win status
+
+    emit_current_laps() # Race page, update web client
+    emit_current_leaderboard() # Race page, update web client
+
 @SOCKET_IO.on('simulate_lap')
 @catchLogExceptionsWrapper
 def on_simulate_lap(data):
@@ -3128,24 +3173,28 @@ def build_laps_list(active_race=RACE):
         fastest_lap_index = None
         last_lap_id = -1
         for idx, lap in enumerate(active_race.node_laps[node]):
-            if not lap['deleted']:
-                lap_number = lap['lap_number']
-                if active_race.format and active_race.format.start_behavior == StartBehavior.FIRST_LAP:
-                    lap_number += 1
+            if (not lap['deleted']) or lap.get('late_lap', False):
+                if not lap.get('late_lap', False):
+                    last_lap_id = lap_number = lap['lap_number']
+                    if active_race.format and active_race.format.start_behavior == StartBehavior.FIRST_LAP:
+                        lap_number += 1
+                    splits = get_splits(node, lap['lap_number'], True)
+                    if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
+                        fastest_lap_time = lap['lap_time']
+                        fastest_lap_index = idx
+                else:
+                    lap_number = -1
+                    splits = []
 
-                splits = get_splits(node, lap['lap_number'], True)
                 node_laps.append({
                     'lap_index': idx,
                     'lap_number': lap_number,
                     'lap_raw': lap['lap_time'],
                     'lap_time': lap['lap_time_formatted'],
                     'lap_time_stamp': lap['lap_time_stamp'],
-                    'splits': splits
+                    'splits': splits,
+                    'late_lap': lap.get('late_lap', False)
                 })
-                last_lap_id = lap['lap_number']
-                if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
-                    fastest_lap_time = lap['lap_time']
-                    fastest_lap_index = idx
 
         splits = get_splits(node, last_lap_id+1, False)
         if splits:
@@ -4031,8 +4080,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                     lap_number = len(RACE.get_active_laps()[node.index])
 
                     if lap_number: # This is a normal completed lap
-                        # Find the time stamp of the last lap completed
-                        last_lap_time_stamp = RACE.get_active_laps()[node.index][-1]['lap_time_stamp']
+                        # Find the time stamp of the last lap completed (including "late" laps for timing)
+                        last_lap_time_stamp = RACE.get_active_laps(True)[node.index][-1]['lap_time_stamp']
 
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
