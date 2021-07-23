@@ -213,7 +213,7 @@ class Node(CommandsWithRetry):
 
         self.enter_at_level = 0
         self.exit_at_level = 0
-        self.autotune = False
+        self.autotune = True
 
         self.start_thresh_lower_flag = False  # True while EnterAt/ExitAt lowered at start of race
         self.start_thresh_lower_time = 0      # time when EnterAt/ExitAt should be restored
