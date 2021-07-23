@@ -105,6 +105,7 @@ arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument('--version', '-v', action='version', version=RELEASE_VERSION)
 arg_parser.add_argument('--config', '-c', action='store', metavar='file_name', default=Config.FILE_NAME, help='use this configuration file')
 arg_parser.add_argument('--database', '-db', action='store', metavar='db_name', help='use this database (file name or URL)')
+arg_parser.add_argument('--autostart', '-a', action='store_true', help='Automatically start a race')
 arg_parser.add_argument('--ziplogs', action='store_true', help='zip log files')
 arg_parser.add_argument('--jumptobl', action='store_true', help='jump to bootloader')
 arg_parser.add_argument('--flashbpill', action='store', nargs='?', metavar='source', const=stm32loader.DEF_BINSRC_STR, help='flash an STM32 BluePill processor')
@@ -5280,6 +5281,8 @@ def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
         'color': ColorVal.ORANGE,
         'message': 'RotorHazard ' + RELEASE_VERSION
         })
+    if args.autostart:
+        gevent.spawn(on_stage_race)
 
     try:
         # the following fn does not return until the server is shutting down
