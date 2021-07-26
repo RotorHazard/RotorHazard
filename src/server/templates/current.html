@@ -136,7 +136,7 @@
 		$().articulate('pitch', rotorhazard.voice_pitch);
 		$('#voice_pitch_value').html(rotorhazard.voice_pitch.toFixed(2));
 		$('#set_voice_pitch').val(rotorhazard.voice_pitch);
-		$('#display_lap_number').prop("checked", rotorhazard.display_lap_number);
+		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
 		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
 		$('#beep_race_leader_lap').prop("checked", rotorhazard.beep_race_leader_lap);
@@ -246,7 +246,7 @@
 					}
 
 					var local_colspan = 2;
-					if(rotorhazard.display_lap_number) {
+					if(rotorhazard.display_lap_id) {
 						local_colspan = 1;
 						$tr.append(
 							$('<td class="display_lap_number">').text(lap.lap_number)
@@ -539,8 +539,8 @@
 			rotorhazard.saveData();
 		});
 
-		$('#display_lap_number').change(function (event) {
-			rotorhazard.display_lap_number = $(this).prop('checked');
+		$('#display_lap_id').change(function (event) {
+			rotorhazard.display_lap_id = $(this).prop('checked');
 			rotorhazard.saveData();
 			show_current_laps();
 		});
@@ -785,7 +785,7 @@
 					{{ __('Lap Information') }}
 				</div>
 				<ul>
-					<li><label><input type="checkbox" id="display_lap_number"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="display_lap_id"> {{ __('Lap Number') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
 				</ul>
