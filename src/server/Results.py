@@ -341,7 +341,7 @@ def calc_leaderboard(rhDataObj, **params):
             laps_total = 0
             for lap in result_pilot['current_laps']:
                 race_total += lap['lap_time']
-                if lap['lap_number'] > 0:
+                if lap['lap_number']:
                     laps_total += lap['lap_time']
 
             result_pilot['total_time'] = race_total
@@ -392,7 +392,7 @@ def calc_leaderboard(rhDataObj, **params):
                 if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
                     timed_laps = result_pilot['current_laps']
                 else:
-                    timed_laps = filter(lambda x : x['lap_number'] > 0, result_pilot['current_laps'])
+                    timed_laps = filter(lambda x : x['lap_number'], result_pilot['current_laps'])
 
                 fast_lap = sorted(timed_laps, key=lambda val : val['lap_time'])[0]['lap_time']
                 result_pilot['fastest_lap'] = fast_lap
@@ -1556,4 +1556,29 @@ def get_leading_team_name(results):
             return results_list[0]['name']
     except Exception:
         logger.exception("Error in Results 'get_leading_team_name()'")
+    return ''
+
+def get_pilot_lap_counts_str(results):
+    try:
+        primary_leaderboard = results['meta']['primary_leaderboard']
+        results_list = results[primary_leaderboard]
+        lap_strs_list = []
+        for res_obj in results_list:
+            lap_strs_list.append("{}={}".format(res_obj['callsign'], res_obj['laps']))
+        return ", ".join(lap_strs_list)
+    except Exception:
+        logger.exception("Error in Results 'get_pilot_lap_totals_str()'")
+    return ''
+
+def get_team_lap_totals_str(results):
+    try:
+        primary_leaderboard = results['meta']['primary_leaderboard']
+        results_list = results[primary_leaderboard]
+        lap_strs_list = []
+        for res_obj in results_list:
+            lap_strs_list.append("{}={}".format(res_obj['name'], res_obj['laps']))
+        lap_strs_list.sort()
+        return ", ".join(lap_strs_list)
+    except Exception:
+        logger.exception("Error in Results 'get_team_lap_totals_str()'")
     return ''
