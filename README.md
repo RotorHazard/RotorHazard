@@ -49,6 +49,11 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
 
 ## Quick start
 
+To install:
+```
+./install.sh
+```
+
 To run the server:
 ```
 cd src
