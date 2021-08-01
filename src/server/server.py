@@ -4068,7 +4068,7 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
             # reject passes before race start and with disabled (no-pilot) nodes
             race_format = getCurrentRaceFormat()
-            if race_format is SECONDARY_RACE_FORMAT or pilot_id != RHUtils.PILOT_ID_NONE:
+            if pilot_id != RHUtils.PILOT_ID_NONE or race_format is SECONDARY_RACE_FORMAT:
                 if lap_timestamp_absolute >= RACE.start_time_monotonic:
 
                     # if node EnterAt/ExitAt values need to be restored then do it soon
@@ -4108,7 +4108,8 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
 
                     lap_time_fmtstr = RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))
                     lap_ts_fmtstr = RHUtils.time_format(lap_time_stamp, RHData.get_option('timeFormat'))
-                    pilot_namestr = RHData.get_pilot(pilot_id).callsign
+                    pilot_obj = RHData.get_pilot(pilot_id)
+                    pilot_namestr = pilot_obj.callsign if pilot_obj else ""
 
                     lap_ok_flag = True
                     lap_late_flag = False
@@ -4125,8 +4126,10 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                         elif RACE.win_status == WinStatus.DECLARED and (RACE.format.team_racing_mode or \
                                                                         node_finished_flag):
                             lap_late_flag = True  # "late" lap pass (after race winner declared)
-                            t_str = (", Team " + RHData.get_pilot(pilot_id).team) if \
-                                                    RACE.format.team_racing_mode else ""
+                            if RACE.format.team_racing_mode and pilot_obj:
+                                t_str = ", Team " + pilot_obj.team
+                            else:
+                                t_str = ""
                             logger.info('Ignoring lap after race winner declared: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}{}' \
                                        .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
                                                INTERFACE.get_lap_source_str(source), pilot_namestr, t_str))
@@ -4193,17 +4196,17 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             lap_id = lap_number if RACE.win_status != WinStatus.DECLARED or \
                                                    (not node_finished_flag) else None
                             if RACE.format.team_racing_mode:
-                                team = RHData.get_pilot(pilot_id).team
-                                team_laps = RACE.team_results['meta']['teams'][team]['laps']
+                                team_name = pilot_obj.team if pilot_obj else ""
+                                team_laps = RACE.team_results['meta']['teams'][team_name]['laps']
                                 if not lap_late_flag:
                                     logger.debug('Lap pass: Node={}, lap={}, pilot={} -> Team {} lap {}' \
-                                          .format(node.index+1, lap_number, pilot_namestr, team, team_laps))
+                                          .format(node.index+1, lap_number, pilot_namestr, team_name, team_laps))
                                 # if winning team has been declared then don't announce team lap number
                                 if RACE.win_status == WinStatus.DECLARED:
                                     team_laps = None
-                                emit_phonetic_data(pilot_id, lap_id, lap_time, team, team_laps, \
+                                emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, \
                                                 (check_leader and \
-                                                 team == Results.get_leading_team_name(RACE.team_results)))
+                                                 team_name == Results.get_leading_team_name(RACE.team_results)))
                             else:
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, None, None, \
                                                 (check_leader and \
