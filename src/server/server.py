@@ -2809,6 +2809,7 @@ def on_delete_lap(data):
         return
 
     RACE.node_laps[node_index][lap_index]['deleted'] = True
+    RACE.node_laps[node_index][lap_index]['late_lap'] = False
 
     time = RACE.node_laps[node_index][lap_index]['lap_time_stamp']
 
@@ -2850,7 +2851,53 @@ def on_delete_lap(data):
         'node_index': node_index,
         })
 
-    logger.info('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_index))
+    logger.info('Lap deleted: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
+
+    RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
+    RACE.cacheStatus = Results.CacheStatus.VALID
+    if RACE.format.team_racing_mode:
+        RACE.team_results = Results.calc_team_leaderboard(RACE, RHData)
+        RACE.team_cacheStatus = Results.CacheStatus.VALID
+    check_win_condition(deletedLap=True)  # handle possible change in win status
+
+    emit_current_laps() # Race page, update web client
+    emit_current_leaderboard() # Race page, update web client
+
+
+@SOCKET_IO.on('restore_deleted_lap')
+@catchLogExceptionsWrapper
+def on_restore_deleted_lap(data):
+    '''Restore a deleted (or "late") lap.'''
+
+    node_index = data['node']
+    lap_index = data['lap_index']
+
+    if node_index is None or lap_index is None:
+        logger.error("Bad parameter in 'on_restore_deleted_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
+        return
+
+    lap_obj = RACE.node_laps[node_index][lap_index]
+
+    lap_obj['deleted'] = False
+    lap_obj['late_lap'] = False
+
+    lap_number = 0  # adjust lap numbers and times as needed
+    last_lap_ts = 0
+    for idx, lap in enumerate(RACE.node_laps[node_index]):
+        if not lap['deleted']:
+            if idx >= lap_index:
+                lap['lap_number'] = lap_number
+                lap['lap_time'] = lap['lap_time_stamp'] - last_lap_ts
+                lap['lap_time_formatted'] = RHUtils.time_format(lap['lap_time'], RHData.get_option('timeFormat'))
+            last_lap_ts = lap['lap_time_stamp']
+            lap_number += 1
+
+    Events.trigger(Evt.LAP_RESTORE_DELETED, {
+        #'race': RACE,  # TODO this causes exceptions via 'json.loads()', so leave out for now
+        'node_index': node_index,
+        })
+
+    logger.info('Restored deleted lap: Node {0} LapIndex {1}'.format(node_index+1, lap_index))
 
     RACE.results = Results.calc_leaderboard(RHData, current_race=RACE, current_profile=getCurrentProfile())
     RACE.cacheStatus = Results.CacheStatus.VALID
@@ -3323,24 +3370,29 @@ def build_laps_list(active_race=RACE):
         fastest_lap_index = None
         last_lap_id = -1
         for idx, lap in enumerate(active_race.node_laps[node]):
-            if not lap['deleted']:
-                lap_number = lap['lap_number']
+            if (not lap['deleted']) or lap.get('late_lap', False):
+                if not lap.get('late_lap', False):
+                    last_lap_id = lap_number = lap['lap_number']
                 if active_race.format and active_race.format.start_behavior == RHRace.StartBehavior.FIRST_LAP:
                     lap_number += 1
 
                 splits = get_splits(node, lap['lap_number'], True)
+                if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
+                        fastest_lap_time = lap['lap_time']
+                        fastest_lap_index = idx
+                else:
+                    lap_number = -1
+                    splits = []
+
                 node_laps.append({
                     'lap_index': idx,
                     'lap_number': lap_number,
                     'lap_raw': lap['lap_time'],
                     'lap_time': lap['lap_time_formatted'],
                     'lap_time_stamp': lap['lap_time_stamp'],
-                    'splits': splits
+                    'splits': splits,
+                    'late_lap': lap.get('late_lap', False)
                 })
-                last_lap_id = lap['lap_number']
-                if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
-                    fastest_lap_time = lap['lap_time']
-                    fastest_lap_index = idx
 
         splits = get_splits(node, last_lap_id+1, False)
         if splits:
@@ -4308,7 +4360,8 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
             pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node.index)
 
             # reject passes before race start and with disabled (no-pilot) nodes
-            if getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or pilot_id != RHUtils.PILOT_ID_NONE:
+            race_format = getCurrentRaceFormat()
+            if pilot_id != RHUtils.PILOT_ID_NONE or race_format is SECONDARY_RACE_FORMAT:
                 if lap_timestamp_absolute >= RACE.start_time_monotonic:
 
                     # if node EnterAt/ExitAt values need to be restored then do it soon
@@ -4318,8 +4371,8 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                     lap_number = len(RACE.get_active_laps()[node.index])
 
                     if lap_number: # This is a normal completed lap
-                        # Find the time stamp of the last lap completed
-                        last_lap_time_stamp = RACE.get_active_laps()[node.index][-1]['lap_time_stamp']
+                        # Find the time stamp of the last lap completed (including "late" laps for timing)
+                        last_lap_time_stamp = RACE.get_active_laps(True)[node.index][-1]['lap_time_stamp']
 
                         # New lap time is the difference between the current time stamp and the last
                         lap_time = lap_time_stamp - last_lap_time_stamp
@@ -4329,7 +4382,6 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                         lap_time = lap_time_stamp
                         node.first_cross_flag = True  # indicate first crossing completed
 
-                    race_format = getCurrentRaceFormat()
                     if race_format is SECONDARY_RACE_FORMAT:
                         min_lap = 0  # don't enforce min-lap time if running as secondary timer
                         min_lap_behavior = 0
@@ -4337,11 +4389,15 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                         min_lap = RHData.get_optionInt("MinLapSec")
                         min_lap_behavior = RHData.get_optionInt("MinLapBehavior")
 
-                    node_not_finished_flag = not RACE.get_node_finished_flag(node.index)
-                    if RACE.timer_running is False:
+                    node_finished_flag = RACE.get_node_finished_flag(node.index)
+                    # set next node race status as 'finished' if winner has been declared
+                    #  or timer mode is count-down race and race-time has expired
+                    if RACE.win_status == RHRace.WinStatus.DECLARED or \
+                                    (race_format.race_mode == 0 and RACE.timer_running is False):
                         RACE.set_node_finished_flag(node.index)
 
                     lap_time_fmtstr = RHUtils.time_format(lap_time, RHData.get_option('timeFormat'))
+                    pilot_obj = RHData.get_pilot(pilot_id)
 
                     lap_ok_flag = True
                     lap_late_flag = False
@@ -4352,7 +4408,8 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                                        .format(node.index+1, lap_number, lap_time_fmtstr, min_lap, node.under_min_lap_count))
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
-                        elif RACE.format.team_racing_mode and RACE.win_status == RHRace.WinStatus.DECLARED:
+                        elif RACE.win_status == RHRace.WinStatus.DECLARED and (RACE.format.team_racing_mode or \
+                                                                        node_finished_flag):
                             lap_late_flag = True  # "late" lap pass (after team race winner declared)
                             logger.info('Ignoring lap after team race winner declared: Node={}, lap={}, lapTime={}' \
                                        .format(node.index+1, lap_number, lap_time_fmtstr))
@@ -4369,7 +4426,8 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                             'lap_time': lap_time,
                             'lap_time_formatted': lap_time_fmtstr,
                             'source': source,
-                            'deleted': lap_late_flag
+                            'deleted': lap_late_flag,  # delete if lap pass is after race winner declared
+                            'late_lap': lap_late_flag
                         }
                         RACE.node_laps[node.index].append(lap_data)
 
@@ -4403,20 +4461,18 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                             check_leader = race_format.win_condition != RHRace.WinCondition.NONE and \
                                            RACE.win_status != RHRace.WinStatus.DECLARED
                             # announce pilot lap number unless winner declared and pilot has finished final lap
-                            lap_id = lap_number if race_format.win_condition == RHRace.WinCondition.NONE or \
-                                                   RACE.win_status != RHRace.WinStatus.DECLARED or \
-                                                   node_not_finished_flag else None
+                            lap_id = lap_number if RACE.win_status != RHRace.WinStatus.DECLARED or \
+                                                   (not node_finished_flag) else None
                             if RACE.format.team_racing_mode:
-                                team = RHData.get_pilot(pilot_id).team
-                                team_laps = RACE.team_results['meta']['teams'][team]['laps']
-                                logger.debug('Team {} lap {}'.format(team, team_laps))
+                                team_name = pilot_obj.team if pilot_obj else ""
+                                team_laps = RACE.team_results['meta']['teams'][team_name]['laps']
+                                logger.debug('Team {} lap {}'.format(team_name, team_laps))
                                 # if winning team has been declared then don't announce team lap number
-                                if race_format.win_condition != RHRace.WinCondition.NONE and \
-                                                       RACE.win_status == RHRace.WinStatus.DECLARED:
+                                if RACE.win_status == RHRace.WinStatus.DECLARED:
                                     team_laps = None
-                                emit_phonetic_data(pilot_id, lap_id, lap_time, team, team_laps, \
+                                emit_phonetic_data(pilot_id, lap_id, lap_time, team_name, team_laps, \
                                                 (check_leader and \
-                                                 team == Results.get_leading_team_name(RACE.team_results)))
+                                                 team_name == Results.get_leading_team_name(RACE.team_results)))
                             else:
                                 emit_phonetic_data(pilot_id, lap_id, lap_time, None, None, \
                                                 (check_leader and \
@@ -4459,6 +4515,11 @@ def check_win_condition(**kwargs):
     if win_status_dict is not None:
         race_format = RACE.format
         RACE.win_status = win_status_dict['status']
+
+        if RACE.win_status != RHRace.WinStatus.NONE and logger.getEffectiveLevel() <= logging.DEBUG:
+            logger.debug("Pilot lap counts: " + Results.get_pilot_lap_counts_str(RACE.results))
+            if race_format.team_racing_mode:
+                logger.debug("Team lap totals: " + Results.get_team_lap_totals_str(RACE.team_results))
 
         # if racer lap was deleted and result is winner un-declared
         if del_lap_flag and RACE.win_status != previous_win_status and \
