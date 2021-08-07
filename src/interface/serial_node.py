@@ -70,6 +70,7 @@ def discover(idxOffset, config, isS32BPillFlag=False, *args, **kwargs):
                     logger.info('{} node(s) with API level {} found at baudrate {}'.format(len(node_manager.nodes), node_manager.api_level, baudrate))
                     next_index += len(node_manager.nodes)
                     node_managers.append(node_manager)
+                    break
                 else:
                     serial_obj.close()
     return node_managers
