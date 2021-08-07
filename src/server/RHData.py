@@ -609,7 +609,8 @@ class RHData():
         for node in range(self._RACE.num_nodes):
             self.add_pilot({
                 'callsign': 'Callsign {0}'.format(node+1),
-                'name': 'Pilot {0} Name'.format(node+1)
+                'name': 'Pilot {0} Name'.format(node+1),
+                'phonetic': 'Callsine {0}'.format(node+1)
                 })
         logger.info('Database pilots reset')
         return True
