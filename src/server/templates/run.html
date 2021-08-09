@@ -127,6 +127,7 @@
 
 		var heartbeatCounter = 0;
 		var current_laps = {};
+		var current_laps_reversed = false;
 
 		// set admin flag
 		rotorhazard.admin = true;
@@ -167,6 +168,7 @@
 		$('#display_lap_id').prop("checked", rotorhazard.display_lap_id);
 		$('#display_time_start').prop("checked", rotorhazard.display_time_start);
 		$('#display_time_first_pass').prop("checked", rotorhazard.display_time_first_pass);
+		$('#display_laps_reversed').prop("checked", rotorhazard.display_laps_reversed);
 
 		if ('{{ getOption('ledBrightness') }}' != 'False') {
 			$('#set_led_brightness').val(brightness_logsl.position( {{ getOption('ledBrightness') }} ));
@@ -490,14 +492,58 @@
 
 		socket.on('current_laps', function (msg) {
 			current_laps = msg.current;
+			current_laps_reversed = false;
 			show_current_laps();
 		});
 
 		function show_current_laps() {
-			$.each(current_laps.node_index, function (i, node_index) { // i is loop num, node_index is json object
+			$.each(current_laps.node_index, function (i, curnode_data) { // i is loop num, curnode_data is json object
 				$('#current_laps_' + i + ' tbody > tr').remove();
 
-				$.each(node_index.laps, function (j, lap) { // j is loop num, lap_id is json object
+				if(rotorhazard.display_laps_reversed) {
+					if(!current_laps_reversed) {
+						curnode_data.laps.reverse();
+					}
+				}
+				else if(current_laps_reversed) {
+					curnode_data.laps.reverse();
+				}
+
+				$.each(curnode_data.laps, function (j, lap) { // j is loop num, lap_id is json object
+					if(lap.splits) {
+						if(rotorhazard.display_laps_reversed) {
+							if(!current_laps_reversed && lap.splits.length > 1) {
+								lap.splits.laps.reverse();
+							}
+							$.each(lap.splits, function(k, split) {
+								if ((!curnode_data.finished_flag) || j > 0 ||
+												(split.split_time && split.split_time != '-') ||
+												split.split_speed) {  // don't show last split if empty and pilot finished
+									var split_display = split.split_time + ' ';
+									if (split.split_speed) {
+										split_display += '(' + split.split_speed + ')';
+									}
+									var split_tr = $('<tr>');
+									split_tr.addClass('lap_split');
+									if (rotorhazard.display_lap_id) {
+										var split_id = 'split ';
+										if (lap.splits.length > 1) {
+											split_id += (k+1);
+										}
+										split_tr.append($('<td>').text(split_id));
+									}
+									var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+									split_tr.append(split_time_td);
+									split_tr.appendTo('#current_laps_' + i);
+								}
+							});
+						}
+						else if(current_laps_reversed && lap.splits.length > 1) {
+							lap.splits.laps.reverse();
+						}
+					}
+
+
 					var tr = $('<tr>');
 					var lap_num = lap.lap_number;
 					if (lap_num == 0) {
@@ -524,7 +570,18 @@
 					local_prepend = $('<span class="from_start">');
 
 					if(rotorhazard.display_time_first_pass) {
-						local_prepend.text(formatTimeMillis(lap.lap_time_stamp - node_index.laps[0].lap_time_stamp, {{ getOption('timeFormat')|tojson }}));
+						if(rotorhazard.display_laps_reversed) {
+							if(curnode_data.laps.length > 0) {
+								ts_val = lap.lap_time_stamp - curnode_data.laps[curnode_data.laps.length-1].lap_time_stamp;
+							}
+							else {
+								ts_val = 0;
+							}
+						}
+						else {
+							ts_val = lap.lap_time_stamp - curnode_data.laps[0].lap_time_stamp;
+						}
+						local_prepend.text(formatTimeMillis(ts_val, {{ getOption('timeFormat')|tojson }}));
 						if(rotorhazard.display_time_start){
 							local_prepend.append(" / ");
 						}
@@ -545,26 +602,33 @@
 					}
 					tr.appendTo('#current_laps_' + i);
 
-					$.each(lap.splits, function(k, split) {
-						var split_display = split.split_time + ' ';
-						if (split.split_speed) {
-							split_display += '(' + split.split_speed + ')';
-						}
-						var split_tr = $('<tr>');
-						split_tr.addClass('lap_split');
-						if (rotorhazard.display_lap_id) {
-							var split_id = 'split ';
-							if (lap.splits.length > 1) {
-								split_id += (k+1);
+					if(!rotorhazard.display_laps_reversed) {
+						$.each(lap.splits, function(k, split) {
+							if ((!curnode_data.finished_flag) || j < curnode_data.laps.length-1 ||
+													(split.split_time && split.split_time != '-') ||
+													split.split_speed) {  // don't show last split if empty and pilot finished
+								var split_display = split.split_time + ' ';
+								if (split.split_speed) {
+									split_display += '(' + split.split_speed + ')';
+								}
+								var split_tr = $('<tr>');
+								split_tr.addClass('lap_split');
+								if (rotorhazard.display_lap_id) {
+									var split_id = 'split ';
+									if (lap.splits.length > 1) {
+										split_id += (k+1);
+									}
+									split_tr.append($('<td>').text(split_id));
+								}
+								var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
+								split_tr.append(split_time_td);
+								split_tr.appendTo('#current_laps_' + i);
 							}
-							split_tr.append($('<td>').text(split_id));
-						}
-						var split_time_td = $('<td colspan="'+local_colspan+'">').text(split_display);
-						split_tr.append(split_time_td);
-						split_tr.appendTo('#current_laps_' + i);
-					});
+						});
+					}
 				});
 			});
+			current_laps_reversed = rotorhazard.display_laps_reversed;
 		}
 
 		socket.on('leaderboard', function (msg) {
@@ -1088,6 +1152,12 @@
 
 		$('#display_time_first_pass').change(function (event) {
 			rotorhazard.display_time_first_pass = $(this).prop('checked');
+			rotorhazard.saveData();
+			show_current_laps();
+		});
+
+		$('#display_laps_reversed').change(function (event) {
+			rotorhazard.display_laps_reversed = $(this).prop('checked');
 			rotorhazard.saveData();
 			show_current_laps();
 		});
@@ -2259,9 +2329,10 @@
 					{{ __('Lap Information') }}
 				</div>
 				<ul>
-					<li><label><input type="checkbox" id="display_lap_id"> {{ __('Lap Number') }}</label></li>
+					<li><label><input type="checkbox" id="display_lap_id"> {{ __('Lap number') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_start"> {{ __('Time since start') }}</label></li>
 					<li><label><input type="checkbox" id="display_time_first_pass"> {{ __('Time since first pass') }}</label></li>
+					<li><label><input type="checkbox" id="display_laps_reversed"> {{ __('Lap order reversed') }}</label></li>
 				</ul>
 			</li>
 
