@@ -3167,18 +3167,18 @@ def emit_race_formats(**params):
 
 def build_laps_list(active_race=RACE):
     current_laps = []
-    for node in range(active_race.num_nodes):
+    for node_idx in range(active_race.num_nodes):
         node_laps = []
         fastest_lap_time = float("inf")
         fastest_lap_index = None
         last_lap_id = -1
-        for idx, lap in enumerate(active_race.node_laps[node]):
+        for idx, lap in enumerate(active_race.node_laps[node_idx]):
             if (not lap['deleted']) or lap.get('late_lap', False):
                 if not lap.get('late_lap', False):
                     last_lap_id = lap_number = lap['lap_number']
                     if active_race.format and active_race.format.start_behavior == StartBehavior.FIRST_LAP:
                         lap_number += 1
-                    splits = get_splits(node, lap['lap_number'], True)
+                    splits = get_splits(node_idx, lap['lap_number'], True)
                     if lap['lap_time'] > 0 and idx > 0 and lap['lap_time'] < fastest_lap_time:
                         fastest_lap_time = lap['lap_time']
                         fastest_lap_index = idx
@@ -3196,7 +3196,7 @@ def build_laps_list(active_race=RACE):
                     'late_lap': lap.get('late_lap', False)
                 })
 
-        splits = get_splits(node, last_lap_id+1, False)
+        splits = get_splits(node_idx, last_lap_id+1, False)
         if splits:
             node_laps.append({
                 'lap_number': last_lap_id+1,
@@ -3205,8 +3205,8 @@ def build_laps_list(active_race=RACE):
                 'splits': splits
             })
 
-        if len(active_race.node_pilots) and active_race.node_pilots[node]:
-            pilot = RHData.get_pilot(active_race.node_pilots[node])
+        if len(active_race.node_pilots) and active_race.node_pilots[node_idx]:
+            pilot = RHData.get_pilot(active_race.node_pilots[node_idx])
             pilot_data = {
                 'id': pilot.id,
                 'name': pilot.name,
@@ -3218,7 +3218,8 @@ def build_laps_list(active_race=RACE):
         current_laps.append({
             'laps': node_laps,
             'fastest_lap_index': fastest_lap_index,
-            'pilot': pilot_data
+            'pilot': pilot_data,
+            'finished_flag': active_race.get_node_finished_flag(node_idx)
         })
     current_laps = {
         'node_index': current_laps
@@ -3240,12 +3241,12 @@ def emit_current_laps(**params):
     else:
         SOCKET_IO.emit('current_laps', emit_payload)
 
-def get_splits(node, lap_id, lapCompleted):
+def get_splits(node_idx, lap_id, lapCompleted):
     splits = []
     if CLUSTER:
         for secondary_index in range(len(CLUSTER.secondaries)):
             if CLUSTER.isSplitSecondaryAvailable(secondary_index):
-                split = RHData.get_lapSplit_by_params(node, lap_id, secondary_index)
+                split = RHData.get_lapSplit_by_params(node_idx, lap_id, secondary_index)
                 if split:
                     split_payload = {
                         'split_id': secondary_index,
@@ -4123,7 +4124,10 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                                                pilot_namestr))
                             if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
                                 lap_ok_flag = False
-                        elif RACE.win_status == WinStatus.DECLARED and (RACE.format.team_racing_mode or \
+
+                    if lap_ok_flag:
+
+                        if RACE.win_status == WinStatus.DECLARED and (RACE.format.team_racing_mode or \
                                                                         node_finished_flag):
                             lap_late_flag = True  # "late" lap pass (after race winner declared)
                             if RACE.format.team_racing_mode and pilot_obj:
@@ -4133,8 +4137,6 @@ def pass_record_callback(node, lap_timestamp_absolute, source):
                             logger.info('Ignoring lap after race winner declared: Node={}, lap={}, lapTime={}, sinceStart={}, source={}, pilot: {}{}' \
                                        .format(node.index+1, lap_number, lap_time_fmtstr, lap_ts_fmtstr, \
                                                INTERFACE.get_lap_source_str(source), pilot_namestr, t_str))
-
-                    if lap_ok_flag:
 
                         if logger.getEffectiveLevel() <= logging.DEBUG:  # if DEBUG msgs actually being logged
                             late_str = " (late lap)" if lap_late_flag else ""
@@ -4264,19 +4266,23 @@ def check_win_condition(**kwargs):
 
         if win_status_dict['status'] == WinStatus.DECLARED:
             # announce winner
+            win_data = win_status_dict['data']
             if race_format.team_racing_mode:
-                win_str = win_status_dict['data']['name']
+                win_str = win_data.get('name', '')
                 status_msg_str = __('Winner is') + ' ' + __('Team') + ' ' + win_str
                 log_msg_str = "Race status msg:  Winner is Team " + win_str
                 phonetic_str = status_msg_str
             else:
-                win_str = win_status_dict['data']['callsign']
+                win_str = win_data.get('callsign', '')
                 status_msg_str = __('Winner is') + ' ' + win_str
                 log_msg_str = "Race status msg:  Winner is " + win_str
-                win_phon_name = RHData.get_pilot(win_status_dict['data']['pilot_id']).phonetic
-                if len(win_phon_name) <= 0:  # if no phonetic then use callsign
-                    win_phon_name = win_status_dict['data']['callsign']
+                win_phon_name = RHData.get_pilot(win_data['pilot_id']).phonetic \
+                                if 'pilot_id' in win_data else None
+                if (not win_phon_name) or len(win_phon_name) <= 0:  # if no phonetic then use callsign
+                    win_phon_name = win_data.get('callsign', '')
                 phonetic_str = __('Winner is') + ' ' + win_phon_name
+                if 'node' in win_data:  # make sure winner node race status always set to 'finished'
+                    RACE.set_node_finished_flag(win_data['node'])
 
             # if racer lap was deleted then only output if win-status details changed
             if (not del_lap_flag) or RACE.win_status != previous_win_status or \
@@ -4287,8 +4293,9 @@ def check_win_condition(**kwargs):
                 Events.trigger(Evt.RACE_WIN, {
                     'win_status': win_status_dict,
                     'message': RACE.status_message,
-                    'node_index': win_status_dict['data']['node'] if 'node' in win_status_dict['data'] else None,
-                    'color': led_manager.getDisplayColor(win_status_dict['data']['node']) if 'node' in win_status_dict['data'] else None,
+                    'node_index': win_data.get('node', None),
+                    'color': led_manager.getDisplayColor(win_data['node']) \
+                                            if 'node' in win_data else None,
                     'results': RACE.results
                     })
 
