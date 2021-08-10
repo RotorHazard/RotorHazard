@@ -24,8 +24,8 @@
 		"INVERTED_PANEL_ROWS": false
 	},
 	"AUDIO": {
-		"PLAYER": "",
-		"TTS": ""
+		"PLAYER": [],
+		"TTS": []
 	},
 	"CHORUS": {
 		"HARDWARE_PORT": "",
