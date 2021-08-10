@@ -45,6 +45,8 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
 * Software-in-the-loop node code.
 * Nodes-over-sockets.
 * Support for Chorus hardware/software.
+* Support for LapRF hardware.
+* Support for multiple LiveTime protocols (Delta 5 and Chorus).
 * Test coverage.
 * ...and a massive code clean-up!
 

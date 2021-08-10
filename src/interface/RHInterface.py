@@ -273,7 +273,6 @@ class RHInterface(BaseHardwareInterface):
         self.FW_BUILDDATE_PREFIXSTR = FW_BUILDDATE_PREFIXSTR
         self.FW_BUILDTIME_PREFIXSTR = FW_BUILDTIME_PREFIXSTR
         self.FW_PROCTYPE_PREFIXSTR = FW_PROCTYPE_PREFIXSTR
-        self.update_thread = None      # Thread for running the main update loop
         self.fwupd_serial_port = None   # serial port for in-app update of node firmware
 
         self.node_managers = Plugins(suffix='node')
@@ -570,7 +569,7 @@ class RHInterface(BaseHardwareInterface):
     # External functions for setting data
     #
 
-    def set_frequency(self, node_index, frequency):
+    def set_frequency(self, node_index, frequency, band=None, channel=None):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
         if frequency:

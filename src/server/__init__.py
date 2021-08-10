@@ -18,6 +18,7 @@ class Config:
         self.LOGGING = {}
         self.VRX_CONTROL = {}
         self.AUDIO = {}
+        self.LAPRF = {}
         self.CHORUS = {}
         self.apply_defaults()
 
@@ -75,6 +76,8 @@ class Config:
                 self.AUDIO.update(externalConfig['AUDIO'])
             if 'VRX_CONTROL' in externalConfig:
                 self.VRX_CONTROL.update(externalConfig['VRX_CONTROL'])
+            if 'LAPRF' in externalConfig:
+                self.LAPRF.update(externalConfig['LAPRF'])
             if 'CHORUS' in externalConfig:
                 self.CHORUS.update(externalConfig['CHORUS'])
         

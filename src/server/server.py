@@ -1,4 +1,5 @@
 '''RotorHazard server script'''
+from interface.RHInterface import RHInterface
 RELEASE_VERSION = "3.1.0-dev.7" # Public release version code
 SERVER_API = 32+1 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
@@ -969,7 +970,7 @@ def on_set_frequency(data):
         'frequencies': freqs
         })
 
-    INTERFACE.set_frequency(node_index, frequency)
+    INTERFACE.set_frequency(node_index, frequency, band, channel)
 
     Events.trigger(Evt.FREQUENCY_SET, {
         'nodeIndex': node_index,
@@ -1052,7 +1053,7 @@ def hardware_set_all_frequencies(freqs):
     '''do hardware update for frequencies'''
     logger.debug("Sending frequency values to nodes: " + str(freqs["f"]))
     for idx in range(RACE.num_nodes):
-        INTERFACE.set_frequency(idx, freqs["f"][idx])
+        INTERFACE.set_frequency(idx, freqs["f"][idx], freqs["b"][idx], freqs["c"][idx])
 
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
@@ -2273,6 +2274,9 @@ def race_start_thread(start_token):
         # Only start a race if it is not already in progress
         # Null this thread if token has changed (race stopped/started quickly)
 
+        RACE.laps_winner_name = None  # name of winner in first-to-X-laps race
+        RACE.winning_lap_id = 0  # track winning lap-id if race tied during first-to-X-laps race
+
         # do blocking delay until race start
         while monotonic() < RACE.start_time_monotonic:
             pass
@@ -2281,6 +2285,10 @@ def race_start_thread(start_token):
         RACE.start_time = datetime.now() # record standard-formatted time
 
         # do time-critical tasks
+        RACE.race_status = RHRace.RaceStatus.RACING # To enable registering passed laps
+        INTERFACE.set_race_status(RHRace.RaceStatus.RACING)
+        RACE.timer_running = True # indicate race timer is running
+
         Events.trigger(Evt.RACE_START, {
             'race': RACE,
             'color': ColorVal.GREEN
@@ -2296,12 +2304,6 @@ def race_start_thread(start_token):
                 logger.info("Forcing end crossing for node {0} at start (rssi={1}, enterAt={2}, exitAt={3})".\
                            format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
                 INTERFACE.force_end_crossing(node.index)
-
-        RACE.race_status = RHRace.RaceStatus.RACING # To enable registering passed laps
-        INTERFACE.set_race_status(RHRace.RaceStatus.RACING)
-        RACE.timer_running = True # indicate race timer is running
-        RACE.laps_winner_name = None  # name of winner in first-to-X-laps race
-        RACE.winning_lap_id = 0  # track winning lap-id if race tied during first-to-X-laps race
 
         # kick off race expire processing
         race_format = getCurrentRaceFormat()
@@ -4512,7 +4514,7 @@ def assign_frequencies():
     freqs = json.loads(profile.frequencies)
 
     for idx in range(RACE.num_nodes):
-        INTERFACE.set_frequency(idx, freqs["f"][idx])
+        INTERFACE.set_frequency(idx, freqs["f"][idx], freqs["b"][idx], freqs["c"][idx])
         Events.trigger(Evt.FREQUENCY_SET, {
             'nodeIndex': idx,
             'frequency': freqs["f"][idx],
@@ -4825,6 +4827,9 @@ def initialize_hardware_interface():
                 return True
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
+            if 'RH_INTERFACE' in os.environ:
+                return False
+
         if (not INTERFACE) or (not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0:
             if (not rhconfig.SERIAL_PORTS) or len(rhconfig.SERIAL_PORTS) <= 0:
                 interfaceModule = importlib.import_module('interface.MockInterface')
@@ -4889,75 +4894,76 @@ def buildServerInfo():
         # Server API
         serverInfo['json_api'] = JSON_API
 
-        # Node API levels
-        node_api_level = 0
-        serverInfo['node_api_match'] = True
-
-        serverInfo['node_api_lowest'] = 0
-        serverInfo['node_api_levels'] = [None]
-
-        if len(INTERFACE.node_managers):
-            if INTERFACE.node_managers[0].api_level:
-                node_api_level = INTERFACE.node_managers[0].api_level
-                serverInfo['node_api_lowest'] = node_api_level
-                serverInfo['node_api_levels'] = []
-                for node_manager in INTERFACE.node_managers:
-                    serverInfo['node_api_levels'].append(node_manager.api_level)
-                    if node_manager.api_level != node_api_level:
-                        serverInfo['node_api_match'] = False
-                    if node_manager.api_level < serverInfo['node_api_lowest']:
-                        serverInfo['node_api_lowest'] = node_manager.api_level
-                # if multi-node and all api levels same then only include one entry
-                if serverInfo['node_api_match'] and INTERFACE.node_managers[0].is_multi_node():
-                    serverInfo['node_api_levels'] = serverInfo['node_api_levels'][0:1]
-
-        serverInfo['about_html'] += "<li>" + __("Node API") + ": "
-        if node_api_level:
-            if serverInfo['node_api_match']:
-                serverInfo['about_html'] += str(node_api_level)
+        if isinstance(INTERFACE, RHInterface):
+            # Node API levels
+            node_api_level = 0
+            serverInfo['node_api_match'] = True
+    
+            serverInfo['node_api_lowest'] = 0
+            serverInfo['node_api_levels'] = [None]
+    
+            if len(INTERFACE.node_managers):
+                if INTERFACE.node_managers[0].api_level:
+                    node_api_level = INTERFACE.node_managers[0].api_level
+                    serverInfo['node_api_lowest'] = node_api_level
+                    serverInfo['node_api_levels'] = []
+                    for node_manager in INTERFACE.node_managers:
+                        serverInfo['node_api_levels'].append(node_manager.api_level)
+                        if node_manager.api_level != node_api_level:
+                            serverInfo['node_api_match'] = False
+                        if node_manager.api_level < serverInfo['node_api_lowest']:
+                            serverInfo['node_api_lowest'] = node_manager.api_level
+                    # if multi-node and all api levels same then only include one entry
+                    if serverInfo['node_api_match'] and INTERFACE.node_managers[0].is_multi_node():
+                        serverInfo['node_api_levels'] = serverInfo['node_api_levels'][0:1]
+    
+            serverInfo['about_html'] += "<li>" + __("Node API") + ": "
+            if node_api_level:
+                if serverInfo['node_api_match']:
+                    serverInfo['about_html'] += str(node_api_level)
+                else:
+                    serverInfo['about_html'] += "[ "
+                    for idx, level in enumerate(serverInfo['node_api_levels']):
+                        serverInfo['about_html'] += str(idx+1) + ":" + str(level) + " "
+                    serverInfo['about_html'] += "]"
             else:
-                serverInfo['about_html'] += "[ "
-                for idx, level in enumerate(serverInfo['node_api_levels']):
-                    serverInfo['about_html'] += str(idx+1) + ":" + str(level) + " "
-                serverInfo['about_html'] += "]"
-        else:
-            serverInfo['about_html'] += "None (Delta5)"
-
-        serverInfo['about_html'] += "</li>"
-
-        # Node firmware versions
-        node_fw_version = None
-        serverInfo['node_version_match'] = True
-        serverInfo['node_fw_versions'] = [None]
-        if len(INTERFACE.node_managers):
-            if hasattr(INTERFACE.node_managers[0], 'firmware_version_str') and INTERFACE.node_managers[0].firmware_version_str:
-                node_fw_version = INTERFACE.node_managers[0].firmware_version_str
-                serverInfo['node_fw_versions'] = []
-                for node_manager in INTERFACE.node_managers:
-                    serverInfo['node_fw_versions'].append(\
-                            node_manager.firmware_version_str if node_manager.firmware_version_str else "0")
-                    if node_manager.firmware_version_str != node_fw_version:
-                        serverInfo['node_version_match'] = False
-                # if multi-node and all versions same then only include one entry
-                if serverInfo['node_version_match'] and INTERFACE.node_managers[0].is_multi_node():
-                    serverInfo['node_fw_versions'] = serverInfo['node_fw_versions'][0:1]
-        if node_fw_version:
-            serverInfo['about_html'] += "<li>" + __("Node Version") + ": "
-            if serverInfo['node_version_match']:
-                serverInfo['about_html'] += str(node_fw_version)
-            else:
-                serverInfo['about_html'] += "[ "
-                for idx, ver in enumerate(serverInfo['node_fw_versions']):
-                    serverInfo['about_html'] += str(idx+1) + ":" + str(ver) + " "
-                serverInfo['about_html'] += "]"
+                serverInfo['about_html'] += "None (Delta5)"
+    
             serverInfo['about_html'] += "</li>"
-
-        serverInfo['node_api_best'] = NODE_API_BEST
-        if serverInfo['node_api_match'] is False or node_api_level < NODE_API_BEST:
-            # Show Recommended API notice
-            serverInfo['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
-
-        serverInfo['about_html'] += "</ul>"
+    
+            # Node firmware versions
+            node_fw_version = None
+            serverInfo['node_version_match'] = True
+            serverInfo['node_fw_versions'] = [None]
+            if len(INTERFACE.node_managers):
+                if hasattr(INTERFACE.node_managers[0], 'firmware_version_str') and INTERFACE.node_managers[0].firmware_version_str:
+                    node_fw_version = INTERFACE.node_managers[0].firmware_version_str
+                    serverInfo['node_fw_versions'] = []
+                    for node_manager in INTERFACE.node_managers:
+                        serverInfo['node_fw_versions'].append(\
+                                node_manager.firmware_version_str if node_manager.firmware_version_str else "0")
+                        if node_manager.firmware_version_str != node_fw_version:
+                            serverInfo['node_version_match'] = False
+                    # if multi-node and all versions same then only include one entry
+                    if serverInfo['node_version_match'] and INTERFACE.node_managers[0].is_multi_node():
+                        serverInfo['node_fw_versions'] = serverInfo['node_fw_versions'][0:1]
+            if node_fw_version:
+                serverInfo['about_html'] += "<li>" + __("Node Version") + ": "
+                if serverInfo['node_version_match']:
+                    serverInfo['about_html'] += str(node_fw_version)
+                else:
+                    serverInfo['about_html'] += "[ "
+                    for idx, ver in enumerate(serverInfo['node_fw_versions']):
+                        serverInfo['about_html'] += str(idx+1) + ":" + str(ver) + " "
+                    serverInfo['about_html'] += "]"
+                serverInfo['about_html'] += "</li>"
+    
+            serverInfo['node_api_best'] = NODE_API_BEST
+            if serverInfo['node_api_match'] is False or node_api_level < NODE_API_BEST:
+                # Show Recommended API notice
+                serverInfo['about_html'] += "<li><strong>" + __("Node Update Available") + ": " + str(NODE_API_BEST) + "</strong></li>"
+    
+            serverInfo['about_html'] += "</ul>"
 
         # create version of 'serverInfo' without 'about_html' entry
         serverInfoItems = serverInfo.copy()
@@ -5096,8 +5102,8 @@ except:
 if CLUSTER and CLUSTER.hasRecEventsSecondaries():
     CLUSTER.init_repeater()
 
+logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
 if RACE.num_nodes > 0:
-    logger.info('Number of nodes found: {0}'.format(RACE.num_nodes))
     # if I2C nodes then only report comm errors if > 1.0%
     for node_manager in INTERFACE.node_managers:
         if hasattr(node_manager, 'i2c_addr'):
@@ -5107,6 +5113,8 @@ if RACE.num_nodes > 0:
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
 
+if hasattr(INTERFACE, 'sensors'):
+    SENSORS.extend(INTERFACE.sensors)
 SENSORS.discover(sensor_pkg, config=rhconfig.SENSORS, **hardwareHelpers)
 
 # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
@@ -5131,7 +5139,7 @@ if RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME):
 buildServerInfo()
 logger.debug("Server info:  " + json.dumps(serverInfoItems))
 
-if serverInfo['node_api_match'] is False:
+if 'node_api_match' in serverInfo and serverInfo['node_api_match'] is False:
     logger.info('** WARNING: Node API mismatch. **')
     set_ui_message(
         'node-match',
@@ -5139,7 +5147,7 @@ if serverInfo['node_api_match'] is False:
         header='Warning',
         )
 
-if RACE.num_nodes > 0:
+if 'node_api_lowest' in serverInfo and RACE.num_nodes > 0:
     if serverInfo['node_api_lowest'] < NODE_API_SUPPORTED:
         logger.info('** WARNING: Node firmware is out of date and may not function properly **')
         set_ui_message(

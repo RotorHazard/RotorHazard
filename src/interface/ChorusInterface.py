@@ -144,7 +144,7 @@ class ChorusInterface(BaseHardwareInterface):
     # External functions for setting data
     #
 
-    def set_frequency(self, node_index, frequency):
+    def set_frequency(self, node_index, frequency, band=None, channel=None):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
         if frequency:

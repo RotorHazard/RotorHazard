@@ -26,6 +26,7 @@ class BaseHardwareInterface:
         self.nodes = []
         # Main update loop delay
         self.update_sleep = float(os.environ.get('RH_UPDATE_INTERVAL', update_sleep))
+        self.update_thread = None # Thread for running the main update loop
         self.start_time = 1000*monotonic() # millis
         self.environmental_data_update_tracker = 0
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
@@ -56,11 +57,12 @@ class BaseHardwareInterface:
     def _update_loop(self):
         while True:
             try:
-                while True:
-                    self._update()
-                    gevent.sleep(self.update_sleep)
+                self._update()
+                gevent.sleep(self.update_sleep)
             except KeyboardInterrupt:
                 logger.info("Update thread terminated by keyboard interrupt")
+                raise
+            except OSError:
                 raise
             except SystemExit:
                 raise

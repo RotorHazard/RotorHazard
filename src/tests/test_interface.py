@@ -7,5 +7,6 @@ class InterfaceTest(unittest.TestCase):
         checksum = calculate_checksum(data)
         self.assertEqual(89, checksum)
 
+
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()

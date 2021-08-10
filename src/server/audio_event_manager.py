@@ -41,16 +41,18 @@ class AudioEventManager:
     def play(self, audio_file):
         if self.proc:
             self.proc.wait()
-        args = copy.copy(self.config['PLAYER'])
-        args.append(audio_file)
-        self.proc = subprocess.Popen(args)
+        if self.config['PLAYER']:
+            args = copy.copy(self.config['PLAYER'])
+            args.append(audio_file)
+            self.proc = subprocess.Popen(args)
 
     def say(self, text):
         if self.proc:
             self.proc.wait()
-        args = copy.copy(self.config['TTS'])
-        args.append(text)
-        self.proc = subprocess.Popen(args)
+        if self.config['TTS']:
+            args = copy.copy(self.config['TTS'])
+            args.append(text)
+            self.proc = subprocess.Popen(args)
 
 
 def stage_beep(RACE, play, **kwargs):

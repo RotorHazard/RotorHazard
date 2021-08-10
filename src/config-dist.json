@@ -27,6 +27,9 @@
 		"PLAYER": [],
 		"TTS": []
 	},
+	"LAPRF": {
+		"ADDRESS": ""
+	},
 	"CHORUS": {
 		"HARDWARE_PORT": "",
 		"API_PORT": ""

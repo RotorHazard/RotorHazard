@@ -10,7 +10,7 @@ class WebTest(unittest.TestCase):
 
     def test_multigp(self):
         data = web.get_pilot_data('https://www.multigp.com/pilots/view/?pilot=SeekND')
-        self.assertEqual(data['logo'], 'https://s3.amazonaws.com/multigp-storage/user/1135/profile-picture.jpg')
+        self.assertEqual(data['logo'], 'https://multigp-storage-new.s3.us-east-2.amazonaws.com/user/1135/profileImage-20.png')
 
 if __name__ == '__main__':
     unittest.main()

@@ -30,7 +30,6 @@ class MockNodeManager(NodeManager):
 class MockInterface(BaseHardwareInterface):
     def __init__(self, *args, **kwargs):
         super().__init__(update_sleep=0.5)
-        self.update_thread = None # Thread for running the main update loop
 
         self.data = []
         for index in range(int(os.environ.get('RH_NODES', '8'))):
@@ -122,7 +121,7 @@ class MockInterface(BaseHardwareInterface):
     # External functions for setting data
     #
 
-    def set_frequency(self, node_index, frequency):
+    def set_frequency(self, node_index, frequency, band=None, channel=None):
         node = self.nodes[node_index]
         node.debug_pass_count = 0  # reset debug pass count on frequency change
         if frequency:
