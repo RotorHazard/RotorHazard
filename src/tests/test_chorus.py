@@ -2,6 +2,7 @@ import unittest
 from interface.ChorusInterface import ChorusInterface
 from server.chorus_api import ChorusAPI
 from interface.MockInterface import MockInterface
+from . import stub_sensor
 import gevent
 
 class ChorusTest(unittest.TestCase):
@@ -40,12 +41,16 @@ class ChorusTest(unittest.TestCase):
             nonlocal laps
             laps += 1
 
-        api = ChorusAPI(None, mock_intf, [], on_start, on_stop_race, on_reset_race)
+        api = ChorusAPI(None, mock_intf, stub_sensor.discover(), on_start, on_stop_race, on_reset_race)
         api_io = ChorusTest.DummySerial(lambda data : api._process_message(data))
         intf = ChorusInterface(api_io)
-        api.serial_io = ChorusTest.DummySerial(lambda data : intf._process_message(data))
+        api.serial_io = ChorusTest.DummySerial(lambda data : intf._process_message(intf.node_managers[0], data))
         intf.pass_record_callback = on_pass
         self.assertTrue(started)
+        for sensor in intf.sensors:
+            sensor.update()
+            intf._update()
+            self.assertGreater(len(sensor.getReadings()), 0)
         intf.set_frequency(2, 5885)
         self.assertEqual(mock_intf.nodes[2].frequency, 5885)
         intf.set_enter_at_level(4, 33)

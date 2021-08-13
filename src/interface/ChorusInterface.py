@@ -4,9 +4,9 @@ import logging
 import gevent
 import serial
 
-from .Node import Node
 from .BaseHardwareInterface import BaseHardwareInterface
-from interface.Node import NodeManager
+from .Node import Node, NodeManager
+from sensors import Sensor, Reading
 
 RETRY_COUNT=5
 
@@ -20,6 +20,7 @@ class ChorusNodeManager(NodeManager):
         self.api_valid_flag = True
         self.max_rssi_value = 2700
         self.addr = 'serial:'+self.serial_io.port
+        self.voltage = None
 
     def _create_node(self, index, multi_node_index):
         return ChorusNode(index, multi_node_index, self)
@@ -32,6 +33,20 @@ class ChorusNodeManager(NodeManager):
 
     def close(self):
         self.serial_io.close()
+
+
+class ChorusSensor(Sensor):
+    def __init__(self, node_manager):
+        super().__init__(node_manager.addr, "Chorus")
+        self.description = "Chorus"
+        self.node_manager = node_manager
+
+    def update(self):
+        self.node_manager.write('R*v\n')
+
+    @Reading(units='V')
+    def voltage(self):
+        return self.node_manager.voltage*55.0/1024.0 if self.node_manager.voltage is not None else None
 
 
 class ChorusNode(Node):
@@ -62,49 +77,68 @@ class ChorusNode(Node):
 class ChorusInterface(BaseHardwareInterface):
     def __init__(self, serial_io):
         super().__init__()
-        self.node_manager = ChorusNodeManager(serial_io)
-        self.node_managers = [self.node_manager]
-        self.update_thread = None # Thread for running the main update loop
+        node_manager = ChorusNodeManager(serial_io)
+        self.node_managers = [node_manager]
+        self.sensors = []
 
-        with self.node_manager:
-            self.node_manager.write('N0\n')
-            resp = self.node_manager.read()
-            if resp:
-                last_node = resp[1]
-            else:
-                logger.warning("Invalid response received")
+        for node_manager in self.node_managers:
+            with node_manager:
+                node_manager.write('N0\n')
+                resp = node_manager.read()
+                if resp:
+                    last_node = resp[1]
+                else:
+                    logger.warning("Invalid response received")
 
-        for index in range(int(last_node)):
-            node = self.node_manager.add_node(index)
-            self.nodes.append(node)
+                for index in range(int(last_node)):
+                    node = node_manager.add_node(index)
+                    self.nodes.append(node)
 
-        with self.node_manager:
-            self.node_manager.write('R*R2\n')
-            self.node_manager.read()
-            for node in self.nodes:
-                node.set_and_validate_value_4x('M', 0)
+            self.sensors.append(ChorusSensor(node_manager))
+
+        for node in self.nodes:
+            # set minimum lap time to zero - let the server handle it
+            node.set_and_validate_value_4x('M', 0)
 
     #
     # Update Loop
     #
 
     def _update(self):
-        with self.node_manager:
-            data = self.node_manager.read()
-        if data:
-            self._process_message(data)
+        for node_manager in self.node_managers:
+            with node_manager:
+                data = node_manager.read()
+            if data:
+                self._process_message(node_manager, data)
 
-    def _process_message(self, data):
+    def _process_message(self, node_manager, data):
         if data[0] == 'S':
-            node_addr = int(data[1])
+            multi_node_idx = int(data[1])
+            node = node_manager.nodes[multi_node_idx]
             cmd = data[2]
             if cmd == 'L':
                 _lap_id = int(data[3:5], 16)
                 lap_ts = int(data[5:13], 16)
-                gevent.spawn(self.pass_record_callback, node_addr, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, 0)
+                gevent.spawn(self.pass_record_callback, node.index, lap_ts, BaseHardwareInterface.LAP_SOURCE_REALTIME, 0)
             elif cmd == 'r':
-                node = self.nodes[node_addr]
                 node.current_rssi = int(data[3:7], 16)
+            elif cmd == 'v':
+                node.manager.voltage = int(data[3:7], 16)
+
+    def set_race_status(self, race_status):
+        if race_status == BaseHardwareInterface.RACE_STATUS_RACING:
+            # reset timers to zero
+            for node_manager in self.node_managers:
+                with node_manager:
+                    node_manager.write('R*R2\n')
+                    node_manager.read()
+        elif race_status == BaseHardwareInterface.RACE_STATUS_DONE:
+            for node_manager in self.node_managers:
+                with node_manager:
+                    node_manager.write('R*R0\n')
+                    node_manager.read()
+
+        super().set_race_status(race_status)
 
     #
     # External functions for setting data
@@ -129,8 +163,8 @@ class ChorusInterface(BaseHardwareInterface):
         _node = self.nodes[node_index]
 
 
-def get_hardware_interface(*args, **kwargs):
+def get_hardware_interface(config, *args, **kwargs):
     '''Returns the interface object.'''
-    port = kwargs['config'].CHORUS['HARDWARE_PORT']
+    port = config.CHORUS['HARDWARE_PORT']
     serial_io = serial.Serial(port=port, baudrate=115200, timeout=0.1)
     return ChorusInterface(serial_io)

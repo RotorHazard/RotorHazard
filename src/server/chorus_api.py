@@ -32,7 +32,7 @@ class ChorusAPI():
         for sensor in self.SENSORS:
             for sensorReading in sensor.getReadings().values():
                 if sensorReading['units'] == 'V':
-                    return 'S0v{1:04x}\n'.format(sensorReading['value']*1024.0/55.0)
+                    return 'S{0}v{1:04x}\n'.format(0, int(sensorReading['value']*1024.0/55.0))
         return ''
 
     def _process_message(self, data):

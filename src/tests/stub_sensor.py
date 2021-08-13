@@ -10,8 +10,13 @@ class StubSensor(Sensor):
     def counter(self):
         return self.value
 
+    @Reading(units='V')
+    def voltage(self):
+        return 12.8
+
     def update(self):
         self.value += 1
+
 
 def discover(*args, **kwargs):
     return [StubSensor()]

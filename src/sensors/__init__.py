@@ -29,7 +29,9 @@ class Sensor:
         for fname in dir(self):
             f = getattr(self, fname)
             if hasattr(f, 'units'):
-                readings[f.__name__] = {'value': f(), 'units': f.units}
+                value = f()
+                if value is not None:
+                    readings[f.__name__] = {'value': value, 'units': f.units}
         return readings
 
     def update(self):
