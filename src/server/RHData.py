@@ -12,10 +12,14 @@ import os
 import traceback
 import shutil
 import json
+from types import MappingProxyType
 from . import RHUtils
 from .eventmanager import Evt
 from .RHRace import RaceStatus, WinCondition, StagingTones
 from .Results import CacheStatus
+
+EMPTY_DICT = MappingProxyType({})
+
 
 class RHData():
     _OptionsCache = {} # Local Python cache for global settings
@@ -497,7 +501,7 @@ class RHData():
     def get_pilots(self):
         return self._Database.Pilot.query.all()
 
-    def add_pilot(self, init={}):
+    def add_pilot(self, init=EMPTY_DICT):
         default_color = RHUtils.hslToHex(False, 100, 50)
 
         new_pilot = self._Database.Pilot(
@@ -628,7 +632,7 @@ class RHData():
     def get_first_heat(self):
         return self._Database.Heat.query.first()
 
-    def add_heat(self, init={}, initPilots={}):
+    def add_heat(self, init=EMPTY_DICT, initPilots=EMPTY_DICT):
         # Add new heat
         new_heat = self._Database.Heat(
             class_id=RHUtils.CLASS_ID_NONE,
@@ -1065,7 +1069,7 @@ class RHData():
     def get_first_profile(self):
         return self._Database.Profiles.query.first()
 
-    def add_profile(self, init={}):
+    def add_profile(self, init=EMPTY_DICT):
         new_profile = self._Database.Profiles(
             name = init['profile_name'] if 'profile_name' in init else '',
             frequencies = json.dumps(init['frequencies']) if 'frequencies' in init else '',
