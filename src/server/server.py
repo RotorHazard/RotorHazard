@@ -108,6 +108,8 @@ CMDARG_VERSION_SHORT_STR = '-v'          # show program version and exit
 CMDARG_ZIP_LOGS_STR = '--ziplogs'        # create logs .zip file
 CMDARG_JUMP_TO_BL_STR = '--jumptobl'     # send jump-to-bootloader command to node
 CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill processor
+CMDARG_VIEW_DB_STR = '--viewdb'          # load and view given database file
+CMDARG_LAUNCH_B_STR = '--launchb'        # launch browser on local computer
 
 if __name__ == '__main__' and len(sys.argv) > 1:
     if CMDARG_VERSION_LONG_STR in sys.argv or CMDARG_VERSION_SHORT_STR in sys.argv:
@@ -115,7 +117,16 @@ if __name__ == '__main__' and len(sys.argv) > 1:
     if CMDARG_ZIP_LOGS_STR in sys.argv:
         log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
         sys.exit(0)
-    if CMDARG_JUMP_TO_BL_STR not in sys.argv:  # handle jump-to-bootloader argument later
+    if CMDARG_VIEW_DB_STR in sys.argv:
+        viewdbArgIdx = sys.argv.index(CMDARG_VIEW_DB_STR) + 1
+        if viewdbArgIdx < len(sys.argv):
+            if not os.path.exists(sys.argv[viewdbArgIdx]):
+                print("Unable to find given DB file: {0}".format(sys.argv[viewdbArgIdx]))
+                sys.exit(1)
+        else:
+            print("Usage: python server.py {0} dbFileName.db [pagename] [browsercmd]".format(CMDARG_VIEW_DB_STR))
+            sys.exit(1)
+    elif CMDARG_JUMP_TO_BL_STR not in sys.argv:  # handle jump-to-bootloader argument later
         if CMDARG_FLASH_BPILL_STR in sys.argv:
             flashPillArgIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
             flashPillPortStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
@@ -125,8 +136,9 @@ if __name__ == '__main__' and len(sys.argv) > 1:
                 flashPillSrcStr = None                       #  unless arg is switch param
             flashPillSuccessFlag = stm32loader.flash_file_to_stm32(flashPillPortStr, flashPillSrcStr)
             sys.exit(0 if flashPillSuccessFlag else 1)
-        print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
-        sys.exit(1)
+        elif CMDARG_LAUNCH_B_STR not in sys.argv:
+            print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
+            sys.exit(1)
 
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 
@@ -1437,12 +1449,32 @@ def on_list_backups():
 
     emit('backups_list', emit_payload)
 
+def restore_database_file(db_file_name):
+    global RACE
+    global LAST_RACE
+    RHData.close()
+    RACE = RHRace.RHRace() # Reset all RACE values
+    LAST_RACE = RACE
+    try:
+        RHData.recover_database(db_file_name)
+        clean_results_cache()
+        expand_heats()
+        raceformat_id = RHData.get_optionInt('currentFormat')
+        race_format = RHData.get_raceFormat(raceformat_id)
+        setCurrentRaceFormat(race_format)
+        success = True
+    except Exception as ex:
+        logger.warning('Clearing all data after recovery failure:  ' + str(ex))
+        db_reset()
+        success = False
+    init_race_state()
+    init_interface_state()
+    return success
+
 @SOCKET_IO.on('restore_database')
 @catchLogExceptionsWrapper
 def on_restore_database(data):
     '''Restore database.'''
-    global RACE
-    global LAST_RACE
     success = None
     if 'backup_file' in data:
         backup_file = data['backup_file']
@@ -1450,27 +1482,7 @@ def on_restore_database(data):
 
         if os.path.exists(backup_path):
             logger.info('Found {0}: starting restoration...'.format(backup_file))
-            RHData.close()
-
-            RACE = RHRace.RHRace() # Reset all RACE values
-            LAST_RACE = RACE
-            try:
-                RHData.recover_database(DB_BKP_DIR_NAME + '/' + backup_file)
-                clean_results_cache()
-                expand_heats()
-                raceformat_id = RHData.get_optionInt('currentFormat')
-                race_format = RHData.get_raceFormat(raceformat_id)
-                setCurrentRaceFormat(race_format)
-
-                success = True
-            except Exception as ex:
-                logger.warning('Clearing all data after recovery failure:  ' + str(ex))
-                db_reset()
-                success = False
-
-            init_race_state()
-            init_interface_state()
-
+            success = restore_database_file(backup_path)
             Events.trigger(Evt.DATABASE_RESTORE, {
                 'file_name': backup_file,
                 })
@@ -4965,19 +4977,31 @@ if not resultFlag:
     log.wait_for_queue_empty()
     sys.exit(1)
 
-if len(sys.argv) > 0 and CMDARG_JUMP_TO_BL_STR in sys.argv:
-    stop_background_threads()
-    jump_to_node_bootloader()
-    if CMDARG_FLASH_BPILL_STR in sys.argv:
-        bootJumpArgIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
-        bootJumpPortStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
-                                            len(Config.SERIAL_PORTS) > 0 else None
-        bootJumpSrcStr = sys.argv[bootJumpArgIdx] if bootJumpArgIdx < len(sys.argv) else None
-        if bootJumpSrcStr and bootJumpSrcStr.startswith("--"):  # use next arg as src file (optional)
-            bootJumpSrcStr = None                       #  unless arg is switch param
-        bootJumpSuccessFlag = stm32loader.flash_file_to_stm32(bootJumpPortStr, bootJumpSrcStr)
-        sys.exit(0 if bootJumpSuccessFlag else 1)
-    sys.exit(0)
+if len(sys.argv) > 0:
+    if CMDARG_JUMP_TO_BL_STR in sys.argv:
+        stop_background_threads()
+        jump_to_node_bootloader()
+        if CMDARG_FLASH_BPILL_STR in sys.argv:
+            bootJumpArgIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
+            bootJumpPortStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
+                                                len(Config.SERIAL_PORTS) > 0 else None
+            bootJumpSrcStr = sys.argv[bootJumpArgIdx] if bootJumpArgIdx < len(sys.argv) else None
+            if bootJumpSrcStr and bootJumpSrcStr.startswith("--"):  # use next arg as src file (optional)
+                bootJumpSrcStr = None                       #  unless arg is switch param
+            bootJumpSuccessFlag = stm32loader.flash_file_to_stm32(bootJumpPortStr, bootJumpSrcStr)
+            sys.exit(0 if bootJumpSuccessFlag else 1)
+        sys.exit(0)
+    if CMDARG_VIEW_DB_STR in sys.argv:
+        try:
+            viewdbArgIdx = sys.argv.index(CMDARG_VIEW_DB_STR) + 1
+            RHData.backup_db_file(True)
+            logger.info("Loading given database file: {}".format(sys.argv[viewdbArgIdx]))
+            success = restore_database_file(sys.argv[viewdbArgIdx])
+        except Exception as ex:
+            logger.error("Error loading database file: {}".format(ex))
+            success = False
+        if not success:
+            sys.exit(1)
 
 CLUSTER = ClusterNodeSet(Language, Events)
 hasMirrors = False
@@ -5171,7 +5195,8 @@ import json_endpoints
 
 APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
 
-def start(port_val = Config.GENERAL['HTTP_PORT']):
+@catchLogExceptionsWrapper
+def start(port_val=Config.GENERAL['HTTP_PORT'], argv_arr=None):
     if not RHData.get_option("secret_key"):
         RHData.set_option("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
 
@@ -5182,6 +5207,29 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
         'color': ColorVal.ORANGE,
         'message': 'RotorHazard ' + RELEASE_VERSION
         })
+
+    # handle launch-browser arguments ("... [pagename] [browsercmd]")
+    if argv_arr and len(argv_arr) > 0:
+        launchbIdx = 0
+        if CMDARG_VIEW_DB_STR in argv_arr:
+            vArgIdx = argv_arr.index(CMDARG_VIEW_DB_STR) + 1
+            if len(argv_arr) > vArgIdx + 1 and (not argv_arr[vArgIdx+1].startswith("--")):
+                launchbIdx = vArgIdx         # if 'pagename' arg given then launch browser (below)
+        if launchbIdx == 0 and CMDARG_LAUNCH_B_STR in argv_arr:
+            launchbIdx = argv_arr.index(CMDARG_LAUNCH_B_STR)
+        if launchbIdx > 0:
+            if len(argv_arr) > launchbIdx + 1 and (not argv_arr[launchbIdx+1].startswith("--")):
+                pageStr = argv_arr[launchbIdx+1]
+                if not pageStr.startswith('/'):
+                    pageStr = '/' +  pageStr
+            else:
+                pageStr = None
+            cmdStr = argv_arr[launchbIdx+2] if len(argv_arr) > launchbIdx+2 and \
+                            (not argv_arr[launchbIdx+2].startswith("--")) else None
+            start_background_threads(True)
+            PageCache.update_cache()
+            gevent.spawn_later(2, RHUtils.launchBrowser, "http://localhost", \
+                               port_val, pageStr, cmdStr)
 
     try:
         # the following fn does not return until the server is shutting down
@@ -5207,4 +5255,4 @@ def start(port_val = Config.GENERAL['HTTP_PORT']):
 
 # Start HTTP server
 if __name__ == '__main__':
-    start()
+    start(argv_arr=sys.argv)
