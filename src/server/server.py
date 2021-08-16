@@ -1,6 +1,6 @@
 '''RotorHazard server script'''
 from interface.RHInterface import RHInterface
-RELEASE_VERSION = "3.1.0-dev.8" # Public release version code
+RELEASE_VERSION = "3.1.0-dev.9" # Public release version code
 SERVER_API = 32+1 # Server API version
 NODE_API_SUPPORTED = 18 # Minimum supported node version
 NODE_API_BEST = 35 # Most recent node API
